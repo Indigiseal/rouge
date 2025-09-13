@@ -1,0 +1,40 @@
+name: Agent: build TODO.md
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'docs/MECHANICS.md'
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate TODO.md with AI
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          node .github/scripts/plan.js
+
+      - name: Open PR with changes
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bot/todo
+          title: "🤖 Update TODO.md from MECHANICS.md"
+          commit-message: "chore(bot): update TODO.md from MECHANICS.md"
+          body: |
+            This PR was created automatically by the Agent TODO workflow.
+            It reads **docs/MECHANICS.md** and regenerates **TODO.md**.
+          labels: automation,todo
