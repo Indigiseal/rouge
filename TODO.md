@@ -14,9 +14,33 @@
 - Later: sockets & gems.
 
 ## Tasks
+### Bug: Player HP does not update in UI after enemy damage
+
+- [ ] Ensure the UI updates whenever the player takes damage from ANY source (enemy turns, traps, poison, reflection, etc.).
+  
+  **Where to change**
+  - `gameState.js`: provide/confirm a single `takeDamage(amount)` (or `takeDamageFromEnemy(...)`) that clamps, mutates `playerHealth`, and returns `{ actualDamage, tookDamage }`.
+  - Emit an event on change: `events.emit('player:hp_changed', { prev, current })`. If `gameState` lacks an emitter, add `this.events = new Phaser.Events.EventEmitter()` in its constructor.
+  - `gameScene.js`: subscribe in `create()`:
+    ```js
+    this.gameState.events?.on('player:hp_changed', () => this.updateUI());
+    this.events.once('shutdown', () => this.gameState.events?.removeAllListeners('player:hp_changed'));
+    ```
+  - Replace all direct UI updates after damage with calls to `this.gameState.takeDamage(...)` (and let the event refresh UI). 
+  - Make sure enemy-turn logic calls the central damage method (search for places where enemies deal damage).
+
+  **Acceptance**
+  - When an enemy attacks, HP number/bar changes immediately.
+  - Trap damage (spike) still updates HP (already works).
+  - Poison tick end-of-turn updates HP.
+  - No duplicate UI updates or crashes if called multiple times.
+
+  **Notes**
+  - Do NOT change save format.
+  - Keep function names as-is where possible; small wrappers ok.
 
 
-- [ ] Prompt 3.1 — AoE/chain reveal wrapper (no sockets yet)  
+- [x] Prompt 3.1 — AoE/chain reveal wrapper (no sockets yet)  
   **Files:** `cardSystem.js`  
   **Implement:**
   - `applyEffectToAxials(axials, { baseDamage, tags })`:
