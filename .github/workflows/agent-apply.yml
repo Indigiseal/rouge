@@ -3,216 +3,79 @@ name: Agent Apply (first TODO)
 on:
   workflow_dispatch: {}
 
+# minimal permissions for this job
 permissions:
   contents: write
   pull-requests: write
 
+# prevent two applies from racing on the same branch
+concurrency:
+  group: agent-apply-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   apply:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Create agent_apply.mjs (fresh each run)
-        run: |
-          mkdir -p scripts
-          cat > scripts/agent_apply.mjs <<'EOF'
-// scripts/agent_apply.mjs
-// Generate a patch for the FIRST unchecked task in TODO.md.
-// Writes agent.patch + agent_task.txt. Keep it simple and robust.
-
-import fs from "fs/promises";
-import path from "path";
-import process from "process";
-import OpenAI from "openai";
-
-const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
-const ROOT = process.cwd();
-
-function die(msg) {
-  console.error(msg);
-  process.exit(1);
-}
-
-async function readUtf8(p) { return fs.readFile(p, "utf8"); }
-
-function findFirstUncheckedBlock(todoText) {
-  const lines = todoText.split("\n");
-  let start = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (/^\s*-\s*\[\s*\]\s+/.test(lines[i])) { start = i; break; }
-  }
-  if (start === -1) return null;
-  let end = lines.length;
-  for (let i = start + 1; i < lines.length; i++) {
-    if (/^\s*-\s*\[\s*\]\s+/.test(lines[i])) { end = i; break; }
-  }
-  return lines.slice(start, end).join("\n").trim();
-}
-
-function parseFilesFromBlock(block) {
-  const m = block.split("\n").find(l => /files:/i.test(l));
-  if (!m) return [];
-  const ticks = [...m.matchAll(/`([^`]+)`/g)].map(x => x[1]);
-  const raw = ticks.length ? ticks.join(",") : m.replace(/.*files:/i, "");
-  return raw.split(",")
-    .map(s => s.trim())
-    .filter(Boolean)
-    .map(s => s.replace(/^\.?\/*/, ""));
-}
-
-async function loadFiles(paths) {
-  const out = [];
-  for (const rel of paths) {
-    const abs = path.join(ROOT, rel);
-    try {
-      const content = await readUtf8(abs);
-      out.push({ path: rel, content });
-    } catch (e) {
-      console.warn(`[agent] warn: could not read ${rel} (${e.message})`);
-      out.push({ path: rel, content: null });
-    }
-  }
-  return out;
-}
-
-function extractJsonFromResponse(text) {
-  let m = text.match(/```json\s*([\s\S]*?)```/i);
-  if (m && m[1]) { try { return JSON.parse(m[1]); } catch {} }
-  m = text.match(/```\s*([\s\S]*?)```/);
-  if (m && m[1]) { try { return JSON.parse(m[1]); } catch {} }
-  try { return JSON.parse(text); } catch {}
-  return null;
-}
-
-function isValidUnifiedDiff(p) {
-  if (typeof p !== "string" || !p.trim()) return false;
-  return /(^|\n)diff --git /.test(p) ||
-         ((/(^|\n)---\s/.test(p)) && (/(^|\n)\+\+\+\s/.test(p)));
-}
-
-async function main() {
-  let todo;
-  try { todo = await readUtf8(path.join(ROOT, "TODO.md")); }
-  catch { die("[agent] TODO.md not found at repo root."); }
-
-  const block = findFirstUncheckedBlock(todo);
-  if (!block) die("[agent] No unchecked task found (look for '- [ ]').");
-
-  let files = parseFilesFromBlock(block);
-  if (!files.length) {
-    console.warn("[agent] No 'Files:' line; defaulting to cardSystem.js");
-    files = ["cardSystem.js"];
-  }
-  const fileMap = await loadFiles(files);
-
-  const systemMsg =
-    "You are a disciplined code patch generator.\n" +
-    "- Implement ONLY the FIRST unchecked TODO block provided.\n" +
-    '- Return a single JSON object: {"unified_patch":"<diff>","task":"<one line>"}\n' +
-    "- The patch MUST be a valid unified diff (git apply --whitespace=fix agent.patch).\n" +
-    "- Modify only the listed files (under 'Files'). Keep changes minimal.";
-
-  const repoContext = fileMap.map(f => {
-    const body = (f.content == null)
-      ? "(file not found; edit if needed, or create cautiously)"
-      : f.content;
-    return `BEGIN_FILE ${f.path}\n${body}\nEND_FILE`;
-  }).join("\n\n");
-
-  const userMsg =
-    "Repository context:\n" + repoContext + "\n\n" +
-    "FIRST UNCHECKED TASK (implement exactly this):\n" + block + "\n\n" +
-    "Return ONLY raw JSON (no prose, no code fences) with keys unified_patch and task.";
-
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) die("[agent] Missing OPENAI_API_KEY.");
-  const client = new OpenAI({ apiKey });
-
-  const resp = await client.chat.completions.create({
-    model: MODEL,
-    temperature: 0.2,
-    messages: [
-      { role: "system", content: systemMsg },
-      { role: "user", content: userMsg },
-    ],
-  });
-
-  const raw = resp.choices?.[0]?.message?.content || "";
-  const data = extractJsonFromResponse(raw) ?? (() => { try { return JSON.parse(raw); } catch { return null; } })();
-  if (!data) {
-    console.error("----- RAW MODEL OUTPUT START -----");
-    console.error(raw);
-    console.error("----- RAW MODEL OUTPUT END -----");
-    die("[agent] Model did not return parseable JSON.");
-  }
-
-  const patch = data.unified_patch || data.patch || data.diff || "";
-  if (!isValidUnifiedDiff(patch)) {
-    console.error("----- RAW MODEL OUTPUT START -----");
-    console.error(raw);
-    console.error("----- RAW MODEL OUTPUT END -----");
-    die("[agent] Invalid or empty unified diff in response.");
-  }
-
-  await fs.writeFile(path.join(ROOT, "agent.patch"), patch, "utf8");
-  await fs.writeFile(path.join(ROOT, "agent_task.txt"), (data.task || "Auto task") + "\n\n" + block + "\n", "utf8");
-  console.log("[agent] Wrote agent.patch and agent_task.txt successfully.");
-}
-
-main().catch(e => die(`[agent] Fatal: ${e.stack || e.message}`));
-EOF
-          node -v
-          echo "Lines in script:" $(wc -l < scripts/agent_apply.mjs)
-
-      - name: Install deps
+      - name: Install deps (OpenAI SDK + glob)
         run: npm i --no-fund --no-audit openai@^4 glob@^10
 
-      - name: Generate patch from TODO (first unchecked)
+      - name: Run agent (writes edits directly)
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-4o-mini
         run: node scripts/agent_apply.mjs
 
-      - name: Sanity check patch
-        run: |
-          if [ ! -s agent.patch ]; then
-            echo "::error::agent.patch is missing or empty"
-            exit 1
-          fi
-          head -n 20 agent.patch || true
-
-      - name: Apply patch
+      - name: Extract first unchecked TODO (for PR body)
+        id: task
         run: |
           set -e
-          git config user.name  "agent-bot"
-          git config user.email "agent-bot@users.noreply.github.com"
-          git checkout -b agent/task-1
-          git apply --whitespace=fix agent.patch
-
-      - name: Expose task for PR body
-        id: bodytext
-        run: |
-          echo "task<<EOF" >> $GITHUB_OUTPUT
-          cat agent_task.txt >> $GITHUB_OUTPUT
+          TASK="$(grep -m1 '^- \[ \] ' TODO.md | sed 's/^- \[ \] //')"
+          echo "text<<EOF" >> $GITHUB_OUTPUT
+          echo "${TASK:-<none found>}" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: Check for changes
+        id: changes
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Show diff (summary)
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git --no-pager diff --staged || true
+          git --no-pager diff || true
+
       - name: Create PR
+        if: steps.changes.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          branch: agent/task-1
+          branch: agent/task-${{ github.run_number }}
           commit-message: "agent: implement first TODO task"
           title: "Agent: implement first TODO task"
           body: |
-            Auto-generated patch from TODO.md
+            Auto-generated changes from **TODO.md**.
 
-            **Task**
+            **First unchecked task**
             ```
-            ${{ steps.bodytext.outputs.task }}
+            ${{ steps.task.outputs.text }}
             ```
+
+      - name: No changes (nothing to commit)
+        if: steps.changes.outputs.changed != 'true'
+        run: echo "Agent produced no file edits. Nothing to commit."
