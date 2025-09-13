@@ -10,7 +10,7 @@ on:
       - ".github/workflows/agent-todo.yml"
 
 permissions:
-  contents: write   # allow the job to commit TODO.md
+  contents: write
 
 jobs:
   plan:
@@ -24,7 +24,15 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install deps (OpenAI + glob)
+      - name: Check secret presence
+        run: |
+          if [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+            echo "OPENAI_API_KEY is NOT set. Add it in Repo Settings → Secrets → Actions."
+            exit 1
+          fi
+          echo "✅ Secret exists."
+
+      - name: Install deps
         run: npm i --no-fund --no-audit openai@^4 glob@^10
 
       - name: Generate TODO.md
