@@ -2,56 +2,60 @@
 # TODO.md
 
 ## High-impact goals
-- Implement melee front/back gating mechanics.
-- Ensure initial enemy reveal logic is functional.
-- Develop socket/gem integration for cards.
-- Create Area of Effect (AoE) reveal mechanics.
-- Test and refine ranged attack penalties.
+- Implement melee front/back gating for enemy reveals.
+- Create initial reveal logic for front and back row enemies.
+- Develop socket and gem mechanics for card interactions.
+- Implement area-of-effect (AoE) reveals for cards.
+- Ensure acceptance criteria for enemy reveals are met.
 
 ## Tasks
 
 ### src/cardSystem.js
-- [ ] Implement front/back row mechanics for melee and ranged attacks.
-  - Acceptance criteria:
-    - Melee can only hit front row.
-    - Ranged can hit back row with a damage penalty.
+- [ ] Implement front/back gating logic for melee attacks.
+  - Acceptance Criteria:
+    - Melee can only hit front row enemies.
+    - Ranged attacks can hit back row enemies with a damage penalty.
   - How to test: Verify damage calculations in combat scenarios.
 
 ### gameScene.js
-- [ ] Integrate enemy reveal logic on new floors.
-  - Acceptance criteria:
-    - At least one front enemy and one back enemy are revealed.
-  - How to test: Start a new game and check enemy reveals on the first floor.
+- [ ] Integrate enemy reveal logic in the game loop.
+  - Acceptance Criteria:
+    - At least one front and one back enemy revealed on new floors.
+    - If front row is cleared, reveal one enemy from the back.
+  - How to test: Start a new floor and check enemy visibility.
 
-### cardSystem.js
-- [ ] Add AoE reveal mechanics for closed cards.
-  - Acceptance criteria:
-    - Closed cards are revealed if they would take damage from AoE.
-  - How to test: Create a scenario with AoE damage and verify reveals.
-
-### inventorySystem.js
-- [ ] Implement socket/gem mechanics for cards.
-  - Acceptance criteria:
+### src/cardSystem.js
+- [ ] Add socket and gem mechanics for cards.
+  - Acceptance Criteria:
     - Cards can have sockets for gems.
-  - How to test: Create a card with a socket and attempt to add a gem.
+    - Gems provide bonuses or effects when attached.
+  - How to test: Create cards with sockets and attach gems to verify effects.
 
-## Test plan
-1. Start a new game and navigate to the first floor.
-   - Expected: At least one front and one back enemy should be revealed.
-2. Engage in combat with melee and ranged attacks.
-   - Expected: Melee attacks only hit front row; ranged attacks show reduced damage when hitting back row.
-3. Test AoE damage scenarios.
-   - Expected: Closed cards that would take damage are revealed.
-4. Create a card with a socket and attempt to add a gem.
-   - Expected: The gem should be added successfully.
+### src/cardSystem.js
+- [ ] Implement AoE reveal mechanics.
+  - Acceptance Criteria:
+    - AoE effects reveal additional enemies based on damage dealt.
+  - How to test: Use AoE cards and check if additional enemies are revealed.
 
-## Risks & rollbacks
-- **Risk**: Potential bugs in enemy reveal logic could affect gameplay.
-  - **Rollback**: Revert to the previous version of the cardSystem.js and gameScene.js if issues arise.
+## Test Plan
+1. Start a new game and proceed to a new floor.
+   - Expected: At least one front enemy and one back enemy should be revealed.
+2. Clear the front row of enemies.
+   - Expected: One enemy from the back row should be revealed.
+3. Use melee and ranged attacks on enemies.
+   - Expected: Melee should only hit front row, ranged should apply damage penalty.
+4. Test socket and gem mechanics by attaching gems to cards.
+   - Expected: Cards should reflect the effects of attached gems.
+5. Use AoE cards and verify if additional enemies are revealed.
+   - Expected: Additional enemies should be revealed based on AoE damage.
+
+## Risks & Rollbacks
+- **Risk:** Potential bugs in enemy reveal logic may disrupt gameplay.
+  - **Rollback:** Revert to previous stable version of `cardSystem.js` and `gameScene.js`.
   
-- **Risk**: Socket/gem integration may introduce new bugs.
-  - **Rollback**: Disable socket functionality and revert to the previous inventorySystem.js if necessary.
-
-- **Risk**: AoE mechanics may not function as intended.
-  - **Rollback**: Temporarily disable AoE mechanics and revert to the last stable version of cardSystem.js.
+- **Risk:** Socket and gem mechanics may complicate card interactions.
+  - **Rollback:** Disable socket features and revert to basic card functionality if issues arise.
+  
+- **Risk:** AoE mechanics may lead to performance issues with many enemies.
+  - **Rollback:** Limit AoE effects to a smaller number of enemies or revert to single-target mechanics.
 ```
