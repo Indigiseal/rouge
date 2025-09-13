@@ -161,3 +161,18 @@ async function main() {
     console.error("----- RAW MODEL OUTPUT END -----");
     die("[agent] Model did not return parseable JSON.");
   }
+
+  const patch = data.unified_patch || data.patch || data.diff || "";
+  if (!isValidUnifiedDiff(patch)) {
+    console.error("----- RAW MODEL OUTPUT START -----");
+    console.error(raw);
+    console.error("----- RAW MODEL OUTPUT END -----");
+    die("[agent] Invalid or empty unified diff in response.");
+  }
+
+  await fs.writeFile(path.join(ROOT, "agent.patch"), patch, "utf8");
+  await fs.writeFile(path.join(ROOT, "agent_task.txt"), (data.task || "Auto task") + "\n\n" + block + "\n", "utf8");
+  console.log("[agent] Wrote agent.patch and agent_task.txt successfully.");
+}
+
+main().catch((e) => die(`[agent] Fatal: ${e.stack || e.message}`));
