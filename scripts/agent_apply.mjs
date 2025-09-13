@@ -1,5 +1,5 @@
 // scripts/agent_apply.mjs
-// Minimal, robust "generate a patch from first unchecked TODO task" runner.
+// Generate a patch for the FIRST unchecked task in TODO.md and write agent.patch + agent_task.txt
 
 import fs from "fs/promises";
 import path from "path";
@@ -18,140 +18,131 @@ async function readUtf8(p) {
   return fs.readFile(p, "utf8");
 }
 
-function firstUncheckedTaskBlock(todo) {
-  // Find first "- [ ]" task block; capture until next "- [ ]" at col start or EOF
-  const start = todo.search(/^- \[ \]/m);
+function findFirstUncheckedBlock(todoText) {
+  const lines = todoText.split("\n");
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*-\s*\[\s*\]\s*/.test(lines[i])) {
+      start = i;
+      break;
+    }
+  }
   if (start === -1) return null;
 
-  const after = todo.slice(start);
-  const next = after.search(/^\- \[ \]/m); // the first char of *this* block is 0
-  // We want from this task to just before the *next* unchecked task.
-  // So cut at the next occurrence in the *rest after first line*:
-  const rest = after.slice(3); // just to ensure next search moves forward
-  const second = rest.search(/^\- \[ \]/m);
-  if (second === -1) return after.trim();
-  return after.slice(0, 3 + second).trim();
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^\s*-\s*\[\s*\]\s*/.test(lines[i])) {
+      end = i;
+      break;
+    }
+  }
+  return lines.slice(start, end).join("\n").trim();
 }
 
 function parseFilesFromBlock(block) {
-  // Look for a line like:  **Files:** `cardSystem.js`   OR  Files: cardSystem.js
-  // Capture comma/space separated paths inside backticks or plain text.
-  const m =
-    block.match(/Files:\s*`([^`]+)`/i) ||
-    block.match(/\*\*Files:\*\*\s*`([^`]+)`/i) ||
-    block.match(/Files:\s*([^\n]+)/i) ||
-    block.match(/\*\*Files:\*\*\s*([^\n]+)/i);
+  // Look for a line containing "Files:"
+  const filesLine = block.split("\n").find((l) => /files:/i.test(l));
+  if (!filesLine) return [];
 
-  if (!m) return [];
+  // Try to extract backticked paths first
+  const tickMatches = [...filesLine.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+  let raw = tickMatches.length ? tickMatches.join(",") : filesLine.replace(/.*files:/i, "");
 
-  // Split by comma, backticks already stripped in first two branches.
-  return m[1]
+  return raw
     .split(",")
     .map((s) => s.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((s) => s.replace(/^\.?\/*/, "")); // strip leading ./ or /
 }
 
-async function loadFileMap(paths) {
-  const entries = [];
+async function loadFiles(paths) {
+  const out = [];
   for (const rel of paths) {
-    const safe = rel.replace(/^\.?\/*/, ""); // strip leading ./ or /
-    const abs = path.join(ROOT, safe);
+    const abs = path.join(ROOT, rel);
     try {
       const content = await readUtf8(abs);
-      entries.push({ path: safe, content });
+      out.push({ path: rel, content });
     } catch (e) {
-      // Non-fatal: we still proceed, but patch may add the file.
-      console.warn(`[agent] Warn: could not read ${safe} (${e.message})`);
-      entries.push({ path: safe, content: null });
+      console.warn(`[agent] warn: could not read ${rel} (${e.message})`);
+      out.push({ path: rel, content: null });
     }
   }
-  return entries;
+  return out;
 }
 
-function extractJsonBlock(text) {
-  // Robustly extract JSON from a fenced block, or parse the whole string as JSON.
-  // 1) ```json ... ```
+function extractJsonFromResponse(text) {
+  // Try ```json ... ```
   let m = text.match(/```json\s*([\s\S]*?)```/i);
   if (m && m[1]) {
-    try {
-      return JSON.parse(m[1]);
-    } catch {}
+    try { return JSON.parse(m[1]); } catch {}
   }
-  // 2) ``` ... ```
+  // Try ``` ... ```
   m = text.match(/```\s*([\s\S]*?)```/);
   if (m && m[1]) {
-    try {
-      return JSON.parse(m[1]);
-    } catch {}
+    try { return JSON.parse(m[1]); } catch {}
   }
-  // 3) raw JSON
-  try {
-    return JSON.parse(text);
-  } catch (e) {
-    die(
-      "[agent] Could not parse model response as JSON. Enable logs and check the response format."
-    );
-  }
+  // Try raw
+  try { return JSON.parse(text); } catch {}
+  return null;
 }
 
-function validatePatch(patch) {
-  // Minimal sanity: unified diff typically contains '--- ' and '+++ '
-  return typeof patch === "string" && /(^|\n)---\s/.test(patch) && /(^|\n)\+\+\+\s/.test(patch);
+function isValidUnifiedDiff(patch) {
+  if (typeof patch !== "string" || !patch.trim()) return false;
+  // Look for typical unified diff markers
+  return /(^|\n)diff --git /.test(patch) || ((/(^|\n)---\s/.test(patch)) && (/(^|\n)\+\+\+\s/.test(patch)));
 }
 
 async function main() {
-  const todoPath = path.join(ROOT, "TODO.md");
+  // 1) Read TODO
   let todo;
   try {
-    todo = await readUtf8(todoPath);
-  } catch (e) {
+    todo = await readUtf8(path.join(ROOT, "TODO.md"));
+  } catch {
     die("[agent] TODO.md not found in repo root.");
   }
 
-  const block = firstUncheckedTaskBlock(todo);
+  const block = findFirstUncheckedBlock(todo);
   if (!block) die("[agent] No unchecked task found in TODO.md (look for '- [ ]').");
 
-  const files = parseFilesFromBlock(block);
+  // 2) Figure out which files we’re allowed to touch
+  let files = parseFilesFromBlock(block);
   if (!files.length) {
-    console.warn("[agent] No 'Files:' line found; defaulting to cardSystem.js");
-    files.push("cardSystem.js");
+    console.warn("[agent] No 'Files:' line detected; defaulting to cardSystem.js");
+    files = ["cardSystem.js"];
   }
+  const fileMap = await loadFiles(files);
 
-  const fileMap = await loadFileMap(files);
+  // 3) Build prompts (no tricky backticks)
+  const sys = [
+    "You are a disciplined code patch generator.",
+    "- Only implement the FIRST unchecked task block provided.",
+    "- Return a single JSON object with keys:",
+    '  {"unified_patch":"<unified diff>", "task":"<short one line>"}',
+    "- The patch MUST be a valid unified diff (git apply --whitespace=fix agent.patch).",
+    "- Only modify files listed under 'Files'. Keep changes minimal.",
+  ].join("\n");
 
-  // Compose the prompt
-  const sys = `
-You are a disciplined code patch generator.
-- Only implement the FIRST unchecked task block provided.
-- Produce a single JSON object with keys:
-  { "unified_patch": "<unified diff patch>", "task": "<one-line task title>" }
-- The patch MUST be a valid unified diff that applies at repo root with \`git apply --whitespace=fix agent.patch\`.
-- Do not rename files or change unrelated code.
-- Only modify files listed under "Files".
-- Keep changes minimal and add console logs exactly as requested.
-  `.trim();
+  const repoContext = fileMap.map((f) => {
+    const body = (f.content == null)
+      ? "(file not found; you may create it if needed, but prefer editing existing code)"
+      : f.content;
+    return `BEGIN_FILE ${f.path}\n${body}\nEND_FILE`;
+  }).join("\n\n");
 
-  const user = `
-Repository context:
-${fileMap
-  .map(
-    (f) =>
-      `BEGIN_FILE ${f.path}
-${f.content ?? "(file not found; you may create it, but prefer editing existing files)"}
-END_FILE`
-  )
-  .join("\n\n")}
+  const user = [
+    "Repository context:",
+    repoContext,
+    "",
+    "FIRST UNCHECKED TASK (implement exactly this and nothing else):",
+    block,
+    "",
+    "Return ONLY JSON (no prose, no code fences) with keys unified_patch and task."
+  ].join("\n");
 
-FIRST UNCHECKED TASK (implement exactly this and nothing else):
-${block}
-
-Return ONLY a JSON object inside a \`\`\`json code fence with keys:
-- unified_patch: a valid unified diff (diff --git …, --- a/…, +++ b/…, @@ …)
-- task: a short one-line summary
-`.trim();
-
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  if (!client.apiKey) die("[agent] Missing OPENAI_API_KEY secret.");
+  // 4) Call OpenAI
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) die("[agent] Missing OPENAI_API_KEY secret.");
+  const client = new OpenAI({ apiKey });
 
   const resp = await client.chat.completions.create({
     model: MODEL,
@@ -162,4 +153,11 @@ Return ONLY a JSON object inside a \`\`\`json code fence with keys:
     ],
   });
 
-  con
+  const raw = resp.choices?.[0]?.message?.content || "";
+  const data = extractJsonFromResponse(raw) ?? (() => { try { return JSON.parse(raw); } catch { return null; } })();
+  if (!data) {
+    console.error("----- RAW MODEL OUTPUT START -----");
+    console.error(raw);
+    console.error("----- RAW MODEL OUTPUT END -----");
+    die("[agent] Model did not return parseable JSON.");
+  }
