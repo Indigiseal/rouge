@@ -1,40 +1,108 @@
-diff --git a/cardSystem.js b/cardSystem.js
-index 0000000..d1e2f3a 100644
---- a/cardSystem.js
-+++ b/cardSystem.js
+--- gameState.js
++++ gameState.js
 @@ -1,6 +1,7 @@
- //cardSystem
+ export class GameState {
+     constructor(scene) {
+         this.scene = scene;
+         this.playerHealth = 50;
+         this.maxHealth = 50;
++        this.events = new Phaser.Events.EventEmitter();
+         this.coins = 0;
+         this.crystals = 0;
+         this.activeAmulets = [];
+@@ -56,6 +57,7 @@
+         return { actualDamage, tookDamage };
+     }
+ 
+     addPlayerEffect(effect) {
++        const prevHealth = this.playerHealth;
+         // Prevent stacking the same effect, refresh duration instead
+         const existingEffect = this.playerEffects.find(e => e.type === effect.type);
+         if (existingEffect) {
+@@ -70,6 +72,7 @@
+         }
+         this.playerEffects.push(effect);
+         this.events.emit('player:hp_changed', { prev: prevHealth, current: this.playerHealth });
+     }
+ 
+     // New method to handle healing with health cap check
+@@ -112,6 +115,7 @@
+         this.playerHealth = Math.min(cappedMaxHealth, this.playerHealth + amount);
+         this.events.emit('player:hp_changed', { prev: prevHealth, current: this.playerHealth });
+     }
+ 
+     // Method to check if action should be free (Speed Boots)
+--- gameScene.js
++++ gameScene.js
+@@ -19,6 +19,7 @@
+         this.skipNextEnemyAttack = false;
+         this.killedBy = null;
+         this.roomType = data.roomType || 'COMBAT';
++        this.gameState.events.on('player:hp_changed', () => this.updateUI());
+         console.log('GameScene roomType:', this.roomType);
+     }
+ 
+     create() {
+@@ -140,6 +141,7 @@
+         this.updateRoomTitle();
+         this.inventorySystem.setDiscardArea(this.discardArea);
+         // Listen for the wake event to reset the floor
+         this.events.on('wake', () => {
++            this.gameState.events.removeAllListeners('player:hp_changed');
+             console.log('GameScene wake roomType:', this.gameState.roomType);
+             console.log('Current inventory:', this.inventorySystem?.slots);
+             console.log('GameState inventory:', this.gameState.inventory);
+--- cardSystem.js
++++ cardSystem.js
+@@ -1,6 +1,7 @@
  import { CardDataGenerator } from './CardDataGenerator.js';
  import { SoundHelper } from './utils/SoundHelper.js';
  
-+    applyEffectToAxials(axials, { baseDamage, tags }) {
-+        axials.forEach(i => {
-+            const card = this.boardCards[i];
-+            if (card && !card.revealed) {
-+                this.revealCard(i);
-+                console.log(`[Hex] AoE revealed -> ${card.data.id}`);
-+            }
-+            if (card && (card.data.type === 'enemy' || card.data.type === 'boss')) {
-+                card.data.health -= baseDamage;
-+                console.log(`[Hex] Applied ${tags.source} damage: ${baseDamage} to ${card.data.id}`);
-+            }
-+        });
-+    }
- 
-     // Existing methods...
- 
-     mimicTreasureExplosion(x, y) {
-         // Create splash sprite
-         const splashSprite = this.scene.add.sprite(x, y, 'splash1');
-         splashSprite.setScale(1.5); // Adjust size if needed
-         splashSprite.play('splash_anim');
-         
-         // On complete: Destroy sprite, add loot
-         splashSprite.on('animationcomplete', () => {
-             splashSprite.destroy();
-             SoundHelper.playSound(this.scene, 'treasure_explode', 0.5);
-             this.scene.gameState.coins += 20;
-             this.scene.gameState.crystals += 5;
-             this.scene.createFloatingText(x, y - 20, '+20 Coins +5 Crystals!', 0xffd700);
-         });
+ export class CardSystem {
+     constructor(scene) {
+         this.scene = scene;
+         this.boardCards = new Array(8).fill(null);
++        this.cardDataGenerator = new CardDataGenerator();
      }
+ 
+     // ===== Front/back combat config =====
+     static RANGED_MULTIPLIER = 0.8; // ranged deals 80% to compensate for reach
+@@ -1,6 +1,7 @@
+ import { CardDataGenerator } from './CardDataGenerator.js';
+ import { SoundHelper } from './utils/SoundHelper.js';
+ 
+ export class CardSystem {
+     constructor(scene) {
+         this.scene = scene;
+         this.boardCards = new Array(8).fill(null);
++        this.cardDataGenerator = new CardDataGenerator();
+     }
+ 
+     // ===== Front/back combat config =====
+     static RANGED_MULTIPLIER = 0.8; // ranged deals 80% to compensate for reach
+@@ -1,6 +1,7 @@
+ import { CardDataGenerator } from './CardDataGenerator.js';
+ import { SoundHelper } from './utils/SoundHelper.js';
+ 
+ export class CardSystem {
+     constructor(scene) {
+         this.scene = scene;
+         this.boardCards = new Array(8).fill(null);
++        this.cardDataGenerator = new CardDataGenerator();
+     }
+ 
+     // ===== Front/back combat config =====
+     static RANGED_MULTIPLIER = 0.8; // ranged deals 80% to compensate for reach
+@@ -1,6 +1,7 @@
+ import { CardDataGenerator } from './CardDataGenerator.js';
+ import { SoundHelper } from './utils/SoundHelper.js';
+ 
+ export class CardSystem {
+     constructor(scene) {
+         this.scene = scene;
+         this.boardCards = new Array(8).fill(null);
++        this.cardDataGenerator = new CardDataGenerator();
+     }
+ 
+     // ===== Front/back combat config =====
+     static RANGED_MULTIPLIER = 0.8; // ranged deals 80% to compensate for reach
