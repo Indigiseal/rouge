@@ -17,7 +17,8 @@
 ### Bug: Player HP does not update in UI after enemy damage
 
 - [ ] Ensure the UI updates whenever the player takes damage from ANY source (enemy turns, traps, poison, reflection, etc.).
-  
+  **Files:** `gameState.js`, `gameScene.js`, `cardSystem.js`
+
   **Where to change**
   - `gameState.js`: provide/confirm a single `takeDamage(amount)` (or `takeDamageFromEnemy(...)`) that clamps, mutates `playerHealth`, and returns `{ actualDamage, tookDamage }`.
   - Emit an event on change: `events.emit('player:hp_changed', { prev, current })`. If `gameState` lacks an emitter, add `this.events = new Phaser.Events.EventEmitter()` in its constructor.
