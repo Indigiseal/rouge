@@ -1,18 +1,19 @@
 name: Agent TODO
 
 on:
+  workflow_dispatch:
   push:
     paths:
-      - 'docs/**'
-      - 'scripts/generate_todo.mjs'
-      - '.github/workflows/agent-todo.yml'
-  workflow_dispatch:
+      - "docs/MECHANICS.md"
+      - "docs/AGENT.md"
+      - "scripts/generate_todo.mjs"
+      - ".github/workflows/agent-todo.yml"
 
 permissions:
-  contents: write
+  contents: write   # allow the job to commit TODO.md
 
 jobs:
-  build:
+  plan:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,17 +22,19 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
-      - name: Generate TODO.md with OpenAI
+      - name: Install deps (OpenAI + glob)
+        run: npm i --no-fund --no-audit openai@^4 glob@^10
+
+      - name: Generate TODO.md
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: node ./scripts/generate_todo.mjs
+          OPENAI_MODEL: gpt-4o-mini
+        run: node scripts/generate_todo.mjs
 
       - name: Commit TODO.md
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add TODO.md
-          git commit -m "chore: update TODO.md [skip ci]" || echo "No changes to commit"
-          git push
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update TODO.md via agent"
+          file_pattern: TODO.md
