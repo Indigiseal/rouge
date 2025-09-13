@@ -1,0 +1,40 @@
+diff --git a/cardSystem.js b/cardSystem.js
+index 0000000..d1e2f3a 100644
+--- a/cardSystem.js
++++ b/cardSystem.js
+@@ -1,6 +1,7 @@
+ //cardSystem
+ import { CardDataGenerator } from './CardDataGenerator.js';
+ import { SoundHelper } from './utils/SoundHelper.js';
+ 
++    applyEffectToAxials(axials, { baseDamage, tags }) {
++        axials.forEach(i => {
++            const card = this.boardCards[i];
++            if (card && !card.revealed) {
++                this.revealCard(i);
++                console.log(`[Hex] AoE revealed -> ${card.data.id}`);
++            }
++            if (card && (card.data.type === 'enemy' || card.data.type === 'boss')) {
++                card.data.health -= baseDamage;
++                console.log(`[Hex] Applied ${tags.source} damage: ${baseDamage} to ${card.data.id}`);
++            }
++        });
++    }
+ 
+     // Existing methods...
+ 
+     mimicTreasureExplosion(x, y) {
+         // Create splash sprite
+         const splashSprite = this.scene.add.sprite(x, y, 'splash1');
+         splashSprite.setScale(1.5); // Adjust size if needed
+         splashSprite.play('splash_anim');
+         
+         // On complete: Destroy sprite, add loot
+         splashSprite.on('animationcomplete', () => {
+             splashSprite.destroy();
+             SoundHelper.playSound(this.scene, 'treasure_explode', 0.5);
+             this.scene.gameState.coins += 20;
+             this.scene.gameState.crystals += 5;
+             this.scene.createFloatingText(x, y - 20, '+20 Coins +5 Crystals!', 0xffd700);
+         });
+     }

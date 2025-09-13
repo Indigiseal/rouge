@@ -1,0 +1,10 @@
+Implement AoE/chain reveal wrapper in cardSystem.js
+
+- [ ] Prompt 3.1 — AoE/chain reveal wrapper (no sockets yet)  
+  **Files:** `cardSystem.js`  
+  **Implement:**
+  - `applyEffectToAxials(axials, { baseDamage, tags })`:
+    1) If a card at axial is face-down, call `revealCard(i)` first and **log** `"[Hex] AoE revealed -> id"`.
+    2) If now enemy/boss, apply damage per `tags.source` (`'fire'|'lightning'|'poison'`).
+  - Use this wrapper wherever you do splashes/chain effects (e.g., mimic splash, trap effects).  
+  **Acceptance:** AoE reveals closed cards it would hit, then damages enemies.
