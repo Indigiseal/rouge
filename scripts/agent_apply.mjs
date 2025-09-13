@@ -1,113 +1,165 @@
 // scripts/agent_apply.mjs
-// Minimal, robust "apply first TODO" agent.
-// - Reads the first unchecked item from TODO.md
-// - Builds a compact repo snapshot
-// - Asks the model for a JSON list of file edits
-// - Writes those edits to disk (so the workflow can open a PR)
+// Minimal, robust "generate a patch from first unchecked TODO task" runner.
 
 import fs from "fs/promises";
 import path from "path";
-import glob from "glob";
+import process from "process";
 import OpenAI from "openai";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
-const REPO_ROOT = process.cwd();
+const ROOT = process.cwd();
 
-// ---------- helpers ----------
-async function readSafe(p) {
-  try { return await fs.readFile(p, "utf8"); } catch { return ""; }
+function die(msg) {
+  console.error(msg);
+  process.exit(1);
 }
 
-async function writeFileEnsured(filePath, contents) {
-  const dir = path.dirname(filePath);
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(filePath, contents, "utf8");
+async function readUtf8(p) {
+  return fs.readFile(p, "utf8");
 }
 
-function extractFirstUncheckedTodo(md) {
-  // Matches "- [ ] something" (unchecked)
-  const m = md.match(/^- \[ \]\s+(.+)$/m);
-  return m ? m[1].trim() : null;
+function firstUncheckedTaskBlock(todo) {
+  // Find first "- [ ]" task block; capture until next "- [ ]" at col start or EOF
+  const start = todo.search(/^- \[ \]/m);
+  if (start === -1) return null;
+
+  const after = todo.slice(start);
+  const next = after.search(/^\- \[ \]/m); // the first char of *this* block is 0
+  // We want from this task to just before the *next* unchecked task.
+  // So cut at the next occurrence in the *rest after first line*:
+  const rest = after.slice(3); // just to ensure next search moves forward
+  const second = rest.search(/^\- \[ \]/m);
+  if (second === -1) return after.trim();
+  return after.slice(0, 3 + second).trim();
 }
 
-async function listInterestingFiles() {
-  return new Promise((resolve, reject) => {
-    glob(
-      "**/*.{js,ts,tsx,jsx,json,md,html,css,yml,yaml}",
-      {
-        cwd: REPO_ROOT,
-        ignore: [
-          "node_modules/**",
-          ".git/**",
-          "dist/**",
-          "build/**",
-          ".github/**", // keep YAML short; we already capture workflows separately if needed
-        ],
-        nodir: true,
-        dot: false,
-      },
-      (err, files) => (err ? reject(err) : resolve(files.slice(0, 80))) // cap to keep prompt small
-    );
-  });
+function parseFilesFromBlock(block) {
+  // Look for a line like:  **Files:** `cardSystem.js`   OR  Files: cardSystem.js
+  // Capture comma/space separated paths inside backticks or plain text.
+  const m =
+    block.match(/Files:\s*`([^`]+)`/i) ||
+    block.match(/\*\*Files:\*\*\s*`([^`]+)`/i) ||
+    block.match(/Files:\s*([^\n]+)/i) ||
+    block.match(/\*\*Files:\*\*\s*([^\n]+)/i);
+
+  if (!m) return [];
+
+  // Split by comma, backticks already stripped in first two branches.
+  return m[1]
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
-async function fileHeads(files, maxLines = 120) {
-  const heads = [];
-  for (const f of files) {
-    const full = path.join(REPO_ROOT, f);
-    const txt = await readSafe(full);
-    const head = txt.split("\n").slice(0, maxLines).join("\n");
-    heads.push(`--- ${f}\n${head}`);
+async function loadFileMap(paths) {
+  const entries = [];
+  for (const rel of paths) {
+    const safe = rel.replace(/^\.?\/*/, ""); // strip leading ./ or /
+    const abs = path.join(ROOT, safe);
+    try {
+      const content = await readUtf8(abs);
+      entries.push({ path: safe, content });
+    } catch (e) {
+      // Non-fatal: we still proceed, but patch may add the file.
+      console.warn(`[agent] Warn: could not read ${safe} (${e.message})`);
+      entries.push({ path: safe, content: null });
+    }
   }
-  return heads.join("\n\n");
+  return entries;
 }
 
-function buildPrompt({ task, mechanics, agentGuide, repoList, repoHeads }) {
-  return [
-    {
-      role: "system",
-      content:
-        "You are a careful coding agent working in a Phaser browser game repo. Generate small, safe edits only.",
-    },
-    {
-      role: "user",
-      content: [
-        "PROJECT MECHANICS (source of truth):",
-        "----------------------------------",
-        mechanics || "(no MECHANICS.md)",
-        "",
-        "AGENT NOTES:",
-        "------------",
-        agentGuide || "(no AGENT.md)",
-        "",
-        "FIRST TODO TO APPLY:",
-        "--------------------",
-        `- ${task}`,
-        "",
-        "REPOSITORY INDEX (subset):",
-        "--------------------------",
-        repoList,
-        "",
-        "FILE HEADS (truncated):",
-        "-----------------------",
-        repoHeads,
-        "",
-        "OUTPUT FORMAT (STRICT):",
-        "Return ONLY a JSON object in a fenced block like:",
-        "```json",
-        '{ "files": [ { "path": "<relative/path.ext>", "contents": "<full new file text>" } ] }',
-        "```",
-        "",
-        "Rules:",
-        "- Touch only files that are necessary.",
-        "- Always include the full new content for each changed file (no patches).",
-        "- Use existing code style. Keep edits minimal and safe.",
-        "- If the change is too big, do the smallest viable step.",
-      ].join("\n"),
-    },
-  ];
+function extractJsonBlock(text) {
+  // Robustly extract JSON from a fenced block, or parse the whole string as JSON.
+  // 1) ```json ... ```
+  let m = text.match(/```json\s*([\s\S]*?)```/i);
+  if (m && m[1]) {
+    try {
+      return JSON.parse(m[1]);
+    } catch {}
+  }
+  // 2) ``` ... ```
+  m = text.match(/```\s*([\s\S]*?)```/);
+  if (m && m[1]) {
+    try {
+      return JSON.parse(m[1]);
+    } catch {}
+  }
+  // 3) raw JSON
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    die(
+      "[agent] Could not parse model response as JSON. Enable logs and check the response format."
+    );
+  }
 }
 
-function extractJsonFromText(text) {
-  const m = text.match(/```json
+function validatePatch(patch) {
+  // Minimal sanity: unified diff typically contains '--- ' and '+++ '
+  return typeof patch === "string" && /(^|\n)---\s/.test(patch) && /(^|\n)\+\+\+\s/.test(patch);
+}
+
+async function main() {
+  const todoPath = path.join(ROOT, "TODO.md");
+  let todo;
+  try {
+    todo = await readUtf8(todoPath);
+  } catch (e) {
+    die("[agent] TODO.md not found in repo root.");
+  }
+
+  const block = firstUncheckedTaskBlock(todo);
+  if (!block) die("[agent] No unchecked task found in TODO.md (look for '- [ ]').");
+
+  const files = parseFilesFromBlock(block);
+  if (!files.length) {
+    console.warn("[agent] No 'Files:' line found; defaulting to cardSystem.js");
+    files.push("cardSystem.js");
+  }
+
+  const fileMap = await loadFileMap(files);
+
+  // Compose the prompt
+  const sys = `
+You are a disciplined code patch generator.
+- Only implement the FIRST unchecked task block provided.
+- Produce a single JSON object with keys:
+  { "unified_patch": "<unified diff patch>", "task": "<one-line task title>" }
+- The patch MUST be a valid unified diff that applies at repo root with \`git apply --whitespace=fix agent.patch\`.
+- Do not rename files or change unrelated code.
+- Only modify files listed under "Files".
+- Keep changes minimal and add console logs exactly as requested.
+  `.trim();
+
+  const user = `
+Repository context:
+${fileMap
+  .map(
+    (f) =>
+      `BEGIN_FILE ${f.path}
+${f.content ?? "(file not found; you may create it, but prefer editing existing files)"}
+END_FILE`
+  )
+  .join("\n\n")}
+
+FIRST UNCHECKED TASK (implement exactly this and nothing else):
+${block}
+
+Return ONLY a JSON object inside a \`\`\`json code fence with keys:
+- unified_patch: a valid unified diff (diff --git …, --- a/…, +++ b/…, @@ …)
+- task: a short one-line summary
+`.trim();
+
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  if (!client.apiKey) die("[agent] Missing OPENAI_API_KEY secret.");
+
+  const resp = await client.chat.completions.create({
+    model: MODEL,
+    temperature: 0.2,
+    messages: [
+      { role: "system", content: sys },
+      { role: "user", content: user },
+    ],
+  });
+
+  con
