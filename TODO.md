@@ -11,20 +11,6 @@
 ## Tasks
 
 ### src/cardSystem.js
-- [ ] Implement front/back gating logic for melee attacks.
-  - Acceptance Criteria:
-    - Melee can only hit front row enemies.
-    - Ranged attacks can hit back row enemies with a damage penalty.
-  - How to test: Verify damage calculations in combat scenarios.
-
-### gameScene.js
-- [ ] Integrate enemy reveal logic in the game loop.
-  - Acceptance Criteria:
-    - At least one front and one back enemy revealed on new floors.
-    - If front row is cleared, reveal one enemy from the back.
-  - How to test: Start a new floor and check enemy visibility.
-
-### src/cardSystem.js
 - [ ] Add socket and gem mechanics for cards.
   - Acceptance Criteria:
     - Cards can have sockets for gems.
