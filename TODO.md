@@ -15,33 +15,6 @@
 
 ## Tasks
 
-- [ ] Prompt 2 — Melee front/back gating + initial reveal  
-  **Files:** `cardSystem.js`  
-  **Implement:**
-  - Helpers:
-    - `currentFrontRowR()` → max `r` among alive **revealed** enemies.
-    - `enemiesInRow(r, { revealedOnly=false })`
-  - Target gating (where attacks resolve):
-    - **Melee:** can only target enemies with `data.brick.r === currentFrontRowR()`. If not, **log** `"[Hex] melee blocked by front line"` and do nothing.
-    - **Ranged:** can target any revealed enemy; apply `RANGED_MULTIPLIER = 0.8` to damage (constant).
-  - Initial reveal (after spawn):
-    - Reveal **2–3 enemies total**: guarantee ≥1 from `currentFrontRowR()`, remaining from rows behind.
-    - **Log:** `"[Hex] initial reveal -> ids"`
-  - Progressive reveal:
-    - When a kill empties the current front row, recompute `currentFrontRowR()` and **reveal one face-down enemy** in the new front (prefer a neighbor of the killed enemy; otherwise any at that row).  
-    - **Log:** `"[Hex] reveal behind -> id"`
-  **Acceptance:**
-  - On combat start, 2–3 enemies are revealed with at least one frontliner.
-  - Melee can’t hit backline; blocked attempt logs the message.
-  - Clearing the front reveals exactly one behind.
-
-- [ ] Prompt 2.1 — Hidden melee blockers (extend gating)  
-  **Files:** `cardSystem.js`  
-  **Implement:**
-  - `maxHiddenMeleeRowR()` → max `r` that contains a **face-down melee** enemy; return `-Infinity` if none.
-  - `canMeleeHit(target)` uses `max(currentFrontRowR(), maxHiddenMeleeRowR())`.  
-  - **Log:** `"[Hex] melee blocked by hidden/revealed melee @r=R target r=T"`  
-  **Acceptance:** Backline melee attacks are blocked if any hidden melee exists ahead.
 
 - [ ] Prompt 3.1 — AoE/chain reveal wrapper (no sockets yet)  
   **Files:** `cardSystem.js`  
