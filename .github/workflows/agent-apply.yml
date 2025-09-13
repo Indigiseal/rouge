@@ -1,0 +1,58 @@
+name: Agent Apply (first TODO)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install deps
+        run: npm i --no-fund --no-audit openai@^4 glob@^10
+
+      - name: Generate patch from TODO (first unchecked)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-4o-mini
+        run: node scripts/agent_apply.mjs
+
+      - name: Apply patch
+        run: |
+          set -e
+          git config user.name  "agent-bot"
+          git config user.email "agent-bot@users.noreply.github.com"
+          git checkout -b agent/task-1
+          git apply --whitespace=fix agent.patch
+
+      - name: Expose task for PR body
+        id: bodytext
+        run: |
+          echo "task<<EOF" >> $GITHUB_OUTPUT
+          cat agent_task.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: agent/task-1
+          commit-message: "agent: implement first TODO task"
+          title: "Agent: implement first TODO task"
+          body: |
+            Auto-generated patch from TODO.md
+
+            **Task**
+            ```
+            ${{ steps.bodytext.outputs.task }}
+            ```
