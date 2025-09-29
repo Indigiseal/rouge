@@ -12,6 +12,11 @@ export class GameState {
         this.currentFloor = 1;
         this.equippedArmor = null;
         this.inventory = new Array(5).fill(null);
+
+        // Room/route tracking
+        this.roomType = 'COMBAT';
+        this.roomInitialized = false;
+        this.activeRoomId = 0;
         
         
         this.blockNextAttack = false;
@@ -101,7 +106,7 @@ export class GameState {
             // Handle reflection
             if (this.equippedArmor.reflection > 0 && enemyIndex !== -1) {
                 reflectedDamage = Math.floor(amount * (this.equippedArmor.reflection / 100));
-                
+
                 // Reflection cannot kill bosses
                 const enemyCard = this.scene.cardSystem.boardCards[enemyIndex];
                 if (enemyCard && enemyCard.data.type === 'boss') {
@@ -117,7 +122,7 @@ export class GameState {
                     }
                 }
             }
-            
+
             // Durability decreases on every hit
             this.equippedArmor.durability--;
             if (this.equippedArmor.durability <= 0) {
@@ -126,36 +131,30 @@ export class GameState {
                 this.scene.updateUI();
             }
         }
-        
+
         const actualDamage = Math.max(0, amount - protection);
-        
-        // Reduce armor durability after damage calculation
-        if (this.equippedArmor && amount > 0) {
-            amount = Math.max(0, amount - this.equippedArmor.protection);
-            this.equippedArmor.durability -= 1;
-            console.log('Armor dur now:', this.equippedArmor.durability);
-            if (this.equippedArmor.durability <= 0) {
-                this.equippedArmor = null;
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Armor Broke!', 0xff0000);
-            }
-        }
-        
+
         const wouldKill = this.playerHealth - actualDamage <= 0;
-        
+
         // Check for invulnerability amulet
         if (wouldKill && this.scene.amuletManager && this.scene.amuletManager.checkLethalPrevention()) {
             // Cancel all damage this turn
             return { actualDamage: 0, tookDamage: false };
         }
-        
-        this.playerHealth = Math.max(0, this.playerHealth - actualDamage);
+
+        const nextHealth = Math.max(0, this.playerHealth - actualDamage);
+        this.playerHealth = Math.min(this.maxHealth, nextHealth);
         const tookDamage = actualDamage > 0;
-        
+
         // Track damage for meta progression
         if (actualDamage > 0) {
             this.trackDamage(actualDamage, source, enemyIndex);
         }
-        
+
+        if (this.scene && typeof this.scene.updateUI === 'function') {
+            this.scene.updateUI();
+        }
+
         // Check for game over immediately after health change
         if (this.playerHealth <= 0) {
             this.setDeathCause(source, enemyIndex);
@@ -182,6 +181,10 @@ export class GameState {
         
         const cappedMaxHealth = Math.floor(this.maxHealth * maxCap);
         this.playerHealth = Math.min(cappedMaxHealth, this.playerHealth + amount);
+
+        if (this.scene && typeof this.scene.updateUI === 'function') {
+            this.scene.updateUI();
+        }
     }
     
     // Method to check if action should be free (Speed Boots)
