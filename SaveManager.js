@@ -1,5 +1,23 @@
 // SaveManager.js - Complete fixed version
 
+const PERSISTENCE_ENABLED = false; // memory-only mode
+const memoryStore = {};
+
+function mget(key) {
+  return Object.prototype.hasOwnProperty.call(memoryStore, key)
+    ? memoryStore[key]
+    : null;
+}
+
+function mset(key, value) {
+  memoryStore[key] = value;
+  return true;
+}
+
+function mdel(key) {
+  delete memoryStore[key];
+}
+
 export class SaveManager {
   constructor() {
     this.META_SAVE_KEY = 'metaProgression';
@@ -16,14 +34,24 @@ export class SaveManager {
 
   // localStorage guards (quota/private mode/etc.)
   safeSet(key, value) {
+    if (!PERSISTENCE_ENABLED) {
+      return mset(key, value);
+    }
     try { localStorage.setItem(key, value); return true; }
     catch (e) { console.warn('Storage set failed', e); return false; }
   }
   safeGet(key) {
+    if (!PERSISTENCE_ENABLED) {
+      return mget(key);
+    }
     try { return localStorage.getItem(key); }
     catch (e) { console.warn('Storage get failed', e); return null; }
   }
   safeRemove(key) {
+    if (!PERSISTENCE_ENABLED) {
+      mdel(key);
+      return;
+    }
     try { localStorage.removeItem(key); }
     catch (e) { console.warn('Storage remove failed', e); }
   }

@@ -1,5 +1,7 @@
 // scenes/PauseMenuScene.js
 
+import { SaveManager } from '../SaveManager.js';
+
 export class PauseMenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'PauseMenuScene' });
@@ -7,7 +9,8 @@ export class PauseMenuScene extends Phaser.Scene {
     
     init(data) {
         this.pausedScene = data.pausedScene || 'GameScene';
-        
+        this.saveManager = new SaveManager();
+
         // Initialize volume settings if they don't exist
         if (!this.game.globalVolume) {
             this.game.globalVolume = {
@@ -163,9 +166,11 @@ export class PauseMenuScene extends Phaser.Scene {
     applyVolumeSettings() {
         // Update the global sound manager volume
         this.sound.volume = this.game.globalVolume.master;
-        
-        // Store in localStorage for persistence
-        localStorage.setItem('gameVolume', JSON.stringify(this.game.globalVolume));
+
+        this.saveManager.saveSettings({
+            volume: this.game.globalVolume,
+            language: this.game.language || 'English',
+        });
     }
     
     resumeGame() {
