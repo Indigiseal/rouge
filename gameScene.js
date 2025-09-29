@@ -312,9 +312,11 @@ export class GameScene extends Phaser.Scene {
         this.nextFloorButtonText?.setVisible(false);
         this.nextFloorButton?.setInteractive();
         this.skipNextEnemyAttack = true;  // Grace period—no instant zap
-        this.gameState.health = Math.max(1, Math.floor(this.gameState.health || 55));  // Sanitize HP
+        this.gameState.playerHealth = Math.max(1, Math.floor(this.gameState.playerHealth || 55));  // Sanitize HP
         this.gameState.maxHealth = Math.max(1, Math.floor(this.gameState.maxHealth || 55));
-        if (this.gameState.health > this.gameState.maxHealth) this.gameState.health = this.gameState.maxHealth;
+        if (this.gameState.playerHealth > this.gameState.maxHealth) {
+            this.gameState.playerHealth = this.gameState.maxHealth;
+        }
         
         // Armor safety net
         if (this.gameState.equippedArmor) {
@@ -322,7 +324,7 @@ export class GameScene extends Phaser.Scene {
             this.gameState.equippedArmor.durability = Math.max(0, Math.floor(this.gameState.equippedArmor.durability || 25));
         }
         
-        console.log('[ROOM ENTER] HP safe?', { health: this.gameState.health, armor: this.gameState.equippedArmor });
+        console.log('[ROOM ENTER] HP safe?', { health: this.gameState.playerHealth, armor: this.gameState.equippedArmor });
         
         // Bind enemy turn handler safely
         this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
@@ -621,8 +623,8 @@ export class GameScene extends Phaser.Scene {
                 // Check if this damage will kill the player and track the killer
                 const playerHealthBeforeDamage = this.gameState.playerHealth;
                 
-                // Player takes damage and reflection is handled inside takeDamage
-                const { actualDamage, tookDamage } = this.takeDamage(damageDealt);
+                // Player takes damage and reflection is handled inside GameState.takeDamage
+                const { actualDamage, tookDamage } = this.gameState.takeDamage(damageDealt, index);
                 
                 if (tookDamage) {
                     SoundHelper.playSound(this, 'player_hurt', 0.5);
@@ -670,7 +672,7 @@ export class GameScene extends Phaser.Scene {
         if (effectDamage > 0) {
             const playerHealthBeforePoison = this.gameState.playerHealth;
             SoundHelper.playSound(this, 'player_hurt', 0.5);
-            const { actualDamage, tookDamage } = this.takeDamage(effectDamage);
+            const { actualDamage, tookDamage } = this.gameState.takeDamage(effectDamage, -1, 'poison');
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage} (Poison)`, 0x00ff00);
             
             // Track poison death
@@ -700,34 +702,6 @@ export class GameScene extends Phaser.Scene {
             duration: 300,
             onComplete: () => flash.destroy()
         });
-    }
-    takeDamage(rawDamage) {
-      const dmg = Math.max(0, Math.floor(rawDamage || 0));
-      console.log('[DAMAGE IN]', { raw: dmg, hpBefore: this.gameState.health });
-      // Armor block
-      const armor = this.gameState.equippedArmor;
-      const defend = Math.max(0, Math.floor(armor?.protection || 0));
-      const afterArmor = Math.max(0, dmg - defend);
-      
-      // Durability tick (if hit)
-      if (armor && dmg > 0 && armor.durability > 0) {
-        armor.durability = Math.max(0, armor.durability - 1);
-        if (armor.durability === 0) {
-          armor.protection = 0;  // Broke
-          this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, "Armor Shattered!", 0xff6666);
-        }
-      }
-      
-      this.gameState.health = Math.max(0, this.gameState.health - afterArmor);
-      console.log('[DAMAGE OUT]', { afterArmor, hpAfter: this.gameState.health });
-      
-      if (this.gameState.health <= 0) {
-        // Death stuff
-        console.log('[DEATH] Oof—game over');
-        this.gameOver();
-      }
-      
-      return { actualDamage: afterArmor, tookDamage: afterArmor > 0 };
     }
     createFloatingText(x, y, text, color) {
         // Add random offsets to prevent text from overlapping perfectly
