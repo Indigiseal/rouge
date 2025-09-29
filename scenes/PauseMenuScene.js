@@ -43,14 +43,11 @@ export class PauseMenuScene extends Phaser.Scene {
             fontFamily: '"Roboto Condensed"'
         }).setOrigin(0.5);
         
-        // Master Volume
-        this.createVolumeSlider('Master Volume', 150, 'master');
-        
         // Sound Effects Volume
-        this.createVolumeSlider('Sound Effects', 190, 'sfx');
-        
+        this.createVolumeSlider('Sound Effects', 170, 'sfx');
+
         // Music Volume (for future use)
-        this.createVolumeSlider('Music', 230, 'music');
+        this.createVolumeSlider('Music', 210, 'music');
         
         // Resume button
         const resumeButton = this.add.rectangle(230, 280, 120, 35, 0x00ff00, 0.3)
@@ -61,20 +58,6 @@ export class PauseMenuScene extends Phaser.Scene {
             .on('pointerdown', () => this.resumeGame());
         
         this.add.text(230, 280, 'Resume', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
-        }).setOrigin(0.5);
-        
-        // Main Menu button (optional - for future use)
-        const mainMenuButton = this.add.rectangle(410, 280, 120, 35, 0xff6666, 0.3)
-            .setStrokeStyle(2, 0xff6666)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => mainMenuButton.setFillStyle(0xff6666, 0.5))
-            .on('pointerout', () => mainMenuButton.setFillStyle(0xff6666, 0.3))
-            .on('pointerdown', () => this.quitToMainMenu());
-        
-        this.add.text(410, 280, 'Quit Game', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: '"Roboto Condensed"'
@@ -179,10 +162,4 @@ export class PauseMenuScene extends Phaser.Scene {
         this.scene.stop();
     }
     
-    quitToMainMenu() {
-        // Stop all scenes and restart the game
-        this.scene.stop(this.pausedScene);
-        this.scene.stop();
-        this.scene.start('GameScene', {}); // Restart fresh
-    }
 }

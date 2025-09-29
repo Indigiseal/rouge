@@ -51,11 +51,6 @@ export class MapViewScene extends Phaser.Scene {
     // Render structured map
     this.drawStructuredMap();
 
-    // Close/Return (optional)
-    const closeBtn = this.add.circle(600, 30, 15, 0xae5347).setInteractive({ useHandCursor: true });
-    this.add.text(600, 30, 'X', { fontSize: '16px', fill: '#f2d3aa' }).setOrigin(0.5);
-    closeBtn.on('pointerdown', () => { this.scene.stop(); this.scene.wake('GameScene'); });
-
     this.add.text(320, 340, 'Click glowing nodes to proceed • Drag to pan', {
       fontSize: '12px', fill: '#d4b896', fontFamily: '"Roboto Condensed"'
     }).setOrigin(0.5);

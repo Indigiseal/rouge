@@ -52,11 +52,6 @@ export class MainMenuScene extends Phaser.Scene {
         const optionsButton = this.createButton(320, 260, 200, 40, 'Options', 0xffaa00, () => {
             this.showOptionsMenu();
         });
-
-        // Exit button
-        const exitButton = this.createButton(320, 320, 200, 40, 'Exit Game', 0xff6666, () => {
-            this.exitGame();
-        });
     }
     
     createButton(x, y, width, height, text, color, callback, disabled = false) {
@@ -259,34 +254,4 @@ export class MainMenuScene extends Phaser.Scene {
         });
     }
     
-    exitGame() {
-        // Show confirmation dialog
-        const confirmBg = this.add.rectangle(320, 180, 300, 150, 0x000000, 0.9)
-            .setStrokeStyle(2, 0xffffff);
-        
-        const confirmText = this.add.text(320, 150, 'Are you sure you want to exit?', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"',
-            align: 'center'
-        }).setOrigin(0.5);
-        
-        const yesButton = this.createButton(270, 200, 80, 30, 'Yes', 0x00ff00, () => {
-            // If in browser, show a message
-            if (window) {
-                window.close(); // This might not work in all browsers
-                // Fallback message
-                this.add.text(320, 240, 'Please close this tab to exit', {
-                    fontSize: '14px',
-                    fill: '#ffff00',
-                    fontFamily: '"Roboto Condensed"'
-                }).setOrigin(0.5);
-            }
-        });
-        
-        const noButton = this.createButton(370, 200, 80, 30, 'No', 0xff0000, () => {
-            [confirmBg, confirmText, yesButton.button, yesButton.text, 
-             noButton.button, noButton.text].forEach(item => item.destroy());
-        });
-    }
 }
