@@ -144,6 +144,7 @@ export class GameState {
 
         const nextHealth = Math.max(0, this.playerHealth - actualDamage);
         this.playerHealth = Math.min(this.maxHealth, nextHealth);
+
         const tookDamage = actualDamage > 0;
 
         // Track damage for meta progression

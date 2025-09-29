@@ -327,6 +327,7 @@ export class GameScene extends Phaser.Scene {
             this.gameState.equippedArmor.durability = Math.max(0, Math.floor(this.gameState.equippedArmor.durability || 25));
         }
         
+
         // Bind enemy turn handler safely
         this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
         this.events.on('endPlayerTurn', this._handleEndPlayerTurn);
