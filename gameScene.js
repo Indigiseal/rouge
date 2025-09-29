@@ -217,8 +217,11 @@ export class GameScene extends Phaser.Scene {
         this.playerAvatar = this.add.image(45, 45, 'MainPlayerAvatar');
         this.playerAvatar.setScale(1);
         // Health bar under avatar
-        this.add.image(45, 95, 'healthBarEmpty');
+        this.healthBarEmpty = this.add.image(45, 95, 'healthBarEmpty');
         this.healthBar = this.add.image(45, 95, 'healthBar');
+        const healthBarLeft = 45 - this.healthBar.width / 2;
+        this.healthBarEmpty.setOrigin(0, 0.5).setPosition(healthBarLeft, 95);
+        this.healthBar.setOrigin(0, 0.5).setPosition(healthBarLeft, 95);
         this.healthText = this.add.text(45, 110, 'HP: 50/50', {
             fontSize: '12px',
             fill: '#ffffff',
@@ -324,8 +327,7 @@ export class GameScene extends Phaser.Scene {
             this.gameState.equippedArmor.durability = Math.max(0, Math.floor(this.gameState.equippedArmor.durability || 25));
         }
         
-        console.log('[ROOM ENTER] HP safe?', { health: this.gameState.playerHealth, armor: this.gameState.equippedArmor });
-        
+
         // Bind enemy turn handler safely
         this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
         this.events.on('endPlayerTurn', this._handleEndPlayerTurn);
@@ -352,16 +354,17 @@ export class GameScene extends Phaser.Scene {
 
     updateUI() {
         // Force sync inventory EVERY time UI updates
-        if (this.inventorySystem && this.inventorySystem.slots) {
-            this.gameState.inventory = [...this.inventorySystem.slots];
+        if (this.inventorySystem) {
+            this.gameState.inventory = [...(this.inventorySystem.slots || [])];
         }
-        
-        console.log('=== INVENTORY SYNC CHECK ===');
-        console.log('inventorySystem.slots:', this.inventorySystem?.slots);
-        console.log('gameState.inventory:', this.gameState.inventory);
-        console.log('========================');
-        
-        this.healthText.setText(`HP: ${this.gameState.playerHealth}/${this.gameState.maxHealth}`);
+
+        const rawHealth = this.gameState.playerHealth ?? 0;
+        const rawMaxHealth = this.gameState.maxHealth ?? 0;
+        this.healthText.setText(`HP: ${rawHealth}/${rawMaxHealth}`);
+
+        const denominator = rawMaxHealth === 0 ? 1 : rawMaxHealth;
+        const healthPercent = Math.max(0, Math.min(1, rawHealth / denominator));
+        this.healthBar.setScale(healthPercent, 1);
         
         // Check for coin changes and play animation
         if (this.gameState.coins !== this.previousCoins) {
@@ -407,8 +410,6 @@ export class GameScene extends Phaser.Scene {
         this.floorText.setText(`Floor: ${this.gameState.currentFloor}`);
         
         // Update health bar
-        const healthPercent = Math.max(0, this.gameState.playerHealth / this.gameState.maxHealth);
-        this.healthBar.setCrop(0, 0, this.healthBar.width * healthPercent, this.healthBar.height);
         this.updateAmuletsUI();
         this.updatePlayerEffectsUI();
     }
