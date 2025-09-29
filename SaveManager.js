@@ -129,6 +129,11 @@ export class SaveManager {
         cards: cardSystem ? this.serializeBoardCards(cardSystem.boardCards) : [],
         enemiesCleared: false,
       },
+      room: {
+        type: gameState?.roomType ?? 'COMBAT',
+        initialized: gameState?.roomInitialized ?? false,
+        activeId: gameState?.activeRoomId ?? 0,
+      },
       savedAt: Date.now(),
       saveVersion: this.SAVE_VERSION,
     };
@@ -190,6 +195,11 @@ export class SaveManager {
           cards: Array.isArray(parsed.board?.cards) ? parsed.board.cards : [],
           enemiesCleared: parsed.board?.enemiesCleared ?? false,
         },
+        room: {
+          type: parsed.room?.type ?? 'COMBAT',
+          initialized: parsed.room?.initialized ?? false,
+          activeId: Number.isFinite(parsed.room?.activeId) ? parsed.room.activeId : 0,
+        },
         savedAt,
         saveVersion: parsed.saveVersion ?? this.SAVE_VERSION,
       };
@@ -224,6 +234,14 @@ export class SaveManager {
             : null,
         };
       });
+    }
+
+    if (!run.room || typeof run.room !== 'object') {
+      run.room = { type: 'COMBAT', initialized: false, activeId: 0 };
+    } else {
+      run.room.type = run.room.type ?? 'COMBAT';
+      run.room.initialized = !!run.room.initialized;
+      run.room.activeId = Number.isFinite(run.room.activeId) ? run.room.activeId : 0;
     }
     return run;
   }
