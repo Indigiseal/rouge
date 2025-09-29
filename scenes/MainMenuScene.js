@@ -1,5 +1,6 @@
 // scenes/MainMenuScene.js
 import { SaveManager } from '../SaveManager.js';
+import { GameState } from '../gameState.js';
 export class MainMenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainMenuScene' });
@@ -7,6 +8,13 @@ export class MainMenuScene extends Phaser.Scene {
     
     create() {
         this.saveManager = new SaveManager();
+        if (!this.game.gameState) {
+            this.game.gameState = new GameState(this);
+        }
+        this.gameState = this.game.gameState;
+        if (this.gameState) {
+            this.gameState.scene = this;
+        }
         
         // Load saved settings
         this.loadSettings();
@@ -42,18 +50,20 @@ export class MainMenuScene extends Phaser.Scene {
     
     createMainMenuButtons() {
         // New Run button
-        const newRunButton = this.createButton(320, 180, 200, 40, 'New Run', 0x00ff00, () => {
-            this.startNewGame();
+        this.createButton(320, 180, 200, 40, 'New Run', 0x00ff00, () => {
+            this.handleNewRun();
         });
-        
-        // Check if there's a current run to continue
-        const hasSavedRun = this.saveManager.hasCurrentRun();
-        
-        // Continue button is enabled if there's a saved run
-        const continueButton = this.createButton(320, 230, 200, 40, 'Continue', 
-            hasSavedRun ? 0x00aaff : 0x666666, () => {
-                if (hasSavedRun) this.continueGame();
+
+        const hasSavedRun = SaveManager.hasSave();
+
+        this.continueButton = this.createButton(320, 230, 200, 40, 'Continue',
+            0x00aaff, () => {
+                this.continueGame();
             }, !hasSavedRun);
+
+        if (!hasSavedRun) {
+            this.disableButton(this.continueButton);
+        }
         
         // Options button
         const optionsButton = this.createButton(320, 280, 200, 40, 'Options', 0xffaa00, () => {
@@ -76,16 +86,31 @@ export class MainMenuScene extends Phaser.Scene {
             fontFamily: '"Roboto Condensed"'
         }).setOrigin(0.5);
         
+        button.setAlpha(disabled ? 0.5 : 1);
+
         if (!disabled) {
             button.setInteractive({ useHandCursor: true })
                 .on('pointerover', () => button.setFillStyle(color, 0.5))
                 .on('pointerout', () => button.setFillStyle(color, 0.3))
                 .on('pointerdown', callback);
+        } else {
+            button.disableInteractive();
+            button.setFillStyle(color, 0.2);
+            button.setStrokeStyle(2, 0x444444);
         }
-        
+
         return { button, text: buttonText };
     }
-    
+
+    disableButton(buttonObj) {
+        if (!buttonObj) return;
+        buttonObj.button.disableInteractive();
+        buttonObj.button.setAlpha(0.5);
+        buttonObj.button.setFillStyle(0x666666, 0.2);
+        buttonObj.button.setStrokeStyle(2, 0x444444);
+        buttonObj.text.setColor('#666666');
+    }
+
     showOptionsMenu() {
         // Hide main menu buttons
         this.children.list.forEach(child => {
@@ -257,22 +282,79 @@ export class MainMenuScene extends Phaser.Scene {
         localStorage.setItem('gameLanguage', this.game.language);
     }
     
-    startNewGame() {
-        // Clear any existing run save
-        this.saveManager.clearCurrentRun();
-        
-        // Start fresh run (meta progression is kept)
+    handleNewRun() {
+        if (SaveManager.hasSave()) {
+            this.showConfirmDialog(
+                'Are you sure? Your previous character will be deleted.',
+                () => {
+                    SaveManager.deleteSave();
+                    this.startNewRun();
+                }
+            );
+        } else {
+            this.startNewRun();
+        }
+    }
+
+    startNewRun() {
+        if (this.gameState && typeof this.gameState.initNewRun === 'function') {
+            this.gameState.initNewRun();
+        }
+
         this.cameras.main.fadeOut(500, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
             this.scene.start('GameScene', { newGame: true });
         });
     }
-    
+
     continueGame() {
-        // Load the saved run
+        if (!SaveManager.hasSave()) {
+            return;
+        }
+
         this.cameras.main.fadeOut(500, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
             this.scene.start('GameScene', { loadSave: true });
+        });
+    }
+
+    showConfirmDialog(message, onConfirm) {
+        const background = this.add.rectangle(320, 180, 500, 200, 0x000000, 0.8)
+            .setInteractive();
+        const dialogText = this.add.text(320, 140, message, {
+            fontSize: '18px',
+            color: '#ffffff',
+            fontFamily: '"Roboto Condensed"',
+            align: 'center',
+            wordWrap: { width: 460 }
+        }).setOrigin(0.5);
+
+        const yesButton = this.add.text(260, 220, 'Yes', {
+            fontSize: '20px',
+            color: '#00ff00',
+            fontFamily: '"Roboto Condensed"'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        const noButton = this.add.text(380, 220, 'No', {
+            fontSize: '20px',
+            color: '#ff4444',
+            fontFamily: '"Roboto Condensed"'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        const cleanup = () => {
+            background.destroy();
+            dialogText.destroy();
+            yesButton.destroy();
+            noButton.destroy();
+        };
+
+        yesButton.on('pointerup', () => {
+            cleanup();
+            if (onConfirm) onConfirm();
+        });
+
+        noButton.on('pointerup', () => {
+            cleanup();
         });
     }
     

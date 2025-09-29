@@ -16,22 +16,30 @@ export class GameScene extends Phaser.Scene {
         this._activeRoomId = null;
     }
 
-    init(data) {
+    init(data = {}) {
         this.saveManager = new SaveManager();
         this.metaManager = new MetaProgressionManager(this);
-        
-        if (data.loadSave) {
-            // Load existing run
+
+        const hasSharedState = !!this.game.gameState;
+        if (hasSharedState) {
+            this.gameState = this.game.gameState;
+            this.gameState.scene = this;
+        } else {
             this.gameState = new GameState(this);
-            // Load will happen in create() after systems are initialized
+            this.game.gameState = this.gameState;
+        }
+        this.game.gameState = this.gameState;
+
+        if (data.loadSave) {
             this.shouldLoadSave = true;
         } else {
-            // New run
-            this.gameState = new GameState(this);
+            if (typeof this.gameState.initNewRun === 'function') {
+                this.gameState.initNewRun();
+            }
             // Apply relic effects to fresh game state
             this.metaManager.applyRelicEffects(this.gameState);
         }
-        
+
         this.skipNextEnemyAttack = false;
         this.killedBy = null;
         this.roomType = data.roomType || 'COMBAT';

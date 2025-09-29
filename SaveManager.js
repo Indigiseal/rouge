@@ -8,6 +8,16 @@ export class SaveManager {
     this.SAVE_VERSION = '1.0.1'; // Bumped for new fields
   }
 
+  static hasSave() {
+    const manager = new SaveManager();
+    return manager.hasCurrentRun();
+  }
+
+  static deleteSave() {
+    const manager = new SaveManager();
+    manager.clearCurrentRun();
+  }
+
   // ============ Internal helpers ============
 
   // Unicode-safe base64 helpers

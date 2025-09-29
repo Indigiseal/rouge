@@ -31,6 +31,7 @@ export class GameState {
         this.firstActionUsed = false; // For Speed Boots
         this.bonusInventorySlots = 0; // For Bottomless Bag
         this.baseMaxHealth = 50; // Store base max health for cursed amulets
+        this.bottomlessBagApplied = false;
         
         // Meta progression tracking
         this.damageTracking = {
@@ -52,6 +53,51 @@ export class GameState {
                 crystalsEarned: 0
             }
         };
+    }
+
+    initNewRun() {
+        this.maxHealth = this.baseMaxHealth ?? 50;
+        this.playerHealth = this.maxHealth;
+        this.actionsLeft = this.maxActions ?? 15;
+        this.currentFloor = 1;
+        this.coins = 0;
+        this.crystals = 0;
+        this.inventory = new Array(5).fill(null);
+        this.equippedArmor = null;
+        this.activeAmulets = [];
+        this.playerEffects = [];
+        this.blockNextAttack = false;
+        this.shadowBlade = null;
+        this.magicShield = null;
+        this.boneWall = 0;
+        this.mirrorShield = false;
+        this.firstActionUsed = false;
+        this.bonusInventorySlots = 0;
+        this.bottomlessBagApplied = false;
+        this.roomType = 'COMBAT';
+        this.roomInitialized = false;
+        this.activeRoomId = 0;
+        this.damageTracking = {
+            totalDamageTaken: 0,
+            damageBySource: {
+                enemies: 0,
+                traps: 0,
+                exhaustion: 0,
+                environmental: 0
+            },
+            enemiesKilledBy: {},
+            lastDamageSource: null,
+            deathCause: null,
+            runStats: {
+                floorsReached: 1,
+                enemiesDefeated: 0,
+                trapsTriggered: 0,
+                coinsEarned: 0,
+                crystalsEarned: 0
+            }
+        };
+        this.dungeonMap = null;
+        this.mapCursor = null;
     }
 
     nextFloor() {
