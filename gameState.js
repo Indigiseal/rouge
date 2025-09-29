@@ -12,6 +12,11 @@ export class GameState {
         this.currentFloor = 1;
         this.equippedArmor = null;
         this.inventory = new Array(5).fill(null);
+
+        // Room/route tracking
+        this.roomType = 'COMBAT';
+        this.roomInitialized = false;
+        this.activeRoomId = 0;
         
         
         this.blockNextAttack = false;

@@ -12,6 +12,8 @@ export class GameScene extends Phaser.Scene {
         this._transitioning = false;
         this.skipNextEnemyAttack = false;
         this._turnHandlersBound = false;
+        this._handleEndPlayerTurn = () => this.runEnemyTurn();
+        this._activeRoomId = null;
     }
 
     init(data) {
@@ -34,6 +36,16 @@ export class GameScene extends Phaser.Scene {
         this.killedBy = null;
         this.roomType = data.roomType || 'COMBAT';
         console.log('GameScene roomType:', this.roomType);
+
+        // Ensure room tracking defaults exist
+        if (!Number.isFinite(this.gameState.activeRoomId)) {
+            this.gameState.activeRoomId = 0;
+        }
+        if (typeof this.gameState.roomInitialized !== 'boolean') {
+            this.gameState.roomInitialized = false;
+        }
+        this.gameState.roomType = this.gameState.roomType || this.roomType;
+        this._activeRoomId = this.gameState.activeRoomId;
     }
     
     create() {
@@ -84,8 +96,13 @@ export class GameScene extends Phaser.Scene {
         this.roomTitle = this.add.text(320, 10, '', { fontSize: '20px', fill: '#ffffff', fontFamily: '"Roboto Condensed"' }).setOrigin(0.5);
         this.updateRoomTitle();
         
-        // Start floor
-        this.startNewFloor();
+        // Start floor if needed
+        if (this.shouldStartNewFloor()) {
+            this.startNewFloor();
+        } else {
+            this.updateRoomTitle();
+            this.updateUI();
+        }
         
         // Update room title after loading
         this.updateRoomTitle();
@@ -114,14 +131,34 @@ export class GameScene extends Phaser.Scene {
                 this.inventorySystem.rebuildInventorySprites();
             }
             
-            if (['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType)) {
-                this.updateRoomTitle();
-                this.inventorySystem.rebuildInventorySprites();
+            if (this.shouldStartNewFloor()) {
                 this.startNewFloor();
             } else {
-                console.log('Skipped startNewFloor - not combat room');
+                console.log('Skipped startNewFloor - room already active');
+                this.updateRoomTitle();
+                this.inventorySystem.rebuildInventorySprites();
             }
         }, this);
+    }
+
+    shouldStartNewFloor() {
+        if (!['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType)) {
+            return false;
+        }
+
+        if (!this.gameState) {
+            return true;
+        }
+
+        const activeId = Number.isFinite(this.gameState.activeRoomId)
+            ? this.gameState.activeRoomId
+            : 0;
+
+        if (!this.gameState.roomInitialized) {
+            return true;
+        }
+
+        return this._activeRoomId !== activeId;
     }
 
     createAnimations() {
@@ -287,13 +324,21 @@ export class GameScene extends Phaser.Scene {
         
         console.log('[ROOM ENTER] HP safe?', { health: this.gameState.health, armor: this.gameState.equippedArmor });
         
-        // Bind turns only once
-        if (!this._turnHandlersBound) {
-            this._turnHandlersBound = true;
-            this.events.on('endPlayerTurn', () => this.runEnemyTurn());
+        // Bind enemy turn handler safely
+        this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
+        this.events.on('endPlayerTurn', this._handleEndPlayerTurn);
+        this._turnHandlersBound = true;
+
+        // Update active room tracking
+        if (!Number.isFinite(this.gameState.activeRoomId)) {
+            this.gameState.activeRoomId = 0;
         }
+        this._activeRoomId = this.gameState.activeRoomId;
+        this.gameState.roomInitialized = true;
+        const resolvedRoomType = this.gameState.roomType || this.roomType || 'COMBAT';
+        this.roomType = resolvedRoomType;
+        this.gameState.roomType = resolvedRoomType;
         // Refresh type before spawn
-        this.roomType = this.gameState.roomType || 'COMBAT';
         console.log('startNewFloor roomType:', this.roomType);
         this.updateRoomTitle();
         this.cardSystem.spawnFloorCards();
@@ -1021,6 +1066,12 @@ export class GameScene extends Phaser.Scene {
         if (this.inventorySystem && runData.equipment.inventory) {
             this.inventorySystem.slots = runData.equipment.inventory;
         }
+        // Room state
+        this.gameState.roomType = runData.room.type;
+        this.gameState.roomInitialized = runData.room.initialized;
+        this.gameState.activeRoomId = runData.room.activeId;
+        this.roomType = this.gameState.roomType || this.roomType;
+        this._activeRoomId = this.gameState.activeRoomId;
         // Re-apply relic effects on top of loaded state
         if (this.metaManager) {
             this.metaManager.applyRelicEffects(this.gameState);
@@ -1037,7 +1088,7 @@ export class GameScene extends Phaser.Scene {
     
     shutdown() {
         this.input.keyboard.off('keydown-ESC');
-        this.events.off('endPlayerTurn');  // Unbind to avoid doubles
+        this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
         this._turnHandlersBound = false;
     }
 }
