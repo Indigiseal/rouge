@@ -1,37 +1,35 @@
 // MetaProgressionManager.js
 
+import { SaveManager } from './SaveManager.js';
+
 export class MetaProgressionManager {
     constructor(scene) {
         this.scene = scene;
+        this.saveManager = new SaveManager();
         this.loadMetaProgression();
     }
-    
-    // Load saved meta progression data
+
+    // Load saved meta progression data (session memory)
     loadMetaProgression() {
-        const saved = localStorage.getItem('metaProgression');
-        if (saved) {
-            const data = JSON.parse(saved);
-            this.unlockedRelics = data.unlockedRelics || [];
-            this.totalDeaths = data.totalDeaths || 0;
-            this.bestFloor = data.bestFloor || 1;
-            this.enemyKillStats = data.enemyKillStats || {};
-        } else {
-            this.unlockedRelics = [];
-            this.totalDeaths = 0;
-            this.bestFloor = 1;
-            this.enemyKillStats = {};
-        }
+        const data = this.saveManager.loadMetaProgression();
+        this.unlockedRelics = data.unlockedRelics || [];
+        this.totalDeaths = data.totalDeaths || 0;
+        this.bestFloor = data.bestFloor || 1;
+        this.enemyKillStats = data.enemyKillStats || {};
+        this.totalRuns = data.totalRuns || 0;
+        this.totalEnemiesKilled = data.totalEnemiesKilled || 0;
     }
-    
-    // Save meta progression data
+
+    // Save meta progression data (session memory)
     saveMetaProgression() {
-        const data = {
+        this.saveManager.saveMetaProgression({
             unlockedRelics: this.unlockedRelics,
             totalDeaths: this.totalDeaths,
             bestFloor: this.bestFloor,
-            enemyKillStats: this.enemyKillStats
-        };
-        localStorage.setItem('metaProgression', JSON.stringify(data));
+            enemyKillStats: this.enemyKillStats,
+            totalRuns: this.totalRuns,
+            totalEnemiesKilled: this.totalEnemiesKilled,
+        });
     }
     
     // Define all possible relics and their effects

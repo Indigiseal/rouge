@@ -1,6 +1,10 @@
 export class GameState {
     constructor(scene) {
         this.scene = scene;
+        this.initNewRun();
+    }
+
+    initNewRun() {
         this.playerHealth = 50;
         this.maxHealth = 50;
         this.coins = 0;
@@ -11,27 +15,28 @@ export class GameState {
         this.maxActions = 15;
         this.currentFloor = 1;
         this.equippedArmor = null;
+        this.equippedWeapon = null;
         this.inventory = new Array(5).fill(null);
 
         // Room/route tracking
         this.roomType = 'COMBAT';
         this.roomInitialized = false;
         this.activeRoomId = 0;
-        
-        
+
         this.blockNextAttack = false;
-        
+
         // Magic card effects
         this.shadowBlade = null;
         this.magicShield = null;
         this.boneWall = 0;
         this.mirrorShield = false;
-        
+
         // Amulet-related properties
         this.firstActionUsed = false; // For Speed Boots
         this.bonusInventorySlots = 0; // For Bottomless Bag
         this.baseMaxHealth = 50; // Store base max health for cursed amulets
-        
+        this.bottomlessBagApplied = false;
+
         // Meta progression tracking
         this.damageTracking = {
             totalDamageTaken: 0,
@@ -52,6 +57,11 @@ export class GameState {
                 crystalsEarned: 0
             }
         };
+
+        this.relicEffects = {};
+        this.startingArmor = null;
+        this.dungeonMap = null;
+        this.mapCursor = null;
     }
 
     nextFloor() {
