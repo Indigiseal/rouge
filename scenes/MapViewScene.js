@@ -236,6 +236,14 @@ export class MapViewScene extends Phaser.Scene {
     this.gameState.currentFloor = (this.gameState.currentFloor || 1) + 1;
     // Store type
     this.gameState.roomType = node.type;
+    const isCombatRoom = ['COMBAT', 'ELITE', 'BOSS'].includes(node.type);
+    if (isCombatRoom) {
+      const currentId = Number.isFinite(this.gameState.activeRoomId)
+        ? this.gameState.activeRoomId
+        : 0;
+      this.gameState.activeRoomId = currentId + 1;
+      this.gameState.roomInitialized = false;
+    }
     console.log('Stored roomType:', this.gameState.roomType);
     // Route
     const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE'];

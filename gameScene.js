@@ -12,6 +12,8 @@ export class GameScene extends Phaser.Scene {
         this._transitioning = false;
         this.skipNextEnemyAttack = false;
         this._turnHandlersBound = false;
+        this._handleEndPlayerTurn = () => this.runEnemyTurn();
+        this._activeRoomId = null;
     }
 
     init(data) {
@@ -34,6 +36,16 @@ export class GameScene extends Phaser.Scene {
         this.killedBy = null;
         this.roomType = data.roomType || 'COMBAT';
         console.log('GameScene roomType:', this.roomType);
+
+        // Ensure room tracking defaults exist
+        if (!Number.isFinite(this.gameState.activeRoomId)) {
+            this.gameState.activeRoomId = 0;
+        }
+        if (typeof this.gameState.roomInitialized !== 'boolean') {
+            this.gameState.roomInitialized = false;
+        }
+        this.gameState.roomType = this.gameState.roomType || this.roomType;
+        this._activeRoomId = this.gameState.activeRoomId;
     }
     
     create() {
@@ -84,8 +96,13 @@ export class GameScene extends Phaser.Scene {
         this.roomTitle = this.add.text(320, 10, '', { fontSize: '20px', fill: '#ffffff', fontFamily: '"Roboto Condensed"' }).setOrigin(0.5);
         this.updateRoomTitle();
         
-        // Start floor
-        this.startNewFloor();
+        // Start floor if needed
+        if (this.shouldStartNewFloor()) {
+            this.startNewFloor();
+        } else {
+            this.updateRoomTitle();
+            this.updateUI();
+        }
         
         // Update room title after loading
         this.updateRoomTitle();
@@ -114,14 +131,34 @@ export class GameScene extends Phaser.Scene {
                 this.inventorySystem.rebuildInventorySprites();
             }
             
-            if (['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType)) {
-                this.updateRoomTitle();
-                this.inventorySystem.rebuildInventorySprites();
+            if (this.shouldStartNewFloor()) {
                 this.startNewFloor();
             } else {
-                console.log('Skipped startNewFloor - not combat room');
+                console.log('Skipped startNewFloor - room already active');
+                this.updateRoomTitle();
+                this.inventorySystem.rebuildInventorySprites();
             }
         }, this);
+    }
+
+    shouldStartNewFloor() {
+        if (!['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType)) {
+            return false;
+        }
+
+        if (!this.gameState) {
+            return true;
+        }
+
+        const activeId = Number.isFinite(this.gameState.activeRoomId)
+            ? this.gameState.activeRoomId
+            : 0;
+
+        if (!this.gameState.roomInitialized) {
+            return true;
+        }
+
+        return this._activeRoomId !== activeId;
     }
 
     createAnimations() {
@@ -275,9 +312,11 @@ export class GameScene extends Phaser.Scene {
         this.nextFloorButtonText?.setVisible(false);
         this.nextFloorButton?.setInteractive();
         this.skipNextEnemyAttack = true;  // Grace period—no instant zap
-        this.gameState.health = Math.max(1, Math.floor(this.gameState.health || 55));  // Sanitize HP
+        this.gameState.playerHealth = Math.max(1, Math.floor(this.gameState.playerHealth || 55));  // Sanitize HP
         this.gameState.maxHealth = Math.max(1, Math.floor(this.gameState.maxHealth || 55));
-        if (this.gameState.health > this.gameState.maxHealth) this.gameState.health = this.gameState.maxHealth;
+        if (this.gameState.playerHealth > this.gameState.maxHealth) {
+            this.gameState.playerHealth = this.gameState.maxHealth;
+        }
         
         // Armor safety net
         if (this.gameState.equippedArmor) {
@@ -285,15 +324,23 @@ export class GameScene extends Phaser.Scene {
             this.gameState.equippedArmor.durability = Math.max(0, Math.floor(this.gameState.equippedArmor.durability || 25));
         }
         
-        console.log('[ROOM ENTER] HP safe?', { health: this.gameState.health, armor: this.gameState.equippedArmor });
+        console.log('[ROOM ENTER] HP safe?', { health: this.gameState.playerHealth, armor: this.gameState.equippedArmor });
         
-        // Bind turns only once
-        if (!this._turnHandlersBound) {
-            this._turnHandlersBound = true;
-            this.events.on('endPlayerTurn', () => this.runEnemyTurn());
+        // Bind enemy turn handler safely
+        this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
+        this.events.on('endPlayerTurn', this._handleEndPlayerTurn);
+        this._turnHandlersBound = true;
+
+        // Update active room tracking
+        if (!Number.isFinite(this.gameState.activeRoomId)) {
+            this.gameState.activeRoomId = 0;
         }
+        this._activeRoomId = this.gameState.activeRoomId;
+        this.gameState.roomInitialized = true;
+        const resolvedRoomType = this.gameState.roomType || this.roomType || 'COMBAT';
+        this.roomType = resolvedRoomType;
+        this.gameState.roomType = resolvedRoomType;
         // Refresh type before spawn
-        this.roomType = this.gameState.roomType || 'COMBAT';
         console.log('startNewFloor roomType:', this.roomType);
         this.updateRoomTitle();
         this.cardSystem.spawnFloorCards();
@@ -576,8 +623,8 @@ export class GameScene extends Phaser.Scene {
                 // Check if this damage will kill the player and track the killer
                 const playerHealthBeforeDamage = this.gameState.playerHealth;
                 
-                // Player takes damage and reflection is handled inside takeDamage
-                const { actualDamage, tookDamage } = this.takeDamage(damageDealt);
+                // Player takes damage and reflection is handled inside GameState.takeDamage
+                const { actualDamage, tookDamage } = this.gameState.takeDamage(damageDealt, index);
                 
                 if (tookDamage) {
                     SoundHelper.playSound(this, 'player_hurt', 0.5);
@@ -625,7 +672,7 @@ export class GameScene extends Phaser.Scene {
         if (effectDamage > 0) {
             const playerHealthBeforePoison = this.gameState.playerHealth;
             SoundHelper.playSound(this, 'player_hurt', 0.5);
-            const { actualDamage, tookDamage } = this.takeDamage(effectDamage);
+            const { actualDamage, tookDamage } = this.gameState.takeDamage(effectDamage, -1, 'poison');
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage} (Poison)`, 0x00ff00);
             
             // Track poison death
@@ -655,34 +702,6 @@ export class GameScene extends Phaser.Scene {
             duration: 300,
             onComplete: () => flash.destroy()
         });
-    }
-    takeDamage(rawDamage) {
-      const dmg = Math.max(0, Math.floor(rawDamage || 0));
-      console.log('[DAMAGE IN]', { raw: dmg, hpBefore: this.gameState.health });
-      // Armor block
-      const armor = this.gameState.equippedArmor;
-      const defend = Math.max(0, Math.floor(armor?.protection || 0));
-      const afterArmor = Math.max(0, dmg - defend);
-      
-      // Durability tick (if hit)
-      if (armor && dmg > 0 && armor.durability > 0) {
-        armor.durability = Math.max(0, armor.durability - 1);
-        if (armor.durability === 0) {
-          armor.protection = 0;  // Broke
-          this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, "Armor Shattered!", 0xff6666);
-        }
-      }
-      
-      this.gameState.health = Math.max(0, this.gameState.health - afterArmor);
-      console.log('[DAMAGE OUT]', { afterArmor, hpAfter: this.gameState.health });
-      
-      if (this.gameState.health <= 0) {
-        // Death stuff
-        console.log('[DEATH] Oof—game over');
-        this.gameOver();
-      }
-      
-      return { actualDamage: afterArmor, tookDamage: afterArmor > 0 };
     }
     createFloatingText(x, y, text, color) {
         // Add random offsets to prevent text from overlapping perfectly
@@ -1021,6 +1040,12 @@ export class GameScene extends Phaser.Scene {
         if (this.inventorySystem && runData.equipment.inventory) {
             this.inventorySystem.slots = runData.equipment.inventory;
         }
+        // Room state
+        this.gameState.roomType = runData.room.type;
+        this.gameState.roomInitialized = runData.room.initialized;
+        this.gameState.activeRoomId = runData.room.activeId;
+        this.roomType = this.gameState.roomType || this.roomType;
+        this._activeRoomId = this.gameState.activeRoomId;
         // Re-apply relic effects on top of loaded state
         if (this.metaManager) {
             this.metaManager.applyRelicEffects(this.gameState);
@@ -1037,7 +1062,7 @@ export class GameScene extends Phaser.Scene {
     
     shutdown() {
         this.input.keyboard.off('keydown-ESC');
-        this.events.off('endPlayerTurn');  // Unbind to avoid doubles
+        this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
         this._turnHandlersBound = false;
     }
 }
