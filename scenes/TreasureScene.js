@@ -1,115 +1,287 @@
+import { CardSystem } from '../cardSystem.js';
 import { SoundHelper } from '../utils/SoundHelper.js';
+
+const WEAPON_TRAP_CHANCE = 0.35;
+const LOOT_DESTROY_CHANCE = 0.25;
+const LOOT_PENALTY_MULTS = [0.75, 0.5];
+const TRAP_DAMAGE = 5;
+const WEAPON_DURABILITY_LOSS = 1;
 
 export class TreasureScene extends Phaser.Scene {
   constructor() {
     super({ key: 'TreasureScene' });
+    this.dropHandler = null;
+    this.chestResolved = false;
+    this._fallbackCardSystem = null;
   }
 
-  create(data) {
-    this.gameState = data.gameState;
-    this.add.rectangle(320, 180, 640, 360, 0x1a1a2e);
-    
-    this.add.text(320, 50, 'TREASURE CHEST', { fontSize: '24px', fill: '#ffd700' }).setOrigin(0.5);
-    
-    // Instructions
-    this.add.text(320, 100, 'Drag key here to open fully, or click to break (risky).', { fontSize: '16px', fill: '#ffffff' }).setOrigin(0.5);
-    
-    // Chest sprite (drop target)
-    const chest = this.add.sprite(320, 180, 'chest').setScale(2).setInteractive({ useHandCursor: true });
-    // Make hit area larger (full sprite + padding)
-    const paddedWidth = chest.width * chest.scaleX + 20; // +20 padding
-    const paddedHeight = chest.height * chest.scaleY + 20;
-    chest.input.hitArea.setTo(-paddedWidth / 2, -paddedHeight / 2, paddedWidth, paddedHeight);
-    console.log('Chest hit area set:', chest.input.hitArea); // Test log
-    // Hover feedback (tint yellow)
-    chest.on('pointerover', () => {
-      chest.setTint(0xffff00); // Yellow tint on hover
-    });
-    chest.on('pointerout', () => {
-      chest.clearTint(); // Remove tint
-    });
-    // Click to break (log on down)
-    chest.on('pointerdown', () => {
-      console.log('Chest clicked!'); // Test if detects click
-      this.breakChest(chest);
-    });
-    
-    // Enable drag/drop for keys in inventory
-    this.gameState.inventory.forEach((item, index) => {
-      if (item && item.type === 'key') {
-        // Assume inventory cards are draggable; if not, add in inventorySystem.js: cardSprite.setInteractive(); this.scene.input.setDraggable(cardSprite);
-        const cardSprite = this.scene.manager.getScene('GameScene').inventorySystem.slotSprites[index].card; // Safe access
-        if (cardSprite) {
-          this.input.setDraggable(cardSprite);
-          cardSprite.on('dragend', (pointer) => {
-            if (Phaser.Geom.Rectangle.Contains(chest.getBounds(), pointer.x, pointer.y)) {
-              this.openWithKey(index, chest);
-            }
-          });
+  create(data = {}) {
+    this.gameScene = this.scene.get('GameScene');
+    this.gameState = data.gameState || this.gameScene?.gameState;
+    this.inventorySystem = this.gameScene?.inventorySystem;
+    this.cardSystem = this.gameScene?.cardSystem || null;
+    this.chestResolved = false;
+
+    this.add.rectangle(320, 180, 640, 360, 0x1a1a2e).setAlpha(0.95);
+    this.add.text(320, 40, 'Treasure Room', {
+      fontSize: '26px',
+      fontFamily: '"Roboto Condensed"',
+      color: '#ffd700'
+    }).setOrigin(0.5);
+    this.add.text(320, 85, 'Drag a Key for a safe unlock. Drag a Weapon to smash it (risky).', {
+      fontSize: '16px',
+      fontFamily: '"Roboto Condensed"',
+      color: '#ffffff',
+      align: 'center',
+      wordWrap: { width: 520 }
+    }).setOrigin(0.5);
+
+    if (this.inventorySystem) {
+      this.inventorySystem.setVisibility(true);
+      if (typeof this.inventorySystem.rebuildInventorySprites === 'function') {
+        this.inventorySystem.rebuildInventorySprites();
+      }
+    }
+
+    this.chestSprite = this.add.sprite(320, 190, 'chest').setScale(2);
+    const dzW = this.chestSprite.displayWidth + 20;
+    const dzH = this.chestSprite.displayHeight + 20;
+    this.chestZone = this.add.zone(this.chestSprite.x, this.chestSprite.y, dzW, dzH)
+      .setRectangleDropZone(dzW, dzH)
+      .setName('CHEST_ZONE');
+
+    this.chestSprite.setInteractive({ useHandCursor: true })
+      .on('pointerover', () => {
+        if (!this.chestResolved) {
+          this.chestSprite.setTint(0xffffaa);
+        }
+      })
+      .on('pointerout', () => this.chestSprite.clearTint())
+      .on('pointerdown', () => {
+        if (this.chestResolved) return;
+        this.showToast('Drag a Key (safe) or a Weapon (risky) onto the chest');
+      });
+
+    this.dropHandler = this.handleDrop.bind(this);
+    this.input.on('drop', this.dropHandler);
+
+    this.add.text(320, 350, 'Leave', {
+      fontSize: '18px',
+      fontFamily: '"Roboto Condensed"',
+      color: '#ff7777'
+    })
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerup', () => this.leaveRoom());
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.onShutdown, this);
+    this.events.once(Phaser.Scenes.Events.DESTROY, this.onShutdown, this);
+  }
+
+  onShutdown() {
+    if (this.dropHandler) {
+      this.input?.off('drop', this.dropHandler);
+      this.dropHandler = null;
+    }
+    if (this.inventorySystem) {
+      this.inventorySystem.setVisibility(false);
+    }
+  }
+
+  handleDrop(pointer, gameObject, dropZone) {
+    if (!dropZone || dropZone.name !== 'CHEST_ZONE') return;
+    const inv = this.inventorySystem;
+    if (!inv) return;
+
+    const slotIndexRaw = gameObject?.getData?.('slotIndex');
+    const slotIndex = Number(slotIndexRaw);
+    if (!Number.isInteger(slotIndex)) return;
+
+    const cardData = inv.slots?.[slotIndex];
+    if (!cardData) {
+      if (typeof inv.returnCardToSlot === 'function') {
+        inv.returnCardToSlot(slotIndex, gameObject);
+      }
+      return;
+    }
+
+    if (this.chestResolved) {
+      if (typeof inv.returnCardToSlot === 'function') {
+        inv.returnCardToSlot(slotIndex, gameObject);
+      }
+      return;
+    }
+
+    if (cardData.type === 'key') {
+      this.openChestWithKey(slotIndex);
+    } else if (cardData.type === 'weapon') {
+      this.breakChestWithWeapon(slotIndex, cardData, gameObject);
+    } else {
+      if (typeof inv.returnCardToSlot === 'function') {
+        inv.returnCardToSlot(slotIndex, gameObject);
+      }
+      this.showToast('Only keys or weapons can open this chest');
+    }
+  }
+
+  openChestWithKey(slotIndex) {
+    const inv = this.inventorySystem;
+    if (!inv || this.chestResolved) return;
+
+    if (typeof inv.removeCard === 'function') {
+      inv.removeCard(slotIndex);
+    } else {
+      inv.slots[slotIndex] = null;
+      inv.rebuildInventorySprites?.();
+    }
+
+    const reward = this.grantTreasure({ safe: true });
+    this.finishChest();
+
+    const lootText = reward.itemGiven ? ' +loot' : '';
+    this.showToast(`Unlocked! +${reward.coins} coins${lootText}`);
+    SoundHelper?.playSound?.(this, 'chest_open', 0.7);
+  }
+
+  breakChestWithWeapon(slotIndex, weaponData, gameObject) {
+    const inv = this.inventorySystem;
+    const gs = this.gameScene?.gameState || this.gameState;
+    if (!inv || !gs || this.chestResolved) {
+      if (inv && typeof inv.returnCardToSlot === 'function') {
+        inv.returnCardToSlot(slotIndex, gameObject);
+      }
+      return;
+    }
+
+    const trap = Math.random() < WEAPON_TRAP_CHANCE;
+    if (trap) {
+      gs.takeDamage?.(TRAP_DAMAGE, -1, 'trap');
+      this.showToast(`Trap sprung! -${TRAP_DAMAGE} HP`);
+      SoundHelper?.playSound?.(this, 'trap_spring', 0.6);
+    }
+
+    let destroyed = Math.random() < LOOT_DESTROY_CHANCE;
+    let mult = 1.0;
+    if (!destroyed) {
+      mult = LOOT_PENALTY_MULTS[Math.floor(Math.random() * LOOT_PENALTY_MULTS.length)];
+    }
+
+    let weaponDestroyed = false;
+    if (typeof weaponData?.durability === 'number') {
+      weaponData.durability -= WEAPON_DURABILITY_LOSS;
+      if (weaponData.durability <= 0) {
+        weaponDestroyed = true;
+        if (typeof inv.removeCard === 'function') {
+          inv.removeCard(slotIndex);
+        } else {
+          inv.slots[slotIndex] = null;
+        }
+        this.showToast('Your weapon broke!');
+      }
+    }
+
+    const reward = this.grantTreasure({ safe: false, destroyed, mult });
+    this.finishChest();
+
+    this.showToast(`+${reward.coins} coins`);
+    if (destroyed) {
+      this.showToast('Loot destroyed! (coins only or nothing)');
+    } else if (mult < 1) {
+      this.showToast(`Loot reduced (${Math.round(mult * 100)}%)`);
+    } else {
+      this.showToast('You smashed it! Full loot');
+    }
+
+    if (!weaponDestroyed && typeof inv.returnCardToSlot === 'function') {
+      inv.returnCardToSlot(slotIndex, gameObject);
+    } else if (weaponDestroyed && gameObject?.destroy) {
+      gameObject.destroy();
+    }
+
+    if (typeof inv.rebuildInventorySprites === 'function') {
+      inv.rebuildInventorySprites();
+    }
+  }
+
+  grantTreasure({ safe, destroyed = false, mult = 1.0 } = {}) {
+    const gs = this.gameScene?.gameState || this.gameState;
+    const inv = this.inventorySystem;
+    if (!gs) return { coins: 0, itemGiven: false };
+
+    const currentFloor = Math.max(1, gs.currentFloor || 1);
+    const baseCoins = 30 + (currentFloor - 1) * 5;
+    let coins = Math.max(0, Math.floor(baseCoins * (destroyed ? 0.5 : mult)));
+    gs.coins = (gs.coins || 0) + coins;
+
+    let itemGiven = false;
+    if (!destroyed && inv) {
+      let generator = this.cardSystem;
+      if (!generator && this.gameScene) {
+        this._fallbackCardSystem = this._fallbackCardSystem || new CardSystem(this.gameScene);
+        generator = this._fallbackCardSystem;
+      }
+
+      const fallbackTypes = ['weapon', 'armor', 'potion', 'food', 'magic', 'amulet'];
+      let card = generator?.createCardData?.('treasure', currentFloor);
+      if (!card) {
+        const type = fallbackTypes[Math.floor(Math.random() * fallbackTypes.length)];
+        card = generator?.createCardData?.(type, currentFloor);
+      }
+
+      if (card && mult < 1) {
+        if (card.rarity === 'legendary') card.rarity = 'rare';
+        else if (card.rarity === 'rare') card.rarity = 'common';
+        else if (card.rarity === 'uncommon') card.rarity = 'common';
+      }
+
+      if (card && typeof inv.addCard === 'function') {
+        itemGiven = inv.addCard(card);
+        if (!itemGiven && inv.scene?.createFloatingText) {
+          inv.scene.createFloatingText(320, 260, 'Inventory full!', 0xff5555);
         }
       }
-    });
-    
-    // Leave button
-    this.add.text(320, 320, 'Leave', { fontSize: '18px', fill: '#ff0000', fontFamily: '"Roboto Condensed"' })
-      .setInteractive({ useHandCursor: true })
-      .setOrigin(0.5)
-      .on('pointerdown', () => {
-        this.scene.stop();
-        this.scene.wake('MapViewScene');
-      });
-  }
-  
-  openWithKey(keyIndex, chest) {
-    // Consume key
-    this.gameState.inventory[keyIndex] = null;
-    
-    // Full loot
-    this.gameState.coins += 50;
-    const gen = new CardDataGenerator();
-    const rareItem = gen.createCardData('weapon', this.gameState.currentFloor);
-    rareItem.rarity = 'rare';
-    const emptySlot = this.gameState.inventory.findIndex(slot => slot === null);
-    if (emptySlot === -1) {
-      this.add.text(320, 250, 'Inventory full—coins only!', { fontSize: '14px', fill: '#ff0000' }).setOrigin(0.5);
-    } else {
-      this.gameState.inventory[emptySlot] = rareItem;
     }
-    this.add.text(320, 250, '+50 Coins + Rare Item!', { fontSize: '14px', fill: '#00ff00' }).setOrigin(0.5);
-    
-    SoundHelper.playSound(this, 'chest_open', 0.5);
-    chest.destroy(); // Optional: Remove chest after open
+
+    if (coins > 0) {
+      SoundHelper?.playSound?.(this, 'coin_collect', 0.6);
+    }
+
+    return { coins, itemGiven, destroyed, mult, safe };
   }
-  
-  breakChest(chest) {
-    // Spawn trap visually
-    const trapX = chest.x + Math.random() * 50 - 25; // Random offset near chest
-    const trapY = chest.y + Math.random() * 50 - 25;
-    const trapSprite = this.add.sprite(trapX, trapY, 'trap').setScale(1.5); // Assume 'trap' sprite preloaded
-    trapSprite.setAlpha(0); // Start invisible
-    
-    // Animate spawn (fade in + scale up)
+
+  finishChest() {
+    if (this.chestResolved) return;
+    this.chestResolved = true;
+    if (this.chestZone) {
+      this.chestZone.input.dropZone = false;
+      this.chestZone.setActive(false);
+    }
+    if (this.chestSprite) {
+      this.chestSprite.disableInteractive();
+      this.chestSprite.clearTint();
+      this.chestSprite.setAlpha(0.9);
+    }
+  }
+
+  showToast(message) {
+    const toast = this.add.text(320, 320, message, {
+      fontSize: '14px',
+      fontFamily: '"Roboto Condensed"',
+      color: '#ffffff'
+    }).setOrigin(0.5);
+
     this.tweens.add({
-      targets: trapSprite,
-      alpha: 1,
-      scale: 2,
-      duration: 500,
-      ease: 'Power2',
-      onComplete: () => {
-        SoundHelper.playSound(this, 'trap_spring1', 0.5);
-        // Apply damage after anim
-        this.gameState.takeDamage(5, -1, 'trap');
-        this.add.text(320, 220, 'Trap Spawned! -5 HP', { fontSize: '14px', fill: '#ff0000' }).setOrigin(0.5);
-        
-        // Half loot
-        this.gameState.coins += 25;
-        this.add.text(320, 250, '+25 Coins (Half)', { fontSize: '14px', fill: '#ffff00' }).setOrigin(0.5);
-        
-        // Destroy trap after delay
-        this.time.delayedCall(1000, () => trapSprite.destroy());
-      }
+      targets: toast,
+      alpha: 0,
+      y: toast.y - 20,
+      duration: 1400,
+      delay: 600,
+      onComplete: () => toast.destroy()
     });
-    
-    chest.destroy(); // Remove chest after break
+  }
+
+  leaveRoom() {
+    this.scene.stop();
+    this.scene.wake('MapViewScene');
   }
 }
