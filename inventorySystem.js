@@ -26,7 +26,7 @@ export class InventorySystem {
         this.createInventoryUI();
         this.rebuildInventorySprites();
     }
-    
+
     setVisibility(isVisible) {
         console.log('Inventory setVisibility:', isVisible, 'uiGroup exists?', !!this.uiGroup);
         if (this.uiGroup) {
@@ -35,6 +35,20 @@ export class InventorySystem {
                 this.rebuildInventorySprites(); // Force redraw on show
             }
         }
+    }
+
+    setSlot(slotIndex, data, rebuild = true) {
+        if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= this.slots.length) {
+            return false;
+        }
+
+        this.slots[slotIndex] = data || null;
+
+        if (rebuild) {
+            this.rebuildInventorySprites?.();
+        }
+
+        return true;
     }
     getCurrentWeapon() {
         return this.scene.gameState?.equippedWeapon || null;
