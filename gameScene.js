@@ -793,11 +793,12 @@ export class GameScene extends Phaser.Scene {
             .setStrokeStyle(2, 0xffffff)
             .setInteractive()
             .on('pointerdown', () => {
-                this.scene.start('DeathRewardScene', { 
+                this.scene.start('DeathRewardScene', {
                     deathStats: deathStats,
                     gameState: this.gameState,
                     metaManager: this.metaManager,
-                    killedBy: this.killedBy || 'Unknown Enemy'
+                    killedBy: this.killedBy || 'Unknown Enemy',
+                    floor: (deathStats?.floor ?? this.gameState.currentFloor ?? 1)
                 });
             });
         this.add.text(320, 220, 'Continue', {
