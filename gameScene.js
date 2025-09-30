@@ -16,25 +16,29 @@ export class GameScene extends Phaser.Scene {
         this._activeRoomId = null;
     }
 
-    init(data) {
+    init(data = {}) {
         this.saveManager = new SaveManager();
         this.metaManager = new MetaProgressionManager(this);
-        
-        if (data.loadSave) {
-            // Load existing run
-            this.gameState = new GameState(this);
-            // Load will happen in create() after systems are initialized
-            this.shouldLoadSave = true;
+
+        const sharedState = this.game.gameState;
+        if (sharedState) {
+            this.gameState = sharedState;
         } else {
-            // New run
             this.gameState = new GameState(this);
-            // Apply relic effects to fresh game state
+        }
+
+        this.game.gameState = this.gameState;
+        this.gameState.scene = this;
+
+        const isNewRun = data.newGame !== false;
+        if (isNewRun) {
+            this.gameState.initNewRun();
             this.metaManager.applyRelicEffects(this.gameState);
         }
-        
+
         this.skipNextEnemyAttack = false;
         this.killedBy = null;
-        this.roomType = data.roomType || 'COMBAT';
+        this.roomType = data.roomType || this.gameState.roomType || 'COMBAT';
         console.log('GameScene roomType:', this.roomType);
 
         // Ensure room tracking defaults exist
@@ -44,23 +48,15 @@ export class GameScene extends Phaser.Scene {
         if (typeof this.gameState.roomInitialized !== 'boolean') {
             this.gameState.roomInitialized = false;
         }
-        this.gameState.roomType = this.gameState.roomType || this.roomType;
+        this.gameState.roomType = this.roomType;
         this._activeRoomId = this.gameState.activeRoomId;
     }
     
     create() {
-        // Load saved volume settings
-        const savedVolume = localStorage.getItem('gameVolume');
-        if (savedVolume) {
-            this.game.globalVolume = JSON.parse(savedVolume);
-        } else {
-            this.game.globalVolume = {
-                master: 1.0,
-                sfx: 1.0,
-                music: 0.5
-            };
-        }
-        
+        const settings = this.saveManager.loadSettings();
+        this.game.globalVolume = { ...settings.volume };
+        this.game.language = settings.language || this.game.language || 'English';
+
         // Apply volume settings
         this.sound.volume = this.game.globalVolume.master;
         
@@ -83,11 +79,6 @@ export class GameScene extends Phaser.Scene {
         this.gameState.inventory = this.inventorySystem.slots; // Sync back
         
         this.inventorySystem.setVisibility(true); // Ensure shown on start
-        
-        // Load saved run if continuing
-        if (this.shouldLoadSave) {
-            this.loadCurrentRun();
-        }
         
         // Create UI
         this.createUI();
@@ -802,11 +793,12 @@ export class GameScene extends Phaser.Scene {
             .setStrokeStyle(2, 0xffffff)
             .setInteractive()
             .on('pointerdown', () => {
-                this.scene.start('DeathRewardScene', { 
+                this.scene.start('DeathRewardScene', {
                     deathStats: deathStats,
                     gameState: this.gameState,
                     metaManager: this.metaManager,
-                    killedBy: this.killedBy || 'Unknown Enemy'
+                    killedBy: this.killedBy || 'Unknown Enemy',
+                    floor: (deathStats?.floor ?? this.gameState.currentFloor ?? 1)
                 });
             });
         this.add.text(320, 220, 'Continue', {
@@ -836,9 +828,6 @@ export class GameScene extends Phaser.Scene {
         if (this.amuletManager) {
             this.amuletManager.processFloorEnd();
         }
-        
-        // AUTO-SAVE the current run
-        this.saveCurrentRun();
         
         this.time.delayedCall(1500, () => {
             this.scene.sleep();
