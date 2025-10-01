@@ -228,7 +228,9 @@ export class MapViewScene extends Phaser.Scene {
     fromNode.visited = true;
     node.visited = true;
     this.gameState.mapCursor = { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx };
-    this.gameState.currentFloor = (this.gameState.currentFloor || 1) + 1;
+    const actOffset = (this.currentAct - 1) * 10;
+    const absoluteFloor = actOffset + Math.max(1, targetFloorIdx);
+    this.gameState.currentFloor = Math.max(this.gameState.currentFloor || 1, absoluteFloor);
     // Store type
     this.gameState.roomType = node.type;
     const isCombatRoom = ['COMBAT', 'ELITE', 'BOSS', 'TREASURE'].includes(node.type);
