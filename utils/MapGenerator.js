@@ -14,9 +14,9 @@ export class MapGenerator {
     this.eliteMult = eliteMult;
 
     this.acts = [
-      { start: 1, end: 10, boss: 'Giant Skeleton' },
-      { start: 11, end: 20, boss: 'Spider Queen' },
-      { start: 21, end: 30, boss: 'Lich' }
+      { start: 1, end: 15, boss: 'Giant Skeleton' },
+      { start: 16, end: 30, boss: 'Spider Queen' },
+      { start: 31, end: 45, boss: 'Lich' }
     ];
   }
 
