@@ -34,6 +34,9 @@ export class MapViewScene extends Phaser.Scene {
     }
 
     this.syncCursorToProgress();
+    if (!this.cursorGlobalFloor) {
+      this.cursorGlobalFloor = this.globalFloor;
+    }
 
     // Dragging
     this.isDragging = false;
@@ -60,15 +63,23 @@ export class MapViewScene extends Phaser.Scene {
       this.gameState.mapCursor = cursor;
     }
 
+    // Always operate on the current act
+    cursor.act = this.currentAct;
+
     // Always mark the entrance as explored
     this.actMap.floors[0]?.[0] && (this.actMap.floors[0][0].visited = true);
 
-    if (cursor.floor >= targetFloorIdx) {
-      return;
+    let resetPath = false;
+    // Pull the cursor back if it somehow points beyond the cleared progress
+    if (cursor.floor > targetFloorIdx) {
+      cursor.floor = targetFloorIdx;
+      resetPath = true;
     }
 
-    let floorIdx = Math.max(0, cursor.floor);
-    let nodeIdx = Math.max(0, cursor.node ?? 0);
+    let floorIdx = resetPath
+      ? 0
+      : Math.max(0, Math.min(cursor.floor ?? 0, targetFloorIdx));
+    let nodeIdx = resetPath ? 0 : Math.max(0, cursor.node ?? 0);
 
     while (floorIdx < targetFloorIdx) {
       const currentFloorNodes = this.actMap.floors[floorIdx] || [];
@@ -101,26 +112,33 @@ export class MapViewScene extends Phaser.Scene {
       nodeIdx = preferredIdx;
     }
 
-    cursor.floor = floorIdx;
-    cursor.node = Phaser.Math.Clamp(
+    const floorNodes = this.actMap.floors[floorIdx] || [];
+    const maxNodeIndex = Math.max(0, floorNodes.length - 1);
+    const clampedNode = Phaser.Math.Clamp(
       nodeIdx,
       0,
-      (this.actMap.floors[floorIdx] || []).length - 1
+      maxNodeIndex
     );
 
-    for (let f = 0; f <= cursor.floor; f++) {
-      this.actMap.floors[f]?.forEach(node => {
-        if (node) node.visited = true;
+    cursor.floor = floorIdx;
+    cursor.node = Number.isFinite(clampedNode) ? clampedNode : 0;
+
+    this.actMap.floors.forEach((nodes, f) => {
+      const visited = f <= cursor.floor;
+      nodes.forEach(node => {
+        if (node) node.visited = visited;
       });
-    }
+    });
+
+    this.cursorGlobalFloor = Math.min(MAX_FLOOR, start + cursor.floor);
   }
 
   create() {
     // Background & title
     this.add.rectangle(320, 180, 640, 360, 0x8b7355);
     this.add.rectangle(320, 30, 640, 60, 0x6b5d4f);
-    const actFloor = getActFloor(this.globalFloor);
-    this.add.text(320, 30, `Act ${this.currentAct} – Floor ${actFloor}`, {
+    const headerFloor = getActFloor(this.cursorGlobalFloor ?? this.globalFloor);
+    this.add.text(320, 30, `Act ${this.currentAct} – Floor ${headerFloor}`, {
       fontSize: '20px', fill: '#f2d3aa', fontFamily: '"Roboto Condensed"'
     }).setOrigin(0.5);
 
