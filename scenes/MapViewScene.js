@@ -63,9 +63,6 @@ export class MapViewScene extends Phaser.Scene {
     this.setupScrollWheel();
     this.setupKeyboardPan();
 
-    // Center on player's current floor with a smart offset so upcoming paths are visible.
-    this.centerOnCurrentFloor({ animate: false, ratio: 0.65 });
-
     this.createEdgeIndicators();
     this.addCenterButton();
 
@@ -73,8 +70,8 @@ export class MapViewScene extends Phaser.Scene {
       fontSize: '12px', fill: '#d4b896', fontFamily: '"Roboto Condensed"'
     }).setOrigin(0.5);
     this.events.on('wake', () => {
-      console.log('Map restarted on wake');
-      this.scene.restart({ gameState: this.gameState }); // Redraws with latest cursor/visited
+      console.log('Map scene activated');
+      this.refreshMapDisplay();
     }, this);
   }
 
@@ -85,11 +82,10 @@ export class MapViewScene extends Phaser.Scene {
       this.dragStartY = p.y - (this.mapContainer?.y ?? 180);
     });
     this.dragArea.on('drag', (p) => {
-      if (!this.mapContainer || !this.dragLimits) return;
-      const targetX = p.x - this.dragStartX;
-      const targetY = p.y - this.dragStartY;
-      this.mapContainer.x = Phaser.Math.Clamp(targetX, this.dragLimits.minX, this.dragLimits.maxX);
-      this.mapContainer.y = Phaser.Math.Clamp(targetY, this.dragLimits.minY, this.dragLimits.maxY);
+      if (!this.mapContainer) return;
+      this.mapContainer.x = p.x - this.dragStartX;
+      this.mapContainer.y = p.y - this.dragStartY;
+      this.clampMapPosition();
       this.refreshEdgeIndicators();
     });
     this.dragArea.on('dragend', () => { this.isDragging = false; });
@@ -123,10 +119,9 @@ export class MapViewScene extends Phaser.Scene {
   }
 
   panMap(dx, dy) {
-    if (!this.mapContainer || !this.dragLimits) return;
-    const nextX = Phaser.Math.Clamp(this.mapContainer.x - dx, this.dragLimits.minX, this.dragLimits.maxX);
-    const nextY = Phaser.Math.Clamp(this.mapContainer.y - dy, this.dragLimits.minY, this.dragLimits.maxY);
-    this.mapContainer.setPosition(nextX, nextY);
+    if (!this.mapContainer) return;
+    this.mapContainer.setPosition(this.mapContainer.x - dx, this.mapContainer.y - dy);
+    this.clampMapPosition();
     this.refreshEdgeIndicators();
   }
 
@@ -165,6 +160,7 @@ export class MapViewScene extends Phaser.Scene {
     });
 
     this.updateMapBounds();
+    this.centerOnCurrentNode({ animate: false });
   }
 
   drawLinks() {
@@ -360,20 +356,23 @@ export class MapViewScene extends Phaser.Scene {
     };
   }
 
-  centerOnCurrentFloor({ animate = true, ratio = 0.5 } = {}) {
-    if (!this.mapContainer || !this.dragLimits) return;
-    const cursor = this.gameState.mapCursor;
-    const floorNodes = this.actMap.floors[cursor.floor];
-    const node = floorNodes?.[cursor.node];
-    if (!node) return;
+  centerOnCurrentNode({ animate = false } = {}) {
+    if (!this.mapContainer) return;
+    const cursorFloor = this.gameState.mapCursor?.floor ?? 0;
+    const cursorNode = this.gameState.mapCursor?.node ?? 0;
+    const floorNodes = this.actMap?.floors?.[cursorFloor];
+    const node = floorNodes?.[cursorNode];
+    if (!node || node.__x === undefined || node.__y === undefined) {
+      console.log('Cannot center - node position not set');
+      return;
+    }
 
-    const targetX = this.scale.width * 0.5;
-    const targetY = this.scale.height * Phaser.Math.Clamp(ratio, 0.2, 0.85);
+    const screenCenterX = 320;
+    const screenCenterY = 180;
+    let destX = screenCenterX - node.__x;
+    let destY = screenCenterY - node.__y;
 
-    let destX = targetX - node.__x;
-    let destY = targetY - node.__y;
-    destX = Phaser.Math.Clamp(destX, this.dragLimits.minX, this.dragLimits.maxX);
-    destY = Phaser.Math.Clamp(destY, this.dragLimits.minY, this.dragLimits.maxY);
+    ({ destX, destY } = this.getClampedPosition(destX, destY));
 
     if (animate) {
       this.tweens.add({
@@ -381,27 +380,77 @@ export class MapViewScene extends Phaser.Scene {
         x: destX,
         y: destY,
         ease: 'sine.out',
-        duration: 400,
-        onUpdate: () => this.refreshEdgeIndicators(),
-        onComplete: () => this.refreshEdgeIndicators()
+        duration: 350,
+        onUpdate: () => {
+          this.clampMapPosition();
+          this.refreshEdgeIndicators();
+        },
+        onComplete: () => {
+          this.clampMapPosition();
+          this.refreshEdgeIndicators();
+        }
       });
     } else {
       this.mapContainer.setPosition(destX, destY);
+      this.clampMapPosition();
       this.refreshEdgeIndicators();
     }
   }
 
   addCenterButton() {
-    const btn = this.add.text(600, 320, 'Center', {
-      fontSize: '14px', fill: '#f2d3aa', backgroundColor: '#3f2f28', padding: { x: 8, y: 4 },
+    const btn = this.add.rectangle(580, 320, 80, 30, 0x4a3f36)
+      .setStrokeStyle(2, 0x6b5d4f)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add.text(580, 320, 'Center', {
+      fontSize: '14px',
+      fill: '#f2d3aa',
       fontFamily: '"Roboto Condensed"'
-    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5);
 
-    btn.on('pointerover', () => btn.setStyle({ backgroundColor: '#6b5d4f' }));
-    btn.on('pointerout', () => btn.setStyle({ backgroundColor: '#3f2f28' }));
+    btn.on('pointerover', () => btn.setFillStyle(0x5a4f46));
+    btn.on('pointerout', () => btn.setFillStyle(0x4a3f36));
     btn.on('pointerdown', () => {
-      this.centerOnCurrentFloor({ animate: true, ratio: 0.65 });
+      this.centerOnCurrentNode({ animate: true });
     });
+  }
+
+  clampMapPosition() {
+    if (!this.mapContainer) return;
+    const bounds = this.dragLimits;
+    if (bounds) {
+      this.mapContainer.x = Phaser.Math.Clamp(this.mapContainer.x, bounds.minX, bounds.maxX);
+      this.mapContainer.y = Phaser.Math.Clamp(this.mapContainer.y, bounds.minY, bounds.maxY);
+      return;
+    }
+
+    const minX = -200;
+    const maxX = 840;
+    const minY = -100;
+    const maxY = 460;
+    this.mapContainer.x = Phaser.Math.Clamp(this.mapContainer.x, minX, maxX);
+    this.mapContainer.y = Phaser.Math.Clamp(this.mapContainer.y, minY, maxY);
+  }
+
+  getClampedPosition(destX, destY) {
+    const bounds = this.dragLimits;
+    if (bounds) {
+      return {
+        destX: Phaser.Math.Clamp(destX, bounds.minX, bounds.maxX),
+        destY: Phaser.Math.Clamp(destY, bounds.minY, bounds.maxY)
+      };
+    }
+    return {
+      destX: Phaser.Math.Clamp(destX, -200, 840),
+      destY: Phaser.Math.Clamp(destY, -100, 460)
+    };
+  }
+
+  refreshMapDisplay() {
+    if (!this.mapContainer) return;
+    if (this.linkGfx) {
+      this.drawLinks();
+    }
+    this.centerOnCurrentNode({ animate: false });
   }
 
   createEdgeIndicators() {
