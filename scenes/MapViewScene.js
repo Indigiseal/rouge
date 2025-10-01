@@ -31,13 +31,88 @@ export class MapViewScene extends Phaser.Scene {
     // floor: 0..FLOORS_PER_ACT (0 is the fixed start node, last is boss floor)
     if (!this.gameState.mapCursor || this.gameState.mapCursor.act !== this.currentAct) {
       this.gameState.mapCursor = { act: this.currentAct, floor: 0, node: 0 };
-      // Mark the start as visited so connections from start are valid
-      this.actMap.floors[0][0].visited = true;
     }
+
+    this.syncCursorToProgress();
 
     // Dragging
     this.isDragging = false;
     this.dragStartX = 0; this.dragStartY = 0;
+  }
+
+  syncCursorToProgress() {
+    if (!this.actMap?.floors?.length) return;
+
+    const { start } = getActBounds(this.currentAct);
+    const floorsClearedInAct = Math.max(0, Math.min(
+      FLOORS_PER_ACT,
+      (this.globalFloor ?? 1) - start
+    ));
+
+    const targetFloorIdx = Math.min(
+      floorsClearedInAct,
+      this.actMap.floors.length - 1
+    );
+
+    let cursor = this.gameState.mapCursor;
+    if (!cursor) {
+      cursor = { act: this.currentAct, floor: 0, node: 0 };
+      this.gameState.mapCursor = cursor;
+    }
+
+    // Always mark the entrance as explored
+    this.actMap.floors[0]?.[0] && (this.actMap.floors[0][0].visited = true);
+
+    if (cursor.floor >= targetFloorIdx) {
+      return;
+    }
+
+    let floorIdx = Math.max(0, cursor.floor);
+    let nodeIdx = Math.max(0, cursor.node ?? 0);
+
+    while (floorIdx < targetFloorIdx) {
+      const currentFloorNodes = this.actMap.floors[floorIdx] || [];
+      const currentNode = currentFloorNodes[nodeIdx] || currentFloorNodes[0] || null;
+      if (currentNode) {
+        currentNode.visited = true;
+      }
+
+      const nextFloorIdx = floorIdx + 1;
+      const nextFloorNodes = this.actMap.floors[nextFloorIdx] || [];
+      if (!nextFloorNodes.length) {
+        break;
+      }
+
+      let preferredIdx = 0;
+      if (currentNode?.connections?.length) {
+        let bestScore = -1;
+        for (const connection of currentNode.connections) {
+          const clampedIdx = Phaser.Math.Clamp(connection, 0, nextFloorNodes.length - 1);
+          const candidate = nextFloorNodes[clampedIdx];
+          const score = candidate?.connections?.length ?? 0;
+          if (score > bestScore) {
+            bestScore = score;
+            preferredIdx = clampedIdx;
+          }
+        }
+      }
+
+      floorIdx = nextFloorIdx;
+      nodeIdx = preferredIdx;
+    }
+
+    cursor.floor = floorIdx;
+    cursor.node = Phaser.Math.Clamp(
+      nodeIdx,
+      0,
+      (this.actMap.floors[floorIdx] || []).length - 1
+    );
+
+    for (let f = 0; f <= cursor.floor; f++) {
+      this.actMap.floors[f]?.forEach(node => {
+        if (node) node.visited = true;
+      });
+    }
   }
 
   create() {
