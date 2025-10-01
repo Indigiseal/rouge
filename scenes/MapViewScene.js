@@ -83,6 +83,48 @@ export class MapViewScene extends Phaser.Scene {
     this.add.text(320, 340, 'Click glowing nodes to proceed • Drag to pan', {
       fontSize: '12px', fill: '#d4b896', fontFamily: '"Roboto Condensed"'
     }).setOrigin(0.5);
+
+    // Add wake event handler to refresh visual state without restarting
+    this.events.on('wake', () => {
+      console.log('MapViewScene woke up - refreshing state');
+
+      // Refresh the visual state of nodes without restarting the entire scene
+      // This is needed when returning from Shop/Rest/Event scenes
+
+      if (this.hideTooltip) {
+        this.hideTooltip();
+      }
+
+      // Clear existing node visuals
+      if (this.nodeSprites) {
+        this.nodeSprites.forEach(sprite => {
+          if (sprite && sprite.destroy) sprite.destroy();
+        });
+        this.nodeSprites = [];
+      }
+
+      // Redraw links with updated state
+      if (this.linkGfx) {
+        this.drawLinks();
+      }
+
+      // Redraw nodes with updated states
+      if (this.actMap && this.actMap.floors) {
+        this.actMap.floors.forEach((floorNodes, f) => {
+          floorNodes.forEach((node, i) => this.drawNode(node, f, i));
+        });
+      }
+
+      // Update floor text
+      const floorText = this.children.list.find(child =>
+        child.type === 'Text' && child.text && child.text.includes('Act')
+      );
+      if (floorText) {
+        floorText.setText(`Act ${this.currentAct} – Floor ${this.gameState.currentFloor || 1}`);
+      }
+    }, this);
+
+    this.events.once('shutdown', this.shutdown, this);
   }
 
   setupDragging() {
@@ -231,6 +273,10 @@ export class MapViewScene extends Phaser.Scene {
     }).setOrigin(0.5).setAlpha(alpha);
     this.mapContainer.add(label);
 
+    if (this.nodeSprites) {
+      this.nodeSprites.push(circle, label);
+    }
+
     // Pulse for available nodes
     if (state === 'available') {
       this.tweens.add({
@@ -309,4 +355,14 @@ export class MapViewScene extends Phaser.Scene {
     this.scene.wake('GameScene');
     console.log('Woke GameScene for type:', node.type);
   }
+
+  shutdown() {
+    this.events.off('wake');
+    if (this.dragArea) {
+      this.dragArea.off('dragstart');
+      this.dragArea.off('drag');
+      this.dragArea.off('dragend');
+    }
+  }
 }
+
