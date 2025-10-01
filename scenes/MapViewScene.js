@@ -87,41 +87,49 @@ export class MapViewScene extends Phaser.Scene {
     // Add wake event handler to refresh visual state without restarting
     this.events.on('wake', () => {
       console.log('MapViewScene woke up - refreshing state');
+      console.log('Current cursor:', this.gameState.mapCursor);
 
-      // Refresh the visual state of nodes without restarting the entire scene
-      // This is needed when returning from Shop/Rest/Event scenes
-
+      // Hide any tooltips
       if (this.hideTooltip) {
         this.hideTooltip();
       }
 
-      // Clear existing node visuals
-      if (this.nodeSprites) {
-        this.nodeSprites.forEach(sprite => {
-          if (sprite && sprite.destroy) sprite.destroy();
+      // Properly clear all node visuals from the map container
+      if (this.mapContainer) {
+        const childrenToRemove = [...this.mapContainer.list];
+        childrenToRemove.forEach(child => {
+          if (child !== this.linkGfx) {
+            child.destroy();
+          }
         });
-        this.nodeSprites = [];
       }
 
-      // Redraw links with updated state
+      // Reset the nodeSprites array
+      this.nodeSprites = [];
+
+      // Redraw links with current state
       if (this.linkGfx) {
         this.drawLinks();
       }
 
-      // Redraw nodes with updated states
+      // Redraw all nodes with their current states
       if (this.actMap && this.actMap.floors) {
         this.actMap.floors.forEach((floorNodes, f) => {
-          floorNodes.forEach((node, i) => this.drawNode(node, f, i));
+          floorNodes.forEach((node, i) => {
+            this.drawNode(node, f, i);
+          });
         });
       }
 
-      // Update floor text
-      const floorText = this.children.list.find(child =>
+      // Update the floor display text
+      const floorTextElements = this.children.list.filter(child =>
         child.type === 'Text' && child.text && child.text.includes('Act')
       );
-      if (floorText) {
-        floorText.setText(`Act ${this.currentAct} – Floor ${this.gameState.currentFloor || 1}`);
+      if (floorTextElements.length > 0) {
+        floorTextElements[0].setText(`Act ${this.currentAct} – Floor ${this.gameState.currentFloor || 1}`);
       }
+
+      console.log('Wake refresh complete - nodes should be clickable');
     }, this);
 
     this.events.once('shutdown', this.shutdown, this);
