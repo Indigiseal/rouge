@@ -910,7 +910,7 @@ export class CardDataGenerator {
     createAmuletCard(floor) {
         // Get available amulets for current floor
         const availableAmulets = this.amuletTypes.filter(amulet => floor >= amulet.minFloor);
-        
+
         if (availableAmulets.length === 0) {
             // Fallback to first amulet if none available
             const chosen = this.amuletTypes[0];
@@ -949,6 +949,71 @@ export class CardDataGenerator {
             rarity: chosen.rarity,
             sprite: chosen.sprite
         };
+    }
+
+    getRandomAmuletByGrade(grade, floor = 1) {
+        const rarityPools = {
+            Common: ['common'],
+            Uncommon: ['uncommon'],
+            Rare: ['rare'],
+            Epic: ['rare'],
+            Legendary: ['legendary']
+        };
+
+        const rarities = rarityPools[grade] || ['common'];
+        const candidates = this.amuletTypes.filter(amulet =>
+            rarities.includes(amulet.rarity) && floor >= amulet.minFloor
+        );
+
+        const pickFrom = candidates.length > 0
+            ? candidates
+            : this.amuletTypes.filter(amulet => floor >= amulet.minFloor);
+
+        if (!pickFrom.length) {
+            return null;
+        }
+
+        const totalWeight = pickFrom.reduce((sum, amulet) => sum + (amulet.weight || 1), 0);
+        let roll = Math.random() * totalWeight;
+        let chosen = null;
+        for (const amulet of pickFrom) {
+            roll -= (amulet.weight || 1);
+            if (roll <= 0) {
+                chosen = amulet;
+                break;
+            }
+        }
+
+        if (!chosen) {
+            chosen = pickFrom[0];
+        }
+
+        return {
+            id: chosen.id,
+            name: chosen.name,
+            rarity: chosen.rarity,
+            sprite: chosen.sprite,
+            grade: this.deriveAmuletGradeLabel(grade, chosen.rarity)
+        };
+    }
+
+    deriveAmuletGradeLabel(requestedGrade, rarity) {
+        if (requestedGrade === 'Epic' && rarity === 'rare') {
+            return 'Epic';
+        }
+        if (requestedGrade === 'Legendary' && rarity === 'legendary') {
+            return 'Legendary';
+        }
+
+        const rarityToGrade = {
+            common: 'Common',
+            uncommon: 'Uncommon',
+            rare: 'Rare',
+            legendary: 'Legendary',
+            cursed: 'Rare'
+        };
+
+        return rarityToGrade[rarity] || requestedGrade || 'Common';
     }
 
     createPotionCard(floor) {

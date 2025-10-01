@@ -10,6 +10,44 @@ export class CardSystem {
     }
     // ===== Front/back combat config =====
     static RANGED_MULTIPLIER = 0.8; // ranged deals 80% to compensate for reach
+    static TREASURE_CHEST_CONFIG = {
+      WOODEN: {
+        name: 'Wooden Chest',
+        tint: 0xb8864f,
+        goldRange: [18, 26],
+        crystalRange: [1, 3],
+        amuletGrades: [
+          { grade: 'Common', chance: 0.7 },
+          { grade: 'Uncommon', chance: 0.3 },
+        ],
+      },
+      SILVER: {
+        name: 'Silver Chest',
+        tint: 0xc0d8ff,
+        goldRange: [36, 78],
+        crystalRange: [3, 8],
+        amuletGrades: [
+          { grade: 'Uncommon', chance: 0.6 },
+          { grade: 'Rare', chance: 0.4 },
+        ],
+      },
+      GOLDEN: {
+        name: 'Golden Chest',
+        tint: 0xffd700,
+        goldRange: [72, 130],
+        crystalRange: [6, 12],
+        amuletGrades: [
+          { grade: 'Epic', chance: 0.6 },
+          { grade: 'Legendary', chance: 0.4 },
+        ],
+      },
+    };
+    static TREASURE_TYPE_WEIGHTS = [
+      { type: 'WOODEN', weight: 55 },
+      { type: 'SILVER', weight: 30 },
+      { type: 'GOLDEN', weight: 15 },
+    ];
+    static AMULET_GRADE_ORDER = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
     // --- weapon helpers (be liberal: support multiple schemas) ---
     isMeleeWeapon(w) {
       if (!w) return false;
@@ -361,13 +399,19 @@ export class CardSystem {
         }
       });
       this.boardCards = [];
+      const cf = this.scene.gameState?.currentFloor || 1;
+      const roomType = this.scene.gameState?.roomType || this.scene.roomType || 'COMBAT';
+
+      if (roomType === 'TREASURE') {
+        this.spawnTreasureChests();
+        return;
+      }
+
       // === boss shortcut (keep your logic) ===
       const currentFloor = this.scene.gameState.currentFloor;
       const bossFloors = [5, 10, 15, 20, 25, 30];
       if (bossFloors.includes(currentFloor)) { this.spawnBoss(); return; }
       // Determine scaled count (your code that decides roomType etc. can stay)
-      const cf = this.scene.gameState?.currentFloor || 1;
-      const roomType = this.scene.gameState?.roomType || this.scene.roomType || 'COMBAT';
       const cardCount = this._effectiveCardCount ? this._effectiveCardCount(roomType, cf) : Math.min(6 + Math.floor((cf - 1) * (20 / 29)), 26);
       // 1) build a connected brick "blob" for a nicer cluster
       const cells = this.buildCompactBrickCluster(cardCount);
@@ -851,6 +895,12 @@ export class CardSystem {
                     }
                 }
                 break;
+
+            case 'treasureChest': {
+                const cfg = CardSystem.TREASURE_CHEST_CONFIG[card.data.chestType] || CardSystem.TREASURE_CHEST_CONFIG.WOODEN;
+                infoText = `${cfg.name}\nKey: full rewards\nWeapon: risky`;
+                break;
+            }
         }
         
         // Create default text for cases that didn't return early
@@ -888,6 +938,7 @@ export class CardSystem {
         if (card) {
             if (card.sprite) card.sprite.destroy();
             if (card.shadow) card.shadow.destroy();
+            if (card.highlight) card.highlight.destroy();
             if (card.infoText) {
                 if (card.infoText.list) {
                     card.infoText.destroy(true);
@@ -1260,22 +1311,332 @@ export class CardSystem {
         }
     }
 
+    spawnTreasureChests() {
+      const chestCount = Phaser.Math.Between(2, 3);
+      const cells = this.buildCompactBrickCluster(chestCount);
+      const place = this.computePlacement(cells);
+
+      this.boardCards = new Array(chestCount).fill(null);
+
+      for (let i = 0; i < chestCount; i++) {
+        const { r, c } = cells[i];
+        const { x, y } = this.brickToPixel(r, c, place);
+        const chestType = this.pickTreasureChestType();
+        const cfg = CardSystem.TREASURE_CHEST_CONFIG[chestType] || CardSystem.TREASURE_CHEST_CONFIG.WOODEN;
+
+        const shadow = this.scene.add.rectangle(x, y + 30, 70, 18, 0x000000, 0.45);
+        shadow.setDepth(0);
+
+        const highlight = this.scene.add.rectangle(x, y, 88, 96, cfg.tint, 0.18);
+        highlight.setStrokeStyle(2, cfg.tint, 0.85);
+        highlight.setVisible(false);
+        highlight.setDepth(1);
+
+        const sprite = this.scene.add.sprite(x, y, 'chest');
+        sprite.setScale(1.25);
+        sprite.setTint(cfg.tint);
+        sprite.setDepth(2);
+        sprite.setInteractive({ useHandCursor: true, dropZone: true });
+        sprite.on('pointerover', () => this.handleChestPointerState(i, true));
+        sprite.on('pointerout', () => this.handleChestPointerState(i, false));
+        sprite.on('pointerdown', () => {
+          if (!this.scene.inventorySystem?.dragState) {
+            this.scene.createFloatingText(x, y - 60, 'Use a key or weapon', 0xfff5a5);
+          }
+        });
+
+        const data = {
+          type: 'treasureChest',
+          chestType,
+          state: 'locked',
+          brick: { r, c },
+          baseTint: cfg.tint,
+          brickNeighbors: [],
+        };
+
+        this.boardCards[i] = {
+          sprite,
+          shadow,
+          highlight,
+          revealed: true,
+          data,
+          infoText: null,
+        };
+
+        this.createCardInfoText(this.boardCards[i]);
+      }
+    }
+
+    pickTreasureChestType() {
+      const total = CardSystem.TREASURE_TYPE_WEIGHTS.reduce((sum, w) => sum + w.weight, 0);
+      let roll = Math.random() * total;
+      for (const entry of CardSystem.TREASURE_TYPE_WEIGHTS) {
+        roll -= entry.weight;
+        if (roll <= 0) {
+          return entry.type;
+        }
+      }
+      return 'WOODEN';
+    }
+
+    handleChestPointerState(index, isOver) {
+      const card = this.boardCards[index];
+      if (!card || card.data?.type !== 'treasureChest') return;
+
+      if (!isOver) {
+        this.resetChestHighlight(card);
+        return;
+      }
+
+      if (card.data.state !== 'locked') return;
+      const dragState = this.scene.inventorySystem?.dragState;
+      if (!dragState || !dragState.cardData) return;
+
+      let tint = null;
+      if (dragState.cardData.type === 'key') {
+        tint = 0x66ff99;
+      } else if (dragState.cardData.type === 'weapon') {
+        tint = 0xffaa33;
+      }
+
+      if (!tint) return;
+
+      card.highlight?.setFillStyle(tint, 0.2);
+      card.highlight?.setStrokeStyle(2, tint, 0.9);
+      card.highlight?.setVisible(true);
+      card.sprite?.setTint(tint);
+    }
+
+    resetChestHighlight(card) {
+      if (!card) return;
+      if (card.highlight) {
+        card.highlight.setVisible(false);
+      }
+      if (card.sprite) {
+        if (card.data?.baseTint) {
+          card.sprite.setTint(card.data.baseTint);
+        } else {
+          card.sprite.clearTint();
+        }
+      }
+    }
+
+    clearTreasureHighlights() {
+      this.boardCards.forEach(card => {
+        if (card && card.data?.type === 'treasureChest') {
+          this.resetChestHighlight(card);
+        }
+      });
+    }
+
+    findChestAt(x, y) {
+      for (let i = 0; i < this.boardCards.length; i++) {
+        const card = this.boardCards[i];
+        if (!card || card.data?.type !== 'treasureChest') continue;
+        if (card.data.state !== 'locked') continue;
+        if (!card.sprite) continue;
+        const bounds = card.sprite.getBounds();
+        if (Phaser.Geom.Rectangle.Contains(bounds, x, y)) {
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    openChestWithKey(index) {
+      const card = this.boardCards[index];
+      if (!card || card.data?.type !== 'treasureChest') return false;
+      if (card.data.state !== 'locked') return false;
+
+      this.resetChestHighlight(card);
+      this.resolveChestOpen(index, { multiplier: 1, downgrade: false, method: 'key' });
+      return true;
+    }
+
+    openChestWithWeapon(index) {
+      const card = this.boardCards[index];
+      if (!card || card.data?.type !== 'treasureChest') return { success: false, trapTriggered: false };
+      if (card.data.state !== 'locked') return { success: false, trapTriggered: false };
+
+      this.resetChestHighlight(card);
+
+      const trapTriggered = Math.random() < 0.5;
+      if (trapTriggered) {
+        this.triggerChestTrap(card);
+      }
+
+      const multiplier = trapTriggered ? 0.5 : 0.75;
+      this.resolveChestOpen(index, {
+        multiplier,
+        downgrade: trapTriggered,
+        method: 'weapon',
+        trapTriggered,
+      });
+
+      return { success: true, trapTriggered };
+    }
+
+    triggerChestTrap(card) {
+      if (!card || !card.sprite) return;
+      const trapSprite = this.scene.add.sprite(card.sprite.x, card.sprite.y, 'trap');
+      trapSprite.setScale(1.2);
+      trapSprite.setDepth(card.sprite.depth + 1);
+      trapSprite.setAlpha(0);
+      SoundHelper.playSound(this.scene, 'trap_trigger', 0.6);
+
+      this.scene.tweens.add({
+        targets: trapSprite,
+        alpha: 1,
+        scale: 1.6,
+        duration: 200,
+        yoyo: true,
+        ease: 'Power2',
+        onComplete: () => trapSprite.destroy(),
+      });
+
+      const trapDamage = 8;
+      const result = this.scene.gameState.takeDamage(trapDamage, -1, 'trap');
+      if (result.actualDamage > 0) {
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 60, `Trap! -${result.actualDamage} HP`, 0xff4444);
+      } else {
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 60, 'Trap avoided!', 0x66ff99);
+      }
+
+      if (this.scene.gameState?.damageTracking?.runStats) {
+        this.scene.gameState.damageTracking.runStats.trapsTriggered++;
+      }
+    }
+
+    resolveChestOpen(index, options = {}) {
+      const card = this.boardCards[index];
+      if (!card || card.data?.type !== 'treasureChest') return false;
+      if (card.data.state !== 'locked') return false;
+
+      card.data.state = 'opened';
+      card.sprite.disableInteractive();
+
+      const cfg = CardSystem.TREASURE_CHEST_CONFIG[card.data.chestType] || CardSystem.TREASURE_CHEST_CONFIG.WOODEN;
+      const baseRewards = this.calculateChestRewards(card.data.chestType);
+      let amuletGrade = baseRewards.amuletGrade;
+      const originalGrade = amuletGrade;
+      if (options.downgrade && amuletGrade) {
+        amuletGrade = this.downgradeAmuletGrade(amuletGrade);
+      }
+      const downgraded = Boolean(options.downgrade && originalGrade);
+
+      const multiplier = options.multiplier ?? 1;
+      const rawGold = Math.max(0, Math.round(baseRewards.gold * multiplier));
+      const rawCrystals = Math.max(0, Math.round(baseRewards.crystals * multiplier));
+
+      const goldReward = this.scene.amuletManager ? this.scene.amuletManager.modifyGoldFound(rawGold) : rawGold;
+      this.scene.gameState.coins += goldReward;
+      this.scene.gameState.crystals += rawCrystals;
+
+      SoundHelper.playSound(this.scene, 'chest_open', 0.6);
+
+      this.scene.createFloatingText(card.sprite.x, card.sprite.y - 40, `+${goldReward} Gold`, 0xffd700);
+      if (rawCrystals > 0) {
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 20, `+${rawCrystals} Crystals`, 0x66ccff);
+      }
+
+      let amuletMessage = null;
+      let rewardGradeLabel = amuletGrade;
+      if (amuletGrade) {
+        const amuletReward = this.cardDataGenerator.getRandomAmuletByGrade(amuletGrade, this.scene.gameState.currentFloor);
+        if (amuletReward) {
+          rewardGradeLabel = amuletReward.grade || rewardGradeLabel || originalGrade;
+        }
+        if (amuletReward && this.scene.amuletManager) {
+          const added = this.scene.amuletManager.addAmulet(amuletReward.id);
+          if (added) {
+            amuletMessage = `${rewardGradeLabel || amuletGrade || originalGrade} Amulet: ${amuletReward.name}`;
+          } else {
+            const fallback = Math.max(1, 2 + CardSystem.AMULET_GRADE_ORDER.indexOf(amuletGrade) * 2);
+            this.scene.gameState.crystals += fallback;
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y, `Duplicate! +${fallback} Crystals`, 0x66ccff);
+          }
+        }
+      }
+
+      if (downgraded) {
+        const displayGrade = rewardGradeLabel || amuletGrade || originalGrade;
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 70, `Amulet downgraded to ${displayGrade}`, 0xff8844);
+      }
+
+      if (amuletMessage) {
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y, amuletMessage, 0xfff1b5);
+      }
+
+      this.scene.tweens.add({
+        targets: card.sprite,
+        scale: card.sprite.scale * 1.1,
+        yoyo: true,
+        duration: 160,
+        onComplete: () => {
+          this.removeCard(index);
+          this.checkFloorClear();
+        },
+      });
+
+      this.scene.updateUI();
+      return true;
+    }
+
+    calculateChestRewards(chestType) {
+      const cfg = CardSystem.TREASURE_CHEST_CONFIG[chestType] || CardSystem.TREASURE_CHEST_CONFIG.WOODEN;
+      const gold = Phaser.Math.Between(cfg.goldRange[0], cfg.goldRange[1]);
+      const crystals = Phaser.Math.Between(cfg.crystalRange[0], cfg.crystalRange[1]);
+      const amuletGrade = this.pickAmuletGrade(cfg.amuletGrades);
+      return { gold, crystals, amuletGrade };
+    }
+
+    pickAmuletGrade(entries = []) {
+      if (!entries.length) return null;
+      const total = entries.reduce((sum, entry) => sum + entry.chance, 0);
+      let roll = Math.random() * total;
+      for (const entry of entries) {
+        roll -= entry.chance;
+        if (roll <= 0) {
+          return entry.grade;
+        }
+      }
+      return entries[entries.length - 1].grade;
+    }
+
+    downgradeAmuletGrade(grade) {
+      const order = CardSystem.AMULET_GRADE_ORDER;
+      const idx = order.indexOf(grade);
+      if (idx <= 0) return order[0];
+      return order[idx - 1];
+    }
+
     checkFloorClear() {
-        const enemiesRemaining = this.boardCards.some(c => 
+        if (this.scene.roomType === 'TREASURE') {
+            const chestsRemaining = this.boardCards.some(c =>
+                c && c.data?.type === 'treasureChest' && c.data.state !== 'opened'
+            );
+
+            if (!chestsRemaining && !this.scene.enemiesCleared) {
+                this.scene.onEnemiesCleared();
+            }
+            return;
+        }
+
+        const enemiesRemaining = this.boardCards.some(c =>
             c && c.revealed && (c.data.type === 'enemy' || c.data.type === 'boss')
         );
-        
+
         if (!enemiesRemaining && !this.scene.enemiesCleared) {
             // Check if there are any unrevealed cards that could be enemies
-            const potentialEnemies = this.boardCards.some(c => 
+            const potentialEnemies = this.boardCards.some(c =>
                 c && !c.revealed && c.data.type === 'enemy'
             );
-            
+
             if (potentialEnemies) return;
-            
+
             const currentFloor = this.scene.gameState.currentFloor;
             const bossFloors = [5, 10, 15, 20, 25, 30];
-            
+
             if (bossFloors.includes(currentFloor)) {
                 // Check if this is the final floor
                 if (currentFloor === 30) {

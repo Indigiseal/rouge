@@ -23,6 +23,7 @@ export class InventorySystem {
         this.slotSprites = [];
         this.discardArea = null;
         this.uiGroup = this.scene.add.group();
+        this.dragState = null;
         this.createInventoryUI();
         this.rebuildInventorySprites();
     }
@@ -491,7 +492,9 @@ export class InventorySystem {
         // Add drag events with proper position tracking
         cardSprite.on('dragstart', () => {
             if (!cardSprite.scene) return;
-            
+
+            this.dragState = { slotIndex, cardData, sprite: cardSprite };
+
             // Store the starting position
             cardSprite.setData('dragStartX', cardSprite.x);
             cardSprite.setData('dragStartY', cardSprite.y);
@@ -553,7 +556,10 @@ export class InventorySystem {
         
         cardSprite.on('dragend', () => {
             if (!cardSprite.scene) return;
-            
+
+            this.dragState = null;
+            this.scene.cardSystem?.clearTreasureHighlights();
+
             if (typeof cardSprite.clearTint === 'function') {
                 cardSprite.clearTint();
             }
@@ -633,12 +639,58 @@ export class InventorySystem {
     handleCardDrop(slotIndex, cardSprite) {
         const cardData = this.slots[slotIndex];
         if (!cardData) return;
-        
+
+        const cardSystem = this.scene.cardSystem;
+        const chestIndex = cardSystem ? cardSystem.findChestAt(cardSprite.x, cardSprite.y) : -1;
+
+        if (cardData.type === 'key' && chestIndex !== -1) {
+            const opened = cardSystem.openChestWithKey(chestIndex);
+            if (opened) {
+                this.cleanupCardSprites(slotIndex, cardSprite);
+                this.removeCard(slotIndex, false);
+                cardSprite.destroy();
+                const slotSprite = this.slotSprites[slotIndex];
+                if (slotSprite) {
+                    slotSprite.card = null;
+                }
+            } else {
+                this.returnCardToSlot(slotIndex, cardSprite);
+            }
+            this.scene.updateUI();
+            return;
+        }
+
+        if (cardData.type === 'weapon' && chestIndex !== -1) {
+            if (!this.scene.useAction()) {
+                this.returnWeaponToSlot(slotIndex, cardSprite);
+                return;
+            }
+
+            const result = cardSystem.openChestWithWeapon(chestIndex);
+            if (!result.success) {
+                this.returnWeaponToSlot(slotIndex, cardSprite);
+                return;
+            }
+
+            cardData.durability -= 1;
+            if (cardData.durability <= 0) {
+                this.handleWeaponBreak(cardData, cardSprite, slotIndex);
+                this.scene.updateUI();
+                return;
+            }
+
+            this.updateWeaponInfoText(cardSprite, cardData);
+            this.returnWeaponToSlotDelayed(slotIndex, cardSprite);
+            this.scene.gameState.equippedWeapon = null;
+            this.scene.updateUI();
+            return;
+        }
+
         // Check for drop on discard area FIRST to prevent conflicts with other drop zones
         if (this.discardArea && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.discardArea.getBounds())) {
             SoundHelper.playSound(this.scene, 'item_discard', 0.7);
             this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Discarded!', 0xff0000);
-            
+
             // Properly clean up ALL sprites and effects
             this.cleanupCardSprites(slotIndex, cardSprite);
             this.removeCard(slotIndex, false); // Don't destroy the sprite in removeCard
