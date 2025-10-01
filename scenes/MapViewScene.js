@@ -16,8 +16,9 @@ export class MapViewScene extends Phaser.Scene {
     this.gameState = data.gameState;
 
     // Derive current act from the global floor (1..45)
-    const cf = Math.max(1, this.gameState.currentFloor || 1);
-    this.currentAct = getCurrentAct(cf);
+    const globalFloor = Math.max(1, Math.min(MAX_FLOOR, this.gameState.currentFloor || 1));
+    this.globalFloor = globalFloor;
+    this.currentAct = getCurrentAct(globalFloor);
 
     // Build/keep full map
     if (!this.gameState.dungeonMap) {
@@ -43,7 +44,7 @@ export class MapViewScene extends Phaser.Scene {
     // Background & title
     this.add.rectangle(320, 180, 640, 360, 0x8b7355);
     this.add.rectangle(320, 30, 640, 60, 0x6b5d4f);
-    const actFloor = getActFloor(cf);
+    const actFloor = getActFloor(this.globalFloor);
     this.add.text(320, 30, `Act ${this.currentAct} – Floor ${actFloor}`, {
       fontSize: '20px', fill: '#f2d3aa', fontFamily: '"Roboto Condensed"'
     }).setOrigin(0.5);
