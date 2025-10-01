@@ -50,9 +50,8 @@ export class MapViewScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Drag area sits BEHIND nodes so it won't eat clicks
-    this.dragArea = this.add.rectangle(320, 200, 600, 280, 0xffffff, 0)
+    this.dragArea = this.add.rectangle(320, 190, 620, 300, 0xffffff, 0)
       .setInteractive({ draggable: true }).setDepth(-1000);
-    this.setupDragging();
 
     // Map container
     this.mapContainer = this.add.container(320, 180);
@@ -60,7 +59,17 @@ export class MapViewScene extends Phaser.Scene {
     // Render structured map
     this.drawStructuredMap();
 
-    this.add.text(320, 340, 'Click glowing nodes to proceed • Drag to pan', {
+    this.setupDragging();
+    this.setupScrollWheel();
+    this.setupKeyboardPan();
+
+    // Center on player's current floor with a smart offset so upcoming paths are visible.
+    this.centerOnCurrentFloor({ animate: false, ratio: 0.65 });
+
+    this.createEdgeIndicators();
+    this.addCenterButton();
+
+    this.add.text(320, 340, 'Click glowing nodes to proceed • Drag / scroll / arrows to pan', {
       fontSize: '12px', fill: '#d4b896', fontFamily: '"Roboto Condensed"'
     }).setOrigin(0.5);
     this.events.on('wake', () => {
@@ -76,11 +85,49 @@ export class MapViewScene extends Phaser.Scene {
       this.dragStartY = p.y - (this.mapContainer?.y ?? 180);
     });
     this.dragArea.on('drag', (p) => {
-      if (!this.mapContainer) return;
-      this.mapContainer.x = Phaser.Math.Clamp(p.x - this.dragStartX, -200, 840);
-      this.mapContainer.y = Phaser.Math.Clamp(p.y - this.dragStartY, -100, 460);
+      if (!this.mapContainer || !this.dragLimits) return;
+      const targetX = p.x - this.dragStartX;
+      const targetY = p.y - this.dragStartY;
+      this.mapContainer.x = Phaser.Math.Clamp(targetX, this.dragLimits.minX, this.dragLimits.maxX);
+      this.mapContainer.y = Phaser.Math.Clamp(targetY, this.dragLimits.minY, this.dragLimits.maxY);
+      this.refreshEdgeIndicators();
     });
     this.dragArea.on('dragend', () => { this.isDragging = false; });
+  }
+
+  setupScrollWheel() {
+    this.input.on('wheel', (_pointer, _objects, _dx, dy) => {
+      if (!this.mapContainer || !this.dragLimits) return;
+      const speed = 0.35;
+      this.panMap(0, dy * speed);
+    });
+  }
+
+  setupKeyboardPan() {
+    this.cursors = this.input.keyboard?.createCursorKeys();
+  }
+
+  update(time, delta) {
+    super.update?.(time, delta);
+    if (!this.mapContainer || !this.cursors) return;
+    const speed = 0.25 * (delta ?? 16);
+    let dx = 0;
+    let dy = 0;
+    if (this.cursors.left?.isDown) dx += speed;
+    if (this.cursors.right?.isDown) dx -= speed;
+    if (this.cursors.up?.isDown) dy += speed;
+    if (this.cursors.down?.isDown) dy -= speed;
+    if (dx !== 0 || dy !== 0) {
+      this.panMap(dx, dy);
+    }
+  }
+
+  panMap(dx, dy) {
+    if (!this.mapContainer || !this.dragLimits) return;
+    const nextX = Phaser.Math.Clamp(this.mapContainer.x - dx, this.dragLimits.minX, this.dragLimits.maxX);
+    const nextY = Phaser.Math.Clamp(this.mapContainer.y - dy, this.dragLimits.minY, this.dragLimits.maxY);
+    this.mapContainer.setPosition(nextX, nextY);
+    this.refreshEdgeIndicators();
   }
 
   // ===== Clean lane layout like StS =====
@@ -116,6 +163,8 @@ export class MapViewScene extends Phaser.Scene {
     this.actMap.floors.forEach((floorNodes, f) => {
       floorNodes.forEach((node, i) => this.drawNode(node, f, i));
     });
+
+    this.updateMapBounds();
   }
 
   drawLinks() {
@@ -186,6 +235,20 @@ export class MapViewScene extends Phaser.Scene {
     const circle = this.add.circle(node.__x, node.__y, radius, baseFill, 1);
     circle.setStrokeStyle(ringWidth, ringColor).setAlpha(alpha);
     this.mapContainer.add(circle);
+
+    if (state === 'current') {
+      const glow = this.add.circle(node.__x, node.__y, radius + 8, 0xffffff, 0.15)
+        .setBlendMode(Phaser.BlendModes.SCREEN);
+      this.mapContainer.add(glow);
+      this.tweens.add({
+        targets: glow,
+        scale: { from: 1, to: 1.25 },
+        alpha: { from: 0.35, to: 0 },
+        duration: 1400,
+        repeat: -1,
+        ease: 'sine.inout'
+      });
+    }
 
     const icons = { COMBAT: '⚔', ELITE: '☠', SHOP: '$', RARE_SHOP: '💎', REST: '🔥', ANVIL: '🔨', EVENT: '?', BOSS: '👹', TREASURE: '💰' };
     const label = this.add.text(node.__x, node.__y, icons[node.type] || '?', {
@@ -268,5 +331,98 @@ export class MapViewScene extends Phaser.Scene {
     this.scene.stop();
     this.scene.wake('GameScene');
     console.log('Woke GameScene for type:', node.type);
+  }
+
+  updateMapBounds() {
+    const padding = 120;
+    const nodes = this.actMap.floors.flat();
+    const minX = Math.min(...nodes.map(n => n.__x));
+    const maxX = Math.max(...nodes.map(n => n.__x));
+    const minY = Math.min(...nodes.map(n => n.__y));
+    const maxY = Math.max(...nodes.map(n => n.__y));
+
+    this.rawBounds = { minX, maxX, minY, maxY };
+
+    this.mapBounds = {
+      minX: minX - padding,
+      maxX: maxX + padding,
+      minY: minY - padding,
+      maxY: maxY + padding
+    };
+
+    const viewWidth = this.scale.width;
+    const viewHeight = this.scale.height;
+    this.dragLimits = {
+      minX: viewWidth - 40 - this.mapBounds.maxX,
+      maxX: 40 - this.mapBounds.minX,
+      minY: viewHeight - 40 - this.mapBounds.maxY,
+      maxY: 40 - this.mapBounds.minY
+    };
+  }
+
+  centerOnCurrentFloor({ animate = true, ratio = 0.5 } = {}) {
+    if (!this.mapContainer || !this.dragLimits) return;
+    const cursor = this.gameState.mapCursor;
+    const floorNodes = this.actMap.floors[cursor.floor];
+    const node = floorNodes?.[cursor.node];
+    if (!node) return;
+
+    const targetX = this.scale.width * 0.5;
+    const targetY = this.scale.height * Phaser.Math.Clamp(ratio, 0.2, 0.85);
+
+    let destX = targetX - node.__x;
+    let destY = targetY - node.__y;
+    destX = Phaser.Math.Clamp(destX, this.dragLimits.minX, this.dragLimits.maxX);
+    destY = Phaser.Math.Clamp(destY, this.dragLimits.minY, this.dragLimits.maxY);
+
+    if (animate) {
+      this.tweens.add({
+        targets: this.mapContainer,
+        x: destX,
+        y: destY,
+        ease: 'sine.out',
+        duration: 400,
+        onUpdate: () => this.refreshEdgeIndicators(),
+        onComplete: () => this.refreshEdgeIndicators()
+      });
+    } else {
+      this.mapContainer.setPosition(destX, destY);
+      this.refreshEdgeIndicators();
+    }
+  }
+
+  addCenterButton() {
+    const btn = this.add.text(600, 320, 'Center', {
+      fontSize: '14px', fill: '#f2d3aa', backgroundColor: '#3f2f28', padding: { x: 8, y: 4 },
+      fontFamily: '"Roboto Condensed"'
+    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
+
+    btn.on('pointerover', () => btn.setStyle({ backgroundColor: '#6b5d4f' }));
+    btn.on('pointerout', () => btn.setStyle({ backgroundColor: '#3f2f28' }));
+    btn.on('pointerdown', () => {
+      this.centerOnCurrentFloor({ animate: true, ratio: 0.65 });
+    });
+  }
+
+  createEdgeIndicators() {
+    const arrowColor = 0xf2d3aa;
+    const top = this.add.triangle(320, 68, 0, 14, 12, 14, 6, 0, arrowColor, 0.6)
+      .setAlpha(0).setDepth(1000);
+    const bottom = this.add.triangle(320, 292, 0, 0, 12, 0, 6, 14, arrowColor, 0.6)
+      .setAlpha(0).setDepth(1000);
+    this.edgeIndicators = { top, bottom };
+    this.refreshEdgeIndicators();
+  }
+
+  refreshEdgeIndicators() {
+    if (!this.edgeIndicators || !this.rawBounds || !this.mapContainer) return;
+    const topScreen = this.mapContainer.y + this.rawBounds.minY;
+    const bottomScreen = this.mapContainer.y + this.rawBounds.maxY;
+    const topMargin = 60;
+    const bottomMargin = this.scale.height - 60;
+    const hasAbove = topScreen < topMargin;
+    const hasBelow = bottomScreen > bottomMargin;
+    this.edgeIndicators.top?.setAlpha(hasAbove ? 0.6 : 0);
+    this.edgeIndicators.bottom?.setAlpha(hasBelow ? 0.6 : 0);
   }
 }
