@@ -1308,6 +1308,7 @@ export class CardSystem {
               this.boardCards[index] = null;
             }
             this.checkFloorClear();
+        }
     }
 
     spawnTreasureChests() {
