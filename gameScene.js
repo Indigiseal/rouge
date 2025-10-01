@@ -5,6 +5,7 @@ import { AmuletManager } from './AmuletManager.js';
 import { SoundHelper } from './utils/SoundHelper.js';
 import { SaveManager } from './SaveManager.js';
 import { MetaProgressionManager } from './MetaProgressionManager.js';
+import { getActFloor, getCurrentAct, MAX_FLOOR } from './utils/ActUtils.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -133,7 +134,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     shouldStartNewFloor() {
-        if (!['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType)) {
+        if (!['COMBAT', 'ELITE', 'BOSS', 'TREASURE'].includes(this.roomType)) {
             return false;
         }
 
@@ -251,7 +252,7 @@ export class GameScene extends Phaser.Scene {
             fill: '#aaaaaa',
             fontFamily: '"Roboto Condensed"'
         });
-        this.floorText = this.add.text(520, 15, 'Floor: 1', {
+        this.floorText = this.add.text(520, 15, this.formatFloorText(), {
             fontSize: '12px',
             fill: '#ffffff',
             fontFamily: '"Roboto Condensed"'
@@ -336,6 +337,10 @@ export class GameScene extends Phaser.Scene {
         // Refresh type before spawn
         console.log('startNewFloor roomType:', this.roomType);
         this.updateRoomTitle();
+        if (this.nextFloorButtonText) {
+            const label = this.roomType === 'TREASURE' ? 'Continue' : 'Next Floor';
+            this.nextFloorButtonText.setText(label);
+        }
         this.cardSystem.spawnFloorCards();
         this.inventorySystem.addStartingCards();
         // DON'T replenish action points here
@@ -398,7 +403,7 @@ export class GameScene extends Phaser.Scene {
                 fontSize: '12px'
             });
         }
-        this.floorText.setText(`Floor: ${this.gameState.currentFloor}`);
+        this.floorText.setText(this.formatFloorText());
         
         // Update health bar
         this.updateAmuletsUI();
@@ -813,22 +818,39 @@ export class GameScene extends Phaser.Scene {
         this._transitioning = true;
         // Hard-disable the button so it can't be clicked again
         if (this.nextFloorButton) this.nextFloorButton.disableInteractive();
-        // Give some coins for clearing the floor
-        const baseReward = 5 + this.gameState.currentFloor * 2;
-        
-        // Apply gold modifier from amulets
-        const reward = this.amuletManager ? 
-            this.amuletManager.modifyGoldFound(baseReward) : baseReward;
-        
-        this.gameState.coins += reward;
-        SoundHelper.playSound(this, 'coin_collect', 0.4);
-        this.createFloatingText(320, 180, `Floor Cleared! +${reward} coins`, 0xffd700);
+        if (this.roomType === 'TREASURE') {
+            SoundHelper.playSound(this, 'treasure_explode', 0.5);
+            this.createFloatingText(320, 180, 'Treasure Collected!', 0xffd700);
+        } else {
+            // Give some coins for clearing the floor
+            const baseReward = 5 + this.gameState.currentFloor * 2;
+
+            // Apply gold modifier from amulets
+            const reward = this.amuletManager ?
+                this.amuletManager.modifyGoldFound(baseReward) : baseReward;
+
+            this.gameState.coins += reward;
+            SoundHelper.playSound(this, 'coin_collect', 0.4);
+            this.createFloatingText(320, 180, `Floor Cleared! +${reward} coins`, 0xffd700);
+        }
         
         // Process amulet floor end effects before moving to next floor
         if (this.amuletManager) {
             this.amuletManager.processFloorEnd();
         }
         
+        if (this.gameState.currentFloor < MAX_FLOOR) {
+            this.gameState.currentFloor += 1;
+            if (this.gameState.damageTracking?.runStats) {
+                this.gameState.damageTracking.runStats.floorsReached = Math.max(
+                    this.gameState.damageTracking.runStats.floorsReached || 1,
+                    this.gameState.currentFloor
+                );
+            }
+        }
+
+        this.updateUI();
+
         this.time.delayedCall(1500, () => {
             this.scene.sleep();
             this.scene.launch('MapViewScene', { gameState: this.gameState });
@@ -839,8 +861,15 @@ export class GameScene extends Phaser.Scene {
         this.enemiesCleared = true;
         this.nextFloorButton.setVisible(true);
         this.nextFloorButtonText.setVisible(true);
-        this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
-        this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
+        if (this.roomType === 'TREASURE') {
+            this.nextFloorButtonText.setText('Continue');
+            this.createFloatingText(320, 100, 'Treasure secured!', 0xffd700);
+            this.createFloatingText(320, 120, 'Collect rewards then continue.', 0xffffff);
+        } else {
+            this.nextFloorButtonText.setText('Next Floor');
+            this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
+            this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
+        }
     }
     
     gameWon() {
@@ -1047,9 +1076,17 @@ export class GameScene extends Phaser.Scene {
         let title = 'Combat Room';
         if (this.roomType === 'ELITE') title = 'Elite Combat';
         if (this.roomType === 'BOSS') title = 'Boss Fight';
+        if (this.roomType === 'TREASURE') title = 'Treasure Vault';
         this.roomTitle.setText(title);
     }
-    
+
+    formatFloorText() {
+        const globalFloor = Math.max(1, this.gameState?.currentFloor || 1);
+        const act = getCurrentAct(globalFloor);
+        const actFloor = getActFloor(globalFloor);
+        return `Act ${act} - Floor ${actFloor}`;
+    }
+
     shutdown() {
         this.input.keyboard.off('keydown-ESC');
         this.events.off('endPlayerTurn', this._handleEndPlayerTurn);

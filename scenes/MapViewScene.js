@@ -1,6 +1,13 @@
 // scenes/MapViewScene.js
 import Phaser from 'phaser';
 import { MapGenerator } from '../utils/MapGenerator.js';
+import {
+  FLOORS_PER_ACT,
+  MAX_FLOOR,
+  getActBounds,
+  getActFloor,
+  getCurrentAct
+} from '../utils/ActUtils.js';
 
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
@@ -8,9 +15,9 @@ export class MapViewScene extends Phaser.Scene {
   init(data) {
     this.gameState = data.gameState;
 
-    // Derive current act from currentFloor (1..30), default to 1
+    // Derive current act from the global floor (1..45)
     const cf = Math.max(1, this.gameState.currentFloor || 1);
-    this.currentAct = Math.floor((cf - 1) / 10) + 1;
+    this.currentAct = getCurrentAct(cf);
 
     // Build/keep full map
     if (!this.gameState.dungeonMap) {
@@ -20,7 +27,7 @@ export class MapViewScene extends Phaser.Scene {
     this.actMap = this.gameState.dungeonMap[`act${this.currentAct}`];
 
     // Ensure a single authoritative cursor (act-local)
-    // floor: 0..9 (0 is the fixed start node, 9 is boss floor)
+    // floor: 0..FLOORS_PER_ACT (0 is the fixed start node, last is boss floor)
     if (!this.gameState.mapCursor || this.gameState.mapCursor.act !== this.currentAct) {
       this.gameState.mapCursor = { act: this.currentAct, floor: 0, node: 0 };
       // Mark the start as visited so connections from start are valid
@@ -36,7 +43,8 @@ export class MapViewScene extends Phaser.Scene {
     // Background & title
     this.add.rectangle(320, 180, 640, 360, 0x8b7355);
     this.add.rectangle(320, 30, 640, 60, 0x6b5d4f);
-    this.add.text(320, 30, `Act ${this.currentAct} – Floor ${this.gameState.currentFloor || 1}`, {
+    const actFloor = getActFloor(cf);
+    this.add.text(320, 30, `Act ${this.currentAct} – Floor ${actFloor}`, {
       fontSize: '20px', fill: '#f2d3aa', fontFamily: '"Roboto Condensed"'
     }).setOrigin(0.5);
 
@@ -227,11 +235,14 @@ export class MapViewScene extends Phaser.Scene {
     // Mark from and to visited (fixes stuck visuals)
     fromNode.visited = true;
     node.visited = true;
-    this.gameState.mapCursor = { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx };
-    this.gameState.currentFloor = (this.gameState.currentFloor || 1) + 1;
+    const safeFloorIdx = Math.min(targetFloorIdx, FLOORS_PER_ACT);
+    this.gameState.mapCursor = { act: this.currentAct, floor: safeFloorIdx, node: targetNodeIdx };
+    const { start } = getActBounds(this.currentAct);
+    const globalFloor = Math.min(MAX_FLOOR, start + safeFloorIdx - 1);
+    this.gameState.currentFloor = globalFloor;
     // Store type
     this.gameState.roomType = node.type;
-    const isCombatRoom = ['COMBAT', 'ELITE', 'BOSS'].includes(node.type);
+    const isCombatRoom = ['COMBAT', 'ELITE', 'BOSS', 'TREASURE'].includes(node.type);
     if (isCombatRoom) {
       const currentId = Number.isFinite(this.gameState.activeRoomId)
         ? this.gameState.activeRoomId
@@ -241,15 +252,14 @@ export class MapViewScene extends Phaser.Scene {
     }
     console.log('Stored roomType:', this.gameState.roomType);
     // Route
-    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE'];
+    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT'];
     if (nonCombat.includes(node.type)) {
       this.scene.sleep(); // Sleep map for overlay
-      const key = 
+      const key =
         node.type === 'SHOP' ? 'ShopScene' :
         node.type === 'RARE_SHOP' ? 'RareShopScene' :
         node.type === 'REST' ? 'RestScene' :
-        node.type === 'ANVIL' ? 'AnvilScene' :
-        node.type === 'TREASURE' ? 'TreasureScene' : 'EventScene';
+        node.type === 'ANVIL' ? 'AnvilScene' : 'EventScene';
       this.scene.launch(key, { gameState: this.gameState });
       return;
     }

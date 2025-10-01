@@ -1,3 +1,5 @@
+import { MAX_FLOOR } from './utils/ActUtils.js';
+
 export class GameState {
     constructor(scene) {
         this.scene = scene;
@@ -65,8 +67,8 @@ export class GameState {
     }
 
     nextFloor() {
-        this.currentFloor++;
-        
+        this.currentFloor = Math.min(MAX_FLOOR, this.currentFloor + 1);
+
         // Make sure inventory syncs from the actual inventory system
         const gameScene = this.scene.scene.get('GameScene');
         if (gameScene && gameScene.inventorySystem) {

@@ -14,7 +14,7 @@ export class RestScene extends Phaser.Scene {
         const continueButton = this.add.text(320, 280, 'Continue to Next Floor', { fontSize: '18px', fill: '#00ff00', fontFamily: '"Roboto Condensed"' })
             .setInteractive({ useHandCursor: true })
             .on('pointerdown', () => {
-                // NO nextFloor() here—map already did it
+                this.gameState.nextFloor();
                 this.scene.stop(); // Close rest
                 this.scene.wake('MapViewScene'); // Back to map
                 console.log('Woke MapViewScene after rest');

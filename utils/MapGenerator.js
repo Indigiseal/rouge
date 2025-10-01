@@ -1,8 +1,10 @@
 // utils/MapGenerator.js
+import { TOTAL_ACTS, FLOORS_PER_ACT, getActBounds } from './ActUtils.js';
+
 export class MapGenerator {
   constructor({
     LANES = 7,
-    FLOORS = 10,          // 0..8 normal, 9 boss (matches your act=10 floors)
+    FLOORS = FLOORS_PER_ACT + 1,  // +1 for the fixed start node at index 0
     PATHS = 6,
     LANE_GAP = 120,       // pixel spacing for x (so MapViewScene doesn't change)
     eliteMult = 1.0       // set 1.6 if you want more elites later
@@ -13,16 +15,21 @@ export class MapGenerator {
     this.LANE_GAP = LANE_GAP;
     this.eliteMult = eliteMult;
 
-    this.acts = [
-      { start: 1, end: 10, boss: 'Giant Skeleton' },
-      { start: 11, end: 20, boss: 'Spider Queen' },
-      { start: 21, end: 30, boss: 'Lich' }
-    ];
+    const defaultBosses = ['Spider Queen', 'Soul Eater', 'Cerberus'];
+    this.acts = Array.from({ length: TOTAL_ACTS }, (_, idx) => {
+      const actNumber = idx + 1;
+      const { start, end } = getActBounds(actNumber);
+      return {
+        start,
+        end,
+        boss: defaultBosses[idx] || `Boss ${actNumber}`
+      };
+    });
   }
 
   generateFullMap() {
     const full = {};
-    for (let act = 1; act <= 3; act++) full[`act${act}`] = this.generateAct(act);
+    for (let act = 1; act <= TOTAL_ACTS; act++) full[`act${act}`] = this.generateAct(act);
     return full;
   }
 

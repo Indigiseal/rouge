@@ -33,7 +33,7 @@ export class AnvilScene extends Phaser.Scene {
         })
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
-            // NO nextFloor() here—map already did it
+            this.gameState.nextFloor();
             this.scene.stop(); // Close anvil
             this.scene.wake('MapViewScene'); // Back to map
             console.log('Woke MapViewScene after anvil');
