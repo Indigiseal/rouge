@@ -2,7 +2,7 @@
 export class MapGenerator {
   constructor({
     LANES = 7,
-    FLOORS = 16,          // 0 start, 1..14 normal, 15 boss → 15 playable floors per act
+    FLOORS = 15,          // floors per act (indexed 0..14 → floors 1..15)
     PATHS = 6,
     LANE_GAP = 120,       // pixel spacing for x (so MapViewScene doesn't change)
     eliteMult = 1.0       // set 1.6 if you want more elites later
@@ -13,7 +13,7 @@ export class MapGenerator {
     this.LANE_GAP = LANE_GAP;
     this.eliteMult = eliteMult;
 
-    this.floorsPerAct = this.FLOORS - 1; // subtract the fixed start node
+    this.floorsPerAct = this.FLOORS; // 15 playable floors per act
     const bossNames = ['Spider Queen', 'Lich', 'Cerberus'];
 
     this.acts = bossNames.map((boss, index) => ({

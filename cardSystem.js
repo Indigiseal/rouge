@@ -2,8 +2,6 @@
 import { CardDataGenerator } from './CardDataGenerator.js';
 import { SoundHelper } from './utils/SoundHelper.js';
 
-const BOSS_FLOORS = [15, 30, 45];
-
 export class CardSystem {
     constructor(scene) {
         this.scene = scene;
@@ -409,9 +407,10 @@ export class CardSystem {
         return;
       }
 
-      // === boss shortcut (keep your logic) ===
-      const currentFloor = this.scene.gameState.currentFloor;
-      if (BOSS_FLOORS.includes(currentFloor)) { this.spawnBoss(); return; }
+      if (roomType === 'BOSS') {
+        this.spawnBoss();
+        return;
+      }
       // Determine scaled count (your code that decides roomType etc. can stay)
       const cardCount = this._effectiveCardCount ? this._effectiveCardCount(roomType, cf) : Math.min(6 + Math.floor((cf - 1) * (20 / 29)), 26);
       // 1) build a connected brick "blob" for a nicer cluster
@@ -1611,6 +1610,21 @@ export class CardSystem {
       return order[idx - 1];
     }
 
+    getFinalBossFloor() {
+      const dungeonMap = this.scene.gameState?.dungeonMap;
+      if (!dungeonMap) {
+        return 45;
+      }
+      const acts = Object.keys(dungeonMap)
+        .map(key => dungeonMap[key])
+        .filter(Boolean);
+      if (!acts.length) {
+        return 45;
+      }
+      const lastAct = acts[acts.length - 1];
+      return lastAct?.endFloor ?? 45;
+    }
+
     checkFloorClear() {
         if (this.scene.roomType === 'TREASURE') {
             const chestsRemaining = this.boardCards.some(c =>
@@ -1635,13 +1649,12 @@ export class CardSystem {
 
             if (potentialEnemies) return;
 
-            const currentFloor = this.scene.gameState.currentFloor;
-            if (BOSS_FLOORS.includes(currentFloor)) {
-                // Check if this is the final floor
-                if (currentFloor === BOSS_FLOORS[BOSS_FLOORS.length - 1]) {
+            if (this.scene.roomType === 'BOSS') {
+                const currentFloor = this.scene.gameState.currentFloor || 1;
+                const finalFloor = this.getFinalBossFloor();
+                if (currentFloor >= finalFloor) {
                     this.scene.time.delayedCall(1000, () => this.scene.gameWon());
                 } else {
-                    // Boss defeated, continue to next floor
                     this.scene.onEnemiesCleared();
                 }
             } else {

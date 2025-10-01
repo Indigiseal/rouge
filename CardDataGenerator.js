@@ -258,6 +258,12 @@ export class CardDataGenerator {
         };
     }
 
+    getBossForAct(act) {
+        if (act === 1) return this.bossData[15];
+        if (act === 2) return this.bossData[30];
+        return this.bossData[45];
+    }
+
     initializeTrapData() {
         this.trapTypes = [
             {
