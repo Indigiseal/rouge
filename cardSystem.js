@@ -2,6 +2,8 @@
 import { CardDataGenerator } from './CardDataGenerator.js';
 import { SoundHelper } from './utils/SoundHelper.js';
 
+const BOSS_FLOORS = [15, 30, 45];
+
 export class CardSystem {
     constructor(scene) {
         this.scene = scene;
@@ -376,10 +378,10 @@ export class CardSystem {
     static MIN_CARDS = 6;
     static MAX_CARDS = 26;
     static ELITE_MULT = 1.25;
-    // 1..30 → 6..26 (linear). Clamp to be safe.
+    // 1..45 → 6..26 (linear). Clamp to be safe.
     _baseCardsForFloor(cf) {
-        const clamped = Math.max(1, Math.min(30, cf));
-        const t = (clamped - 1) / 29; // 0..1
+        const clamped = Math.max(1, Math.min(45, cf));
+        const t = (clamped - 1) / 44; // 0..1
         return Math.round(CardSystem.MIN_CARDS + t * (CardSystem.MAX_CARDS - CardSystem.MIN_CARDS));
     }
     _effectiveCardCount(roomType, cf) {
@@ -409,8 +411,7 @@ export class CardSystem {
 
       // === boss shortcut (keep your logic) ===
       const currentFloor = this.scene.gameState.currentFloor;
-      const bossFloors = [5, 10, 15, 20, 25, 30];
-      if (bossFloors.includes(currentFloor)) { this.spawnBoss(); return; }
+      if (BOSS_FLOORS.includes(currentFloor)) { this.spawnBoss(); return; }
       // Determine scaled count (your code that decides roomType etc. can stay)
       const cardCount = this._effectiveCardCount ? this._effectiveCardCount(roomType, cf) : Math.min(6 + Math.floor((cf - 1) * (20 / 29)), 26);
       // 1) build a connected brick "blob" for a nicer cluster
@@ -1635,11 +1636,9 @@ export class CardSystem {
             if (potentialEnemies) return;
 
             const currentFloor = this.scene.gameState.currentFloor;
-            const bossFloors = [5, 10, 15, 20, 25, 30];
-
-            if (bossFloors.includes(currentFloor)) {
+            if (BOSS_FLOORS.includes(currentFloor)) {
                 // Check if this is the final floor
-                if (currentFloor === 30) {
+                if (currentFloor === BOSS_FLOORS[BOSS_FLOORS.length - 1]) {
                     this.scene.time.delayedCall(1000, () => this.scene.gameWon());
                 } else {
                     // Boss defeated, continue to next floor

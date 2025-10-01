@@ -8,19 +8,34 @@ export class MapViewScene extends Phaser.Scene {
   init(data) {
     this.gameState = data.gameState;
 
-    // Derive current act from currentFloor (1..30), default to 1
-    const cf = Math.max(1, this.gameState.currentFloor || 1);
-    this.currentAct = Math.floor((cf - 1) / 10) + 1;
-
-    // Build/keep full map
+    // Build/keep full map before deriving act data
     if (!this.gameState.dungeonMap) {
       const gen = new MapGenerator();
       this.gameState.dungeonMap = gen.generateFullMap();
     }
-    this.actMap = this.gameState.dungeonMap[`act${this.currentAct}`];
+
+    const mapKeys = Object.keys(this.gameState.dungeonMap);
+    const acts = mapKeys
+      .map(key => this.gameState.dungeonMap[key])
+      .filter(Boolean);
+    const firstAct = acts[0];
+    this.totalActs = Math.max(acts.length, 1);
+    this.floorsPerAct = firstAct ? (firstAct.endFloor - firstAct.startFloor + 1) : 15;
+
+    // Derive current act from currentFloor, defaulting to act 1
+    const cf = Math.max(1, this.gameState.currentFloor || 1);
+    this.currentAct = Math.min(
+      this.totalActs,
+      Math.floor((cf - 1) / Math.max(this.floorsPerAct, 1)) + 1
+    );
+
+    this.actMap = this.gameState.dungeonMap[`act${this.currentAct}`] || acts[0];
+    if (!this.actMap) {
+      throw new Error('Failed to resolve current act map');
+    }
 
     // Ensure a single authoritative cursor (act-local)
-    // floor: 0..9 (0 is the fixed start node, 9 is boss floor)
+    // floor: 0..N (0 is the fixed start node, N is boss floor)
     if (!this.gameState.mapCursor || this.gameState.mapCursor.act !== this.currentAct) {
       this.gameState.mapCursor = { act: this.currentAct, floor: 0, node: 0 };
       // Mark the start as visited so connections from start are valid
@@ -228,8 +243,13 @@ export class MapViewScene extends Phaser.Scene {
     fromNode.visited = true;
     node.visited = true;
     this.gameState.mapCursor = { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx };
-    const actOffset = (this.currentAct - 1) * 10;
-    const absoluteFloor = actOffset + Math.max(1, targetFloorIdx);
+    const actOffset = (this.currentAct - 1) * Math.max(this.floorsPerAct, 1);
+    const absoluteFloor = this.actMap
+      ? Math.min(
+          this.actMap.endFloor,
+          Math.max(this.actMap.startFloor, actOffset + Math.max(1, targetFloorIdx))
+        )
+      : actOffset + Math.max(1, targetFloorIdx);
     this.gameState.currentFloor = Math.max(this.gameState.currentFloor || 1, absoluteFloor);
     // Store type
     this.gameState.roomType = node.type;
