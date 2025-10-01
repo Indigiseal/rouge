@@ -231,7 +231,7 @@ export class MapViewScene extends Phaser.Scene {
     this.gameState.currentFloor = (this.gameState.currentFloor || 1) + 1;
     // Store type
     this.gameState.roomType = node.type;
-    const isCombatRoom = ['COMBAT', 'ELITE', 'BOSS'].includes(node.type);
+    const isCombatRoom = ['COMBAT', 'ELITE', 'BOSS', 'TREASURE'].includes(node.type);
     if (isCombatRoom) {
       const currentId = Number.isFinite(this.gameState.activeRoomId)
         ? this.gameState.activeRoomId
@@ -241,15 +241,14 @@ export class MapViewScene extends Phaser.Scene {
     }
     console.log('Stored roomType:', this.gameState.roomType);
     // Route
-    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE'];
+    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT'];
     if (nonCombat.includes(node.type)) {
       this.scene.sleep(); // Sleep map for overlay
-      const key = 
+      const key =
         node.type === 'SHOP' ? 'ShopScene' :
         node.type === 'RARE_SHOP' ? 'RareShopScene' :
         node.type === 'REST' ? 'RestScene' :
-        node.type === 'ANVIL' ? 'AnvilScene' :
-        node.type === 'TREASURE' ? 'TreasureScene' : 'EventScene';
+        node.type === 'ANVIL' ? 'AnvilScene' : 'EventScene';
       this.scene.launch(key, { gameState: this.gameState });
       return;
     }

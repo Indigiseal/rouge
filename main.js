@@ -11,7 +11,6 @@ import { RareShopScene } from './scenes/RareShopScene.js';
 import { PauseMenuScene } from './scenes/PauseMenuScene.js';
 import { DeathRewardScene } from './scenes/DeathRewardScene.js';
 import { EventScene } from './scenes/EventScene.js';
-import { TreasureScene } from './scenes/TreasureScene.js';
 
 const config = {
     type: Phaser.AUTO,
@@ -31,8 +30,7 @@ const config = {
         RareShopScene,
         PauseMenuScene,
         DeathRewardScene,
-        EventScene,
-        TreasureScene
+        EventScene
     ],
     scale: {
         mode: Phaser.Scale.FIT,

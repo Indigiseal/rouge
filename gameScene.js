@@ -133,7 +133,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     shouldStartNewFloor() {
-        if (!['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType)) {
+        if (!['COMBAT', 'ELITE', 'BOSS', 'TREASURE'].includes(this.roomType)) {
             return false;
         }
 
@@ -336,6 +336,10 @@ export class GameScene extends Phaser.Scene {
         // Refresh type before spawn
         console.log('startNewFloor roomType:', this.roomType);
         this.updateRoomTitle();
+        if (this.nextFloorButtonText) {
+            const label = this.roomType === 'TREASURE' ? 'Continue' : 'Next Floor';
+            this.nextFloorButtonText.setText(label);
+        }
         this.cardSystem.spawnFloorCards();
         this.inventorySystem.addStartingCards();
         // DON'T replenish action points here
@@ -813,16 +817,21 @@ export class GameScene extends Phaser.Scene {
         this._transitioning = true;
         // Hard-disable the button so it can't be clicked again
         if (this.nextFloorButton) this.nextFloorButton.disableInteractive();
-        // Give some coins for clearing the floor
-        const baseReward = 5 + this.gameState.currentFloor * 2;
-        
-        // Apply gold modifier from amulets
-        const reward = this.amuletManager ? 
-            this.amuletManager.modifyGoldFound(baseReward) : baseReward;
-        
-        this.gameState.coins += reward;
-        SoundHelper.playSound(this, 'coin_collect', 0.4);
-        this.createFloatingText(320, 180, `Floor Cleared! +${reward} coins`, 0xffd700);
+        if (this.roomType === 'TREASURE') {
+            SoundHelper.playSound(this, 'treasure_explode', 0.5);
+            this.createFloatingText(320, 180, 'Treasure Collected!', 0xffd700);
+        } else {
+            // Give some coins for clearing the floor
+            const baseReward = 5 + this.gameState.currentFloor * 2;
+
+            // Apply gold modifier from amulets
+            const reward = this.amuletManager ?
+                this.amuletManager.modifyGoldFound(baseReward) : baseReward;
+
+            this.gameState.coins += reward;
+            SoundHelper.playSound(this, 'coin_collect', 0.4);
+            this.createFloatingText(320, 180, `Floor Cleared! +${reward} coins`, 0xffd700);
+        }
         
         // Process amulet floor end effects before moving to next floor
         if (this.amuletManager) {
@@ -839,8 +848,15 @@ export class GameScene extends Phaser.Scene {
         this.enemiesCleared = true;
         this.nextFloorButton.setVisible(true);
         this.nextFloorButtonText.setVisible(true);
-        this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
-        this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
+        if (this.roomType === 'TREASURE') {
+            this.nextFloorButtonText.setText('Continue');
+            this.createFloatingText(320, 100, 'Treasure secured!', 0xffd700);
+            this.createFloatingText(320, 120, 'Collect rewards then continue.', 0xffffff);
+        } else {
+            this.nextFloorButtonText.setText('Next Floor');
+            this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
+            this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
+        }
     }
     
     gameWon() {
@@ -1047,6 +1063,7 @@ export class GameScene extends Phaser.Scene {
         let title = 'Combat Room';
         if (this.roomType === 'ELITE') title = 'Elite Combat';
         if (this.roomType === 'BOSS') title = 'Boss Fight';
+        if (this.roomType === 'TREASURE') title = 'Treasure Vault';
         this.roomTitle.setText(title);
     }
     
