@@ -1,6 +1,13 @@
 // scenes/MapViewScene.js
 import Phaser from 'phaser';
 import { MapGenerator } from '../utils/MapGenerator.js';
+import {
+  FLOORS_PER_ACT,
+  MAX_FLOOR,
+  getActBounds,
+  getActFloor,
+  getCurrentAct
+} from '../utils/ActUtils.js';
 
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
@@ -8,9 +15,10 @@ export class MapViewScene extends Phaser.Scene {
   init(data) {
     this.gameState = data.gameState;
 
-    // Derive current act from currentFloor (1..30), default to 1
-    const cf = Math.max(1, this.gameState.currentFloor || 1);
-    this.currentAct = Math.floor((cf - 1) / 10) + 1;
+    // Derive current act from the global floor (1..45)
+    const globalFloor = Math.max(1, Math.min(MAX_FLOOR, this.gameState.currentFloor || 1));
+    this.globalFloor = globalFloor;
+    this.currentAct = getCurrentAct(globalFloor);
 
     // Build/keep full map
     if (!this.gameState.dungeonMap) {
@@ -20,30 +28,105 @@ export class MapViewScene extends Phaser.Scene {
     this.actMap = this.gameState.dungeonMap[`act${this.currentAct}`];
 
     // Ensure a single authoritative cursor (act-local)
-    // floor: 0..9 (0 is the fixed start node, 9 is boss floor)
+    // floor: 0..FLOORS_PER_ACT (0 is the fixed start node, last is boss floor)
     if (!this.gameState.mapCursor || this.gameState.mapCursor.act !== this.currentAct) {
       this.gameState.mapCursor = { act: this.currentAct, floor: 0, node: 0 };
-      // Mark the start as visited so connections from start are valid
-      this.actMap.floors[0][0].visited = true;
     }
+
+    this.syncCursorToProgress();
 
     // Dragging
     this.isDragging = false;
     this.dragStartX = 0; this.dragStartY = 0;
   }
 
+  syncCursorToProgress() {
+    if (!this.actMap?.floors?.length) return;
+
+    const { start } = getActBounds(this.currentAct);
+    const floorsClearedInAct = Math.max(0, Math.min(
+      FLOORS_PER_ACT,
+      (this.globalFloor ?? 1) - start
+    ));
+
+    const targetFloorIdx = Math.min(
+      floorsClearedInAct,
+      this.actMap.floors.length - 1
+    );
+
+    let cursor = this.gameState.mapCursor;
+    if (!cursor) {
+      cursor = { act: this.currentAct, floor: 0, node: 0 };
+      this.gameState.mapCursor = cursor;
+    }
+
+    // Always mark the entrance as explored
+    this.actMap.floors[0]?.[0] && (this.actMap.floors[0][0].visited = true);
+
+    if (cursor.floor >= targetFloorIdx) {
+      return;
+    }
+
+    let floorIdx = Math.max(0, cursor.floor);
+    let nodeIdx = Math.max(0, cursor.node ?? 0);
+
+    while (floorIdx < targetFloorIdx) {
+      const currentFloorNodes = this.actMap.floors[floorIdx] || [];
+      const currentNode = currentFloorNodes[nodeIdx] || currentFloorNodes[0] || null;
+      if (currentNode) {
+        currentNode.visited = true;
+      }
+
+      const nextFloorIdx = floorIdx + 1;
+      const nextFloorNodes = this.actMap.floors[nextFloorIdx] || [];
+      if (!nextFloorNodes.length) {
+        break;
+      }
+
+      let preferredIdx = 0;
+      if (currentNode?.connections?.length) {
+        let bestScore = -1;
+        for (const connection of currentNode.connections) {
+          const clampedIdx = Phaser.Math.Clamp(connection, 0, nextFloorNodes.length - 1);
+          const candidate = nextFloorNodes[clampedIdx];
+          const score = candidate?.connections?.length ?? 0;
+          if (score > bestScore) {
+            bestScore = score;
+            preferredIdx = clampedIdx;
+          }
+        }
+      }
+
+      floorIdx = nextFloorIdx;
+      nodeIdx = preferredIdx;
+    }
+
+    cursor.floor = floorIdx;
+    cursor.node = Phaser.Math.Clamp(
+      nodeIdx,
+      0,
+      (this.actMap.floors[floorIdx] || []).length - 1
+    );
+
+    for (let f = 0; f <= cursor.floor; f++) {
+      this.actMap.floors[f]?.forEach(node => {
+        if (node) node.visited = true;
+      });
+    }
+  }
+
   create() {
     // Background & title
     this.add.rectangle(320, 180, 640, 360, 0x8b7355);
     this.add.rectangle(320, 30, 640, 60, 0x6b5d4f);
-    this.add.text(320, 30, `Act ${this.currentAct} – Floor ${this.gameState.currentFloor || 1}`, {
+    const actFloor = getActFloor(this.globalFloor);
+    this.add.text(320, 30, `Act ${this.currentAct} – Floor ${actFloor}`, {
       fontSize: '20px', fill: '#f2d3aa', fontFamily: '"Roboto Condensed"'
     }).setOrigin(0.5);
 
     // Drag area sits BEHIND nodes so it won't eat clicks
-    this.dragArea = this.add.rectangle(320, 200, 600, 280, 0xffffff, 0)
+    this.dragArea = this.add.rectangle(320, 190, 620, 300, 0xffffff, 0)
       .setInteractive({ draggable: true }).setDepth(-1000);
-    this.setupDragging();
 
     // Map container
     this.mapContainer = this.add.container(320, 180);
@@ -51,12 +134,19 @@ export class MapViewScene extends Phaser.Scene {
     // Render structured map
     this.drawStructuredMap();
 
-    this.add.text(320, 340, 'Click glowing nodes to proceed • Drag to pan', {
+    this.setupDragging();
+    this.setupScrollWheel();
+    this.setupKeyboardPan();
+
+    this.createEdgeIndicators();
+    this.addCenterButton();
+
+    this.add.text(320, 340, 'Click glowing nodes to proceed • Drag / scroll / arrows to pan', {
       fontSize: '12px', fill: '#d4b896', fontFamily: '"Roboto Condensed"'
     }).setOrigin(0.5);
     this.events.on('wake', () => {
-      console.log('Map restarted on wake');
-      this.scene.restart({ gameState: this.gameState }); // Redraws with latest cursor/visited
+      console.log('Map scene activated');
+      this.refreshMapDisplay();
     }, this);
   }
 
@@ -68,10 +158,46 @@ export class MapViewScene extends Phaser.Scene {
     });
     this.dragArea.on('drag', (p) => {
       if (!this.mapContainer) return;
-      this.mapContainer.x = Phaser.Math.Clamp(p.x - this.dragStartX, -200, 840);
-      this.mapContainer.y = Phaser.Math.Clamp(p.y - this.dragStartY, -100, 460);
+      this.mapContainer.x = p.x - this.dragStartX;
+      this.mapContainer.y = p.y - this.dragStartY;
+      this.clampMapPosition();
+      this.refreshEdgeIndicators();
     });
     this.dragArea.on('dragend', () => { this.isDragging = false; });
+  }
+
+  setupScrollWheel() {
+    this.input.on('wheel', (_pointer, _objects, _dx, dy) => {
+      if (!this.mapContainer || !this.dragLimits) return;
+      const speed = 0.35;
+      this.panMap(0, dy * speed);
+    });
+  }
+
+  setupKeyboardPan() {
+    this.cursors = this.input.keyboard?.createCursorKeys();
+  }
+
+  update(time, delta) {
+    super.update?.(time, delta);
+    if (!this.mapContainer || !this.cursors) return;
+    const speed = 0.25 * (delta ?? 16);
+    let dx = 0;
+    let dy = 0;
+    if (this.cursors.left?.isDown) dx += speed;
+    if (this.cursors.right?.isDown) dx -= speed;
+    if (this.cursors.up?.isDown) dy += speed;
+    if (this.cursors.down?.isDown) dy -= speed;
+    if (dx !== 0 || dy !== 0) {
+      this.panMap(dx, dy);
+    }
+  }
+
+  panMap(dx, dy) {
+    if (!this.mapContainer) return;
+    this.mapContainer.setPosition(this.mapContainer.x - dx, this.mapContainer.y - dy);
+    this.clampMapPosition();
+    this.refreshEdgeIndicators();
   }
 
   // ===== Clean lane layout like StS =====
@@ -107,6 +233,9 @@ export class MapViewScene extends Phaser.Scene {
     this.actMap.floors.forEach((floorNodes, f) => {
       floorNodes.forEach((node, i) => this.drawNode(node, f, i));
     });
+
+    this.updateMapBounds();
+    this.centerOnCurrentNode({ animate: false });
   }
 
   drawLinks() {
@@ -178,6 +307,20 @@ export class MapViewScene extends Phaser.Scene {
     circle.setStrokeStyle(ringWidth, ringColor).setAlpha(alpha);
     this.mapContainer.add(circle);
 
+    if (state === 'current') {
+      const glow = this.add.circle(node.__x, node.__y, radius + 8, 0xffffff, 0.15)
+        .setBlendMode(Phaser.BlendModes.SCREEN);
+      this.mapContainer.add(glow);
+      this.tweens.add({
+        targets: glow,
+        scale: { from: 1, to: 1.25 },
+        alpha: { from: 0.35, to: 0 },
+        duration: 1400,
+        repeat: -1,
+        ease: 'sine.inout'
+      });
+    }
+
     const icons = { COMBAT: '⚔', ELITE: '☠', SHOP: '$', RARE_SHOP: '💎', REST: '🔥', ANVIL: '🔨', EVENT: '?', BOSS: '👹', TREASURE: '💰' };
     const label = this.add.text(node.__x, node.__y, icons[node.type] || '?', {
       fontSize: '16px', fill: '#f2f2f2', fontFamily: '"Roboto Condensed"'
@@ -227,11 +370,14 @@ export class MapViewScene extends Phaser.Scene {
     // Mark from and to visited (fixes stuck visuals)
     fromNode.visited = true;
     node.visited = true;
-    this.gameState.mapCursor = { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx };
-    this.gameState.currentFloor = (this.gameState.currentFloor || 1) + 1;
+    const safeFloorIdx = Math.min(targetFloorIdx, FLOORS_PER_ACT);
+    this.gameState.mapCursor = { act: this.currentAct, floor: safeFloorIdx, node: targetNodeIdx };
+    const { start } = getActBounds(this.currentAct);
+    const globalFloor = Math.min(MAX_FLOOR, start + safeFloorIdx - 1);
+    this.gameState.currentFloor = globalFloor;
     // Store type
     this.gameState.roomType = node.type;
-    const isCombatRoom = ['COMBAT', 'ELITE', 'BOSS'].includes(node.type);
+    const isCombatRoom = ['COMBAT', 'ELITE', 'BOSS', 'TREASURE'].includes(node.type);
     if (isCombatRoom) {
       const currentId = Number.isFinite(this.gameState.activeRoomId)
         ? this.gameState.activeRoomId
@@ -241,15 +387,14 @@ export class MapViewScene extends Phaser.Scene {
     }
     console.log('Stored roomType:', this.gameState.roomType);
     // Route
-    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE'];
+    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT'];
     if (nonCombat.includes(node.type)) {
       this.scene.sleep(); // Sleep map for overlay
-      const key = 
+      const key =
         node.type === 'SHOP' ? 'ShopScene' :
         node.type === 'RARE_SHOP' ? 'RareShopScene' :
         node.type === 'REST' ? 'RestScene' :
-        node.type === 'ANVIL' ? 'AnvilScene' :
-        node.type === 'TREASURE' ? 'TreasureScene' : 'EventScene';
+        node.type === 'ANVIL' ? 'AnvilScene' : 'EventScene';
       this.scene.launch(key, { gameState: this.gameState });
       return;
     }
@@ -257,5 +402,151 @@ export class MapViewScene extends Phaser.Scene {
     this.scene.stop();
     this.scene.wake('GameScene');
     console.log('Woke GameScene for type:', node.type);
+  }
+
+  updateMapBounds() {
+    const padding = 120;
+    const nodes = this.actMap.floors.flat();
+    const minX = Math.min(...nodes.map(n => n.__x));
+    const maxX = Math.max(...nodes.map(n => n.__x));
+    const minY = Math.min(...nodes.map(n => n.__y));
+    const maxY = Math.max(...nodes.map(n => n.__y));
+
+    this.rawBounds = { minX, maxX, minY, maxY };
+
+    this.mapBounds = {
+      minX: minX - padding,
+      maxX: maxX + padding,
+      minY: minY - padding,
+      maxY: maxY + padding
+    };
+
+    const viewWidth = this.scale.width;
+    const viewHeight = this.scale.height;
+    this.dragLimits = {
+      minX: viewWidth - 40 - this.mapBounds.maxX,
+      maxX: 40 - this.mapBounds.minX,
+      minY: viewHeight - 40 - this.mapBounds.maxY,
+      maxY: 40 - this.mapBounds.minY
+    };
+  }
+
+  centerOnCurrentNode({ animate = false } = {}) {
+    if (!this.mapContainer) return;
+    const cursorFloor = this.gameState.mapCursor?.floor ?? 0;
+    const cursorNode = this.gameState.mapCursor?.node ?? 0;
+    const floorNodes = this.actMap?.floors?.[cursorFloor];
+    const node = floorNodes?.[cursorNode];
+    if (!node || node.__x === undefined || node.__y === undefined) {
+      console.log('Cannot center - node position not set');
+      return;
+    }
+
+    const screenCenterX = 320;
+    const screenCenterY = 180;
+    let destX = screenCenterX - node.__x;
+    let destY = screenCenterY - node.__y;
+
+    ({ destX, destY } = this.getClampedPosition(destX, destY));
+
+    if (animate) {
+      this.tweens.add({
+        targets: this.mapContainer,
+        x: destX,
+        y: destY,
+        ease: 'sine.out',
+        duration: 350,
+        onUpdate: () => {
+          this.clampMapPosition();
+          this.refreshEdgeIndicators();
+        },
+        onComplete: () => {
+          this.clampMapPosition();
+          this.refreshEdgeIndicators();
+        }
+      });
+    } else {
+      this.mapContainer.setPosition(destX, destY);
+      this.clampMapPosition();
+      this.refreshEdgeIndicators();
+    }
+  }
+
+  addCenterButton() {
+    const btn = this.add.rectangle(580, 320, 80, 30, 0x4a3f36)
+      .setStrokeStyle(2, 0x6b5d4f)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add.text(580, 320, 'Center', {
+      fontSize: '14px',
+      fill: '#f2d3aa',
+      fontFamily: '"Roboto Condensed"'
+    }).setOrigin(0.5);
+
+    btn.on('pointerover', () => btn.setFillStyle(0x5a4f46));
+    btn.on('pointerout', () => btn.setFillStyle(0x4a3f36));
+    btn.on('pointerdown', () => {
+      this.centerOnCurrentNode({ animate: true });
+    });
+  }
+
+  clampMapPosition() {
+    if (!this.mapContainer) return;
+    const bounds = this.dragLimits;
+    if (bounds) {
+      this.mapContainer.x = Phaser.Math.Clamp(this.mapContainer.x, bounds.minX, bounds.maxX);
+      this.mapContainer.y = Phaser.Math.Clamp(this.mapContainer.y, bounds.minY, bounds.maxY);
+      return;
+    }
+
+    const minX = -200;
+    const maxX = 840;
+    const minY = -100;
+    const maxY = 460;
+    this.mapContainer.x = Phaser.Math.Clamp(this.mapContainer.x, minX, maxX);
+    this.mapContainer.y = Phaser.Math.Clamp(this.mapContainer.y, minY, maxY);
+  }
+
+  getClampedPosition(destX, destY) {
+    const bounds = this.dragLimits;
+    if (bounds) {
+      return {
+        destX: Phaser.Math.Clamp(destX, bounds.minX, bounds.maxX),
+        destY: Phaser.Math.Clamp(destY, bounds.minY, bounds.maxY)
+      };
+    }
+    return {
+      destX: Phaser.Math.Clamp(destX, -200, 840),
+      destY: Phaser.Math.Clamp(destY, -100, 460)
+    };
+  }
+
+  refreshMapDisplay() {
+    if (!this.mapContainer) return;
+    if (this.linkGfx) {
+      this.drawLinks();
+    }
+    this.centerOnCurrentNode({ animate: false });
+  }
+
+  createEdgeIndicators() {
+    const arrowColor = 0xf2d3aa;
+    const top = this.add.triangle(320, 68, 0, 14, 12, 14, 6, 0, arrowColor, 0.6)
+      .setAlpha(0).setDepth(1000);
+    const bottom = this.add.triangle(320, 292, 0, 0, 12, 0, 6, 14, arrowColor, 0.6)
+      .setAlpha(0).setDepth(1000);
+    this.edgeIndicators = { top, bottom };
+    this.refreshEdgeIndicators();
+  }
+
+  refreshEdgeIndicators() {
+    if (!this.edgeIndicators || !this.rawBounds || !this.mapContainer) return;
+    const topScreen = this.mapContainer.y + this.rawBounds.minY;
+    const bottomScreen = this.mapContainer.y + this.rawBounds.maxY;
+    const topMargin = 60;
+    const bottomMargin = this.scale.height - 60;
+    const hasAbove = topScreen < topMargin;
+    const hasBelow = bottomScreen > bottomMargin;
+    this.edgeIndicators.top?.setAlpha(hasAbove ? 0.6 : 0);
+    this.edgeIndicators.bottom?.setAlpha(hasBelow ? 0.6 : 0);
   }
 }

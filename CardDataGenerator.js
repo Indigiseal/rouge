@@ -1,3 +1,5 @@
+import { getBossFloors, getCurrentAct, MAX_FLOOR } from './utils/ActUtils.js';
+
 export class CardDataGenerator {
     constructor() {
         this.initializeWeaponUnlocks();
@@ -13,52 +15,17 @@ export class CardDataGenerator {
     }
 
     initializeFloorWeights() {
-        // Define weight progression for each card type across 30 floors
-        // Boss floors are now: 5, 10, 15, 20, 25, 30
-        this.floorWeights = {
-            // Floors 1-4: Early game
-            1: { enemy: 30, coin: 30, crystal: 5, trap: 5, weapon: 10, armor: 10, amulet: 2, potion: 8, food: 15, magic: 3, key: 1 },
-            2: { enemy: 35, coin: 25, crystal: 5, trap: 8, weapon: 10, armor: 10, amulet: 2, potion: 8, food: 15, magic: 3, key: 1 },
-            3: { enemy: 40, coin: 20, crystal: 8, trap: 10, weapon: 10, armor: 10, amulet: 3, potion: 10, food: 15, magic: 4, key: 2 },
-            4: { enemy: 40, coin: 20, crystal: 8, trap: 10, weapon: 10, armor: 10, amulet: 3, potion: 10, food: 12, magic: 4, key: 2 },
-            5: { boss: 100 }, // Giant Skeleton
-            
-            // Floors 6-9
-            6: { enemy: 45, coin: 18, crystal: 10, trap: 12, weapon: 8, armor: 8, amulet: 4, potion: 10, food: 10, magic: 5, key: 3 },
-            7: { enemy: 48, coin: 15, crystal: 10, trap: 14, weapon: 8, armor: 8, amulet: 5, potion: 10, food: 10, magic: 5, key: 3 },
-            8: { enemy: 50, coin: 15, crystal: 12, trap: 14, weapon: 7, armor: 7, amulet: 5, potion: 10, food: 10, magic: 6, key: 3 },
-            9: { enemy: 50, coin: 12, crystal: 12, trap: 15, weapon: 7, armor: 7, amulet: 5, potion: 10, food: 8, magic: 6, key: 4 },
-            10: { boss: 100 }, // Goblin King
-            
-            // Floors 11-14
-            11: { enemy: 52, coin: 12, crystal: 12, trap: 16, weapon: 6, armor: 6, amulet: 6, potion: 10, food: 8, magic: 7, key: 4 },
-            12: { enemy: 55, coin: 10, crystal: 12, trap: 18, weapon: 6, armor: 6, amulet: 6, potion: 10, food: 8, magic: 7, key: 4 },
-            13: { enemy: 55, coin: 10, crystal: 14, trap: 18, weapon: 5, armor: 5, amulet: 7, potion: 10, food: 7, magic: 8, key: 4 },
-            14: { enemy: 58, coin: 8, crystal: 14, trap: 20, weapon: 5, armor: 5, amulet: 7, potion: 10, food: 7, magic: 8, key: 5 },
-            15: { boss: 100 }, // Spider Queen or Phantom Knight
-            
-            // Floors 16-19
-            16: { enemy: 60, coin: 8, crystal: 15, trap: 22, weapon: 4, armor: 4, amulet: 8, potion: 10, food: 6, magic: 9, key: 5 },
-            17: { enemy: 62, coin: 6, crystal: 15, trap: 22, weapon: 4, armor: 4, amulet: 8, potion: 10, food: 6, magic: 9, key: 5 },
-            18: { enemy: 65, coin: 6, crystal: 15, trap: 24, weapon: 4, armor: 4, amulet: 9, potion: 10, food: 5, magic: 10, key: 5 },
-            19: { enemy: 65, coin: 5, crystal: 18, trap: 24, weapon: 3, armor: 3, amulet: 9, potion: 10, food: 5, magic: 10, key: 6 },
-            20: { boss: 100 }, // Keeper of Time or Soul Eater
-            
-            // Floors 21-24
-            21: { enemy: 68, coin: 5, crystal: 18, trap: 26, weapon: 3, armor: 3, amulet: 10, potion: 10, food: 4, magic: 11, key: 6 },
-            22: { enemy: 70, coin: 4, crystal: 18, trap: 28, weapon: 3, armor: 3, amulet: 10, potion: 10, food: 4, magic: 11, key: 6 },
-            23: { enemy: 70, coin: 4, crystal: 20, trap: 28, weapon: 2, armor: 2, amulet: 10, potion: 10, food: 3, magic: 12, key: 6 },
-            24: { enemy: 72, coin: 3, crystal: 20, trap: 30, weapon: 2, armor: 2, amulet: 11, potion: 10, food: 3, magic: 12, key: 7 },
-            25: { boss: 100 }, // Lich, Vampire, or Berserker
-            
-            // Floors 26-29: End game
-            26: { enemy: 75, coin: 2, crystal: 22, trap: 32, weapon: 2, armor: 2, amulet: 12, potion: 10, food: 2, magic: 13, key: 8 },
-            27: { enemy: 78, coin: 2, crystal: 22, trap: 32, weapon: 1, armor: 1, amulet: 12, potion: 10, food: 2, magic: 13, key: 8 },
-            28: { enemy: 80, coin: 2, crystal: 25, trap: 35, weapon: 1, armor: 1, amulet: 13, potion: 10, food: 1, magic: 14, key: 8 },
-            29: { enemy: 82, coin: 1, crystal: 25, trap: 35, weapon: 1, armor: 1, amulet: 14, potion: 10, food: 1, magic: 14, key: 10 },
-            30: { boss: 100 } // Anti-Magic Golem, Jester Twin, or Cerberus
-        };
-        
+        // Define weight progression for each card type across 45 floors
+        const bossFloors = getBossFloors();
+        this.floorWeights = {};
+        for (let floor = 1; floor <= MAX_FLOOR; floor++) {
+            if (bossFloors.includes(floor)) {
+                this.floorWeights[floor] = { boss: 100 };
+            } else {
+                this.floorWeights[floor] = this.calculateFormulaWeights(floor);
+            }
+        }
+
         // Alternative: Formula-based weights for smoother progression
         this.useFormulaWeights = false; // Set to true to use formulas instead
     }
@@ -74,28 +41,32 @@ export class CardDataGenerator {
     }
 
     calculateFormulaWeights(floor) {
-        // Check if it's a boss floor
-        const bossFloors = [5, 10, 15, 20, 25, 30];
-        if (bossFloors.includes(floor)) {
-            return { boss: 100 };
-        }
-        
-        // Formula-based weight calculation for non-boss floors
-        const weights = {
-            enemy: Math.min(30 + floor * 2, 50),
-            coin: Math.max(30 - floor, 2),
-            crystal: Math.min(5 + Math.floor(floor * 0.9), 50),
-            trap: Math.min(5 + floor, 35),
-            weapon: Math.max(10 - Math.floor(floor / 4), 1),
-            armor: Math.max(10 - Math.floor(floor / 4), 1),
-            amulet: Math.min(45 + Math.floor(floor / 2), 30),
-            potion: 10, // Consistent potion chance
-            food: Math.max(15 - Math.floor(floor / 2), 1),
-            magic: Math.min(3 + Math.floor(floor / 2), 15),
-            key: Math.min(1 + Math.floor(floor / 4), 2)
+        const clampedFloor = Math.max(1, Math.min(MAX_FLOOR, floor));
+        const progress = (clampedFloor - 1) / (MAX_FLOOR - 1);
+        const act = getCurrentAct(clampedFloor);
+        const actModifier = 1 + (act - 1) * 0.25;
+
+        const baseWeights = {
+            enemy: 30 + Math.round(progress * 40),
+            coin: Math.max(25 - Math.round(progress * 18), 3),
+            crystal: 5 + Math.round(progress * 25),
+            trap: 8 + Math.round(progress * 22),
+            weapon: Math.max(10 - Math.round(progress * 6), 1),
+            armor: Math.max(10 - Math.round(progress * 6), 1),
+            amulet: 4 + Math.round(progress * 18),
+            potion: 10,
+            food: Math.max(15 - Math.round(progress * 10), 1),
+            magic: 3 + Math.round(progress * 12),
+            key: Math.min(1 + Math.round(progress * 6), 8)
         };
-        
-        return weights;
+
+        const scaledWeights = { ...baseWeights };
+        const scaleKeys = ['enemy', 'crystal', 'trap', 'amulet', 'magic'];
+        scaleKeys.forEach(key => {
+            scaledWeights[key] = Math.max(1, Math.round(baseWeights[key] * actModifier));
+        });
+
+        return scaledWeights;
     }
 
     initializeWeaponUnlocks() {
@@ -220,31 +191,7 @@ export class CardDataGenerator {
 
     initializeBossData() {
         this.bossData = {
-            5: { // Floor 5 mini boss
-                type: 'boss',
-                name: 'Giant Skeleton',
-                health: 36,
-                attack: 9,
-                sprite: 'giantSkeleton',
-                abilities: [
-                    { damage: 3, turns: 5 },
-                    { type: 'summon', enemyType: 'skeleton', chance: 0.2 }
-                ]
-
-            },
-            10: { // Floor 10 boss
-                type: 'boss',
-                name: 'Goblin King',
-                health: 52,
-                attack: 10,
-                sprite: 'GoblinKingSprite',
-                abilities: [
-                    { damage: 5, turns: 5, stackable: true },
-                    { type: 'summon', enemyType: 'goblin', chance: 0.2 }
-
-                ]
-            },
-            15: { // Floor 15 boss
+            15: { // Act 1 boss
                 type: 'boss',
                 name: 'Spider Queen',
                 health: 44,
@@ -255,30 +202,18 @@ export class CardDataGenerator {
                     { type: 'summon', enemyType: 'spider', chance: 0.2 }
                 ]
             },
-            20: { // Floor 20 boss
-                type: 'boss',
-                name: 'Soul Eater',
-                health: 60,
-                attack: 12,
-                sprite: 'SoulEater',
-                abilities: [
-                    { type: 'lifesteal', percentage: 0.3 },
-                    { type: 'armor_break', amount: 2 },
-                    { type: 'rage', threshold: 0.5, damageBoost: 1.5 }
-                ]
-            },
-            25: { // Floor 25 boss
+            30: { // Act 2 boss
                 type: 'boss',
                 name: 'Lich',
-                health: 75,
-                attack: 15,
+                health: 78,
+                attack: 16,
                 sprite: 'Lich',
                 abilities: [
                     { damage: 8, turns: 5, stackable: true },
                     { type: 'lifesteal', percentage: 0.5 }
                 ]
             },
-            30: { // Floor 30 final boss
+            45: { // Act 3 final boss
                 type: 'boss',
                 name: 'Cerberus',
                 health: 100,
@@ -703,7 +638,7 @@ export class CardDataGenerator {
     }
 
     createBossCard(floor) {
-        return this.bossData[floor] || this.bossData[10]; // Default to floor 10 boss
+        return this.bossData[floor] || this.bossData[15]; // Default to first act boss
     }
 
     createEnemyCard(floor, isElite = false) {
@@ -910,7 +845,7 @@ export class CardDataGenerator {
     createAmuletCard(floor) {
         // Get available amulets for current floor
         const availableAmulets = this.amuletTypes.filter(amulet => floor >= amulet.minFloor);
-        
+
         if (availableAmulets.length === 0) {
             // Fallback to first amulet if none available
             const chosen = this.amuletTypes[0];
@@ -949,6 +884,71 @@ export class CardDataGenerator {
             rarity: chosen.rarity,
             sprite: chosen.sprite
         };
+    }
+
+    getRandomAmuletByGrade(grade, floor = 1) {
+        const rarityPools = {
+            Common: ['common'],
+            Uncommon: ['uncommon'],
+            Rare: ['rare'],
+            Epic: ['rare'],
+            Legendary: ['legendary']
+        };
+
+        const rarities = rarityPools[grade] || ['common'];
+        const candidates = this.amuletTypes.filter(amulet =>
+            rarities.includes(amulet.rarity) && floor >= amulet.minFloor
+        );
+
+        const pickFrom = candidates.length > 0
+            ? candidates
+            : this.amuletTypes.filter(amulet => floor >= amulet.minFloor);
+
+        if (!pickFrom.length) {
+            return null;
+        }
+
+        const totalWeight = pickFrom.reduce((sum, amulet) => sum + (amulet.weight || 1), 0);
+        let roll = Math.random() * totalWeight;
+        let chosen = null;
+        for (const amulet of pickFrom) {
+            roll -= (amulet.weight || 1);
+            if (roll <= 0) {
+                chosen = amulet;
+                break;
+            }
+        }
+
+        if (!chosen) {
+            chosen = pickFrom[0];
+        }
+
+        return {
+            id: chosen.id,
+            name: chosen.name,
+            rarity: chosen.rarity,
+            sprite: chosen.sprite,
+            grade: this.deriveAmuletGradeLabel(grade, chosen.rarity)
+        };
+    }
+
+    deriveAmuletGradeLabel(requestedGrade, rarity) {
+        if (requestedGrade === 'Epic' && rarity === 'rare') {
+            return 'Epic';
+        }
+        if (requestedGrade === 'Legendary' && rarity === 'legendary') {
+            return 'Legendary';
+        }
+
+        const rarityToGrade = {
+            common: 'Common',
+            uncommon: 'Uncommon',
+            rare: 'Rare',
+            legendary: 'Legendary',
+            cursed: 'Rare'
+        };
+
+        return rarityToGrade[rarity] || requestedGrade || 'Common';
     }
 
     createPotionCard(floor) {

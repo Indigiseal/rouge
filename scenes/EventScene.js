@@ -59,7 +59,7 @@ export class EventScene extends Phaser.Scene {
   }
 
   continueAdventure() {
-    // NO nextFloor() here—map already did it
+    this.gameState.nextFloor();
     this.scene.stop(); // Close event
     this.scene.wake('MapViewScene'); // Back to map
     console.log('Woke MapViewScene after event');
