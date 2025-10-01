@@ -10,7 +10,7 @@ export class MapViewScene extends Phaser.Scene {
 
     // Derive current act from currentFloor (1..30), default to 1
     const cf = Math.max(1, this.gameState.currentFloor || 1);
-    this.currentAct = Math.floor((cf - 1) / 10) + 1;
+    this.currentAct = Math.floor((cf - 1) / 15) + 1;
 
     // Build/keep full map
     if (!this.gameState.dungeonMap) {
