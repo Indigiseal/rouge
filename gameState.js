@@ -16,7 +16,11 @@ export class GameState {
         this.currentFloor = 1;
         this.equippedArmor = null;
         this.equippedWeapon = null;
-        this.inventory = new Array(5).fill(null);
+        this.bonusInventorySlots = 0; // For Bottomless Bag
+
+        const baseSlots = 5;
+        const totalSlots = baseSlots + this.bonusInventorySlots;
+        this.inventory = new Array(totalSlots).fill(null);
 
         // Room/route tracking
         this.roomType = 'COMBAT';
@@ -33,7 +37,6 @@ export class GameState {
 
         // Amulet-related properties
         this.firstActionUsed = false; // For Speed Boots
-        this.bonusInventorySlots = 0; // For Bottomless Bag
         this.baseMaxHealth = 50; // Store base max health for cursed amulets
         this.bottomlessBagApplied = false;
 
@@ -66,16 +69,10 @@ export class GameState {
 
     nextFloor() {
         this.currentFloor++;
-        
-        // Make sure inventory syncs from the actual inventory system
-        const gameScene = this.scene.scene.get('GameScene');
-        if (gameScene && gameScene.inventorySystem) {
-            this.inventory = [...gameScene.inventorySystem.slots]; // Create a copy
-        }
-        
+
         this.blockNextAttack = false;
         this.firstActionUsed = false;
-        
+
         if (this.scene.amuletManager) {
             this.scene.amuletManager.processFloorEnd();
         }

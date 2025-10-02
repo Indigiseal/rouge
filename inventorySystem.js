@@ -2,24 +2,30 @@ import { SoundHelper } from './utils/SoundHelper.js';
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
         this.scene = scene;
-        
+
         // Check for Bottomless Bag bonus slots
         const baseSlots = 5;
         const bonusSlots = this.scene.gameState.bonusInventorySlots || 0;
         const totalSlots = baseSlots + bonusSlots;
-        
-        // Initialize slots array with proper size
-        this.slots = new Array(totalSlots).fill(null);
-        
-        // If we have existing inventory, copy it properly
-        if (existingInventory && Array.isArray(existingInventory)) {
-            existingInventory.forEach((item, i) => {
+
+        // Ensure gameState.inventory is properly initialized
+        if (!this.scene.gameState.inventory || this.scene.gameState.inventory.length !== totalSlots) {
+            const oldInventory = this.scene.gameState.inventory || existingInventory || [];
+            this.scene.gameState.inventory = new Array(totalSlots).fill(null);
+            // Copy old items to new array
+            oldInventory.forEach((item, i) => {
                 if (i < totalSlots && item) {
-                    this.slots[i] = item;
+                    this.scene.gameState.inventory[i] = item;
                 }
             });
         }
-        
+
+        // Create getter/setter for slots that uses gameState
+        Object.defineProperty(this, 'slots', {
+            get: () => this.scene.gameState.inventory,
+            set: (value) => { this.scene.gameState.inventory = value; }
+        });
+
         this.slotSprites = [];
         this.discardArea = null;
         this.uiGroup = this.scene.add.group();
