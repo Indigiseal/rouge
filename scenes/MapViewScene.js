@@ -3,14 +3,26 @@ import Phaser from 'phaser';
 import { MapGenerator } from '../utils/MapGenerator.js';
 
 export class MapViewScene extends Phaser.Scene {
-  constructor() { super({ key: 'MapViewScene' }); }
+  constructor() {
+    super({ key: 'MapViewScene' });
+    this._wakeHandler = null;
+    this._dragHandlers = null;
+  }
+
+  // Convert a 0-based floor index (map cursor) into a 1-based absolute floor number
+  getAbsoluteFloor(floorIndex) {
+    const baseFloor = this.actMap ? this.actMap.startFloor : 1;
+    return baseFloor + floorIndex;
+  }
+
+  // Convert a 1-based absolute floor number to a 0-based floor index for the map cursor
+  getFloorIndex(absoluteFloor) {
+    const baseFloor = this.actMap ? this.actMap.startFloor : 1;
+    return Math.max(0, absoluteFloor - baseFloor);
+  }
 
   init(data) {
     this.gameState = data.gameState;
-
-    // Derive current act from currentFloor (1..30), default to 1
-    const cf = Math.max(1, this.gameState.currentFloor || 1);
-    this.currentAct = Math.floor((cf - 1) / 15) + 1;
 
     if (!this.gameState.dungeonMap) {
       const gen = new MapGenerator();
@@ -25,8 +37,10 @@ export class MapViewScene extends Phaser.Scene {
     this.totalActs = Math.max(acts.length, 1);
     this.floorsPerAct = firstAct ? (firstAct.endFloor - firstAct.startFloor + 1) : 15;
 
+    // Ensure currentFloor is always stored as a 1-based value for UI
+    this.gameState.currentFloor = Math.max(1, this.gameState.currentFloor || 1);
     // Derive current act from currentFloor, defaulting to act 1
-    const cf = Math.max(1, this.gameState.currentFloor || 1);
+    const cf = this.gameState.currentFloor;
     this.currentAct = Math.min(
       this.totalActs,
       Math.floor((cf - 1) / 15) + 1
@@ -88,7 +102,7 @@ export class MapViewScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Add wake event handler to refresh visual state without restarting
-    this.events.on('wake', () => {
+    this._wakeHandler = () => {
       console.log('MapViewScene woke up - refreshing state');
       console.log('Current cursor:', this.gameState.mapCursor);
 
@@ -133,25 +147,33 @@ export class MapViewScene extends Phaser.Scene {
       }
 
       console.log('Wake refresh complete - nodes should be clickable');
-    }, this);
+    };
+    this.events.on('wake', this._wakeHandler, this);
 
     this.events.once('shutdown', this.shutdown, this);
   }
 
   setupDragging() {
-    this.dragArea.on('dragstart', (p) => {
-      this.isDragging = true;
-      this.dragStartX = p.x - (this.mapContainer?.x ?? 320);
-      this.dragStartY = p.y - (this.mapContainer?.y ?? 180);
-    });
-    this.dragArea.on('drag', (p) => {
-      if (!this.mapContainer) return;
-      const nx = p.x - this.dragStartX;
-      const ny = p.y - this.dragStartY;
-      this.mapContainer.x = Phaser.Math.Clamp(nx, this.mapClamp?.minX ?? nx, this.mapClamp?.maxX ?? nx);
-      this.mapContainer.y = Phaser.Math.Clamp(ny, this.mapClamp?.minY ?? ny, this.mapClamp?.maxY ?? ny);
-    });
-    this.dragArea.on('dragend', () => { this.isDragging = false; });
+    this._dragHandlers = {
+      start: (p) => {
+        this.isDragging = true;
+        this.dragStartX = p.x - (this.mapContainer?.x ?? 320);
+        this.dragStartY = p.y - (this.mapContainer?.y ?? 180);
+      },
+      drag: (p) => {
+        if (!this.mapContainer) return;
+        const nx = p.x - this.dragStartX;
+        const ny = p.y - this.dragStartY;
+        this.mapContainer.x = Phaser.Math.Clamp(nx, this.mapClamp?.minX ?? nx, this.mapClamp?.maxX ?? nx);
+        this.mapContainer.y = Phaser.Math.Clamp(ny, this.mapClamp?.minY ?? ny, this.mapClamp?.maxY ?? ny);
+      },
+      end: () => {
+        this.isDragging = false;
+      }
+    };
+    this.dragArea.on('dragstart', this._dragHandlers.start, this);
+    this.dragArea.on('drag', this._dragHandlers.drag, this);
+    this.dragArea.on('dragend', this._dragHandlers.end, this);
   }
 
   // ===== Clean lane layout like StS =====
@@ -331,13 +353,10 @@ export class MapViewScene extends Phaser.Scene {
     // Mark from and to visited (fixes stuck visuals)
     fromNode.visited = true;
     node.visited = true;
+    // Update cursor position (0-based index)
     this.gameState.mapCursor = { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx };
-    const baseFloor = this.actMap ? this.actMap.startFloor : ((this.currentAct - 1) * Math.max(this.floorsPerAct, 1)) + 1;
-    const endFloor = this.actMap
-      ? this.actMap.endFloor
-      : baseFloor + Math.max(this.floorsPerAct - 1, 0);
-    const absoluteFloor = Math.min(endFloor, Math.max(baseFloor, baseFloor + targetFloorIdx));
-    this.gameState.currentFloor = Math.max(this.gameState.currentFloor || 1, absoluteFloor);
+    // Update absolute floor number (1-based)
+    this.gameState.currentFloor = this.getAbsoluteFloor(targetFloorIdx);
     // Store type
     this.gameState.roomType = node.type;
     const isCombatRoom = ['COMBAT', 'ELITE', 'BOSS', 'TREASURE'].includes(node.type);
@@ -369,12 +388,80 @@ export class MapViewScene extends Phaser.Scene {
 
 
   shutdown() {
-    this.events.off('wake');
-    if (this.dragArea) {
-      this.dragArea.off('dragstart');
-      this.dragArea.off('drag');
-      this.dragArea.off('dragend');
+    if (this.events) {
+      if (this._wakeHandler) {
+        this.events.off('wake', this._wakeHandler, this);
+      } else {
+        this.events.off('wake');
+      }
+      this.events.off('shutdown', this.shutdown, this);
     }
+
+    if (this.dragArea) {
+      if (this._dragHandlers) {
+        this.dragArea.off('dragstart', this._dragHandlers.start, this);
+        this.dragArea.off('drag', this._dragHandlers.drag, this);
+        this.dragArea.off('dragend', this._dragHandlers.end, this);
+      } else {
+        this.dragArea.off('dragstart');
+        this.dragArea.off('drag');
+        this.dragArea.off('dragend');
+      }
+      this.dragArea.removeInteractive();
+      this.dragArea.destroy();
+      this.dragArea = null;
+    }
+
+    if (this.nodeSprites && Array.isArray(this.nodeSprites)) {
+      this.nodeSprites.forEach(sprite => {
+        if (!sprite) return;
+        if (sprite.off) {
+          sprite.off('pointerover');
+          sprite.off('pointerout');
+          sprite.off('pointerdown');
+        }
+        if (sprite.removeInteractive) {
+          sprite.removeInteractive();
+        }
+      });
+    }
+
+    if (this.tooltip) {
+      this.tooltip.destroy(true);
+      this.tooltip = null;
+    }
+
+    if (this.tweens) {
+      this.tweens.killAll();
+    }
+
+    this.nodeSprites = [];
+
+    if (this.mapContainer) {
+      if (this.mapContainer.list) {
+        [...this.mapContainer.list].forEach(child => {
+          if (child && child.destroy) {
+            child.destroy();
+          }
+        });
+      }
+      this.mapContainer.destroy();
+      this.mapContainer = null;
+    }
+
+    if (this.linkGfx) {
+      if (this.linkGfx.destroy) {
+        this.linkGfx.destroy();
+      }
+      this.linkGfx = null;
+    }
+
+    this.mapClamp = null;
+
+    this._wakeHandler = null;
+    this._dragHandlers = null;
+
+    console.log('MapViewScene shutdown - all listeners cleaned');
   }
 }
 

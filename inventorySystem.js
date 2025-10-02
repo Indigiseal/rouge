@@ -2,24 +2,30 @@ import { SoundHelper } from './utils/SoundHelper.js';
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
         this.scene = scene;
-        
+
         // Check for Bottomless Bag bonus slots
         const baseSlots = 5;
         const bonusSlots = this.scene.gameState.bonusInventorySlots || 0;
         const totalSlots = baseSlots + bonusSlots;
-        
-        // Initialize slots array with proper size
-        this.slots = new Array(totalSlots).fill(null);
-        
-        // If we have existing inventory, copy it properly
-        if (existingInventory && Array.isArray(existingInventory)) {
-            existingInventory.forEach((item, i) => {
+
+        // Ensure gameState.inventory is properly initialized
+        if (!this.scene.gameState.inventory || this.scene.gameState.inventory.length !== totalSlots) {
+            const oldInventory = this.scene.gameState.inventory || existingInventory || [];
+            this.scene.gameState.inventory = new Array(totalSlots).fill(null);
+            // Copy old items to new array
+            oldInventory.forEach((item, i) => {
                 if (i < totalSlots && item) {
-                    this.slots[i] = item;
+                    this.scene.gameState.inventory[i] = item;
                 }
             });
         }
-        
+
+        // Create getter/setter for slots that uses gameState
+        Object.defineProperty(this, 'slots', {
+            get: () => this.scene.gameState.inventory,
+            set: (value) => { this.scene.gameState.inventory = value; }
+        });
+
         this.slotSprites = [];
         this.discardArea = null;
         this.uiGroup = this.scene.add.group();
@@ -1711,7 +1717,7 @@ export class InventorySystem {
                 slot.twinkleSprite = null;
             }
         });
-        
+
         // Find items that can be merged and apply twinkle animation
         const counts = {};
         this.slots.forEach(card => {
@@ -1720,7 +1726,7 @@ export class InventorySystem {
                 counts[key] = (counts[key] || 0) + 1;
             }
         });
-        
+
         this.slots.forEach((card, index) => {
             if (card && card.type !== 'magic') {
                 const key = `${card.name}|${card.rarity}`;
@@ -1732,16 +1738,86 @@ export class InventorySystem {
                         twinkleSprite.setScale(1.0);
                         twinkleSprite.setDepth(100); // High depth to ensure visibility
                         twinkleSprite.play('twinkle_anim');
-                        
+
                         // Make sure it's visible
                         twinkleSprite.setVisible(true);
                         twinkleSprite.setAlpha(1);
-                        
+
                         this.uiGroup.add(twinkleSprite);
                         this.slotSprites[index].twinkleSprite = twinkleSprite;
                     }
                 }
             }
         });
+    }
+
+    cleanup() {
+        this.slotSprites.forEach(slot => {
+            if (!slot) return;
+
+            const cardSprite = slot.card;
+            if (cardSprite && !cardSprite.destroyed) {
+                if (cardSprite.off) {
+                    cardSprite.off('pointerover');
+                    cardSprite.off('pointerout');
+                    cardSprite.off('pointerdown');
+                    cardSprite.off('dragstart');
+                    cardSprite.off('drag');
+                    cardSprite.off('dragend');
+                }
+                if (cardSprite.removeInteractive) {
+                    cardSprite.removeInteractive();
+                }
+
+                const infoText = cardSprite.getData ? cardSprite.getData('infoText') : null;
+                if (infoText) {
+                    if (infoText.list) {
+                        infoText.list.forEach(child => {
+                            if (child && child.destroy) {
+                                child.destroy();
+                            }
+                        });
+                        infoText.destroy(true);
+                    } else if (infoText.destroy) {
+                        infoText.destroy();
+                    }
+                }
+
+                cardSprite.destroy();
+                slot.card = null;
+            }
+
+            if (slot.shadow) {
+                slot.shadow.destroy();
+                slot.shadow = null;
+            }
+
+            if (slot.hoverSprite) {
+                slot.hoverSprite.destroy();
+                slot.hoverSprite = null;
+            }
+
+            if (slot.twinkleSprite) {
+                slot.twinkleSprite.destroy();
+                slot.twinkleSprite = null;
+            }
+
+            if (slot.background) {
+                slot.background.destroy();
+                slot.background = null;
+            }
+        });
+
+        this.dragState = null;
+        this.slotSprites = [];
+
+        if (this.uiGroup) {
+            this.uiGroup.clear(true, true);
+            this.uiGroup = null;
+        }
+
+        this.discardArea = null;
+
+        console.log('InventorySystem cleaned up');
     }
 }
