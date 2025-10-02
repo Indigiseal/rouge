@@ -73,11 +73,7 @@ export class GameScene extends Phaser.Scene {
         this.cardSystem = new CardSystem(this);
         this.inventorySystem = new InventorySystem(this, this.gameState.inventory);
         console.log('InventorySystem created:', this.inventorySystem);
-        
-        // After this.inventorySystem = new InventorySystem(...)
-        this.inventorySystem.slots = this.gameState.inventory || new Array(5).fill(null); // Load from state if exists
-        this.gameState.inventory = this.inventorySystem.slots; // Sync back
-        
+
         this.inventorySystem.setVisibility(true); // Ensure shown on start
         
         // Create UI
@@ -106,16 +102,9 @@ export class GameScene extends Phaser.Scene {
             console.log('Current inventory:', this.inventorySystem?.slots);
             console.log('GameState inventory:', this.gameState.inventory);
             
-            // Force inventory sync on wake
-            if (this.inventorySystem) {
-                this.inventorySystem.slots = this.gameState.inventory || this.inventorySystem.slots;
-                this.gameState.inventory = this.inventorySystem.slots;
-                this.inventorySystem.rebuildInventorySprites(); // Redraw UI
-            }
-            
             this.roomType = this.gameState.roomType || 'COMBAT';
             console.log('GameScene wake roomType:', this.roomType);
-            
+
             if (this.inventorySystem) {
                 console.log('Waking inventory - forcing visibility true');
                 this.inventorySystem.setVisibility(true);
@@ -348,11 +337,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     updateUI() {
-        // Force sync inventory EVERY time UI updates
-        if (this.inventorySystem) {
-            this.gameState.inventory = [...(this.inventorySystem.slots || [])];
-        }
-
         const rawHealth = this.gameState.playerHealth ?? 0;
         const rawMaxHealth = this.gameState.maxHealth ?? 0;
         this.healthText.setText(`HP: ${rawHealth}/${rawMaxHealth}`);
