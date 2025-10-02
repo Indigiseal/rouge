@@ -1688,7 +1688,7 @@ export class CardSystem {
         const splashSprite = this.scene.add.sprite(x, y, 'splash1');
         splashSprite.setScale(1.5); // Adjust size if needed
         splashSprite.play('splash_anim');
-        
+
         // On complete: Destroy sprite, add loot
         splashSprite.on('animationcomplete', () => {
             splashSprite.destroy();
@@ -1697,5 +1697,59 @@ export class CardSystem {
             this.scene.gameState.crystals += 5;
             this.scene.createFloatingText(x, y - 20, '+20 Coins +5 Crystals!', 0xffd700);
         });
+    }
+
+    cleanup() {
+        this.boardCards.forEach(card => {
+            if (!card) {
+                return;
+            }
+
+            const sprite = card.sprite;
+            if (sprite && !sprite.destroyed) {
+                if (sprite.off) {
+                    sprite.off('pointerdown');
+                    sprite.off('pointerover');
+                    sprite.off('pointerout');
+                }
+                if (sprite.removeInteractive) {
+                    sprite.removeInteractive();
+                }
+                sprite.destroy();
+            }
+
+            if (card.shadow) {
+                card.shadow.destroy();
+                card.shadow = null;
+            }
+
+            if (card.glow) {
+                card.glow.destroy();
+                card.glow = null;
+            }
+
+            if (card.highlight) {
+                card.highlight.destroy();
+                card.highlight = null;
+            }
+
+            if (card.infoText) {
+                if (card.infoText.list) {
+                    card.infoText.list.forEach(child => {
+                        if (child && child.destroy) {
+                            child.destroy();
+                        }
+                    });
+                    card.infoText.destroy(true);
+                } else if (card.infoText.destroy) {
+                    card.infoText.destroy();
+                }
+                card.infoText = null;
+            }
+        });
+
+        this.boardCards = [];
+
+        console.log('CardSystem cleaned up');
     }
 }

@@ -13,6 +13,8 @@ export class GameScene extends Phaser.Scene {
         this.skipNextEnemyAttack = false;
         this._turnHandlersBound = false;
         this._handleEndPlayerTurn = () => this.runEnemyTurn();
+        this._handleWake = null;
+        this._handleEscKey = null;
         this._activeRoomId = null;
     }
 
@@ -65,9 +67,12 @@ export class GameScene extends Phaser.Scene {
         
         // Create animations
         this.createAnimations();
-        
+
         // Initialize AmuletManager FIRST
         this.amuletManager = new AmuletManager(this);
+
+        // Ensure critical handlers are rebound for this scene lifecycle
+        this._handleEndPlayerTurn = () => this.runEnemyTurn();
         
         // Initialize systems
         this.cardSystem = new CardSystem(this);
@@ -97,11 +102,11 @@ export class GameScene extends Phaser.Scene {
         this.inventorySystem.setDiscardArea(this.discardArea);
         
         // Listen for the wake event to reset the floor
-        this.events.on('wake', () => {
+        this._handleWake = () => {
             console.log('GameScene wake roomType:', this.gameState.roomType);
             console.log('Current inventory:', this.inventorySystem?.slots);
             console.log('GameState inventory:', this.gameState.inventory);
-            
+
             this.roomType = this.gameState.roomType || 'COMBAT';
             console.log('GameScene wake roomType:', this.roomType);
 
@@ -110,7 +115,7 @@ export class GameScene extends Phaser.Scene {
                 this.inventorySystem.setVisibility(true);
                 this.inventorySystem.rebuildInventorySprites();
             }
-            
+
             if (this.shouldStartNewFloor()) {
                 this.startNewFloor();
             } else {
@@ -118,7 +123,15 @@ export class GameScene extends Phaser.Scene {
                 this.updateRoomTitle();
                 this.inventorySystem.rebuildInventorySprites();
             }
-        }, this);
+        };
+        this.events.on('wake', this._handleWake, this);
+
+        // Track ESC key handler so it can be removed on shutdown
+        this._handleEscKey = () => this.pauseGame();
+        this.input.keyboard.on('keydown-ESC', this._handleEscKey, this);
+
+        // Register shutdown handler
+        this.events.once('shutdown', this.shutdown, this);
     }
 
     shouldStartNewFloor() {
@@ -261,7 +274,6 @@ export class GameScene extends Phaser.Scene {
         }).setOrigin(0.5);
         
         // Also add ESC key binding for pause
-        this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
         // Discard area
         this.discardArea = this.add.image(45, 320, 'discardSprite');
         this.add.text(45, 320, 'Discard', { fontSize: '12px', fill: '#d3beb2', fontFamily: '"Roboto Condensed"' }).setOrigin(0.5);
@@ -309,8 +321,8 @@ export class GameScene extends Phaser.Scene {
         
 
         // Bind enemy turn handler safely
-        this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
-        this.events.on('endPlayerTurn', this._handleEndPlayerTurn);
+        this.events.off('endPlayerTurn', this._handleEndPlayerTurn, this);
+        this.events.on('endPlayerTurn', this._handleEndPlayerTurn, this);
         this._turnHandlersBound = true;
 
         // Update active room tracking
@@ -1052,8 +1064,49 @@ export class GameScene extends Phaser.Scene {
     }
     
     shutdown() {
-        this.input.keyboard.off('keydown-ESC');
-        this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
+        if (this.events) {
+            if (this._handleWake) {
+                this.events.off('wake', this._handleWake, this);
+            } else {
+                this.events.off('wake');
+            }
+
+            if (this._handleEndPlayerTurn) {
+                this.events.off('endPlayerTurn', this._handleEndPlayerTurn, this);
+            } else {
+                this.events.off('endPlayerTurn');
+            }
+
+            this.events.off('shutdown', this.shutdown, this);
+        }
+
+        if (this.input?.keyboard) {
+            if (this._handleEscKey) {
+                this.input.keyboard.off('keydown-ESC', this._handleEscKey, this);
+            } else {
+                this.input.keyboard.off('keydown-ESC');
+            }
+        }
+
+        if (this.tweens) {
+            this.tweens.killAll();
+        }
+
+        if (this.inventorySystem?.cleanup) {
+            this.inventorySystem.cleanup();
+            this.inventorySystem = null;
+        }
+
+        if (this.cardSystem?.cleanup) {
+            this.cardSystem.cleanup();
+            this.cardSystem = null;
+        }
+
+        this._handleWake = null;
+        this._handleEscKey = null;
+        this._handleEndPlayerTurn = null;
         this._turnHandlersBound = false;
+
+        console.log('GameScene shutdown - listeners cleaned');
     }
 }
