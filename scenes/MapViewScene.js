@@ -5,6 +5,18 @@ import { MapGenerator } from '../utils/MapGenerator.js';
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
 
+  // Convert a 0-based floor index (map cursor) into a 1-based absolute floor number
+  getAbsoluteFloor(floorIndex) {
+    const baseFloor = this.actMap ? this.actMap.startFloor : 1;
+    return baseFloor + floorIndex;
+  }
+
+  // Convert a 1-based absolute floor number to a 0-based floor index for the map cursor
+  getFloorIndex(absoluteFloor) {
+    const baseFloor = this.actMap ? this.actMap.startFloor : 1;
+    return Math.max(0, absoluteFloor - baseFloor);
+  }
+
   init(data) {
     this.gameState = data.gameState;
 
@@ -21,8 +33,10 @@ export class MapViewScene extends Phaser.Scene {
     this.totalActs = Math.max(acts.length, 1);
     this.floorsPerAct = firstAct ? (firstAct.endFloor - firstAct.startFloor + 1) : 15;
 
+    // Ensure currentFloor is always stored as a 1-based value for UI
+    this.gameState.currentFloor = Math.max(1, this.gameState.currentFloor || 1);
     // Derive current act from currentFloor, defaulting to act 1
-    const cf = Math.max(1, this.gameState.currentFloor || 1);
+    const cf = this.gameState.currentFloor;
     this.currentAct = Math.min(
       this.totalActs,
       Math.floor((cf - 1) / 15) + 1
@@ -327,13 +341,10 @@ export class MapViewScene extends Phaser.Scene {
     // Mark from and to visited (fixes stuck visuals)
     fromNode.visited = true;
     node.visited = true;
+    // Update cursor position (0-based index)
     this.gameState.mapCursor = { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx };
-    const baseFloor = this.actMap ? this.actMap.startFloor : ((this.currentAct - 1) * Math.max(this.floorsPerAct, 1)) + 1;
-    const endFloor = this.actMap
-      ? this.actMap.endFloor
-      : baseFloor + Math.max(this.floorsPerAct - 1, 0);
-    const absoluteFloor = Math.min(endFloor, Math.max(baseFloor, baseFloor + targetFloorIdx));
-    this.gameState.currentFloor = Math.max(this.gameState.currentFloor || 1, absoluteFloor);
+    // Update absolute floor number (1-based)
+    this.gameState.currentFloor = this.getAbsoluteFloor(targetFloorIdx);
     // Store type
     this.gameState.roomType = node.type;
     const isCombatRoom = ['COMBAT', 'ELITE', 'BOSS', 'TREASURE'].includes(node.type);

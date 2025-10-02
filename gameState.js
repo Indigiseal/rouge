@@ -13,7 +13,7 @@ export class GameState {
         this.playerEffects = [];
         this.actionsLeft = 15;
         this.maxActions = 15;
-        this.currentFloor = 1;
+        this.currentFloor = 1;  // 1-based: User-facing floor number (1, 2, 3...)
         this.equippedArmor = null;
         this.equippedWeapon = null;
         this.bonusInventorySlots = 0; // For Bottomless Bag
@@ -68,7 +68,15 @@ export class GameState {
     }
 
     nextFloor() {
-        this.currentFloor++;
+
+        this.currentFloor++;  // Increment 1-based floor number
+
+        // Ensure currentFloor never drops below 1
+        if (this.currentFloor < 1) {
+            console.error('Floor number corruption detected, resetting to 1');
+            this.currentFloor = 1;
+        }
+
 
         this.blockNextAttack = false;
         this.firstActionUsed = false;
