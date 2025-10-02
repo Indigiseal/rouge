@@ -68,6 +68,7 @@ export class GameState {
     }
 
     nextFloor() {
+
         this.currentFloor++;  // Increment 1-based floor number
 
         // Ensure currentFloor never drops below 1
@@ -75,6 +76,7 @@ export class GameState {
             console.error('Floor number corruption detected, resetting to 1');
             this.currentFloor = 1;
         }
+
 
         this.blockNextAttack = false;
         this.firstActionUsed = false;

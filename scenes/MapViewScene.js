@@ -21,6 +21,18 @@ export class MapViewScene extends Phaser.Scene {
     return Math.max(0, absoluteFloor - baseFloor);
   }
 
+  // Convert a 0-based floor index (map cursor) into a 1-based absolute floor number
+  getAbsoluteFloor(floorIndex) {
+    const baseFloor = this.actMap ? this.actMap.startFloor : 1;
+    return baseFloor + floorIndex;
+  }
+
+  // Convert a 1-based absolute floor number to a 0-based floor index for the map cursor
+  getFloorIndex(absoluteFloor) {
+    const baseFloor = this.actMap ? this.actMap.startFloor : 1;
+    return Math.max(0, absoluteFloor - baseFloor);
+  }
+
   init(data) {
     this.gameState = data.gameState;
 
