@@ -376,11 +376,41 @@ export class MapViewScene extends Phaser.Scene {
 
 
   shutdown() {
-    this.events.off('wake');
-    if (this.dragArea) {
-      this.dragArea.off('dragstart');
-      this.dragArea.off('drag');
-      this.dragArea.off('dragend');
+    try {
+      // Remove our own wake listeners
+      this.events.removeAllListeners('wake');
+
+      // Drag area listeners and interactivity
+      if (this.dragArea) {
+        this.dragArea.removeAllListeners(); // dragstart/drag/dragend
+        this.dragArea.removeInteractive();
+        this.dragArea.destroy();
+        this.dragArea = null;
+      }
+
+      // Node sprites (pointer events)
+      if (Array.isArray(this.nodeSprites)) {
+        this.nodeSprites.forEach(s => {
+          if (!s) return;
+          s.removeAllListeners?.();
+          s.removeInteractive?.();
+          s.destroy?.();
+        });
+        this.nodeSprites = [];
+      }
+
+      // Graphics/containers
+      if (this.linkGfx) { this.linkGfx.destroy(); this.linkGfx = null; }
+      if (this.mapContainer) { this.mapContainer.destroy(true); this.mapContainer = null; }
+
+      // Kill scene tweens
+      if (this.tweens) this.tweens.killAll();
+
+      // Clear tooltip helpers if you keep closures
+      this.hideTooltip = null;
+
+    } catch (e) {
+      console.warn('MapViewScene.shutdown error:', e);
     }
   }
 }

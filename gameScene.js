@@ -17,6 +17,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     init(data = {}) {
+        this._handleEndPlayerTurn = () => this.runEnemyTurn();
+
         this.saveManager = new SaveManager();
         this.metaManager = new MetaProgressionManager(this);
 
@@ -101,7 +103,7 @@ export class GameScene extends Phaser.Scene {
             console.log('GameScene wake roomType:', this.gameState.roomType);
             console.log('Current inventory:', this.inventorySystem?.slots);
             console.log('GameState inventory:', this.gameState.inventory);
-            
+
             this.roomType = this.gameState.roomType || 'COMBAT';
             console.log('GameScene wake roomType:', this.roomType);
 
@@ -110,7 +112,7 @@ export class GameScene extends Phaser.Scene {
                 this.inventorySystem.setVisibility(true);
                 this.inventorySystem.rebuildInventorySprites();
             }
-            
+
             if (this.shouldStartNewFloor()) {
                 this.startNewFloor();
             } else {
@@ -119,6 +121,9 @@ export class GameScene extends Phaser.Scene {
                 this.inventorySystem.rebuildInventorySprites();
             }
         }, this);
+
+        // Register shutdown handler once per scene life
+        this.events.once('shutdown', this.shutdown, this);
     }
 
     shouldStartNewFloor() {
@@ -823,8 +828,21 @@ export class GameScene extends Phaser.Scene {
         }
         
         this.time.delayedCall(1500, () => {
-            this.scene.sleep();
-            this.scene.launch('MapViewScene', { gameState: this.gameState });
+            this.scene.stop('GameScene');
+
+            let mapSceneInstance = null;
+            try {
+                mapSceneInstance = this.scene.get('MapViewScene');
+            } catch (err) {
+                mapSceneInstance = null;
+            }
+
+            if (mapSceneInstance) {
+                mapSceneInstance.gameState = this.gameState;
+                this.scene.wake('MapViewScene');
+            } else {
+                this.scene.start('MapViewScene', { gameState: this.gameState });
+            }
         });
     }
     
@@ -1052,8 +1070,36 @@ export class GameScene extends Phaser.Scene {
     }
     
     shutdown() {
-        this.input.keyboard.off('keydown-ESC');
-        this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
-        this._turnHandlersBound = false;
+        try {
+            // Unbind wake handler: we used an anonymous arrow in create(), so remove all 'wake' on this Scene
+            this.events.removeAllListeners('wake');
+
+            // Unbind endPlayerTurn (we bound a named function field)
+            if (this._handleEndPlayerTurn) {
+                this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
+            }
+
+            // Unbind keyboard ESC that we registered in create()
+            if (this.input && this.input.keyboard) {
+                this.input.keyboard.removeAllListeners('keydown-ESC');
+            }
+
+            // Kill tweens owned by this scene (safe; scoped to this scene)
+            if (this.tweens) this.tweens.killAll();
+
+            // Cleanup subsystems **only if they exist and expose cleanup**
+            if (this.inventorySystem && typeof this.inventorySystem.cleanup === 'function') {
+                this.inventorySystem.cleanup();
+            }
+            if (this.cardSystem && typeof this.cardSystem.cleanup === 'function') {
+                this.cardSystem.cleanup();
+            }
+
+        } catch (e) {
+            console.warn('GameScene.shutdown error:', e);
+        } finally {
+            this._turnHandlersBound = false;
+            this._handleEndPlayerTurn = null;
+        }
     }
 }
