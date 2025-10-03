@@ -1750,4 +1750,40 @@ export class InventorySystem {
             }
         });
     }
+
+    cleanup() {
+        try {
+            // Remove listeners from cards & visuals
+            this.slotSprites.forEach(slot => {
+                const card = slot?.card;
+                if (card && card.removeAllListeners) {
+                    card.removeAllListeners(); // pointerover/out, drag*
+                    card.removeInteractive?.();
+                }
+                // Info text
+                const infoText = card?.getData?.('infoText');
+                if (infoText) {
+                    if (infoText.list) infoText.destroy(true); else infoText.destroy();
+                }
+
+                // Per-slot visuals
+                slot?.hoverSprite?.destroy?.();
+                slot?.shadow?.destroy?.();
+                slot?.twinkleSprite?.destroy?.();
+                slot.card?.destroy?.();
+
+                // Slot background
+                slot?.background?.destroy?.();
+            });
+
+            // Destroy UI group contents
+            this.uiGroup?.clear?.(true, true);
+
+        } catch (e) {
+            console.warn('InventorySystem.cleanup error:', e);
+        } finally {
+            this.slotSprites = [];
+            this.dragState = null;
+        }
+    }
 }

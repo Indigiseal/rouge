@@ -1698,4 +1698,28 @@ export class CardSystem {
             this.scene.createFloatingText(x, y - 20, '+20 Coins +5 Crystals!', 0xffd700);
         });
     }
+
+    cleanup() {
+        try {
+            if (Array.isArray(this.boardCards)) {
+                this.boardCards.forEach(c => {
+                    const s = c?.sprite;
+                    if (s) {
+                        s.removeAllListeners?.();
+                        s.removeInteractive?.();
+                        s.destroy?.();
+                    }
+                    // any overlays / infoText
+                    if (c?.infoText) {
+                        if (c.infoText.list) c.infoText.destroy(true); else c.infoText.destroy();
+                        c.infoText = null;
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('CardSystem.cleanup error:', e);
+        } finally {
+            this.boardCards = [];
+        }
+    }
 }
