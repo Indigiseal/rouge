@@ -14,25 +14,26 @@ export class ShopScene extends Phaser.Scene {
         
         // Get reference to GameScene for inventory access
         this.gameScene = this.scene.get('GameScene');
+        this.enableShopStation();
         
         // Title
         this.add.text(320, 20, 'Shop', { 
             fontSize: '28px', 
             fill: '#ffffff', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         // Coins and Crystals display
         this.coinsText = this.add.text(270, 45, `Coins: ${this.gameState.coins}`, { 
             fontSize: '16px', 
             fill: '#ffd700', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         this.crystalsText = this.add.text(370, 45, `Crystals: ${this.gameState.crystals}`, { 
             fontSize: '16px', 
             fill: '#00ffff', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         // Mode toggle button
@@ -41,7 +42,7 @@ export class ShopScene extends Phaser.Scene {
             fill: '#ffffff',
             backgroundColor: '#444444',
             padding: { x: 8, y: 4 },
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true })
@@ -58,16 +59,36 @@ export class ShopScene extends Phaser.Scene {
         const continueButton = this.add.text(320, 340, 'Continue to Next Floor', { 
             fontSize: '18px', 
             fill: '#00ff00', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         })
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
+            this.closeShop();
+            return;
             // NO nextFloor() here—map already did it
             this.scene.stop(); // Close shop
             this.scene.wake('MapViewScene'); // Back to map
             console.log('Woke MapViewScene after shop');
         });
         continueButton.setOrigin(0.5);
+    }
+
+    enableShopStation() {
+        if (!this.gameScene?.inventorySystem) return;
+        this.scene.wake('GameScene', { shopStation: true });
+        this.gameScene.inventorySystem.setStationMode(true);
+        this.gameScene.inventorySystem.setVisibility(true);
+    }
+
+    closeShop() {
+        if (this.gameScene?.inventorySystem) {
+            this.gameScene.inventorySystem.setStationMode(false);
+            this.gameScene.inventorySystem.setVisibility(false);
+            this.scene.sleep('GameScene');
+        }
+        this.scene.stop();
+        this.scene.wake('MapViewScene');
+        console.log('Woke MapViewScene after shop');
     }
     
     // Helper method to get current inventory
@@ -88,10 +109,12 @@ export class ShopScene extends Phaser.Scene {
     }
     
     generateShopItems() {
+        /*
         // Hide game scene UI
         if (this.gameScene && this.gameScene.inventorySystem) {
             this.gameScene.inventorySystem.setVisibility(false);
         }
+        */
         
         // Use a temporary CardSystem to generate card data
         const cardGenerator = new CardSystem(this);
@@ -122,12 +145,12 @@ export class ShopScene extends Phaser.Scene {
             });
         }
         
-        // Slot 3: Weapon (guaranteed) - FIXED to use CardDataGenerator
-        const weaponData = cardGenerator.createCardData('weapon', floor);
-        if (weaponData) {
-            const weaponPrice = this.calculateItemPrice(weaponData);
+        // Slot 3: Venomous Dagger (guaranteed)
+        const venomousDagger = this.createVenomousDagger(floor);
+        if (venomousDagger) {
+            const weaponPrice = this.calculateItemPrice(venomousDagger);
             this.shopItems.push({ 
-                data: weaponData, 
+                data: venomousDagger,
                 price: weaponPrice,
                 currency: 'coins',
                 purchased: false 
@@ -146,7 +169,19 @@ export class ShopScene extends Phaser.Scene {
             });
         }
         
-        // Slot 5: Magic Spell (guaranteed)
+        // Slot 5: Thorns Card (guaranteed)
+        const thornsData = cardGenerator.createCardData('thorns', floor);
+        if (thornsData) {
+            const thornsPrice = this.calculateItemPrice(thornsData);
+            this.shopItems.push({
+                data: thornsData,
+                price: thornsPrice,
+                currency: 'coins',
+                purchased: false
+            });
+        }
+
+        // Slot 6: Magic Spell (guaranteed)
         const magicData = cardGenerator.createCardData('magic', floor);
         if (magicData) {
             const magicPrice = magicData.cost || this.calculateItemPrice(magicData);
@@ -158,9 +193,9 @@ export class ShopScene extends Phaser.Scene {
             });
         }
         
-        // Slots 6-7: Random duplicates from available types (NO AMULETS HERE)
-        const duplicateTypes = ['weapon', 'armor', 'magic', 'potion', 'food'];
-        for (let i = 0; i < 2; i++) {
+        // Slot 7: Random duplicate from available types (NO AMULETS HERE)
+        const duplicateTypes = ['weapon', 'armor', 'magic', 'potion', 'food', 'thorns'];
+        for (let i = 0; i < 1; i++) {
             const randomType = duplicateTypes[Math.floor(Math.random() * duplicateTypes.length)];
             const itemData = cardGenerator.createCardData(randomType, floor);
             
@@ -187,6 +222,28 @@ export class ShopScene extends Phaser.Scene {
                 purchased: false 
             });
         }
+    }
+
+    createVenomousDagger(floor) {
+        const cardGenerator = new CardSystem(this);
+        const unlocks = cardGenerator.cardDataGenerator.weaponUnlocks.venomousDagger;
+        const rarity = floor >= unlocks.uncommon.floor ? 'uncommon' : 'common';
+        const data = unlocks[rarity];
+        return {
+            type: 'weapon',
+            name: `${rarity.charAt(0).toUpperCase() + rarity.slice(1)} Venomous Dagger`,
+            weaponType: 'venomousDagger',
+            damage: data.damage,
+            rarity,
+            sprite: data.sprite,
+            special: data.special,
+            range: data.range,
+            poisonDamage: data.poisonDamage,
+            poisonTurns: data.poisonTurns,
+            poisonStackable: data.poisonStackable,
+            durability: 5,
+            maxDurability: 5
+        };
     }
     
     calculateAmuletCrystalPrice(amulet) {
@@ -227,6 +284,8 @@ export class ShopScene extends Phaser.Scene {
             basePrice += item.damage || 0;
         } else if (item.type === 'armor') {
             basePrice += (item.protection || 0) * 2;
+        } else if (item.type === 'thorns') {
+            basePrice += (item.thornDamage || 0) * 3;
         } else if (item.type === 'magic') {
             basePrice *= 1.2; // Magic cards are slightly more expensive
         }
@@ -243,6 +302,22 @@ export class ShopScene extends Phaser.Scene {
         // Sell price is 40% of buy price
         const buyPrice = this.calculateItemPrice(item);
         return Math.floor(buyPrice * 0.4);
+    }
+
+    getItemDisplayName(item) {
+        if (!item) return 'Item';
+        if (item.type === 'potion') {
+            return this.getPotionDisplayName(item);
+        }
+        return item.name || 'Item';
+    }
+
+    getPotionDisplayName(item) {
+        const healAmount = item.healAmount || 0;
+        if (healAmount >= 100) return 'Greater Healing Potion';
+        if (healAmount >= 50) return 'Strong Healing Potion';
+        if (healAmount >= 30) return 'Healing Potion';
+        return 'Minor Healing Potion';
     }
     
     displayShopItems() {
@@ -266,13 +341,13 @@ export class ShopScene extends Phaser.Scene {
             const slotText = this.add.text(-40, -40, `${i + 1}`, {
                 fontSize: '10px',
                 fill: '#666666',
-                fontFamily: '"Roboto Condensed"'
+                fontFamily: '"HoMM Pixel"'
             });
             
             const name = this.add.text(0, -35, item.data.name, { 
                 fontSize: '10px', 
                 fill: '#ffffff', 
-                fontFamily: '"Roboto Condensed"', 
+                fontFamily: '"HoMM Pixel"', 
                 wordWrap: { width: 90 }, 
                 align: 'center' 
             }).setOrigin(0.5);
@@ -301,7 +376,7 @@ export class ShopScene extends Phaser.Scene {
             const stats = this.add.text(0, -10, statsText, { 
                 fontSize: '9px', 
                 fill: '#cccccc', 
-                fontFamily: '"Roboto Condensed"',
+                fontFamily: '"HoMM Pixel"',
                 align: 'center'
             }).setOrigin(0.5);
             
@@ -311,7 +386,7 @@ export class ShopScene extends Phaser.Scene {
             const priceText = this.add.text(0, 10, `${item.price} ${currencyText}`, { 
                 fontSize: '10px', 
                 fill: priceColor, 
-                fontFamily: '"Roboto Condensed"' 
+                fontFamily: '"HoMM Pixel"' 
             }).setOrigin(0.5);
             
             const buyButton = this.add.text(0, 30, item.purchased ? 'Sold' : 'Buy', { 
@@ -319,7 +394,7 @@ export class ShopScene extends Phaser.Scene {
                 fill: item.purchased ? '#888888' : '#00ff00', 
                 backgroundColor: '#333333', 
                 padding: { x: 4, y: 2 }, 
-                fontFamily: '"Roboto Condensed"' 
+                fontFamily: '"HoMM Pixel"' 
             })
             .setOrigin(0.5);
             
@@ -341,7 +416,7 @@ export class ShopScene extends Phaser.Scene {
         this.sellTitle = this.add.text(320, 70, 'Select an item to sell:', {
             fontSize: '14px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         this.inventoryContainer.add(this.sellTitle);
         
@@ -372,7 +447,7 @@ export class ShopScene extends Phaser.Scene {
             const itemNameText = this.add.text(0, -35, '', {
                 fontSize: '10px',
                 fill: '#ffffff',
-                fontFamily: '"Roboto Condensed"',
+                fontFamily: '"HoMM Pixel"',
                 wordWrap: { width: 70 },
                 align: 'center'
             }).setOrigin(0.5);
@@ -380,14 +455,14 @@ export class ShopScene extends Phaser.Scene {
             const itemStatsText = this.add.text(0, -10, '', {
                 fontSize: '9px',
                 fill: '#cccccc',
-                fontFamily: '"Roboto Condensed"',
+                fontFamily: '"HoMM Pixel"',
                 align: 'center'
             }).setOrigin(0.5);
             
             const sellPriceText = this.add.text(0, 15, '', {
                 fontSize: '10px',
                 fill: '#ffd700',
-                fontFamily: '"Roboto Condensed"'
+                fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             
             const sellButton = this.add.text(0, 35, 'Sell', {
@@ -395,7 +470,7 @@ export class ShopScene extends Phaser.Scene {
                 fill: '#ff6666',
                 backgroundColor: '#333333',
                 padding: { x: 4, y: 2 },
-                fontFamily: '"Roboto Condensed"'
+                fontFamily: '"HoMM Pixel"'
             })
             .setOrigin(0.5)
             .setVisible(false);
@@ -435,7 +510,7 @@ export class ShopScene extends Phaser.Scene {
             if (!slot) continue; // Safety check
             
             if (item) {
-                slot.nameText.setText(item.name || 'Item');
+                slot.nameText.setText(this.getItemDisplayName(item));
                 
                 // Show item stats
                 let statsText = '';
@@ -505,52 +580,18 @@ export class ShopScene extends Phaser.Scene {
         if (!item) return;
         
         const sellPrice = this.calculateSellPrice(item);
+        const coinsBefore = this.gameState.coins;
         this.gameState.coins += sellPrice;
         
-        // PROPERLY remove item from the inventory system
         if (this.gameScene && this.gameScene.inventorySystem) {
-            // First clean up any sprites associated with this slot
-            const slot = this.gameScene.inventorySystem.slotSprites[index];
-            if (slot) {
-                // Clean up all associated sprites
-                if (slot.card) {
-                    const infoText = slot.card.getData('infoText');
-                    if (infoText) {
-                        if (infoText.list) {
-                            infoText.destroy(true);
-                        } else {
-                            infoText.destroy();
-                        }
-                    }
-                    slot.card.destroy();
-                    slot.card = null;
-                }
-                
-                if (slot.twinkleSprite) {
-                    slot.twinkleSprite.destroy();
-                    slot.twinkleSprite = null;
-                }
-                
-                if (slot.hoverSprite) {
-                    slot.hoverSprite.destroy();
-                    slot.hoverSprite = null;
-                }
-                
-                if (slot.shadow) {
-                    slot.shadow.destroy();
-                    slot.shadow = null;
-                }
-            }
-            
-            // Now remove the item data
-            this.gameScene.inventorySystem.slots[index] = null;
+            this.gameScene.inventorySystem.removeCard(index);
         } else {
             // Fallback for old system
             this.gameState.inventory[index] = null;
         }
         
         SoundHelper.playSound(this, 'coin_collect', 0.4);
-        this.showFeedback(`Sold for ${sellPrice} coins!`, 0xffd700);
+        this.showFeedback(`Sold ${this.getItemDisplayName(item)} for ${sellPrice} coins (${coinsBefore}->${this.gameState.coins})`, 0xffd700);
         
         this.coinsText.setText(`Coins: ${this.gameState.coins}`);
         this.updateInventoryDisplay();
@@ -679,7 +720,7 @@ export class ShopScene extends Phaser.Scene {
         const feedBackText = this.add.text(320, 300, message, { 
             fontSize: '16px', 
             fill: Phaser.Display.Color.IntegerToColor(color).rgba, 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         this.tweens.add({

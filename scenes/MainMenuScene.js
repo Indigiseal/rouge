@@ -1,6 +1,5 @@
 // scenes/MainMenuScene.js
 import { SaveManager } from '../SaveManager.js';
-import { GameState } from '../gameState.js';
 export class MainMenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainMenuScene' });
@@ -8,8 +7,7 @@ export class MainMenuScene extends Phaser.Scene {
     
     create() {
         this.saveManager = new SaveManager();
-        this.ensureSharedGameState();
-
+        
         // Load saved settings
         this.loadSettings();
         
@@ -20,7 +18,7 @@ export class MainMenuScene extends Phaser.Scene {
         this.add.text(320, 80, 'DUNGEON CARDS', {
             fontSize: '48px',
             fill: '#ffd700',
-            fontFamily: '"Roboto Condensed"',
+            fontFamily: '"HoMM Pixel"',
             fontStyle: 'bold'
         }).setOrigin(0.5);
         
@@ -28,7 +26,7 @@ export class MainMenuScene extends Phaser.Scene {
         this.add.text(320, 120, 'A Roguelike Card Adventure', {
             fontSize: '16px',
             fill: '#cccccc',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Main menu buttons
@@ -38,19 +36,33 @@ export class MainMenuScene extends Phaser.Scene {
         this.add.text(10, 350, 'v1.0.0', {
             fontSize: '12px',
             fill: '#666666',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         });
     }
     
     createMainMenuButtons() {
-        // Play button
-        this.createButton(320, 200, 200, 40, 'Play', 0x00ff00, () => {
-            this.playGame();
+        // New Run button
+        const newRunButton = this.createButton(320, 180, 200, 40, 'New Run', 0x00ff00, () => {
+            this.startNewGame();
         });
-
+        
+        // Check if there's a current run to continue
+        const hasSavedRun = this.saveManager.hasCurrentRun();
+        
+        // Continue button is enabled if there's a saved run
+        const continueButton = this.createButton(320, 230, 200, 40, 'Continue', 
+            hasSavedRun ? 0x00aaff : 0x666666, () => {
+                if (hasSavedRun) this.continueGame();
+            }, !hasSavedRun);
+        
         // Options button
-        const optionsButton = this.createButton(320, 260, 200, 40, 'Options', 0xffaa00, () => {
+        const optionsButton = this.createButton(320, 280, 200, 40, 'Options', 0xffaa00, () => {
             this.showOptionsMenu();
+        });
+        
+        // Exit button
+        const exitButton = this.createButton(320, 330, 200, 40, 'Exit Game', 0xff6666, () => {
+            this.exitGame();
         });
     }
     
@@ -61,7 +73,7 @@ export class MainMenuScene extends Phaser.Scene {
         const buttonText = this.add.text(x, y, text, {
             fontSize: '18px',
             fill: disabled ? '#666666' : '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         if (!disabled) {
@@ -95,7 +107,7 @@ export class MainMenuScene extends Phaser.Scene {
         const optionsTitle = this.add.text(320, 60, 'OPTIONS', {
             fontSize: '32px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Language button
@@ -142,7 +154,7 @@ export class MainMenuScene extends Phaser.Scene {
         const labelText = this.add.text(120, y, label + ':', {
             fontSize: '16px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0, 0.5);
         
         // Slider background
@@ -172,7 +184,7 @@ export class MainMenuScene extends Phaser.Scene {
             Math.round(currentVolume * 100) + '%', {
             fontSize: '14px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0, 0.5);
         
         // Handle dragging
@@ -220,38 +232,78 @@ export class MainMenuScene extends Phaser.Scene {
     }
     
     loadSettings() {
-        const settings = this.saveManager.loadSettings();
-        this.game.globalVolume = { ...settings.volume };
-        this.game.language = settings.language || 'English';
-
+        // Load volume settings
+        const savedVolume = localStorage.getItem('gameVolume');
+        if (savedVolume) {
+            this.game.globalVolume = JSON.parse(savedVolume);
+        } else {
+            this.game.globalVolume = {
+                master: 1.0,
+                sfx: 1.0,
+                music: 0.5
+            };
+        }
+        
+        // Load language
+        const savedLanguage = localStorage.getItem('gameLanguage');
+        this.game.language = savedLanguage || 'English';
+        
         // Apply volume
         this.sound.volume = this.game.globalVolume.master;
     }
-
+    
     saveSettings() {
-        this.saveManager.saveSettings({
-            volume: this.game.globalVolume,
-            language: this.game.language,
-        });
+        localStorage.setItem('gameVolume', JSON.stringify(this.game.globalVolume));
+        localStorage.setItem('gameLanguage', this.game.language);
     }
-
-    ensureSharedGameState() {
-        if (!this.game.gameState) {
-            this.game.gameState = new GameState(null);
-        }
-        this.gameState = this.game.gameState;
-        if (this.gameState) {
-            this.gameState.scene = null;
-        }
-    }
-
-    playGame() {
-        this.gameState.initNewRun();
-
+    
+    startNewGame() {
+        // Clear any existing run save
+        this.saveManager.clearCurrentRun();
+        
+        // Start fresh run (meta progression is kept)
         this.cameras.main.fadeOut(500, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
-            this.scene.start('GameScene');
+            this.scene.start('GameScene', { newGame: true });
         });
     }
     
+    continueGame() {
+        // Load the saved run
+        this.cameras.main.fadeOut(500, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+            this.scene.start('GameScene', { loadSave: true });
+        });
+    }
+    
+    exitGame() {
+        // Show confirmation dialog
+        const confirmBg = this.add.rectangle(320, 180, 300, 150, 0x000000, 0.9)
+            .setStrokeStyle(2, 0xffffff);
+        
+        const confirmText = this.add.text(320, 150, 'Are you sure you want to exit?', {
+            fontSize: '16px',
+            fill: '#ffffff',
+            fontFamily: '"HoMM Pixel"',
+            align: 'center'
+        }).setOrigin(0.5);
+        
+        const yesButton = this.createButton(270, 200, 80, 30, 'Yes', 0x00ff00, () => {
+            // If in browser, show a message
+            if (window) {
+                window.close(); // This might not work in all browsers
+                // Fallback message
+                this.add.text(320, 240, 'Please close this tab to exit', {
+                    fontSize: '14px',
+                    fill: '#ffff00',
+                    fontFamily: '"HoMM Pixel"'
+                }).setOrigin(0.5);
+            }
+        });
+        
+        const noButton = this.createButton(370, 200, 80, 30, 'No', 0xff0000, () => {
+            [confirmBg, confirmText, yesButton.button, yesButton.text, 
+             noButton.button, noButton.text].forEach(item => item.destroy());
+        });
+    }
 }

@@ -13,28 +13,31 @@ export class RareShopScene extends Phaser.Scene {
         
         // Get reference to GameScene for inventory and amulet manager access
         this.gameScene = this.scene.get('GameScene');
+        this.enableShopStation();
         
+        /*
         // Hide game scene UI
         if (this.gameScene && this.gameScene.inventorySystem) {
             this.gameScene.inventorySystem.setVisibility(false);
         }
+        */
 
         this.add.text(320, 30, 'Rare Goods', { 
             fontSize: '28px', 
             fill: '#DA70D6', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         this.coinsText = this.add.text(450, 60, `Coins: ${this.gameState.coins}`, { 
             fontSize: '16px', 
             fill: '#ffd700', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         this.crystalsText = this.add.text(190, 60, `Crystals: ${this.gameState.crystals}`, { 
             fontSize: '16px', 
             fill: '#00ffff', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         this.generateShopItems();
@@ -43,16 +46,36 @@ export class RareShopScene extends Phaser.Scene {
         const continueButton = this.add.text(320, 330, 'Continue to Next Floor', { 
             fontSize: '18px', 
             fill: '#00ff00', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         })
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
+            this.closeShop();
+            return;
             // NO nextFloor() here—map already did it
             this.scene.stop(); // Close rare shop
             this.scene.wake('MapViewScene'); // Back to map
             console.log('Woke MapViewScene after rare shop');
         });
         continueButton.setOrigin(0.5);
+    }
+
+    enableShopStation() {
+        if (!this.gameScene?.inventorySystem) return;
+        this.scene.wake('GameScene', { shopStation: true });
+        this.gameScene.inventorySystem.setStationMode(true);
+        this.gameScene.inventorySystem.setVisibility(true);
+    }
+
+    closeShop() {
+        if (this.gameScene?.inventorySystem) {
+            this.gameScene.inventorySystem.setStationMode(false);
+            this.gameScene.inventorySystem.setVisibility(false);
+            this.scene.sleep('GameScene');
+        }
+        this.scene.stop();
+        this.scene.wake('MapViewScene');
+        console.log('Woke MapViewScene after rare shop');
     }
     
     generateShopItems() {
@@ -86,6 +109,19 @@ export class RareShopScene extends Phaser.Scene {
             currency: 'coins', 
             purchased: false 
         });
+
+        // 4. Generate an upgraded thorns card
+        const thornsCard = cardGenerator.createCardData('thorns');
+        thornsCard.rarity = 'uncommon';
+        thornsCard.thornDamage = Math.max(thornsCard.thornDamage + 1, Math.floor(thornsCard.thornDamage * 1.5));
+        thornsCard.maxDurability = 7;
+        thornsCard.durability = 7;
+        this.shopItems.push({
+            data: thornsCard,
+            price: 14 + this.gameState.currentFloor * 3,
+            currency: 'coins',
+            purchased: false
+        });
         
         // Shuffle items
         this.shopItems.sort(() => Math.random() - 0.5);
@@ -96,7 +132,7 @@ export class RareShopScene extends Phaser.Scene {
         const floor = this.gameState.currentFloor;
         
         // Get available weapon types for this floor
-        const weaponTypes = ['dagger', 'spear', 'sword', 'axe'];
+        const weaponTypes = ['dagger', 'venomousDagger', 'spear', 'sword', 'axe'];
         const availableWeapons = [];
         
         weaponTypes.forEach(weaponType => {
@@ -114,6 +150,7 @@ export class RareShopScene extends Phaser.Scene {
             return {
                 type: 'weapon',
                 name: 'Uncommon Sword',
+                weaponType: 'sword',
                 damage: 7 + Math.floor(floor / 3),
                 rarity: 'uncommon',
                 sprite: 'sword_U',
@@ -126,11 +163,15 @@ export class RareShopScene extends Phaser.Scene {
         const selected = availableWeapons[Math.floor(Math.random() * availableWeapons.length)];
         const weaponData = selected.data;
         const rarityName = 'Uncommon';
-        const weaponName = selected.type.charAt(0).toUpperCase() + selected.type.slice(1);
+        const weaponNames = {
+            venomousDagger: 'Venomous Dagger'
+        };
+        const weaponName = weaponNames[selected.type] || selected.type.charAt(0).toUpperCase() + selected.type.slice(1);
         
         // Get proper durability
         const durabilityMap = {
             dagger: { uncommon: 5 },
+            venomousDagger: { uncommon: 5 },
             spear: { uncommon: 6 },
             sword: { uncommon: 8 },
             axe: { uncommon: 4 }
@@ -140,10 +181,15 @@ export class RareShopScene extends Phaser.Scene {
         return {
             type: 'weapon',
             name: `${rarityName} ${weaponName}`,
+            weaponType: selected.type,
             damage: weaponData.damage + Math.floor(floor / 3),
             rarity: 'uncommon',
             sprite: weaponData.sprite,
             special: weaponData.special,
+            range: weaponData.range || 'melee',
+            poisonDamage: weaponData.poisonDamage || 0,
+            poisonTurns: weaponData.poisonTurns || 0,
+            poisonStackable: weaponData.poisonStackable || false,
             durability: maxDurability,
             maxDurability: maxDurability
         };
@@ -172,6 +218,7 @@ export class RareShopScene extends Phaser.Scene {
             return {
                 type: 'armor',
                 name: 'Uncommon Leather Armor',
+                armorType: 'leather',
                 protection: 4 + Math.floor(floor / 4),
                 reflection: 15,
                 rarity: 'uncommon',
@@ -189,6 +236,7 @@ export class RareShopScene extends Phaser.Scene {
         return {
             type: 'armor',
             name: `${rarityName} ${armorName} Armor`,
+            armorType: selected.type,
             protection: armorData.protection + Math.floor(floor / 4),
             reflection: armorData.reflection,
             dodgeChance: armorData.dodgeChance,
@@ -211,7 +259,7 @@ export class RareShopScene extends Phaser.Scene {
             const name = this.add.text(0, -75, item.data.name, { 
                 fontSize: '14px', 
                 fill: '#ffffff', 
-                fontFamily: '"Roboto Condensed"', 
+                fontFamily: '"HoMM Pixel"', 
                 wordWrap: { width: 170 }, 
                 align: 'center' 
             }).setOrigin(0.5);
@@ -265,7 +313,7 @@ export class RareShopScene extends Phaser.Scene {
                       item.data.id && 
                       this.gameScene.amuletManager.amuletDefinitions[item.data.id]?.cursed 
                       ? '#ff6666' : '#cccccc', 
-                fontFamily: '"Roboto Condensed"',
+                fontFamily: '"HoMM Pixel"',
                 wordWrap: { width: 170 },
                 align: 'center'
             }).setOrigin(0.5);
@@ -274,7 +322,7 @@ export class RareShopScene extends Phaser.Scene {
             const priceText = this.add.text(0, 20, `Cost: ${item.price} ${item.currency}`, { 
                 fontSize: '12px', 
                 fill: priceColor, 
-                fontFamily: '"Roboto Condensed"' 
+                fontFamily: '"HoMM Pixel"' 
             }).setOrigin(0.5);
             
             const buyButton = this.add.text(0, 60, item.purchased ? 'Sold' : 'Buy', { 
@@ -282,7 +330,7 @@ export class RareShopScene extends Phaser.Scene {
                 fill: item.purchased ? '#888888' : '#00ff00', 
                 backgroundColor: '#333333', 
                 padding: { x: 8, y: 4 }, 
-                fontFamily: '"Roboto Condensed"' 
+                fontFamily: '"HoMM Pixel"' 
             })
             .setOrigin(0.5);
             
@@ -381,7 +429,7 @@ export class RareShopScene extends Phaser.Scene {
         const feedBackText = this.add.text(320, 100, message, { 
             fontSize: '18px', 
             fill: Phaser.Display.Color.IntegerToColor(color).rgba, 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         this.tweens.add({

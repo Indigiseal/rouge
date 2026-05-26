@@ -5,50 +5,26 @@ import { MapGenerator } from '../utils/MapGenerator.js';
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
 
-  // Convert a 0-based floor index (map cursor) into a 1-based absolute floor number
-  getAbsoluteFloor(floorIndex) {
-    const baseFloor = this.actMap ? this.actMap.startFloor : 1;
-    return baseFloor + floorIndex;
-  }
-
-  // Convert a 1-based absolute floor number to a 0-based floor index for the map cursor
-  getFloorIndex(absoluteFloor) {
-    const baseFloor = this.actMap ? this.actMap.startFloor : 1;
-    return Math.max(0, absoluteFloor - baseFloor);
-  }
+  static MAP_CENTER_X = 300;
+  static MAP_CENTER_Y = 190;
 
   init(data) {
     this.gameState = data.gameState;
 
-    if (!this.gameState.dungeonMap) {
+    // Derive current act from currentFloor (1..45), default to 1
+    const cf = Math.max(1, this.gameState.currentFloor || 1);
+    this.currentAct = Math.floor((cf - 1) / 15) + 1;
+
+    // Build/keep full map. Regenerate old 10-floor maps after act length changes.
+    const hasCurrentMapShape = this.gameState.dungeonMap?.act1?.floors?.length === 15;
+    if (!this.gameState.dungeonMap || !hasCurrentMapShape) {
       const gen = new MapGenerator();
       this.gameState.dungeonMap = gen.generateFullMap();
     }
-
-    const mapKeys = Object.keys(this.gameState.dungeonMap);
-    const acts = mapKeys
-      .map(key => this.gameState.dungeonMap[key])
-      .filter(Boolean);
-    const firstAct = acts[0];
-    this.totalActs = Math.max(acts.length, 1);
-    this.floorsPerAct = firstAct ? (firstAct.endFloor - firstAct.startFloor + 1) : 15;
-
-    // Ensure currentFloor is always stored as a 1-based value for UI
-    this.gameState.currentFloor = Math.max(1, this.gameState.currentFloor || 1);
-    // Derive current act from currentFloor, defaulting to act 1
-    const cf = this.gameState.currentFloor;
-    this.currentAct = Math.min(
-      this.totalActs,
-      Math.floor((cf - 1) / 15) + 1
-    );
-
-    this.actMap = this.gameState.dungeonMap[`act${this.currentAct}`] || acts[0];
-    if (!this.actMap) {
-      throw new Error('Failed to resolve current act map');
-    }
+    this.actMap = this.gameState.dungeonMap[`act${this.currentAct}`];
 
     // Ensure a single authoritative cursor (act-local)
-    // floor: 0..N (0 is the fixed start node, N is boss floor)
+    // floor: 0..14 (0 is the fixed start node, 14 is boss floor)
     if (!this.gameState.mapCursor || this.gameState.mapCursor.act !== this.currentAct) {
       this.gameState.mapCursor = { act: this.currentAct, floor: 0, node: 0 };
       // Mark the start as visited so connections from start are valid
@@ -58,6 +34,7 @@ export class MapViewScene extends Phaser.Scene {
     // Dragging
     this.isDragging = false;
     this.dragStartX = 0; this.dragStartY = 0;
+    this.mapPanBounds = { minX: -200, maxX: 840, minY: -100, maxY: 460 };
   }
 
   create() {
@@ -65,87 +42,38 @@ export class MapViewScene extends Phaser.Scene {
     this.add.rectangle(320, 180, 640, 360, 0x8b7355);
     this.add.rectangle(320, 30, 640, 60, 0x6b5d4f);
     this.add.text(320, 30, `Act ${this.currentAct} – Floor ${this.gameState.currentFloor || 1}`, {
-      fontSize: '20px', fill: '#f2d3aa', fontFamily: '"Roboto Condensed"'
+      fontSize: '20px', fill: '#f2d3aa', fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5);
 
     // Drag area sits BEHIND nodes so it won't eat clicks
-    this.dragArea = this.add.rectangle(320, 180, 640, 360, 0xffffff, 0)
-      .setInteractive({ draggable: true })
-      .setDepth(-1000);
+    this.dragArea = this.add.rectangle(320, 200, 600, 280, 0xffffff, 0)
+      .setInteractive({ draggable: true }).setDepth(-1000);
     this.setupDragging();
 
     // Map container
-    this.mapContainer = this.add.container(320, 180);
+    this.mapContainer = this.add.container(MapViewScene.MAP_CENTER_X, 180);
 
     // Render structured map
     this.drawStructuredMap();
 
-    // Center the current node in view (roughly middle of screen)
-    const curNode = this.actMap.floors?.[this.gameState.mapCursor.floor]?.[this.gameState.mapCursor.node];
-    if (curNode) {
-      this.mapContainer.x = 320 - curNode.__x;
-      this.mapContainer.y = 180 - curNode.__y;
-    }
-
-    // Clamp after centering so we don't overshoot when at edges
-    if (this.mapClamp) {
-      this.mapContainer.x = Phaser.Math.Clamp(this.mapContainer.x, this.mapClamp.minX, this.mapClamp.maxX);
-      this.mapContainer.y = Phaser.Math.Clamp(this.mapContainer.y, this.mapClamp.minY, this.mapClamp.maxY);
-    }
+    // Close/Return (optional)
+    const closeBtn = this.add.circle(600, 30, 15, 0xae5347).setInteractive({ useHandCursor: true });
+    this.add.text(600, 30, 'X', { fontSize: '16px', fill: '#f2d3aa' }).setOrigin(0.5);
+    closeBtn.on('pointerdown', () => { this.scene.stop(); this.scene.wake('GameScene'); });
 
     this.add.text(320, 340, 'Click glowing nodes to proceed • Drag to pan', {
-      fontSize: '12px', fill: '#d4b896', fontFamily: '"Roboto Condensed"'
+      fontSize: '12px', fill: '#d4b896', fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5);
+    this.events.off('wake', this.handleWake, this);
+    this.events.on('wake', this.handleWake, this);
+    this.events.once('shutdown', () => {
+      this.events.off('wake', this.handleWake, this);
+    });
+  }
 
-    // Add wake event handler to refresh visual state without restarting
-    this.events.on('wake', () => {
-      console.log('MapViewScene woke up - refreshing state');
-      console.log('Current cursor:', this.gameState.mapCursor);
-
-      // Hide any tooltips
-      if (this.hideTooltip) {
-        this.hideTooltip();
-      }
-
-      // Properly clear all node visuals from the map container
-      if (this.mapContainer) {
-        const childrenToRemove = [...this.mapContainer.list];
-        childrenToRemove.forEach(child => {
-          if (child !== this.linkGfx) {
-            child.destroy();
-          }
-        });
-      }
-
-      // Reset the nodeSprites array
-      this.nodeSprites = [];
-
-      // Redraw links with current state
-      if (this.linkGfx) {
-        this.drawLinks();
-      }
-
-      // Redraw all nodes with their current states
-      if (this.actMap && this.actMap.floors) {
-        this.actMap.floors.forEach((floorNodes, f) => {
-          floorNodes.forEach((node, i) => {
-            this.drawNode(node, f, i);
-          });
-        });
-      }
-
-      // Update the floor display text
-      const floorTextElements = this.children.list.filter(child =>
-        child.type === 'Text' && child.text && child.text.includes('Act')
-      );
-      if (floorTextElements.length > 0) {
-        floorTextElements[0].setText(`Act ${this.currentAct} – Floor ${this.gameState.currentFloor || 1}`);
-      }
-
-      console.log('Wake refresh complete - nodes should be clickable');
-    }, this);
-
-    this.events.once('shutdown', this.shutdown, this);
+  handleWake() {
+      console.log('Map restarted on wake');
+      this.scene.restart({ gameState: this.gameState }); // Redraws with latest cursor/visited
   }
 
   setupDragging() {
@@ -156,10 +84,8 @@ export class MapViewScene extends Phaser.Scene {
     });
     this.dragArea.on('drag', (p) => {
       if (!this.mapContainer) return;
-      const nx = p.x - this.dragStartX;
-      const ny = p.y - this.dragStartY;
-      this.mapContainer.x = Phaser.Math.Clamp(nx, this.mapClamp?.minX ?? nx, this.mapClamp?.maxX ?? nx);
-      this.mapContainer.y = Phaser.Math.Clamp(ny, this.mapClamp?.minY ?? ny, this.mapClamp?.maxY ?? ny);
+      this.mapContainer.x = Phaser.Math.Clamp(p.x - this.dragStartX, this.mapPanBounds.minX, this.mapPanBounds.maxX);
+      this.mapContainer.y = Phaser.Math.Clamp(p.y - this.dragStartY, this.mapPanBounds.minY, this.mapPanBounds.maxY);
     });
     this.dragArea.on('dragend', () => { this.isDragging = false; });
   }
@@ -172,40 +98,18 @@ export class MapViewScene extends Phaser.Scene {
     const cx = 0;               // container origin is centered already
     const startY = -150;
 
-    // Precompute lane X positions (centered)
-    const laneXs = Array.from({ length: lanes }, (_, i) => (i - (lanes - 1) / 2) * laneGap);
-
-    // Assign positions per floor: nodes occupy a centered block of contiguous lanes
+    // Assign positions per floor: nodes are centered symmetrically around x=0
     this.actMap.floors.forEach((floorNodes, f) => {
       const y = startY + f * floorGap;
       const count = floorNodes.length;
-      const leftLane = Math.max(0, Math.floor((lanes - count) / 2));
       floorNodes.forEach((node, i) => {
-        node.__x = laneXs[leftLane + i];
+        node.__x = (i - (count - 1) / 2) * laneGap;
         node.__y = y;
         node.__idx = i; // index within the floor
       });
     });
 
-    // Compute dynamic clamp bounds after node positions are assigned
-    const xs = [];
-    const ys = [];
-    this.actMap.floors.forEach(row => row.forEach(n => {
-      xs.push(n.__x);
-      ys.push(n.__y);
-    }));
-    const minX = xs.length ? Math.min(...xs) : 0;
-    const maxX = xs.length ? Math.max(...xs) : 0;
-    const minY = ys.length ? Math.min(...ys) : 0;
-    const maxY = ys.length ? Math.max(...ys) : 0;
-    const vw = 640; const vh = 360;
-    const padX = 60; const padY = 60;
-    this.mapClamp = {
-      minX: (vw - padX) - maxX,
-      maxX: padX - minX,
-      minY: (vh - padY) - maxY,
-      maxY: padY - minY
-    };
+    this.updatePanBounds();
 
     // Draw links (base)
     this.linkGfx = this.add.graphics();
@@ -217,6 +121,58 @@ export class MapViewScene extends Phaser.Scene {
     this.actMap.floors.forEach((floorNodes, f) => {
       floorNodes.forEach((node, i) => this.drawNode(node, f, i));
     });
+
+    this.centerOnCurrentNode();
+  }
+
+  updatePanBounds() {
+    const nodes = this.actMap.floors.flat();
+    const minX = Math.min(...nodes.map(n => n.__x));
+    const maxX = Math.max(...nodes.map(n => n.__x));
+    const minY = Math.min(...nodes.map(n => n.__y));
+    const maxY = Math.max(...nodes.map(n => n.__y));
+    const pad = 70;
+    const visibleLeft = 50;
+    const visibleRight = 550;
+    const visibleTop = 70;
+    const visibleBottom = 320;
+    const mapWidth = maxX - minX;
+    const mapCenterX = (minX + maxX) / 2;
+    const visibleWidth = visibleRight - visibleLeft;
+    const visibleCenterX = (visibleLeft + visibleRight) / 2;
+    const centeredX = visibleCenterX - mapCenterX;
+
+    const xBounds = mapWidth + pad * 2 <= visibleWidth
+      ? { minX: centeredX, maxX: centeredX }
+      : {
+          minX: visibleRight - maxX - pad,
+          maxX: visibleLeft - minX + pad
+        };
+
+    this.mapPanBounds = {
+      minX: xBounds.minX,
+      maxX: xBounds.maxX,
+      minY: visibleBottom - maxY - pad,
+      maxY: visibleTop - minY + pad
+    };
+
+    this.mapContainer.x = Phaser.Math.Clamp(this.mapContainer.x, this.mapPanBounds.minX, this.mapPanBounds.maxX);
+    this.mapContainer.y = Phaser.Math.Clamp(this.mapContainer.y, this.mapPanBounds.minY, this.mapPanBounds.maxY);
+  }
+
+  centerOnCurrentNode() {
+    const cursor = this.gameState.mapCursor;
+    const node = this.actMap.floors?.[cursor.floor]?.[cursor.node];
+    if (!node || typeof node.__x !== 'number' || typeof node.__y !== 'number') return;
+
+    const nodes = this.actMap.floors.flat();
+    const minX = Math.min(...nodes.map(n => n.__x));
+    const maxX = Math.max(...nodes.map(n => n.__x));
+    const mapCenterX = (minX + maxX) / 2;
+    const targetScreenX = MapViewScene.MAP_CENTER_X;
+    const targetScreenY = MapViewScene.MAP_CENTER_Y;
+    this.mapContainer.x = Phaser.Math.Clamp(targetScreenX - mapCenterX, this.mapPanBounds.minX, this.mapPanBounds.maxX);
+    this.mapContainer.y = Phaser.Math.Clamp(targetScreenY - node.__y, this.mapPanBounds.minY, this.mapPanBounds.maxY);
   }
 
   drawLinks() {
@@ -290,13 +246,9 @@ export class MapViewScene extends Phaser.Scene {
 
     const icons = { COMBAT: '⚔', ELITE: '☠', SHOP: '$', RARE_SHOP: '💎', REST: '🔥', ANVIL: '🔨', EVENT: '?', BOSS: '👹', TREASURE: '💰' };
     const label = this.add.text(node.__x, node.__y, icons[node.type] || '?', {
-      fontSize: '16px', fill: '#f2f2f2', fontFamily: '"Roboto Condensed"'
+      fontSize: '16px', fill: '#f2f2f2', fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5).setAlpha(alpha);
     this.mapContainer.add(label);
-
-    if (this.nodeSprites) {
-      this.nodeSprites.push(circle, label);
-    }
 
     // Pulse for available nodes
     if (state === 'available') {
@@ -325,7 +277,7 @@ export class MapViewScene extends Phaser.Scene {
   showTooltip(text, x, y) {
     this.hideTooltip();
     const bg = this.add.rectangle(x, y, 10, 10, 0x2c1810, 0.95).setStrokeStyle(1, 0x3f2f28);
-    const t = this.add.text(x, y, text, { fontSize: '12px', fill: '#f2d3aa', fontFamily: '"Roboto Condensed"' }).setOrigin(0.5);
+    const t = this.add.text(x, y, text, { fontSize: '12px', fill: '#f2d3aa', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
     bg.width = t.width + 12; bg.height = t.height + 8;
     this.tooltip = this.add.container(0, 0, [bg, t]);
     this.mapContainer.add(this.tooltip);
@@ -341,48 +293,31 @@ export class MapViewScene extends Phaser.Scene {
     // Mark from and to visited (fixes stuck visuals)
     fromNode.visited = true;
     node.visited = true;
-    // Update cursor position (0-based index)
     this.gameState.mapCursor = { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx };
-    // Update absolute floor number (1-based)
-    this.gameState.currentFloor = this.getAbsoluteFloor(targetFloorIdx);
+    this.gameState.currentFloor = (this.gameState.currentFloor || 1) + 1;
     // Store type
     this.gameState.roomType = node.type;
-    const isCombatRoom = ['COMBAT', 'ELITE', 'BOSS', 'TREASURE'].includes(node.type);
-    if (isCombatRoom) {
-      const currentId = Number.isFinite(this.gameState.activeRoomId)
-        ? this.gameState.activeRoomId
-        : 0;
-      this.gameState.activeRoomId = currentId + 1;
-      this.gameState.roomInitialized = false;
-    }
     console.log('Stored roomType:', this.gameState.roomType);
     // Route
-    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT'];
+    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE'];
     if (nonCombat.includes(node.type)) {
       this.scene.sleep(); // Sleep map for overlay
-      const key =
+      const key = 
         node.type === 'SHOP' ? 'ShopScene' :
         node.type === 'RARE_SHOP' ? 'RareShopScene' :
         node.type === 'REST' ? 'RestScene' :
-        node.type === 'ANVIL' ? 'AnvilScene' : 'EventScene';
+        node.type === 'ANVIL' ? 'AnvilScene' :
+        node.type === 'TREASURE' ? 'TreasureScene' : 'EventScene';
       this.scene.launch(key, { gameState: this.gameState });
       return;
     }
     // Combat-like
     this.scene.stop();
-    this.scene.wake('GameScene');
+    // Pass a flag to indicate this is a new room transition
+    this.scene.wake('GameScene', { 
+        roomType: node.type,
+        isNewRoom: true 
+    });
     console.log('Woke GameScene for type:', node.type);
   }
-
-
-  shutdown() {
-    this.events.off('wake');
-    if (this.dragArea) {
-      this.dragArea.off('dragstart');
-      this.dragArea.off('drag');
-      this.dragArea.off('dragend');
-    }
-  }
 }
-
-

@@ -13,13 +13,13 @@ export class AnvilScene extends Phaser.Scene {
         this.add.text(320, 30, 'Anvil - Repair Station', { 
             fontSize: '28px', 
             fill: '#ffffff', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         this.coinsText = this.add.text(320, 60, `Coins: ${this.gameState.coins}`, { 
             fontSize: '16px', 
             fill: '#ffd700', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         // Display repairable items
@@ -29,7 +29,7 @@ export class AnvilScene extends Phaser.Scene {
         const continueButton = this.add.text(320, 330, 'Continue to Next Floor', { 
             fontSize: '18px', 
             fill: '#00ff00', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         })
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
@@ -63,7 +63,7 @@ export class AnvilScene extends Phaser.Scene {
         
         // Add items from the ACTUAL inventory
         inventoryToCheck.forEach((item, index) => {
-            if (item && (item.type === 'weapon' || item.type === 'armor')) {
+            if (item && (item.type === 'weapon' || item.type === 'armor' || item.type === 'thorns')) {
                 console.log(`Checking ${item.name}: dur=${item.durability}, max=${item.maxDurability}`);
                 
                 if (item.maxDurability && item.durability < item.maxDurability) {
@@ -100,7 +100,7 @@ export class AnvilScene extends Phaser.Scene {
             this.add.text(320, 180, 'No items need repair.', { 
                 fontSize: '14px', 
                 fill: '#cccccc', 
-                fontFamily: '"Roboto Condensed"' 
+                fontFamily: '"HoMM Pixel"' 
             }).setOrigin(0.5);
             return;
         }
@@ -129,7 +129,7 @@ export class AnvilScene extends Phaser.Scene {
             fill: '#ffffff', 
             wordWrap: { width: 140 }, 
             align: 'center', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         // Durability display
@@ -137,7 +137,7 @@ export class AnvilScene extends Phaser.Scene {
         const durability = this.add.text(0, -25, durabilityText, { 
             fontSize: '11px', 
             fill: item.durability <= item.maxDurability * 0.3 ? '#ff6666' : '#cccccc', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         // Calculate repair cost
@@ -151,7 +151,7 @@ export class AnvilScene extends Phaser.Scene {
         const costText = this.add.text(0, -5, `Cost: ${totalCost} coins`, { 
             fontSize: '11px', 
             fill: '#ffd700', 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         // Repair info
@@ -162,7 +162,7 @@ export class AnvilScene extends Phaser.Scene {
             { 
                 fontSize: '9px', 
                 fill: '#888888', 
-                fontFamily: '"Roboto Condensed"' 
+                fontFamily: '"HoMM Pixel"' 
             }
         ).setOrigin(0.5);
         
@@ -175,7 +175,7 @@ export class AnvilScene extends Phaser.Scene {
             fill: totalCost <= this.gameState.coins ? '#00ff00' : '#666666', 
             backgroundColor: '#333333', 
             padding: { x: 4, y: 2 }, 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         if (totalCost <= this.gameState.coins) {
@@ -183,7 +183,7 @@ export class AnvilScene extends Phaser.Scene {
                 .on('pointerdown', () => this.repairItem(data, missingDurability));
         }
         
-        // Partial repair button (repair 5 points for armor, 1 point for weapons)
+        // Partial repair button (repair 5 points for armor, 1 point for other durable cards)
         const partialAmount = item.type === 'armor' ? 5 : 1;
         const partialCost = item.type === 'armor' ? repairCost : repairCost;
         const canPartialRepair = partialCost <= this.gameState.coins && missingDurability > 0;
@@ -195,7 +195,7 @@ export class AnvilScene extends Phaser.Scene {
                 fill: canPartialRepair ? '#0088ff' : '#666666', 
                 backgroundColor: '#333333', 
                 padding: { x: 4, y: 2 }, 
-                fontFamily: '"Roboto Condensed"' 
+                fontFamily: '"HoMM Pixel"' 
             }
         ).setOrigin(0.5);
         
@@ -233,6 +233,9 @@ export class AnvilScene extends Phaser.Scene {
         } 
         else if (item.type === 'armor') {
             // All armor types cost 2 coins per 5 durability points
+            return 2;
+        }
+        else if (item.type === 'thorns') {
             return 2;
         }
         
@@ -300,7 +303,7 @@ export class AnvilScene extends Phaser.Scene {
         const feedBackText = this.add.text(320, 90, message, { 
             fontSize: '16px', 
             fill: Phaser.Display.Color.IntegerToColor(color).rgba, 
-            fontFamily: '"Roboto Condensed"' 
+            fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
         this.tweens.add({

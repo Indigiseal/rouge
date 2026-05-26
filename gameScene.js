@@ -12,51 +12,45 @@ export class GameScene extends Phaser.Scene {
         this._transitioning = false;
         this.skipNextEnemyAttack = false;
         this._turnHandlersBound = false;
-        this._handleEndPlayerTurn = () => this.runEnemyTurn();
-        this._activeRoomId = null;
+        this.enemyTurnTimers = [];
+        this.enemyTurnQueued = false;
     }
 
-    init(data = {}) {
+    init(data) {
         this.saveManager = new SaveManager();
         this.metaManager = new MetaProgressionManager(this);
-
-        const sharedState = this.game.gameState;
-        if (sharedState) {
-            this.gameState = sharedState;
-        } else {
+        
+        if (data.loadSave) {
+            // Load existing run
             this.gameState = new GameState(this);
-        }
-
-        this.game.gameState = this.gameState;
-        this.gameState.scene = this;
-
-        const isNewRun = data.newGame !== false;
-        if (isNewRun) {
-            this.gameState.initNewRun();
+            // Load will happen in create() after systems are initialized
+            this.shouldLoadSave = true;
+        } else {
+            // New run
+            this.gameState = new GameState(this);
+            // Apply relic effects to fresh game state
             this.metaManager.applyRelicEffects(this.gameState);
         }
-
+        
         this.skipNextEnemyAttack = false;
         this.killedBy = null;
-        this.roomType = data.roomType || this.gameState.roomType || 'COMBAT';
-        console.log('GameScene roomType:', this.roomType);
-
-        // Ensure room tracking defaults exist
-        if (!Number.isFinite(this.gameState.activeRoomId)) {
-            this.gameState.activeRoomId = 0;
-        }
-        if (typeof this.gameState.roomInitialized !== 'boolean') {
-            this.gameState.roomInitialized = false;
-        }
-        this.gameState.roomType = this.roomType;
-        this._activeRoomId = this.gameState.activeRoomId;
+        this.roomType = data.roomType || 'COMBAT';
+        this.clearEnemyTurnTimers();
     }
     
     create() {
-        const settings = this.saveManager.loadSettings();
-        this.game.globalVolume = { ...settings.volume };
-        this.game.language = settings.language || this.game.language || 'English';
-
+        // Load saved volume settings
+        const savedVolume = localStorage.getItem('gameVolume');
+        if (savedVolume) {
+            this.game.globalVolume = JSON.parse(savedVolume);
+        } else {
+            this.game.globalVolume = {
+                master: 1.0,
+                sfx: 1.0,
+                music: 0.5
+            };
+        }
+        
         // Apply volume settings
         this.sound.volume = this.game.globalVolume.master;
         
@@ -72,73 +66,36 @@ export class GameScene extends Phaser.Scene {
         // Initialize systems
         this.cardSystem = new CardSystem(this);
         this.inventorySystem = new InventorySystem(this, this.gameState.inventory);
-        console.log('InventorySystem created:', this.inventorySystem);
-
+        
+        // After this.inventorySystem = new InventorySystem(...)
+        this.inventorySystem.slots = this.gameState.inventory || new Array(5).fill(null); // Load from state if exists
+        this.gameState.inventory = this.inventorySystem.slots; // Sync back
+        
         this.inventorySystem.setVisibility(true); // Ensure shown on start
+        
+        // Load saved run if continuing
+        if (this.shouldLoadSave) {
+            this.loadCurrentRun();
+        }
         
         // Create UI
         this.createUI();
         
         // Room title
-        this.roomTitle = this.add.text(320, 10, '', { fontSize: '20px', fill: '#ffffff', fontFamily: '"Roboto Condensed"' }).setOrigin(0.5);
+        this.roomTitle = this.add.text(320, 10, '', { fontSize: '20px', fill: '#ffffff', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
         this.updateRoomTitle();
         
-        // Start floor if needed
-        if (this.shouldStartNewFloor()) {
-            this.startNewFloor();
-        } else {
-            this.updateRoomTitle();
-            this.updateUI();
-        }
+        // Start floor
+        this.startNewFloor();
         
         // Update room title after loading
         this.updateRoomTitle();
         
         this.inventorySystem.setDiscardArea(this.discardArea);
+        this.inventorySystem.setArmorPanel(this.armorPanel);
         
         // Listen for the wake event to reset the floor
-        this.events.on('wake', () => {
-            console.log('GameScene wake roomType:', this.gameState.roomType);
-            console.log('Current inventory:', this.inventorySystem?.slots);
-            console.log('GameState inventory:', this.gameState.inventory);
-            
-            this.roomType = this.gameState.roomType || 'COMBAT';
-            console.log('GameScene wake roomType:', this.roomType);
-
-            if (this.inventorySystem) {
-                console.log('Waking inventory - forcing visibility true');
-                this.inventorySystem.setVisibility(true);
-                this.inventorySystem.rebuildInventorySprites();
-            }
-            
-            if (this.shouldStartNewFloor()) {
-                this.startNewFloor();
-            } else {
-                console.log('Skipped startNewFloor - room already active');
-                this.updateRoomTitle();
-                this.inventorySystem.rebuildInventorySprites();
-            }
-        }, this);
-    }
-
-    shouldStartNewFloor() {
-        if (!['COMBAT', 'ELITE', 'BOSS', 'TREASURE'].includes(this.roomType)) {
-            return false;
-        }
-
-        if (!this.gameState) {
-            return true;
-        }
-
-        const activeId = Number.isFinite(this.gameState.activeRoomId)
-            ? this.gameState.activeRoomId
-            : 0;
-
-        if (!this.gameState.roomInitialized) {
-            return true;
-        }
-
-        return this._activeRoomId !== activeId;
+        this.events.on('wake', this.wake, this);
     }
 
     createAnimations() {
@@ -196,54 +153,66 @@ export class GameScene extends Phaser.Scene {
         // Player avatar
         this.playerAvatar = this.add.image(45, 45, 'MainPlayerAvatar');
         this.playerAvatar.setScale(1);
-        // Health bar under avatar
-        this.healthBarEmpty = this.add.image(45, 95, 'healthBarEmpty');
-        this.healthBar = this.add.image(45, 95, 'healthBar');
-        const healthBarLeft = 45 - this.healthBar.width / 2;
-        this.healthBarEmpty.setOrigin(0, 0.5).setPosition(healthBarLeft, 95);
-        this.healthBar.setOrigin(0, 0.5).setPosition(healthBarLeft, 95);
-        this.healthText = this.add.text(45, 110, 'HP: 50/50', {
-            fontSize: '12px',
+        // Health orb under avatar
+        this.healthOrbEmpty = this.add.image(87, 102, 'healthOrb', 1).setOrigin(0.5, 1);
+        this.healthOrbFull = this.add.image(87, 102, 'healthOrb', 0).setOrigin(0.5, 1);
+        this.healthText = this.add.text(87, 105, '50/50', {
+            fontSize: '10px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"',
+            stroke: '#000000',
+            strokeThickness: 2
         }).setOrigin(0.5, 0);
+
+        // Armor equip panel under hero portrait
+        this.armorPanel = this.add.image(39, 138, 'panelArmor');
+        this.armorPanel.setInteractive();
+        this.armorPanel.setDepth(5);
+        this.armorPanelEquippedSprite = null;
+        this.armorPanelInfoText = null;
+
+        // Action points: each diamond is four AP, with spent quadrants darkened.
+        this.actionPointSprites = [];
+        this.actionPointOverlays = [];
+        this.createActionPointUI();
         
-        // Coin and Crystal UI under health bar with animations
-        this.coinSprite = this.add.sprite(35, 130, 'coinUI').setScale(1);
-        this.coinsText = this.add.text(35, 147, '0', {
+        // Coin and Crystal UI under armor panel with animations
+        this.coinSprite = this.add.sprite(25, 216, 'coinUI').setScale(1);
+        this.coinsText = this.add.text(25, 233, '0', {
             fontSize: '12px',
             fill: '#cf8834',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
-        this.crystalSprite = this.add.sprite(70, 130, 'CrystalUI').setScale(1);
-        this.crystalsText = this.add.text(70, 147, '0', {
+        this.crystalSprite = this.add.sprite(60, 216, 'CrystalUI').setScale(1);
+        this.crystalsText = this.add.text(60, 233, '0', {
             fontSize: '12px',
             fill: '#a83c69',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Store previous values to detect changes
         this.previousCoins = 0;
         this.previousCrystals = 0;
         
-        this.actionsText = this.add.text(125, 45, 'Actions: 3/3', {
+        this.actionsText = this.add.text(125, 45, '', {
             fontSize: '12px',
             fill: '#00ff00',
-            fontFamily: '"Roboto Condensed"'
-        });
+            fontFamily: '"HoMM Pixel"'
+        }).setVisible(false);
         // Amulets displayed horizontally above armor info
         this.amuletUIGroup = this.add.group();
+        this.relicUIGroup = this.add.group();
         // Equipped armor text (moved down to make room for amulets above)
         this.equippedArmorText = this.add.text(125, 90, 'Armor: None', {
             fontSize: '12px',
             fill: '#aaaaaa',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         });
         this.floorText = this.add.text(520, 15, 'Floor: 1', {
             fontSize: '12px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Pause button - positioned in top right corner
@@ -257,49 +226,47 @@ export class GameScene extends Phaser.Scene {
         this.add.text(600, 15, 'PAUSE', {
             fontSize: '12px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Also add ESC key binding for pause
         this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
         // Discard area
-        this.discardArea = this.add.image(45, 320, 'discardSprite');
-        this.add.text(45, 320, 'Discard', { fontSize: '12px', fill: '#d3beb2', fontFamily: '"Roboto Condensed"' }).setOrigin(0.5);
+        this.discardArea = this.add.image(585, 320, 'discardSprite');
+        this.add.text(585, 320, 'Discard', { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
         // Rest button removed - players must manage action points carefully
         // Amulet UI
         // Player effects label
-        this.add.text(45, 170, 'Effects', {
+        this.add.text(45, 292, 'Effects', {
             fontSize: '14px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5, 0);
         this.playerEffectsUIGroup = this.add.group();
-        // Next Floor Button (initially hidden)
-        this.nextFloorButton = this.add.rectangle(570, 80, 100, 30, 0x006400)
-            .setStrokeStyle(2, 0x00ff00)
-            .setInteractive()
-            .on('pointerdown', () => this.floorCleared());
-        this.nextFloorButtonText = this.add.text(570, 80, 'Next Floor', {
-            fontSize: '14px',
-            fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
-        }).setOrigin(0.5);
+        // Next Floor Button (initially hidden) - top right, under pause
+        this.nextFloorButton = this.add.image(595, 50, 'nextTurnUp')
+            .setInteractive({ useHandCursor: true })
+            .on('pointerover', () => this.nextFloorButton.setTint(0xd4eaf7))
+            .on('pointerout', () => { this.nextFloorButton.clearTint(); this.nextFloorButton.y = 50; })
+            .on('pointerdown', () => { this.nextFloorButton.setTint(0x888888); this.nextFloorButton.y = 51; this.floorCleared(); })
+            .on('pointerup', () => { this.nextFloorButton.clearTint(); this.nextFloorButton.y = 50; });
         this.nextFloorButton.setVisible(false);
-        this.nextFloorButtonText.setVisible(false);
     }
 
     startNewFloor() {
+        this.clearEnemyTurnTimers();
         this._transitioning = false;
         this.enemiesCleared = false;
-        this.nextFloorButton?.setVisible(false);
-        this.nextFloorButtonText?.setVisible(false);
-        this.nextFloorButton?.setInteractive();
+        if (this.nextFloorButton) {
+            this.nextFloorButton.setVisible(false);
+            this.nextFloorButton.setInteractive();
+            this.nextFloorButton.y = 50;
+            this.nextFloorButton.clearTint();
+        }
         this.skipNextEnemyAttack = true;  // Grace period—no instant zap
         this.gameState.playerHealth = Math.max(1, Math.floor(this.gameState.playerHealth || 55));  // Sanitize HP
         this.gameState.maxHealth = Math.max(1, Math.floor(this.gameState.maxHealth || 55));
-        if (this.gameState.playerHealth > this.gameState.maxHealth) {
-            this.gameState.playerHealth = this.gameState.maxHealth;
-        }
+        if (this.gameState.playerHealth > this.gameState.maxHealth) this.gameState.playerHealth = this.gameState.maxHealth;
         
         // Armor safety net
         if (this.gameState.equippedArmor) {
@@ -307,28 +274,14 @@ export class GameScene extends Phaser.Scene {
             this.gameState.equippedArmor.durability = Math.max(0, Math.floor(this.gameState.equippedArmor.durability || 25));
         }
         
-
-        // Bind enemy turn handler safely
-        this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
-        this.events.on('endPlayerTurn', this._handleEndPlayerTurn);
-        this._turnHandlersBound = true;
-
-        // Update active room tracking
-        if (!Number.isFinite(this.gameState.activeRoomId)) {
-            this.gameState.activeRoomId = 0;
+        // Bind turns only once
+        if (!this._turnHandlersBound) {
+            this._turnHandlersBound = true;
+            this.events.on('endPlayerTurn', () => this.runEnemyTurn());
         }
-        this._activeRoomId = this.gameState.activeRoomId;
-        this.gameState.roomInitialized = true;
-        const resolvedRoomType = this.gameState.roomType || this.roomType || 'COMBAT';
-        this.roomType = resolvedRoomType;
-        this.gameState.roomType = resolvedRoomType;
         // Refresh type before spawn
-        console.log('startNewFloor roomType:', this.roomType);
+        this.roomType = this.gameState.roomType || 'COMBAT';
         this.updateRoomTitle();
-        if (this.nextFloorButtonText) {
-            const label = this.roomType === 'TREASURE' ? 'Continue' : 'Next Floor';
-            this.nextFloorButtonText.setText(label);
-        }
         this.cardSystem.spawnFloorCards();
         this.inventorySystem.addStartingCards();
         // DON'T replenish action points here
@@ -337,13 +290,12 @@ export class GameScene extends Phaser.Scene {
     }
 
     updateUI() {
-        const rawHealth = this.gameState.playerHealth ?? 0;
-        const rawMaxHealth = this.gameState.maxHealth ?? 0;
-        this.healthText.setText(`HP: ${rawHealth}/${rawMaxHealth}`);
-
-        const denominator = rawMaxHealth === 0 ? 1 : rawMaxHealth;
-        const healthPercent = Math.max(0, Math.min(1, rawHealth / denominator));
-        this.healthBar.setScale(healthPercent, 1);
+        // Force sync inventory EVERY time UI updates
+        if (this.inventorySystem && this.inventorySystem.slots) {
+            this.gameState.inventory = [...this.inventorySystem.slots];
+        }
+        
+        this.healthText.setText(`${this.gameState.playerHealth}/${this.gameState.maxHealth}`);
         
         // Check for coin changes and play animation
         if (this.gameState.coins !== this.previousCoins) {
@@ -359,7 +311,7 @@ export class GameScene extends Phaser.Scene {
         
         this.coinsText.setText(this.gameState.coins);
         this.crystalsText.setText(this.gameState.crystals);
-        this.actionsText.setText(`Actions: ${this.gameState.actionsLeft}/${this.gameState.maxActions}`);
+        this.updateActionPointUI();
         
         // Update equipped armor text - REMOVED reflection display
         if (this.gameState.equippedArmor) {
@@ -387,9 +339,17 @@ export class GameScene extends Phaser.Scene {
             });
         }
         this.floorText.setText(`Floor: ${this.gameState.currentFloor}`);
+        this.updateEquippedArmorPanel();
         
-        // Update health bar
+        // Update health orb
+        const healthPercent = Math.max(0, this.gameState.playerHealth / this.gameState.maxHealth);
+        const orbFrame = this.textures.getFrame('healthOrb', 0);
+        const orbWidth = orbFrame?.width || 62;
+        const orbHeight = orbFrame?.height || 54;
+        const visibleHeight = Math.ceil(orbHeight * healthPercent);
+        this.healthOrbFull.setCrop(0, orbHeight - visibleHeight, orbWidth, visibleHeight);
         this.updateAmuletsUI();
+        this.updateRelicsUI();
         this.updatePlayerEffectsUI();
     }
     
@@ -403,7 +363,107 @@ export class GameScene extends Phaser.Scene {
         this.crystalSprite.play('crystal_glow_anim');
     }
 
+    createActionPointUI() {
+        this.actionPointSprites.forEach(sprite => sprite.destroy());
+        this.actionPointOverlays.forEach(overlay => overlay.destroy());
+        this.actionPointSprites = [];
+        this.actionPointOverlays = [];
+
+        const maxActions = Math.max(1, this.gameState?.maxActions || 1);
+        const nodeCount = Math.ceil(maxActions / 4);
+        const spacing = 18;
+        const startX = 52 - ((nodeCount - 1) * spacing) / 2;
+        const y = 184;
+
+        for (let i = 0; i < nodeCount; i++) {
+            const x = startX + i * spacing;
+            const sprite = this.add.image(x, y, 'actionPoint');
+            sprite.setDepth(8);
+            this.actionPointSprites.push(sprite);
+
+            const overlay = this.add.graphics();
+            overlay.setDepth(9);
+            this.actionPointOverlays.push(overlay);
+        }
+    }
+
+    updateActionPointUI() {
+        const maxActions = Math.max(1, this.gameState.maxActions || 1);
+        const actionsLeft = Phaser.Math.Clamp(this.gameState.actionsLeft || 0, 0, maxActions);
+        const nodeCount = Math.ceil(maxActions / 4);
+
+        if (this.actionPointSprites.length !== nodeCount) {
+            this.createActionPointUI();
+        }
+
+        this.actionPointOverlays.forEach((overlay, nodeIndex) => {
+            const sprite = this.actionPointSprites[nodeIndex];
+            if (!overlay || !sprite) return;
+
+            overlay.clear();
+            overlay.fillStyle(0x000000, 0.62);
+
+            for (let section = 0; section < 4; section++) {
+                const actionIndex = nodeIndex * 4 + section;
+                const unavailable = actionIndex >= maxActions || actionIndex >= actionsLeft;
+                if (unavailable) {
+                    this.drawActionPointSection(overlay, sprite.x, sprite.y, section);
+                }
+            }
+        });
+    }
+
+    drawActionPointSection(graphics, x, y, section) {
+        const half = 8;
+        const pointsBySection = [
+            [{ x, y }, { x, y: y - half }, { x: x + half, y }],
+            [{ x, y }, { x: x + half, y }, { x, y: y + half }],
+            [{ x, y }, { x, y: y + half }, { x: x - half, y }],
+            [{ x, y }, { x: x - half, y }, { x, y: y - half }]
+        ];
+        graphics.fillPoints(pointsBySection[section], true);
+    }
+
+    updateEquippedArmorPanel() {
+        if (this.armorPanelEquippedSprite) {
+            this.armorPanelEquippedSprite.destroy();
+            this.armorPanelEquippedSprite = null;
+        }
+        if (this.armorPanelInfoText) {
+            if (this.armorPanelInfoText.list) {
+                this.armorPanelInfoText.destroy(true);
+            } else {
+                this.armorPanelInfoText.destroy();
+            }
+            this.armorPanelInfoText = null;
+        }
+
+        const armor = this.gameState.equippedArmor;
+        if (!armor || !armor.sprite || !this.armorPanel) return;
+
+        this.armorPanelEquippedSprite = this.add.image(this.armorPanel.x, this.armorPanel.y, armor.sprite);
+        this.armorPanelEquippedSprite.setDepth(6);
+        this.armorPanelEquippedSprite.setInteractive({ useHandCursor: true });
+        this.armorPanelEquippedSprite.on('pointerdown', () => {
+            this.inventorySystem?.unequipArmor?.();
+        });
+
+        const armorCard = {
+            sprite: this.armorPanelEquippedSprite,
+            data: armor,
+            infoText: null
+        };
+        this.cardSystem.createCardInfoText(armorCard);
+        if (armorCard.infoText) {
+            armorCard.infoText.setDepth(7);
+            this.armorPanelInfoText = armorCard.infoText;
+            this.armorPanelEquippedSprite.setData('infoText', armorCard.infoText);
+        }
+    }
+
     useAction() {
+        if (this.isEnemyTurn) return false;
+
         // Check if player will be exhausted BEFORE consuming the action
         const willBeExhausted = this.gameState.actionsLeft <= 0;
         
@@ -412,7 +472,7 @@ export class GameScene extends Phaser.Scene {
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Free Action!', 0x00ff00);
             this.updateUI();
             // After any action, revealed enemies attack
-            this.time.delayedCall(500, () => this.events.emit('endPlayerTurn'));
+            this.scheduleEnemyTurn();
             return true;
         }
         
@@ -440,10 +500,20 @@ export class GameScene extends Phaser.Scene {
         }
         
         this.updateUI();
-        // After any action, emit the end of player turn event
-        this.time.delayedCall(500, () => this.events.emit('endPlayerTurn'));
+        // After any action, emit one enemy turn. Extra clicks before it fires should not stack turns.
+        this.scheduleEnemyTurn();
         
         return true; // Always return true to allow actions
+    }
+
+    scheduleEnemyTurn() {
+        if (this.enemyTurnQueued || this.isEnemyTurn || this._transitioning || this.enemiesCleared) return;
+        this.enemyTurnQueued = true;
+        const timer = this.time.delayedCall(500, () => {
+            this.enemyTurnQueued = false;
+            this.events.emit('endPlayerTurn');
+        });
+        this.enemyTurnTimers.push(timer);
     }
     // Also add a method to check if player is currently exhausted (for weapon damage calculation)
     isPlayerExhausted() {
@@ -462,17 +532,14 @@ export class GameScene extends Phaser.Scene {
     }
     
     runEnemyTurn() {
+      this.enemyTurnQueued = false;
+      if (this.isEnemyTurn) return;
       if (this.skipNextEnemyAttack) {
         this.skipNextEnemyAttack = false;
-        console.log('[ENEMY TURN SKIPPED] Grace over—your move!');
         return;  // No attack on entry
       }
-      
-      console.log('[ENEMY TURN START] Attacking...');
+      this.isEnemyTurn = true;
       this.revealedEnemiesAttack();
-      
-      // At end of turn
-      this.updateUI();
     }
     revealedEnemiesAttack() {
         if (this.gameState.playerHealth <= 0) return; // Don't attack a dead player.
@@ -493,6 +560,7 @@ export class GameScene extends Phaser.Scene {
                 onComplete: () => blockEffect.destroy()
             });
             
+            this.isEnemyTurn = false;
             return; // Block prevents ALL enemy attacks this action
         }
         
@@ -521,6 +589,7 @@ export class GameScene extends Phaser.Scene {
                 this.cardSystem.attackEnemy(firstAttacker.index, reflectedDamage, true);
                 this.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Reflected)`, 0xffffff);
                 this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Bone Wall!', 0xffffff);
+                this.isEnemyTurn = false;
                 return; // Bone wall blocks all attacks this action
             }
         }
@@ -550,74 +619,155 @@ export class GameScene extends Phaser.Scene {
                 this.cardSystem.attackEnemy(firstAttacker.index, reflectedDamage, true);
                 this.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Mirrored)`, 0xc0c0c0);
                 this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Mirror Shield!', 0xc0c0c0);
+                this.isEnemyTurn = false;
                 return; // Mirror shield blocks all attacks this action
             }
         }
         
-        // Process individual enemy attacks AND boss abilities
-        this.cardSystem.boardCards.forEach((card, index) => {
-            if (card && card.revealed && (card.data.type === 'enemy' || card.data.type === 'boss')) {
-                // Process frozen duration BEFORE checking if enemy can attack
-                if (card.data.frozen && card.data.frozen > 0) {
-                    card.data.frozen--;
-                    
-                    if (card.data.frozen === 0 && card.sprite) {
-                        card.sprite.clearTint(); // Remove ice blue tint when unfrozen
-                        this.createFloatingText(card.sprite.x, card.sprite.y, 'Thawed!', 0xffffff);
-                    } else {
-                        this.createFloatingText(card.sprite.x, card.sprite.y, `Frozen (${card.data.frozen})`, 0x00ccff);
-                    }
-                    return; // Skip this enemy's attack while frozen
+        const attackers = this.cardSystem.boardCards
+            .map((card, index) => ({ card, index }))
+            .filter(({ card }) => card && card.revealed && this.isEnemyCard(card));
+
+        if (attackers.length === 0) {
+            this.finishEnemyTurnEffects();
+            return;
+        }
+
+        let attackerIndex = 0;
+        const attackNext = () => {
+            if (this._transitioning || this.enemiesCleared || this.gameState.playerHealth <= 0 || attackerIndex >= attackers.length) {
+                this.finishEnemyTurnEffects();
+                return;
+            }
+
+            const { index } = attackers[attackerIndex++];
+            const card = this.cardSystem.boardCards[index];
+            if (card && card.revealed && this.isEnemyCard(card)) {
+                this.processEnemyAttack(card, index);
+                this.updateUI();
+            }
+
+            const timer = this.time.delayedCall(320, attackNext);
+            this.enemyTurnTimers.push(timer);
+        };
+
+        attackNext();
+    }
+
+    clearEnemyTurnTimers() {
+        if (!this.enemyTurnTimers) {
+            this.enemyTurnTimers = [];
+            return;
+        }
+        this.enemyTurnTimers.forEach(timer => timer?.remove?.(false));
+        this.enemyTurnTimers = [];
+        this.enemyTurnQueued = false;
+        this.isEnemyTurn = false;
+    }
+
+    isEnemyCard(card) {
+        return card?.data?.type === 'enemy' || card?.data?.type === 'eliteEnemy' || card?.data?.type === 'boss';
+    }
+
+    processEnemyAttack(card, index) {
+        // Process frozen duration BEFORE checking if enemy can attack
+        if (card.data.frozen && card.data.frozen > 0) {
+            card.data.frozen--;
+
+            if (card.data.frozen === 0 && card.sprite) {
+                card.sprite.clearTint();
+                this.createFloatingText(card.sprite.x, card.sprite.y, 'Thawed!', 0xffffff);
+            } else {
+                this.createFloatingText(card.sprite.x, card.sprite.y, `Frozen (${card.data.frozen})`, 0x00ccff);
+            }
+            return;
+        }
+
+        // BOSS SUMMONING ABILITY - Process before attack
+        if (card.data.type === 'boss' && card.data.abilities) {
+            card.data.abilities.forEach(ability => {
+                if (ability.type === 'summon' && Math.random() < ability.chance) {
+                    this.cardSystem.summonEnemy(ability.enemyType, card);
                 }
-                
-                // BOSS SUMMONING ABILITY - Process before attack
-                if (card.data.type === 'boss' && card.data.abilities) {
-                    card.data.abilities.forEach(ability => {
-                        if (ability.type === 'summon' && Math.random() < ability.chance) {
-                            this.cardSystem.summonEnemy(ability.enemyType, card);
-                        }
-                    });
-                }
-                
-                // Enemy attacks if not frozen
-                const damageDealt = card.data.attack;
-                
-                this.createDamageEffect(card.sprite.x, card.sprite.y);
-                
-                // Apply abilities like poison on hit
-                card.data.abilities?.forEach(ability => {
-                    if (ability.type === 'poison') {
-                        this.gameState.addPlayerEffect({ ...ability });
-                        this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Poisoned!', 0x00ff00);
-                    } else if (ability.type === 'coin_steal') {
-                        // Goblin coin stealing ability
-                        if (Math.random() < ability.chance && this.gameState.coins > 0) {
-                            const stolenAmount = Math.min(ability.amount, this.gameState.coins);
-                            this.gameState.coins -= stolenAmount;
-                            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${stolenAmount} coins stolen!`, 0xffd700);
-                            this.createFloatingText(card.sprite.x, card.sprite.y, `+${stolenAmount}`, 0xffd700);
-                        }
-                    }
-                });
-                
-                // Check if this damage will kill the player and track the killer
-                const playerHealthBeforeDamage = this.gameState.playerHealth;
-                
-                // Player takes damage and reflection is handled inside GameState.takeDamage
-                const { actualDamage, tookDamage } = this.gameState.takeDamage(damageDealt, index);
-                
-                if (tookDamage) {
-                    SoundHelper.playSound(this, 'player_hurt', 0.5);
-                    this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
-                    
-                    // Track the killer if this attack was fatal
-                    if (playerHealthBeforeDamage > 0 && this.gameState.playerHealth <= 0) {
-                        this.killedBy = card.data.name || card.data.type || 'Enemy';
-                    }
+            });
+        }
+
+        const damageDealt = card.data.attack;
+        this.createDamageEffect(card.sprite.x, card.sprite.y);
+
+        // Apply abilities like poison on hit
+        card.data.abilities?.forEach(ability => {
+            if (ability.type === 'poison') {
+                this.gameState.addPlayerEffect({ ...ability });
+                this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Poisoned!', 0x00ff00);
+            } else if (ability.type === 'coin_steal') {
+                // Goblin coin stealing ability
+                if (Math.random() < ability.chance && this.gameState.coins > 0) {
+                    const stolenAmount = Math.min(ability.amount, this.gameState.coins);
+                    this.gameState.coins -= stolenAmount;
+                    this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${stolenAmount} coins stolen!`, 0xffd700);
+                    this.createFloatingText(card.sprite.x, card.sprite.y, `+${stolenAmount}`, 0xffd700);
                 }
             }
         });
-        
+
+        const playerHealthBeforeDamage = this.gameState.playerHealth;
+        const { actualDamage, tookDamage } = this.gameState.takeDamage(damageDealt, index);
+
+        if (tookDamage) {
+            SoundHelper.playSound(this, 'player_hurt', 0.5);
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
+
+            if (playerHealthBeforeDamage > 0 && this.gameState.playerHealth <= 0) {
+                this.killedBy = card.data.name || card.data.type || 'Enemy';
+            }
+        }
+
+        this.applyThornsDamage(card, index);
+    }
+
+    getActiveThornsCard() {
+        const slots = this.inventorySystem?.slots || this.gameState.inventory || [];
+        for (let i = 0; i < slots.length; i++) {
+            const item = slots[i];
+            if (item?.type === 'thorns' && item.durability > 0) {
+                return { item, index: i };
+            }
+        }
+        return null;
+    }
+
+    applyThornsDamage(card, index) {
+        if (this.cardSystem.boardCards[index] !== card) return;
+        if (card.data.role !== 'MELEE') return;
+
+        const thorns = this.getActiveThornsCard();
+        if (!thorns) return;
+
+        const damage = thorns.item.thornDamage || 2;
+        const x = card.sprite?.x || this.playerAvatar.x;
+        const y = card.sprite?.y || this.playerAvatar.y;
+
+        this.cardSystem.attackEnemy(index, damage, true);
+        this.createFloatingText(x, y, `-${damage} Thorns`, 0x9dff7a);
+
+        thorns.item.durability = Math.max(0, thorns.item.durability - 1);
+        if (thorns.item.durability <= 0) {
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y + 20, 'Thorns broke!', 0x9dff7a);
+            this.grantCardSpentRelicBonus(thorns.item, this.playerAvatar.x, this.playerAvatar.y);
+            if (this.inventorySystem) {
+                this.inventorySystem.removeCard(thorns.index);
+            } else if (this.gameState.inventory) {
+                this.gameState.inventory[thorns.index] = null;
+            }
+        } else if (this.inventorySystem) {
+            this.inventorySystem.rebuildInventorySprites();
+        }
+    }
+
+    finishEnemyTurnEffects() {
+        this.isEnemyTurn = false;
+
         // Process magic buff durations AFTER enemy attacks
         if (this.gameState.shadowBlade) {
             this.gameState.shadowBlade.turns--;
@@ -634,6 +784,8 @@ export class GameScene extends Phaser.Scene {
                 this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Magic Shield faded', 0x666666);
             }
         }
+
+        this.cardSystem.processEnemyPoisonEffects();
         
         // Process player poison effects
         let effectDamage = 0;
@@ -683,6 +835,20 @@ export class GameScene extends Phaser.Scene {
             onComplete: () => flash.destroy()
         });
     }
+    // takeDamage method is now primarily handled in GameState
+    // This is kept for calls that might not have been updated yet
+    takeDamage(rawDamage, enemyIndex = -1) {
+        // Player takes damage and reflection is handled inside takeDamage
+        const { actualDamage, tookDamage } = this.gameState.takeDamage(rawDamage, enemyIndex);
+        if (tookDamage) {
+            SoundHelper.playSound(this, 'player_hurt', 0.5);
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
+        }
+        // IMPORTANT: Check for game over immediately after taking damage
+        if (this.gameState.playerHealth <= 0) {
+            this.time.delayedCall(500, () => this.gameOver());
+        }
+    }
     createFloatingText(x, y, text, color) {
         // Add random offsets to prevent text from overlapping perfectly
         const xOffset = Phaser.Math.Between(-20, 20);
@@ -690,7 +856,7 @@ export class GameScene extends Phaser.Scene {
         const floatText = this.add.text(x + xOffset, y + yOffset, text, {
             fontSize: '16px',
             fill: Phaser.Display.Color.IntegerToColor(color).rgba,
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Make the text drift horizontally as it floats up
@@ -768,12 +934,12 @@ export class GameScene extends Phaser.Scene {
         this.add.text(320, 140, 'GAME OVER', {
             fontSize: '28px',
             fill: '#ff0000',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         this.add.text(320, 180, `You reached floor ${this.gameState.currentFloor}`, {
             fontSize: '14px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Launch DeathRewardScene instead of simple restart
@@ -781,66 +947,88 @@ export class GameScene extends Phaser.Scene {
             .setStrokeStyle(2, 0xffffff)
             .setInteractive()
             .on('pointerdown', () => {
-                this.scene.start('DeathRewardScene', {
+                this.scene.start('DeathRewardScene', { 
                     deathStats: deathStats,
                     gameState: this.gameState,
                     metaManager: this.metaManager,
-                    killedBy: this.killedBy || 'Unknown Enemy',
-                    floor: (deathStats?.floor ?? this.gameState.currentFloor ?? 1)
+                    killedBy: this.killedBy || 'Unknown Enemy'
                 });
             });
         this.add.text(320, 220, 'Continue', {
             fontSize: '16px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
     }
     
     floorCleared() {
         if (this._transitioning) return;
         this._transitioning = true;
+        this.clearEnemyTurnTimers();
         // Hard-disable the button so it can't be clicked again
         if (this.nextFloorButton) this.nextFloorButton.disableInteractive();
-        if (this.roomType === 'TREASURE') {
-            SoundHelper.playSound(this, 'treasure_explode', 0.5);
-            this.createFloatingText(320, 180, 'Treasure Collected!', 0xffd700);
-        } else {
-            // Give some coins for clearing the floor
-            const baseReward = 5 + this.gameState.currentFloor * 2;
-
-            // Apply gold modifier from amulets
-            const reward = this.amuletManager ?
-                this.amuletManager.modifyGoldFound(baseReward) : baseReward;
-
-            this.gameState.coins += reward;
-            SoundHelper.playSound(this, 'coin_collect', 0.4);
-            this.createFloatingText(320, 180, `Floor Cleared! +${reward} coins`, 0xffd700);
-        }
+        // Give a modest floor clear payout; elite and boss rooms now pay out through chests.
+        const baseReward = 3 + this.gameState.currentFloor;
+        
+        // Apply gold modifier from amulets
+        const reward = this.amuletManager ? 
+            this.amuletManager.modifyGoldFound(baseReward) : baseReward;
+        
+        this.gameState.coins += reward;
+        SoundHelper.playSound(this, 'coin_collect', 0.4);
+        this.createFloatingText(320, 180, `Floor Cleared! +${reward} coins`, 0xffd700);
+        const rewardChestMode = this.gameState.roomType === 'BOSS' ? 'boss' :
+            this.gameState.roomType === 'ELITE' ? 'elite' : null;
         
         // Process amulet floor end effects before moving to next floor
         if (this.amuletManager) {
             this.amuletManager.processFloorEnd();
         }
+
+        const completedActBoss = this.gameState.roomType === 'BOSS' &&
+            this.gameState.mapCursor &&
+            this.gameState.mapCursor.floor >= 14;
+
+        if (completedActBoss) {
+            if (this.gameState.currentFloor >= 45) {
+                this.saveCurrentRun();
+                this.time.delayedCall(1500, () => this.gameWon());
+                return;
+            }
+
+            this.gameState.currentFloor++;
+            const nextAct = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
+            this.gameState.mapCursor = { act: nextAct, floor: 0, node: 0 };
+            const nextActMap = this.gameState.dungeonMap?.[`act${nextAct}`];
+            if (nextActMap?.floors?.[0]?.[0]) {
+                nextActMap.floors[0][0].visited = true;
+            }
+            this.createFloatingText(320, 120, `Act ${nextAct}`, 0xf2d3aa);
+        }
         
-        this.time.delayedCall(1500, () => {
+        // AUTO-SAVE the current run
+        this.saveCurrentRun();
+        
+        this.time.delayedCall(500, () => {
             this.scene.sleep();
-            this.scene.launch('MapViewScene', { gameState: this.gameState });
+            if (rewardChestMode) {
+                this.scene.launch('TreasureScene', {
+                    gameState: this.gameState,
+                    rewardMode: rewardChestMode
+                });
+            } else {
+                this.scene.stop('MapViewScene');
+                this.scene.launch('MapViewScene', { gameState: this.gameState });
+            }
         });
     }
     
     onEnemiesCleared() {
+        this.clearEnemyTurnTimers();
         this.enemiesCleared = true;
         this.nextFloorButton.setVisible(true);
-        this.nextFloorButtonText.setVisible(true);
-        if (this.roomType === 'TREASURE') {
-            this.nextFloorButtonText.setText('Continue');
-            this.createFloatingText(320, 100, 'Treasure secured!', 0xffd700);
-            this.createFloatingText(320, 120, 'Collect rewards then continue.', 0xffffff);
-        } else {
-            this.nextFloorButtonText.setText('Next Floor');
-            this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
-            this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
-        }
+        this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
+        this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
     }
     
     gameWon() {
@@ -848,12 +1036,12 @@ export class GameScene extends Phaser.Scene {
         this.add.text(320, 140, 'VICTORY!', {
             fontSize: '28px',
             fill: '#ffd700',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         this.add.text(320, 180, `You have conquered the dungeon!`, {
             fontSize: '14px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         const restartButton = this.add.rectangle(320, 220, 120, 30, 0x333333)
             .setStrokeStyle(2, 0xffffff)
@@ -862,7 +1050,7 @@ export class GameScene extends Phaser.Scene {
         this.add.text(320, 220, 'Play Again', {
             fontSize: '16px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
     }
     
@@ -877,7 +1065,7 @@ export class GameScene extends Phaser.Scene {
             // Position amulets horizontally starting from x=125, y=65
             const x = 125 + i * 35; // 35 pixels spacing between amulets
             const y = 30; // Above the armor text which is now at y=90
-            const amuletSprite = this.add.image(x, y, amulet.sprite).setScale(0.4).setInteractive();
+            const amuletSprite = this.add.image(x, y, amulet.sprite, amulet.spriteFrame).setInteractive();
             this.amuletUIGroup.add(amuletSprite);
             
             // Add level indicator for stackable amulets
@@ -885,7 +1073,7 @@ export class GameScene extends Phaser.Scene {
                 const levelText = this.add.text(x + 8, y + 8, amulet.level.toString(), {
                     fontSize: '10px',
                     fill: '#ffffff',
-                    fontFamily: '"Roboto Condensed"'
+                    fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 this.amuletUIGroup.add(levelText);
             }
@@ -902,11 +1090,74 @@ export class GameScene extends Phaser.Scene {
             });
         });
     }
+
+    updateRelicsUI() {
+        this.relicUIGroup.clear(true, true);
+        if (this.relicTooltip) {
+            this.relicTooltip.destroy();
+            this.relicTooltip = null;
+        }
+
+        const relics = this.metaManager?.getUnlockedRelics?.() || [];
+        relics.forEach((relic, i) => {
+            const x = 125 + i * 28;
+            const y = 62;
+            const usesSheet = relic.iconSheet && this.textures.exists(relic.iconSheet);
+            const iconKey = usesSheet ? relic.iconSheet : this.textures.exists(relic.icon) ? relic.icon : 'amulet';
+            const iconFrame = usesSheet ? relic.iconFrame : undefined;
+            const relicSprite = this.add.image(x, y, iconKey, iconFrame).setInteractive();
+            relicSprite.setDepth(20);
+            this.relicUIGroup.add(relicSprite);
+
+            relicSprite.on('pointerover', () => {
+                this.showRelicTooltip(relic, relicSprite.x + 20, relicSprite.y);
+            });
+            relicSprite.on('pointerout', () => {
+                if (this.relicTooltip) {
+                    this.relicTooltip.destroy();
+                    this.relicTooltip = null;
+                }
+            });
+        });
+    }
+
+    showRelicTooltip(relic, x, y) {
+        if (this.relicTooltip) {
+            this.relicTooltip.destroy();
+        }
+
+        const description = `${relic.name}\n${relic.description}`;
+        const bg = this.add.rectangle(0, 0, 200, 44, 0x000000, 0.85)
+            .setStrokeStyle(1, relic.cursed ? 0xff6666 : 0xffd700);
+        const tooltipText = this.add.text(0, 0, description, {
+            fontSize: '10px',
+            fill: relic.cursed ? '#ff9999' : '#ffd700',
+            fontFamily: '"HoMM Pixel"',
+            align: 'center',
+            wordWrap: { width: 190 }
+        }).setOrigin(0.5);
+
+        this.relicTooltip = this.add.container(x, y, [bg, tooltipText]);
+        this.relicTooltip.setDepth(1000);
+    }
+
+    grantCardSpentRelicBonus(card, x = this.playerAvatar.x, y = this.playerAvatar.y) {
+        const amount = this.gameState.relicEffects?.cardSpentMaxHP || 0;
+        if (!amount || !card) return;
+
+        this.gameState.maxHealth += amount;
+        this.gameState.playerHealth = Math.min(
+            this.gameState.maxHealth,
+            this.gameState.playerHealth + amount
+        );
+        this.createFloatingText(x, y - 18, `+${amount} Max HP (Tent)`, 0xffd78a);
+        this.updateUI();
+    }
     
     updatePlayerEffectsUI() {
         this.playerEffectsUIGroup.clear(true, true);
         this.gameState.playerEffects.forEach((effect, i) => {
-            const y = 190 + i * 15;
+            const y = 312 + i * 15;
             let effectText = '';
             let color = '#ffffff';
             switch (effect.type) {
@@ -918,7 +1169,7 @@ export class GameScene extends Phaser.Scene {
             const text = this.add.text(10, y, effectText, {
                 fontSize: '12px',
                 fill: color,
-                fontFamily: '"Roboto Condensed"'
+                fontFamily: '"HoMM Pixel"'
             });
             this.playerEffectsUIGroup.add(text);
         });
@@ -957,7 +1208,7 @@ export class GameScene extends Phaser.Scene {
         const tooltipText = this.add.text(0, 0, description, {
             fontSize: '11px',
             fill: definition && definition.cursed ? '#ff6666' : '#ffffff',
-            fontFamily: '"Roboto Condensed"',
+            fontFamily: '"HoMM Pixel"',
             backgroundColor: '#000000',
             padding: { x: 5, y: 3 },
             wordWrap: { width: 200 }
@@ -1015,6 +1266,7 @@ export class GameScene extends Phaser.Scene {
         this.gameState.baseMaxHealth = runData.player.baseMaxHealth;
         this.gameState.bottomlessBagApplied = runData.player.bottomlessBagApplied;
         // Equipment
+        this.gameState.equippedWeapon = runData.equipment.equippedWeapon;
         this.gameState.equippedArmor = runData.equipment.equippedArmor;
         // Effects (properly restore objects)
         this.gameState.activeAmulets = runData.effects.activeAmulets;
@@ -1029,16 +1281,13 @@ export class GameScene extends Phaser.Scene {
         // Inventory
         if (this.inventorySystem && runData.equipment.inventory) {
             this.inventorySystem.slots = runData.equipment.inventory;
+            this.gameState.inventory = this.inventorySystem.slots;
+            this.inventorySystem.createInventoryUI();
+            this.inventorySystem.rebuildInventorySprites();
         }
-        // Room state
-        this.gameState.roomType = runData.room.type;
-        this.gameState.roomInitialized = runData.room.initialized;
-        this.gameState.activeRoomId = runData.room.activeId;
-        this.roomType = this.gameState.roomType || this.roomType;
-        this._activeRoomId = this.gameState.activeRoomId;
         // Re-apply relic effects on top of loaded state
         if (this.metaManager) {
-            this.metaManager.applyRelicEffects(this.gameState);
+            this.metaManager.applyRelicEffects(this.gameState, false);
         }
         return true;
     }
@@ -1047,13 +1296,46 @@ export class GameScene extends Phaser.Scene {
         let title = 'Combat Room';
         if (this.roomType === 'ELITE') title = 'Elite Combat';
         if (this.roomType === 'BOSS') title = 'Boss Fight';
-        if (this.roomType === 'TREASURE') title = 'Treasure Vault';
         this.roomTitle.setText(title);
     }
     
     shutdown() {
         this.input.keyboard.off('keydown-ESC');
-        this.events.off('endPlayerTurn', this._handleEndPlayerTurn);
+        this.events.off('endPlayerTurn');  // Unbind to avoid doubles
         this._turnHandlersBound = false;
+    }
+    wake(sys, data) {
+        // Always sync inventory on wake
+        if (this.inventorySystem) {
+            this.inventorySystem.slots = this.gameState.inventory || this.inventorySystem.slots;
+            this.gameState.inventory = this.inventorySystem.slots;
+            this.inventorySystem.rebuildInventorySprites();
+            this.inventorySystem.setVisibility(true);
+        }
+        if (data?.shopStation) {
+            this.inventorySystem?.setStationMode(true);
+            this.updateUI();
+            return;
+        }
+        // Restore current room type from gameState
+        this.roomType = this.gameState.roomType || 'COMBAT';
+        this.updateRoomTitle();
+        
+        // Check if this is actually a new floor/room transition
+        const isNewRoom = data?.isNewRoom || false;
+        
+        if (['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType)) {
+            // Check if we need to spawn new enemies
+            const hasEnemies = this.cardSystem.boardCards && 
+                this.cardSystem.boardCards.some(c => 
+                    c && (c.data?.type === 'enemy' || c.data?.type === 'boss')
+            );
+            
+            if (!hasEnemies || isNewRoom) {
+                this.startNewFloor();
+            } else {
+                this.updateUI(); // Refresh UI without spawning
+            }
+        }
     }
 }

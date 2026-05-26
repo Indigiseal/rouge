@@ -1,45 +1,33 @@
 export class GameState {
     constructor(scene) {
         this.scene = scene;
-        this.initNewRun();
-    }
-
-    initNewRun() {
-        this.playerHealth = 50;
-        this.maxHealth = 50;
+        this.playerHealth = 100;
+        this.maxHealth = 100;
         this.coins = 0;
         this.crystals = 0;
         this.activeAmulets = [];
         this.playerEffects = [];
         this.actionsLeft = 15;
         this.maxActions = 15;
-        this.currentFloor = 1;  // 1-based: User-facing floor number (1, 2, 3...)
-        this.equippedArmor = null;
+        this.currentFloor = 1;
         this.equippedWeapon = null;
-        this.bonusInventorySlots = 0; // For Bottomless Bag
-
-        const baseSlots = 5;
-        const totalSlots = baseSlots + this.bonusInventorySlots;
-        this.inventory = new Array(totalSlots).fill(null);
-
-        // Room/route tracking
-        this.roomType = 'COMBAT';
-        this.roomInitialized = false;
-        this.activeRoomId = 0;
-
+        this.equippedArmor = null;
+        this.inventory = new Array(5).fill(null);
+        
+        
         this.blockNextAttack = false;
-
+        
         // Magic card effects
         this.shadowBlade = null;
         this.magicShield = null;
         this.boneWall = 0;
         this.mirrorShield = false;
-
+        
         // Amulet-related properties
         this.firstActionUsed = false; // For Speed Boots
+        this.bonusInventorySlots = 0; // For Bottomless Bag
         this.baseMaxHealth = 50; // Store base max health for cursed amulets
-        this.bottomlessBagApplied = false;
-
+        
         // Meta progression tracking
         this.damageTracking = {
             totalDamageTaken: 0,
@@ -60,33 +48,33 @@ export class GameState {
                 crystalsEarned: 0
             }
         };
-
-        this.relicEffects = {};
-        this.startingArmor = null;
-        this.dungeonMap = null;
-        this.mapCursor = null;
     }
 
     nextFloor() {
-
-        this.currentFloor++;  // Increment 1-based floor number
-
-        // Ensure currentFloor never drops below 1
-        if (this.currentFloor < 1) {
-            console.error('Floor number corruption detected, resetting to 1');
-            this.currentFloor = 1;
+        this.currentFloor++;
+        
+        // Make sure inventory syncs from the actual inventory system
+        const gameScene = this.scene.scene.get('GameScene');
+        if (gameScene && gameScene.inventorySystem) {
+            this.inventory = [...gameScene.inventorySystem.slots]; // Create a copy
         }
-
-
+        
         this.blockNextAttack = false;
         this.firstActionUsed = false;
-
+        
         if (this.scene.amuletManager) {
             this.scene.amuletManager.processFloorEnd();
         }
     }
 
     takeDamage(amount, enemyIndex = -1, source = 'enemy') {
+        if (source === 'poison' && this.relicEffects?.poisonImmunity) {
+            if (this.scene?.playerAvatar) {
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poison Immune!', 0x66ff66);
+            }
+            return { actualDamage: 0, tookDamage: false };
+        }
+
         // Check for dodge (from amulets)
         if (this.scene.amuletManager && this.scene.amuletManager.checkDodge()) {
             this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Dodged!', 0x00ff00);
@@ -121,7 +109,7 @@ export class GameState {
             // Handle reflection
             if (this.equippedArmor.reflection > 0 && enemyIndex !== -1) {
                 reflectedDamage = Math.floor(amount * (this.equippedArmor.reflection / 100));
-
+                
                 // Reflection cannot kill bosses
                 const enemyCard = this.scene.cardSystem.boardCards[enemyIndex];
                 if (enemyCard && enemyCard.data.type === 'boss') {
@@ -137,40 +125,36 @@ export class GameState {
                     }
                 }
             }
-
-            // Durability decreases on every hit
-            this.equippedArmor.durability--;
-            if (this.equippedArmor.durability <= 0) {
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y + 20, `${this.equippedArmor.name} broke!`, 0xffa500);
-                this.equippedArmor = null;
-                this.scene.updateUI();
+            
+            // Durability tick if armor was used and damage was dealt
+            if (protection > 0 && amount > 0) {
+                this.equippedArmor.durability--;
+                if (this.equippedArmor.durability <= 0) {
+                    this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y + 20, `${this.equippedArmor.name} broke!`, 0xffa500);
+                    this.scene.grantCardSpentRelicBonus?.(this.equippedArmor, this.scene.playerAvatar.x, this.scene.playerAvatar.y);
+                    this.equippedArmor = null;
+                    this.scene.updateUI();
+                }
             }
         }
-
+        
         const actualDamage = Math.max(0, amount - protection);
-
         const wouldKill = this.playerHealth - actualDamage <= 0;
-
+        
         // Check for invulnerability amulet
         if (wouldKill && this.scene.amuletManager && this.scene.amuletManager.checkLethalPrevention()) {
             // Cancel all damage this turn
             return { actualDamage: 0, tookDamage: false };
         }
-
-        const nextHealth = Math.max(0, this.playerHealth - actualDamage);
-        this.playerHealth = Math.min(this.maxHealth, nextHealth);
-
+        
+        this.playerHealth = Math.max(0, this.playerHealth - actualDamage);
         const tookDamage = actualDamage > 0;
-
+        
         // Track damage for meta progression
         if (actualDamage > 0) {
             this.trackDamage(actualDamage, source, enemyIndex);
         }
-
-        if (this.scene && typeof this.scene.updateUI === 'function') {
-            this.scene.updateUI();
-        }
-
+        
         // Check for game over immediately after health change
         if (this.playerHealth <= 0) {
             this.setDeathCause(source, enemyIndex);
@@ -181,6 +165,13 @@ export class GameState {
     }
 
     addPlayerEffect(effect) {
+        if (effect?.type === 'poison' && this.relicEffects?.poisonImmunity) {
+            if (this.scene?.playerAvatar) {
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poison Immune!', 0x66ff66);
+            }
+            return;
+        }
+
         // Prevent stacking the same effect, refresh duration instead
         const existingEffect = this.playerEffects.find(e => e.type === effect.type);
         if (existingEffect) {
@@ -197,10 +188,6 @@ export class GameState {
         
         const cappedMaxHealth = Math.floor(this.maxHealth * maxCap);
         this.playerHealth = Math.min(cappedMaxHealth, this.playerHealth + amount);
-
-        if (this.scene && typeof this.scene.updateUI === 'function') {
-            this.scene.updateUI();
-        }
     }
     
     // Method to check if action should be free (Speed Boots)

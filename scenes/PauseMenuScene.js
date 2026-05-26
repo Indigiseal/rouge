@@ -1,7 +1,5 @@
 // scenes/PauseMenuScene.js
 
-import { SaveManager } from '../SaveManager.js';
-
 export class PauseMenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'PauseMenuScene' });
@@ -9,8 +7,7 @@ export class PauseMenuScene extends Phaser.Scene {
     
     init(data) {
         this.pausedScene = data.pausedScene || 'GameScene';
-        this.saveManager = new SaveManager();
-
+        
         // Initialize volume settings if they don't exist
         if (!this.game.globalVolume) {
             this.game.globalVolume = {
@@ -33,21 +30,24 @@ export class PauseMenuScene extends Phaser.Scene {
         this.add.text(320, 80, 'PAUSED', {
             fontSize: '32px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Sound settings title
         this.add.text(320, 120, 'Sound Settings', {
             fontSize: '18px',
             fill: '#cccccc',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
+        // Master Volume
+        this.createVolumeSlider('Master Volume', 150, 'master');
+        
         // Sound Effects Volume
-        this.createVolumeSlider('Sound Effects', 170, 'sfx');
-
+        this.createVolumeSlider('Sound Effects', 190, 'sfx');
+        
         // Music Volume (for future use)
-        this.createVolumeSlider('Music', 210, 'music');
+        this.createVolumeSlider('Music', 230, 'music');
         
         // Resume button
         const resumeButton = this.add.rectangle(230, 280, 120, 35, 0x00ff00, 0.3)
@@ -60,7 +60,21 @@ export class PauseMenuScene extends Phaser.Scene {
         this.add.text(230, 280, 'Resume', {
             fontSize: '16px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5);
+        
+        // Main Menu button (optional - for future use)
+        const mainMenuButton = this.add.rectangle(410, 280, 120, 35, 0xff6666, 0.3)
+            .setStrokeStyle(2, 0xff6666)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerover', () => mainMenuButton.setFillStyle(0xff6666, 0.5))
+            .on('pointerout', () => mainMenuButton.setFillStyle(0xff6666, 0.3))
+            .on('pointerdown', () => this.quitToMainMenu());
+        
+        this.add.text(410, 280, 'Quit Game', {
+            fontSize: '16px',
+            fill: '#ffffff',
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // ESC key to resume
@@ -72,7 +86,7 @@ export class PauseMenuScene extends Phaser.Scene {
         this.add.text(180, y, label + ':', {
             fontSize: '14px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(1, 0.5);
         
         // Slider background
@@ -98,7 +112,7 @@ export class PauseMenuScene extends Phaser.Scene {
             Math.round(this.game.globalVolume[volumeType] * 100) + '%', {
             fontSize: '14px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0, 0.5);
         
         // Make slider interactive
@@ -149,11 +163,9 @@ export class PauseMenuScene extends Phaser.Scene {
     applyVolumeSettings() {
         // Update the global sound manager volume
         this.sound.volume = this.game.globalVolume.master;
-
-        this.saveManager.saveSettings({
-            volume: this.game.globalVolume,
-            language: this.game.language || 'English',
-        });
+        
+        // Store in localStorage for persistence
+        localStorage.setItem('gameVolume', JSON.stringify(this.game.globalVolume));
     }
     
     resumeGame() {
@@ -162,4 +174,10 @@ export class PauseMenuScene extends Phaser.Scene {
         this.scene.stop();
     }
     
+    quitToMainMenu() {
+        // Stop all scenes and restart the game
+        this.scene.stop(this.pausedScene);
+        this.scene.stop();
+        this.scene.start('GameScene', {}); // Restart fresh
+    }
 }

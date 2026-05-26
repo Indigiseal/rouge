@@ -4,22 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dungeon Card Crawler</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
     <script type="importmap">
     {
         "imports": {
-            "phaser": "https://esm.sh/phaser@3.70.0"
+            "phaser": "./vendor/phaser-3.70.0.mjs"
         }
     }
     </script>
     <style>
+        @font-face {
+            font-family: "HoMM Pixel";
+            src: url("assets/fonts/Able 5.ttf") format("truetype");
+            font-display: block;
+        }
+
         body {
             margin: 0;
             padding: 0;
             background: #1a1a1a;
-            font-family: 'Roboto Condensed', sans-serif;
+            font-family: "HoMM Pixel", Arial, Helvetica, sans-serif;
             overflow: hidden;
         }
         #phaser-game-container {
@@ -29,14 +32,15 @@
             justify-content: center;
             align-items: center;
         }
+
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
     </style>
 </head>
 <body>
     <div id="phaser-game-container"></div>
     <script type="module" src="main.js"></script>
-    <script src="https://storage.googleapis.com/rosebud_staticfiles/ChatManager.js"></script>
-    <script src="https://storage.googleapis.com/rosebud_staticfiles/ImageGenerator.js"></script>
-    <script src="https://storage.googleapis.com/rosebud_staticfiles/ProgressLogger.js"></script>
-    <script src="https://storage.googleapis.com/rosebud_staticfiles/OGP.js"></script>
 </body>
 </html>

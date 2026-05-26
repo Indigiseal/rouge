@@ -4,164 +4,205 @@ export class PreloadScene extends Phaser.Scene {
     }
 
     preload() {
-        //this.load.image('warrior', 'https://play.rosebud.ai/assets/playerAvatarWarrior.png?cQgd');
-        this.load.image('axeCard', 'https://play.rosebud.ai/assets/commonAxeCard.png?ze1n');
-        this.load.image('goblinCard', 'https://play.rosebud.ai/assets/goblinEnemyCard.png?8lHq');
-        this.load.image('stoneFloor', 'https://play.rosebud.ai/assets/dungeon.png?2pLg');
-        this.load.image('cardBack', 'https://play.rosebud.ai/assets/cardBack.png?Jnqe');
-        this.load.image('goblin_c', 'https://play.rosebud.ai/assets/goblin_c.png?cg01');
-        this.load.image('skeletonSprite', 'https://play.rosebud.ai/assets/skeleton_C.png?c1vY');
+        //this.load.image('warrior', 'assets/playerAvatarWarrior.png');
+        this.load.image('axeCard', 'assets/commonAxeCard.png');
+        this.load.image('goblinCard', 'assets/goblinEnemyCard.png');
+        this.load.image('stoneFloor', 'assets/dungeon.png');
+        this.load.image('cardBack', 'assets/cardBack.png');
+        this.load.image('panelCards', 'assets/panelCards.png');
+        this.load.image('gamingBoard', 'assets/gamingBoard.png');
+        this.load.image('panelArmor', 'assets/panelArmor.png');
+        this.load.bitmapFont('pixel-font', 'assets/fonts/minogram_6x10.png', 'assets/fonts/minogram_6x10.xml');
+        this.load.bitmapFont('cyrillic-ui-font', 'assets/fonts/probly12NEW_crisp.png', 'assets/fonts/probly12NEW_crisp.xml');
+        this.load.image('goblin_c', 'assets/goblin_c.png');
+        this.load.image('skeletonSprite', 'assets/skeleton_c.png');
         
         // Load item sprites
-        this.load.image('leather_C', 'https://rosebud.ai/assets/leatherCommon.png?pqJt');
-        this.load.image('chain_C', 'https://play.rosebud.ai/assets/chain_C.png?B1AN');
-        this.load.image('plate_C', 'https://play.rosebud.ai/assets/plate_C.png?WWuY');
-        this.load.image('sword_C', 'https://rosebud.ai/assets/sword_c_r.png?hBYN');
-        this.load.image('dagger_C', 'https://rosebud.ai/assets/dagger_c.png?3J8k');
-        this.load.image('axe_C', 'https://play.rosebud.ai/assets/axe_C.png?8znw');
-        this.load.image('spear_c', 'https://play.rosebud.ai/assets/spear_c.png?RHDQ');
+        this.load.image('leather_C', 'assets/leatherCommon.png');
+        this.load.image('chain_C', 'assets/chain_C.png');
+        this.load.image('plate_C', 'assets/plate_C.png');
+        this.load.image('boneArmor_U', 'assets/boneArmor_U.png');
+        this.load.image('sword_C', 'assets/sword_c_r.png');
+        this.load.image('dagger_C', 'assets/dagger_c.png');
+        this.load.image('venomousDagger_C', 'assets/VenomousDagger_C.png');
+        this.load.image('axe_C', 'assets/axe_C.png');
+        this.load.image('spear_c', 'assets/spear_c.png');
         // Load Uncommon item sprites
-        this.load.image('axe_U', 'https://play.rosebud.ai/assets/axe_U.png?Ucwr');
-        this.load.image('dagger_U', 'https://rosebud.ai/assets/dagger_u.png?nFfc');
-        this.load.image('spear_u', 'https://play.rosebud.ai/assets/spear_u.png?RlYU');
-        this.load.image('sword_U', 'https://rosebud.ai/assets/sword_u.png?6sFR');
-        this.load.image('chain_U', 'https://play.rosebud.ai/assets/chain_U.png?a7Yp');
-        this.load.image('plate_U', 'https://play.rosebud.ai/assets/plate_U.png?e9O8');
-        this.load.image('potionCardCommon', 'https://play.rosebud.ai/assets/potionCardCommon.png?ZnF8');
-        this.load.image('potionCardUncommon', 'https://play.rosebud.ai/assets/potionCardUncommon.png?caTH');
-        this.load.image('trap', 'https://play.rosebud.ai/assets/trap.png?LoEV');
-        this.load.image('trap2', 'https://play.rosebud.ai/assets/trap2.png?y1MT');
-        this.load.image('coin', 'https://play.rosebud.ai/assets/coin.png?TyWY');
-        this.load.image('crystalCard', 'https://play.rosebud.ai/assets/crystalCard.png?TQf2');
-        this.load.image('keyCard', 'https://play.rosebud.ai/assets/keyCard.png?mqmj');
-        this.load.image('crystalSmall', 'https://play.rosebud.ai/assets/crystalSmall.png?cdQN');
-        this.load.image('trapTriggers', 'https://play.rosebud.ai/assets/trapTriggers.png?Qd9K');
-        this.load.audio('sword_swoosh', 'https://play.rosebud.ai/assets/knife-slice-41231.mp3?y3FV');
-        this.load.audio('coin_collect', 'https://play.rosebud.ai/assets/coin-recieved.mp3?RPSA');
-        this.load.audio('player_hurt', 'https://play.rosebud.ai/assets/male_hurt.mp3?0Y2E');
-        this.load.audio('anvil_upgrade', 'https://play.rosebud.ai/assets/anvil-hit-2-14845.mp3?Gzrj');
-        this.load.audio('item_discard', 'https://play.rosebud.ai/assets/discard-sound-effect-221455.mp3?DBYn');
-        this.load.audio('trap_spring', 'https://rosebud.ai/assets/trap_spring1.mp3?bdfP');
-        this.load.audio('trap_woosh', 'https://play.rosebud.ai/assets/fast-woosh-230497.mp3?7jAm');
-        this.load.audio('armor_equip', 'https://play.rosebud.ai/assets/metal_clank.mp3?j2gC');
-        this.load.audio('crystal_collect', 'https://play.rosebud.ai/assets/crystal_pick_up.mp3?2cXX');
+        this.load.image('axe_U', 'assets/axe_U.png');
+        this.load.image('dagger_U', 'assets/dagger_u.png');
+        this.load.image('venomousDagger_U', 'assets/VenomousDagger_U.png');
+        this.load.image('spear_u', 'assets/spear_u.png');
+        this.load.image('sword_U', 'assets/sword_u.png');
+        this.load.image('chain_U', 'assets/chain_U.png');
+        this.load.image('plate_U', 'assets/plate_U.png');
+        this.load.image('potionCardCommon', 'assets/potionCardCommon.png');
+        this.load.image('potionCardUncommon', 'assets/potionCardUncommon.png');
+        this.load.image('trap', 'assets/trap.png');
+        this.load.image('trap2', 'assets/trap2.png');
+        this.load.image('coin', 'assets/coin.png');
+        this.load.image('crystalCard', 'assets/crystalCard.png');
+        this.load.image('keyCard', 'assets/keyCard.png');
+        this.load.image('crystalSmall', 'assets/crystalSmall.png');
+        this.load.image('trapTriggers', 'assets/trapTriggers.png');
+        this.load.image('thornsCard', 'assets/thornsCard.png');
+        this.load.audio('sword_swoosh', 'assets/knife-slice-41231.mp3');
+        this.load.audio('coin_collect', 'assets/coin-recieved.mp3');
+        this.load.audio('player_hurt', 'assets/male_hurt.mp3');
+        this.load.audio('anvil_upgrade', 'assets/anvil-hit-2-14845.mp3');
+        this.load.audio('item_discard', 'assets/discard-sound-effect-221455.mp3');
+        this.load.audio('trap_spring', 'assets/trap_spring1.mp3');
+        this.load.audio('trap_woosh', 'assets/fast-woosh-230497.mp3');
+        this.load.audio('armor_equip', 'assets/metal_clank.mp3');
+        this.load.audio('crystal_collect', 'assets/crystal_pick_up.mp3');
         // Food 
-        this.load.image('berries', 'https://rosebud.ai/assets/foodCommon4AP.png?I1wn');
-        this.load.image('bread', 'https://play.rosebud.ai/assets/bread.png?zIjg');
+        this.load.image('berries', 'assets/foodCommon4AP.png');
+        this.load.image('bread', 'assets/bread.png');
         // New Cards
-        this.load.image('amulet', 'https://play.rosebud.ai/assets/amulet.png?xx9e');
-        this.load.image('key', 'https://play.rosebud.ai/assets/key.png?AYPV');
-        this.load.image('AmuletOfVigor', 'https://play.rosebud.ai/assets/AmuletOfVigor.png?ndMh');
-        this.load.image('MaskOfHollowWispers', 'https://play.rosebud.ai/assets/MaskOfHollowWispers.png?SJVn');
+        this.load.image('amulet', 'assets/amulet.png');
+        this.load.image('key', 'assets/key.png');
+        this.load.image('AmuletOfVigor', 'assets/AmuletOfVigor.png');
+        this.load.image('MaskOfHollowWispers', 'assets/MaskOfHollowWispers.png');
+        this.load.spritesheet('relicsOthers', 'assets/relicsOthers.png', { frameWidth: 32, frameHeight: 32 });
         // Load specific amulet sprites
-        this.load.image('Healing Ring', 'https://rosebud.ai/assets/Healing Ring.png?wEWv');
-        this.load.image('Boots of Evasion', 'https://rosebud.ai/assets/Boots of Evasion.png?yt6D');
-        this.load.image('dragonClaw', 'https://rosebud.ai/assets/dragonClaw.png?9O5q');
-        this.load.image('Bottomless Bag', 'https://rosebud.ai/assets/Bottomless Bag.png?kANB');
-        this.load.image('amulet_scales_of_basilisk', 'https://play.rosebud.ai/assets/amulet_scales_of_basilisk.png?sU2i');
-        this.load.audio('shop_buy', 'https://play.rosebud.ai/assets/dropInBagStore.mp3?2wqr');
-        this.load.audio('card_flip', 'https://play.rosebud.ai/assets/flipcard-91468.mp3?WsGp');
+        this.load.image('Healing Ring', 'assets/Healing Ring.png');
+        this.load.image('Boots of Evasion', 'assets/Boots of Evasion.png');
+        this.load.image('dragonClaw', 'assets/dragonClaw.png');
+        this.load.image('Bottomless Bag', 'assets/Bottomless Bag.png');
+        this.load.image('amulet_scales_of_basilisk', 'assets/amulet_scales_of_basilisk.png');
+        this.load.audio('shop_buy', 'assets/dropInBagStore.mp3');
+        this.load.audio('card_flip', 'assets/flipcard-91468.mp3');
         // Load flip animation frames
-        this.load.image('cardFlip1', 'https://play.rosebud.ai/assets/cardFlip1.png?PfQU');
-        this.load.image('cardFlip2', 'https://play.rosebud.ai/assets/cardFlip2.png?2o56');
-        this.load.image('cardFlip3', 'https://play.rosebud.ai/assets/cardFlip3.png?MYxU');
-        this.load.image('cardFlip4', 'https://play.rosebud.ai/assets/cardFlip4.png?8YGs');
-        this.load.image('cardFlip5', 'https://play.rosebud.ai/assets/cardFlip5.png?xQPK');
+        this.load.image('cardFlip1', 'assets/cardFlip1.png');
+        this.load.image('cardFlip2', 'assets/cardFlip2.png');
+        this.load.image('cardFlip3', 'assets/cardFlip3.png');
+        this.load.image('cardFlip4', 'assets/cardFlip4.png');
+        this.load.image('cardFlip5', 'assets/cardFlip5.png');
         // Load card hover animation frames
-        this.load.image('cardHover1', 'https://play.rosebud.ai/assets/cardHover1.png?aswW');
-        this.load.image('cardHover2', 'https://play.rosebud.ai/assets/cardHover2.png?A6Bj');
-        this.load.image('cardHover3', 'https://play.rosebud.ai/assets/cardHover3.png?VOfQ');
-        this.load.image('cardHover4', 'https://play.rosebud.ai/assets/cardHover4.png?JeDi');
-        this.load.image('cardHover5', 'https://play.rosebud.ai/assets/cardHover5.png?i1hY');
-        this.load.image('discardSprite', 'https://play.rosebud.ai/assets/discard.png?p4VC');
+        this.load.image('cardHover1', 'assets/cardHover1.png');
+        this.load.image('cardHover2', 'assets/cardHover2.png');
+        this.load.image('cardHover3', 'assets/cardHover3.png');
+        this.load.image('cardHover4', 'assets/cardHover4.png');
+        this.load.image('cardHover5', 'assets/cardHover5.png');
+        this.load.image('discardSprite', 'assets/discard.png');
         // Card hover when in inventory effects
-        this.load.image('hoverCardsUp1', 'https://rosebud.ai/assets/hoverCardsUp1.png?ITut');
-        this.load.image('hoverCardsUp2', 'https://rosebud.ai/assets/hoverCardsUp2.png?ymLr');
-        this.load.image('hoverCardsUp3', 'https://rosebud.ai/assets/hoverCardsUp3.png?WMaU');
-        this.load.image('hoverCardsUp4', 'https://rosebud.ai/assets/hoverCardsUp4.png?LrxP');
-        this.load.image('hoverCardsUp5', 'https://rosebud.ai/assets/hoverCardsUp5.png?xwhr');
+        this.load.image('hoverCardsUp1', 'assets/hoverCardsUp1.png');
+        this.load.image('hoverCardsUp2', 'assets/hoverCardsUp2.png');
+        this.load.image('hoverCardsUp3', 'assets/hoverCardsUp3.png');
+        this.load.image('hoverCardsUp4', 'assets/hoverCardsUp4.png');
+        this.load.image('hoverCardsUp5', 'assets/hoverCardsUp5.png');
 
-        this.load.image('healthBar', 'https://play.rosebud.ai/assets/healthBar.png?55lG');
-        this.load.image('healthBarEmpty', 'https://play.rosebud.ai/assets/healthBarEmpty2.png?058S');
-        this.load.image('nextTurnUp', 'https://play.rosebud.ai/assets/nextTurnUp.png?wIZR');
-        this.load.image('nextTurnDown', 'https://play.rosebud.ai/assets/nextTurnDown.png?DcB7');
-        this.load.image('MainPlayerAvatar', 'https://play.rosebud.ai/assets/MainPlayerAvatar.png?VE0K');
-        this.load.image('coinUI', 'https://play.rosebud.ai/assets/coinUI.png?DtvO');
-        this.load.image('CrystalUI', 'https://play.rosebud.ai/assets/CrystalUI.png?GsA4');
-        this.load.image('skeleton_c', 'https://play.rosebud.ai/assets/skeleton_c.png?7IYa');
-        this.load.image('spider_c', 'https://play.rosebud.ai/assets/spider_c.png?lV8p');
-        this.load.image('sword_c_reworked', 'https://rosebud.ai/assets/sword_c_r.png?kHez');
-        this.load.image('durability_dot', 'https://play.rosebud.ai/assets/durability_dot.png?f10a');
-        this.load.image('ten_durability', 'https://rosebud.ai/assets/ten_durability.png?Qtda');
+        this.load.image('healthBar', 'assets/healthBar.png');
+        this.load.image('healthBarEmpty', 'assets/healthBarEmpty2.png');
+        this.load.spritesheet('healthOrb', 'assets/healthOrbFullEmpty62x54.png', { frameWidth: 62, frameHeight: 54 });
+        this.load.image('actionPoint', 'assets/actionPoint.png');
+        this.load.image('nextTurnUp', 'assets/nextTurnUp.png');
+        this.load.image('nextTurnDown', 'assets/nextTurnDown.png');
+        this.load.image('MainPlayerAvatar', 'assets/MainPlayerAvatar.png');
+        this.load.image('coinUI', 'assets/coinUI.png');
+        this.load.image('CrystalUI', 'assets/CrystalUI.png');
+        this.load.image('skeleton_c', 'assets/skeleton_c.png');
+        this.load.image('spider_c', 'assets/spider_c.png');
+        this.load.image('sword_c_reworked', 'assets/sword_c_r.png');
+        this.load.image('durability_dot', 'assets/durability_dot.png');
+        this.load.image('ten_durability', 'assets/ten_durability.png');
         // Load twinkle animation frames
-        this.load.image('twinkle1', 'https://play.rosebud.ai/assets/twinkle1.png?iErn');
-        this.load.image('twinkle2', 'https://play.rosebud.ai/assets/twinkle2.png?YGhS');
-        this.load.image('twinkle3', 'https://play.rosebud.ai/assets/twinkle3.png?CJ9i');
-        this.load.image('twinkle4', 'https://play.rosebud.ai/assets/twinkle4.png?CFKN');
+        this.load.image('twinkle1', 'assets/twinkle1.png');
+        this.load.image('twinkle2', 'assets/twinkle2.png');
+        this.load.image('twinkle3', 'assets/twinkle3.png');
+        this.load.image('twinkle4', 'assets/twinkle4.png');
         // Bosses
-        this.load.image('giantSkeleton', 'https://rosebud.ai/assets/giantSkeleton.png?6KNu');
-        this.load.image('GoblinKingSprite', 'https://rosebud.ai/assets/goblinKing.png?IFRj');
-        this.load.image('SpiderQween', 'https://rosebud.ai/assets/spiderBoss.png?yvFL');
+        this.load.image('giantSkeleton', 'assets/giantSkeleton.png');
+        this.load.image('GoblinKingSprite', 'assets/goblinKing.png');
+        this.load.image('SpiderQween', 'assets/spiderBoss.png');
+
+        // Placeholder aliases for art that was never drawn or exported.
+        this.load.image('amulet_regen', 'assets/amulet.png');
+        this.load.image('amulet_healing', 'assets/Healing Ring.png');
+        this.load.image('amulet_invuln', 'assets/amulet.png');
+        this.load.image('amulet_boots', 'assets/Boots of Evasion.png');
+        this.load.image('amulet_claw', 'assets/dragonClaw.png');
+        this.load.image('amulet_pouch', 'assets/Bottomless Bag.png');
+        this.load.image('amulet_golem', 'assets/AmuletOfVigor.png');
+        this.load.image('amulet_hammer', 'assets/AmuletOfVigor.png');
+        this.load.image('amulet_chronos', 'assets/amulet_scales_of_basilisk.png');
+        this.load.image('amulet_speed', 'assets/Boots of Evasion.png');
+        this.load.image('amulet_hourglass', 'assets/amulet_scales_of_basilisk.png');
+        this.load.image('amulet_steel', 'assets/AmuletOfVigor.png');
+        this.load.image('amulet_kitchen', 'assets/Bottomless Bag.png');
+        this.load.image('amulet_vampiric', 'assets/Healing Ring.png');
+        this.load.image('amulet_soul', 'assets/MaskOfHollowWispers.png');
+        this.load.image('amulet_hungry', 'assets/Bottomless Bag.png');
+        this.load.image('amulet_blood', 'assets/Healing Ring.png');
+        this.load.image('amulet_rage', 'assets/dragonClaw.png');
+        this.load.image('amulet_berserker', 'assets/dragonClaw.png');
+        this.load.image('goblin_archer', 'assets/goblin_c.png');
+        this.load.image('skeleton_archer', 'assets/skeleton_c.png');
+        this.load.image('Lich', 'assets/giantSkeleton.png');
+        this.load.image('SoulEater', 'assets/giantSkeleton.png');
+        this.load.image('Cerberus', 'assets/goblinKing.png');
          // Magic Cards
-        this.load.image('fireBall', 'https://rosebud.ai/assets/magicBallCard.png?Srvc');
-        this.load.image('frozenRing', 'https://rosebud.ai/assets/forzenRing.png?hA61');
-        this.load.image('recovery', 'https://rosebud.ai/assets/recovery.png?WZxs');
-        this.load.image('soulSucking', 'https://rosebud.ai/assets/soulSucking.png?HxiG');
-        this.load.image('shadowDagger', 'https://rosebud.ai/assets/shadowDagger.png?qVjW');
-        this.load.image('weakening', 'https://rosebud.ai/assets/weakening.png?rGYc');
-        this.load.image('boneWall', 'https://rosebud.ai/assets/boneWall.png?tbCv');
-        this.load.image('macigShield', 'https://rosebud.ai/assets/macicShield.png?XxHh');
-        this.load.image('mirrorShield', 'https://rosebud.ai/assets/mirrorShield.png?9H71');
-        this.load.image('smokeBomb', 'https://rosebud.ai/assets/smokeBomb.png?vGQw');
-        this.load.audio('magic_cast', 'https://play.rosebud.ai/assets/fast-woosh-230497.mp3?7jAm');
-        this.load.audio('recovery', 'https://play.rosebud.ai/assets/recovery.mp3?OnjZ');
-        this.load.audio('boneWall', 'https://play.rosebud.ai/assets/boneWall.mp3?Y1lN');
-        this.load.audio('mirrorShield', 'https://play.rosebud.ai/assets/mirrorShield.mp3?XAiv');
-        this.load.audio('fireball_whoosh', 'https://play.rosebud.ai/assets/fireball-whoosh-1-179125.mp3?6rtu');
-        this.load.audio('smoke_bomb', 'https://play.rosebud.ai/assets/smoke-bomb-6761.mp3?hiPC');
-        this.load.audio('frozenRing', 'https://play.rosebud.ai/assets/frozenRing.mp3?4gCX');
-        this.load.audio('shadowDagger', 'https://play.rosebud.ai/assets/shadowDagger.mp3?sCuW');
-        this.load.audio('soulSucking', 'https://play.rosebud.ai/assets/soulSucking.mp3?eOVX');
-        this.load.audio('magicShield', 'https://play.rosebud.ai/assets/magicShield.mp3?aHDc');
-        this.load.audio('weakening', 'https://play.rosebud.ai/assets/weakening.mp3?e1SP');
-        this.load.audio('trap_spring1', 'https://rosebud.ai/assets/trap_spring1.mp3?bdfP');
+        this.load.image('fireBall', 'assets/magicBallCard.png');
+        this.load.image('frozenRing', 'assets/forzenRing.png');
+        this.load.image('recovery', 'assets/recovery.png');
+        this.load.image('soulSucking', 'assets/soulSucking.png');
+        this.load.image('shadowDagger', 'assets/shadowDagger.png');
+        this.load.image('weakening', 'assets/weakening.png');
+        this.load.image('boneWall', 'assets/boneWall.png');
+        this.load.image('macigShield', 'assets/macicShield.png');
+        this.load.image('mirrorShield', 'assets/mirrorShield.png');
+        this.load.image('smokeBomb', 'assets/smokeBomb.png');
+        this.load.audio('magic_cast', 'assets/fast-woosh-230497.mp3');
+        this.load.audio('recovery', 'assets/recovery.mp3');
+        this.load.audio('boneWall', 'assets/boneWall.mp3');
+        this.load.audio('mirrorShield', 'assets/mirrorShield.mp3');
+        this.load.audio('fireball_whoosh', 'assets/fireball-whoosh-1-179125.mp3');
+        this.load.audio('smoke_bomb', 'assets/smoke-bomb-6761.mp3');
+        this.load.audio('frozenRing', 'assets/frozenRing.mp3');
+        this.load.audio('shadowDagger', 'assets/shadowDagger.mp3');
+        this.load.audio('soulSucking', 'assets/soulSucking.mp3');
+        this.load.audio('magicShield', 'assets/magicShield.mp3');
+        this.load.audio('weakening', 'assets/weakening.mp3');
+        this.load.audio('trap_spring1', 'assets/trap_spring1.mp3');
 
         // UI animations
-       this.load.image('crystalAnimation1', 'https://rosebud.ai/assets/crystalAnimation1.png?Diyr');
-       this.load.image('crystalAnimation2', 'https://rosebud.ai/assets/crystalAnimation2.png?l3NI');
-       this.load.image('crystalAnimation3', 'https://rosebud.ai/assets/crystalAnimation3.png?vmkj');
-       this.load.image('crystalAnimation4', 'https://rosebud.ai/assets/crystalAnimation4.png?y6Vh');
-       this.load.image('crystalAnimation5', 'https://rosebud.ai/assets/crystalAnimation5.png?DeYS');
-       this.load.image('crystalAnimation6', 'https://rosebud.ai/assets/crystalAnimation6.png?ABR4');
-       this.load.image('coinAnimation1', 'https://rosebud.ai/assets/coinAnimation1.png?zqwy');
-       this.load.image('coinAnimation2', 'https://rosebud.ai/assets/coinAnimation2.png?9D5t');
-       this.load.image('coinAnimation3', 'https://rosebud.ai/assets/coinAnimation3.png?o1LS');
-       this.load.image('coinAnimation4', 'https://rosebud.ai/assets/coinAnimation4.png?CbJB');
-       this.load.image('coinAnimation5', 'https://rosebud.ai/assets/coinAnimation5.png?vDxg');
-       this.load.image('coinAnimation6', 'https://rosebud.ai/assets/coinAnimation6.png?K0Xc');
+       this.load.image('crystalAnimation1', 'assets/crystalAnimation1.png');
+       this.load.image('crystalAnimation2', 'assets/crystalAnimation2.png');
+       this.load.image('crystalAnimation3', 'assets/crystalAnimation3.png');
+       this.load.image('crystalAnimation4', 'assets/crystalAnimation4.png');
+       this.load.image('crystalAnimation5', 'assets/crystalAnimation5.png');
+       this.load.image('crystalAnimation6', 'assets/crystalAnimation6.png');
+       this.load.image('coinAnimation1', 'assets/coinAnimation1.png');
+       this.load.image('coinAnimation2', 'assets/coinAnimation2.png');
+       this.load.image('coinAnimation3', 'assets/coinAnimation3.png');
+       this.load.image('coinAnimation4', 'assets/coinAnimation4.png');
+       this.load.image('coinAnimation5', 'assets/coinAnimation5.png');
+       this.load.image('coinAnimation6', 'assets/coinAnimation6.png');
         //Animation for Magic cards
-        this.load.image('fireBall1', 'https://rosebud.ai/assets/fireBall1.png?TPQq');
-        this.load.image('fireBall2', 'https://rosebud.ai/assets/fireBall2.png?ZlAB');
-        this.load.image('fireBall3', 'https://rosebud.ai/assets/fireBall3.png?FBT6');
-        this.load.image('fireBall4', 'https://rosebud.ai/assets/fireBall4.png?iUQw');
+        this.load.image('fireBall1', 'assets/fireBall1.png');
+        this.load.image('fireBall2', 'assets/fireBall2.png');
+        this.load.image('fireBall3', 'assets/fireBall3.png');
+        this.load.image('fireBall4', 'assets/fireBall4.png');
         //treasure
-        this.load.image('chest', 'https://rosebud.ai/assets/treasureCHest.png?vulT');
-        this.load.audio('chest_open', 'https://rosebud.ai/assets/wooden-trunk-latch-1-183944.mp3?l1TN');
-        this.load.audio('trap_trigger', 'https://rosebud.ai/assets/trap_spring1.mp3?bdfP');
-        this.load.image('mimic', 'https://rosebud.ai/assets/mimic.png?N3bx'); 
-        this.load.audio('treasure_explode', 'https://rosebud.ai/assets/coin-flip-37787.mp3?0Riu'); 
+        this.load.image('chest', 'assets/treasureCHest.png');
+        this.load.spritesheet('bigChestAnimation', 'assets/bigChestAnimation98x98.png', { frameWidth: 98, frameHeight: 98 });
+        this.load.audio('chest_open', 'assets/wooden-trunk-latch-1-183944.mp3');
+        this.load.audio('trap_trigger', 'assets/trap_spring1.mp3');
+        this.load.image('mimic', 'assets/mimic.png'); 
+        this.load.audio('treasure_explode', 'assets/coin-flip-37787.mp3'); 
         //Animation for MIMIC
-        this.load.image('splash1', 'https://rosebud.ai/assets/splash1.png?rGbn');
-        this.load.image('splash2', 'https://rosebud.ai/assets/splash2.png?gPUA');
-        this.load.image('splash3', 'https://rosebud.ai/assets/splash3.png?zXOv');
-        this.load.image('splash4', 'https://rosebud.ai/assets/splash4.png?fx0a');        
-        this.load.image('splash5', 'https://rosebud.ai/assets/splash5.png?Qt0P');
-        this.load.image('splash6', 'https://rosebud.ai/assets/splash6.png?KJyu');
-        this.load.image('splash7', 'https://rosebud.ai/assets/splash7.png?RuHY');  
+        this.load.image('splash1', 'assets/splash1.png');
+        this.load.image('splash2', 'assets/splash2.png');
+        this.load.image('splash3', 'assets/splash3.png');
+        this.load.image('splash4', 'assets/splash4.png');        
+        this.load.image('splash5', 'assets/splash5.png');
+        this.load.image('splash6', 'assets/splash6.png');
+        this.load.image('splash7', 'assets/splash7.png');  
      
     }
 
     create() {
+        this.installCrispTextFactory();
+
         this.anims.create({
             key: 'card_flip_anim',
             frames: [
@@ -214,7 +255,120 @@ export class PreloadScene extends Phaser.Scene {
             frameRate: 12, // Adjust speed (10fps)
             repeat: 0 // Play once
         });
+
+        this.anims.create({
+            key: 'big_chest_open',
+            frames: this.anims.generateFrameNumbers('bigChestAnimation', { start: 0, end: 4 }),
+            frameRate: 10,
+            repeat: 0
+        });
          
         this.scene.start('MainMenuScene');
+    }
+
+    installCrispTextFactory() {
+        const factory = Phaser.GameObjects.GameObjectFactory.prototype;
+        if (factory._rogueOriginalTextFactory) return;
+
+        factory._rogueOriginalTextFactory = factory.text;
+        const originalTextFactory = factory._rogueOriginalTextFactory;
+
+        const parseColor = (color) => {
+            if (typeof color === 'number') return color;
+            if (typeof color !== 'string') return 0xffffff;
+            if (color.startsWith('#')) return parseInt(color.slice(1), 16);
+            if (color.startsWith('0x')) return parseInt(color.slice(2), 16);
+            return 0xffffff;
+        };
+
+        const parseFontSize = (fontSize) => {
+            if (typeof fontSize === 'number') return fontSize;
+            const parsed = parseInt(String(fontSize || '12px'), 10);
+            return Number.isFinite(parsed) ? parsed : 12;
+        };
+
+        const fontSupportsText = (scene, fontKey, text) => {
+            const chars = scene.cache?.bitmapFont?.get?.(fontKey)?.data?.chars;
+            if (!chars) return false;
+
+            for (const char of String(text)) {
+                const code = char.charCodeAt(0);
+                if (code === 10 || code === 13) continue;
+                if (!chars[code]) return false;
+            }
+
+            return true;
+        };
+
+        factory.text = function (x, y, text = '', style = {}) {
+            const scene = this.scene;
+            const value = String(text ?? '');
+            const fontKey = fontSupportsText(scene, 'pixel-font', value)
+                ? 'pixel-font'
+                : fontSupportsText(scene, 'cyrillic-ui-font', value)
+                    ? 'cyrillic-ui-font'
+                    : null;
+
+            if (!fontKey || style.useCanvasText) {
+                return originalTextFactory.call(this, x, y, text, style);
+            }
+
+            const resolveBitmapSize = (nextStyle = {}) => {
+                const fontSize = parseFontSize(nextStyle.fontSize);
+                return fontKey === 'cyrillic-ui-font'
+                    ? 12
+                    : fontSize >= 18
+                        ? 20
+                        : 10;
+            };
+            const fontSize = parseFontSize(style.fontSize);
+            const bitmapSize = fontKey === 'cyrillic-ui-font'
+                ? 12
+                : fontSize >= 18
+                    ? 20
+                    : 10;
+            const align = style.align === 'center' ? 1 : style.align === 'right' ? 2 : 0;
+            const bitmapText = this.bitmapText(Math.round(x), Math.round(y), fontKey, value, bitmapSize, align);
+
+            const applyStyle = (nextStyle = {}) => {
+                const tintColor = nextStyle.fill ?? nextStyle.color;
+                if (tintColor !== undefined) bitmapText.setTint(parseColor(tintColor));
+                if (nextStyle.alpha !== undefined) bitmapText.setAlpha(nextStyle.alpha);
+                if (nextStyle.fontSize !== undefined) bitmapText.setFontSize(resolveBitmapSize(nextStyle));
+                if (nextStyle.lineSpacing !== undefined && bitmapText.setLineSpacing) {
+                    bitmapText.setLineSpacing(Math.round(nextStyle.lineSpacing));
+                }
+                if (nextStyle.wordWrap?.width && bitmapText.setMaxWidth) {
+                    bitmapText.setMaxWidth(Math.round(nextStyle.wordWrap.width));
+                }
+                if ((nextStyle.strokeThickness || 0) > 0 && bitmapText.setDropShadow) {
+                    bitmapText.setDropShadow(1, 1, parseColor(nextStyle.stroke || '#000000'), 1);
+                }
+                return bitmapText;
+            };
+
+            applyStyle(style);
+
+            const nativeSetText = bitmapText.setText.bind(bitmapText);
+            bitmapText.setText = (nextText = '') => {
+                nativeSetText(String(nextText ?? ''));
+                return bitmapText;
+            };
+            bitmapText.setStyle = (nextStyle = {}) => applyStyle(nextStyle);
+            bitmapText.setFill = (color) => applyStyle({ fill: color });
+            bitmapText.setColor = bitmapText.setFill;
+            bitmapText.setFont = () => bitmapText;
+            bitmapText.setFontSize = (nextFontSize) => {
+                bitmapText.fontSize = resolveBitmapSize({ fontSize: nextFontSize });
+                return bitmapText;
+            };
+            bitmapText.setResolution = () => bitmapText;
+            bitmapText.setFixedSize = (width) => {
+                if (width && bitmapText.setMaxWidth) bitmapText.setMaxWidth(Math.round(width));
+                return bitmapText;
+            };
+
+            return bitmapText;
+        };
     }
 }

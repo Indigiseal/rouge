@@ -19,14 +19,14 @@ export class DeathRewardScene extends Phaser.Scene {
         this.add.text(320, 40, 'YOU HAVE FALLEN', {
             fontSize: '32px',
             fill: '#ff0000',
-            fontFamily: '"Roboto Condensed"',
+            fontFamily: '"HoMM Pixel"',
             fontStyle: 'bold'
         }).setOrigin(0.5);
         
         this.add.text(320, 70, `Killed by ${this.killedBy} on Floor ${this.floor}`, {
             fontSize: '16px',
             fill: '#cccccc',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Process death and get relic reward
@@ -52,7 +52,7 @@ export class DeathRewardScene extends Phaser.Scene {
         this.add.text(320, 320, 'Continue', {
             fontSize: '18px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
     }
     
@@ -64,25 +64,30 @@ export class DeathRewardScene extends Phaser.Scene {
         this.add.text(320, 120, 'NEW RELIC UNLOCKED!', {
             fontSize: '20px',
             fill: '#ffd700',
-            fontFamily: '"Roboto Condensed"',
+            fontFamily: '"HoMM Pixel"',
             fontStyle: 'bold'
         }).setOrigin(0.5);
         
-        // Relic icon placeholder (you'd use actual sprite)
         const iconBg = this.add.circle(250, 150, 25, 0x444444)
             .setStrokeStyle(2, 0xffd700);
+        const usesSheet = relic.iconSheet && this.textures.exists(relic.iconSheet);
+        if (usesSheet) {
+            this.add.image(250, 150, relic.iconSheet, relic.iconFrame);
+        } else if (relic.icon && this.textures.exists(relic.icon)) {
+            this.add.image(250, 150, relic.icon);
+        }
         
         // Relic name and description
         this.add.text(320, 150, relic.name, {
             fontSize: '18px',
             fill: '#ffffff',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         this.add.text(320, 175, relic.description, {
             fontSize: '14px',
             fill: '#aaaaaa',
-            fontFamily: '"Roboto Condensed"',
+            fontFamily: '"HoMM Pixel"',
             wordWrap: { width: 350 },
             align: 'center'
         }).setOrigin(0.5);
@@ -103,13 +108,13 @@ export class DeathRewardScene extends Phaser.Scene {
         this.add.text(320, 150, 'No new relic this time', {
             fontSize: '16px',
             fill: '#888888',
-            fontFamily: '"Roboto Condensed"'
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         this.add.text(320, 175, 'Try dying to different enemies to unlock more relics!', {
             fontSize: '14px',
             fill: '#666666',
-            fontFamily: '"Roboto Condensed"',
+            fontFamily: '"HoMM Pixel"',
             wordWrap: { width: 350 },
             align: 'center'
         }).setOrigin(0.5);
@@ -126,7 +131,7 @@ export class DeathRewardScene extends Phaser.Scene {
             this.add.text(320, 230 + i * 20, stat, {
                 fontSize: '14px',
                 fill: '#aaaaaa',
-                fontFamily: '"Roboto Condensed"'
+                fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
         });
     }

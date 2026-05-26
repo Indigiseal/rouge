@@ -8,10 +8,10 @@ export class RestScene extends Phaser.Scene {
         this.gameState = data.gameState;
         this.gameState.playerHealth = Math.min(this.gameState.maxHealth, this.gameState.playerHealth + 20);
         this.gameState.actionsLeft = this.gameState.maxActions;
-        this.add.text(320, 100, 'You rest by the campfire.', { fontSize: '18px', fill: '#ffffff', fontFamily: '"Roboto Condensed"' }).setOrigin(0.5);
-        this.add.text(320, 160, '+20 HP Restored', { fontSize: '22px', fill: '#00ff00', fontFamily: '"Roboto Condensed"' }).setOrigin(0.5);
-        this.add.text(320, 200, 'Actions Fully Restored!', { fontSize: '22px', fill: '#00ff00', fontFamily: '"Roboto Condensed"' }).setOrigin(0.5);
-        const continueButton = this.add.text(320, 280, 'Continue to Next Floor', { fontSize: '18px', fill: '#00ff00', fontFamily: '"Roboto Condensed"' })
+        this.add.text(320, 100, 'You rest by the campfire.', { fontSize: '18px', fill: '#ffffff', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+        this.add.text(320, 160, '+20 HP Restored', { fontSize: '22px', fill: '#00ff00', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+        this.add.text(320, 200, 'Actions Fully Restored!', { fontSize: '22px', fill: '#00ff00', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+        const continueButton = this.add.text(320, 280, 'Continue to Next Floor', { fontSize: '18px', fill: '#00ff00', fontFamily: '"HoMM Pixel"' })
             .setInteractive({ useHandCursor: true })
             .on('pointerdown', () => {
                 // NO nextFloor() here—map already did it

@@ -7,50 +7,14 @@ export class CardSystem {
         this.scene = scene;
         this.boardCards = new Array(8).fill(null);
         this.cardDataGenerator = new CardDataGenerator();
+        this.floorBoardPanel = null;
     }
     // ===== Front/back combat config =====
     static RANGED_MULTIPLIER = 0.8; // ranged deals 80% to compensate for reach
-    static TREASURE_CHEST_CONFIG = {
-      WOODEN: {
-        name: 'Wooden Chest',
-        tint: 0xb8864f,
-        goldRange: [18, 26],
-        crystalRange: [1, 3],
-        amuletGrades: [
-          { grade: 'Common', chance: 0.7 },
-          { grade: 'Uncommon', chance: 0.3 },
-        ],
-      },
-      SILVER: {
-        name: 'Silver Chest',
-        tint: 0xc0d8ff,
-        goldRange: [36, 78],
-        crystalRange: [3, 8],
-        amuletGrades: [
-          { grade: 'Uncommon', chance: 0.6 },
-          { grade: 'Rare', chance: 0.4 },
-        ],
-      },
-      GOLDEN: {
-        name: 'Golden Chest',
-        tint: 0xffd700,
-        goldRange: [72, 130],
-        crystalRange: [6, 12],
-        amuletGrades: [
-          { grade: 'Epic', chance: 0.6 },
-          { grade: 'Legendary', chance: 0.4 },
-        ],
-      },
-    };
-    static TREASURE_TYPE_WEIGHTS = [
-      { type: 'WOODEN', weight: 55 },
-      { type: 'SILVER', weight: 30 },
-      { type: 'GOLDEN', weight: 15 },
-    ];
-    static AMULET_GRADE_ORDER = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
     // --- weapon helpers (be liberal: support multiple schemas) ---
     isMeleeWeapon(w) {
       if (!w) return false;
+      if (this.isRangedWeapon(w)) return false;
       const n = (w.name || w.id || '').toLowerCase();
       return (
         w.range === 'melee' ||
@@ -69,6 +33,75 @@ export class CardSystem {
         w.subType === 'bow' ||
         n.includes('bow') || n.includes('crossbow')
       );
+    }
+    isVenomousWeapon(w) {
+      return !!w && ((w.poisonDamage || 0) > 0 || (w.name || '').toLowerCase().includes('venomous dagger'));
+    }
+    applyWeaponPoison(card, weapon) {
+      const poisonStacks = [];
+      if (this.isVenomousWeapon(weapon)) {
+        poisonStacks.push({
+          damage: Math.max(1, weapon.poisonDamage || 1),
+          turns: Math.max(1, weapon.poisonTurns || 3)
+        });
+      }
+
+      const relicEffects = this.scene.gameState?.relicEffects || {};
+      if (relicEffects.weaponPoisonChance && Math.random() < relicEffects.weaponPoisonChance) {
+        poisonStacks.push({
+          damage: Math.max(1, relicEffects.poisonDamage || 1),
+          turns: Math.max(1, relicEffects.poisonTurns || 3)
+        });
+      }
+
+      if (poisonStacks.length === 0) return;
+      if (!card.data.statusEffects) card.data.statusEffects = [];
+      poisonStacks.forEach(stack => {
+        card.data.statusEffects.push({
+          type: 'poison',
+          damage: stack.damage,
+          turns: stack.turns,
+          stackable: true
+        });
+      });
+      const totalDamage = poisonStacks.reduce((sum, stack) => sum + stack.damage, 0);
+      this.scene.createFloatingText(card.sprite.x, card.sprite.y - 16, `Poison +${totalDamage}`, 0x66ff66);
+    }
+    getEnemyPoisonSummary(enemyData) {
+      const stacks = enemyData.statusEffects?.filter(effect => effect.type === 'poison') || [];
+      if (stacks.length === 0) return null;
+      return {
+        stacks: stacks.length,
+        damage: stacks.reduce((sum, effect) => sum + effect.damage, 0)
+      };
+    }
+    processEnemyPoisonEffects() {
+      for (let i = this.boardCards.length - 1; i >= 0; i--) {
+        const card = this.boardCards[i];
+        if (!card?.revealed || !card.sprite || (card.data.type !== 'enemy' && card.data.type !== 'boss')) continue;
+        const effects = card.data.statusEffects;
+        if (!effects?.length) continue;
+
+        let poisonDamage = 0;
+        for (let e = effects.length - 1; e >= 0; e--) {
+          const effect = effects[e];
+          if (effect.type !== 'poison') continue;
+          poisonDamage += effect.damage;
+          effect.turns--;
+          if (effect.turns <= 0) effects.splice(e, 1);
+        }
+
+        if (poisonDamage <= 0) continue;
+        card.data.health -= poisonDamage;
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${poisonDamage} Poison`, 0x66ff66);
+        this.scene.shakeCard(card.sprite);
+
+        if (card.data.health <= 0) {
+          this.removeDefeatedEnemy(i, card);
+        } else {
+          this.updateEnemyInfoText(card);
+        }
+      }
     }
     // --- enemy queries ---
     _aliveEnemyIndices({ revealedOnly = false } = {}) {
@@ -123,7 +156,6 @@ export class CardSystem {
       
       if (!this._anyMeleeAlive({ includeHidden: true })) return target.revealed;
       if (target.data.role !== 'MELEE') {
-        console.log('[Hex] melee blocked by front line');
         return false;
       }
       return target.revealed;
@@ -142,7 +174,6 @@ export class CardSystem {
         if (candidates.length) {
           const idx = candidates[Math.floor(Math.random() * candidates.length)];
           this.revealCard(idx, true);
-          console.log('[Hex] reveal behind ->', idx);
           return true;
         }
         return false;
@@ -311,8 +342,8 @@ export class CardSystem {
       const padX = 24, padY = 24;
       const HSTEP = Math.min((areaW - padX) / Math.max(1, widthUnits), 65);
       const VSTEP = Math.min((areaH - padY) / Math.max(1, heightUnits), 75);
-      const cx = areaLeft + areaW / 2;
-      const cy = areaTop  + areaH / 2;
+      const cx = areaLeft + areaW / 2 + 40;
+      const cy = areaTop  + areaH / 2 - 27;
       const midXp = (minXp + maxXp) / 2;
       const midR  = (minR  + maxR ) / 2;
       // // debug: uncomment to see the panel box
@@ -327,6 +358,71 @@ export class CardSystem {
       const y  = place.cy + (r  - place.midR)  * place.VSTEP;
       return { x, y };
     }
+
+    clearFloorBoardPanel() {
+      if (!this.floorBoardPanel) return;
+      this.scene.tweens.killTweensOf(this.floorBoardPanel);
+      this.floorBoardPanel.destroy();
+      this.floorBoardPanel = null;
+    }
+
+    createFloorBoardPanel(cells, place, animate = true) {
+      this.clearFloorBoardPanel();
+      if (!this.scene.textures.exists('gamingBoard')) return;
+
+      const points = cells.map(({ r, c }) => this.brickToPixel(r, c, place));
+      const minX = Math.min(...points.map(p => p.x));
+      const maxX = Math.max(...points.map(p => p.x));
+      const minY = Math.min(...points.map(p => p.y));
+      const maxY = Math.max(...points.map(p => p.y));
+      const cam = this.scene.cameras.main;
+      const x = ((minX + maxX) / 2) + 20;
+      const y = Math.min(cam.height - 122, ((minY + maxY) / 2) + 8) - 28;
+
+      const panel = this.scene.add.image(x, animate ? y + 34 : y, 'gamingBoard');
+      panel.setDepth(0);
+      this.floorBoardPanel = panel;
+
+      if (animate) {
+        this.scene.tweens.add({
+          targets: panel,
+          y: y - 8,
+          duration: 260,
+          ease: 'Cubic.easeOut',
+          onComplete: () => {
+            if (!panel.scene) return;
+            this.scene.tweens.add({
+              targets: panel,
+              y,
+              duration: 180,
+              ease: 'Bounce.easeOut'
+            });
+          }
+        });
+      }
+    }
+
+    createBossBoardPanel() {
+      this.clearFloorBoardPanel();
+      if (!this.scene.textures.exists('gamingBoard')) return;
+
+      const cam = this.scene.cameras.main;
+      const y = Math.min(cam.height - 122, cam.height / 2 + 8) - 28;
+      const panel = this.scene.add.image((cam.width / 2) + 20, y + 34, 'gamingBoard');
+      panel.setDepth(0);
+      this.floorBoardPanel = panel;
+      this.scene.tweens.add({
+        targets: panel,
+        y: y - 8,
+        duration: 260,
+        ease: 'Cubic.easeOut',
+        onComplete: () => {
+          if (!panel.scene) return;
+          this.scene.tweens.add({ targets: panel, y, duration: 180, ease: 'Bounce.easeOut' });
+        }
+      });
+    }
+
     // ===== BRICK / OFFSET-ROWS LAYOUT (odd-r) =====
     static BOARD_CENTER_BRICK = { x: 0, y: 0 }; // Dynamic now, not used
     _brickSizeForCount(n) {
@@ -374,9 +470,9 @@ export class CardSystem {
     }
     // ===== FLOOR-SCALED CARD COUNT =====
     static MIN_CARDS = 6;
-    static MAX_CARDS = 26;
-    static ELITE_MULT = 1.25;
-    // 1..45 → 6..26 (linear). Clamp to be safe.
+    static MAX_CARDS = 22;
+    static ELITE_MULT = 1.15;
+    // 1..45 -> 6..26 (linear). Clamp to be safe.
     _baseCardsForFloor(cf) {
         const clamped = Math.max(1, Math.min(45, cf));
         const t = (clamped - 1) / 44; // 0..1
@@ -389,6 +485,7 @@ export class CardSystem {
     }
     spawnFloorCards() {
       // === clear previous ===
+      this.clearFloorBoardPanel();
       this.boardCards.forEach(card => {
         if (!card) return;
         card.sprite?.destroy();
@@ -399,24 +496,19 @@ export class CardSystem {
         }
       });
       this.boardCards = [];
+      // === boss shortcut (keep your logic) ===
+      const currentFloor = this.scene.gameState.currentFloor;
+      const bossFloors = [15, 30, 45];
+      if (bossFloors.includes(currentFloor)) { this.spawnBoss(); return; }
+      // Determine scaled count (your code that decides roomType etc. can stay)
       const cf = this.scene.gameState?.currentFloor || 1;
       const roomType = this.scene.gameState?.roomType || this.scene.roomType || 'COMBAT';
-
-      if (roomType === 'TREASURE') {
-        this.spawnTreasureChests();
-        return;
-      }
-
-      if (roomType === 'BOSS') {
-        this.spawnBoss();
-        return;
-      }
-      // Determine scaled count (your code that decides roomType etc. can stay)
-      const cardCount = this._effectiveCardCount ? this._effectiveCardCount(roomType, cf) : Math.min(6 + Math.floor((cf - 1) * (20 / 29)), 26);
+      const cardCount = this._effectiveCardCount ? this._effectiveCardCount(roomType, cf) : Math.min(6 + Math.floor((cf - 1) * (20 / 44)), 26);
       // 1) build a connected brick "blob" for a nicer cluster
       const cells = this.buildCompactBrickCluster(cardCount);
       // 2) compute steps & centering for current camera
       const place = this.computePlacement(cells);
+      this.createFloorBoardPanel(cells, place, true);
       // 3) create the cards at proper pixels
       this.boardCards = new Array(cardCount).fill(null);
       for (let i = 0; i < cardCount; i++) {
@@ -452,7 +544,6 @@ export class CardSystem {
             const isFrontRow = r > 0;
             data.role = isFrontRow ? 'MELEE' : 'RANGED';
             
-            console.log(`Enemy at r=${r} assigned role: ${data.role}`);
         }
         
         // store brick coords for mechanics
@@ -490,7 +581,8 @@ export class CardSystem {
       this.computeRowBands(this.boardCards, place.VSTEP);
       // Role is assigned during creation based on position preference.
       // === reveal 2–3 enemies with a front/back mix and try to keep them close ===
-      const wantReveals = (cf >= 4) ? 3 : 2;
+      const extraRelicReveals = this.scene.gameState?.relicEffects?.revealExtraCard || 0;
+      const wantReveals = ((cf >= 4) ? 3 : 2) + extraRelicReveals;
       const enemyIdx = [];
       const frontIdx = [];
       const backIdx  = [];
@@ -536,9 +628,8 @@ export class CardSystem {
         }
         picks.push(add);
       }
-      console.log('[Hex] initial reveal ->', picks);
-      // finally reveal them
-      picks.forEach(i => this.revealCard(i));
+      // Initial room reveals should not consume actions or queue enemy turns.
+      picks.forEach(i => this.revealCard(i, true));
     }
 
     spawnBoss() {
@@ -546,8 +637,8 @@ export class CardSystem {
         const cam = this.scene.cameras.main;
         const x = cam.width / 2;
         const y = cam.height / 2;
+        this.createBossBoardPanel();
         const cardSprite = this.scene.add.image(x, y, bossData.sprite);
-        cardSprite.setScale(1.2);
         
         const card = {
             sprite: cardSprite,
@@ -584,10 +675,9 @@ export class CardSystem {
     }
 
     revealCard(index, freeAction = false) {
-        if (!freeAction && !this.scene.useAction()) return;
-        
         const card = this.boardCards[index];
         if (!card || card.revealed) return;
+        if (!freeAction && !this.scene.useAction()) return;
         
         SoundHelper.playSound(this.scene, 'card_flip', 0.7);
         card.revealed = true;
@@ -604,7 +694,7 @@ export class CardSystem {
                 // Set sprite based on type
                 let spriteKey = card.data.sprite || 'default_enemy';
                 if (card.data.name === 'Mimic') spriteKey = 'mimic';
-                card.sprite.setTexture(spriteKey);
+                card.sprite.setTexture(spriteKey, card.data.spriteFrame);
             } else {
                 card.sprite.destroy();
                 const colors = {
@@ -709,20 +799,20 @@ export class CardSystem {
                 
             case 'coin':
                 const coinLabel = this.scene.add.text(x, card.sprite.y + 7, 'Coins', {
-                    fontSize: '11px', fill: '#f8ab2e', fontFamily: '"Roboto Condensed"'
+                    fontSize: '11px', fill: '#f8ab2e', fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 const coinAmount = this.scene.add.text(x, card.sprite.y + 20, `${card.data.amount}`, {
-                    fontSize: '12px', fill: '#ffcf7f', fontFamily: '"Roboto Condensed"'
+                    fontSize: '12px', fill: '#ffcf7f', fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 card.infoText = this.scene.add.container(0, 0, [coinLabel, coinAmount]);
                 return;
                 
             case 'crystal':
                 const crystalLabel = this.scene.add.text(x, card.sprite.y + 7, 'Crystals', {
-                    fontSize: '11px', fill: '#4e1e45', fontFamily: '"Roboto Condensed"'
+                    fontSize: '11px', fill: '#4e1e45', fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 const crystalAmount = this.scene.add.text(x, card.sprite.y + 20, `${card.data.amount}`, {
-                    fontSize: '12px', fill: '#a83c69', fontFamily: '"Roboto Condensed"'
+                    fontSize: '12px', fill: '#a83c69', fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 card.infoText = this.scene.add.container(0, 0, [crystalLabel, crystalAmount]);
                 return;
@@ -740,14 +830,14 @@ export class CardSystem {
                 
             case 'food':
                 const foodLabel = this.scene.add.text(x, card.sprite.y + 19, `+${card.data.actionAmount} AP`, {
-                    fontSize: '12px', fill: '#a55119', fontFamily: '"Roboto Condensed"'
+                    fontSize: '12px', fill: '#a55119', fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 card.infoText = this.scene.add.container(0, 0, [foodLabel]);
                 return;
                 
             case 'key':
                 const keyLabel = this.scene.add.text(x, card.sprite.y + 18, 'Key', {
-                    fontSize: '12px', fill: '#51484b', fontFamily: '"Roboto Condensed"'
+                    fontSize: '12px', fill: '#51484b', fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 card.infoText = this.scene.add.container(0, 0, [keyLabel]);
                 return;
@@ -756,7 +846,7 @@ export class CardSystem {
                 const magicLabel = this.scene.add.text(x, card.sprite.y - 25, card.data.name, {
                     fontSize: '11px', 
                     fill: '#9932cc', 
-                    fontFamily: '"Roboto Condensed"',
+                    fontFamily: '"HoMM Pixel"',
                     wordWrap: { width: 60 },
                     align: 'center'
                 }).setOrigin(0.5);
@@ -779,29 +869,61 @@ export class CardSystem {
                 const magicDesc = this.scene.add.text(x, card.sprite.y + 20, shortDesc, {
                     fontSize: '10px', 
                     fill: '#cc99ff', 
-                    fontFamily: '"Roboto Condensed"'
+                    fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 
                 card.infoText = this.scene.add.container(0, 0, [magicLabel, magicDesc]);
                 return;
+
+            case 'thorns': {
+                const container = this.scene.add.container(card.sprite.x, card.sprite.y);
+                const damageText = this.scene.add.text(17, 22, `${card.data.thornDamage}`, {
+                    fontSize: '11px',
+                    fill: '#9dff7a',
+                    fontFamily: '"HoMM Pixel"'
+                }).setOrigin(0.5);
+                container.add(damageText);
+
+                const startY = -27;
+                const dotSpacing = 7;
+                const tenDurabilitySpacing = 12;
+                const tensCount = Math.floor(card.data.durability / 10);
+                const remainingDots = card.data.durability % 10;
+                let currentY = startY;
+
+                for (let i = 0; i < tensCount; i++) {
+                    const tenSprite = this.scene.add.image(-19, currentY, 'ten_durability');
+                    container.add(tenSprite);
+                    currentY += tenDurabilitySpacing;
+                }
+
+                for (let i = 0; i < remainingDots; i++) {
+                    const dot = this.scene.add.image(-19, currentY + (i * dotSpacing), 'durability_dot');
+                    container.add(dot);
+                }
+
+                container.setDepth(1001);
+                card.infoText = container;
+                return;
+            }
                 
             case 'weapon': {
                 const container = this.scene.add.container(card.sprite.x, card.sprite.y);
                 
                 // Add weapon type indicator
-                const weaponTypeText = this.isMeleeWeapon(card.data) ? 'Melee' : 
-                                       this.isRangedWeapon(card.data) ? 'Ranged' : 'Unknown';
+                const weaponTypeText = this.isRangedWeapon(card.data) ? 'Ranged' :
+                                       this.isMeleeWeapon(card.data) ? 'Melee' : 'Unknown';
                 const typeLabel = this.scene.add.text(0, -40, weaponTypeText, {
                     fontSize: '9px',
                     fill: '#aaaaaa',
-                    fontFamily: '"Roboto Condensed"'
+                    fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 container.add(typeLabel);
                 
                 const damageText = this.scene.add.text(17, 22, `${card.data.damage}`, {
                     fontSize: '11px',
                     fill: '#ffcf7f',
-                    fontFamily: '"Roboto Condensed"'
+                    fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 container.add(damageText);
                 
@@ -838,7 +960,7 @@ export class CardSystem {
                 const protectionText = this.scene.add.text(18, 25, `${card.data.protection}`, {
                     fontSize: '12px',
                     fill: '#ffcf7f',
-                    fontFamily: '"Roboto Condensed"'
+                    fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 container.add(protectionText);
                 
@@ -895,12 +1017,6 @@ export class CardSystem {
                     }
                 }
                 break;
-
-            case 'treasureChest': {
-                const cfg = CardSystem.TREASURE_CHEST_CONFIG[card.data.chestType] || CardSystem.TREASURE_CHEST_CONFIG.WOODEN;
-                infoText = `${cfg.name}\nKey: full rewards\nWeapon: risky`;
-                break;
-            }
         }
         
         // Create default text for cases that didn't return early
@@ -914,7 +1030,7 @@ export class CardSystem {
             card.infoText = this.scene.add.text(x, y, infoText, {
                 fontSize: '10px',
                 fill: textColor,
-                fontFamily: '"Roboto Condensed"',
+                fontFamily: '"HoMM Pixel"',
                 align: 'center',
                 lineSpacing: 2
             }).setOrigin(0.5);
@@ -938,7 +1054,6 @@ export class CardSystem {
         if (card) {
             if (card.sprite) card.sprite.destroy();
             if (card.shadow) card.shadow.destroy();
-            if (card.highlight) card.highlight.destroy();
             if (card.infoText) {
                 if (card.infoText.list) {
                     card.infoText.destroy(true);
@@ -979,6 +1094,7 @@ export class CardSystem {
             case 'armor':
             case 'key':
             case 'magic':
+            case 'thorns':
                 if (this.scene.inventorySystem.addCard(card.data)) {
                     this.removeCard(index);
                 }
@@ -1088,13 +1204,13 @@ export class CardSystem {
         shadow.setAlpha(0);
         
         const cardSprite = this.scene.add.sprite(x, y, summonedEnemy.sprite);
-        cardSprite.setScale(0);
+        cardSprite.setAlpha(0);
         cardSprite.setInteractive();
         
         // Animate the summon
         this.scene.tweens.add({
             targets: cardSprite,
-            scale: 1,
+            alpha: 1,
             duration: 500,
             ease: 'Back.easeOut',
             onComplete: () => {
@@ -1149,7 +1265,6 @@ export class CardSystem {
                         'Blocked by frontline!', 
                         0xff6666
                     );
-                    console.log('[Hex] melee blocked by front line');
                     return;
                 }
             }
@@ -1157,13 +1272,12 @@ export class CardSystem {
             // Ranged weapons get a damage penalty
             if (isRanged) {
                 damage = Math.floor(damage * CardSystem.RANGED_MULTIPLIER);
-                console.log('[Hex] ranged penalty applied');
             }
         }
         
         // Apply amulet damage modifiers to weapon damage (not reflection)
         let finalDamage = damage;
-        if (!isReflection && this.scene.amuletManager) {
+        if (!isReflection && weapon && this.scene.amuletManager) {
             finalDamage = this.scene.amuletManager.modifyWeaponDamage(damage);
         }
         
@@ -1218,7 +1332,6 @@ export class CardSystem {
         // Reduce weapon durability on attack (only if not reflection damage)
         if (!isReflection && this.scene.gameState.equippedWeapon) {
             this.scene.gameState.equippedWeapon.durability -= 1;
-            console.log('Weapon dur now:', this.scene.gameState.equippedWeapon.durability);
             if (this.scene.gameState.equippedWeapon.durability <= 0) {
                 this.scene.gameState.equippedWeapon = null;
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weapon Broke!', 0xff0000);
@@ -1226,12 +1339,17 @@ export class CardSystem {
             this.scene.updateUI();
         }
         
+        if (!isReflection && weapon && card.data.health > 0) {
+            this.applyWeaponPoison(card, weapon);
+            this.applyRelicSlow(card);
+        }
+
         if (card.infoText) {
             const roleText = card.data.role === 'MELEE' ? '[Melee]' : '[Ranged]';
             let infoText = `${roleText} ${card.data.health}HP ${card.data.attack}ATK`;
-            if (card.data.abilities && card.data.abilities.some(a => a.type === 'poison')) {
-                infoText += ' (Poison)';
-            }
+            const poisonSummary = this.getEnemyPoisonSummary(card.data);
+            if (poisonSummary) infoText += ` (Poison x${poisonSummary.stacks})`;
+            if (card.data.abilities && card.data.abilities.some(a => a.type === 'poison')) infoText += ' (Poison)';
             if (card.data.abilities && card.data.abilities.some(a => a.type === 'evade')) {
                 infoText += ' (Evasive)';
             }
@@ -1245,8 +1363,6 @@ export class CardSystem {
         if (card.data.name === 'Mimic') {
             if (!card.data.hitCounter) card.data.hitCounter = 0;
             card.data.hitCounter += 1;
-            console.log('Mimic hit count:', card.data.hitCounter);
-            
             if (card.data.hitCounter >= 4 && card.data.health > 0) {
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Mimic Escapes!', 0xff0000);
                 this.removeCard(index);
@@ -1255,9 +1371,38 @@ export class CardSystem {
         }
         
         if (card.data.health <= 0) {
+            this.removeDefeatedEnemy(index, card);
+        }
+    }
+
+    applyRelicSlow(card) {
+        const slowChance = this.scene.gameState?.relicEffects?.slowChance || 0;
+        if (!slowChance || Math.random() >= slowChance || !card?.data || card.data.frozen > 0) return;
+        card.data.frozen = 1;
+        if (card.sprite) {
+            card.sprite.setTint(0x99ccff);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Slowed!', 0x99ccff);
+        }
+    }
+
+    removeDefeatedEnemy(index, card) {
             // Process amulet kill effects
             if (this.scene.amuletManager) {
                 this.scene.amuletManager.processEnemyKill();
+            }
+
+            const relicLifesteal = this.scene.gameState.relicEffects?.lifestealOnKill || 0;
+            if (relicLifesteal) {
+                this.scene.gameState.playerHealth = Math.min(
+                    this.scene.gameState.maxHealth,
+                    this.scene.gameState.playerHealth + relicLifesteal
+                );
+                this.scene.createFloatingText(
+                    this.scene.playerAvatar.x,
+                    this.scene.playerAvatar.y,
+                    `+${relicLifesteal} HP (Lich)`,
+                    0x9932cc
+                );
             }
             
             // Mimic explosion
@@ -1308,353 +1453,30 @@ export class CardSystem {
               this.boardCards[index] = null;
             }
             this.checkFloorClear();
-        }
-    }
-
-    spawnTreasureChests() {
-      const chestCount = Phaser.Math.Between(2, 3);
-      const cells = this.buildCompactBrickCluster(chestCount);
-      const place = this.computePlacement(cells);
-
-      this.boardCards = new Array(chestCount).fill(null);
-
-      for (let i = 0; i < chestCount; i++) {
-        const { r, c } = cells[i];
-        const { x, y } = this.brickToPixel(r, c, place);
-        const chestType = this.pickTreasureChestType();
-        const cfg = CardSystem.TREASURE_CHEST_CONFIG[chestType] || CardSystem.TREASURE_CHEST_CONFIG.WOODEN;
-
-        const shadow = this.scene.add.rectangle(x, y + 30, 70, 18, 0x000000, 0.45);
-        shadow.setDepth(0);
-
-        const highlight = this.scene.add.rectangle(x, y, 88, 96, cfg.tint, 0.18);
-        highlight.setStrokeStyle(2, cfg.tint, 0.85);
-        highlight.setVisible(false);
-        highlight.setDepth(1);
-
-        const sprite = this.scene.add.sprite(x, y, 'chest');
-        sprite.setScale(1.25);
-        sprite.setTint(cfg.tint);
-        sprite.setDepth(2);
-        sprite.setInteractive({ useHandCursor: true, dropZone: true });
-        sprite.on('pointerover', () => this.handleChestPointerState(i, true));
-        sprite.on('pointerout', () => this.handleChestPointerState(i, false));
-        sprite.on('pointerdown', () => {
-          if (!this.scene.inventorySystem?.dragState) {
-            this.scene.createFloatingText(x, y - 60, 'Use a key or weapon', 0xfff5a5);
-          }
-        });
-
-        const data = {
-          type: 'treasureChest',
-          chestType,
-          state: 'locked',
-          brick: { r, c },
-          baseTint: cfg.tint,
-          brickNeighbors: [],
-        };
-
-        this.boardCards[i] = {
-          sprite,
-          shadow,
-          highlight,
-          revealed: true,
-          data,
-          infoText: null,
-        };
-
-        this.createCardInfoText(this.boardCards[i]);
-      }
-    }
-
-    pickTreasureChestType() {
-      const total = CardSystem.TREASURE_TYPE_WEIGHTS.reduce((sum, w) => sum + w.weight, 0);
-      let roll = Math.random() * total;
-      for (const entry of CardSystem.TREASURE_TYPE_WEIGHTS) {
-        roll -= entry.weight;
-        if (roll <= 0) {
-          return entry.type;
-        }
-      }
-      return 'WOODEN';
-    }
-
-    handleChestPointerState(index, isOver) {
-      const card = this.boardCards[index];
-      if (!card || card.data?.type !== 'treasureChest') return;
-
-      if (!isOver) {
-        this.resetChestHighlight(card);
-        return;
-      }
-
-      if (card.data.state !== 'locked') return;
-      const dragState = this.scene.inventorySystem?.dragState;
-      if (!dragState || !dragState.cardData) return;
-
-      let tint = null;
-      if (dragState.cardData.type === 'key') {
-        tint = 0x66ff99;
-      } else if (dragState.cardData.type === 'weapon') {
-        tint = 0xffaa33;
-      }
-
-      if (!tint) return;
-
-      card.highlight?.setFillStyle(tint, 0.2);
-      card.highlight?.setStrokeStyle(2, tint, 0.9);
-      card.highlight?.setVisible(true);
-      card.sprite?.setTint(tint);
-    }
-
-    resetChestHighlight(card) {
-      if (!card) return;
-      if (card.highlight) {
-        card.highlight.setVisible(false);
-      }
-      if (card.sprite) {
-        if (card.data?.baseTint) {
-          card.sprite.setTint(card.data.baseTint);
-        } else {
-          card.sprite.clearTint();
-        }
-      }
-    }
-
-    clearTreasureHighlights() {
-      this.boardCards.forEach(card => {
-        if (card && card.data?.type === 'treasureChest') {
-          this.resetChestHighlight(card);
-        }
-      });
-    }
-
-    findChestAt(x, y) {
-      for (let i = 0; i < this.boardCards.length; i++) {
-        const card = this.boardCards[i];
-        if (!card || card.data?.type !== 'treasureChest') continue;
-        if (card.data.state !== 'locked') continue;
-        if (!card.sprite) continue;
-        const bounds = card.sprite.getBounds();
-        if (Phaser.Geom.Rectangle.Contains(bounds, x, y)) {
-          return i;
-        }
-      }
-      return -1;
-    }
-
-    openChestWithKey(index) {
-      const card = this.boardCards[index];
-      if (!card || card.data?.type !== 'treasureChest') return false;
-      if (card.data.state !== 'locked') return false;
-
-      this.resetChestHighlight(card);
-      this.resolveChestOpen(index, { multiplier: 1, downgrade: false, method: 'key' });
-      return true;
-    }
-
-    openChestWithWeapon(index) {
-      const card = this.boardCards[index];
-      if (!card || card.data?.type !== 'treasureChest') return { success: false, trapTriggered: false };
-      if (card.data.state !== 'locked') return { success: false, trapTriggered: false };
-
-      this.resetChestHighlight(card);
-
-      const trapTriggered = Math.random() < 0.5;
-      if (trapTriggered) {
-        this.triggerChestTrap(card);
-      }
-
-      const multiplier = trapTriggered ? 0.5 : 0.75;
-      this.resolveChestOpen(index, {
-        multiplier,
-        downgrade: trapTriggered,
-        method: 'weapon',
-        trapTriggered,
-      });
-
-      return { success: true, trapTriggered };
-    }
-
-    triggerChestTrap(card) {
-      if (!card || !card.sprite) return;
-      const trapSprite = this.scene.add.sprite(card.sprite.x, card.sprite.y, 'trap');
-      trapSprite.setScale(1.2);
-      trapSprite.setDepth(card.sprite.depth + 1);
-      trapSprite.setAlpha(0);
-      SoundHelper.playSound(this.scene, 'trap_trigger', 0.6);
-
-      this.scene.tweens.add({
-        targets: trapSprite,
-        alpha: 1,
-        scale: 1.6,
-        duration: 200,
-        yoyo: true,
-        ease: 'Power2',
-        onComplete: () => trapSprite.destroy(),
-      });
-
-      const trapDamage = 8;
-      const result = this.scene.gameState.takeDamage(trapDamage, -1, 'trap');
-      if (result.actualDamage > 0) {
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 60, `Trap! -${result.actualDamage} HP`, 0xff4444);
-      } else {
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 60, 'Trap avoided!', 0x66ff99);
-      }
-
-      if (this.scene.gameState?.damageTracking?.runStats) {
-        this.scene.gameState.damageTracking.runStats.trapsTriggered++;
-      }
-    }
-
-    resolveChestOpen(index, options = {}) {
-      const card = this.boardCards[index];
-      if (!card || card.data?.type !== 'treasureChest') return false;
-      if (card.data.state !== 'locked') return false;
-
-      card.data.state = 'opened';
-      card.sprite.disableInteractive();
-
-      const cfg = CardSystem.TREASURE_CHEST_CONFIG[card.data.chestType] || CardSystem.TREASURE_CHEST_CONFIG.WOODEN;
-      const baseRewards = this.calculateChestRewards(card.data.chestType);
-      let amuletGrade = baseRewards.amuletGrade;
-      const originalGrade = amuletGrade;
-      if (options.downgrade && amuletGrade) {
-        amuletGrade = this.downgradeAmuletGrade(amuletGrade);
-      }
-      const downgraded = Boolean(options.downgrade && originalGrade);
-
-      const multiplier = options.multiplier ?? 1;
-      const rawGold = Math.max(0, Math.round(baseRewards.gold * multiplier));
-      const rawCrystals = Math.max(0, Math.round(baseRewards.crystals * multiplier));
-
-      const goldReward = this.scene.amuletManager ? this.scene.amuletManager.modifyGoldFound(rawGold) : rawGold;
-      this.scene.gameState.coins += goldReward;
-      this.scene.gameState.crystals += rawCrystals;
-
-      SoundHelper.playSound(this.scene, 'chest_open', 0.6);
-
-      this.scene.createFloatingText(card.sprite.x, card.sprite.y - 40, `+${goldReward} Gold`, 0xffd700);
-      if (rawCrystals > 0) {
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 20, `+${rawCrystals} Crystals`, 0x66ccff);
-      }
-
-      let amuletMessage = null;
-      let rewardGradeLabel = amuletGrade;
-      if (amuletGrade) {
-        const amuletReward = this.cardDataGenerator.getRandomAmuletByGrade(amuletGrade, this.scene.gameState.currentFloor);
-        if (amuletReward) {
-          rewardGradeLabel = amuletReward.grade || rewardGradeLabel || originalGrade;
-        }
-        if (amuletReward && this.scene.amuletManager) {
-          const added = this.scene.amuletManager.addAmulet(amuletReward.id);
-          if (added) {
-            amuletMessage = `${rewardGradeLabel || amuletGrade || originalGrade} Amulet: ${amuletReward.name}`;
-          } else {
-            const fallback = Math.max(1, 2 + CardSystem.AMULET_GRADE_ORDER.indexOf(amuletGrade) * 2);
-            this.scene.gameState.crystals += fallback;
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y, `Duplicate! +${fallback} Crystals`, 0x66ccff);
-          }
-        }
-      }
-
-      if (downgraded) {
-        const displayGrade = rewardGradeLabel || amuletGrade || originalGrade;
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 70, `Amulet downgraded to ${displayGrade}`, 0xff8844);
-      }
-
-      if (amuletMessage) {
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y, amuletMessage, 0xfff1b5);
-      }
-
-      this.scene.tweens.add({
-        targets: card.sprite,
-        scale: card.sprite.scale * 1.1,
-        yoyo: true,
-        duration: 160,
-        onComplete: () => {
-          this.removeCard(index);
-          this.checkFloorClear();
-        },
-      });
-
-      this.scene.updateUI();
-      return true;
-    }
-
-    calculateChestRewards(chestType) {
-      const cfg = CardSystem.TREASURE_CHEST_CONFIG[chestType] || CardSystem.TREASURE_CHEST_CONFIG.WOODEN;
-      const gold = Phaser.Math.Between(cfg.goldRange[0], cfg.goldRange[1]);
-      const crystals = Phaser.Math.Between(cfg.crystalRange[0], cfg.crystalRange[1]);
-      const amuletGrade = this.pickAmuletGrade(cfg.amuletGrades);
-      return { gold, crystals, amuletGrade };
-    }
-
-    pickAmuletGrade(entries = []) {
-      if (!entries.length) return null;
-      const total = entries.reduce((sum, entry) => sum + entry.chance, 0);
-      let roll = Math.random() * total;
-      for (const entry of entries) {
-        roll -= entry.chance;
-        if (roll <= 0) {
-          return entry.grade;
-        }
-      }
-      return entries[entries.length - 1].grade;
-    }
-
-    downgradeAmuletGrade(grade) {
-      const order = CardSystem.AMULET_GRADE_ORDER;
-      const idx = order.indexOf(grade);
-      if (idx <= 0) return order[0];
-      return order[idx - 1];
-    }
-
-    getFinalBossFloor() {
-      const dungeonMap = this.scene.gameState?.dungeonMap;
-      if (!dungeonMap) {
-        return 45;
-      }
-      const acts = Object.keys(dungeonMap)
-        .map(key => dungeonMap[key])
-        .filter(Boolean);
-      if (!acts.length) {
-        return 45;
-      }
-      const lastAct = acts[acts.length - 1];
-      return lastAct?.endFloor ?? 45;
     }
 
     checkFloorClear() {
-        if (this.scene.roomType === 'TREASURE') {
-            const chestsRemaining = this.boardCards.some(c =>
-                c && c.data?.type === 'treasureChest' && c.data.state !== 'opened'
-            );
-
-            if (!chestsRemaining && !this.scene.enemiesCleared) {
-                this.scene.onEnemiesCleared();
-            }
-            return;
-        }
-
-        const enemiesRemaining = this.boardCards.some(c =>
+        const enemiesRemaining = this.boardCards.some(c => 
             c && c.revealed && (c.data.type === 'enemy' || c.data.type === 'boss')
         );
-
+        
         if (!enemiesRemaining && !this.scene.enemiesCleared) {
             // Check if there are any unrevealed cards that could be enemies
-            const potentialEnemies = this.boardCards.some(c =>
+            const potentialEnemies = this.boardCards.some(c => 
                 c && !c.revealed && c.data.type === 'enemy'
             );
-
+            
             if (potentialEnemies) return;
-
-            if (this.scene.roomType === 'BOSS') {
-                const currentFloor = this.scene.gameState.currentFloor || 1;
-                const finalFloor = this.getFinalBossFloor();
-                if (currentFloor >= finalFloor) {
+            
+            const currentFloor = this.scene.gameState.currentFloor;
+            const bossFloors = [15, 30, 45];
+            
+            if (bossFloors.includes(currentFloor)) {
+                // Check if this is the final floor
+                if (currentFloor === 45) {
                     this.scene.time.delayedCall(1000, () => this.scene.gameWon());
                 } else {
+                    // Boss defeated, continue to next floor
                     this.scene.onEnemiesCleared();
                 }
             } else {
@@ -1667,9 +1489,9 @@ export class CardSystem {
         if (card.infoText) {
             const roleText = card.data.role === 'MELEE' ? '[Melee]' : '[Ranged]';
             let infoText = `${roleText} ${card.data.health}HP ${card.data.attack}ATK`;
-            if (card.data.abilities && card.data.abilities.some(a => a.type === 'poison')) {
-                infoText += ' (Poison)';
-            }
+            const poisonSummary = this.getEnemyPoisonSummary(card.data);
+            if (poisonSummary) infoText += ` (Poison x${poisonSummary.stacks})`;
+            if (card.data.abilities && card.data.abilities.some(a => a.type === 'poison')) infoText += ' (Poison)';
             if (card.data.abilities && card.data.abilities.some(a => a.type === 'evade')) {
                 infoText += ' (Evasive)';
             }
@@ -1686,7 +1508,6 @@ export class CardSystem {
     mimicTreasureExplosion(x, y) {
         // Create splash sprite
         const splashSprite = this.scene.add.sprite(x, y, 'splash1');
-        splashSprite.setScale(1.5); // Adjust size if needed
         splashSprite.play('splash_anim');
         
         // On complete: Destroy sprite, add loot

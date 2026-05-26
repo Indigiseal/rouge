@@ -212,14 +212,15 @@ export class AmuletManager {
                     );
                 },
                 onEnemyKill: () => {
+                    const healAmount = 3;
                     this.gameState.playerHealth = Math.min(
                         this.gameState.maxHealth,
-                        this.gameState.playerHealth + 1
+                        this.gameState.playerHealth + healAmount
                     );
                     this.scene.createFloatingText(
                         this.scene.playerAvatar.x,
                         this.scene.playerAvatar.y,
-                        '+1 HP (Blood)',
+                        `+${healAmount} HP (Blood)`,
                         0xff0000
                     );
                 }
@@ -403,6 +404,10 @@ export class AmuletManager {
                 damage = definition.modifyWeaponDamage(damage);
             }
         });
+        const relicBonus = this.gameState.relicEffects?.weaponDamageBonus || 0;
+        if (relicBonus) {
+            damage += relicBonus;
+        }
         return damage;
     }
     
@@ -479,6 +484,10 @@ export class AmuletManager {
                 amount = definition.modifyGoldFound(amount);
             }
         });
+        const relicMultiplier = this.gameState.relicEffects?.coinMultiplier || 1;
+        if (relicMultiplier !== 1) {
+            amount = Math.floor(amount * relicMultiplier);
+        }
         return amount;
     }
     

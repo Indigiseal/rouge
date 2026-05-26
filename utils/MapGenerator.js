@@ -2,7 +2,7 @@
 export class MapGenerator {
   constructor({
     LANES = 7,
-    FLOORS = 15,          // floors per act (indexed 0..14 → floors 1..15)
+    FLOORS = 15,          // 0..13 normal, 14 boss
     PATHS = 6,
     LANE_GAP = 120,       // pixel spacing for x (so MapViewScene doesn't change)
     eliteMult = 1.0       // set 1.6 if you want more elites later
@@ -13,22 +13,16 @@ export class MapGenerator {
     this.LANE_GAP = LANE_GAP;
     this.eliteMult = eliteMult;
 
-    this.floorsPerAct = this.FLOORS; // 15 playable floors per act
-    const bossNames = ['Spider Queen', 'Lich', 'Cerberus'];
-
-    this.acts = bossNames.map((boss, index) => ({
-      start: index * this.floorsPerAct + 1,
-      end: (index + 1) * this.floorsPerAct,
-      boss
-    }));
-
+    this.acts = [
+      { start: 1, end: 15, boss: 'Spider Queen' },
+      { start: 16, end: 30, boss: 'Cerberus' },
+      { start: 31, end: 45, boss: 'Ancient Cerberus' }
+    ];
   }
 
   generateFullMap() {
     const full = {};
-    for (let act = 1; act <= this.acts.length; act++) {
-      full[`act${act}`] = this.generateAct(act);
-    }
+    for (let act = 1; act <= 3; act++) full[`act${act}`] = this.generateAct(act);
     return full;
   }
 
@@ -40,14 +34,14 @@ export class MapGenerator {
       const mid = Math.floor(this.LANES / 2);
       // floor 0: single start node at center lane
       floors.push([this._makeNode(actNumber, 0, 0, mid, 'COMBAT')]);
-      // floors 1..(boss-1): 2–4 nodes, contiguous lanes, centered-ish
+      // floors 1..13: 2-4 nodes, contiguous lanes, centered-ish
       for (let f = 1; f < this.FLOORS - 1; f++) {
         const count = this._nodeCountForFloor(f);
         const leftMost = Math.max(0, Math.min(this.LANES - count, mid - Math.floor(count / 2)));
         const lanes = Array.from({ length: count }, (_, i) => leftMost + i);
         floors.push(lanes.map((lane, i) => this._makeNode(actNumber, f, i, lane, null)));
       }
-      // boss floor: single centered node
+      // final act floor: single centered boss node
       floors.push([this._makeNode(actNumber, this.FLOORS - 1, 0, mid, 'BOSS')]);
       // ---- 2) Wire connections (adjacent lanes only, avoid crossing) ----
       for (let f = 0; f < this.FLOORS - 1; f++) {

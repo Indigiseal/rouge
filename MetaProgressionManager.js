@@ -1,35 +1,37 @@
 // MetaProgressionManager.js
 
-import { SaveManager } from './SaveManager.js';
-
 export class MetaProgressionManager {
     constructor(scene) {
         this.scene = scene;
-        this.saveManager = new SaveManager();
         this.loadMetaProgression();
     }
-
-    // Load saved meta progression data (session memory)
+    
+    // Load saved meta progression data
     loadMetaProgression() {
-        const data = this.saveManager.loadMetaProgression();
-        this.unlockedRelics = data.unlockedRelics || [];
-        this.totalDeaths = data.totalDeaths || 0;
-        this.bestFloor = data.bestFloor || 1;
-        this.enemyKillStats = data.enemyKillStats || {};
-        this.totalRuns = data.totalRuns || 0;
-        this.totalEnemiesKilled = data.totalEnemiesKilled || 0;
+        const saved = localStorage.getItem('metaProgression');
+        if (saved) {
+            const data = JSON.parse(saved);
+            this.unlockedRelics = data.unlockedRelics || [];
+            this.totalDeaths = data.totalDeaths || 0;
+            this.bestFloor = data.bestFloor || 1;
+            this.enemyKillStats = data.enemyKillStats || {};
+        } else {
+            this.unlockedRelics = [];
+            this.totalDeaths = 0;
+            this.bestFloor = 1;
+            this.enemyKillStats = {};
+        }
     }
-
-    // Save meta progression data (session memory)
+    
+    // Save meta progression data
     saveMetaProgression() {
-        this.saveManager.saveMetaProgression({
+        const data = {
             unlockedRelics: this.unlockedRelics,
             totalDeaths: this.totalDeaths,
             bestFloor: this.bestFloor,
-            enemyKillStats: this.enemyKillStats,
-            totalRuns: this.totalRuns,
-            totalEnemiesKilled: this.totalEnemiesKilled,
-        });
+            enemyKillStats: this.enemyKillStats
+        };
+        localStorage.setItem('metaProgression', JSON.stringify(data));
     }
     
     // Define all possible relics and their effects
@@ -41,6 +43,8 @@ export class MetaProgressionManager {
                 name: 'Spider Venom',
                 description: 'Weapons have 20% chance to poison enemies',
                 icon: 'relic_spider',
+                iconSheet: 'relicsOthers',
+                iconFrame: 11,
                 killedBy: 'spider',
                 effect: {
                     weaponPoisonChance: 0.2,
@@ -54,6 +58,8 @@ export class MetaProgressionManager {
                 name: 'Web Weaver',
                 description: '10% chance to slow enemies on hit',
                 icon: 'relic_web',
+                iconSheet: 'relicsOthers',
+                iconFrame: 12,
                 killedBy: 'spider',
                 tier: 2,
                 effect: {
@@ -65,11 +71,13 @@ export class MetaProgressionManager {
             boneArmor: {
                 id: 'boneArmor',
                 name: 'Bone Armor',
-                description: 'Start each run with +2 armor',
+                description: 'Start each run with uncommon bone armor',
                 icon: 'relic_bone',
+                iconSheet: 'relicsOthers',
+                iconFrame: 13,
                 killedBy: 'skeleton',
                 effect: {
-                    startingArmor: 2
+                    startingArmor: 4
                 }
             },
             
@@ -78,6 +86,8 @@ export class MetaProgressionManager {
                 name: 'Undead Resilience',
                 description: '+5 max HP at start of run',
                 icon: 'relic_skull',
+                iconSheet: 'relicsOthers',
+                iconFrame: 14,
                 killedBy: 'skeleton',
                 effect: {
                     bonusStartingHP: 5
@@ -90,6 +100,8 @@ export class MetaProgressionManager {
                 name: 'Greedy Pockets',
                 description: 'Start with +10 coins',
                 icon: 'relic_coin_pouch',
+                iconSheet: 'relicsOthers',
+                iconFrame: 15,
                 killedBy: 'goblin',
                 effect: {
                     startingCoins: 10
@@ -101,6 +113,8 @@ export class MetaProgressionManager {
                 name: 'Scavenger',
                 description: '+20% coins from all sources',
                 icon: 'relic_goblin',
+                iconSheet: 'relicsOthers',
+                iconFrame: 16,
                 killedBy: 'goblin',
                 effect: {
                     coinMultiplier: 1.2
@@ -113,6 +127,8 @@ export class MetaProgressionManager {
                 name: "Giant's Strength",
                 description: 'All weapons deal +1 damage',
                 icon: 'relic_giant',
+                iconSheet: 'relicsOthers',
+                iconFrame: 17,
                 killedBy: 'Giant Skeleton',
                 boss: true,
                 effect: {
@@ -125,6 +141,8 @@ export class MetaProgressionManager {
                 name: "Queen's Blessing",
                 description: 'Immune to poison',
                 icon: 'relic_crown',
+                iconSheet: 'relicsOthers',
+                iconFrame: 18,
                 killedBy: 'Spider Queen',
                 boss: true,
                 effect: {
@@ -137,6 +155,8 @@ export class MetaProgressionManager {
                 name: "Lich's Curse",
                 description: 'Heal 1 HP per enemy killed, -10 max HP',
                 icon: 'relic_lich',
+                iconSheet: 'relicsOthers',
+                iconFrame: 19,
                 killedBy: 'Lich',
                 boss: true,
                 cursed: true,
@@ -152,9 +172,24 @@ export class MetaProgressionManager {
                 name: 'Veteran Explorer',
                 description: 'Start with +2 action points',
                 icon: 'relic_boots',
+                iconSheet: 'relicsOthers',
+                iconFrame: 20,
                 unlockCondition: 'deaths_5',
                 effect: {
                     bonusStartingAP: 2
+                }
+            },
+
+            tent: {
+                id: 'tent',
+                name: 'Tent',
+                description: '+1 max HP whenever a durability card is fully used',
+                icon: 'relic_tent',
+                iconSheet: 'relicsOthers',
+                iconFrame: 23,
+                unlockCondition: 'floor_7',
+                effect: {
+                    cardSpentMaxHP: 1
                 }
             },
             
@@ -163,6 +198,8 @@ export class MetaProgressionManager {
                 name: 'Dungeon Master',
                 description: 'See one extra card at start',
                 icon: 'relic_eye',
+                iconSheet: 'relicsOthers',
+                iconFrame: 21,
                 unlockCondition: 'floor_10',
                 effect: {
                     revealExtraCard: 1
@@ -238,6 +275,10 @@ export class MetaProgressionManager {
         }
         
         // Check floor milestones
+        if (this.bestFloor >= 7 && !this.hasRelic('tent')) {
+            return relics.tent;
+        }
+
         if (this.bestFloor >= 10 && !this.hasRelic('dungeonMaster')) {
             return relics.dungeonMaster;
         }
@@ -258,8 +299,9 @@ export class MetaProgressionManager {
     }
     
     // Apply all relic effects at the start of a run
-    applyRelicEffects(gameState) {
+    applyRelicEffects(gameState, applyStartingBonuses = true) {
         const relics = this.getRelicDefinitions();
+        gameState.relicEffects = {};
         
         this.unlockedRelics.forEach(relicId => {
             const relic = relics[relicId];
@@ -268,33 +310,36 @@ export class MetaProgressionManager {
             const effect = relic.effect;
             
             // Apply starting bonuses
-            if (effect.bonusStartingHP) {
+            if (applyStartingBonuses && effect.bonusStartingHP) {
                 gameState.maxHealth += effect.bonusStartingHP;
                 gameState.playerHealth += effect.bonusStartingHP;
             }
             
-            if (effect.maxHPPenalty) {
+            if (applyStartingBonuses && effect.maxHPPenalty) {
                 gameState.maxHealth += effect.maxHPPenalty; // Negative value
                 gameState.playerHealth = Math.min(gameState.playerHealth, gameState.maxHealth);
             }
             
-            if (effect.startingCoins) {
+            if (applyStartingBonuses && effect.startingCoins) {
                 gameState.coins += effect.startingCoins;
             }
             
-            if (effect.bonusStartingAP) {
+            if (applyStartingBonuses && effect.bonusStartingAP) {
                 gameState.actionsLeft += effect.bonusStartingAP;
                 gameState.maxActions += effect.bonusStartingAP;
             }
             
-            if (effect.startingArmor) {
-                // This would need to be handled in the inventory system
-                gameState.startingArmor = effect.startingArmor;
-            }
-            
-            // Store active effects for runtime use
-            if (!gameState.relicEffects) {
-                gameState.relicEffects = {};
+            if (applyStartingBonuses && effect.startingArmor && !gameState.equippedArmor) {
+                gameState.equippedArmor = {
+                    type: 'armor',
+                    name: 'Uncommon Bone Armor',
+                    armorType: 'bone',
+                    protection: effect.startingArmor,
+                    rarity: 'uncommon',
+                    sprite: 'boneArmor_U',
+                    durability: 25,
+                    maxDurability: 25
+                };
             }
             
             // Copy all effects for runtime checks

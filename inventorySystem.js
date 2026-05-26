@@ -2,40 +2,35 @@ import { SoundHelper } from './utils/SoundHelper.js';
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
         this.scene = scene;
-
+        
         // Check for Bottomless Bag bonus slots
         const baseSlots = 5;
         const bonusSlots = this.scene.gameState.bonusInventorySlots || 0;
         const totalSlots = baseSlots + bonusSlots;
-
-        // Ensure gameState.inventory is properly initialized
-        if (!this.scene.gameState.inventory || this.scene.gameState.inventory.length !== totalSlots) {
-            const oldInventory = this.scene.gameState.inventory || existingInventory || [];
-            this.scene.gameState.inventory = new Array(totalSlots).fill(null);
-            // Copy old items to new array
-            oldInventory.forEach((item, i) => {
+        
+        // Initialize slots array with proper size
+        this.slots = new Array(totalSlots).fill(null);
+        
+        // If we have existing inventory, copy it properly
+        if (existingInventory && Array.isArray(existingInventory)) {
+            existingInventory.forEach((item, i) => {
                 if (i < totalSlots && item) {
-                    this.scene.gameState.inventory[i] = item;
+                    this.slots[i] = item;
                 }
             });
         }
-
-        // Create getter/setter for slots that uses gameState
-        Object.defineProperty(this, 'slots', {
-            get: () => this.scene.gameState.inventory,
-            set: (value) => { this.scene.gameState.inventory = value; }
-        });
-
+        
         this.slotSprites = [];
         this.discardArea = null;
+        this.armorPanel = null;
         this.uiGroup = this.scene.add.group();
-        this.dragState = null;
+        this.inventoryPanelPieces = [];
+        this.stationMode = false;
         this.createInventoryUI();
         this.rebuildInventorySprites();
     }
     
     setVisibility(isVisible) {
-        console.log('Inventory setVisibility:', isVisible, 'uiGroup exists?', !!this.uiGroup);
         if (this.uiGroup) {
             this.uiGroup.setVisible(isVisible);
             if (isVisible) {
@@ -46,13 +41,30 @@ export class InventorySystem {
     getCurrentWeapon() {
         return this.scene.gameState?.equippedWeapon || null;
     }
+
+    setStationMode(isStationMode) {
+        this.stationMode = isStationMode;
+    }
     
     setDiscardArea(discardArea) {
         this.discardArea = discardArea;
     }
+
+    setArmorPanel(armorPanel) {
+        this.armorPanel = armorPanel;
+    }
+
+    syncGameStateInventory() {
+        if (this.scene.gameState) {
+            this.scene.gameState.inventory = this.slots;
+        }
+    }
     
     createInventoryUI() {
         // COMPLETE cleanup of existing UI sprites
+        this.inventoryPanelPieces.forEach(piece => piece?.destroy());
+        this.inventoryPanelPieces = [];
+
         this.slotSprites.forEach(slot => {
             // Clean up background
             if (slot.background) {
@@ -110,14 +122,17 @@ export class InventorySystem {
         const slotHeight = 70;
         const spacing = 5;
         const totalWidth = slotCount * slotWidth + (slotCount - 1) * spacing;
-        const startX = 320 - (totalWidth / 2) + (slotWidth / 2);
-        const y = 320;
+        const inventoryCenterX = 340;
+        const startX = inventoryCenterX - (totalWidth / 2) + (slotWidth / 2);
+        const y = 304;
+        this.createInventoryPanel(inventoryCenterX, y, Math.max(368, totalWidth + 90), 112);
         
         for (let i = 0; i < slotCount; i++) {
             const x = startX + i * (slotWidth + spacing);
             
             // Slot background
-            const slotBg = this.scene.add.rectangle(x, y, slotWidth, slotHeight, 0x333333);
+            const slotBg = this.scene.add.rectangle(x, y, slotWidth, slotHeight, 0x333333, 0.12);
+            slotBg.setDepth(11);
             
             // Bonus slots have different color (yellow border for slots 5+)
             if (i >= 5) {
@@ -138,6 +153,38 @@ export class InventorySystem {
                 originalY: y
             };
         }
+    }
+
+    createInventoryPanel(centerX, centerY, width, height) {
+        if (!this.scene.textures.exists('panelCards')) return;
+
+        const texture = this.scene.textures.get('panelCards');
+        const source = texture.getSourceImage();
+        const sourceWidth = source.width || 368;
+        const sourceHeight = source.height || 112;
+        const capWidth = 56;
+        const middleWidth = Math.max(1, sourceWidth - capWidth * 2);
+
+        if (!texture.has('leftCap')) {
+            texture.add('leftCap', 0, 0, 0, capWidth, sourceHeight);
+            texture.add('middleStretch', 0, capWidth, 0, middleWidth, sourceHeight);
+            texture.add('rightCap', 0, sourceWidth - capWidth, 0, capWidth, sourceHeight);
+        }
+
+        const panelWidth = Math.max(capWidth * 2 + 1, width);
+        const stretchWidth = panelWidth - capWidth * 2;
+        const scaleY = height / sourceHeight;
+        const scaledCapWidth = capWidth * scaleY;
+        const leftX = centerX - panelWidth / 2 + scaledCapWidth / 2;
+        const rightX = centerX + panelWidth / 2 - scaledCapWidth / 2;
+
+        const left = this.scene.add.image(leftX, centerY, 'panelCards', 'leftCap').setScale(scaleY);
+        const middle = this.scene.add.image(centerX, centerY, 'panelCards', 'middleStretch').setDisplaySize(stretchWidth, height);
+        const right = this.scene.add.image(rightX, centerY, 'panelCards', 'rightCap').setScale(scaleY);
+
+        this.inventoryPanelPieces = [left, middle, right];
+        this.inventoryPanelPieces.forEach(piece => piece.setDepth(10));
+        this.inventoryPanelPieces.forEach(piece => this.uiGroup.add(piece));
     }
     
     // Add method to handle Bottomless Bag acquisition
@@ -332,6 +379,7 @@ export class InventorySystem {
         if (slotIndex >= this.slots.length || slotIndex < 0) return;
         
         this.slots[slotIndex] = cardData;
+        this.syncGameStateInventory();
         
         const slotSprite = this.slotSprites[slotIndex];
         if (!slotSprite || !slotSprite.background) return;
@@ -341,7 +389,7 @@ export class InventorySystem {
         
         let cardSprite;
         if (cardData.sprite) {
-            cardSprite = this.scene.add.image(x, y, cardData.sprite);
+            cardSprite = this.scene.add.image(x, y, cardData.sprite, cardData.spriteFrame);
         } else {
             const colors = {
                 armor: 0x888888,
@@ -352,6 +400,7 @@ export class InventorySystem {
         
         this.uiGroup.add(cardSprite);
         cardSprite.setScale(1);
+        cardSprite.setDepth(12);
         
         // IMPORTANT: Set the initial position data
         cardSprite.setData('originalX', x);
@@ -364,7 +413,7 @@ export class InventorySystem {
         // Create shadow for hover effect (initially hidden)
         const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
         shadow.setAlpha(0);
-        shadow.setDepth(cardSprite.depth - 1);
+        shadow.setDepth(11);
         this.uiGroup.add(shadow);
         slotSprite.shadow = shadow;
         
@@ -372,7 +421,7 @@ export class InventorySystem {
         const hoverSprite = this.scene.add.sprite(x, y, 'hoverCardsUp1');
         hoverSprite.setVisible(false);
         hoverSprite.setBlendMode(Phaser.BlendModes.SCREEN);
-        hoverSprite.setDepth(cardSprite.depth + 1);
+        hoverSprite.setDepth(13);
         this.uiGroup.add(hoverSprite);
         slotSprite.hoverSprite = hoverSprite;
         
@@ -498,9 +547,7 @@ export class InventorySystem {
         // Add drag events with proper position tracking
         cardSprite.on('dragstart', () => {
             if (!cardSprite.scene) return;
-
-            this.dragState = { slotIndex, cardData, sprite: cardSprite };
-
+            
             // Store the starting position
             cardSprite.setData('dragStartX', cardSprite.x);
             cardSprite.setData('dragStartY', cardSprite.y);
@@ -522,7 +569,7 @@ export class InventorySystem {
             // Keep shadow visible while dragging
             if (currentSlot.shadow) {
                 currentSlot.shadow.setAlpha(1);
-                currentSlot.shadow.setDepth(0);
+                currentSlot.shadow.setDepth(999);
             }
             
             // Bring twinkle sprite to front if it exists
@@ -562,20 +609,18 @@ export class InventorySystem {
         
         cardSprite.on('dragend', () => {
             if (!cardSprite.scene) return;
-
-            this.dragState = null;
-            this.scene.cardSystem?.clearTreasureHighlights();
-
+            
             if (typeof cardSprite.clearTint === 'function') {
                 cardSprite.clearTint();
             }
-            cardSprite.setDepth(0);
+            cardSprite.setDepth(12);
             
             const currentSlot = this.slotSprites[slotIndex];
             if (currentSlot) {
                 // Hide shadow after drag
                 if (currentSlot.shadow) {
                     currentSlot.shadow.setAlpha(0);
+                    currentSlot.shadow.setDepth(11);
                 }
                 
                 // Reset twinkle depth
@@ -645,58 +690,12 @@ export class InventorySystem {
     handleCardDrop(slotIndex, cardSprite) {
         const cardData = this.slots[slotIndex];
         if (!cardData) return;
-
-        const cardSystem = this.scene.cardSystem;
-        const chestIndex = cardSystem ? cardSystem.findChestAt(cardSprite.x, cardSprite.y) : -1;
-
-        if (cardData.type === 'key' && chestIndex !== -1) {
-            const opened = cardSystem.openChestWithKey(chestIndex);
-            if (opened) {
-                this.cleanupCardSprites(slotIndex, cardSprite);
-                this.removeCard(slotIndex, false);
-                cardSprite.destroy();
-                const slotSprite = this.slotSprites[slotIndex];
-                if (slotSprite) {
-                    slotSprite.card = null;
-                }
-            } else {
-                this.returnCardToSlot(slotIndex, cardSprite);
-            }
-            this.scene.updateUI();
-            return;
-        }
-
-        if (cardData.type === 'weapon' && chestIndex !== -1) {
-            if (!this.scene.useAction()) {
-                this.returnWeaponToSlot(slotIndex, cardSprite);
-                return;
-            }
-
-            const result = cardSystem.openChestWithWeapon(chestIndex);
-            if (!result.success) {
-                this.returnWeaponToSlot(slotIndex, cardSprite);
-                return;
-            }
-
-            cardData.durability -= 1;
-            if (cardData.durability <= 0) {
-                this.handleWeaponBreak(cardData, cardSprite, slotIndex);
-                this.scene.updateUI();
-                return;
-            }
-
-            this.updateWeaponInfoText(cardSprite, cardData);
-            this.returnWeaponToSlotDelayed(slotIndex, cardSprite);
-            this.scene.gameState.equippedWeapon = null;
-            this.scene.updateUI();
-            return;
-        }
-
+        
         // Check for drop on discard area FIRST to prevent conflicts with other drop zones
-        if (this.discardArea && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.discardArea.getBounds())) {
+        if (!this.stationMode && this.discardArea && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.discardArea.getBounds())) {
             SoundHelper.playSound(this.scene, 'item_discard', 0.7);
             this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Discarded!', 0xff0000);
-
+            
             // Properly clean up ALL sprites and effects
             this.cleanupCardSprites(slotIndex, cardSprite);
             this.removeCard(slotIndex, false); // Don't destroy the sprite in removeCard
@@ -714,7 +713,7 @@ export class InventorySystem {
                 const canCrossTier = this.scene.amuletManager && 
                     this.scene.amuletManager.canCrossTierMerge();
                 
-                if (targetCardData.name === cardData.name && (targetCardData.rarity === cardData.rarity || canCrossTier)) {
+                if (this.canCardsMerge(cardData, targetCardData, canCrossTier)) {
                     // Magic cards cannot be merged
                     if (cardData.type === 'magic') {
                         this.scene.createFloatingText(512, 400, 'Magic cards cannot be merged!', 0xff0000);
@@ -722,7 +721,7 @@ export class InventorySystem {
                         return;
                     }
                     
-                    if (!this.scene.useAction()) {
+                    if (!this.stationMode && !this.scene.useAction()) {
                         this.scene.createFloatingText(512, 400, 'Not enough actions!', 0xff0000);
                         // Return card to original slot if merge fails
                         this.returnCardToSlot(slotIndex, cardSprite);
@@ -732,6 +731,11 @@ export class InventorySystem {
                     return; // Merge complete, exit function
                 }
             }
+        }
+
+        if (this.stationMode) {
+            this.returnCardToSlot(slotIndex, cardSprite);
+            return;
         }
         
         // Check if dropped on board to use a weapon or magic card
@@ -746,6 +750,15 @@ export class InventorySystem {
             }
         }
         
+        // Check if armor was dropped on the dedicated armor panel
+        if (
+            cardData.type === 'armor' &&
+            this.armorPanel &&
+            Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.armorPanel.getBounds())
+        ) {
+            if (this.equipArmor(slotIndex, cardSprite)) return;
+        }
+
         // Check if dropped on the player avatar for equipping/consuming
         const playerAvatarBounds = this.scene.playerAvatar.getBounds();
         if (Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), playerAvatarBounds)) {
@@ -768,6 +781,81 @@ export class InventorySystem {
         
         // If drop was not on a valid target, or action failed, return to slot
         this.returnCardToSlot(slotIndex, cardSprite);
+    }
+
+    canCardsMerge(cardA, cardB, canCrossTier = false) {
+        if (!cardA || !cardB) return false;
+        if (cardA.type === 'magic' || cardB.type === 'magic') return false;
+        if (cardA.type !== cardB.type) return false;
+        if (!canCrossTier && cardA.rarity !== cardB.rarity) return false;
+        if (this.getMergeKey(cardA) !== this.getMergeKey(cardB)) return false;
+        if (!canCrossTier && this.getMergeStatsKey(cardA) !== this.getMergeStatsKey(cardB)) return false;
+        return true;
+    }
+
+    getMergeKey(card) {
+        if (!card) return '';
+        if (card.type === 'weapon') return `weapon:${this.getWeaponTypeFromCard(card)}`;
+        if (card.type === 'armor') return `armor:${this.getArmorTypeFromCard(card)}`;
+        if (card.type === 'thorns') return 'thorns';
+        if (card.type === 'potion') return `potion:${card.healAmount ? 'healing' : card.name || card.sprite}`;
+        if (card.type === 'food') return `food:${card.actionAmount ? 'action' : card.name || card.sprite}`;
+        return `${card.type}:${card.id || card.sprite || card.name}`;
+    }
+
+    getMergeStatsKey(card) {
+        if (!card) return '';
+        if (card.type === 'weapon') {
+            return [
+                card.damage || 0,
+                card.special || '',
+                card.range || 'melee',
+                card.poisonDamage || 0,
+                card.poisonTurns || 0,
+                card.poisonStackable ? 1 : 0
+            ].join('|');
+        }
+        if (card.type === 'armor') {
+            return [
+                card.protection || 0,
+                card.dodgeChance || 0,
+                card.reflection || 0
+            ].join('|');
+        }
+        if (card.type === 'thorns') return `${card.thornDamage || 0}`;
+        if (card.type === 'potion') return `${card.healAmount || 0}`;
+        if (card.type === 'food') return `${card.actionAmount || 0}`;
+        return '';
+    }
+
+    normalizeCardText(value) {
+        return (value || '').toString().toLowerCase().replace(/[_\-\s]+/g, '');
+    }
+
+    getWeaponTypeFromCard(card) {
+        if (!card) return '';
+        if (card.weaponType) return card.weaponType;
+
+        const text = this.normalizeCardText(`${card.name || ''} ${card.sprite || ''} ${card.id || ''}`);
+        if (text.includes('venomousdagger')) return 'venomousDagger';
+        if (text.includes('dagger')) return 'dagger';
+        if (text.includes('spear')) return 'spear';
+        if (text.includes('sword')) return 'sword';
+        if (text.includes('axe')) return 'axe';
+
+        return card.sprite || card.name || '';
+    }
+
+    getArmorTypeFromCard(card) {
+        if (!card) return '';
+        if (card.armorType) return card.armorType;
+
+        const text = this.normalizeCardText(`${card.name || ''} ${card.sprite || ''} ${card.id || ''}`);
+        if (text.includes('leather')) return 'leather';
+        if (text.includes('chain')) return 'chain';
+        if (text.includes('plate')) return 'plate';
+
+        return card.sprite || card.name || '';
     }
     
     // Helper method to properly clean up all card-related sprites
@@ -1224,11 +1312,6 @@ export class InventorySystem {
                 attackDamage = Math.floor(attackDamage * this.scene.gameState.shadowBlade.multiplier);
             }
             
-            // Apply amulet damage modifiers
-            if (this.scene.amuletManager) {
-                attackDamage = this.scene.amuletManager.modifyWeaponDamage(attackDamage);
-            }
-            
             // UPDATED: Check if player is exhausted BEFORE the action is consumed
             // The action was not consumed yet when we're calculating damage
             const isExhausted = this.scene.gameState.actionsLeft <= 0;
@@ -1306,6 +1389,7 @@ export class InventorySystem {
         
         SoundHelper.playSound(this.scene, 'item_discard', 0.7);
         this.scene.createFloatingText(cardSprite.x, cardSprite.y, `${weapon.name} broke!`, 0xff0000);
+        this.scene.grantCardSpentRelicBonus?.(weapon, cardSprite.x, cardSprite.y);
         
         // Clean up ALL sprites properly
         this.cleanupCardSprites(slotIndex, cardSprite);
@@ -1398,6 +1482,7 @@ export class InventorySystem {
         if (this.scene.gameState.equippedArmor) {
             const oldArmor = this.scene.gameState.equippedArmor;
             this.slots[slotIndex] = oldArmor;
+            this.syncGameStateInventory();
             this.scene.gameState.equippedArmor = null;
             this.rebuildInventorySprites();
         } else {
@@ -1412,6 +1497,32 @@ export class InventorySystem {
             this.scene.playerAvatar.x, 
             this.scene.playerAvatar.y, 
             `Equipped ${armorData.name}`, 
+            0xaaaaaa
+        );
+        this.scene.updateUI();
+        return true;
+    }
+
+    unequipArmor() {
+        const armor = this.scene.gameState.equippedArmor;
+        if (!armor) return false;
+
+        const emptySlot = this.slots.findIndex(slot => slot === null);
+        if (emptySlot === -1) {
+            this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Inventory Full!', 0xff0000);
+            return false;
+        }
+
+        this.scene.gameState.equippedArmor = null;
+        this.addCardDirect(armor, emptySlot);
+        this.updateTwinkleEffects();
+        this.syncGameStateInventory();
+
+        SoundHelper.playSound(this.scene, 'armor_equip', 0.5);
+        this.scene.createFloatingText(
+            this.scene.playerAvatar.x,
+            this.scene.playerAvatar.y,
+            `Unequipped ${armor.name}`,
             0xaaaaaa
         );
         this.scene.updateUI();
@@ -1447,7 +1558,8 @@ export class InventorySystem {
         
         this.removeCard(slotIndex);
         this.scene.updateUI();
-        return true;
+        
+    return true;
     }
     
     useFood(slotIndex, cardSprite) {
@@ -1559,50 +1671,75 @@ export class InventorySystem {
             upgradedCard = this.scene.cardSystem.createCardData('armor', this.scene.gameState.currentFloor);
             // Override with specific armor type and rarity  
             upgradedCard = this.forceArmorTypeAndRarity(upgradedCard, baseCard, newRarity);
+        } else if (baseCard.type === 'thorns') {
+            const multiplier = newRarity === 'uncommon' ? 1.5 : newRarity === 'rare' ? 2 : 2.5;
+            const maxDurability = newRarity === 'uncommon' ? 7 : newRarity === 'rare' ? 8 : 10;
+            upgradedCard = {
+                ...baseCard,
+                name: 'Thorns Card',
+                rarity: newRarity,
+                thornDamage: Math.max(baseCard.thornDamage + 1, Math.floor(baseCard.thornDamage * multiplier)),
+                durability: maxDurability,
+                maxDurability,
+                cost: Math.floor((baseCard.cost || 8) * multiplier)
+            };
         } else {
             // For other items (potions, food), use simple upgrade logic
             const multiplier = newRarity === 'uncommon' ? 1.8 : newRarity === 'rare' ? 2.5 : 3;
+            const healAmount = baseCard.healAmount ? Math.floor(baseCard.healAmount * multiplier) : undefined;
             upgradedCard = {
                 ...baseCard,
-                name: baseCard.name.replace(/Common|Uncommon|Rare/, newRarity.charAt(0).toUpperCase() + newRarity.slice(1)),
+                name: baseCard.type === 'potion' ? this.getPotionNameForHealAmount(healAmount) :
+                    baseCard.name.replace(/Common|Uncommon|Rare/, newRarity.charAt(0).toUpperCase() + newRarity.slice(1)),
                 rarity: newRarity,
-                healAmount: baseCard.healAmount ? Math.floor(baseCard.healAmount * multiplier) : undefined,
+                healAmount,
                 actionAmount: baseCard.actionAmount ? Math.floor(baseCard.actionAmount * multiplier) : undefined,
                 sprite: baseCard.type === 'potion' && newRarity === 'uncommon' ? 'potionCardUncommon' : baseCard.sprite
             };
         }
         
         // Handle durability combining for weapons and armor
-        if (baseCard.type === 'weapon' || baseCard.type === 'armor') {
+        if (baseCard.type === 'weapon' || baseCard.type === 'armor' || baseCard.type === 'thorns') {
             const combinedDurability = (baseCard.durability || 0) + (secondCard.durability || 0);
             const maxDurability = upgradedCard.maxDurability;
             
             upgradedCard.durability = Math.min(combinedDurability, maxDurability);
             
             // Show durability feedback
+            const addedDur = Math.min(secondCard.durability || 0, maxDurability - baseCard.durability);
             if (combinedDurability > maxDurability) {
                 this.scene.createFloatingText(512, 380, `Durability capped at ${maxDurability}`, 0xffa500);
             } else {
-                this.scene.createFloatingText(512, 380, `+${secondCard.durability} durability`, 0x00ff00);
+                this.scene.createFloatingText(512, 380, `+${addedDur} durability`, 0x00ff00);
             }
         }
         
         return upgradedCard;
     }
+
+    getPotionNameForHealAmount(healAmount = 0) {
+        if (healAmount >= 100) return 'Greater Healing Potion';
+        if (healAmount >= 50) return 'Strong Healing Potion';
+        if (healAmount >= 30) return 'Healing Potion';
+        return 'Minor Healing Potion';
+    }
     
     forceWeaponTypeAndRarity(generatedCard, originalCard, targetRarity) {
-        // Extract weapon type from original card name
-        const weaponType = this.getWeaponTypeFromName(originalCard.name);
+        const weaponType = this.getWeaponTypeFromCard(originalCard);
         const cardGenerator = this.scene.cardSystem.cardDataGenerator;
         
         if (cardGenerator.weaponUnlocks[weaponType] && cardGenerator.weaponUnlocks[weaponType][targetRarity]) {
             const weaponData = cardGenerator.weaponUnlocks[weaponType][targetRarity];
             const rarityName = targetRarity.charAt(0).toUpperCase() + targetRarity.slice(1);
-            const weaponName = weaponType.charAt(0).toUpperCase() + weaponType.slice(1);
+            const weaponNames = {
+                venomousDagger: 'Venomous Dagger'
+            };
+            const weaponName = weaponNames[weaponType] || weaponType.charAt(0).toUpperCase() + weaponType.slice(1);
             
             // Get proper durability
             const durabilityMap = {
                 dagger: { common: 4, uncommon: 5, rare: 6, legendary: 7 },
+                venomousDagger: { common: 5, uncommon: 5, rare: 5, legendary: 5 },
                 spear: { common: 5, uncommon: 6, rare: 7, legendary: 8 },
                 sword: { common: 6, uncommon: 8, rare: 10, legendary: 13 },
                 axe: { common: 3, uncommon: 4, rare: 5, legendary: 7 }
@@ -1612,10 +1749,15 @@ export class InventorySystem {
             return {
                 type: 'weapon',
                 name: `${rarityName} ${weaponName}`,
+                weaponType: weaponType,
                 damage: weaponData.damage,
                 rarity: targetRarity,
                 sprite: weaponData.sprite,
                 special: weaponData.special,
+                range: weaponData.range || 'melee',
+                poisonDamage: weaponData.poisonDamage || 0,
+                poisonTurns: weaponData.poisonTurns || 0,
+                poisonStackable: weaponData.poisonStackable || false,
                 durability: maxDurability,
                 maxDurability: maxDurability
             };
@@ -1626,8 +1768,7 @@ export class InventorySystem {
     }
     
     forceArmorTypeAndRarity(generatedCard, originalCard, targetRarity) {
-        // Extract armor type from original card name  
-        const armorType = this.getArmorTypeFromName(originalCard.name);
+        const armorType = this.getArmorTypeFromCard(originalCard);
         const cardGenerator = this.scene.cardSystem.cardDataGenerator;
         
         if (cardGenerator.armorUnlocks[armorType] && cardGenerator.armorUnlocks[armorType][targetRarity]) {
@@ -1641,6 +1782,7 @@ export class InventorySystem {
             return {
                 type: 'armor',
                 name: `${rarityName} ${armorName} Armor`,
+                armorType: armorType,
                 protection: armorData.protection,
                 dodgeChance: armorData.dodgeChance,
                 rarity: targetRarity,
@@ -1655,20 +1797,11 @@ export class InventorySystem {
     }
     
     getWeaponTypeFromName(name) {
-        const lowercaseName = name.toLowerCase();
-        if (lowercaseName.includes('dagger')) return 'dagger';
-        if (lowercaseName.includes('spear')) return 'spear';
-        if (lowercaseName.includes('sword')) return 'sword';
-        if (lowercaseName.includes('axe')) return 'axe';
-        return 'sword'; // default
+        return this.getWeaponTypeFromCard({ name });
     }
     
     getArmorTypeFromName(name) {
-        const lowercaseName = name.toLowerCase();
-        if (lowercaseName.includes('leather')) return 'leather';
-        if (lowercaseName.includes('chain')) return 'chain';
-        if (lowercaseName.includes('plate')) return 'plate';
-        return 'leather'; // default
+        return this.getArmorTypeFromCard({ name });
     }
 
     removeCard(slotIndex, destroySprite = true) {
@@ -1706,6 +1839,7 @@ export class InventorySystem {
         }
         
         this.slots[slotIndex] = null;
+        this.syncGameStateInventory();
         this.updateTwinkleEffects();
     }
     
@@ -1718,19 +1852,14 @@ export class InventorySystem {
             }
         });
         
-        // Find items that can be merged and apply twinkle animation
-        const counts = {};
-        this.slots.forEach(card => {
-            if (card && card.type !== 'magic') { // Magic cards cannot be merged
-                const key = `${card.name}|${card.rarity}`;
-                counts[key] = (counts[key] || 0) + 1;
-            }
-        });
-        
+        // Find items that can be merged and apply twinkle animation.
         this.slots.forEach((card, index) => {
             if (card && card.type !== 'magic') {
-                const key = `${card.name}|${card.rarity}`;
-                if (counts[key] >= 2) {
+                const hasMatch = this.slots.some((otherCard, otherIndex) => (
+                    otherIndex !== index && this.canCardsMerge(card, otherCard, false)
+                ));
+
+                if (hasMatch) {
                     const cardSprite = this.slotSprites[index].card;
                     if (cardSprite && cardSprite.scene) {
                         // Create twinkle sprite at the same position as the card

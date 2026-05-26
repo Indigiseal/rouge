@@ -1,23 +1,5 @@
 // SaveManager.js - Complete fixed version
 
-const PERSISTENCE_ENABLED = false; // memory-only mode
-const memoryStore = {};
-
-function mget(key) {
-  return Object.prototype.hasOwnProperty.call(memoryStore, key)
-    ? memoryStore[key]
-    : null;
-}
-
-function mset(key, value) {
-  memoryStore[key] = value;
-  return true;
-}
-
-function mdel(key) {
-  delete memoryStore[key];
-}
-
 export class SaveManager {
   constructor() {
     this.META_SAVE_KEY = 'metaProgression';
@@ -34,24 +16,14 @@ export class SaveManager {
 
   // localStorage guards (quota/private mode/etc.)
   safeSet(key, value) {
-    if (!PERSISTENCE_ENABLED) {
-      return mset(key, value);
-    }
     try { localStorage.setItem(key, value); return true; }
     catch (e) { console.warn('Storage set failed', e); return false; }
   }
   safeGet(key) {
-    if (!PERSISTENCE_ENABLED) {
-      return mget(key);
-    }
     try { return localStorage.getItem(key); }
     catch (e) { console.warn('Storage get failed', e); return null; }
   }
   safeRemove(key) {
-    if (!PERSISTENCE_ENABLED) {
-      mdel(key);
-      return;
-    }
     try { localStorage.removeItem(key); }
     catch (e) { console.warn('Storage remove failed', e); }
   }
@@ -131,6 +103,7 @@ export class SaveManager {
         bottomlessBagApplied: gameState?.bottomlessBagApplied ?? false,
       },
       equipment: {
+        equippedWeapon: gameState?.equippedWeapon ?? null,
         equippedArmor: gameState?.equippedArmor ?? null,
         inventory: inventorySystem ? this.serializeInventory(inventorySystem.slots) : [],
       },
@@ -156,11 +129,6 @@ export class SaveManager {
       board: {
         cards: cardSystem ? this.serializeBoardCards(cardSystem.boardCards) : [],
         enemiesCleared: false,
-      },
-      room: {
-        type: gameState?.roomType ?? 'COMBAT',
-        initialized: gameState?.roomInitialized ?? false,
-        activeId: gameState?.activeRoomId ?? 0,
       },
       savedAt: Date.now(),
       saveVersion: this.SAVE_VERSION,
@@ -199,6 +167,7 @@ export class SaveManager {
           bottomlessBagApplied: parsed.player?.bottomlessBagApplied ?? false,
         },
         equipment: {
+          equippedWeapon: parsed.equipment?.equippedWeapon ?? null,
           equippedArmor: parsed.equipment?.equippedArmor ?? null,
           inventory: Array.isArray(parsed.equipment?.inventory) ? parsed.equipment.inventory : [],
         },
@@ -222,11 +191,6 @@ export class SaveManager {
         board: {
           cards: Array.isArray(parsed.board?.cards) ? parsed.board.cards : [],
           enemiesCleared: parsed.board?.enemiesCleared ?? false,
-        },
-        room: {
-          type: parsed.room?.type ?? 'COMBAT',
-          initialized: parsed.room?.initialized ?? false,
-          activeId: Number.isFinite(parsed.room?.activeId) ? parsed.room.activeId : 0,
         },
         savedAt,
         saveVersion: parsed.saveVersion ?? this.SAVE_VERSION,
@@ -262,14 +226,6 @@ export class SaveManager {
             : null,
         };
       });
-    }
-
-    if (!run.room || typeof run.room !== 'object') {
-      run.room = { type: 'COMBAT', initialized: false, activeId: 0 };
-    } else {
-      run.room.type = run.room.type ?? 'COMBAT';
-      run.room.initialized = !!run.room.initialized;
-      run.room.activeId = Number.isFinite(run.room.activeId) ? run.room.activeId : 0;
     }
     return run;
   }
