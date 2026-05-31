@@ -414,7 +414,27 @@ export class PreloadScene extends Phaser.Scene {
 
             const nativeSetText = bitmapText.setText.bind(bitmapText);
             bitmapText.setText = (nextText = '') => {
-                nativeSetText(String(nextText ?? ''));
+                const value = String(nextText ?? '');
+                // Phaser's BitmapText.setText reaches into this.fontData.chars
+                // during getTextBounds. If the bitmap font isn't (or is no
+                // longer) loaded — e.g. scene was destroyed, or the chosen
+                // font doesn't cover every char in `value` — that lookup
+                // crashes. Re-check the font is still live and supports the
+                // text; if not, no-op rather than throwing.
+                const fontOk = !!bitmapText.fontData?.chars
+                    && fontSupportsText(scene, fontKey, value);
+                if (!fontOk) {
+                    // Still update the underlying text property so reads see
+                    // the latest string, but don't trigger Phaser's bounds
+                    // recompute that would crash.
+                    try { bitmapText.text = value; } catch (_) {}
+                    return bitmapText;
+                }
+                try {
+                    nativeSetText(value);
+                } catch (err) {
+                    console.warn('BitmapText setText failed; ignoring', err);
+                }
                 return bitmapText;
             };
             bitmapText.setStyle = (nextStyle = {}) => applyStyle(nextStyle);

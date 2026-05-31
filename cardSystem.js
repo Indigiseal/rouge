@@ -2444,6 +2444,13 @@ export class CardSystem {
             targetRarity
         );
     }
+
+    // Delegate to CardDataGenerator so reward scenes (RareShop, Treasure, etc.)
+    // can call this on a CardSystem instance the same way they call
+    // createCardData.
+    capRewardRarity(rarity, floor) {
+        return this.cardDataGenerator.capRewardRarity(rarity, floor);
+    }
     
     // No longer need the createEnemyWithPreferredRole call.
     mimicTreasureExplosion(x, y) {
