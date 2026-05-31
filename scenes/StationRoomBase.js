@@ -5,6 +5,7 @@
 
 import { CardSystem } from '../cardSystem.js';
 import { SoundHelper } from '../utils/SoundHelper.js';
+import { showItemTooltip, hideItemTooltip } from '../utils/ItemTooltip.js';
 
 export class StationRoomBase extends Phaser.Scene {
     // ─── Inventory station mode ──────────────────────────────────────────────
@@ -159,125 +160,20 @@ export class StationRoomBase extends Phaser.Scene {
     }
 
     // ─── Item tooltip (hover info) ───────────────────────────────────────────
-    // Builds a one-instance tooltip that appears above the hovered card. Used
-    // for amulets (pulls description from AmuletManager) as well as weapons,
-    // armor, magic and gems so the player can read what they're buying
-    // without clicking through.
+    // Thin wrappers so legacy in-scene calls keep working; the actual render
+    // lives in utils/ItemTooltip.js, shared with the gaming board.
     showItemTooltip(data, cardX, cardY) {
-        if (!data) return;
-        this.hideItemTooltip();
-
-        const lines = this.getTooltipLines(data);
-        if (!lines.name && !lines.body) return;
-
-        const padX = 6;
-        const padY = 5;
-        const maxWidth = 200;
-
-        const nameColor = data.type === 'amulet' && data.rarity === 'cursed'
-            ? '#ff8888'
-            : this.getTooltipRarityFill(data.rarity);
-
-        const nameText = this.add.text(0, 0, lines.name, {
-            fontSize: '11px',
-            fill: nameColor,
-            fontFamily: '"HoMM Pixel"',
-            wordWrap: { width: maxWidth },
-            align: 'center',
-        }).setOrigin(0.5, 0);
-
-        const bodyText = lines.body
-            ? this.add.text(0, nameText.height + 3, lines.body, {
-                fontSize: '10px',
-                fill: '#dddddd',
-                fontFamily: '"HoMM Pixel"',
-                wordWrap: { width: maxWidth },
-                align: 'center',
-                lineSpacing: 2,
-            }).setOrigin(0.5, 0)
-            : null;
-
-        const contentWidth = Math.max(nameText.width, bodyText?.width ?? 0);
-        const contentHeight = nameText.height + (bodyText ? bodyText.height + 3 : 0);
-        const boxWidth = Math.min(maxWidth, contentWidth) + padX * 2;
-        const boxHeight = contentHeight + padY * 2;
-
-        const bg = this.add.rectangle(0, 0, boxWidth, boxHeight, 0x1a120a, 0.95)
-            .setStrokeStyle(1, 0xb89968)
-            .setOrigin(0.5, 0);
-
-        // Position: prefer above the card; if it would clip the top of the
-        // viewport, flip it below.
-        let tipY = cardY - 60 - boxHeight;
-        if (tipY < 4) tipY = cardY + 60;
-        const tipX = Phaser.Math.Clamp(
-            cardX,
-            boxWidth / 2 + 4,
-            640 - boxWidth / 2 - 4
-        );
-
-        const children = [bg, nameText];
-        if (bodyText) children.push(bodyText);
-
-        this.itemTooltip = this.add.container(tipX, tipY, children).setDepth(2000);
+        // Amulet descriptions live on the game scene's AmuletManager; expose
+        // it via this.amuletManager so the util can find them without
+        // hard-coding a lookup through gameScene.
+        if (!this.amuletManager && this.gameScene?.amuletManager) {
+            this.amuletManager = this.gameScene.amuletManager;
+        }
+        showItemTooltip(this, data, cardX, cardY);
     }
 
     hideItemTooltip() {
-        if (this.itemTooltip) {
-            this.itemTooltip.destroy(true);
-            this.itemTooltip = null;
-        }
-    }
-
-    // Decide the name + body text shown in the tooltip for any item type the
-    // shop / chest / reward rooms can show.
-    getTooltipLines(data) {
-        const name = data.name || this.capitalize?.(data.type) || 'Item';
-        let body = '';
-
-        if (data.type === 'amulet') {
-            // Amulet descriptions live in AmuletManager (the runtime owner of
-            // the effect callbacks), not on the card data itself.
-            const def = this.gameScene?.amuletManager?.amuletDefinitions?.[data.id];
-            body = def?.description || data.description || '';
-            if (data.rarity) body = `${this.capitalize?.(data.rarity) || data.rarity}\n${body}`.trim();
-        } else if (data.type === 'weapon') {
-            const dmg = data.damage ?? 0;
-            const dur = data.durability ?? data.maxDurability ?? 0;
-            const kind = this.boardHelper?.isRangedWeapon?.(data) ? 'Ranged'
-                : this.boardHelper?.isMeleeWeapon?.(data) ? 'Melee' : 'Weapon';
-            body = `${data.rarity ? this.capitalize?.(data.rarity) + ' ' : ''}${kind}\n${dmg} DMG  •  ${dur} DUR`;
-        } else if (data.type === 'armor') {
-            const def = data.protection ?? 0;
-            const dur = data.durability ?? data.maxDurability ?? 0;
-            body = `${data.rarity ? this.capitalize?.(data.rarity) + ' Armor' : 'Armor'}\n${def} DEF  •  ${dur} DUR`;
-        } else if (data.type === 'potion') {
-            body = `Heals ${data.healAmount ?? 0} HP`;
-        } else if (data.type === 'food') {
-            body = `Restores ${data.actionAmount ?? 0} AP`;
-        } else if (data.type === 'magic') {
-            body = data.description || 'Magic spell';
-        } else if (data.type === 'gem') {
-            const effect = data.effect ? this.capitalize?.(data.effect) : 'Gem';
-            body = `Socket: ${effect}`;
-        } else if (data.type === 'thorns') {
-            body = `${data.thornDamage ?? 0} Thorn DMG  •  ${data.durability ?? 0} DUR`;
-        } else if (data.description) {
-            body = data.description;
-        }
-
-        return { name, body };
-    }
-
-    getTooltipRarityFill(rarity) {
-        switch (rarity) {
-            case 'uncommon':  return '#66dd66';
-            case 'rare':      return '#66aaff';
-            case 'epic':      return '#cc88ff';
-            case 'legendary': return '#ffcc33';
-            case 'cursed':    return '#ff6666';
-            default:          return '#ffffff';
-        }
+        hideItemTooltip(this);
     }
 
     setShopBoardVisible(visible) {

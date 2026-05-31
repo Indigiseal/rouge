@@ -1,6 +1,7 @@
 //cardSystem
 import { CardDataGenerator } from './CardDataGenerator.js';
 import { SoundHelper } from './utils/SoundHelper.js';
+import { showItemTooltip, hideItemTooltip } from './utils/ItemTooltip.js';
 
 export class CardSystem {
     constructor(scene) {
@@ -832,10 +833,13 @@ export class CardSystem {
             cardSprite.on('pointerdown', () => this.takeRewardCard(myIndex));
             cardSprite.on('pointerover', () => {
                 this.scene.tweens.add({ targets: cardSprite, y: cardY - 5, duration: 150 });
+                showItemTooltip(this.scene, item, cardSprite.x, cardSprite.y);
             });
             cardSprite.on('pointerout', () => {
                 this.scene.tweens.add({ targets: cardSprite, y: cardY, duration: 150 });
+                hideItemTooltip(this.scene);
             });
+            cardSprite.once('destroy', () => hideItemTooltip(this.scene));
 
             // Drop-in animation from above the chest
             cardSprite.setAlpha(0);
@@ -938,6 +942,8 @@ export class CardSystem {
         card.revealed = true;
 
         this.createCardInfoText(card);
+        // Same hover tooltip the normal reveal path attaches.
+        this._attachBoardItemTooltip(card);
         // Gems and relics/amulets aren't cards — hide the inherited rectangular shadow
         if (newData.type === 'gem' || newData.type === 'amulet' || newData.type === 'relic') {
             if (card.shadow) card.shadow.setAlpha(0);
@@ -1244,6 +1250,12 @@ export class CardSystem {
             this.createCardInfoText(card);
             card.sprite.setInteractive();
             card.sprite.on('pointerdown', () => this.interactWithCard(index));
+            // Hover tooltip for board items — same renderer the shop / chest
+            // rooms use. Skipped for things that already self-describe (enemies
+            // show HP/ATK text; coins/crystals are obvious) or have nothing
+            // useful to read (traps shouldn't be spoiled, empty cards are
+            // literally nothing).
+            this._attachBoardItemTooltip(card);
             if (card.data.type === 'gem') {
                 this.attachGemShadow(card);
                 this.enableGemDrag(card, index);
@@ -1748,6 +1760,35 @@ export class CardSystem {
         }
 
         return false;
+    }
+
+    // Hover info for revealed item cards on the gaming board. Uses the same
+    // tooltip renderer as the shop / chest / reward rooms (utils/ItemTooltip).
+    // Tooltip skips card types that already show their info or that we don't
+    // want to spoil.
+    _attachBoardItemTooltip(card) {
+        if (!card?.sprite || !card.data) return;
+        const t = card.data.type;
+        const tooltipped = new Set([
+            'weapon', 'armor', 'amulet', 'gem', 'potion',
+            'food', 'magic', 'thorns', 'key'
+        ]);
+        if (!tooltipped.has(t)) return;
+
+        const sprite = card.sprite;
+        const data = card.data;
+        const scene = this.scene;
+
+        sprite.on('pointerover', () => {
+            // Re-derive position each time — gems/animations can shift y.
+            showItemTooltip(scene, data, sprite.x, sprite.y);
+        });
+        sprite.on('pointerout', () => {
+            hideItemTooltip(scene);
+        });
+        // Belt-and-suspenders: if the card is destroyed mid-hover, kill any
+        // lingering tooltip so it doesn't stick on screen.
+        sprite.once('destroy', () => hideItemTooltip(scene));
     }
 
     removeCard(index) {
