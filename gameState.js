@@ -173,6 +173,22 @@ export class GameState {
             // Cancel all damage this turn
             return { actualDamage: 0, tookDamage: false };
         }
+
+        // Second Wind relic — survive one lethal hit per run at 1 HP.
+        if (wouldKill && this.relicEffects?.reviveOncePerRun && !this.secondWindUsed) {
+            this.secondWindUsed = true;
+            this.playerHealth = 1;
+            if (this.scene?.createFloatingText && this.scene.playerAvatar) {
+                this.scene.createFloatingText(
+                    this.scene.playerAvatar.x,
+                    this.scene.playerAvatar.y,
+                    'SECOND WIND!',
+                    0xffd700
+                );
+            }
+            if (this.scene && typeof this.scene.updateUI === 'function') this.scene.updateUI();
+            return { actualDamage: 0, tookDamage: false };
+        }
         
         this.playerHealth = Math.max(0, this.playerHealth - actualDamage);
         const tookDamage = actualDamage > 0;

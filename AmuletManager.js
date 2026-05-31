@@ -626,6 +626,9 @@ export class AmuletManager {
                 rate *= definition.weaponDurabilityRate;
             }
         });
+        // Giant's Grip relic also slows durability loss.
+        const relicRate = this.gameState.relicEffects?.weaponDurabilityRate;
+        if (relicRate) rate *= relicRate;
         return rate;
     }
     

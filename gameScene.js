@@ -1680,6 +1680,7 @@ export class GameScene extends Phaser.Scene {
         this.gameState.boneWall = runData.effects.boneWall;
         this.gameState.mirrorShield = runData.effects.mirrorShield;
         this.gameState.blockNextAttack = runData.effects.blockNextAttack;
+        this.gameState.secondWindUsed = runData.effects.secondWindUsed ?? false;
         // Damage tracking
         this.gameState.damageTracking = runData.damageTracking;
         // Story consequence state

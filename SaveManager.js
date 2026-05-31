@@ -122,6 +122,7 @@ export class SaveManager {
         boneWall: gameState?.boneWall ?? 0,
         mirrorShield: gameState?.mirrorShield ?? false,
         blockNextAttack: gameState?.blockNextAttack ?? false,
+        secondWindUsed: gameState?.secondWindUsed ?? false,
       },
       // Add damage tracking for death stats
       damageTracking: gameState?.damageTracking ?? {
@@ -194,6 +195,7 @@ export class SaveManager {
           boneWall: parsed.effects?.boneWall ?? 0,
           mirrorShield: parsed.effects?.mirrorShield ?? false,
           blockNextAttack: parsed.effects?.blockNextAttack ?? false,
+          secondWindUsed: parsed.effects?.secondWindUsed ?? false,
         },
         damageTracking: parsed.damageTracking ?? {
           totalDamageTaken: 0,

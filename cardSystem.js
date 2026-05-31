@@ -539,7 +539,7 @@ export class CardSystem {
         this.scene.gameState.playerHealth = Math.min(this.scene.gameState.maxHealth, before + heal);
         const gained = this.scene.gameState.playerHealth - before;
         if (gained > 0 && this.scene.playerAvatar) {
-          this.scene.createFloatingText?.(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${gained} HP (Pact)`, 0x66ff99);
+          this.scene.createFloatingText?.(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${gained} HP (Gravekeeper)`, 0x66ff99);
         }
         this.scene.updateUI?.();
       }
@@ -2129,7 +2129,7 @@ export class CardSystem {
             && !this.scene.gameState.firstAttackThisFloorUsed) {
             finalDamage *= 2;
             this.scene.gameState.firstAttackThisFloorUsed = true;
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'LUCKY STRIKE!', 0xffaa00);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'EXECUTE!', 0xffaa00);
         }
         
         // Evasion doesn't work against reflection damage
@@ -2383,7 +2383,7 @@ export class CardSystem {
                 this.scene.createFloatingText(
                     this.scene.playerAvatar.x,
                     this.scene.playerAvatar.y,
-                    `+${relicLifesteal} HP (Lich)`,
+                    `+${relicLifesteal} HP (Lifesteal)`,
                     0x9932cc
                 );
             }
