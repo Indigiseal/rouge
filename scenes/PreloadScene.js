@@ -67,6 +67,7 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('thornsCard', 'assets/thornsCard.png');
         this.load.image('thornsCard_U', 'assets/thornsCard_U.png');
         this.load.image('thornsCard_R', 'assets/thornsCard_R.png');
+        this.load.image('thornsCard_E', 'assets/thornsCard_E.png');
         this.load.spritesheet('mapNodes', 'assets/mapNodes42x42.png', { frameWidth: 42, frameHeight: 42 });
         this.load.spritesheet('gemsRGY', 'assets/gemsRGY-Sheet.png', { frameWidth: 16, frameHeight: 16 });
         // Enemy role marker: frame 0 = melee, frame 1 = ranged

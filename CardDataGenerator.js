@@ -1379,11 +1379,16 @@ export class CardDataGenerator {
 
     createThornsCard(floor, targetRarity = null) {
         const rarity = targetRarity || 'common';
-        const thornsSprite = rarity === 'rare' || rarity === 'epic' || rarity === 'legendary'
-            ? 'thornsCard_R'
-            : rarity === 'uncommon'
-                ? 'thornsCard_U'
-                : 'thornsCard';
+        // Per-rarity art. No legendary asset yet, so legendary borrows the
+        // epic sprite (closest tier visually).
+        const thornsSpriteByRarity = {
+            common:    'thornsCard',
+            uncommon:  'thornsCard_U',
+            rare:      'thornsCard_R',
+            epic:      'thornsCard_E',
+            legendary: 'thornsCard_E',
+        };
+        const thornsSprite = thornsSpriteByRarity[rarity] || 'thornsCard';
         const tiers = {
             common:    { thornDamage: 1, durability: 6,  cost: 8 },
             uncommon:  { thornDamage: 2, durability: 7,  cost: 12 },
