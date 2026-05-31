@@ -241,6 +241,12 @@ export class TreasureScene extends StationRoomBase {
       duration: 250,
       ease: 'Back.Out'
     });
+
+    // Hover tooltip for the chest reward (same shared tooltip the shop uses).
+    // The card's bg rect is the hit target; container itself has no input area.
+    bg.setInteractive({ useHandCursor: false });
+    bg.on('pointerover', () => this.showItemTooltip(item, x, y - 8));
+    bg.on('pointerout', () => this.hideItemTooltip());
   }
 
   getRewardStats(item) {
