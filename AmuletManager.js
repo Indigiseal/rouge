@@ -8,11 +8,12 @@ export class AmuletManager {
             // REGULAR AMULETS
             regeneration: {
                 name: 'Amulet of Regeneration',
-                description: 'Restores 5 HP at end of each floor',
+                description: 'Restores 1 HP per stack at end of each floor',
                 rarity: 'uncommon',
-                sprite: 'amulet',
+                sprite: 'relicsOthers',
+                spriteFrame: 2,
                 stackable: true,
-                maxLevel: 2,
+                maxLevel: Infinity,
                 onFloorEnd: (level) => {
                     const healAmount = level;
                     this.gameState.playerHealth = Math.min(
@@ -32,7 +33,8 @@ export class AmuletManager {
                 name: 'Healing Ring',
                 description: 'Potions heal 20% more',
                 rarity: 'uncommon',
-                sprite: 'Healing Ring',
+                sprite: 'relicsOthers',
+                spriteFrame: 3,
                 modifyPotionHealing: (amount) => Math.floor(amount * 1.2)
             },
             
@@ -92,19 +94,12 @@ export class AmuletManager {
                 }
             },
             
-            goldenHammer: {
-                name: 'Golden Hammer',
-                description: 'Merge different tier items',
-                rarity: 'legendary',
-                sprite: 'amulet_hammer',
-                allowCrossTierMerge: true
-            },
-            
             chronosHeart: {
                 name: 'Chronos Heart',
                 description: '+3 max action points',
                 rarity: 'uncommon',
-                sprite: 'amulet_chronos',
+                sprite: 'relicsOthers',
+                spriteFrame: 4,
                 onEquip: function() {
                     this.gameState.maxActions += 3;
                 }
@@ -151,12 +146,12 @@ export class AmuletManager {
                 rarity: 'uncommon',
                 sprite: 'Bottomless Bag',
                 onEquip: function() {
-                    // Set bonus slots in game state
-                    this.gameState.bonusInventorySlots = (this.gameState.bonusInventorySlots || 0) + 2;
-                    
-                    // Update the inventory system to show the new slots
+                    // expandInventory grows the slots array AND bumps
+                    // bonusInventorySlots, so don't increment it again here.
                     if (this.scene.inventorySystem) {
                         this.scene.inventorySystem.expandInventory(2);
+                    } else {
+                        this.gameState.bonusInventorySlots = (this.gameState.bonusInventorySlots || 0) + 2;
                     }
                 }
             },
@@ -199,10 +194,11 @@ export class AmuletManager {
             },
             
             bloodyHarvest: {
-                name: 'Ring of the Bloody Harvest',
+                name: 'Rune of Balance',
                 description: '+3 HP per kill, -30% max health',
                 rarity: 'cursed',
-                sprite: 'amulet_blood',
+                sprite: 'relicsOthers',
+                spriteFrame: 5,
                 cursed: true,
                 onEquip: function() {
                     this.gameState.maxHealth = Math.floor(this.gameState.maxHealth * 0.7);
@@ -250,7 +246,8 @@ export class AmuletManager {
                 name: 'Soul Harvester',
                 description: 'Heal 1 HP per kill, +3 AP every 3 kills',
                 rarity: 'rare',
-                sprite: 'amulet_soul',
+                sprite: 'relicsOthers',
+                spriteFrame: 6,
                 killCount: 0,
                 onEnemyKill: () => {
                     // Heal 1 HP
@@ -312,6 +309,157 @@ export class AmuletManager {
                     return healthPercent < 0.5 ? Math.floor(damage * 1.5) : damage;
                 },
                 maxHealthCap: 0.5 // Can't heal above 50%
+            },
+
+            // ─── relicsOthers row 1 (frames 7-11) ──────────────────────────
+            diviners_spade: {
+                name: "Diviner's Spade",
+                description: '+5 max action points',
+                rarity: 'uncommon',
+                sprite: 'relicsOthers',
+                spriteFrame: 7,
+                onEquip: function() {
+                    // Permanent +5 AP: raises both the cap and the current pool so
+                    // the player feels the boost immediately on pickup.
+                    this.gameState.maxActions = (this.gameState.maxActions || 0) + 5;
+                    this.gameState.actionsLeft = (this.gameState.actionsLeft || 0) + 5;
+                    this.scene.updateActionPointUI?.();
+                    this.scene.updateUI?.();
+                }
+            },
+
+            wayfinder: {
+                name: 'Wayfinder',
+                description: 'Reveals one extra non-enemy card at the start of each floor',
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 8,
+                extraStartNonEnemyReveals: 1
+            },
+
+            skeletonKey: {
+                name: 'Skeleton Key',
+                description: 'Treasure chests open without needing a key card',
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 9,
+                bypassChestKey: true
+            },
+
+            greasewingFeast: {
+                name: "Greasewing's Feast",
+                description: 'One card per floor becomes food (except boss rooms)',
+                rarity: 'uncommon',
+                sprite: 'relicsOthers',
+                spriteFrame: 10,
+                convertOneCardToFood: true
+            },
+
+            sunstone: {
+                name: 'Sunstone',
+                description: '+1 Max HP for every card left behind when the floor clears',
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 11,
+                onFloorEnd: () => {
+                    // Count any card still on the board — revealed or not.
+                    // Reward the player for leaving stuff behind with a PERMANENT
+                    // max-HP boost (current HP rises with it, like Golem's Heart).
+                    const remaining = this.scene.cardSystem?.boardCards?.filter(c => c).length || 0;
+                    if (remaining > 0) {
+                        this.gameState.maxHealth += remaining;
+                        this.gameState.playerHealth += remaining;
+                        this.scene.createFloatingText(
+                            this.scene.playerAvatar.x,
+                            this.scene.playerAvatar.y,
+                            `+${remaining} Max HP (Sunstone)`,
+                            0xffe066
+                        );
+                        // Refresh the HP bar immediately so the boost is visible
+                        // (otherwise it only shows once the next floor renders).
+                        this.scene.updateUI?.();
+                    }
+                }
+            },
+
+            merchantPact: {
+                name: "Merchant's Pact",
+                description: '+1 bonus item slot in shops with better quality',
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 12,
+                bonusShopSlots: 1
+            },
+
+            // ─── relicsOthers row 3 (frames 24-29) ─────────────────────────
+            watchersLamp: {
+                name: "Watcher's Lamp",
+                description: 'Briefly reveals one trap at floor start — memorize it!',
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 24,
+                previewOneTrap: true
+            },
+
+            reapersMask: {
+                name: "Reaper's Mask",
+                description: '15% chance an enemy leaves a random card behind on death',
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 25,
+                deathDropChance: 0.15
+            },
+
+            travelersJournal: {
+                name: "Traveler's Journal",
+                description: '+2 max HP for each unique amulet you carry',
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 26,
+                onEquip: function() {
+                    this.recalculateJournalBonus();
+                }
+            },
+
+            charmingTune: {
+                name: 'Charming Tune',
+                description: 'First melee enemy on each floor skips its first attack',
+                rarity: 'uncommon',
+                sprite: 'relicsOthers',
+                spriteFrame: 27,
+                charmingTune: true
+            },
+
+            wayfarersMap: {
+                name: "Wayfarer's Map",
+                description: '+1 max AP every other floor (max +15)',
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 28,
+                onFloorEnd: () => {
+                    if (!this.gameState.mapBonusAP) this.gameState.mapBonusAP = 0;
+                    if (!this.gameState.mapFloorCount) this.gameState.mapFloorCount = 0;
+                    this.gameState.mapFloorCount++;
+                    if (this.gameState.mapFloorCount % 2 === 0 && this.gameState.mapBonusAP < 15) {
+                        this.gameState.maxActions++;
+                        this.gameState.mapBonusAP++;
+                        this.scene.createFloatingText(
+                            this.scene.playerAvatar.x,
+                            this.scene.playerAvatar.y - 14,
+                            '+1 Max AP (Map)',
+                            0x66ddff
+                        );
+                    }
+                }
+            },
+
+            sirensPendant: {
+                name: "Siren's Pendant",
+                description: '15% chance enemies attack their own kind instead of you',
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 29,
+                charmChance: 0.15
             }
         };
     }
@@ -341,6 +489,7 @@ export class AmuletManager {
             id: amuletId,
             name: definition.name,
             sprite: definition.sprite,
+            spriteFrame: definition.spriteFrame ?? 0,
             level: 1,
             usesLeft: definition.usesPerRun || 0
         };
@@ -369,10 +518,13 @@ export class AmuletManager {
             }
         }
         
+        // Refresh Traveler's Journal bonus after any new amulet
+        this.recalculateJournalBonus();
+
         this.scene.updateUI();
         return true;
     }
-    
+
     // Process end of floor effects
     processFloorEnd() {
         this.gameState.activeAmulets.forEach(amulet => {
@@ -458,9 +610,11 @@ export class AmuletManager {
         });
     }
     
-    // Check if cross-tier merging is allowed
+    // Cross-tier merging was granted by Golden Hammer, which has been removed
+    // for being too powerful. Kept as a stub (always false) so existing callers
+    // in inventorySystem keep working.
     canCrossTierMerge() {
-        return this.hasAmulet('goldenHammer');
+        return false;
     }
     
     // Get weapon durability rate
@@ -501,6 +655,124 @@ export class AmuletManager {
             }
         });
         return amount;
+    }
+
+    // Modify crystal pickup amount (Diviner's Spade)
+    modifyCrystalFound(baseAmount) {
+        let amount = baseAmount;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.modifyCrystalFound) {
+                amount = definition.modifyCrystalFound(amount);
+            }
+        });
+        return amount;
+    }
+
+    // Sum of extraStartNonEnemyReveals from all equipped amulets (Wayfinder)
+    getExtraNonEnemyReveals() {
+        let total = 0;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.extraStartNonEnemyReveals) {
+                total += definition.extraStartNonEnemyReveals;
+            }
+        });
+        return total;
+    }
+
+    // Sum of bonusShopSlots from all equipped amulets (Merchant's Pact)
+    getBonusShopSlots() {
+        let total = 0;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.bonusShopSlots) {
+                total += definition.bonusShopSlots;
+            }
+        });
+        return total;
+    }
+
+    // Combined charm chance — sum from all equipped amulets (Siren's Pendant)
+    getCharmChance() {
+        let chance = 0;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.charmChance) {
+                chance += definition.charmChance;
+            }
+        });
+        return chance;
+    }
+
+    // Combined deathDropChance — Reaper's Mask
+    getDeathDropChance() {
+        let chance = 0;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.deathDropChance) {
+                chance += definition.deathDropChance;
+            }
+        });
+        return chance;
+    }
+
+    // Watcher's Lamp — wants one trap revealed at floor start
+    wantsTrapPreview() {
+        return this.gameState.activeAmulets.some(a =>
+            this.amuletDefinitions[a.id]?.previewOneTrap
+        );
+    }
+
+    // Charming Tune — first melee attack per floor is no-damage
+    hasCharmingTune() {
+        return this.gameState.activeAmulets.some(a =>
+            this.amuletDefinitions[a.id]?.charmingTune
+        );
+    }
+
+    // Traveler's Journal — recompute the max HP bonus based on unique amulets.
+    // Called on every addAmulet so the bonus updates when you grow your collection.
+    recalculateJournalBonus() {
+        const hasJournal = this.hasAmulet('travelersJournal');
+        const prevBonus = this.gameState.journalBonusHP || 0;
+        const newBonus = hasJournal
+            ? new Set(this.gameState.activeAmulets.map(a => a.id)).size * 2
+            : 0;
+        const delta = newBonus - prevBonus;
+        if (delta === 0) return;
+        this.gameState.maxHealth = Math.max(1, this.gameState.maxHealth + delta);
+        if (delta > 0) {
+            this.gameState.playerHealth = Math.min(
+                this.gameState.maxHealth,
+                this.gameState.playerHealth + delta
+            );
+        } else {
+            this.gameState.playerHealth = Math.min(this.gameState.maxHealth, this.gameState.playerHealth);
+        }
+        this.gameState.journalBonusHP = newBonus;
+        if (delta > 0) {
+            this.scene.createFloatingText(
+                this.scene.playerAvatar.x,
+                this.scene.playerAvatar.y - 14,
+                `+${delta} Max HP (Journal)`,
+                0x66ff88
+            );
+        }
+    }
+
+    // True if any equipped amulet lets you open chests without a key
+    canBypassChestKey() {
+        return this.gameState.activeAmulets.some(a =>
+            this.amuletDefinitions[a.id]?.bypassChestKey
+        );
+    }
+
+    // True if any equipped amulet wants one card per floor converted to food
+    wantsFoodCardConversion() {
+        return this.gameState.activeAmulets.some(a =>
+            this.amuletDefinitions[a.id]?.convertOneCardToFood
+        );
     }
     
     // Modify spell healing (for restoration and soul drain)

@@ -19,22 +19,42 @@ export class PreloadScene extends Phaser.Scene {
         
         // Load item sprites
         this.load.image('leather_C', 'assets/leatherCommon.png');
+        this.load.image('leather_U', 'assets/leather_U.png');
+        this.load.image('leather_R', 'assets/leather_R.png');
+        this.load.image('leather_E', 'assets/leather_E.png');
+        this.load.image('leather_L', 'assets/leather_L.png');
         this.load.image('chain_C', 'assets/chain_C.png');
         this.load.image('plate_C', 'assets/plate_C.png');
         this.load.image('boneArmor_U', 'assets/boneArmor_U.png');
-        this.load.image('sword_C', 'assets/sword_c_r.png');
+        this.load.image('sword_C', 'assets/sword_C.png');
         this.load.image('dagger_C', 'assets/dagger_c.png');
-        this.load.image('venomousDagger_C', 'assets/VenomousDagger_C.png');
         this.load.image('axe_C', 'assets/axe_C.png');
         this.load.image('spear_c', 'assets/spear_c.png');
-        // Load Uncommon item sprites
+        // Load Uncommon / Rare / Epic / Legendary item sprites
         this.load.image('axe_U', 'assets/axe_U.png');
+        this.load.image('axe_R', 'assets/axe_R.png');
+        this.load.image('axe_E', 'assets/axe_E.png');
+        this.load.image('axe_L', 'assets/axe_L.png');
         this.load.image('dagger_U', 'assets/dagger_u.png');
-        this.load.image('venomousDagger_U', 'assets/VenomousDagger_U.png');
+        this.load.image('dagger_R', 'assets/dagger_r.png');
+        this.load.image('dagger_E', 'assets/dagger_e.png');
+        this.load.image('dagger_L', 'assets/dagger_l.png');
         this.load.image('spear_u', 'assets/spear_u.png');
+        this.load.image('spear_R', 'assets/spear_R.png');
+        this.load.image('spear_E', 'assets/spear_E.png');
+        this.load.image('spear_L', 'assets/spear_L.png');
         this.load.image('sword_U', 'assets/sword_u.png');
+        this.load.image('sword_R', 'assets/sword_R.png');
+        this.load.image('sword_E', 'assets/sword_E.png');
+        this.load.image('sword_L', 'assets/sword_L.png');
         this.load.image('chain_U', 'assets/chain_U.png');
+        this.load.image('chain_R', 'assets/chain_R.png');
+        this.load.image('chain_E', 'assets/chain_E.png');
+        this.load.image('chain_L', 'assets/chain_L.png');
         this.load.image('plate_U', 'assets/plate_U.png');
+        this.load.image('plate_R', 'assets/plate_R.png');
+        this.load.image('plate_E', 'assets/plate_E.png');
+        this.load.image('plate_L', 'assets/plate_L.png');
         this.load.image('potionCardCommon', 'assets/potionCardCommon.png');
         this.load.image('potionCardUncommon', 'assets/potionCardUncommon.png');
         this.load.image('trap', 'assets/trap.png');
@@ -45,6 +65,15 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('crystalSmall', 'assets/crystalSmall.png');
         this.load.image('trapTriggers', 'assets/trapTriggers.png');
         this.load.image('thornsCard', 'assets/thornsCard.png');
+        this.load.image('thornsCard_U', 'assets/thornsCard_U.png');
+        this.load.image('thornsCard_R', 'assets/thornsCard_R.png');
+        this.load.spritesheet('mapNodes', 'assets/mapNodes42x42.png', { frameWidth: 42, frameHeight: 42 });
+        this.load.spritesheet('gemsRGY', 'assets/gemsRGY-Sheet.png', { frameWidth: 16, frameHeight: 16 });
+        // Enemy role marker: frame 0 = melee, frame 1 = ranged
+        this.load.spritesheet('enemyCardType', 'assets/enemyCardType.png', { frameWidth: 16, frameHeight: 16 });
+        this.load.spritesheet('gemEffectsOnCards', 'assets/gemEffectsOnCards64x80.png', { frameWidth: 64, frameHeight: 80 });
+        this.load.spritesheet('enemiesHitEffects', 'assets/enemiesHitEffects64x80.png', { frameWidth: 64, frameHeight: 80 });
+        this.load.spritesheet('shadowsGems', 'assets/shadowsGems.png', { frameWidth: 16, frameHeight: 20 });
         this.load.audio('sword_swoosh', 'assets/knife-slice-41231.mp3');
         this.load.audio('coin_collect', 'assets/coin-recieved.mp3');
         this.load.audio('player_hurt', 'assets/male_hurt.mp3');
@@ -239,6 +268,21 @@ export class PreloadScene extends Phaser.Scene {
             frameRate: 8,
             repeat: -1
         });
+
+        ['fire', 'poison', 'lightning'].forEach((effect, row) => {
+            this.anims.create({
+                key: `gem_${effect}_sparkle`,
+                frames: this.anims.generateFrameNumbers('gemsRGY', { start: row * 6, end: row * 6 + 5 }),
+                frameRate: 8,
+                repeat: 0
+            });
+            this.anims.create({
+                key: `gem_${effect}_hover`,
+                frames: this.anims.generateFrameNumbers('gemsRGY', { start: row * 6, end: row * 6 + 5 }),
+                frameRate: 8,
+                repeat: -1
+            });
+        });
         
     
         this.anims.create({
@@ -254,6 +298,25 @@ export class PreloadScene extends Phaser.Scene {
             ],
             frameRate: 12, // Adjust speed (10fps)
             repeat: 0 // Play once
+        });
+
+        ['fire', 'poison', 'lightning'].forEach((effect, row) => {
+            this.anims.create({
+                key: `gem_card_${effect}_loop`,
+                frames: this.anims.generateFrameNumbers('gemEffectsOnCards', { start: row * 7, end: row * 7 + 6 }),
+                frameRate: 10,
+                repeat: -1
+            });
+        });
+
+        // Enemy hit effects (64x80, 5 frames/row): fire, poison, lightning. Play once.
+        ['fire', 'poison', 'lightning'].forEach((effect, row) => {
+            this.anims.create({
+                key: `enemy_hit_${effect}`,
+                frames: this.anims.generateFrameNumbers('enemiesHitEffects', { start: row * 5, end: row * 5 + 4 }),
+                frameRate: 14,
+                repeat: 0
+            });
         });
 
         this.anims.create({

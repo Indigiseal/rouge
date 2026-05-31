@@ -1,7 +1,8 @@
 import { CardSystem } from '../cardSystem.js';
 import { SoundHelper } from '../utils/SoundHelper.js';
+import { StationRoomBase } from './StationRoomBase.js';
 
-export class ShopScene extends Phaser.Scene {
+export class ShopScene extends StationRoomBase {
     constructor() {
         super({ key: 'ShopScene' });
     }
@@ -30,12 +31,19 @@ export class ShopScene extends Phaser.Scene {
             fontFamily: '"HoMM Pixel"' 
         }).setOrigin(0.5);
         
-        this.crystalsText = this.add.text(370, 45, `Crystals: ${this.gameState.crystals}`, { 
-            fontSize: '16px', 
-            fill: '#00ffff', 
-            fontFamily: '"HoMM Pixel"' 
+        this.crystalsText = this.add.text(370, 45, `Crystals: ${this.gameState.crystals}`, {
+            fontSize: '16px',
+            fill: '#00ffff',
+            fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
-        
+
+        const _shopAct = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
+        this.add.text(580, 12, `Act ${_shopAct}  Floor ${this.gameState.currentFloor}`, {
+            fontSize: '11px',
+            fill: '#a78f70',
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5);
+
         // Mode toggle button
         this.modeButton = this.add.text(480, 45, 'Sell Items', {
             fontSize: '14px',
@@ -62,35 +70,12 @@ export class ShopScene extends Phaser.Scene {
             fontFamily: '"HoMM Pixel"' 
         })
         .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => {
-            this.closeShop();
-            return;
-            // NO nextFloor() here—map already did it
-            this.scene.stop(); // Close shop
-            this.scene.wake('MapViewScene'); // Back to map
-            console.log('Woke MapViewScene after shop');
-        });
+        .on('pointerdown', () => this.closeStation());
         continueButton.setOrigin(0.5);
     }
 
-    enableShopStation() {
-        if (!this.gameScene?.inventorySystem) return;
-        this.scene.wake('GameScene', { shopStation: true });
-        this.gameScene.inventorySystem.setStationMode(true);
-        this.gameScene.inventorySystem.setVisibility(true);
-    }
+    // enableShopStation / closeStation now live on StationRoomBase
 
-    closeShop() {
-        if (this.gameScene?.inventorySystem) {
-            this.gameScene.inventorySystem.setStationMode(false);
-            this.gameScene.inventorySystem.setVisibility(false);
-            this.scene.sleep('GameScene');
-        }
-        this.scene.stop();
-        this.scene.wake('MapViewScene');
-        console.log('Woke MapViewScene after shop');
-    }
-    
     // Helper method to get current inventory
     getCurrentInventory() {
         if (this.gameScene && this.gameScene.inventorySystem) {
@@ -126,38 +111,26 @@ export class ShopScene extends Phaser.Scene {
         // Slot 1: Healing Potion (guaranteed)
         const potionData = cardGenerator.createCardData('potion', floor);
         if (potionData) {
-            this.shopItems.push({ 
-                data: potionData, 
-                price: potionData.cost || this.calculateItemPrice(potionData),
+            this.shopItems.push({
+                data: potionData,
+                price: this.calculateItemPrice(potionData),
                 currency: 'coins',
                 purchased: false 
             });
         }
         
-        // Slot 2: Food (guaranteed)
-        const foodData = cardGenerator.createCardData('food', floor);
-        if (foodData) {
-            this.shopItems.push({ 
-                data: foodData, 
-                price: foodData.cost || this.calculateItemPrice(foodData),
+        // Slot 2: Regular weapon (guaranteed)
+        const weaponData = cardGenerator.createCardData('weapon', floor);
+        if (weaponData) {
+            this.shopItems.push({
+                data: weaponData,
+                price: this.calculateItemPrice(weaponData),
                 currency: 'coins',
                 purchased: false 
             });
         }
         
-        // Slot 3: Venomous Dagger (guaranteed)
-        const venomousDagger = this.createVenomousDagger(floor);
-        if (venomousDagger) {
-            const weaponPrice = this.calculateItemPrice(venomousDagger);
-            this.shopItems.push({ 
-                data: venomousDagger,
-                price: weaponPrice,
-                currency: 'coins',
-                purchased: false 
-            });
-        }
-        
-        // Slot 4: Armor (guaranteed) - FIXED to use CardDataGenerator
+        // Slot 3: Armor (guaranteed) - FIXED to use CardDataGenerator
         const armorData = cardGenerator.createCardData('armor', floor);
         if (armorData) {
             const armorPrice = this.calculateItemPrice(armorData);
@@ -168,7 +141,7 @@ export class ShopScene extends Phaser.Scene {
                 purchased: false 
             });
         }
-        
+
         // Slot 5: Thorns Card (guaranteed)
         const thornsData = cardGenerator.createCardData('thorns', floor);
         if (thornsData) {
@@ -184,7 +157,7 @@ export class ShopScene extends Phaser.Scene {
         // Slot 6: Magic Spell (guaranteed)
         const magicData = cardGenerator.createCardData('magic', floor);
         if (magicData) {
-            const magicPrice = magicData.cost || this.calculateItemPrice(magicData);
+            const magicPrice = this.calculateItemPrice(magicData);
             this.shopItems.push({ 
                 data: magicData, 
                 price: magicPrice,
@@ -193,14 +166,14 @@ export class ShopScene extends Phaser.Scene {
             });
         }
         
-        // Slot 7: Random duplicate from available types (NO AMULETS HERE)
-        const duplicateTypes = ['weapon', 'armor', 'magic', 'potion', 'food', 'thorns'];
+        // Slot 7: Random duplicate from available types (weighted toward weapons)
+        const duplicateTypes = ['weapon', 'weapon', 'weapon', 'magic', 'potion', 'thorns', 'armor', 'food'];
         for (let i = 0; i < 1; i++) {
             const randomType = duplicateTypes[Math.floor(Math.random() * duplicateTypes.length)];
             const itemData = cardGenerator.createCardData(randomType, floor);
             
             if (itemData) {
-                const itemPrice = itemData.cost || this.calculateItemPrice(itemData);
+                const itemPrice = this.calculateItemPrice(itemData);
                 this.shopItems.push({ 
                     data: itemData, 
                     price: itemPrice,
@@ -211,41 +184,45 @@ export class ShopScene extends Phaser.Scene {
         }
         
         // Slot 8: Amulet (costs CRYSTALS)
-        const amuletData = cardGenerator.createCardData('amulet', floor);
+        const amuletData = cardGenerator.createCardData('amulet', floor, false, this.gameState);
         if (amuletData) {
             // Amulets cost crystals, price based on rarity
             const crystalPrice = this.calculateAmuletCrystalPrice(amuletData);
-            this.shopItems.push({ 
-                data: amuletData, 
+            this.shopItems.push({
+                data: amuletData,
                 price: crystalPrice,
                 currency: 'crystals', // IMPORTANT: Amulets use crystals
-                purchased: false 
+                purchased: false
             });
+        }
+
+        // Bonus slots from Merchant's Pact — one higher-quality item per amulet stack
+        const bonusSlots = this.gameScene?.amuletManager?.getBonusShopSlots?.() || 0;
+        for (let i = 0; i < bonusSlots; i++) {
+            const bonusItem = this.createMerchantBonusItem(cardGenerator, floor);
+            if (bonusItem) this.shopItems.push(bonusItem);
         }
     }
 
-    createVenomousDagger(floor) {
-        const cardGenerator = new CardSystem(this);
-        const unlocks = cardGenerator.cardDataGenerator.weaponUnlocks.venomousDagger;
-        const rarity = floor >= unlocks.uncommon.floor ? 'uncommon' : 'common';
-        const data = unlocks[rarity];
-        return {
-            type: 'weapon',
-            name: `${rarity.charAt(0).toUpperCase() + rarity.slice(1)} Venomous Dagger`,
-            weaponType: 'venomousDagger',
-            damage: data.damage,
-            rarity,
-            sprite: data.sprite,
-            special: data.special,
-            range: data.range,
-            poisonDamage: data.poisonDamage,
-            poisonTurns: data.poisonTurns,
-            poisonStackable: data.poisonStackable,
-            durability: 5,
-            maxDurability: 5
-        };
+    // Creates a higher-rarity weapon or armor that appears as the Merchant's Pact
+    // bonus slot. Toned down — epics/legendaries should be scarce, so the
+    // regular shop tops out at epic only very late, rare otherwise.
+    createMerchantBonusItem(cardGenerator, floor) {
+        let quality = floor >= 30 ? 'epic' : floor >= 15 ? 'rare' : 'uncommon';
+        const type = Math.random() < 0.5 ? 'weapon' : 'armor';
+        let item = cardGenerator.createCardData(type, floor, false, null, quality);
+        if (!item) return null;
+        // Axe & plate are act-3 endgame gear: shops may stock them but never at
+        // epic/legendary. Re-roll those types down to rare at most.
+        if ((item.weaponType === 'axe' || item.armorType === 'plate') &&
+            (item.rarity === 'epic' || item.rarity === 'legendary')) {
+            item = cardGenerator.createCardData(type, floor, false, null, 'rare');
+            if (!item) return null;
+        }
+        const price = this.calculateItemPrice(item);
+        return { data: item, price, currency: 'coins', purchased: false };
     }
-    
+
     calculateAmuletCrystalPrice(amulet) {
         // Base crystal price for amulets
         let basePrice = 2;
@@ -274,6 +251,7 @@ export class ShopScene extends Phaser.Scene {
             common: 1,
             uncommon: 1.5,
             rare: 2,
+            epic: 2.5,
             legendary: 3
         };
         
@@ -321,93 +299,14 @@ export class ShopScene extends Phaser.Scene {
     }
     
     displayShopItems() {
-        // Clear existing shop display
-        if (this.shopContainer) {
-            this.shopContainer.destroy(true);
-        }
-        
-        this.shopContainer = this.add.container(0, 0);
-        
-        // Display 8 shop items in a 4x2 grid
-        this.shopItems.forEach((item, i) => {
-            const x = 110 + (i % 4) * 110;
-            const y = 120 + Math.floor(i / 4) * 110;
-            const card = this.add.container(x, y);
-            
-            const background = this.add.rectangle(0, 0, 100, 100, 0x222222)
-                .setStrokeStyle(2, item.currency === 'crystals' ? 0x00ffff : 0xeeeeee);
-            
-            // Slot number
-            const slotText = this.add.text(-40, -40, `${i + 1}`, {
-                fontSize: '10px',
-                fill: '#666666',
-                fontFamily: '"HoMM Pixel"'
-            });
-            
-            const name = this.add.text(0, -35, item.data.name, { 
-                fontSize: '10px', 
-                fill: '#ffffff', 
-                fontFamily: '"HoMM Pixel"', 
-                wordWrap: { width: 90 }, 
-                align: 'center' 
-            }).setOrigin(0.5);
-            
-            let statsText = '';
-            if (item.data.type === 'weapon') {
-                statsText = `DMG: ${item.data.damage}`;
-            } else if (item.data.type === 'armor') {
-                statsText = `DEF: ${item.data.protection}`;
-            } else if (item.data.type === 'potion') {
-                statsText = `+${item.data.healAmount} HP`;
-            } else if (item.data.type === 'food') {
-                statsText = `+${item.data.actionAmount} AP`;
-            } else if (item.data.type === 'magic') {
-                // Short description for magic
-                switch(item.data.magicType) {
-                    case 'fireball': statsText = '15 DMG'; break;
-                    case 'frostRing': statsText = 'Freeze'; break;
-                    case 'restoration': statsText = 'Heal+AP'; break;
-                    default: statsText = 'Magic'; break;
-                }
-            } else if (item.data.type === 'amulet') {
-                statsText = 'Artifact';
-            }
-            
-            const stats = this.add.text(0, -10, statsText, { 
-                fontSize: '9px', 
-                fill: '#cccccc', 
-                fontFamily: '"HoMM Pixel"',
-                align: 'center'
-            }).setOrigin(0.5);
-            
-            // Show price with appropriate currency color
-            const priceColor = item.currency === 'crystals' ? '#00ffff' : '#ffd700';
-            const currencyText = item.currency === 'crystals' ? 'crystals' : 'coins';
-            const priceText = this.add.text(0, 10, `${item.price} ${currencyText}`, { 
-                fontSize: '10px', 
-                fill: priceColor, 
-                fontFamily: '"HoMM Pixel"' 
-            }).setOrigin(0.5);
-            
-            const buyButton = this.add.text(0, 30, item.purchased ? 'Sold' : 'Buy', { 
-                fontSize: '12px', 
-                fill: item.purchased ? '#888888' : '#00ff00', 
-                backgroundColor: '#333333', 
-                padding: { x: 4, y: 2 }, 
-                fontFamily: '"HoMM Pixel"' 
-            })
-            .setOrigin(0.5);
-            
-            if (!item.purchased) {
-                buyButton.setInteractive({ useHandCursor: true })
-                    .on('pointerdown', () => this.buyItem(item, buyButton));
-            }
-            
-            card.add([background, slotText, name, stats, priceText, buyButton]);
-            this.shopContainer.add(card);
-        });
+        // Combat-style board: cards fly in face-down, then flip open one by one.
+        this.displayItemsAsBoard();
     }
-    
+
+    // buildItemCard / createItemSprite / getRarityColor live on StationRoomBase
+
+    capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
     createInventoryDisplay() {
         this.inventoryContainer = this.add.container(0, 0);
         this.inventoryContainer.setVisible(false);
@@ -550,12 +449,12 @@ export class ShopScene extends Phaser.Scene {
         
         if (this.sellingMode) {
             this.modeButton.setText('Buy Items');
-            this.shopContainer.setVisible(false);
+            this.setShopBoardVisible(false);
             this.inventoryContainer.setVisible(true);
             this.updateInventoryDisplay();
         } else {
             this.modeButton.setText('Sell Items');
-            this.shopContainer.setVisible(true);
+            this.setShopBoardVisible(true);
             this.inventoryContainer.setVisible(false);
         }
     }
@@ -635,7 +534,7 @@ export class ShopScene extends Phaser.Scene {
                     this.showFeedback(`${item.data.name} equipped!`, 0x9932cc);
                     
                     item.purchased = true;
-                    button.setText('Sold').setStyle({ fill: '#888888' }).removeInteractive();
+                    this.markButtonDone(button, 'Sold');
                     
                     // Update GameScene UI
                     if (this.gameScene.updateUI) {
@@ -707,7 +606,7 @@ export class ShopScene extends Phaser.Scene {
         }
         
         item.purchased = true;
-        button.setText('Sold').setStyle({ fill: '#888888' }).removeInteractive();
+        this.markButtonDone(button, 'Sold');
         this.showFeedback('Purchased!', 0x00ff00);
         
         // Update GameScene UI
@@ -716,19 +615,5 @@ export class ShopScene extends Phaser.Scene {
         }
     }
     
-    showFeedback(message, color) {
-        const feedBackText = this.add.text(320, 300, message, { 
-            fontSize: '16px', 
-            fill: Phaser.Display.Color.IntegerToColor(color).rgba, 
-            fontFamily: '"HoMM Pixel"' 
-        }).setOrigin(0.5);
-        
-        this.tweens.add({
-            targets: feedBackText,
-            alpha: 0,
-            y: 280,
-            duration: 1500,
-            onComplete: () => feedBackText.destroy()
-        });
-    }
+    // showFeedback lives on StationRoomBase
 }

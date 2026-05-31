@@ -14,6 +14,7 @@ export class GameScene extends Phaser.Scene {
         this._turnHandlersBound = false;
         this.enemyTurnTimers = [];
         this.enemyTurnQueued = false;
+        this.pendingEnemyTurns = 0;
     }
 
     init(data) {
@@ -82,8 +83,7 @@ export class GameScene extends Phaser.Scene {
         this.createUI();
         
         // Room title
-        this.roomTitle = this.add.text(320, 10, '', { fontSize: '20px', fill: '#ffffff', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
-        this.updateRoomTitle();
+        this.roomTitle = null;
         
         // Start floor
         this.startNewFloor();
@@ -163,6 +163,7 @@ export class GameScene extends Phaser.Scene {
             stroke: '#000000',
             strokeThickness: 2
         }).setOrigin(0.5, 0);
+        this.healthText.setDepth(30);
 
         // Armor equip panel under hero portrait
         this.armorPanel = this.add.image(39, 138, 'panelArmor');
@@ -177,15 +178,15 @@ export class GameScene extends Phaser.Scene {
         this.createActionPointUI();
         
         // Coin and Crystal UI under armor panel with animations
-        this.coinSprite = this.add.sprite(25, 216, 'coinUI').setScale(1);
-        this.coinsText = this.add.text(25, 233, '0', {
+        this.coinSprite = this.add.sprite(25, 210, 'coinUI').setScale(1);
+        this.coinsText = this.add.text(25, 227, '0', {
             fontSize: '12px',
             fill: '#cf8834',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
-        this.crystalSprite = this.add.sprite(60, 216, 'CrystalUI').setScale(1);
-        this.crystalsText = this.add.text(60, 233, '0', {
+        this.crystalSprite = this.add.sprite(55, 211, 'CrystalUI').setScale(1);
+        this.crystalsText = this.add.text(55, 228, '0', {
             fontSize: '12px',
             fill: '#a83c69',
             fontFamily: '"HoMM Pixel"'
@@ -203,37 +204,33 @@ export class GameScene extends Phaser.Scene {
         // Amulets displayed horizontally above armor info
         this.amuletUIGroup = this.add.group();
         this.relicUIGroup = this.add.group();
-        // Equipped armor text (moved down to make room for amulets above)
-        this.equippedArmorText = this.add.text(125, 90, 'Armor: None', {
-            fontSize: '12px',
-            fill: '#aaaaaa',
-            fontFamily: '"HoMM Pixel"'
-        });
+        this.amuletScrollOffset = 0; // which amulet is the first one shown
+        this.armorTooltip = null; // tooltip shown on hover over equipped armor
         this.floorText = this.add.text(520, 15, 'Floor: 1', {
             fontSize: '12px',
-            fill: '#ffffff',
+            fill: '#a78f70',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Pause button - positioned in top right corner
-        const pauseButton = this.add.rectangle(600, 15, 60, 25, 0x444444)
-            .setStrokeStyle(2, 0xffffff)
+        const pauseButton = this.add.rectangle(600, 15, 46, 18, 0x6f5452, 0.18)
+            .setStrokeStyle(1, 0x6f5452)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => pauseButton.setFillStyle(0x666666))
-            .on('pointerout', () => pauseButton.setFillStyle(0x444444))
+            .on('pointerover', () => pauseButton.setFillStyle(0x6f5452, 0.32))
+            .on('pointerout', () => pauseButton.setFillStyle(0x6f5452, 0.18))
             .on('pointerdown', () => this.pauseGame());
         
         this.add.text(600, 15, 'PAUSE', {
-            fontSize: '12px',
-            fill: '#ffffff',
+            fontSize: '9px',
+            fill: '#6f5452',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Also add ESC key binding for pause
         this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
         // Discard area
-        this.discardArea = this.add.image(585, 320, 'discardSprite');
-        this.add.text(585, 320, 'Discard', { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+        this.discardArea = this.add.image(585, 305, 'discardSprite');
+        this.add.text(585, 305, 'Discard', { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
         // Rest button removed - players must manage action points carefully
         // Amulet UI
         // Player effects label
@@ -247,10 +244,29 @@ export class GameScene extends Phaser.Scene {
         this.nextFloorButton = this.add.image(595, 50, 'nextTurnUp')
             .setInteractive({ useHandCursor: true })
             .on('pointerover', () => this.nextFloorButton.setTint(0xd4eaf7))
-            .on('pointerout', () => { this.nextFloorButton.clearTint(); this.nextFloorButton.y = 50; })
-            .on('pointerdown', () => { this.nextFloorButton.setTint(0x888888); this.nextFloorButton.y = 51; this.floorCleared(); })
-            .on('pointerup', () => { this.nextFloorButton.clearTint(); this.nextFloorButton.y = 50; });
+            .on('pointerout', () => {
+                this.nextFloorButton.clearTint();
+                this.nextFloorButton.y = 50;
+                if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
+            })
+            .on('pointerdown', () => {
+                this.nextFloorButton.setTint(0x888888);
+                this.nextFloorButton.y = 51;
+                if (this.nextFloorButtonText) this.nextFloorButtonText.y = 51;
+                this.floorCleared();
+            })
+            .on('pointerup', () => {
+                this.nextFloorButton.clearTint();
+                this.nextFloorButton.y = 50;
+                if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
+            });
+        this.nextFloorButtonText = this.add.text(595, 50, 'Next', {
+            fontSize: '12px',
+            fill: '#e5bca4',
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5);
         this.nextFloorButton.setVisible(false);
+        this.nextFloorButtonText.setVisible(false);
     }
 
     startNewFloor() {
@@ -259,11 +275,14 @@ export class GameScene extends Phaser.Scene {
         this.enemiesCleared = false;
         if (this.nextFloorButton) {
             this.nextFloorButton.setVisible(false);
+            this.nextFloorButtonText?.setVisible(false);
             this.nextFloorButton.setInteractive();
             this.nextFloorButton.y = 50;
+            if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
             this.nextFloorButton.clearTint();
         }
-        this.skipNextEnemyAttack = true;  // Grace period—no instant zap
+        // Grace is now per-enemy (card.justRevealed) — a freshly revealed enemy sits
+        // out the action that revealed it. No global first-turn skip needed.
         this.gameState.playerHealth = Math.max(1, Math.floor(this.gameState.playerHealth || 55));  // Sanitize HP
         this.gameState.maxHealth = Math.max(1, Math.floor(this.gameState.maxHealth || 55));
         if (this.gameState.playerHealth > this.gameState.maxHealth) this.gameState.playerHealth = this.gameState.maxHealth;
@@ -282,6 +301,8 @@ export class GameScene extends Phaser.Scene {
         // Refresh type before spawn
         this.roomType = this.gameState.roomType || 'COMBAT';
         this.updateRoomTitle();
+        // Reset per-floor amulet flags
+        this.gameState.charmingTuneUsed = false;
         this.cardSystem.spawnFloorCards();
         this.inventorySystem.addStartingCards();
         // DON'T replenish action points here
@@ -312,33 +333,8 @@ export class GameScene extends Phaser.Scene {
         this.coinsText.setText(this.gameState.coins);
         this.crystalsText.setText(this.gameState.crystals);
         this.updateActionPointUI();
-        
-        // Update equipped armor text - REMOVED reflection display
-        if (this.gameState.equippedArmor) {
-            const armor = this.gameState.equippedArmor;
-            let armorText = `Equipped: ${armor.name}\n` + 
-                           `Protection: ${armor.protection}\n`;
-            
-            if (armor.dodgeChance) {
-                armorText += `Dodge: ${Math.round(armor.dodgeChance * 100)}%\n`;
-            }
-            
-            armorText += `Dur: ${armor.durability}/${armor.maxDurability}`;
-            
-            this.equippedArmorText.setText(armorText);
-            this.equippedArmorText.setStyle({
-                fill: '#66aaff',
-                fontSize: '10px',
-                lineSpacing: 2
-            });
-        } else {
-            this.equippedArmorText.setText('Equipped: None');
-            this.equippedArmorText.setStyle({
-                fill: '#aaaaaa',
-                fontSize: '12px'
-            });
-        }
-        this.floorText.setText(`Floor: ${this.gameState.currentFloor}`);
+        const _act = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
+        this.floorText.setText(`Act ${_act}  Floor: ${this.gameState.currentFloor}`);
         this.updateEquippedArmorPanel();
         
         // Update health orb
@@ -373,7 +369,7 @@ export class GameScene extends Phaser.Scene {
         const nodeCount = Math.ceil(maxActions / 4);
         const spacing = 18;
         const startX = 52 - ((nodeCount - 1) * spacing) / 2;
-        const y = 184;
+        const y = 189;
 
         for (let i = 0; i < nodeCount; i++) {
             const x = startX + i * spacing;
@@ -425,6 +421,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     updateEquippedArmorPanel() {
+        if (this.armorTooltip) {
+            this.armorTooltip.destroy();
+            this.armorTooltip = null;
+        }
         if (this.armorPanelEquippedSprite) {
             this.armorPanelEquippedSprite.destroy();
             this.armorPanelEquippedSprite = null;
@@ -441,11 +441,20 @@ export class GameScene extends Phaser.Scene {
         const armor = this.gameState.equippedArmor;
         if (!armor || !armor.sprite || !this.armorPanel) return;
 
-        this.armorPanelEquippedSprite = this.add.image(this.armorPanel.x, this.armorPanel.y, armor.sprite);
+        this.armorPanelEquippedSprite = this.add.image(this.armorPanel.x, this.armorPanel.y - 6, armor.sprite);
         this.armorPanelEquippedSprite.setDepth(6);
         this.armorPanelEquippedSprite.setInteractive({ useHandCursor: true });
         this.armorPanelEquippedSprite.on('pointerdown', () => {
             this.inventorySystem?.unequipArmor?.();
+        });
+        this.armorPanelEquippedSprite.on('pointerover', () => {
+            this.showArmorTooltip(armor);
+        });
+        this.armorPanelEquippedSprite.on('pointerout', () => {
+            if (this.armorTooltip) {
+                this.armorTooltip.destroy();
+                this.armorTooltip = null;
+            }
         });
 
         const armorCard = {
@@ -507,10 +516,20 @@ export class GameScene extends Phaser.Scene {
     }
 
     scheduleEnemyTurn() {
+        if (this._transitioning || this.enemiesCleared) return;
+        // Queue one enemy turn per action. Rapid actions no longer coalesce into
+        // a single attack — each one earns its own enemy response.
+        this.pendingEnemyTurns = (this.pendingEnemyTurns || 0) + 1;
+        this._drainEnemyTurns();
+    }
+
+    _drainEnemyTurns() {
         if (this.enemyTurnQueued || this.isEnemyTurn || this._transitioning || this.enemiesCleared) return;
+        if (!this.pendingEnemyTurns || this.pendingEnemyTurns <= 0) return;
         this.enemyTurnQueued = true;
         const timer = this.time.delayedCall(500, () => {
             this.enemyTurnQueued = false;
+            this.pendingEnemyTurns = Math.max(0, (this.pendingEnemyTurns || 0) - 1);
             this.events.emit('endPlayerTurn');
         });
         this.enemyTurnTimers.push(timer);
@@ -534,16 +553,29 @@ export class GameScene extends Phaser.Scene {
     runEnemyTurn() {
       this.enemyTurnQueued = false;
       if (this.isEnemyTurn) return;
-      if (this.skipNextEnemyAttack) {
-        this.skipNextEnemyAttack = false;
-        return;  // No attack on entry
-      }
       this.isEnemyTurn = true;
       this.revealedEnemiesAttack();
     }
     revealedEnemiesAttack() {
         if (this.gameState.playerHealth <= 0) return; // Don't attack a dead player.
-        
+
+        // Snapshot which enemies are eligible to act this action. A freshly revealed
+        // enemy sits out the action that revealed it (a one-action grace so flipping
+        // into an enemy doesn't zap you on the same click), then joins the fight on
+        // the next action. This is PER-ENEMY: revealing a new enemy no longer cancels
+        // attacks from enemies already on the board.
+        const eligible = this.cardSystem.boardCards
+            .map((card, index) => ({ card, index }))
+            .filter(({ card }) => card && card.revealed && this.isEnemyCard(card) && !card.justRevealed);
+        // Clear the grace flag now that we've snapshotted — they act next turn.
+        this.cardSystem.boardCards.forEach(card => {
+            if (card && card.justRevealed) card.justRevealed = false;
+        });
+        if (eligible.length === 0) {
+            this.finishEnemyTurnEffects();
+            return;
+        }
+
         // Check if player is blocking with spear
         if (this.gameState.blockNextAttack) {
             this.gameState.blockNextAttack = false; // Reset block
@@ -566,20 +598,9 @@ export class GameScene extends Phaser.Scene {
         
         // Check for bone wall reflection FIRST (before individual enemy attacks)
         if (this.gameState.boneWall && this.gameState.boneWall > 0) {
-            // Find the first attacking enemy
-            let firstAttacker = null;
-            for (let i = 0; i < this.cardSystem.boardCards.length; i++) {
-                const card = this.cardSystem.boardCards[i];
-                if (card && card.revealed && (card.data.type === 'enemy' || card.data.type === 'boss')) {
-                    // Skip frozen enemies
-                    if (card.data.frozen && card.data.frozen > 0) {
-                        continue;
-                    }
-                    firstAttacker = { card, index: i };
-                    break;
-                }
-            }
-            
+            // Find the first eligible (non-frozen) attacking enemy
+            const firstAttacker = eligible.find(({ card }) => !(card.data.frozen && card.data.frozen > 0)) || null;
+
             if (firstAttacker) {
                 this.gameState.boneWall--;
                 SoundHelper.playSound(this, 'armor_equip', 0.5);
@@ -596,20 +617,9 @@ export class GameScene extends Phaser.Scene {
         
         // Check for mirror shield (one-time full reflection)
         if (this.gameState.mirrorShield) {
-            // Find the first attacking enemy
-            let firstAttacker = null;
-            for (let i = 0; i < this.cardSystem.boardCards.length; i++) {
-                const card = this.cardSystem.boardCards[i];
-                if (card && card.revealed && (card.data.type === 'enemy' || card.data.type === 'boss')) {
-                    // Skip frozen enemies
-                    if (card.data.frozen && card.data.frozen > 0) {
-                        continue;
-                    }
-                    firstAttacker = { card, index: i };
-                    break;
-                }
-            }
-            
+            // Find the first eligible (non-frozen) attacking enemy
+            const firstAttacker = eligible.find(({ card }) => !(card.data.frozen && card.data.frozen > 0)) || null;
+
             if (firstAttacker) {
                 this.gameState.mirrorShield = false;
                 SoundHelper.playSound(this, 'armor_equip', 0.5);
@@ -624,14 +634,7 @@ export class GameScene extends Phaser.Scene {
             }
         }
         
-        const attackers = this.cardSystem.boardCards
-            .map((card, index) => ({ card, index }))
-            .filter(({ card }) => card && card.revealed && this.isEnemyCard(card));
-
-        if (attackers.length === 0) {
-            this.finishEnemyTurnEffects();
-            return;
-        }
+        const attackers = eligible;
 
         let attackerIndex = 0;
         const attackNext = () => {
@@ -662,6 +665,7 @@ export class GameScene extends Phaser.Scene {
         this.enemyTurnTimers.forEach(timer => timer?.remove?.(false));
         this.enemyTurnTimers = [];
         this.enemyTurnQueued = false;
+        this.pendingEnemyTurns = 0;
         this.isEnemyTurn = false;
     }
 
@@ -683,11 +687,52 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        // BOSS SUMMONING ABILITY - Process before attack
+        // Mimic escape countdown — runs out after 3 enemy turns if still alive
+        if (card.data.isMimic) {
+            if (card.data.escapeTurnsLeft === undefined) {
+                card.data.escapeTurnsLeft = card.data.escapeTurns || 3;
+            }
+            card.data.escapeTurnsLeft--;
+            if (card.data.escapeTurnsLeft <= 0) {
+                this.cardSystem.mimicEscape(index);
+                return; // gone — no attack this turn
+            }
+            this.createFloatingText(card.sprite.x, card.sprite.y - 28, `${card.data.escapeTurnsLeft} left!`, 0xffaa00);
+            // Mimic still takes its small bite below
+        }
+
+        // Charming Tune — first melee enemy on each floor skips its first attack
+        if (this.amuletManager?.hasCharmingTune?.() &&
+            !this.gameState.charmingTuneUsed &&
+            card.data.role === 'MELEE') {
+            this.gameState.charmingTuneUsed = true;
+            this.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed (Tune)', 0xff66ff);
+            return;
+        }
+
+        // Siren's Pendant — chance to redirect attack onto another enemy
+        const charmChance = this.amuletManager?.getCharmChance?.() || 0;
+        if (charmChance > 0 && Math.random() < charmChance) {
+            const others = this.cardSystem.boardCards
+                .map((c, i) => ({ card: c, index: i }))
+                .filter(({ card: c, index: i }) =>
+                    c && c.revealed && i !== index &&
+                    (c.data?.type === 'enemy' || c.data?.type === 'boss')
+                );
+            if (others.length > 0) {
+                const target = others[Math.floor(Math.random() * others.length)];
+                this.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xff66ff);
+                this.cardSystem.attackEnemy(target.index, card.data.attack, false);
+                return; // skip player damage
+            }
+        }
+
+        // BOSS SUMMONING ABILITY - Process before attack (now spawns multiple)
         if (card.data.type === 'boss' && card.data.abilities) {
             card.data.abilities.forEach(ability => {
                 if (ability.type === 'summon' && Math.random() < ability.chance) {
-                    this.cardSystem.summonEnemy(ability.enemyType, card);
+                    const n = ability.count || 1;
+                    for (let k = 0; k < n; k++) this.cardSystem.summonEnemy(ability.enemyType, card);
                 }
             });
         }
@@ -721,6 +766,18 @@ export class GameScene extends Phaser.Scene {
             if (playerHealthBeforeDamage > 0 && this.gameState.playerHealth <= 0) {
                 this.killedBy = card.data.name || card.data.type || 'Enemy';
             }
+        }
+
+        // Boss LIFESTEAL — the leech heals from the damage it dealt (off raw
+        // attack so player armor doesn't neuter it). This ability was previously
+        // defined but never applied.
+        const leech = card.data.abilities?.find(a => a.type === 'lifesteal');
+        if (leech) {
+            const heal = Math.max(1, Math.ceil(damageDealt * (leech.percentage || 0.3)));
+            if (card.data.maxHealth === undefined) card.data.maxHealth = card.data.health;
+            card.data.health = Math.min(card.data.maxHealth, card.data.health + heal);
+            this.cardSystem.updateEnemyInfoText?.(card);
+            if (card.sprite) this.createFloatingText(card.sprite.x, card.sprite.y - 16, `+${heal} Leech`, 0x66ff66);
         }
 
         this.applyThornsDamage(card, index);
@@ -822,9 +879,12 @@ export class GameScene extends Phaser.Scene {
         this.updateUI();
         if (this.gameState.playerHealth <= 0) {
             this.time.delayedCall(500, () => this.gameOver());
+            return;
         }
+        // Run the next queued enemy turn, if any actions stacked up during this one.
+        this._drainEnemyTurns();
     }
-    
+
     createDamageEffect(x, y) {
         const flash = this.add.circle(x, y, 50, 0xff0000, 0.5);
         this.tweens.add({
@@ -850,24 +910,32 @@ export class GameScene extends Phaser.Scene {
         }
     }
     createFloatingText(x, y, text, color) {
-        // Add random offsets to prevent text from overlapping perfectly
-        const xOffset = Phaser.Math.Between(-20, 20);
-        const yOffset = Phaser.Math.Between(-10, 10);
+        // Small random spawn offset so simultaneous texts don't stack exactly
+        const xOffset = Phaser.Math.Between(-12, 12);
+        const yOffset = Phaser.Math.Between(-6, 6);
         const floatText = this.add.text(x + xOffset, y + yOffset, text, {
             fontSize: '16px',
             fill: Phaser.Display.Color.IntegerToColor(color).rgba,
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
-        
-        // Make the text drift horizontally as it floats up
+
+        // Phase 1: drift up a little, stay fully visible so the player can read it
         this.tweens.add({
             targets: floatText,
-            x: floatText.x + Phaser.Math.Between(-50, 50),
-            y: floatText.y - 80,
-            alpha: 0,
-            duration: 3000,
+            y: floatText.y - 28,
+            duration: 500,
             ease: 'Cubic.easeOut',
-            onComplete: () => floatText.destroy()
+            onComplete: () => {
+                // Phase 2: short hold then gentle fade in place
+                this.tweens.add({
+                    targets: floatText,
+                    alpha: 0,
+                    duration: 700,
+                    delay: 250,
+                    ease: 'Linear',
+                    onComplete: () => floatText.destroy()
+                });
+            }
         });
     }
     
@@ -963,23 +1031,33 @@ export class GameScene extends Phaser.Scene {
     
     floorCleared() {
         if (this._transitioning) return;
+
+        // Boss reward room → leaving means advancing to the next act
+        if (this.gameState.roomType === 'BOSS_REWARD') {
+            this.leaveBossRewardRoom();
+            return;
+        }
+
         this._transitioning = true;
         this.clearEnemyTurnTimers();
         // Hard-disable the button so it can't be clicked again
         if (this.nextFloorButton) this.nextFloorButton.disableInteractive();
-        // Give a modest floor clear payout; elite and boss rooms now pay out through chests.
-        const baseReward = 3 + this.gameState.currentFloor;
-        
+        this.nextFloorButtonText?.setVisible(false);
+        // Give a modest floor clear payout; elite chests pay out separately.
+        // Cut hard — the economy was badly over-fauceted (gold piled up unspent).
+        const baseReward = 1 + Math.floor(this.gameState.currentFloor / 3);
+
         // Apply gold modifier from amulets
-        const reward = this.amuletManager ? 
+        const reward = this.amuletManager ?
             this.amuletManager.modifyGoldFound(baseReward) : baseReward;
-        
+
         this.gameState.coins += reward;
         SoundHelper.playSound(this, 'coin_collect', 0.4);
         this.createFloatingText(320, 180, `Floor Cleared! +${reward} coins`, 0xffd700);
-        const rewardChestMode = this.gameState.roomType === 'BOSS' ? 'boss' :
-            this.gameState.roomType === 'ELITE' ? 'elite' : null;
-        
+
+        // Elite rooms still use the chest-click TreasureScene flow
+        const rewardChestMode = this.gameState.roomType === 'ELITE' ? 'elite' : null;
+
         // Process amulet floor end effects before moving to next floor
         if (this.amuletManager) {
             this.amuletManager.processFloorEnd();
@@ -990,25 +1068,20 @@ export class GameScene extends Phaser.Scene {
             this.gameState.mapCursor.floor >= 14;
 
         if (completedActBoss) {
+            // Final boss → straight to victory, no reward room
             if (this.gameState.currentFloor >= 45) {
                 this.saveCurrentRun();
                 this.time.delayedCall(1500, () => this.gameWon());
                 return;
             }
-
-            this.gameState.currentFloor++;
-            const nextAct = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
-            this.gameState.mapCursor = { act: nextAct, floor: 0, node: 0 };
-            const nextActMap = this.gameState.dungeonMap?.[`act${nextAct}`];
-            if (nextActMap?.floors?.[0]?.[0]) {
-                nextActMap.floors[0][0].visited = true;
-            }
-            this.createFloatingText(320, 120, `Act ${nextAct}`, 0xf2d3aa);
+            // Otherwise stay in-scene and switch to the boss reward room
+            this.time.delayedCall(700, () => this.setupBossRewardRoom());
+            return;
         }
-        
+
         // AUTO-SAVE the current run
         this.saveCurrentRun();
-        
+
         this.time.delayedCall(500, () => {
             this.scene.sleep();
             if (rewardChestMode) {
@@ -1022,11 +1095,121 @@ export class GameScene extends Phaser.Scene {
             }
         });
     }
+
+    // Replaces the previous TreasureScene boss flow. Stays inside GameScene so the
+    // player keeps their avatar, inventory and full UI — just swaps the board.
+    setupBossRewardRoom() {
+        this.gameState.roomType = 'BOSS_REWARD';
+        this.roomType = 'BOSS_REWARD';
+        this.updateRoomTitle();
+
+        // Full restore as the act boss bonus
+        const healedHP = this.gameState.maxHealth - this.gameState.playerHealth;
+        const refilledAP = this.gameState.maxActions - this.gameState.actionsLeft;
+        this.gameState.playerHealth = this.gameState.maxHealth;
+        this.gameState.actionsLeft = this.gameState.maxActions;
+        if (healedHP > 0) {
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `+${healedHP} HP`, 0x66ff88);
+        }
+        if (refilledAP > 0) {
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y + 14, `+${refilledAP} AP`, 0x66ddff);
+        }
+
+        // Currency reward — scales with floor
+        const floor = this.gameState.currentFloor;
+        const coinBonus = 25 + floor;
+        const crystalBonus = 4 + Math.floor(floor / 6);
+        this.gameState.coins += coinBonus;
+        this.gameState.crystals += crystalBonus;
+        this.createFloatingText(320, 140, `+${coinBonus} Coins  +${crystalBonus} Crystals`, 0xffd700);
+
+        // Generate 3 reward items: amulet, weapon/armor (boss-quality), gem.
+        // Quality is the "natural" boss-act tier, then run through capRewardRarity
+        // so act-1 boss gives UNCOMMON (was rare), act-2 boss gives RARE (was epic),
+        // and act-3 boss still gives LEGENDARY. Earned epics/legendaries are now
+        // reserved for endgame instead of trivializing mid-run.
+        const gen = this.cardSystem.cardDataGenerator;
+        const rawQuality = floor >= 31 ? 'legendary' : floor >= 16 ? 'epic' : 'rare';
+        const quality = gen.capRewardRarity(rawQuality, floor);
+        const items = [
+            gen.createCardData('amulet', floor, false, this.gameState),
+            gen.createCardData(Math.random() < 0.5 ? 'weapon' : 'armor', floor, false, null, quality),
+            this.makeBossRewardGem()
+        ];
+
+        // Spawn chest + reward cards on the existing board
+        this.cardSystem.spawnBossRewardBoard(items);
+
+        // Re-enable the Next button so the player can leave when ready
+        this._transitioning = false;
+        this.enemiesCleared = true;
+        if (this.nextFloorButton) {
+            this.nextFloorButton.setVisible(true);
+            this.nextFloorButton.setInteractive();
+            this.nextFloorButton.clearTint();
+        }
+        if (this.nextFloorButtonText) this.nextFloorButtonText.setVisible(true);
+
+        this.updateUI();
+    }
+
+    makeBossRewardGem() {
+        const gems = [
+            { effect: 'fire',      name: 'Fire Gem',      frame: 0,  color: 0xff7040 },
+            { effect: 'poison',    name: 'Poison Gem',    frame: 6,  color: 0x66ff66 },
+            { effect: 'lightning', name: 'Lightning Gem', frame: 12, color: 0xffe066 }
+        ];
+        const gem = gems[Math.floor(Math.random() * gems.length)];
+        return {
+            type: 'gem',
+            gemEffect: gem.effect,
+            name: gem.name,
+            sprite: 'gemsRGY',
+            spriteFrame: gem.frame,
+            color: gem.color,
+            rarity: 'common'
+        };
+    }
+
+    leaveBossRewardRoom() {
+        this._transitioning = true;
+        if (this.nextFloorButton) this.nextFloorButton.disableInteractive();
+        this.nextFloorButtonText?.setVisible(false);
+
+        // Clean up the chest visual
+        this.cardSystem?.clearBossRewardChest?.();
+
+        // Advance to next act now that the player is done picking
+        this.gameState.currentFloor++;
+        const nextAct = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
+        this.gameState.mapCursor = { act: nextAct, floor: 0, node: 0 };
+        const nextActMap = this.gameState.dungeonMap?.[`act${nextAct}`];
+        if (nextActMap?.floors?.[0]?.[0]) {
+            nextActMap.floors[0][0].visited = true;
+        }
+        this.createFloatingText(320, 120, `Act ${nextAct}`, 0xf2d3aa);
+
+        // Reset roomType so MapViewScene can set the next node's type
+        this.gameState.roomType = 'COMBAT';
+
+        // Queue a post-act shop: player gets to visit a shop before the new act begins.
+        // 35% chance of a Rare Shop, otherwise a normal Shop.
+        this.gameState.pendingActShop = Math.random() < 0.35 ? 'RARE_SHOP' : 'SHOP';
+
+        this.saveCurrentRun();
+
+        this.time.delayedCall(500, () => {
+            this.scene.sleep();
+            this.scene.stop('MapViewScene');
+            this.scene.launch('MapViewScene', { gameState: this.gameState });
+        });
+    }
     
     onEnemiesCleared() {
         this.clearEnemyTurnTimers();
         this.enemiesCleared = true;
         this.nextFloorButton.setVisible(true);
+        this.nextFloorButtonText?.setVisible(true);
         this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
         this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
     }
@@ -1060,25 +1243,61 @@ export class GameScene extends Phaser.Scene {
             this.amuletTooltip.destroy();
             this.amuletTooltip = null;
         }
-        // Display amulets horizontally above armor text
-        this.gameState.activeAmulets.forEach((amulet, i) => {
-            // Position amulets horizontally starting from x=125, y=65
-            const x = 125 + i * 35; // 35 pixels spacing between amulets
-            const y = 30; // Above the armor text which is now at y=90
-            const amuletSprite = this.add.image(x, y, amulet.sprite, amulet.spriteFrame).setInteractive();
+
+        const amulets = this.gameState.activeAmulets;
+        const MAX_VISIBLE = 10;
+        const SPACING = 35;
+        const ROW_X = 125;
+        const ROW_Y = 48;
+
+        // Keep the offset in bounds (e.g. if amulets were removed since last scroll)
+        const maxOffset = Math.max(0, amulets.length - MAX_VISIBLE);
+        this.amuletScrollOffset = Phaser.Math.Clamp(this.amuletScrollOffset || 0, 0, maxOffset);
+
+        const needsScroll = amulets.length > MAX_VISIBLE;
+
+        // ── Left arrow ──────────────────────────────────────────────────────────
+        if (needsScroll) {
+            const leftArrow = this.add.text(ROW_X - 16, ROW_Y, '◄', {
+                fontSize: '11px',
+                fill: this.amuletScrollOffset > 0 ? '#ffd700' : '#554433',
+                fontFamily: '"HoMM Pixel"'
+            }).setOrigin(0.5).setDepth(22);
+            if (this.amuletScrollOffset > 0) {
+                leftArrow.setInteractive({ useHandCursor: true });
+                leftArrow.on('pointerdown', () => {
+                    this.amuletScrollOffset = Math.max(0, this.amuletScrollOffset - 1);
+                    this.updateAmuletsUI();
+                });
+            }
+            this.amuletUIGroup.add(leftArrow);
+        }
+
+        // ── Visible amulets ─────────────────────────────────────────────────────
+        const visibleAmulets = amulets.slice(this.amuletScrollOffset, this.amuletScrollOffset + MAX_VISIBLE);
+        visibleAmulets.forEach((amulet, i) => {
+            const x = ROW_X + i * SPACING;
+            const y = ROW_Y;
+
+            // Always resolve sprite from the live definition
+            const def = this.amuletManager?.amuletDefinitions?.[amulet.id];
+            const spriteKey   = def?.sprite       ?? amulet.sprite       ?? 'relicsOthers';
+            const spriteFrame = def?.spriteFrame  ?? amulet.spriteFrame  ?? 0;
+
+            const amuletSprite = this.add.image(x, y, spriteKey, spriteFrame).setInteractive();
+            amuletSprite.setDepth(22);
             this.amuletUIGroup.add(amuletSprite);
-            
-            // Add level indicator for stackable amulets
+
+            // Level badge for stackable amulets
             if (amulet.level && amulet.level > 1) {
                 const levelText = this.add.text(x + 8, y + 8, amulet.level.toString(), {
                     fontSize: '10px',
                     fill: '#ffffff',
                     fontFamily: '"HoMM Pixel"'
-                }).setOrigin(0.5);
+                }).setOrigin(0.5).setDepth(23);
                 this.amuletUIGroup.add(levelText);
             }
-            
-            // Add hover tooltip
+
             amuletSprite.on('pointerover', () => {
                 this.showAmuletTooltip(amulet, amuletSprite.x + 20, amuletSprite.y);
             });
@@ -1089,6 +1308,32 @@ export class GameScene extends Phaser.Scene {
                 }
             });
         });
+
+        // ── Right arrow ─────────────────────────────────────────────────────────
+        if (needsScroll) {
+            const rightArrow = this.add.text(ROW_X + MAX_VISIBLE * SPACING, ROW_Y, '►', {
+                fontSize: '11px',
+                fill: this.amuletScrollOffset < maxOffset ? '#ffd700' : '#554433',
+                fontFamily: '"HoMM Pixel"'
+            }).setOrigin(0.5).setDepth(22);
+            if (this.amuletScrollOffset < maxOffset) {
+                rightArrow.setInteractive({ useHandCursor: true });
+                rightArrow.on('pointerdown', () => {
+                    this.amuletScrollOffset = Math.min(maxOffset, this.amuletScrollOffset + 1);
+                    this.updateAmuletsUI();
+                });
+            }
+            this.amuletUIGroup.add(rightArrow);
+
+            // Small counter so the player knows how many are hidden: e.g. "3/14"
+            const countText = this.add.text(
+                ROW_X + MAX_VISIBLE * SPACING,
+                ROW_Y + 12,
+                `${this.amuletScrollOffset + 1}-${Math.min(this.amuletScrollOffset + MAX_VISIBLE, amulets.length)}/${amulets.length}`,
+                { fontSize: '8px', fill: '#aaaaaa', fontFamily: '"HoMM Pixel"' }
+            ).setOrigin(0.5).setDepth(22);
+            this.amuletUIGroup.add(countText);
+        }
     }
 
     updateRelicsUI() {
@@ -1101,7 +1346,7 @@ export class GameScene extends Phaser.Scene {
         const relics = this.metaManager?.getUnlockedRelics?.() || [];
         relics.forEach((relic, i) => {
             const x = 125 + i * 28;
-            const y = 62;
+            const y = 16;
             const usesSheet = relic.iconSheet && this.textures.exists(relic.iconSheet);
             const iconKey = usesSheet ? relic.iconSheet : this.textures.exists(relic.icon) ? relic.icon : 'amulet';
             const iconFrame = usesSheet ? relic.iconFrame : undefined;
@@ -1118,6 +1363,29 @@ export class GameScene extends Phaser.Scene {
                     this.relicTooltip = null;
                 }
             });
+
+            // Progress pips for relics with a "per-N-cards" counter (e.g. Explorer Cape)
+            const perCards = relic.effect?.discardCritPerCards;
+            if (perCards && perCards > 0) {
+                const discarded = this.gameState.discardedCardsThisRun || 0;
+                const max = relic.effect.maxDiscardCritChance ?? 1;
+                const step = relic.effect.discardCritPerStep || 0;
+                const atMax = step > 0 && (this.gameState.discardCritChance || 0) >= max;
+                const progress = atMax ? perCards : (discarded % perCards);
+
+                const pipSize = 2;
+                const pipSpacing = 4;
+                const totalWidth = (perCards - 1) * pipSpacing;
+                const pipY = y + 11;
+                for (let p = 0; p < perCards; p++) {
+                    const pipX = x - totalWidth / 2 + p * pipSpacing;
+                    const filled = p < progress;
+                    const color = atMax ? 0xffd700 : (filled ? 0xffd700 : 0x554433);
+                    const pip = this.add.rectangle(pipX, pipY, pipSize, pipSize, color);
+                    pip.setDepth(21);
+                    this.relicUIGroup.add(pip);
+                }
+            }
         });
     }
 
@@ -1141,6 +1409,39 @@ export class GameScene extends Phaser.Scene {
         this.relicTooltip.setDepth(1000);
     }
 
+    showArmorTooltip(armor) {
+        if (this.armorTooltip) {
+            this.armorTooltip.destroy();
+            this.armorTooltip = null;
+        }
+        let lines = `${armor.name}\nProtection: ${armor.protection}`;
+        if (armor.dodgeChance) {
+            lines += `\nDodge: ${Math.round(armor.dodgeChance * 100)}%`;
+        }
+        if (armor.reflection) {
+            lines += `\nReflect: ${armor.reflection}%`;
+        }
+        lines += `\nDur: ${armor.durability}/${armor.maxDurability}`;
+
+        const tooltipX = this.armorPanel.x + 50;
+        const tooltipY = this.armorPanel.y - 20;
+        const bg = this.add.rectangle(0, 0, 110, armor.dodgeChance ? 64 : 54, 0x000000, 0.85)
+            .setStrokeStyle(1, 0x66aaff);
+        const tooltipText = this.add.text(0, 0, lines, {
+            fontSize: '10px',
+            fill: '#66aaff',
+            fontFamily: '"HoMM Pixel"',
+            align: 'center',
+            lineSpacing: 2
+        }).setOrigin(0.5);
+        // Auto-size the background to fit however many lines we have
+        const lineCount = lines.split('\n').length;
+        bg.setSize(120, lineCount * 13 + 10);
+
+        this.armorTooltip = this.add.container(tooltipX, tooltipY, [bg, tooltipText]);
+        this.armorTooltip.setDepth(1000);
+    }
+
     grantCardSpentRelicBonus(card, x = this.playerAvatar.x, y = this.playerAvatar.y) {
         const amount = this.gameState.relicEffects?.cardSpentMaxHP || 0;
         if (!amount || !card) return;
@@ -1153,26 +1454,117 @@ export class GameScene extends Phaser.Scene {
         this.createFloatingText(x, y - 18, `+${amount} Max HP (Tent)`, 0xffd78a);
         this.updateUI();
     }
+
+    recordCardDiscarded(card, x = this.playerAvatar.x, y = this.playerAvatar.y) {
+        if (!card) return;
+
+        this.gameState.discardedCardsThisRun = (this.gameState.discardedCardsThisRun || 0) + 1;
+
+        // Refresh the relic pip display immediately so the Explorer Cape progress
+        // is visible right when the item is discarded, not on the next unrelated UI update.
+        this.updateRelicsUI();
+
+        const effects = this.gameState.relicEffects || {};
+        const perCards = effects.discardCritPerCards || 0;
+        const perStep = effects.discardCritPerStep || 0;
+        const maxCrit = effects.maxDiscardCritChance || 0;
+        if (!perCards || !perStep || !maxCrit) return;
+
+        const oldCrit = this.gameState.discardCritChance || 0;
+        const steps = Math.floor(this.gameState.discardedCardsThisRun / perCards);
+        const newCrit = Math.min(maxCrit, steps * perStep);
+        this.gameState.discardCritChance = newCrit;
+
+        if (newCrit > oldCrit) {
+            const percent = Math.round(newCrit * 100);
+            this.createFloatingText(x, y - 18, `Crit ${percent}%`, 0xffd700);
+        }
+    }
     
     updatePlayerEffectsUI() {
         this.playerEffectsUIGroup.clear(true, true);
-        this.gameState.playerEffects.forEach((effect, i) => {
-            const y = 312 + i * 15;
-            let effectText = '';
-            let color = '#ffffff';
+
+        // Build a unified list of effects to display (debuffs + buffs + relic counters)
+        const entries = [];
+
+        // --- Debuffs / status effects from playerEffects array ---
+        this.gameState.playerEffects.forEach((effect) => {
             switch (effect.type) {
                 case 'poison':
-                    effectText = `Poison (${effect.turns} turns)`;
-                    color = '#00ff00';
+                    entries.push({ text: `Poison (${effect.turns} turns)`, color: '#66ff66' });
                     break;
+                case 'burn':
+                    entries.push({ text: `Burn (${effect.turns} turns)`, color: '#ff7040' });
+                    break;
+                case 'stun':
+                    entries.push({ text: `Stunned (${effect.turns} turns)`, color: '#ffd700' });
+                    break;
+                case 'weakness':
+                    entries.push({ text: `Weakened (${effect.turns} turns)`, color: '#aa66ff' });
+                    break;
+                default:
+                    entries.push({
+                        text: effect.turns != null
+                            ? `${this.capitalizeEffect(effect.type)} (${effect.turns} turns)`
+                            : this.capitalizeEffect(effect.type),
+                        color: '#cccccc'
+                    });
             }
-            const text = this.add.text(10, y, effectText, {
+        });
+
+        // --- Buffs from magic spells ---
+        const gs = this.gameState;
+        if (gs.shadowBlade && gs.shadowBlade.turns > 0) {
+            const mult = gs.shadowBlade.multiplier ? `+${Math.round((gs.shadowBlade.multiplier - 1) * 100)}% DMG` : '';
+            entries.push({ text: `Shadow Blade ${mult} (${gs.shadowBlade.turns} turns)`, color: '#b266ff' });
+        }
+        if (gs.magicShield && gs.magicShield.turns > 0) {
+            const mult = gs.magicShield.multiplier ? `+${Math.round((gs.magicShield.multiplier - 1) * 100)}% DEF` : '';
+            entries.push({ text: `Magic Shield ${mult} (${gs.magicShield.turns} turns)`, color: '#33aaff' });
+        }
+        if (gs.boneWall && gs.boneWall > 0) {
+            entries.push({ text: `Bone Wall (${gs.boneWall} ${gs.boneWall === 1 ? 'charge' : 'charges'})`, color: '#ffffff' });
+        }
+        if (gs.mirrorShield) {
+            entries.push({ text: 'Mirror Shield', color: '#c0c0c0' });
+        }
+        if (gs.blockNextAttack) {
+            entries.push({ text: 'Block Next Attack', color: '#88ccff' });
+        }
+
+        // --- Relic-driven counters ---
+        if ((gs.discardCritChance || 0) > 0) {
+            const percent = Math.round(gs.discardCritChance * 100);
+            entries.push({ text: `Discard Crit +${percent}%`, color: '#ffd700' });
+        } else {
+            // Show progress toward first crit step if the relic is equipped but not yet earned
+            const relic = gs.relicEffects || {};
+            if (relic.discardCritPerCards && relic.discardCritPerStep) {
+                const discarded = gs.discardedCardsThisRun || 0;
+                const next = relic.discardCritPerCards - (discarded % relic.discardCritPerCards);
+                if (discarded > 0 || relic.discardCritPerCards <= 10) {
+                    entries.push({
+                        text: `Discard Crit (${next} to +${Math.round(relic.discardCritPerStep * 100)}%)`,
+                        color: '#ddaa66'
+                    });
+                }
+            }
+        }
+
+        entries.forEach((entry, i) => {
+            const y = 312 + i * 15;
+            const text = this.add.text(10, y, entry.text, {
                 fontSize: '12px',
-                fill: color,
+                fill: entry.color,
                 fontFamily: '"HoMM Pixel"'
             });
             this.playerEffectsUIGroup.add(text);
         });
+    }
+
+    capitalizeEffect(value) {
+        const text = (value || '').toString();
+        return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
     }
     
     showAmuletTooltip(amulet, x, y) {
@@ -1219,7 +1611,7 @@ export class GameScene extends Phaser.Scene {
             .setOrigin(0, 0.5);
         
         this.amuletTooltip = this.add.container(x, y, [tooltipBg, tooltipText]);
-        this.amuletTooltip.setDepth(10);
+        this.amuletTooltip.setDepth(100);
     }
     
     pauseGame() {
@@ -1265,6 +1657,11 @@ export class GameScene extends Phaser.Scene {
         this.gameState.firstActionUsed = runData.player.firstActionUsed;
         this.gameState.baseMaxHealth = runData.player.baseMaxHealth;
         this.gameState.bottomlessBagApplied = runData.player.bottomlessBagApplied;
+        this.gameState.discardedCardsThisRun = runData.player.discardedCardsThisRun || 0;
+        this.gameState.discardCritChance = runData.player.discardCritChance || 0;
+        this.gameState.journalBonusHP = runData.player.journalBonusHP || 0;
+        this.gameState.mapBonusAP = runData.player.mapBonusAP || 0;
+        this.gameState.mapFloorCount = runData.player.mapFloorCount || 0;
         // Equipment
         this.gameState.equippedWeapon = runData.equipment.equippedWeapon;
         this.gameState.equippedArmor = runData.equipment.equippedArmor;
@@ -1278,6 +1675,13 @@ export class GameScene extends Phaser.Scene {
         this.gameState.blockNextAttack = runData.effects.blockNextAttack;
         // Damage tracking
         this.gameState.damageTracking = runData.damageTracking;
+        // Story consequence state
+        if (runData.story?.storyRun) {
+            this.gameState.storyRun = runData.story.storyRun;
+        }
+        if (runData.story?.heroMemory) {
+            this.gameState.heroMemory = runData.story.heroMemory;
+        }
         // Inventory
         if (this.inventorySystem && runData.equipment.inventory) {
             this.inventorySystem.slots = runData.equipment.inventory;
@@ -1285,6 +1689,9 @@ export class GameScene extends Phaser.Scene {
             this.inventorySystem.createInventoryUI();
             this.inventorySystem.rebuildInventorySprites();
         }
+        // A loaded run already contains its starter swords in the saved
+        // inventory — never re-grant them on Continue/resume/restart.
+        this.gameState.startingCardsGranted = true;
         // Re-apply relic effects on top of loaded state
         if (this.metaManager) {
             this.metaManager.applyRelicEffects(this.gameState, false);
@@ -1293,9 +1700,11 @@ export class GameScene extends Phaser.Scene {
     }
     
     updateRoomTitle() {
+        if (!this.roomTitle) return;
         let title = 'Combat Room';
         if (this.roomType === 'ELITE') title = 'Elite Combat';
         if (this.roomType === 'BOSS') title = 'Boss Fight';
+        if (this.roomType === 'BOSS_REWARD') title = 'Victory Spoils';
         this.roomTitle.setText(title);
     }
     
@@ -1314,6 +1723,10 @@ export class GameScene extends Phaser.Scene {
         }
         if (data?.shopStation) {
             this.inventorySystem?.setStationMode(true);
+            // Clear the previous floor's cards so they don't bleed through the shop UI.
+            this.cardSystem?.clearBoard?.();
+            // Also hide the room title (it would still say "Combat Room" from the prior floor).
+            if (this.roomTitle) this.roomTitle.setText('');
             this.updateUI();
             return;
         }

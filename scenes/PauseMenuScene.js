@@ -71,7 +71,7 @@ export class PauseMenuScene extends Phaser.Scene {
             .on('pointerout', () => mainMenuButton.setFillStyle(0xff6666, 0.3))
             .on('pointerdown', () => this.quitToMainMenu());
         
-        this.add.text(410, 280, 'Quit Game', {
+        this.add.text(410, 280, 'Save & Quit', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel"'
@@ -175,9 +175,16 @@ export class PauseMenuScene extends Phaser.Scene {
     }
     
     quitToMainMenu() {
-        // Stop all scenes and restart the game
+        // Save the current run so it can be resumed from the main menu.
+        const gameScene = this.scene.get(this.pausedScene);
+        if (gameScene && typeof gameScene.saveCurrentRun === 'function') {
+            gameScene.saveCurrentRun();
+        }
+
+        // Stop active gameplay scenes, then go to the main menu.
         this.scene.stop(this.pausedScene);
+        this.scene.stop('MapViewScene');
         this.scene.stop();
-        this.scene.start('GameScene', {}); // Restart fresh
+        this.scene.start('MainMenuScene');
     }
 }

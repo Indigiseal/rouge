@@ -11,17 +11,31 @@ export class MapViewScene extends Phaser.Scene {
   init(data) {
     this.gameState = data.gameState;
 
-    // Derive current act from currentFloor (1..45), default to 1
+    // Derive current act from currentFloor (1..45), default to 1.
+    // Clamp to acts 1..3 (the generator only produces three) so a stray
+    // currentFloor >= 46 can't index a non-existent act and crash.
     const cf = Math.max(1, this.gameState.currentFloor || 1);
-    this.currentAct = Math.floor((cf - 1) / 15) + 1;
+    this.currentAct = Math.min(3, Math.max(1, Math.floor((cf - 1) / 15) + 1));
 
-    // Build/keep full map. Regenerate old 10-floor maps after act length changes.
-    const hasCurrentMapShape = this.gameState.dungeonMap?.act1?.floors?.length === 15;
+    // Build/keep full map. Regenerate when shape changes or when new node types were added.
+    const MAP_VERSION = 3; // bump when generator adds new node types
+    const hasCurrentMapShape =
+      this.gameState.dungeonMap?.act1?.floors?.length === 15 &&
+      this.gameState.dungeonMap?._version === MAP_VERSION;
     if (!this.gameState.dungeonMap || !hasCurrentMapShape) {
       const gen = new MapGenerator();
       this.gameState.dungeonMap = gen.generateFullMap();
     }
     this.actMap = this.gameState.dungeonMap[`act${this.currentAct}`];
+
+    // Safety net: if the act map is missing or malformed, rebuild the whole
+    // map so we never dereference an undefined act below.
+    if (!this.actMap?.floors?.length) {
+      const gen = new MapGenerator();
+      this.gameState.dungeonMap = gen.generateFullMap();
+      this.actMap = this.gameState.dungeonMap[`act${this.currentAct}`]
+                 || this.gameState.dungeonMap.act1;
+    }
 
     // Ensure a single authoritative cursor (act-local)
     // floor: 0..14 (0 is the fixed start node, 14 is boss floor)
@@ -29,6 +43,13 @@ export class MapViewScene extends Phaser.Scene {
       this.gameState.mapCursor = { act: this.currentAct, floor: 0, node: 0 };
       // Mark the start as visited so connections from start are valid
       this.actMap.floors[0][0].visited = true;
+    }
+    // Validate cursor against the (possibly freshly regenerated) map.
+    // If the saved node index no longer exists in this floor, clamp to 0.
+    const cur = this.gameState.mapCursor;
+    const curFloor = this.actMap.floors[cur.floor];
+    if (!curFloor || cur.node >= curFloor.length || !curFloor[cur.node]) {
+      cur.node = 0;
     }
 
     // Dragging
@@ -38,6 +59,27 @@ export class MapViewScene extends Phaser.Scene {
   }
 
   create() {
+    // Wake handler installed FIRST so a post-shop wake re-runs create()
+    // even when we short-circuit the post-act-shop path below.
+    this.events.off('wake', this.handleWake, this);
+    this.events.on('wake', this.handleWake, this);
+    this.events.once('shutdown', () => {
+      this.events.off('wake', this.handleWake, this);
+    });
+
+    // Post-act shop: the player just beat the act boss. Skip drawing the map
+    // entirely on this pass — sleep ourselves and launch the shop directly so
+    // there's no map flash. When the shop closes (closeStation → wake), the
+    // wake handler restarts create() and the map draws normally with the flag
+    // cleared.
+    if (this.gameState.pendingActShop) {
+      const shopKey = this.gameState.pendingActShop === 'RARE_SHOP' ? 'RareShopScene' : 'ShopScene';
+      this.gameState.pendingActShop = null;
+      this.scene.sleep();
+      this.scene.launch(shopKey, { gameState: this.gameState });
+      return;
+    }
+
     // Background & title
     this.add.rectangle(320, 180, 640, 360, 0x8b7355);
     this.add.rectangle(320, 30, 640, 60, 0x6b5d4f);
@@ -64,11 +106,6 @@ export class MapViewScene extends Phaser.Scene {
     this.add.text(320, 340, 'Click glowing nodes to proceed • Drag to pan', {
       fontSize: '12px', fill: '#d4b896', fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5);
-    this.events.off('wake', this.handleWake, this);
-    this.events.on('wake', this.handleWake, this);
-    this.events.once('shutdown', () => {
-      this.events.off('wake', this.handleWake, this);
-    });
   }
 
   handleWake() {
@@ -198,6 +235,7 @@ export class MapViewScene extends Phaser.Scene {
     const curF = this.gameState.mapCursor.floor;
     if (curF < this.actMap.floors.length - 1) {
       const from = this.actMap.floors[curF][this.gameState.mapCursor.node];
+      if (!from) return; // cursor out of range — skip highlight (cursor was already clamped in init)
       const nxt = this.actMap.floors[curF + 1];
       from.connections.forEach(t => {
         const a = { x: from.__x, y: from.__y };
@@ -223,54 +261,60 @@ export class MapViewScene extends Phaser.Scene {
   drawNode(node, floorIdx, nodeIdx) {
     const state = this.getNodeVisualState(floorIdx, nodeIdx);
 
-    const palette = {
-      fillByType: {
+    // Spritesheet frame per room type
+    // Frame order: 0=normal chest, 1=rest, 2=good chest, 3=shop, 4=rare shop,
+    //              5=fight, 6=elite fight, 7=boss, 8=event, 9=blacksmith
+    const frameByType = {
+      TREASURE: 0, REST: 1, TREASURE_GOOD: 2, SHOP: 3, RARE_SHOP: 4,
+      COMBAT: 5, ELITE: 6, BOSS: 7, EVENT: 8, ANVIL: 9
+    };
+    const frame = frameByType[node.type] ?? 5;
+
+    // Alpha by state — available/current are fully bright, others dimmed
+    let alpha = 1;
+    if (state === 'behind')                                   alpha = 0.35;
+    else if (state === 'locked' || state === 'locked_next')   alpha = 0.22;
+    else if (state === 'available')                           alpha = 1;
+    else if (state === 'current')                             alpha = 1;
+
+    // Tint: lighten available and current nodes slightly so they stand out
+    const tint = (state === 'available' || state === 'current') ? 0xddddff : 0xffffff;
+
+    // Node sprite
+    const useSheet = this.textures.exists('mapNodes');
+    let nodeSprite;
+    if (useSheet) {
+      nodeSprite = this.add.image(node.__x, node.__y, 'mapNodes', frame);
+    } else {
+      // Fallback: coloured circle if spritesheet hasn't loaded yet
+      const fallbackColors = {
         COMBAT: 0x8b7355, ELITE: 0xae5347, SHOP: 0xd4b896, RARE_SHOP: 0xffd700,
-        REST: 0xa8c09a, ANVIL: 0x9a9a9a, EVENT: 0xc8a882, BOSS: 0xae5347, TREASURE: 0xdaa520
-      },
-      ring: { current: 0xffffff, available: 0xf2d3aa, behind: 0x6b5d4f, locked: 0x6b5d4f }
-    };
-
-    const radius = 18;
-    const baseFill = palette.fillByType[node.type] || 0x8b7355;
-    let alpha = 1, ringColor = palette.ring.locked, ringWidth = 2;
-
-    if (state === 'behind') { alpha = 0.3; ringColor = palette.ring.behind; }
-    if (state === 'locked' || state === 'locked_next') { alpha = 0.25; ringColor = palette.ring.locked; }
-    if (state === 'available') { alpha = 1; ringColor = palette.ring.available; ringWidth = 3; }
-    if (state === 'current') { alpha = 1; ringColor = palette.ring.current; ringWidth = 4; }
-
-    const circle = this.add.circle(node.__x, node.__y, radius, baseFill, 1);
-    circle.setStrokeStyle(ringWidth, ringColor).setAlpha(alpha);
-    this.mapContainer.add(circle);
-
-    const icons = { COMBAT: '⚔', ELITE: '☠', SHOP: '$', RARE_SHOP: '💎', REST: '🔥', ANVIL: '🔨', EVENT: '?', BOSS: '👹', TREASURE: '💰' };
-    const label = this.add.text(node.__x, node.__y, icons[node.type] || '?', {
-      fontSize: '16px', fill: '#f2f2f2', fontFamily: '"HoMM Pixel"'
-    }).setOrigin(0.5).setAlpha(alpha);
-    this.mapContainer.add(label);
-
-    // Pulse for available nodes
-    if (state === 'available') {
-      this.tweens.add({
-        targets: circle, scale: { from: 1, to: 1.12 }, yoyo: true,
-        duration: 650, repeat: -1, ease: 'sine.inout'
-      });
+        REST: 0xa8c09a, ANVIL: 0x9a9a9a, EVENT: 0xc8a882, BOSS: 0x6b0000,
+        TREASURE: 0xdaa520, TREASURE_GOOD: 0xffd700
+      };
+      nodeSprite = this.add.circle(node.__x, node.__y, 18, fallbackColors[node.type] || 0x8b7355);
     }
+    nodeSprite.setAlpha(alpha);
+    if (nodeSprite.setTint) nodeSprite.setTint(tint);
+    this.mapContainer.add(nodeSprite);
 
-    // Tooltip on hover
-    const desc = {
-      COMBAT: 'Battle enemies', ELITE: 'Tough fight, better rewards', SHOP: 'Purchase items',
-      RARE_SHOP: 'Rare goods available!', REST: 'Restore health & actions', ANVIL: 'Repair gear',
-      EVENT: 'Unknown encounter', BOSS: 'Boss fight!', TREASURE: 'Mysterious treasure chest!'
+    const tooltipDesc = {
+      COMBAT: 'Fight room', ELITE: 'Elite fight – tougher enemy, better loot',
+      SHOP: 'Shop – buy items', RARE_SHOP: 'Rare shop – special goods',
+      REST: 'Rest – restore HP & actions', ANVIL: 'Blacksmith – repair or upgrade gear',
+      EVENT: 'Unknown encounter', BOSS: 'Boss fight!',
+      TREASURE: 'Chest room', TREASURE_GOOD: 'Treasure room – richer rewards!'
     };
 
-    const canClick = (state === 'available');
-    if (canClick) {
-      circle.setInteractive({ useHandCursor: true });
-      circle.on('pointerover', () => { if (!this.isDragging) this.showTooltip(desc[node.type], node.__x, node.__y - 28); });
-      circle.on('pointerout', () => this.hideTooltip());
-      circle.on('pointerdown', () => { if (!this.isDragging) this.selectNode(floorIdx, nodeIdx, node); });
+    if (state === 'available') {
+      nodeSprite.setInteractive({ useHandCursor: true });
+      nodeSprite.on('pointerover', () => {
+        if (!this.isDragging) this.showTooltip(tooltipDesc[node.type] || '?', node.__x, node.__y - 30);
+      });
+      nodeSprite.on('pointerout', () => this.hideTooltip());
+      nodeSprite.on('pointerdown', () => {
+        if (!this.isDragging) this.selectNode(floorIdx, nodeIdx, node);
+      });
     }
   }
 
@@ -297,18 +341,20 @@ export class MapViewScene extends Phaser.Scene {
     this.gameState.currentFloor = (this.gameState.currentFloor || 1) + 1;
     // Store type
     this.gameState.roomType = node.type;
-    console.log('Stored roomType:', this.gameState.roomType);
     // Route
-    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE'];
+    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE', 'TREASURE_GOOD'];
     if (nonCombat.includes(node.type)) {
       this.scene.sleep(); // Sleep map for overlay
-      const key = 
-        node.type === 'SHOP' ? 'ShopScene' :
-        node.type === 'RARE_SHOP' ? 'RareShopScene' :
-        node.type === 'REST' ? 'RestScene' :
-        node.type === 'ANVIL' ? 'AnvilScene' :
-        node.type === 'TREASURE' ? 'TreasureScene' : 'EventScene';
-      this.scene.launch(key, { gameState: this.gameState });
+      const key =
+        node.type === 'SHOP'           ? 'ShopScene' :
+        node.type === 'RARE_SHOP'      ? 'RareShopScene' :
+        node.type === 'REST'           ? 'RestScene' :
+        node.type === 'ANVIL'          ? 'AnvilScene' :
+        node.type === 'TREASURE'       ? 'TreasureScene' :
+        node.type === 'TREASURE_GOOD'  ? 'TreasureScene' : 'EventScene';
+      const sceneData = { gameState: this.gameState };
+      if (node.type === 'TREASURE_GOOD') sceneData.rewardMode = 'good';
+      this.scene.launch(key, sceneData);
       return;
     }
     // Combat-like

@@ -21,7 +21,9 @@ export class MapGenerator {
   }
 
   generateFullMap() {
-    const full = {};
+    // Must match MapViewScene's MAP_VERSION. Otherwise the version-check there
+    // fails on every load and the map regenerates after every floor.
+    const full = { _version: 3 };
     for (let act = 1; act <= 3; act++) full[`act${act}`] = this.generateAct(act);
     return full;
   }
@@ -165,6 +167,7 @@ export class MapGenerator {
   _assignTypes(floors) {
     const preBoss = this.FLOORS - 2;
     // First floor already COMBAT, last is BOSS.
+    const supportTypes = new Set(['SHOP', 'RARE_SHOP', 'REST', 'ANVIL']);
 
     // We’ll fill floors 1..preBoss (inclusive) except boss
     const eligible = [];
@@ -174,14 +177,15 @@ export class MapGenerator {
 
     // Bucket-ish weights
     const baseWeights = {
-      COMBAT: 35,
+      COMBAT: 48,
       ELITE: Math.round(8 * this.eliteMult),
       SHOP: 10,
       RARE_SHOP: 4,
       REST: 12,
       ANVIL: 8,
       EVENT: 21,
-      TREASURE: 5 // Rare treasure (adjust to 10 for more)
+      TREASURE: 4,        // normal chest
+      TREASURE_GOOD: 2    // better chest, rarer
     };
 
     // helpers
@@ -212,6 +216,18 @@ export class MapGenerator {
       });
       return [...sibs].map(j => floors[f][j].type);
     };
+    const childTypes = (floors, f, idx) => {
+      if (f >= this.FLOORS - 1) return [];
+      const next = floors[f + 1];
+      return floors[f][idx].connections.map(j => next[j]?.type).filter(Boolean);
+    };
+    const hasSupportNeighbor = (floors, f, idx) => {
+      return [
+        ...parentsTypes(floors, f, idx),
+        ...siblingTypes(floors, f, idx),
+        ...childTypes(floors, f, idx)
+      ].some(type => supportTypes.has(type));
+    };
 
     // pass 1: assign respecting simple rules
     for (let f = 1; f <= preBoss; f++) {
@@ -227,14 +243,16 @@ export class MapGenerator {
           // floor restrictions
           if (f <= 1 && (t === 'ELITE' || t === 'REST')) continue; // no early elite/rest
           if (f === preBoss && t === 'REST') continue;              // no rest before boss
-          if (t === 'TREASURE' && f <= 2) continue; // No early treasures
+          if ((t === 'TREASURE' || t === 'TREASURE_GOOD') && f <= 2) continue; // No early chests
+          if (t === 'TREASURE_GOOD' && f <= 5) continue; // Good chests only in mid/late floors
 
           const pTypes = parentsTypes(floors, f, i);
           const sTypes = siblingTypes(floors, f, i);
 
           // parent/sibling type clash rules for these categories
-          const clashy = new Set(['ELITE', 'SHOP', 'REST']);
+          const clashy = new Set(['ELITE', 'SHOP', 'RARE_SHOP', 'REST', 'ANVIL']);
           if (clashy.has(t) && (pTypes.includes(t) || sTypes.includes(t))) { continue; }
+          if (supportTypes.has(t) && (pTypes.some(type => supportTypes.has(type)) || sTypes.some(type => supportTypes.has(type)))) { continue; }
 
           chosen = t; break;
         }
@@ -253,7 +271,8 @@ export class MapGenerator {
           const candidates = floors[f].filter(n =>
             n.type !== 'BOSS' &&
             !(f <= 1 && (type === 'ELITE' || type === 'REST')) &&
-            !(f === preBoss && type === 'REST')
+            !(f === preBoss && type === 'REST') &&
+            !(supportTypes.has(type) && hasSupportNeighbor(floors, f, floors[f].indexOf(n)))
           );
           if (candidates.length) {
             candidates[Math.floor(Math.random() * candidates.length)].type = type;
@@ -264,7 +283,13 @@ export class MapGenerator {
     };
     ensureOne('REST');
     ensureOne('SHOP');
-    ensureOne('TREASURE', 4, 8); // At least one mid-act
+    // Two blacksmiths per act: one early (never floor 1) so durability can be
+    // topped up before the mid-act grind, and one near the boss for a final
+    // repair. Disjoint zones, so each is guaranteed independently.
+    ensureOne('ANVIL', 2, 5);                     // early-act blacksmith
+    ensureOne('ANVIL', preBoss - 3, preBoss - 1); // late-act blacksmith (near boss)
+    ensureOne('TREASURE', 4, 8);             // At least one normal chest mid-act
+    ensureOne('TREASURE_GOOD', 6, preBoss);  // At least one good chest per act
   }
 
   _computeReachability(floors) {

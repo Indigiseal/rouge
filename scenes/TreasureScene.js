@@ -1,25 +1,42 @@
 import { SoundHelper } from '../utils/SoundHelper.js';
 import { CardDataGenerator } from '../CardDataGenerator.js';
+import { StationRoomBase } from './StationRoomBase.js';
 
-export class TreasureScene extends Phaser.Scene {
+export class TreasureScene extends StationRoomBase {
   constructor() {
     super({ key: 'TreasureScene' });
   }
 
   create(data) {
     this.gameState = data.gameState;
-    this.rewardMode = data.rewardMode || 'treasure';
-    this.requiresKey = this.rewardMode === 'treasure';
+    // Boss rewards now happen inside GameScene; this scene handles treasure
+    // and elite chests only.
+    this.rewardMode = data.rewardMode === 'boss' ? 'elite' : (data.rewardMode || 'treasure');
     this.gameScene = this.scene.get('GameScene');
+    // Skeleton Key amulet bypasses the key requirement on treasure chests
+    const bypassKey = this.gameScene?.amuletManager?.canBypassChestKey?.();
+    this.requiresKey = (this.rewardMode === 'treasure' || this.rewardMode === 'good') && !bypassKey;
     this.opened = false;
 
+    this.createChestRoom();
+  }
+
+  // ─── STANDARD TREASURE / ELITE CHEST ─────────────────────────────────────
+
+  createChestRoom() {
     this.add.rectangle(320, 180, 640, 360, 0x1a1a2e);
 
-    const title = this.rewardMode === 'boss' ? 'BOSS CHEST' :
-      this.rewardMode === 'elite' ? 'ELITE CHEST' : 'TREASURE CHEST';
+    const title = this.rewardMode === 'elite' ? 'ELITE CHEST' : 'TREASURE CHEST';
     this.add.text(320, 50, title, {
       fontSize: '24px',
       fill: '#ffd700',
+      fontFamily: '"HoMM Pixel"'
+    }).setOrigin(0.5);
+
+    const _treasureAct = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
+    this.add.text(580, 12, `Act ${_treasureAct}  Floor ${this.gameState.currentFloor}`, {
+      fontSize: '11px',
+      fill: '#a78f70',
       fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5);
 
@@ -82,6 +99,10 @@ export class TreasureScene extends Phaser.Scene {
       .on('pointerdown', () => this.returnToMap());
   }
 
+  // ─── BOSS REWARD ROOM ────────────────────────────────────────────────────
+
+  // ─── STANDARD CHEST FLOW ─────────────────────────────────────────────────
+
   findKeyIndex() {
     return this.gameState.inventory.findIndex(item => item && item.type === 'key');
   }
@@ -142,11 +163,29 @@ export class TreasureScene extends Phaser.Scene {
     chest.destroy();
   }
 
+  // Reward values bumped — they now scale with floor depth so deeper chests feel meaningful.
+  // Rarity is also capped per act via capRewardRarity so chests don't hand out
+  // epics/legendaries in act 1-2 (the player's run-end goal is 1-2 legendaries
+  // in act 3; chests handing them out by floor 12 trivialized that).
   getRewardValues(openedWithKey) {
+    const floor = this.gameState.currentFloor;
+    const gen = new CardDataGenerator();
     const values = {
-      treasure: { coins: 25, crystals: 2, rarity: 'uncommon' },
-      elite: { coins: 35, crystals: 3, rarity: 'rare' },
-      boss: { coins: 70, crystals: 6, rarity: 'rare' }
+      treasure: {
+        coins: 8 + Math.floor(floor / 3),
+        crystals: 1 + Math.floor(floor / 14),
+        rarity: gen.capRewardRarity('uncommon', floor)
+      },
+      good: {
+        coins: 12 + Math.floor(floor / 2),
+        crystals: 1 + Math.floor(floor / 12),
+        rarity: gen.capRewardRarity(floor >= 20 ? 'epic' : 'rare', floor)
+      },
+      elite: {
+        coins: 15 + Math.floor(floor / 2),
+        crystals: 2 + Math.floor(floor / 10),
+        rarity: gen.capRewardRarity('rare', floor)
+      }
     };
     const reward = values[this.rewardMode] || values.treasure;
     if (openedWithKey) return reward;
@@ -162,7 +201,7 @@ export class TreasureScene extends Phaser.Scene {
     const gen = new CardDataGenerator();
     const roll = Math.random();
     const type = roll < 0.45 ? 'weapon' : roll < 0.85 ? 'armor' : 'magic';
-    const item = gen.createCardData(type, this.gameState.currentFloor);
+    const item = gen.createCardData(type, this.gameState.currentFloor, false, null, rarity);
     item.rarity = rarity;
     return item;
   }
@@ -212,60 +251,30 @@ export class TreasureScene extends Phaser.Scene {
     return item.rarity || '';
   }
 
-  getRarityColor(rarity) {
-    const colors = {
-      common: 0xb8b8b8,
-      uncommon: 0x66dd66,
-      rare: 0x66aaff,
-      legendary: 0xffcc33
-    };
-    return colors[rarity] || 0xffffff;
-  }
-
-  playLootScatter(x, y, coins, crystals) {
-    const splash = this.add.sprite(x, y, 'splash1');
-    splash.setScale(1.2);
-    if (this.anims.exists('splash_anim')) splash.play('splash_anim');
-    splash.once('animationcomplete', () => splash.destroy());
-    this.time.delayedCall(700, () => splash.active && splash.destroy());
-
-    const coinCount = Math.min(6, Math.max(2, Math.ceil(coins / 15)));
-    const crystalCount = Math.min(4, Math.max(1, crystals));
-    for (let i = 0; i < coinCount; i++) {
-      this.scatterLootSprite(x, y, 'coinUI', 0xffd36b);
-    }
-    for (let i = 0; i < crystalCount; i++) {
-      this.scatterLootSprite(x, y, 'CrystalUI', 0x66ffff);
-    }
-  }
-
-  scatterLootSprite(x, y, texture, tint) {
-    const sprite = this.add.sprite(x, y, texture).setScale(1);
-    sprite.setTint(tint);
-    const angle = Phaser.Math.FloatBetween(-Math.PI, 0);
-    const distance = Phaser.Math.Between(35, 95);
-    const targetX = x + Math.cos(angle) * distance;
-    const targetY = y + Math.sin(angle) * distance;
-    this.tweens.add({
-      targets: sprite,
-      x: targetX,
-      y: targetY,
-      alpha: 0,
-      duration: 700,
-      ease: 'Cubic.Out',
-      onComplete: () => sprite.destroy()
-    });
-  }
+  // getRarityColor / playLootScatter / scatterLootSprite / createItemSprite all
+  // inherited from StationRoomBase.
 
   setInventorySlot(index, value) {
+    // Write to gameState first — this must stick regardless of what happens below.
     this.gameState.inventory[index] = value;
-    if (this.gameScene?.inventorySystem?.slots) {
-      if (value === null) {
-        this.gameScene.inventorySystem.removeCard(index);
-      } else {
-        this.gameScene.inventorySystem.addCardDirect(value, index);
-        this.gameScene.inventorySystem.updateTwinkleEffects();
-      }
+
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv?.slots) return;
+
+    // Pre-sync the slots array directly so any subsequent syncGameStateInventory()
+    // call (inside removeCard / addCardDirect) cannot overwrite our change.
+    // This prevents the key-restore bug that occurs when GameScene is sleeping
+    // and the two arrays have drifted out of sync.
+    if (index < inv.slots.length) inv.slots[index] = value;
+
+    if (value === null) {
+      // Destroy the sprite now. The deferred rebuildInventorySprites only fires on
+      // setVisibility(true), which isn't guaranteed after the chest closes — relying
+      // on it left the consumed key's sprite stuck in the slot.
+      inv.removeCard(index, true);
+    } else {
+      inv.addCardDirect(value, index);
+      inv.updateTwinkleEffects();
     }
   }
 
@@ -326,11 +335,7 @@ export class TreasureScene extends Phaser.Scene {
       fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5);
     this.gameScene?.updateUI?.();
-    if (!trapped) {
-      chest.destroy();
-    } else {
-      chest.destroy();
-    }
+    chest.destroy();
   }
 
   returnToMap() {

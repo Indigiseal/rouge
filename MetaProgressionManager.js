@@ -55,15 +55,15 @@ export class MetaProgressionManager {
             
             webWeaver: {
                 id: 'webWeaver',
-                name: 'Web Weaver',
-                description: '10% chance to slow enemies on hit',
+                name: 'Echo Stone',
+                description: '10% chance a merged card respawns face-down on the board',
                 icon: 'relic_web',
                 iconSheet: 'relicsOthers',
                 iconFrame: 12,
                 killedBy: 'spider',
                 tier: 2,
                 effect: {
-                    slowChance: 0.1
+                    mergeRespawnChance: 0.10
                 }
             },
             
@@ -71,40 +71,44 @@ export class MetaProgressionManager {
             boneArmor: {
                 id: 'boneArmor',
                 name: 'Bone Armor',
-                description: 'Start each run with uncommon bone armor',
+                description: 'Start each run with bone armor',
                 icon: 'relic_bone',
                 iconSheet: 'relicsOthers',
                 iconFrame: 13,
                 killedBy: 'skeleton',
                 effect: {
-                    startingArmor: 4
+                    startingArmor: 2
                 }
             },
             
             undeadResilience: {
                 id: 'undeadResilience',
-                name: 'Undead Resilience',
-                description: '+5 max HP at start of run',
+                name: 'Healing Pact',
+                description: 'Heal 2 HP at the start of every floor',
                 icon: 'relic_skull',
                 iconSheet: 'relicsOthers',
                 iconFrame: 14,
                 killedBy: 'skeleton',
                 effect: {
-                    bonusStartingHP: 5
+                    // Tuned 4 → 2 after the spear-bypass fix dropped the
+                    // overall difficulty more than expected. 2 HP/floor still
+                    // adds up to ~90 HP over a full run but you feel late-floor
+                    // damage again instead of trivially regenerating it.
+                    healPerFloor: 2
                 }
             },
-            
+
             // Goblin relics
             greedyPockets: {
                 id: 'greedyPockets',
-                name: 'Greedy Pockets',
-                description: 'Start with +10 coins',
+                name: 'Lucky Strike',
+                description: 'First attack each floor deals double damage',
                 icon: 'relic_coin_pouch',
                 iconSheet: 'relicsOthers',
                 iconFrame: 15,
                 killedBy: 'goblin',
                 effect: {
-                    startingCoins: 10
+                    firstAttackDoubleDamage: true
                 }
             },
             
@@ -169,14 +173,14 @@ export class MetaProgressionManager {
             // General progression relics
             veteranExplorer: {
                 id: 'veteranExplorer',
-                name: 'Veteran Explorer',
-                description: 'Start with +2 action points',
+                name: "Adventurer's Pack",
+                description: '+1 permanent inventory slot',
                 icon: 'relic_boots',
                 iconSheet: 'relicsOthers',
                 iconFrame: 20,
                 unlockCondition: 'deaths_5',
                 effect: {
-                    bonusStartingAP: 2
+                    bonusInventorySlot: 1
                 }
             },
 
@@ -190,6 +194,19 @@ export class MetaProgressionManager {
                 unlockCondition: 'floor_7',
                 effect: {
                     cardSpentMaxHP: 1
+                }
+            },
+
+            luckyScrap: {
+                id: 'luckyScrap',
+                name: 'Ironhide',
+                description: 'Your armor loses durability half as often (lasts about twice as long)',
+                icon: 'relic_scrap',
+                iconSheet: 'relicsOthers',
+                iconFrame: 22,
+                unlockCondition: 'deaths_3',
+                effect: {
+                    armorDurabilitySave: 0.5
                 }
             },
             
@@ -270,6 +287,10 @@ export class MetaProgressionManager {
         const relics = this.getRelicDefinitions();
         
         // Check death count milestones
+        if (this.totalDeaths >= 3 && !this.hasRelic('luckyScrap')) {
+            return relics.luckyScrap;
+        }
+
         if (this.totalDeaths >= 5 && !this.hasRelic('veteranExplorer')) {
             return relics.veteranExplorer;
         }
@@ -329,16 +350,26 @@ export class MetaProgressionManager {
                 gameState.maxActions += effect.bonusStartingAP;
             }
             
+            // Adventurer's Pack: permanent +1 inventory slot at run start.
+            // Pads gameState.inventory to match so InventorySystem doesn't shrink
+            // back to 5 slots when it later syncs to gameState.inventory.
+            if (applyStartingBonuses && effect.bonusInventorySlot) {
+                gameState.bonusInventorySlots = (gameState.bonusInventorySlots || 0) + effect.bonusInventorySlot;
+                if (Array.isArray(gameState.inventory)) {
+                    for (let i = 0; i < effect.bonusInventorySlot; i++) gameState.inventory.push(null);
+                }
+            }
+
             if (applyStartingBonuses && effect.startingArmor && !gameState.equippedArmor) {
                 gameState.equippedArmor = {
                     type: 'armor',
-                    name: 'Uncommon Bone Armor',
+                    name: 'Common Bone Armor',
                     armorType: 'bone',
                     protection: effect.startingArmor,
-                    rarity: 'uncommon',
+                    rarity: 'common',
                     sprite: 'boneArmor_U',
-                    durability: 25,
-                    maxDurability: 25
+                    durability: 15,
+                    maxDurability: 15
                 };
             }
             

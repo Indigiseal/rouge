@@ -123,10 +123,18 @@ export class MainMenuScene extends Phaser.Scene {
         // Sound Effects Volume
         this.createVolumeControl('Sound Effects', 230);
         
+        // Reset Progress button (wipes unlocked relics + saved run)
+        const resetButton = this.createButton(320, 270, 220, 32, 'Reset All Progress', 0xff4444, () => {
+            this.confirmResetProgress();
+        });
+
         // Back button
-        const backButton = this.createButton(320, 300, 150, 35, 'Back', 0x888888, () => {
+        const backButton = this.createButton(320, 315, 150, 30, 'Back', 0x888888, () => {
             // Clean up options menu
-            [optionsBg, optionsTitle, languageButton.button, languageButton.text, backButton.button, backButton.text]
+            [optionsBg, optionsTitle,
+             languageButton.button, languageButton.text,
+             resetButton.button, resetButton.text,
+             backButton.button, backButton.text]
                 .forEach(item => item.destroy());
             
             // Destroy volume controls
@@ -276,6 +284,30 @@ export class MainMenuScene extends Phaser.Scene {
         });
     }
     
+    confirmResetProgress() {
+        const dimmer = this.add.rectangle(320, 180, 640, 360, 0x000000, 0.75);
+        const box = this.add.rectangle(320, 180, 380, 170, 0x2c1810).setStrokeStyle(2, 0xff4444);
+        const title = this.add.text(320, 130, 'Reset All Progress?', {
+            fontSize: '20px', fill: '#ff8888', fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5);
+        const body = this.add.text(320, 170,
+            'Wipes unlocked relics, stats, and\nany saved run. Settings are kept.', {
+            fontSize: '13px', fill: '#ffffff', fontFamily: '"HoMM Pixel"', align: 'center'
+        }).setOrigin(0.5);
+
+        const cleanup = () => [dimmer, box, title, body,
+            yes.button, yes.text, no.button, no.text].forEach(o => o.destroy());
+
+        const yes = this.createButton(265, 230, 90, 30, 'Reset', 0xff4444, () => {
+            this.saveManager.clearCurrentRun();
+            this.saveManager.safeRemove(this.saveManager.META_SAVE_KEY);
+            cleanup();
+            // Rebuild main menu so Continue gets disabled, etc.
+            this.scene.restart();
+        });
+        const no = this.createButton(375, 230, 90, 30, 'Cancel', 0x888888, () => cleanup());
+    }
+
     exitGame() {
         // Show confirmation dialog
         const confirmBg = this.add.rectangle(320, 180, 300, 150, 0x000000, 0.9)

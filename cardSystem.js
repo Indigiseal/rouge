@@ -46,6 +46,16 @@ export class CardSystem {
         });
       }
 
+      if (weapon?.gemEffect === 'poison') {
+        const stacks = Math.max(1, Math.min(3, weapon.gemCount || 1));
+        for (let i = 0; i < stacks; i++) {
+          poisonStacks.push({
+            damage: 1,
+            turns: 3
+          });
+        }
+      }
+
       const relicEffects = this.scene.gameState?.relicEffects || {};
       if (relicEffects.weaponPoisonChance && Math.random() < relicEffects.weaponPoisonChance) {
         poisonStacks.push({
@@ -298,7 +308,7 @@ export class CardSystem {
       return cells;
     }
     // Compute placement (steps + centering) for the current camera size
-    computePlacement(cells) {
+    computePlacement(cells, opts = {}) {
       // measure primitive bounds
       let minR = Infinity, maxR = -Infinity, minXp = Infinity, maxXp = -Infinity;
       for (const { r, c } of cells) {
@@ -334,6 +344,10 @@ export class CardSystem {
         if ((areaRight - areaLeft) > maxPanelW)  areaLeft  = areaRight  - maxPanelW;
         if ((areaBottom - areaTop) > maxPanelH)  areaTop   = areaBottom - maxPanelH;
       }
+      // Optional caller override: clamp the bottom of the usable area so the
+      // cluster stays above e.g. the shop's inventory bar.
+      if (typeof opts.areaBottom === 'number') areaBottom = Math.min(areaBottom, opts.areaBottom);
+
       const areaW = Math.max(10, areaRight - areaLeft);
       const areaH = Math.max(10, areaBottom - areaTop);
       const widthUnits  = (maxXp - minXp) + 1;
@@ -366,6 +380,38 @@ export class CardSystem {
       this.floorBoardPanel = null;
     }
 
+    // Public: tears down every board card and the board panel.
+    // Used when entering shops/stations so leftover combat cards don't bleed through.
+    clearBoard() {
+      this.clearFloorBoardPanel();
+      this.boardCards.forEach(card => {
+        if (!card) return;
+        card.gemIdleTimer?.remove?.(false);
+        // Kill any in-flight tweens (e.g. Watcher's Lamp trap-peek) so their
+        // onComplete callbacks don't fire on a destroyed sprite.
+        if (card.sprite) this.scene.tweens.killTweensOf(card.sprite);
+        card.sprite?.destroy();
+        card.shadow?.destroy();
+        card.gemShadow?.destroy();
+        card.glow?.destroy();
+        card.roleMarker?.destroy();
+        card.poisonMarker?.destroy();
+        if (card.infoText) {
+          if (card.infoText.list) card.infoText.destroy(true);
+          else card.infoText.destroy();
+        }
+        // Null references so any lingering closures see a falsy sprite.
+        card.sprite = null;
+        card.shadow = null;
+        card.gemShadow = null;
+        card.glow = null;
+        card.roleMarker = null;
+        card.poisonMarker = null;
+        card.infoText = null;
+      });
+      this.boardCards = [];
+    }
+
     createFloorBoardPanel(cells, place, animate = true) {
       this.clearFloorBoardPanel();
       if (!this.scene.textures.exists('gamingBoard')) return;
@@ -376,8 +422,8 @@ export class CardSystem {
       const minY = Math.min(...points.map(p => p.y));
       const maxY = Math.max(...points.map(p => p.y));
       const cam = this.scene.cameras.main;
-      const x = ((minX + maxX) / 2) + 20;
-      const y = Math.min(cam.height - 122, ((minY + maxY) / 2) + 8) - 28;
+      const x = ((minX + maxX) / 2) + 10;
+      const y = Math.min(cam.height - 122, ((minY + maxY) / 2) + 8) - 18;
 
       const panel = this.scene.add.image(x, animate ? y + 34 : y, 'gamingBoard');
       panel.setDepth(0);
@@ -407,8 +453,8 @@ export class CardSystem {
       if (!this.scene.textures.exists('gamingBoard')) return;
 
       const cam = this.scene.cameras.main;
-      const y = Math.min(cam.height - 122, cam.height / 2 + 8) - 28;
-      const panel = this.scene.add.image((cam.width / 2) + 20, y + 34, 'gamingBoard');
+      const y = Math.min(cam.height - 122, cam.height / 2 + 8) - 18;
+      const panel = this.scene.add.image((cam.width / 2) + 10, y + 34, 'gamingBoard');
       panel.setDepth(0);
       this.floorBoardPanel = panel;
       this.scene.tweens.add({
@@ -470,7 +516,7 @@ export class CardSystem {
     }
     // ===== FLOOR-SCALED CARD COUNT =====
     static MIN_CARDS = 6;
-    static MAX_CARDS = 22;
+    static MAX_CARDS = 18; // was 22 — late floors flooded the board; trimmed so each card matters
     static ELITE_MULT = 1.15;
     // 1..45 -> 6..26 (linear). Clamp to be safe.
     _baseCardsForFloor(cf) {
@@ -484,18 +530,27 @@ export class CardSystem {
         return Math.min(scaled, CardSystem.MAX_CARDS); // never exceed 26
     }
     spawnFloorCards() {
-      // === clear previous ===
-      this.clearFloorBoardPanel();
-      this.boardCards.forEach(card => {
-        if (!card) return;
-        card.sprite?.destroy();
-        card.shadow?.destroy();
-        if (card.infoText) {
-          if (card.infoText.list) card.infoText.destroy(true);
-          else card.infoText.destroy();
+      // === per-floor relic effects ===
+      // Healing Pact relic: heal at the start of every combat floor.
+      const heal = this.scene.gameState?.relicEffects?.healPerFloor || 0;
+      if (heal > 0 && this.scene.gameState && this.scene.gameState.playerHealth > 0 && this.scene.gameState.playerHealth < this.scene.gameState.maxHealth) {
+        const before = this.scene.gameState.playerHealth;
+        this.scene.gameState.playerHealth = Math.min(this.scene.gameState.maxHealth, before + heal);
+        const gained = this.scene.gameState.playerHealth - before;
+        if (gained > 0 && this.scene.playerAvatar) {
+          this.scene.createFloatingText?.(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${gained} HP (Pact)`, 0x66ff99);
         }
-      });
-      this.boardCards = [];
+        this.scene.updateUI?.();
+      }
+      // Lucky Strike relic: arm the "first attack" flag for this floor.
+      if (this.scene.gameState) this.scene.gameState.firstAttackThisFloorUsed = false;
+
+      // === clear previous ===
+      // Use the canonical teardown so leftover gem shadows, glows and idle
+      // timers from un-picked cards on the previous floor are fully removed.
+      // (The old inline loop only destroyed sprite/shadow/infoText, leaving
+      // gemShadow sprites behind on the next combat floor.)
+      this.clearBoard();
       // === boss shortcut (keep your logic) ===
       const currentFloor = this.scene.gameState.currentFloor;
       const bossFloors = [15, 30, 45];
@@ -509,8 +564,15 @@ export class CardSystem {
       // 2) compute steps & centering for current camera
       const place = this.computePlacement(cells);
       this.createFloorBoardPanel(cells, place, true);
+      // Cache layout so mid-floor respawns (Echo Stone relic) can reuse positions.
+      this._boardCells = cells;
+      this._boardPlace = place;
       // 3) create the cards at proper pixels
       this.boardCards = new Array(cardCount).fill(null);
+      let trapsPlaced = 0;
+      let keysPlaced = 0;
+      let gemsPlaced = 0;
+      let emptyPlaced = 0;
       for (let i = 0; i < cardCount; i++) {
         const { r, c } = cells[i];
         const { x, y } = this.brickToPixel(r, c, place);
@@ -535,8 +597,39 @@ export class CardSystem {
             this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
           }
         });
-        const type = this.pickCardType(cf);
+        let type = this.pickCardType(cf);
+        if (type === 'trap' && trapsPlaced >= 1) {
+          type = this.pickCardType(cf, ['trap']);
+        }
+        if (type === 'key' && keysPlaced >= 1) {
+          // Cap keys at one per floor — re-roll excluding 'key' (and trap if already capped)
+          const exclude = ['key'];
+          if (trapsPlaced >= 1) exclude.push('trap');
+          type = this.pickCardType(cf, exclude);
+        }
+        if (type === 'gem' && gemsPlaced >= 2) {
+          // Cap gems at two per floor — re-roll excluding 'gem' (and any other
+          // already-capped types) so floors don't hand out a stack of sockets.
+          const exclude = ['gem'];
+          if (trapsPlaced >= 1) exclude.push('trap');
+          if (keysPlaced >= 1) exclude.push('key');
+          if (emptyPlaced >= 1) exclude.push('empty');
+          type = this.pickCardType(cf, exclude);
+        }
+        if (type === 'empty' && emptyPlaced >= 1) {
+          // Cap "nothing" cards at one per floor — re-roll excluding 'empty'
+          // (and any other already-capped types).
+          const exclude = ['empty'];
+          if (trapsPlaced >= 1) exclude.push('trap');
+          if (keysPlaced >= 1) exclude.push('key');
+          if (gemsPlaced >= 2) exclude.push('gem');
+          type = this.pickCardType(cf, exclude);
+        }
         const data = this.createCardData(type, cf, roomType === 'ELITE');
+        if (data?.type === 'trap') trapsPlaced++;
+        if (data?.type === 'key') keysPlaced++;
+        if (data?.type === 'gem') gemsPlaced++;
+        if (data?.type === 'empty') emptyPlaced++;
         // Assign roles to enemies based on row position
         if (data && (data.type === 'enemy' || data.type === 'boss')) {
             // Higher r values = closer to player = front row = MELEE
@@ -552,6 +645,9 @@ export class CardSystem {
         }
         this.boardCards[i] = { sprite: cardSprite, shadow, revealed: false, data };
       }
+      this.ensureWeaponSupply(cf, roomType);
+      this.limitEnemyDensity(cf, roomType);
+      this.ensureEnemyMinimum(cf, roomType);
       // 4) second-pass: safe neighbor build (using brick offsets)
       const indexByRC = new Map();
       for (let i = 0; i < this.boardCards.length; i++) {
@@ -580,14 +676,22 @@ export class CardSystem {
       // === compute bands (rows) ===
       this.computeRowBands(this.boardCards, place.VSTEP);
       // Role is assigned during creation based on position preference.
+      // === Greasewing's Feast: convert one non-essential card into food ===
+      if (this.scene.amuletManager?.wantsFoodCardConversion?.() &&
+          roomType !== 'BOSS' && roomType !== 'ELITE') {
+        this.convertCardToFood(cf);
+      }
+
       // === reveal 2–3 enemies with a front/back mix and try to keep them close ===
       const extraRelicReveals = this.scene.gameState?.relicEffects?.revealExtraCard || 0;
-      const wantReveals = ((cf >= 4) ? 3 : 2) + extraRelicReveals;
+      const wantReveals = Math.min(3, ((cf >= 4) ? 3 : 2) + extraRelicReveals);
       const enemyIdx = [];
       const frontIdx = [];
       const backIdx  = [];
       this.boardCards.forEach((c, i) => {
         if (!c) return;
+        // Mimics stay hidden — the player must reveal them to start the timer.
+        if (c.data?.isMimic) return;
         if (c.data?.type === 'enemy' || c.data?.type === 'eliteEnemy' || c.data?.type === 'boss') {
           enemyIdx.push(i);
           if (c.data.role === 'MELEE') frontIdx.push(i); else backIdx.push(i);
@@ -630,15 +734,383 @@ export class CardSystem {
       }
       // Initial room reveals should not consume actions or queue enemy turns.
       picks.forEach(i => this.revealCard(i, true));
+
+      // Watcher's Lamp — preview one trap (no damage)
+      if (this.scene.amuletManager?.wantsTrapPreview?.()) {
+        const trapIdx = this.boardCards.findIndex(c => c && !c.revealed && c.data?.type === 'trap');
+        if (trapIdx !== -1) this.previewTrapAt(trapIdx);
+      }
+
+      // Wayfinder: reveal extra non-enemy cards (skip traps so we don't auto-trigger them)
+      const extraNonEnemy = this.scene.amuletManager?.getExtraNonEnemyReveals?.() || 0;
+      if (extraNonEnemy > 0) {
+        const candidates = [];
+        this.boardCards.forEach((c, i) => {
+          if (!c || c.revealed) return;
+          const t = c.data?.type;
+          if (t === 'enemy' || t === 'boss' || t === 'trap') return;
+          candidates.push(i);
+        });
+        for (let n = 0; n < extraNonEnemy && candidates.length > 0; n++) {
+          const pickIdx = Math.floor(Math.random() * candidates.length);
+          const cardIdx = candidates.splice(pickIdx, 1)[0];
+          this.revealCard(cardIdx, true);
+        }
+      }
+    }
+
+    // Greasewing's Feast hook — convert one harmless card into food.
+    // Prefers traps/coins so we don't eat key/weapon/armor pickups.
+    convertCardToFood(floor) {
+        const candidates = [];
+        const preferredTypes = ['trap', 'coin', 'crystal'];
+        this.boardCards.forEach((card, i) => {
+            if (!card || !card.data) return;
+            if (preferredTypes.includes(card.data.type)) candidates.push(i);
+        });
+        if (candidates.length === 0) return;
+        const idx = candidates[Math.floor(Math.random() * candidates.length)];
+        const card = this.boardCards[idx];
+        const foodData = this.cardDataGenerator.createCardData('food', floor);
+        if (!foodData) return;
+        // Preserve brick layout info so neighbor lookups still work
+        foodData.brick = card.data.brick;
+        card.data = foodData;
+    }
+
+    // ─── Boss reward room ────────────────────────────────────────────────────
+    // Special "floor" used after defeating an act boss. Reuses the GameScene
+    // shell (avatar, inventory, UI) and just swaps the board contents.
+
+    spawnBossRewardBoard(items) {
+        // Clear whatever was on the board (boss fight remnants)
+        this.clearFloorBoardPanel();
+        this.boardCards.forEach(card => {
+            if (!card) return;
+            card.sprite?.destroy();
+            card.shadow?.destroy();
+            if (card.infoText) {
+                if (card.infoText.list) card.infoText.destroy(true);
+                else card.infoText.destroy();
+            }
+        });
+        this.boardCards = [];
+        this.clearBossRewardChest();
+
+        // Decorative chest sprite at the top of the play area
+        const chestX = 320;
+        const chestY = 95;
+        const chestTexture = this.scene.textures.exists('bigChestAnimation') ? 'bigChestAnimation' : 'chest';
+        this.bossRewardChest = this.scene.add.sprite(chestX, chestY, chestTexture, 0);
+        if (this.scene.anims.exists('big_chest_open')) {
+            this.bossRewardChest.play('big_chest_open');
+        }
+        SoundHelper.playSound(this.scene, 'chest_open', 0.5);
+
+        // Three reward cards face-up below the chest
+        const spacing = 100;
+        const startX = 320 - spacing;
+        const cardY = 195;
+        items.forEach((item, i) => {
+            const x = startX + i * spacing;
+            // Gems and relics/amulets aren't cards — no rectangular card shadow
+            const notACard = item.type === 'gem' || item.type === 'amulet' || item.type === 'relic';
+            const shadow = this.scene.add.rectangle(x, cardY + 28, 52, 15, 0x000000, 0.6);
+            shadow.setAlpha(notACard ? 0 : 1);
+
+            const spriteKey = item.sprite || 'cardBack';
+            const cardSprite = item.spriteFrame !== undefined
+                ? this.scene.add.sprite(x, cardY, spriteKey, item.spriteFrame)
+                : this.scene.add.sprite(x, cardY, spriteKey);
+            cardSprite.setScale(1);
+            cardSprite.setInteractive({ useHandCursor: true });
+
+            const cardEntry = { sprite: cardSprite, shadow, revealed: true, data: item };
+            this.boardCards.push(cardEntry);
+            const myIndex = this.boardCards.length - 1;
+
+            cardSprite.on('pointerdown', () => this.takeRewardCard(myIndex));
+            cardSprite.on('pointerover', () => {
+                this.scene.tweens.add({ targets: cardSprite, y: cardY - 5, duration: 150 });
+            });
+            cardSprite.on('pointerout', () => {
+                this.scene.tweens.add({ targets: cardSprite, y: cardY, duration: 150 });
+            });
+
+            // Drop-in animation from above the chest
+            cardSprite.setAlpha(0);
+            cardSprite.y = cardY - 60;
+            this.scene.tweens.add({
+                targets: cardSprite,
+                y: cardY,
+                alpha: 1,
+                duration: 400 + i * 120,
+                ease: 'Back.Out'
+            });
+
+            this.createCardInfoText(cardEntry);
+        });
+    }
+
+    takeRewardCard(index) {
+        const card = this.boardCards[index];
+        if (!card) return;
+
+        const data = card.data;
+        let success = false;
+
+        if (data.type === 'amulet') {
+            if (this.scene.amuletManager && data.id) {
+                success = this.scene.amuletManager.addAmulet(data.id);
+                if (!success) {
+                    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Already owned!', 0xff4444);
+                    return;
+                }
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, `${data.name} equipped!`, 0x9932cc);
+            }
+        } else if (this.scene.inventorySystem.addCard(data)) {
+            success = true;
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Taken!', 0x00ff00);
+        } else {
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Inventory Full!', 0xff4444);
+            return;
+        }
+
+        if (success) {
+            SoundHelper.playSound(this.scene, 'shop_buy', 0.5);
+            this.removeCard(index);
+            this.scene.updateUI();
+        }
+    }
+
+    clearBossRewardChest() {
+        if (this.bossRewardChest) {
+            this.bossRewardChest.destroy();
+            this.bossRewardChest = null;
+        }
+    }
+
+    // Reaper's Mask — replace a defeated enemy with a random pickup card.
+    // The drop sits in the enemy's exact brick position so neighbor logic
+    // stays intact, already revealed and immediately clickable.
+    spawnDeathDrop(index, originalCard) {
+        const card = this.boardCards[index];
+        if (!card || !card.sprite) return;
+
+        // Random non-enemy pickup type. Anything the player can actually use.
+        const dropTypes = ['coin', 'crystal', 'gem', 'food', 'potion', 'weapon', 'armor', 'magic', 'thorns', 'amulet'];
+        const type = dropTypes[Math.floor(Math.random() * dropTypes.length)];
+        const newData = this.cardDataGenerator.createCardData(
+            type,
+            this.scene.gameState.currentFloor,
+            false,
+            this.scene.gameState
+        );
+        if (!newData) {
+            this.removeCard(index);
+            return;
+        }
+
+        // Preserve brick position so neighbor reveals still work
+        if (card.data?.brick) newData.brick = card.data.brick;
+        if (card.data?.brickNeighbors) newData.brickNeighbors = card.data.brickNeighbors;
+
+        // Position & info text cleanup
+        const x = card.sprite.x;
+        const y = card.sprite.y;
+        if (card.infoText) {
+            if (card.infoText.list) card.infoText.destroy(true);
+            else card.infoText.destroy();
+            card.infoText = null;
+        }
+        card.sprite.destroy();
+        card.data = newData;
+
+        // Build a new sprite already in the "revealed" state
+        const spriteKey = newData.sprite || 'cardBack';
+        const newSprite = newData.spriteFrame !== undefined
+            ? this.scene.add.sprite(x, y, spriteKey, newData.spriteFrame)
+            : this.scene.add.sprite(x, y, spriteKey);
+        newSprite.setScale(1);
+        newSprite.setInteractive();
+        newSprite.on('pointerdown', () => this.interactWithCard(index));
+        card.sprite = newSprite;
+        card.revealed = true;
+
+        this.createCardInfoText(card);
+        // Gems and relics/amulets aren't cards — hide the inherited rectangular shadow
+        if (newData.type === 'gem' || newData.type === 'amulet' || newData.type === 'relic') {
+            if (card.shadow) card.shadow.setAlpha(0);
+        }
+        if (newData.type === 'gem') {
+            this.attachGemShadow(card);
+            this.enableGemDrag(card, index);
+        }
+
+        // Visual feedback — small fade-in and "Loot!" floater
+        newSprite.setAlpha(0);
+        this.scene.tweens.add({
+            targets: newSprite,
+            alpha: 1,
+            duration: 350,
+            ease: 'Power2'
+        });
+        SoundHelper.playSound(this.scene, 'card_flip', 0.5);
+        this.scene.createFloatingText(x, y - 24, 'Loot!', 0xffd700);
+    }
+
+    // Watcher's Lamp — briefly peek at a trap, then close it back face-down.
+    // The trap is *not* triggered by the peek itself, and the player has to
+    // remember which card it was. Interaction is paused during the peek so
+    // accidental clicks don't reveal it for real.
+    previewTrapAt(index) {
+        const card = this.boardCards[index];
+        if (!card || card.revealed || card.data?.type !== 'trap') return;
+
+        // Temporarily mark revealed so hover-lift / pointerdown don't fire
+        card.revealed = true;
+
+        const spriteKey = card.data.sprite || 'default_enemy';
+        card.sprite.setTexture(spriteKey, card.data.spriteFrame);
+        this.createCardInfoText(card);
+        SoundHelper.playSound(this.scene, 'card_flip', 0.4);
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Trap! Remember…', 0xff6644);
+
+        // Peek window — close back after a moment
+        this.scene.time.delayedCall(2500, () => {
+            // Bail if the board was cleared (floor change / shop) — the sprite
+            // may be destroyed even though the reference still exists.
+            if (!card.sprite || !card.sprite.scene) return;
+            // Subtle squish to imply the card is flipping back over
+            this.scene.tweens.add({
+                targets: card.sprite,
+                scaleX: 0.05,
+                duration: 120,
+                ease: 'Quad.In',
+                onComplete: () => {
+                    if (!card.sprite || !card.sprite.scene) return;
+                    card.sprite.setTexture('cardBack');
+                    if (card.infoText) {
+                        if (card.infoText.list) card.infoText.destroy(true);
+                        else card.infoText.destroy();
+                        card.infoText = null;
+                    }
+                    card.revealed = false;
+                    this.scene.tweens.add({
+                        targets: card.sprite,
+                        scaleX: 1,
+                        duration: 120,
+                        ease: 'Quad.Out'
+                    });
+                    SoundHelper.playSound(this.scene, 'card_flip', 0.35);
+                }
+            });
+        });
+    }
+
+    ensureWeaponSupply(floor, roomType) {
+      if (!this.boardCards?.length || roomType === 'BOSS') return;
+
+      const desiredWeapons = floor >= 10 || roomType === 'ELITE' || this.boardCards.length >= 10 ? 2 : 1;
+      const currentWeapons = this.boardCards.filter(card => card?.data?.type === 'weapon').length;
+      let missing = Math.max(0, desiredWeapons - currentWeapons);
+      if (missing === 0) return;
+
+      const replacePriority = ['coin', 'food', 'armor', 'crystal', 'amulet', 'potion'];
+      for (const type of replacePriority) {
+        for (let i = 0; i < this.boardCards.length && missing > 0; i++) {
+          const card = this.boardCards[i];
+          if (!card?.data || card.data.type !== type) continue;
+
+          const brick = card.data.brick;
+          const brickNeighbors = card.data.brickNeighbors;
+          card.data = this.cardDataGenerator.createCardData('weapon', floor);
+          if (card.data) {
+            card.data.brick = brick;
+            if (brickNeighbors) card.data.brickNeighbors = brickNeighbors;
+            missing--;
+          }
+        }
+      }
+    }
+
+    limitEnemyDensity(floor, roomType) {
+      if (!this.boardCards?.length || roomType === 'BOSS') return;
+
+      const maxRatio = floor <= 14 ? 0.45 : 0.55;
+      const bonus = roomType === 'ELITE' ? 1 : 0;
+      const maxEnemies = Math.max(2, Math.ceil(this.boardCards.length * maxRatio) + bonus);
+      const enemyIndexes = this.boardCards
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => card?.data?.type === 'enemy' || card?.data?.type === 'eliteEnemy')
+        .map(({ index }) => index);
+      let excess = enemyIndexes.length - maxEnemies;
+      if (excess <= 0) return;
+
+      Phaser.Utils.Array.Shuffle(enemyIndexes);
+      // 'gem' is gated to floor 7+ to match the loot-weight curve (no gems in
+      // early act 1); otherwise density replacement leaks gems off-curve.
+      const baseTypes = floor < 7
+        ? ['weapon', 'armor', 'potion', 'magic', 'coin', 'crystal', 'food']
+        : ['weapon', 'armor', 'potion', 'gem', 'magic', 'coin', 'crystal', 'food'];
+      let gemsOnBoard = this.boardCards.filter((c) => c?.data?.type === 'gem').length;
+      for (const index of enemyIndexes) {
+        if (excess <= 0) break;
+        const card = this.boardCards[index];
+        if (!card?.data) continue;
+        const brick = card.data.brick;
+        // Honor the 2-gem-per-floor cap: drop 'gem' from the pool once reached.
+        const replacementTypes = gemsOnBoard >= 2 ? baseTypes.filter((t) => t !== 'gem') : baseTypes;
+        const replacementType = replacementTypes[Math.floor(Math.random() * replacementTypes.length)];
+        const replacement = this.cardDataGenerator.createCardData(replacementType, floor);
+        if (!replacement) continue;
+        replacement.brick = brick;
+        card.data = replacement;
+        if (replacement.type === 'gem') gemsOnBoard++;
+        excess--;
+      }
+    }
+
+    // Guarantee a real fight: combat/elite floors must have a minimum number of
+    // enemies. Without this, floors could randomly roll ZERO enemies (free loot,
+    // way too easy). Runs AFTER limitEnemyDensity so the cap isn't undone.
+    ensureEnemyMinimum(floor, roomType) {
+      if (!this.boardCards?.length || roomType === 'BOSS') return;
+      // Small floor — just kill the "0/1 enemy free-loot floor" case; most
+      // floors already have plenty of enemies from the weights.
+      const minRatio = floor <= 14 ? 0.12 : 0.16;
+      const bonus = roomType === 'ELITE' ? 1 : 0;
+      const minEnemies = Math.max(2, Math.round(this.boardCards.length * minRatio) + bonus);
+      const isEnemy = (c) => c?.data?.type === 'enemy' || c?.data?.type === 'boss';
+      let count = this.boardCards.filter(isEnemy).length;
+      if (count >= minEnemies) return;
+
+      const convertible = this.boardCards
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => card?.data && !isEnemy(card) && card.data.type !== 'key')
+        .map(({ index }) => index);
+      Phaser.Utils.Array.Shuffle(convertible);
+      for (const index of convertible) {
+        if (count >= minEnemies) break;
+        const card = this.boardCards[index];
+        const brick = card.data.brick;
+        const enemyData = this.cardDataGenerator.createCardData('enemy', floor, roomType === 'ELITE');
+        if (!enemyData) continue;
+        if (brick) { enemyData.brick = brick; enemyData.role = brick.r > 0 ? 'MELEE' : 'RANGED'; }
+        card.data = enemyData;
+        count++;
+      }
     }
 
     spawnBoss() {
         const bossData = this.cardDataGenerator.createCardData('boss', this.scene.gameState.currentFloor);
         const cam = this.scene.cameras.main;
         const x = cam.width / 2;
-        const y = cam.height / 2;
+        const bossOffsetY = bossData.name === 'Spider Queen' ? -100 : 0;
+        const y = cam.height / 2 + bossOffsetY;
         this.createBossBoardPanel();
         const cardSprite = this.scene.add.image(x, y, bossData.sprite);
+        this.playBossEntrance(cardSprite, bossData);
         
         const card = {
             sprite: cardSprite,
@@ -650,15 +1122,43 @@ export class CardSystem {
         card.sprite.setInteractive();
     }
 
-    pickCardType(currentFloor) {
+    playBossEntrance(cardSprite, bossData) {
+        if (!cardSprite || bossData.name !== 'Spider Queen') return;
+
+        const targetY = cardSprite.y;
+        cardSprite.y = targetY - 70;
+        cardSprite.setAlpha(0);
+        this.scene.tweens.add({
+            targets: cardSprite,
+            y: targetY + 8,
+            alpha: 1,
+            duration: 420,
+            ease: 'Sine.easeOut',
+            onComplete: () => {
+                this.scene.tweens.add({
+                    targets: cardSprite,
+                    y: targetY,
+                    duration: 180,
+                    ease: 'Back.easeOut'
+                });
+            }
+        });
+    }
+
+    pickCardType(currentFloor, excludedTypes = []) {
         const weights = this.cardDataGenerator.getCardWeights(currentFloor);
+        const excluded = new Set(excludedTypes);
         
         // Calculate total weight
-        const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+        const totalWeight = Object.entries(weights).reduce((sum, [type, weight]) => (
+            excluded.has(type) ? sum : sum + weight
+        ), 0);
+        if (totalWeight <= 0) return 'coin';
         let random = Math.random() * totalWeight;
         
         // Select card type based on weights
         for (let [cardType, weight] of Object.entries(weights)) {
+            if (excluded.has(cardType)) continue;
             random -= weight;
             if (random <= 0) {
                 return cardType;
@@ -671,7 +1171,7 @@ export class CardSystem {
     generateRandomCard() {
         const currentFloor = this.scene.gameState.currentFloor;
         const type = this.pickCardType(currentFloor);
-        return this.cardDataGenerator.createCardData(type, currentFloor);
+        return this.cardDataGenerator.createCardData(type, currentFloor, false, this.scene.gameState);
     }
 
     revealCard(index, freeAction = false) {
@@ -681,10 +1181,27 @@ export class CardSystem {
         
         SoundHelper.playSound(this.scene, 'card_flip', 0.7);
         card.revealed = true;
+        // Per-enemy grace: when YOU flip a hidden card mid-floor and it's an enemy, it
+        // sits out the action that revealed it (no instant zap), then attacks from the
+        // next action onward. Set this immediately (not in the flip-animation callback)
+        // so the enemy turn this action schedules sees the flag before it fires.
+        // NOTE: only for real player reveals — the floor-start auto-reveals pass
+        // freeAction=true and schedule NO enemy turn, so flagging them would leave the
+        // grace unconsumed and steal the enemies' attack on the player's first action.
+        if (!freeAction &&
+            (card.data.type === 'enemy' || card.data.type === 'boss' || card.data.type === 'eliteEnemy')) {
+            card.justRevealed = true;
+        }
         if (card.glow) card.glow.destroy();
-        
-        if (card.shadow) card.shadow.setAlpha(1);
-        
+
+        // Gems and relics/amulets aren't cards — skip the rectangular card
+        // shadow for them (gems get their own hand-painted shadow instead).
+        if (card.shadow) {
+            const t = card.data?.type;
+            const notACard = t === 'gem' || t === 'amulet' || t === 'relic';
+            card.shadow.setAlpha(notACard ? 0 : 1);
+        }
+
         card.sprite.off('pointerover');
         card.sprite.off('pointerout');
         card.sprite.play('card_flip_anim');
@@ -702,7 +1219,8 @@ export class CardSystem {
                     crystal: 0x00ffff,
                     trap: 0xff4500,
                     armor: 0x888888,
-                    potion: 0xff69b4
+                    potion: 0xff69b4,
+                    gem: card.data.color || 0xffe066
                 };
                 card.sprite = this.scene.add.rectangle(
                     card.sprite.x, card.sprite.y, 70, 90, 
@@ -714,12 +1232,23 @@ export class CardSystem {
             this.createCardInfoText(card);
             card.sprite.setInteractive();
             card.sprite.on('pointerdown', () => this.interactWithCard(index));
-            
-            if (card.data.type === 'enemy' || card.data.type === 'boss') {
-                this.scene.skipNextEnemyAttack = true;
+            if (card.data.type === 'gem') {
+                this.attachGemShadow(card);
+                this.enableGemDrag(card, index);
             }
             
+            // Mimic: start the escape timer. Player must kill it before it runs.
+            if (card.data.isMimic) {
+                card.data.escapeTurnsLeft = card.data.escapeTurns || 3;
+                this.scene.createFloatingText(
+                    card.sprite.x, card.sprite.y - 32,
+                    `Mimic! Kill in ${card.data.escapeTurnsLeft} turns`,
+                    0xffaa00
+                );
+            }
+
             if (card.data.type === 'trap') {
+                this.scene.cameras.main.shake(120, 0.006);
                 this.handleTrap(card, index);
             }
         });
@@ -784,13 +1313,9 @@ export class CardSystem {
         switch (card.data.type) {
             case 'enemy':
             case 'boss':
-                // Add role indicator to the info text
-                const roleText = card.data.role === 'MELEE' ? '[Melee]' : '[Ranged]';
-                infoText = `${roleText} ${card.data.health}HP ${card.data.attack}ATK`;
-                
-                if (card.data.abilities && card.data.abilities.some(a => a.type === 'poison')) {
-                    infoText += ' (Poison)';
-                }
+                // Role is shown by the corner marker (attachRoleMarker), not text.
+                infoText = `${card.data.health}HP ${card.data.attack}ATK`;
+
                 if (card.data.abilities && card.data.abilities.some(a => a.type === 'evade')) {
                     infoText += ' (Evasive)';
                 }
@@ -856,7 +1381,7 @@ export class CardSystem {
                 switch(card.data.magicType) {
                     case 'fireball': shortDesc = '15 DMG'; break;
                     case 'frostRing': shortDesc = 'Freeze 3T'; break;
-                    case 'restoration': shortDesc = '+20HP +10AP'; break;
+                    case 'restoration': shortDesc = 'Full HP+AP'; break;
                     case 'soulDrain': shortDesc = 'Kill +30HP'; break;
                     case 'shadowBlade': shortDesc = '+50% ATK'; break;
                     case 'weakness': shortDesc = '-30% Enemy'; break;
@@ -904,6 +1429,16 @@ export class CardSystem {
 
                 container.setDepth(1001);
                 card.infoText = container;
+                return;
+            }
+
+            case 'gem': {
+                const label = this.scene.add.text(card.sprite.x, card.sprite.y + 22, this.getGemLabel(card.data), {
+                    fontSize: '9px',
+                    fill: '#ffe8b0',
+                    fontFamily: '"HoMM Pixel"'
+                }).setOrigin(0.5);
+                card.infoText = label;
                 return;
             }
                 
@@ -1035,25 +1570,183 @@ export class CardSystem {
                 lineSpacing: 2
             }).setOrigin(0.5);
         }
-        
-        // Add hover tooltip for enemies
-        if (card.data.type === 'enemy' || card.data.type === 'boss') {
+
+        // Stamp a role marker (melee/ranged) and a poison marker on enemy & boss cards.
+        this.attachRoleMarker(card);
+        this.attachPoisonMarker(card);
+    }
+
+    // Adds a small badge to enemy/boss cards: frame 0 = melee, frame 1 = ranged.
+    // Called from createCardInfoText (the shared reveal/refresh point), so it runs
+    // for every reveal path. Destroys any prior marker to avoid duplicates on refresh.
+    attachRoleMarker(card) {
+        if (!card?.sprite || !card.data) return;
+        const t = card.data.type;
+        if (t !== 'enemy' && t !== 'boss' && t !== 'eliteEnemy') return;
+        if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
+        if (!this.scene.textures.exists('enemyCardType')) return;
+        const frame = card.data.role === 'RANGED' ? 1 : 0;
+        // Lower-right corner of the card art.
+        const marker = this.scene.add.sprite(card.sprite.x + 22, card.sprite.y + 30, 'enemyCardType', frame)
+            .setOrigin(0.5);
+        marker.setDepth((card.sprite.depth || 1) + 1);
+        card.roleMarker = marker;
+    }
+
+    attachPoisonMarker(card) {
+        if (!card?.sprite || !card.data) return;
+        const t = card.data.type;
+        if (t !== 'enemy' && t !== 'boss' && t !== 'eliteEnemy') return;
+        if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
+        if (!card.data.abilities?.some(a => a.type === 'poison')) return;
+        if (!this.scene.textures.exists('enemyCardType')) return;
+        // Lower-left corner of the card, mirroring the role marker at lower-right.
+        const marker = this.scene.add.sprite(card.sprite.x - 22, card.sprite.y + 30, 'enemyCardType', 2)
+            .setOrigin(0.5);
+        marker.setDepth((card.sprite.depth || 1) + 1);
+        card.poisonMarker = marker;
+    }
+
+    getGemLabel(gem) {
+        if (gem?.gemEffect === 'fire') return 'Fire';
+        if (gem?.gemEffect === 'poison') return 'Poison';
+        if (gem?.gemEffect === 'lightning') return 'Zap';
+        return 'Gem';
+    }
+
+    attachGemShadow(card) {
+        const shadowFrameByEffect = { fire: 0, poison: 1, lightning: 2 };
+        const frame = shadowFrameByEffect[card.data.gemEffect];
+        if (frame === undefined || !card.sprite) return;
+        const offsetX = 0;
+        const offsetY = 3;
+        const gemShadow = this.scene.add.sprite(
+            card.sprite.x + offsetX,
+            card.sprite.y + offsetY,
+            'shadowsGems',
+            frame
+        );
+        gemShadow.setDepth((card.sprite.depth || 1) - 0.1);
+        card.gemShadow = gemShadow;
+        card.gemShadowOffset = { x: offsetX, y: offsetY };
+    }
+
+    enableGemDrag(card, index) {
+        if (!card?.sprite || !card?.data) return;
+        card.sprite.setInteractive({ draggable: true, useHandCursor: true });
+        const home = { x: card.sprite.x, y: card.sprite.y };
+        const animKey = `gem_${card.data.gemEffect}_sparkle`;
+        const hoverAnimKey = `gem_${card.data.gemEffect}_hover`;
+        let idleTimer = null;
+        if (this.scene.anims.exists(animKey)) {
             card.sprite.on('pointerover', () => {
-                if (card.revealed) {
-                    const roleDesc = card.data.role === 'MELEE' ? 
-                        'Melee: Blocks ranged attacks to back row' : 
-                        'Ranged: Can be targeted only after melee cleared';
-                    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 60, roleDesc, 0xffffaa);
+                if (this.scene.anims.exists(hoverAnimKey)) {
+                    card.sprite.play(hoverAnimKey);
+                } else {
+                    card.sprite.play(animKey);
                 }
             });
+            card.sprite.on('pointerout', () => {
+                card.sprite.stop();
+                card.sprite.setFrame(card.data.spriteFrame || 0);
+            });
+            card.sprite.on('animationcomplete', (animation) => {
+                if (animation?.key === animKey) {
+                    card.sprite.setFrame(card.data.spriteFrame || 0);
+                }
+            });
+            idleTimer = this.scene.time.addEvent({
+                delay: 2600 + Math.floor(Math.random() * 1800),
+                loop: true,
+                callback: () => {
+                    if (card.sprite?.scene && !card.sprite.input?.dragState && !card.sprite.input?.enabled) return;
+                    if (card.sprite?.scene && !card.sprite.input?.dragState && !card.sprite.anims?.isPlaying) {
+                        card.sprite.play(animKey);
+                    }
+                }
+            });
+            card.gemIdleTimer = idleTimer;
         }
+
+        card.sprite.on('dragstart', () => {
+            card.sprite.stop();
+            card.sprite.setDepth(2500);
+            if (card.shadow) card.shadow.setAlpha(0);
+            if (card.gemShadow) card.gemShadow.setVisible(false);
+        });
+        card.sprite.on('drag', (pointer, dragX, dragY) => {
+            card.sprite.x = Phaser.Math.Clamp(dragX, 0, 640);
+            card.sprite.y = Phaser.Math.Clamp(dragY, 0, 360);
+            if (card.infoText?.scene) {
+                card.infoText.x = card.sprite.x;
+                card.infoText.y = card.sprite.y + 22;
+            }
+        });
+        card.sprite.on('dragend', () => {
+            if (this.tryApplyBoardGem(card, index)) return;
+            card.sprite.setDepth(1);
+            card.sprite.x = home.x;
+            card.sprite.y = home.y;
+            if (card.infoText?.scene) {
+                card.infoText.x = home.x;
+                card.infoText.y = home.y + 22;
+            }
+            if (card.gemShadow && card.gemShadow.scene) {
+                const off = card.gemShadowOffset || { x: 0, y: 3 };
+                card.gemShadow.x = home.x + off.x;
+                card.gemShadow.y = home.y + off.y;
+                card.gemShadow.setDepth((card.sprite.depth || 1) - 0.1);
+                card.gemShadow.setVisible(true);
+            }
+        });
+    }
+
+    tryApplyBoardGem(card, index) {
+        const inventory = this.scene.inventorySystem;
+        if (!inventory || !card?.sprite) return false;
+
+        if (inventory.discardArea && Phaser.Geom.Intersects.RectangleToRectangle(card.sprite.getBounds(), inventory.discardArea.getBounds())) {
+            SoundHelper.playSound(this.scene, 'item_discard', 0.7);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Discarded!', 0xff0000);
+            this.scene.recordCardDiscarded?.(card.data, card.sprite.x, card.sprite.y);
+            this.removeCard(index);
+            this.scene.useAction?.();
+            return true;
+        }
+
+        for (let i = 0; i < inventory.slotSprites.length; i++) {
+            const slot = inventory.slotSprites[i];
+            if (!slot?.background) continue;
+            if (!Phaser.Geom.Intersects.RectangleToRectangle(card.sprite.getBounds(), slot.background.getBounds())) continue;
+
+            const targetCard = inventory.slots[i];
+            if (targetCard?.type === 'weapon') {
+                if (inventory.applyGemToWeapon(card.data, i)) {
+                    this.removeCard(index);
+                    this.scene.useAction?.();
+                    return true;
+                }
+                break;
+            }
+            if (!targetCard && inventory.addCard(card.data, i)) {
+                this.removeCard(index);
+                this.scene.useAction?.();
+                return true;
+            }
+        }
+
+        return false;
     }
 
     removeCard(index) {
         const card = this.boardCards[index];
         if (card) {
+            card.gemIdleTimer?.remove?.(false);
             if (card.sprite) card.sprite.destroy();
             if (card.shadow) card.shadow.destroy();
+            if (card.gemShadow) card.gemShadow.destroy();
+            if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
+            if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
             if (card.infoText) {
                 if (card.infoText.list) {
                     card.infoText.destroy(true);
@@ -1082,12 +1775,16 @@ export class CardSystem {
                 this.removeCard(index);
                 break;
                 
-            case 'crystal':
+            case 'crystal': {
                 SoundHelper.playSound(this.scene, 'crystal_collect', 0.5);
-                this.scene.gameState.crystals += card.data.amount;
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${card.data.amount}`, 0x00ffff);
+                const crystalAmount = this.scene.amuletManager
+                    ? this.scene.amuletManager.modifyCrystalFound(card.data.amount)
+                    : card.data.amount;
+                this.scene.gameState.crystals += crystalAmount;
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${crystalAmount}`, 0x00ffff);
                 this.removeCard(index);
                 break;
+            }
                 
             case 'potion':
             case 'weapon':
@@ -1095,30 +1792,43 @@ export class CardSystem {
             case 'key':
             case 'magic':
             case 'thorns':
+            case 'gem':
                 if (this.scene.inventorySystem.addCard(card.data)) {
                     this.removeCard(index);
+                    // Picking an item off the board costs an action point and wakes the enemies.
+                    this.scene.useAction?.();
                 }
                 break;
-                
-            case 'food':
+
+            case 'food': {
                 // Apply amulet food AP modifiers
                 const baseAP = card.data.actionAmount;
-                const modifiedAP = this.scene.amuletManager ? 
+                const modifiedAP = this.scene.amuletManager ?
                     this.scene.amuletManager.modifyFoodAP(baseAP) : baseAP;
-                
+
                 this.scene.gameState.actionsLeft = Math.min(
-                    this.scene.gameState.maxActions, 
+                    this.scene.gameState.maxActions,
                     this.scene.gameState.actionsLeft + modifiedAP
                 );
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${modifiedAP} AP`, 0x00ff00);
                 this.removeCard(index);
+                this.scene.scheduleEnemyTurn?.();
                 break;
-                
+            }
+
             case 'amulet':
                 this.consumeAmulet(card.data, index);
+                // Equipping an amulet costs an action point and wakes the enemies.
+                this.scene.useAction?.();
+                break;
+
+            case 'empty':
+                // Nothing here — clear the card, no reward.
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Nothing...', 0x999999);
+                this.removeCard(index);
                 break;
         }
-        
+
         this.scene.updateUI();
     }
 
@@ -1170,10 +1880,13 @@ export class CardSystem {
         const floor = this.scene.gameState.currentFloor;
         let summonedEnemy;
         
-        // Use the cardDataGenerator to create the right enemy type
-        summonedEnemy = this.cardDataGenerator.createCardData('enemy', floor);
-        
-        // Override the enemy to match what the boss should summon
+        // Build the SPECIFIC enemy type the boss summons so its HP/attack come from
+        // that creature's tier — NOT a random enemy. createCardData('enemy') rolls a
+        // random type, which let summoned "spiders" secretly carry skeleton/goblin
+        // stats (way more HP & damage than a real spider).
+        summonedEnemy = this.cardDataGenerator.createTieredEnemy(enemyType, floor);
+
+        // Cosmetic overrides for the summoned variant.
         switch(enemyType) {
             case 'spider':
                 summonedEnemy.name = 'Spider';
@@ -1241,7 +1954,68 @@ export class CardSystem {
         
         SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
     }
-    attackEnemy(index, damage, isReflection = false, weaponUsed = null) {
+
+    // Echo Stone relic: respawn a card on the board after a merge.
+    // Uses the cached floor layout (this._boardCells / this._boardPlace) so the
+    // new card slots into the original brick grid. Spawns face-down — the player
+    // has to click to reveal, same as any normal floor card.
+    respawnCardOnBoard(cardData) {
+        if (!cardData) return false;
+        // Find a slot that's currently empty (a previously-cleared brick cell).
+        let slot = -1;
+        for (let i = 0; i < this.boardCards.length; i++) {
+            if (!this.boardCards[i]) { slot = i; break; }
+        }
+        if (slot === -1 || !this._boardCells || !this._boardPlace) return false;
+        const cell = this._boardCells[slot];
+        if (!cell) return false;
+        const { x, y } = this.brickToPixel(cell.r, cell.c, this._boardPlace);
+
+        const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
+        shadow.setAlpha(0);
+        const cardSprite = this.scene.add.sprite(x, y, 'cardBack');
+        cardSprite.setScale(1);
+        cardSprite.setInteractive();
+        cardSprite.on('pointerdown', () => this.revealCard(slot));
+        cardSprite.on('pointerover', () => {
+            const c = this.boardCards[slot];
+            if (c && !c.revealed) {
+                shadow.setAlpha(1);
+                this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
+                if (this.scene.anims.exists('card_hover_anim')) cardSprite.play('card_hover_anim');
+            }
+        });
+        cardSprite.on('pointerout', () => {
+            const c = this.boardCards[slot];
+            if (c && !c.revealed) {
+                shadow.setAlpha(0);
+                this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
+            }
+        });
+
+        // Sparkly entry — quick scale-in + magic flash so the player notices.
+        cardSprite.setScale(0.1);
+        this.scene.tweens.add({ targets: cardSprite, scale: 1, duration: 250, ease: 'Back.easeOut' });
+        const flash = this.scene.add.circle(x, y, 30, 0x66ddff, 0.7);
+        this.scene.tweens.add({
+            targets: flash, alpha: 0, scale: 2, duration: 400,
+            onComplete: () => flash.destroy()
+        });
+        SoundHelper.playSound(this.scene, 'magic_cast', 0.4);
+        this.scene.createFloatingText(x, y - 30, 'Echoed!', 0x66ddff);
+
+        // Card is face-down — player must reveal it like any other floor card.
+        // Deep-copy the data so it's independent from the merged source object.
+        this.boardCards[slot] = {
+            sprite: cardSprite,
+            shadow,
+            revealed: false,
+            data: JSON.parse(JSON.stringify(cardData))
+        };
+        return true;
+    }
+
+    attackEnemy(index, damage, isReflection = false, weaponUsed = null, skipDurability = false) {
         const card = this.boardCards[index];
         if (!card || !card.revealed || (card.data.type !== 'enemy' && card.data.type !== 'boss')) return;
         
@@ -1250,25 +2024,25 @@ export class CardSystem {
         const weapon = weaponUsed || this.scene.inventorySystem?.getCurrentWeapon?.() || null;
         
         if (!isReflection && weapon) {
-            const isMelee = this.isMeleeWeapon(weapon);
             const isRanged = this.isRangedWeapon(weapon);
-            
+
             // Check if there are any melee enemies alive (revealed or hidden)
             const meleeBlockers = this._anyMeleeAlive({ includeHidden: true });
-            
-            if (isMelee && meleeBlockers) {
-                // Melee weapons can only hit MELEE role enemies when blockers exist
-                if (card.data.role !== 'MELEE') {
-                    this.scene.createFloatingText(
-                        this.scene.playerAvatar.x, 
-                        this.scene.playerAvatar.y, 
-                        'Blocked by frontline!', 
-                        0xff6666
-                    );
-                    return;
-                }
+
+            // RANGED weapons (spears, bows) bypass the frontline gate — that's
+            // their whole point. They pay a damage penalty (RANGED_MULTIPLIER)
+            // in exchange for being able to hit back-row archers regardless
+            // of front-row blockers.
+            if (!isRanged && meleeBlockers && card.data.role !== 'MELEE') {
+                this.scene.createFloatingText(
+                    this.scene.playerAvatar.x,
+                    this.scene.playerAvatar.y,
+                    'Blocked by frontline!',
+                    0xff6666
+                );
+                return;
             }
-            
+
             // Ranged weapons get a damage penalty
             if (isRanged) {
                 damage = Math.floor(damage * CardSystem.RANGED_MULTIPLIER);
@@ -1279,6 +2053,24 @@ export class CardSystem {
         let finalDamage = damage;
         if (!isReflection && weapon && this.scene.amuletManager) {
             finalDamage = this.scene.amuletManager.modifyWeaponDamage(damage);
+        }
+        if (!isReflection && weapon && this.scene.gameState?.shadowBlade?.turns > 0) {
+            finalDamage = Math.floor(finalDamage * (this.scene.gameState.shadowBlade.multiplier || 1.5));
+        }
+
+        const critChance = this.scene.gameState?.discardCritChance || 0;
+        if (!isReflection && weapon && critChance > 0 && Math.random() < critChance) {
+            finalDamage *= 2;
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 24, 'CRIT!', 0xffd700);
+        }
+
+        // Lucky Strike relic: the first attack each floor deals double damage.
+        // (Stacks multiplicatively with CRIT — if both fire, you get x4.)
+        if (!isReflection && weapon && this.scene.gameState?.relicEffects?.firstAttackDoubleDamage
+            && !this.scene.gameState.firstAttackThisFloorUsed) {
+            finalDamage *= 2;
+            this.scene.gameState.firstAttackThisFloorUsed = true;
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'LUCKY STRIKE!', 0xffaa00);
         }
         
         // Evasion doesn't work against reflection damage
@@ -1329,9 +2121,14 @@ export class CardSystem {
             card.data.health -= finalDamage;
         }
         
-        // Reduce weapon durability on attack (only if not reflection damage)
-        if (!isReflection && this.scene.gameState.equippedWeapon) {
-            this.scene.gameState.equippedWeapon.durability -= 1;
+        // Reduce weapon durability on attack (only if not reflection damage).
+        // Tempered Steel: halves the rate at which durability is lost.
+        // skipDurability=true for the second hit of a dual-wield so it costs only 1 pip total.
+        if (!isReflection && !skipDurability && this.scene.gameState.equippedWeapon) {
+            const durabilityLoss = this.scene.amuletManager
+                ? (Math.random() < this.scene.amuletManager.getWeaponDurabilityRate() ? 1 : 0)
+                : 1;
+            this.scene.gameState.equippedWeapon.durability -= durabilityLoss;
             if (this.scene.gameState.equippedWeapon.durability <= 0) {
                 this.scene.gameState.equippedWeapon = null;
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weapon Broke!', 0xff0000);
@@ -1339,17 +2136,31 @@ export class CardSystem {
             this.scene.updateUI();
         }
         
+        // Elemental hit animation on the struck enemy (fire / poison / lightning)
+        if (!isReflection && weapon) {
+            let hitFx = null;
+            if (weapon.gemEffect === 'fire' || weapon.gemEffect === 'lightning' || weapon.gemEffect === 'poison') {
+                hitFx = weapon.gemEffect;
+            } else if (weapon.poisonDamage > 0) {
+                hitFx = 'poison'; // native venomous weapons
+            }
+            if (hitFx) this.playEnemyHitEffect(card, hitFx);
+        }
+
         if (!isReflection && weapon && card.data.health > 0) {
             this.applyWeaponPoison(card, weapon);
             this.applyRelicSlow(card);
         }
 
+        if (!isReflection && weapon?.gemEffect && card.sprite?.scene) {
+            this.applyWeaponGemEffect(index, weapon, finalDamage);
+        }
+
         if (card.infoText) {
-            const roleText = card.data.role === 'MELEE' ? '[Melee]' : '[Ranged]';
-            let infoText = `${roleText} ${card.data.health}HP ${card.data.attack}ATK`;
+            // Role is shown by the corner marker (attachRoleMarker), not text.
+            let infoText = `${card.data.health}HP ${card.data.attack}ATK`;
             const poisonSummary = this.getEnemyPoisonSummary(card.data);
             if (poisonSummary) infoText += ` (Poison x${poisonSummary.stacks})`;
-            if (card.data.abilities && card.data.abilities.some(a => a.type === 'poison')) infoText += ' (Poison)';
             if (card.data.abilities && card.data.abilities.some(a => a.type === 'evade')) {
                 infoText += ' (Evasive)';
             }
@@ -1358,20 +2169,134 @@ export class CardSystem {
         }
         
         this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${finalDamage}`, 0xff0000);
-        
-        // Update counter for mimic
-        if (card.data.name === 'Mimic') {
-            if (!card.data.hitCounter) card.data.hitCounter = 0;
-            card.data.hitCounter += 1;
-            if (card.data.hitCounter >= 4 && card.data.health > 0) {
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Mimic Escapes!', 0xff0000);
-                this.removeCard(index);
-                return;
-            }
-        }
-        
+
         if (card.data.health <= 0) {
             this.removeDefeatedEnemy(index, card);
+        }
+    }
+
+    applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
+        const target = this.boardCards[targetIndex];
+        if (!target?.data) return;
+
+        const stack = Math.max(1, Math.min(3, weapon.gemCount || 1));
+
+        if (weapon.gemEffect === 'fire') {
+            // Fire: FLAT +3 / +4 / +5 fire damage. The MAIN target takes
+            // weapon damage AND the fire damage (so sword 8 + 3-stack fire = 13
+            // on the main enemy). Every other enemy within splash radius also
+            // takes the +3/+4/+5 fire damage. Scales by gem stack with
+            // diminishing returns; weak weapons benefit hugely (gems add
+            // meaningful damage), legendary weapons not much (5 on top of 16
+            // is modest).
+            const splashDamage = [3, 4, 5][stack - 1];
+            // Main target: bonus fire damage on top of the weapon hit.
+            this.burnEnemy(targetIndex, splashDamage);
+            // Measure to the NEAREST EDGE of each enemy's sprite, not its center.
+            // A big sprite like the boss has a far-off center but its body can be
+            // right next to the minion you hit — center distance would miss it.
+            // Max brick-adjacent distance is ~82px; 100px gives a safe margin.
+            const SPLASH_RADIUS = 100;
+            const tx = target.sprite?.x ?? 0;
+            const ty = target.sprite?.y ?? 0;
+            this.boardCards.forEach((card, i) => {
+                if (i === targetIndex || !card?.sprite) return;
+                const b = card.sprite.getBounds();
+                // Closest point on this sprite's bounding box to the struck card.
+                const nx = Phaser.Math.Clamp(tx, b.left, b.right);
+                const ny = Phaser.Math.Clamp(ty, b.top, b.bottom);
+                const dx = nx - tx;
+                const dy = ny - ty;
+                if (dx * dx + dy * dy <= SPLASH_RADIUS * SPLASH_RADIUS) {
+                    this.burnEnemy(i, splashDamage);
+                }
+            });
+            return;
+        }
+
+        if (weapon.gemEffect === 'lightning') {
+            // Lightning: FLAT +3 / +4 / +5 lightning damage (scales with stacks).
+            // Always hits 3 enemies total: main target + 2 others, regardless
+            // of how many gems are socketed. Stacks only increase the damage.
+            //   1 gem  → 3 enemies take +3 lightning each
+            //   2 gems → 3 enemies take +4 lightning each
+            //   3 gems → 3 enemies take +5 lightning each
+            // Back-row RANGED enemies prioritized as zap targets.
+            const zapDamage = [3, 4, 5][stack - 1];
+            const extraZaps = 2; // always 2 additional = 3 total
+            // Main target: bonus lightning damage on top of the weapon hit.
+            this.damageGemTarget(targetIndex, zapDamage, 'Zap', 0xffe066, 'lightning');
+            if (extraZaps > 0) {
+                const candidates = this.boardCards
+                    .map((card, i) => ({ card, i }))
+                    .filter(({ card, i }) => i !== targetIndex && this.isOpenEnemyCard(card));
+                const ranged = candidates.filter(({ card }) => card.data?.role === 'RANGED');
+                const melee = candidates.filter(({ card }) => card.data?.role !== 'RANGED');
+                const picks = [
+                    ...Phaser.Utils.Array.Shuffle(ranged).slice(0, extraZaps),
+                    ...Phaser.Utils.Array.Shuffle(melee),
+                ].slice(0, extraZaps);
+                picks.forEach(({ i }, zapIndex) => {
+                    this.scene.time.delayedCall((zapIndex + 1) * 90, () => {
+                        this.damageGemTarget(i, zapDamage, 'Zap', 0xffe066, 'lightning');
+                    });
+                });
+            }
+        }
+    }
+
+    isOpenEnemyCard(card) {
+        return !!card?.revealed && !!card.sprite && (card.data?.type === 'enemy' || card.data?.type === 'boss');
+    }
+
+    // Enemy/boss with HP left — revealed OR still face-down.
+    isAnyEnemyCard(card) {
+        return !!card && (card.data?.type === 'enemy' || card.data?.type === 'boss') && card.data.health > 0;
+    }
+
+    // Fire burn that also affects hidden enemies. Open enemies get the full
+    // hit FX; face-down ones take damage quietly and die in place if it's
+    // lethal (they never get to open).
+    burnEnemy(index, amount) {
+        const card = this.boardCards[index];
+        if (!this.isAnyEnemyCard(card)) return;
+        card.data.health -= amount;
+        if (card.revealed && card.sprite?.scene) {
+            this.playEnemyHitEffect(card, 'fire');
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, `-${amount} Fire`, 0xff7040);
+            this.scene.shakeCard(card.sprite);
+            this.updateEnemyInfoText(card);
+        } else if (card.sprite?.scene) {
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, `-${amount} Burn`, 0xff7040);
+        }
+        if (card.data.health <= 0) this.removeDefeatedEnemy(index, card);
+    }
+
+    // Spawns a one-shot elemental hit animation over an enemy card.
+    // effect: 'fire' | 'poison' | 'lightning'
+    playEnemyHitEffect(card, effect) {
+        if (!card?.sprite?.scene) return;
+        const animKey = `enemy_hit_${effect}`;
+        if (!this.scene.anims.exists(animKey)) return;
+        const fx = this.scene.add.sprite(card.sprite.x, card.sprite.y, 'enemiesHitEffects');
+        fx.setDepth((card.sprite.depth || 0) + 5);
+        fx.play(animKey);
+        fx.once('animationcomplete', () => fx.destroy());
+        // Safety cleanup in case the complete event is missed
+        this.scene.time.delayedCall(600, () => fx.active && fx.destroy());
+    }
+
+    damageGemTarget(index, amount, label, color, effect = null) {
+        const card = this.boardCards[index];
+        if (!this.isOpenEnemyCard(card)) return;
+        if (effect) this.playEnemyHitEffect(card, effect);
+        card.data.health -= amount;
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, `-${amount} ${label}`, color);
+        this.scene.shakeCard(card.sprite);
+        if (card.data.health <= 0) {
+            this.removeDefeatedEnemy(index, card);
+        } else {
+            this.updateEnemyInfoText(card);
         }
     }
 
@@ -1440,6 +2365,13 @@ export class CardSystem {
                 });
             });
             
+            // Reaper's Mask — chance to drop a random pickup in the enemy's spot
+            const dropChance = this.scene.amuletManager?.getDeathDropChance?.() || 0;
+            if (dropChance > 0 && Math.random() < dropChance) {
+                this.spawnDeathDrop(index, card);
+                return; // skip the normal removal; new card stands in its place
+            }
+
             const savedNeighbors = card.data?.brickNeighbors ? card.data.brickNeighbors.slice() : null;
             this.removeCard(index);
             // temporarily keep a stub with neighbors
@@ -1462,8 +2394,9 @@ export class CardSystem {
         
         if (!enemiesRemaining && !this.scene.enemiesCleared) {
             // Check if there are any unrevealed cards that could be enemies
-            const potentialEnemies = this.boardCards.some(c => 
-                c && !c.revealed && c.data.type === 'enemy'
+            // A hidden mimic is optional treasure — it shouldn't block floor clear
+            const potentialEnemies = this.boardCards.some(c =>
+                c && !c.revealed && c.data.type === 'enemy' && !c.data.isMimic
             );
             
             if (potentialEnemies) return;
@@ -1487,11 +2420,10 @@ export class CardSystem {
     
     updateEnemyInfoText(card) {
         if (card.infoText) {
-            const roleText = card.data.role === 'MELEE' ? '[Melee]' : '[Ranged]';
-            let infoText = `${roleText} ${card.data.health}HP ${card.data.attack}ATK`;
+            // Role is shown by the corner marker (attachRoleMarker), not text.
+            let infoText = `${card.data.health}HP ${card.data.attack}ATK`;
             const poisonSummary = this.getEnemyPoisonSummary(card.data);
             if (poisonSummary) infoText += ` (Poison x${poisonSummary.stacks})`;
-            if (card.data.abilities && card.data.abilities.some(a => a.type === 'poison')) infoText += ' (Poison)';
             if (card.data.abilities && card.data.abilities.some(a => a.type === 'evade')) {
                 infoText += ' (Evasive)';
             }
@@ -1500,23 +2432,62 @@ export class CardSystem {
         }
     }
     
-    createCardData(type, floor, isElite = false) {
-        return this.cardDataGenerator.createCardData(type, floor || this.scene.gameState.currentFloor, isElite);
+    createCardData(type, floor, isElite = false, gameState = null, targetRarity = null) {
+        // Forward gameState (for amulet no-reroll rules) and targetRarity
+        // (for forced shop/reward rarities). Defaulting gameState to the
+        // scene's keeps board amulet drops consistent too.
+        return this.cardDataGenerator.createCardData(
+            type,
+            floor || this.scene.gameState.currentFloor,
+            isElite,
+            gameState || this.scene.gameState,
+            targetRarity
+        );
     }
     
     // No longer need the createEnemyWithPreferredRole call.
     mimicTreasureExplosion(x, y) {
+        // Loot scales a little with depth
+        const floor = this.scene.gameState.currentFloor || 1;
+        const coinReward = 20 + floor * 2;
+        const crystalReward = 5 + Math.floor(floor / 5);
+
         // Create splash sprite
         const splashSprite = this.scene.add.sprite(x, y, 'splash1');
-        splashSprite.play('splash_anim');
-        
+        if (this.scene.anims.exists('splash_anim')) splashSprite.play('splash_anim');
+
         // On complete: Destroy sprite, add loot
         splashSprite.on('animationcomplete', () => {
             splashSprite.destroy();
             SoundHelper.playSound(this.scene, 'treasure_explode', 0.5);
-            this.scene.gameState.coins += 20;
-            this.scene.gameState.crystals += 5;
-            this.scene.createFloatingText(x, y - 20, '+20 Coins +5 Crystals!', 0xffd700);
+            this.scene.gameState.coins += coinReward;
+            this.scene.gameState.crystals += crystalReward;
+            this.scene.createFloatingText(x, y - 20, `+${coinReward} Coins +${crystalReward} Crystals!`, 0xffd700);
+            this.scene.updateUI?.();
         });
+        // Safety: ensure the splash clears even if the anim event misses
+        this.scene.time.delayedCall(900, () => splashSprite.active && splashSprite.destroy());
+    }
+
+    // Mimic ran away — poof of splash, no loot.
+    mimicEscape(index) {
+        const card = this.boardCards[index];
+        if (!card || !card.sprite) {
+            this.removeCard(index);
+            this.checkFloorClear();
+            return;
+        }
+        const x = card.sprite.x;
+        const y = card.sprite.y;
+        this.scene.createFloatingText(x, y - 20, 'Mimic Escaped!', 0xff6600);
+
+        const splash = this.scene.add.sprite(x, y, 'splash1');
+        if (this.scene.anims.exists('splash_anim')) splash.play('splash_anim');
+        splash.once('animationcomplete', () => splash.destroy());
+        this.scene.time.delayedCall(900, () => splash.active && splash.destroy());
+        SoundHelper.playSound(this.scene, 'card_flip', 0.4);
+
+        this.removeCard(index);
+        this.checkFloorClear();
     }
 }

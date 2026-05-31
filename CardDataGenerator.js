@@ -66,28 +66,49 @@ export class CardDataGenerator {
     getCardWeights(floor) {
         // Use predefined weights if they exist for this floor
         if (this.floorWeights[floor]) {
-            return this.balanceCardWeights(this.floorWeights[floor]);
+            return this.balanceCardWeights(this.floorWeights[floor], floor);
         }
         
         // Fallback: Use formula-based weights for any undefined floors
-        return this.balanceCardWeights(this.calculateFormulaWeights(floor));
+        return this.balanceCardWeights(this.calculateFormulaWeights(floor), floor);
     }
 
-    balanceCardWeights(weights) {
+    balanceCardWeights(weights, floor = 1) {
         if (weights.boss) return weights;
 
         const balanced = { ...weights };
-        balanced.enemy = Math.max(25, Math.floor((balanced.enemy || 0) * 0.85));
-        balanced.coin = Math.max(2, Math.floor((balanced.coin || 0) * 0.5));
+        const weaponMinimum = floor >= 16 ? 16 : floor >= 11 ? 14 : 10;
+        const weaponBoost = floor >= 16 ? 8 : floor >= 11 ? 5 : floor >= 6 ? 3 : 0;
+
+        const enemyMultiplier = floor <= 14 ? 0.68 : 0.78; // back to original; enemy MINIMUM now guarantees fights
+        balanced.enemy = Math.max(20, Math.floor((balanced.enemy || 0) * enemyMultiplier));
+        balanced.coin = Math.max(1, Math.floor((balanced.coin || 0) * 0.25));
         balanced.trap = Math.max(3, Math.floor((balanced.trap || 0) * 0.75));
-        balanced.weapon = Math.max(8, Math.floor((balanced.weapon || 0) * 1.7));
-        balanced.armor = Math.max(8, Math.floor((balanced.armor || 0) * 1.7));
-        balanced.amulet = Math.max(4, Math.floor((balanced.amulet || 0) * 1.25));
+        balanced.weapon = Math.max(weaponMinimum, Math.floor((balanced.weapon || 0) * 1.2) + weaponBoost);
+        balanced.armor = Math.max(14, Math.ceil((balanced.armor || 0) * 1.8));  // Bumped: armor needs to drop often enough to build a merge line
+        // Amulets were flooding the late game (~22% of cards, 4-5 per floor),
+        // which trivialized runs once you stacked a dozen+. Cap the weight so
+        // they stay an occasional reward (~6% of cards). Bigger rewards now
+        // come from curated events instead.
+        balanced.amulet = Math.min(floor >= 15 ? 14 : 8, Math.max(3, balanced.amulet || 0));
         balanced.potion = Math.max(8, Math.floor((balanced.potion || 0) * 1.2));
-        balanced.food = Math.max(6, Math.floor((balanced.food || 0) * 1.25));
+        balanced.food = Math.max(19, Math.floor((balanced.food || 0) * 1.7));  // Bumped — players were starving for AP (~43% of actions while hungry); tuned for ~30% hunger
         balanced.magic = Math.max(5, Math.floor((balanced.magic || 0) * 1.25));
         balanced.thorns = Math.max(3, balanced.thorns || 0);
+        balanced.crystal = Math.max(3, Math.floor((balanced.crystal || 0) * (floor >= 15 ? 0.5 : 0.8))); // Cut hard in late game
+        // Socket gems are gated to start in the MIDDLE of act 1 (floor 7) and
+        // ramp gently so a full 45-floor clear nets ~12-15 gems total including
+        // both shop offers. Previously gems dropped flat from floor 1 (weight 9)
+        // and then flooded act 3 (weight 27), which both broke the intended
+        // "no gems early" feel and over-supplied the end game (only 3 gems
+        // socket per weapon anyway).
+        balanced.gem = floor < 7 ? 0
+            : floor <= 15 ? 11  // rest of act 1: gems begin appearing
+            : floor <= 30 ? 13  // act 2: steady trickle
+            : 15;               // act 3: modest bump, not a flood
         balanced.key = Math.max(2, balanced.key || 0);
+        balanced.mimic = Math.max(0, balanced.mimic || 0); // keep mimic chance from formula
+        balanced.empty = floor <= 15 ? 0 : Math.max(12, balanced.empty || 0); // no empty cards in Act 1 (floors 1-15)
         return balanced;
     }
 
@@ -102,15 +123,17 @@ export class CardDataGenerator {
         const weights = {
             enemy: Math.min(30 + floor * 2, 82),
             coin: Math.max(30 - floor, 2),
-            crystal: Math.min(5 + Math.floor(floor * 0.9), 50),
+            crystal: Math.min(5 + Math.floor(floor * 0.4), 18), // Capped lower — was flooding later floors
             trap: Math.min(5 + floor, 35),
             weapon: Math.max(10 - Math.floor(floor / 4), 1),
-            armor: Math.max(10 - Math.floor(floor / 4), 1),
-            amulet: Math.min(5 + Math.floor(floor / 2), 30),
-            potion: 10, // Consistent potion chance
-            food: Math.max(15 - Math.floor(floor / 2), 1),
+            armor: Math.min(6 + Math.floor(floor / 3), 18),     // Grows with floor instead of shrinking
+            amulet: Math.min(4 + Math.floor(floor * 0.8), 35),  // Grows faster as floors increase
+            potion: 10,
+            food: Math.max(10, 18 - Math.floor(floor / 3)),     // Decays slowly, floors at 10 minimum
             magic: Math.min(3 + Math.floor(floor / 2), 15),
-            key: Math.min(1 + Math.floor(floor / 4), 2)
+            gem: 9,
+            key: Math.min(1 + Math.floor(floor / 4), 2),
+            mimic: floor >= 3 ? 3 : 0  // rare treasure-trap, only from floor 3+
         };
         
         return weights;
@@ -121,32 +144,34 @@ export class CardDataGenerator {
             dagger: {
                 common: { floor: 1, damage: 3, sprite: 'dagger_C', special: 'dualWield' },
                 uncommon: { floor: 4, damage: 4, sprite: 'dagger_U', special: 'dualWield' },
-                rare: { floor: 8, damage: 5, sprite: 'dagger_U', special: 'dualWield' },
-                legendary: { floor: 12, damage: 6, sprite: 'dagger_U', special: 'dualWield' }
-            },
-            venomousDagger: {
-                common: { floor: 3, damage: 3, sprite: 'venomousDagger_C', special: 'throwing', range: 'ranged', poisonDamage: 1, poisonTurns: 3, poisonStackable: true },
-                uncommon: { floor: 7, damage: 4, sprite: 'venomousDagger_U', special: 'throwing', range: 'ranged', poisonDamage: 2, poisonTurns: 3, poisonStackable: true },
-                rare: { floor: 12, damage: 5, sprite: 'venomousDagger_U', special: 'throwing', range: 'ranged', poisonDamage: 2, poisonTurns: 4, poisonStackable: true },
-                legendary: { floor: 18, damage: 6, sprite: 'venomousDagger_U', special: 'throwing', range: 'ranged', poisonDamage: 3, poisonTurns: 4, poisonStackable: true }
+                rare: { floor: 8, damage: 5, sprite: 'dagger_R', special: 'dualWield' },
+                epic: { floor: 10, damage: 6, sprite: 'dagger_E', special: 'dualWield' },
+                legendary: { floor: 13, damage: 7, sprite: 'dagger_L', special: 'dualWield' }
             },
             spear: {
                 common: { floor: 5, damage: 4, sprite: 'spear_c', special: 'block', range: 'ranged' },
                 uncommon: { floor: 9, damage: 5, sprite: 'spear_u', special: 'block', range: 'ranged' },
-                rare: { floor: 13, damage: 6, sprite: 'spear_u', special: 'block', range: 'ranged' },
-                legendary: { floor: 17, damage: 8, sprite: 'spear_u', special: 'block', range: 'ranged' }
+                rare: { floor: 13, damage: 6, sprite: 'spear_R', special: 'block', range: 'ranged' },
+                epic: { floor: 15, damage: 7, sprite: 'spear_E', special: 'block', range: 'ranged' },
+                legendary: { floor: 18, damage: 9, sprite: 'spear_L', special: 'block', range: 'ranged' }
             },
             sword: {
-                common: { floor: 10, damage: 6, sprite: 'sword_C', special: null },
-                uncommon: { floor: 14, damage: 7, sprite: 'sword_U', special: null },
-                rare: { floor: 18, damage: 8, sprite: 'sword_U', special: null },
-                legendary: { floor: 22, damage: 9, sprite: 'sword_U', special: null }
+                // Act 2 weapon — appears fresh at the act-2 start (floor 16) and merges
+                // up through act 2 before the axe takes over in act 3.
+                common: { floor: 16, damage: 6, sprite: 'sword_C', special: null },
+                uncommon: { floor: 19, damage: 7, sprite: 'sword_U', special: null },
+                rare: { floor: 22, damage: 8, sprite: 'sword_R', special: null },
+                epic: { floor: 25, damage: 9, sprite: 'sword_E', special: null },
+                legendary: { floor: 28, damage: 10, sprite: 'sword_L', special: null }
             },
             axe: {
-                common: { floor: 15, damage: 7, sprite: 'axe_C', special: 'specialAttack' },
-                uncommon: { floor: 19, damage: 9, sprite: 'axe_U', special: 'specialAttack' },
-                rare: { floor: 23, damage: 11, sprite: 'axe_U', special: 'specialAttack' },
-                legendary: { floor: 27, damage: 15, sprite: 'axe_U', special: 'specialAttack' }
+                // Act 3 only — the endgame weapon. Spread across floors 31-45 so you
+                // find it fresh in act 3 and merge it up over the final act.
+                common: { floor: 31, damage: 7, sprite: 'axe_C', special: 'specialAttack' },
+                uncommon: { floor: 34, damage: 9, sprite: 'axe_U', special: 'specialAttack' },
+                rare: { floor: 37, damage: 11, sprite: 'axe_R', special: 'specialAttack' },
+                epic: { floor: 40, damage: 13, sprite: 'axe_E', special: 'specialAttack' },
+                legendary: { floor: 43, damage: 16, sprite: 'axe_L', special: 'specialAttack' }
             }
         };
     }
@@ -155,22 +180,29 @@ export class CardDataGenerator {
         // REMOVED reflection property from all armor types
         this.armorUnlocks = {
             leather: {
-                common: { floor: 1, protection: 2, dodgeChance: 0.1, sprite: 'leather_C' },
-                uncommon: { floor: 4, protection: 4, dodgeChance: 0.15, sprite: 'leather_C' },
-                rare: { floor: 8, protection: 6, dodgeChance: 0.2, sprite: 'leather_C' },
-                legendary: { floor: 12, protection: 8, dodgeChance: 0.25, sprite: 'leather_C' }
+                common:    { floor: 1,  protection: 1, dodgeChance: 0.1,  sprite: 'leather_C' },
+                uncommon:  { floor: 4,  protection: 2, dodgeChance: 0.15, sprite: 'leather_U' },
+                rare:      { floor: 8,  protection: 3, dodgeChance: 0.2,  sprite: 'leather_R' },
+                epic:      { floor: 10, protection: 4, dodgeChance: 0.22, sprite: 'leather_E' },
+                legendary: { floor: 13, protection: 5, dodgeChance: 0.25, sprite: 'leather_L' }
             },
             chain: {
-                common: { floor: 5, protection: 3, sprite: 'chain_C' },
-                uncommon: { floor: 9, protection: 5, sprite: 'chain_U' },
-                rare: { floor: 13, protection: 7, sprite: 'chain_U' },
-                legendary: { floor: 17, protection: 10, sprite: 'chain_U' }
+                // Act 2 armor — appears fresh at the act-2 start (floor 16) and merges
+                // up through act 2 before plate takes over in act 3.
+                common:    { floor: 16, protection: 2, sprite: 'chain_C' },
+                uncommon:  { floor: 19, protection: 3, sprite: 'chain_U' },
+                rare:      { floor: 22, protection: 4, sprite: 'chain_R' },
+                epic:      { floor: 25, protection: 5, sprite: 'chain_E' },
+                legendary: { floor: 28, protection: 7, sprite: 'chain_L' }
             },
             plate: {
-                common: { floor: 10, protection: 4, sprite: 'plate_C' },
-                uncommon: { floor: 14, protection: 6, sprite: 'plate_U' },
-                rare: { floor: 18, protection: 8, sprite: 'plate_U' },
-                legendary: { floor: 22, protection: 12, sprite: 'plate_U' }
+                // Act 3 only — the endgame armor. Spread across floors 31-45 to mirror
+                // the axe: found fresh in act 3, then merged up to legendary by the end.
+                common:    { floor: 31, protection: 3,  sprite: 'plate_C' },
+                uncommon:  { floor: 34, protection: 5,  sprite: 'plate_U' },
+                rare:      { floor: 37, protection: 7,  sprite: 'plate_R' },
+                epic:      { floor: 40, protection: 9,  sprite: 'plate_E' },
+                legendary: { floor: 43, protection: 11, sprite: 'plate_L' }
             }
         };
     }
@@ -183,10 +215,14 @@ export class CardDataGenerator {
                 role: 'MELEE',
                 minFloor: 1,
                 tiers: [
-                    { minFloor: 1, damage: 5, health: 6 },
-                    { minFloor: 5, damage: 7, health: 9 },
-                    { minFloor: 10, damage: 10, health: 13 },
-                    { minFloor: 15, damage: 14, health: 19 }
+                    // Act 1 softened by ~1 dmg (floors 1-14).
+                    // Act 2 (floor 15+) and Act 3 (floor 31+) trimmed -1 dmg
+                    // and ~10% HP for a gentler curve where the bot stalls.
+                    { minFloor: 1,  damage: 7,  health: 10 },
+                    { minFloor: 5,  damage: 9,  health: 13 },
+                    { minFloor: 10, damage: 9,  health: 13 },
+                    { minFloor: 15, damage: 8,  health: 14 },
+                    { minFloor: 31, damage: 11, health: 20 }
                 ]
             },
             spider: {
@@ -195,12 +231,15 @@ export class CardDataGenerator {
                 role: 'MELEE',
                 minFloor: 3,
                 tiers: [
-                    { minFloor: 3, damage: 4, health: 5 },
-                    { minFloor: 8, damage: 6, health: 8 },
-                    { minFloor: 13, damage: 9, health: 12 },
-                    { minFloor: 18, damage: 12, health: 17 }
+                    // Act 2/3 trimmed -1 dmg and ~10% HP to ease the curve.
+                    { minFloor: 3,  damage: 6,  health: 9  },
+                    { minFloor: 8,  damage: 7,  health: 11 },
+                    { minFloor: 13, damage: 6,  health: 10 },
+                    { minFloor: 16, damage: 6,  health: 9  },
+                    { minFloor: 18, damage: 7,  health: 13 },
+                    { minFloor: 31, damage: 10, health: 18 }
                 ],
-                abilities: [{ type: 'poison', damage: 3, turns: 3, stackable: true }]
+                abilities: [{ type: 'poison', damage: 2, turns: 3, stackable: true }]
             },
             goblin: {
                 name: 'Goblin',
@@ -208,34 +247,44 @@ export class CardDataGenerator {
                 role: 'MELEE',
                 minFloor: 4,
                 tiers: [
-                    { minFloor: 4, damage: 5, health: 7 },
-                    { minFloor: 11, damage: 7, health: 10 },
-                    { minFloor: 16, damage: 10, health: 14 },
-                    { minFloor: 20, damage: 14, health: 19 }
+                    // Act 2/3 trimmed -1 dmg and ~10% HP.
+                    { minFloor: 4,  damage: 7,  health: 11 },
+                    { minFloor: 11, damage: 9,  health: 13 },
+                    { minFloor: 16, damage: 9,  health: 14 },
+                    { minFloor: 20, damage: 9,  health: 14 },
+                    { minFloor: 31, damage: 11, health: 20 }
                 ],
                 abilities: [{ type: 'coin_steal', chance: 0.5, amount: 1 }]
             },
             goblin_archer: {
                 name: 'Goblin Archer',
-                sprite: 'goblin_archer', // Note: Make sure this asset exists
+                sprite: 'goblin_archer',
                 role: 'RANGED',
                 minFloor: 2,
                 tiers: [
-                    { minFloor: 2, damage: 3, health: 4 },
-                    { minFloor: 7, damage: 5, health: 7 },
-                    { minFloor: 12, damage: 8, health: 11 },
+                    // Act 2/3 trimmed -1 dmg and ~15% HP.
+                    { minFloor: 2,  damage: 3,  health: 6  },
+                    { minFloor: 7,  damage: 5,  health: 9  },
+                    { minFloor: 12, damage: 5,  health: 8  },
+                    { minFloor: 16, damage: 5,  health: 7  },
+                    { minFloor: 22, damage: 7,  health: 10 },
+                    { minFloor: 31, damage: 8,  health: 13 }
                 ],
                 abilities: []
             },
             skeleton_archer: {
                 name: 'Skeleton Archer',
-                sprite: 'skeleton_archer', // Note: Make sure this asset exists
+                sprite: 'skeleton_archer',
                 role: 'RANGED',
                 minFloor: 6,
                 tiers: [
-                    { minFloor: 6, damage: 4, health: 6 },
-                    { minFloor: 11, damage: 7, health: 10 },
-                    { minFloor: 17, damage: 11, health: 15 },
+                    // Act 2/3 trimmed -1 dmg and ~15% HP.
+                    { minFloor: 6,  damage: 4,  health: 7  },
+                    { minFloor: 11, damage: 5,  health: 9  },
+                    { minFloor: 16, damage: 5,  health: 8  },
+                    { minFloor: 17, damage: 5,  health: 8  },
+                    { minFloor: 25, damage: 7,  health: 10 },
+                    { minFloor: 31, damage: 8,  health: 13 }
                 ],
                 abilities: []
             }
@@ -243,50 +292,55 @@ export class CardDataGenerator {
     }
 
     initializeBossData() {
+        // Bosses trimmed -1 to -3 attack and ~10% HP across the board so the
+        // act gates feel hard but beatable. Cerberus took the biggest dmg cut
+        // (20→17) because its 20-attack spike was the single deadliest moment
+        // in the sim, far above the Lich at floor 25.
         this.bossData = {
             5: { // Floor 5 mini boss
                 type: 'boss',
                 name: 'Giant Skeleton',
-                health: 36,
-                attack: 9,
+                health: 32,
+                attack: 8,
                 sprite: 'giantSkeleton',
                 abilities: [
-                    { damage: 3, turns: 5 },
-                    { type: 'summon', enemyType: 'skeleton', chance: 0.2 }
+                    { type: 'poison', damage: 3, turns: 5 },
+                    { type: 'summon', enemyType: 'skeleton', chance: 0.3, count: 1 }
                 ]
 
             },
             10: { // Floor 10 boss
                 type: 'boss',
                 name: 'Goblin King',
-                health: 52,
-                attack: 10,
+                health: 46,
+                attack: 9,
                 sprite: 'GoblinKingSprite',
                 abilities: [
-                    { damage: 5, turns: 5, stackable: true },
-                    { type: 'summon', enemyType: 'goblin', chance: 0.2 }
+                    { type: 'poison', damage: 5, turns: 5, stackable: true },
+                    { type: 'summon', enemyType: 'goblin', chance: 0.3, count: 1 }
 
                 ]
             },
-            15: { // Floor 15 boss
+            15: { // Floor 15 boss — Act 1 gate (was deadliest single floor)
                 type: 'boss',
                 name: 'Spider Queen',
-                health: 44,
-                attack: 8,
+                health: 40,
+                attack: 7,
                 sprite: 'SpiderQween',
                 abilities: [
                     { type: 'poison', damage: 5, turns: 5, stackable: true },
-                    { type: 'summon', enemyType: 'spider', chance: 0.2 }
+                    { type: 'summon', enemyType: 'spider', chance: 0.3, count: 1 }
                 ]
             },
             20: { // Floor 20 boss
                 type: 'boss',
                 name: 'Soul Eater',
-                health: 60,
-                attack: 12,
+                health: 54,
+                attack: 11,
                 sprite: 'SoulEater',
                 abilities: [
-                    { type: 'lifesteal', percentage: 0.3 },
+                    { type: 'lifesteal', percentage: 0.6 },
+                    { type: 'summon', enemyType: 'skeleton', chance: 0.3, count: 1 },
                     { type: 'armor_break', amount: 2 },
                     { type: 'rage', threshold: 0.5, damageBoost: 1.5 }
                 ]
@@ -294,30 +348,30 @@ export class CardDataGenerator {
             25: { // Floor 25 boss
                 type: 'boss',
                 name: 'Lich',
-                health: 75,
-                attack: 15,
+                health: 66,
+                attack: 13,
                 sprite: 'Lich',
                 abilities: [
-                    { damage: 8, turns: 5, stackable: true },
-                    { type: 'lifesteal', percentage: 0.5 }
+                    { type: 'poison', damage: 8, turns: 5, stackable: true },
+                    { type: 'lifesteal', percentage: 0.8 }
                 ]
             },
-            30: { // Floor 30 final boss
+            30: { // Floor 30 final boss — Act 2 gate
                 type: 'boss',
                 name: 'Cerberus',
-                health: 100,
-                attack: 20,
+                health: 88,
+                attack: 17,
                 sprite: 'Cerberus',
                 abilities: [
                     { type: 'rage', threshold: 0.3, damageBoost: 2 },
                     { type: 'armor_break', amount: 5 }
                 ]
             },
-            45: { // Floor 45 final boss
+            45: { // Floor 45 final boss — Act 3 gate
                 type: 'boss',
                 name: 'Ancient Cerberus',
-                health: 140,
-                attack: 26,
+                health: 124,
+                attack: 22,
                 sprite: 'Cerberus',
                 abilities: [
                     { type: 'rage', threshold: 0.3, damageBoost: 2 },
@@ -335,7 +389,7 @@ export class CardDataGenerator {
                 name: 'Spike Trap',
                 sprite: 'trap',
                 createData: (floor) => ({
-                    damage: 3 + floor
+                    damage: 3 + Math.floor(floor * 0.6)
                 })
             },
             {
@@ -367,7 +421,8 @@ export class CardDataGenerator {
                 minFloor: 1,
                 weight: 10,
                 rarity: 'uncommon',
-                sprite: 'amulet_regen'
+                sprite: 'relicsOthers',
+                spriteFrame: 2
             },
             {
                 id: 'healingRing',
@@ -375,7 +430,8 @@ export class CardDataGenerator {
                 minFloor: 2,
                 weight: 10,
                 rarity: 'uncommon',
-                sprite: 'amulet_healing'
+                sprite: 'relicsOthers',
+                spriteFrame: 3
             },
             {
                 id: 'invulnerability',
@@ -419,20 +475,13 @@ export class CardDataGenerator {
                 sprite: 'amulet_golem'
             },
             {
-                id: 'goldenHammer',
-                name: 'Golden Hammer',
-                minFloor: 10,
-                weight: 3,
-                rarity: 'legendary',
-                sprite: 'amulet_hammer'
-            },
-            {
                 id: 'chronosHeart',
                 name: 'Chronos Heart',
                 minFloor: 5,
                 weight: 5,
                 rarity: 'rare',
-                sprite: 'amulet_chronos'
+                sprite: 'relicsOthers',
+                spriteFrame: 4
             },
             {
                 id: 'speedBoots',
@@ -463,7 +512,7 @@ export class CardDataGenerator {
                 id: 'bottomlessBag',
                 name: 'Bottomless Bag',
                 minFloor: 1,
-                weight: 30,
+                weight: 7,
                 rarity: 'common',
                 sprite: 'relicsOthers',
                 spriteFrame: 0
@@ -490,7 +539,8 @@ export class CardDataGenerator {
                 minFloor: 10,
                 weight: 4,
                 rarity: 'rare',
-                sprite: 'amulet_soul'
+                sprite: 'relicsOthers',
+                spriteFrame: 6
             },
             
             // CURSED AMULETS (appear later, rarer)
@@ -504,11 +554,12 @@ export class CardDataGenerator {
             },
             {
                 id: 'bloodyHarvest',
-                name: 'Ring of the Bloody Harvest',
+                name: 'Rune of Balance',
                 minFloor: 10,
                 weight: 4,
                 rarity: 'cursed',
-                sprite: 'amulet_blood'
+                sprite: 'relicsOthers',
+                spriteFrame: 5
             },
             {
                 id: 'eternalRage',
@@ -525,6 +576,114 @@ export class CardDataGenerator {
                 weight: 3,
                 rarity: 'cursed',
                 sprite: 'amulet_berserker'
+            },
+            {
+                id: 'diviners_spade',
+                name: "Diviner's Spade",
+                minFloor: 2,
+                weight: 7,
+                rarity: 'uncommon',
+                sprite: 'relicsOthers',
+                spriteFrame: 7
+            },
+            {
+                id: 'wayfinder',
+                name: 'Wayfinder',
+                minFloor: 4,
+                weight: 5,
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 8
+            },
+            {
+                id: 'skeletonKey',
+                name: 'Skeleton Key',
+                minFloor: 3,
+                weight: 5,
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 9
+            },
+            {
+                id: 'greasewingFeast',
+                name: "Greasewing's Feast",
+                minFloor: 5,
+                weight: 6,
+                rarity: 'uncommon',
+                sprite: 'relicsOthers',
+                spriteFrame: 10
+            },
+            {
+                id: 'sunstone',
+                name: 'Sunstone',
+                minFloor: 6,
+                weight: 5,
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 11
+            },
+            {
+                id: 'merchantPact',
+                name: "Merchant's Pact",
+                minFloor: 3,
+                weight: 5,
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 12
+            },
+            {
+                id: 'watchersLamp',
+                name: "Watcher's Lamp",
+                minFloor: 4,
+                weight: 5,
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 24
+            },
+            {
+                id: 'reapersMask',
+                name: "Reaper's Mask",
+                minFloor: 5,
+                weight: 5,
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 25
+            },
+            {
+                id: 'travelersJournal',
+                name: "Traveler's Journal",
+                minFloor: 6,
+                weight: 4,
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 26
+            },
+            {
+                id: 'charmingTune',
+                name: 'Charming Tune',
+                minFloor: 3,
+                weight: 6,
+                rarity: 'uncommon',
+                sprite: 'relicsOthers',
+                spriteFrame: 27
+            },
+            {
+                id: 'wayfarersMap',
+                name: "Wayfarer's Map",
+                minFloor: 4,
+                weight: 5,
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 28
+            },
+            {
+                id: 'sirensPendant',
+                name: "Siren's Pendant",
+                minFloor: 6,
+                weight: 4,
+                rarity: 'rare',
+                sprite: 'relicsOthers',
+                spriteFrame: 29
             }
         ];
     }
@@ -535,7 +694,7 @@ export class CardDataGenerator {
             {
                 tier: 1,
                 name: 'Minor Healing Potion',
-                healAmount: 20,
+                healAmount: 35,
                 cost: 5,
                 minFloor: 1,
                 sprite: 'potionCardCommon',
@@ -544,7 +703,7 @@ export class CardDataGenerator {
             {
                 tier: 2,
                 name: 'Healing Potion',
-                healAmount: 30,
+                healAmount: 70,
                 cost: 7,
                 minFloor: 5,
                 sprite: 'potionCardCommon',
@@ -553,7 +712,7 @@ export class CardDataGenerator {
             {
                 tier: 3,
                 name: 'Strong Healing Potion',
-                healAmount: 50,
+                healAmount: 110,
                 cost: 10,
                 minFloor: 10,
                 sprite: 'potionCardUncommon',
@@ -562,7 +721,7 @@ export class CardDataGenerator {
             {
                 tier: 4,
                 name: 'Greater Healing Potion',
-                healAmount: 100,
+                healAmount: 200,
                 cost: 18,
                 minFloor: 15,
                 sprite: 'potionCardUncommon',
@@ -576,17 +735,17 @@ export class CardDataGenerator {
         this.foodTiers = [
             {
                 tier: 1,
-                name: 'Berries',
-                actionAmount: 10,
+                name: 'Bread',
+                actionAmount: 25,
                 cost: 2,
                 minFloor: 1,
-                sprite: 'berries',
+                sprite: 'bread',
                 rarity: 'common'
             },
             {
                 tier: 2,
                 name: 'Rations',
-                actionAmount: 12,
+                actionAmount: 30,
                 cost: 4,
                 minFloor: 3,
                 sprite: 'bread',
@@ -595,7 +754,7 @@ export class CardDataGenerator {
             {
                 tier: 3,
                 name: 'Hearty Meal',
-                actionAmount: 14,
+                actionAmount: 35,
                 cost: 7,
                 minFloor: 6,
                 sprite: 'bread',
@@ -604,7 +763,7 @@ export class CardDataGenerator {
             {
                 tier: 4,
                 name: 'Feast',
-                actionAmount: 15,
+                actionAmount: 40,
                 cost: 13,
                 minFloor: 8,
                 sprite: 'bread',
@@ -637,7 +796,7 @@ export class CardDataGenerator {
             {
                 magicType: 'restoration',
                 name: 'Restoration',
-                description: 'Restores 15 HP and 3 Action Points',
+                description: 'Fully restores HP and Action Points',
                 minFloor: 2,
                 rarity: 'uncommon',
                 sprite: 'recovery',
@@ -709,12 +868,14 @@ export class CardDataGenerator {
         ];
     }
     
-    createCardData(type, floor, isElite = false, gameState = null) {
+    createCardData(type, floor, isElite = false, gameState = null, targetRarity = null) {
         switch (type) {
             case 'boss':
                 return this.createBossCard(floor);
             case 'enemy':
                 return this.createEnemyCard(floor, isElite);
+            case 'mimic':
+                return this.createMimicCard(floor);
             case 'coin':
                 return this.createCoinCard(floor);
             case 'crystal':
@@ -722,11 +883,11 @@ export class CardDataGenerator {
             case 'trap':
                 return this.createTrapCard(floor);
             case 'weapon':
-                return this.createWeaponCard(floor);
+                return this.createWeaponCard(floor, targetRarity);
             case 'armor':
-                return this.createArmorCard(floor);
+                return this.createArmorCard(floor, targetRarity);
             case 'amulet':
-                return this.createAmuletCard(floor);
+                return this.createAmuletCard(floor, gameState);
             case 'potion':
                 return this.createPotionCard(floor);
             case 'food':
@@ -734,12 +895,22 @@ export class CardDataGenerator {
             case 'magic':
                 return this.createMagicCard(floor);
             case 'thorns':
-                return this.createThornsCard(floor);
+                return this.createThornsCard(floor, targetRarity);
+            case 'gem':
+                return this.createGemCard(floor);
             case 'key':
                 return this.createKeyCard(floor);
+            case 'empty':
+                return this.createEmptyCard(floor);
             default:
                 return null;
         }
+    }
+
+    // An "empty" card — reveals to nothing. Adds reveal risk and thins out
+    // reward density (you can waste an action flipping a blank).
+    createEmptyCard() {
+        return { type: 'empty', name: 'Nothing', sprite: null };
     }
 
     createBossCard(floor) {
@@ -769,11 +940,15 @@ export class CardDataGenerator {
             }
         }
 
+        // Global difficulty scaling — the game was too soft (fresh, relic-less
+        // runs could win, violating the "die ≥3 times to earn relics" design).
+        // Enemies hit harder and are a bit tankier.
+        const ATK_MULT = 1.0, HP_MULT = 1.0; // global enemy buff off for now — difficulty comes from no-free-floors + bosses
         const enemyCard = {
             type: 'enemy',
             name: enemy.name,
-            health: selectedTier.health,
-            attack: selectedTier.damage,
+            health: Math.ceil(selectedTier.health * HP_MULT),
+            attack: Math.ceil(selectedTier.damage * ATK_MULT),
             sprite: enemy.sprite,
             role: enemy.role || 'MELEE' // Default to MELEE if role is missing
         };
@@ -799,6 +974,22 @@ export class CardDataGenerator {
             role: 'MELEE'
         };
     }
+
+    // Mimic — a treasure that bites back. Normal HP, small attack. The player
+    // must kill it within 3 turns of revealing it; otherwise it escapes.
+    // On a successful kill it bursts into coins and crystals.
+    createMimicCard(floor) {
+        return {
+            type: 'enemy',
+            name: 'Mimic',
+            health: 8 + Math.floor(floor / 2),
+            attack: 2,
+            sprite: 'mimic',
+            role: 'MELEE',
+            isMimic: true,
+            escapeTurns: 3
+        };
+    }
     // This method is no longer needed as role assignment is handled in cardSystem.js
     /*
     createEnemyWithPreferredRole(floor, isElite = false, preferredRole = null) {
@@ -809,7 +1000,7 @@ export class CardDataGenerator {
     createCoinCard(floor) {
         return {
             type: 'coin',
-            amount: 5 + Math.floor(Math.random() * 10) + floor,
+            amount: 2 + Math.floor(Math.random() * 4), // 2-5 (was 5-14)
             name: 'Coins',
             sprite: 'coin'
         };
@@ -818,7 +1009,7 @@ export class CardDataGenerator {
     createCrystalCard(floor) {
         return {
             type: 'crystal',
-            amount: 1 + Math.floor(Math.random() * 2),
+            amount: 1, // flat 1 (was 1-2) — crystals were piling up unspent
             name: 'Crystal',
             sprite: 'crystalCard'
         };
@@ -842,19 +1033,93 @@ export class CardDataGenerator {
         }
     }
 
-    createWeaponCard(floor) {
+    // Reward-rarity cap: shops/chests/boss rooms used to hand out epics and
+    // legendaries far too early — by mid-act-2 you already had a legendary
+    // axe from a chest. The cap shifts each rarity DOWN one tier in earlier
+    // acts so the reward chain is:
+    //   Act 1 (floors 1-15):  max UNCOMMON (legendary → epic → rare → uncommon)
+    //   Act 2 (floors 16-30): max RARE     (legendary → epic → rare)
+    //   Act 3 (floors 31+):   max LEGENDARY (no cap)
+    // Result: act-1 boss room gives uncommon (was rare), act-2 boss room
+    // gives rare (was epic), act-3 boss room still gives legendary.
+    capRewardRarity(rarity, floor) {
+        const order = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+        const idx = order.indexOf(rarity);
+        if (idx < 0) return rarity;
+        let maxIdx = 4; // legendary by default
+        if (floor <= 15)      maxIdx = 1; // act 1: uncommon
+        else if (floor <= 30) maxIdx = 2; // act 2: rare
+        return order[Math.min(idx, maxIdx)];
+    }
+
+    // Floor-weighted rarity roll for ad-hoc loot drops (when no explicit
+    // targetRarity is requested). Returns one of common/uncommon/rare/epic.
+    // Tuned so that:
+    //   - Act 1 (1-15) is mostly commons with a sprinkle of uncommons.
+    //   - Act 2 (16-30) drops uncommons regularly and starts seeing rares —
+    //     the player has epic gear at this point and needs merge fodder.
+    //   - Act 3 (31-45) drops rares and the occasional epic so endgame loot
+    //     keeps pace with the player's merged gear.
+    pickFloorRarity(floor) {
+        // [common, uncommon, rare, epic] weights — caller will downgrade if
+        // the picked rarity has no unlocked tier yet at this floor.
+        let weights;
+        // Epics pushed to floor 26+ so battlefield drops don't let players
+        // merge to legendary in mid-act-2. Replaces the old floor-35 legendary
+        // merge gate with a softer rarity-pipeline approach: rares are still
+        // common in act 2 (great merge fodder), but epics arrive in late act 2
+        // / act 3 where they make sense.
+        if (floor <= 5)        weights = [95, 5,  0,  0];
+        else if (floor <= 10)  weights = [85, 15, 0,  0];
+        else if (floor <= 15)  weights = [70, 25, 5,  0];
+        else if (floor <= 20)  weights = [55, 35, 10, 0];   // early act 2 — no epics yet
+        else if (floor <= 25)  weights = [40, 40, 20, 0];   // mid act 2   — no epics yet
+        else if (floor <= 30)  weights = [25, 40, 30, 5];   // late act 2  — epics begin
+        else if (floor <= 35)  weights = [10, 35, 40, 15];  // early act 3
+        else if (floor <= 40)  weights = [5,  25, 45, 25];  // mid act 3
+        else                   weights = [0,  15, 45, 40];  // late act 3
+        const total = weights.reduce((s, w) => s + w, 0);
+        let pick = Math.random() * total;
+        const tiers = ['common', 'uncommon', 'rare', 'epic'];
+        for (let i = 0; i < tiers.length; i++) {
+            pick -= weights[i];
+            if (pick <= 0) return tiers[i];
+        }
+        return 'common';
+    }
+
+    createWeaponCard(floor, targetRarity = null) {
+        const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+        // Determine which rarity tier to use, falling back to the best available
+        const resolveRarity = (rarities) => {
+            // No explicit rarity request → pick one weighted by floor so act 2/3
+            // see uncommons/rares regularly instead of nothing but commons.
+            const requested = targetRarity || this.pickFloorRarity(floor);
+            const candidates = [requested, ...rarityOrder.slice(rarityOrder.indexOf(requested) + 1)];
+            for (const r of candidates) {
+                if (rarities[r] && floor >= rarities[r].floor) return r;
+            }
+            return 'common';
+        };
+
         const availableWeapons = [];
 
         Object.entries(this.weaponUnlocks).forEach(([weaponType, rarities]) => {
-            Object.entries(rarities).forEach(([rarity, data]) => {
-                if (floor >= data.floor) {
-                    availableWeapons.push({
-                        type: weaponType,
-                        rarity: rarity,
-                        ...data
-                    });
-                }
-            });
+            const rarity = resolveRarity(rarities);
+            const data = rarities[rarity];
+            if (data && floor >= data.floor) {
+                // Weapons fade out as the player out-levels them.
+                // Each floor past their unlock costs 0.07 weight; common-tier fades a bit faster.
+                const floorsPast = floor - data.floor;
+                const decay = rarity === 'common' ? 0.09 : 0.06;
+                const weight = Math.max(0.08, 1 - floorsPast * decay);
+                availableWeapons.push({
+                    type: weaponType,
+                    rarity,
+                    weight,
+                    ...data
+                });
+            }
         });
 
         if (availableWeapons.length === 0) {
@@ -872,19 +1137,25 @@ export class CardDataGenerator {
             };
         }
 
-        const selected = availableWeapons[Math.floor(Math.random() * availableWeapons.length)];
+        // Weighted random pick
+        const totalWeight = availableWeapons.reduce((sum, w) => sum + w.weight, 0);
+        let pick = Math.random() * totalWeight;
+        let selected = availableWeapons[availableWeapons.length - 1];
+        for (const candidate of availableWeapons) {
+            pick -= candidate.weight;
+            if (pick <= 0) {
+                selected = candidate;
+                break;
+            }
+        }
         const rarityName = selected.rarity.charAt(0).toUpperCase() + selected.rarity.slice(1);
-        const weaponNames = {
-            venomousDagger: 'Venomous Dagger'
-        };
-        const weaponName = weaponNames[selected.type] || selected.type.charAt(0).toUpperCase() + selected.type.slice(1);
+        const weaponName = selected.type.charAt(0).toUpperCase() + selected.type.slice(1);
 
         const durabilityMap = {
-            dagger: { common: 4, uncommon: 5, rare: 6, legendary: 7 },
-            venomousDagger: { common: 5, uncommon: 5, rare: 5, legendary: 5 },
-            spear: { common: 5, uncommon: 6, rare: 7, legendary: 8 },
-            sword: { common: 6, uncommon: 8, rare: 10, legendary: 13 },
-            axe: { common: 3, uncommon: 4, rare: 5, legendary: 7 }
+            dagger: { common: 4, uncommon: 5, rare: 6, epic: 7, legendary: 8 },
+            spear: { common: 5, uncommon: 6, rare: 7, epic: 8, legendary: 9 },
+            sword: { common: 6, uncommon: 8, rare: 10, epic: 11, legendary: 13 },
+            axe: { common: 6, uncommon: 8, rare: 10, epic: 12, legendary: 14 }
         };
 
         const baseDurability = durabilityMap[selected.type][selected.rarity] || 5;
@@ -906,19 +1177,30 @@ export class CardDataGenerator {
         };
     }
 
-    createArmorCard(floor) {
+    createArmorCard(floor, targetRarity = null) {
+        const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+        const resolveRarity = (rarities) => {
+            // Same floor-weighted rarity as weapons — see pickFloorRarity().
+            const requested = targetRarity || this.pickFloorRarity(floor);
+            const candidates = [requested, ...rarityOrder.slice(rarityOrder.indexOf(requested) + 1)];
+            for (const r of candidates) {
+                if (rarities[r] && floor >= rarities[r].floor) return r;
+            }
+            return 'common';
+        };
+
         const availableArmors = [];
 
         Object.entries(this.armorUnlocks).forEach(([armorType, rarities]) => {
-            Object.entries(rarities).forEach(([rarity, data]) => {
-                if (floor >= data.floor) {
-                    availableArmors.push({
-                        type: armorType,
-                        rarity: rarity,
-                        ...data
-                    });
-                }
-            });
+            const rarity = resolveRarity(rarities);
+            const data = rarities[rarity];
+            if (data && floor >= data.floor) {
+                availableArmors.push({
+                    type: armorType,
+                    rarity,
+                    ...data
+                });
+            }
         });
 
         if (availableArmors.length === 0) {
@@ -929,8 +1211,8 @@ export class CardDataGenerator {
                 protection: 1,
                 rarity: 'common',
                 sprite: 'leather_C',
-                durability: 15,
-                maxDurability: 15
+                durability: 10,
+                maxDurability: 10
             };
         }
 
@@ -941,10 +1223,11 @@ export class CardDataGenerator {
         const durabilityBonus = {
             uncommon: 5,
             rare: 10,
+            epic: 13,
             legendary: 15
         };
 
-        const baseDurability = 20 + (durabilityBonus[selected.rarity] || 0);
+        const baseDurability = 15 + (durabilityBonus[selected.rarity] || 0);
         // REMOVED reflection property from armor creation
         return {
             type: 'armor',
@@ -959,20 +1242,35 @@ export class CardDataGenerator {
         };
     }
 
-    createAmuletCard(floor) {
-        // Get available amulets for current floor
-        const availableAmulets = this.amuletTypes.filter(amulet => floor >= amulet.minFloor);
+    createAmuletCard(floor, gameState = null) {
+        // Build list of amulet IDs the player already owns (from active amulets)
+        const ownedIds = new Set(
+            (gameState?.activeAmulets || []).map(a => a.id).filter(Boolean)
+        );
+
+        // Hide already-owned non-stackable amulets from drops/shops/chests so
+        // the player never sees a useless duplicate. The only currently-
+        // stackable amulet is 'regeneration' (multiple stacks → more healing);
+        // everything else does nothing the second time you "equip" it.
+        const stackableIds = new Set(['regeneration']);
+        const availableAmulets = this.amuletTypes.filter(amulet =>
+            floor >= amulet.minFloor &&
+            !(ownedIds.has(amulet.id) && !stackableIds.has(amulet.id))
+        );
         
         if (availableAmulets.length === 0) {
-            // Fallback to first amulet if none available
-            const chosen = this.amuletTypes[0];
+            // Player has every unique amulet already — fall back to the
+            // stackable Regeneration amulet so the slot still gives something
+            // useful (each extra stack = +1 HP regen per floor end).
+            const regen = this.amuletTypes.find(a => a.id === 'regeneration')
+                || this.amuletTypes[0];
             return {
                 type: 'amulet',
-                id: chosen.id,
-                name: chosen.name,
-                rarity: chosen.rarity,
-                sprite: chosen.sprite,
-                spriteFrame: chosen.spriteFrame
+                id: regen.id,
+                name: regen.name,
+                rarity: regen.rarity,
+                sprite: regen.sprite,
+                spriteFrame: regen.spriteFrame
             };
         }
         
@@ -1007,24 +1305,20 @@ export class CardDataGenerator {
     }
 
     createPotionCard(floor) {
-        // Get available potion tiers for current floor
-        const availablePotions = this.potionTiers.filter(potion => floor >= potion.minFloor);
+        // Generated potions stay at base tier. Merging is what creates stronger versions.
+        const selectedPotion = this.potionTiers[0];
         
-        if (availablePotions.length === 0) {
+        if (!selectedPotion) {
             // Fallback - should not happen if configured correctly
             return {
                 type: 'potion',
                 name: 'Minor Healing Potion',
-                healAmount: 20,
+                healAmount: 35,
                 sprite: 'potionCardCommon',
                 rarity: 'common',
                 cost: 5
             };
         }
-        
-        // Select the highest tier available (most recent unlock)
-        const selectedPotion = availablePotions[availablePotions.length - 1];
-        
         return {
             type: 'potion',
             name: selectedPotion.name,
@@ -1036,24 +1330,20 @@ export class CardDataGenerator {
     }
     
     createFoodCard(floor) {
-        // Get available food tiers for current floor
-        const availableFoods = this.foodTiers.filter(food => floor >= food.minFloor);
+        // Generated food stays at base tier. Merging is what creates stronger versions.
+        const selectedFood = this.foodTiers[0];
         
-        if (availableFoods.length === 0) {
+        if (!selectedFood) {
             // Fallback - should not happen if configured correctly
             return {
                 type: 'food',
                 name: 'Bread',
-                actionAmount: 2,
+                actionAmount: 25,
                 sprite: 'bread',
                 rarity: 'common',
                 cost: 2
             };
         }
-        
-        // Select the highest tier available (most recent unlock)
-        const selectedFood = availableFoods[availableFoods.length - 1];
-        
         return {
             type: 'food',
             name: selectedFood.name,
@@ -1087,16 +1377,30 @@ export class CardDataGenerator {
         };
     }
 
-    createThornsCard(floor) {
+    createThornsCard(floor, targetRarity = null) {
+        const rarity = targetRarity || 'common';
+        const thornsSprite = rarity === 'rare' || rarity === 'epic' || rarity === 'legendary'
+            ? 'thornsCard_R'
+            : rarity === 'uncommon'
+                ? 'thornsCard_U'
+                : 'thornsCard';
+        const tiers = {
+            common:    { thornDamage: 1, durability: 6,  cost: 8 },
+            uncommon:  { thornDamage: 2, durability: 7,  cost: 12 },
+            rare:      { thornDamage: 3, durability: 9,  cost: 18 },
+            epic:      { thornDamage: 4, durability: 10, cost: 23 },
+            legendary: { thornDamage: 5, durability: 11, cost: 28 }
+        };
+        const tier = tiers[rarity] || tiers.common;
         return {
             type: 'thorns',
             name: 'Thorns Card',
-            thornDamage: 2 + Math.floor(floor / 5),
-            rarity: floor >= 15 ? 'rare' : floor >= 6 ? 'uncommon' : 'common',
-            sprite: 'thornsCard',
-            durability: 6,
-            maxDurability: 6,
-            cost: 8
+            thornDamage: tier.thornDamage,
+            rarity,
+            sprite: thornsSprite,
+            durability: tier.durability,
+            maxDurability: tier.durability,
+            cost: tier.cost
         };
     }
     
@@ -1106,6 +1410,24 @@ export class CardDataGenerator {
             name: 'Mysterious Key',
             sprite: 'keyCard',
             rarity: 'rare'
+        };
+    }
+
+    createGemCard(floor) {
+        const gems = [
+            { effect: 'fire', name: 'Fire Gem', frame: 0, color: 0xff7040 },
+            { effect: 'poison', name: 'Poison Gem', frame: 6, color: 0x66ff66 },
+            { effect: 'lightning', name: 'Lightning Gem', frame: 12, color: 0xffe066 }
+        ];
+        const gem = gems[Math.floor(Math.random() * gems.length)];
+        return {
+            type: 'gem',
+            gemEffect: gem.effect,
+            name: gem.name,
+            sprite: 'gemsRGY',
+            spriteFrame: gem.frame,
+            color: gem.color,
+            rarity: 'common'
         };
     }
 }

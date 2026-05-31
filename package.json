@@ -1,6 +1,8 @@
 {
-  "dependencies": {
-    "glob": "^10.4.5",
-    "openai": "^4.104.0"
+  "name": "dungeon-card-crawler",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sim": "node sim/balance-sim.js"
   }
 }

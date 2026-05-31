@@ -26,6 +26,7 @@ export class InventorySystem {
         this.uiGroup = this.scene.add.group();
         this.inventoryPanelPieces = [];
         this.stationMode = false;
+        this.cardTooltip = null;
         this.createInventoryUI();
         this.rebuildInventorySprites();
     }
@@ -40,6 +41,13 @@ export class InventorySystem {
     }
     getCurrentWeapon() {
         return this.scene.gameState?.equippedWeapon || null;
+    }
+
+    // Gems and relics/amulets are standalone trinkets, not cards. They don't
+    // get the rectangular card drop-shadow or the hover "shine" animation.
+    isCardItem(item) {
+        const t = item?.type;
+        return t !== 'gem' && t !== 'amulet' && t !== 'relic';
     }
 
     setStationMode(isStationMode) {
@@ -61,6 +69,8 @@ export class InventorySystem {
     }
     
     createInventoryUI() {
+        this.hideCardTooltip();
+
         // COMPLETE cleanup of existing UI sprites
         this.inventoryPanelPieces.forEach(piece => piece?.destroy());
         this.inventoryPanelPieces = [];
@@ -82,6 +92,16 @@ export class InventorySystem {
             if (slot.hoverSprite) {
                 slot.hoverSprite.destroy();
                 slot.hoverSprite = null;
+            }
+
+            if (slot.gemEffectSprite) {
+                slot.gemEffectSprite.destroy();
+                slot.gemEffectSprite = null;
+            }
+
+            if (slot.gemIndicator) {
+                slot.gemIndicator.destroy();
+                slot.gemIndicator = null;
             }
             
             // Clean up twinkle sprite
@@ -150,6 +170,8 @@ export class InventorySystem {
                 twinkleSprite: null,
                 shadow: null,
                 hoverSprite: null,
+                gemEffectSprite: null,
+                gemIndicator: null,
                 originalY: y
             };
         }
@@ -227,6 +249,16 @@ export class InventorySystem {
                 slot.hoverSprite.destroy();
                 slot.hoverSprite = null;
             }
+
+            if (slot.gemEffectSprite) {
+                slot.gemEffectSprite.destroy();
+                slot.gemEffectSprite = null;
+            }
+
+            if (slot.gemIndicator) {
+                slot.gemIndicator.destroy();
+                slot.gemIndicator = null;
+            }
             
             if (slot.shadow) {
                 slot.shadow.destroy();
@@ -288,6 +320,17 @@ export class InventorySystem {
                 if (slot.hoverSprite) {
                     slot.hoverSprite.destroy();
                     slot.hoverSprite = null;
+                }
+
+                if (slot.gemEffectSprite) {
+                    slot.gemEffectSprite.destroy();
+                    slot.gemEffectSprite = null;
+                }
+
+                if (slot.gemIndicator) {
+                    if (slot.gemIndicator.shadow) slot.gemIndicator.shadow.destroy();
+                    slot.gemIndicator.destroy();
+                    slot.gemIndicator = null;
                 }
                 
                 if (slot.shadow) {
@@ -351,6 +394,16 @@ export class InventorySystem {
                 slot.hoverSprite.destroy();
                 slot.hoverSprite = null;
             }
+
+            if (slot.gemEffectSprite) {
+                slot.gemEffectSprite.destroy();
+                slot.gemEffectSprite = null;
+            }
+
+            if (slot.gemIndicator) {
+                slot.gemIndicator.destroy();
+                slot.gemIndicator = null;
+            }
             
             // Clean up shadow
             if (slot.shadow) {
@@ -377,6 +430,8 @@ export class InventorySystem {
     addCardDirect(cardData, slotIndex) {
         // Ensure the slot index is valid
         if (slotIndex >= this.slots.length || slotIndex < 0) return;
+
+        cardData = this.normalizeCardIdentity(cardData);
         
         this.slots[slotIndex] = cardData;
         this.syncGameStateInventory();
@@ -393,7 +448,8 @@ export class InventorySystem {
         } else {
             const colors = {
                 armor: 0x888888,
-                magic: 0x9932cc
+                magic: 0x9932cc,
+                gem: cardData.color || 0xffe066
             };
             cardSprite = this.scene.add.rectangle(x, y, 45, 65, colors[cardData.type] || 0x666666);
         }
@@ -410,26 +466,72 @@ export class InventorySystem {
         // Make interactive AFTER setting position data
         cardSprite.setInteractive({ draggable: true });
         
-        // Create shadow for hover effect (initially hidden)
-        const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
-        shadow.setAlpha(0);
-        shadow.setDepth(11);
-        this.uiGroup.add(shadow);
-        slotSprite.shadow = shadow;
-        
-        // Create hover animation sprite (initially hidden)
-        const hoverSprite = this.scene.add.sprite(x, y, 'hoverCardsUp1');
-        hoverSprite.setVisible(false);
-        hoverSprite.setBlendMode(Phaser.BlendModes.SCREEN);
-        hoverSprite.setDepth(13);
-        this.uiGroup.add(hoverSprite);
-        slotSprite.hoverSprite = hoverSprite;
-        
+        // Cards get a drop-shadow and the hover shine; gems/relics do not.
+        const isCard = this.isCardItem(cardData);
+
+        // Create shadow for hover effect (initially hidden) — cards only
+        if (isCard) {
+            const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
+            shadow.setAlpha(0);
+            shadow.setDepth(11);
+            this.uiGroup.add(shadow);
+            slotSprite.shadow = shadow;
+        }
+
+        // Create hover "shine" animation sprite (initially hidden) — cards only
+        if (isCard) {
+            const hoverSprite = this.scene.add.sprite(x, y, 'hoverCardsUp1');
+            hoverSprite.setVisible(false);
+            hoverSprite.setBlendMode(Phaser.BlendModes.SCREEN);
+            hoverSprite.setDepth(13);
+            this.uiGroup.add(hoverSprite);
+            slotSprite.hoverSprite = hoverSprite;
+        }
+
+        // Create gem effect overlay sprite for weapons with a socketed gem
+        if (cardData.type === 'weapon' && cardData.gemEffect &&
+            this.scene.anims?.exists?.(`gem_card_${cardData.gemEffect}_loop`)) {
+            const gemEffectSprite = this.scene.add.sprite(x, y, 'gemEffectsOnCards', 0);
+            gemEffectSprite.setVisible(false);
+            gemEffectSprite.setDepth(14);
+            this.uiGroup.add(gemEffectSprite);
+            slotSprite.gemEffectSprite = gemEffectSprite;
+
+            // Static gem indicator(s) in top-right corner of card — one per stacked gem
+            const gemFrameByEffect = { fire: 0, poison: 6, lightning: 12 };
+            const gemFrame = gemFrameByEffect[cardData.gemEffect] ?? 0;
+            const stackCount = Math.max(1, Math.min(3, cardData.gemCount || 1));
+
+            // Compute top-right corner of card with a 1px inset.
+            // Round to integers so the gem indicator doesn't jitter a pixel
+            // when a neighbouring card's blend-mode hover sprite forces a
+            // render-batch flush.
+            const halfW = (cardSprite.displayWidth || 45) / 2;
+            const halfH = (cardSprite.displayHeight || 65) / 2;
+            const gemX = Math.round(x + halfW - 1);
+            const gemY = Math.round(y - halfH + 1);
+
+            // Container holds one sprite per stack. Each gem is fully visible —
+            // 16px tall, spaced 16px apart so they sit directly under each other.
+            const GEM_SPACING = 16;
+            const gemContainer = this.scene.add.container(gemX, gemY);
+            for (let s = 0; s < stackCount; s++) {
+                const child = this.scene.add.sprite(0, s * GEM_SPACING, 'gemsRGY', gemFrame);
+                child.setOrigin(1, 0);
+                gemContainer.add(child);
+            }
+            gemContainer.setDepth(15);
+            this.uiGroup.add(gemContainer);
+            gemContainer.restX = gemX;
+            gemContainer.restY = gemY;
+            slotSprite.gemIndicator = gemContainer;
+        }
+
         // Store original Y position for floating effect
         slotSprite.originalY = y;
         
         // Add hover events
-        cardSprite.on('pointerover', () => {
+        cardSprite.on('pointerover', (pointer) => {
             if (!cardSprite.scene) return;
             
             // Get the current slot sprite reference
@@ -441,9 +543,21 @@ export class InventorySystem {
                 currentSlot.hoverSprite.setVisible(true);
                 currentSlot.hoverSprite.play('hover_cards_anim');
             }
+
+            // Play looped gem effect animation on hover (weapon with socketed gem)
+            const hoveredCard = this.slots[slotIndex];
+            if (currentSlot.gemEffectSprite && hoveredCard?.gemEffect) {
+                currentSlot.gemEffectSprite.x = cardSprite.x;
+                currentSlot.gemEffectSprite.y = cardSprite.y;
+                currentSlot.gemEffectSprite.setVisible(true);
+                currentSlot.gemEffectSprite.play(`gem_card_${hoveredCard.gemEffect}_loop`);
+            }
             
             // Show shadow
             if (currentSlot.shadow) {
+                currentSlot.shadow.x = cardSprite.x;
+                currentSlot.shadow.y = cardSprite.y + 28;
+                currentSlot.shadow.setDepth(11);
                 currentSlot.shadow.setAlpha(1);
             }
             
@@ -464,7 +578,28 @@ export class InventorySystem {
                     ease: 'Power2'
                 });
             }
-            
+
+            // Move gem effect sprite with card
+            if (currentSlot.gemEffectSprite && currentSlot.gemEffectSprite.visible) {
+                this.scene.tweens.add({
+                    targets: currentSlot.gemEffectSprite,
+                    y: currentSlot.originalY - 5,
+                    duration: 150,
+                    ease: 'Power2'
+                });
+            }
+
+            // Move gem indicator (and its colored shadow) with card
+            if (currentSlot.gemIndicator) {
+                const indicator = currentSlot.gemIndicator;
+                this.scene.tweens.add({
+                    targets: indicator,
+                    y: indicator.restY - 5,
+                    duration: 150,
+                    ease: 'Power2'
+                });
+            }
+
             // Move info text if it exists
             const infoText = cardSprite.getData('infoText');
             if (infoText && infoText.scene) {
@@ -485,10 +620,14 @@ export class InventorySystem {
                     ease: 'Power2'
                 });
             }
+
+            this.showCardTooltip(cardData, slotIndex, pointer.x, pointer.y);
         });
         
         cardSprite.on('pointerout', () => {
             if (!cardSprite.scene) return;
+
+            this.hideCardTooltip();
             
             const currentSlot = this.slotSprites[slotIndex];
             if (!currentSlot) return;
@@ -498,9 +637,30 @@ export class InventorySystem {
                 currentSlot.hoverSprite.setVisible(false);
                 currentSlot.hoverSprite.stop();
             }
-            
+
+            // Stop gem effect animation
+            if (currentSlot.gemEffectSprite) {
+                currentSlot.gemEffectSprite.stop();
+                currentSlot.gemEffectSprite.setVisible(false);
+                currentSlot.gemEffectSprite.y = currentSlot.originalY;
+            }
+
+            // Return gem indicator (and shadow) to resting position
+            if (currentSlot.gemIndicator) {
+                const indicator = currentSlot.gemIndicator;
+                this.scene.tweens.add({
+                    targets: indicator,
+                    y: indicator.restY,
+                    duration: 150,
+                    ease: 'Power2'
+                });
+            }
+
             // Hide shadow
             if (currentSlot.shadow) {
+                currentSlot.shadow.x = cardSprite.x;
+                currentSlot.shadow.y = cardSprite.y + 28;
+                currentSlot.shadow.setDepth(11);
                 currentSlot.shadow.setAlpha(0);
             }
             
@@ -547,6 +707,7 @@ export class InventorySystem {
         // Add drag events with proper position tracking
         cardSprite.on('dragstart', () => {
             if (!cardSprite.scene) return;
+            this.hideCardTooltip();
             
             // Store the starting position
             cardSprite.setData('dragStartX', cardSprite.x);
@@ -565,7 +726,21 @@ export class InventorySystem {
                 currentSlot.hoverSprite.setVisible(false);
                 currentSlot.hoverSprite.stop();
             }
-            
+
+            // Hide gem effect animation when dragging
+            if (currentSlot.gemEffectSprite) {
+                currentSlot.gemEffectSprite.stop();
+                currentSlot.gemEffectSprite.setVisible(false);
+            }
+
+            // Hide gem indicator (and shadow) while dragging
+            if (currentSlot.gemIndicator) {
+                currentSlot.gemIndicator.setVisible(false);
+                if (currentSlot.gemIndicator.shadow) {
+                    currentSlot.gemIndicator.shadow.setVisible(false);
+                }
+            }
+
             // Keep shadow visible while dragging
             if (currentSlot.shadow) {
                 currentSlot.shadow.setAlpha(1);
@@ -645,31 +820,292 @@ export class InventorySystem {
     }
 
     addStartingCards() {
+        // Grant the starter swords exactly once per run. Without this guard,
+        // every startNewFloor() on floor 1 (scene create, Continue/resume,
+        // restart) re-added them, stacking up 2 → 4 → 6 swords.
+        if (this.scene.gameState.startingCardsGranted) return;
         if (this.scene.gameState.currentFloor > 1) return;
+        this.scene.gameState.startingCardsGranted = true;
         // Add starting sword with durability
         const swordData = {
             type: 'weapon',
             name: 'Common Sword',
-            damage: 4,
+            weaponType: 'sword',
+            damage: 6,
             rarity: 'common',
             sprite: 'sword_C',  // Fixed sprite name consistency
             durability: 6,
             maxDurability: 6,
-            special: null  // Sword has no special ability
+            special: null,  // Sword has no special ability
+            range: 'melee'
         };
         this.addCard(swordData);
         // Add starting uncommon sword
         const uncommonSwordData = {
             type: 'weapon',
             name: 'Uncommon Sword',
+            weaponType: 'sword',
             damage: 7,
             rarity: 'uncommon',
             sprite: 'sword_U',
             durability: 8,
             maxDurability: 8,
-            special: null  // Sword has no special ability
+            special: null,  // Sword has no special ability
+            range: 'melee'
         };
         this.addCard(uncommonSwordData);
+    }
+
+    showCardTooltip(cardData, slotIndex, pointerX, pointerY) {
+        this.hideCardTooltip();
+        if (!cardData) return;
+
+        const lines = this.getCardTooltipLines(cardData, slotIndex);
+        const tooltipText = this.scene.add.text(0, 0, lines.join('\n'), {
+            fontSize: '8px',
+            fill: '#ffffff',
+            fontFamily: '"HoMM Pixel"',
+            lineSpacing: 1,
+            wordWrap: { width: 138 }
+        }).setOrigin(0, 0);
+
+        const width = Math.min(154, Math.max(92, tooltipText.width + 10));
+        const height = tooltipText.height + 10;
+        const bg = this.scene.add.rectangle(0, 0, width, height, 0x111122, 0.94)
+            .setOrigin(0, 0)
+            .setStrokeStyle(1, 0xf2d3aa);
+
+        const preferLeft = pointerX + width + 14 > 640;
+        const targetX = preferLeft ? pointerX - width - 10 : pointerX + 10;
+        const targetY = pointerY - Math.min(24, height / 2);
+        const clampedX = Phaser.Math.Clamp(targetX, 6, 640 - width - 6);
+        const clampedY = Phaser.Math.Clamp(targetY, 6, 360 - height - 6);
+        tooltipText.setPosition(5, 5);
+
+        this.cardTooltip = this.scene.add.container(clampedX, clampedY, [bg, tooltipText]);
+        this.cardTooltip.setDepth(3000);
+        this.uiGroup.add(this.cardTooltip);
+    }
+
+    hideCardTooltip() {
+        if (this.cardTooltip?.scene) {
+            this.cardTooltip.destroy(true);
+        }
+        this.cardTooltip = null;
+    }
+
+    getCardTooltipLines(card, slotIndex) {
+        card = this.normalizeCardIdentity(card);
+        if (slotIndex >= 0 && this.slots[slotIndex] === card) this.syncGameStateInventory();
+
+        const rarity = card.rarity ? this.capitalize(card.rarity) : 'No rarity';
+        const type = this.getDisplayCardType(card);
+        const lines = [
+            card.name || type,
+            `${type} - ${rarity}`
+        ];
+
+        if (card.type === 'weapon') {
+            const weaponType = this.capitalize(this.getWeaponTypeFromCard(card));
+            lines.push(`Family: ${weaponType}`);
+            lines.push(`DMG: ${card.damage || 0}`);
+            const critChance = this.scene?.gameState?.discardCritChance || 0;
+            if (critChance > 0) lines.push(`Crit: ${Math.round(critChance * 100)}%`);
+            lines.push(`Range: ${this.capitalize(card.range || 'melee')}`);
+            if (card.gemEffect) {
+                const stack = Math.max(1, Math.min(3, card.gemCount || 1));
+                lines.push(`Gem: ${this.capitalize(card.gemEffect)}${stack > 1 ? ` x${stack}` : ''}`);
+                const baseDmg = card.damage || 0;
+                if (card.gemEffect === 'fire') {
+                    const splashPct = [50, 75, 100][stack - 1];
+                    const splashDmg = Math.max(1, Math.floor(baseDmg * splashPct / 100));
+                    lines.push(`Fire splash: ${splashDmg} dmg to neighbors`);
+                } else if (card.gemEffect === 'lightning') {
+                    const zapPct = [40, 55, 70][stack - 1];
+                    const zapDmg = Math.max(1, Math.floor(baseDmg * zapPct / 100));
+                    lines.push(`Lightning: ${zapDmg} dmg to up to 3 enemies`);
+                } else if (card.gemEffect === 'poison') {
+                    lines.push(`Poison: ${stack} stack${stack > 1 ? 's' : ''} (1 dmg / 3 turns each)`);
+                }
+            }
+            if (card.special) lines.push(`Special: ${this.describeWeaponSpecial(card)}`);
+            if (card.poisonDamage) lines.push(`Poison: ${card.poisonDamage} x ${card.poisonTurns || 0} turns`);
+            if (card.durability !== undefined) lines.push(`Pips: ${card.durability}/${card.maxDurability || card.durability}`);
+            this.addCanonicalDiffLines(lines, card, 'weapon');
+        } else if (card.type === 'armor') {
+            const armorType = this.capitalize(this.getArmorTypeFromCard(card));
+            lines.push(`Family: ${armorType}`);
+            lines.push(`PROT: ${card.protection || 0}`);
+            if (card.dodgeChance) lines.push(`Dodge: ${Math.round(card.dodgeChance * 100)}%`);
+            if (card.reflection) lines.push(`Reflect: ${card.reflection}`);
+            if (card.durability !== undefined) lines.push(`Pips: ${card.durability}/${card.maxDurability || card.durability}`);
+            this.addCanonicalDiffLines(lines, card, 'armor');
+        } else if (card.type === 'thorns') {
+            lines.push(`Thorn damage: ${card.thornDamage || 0}`);
+            lines.push(`Pips: ${card.durability || 0}/${card.maxDurability || card.durability || 0}`);
+            lines.push('Melee attackers take damage back.');
+        } else if (card.type === 'potion') {
+            lines.push(`Heals: ${card.healAmount || 0} HP`);
+        } else if (card.type === 'food') {
+            lines.push(`Restores: ${card.actionAmount || 0} AP`);
+        } else if (card.type === 'magic') {
+            lines.push(card.description || this.describeMagicCard(card));
+        } else if (card.type === 'amulet') {
+            lines.push(this.describeAmuletCard(card));
+        } else if (card.type === 'key') {
+            lines.push('Opens a chest safely.');
+        } else if (card.type === 'gem') {
+            lines.push(`Effect: ${this.describeGemEffect(card.gemEffect)}`);
+        }
+
+        return lines;
+    }
+
+    addCanonicalDiffLines(lines, card, category) {
+        const canonical = category === 'weapon'
+            ? this.getCanonicalWeaponStats(card)
+            : this.getCanonicalArmorStats(card);
+        if (!canonical) return;
+
+        const differences = [];
+        if (category === 'weapon' && card.damage !== undefined && card.damage !== canonical.damage) {
+            differences.push(`base damage ${canonical.damage}`);
+        }
+        if (category === 'armor' && card.protection !== undefined && card.protection !== canonical.protection) {
+            differences.push(`base protection ${canonical.protection}`);
+        }
+        if (differences.length > 0) {
+            lines.push(`Note: unusual stats (${differences.join(', ')})`);
+        }
+    }
+
+    getMergeTooltipLine(card, slotIndex) {
+        if (card.type === 'magic' || card.type === 'coin' || card.type === 'crystal' || card.type === 'key') {
+            return 'No merge';
+        }
+
+        const mergeableSlots = [];
+        const blockedReasons = new Set();
+        this.slots.forEach((otherCard, otherIndex) => {
+            if (!otherCard || otherIndex === slotIndex) return;
+            if (this.canCardsMerge(card, otherCard, false)) {
+                mergeableSlots.push(otherIndex + 1);
+                return;
+            }
+
+            const reason = this.getMergeBlockReason(card, otherCard);
+            if (reason) blockedReasons.add(reason);
+        });
+
+        if (mergeableSlots.length > 0) {
+            return `Merges: slot ${mergeableSlots.join(', ')}`;
+        }
+        if (blockedReasons.size > 0) {
+            return `No merge: ${Array.from(blockedReasons).slice(0, 2).join('; ')}`;
+        }
+        return '';
+    }
+
+    getMergeBlockReason(cardA, cardB) {
+        if (!cardA || !cardB) return '';
+        if (cardA.type !== cardB.type) return '';
+        if (cardA.type === 'magic' || cardB.type === 'magic') return 'magic cards cannot merge';
+        if (cardA.type === 'gem' || cardB.type === 'gem') return 'gems socket into weapons';
+        if (this.getMergeKey(cardA) !== this.getMergeKey(cardB)) return 'different family';
+        if (cardA.rarity !== cardB.rarity) return `rarity ${cardA.rarity || '?'} vs ${cardB.rarity || '?'}`;
+        if (this.getMergeStatsKey(cardA) !== this.getMergeStatsKey(cardB)) return 'stats/effect differ';
+        return '';
+    }
+
+    getDisplayCardType(card) {
+        if (!card?.type) return 'Card';
+        const names = {
+            weapon: 'Weapon',
+            armor: 'Armor',
+            thorns: 'Thorns',
+            potion: 'Potion',
+            food: 'Food',
+            magic: 'Magic',
+            gem: 'Gem',
+            amulet: 'Relic',
+            key: 'Key',
+            coin: 'Coins',
+            crystal: 'Ruby'
+        };
+        return names[card.type] || this.capitalize(card.type);
+    }
+
+    describeWeaponSpecial(card) {
+        const special = card.special || '';
+        if (special === 'dualWield') return 'dual wield';
+        if (special === 'throwing') return 'hits any enemy';
+        if (special === 'block') return 'can block';
+        if (special === 'specialAttack') return 'heavy strike';
+        return special;
+    }
+
+    describeMagicCard(card) {
+        if (card.magicType === 'fireball') return 'Deals damage to one enemy.';
+        if (card.magicType === 'frostRing') return 'Freezes all enemies.';
+        if (card.magicType === 'restoration') return 'Fully restores HP and AP.';
+        if (card.magicType === 'soulDrain') return 'Kills a non-boss enemy and heals.';
+        if (card.magicType === 'shadowBlade') return 'Boosts weapon damage.';
+        if (card.magicType === 'weakness') return 'Weakens enemies.';
+        if (card.magicType === 'boneWall') return 'Reflects the next attacks.';
+        if (card.magicType === 'magicShield') return 'Boosts armor.';
+        if (card.magicType === 'mirrorShield') return 'Reflects one attack.';
+        if (card.magicType === 'smokeScreen') return 'Hides revealed enemies.';
+        return 'Single-use magic.';
+    }
+
+    describeAmuletCard(card) {
+        const definitions = this.scene?.amuletManager?.amuletDefinitions;
+        if (card.id && definitions?.[card.id]) return definitions[card.id].description;
+        if (card.description) return card.description;
+        return 'A passive relic effect.';
+    }
+
+    describeGemEffect(effect) {
+        if (effect === 'fire') return 'splash adjacent enemies';
+        if (effect === 'poison') return 'stacking poison on hit';
+        if (effect === 'lightning') return 'zaps up to 3 open enemies';
+        return 'adds an effect to a weapon';
+    }
+
+    capitalize(value) {
+        const text = (value || '').toString();
+        return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+    }
+
+    applyGemToWeapon(gem, weaponSlotIndex, rebuild = true) {
+        const weapon = this.slots[weaponSlotIndex];
+        if (!gem || gem.type !== 'gem' || !weapon || weapon.type !== 'weapon') return false;
+
+        const MAX_GEM_STACK = 3;
+        const currentCount = weapon.gemEffect ? (weapon.gemCount || 1) : 0;
+
+        // Reject mismatched gem types
+        if (weapon.gemEffect && weapon.gemEffect !== gem.gemEffect) {
+            this.scene.createFloatingText(512, 380, 'Different gem already socketed!', 0xff4444);
+            return false;
+        }
+
+        // Reject if already at max
+        if (currentCount >= MAX_GEM_STACK) {
+            this.scene.createFloatingText(512, 380, 'Gem slots full!', 0xff4444);
+            return false;
+        }
+
+        weapon.gemEffect = gem.gemEffect;
+        weapon.gemName = gem.name;
+        weapon.gemColor = gem.color;
+        weapon.gemCount = currentCount + 1;
+        this.syncGameStateInventory();
+        if (rebuild) this.rebuildInventorySprites();
+        const stackLabel = weapon.gemCount > 1 ? ` (x${weapon.gemCount})` : '';
+        this.scene.createFloatingText(512, 380, `${gem.name} socketed${stackLabel}`, gem.color || 0xffe066);
+        SoundHelper.playSound(this.scene, 'crystal_collect', 0.45);
+        return true;
     }
 
     // Modified addCard to use addCardDirect when appropriate
@@ -692,14 +1128,18 @@ export class InventorySystem {
         if (!cardData) return;
         
         // Check for drop on discard area FIRST to prevent conflicts with other drop zones
-        if (!this.stationMode && this.discardArea && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.discardArea.getBounds())) {
+        // (allowed inside shop stations too, so players can free inventory space)
+        if (this.discardArea && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.discardArea.getBounds())) {
             SoundHelper.playSound(this.scene, 'item_discard', 0.7);
             this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Discarded!', 0xff0000);
-            
+            this.scene.recordCardDiscarded?.(cardData, cardSprite.x, cardSprite.y);
+
             // Properly clean up ALL sprites and effects
             this.cleanupCardSprites(slotIndex, cardSprite);
             this.removeCard(slotIndex, false); // Don't destroy the sprite in removeCard
             cardSprite.destroy(); // Destroy the dragged sprite here
+            // Discarding costs an action point and wakes the enemies (free inside stations).
+            if (!this.stationMode) this.scene.useAction?.();
             return;
         }
         
@@ -709,6 +1149,18 @@ export class InventorySystem {
             const targetSlotSprite = this.slotSprites[i];
             const targetCardData = this.slots[i];
             if (targetCardData && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), targetSlotSprite.background.getBounds())) {
+                if (cardData.type === 'gem' && targetCardData.type === 'weapon') {
+                    if (this.applyGemToWeapon(cardData, i, false)) {
+                        this.cleanupCardSprites(slotIndex, cardSprite);
+                        this.removeCard(slotIndex, false);
+                        cardSprite.destroy();
+                        this.rebuildInventorySprites();
+                        // Socketing a gem costs an action point and wakes the enemies.
+                        if (!this.stationMode) this.scene.useAction?.();
+                        return;
+                    }
+                }
+
                 // Check if cross-tier merge is allowed (Golden Hammer)
                 const canCrossTier = this.scene.amuletManager && 
                     this.scene.amuletManager.canCrossTierMerge();
@@ -733,11 +1185,21 @@ export class InventorySystem {
             }
         }
 
+        // Armor can be equipped even while in a shop (station mode). Check this BEFORE
+        // the stationMode early-return below so the player isn't locked out.
+        if (
+            cardData.type === 'armor' &&
+            this.armorPanel &&
+            Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.armorPanel.getBounds())
+        ) {
+            if (this.equipArmor(slotIndex, cardSprite)) return;
+        }
+
         if (this.stationMode) {
             this.returnCardToSlot(slotIndex, cardSprite);
             return;
         }
-        
+
         // Check if dropped on board to use a weapon or magic card
         const onBoard = cardSprite.y < 280;
         if (onBoard) {
@@ -748,15 +1210,6 @@ export class InventorySystem {
                 this.useMagicCard(slotIndex, cardSprite);
                 return;
             }
-        }
-        
-        // Check if armor was dropped on the dedicated armor panel
-        if (
-            cardData.type === 'armor' &&
-            this.armorPanel &&
-            Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.armorPanel.getBounds())
-        ) {
-            if (this.equipArmor(slotIndex, cardSprite)) return;
         }
 
         // Check if dropped on the player avatar for equipping/consuming
@@ -784,8 +1237,11 @@ export class InventorySystem {
     }
 
     canCardsMerge(cardA, cardB, canCrossTier = false) {
+        cardA = this.normalizeCardIdentity(cardA);
+        cardB = this.normalizeCardIdentity(cardB);
         if (!cardA || !cardB) return false;
         if (cardA.type === 'magic' || cardB.type === 'magic') return false;
+        if (cardA.type === 'gem' || cardB.type === 'gem') return false;
         if (cardA.type !== cardB.type) return false;
         if (!canCrossTier && cardA.rarity !== cardB.rarity) return false;
         if (this.getMergeKey(cardA) !== this.getMergeKey(cardB)) return false;
@@ -794,6 +1250,7 @@ export class InventorySystem {
     }
 
     getMergeKey(card) {
+        card = this.normalizeCardIdentity(card);
         if (!card) return '';
         if (card.type === 'weapon') return `weapon:${this.getWeaponTypeFromCard(card)}`;
         if (card.type === 'armor') return `armor:${this.getArmorTypeFromCard(card)}`;
@@ -804,8 +1261,20 @@ export class InventorySystem {
     }
 
     getMergeStatsKey(card) {
+        card = this.normalizeCardIdentity(card);
         if (!card) return '';
         if (card.type === 'weapon') {
+            const canonical = this.getCanonicalWeaponStats(card);
+            if (canonical) {
+                return [
+                    canonical.damage || 0,
+                    canonical.special || '',
+                    canonical.range || 'melee',
+                    canonical.poisonDamage || 0,
+                    canonical.poisonTurns || 0,
+                    canonical.poisonStackable ? 1 : 0
+                ].join('|');
+            }
             return [
                 card.damage || 0,
                 card.special || '',
@@ -816,6 +1285,14 @@ export class InventorySystem {
             ].join('|');
         }
         if (card.type === 'armor') {
+            const canonical = this.getCanonicalArmorStats(card);
+            if (canonical) {
+                return [
+                    canonical.protection || 0,
+                    canonical.dodgeChance || 0,
+                    canonical.reflection || 0
+                ].join('|');
+            }
             return [
                 card.protection || 0,
                 card.dodgeChance || 0,
@@ -828,6 +1305,57 @@ export class InventorySystem {
         return '';
     }
 
+    getCanonicalWeaponStats(card) {
+        const weaponType = this.getWeaponTypeFromCard(card);
+        const rarity = card?.rarity;
+        const unlocks = this.scene?.cardSystem?.cardDataGenerator?.weaponUnlocks;
+        return unlocks?.[weaponType]?.[rarity] || null;
+    }
+
+    getCanonicalArmorStats(card) {
+        const armorType = this.getArmorTypeFromCard(card);
+        const rarity = card?.rarity;
+        const unlocks = this.scene?.cardSystem?.cardDataGenerator?.armorUnlocks;
+        return unlocks?.[armorType]?.[rarity] || null;
+    }
+
+    normalizeCardIdentity(card) {
+        if (!card || (card.type !== 'armor' && card.type !== 'weapon')) return card;
+
+        const unlocks = card.type === 'armor'
+            ? this.scene?.cardSystem?.cardDataGenerator?.armorUnlocks
+            : this.scene?.cardSystem?.cardDataGenerator?.weaponUnlocks;
+        if (!unlocks) return card;
+
+        const family = card.type === 'armor'
+            ? this.getArmorTypeFromCard(card)
+            : this.getWeaponTypeFromCard(card);
+        const tiers = unlocks[family];
+        if (!tiers) return card;
+
+        const nameRarity = this.getRarityFromName(card.name);
+        const statRarity = Object.entries(tiers).find(([, data]) => (
+            card.type === 'armor'
+                ? data.protection === card.protection
+                : data.damage === card.damage
+        ))?.[0];
+        const fixedRarity = nameRarity && tiers[nameRarity] ? nameRarity : statRarity;
+        if (!fixedRarity || card.rarity === fixedRarity) return card;
+
+        card.rarity = fixedRarity;
+        return card;
+    }
+
+    getRarityFromName(name = '') {
+        const text = name.toString().toLowerCase();
+        if (text.includes('legendary')) return 'legendary';
+        if (text.includes('epic')) return 'epic';
+        if (text.includes('uncommon')) return 'uncommon';
+        if (text.includes('common')) return 'common';
+        if (text.includes('rare')) return 'rare';
+        return '';
+    }
+
     normalizeCardText(value) {
         return (value || '').toString().toLowerCase().replace(/[_\-\s]+/g, '');
     }
@@ -837,7 +1365,6 @@ export class InventorySystem {
         if (card.weaponType) return card.weaponType;
 
         const text = this.normalizeCardText(`${card.name || ''} ${card.sprite || ''} ${card.id || ''}`);
-        if (text.includes('venomousdagger')) return 'venomousDagger';
         if (text.includes('dagger')) return 'dagger';
         if (text.includes('spear')) return 'spear';
         if (text.includes('sword')) return 'sword';
@@ -860,6 +1387,7 @@ export class InventorySystem {
     
     // Helper method to properly clean up all card-related sprites
     cleanupCardSprites(slotIndex, cardSprite) {
+        this.hideCardTooltip();
         const slot = this.slotSprites[slotIndex];
         
         // Clean up info text
@@ -882,6 +1410,16 @@ export class InventorySystem {
             if (slot.hoverSprite) {
                 slot.hoverSprite.destroy();
                 slot.hoverSprite = null;
+            }
+
+            if (slot.gemEffectSprite) {
+                slot.gemEffectSprite.destroy();
+                slot.gemEffectSprite = null;
+            }
+
+            if (slot.gemIndicator) {
+                slot.gemIndicator.destroy();
+                slot.gemIndicator = null;
             }
             
             if (slot.shadow) {
@@ -941,6 +1479,20 @@ export class InventorySystem {
             slotSprite.hoverSprite.x = targetX;
             slotSprite.hoverSprite.y = targetY;
         }
+
+        // Move gem effect sprite back
+        if (slotSprite.gemEffectSprite && slotSprite.gemEffectSprite.scene) {
+            slotSprite.gemEffectSprite.x = targetX;
+            slotSprite.gemEffectSprite.y = targetY;
+        }
+
+        // Return gem indicator to its corner
+        if (slotSprite.gemIndicator && slotSprite.gemIndicator.scene) {
+            const indicator = slotSprite.gemIndicator;
+            indicator.x = indicator.restX;
+            indicator.y = indicator.restY;
+            indicator.setVisible(true);
+        }
         
         // Move twinkle sprite back
         if (slotSprite.twinkleSprite && slotSprite.twinkleSprite.scene) {
@@ -990,15 +1542,64 @@ export class InventorySystem {
         });
     }
     
+    canMagicCardSucceed(magicCard, cardSprite) {
+        if (!magicCard) return false;
+        const board = this.scene.cardSystem?.boardCards || [];
+        const revealedEnemies = board.filter(c =>
+            c && c.revealed && (c.data?.type === 'enemy' || c.data?.type === 'boss')
+        );
+
+        switch (magicCard.magicType) {
+            case 'fireball': {
+                // Needs a revealed enemy within 150px of where the card was dropped
+                let closest = Infinity;
+                board.forEach(c => {
+                    if (c && c.revealed && (c.data?.type === 'enemy' || c.data?.type === 'boss')) {
+                        const d = Phaser.Math.Distance.Between(cardSprite.x, cardSprite.y, c.sprite.x, c.sprite.y);
+                        if (d < closest) closest = d;
+                    }
+                });
+                return closest < 150;
+            }
+            case 'soulDrain': {
+                // Needs a revealed non-boss enemy
+                return board.some(c => c && c.revealed && c.data?.type === 'enemy');
+            }
+            case 'frostRing':
+            case 'weakness':
+                // Needs at least one revealed enemy/boss to do anything
+                return revealedEnemies.length > 0;
+            case 'smokeScreen':
+                // Needs at least one revealed non-boss enemy (boss is not hideable)
+                return board.some(c => c && c.revealed && c.data?.type === 'enemy');
+            // Self-targeted / persistent buffs — always succeed
+            case 'restoration':
+            case 'shadowBlade':
+            case 'magicShield':
+            case 'mirrorShield':
+            case 'boneWall':
+                return true;
+            default:
+                return true; // Unknown types: don't block, let the switch handle it
+        }
+    }
+
     useMagicCard(slotIndex, cardSprite) {
+        const magicCard = this.slots[slotIndex];
+        if (!magicCard) return;
+
+        // Pre-flight check: confirm there's a valid target before spending an action.
+        if (!this.canMagicCardSucceed(magicCard, cardSprite)) {
+            this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'No valid target!', 0xff8844);
+            this.returnCardToSlot(slotIndex, cardSprite);
+            return;
+        }
+
         if (!this.scene.useAction()) {
             this.returnCardToSlot(slotIndex, cardSprite);
             return;
         }
-        
-        const magicCard = this.slots[slotIndex];
-        if (!magicCard) return;
-        
+
         let used = false;
         
         switch(magicCard.magicType) {
@@ -1053,22 +1654,10 @@ export class InventorySystem {
                 break;
                 
             case 'restoration':
-                // Apply healing modifiers from amulets
-                let healAmount = 15;
-                if (this.scene.amuletManager) {
-                    healAmount = this.scene.amuletManager.modifySpellHealing(healAmount);
-                }
-                
-                this.scene.gameState.playerHealth = Math.min(
-                    this.scene.gameState.maxHealth,
-                    this.scene.gameState.playerHealth + healAmount
-                );
-                this.scene.gameState.actionsLeft = Math.min(
-                    this.scene.gameState.maxActions,
-                    this.scene.gameState.actionsLeft + 3
-                );
+                this.scene.gameState.playerHealth = this.scene.gameState.maxHealth;
+                this.scene.gameState.actionsLeft = this.scene.gameState.maxActions;
                 SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${healAmount} HP, +3 AP`, 0x00ff00);
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `Full Restore!`, 0x00ff00);
                 this.scene.updateUI();
                 used = true;
                 break;
@@ -1164,12 +1753,21 @@ export class InventorySystem {
                 break;
                 
             case 'smokeScreen':
-                // Flip all face-up enemy cards back down
+                // Flip all face-up non-boss enemy cards back down.
+                // Boss is intentionally excluded — it cannot be hidden.
                 let flippedAny = false;
-                this.scene.cardSystem.boardCards.forEach((card) => {
-                    if (card && card.revealed && (card.data.type === 'enemy' || card.data.type === 'boss')) {
+                this.scene.cardSystem.boardCards.forEach((card, idx) => {
+                    if (card && card.revealed && card.data.type === 'enemy') {
                         card.revealed = false;
                         card.sprite.setTexture('cardBack');
+                        // Rebind click so the player can re-reveal this card normally.
+                        // (After reveal the handler was swapped to interactWithCard,
+                        // which silently returns when card.revealed is false.)
+                        card.sprite.off('pointerdown');
+                        card.sprite.on('pointerdown', () => this.scene.cardSystem.revealCard(idx));
+                        // Destroy role/poison markers — they will be recreated on re-reveal.
+                        if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
+                        if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
                         if (card.infoText) {
                             if (card.infoText.list) {
                                 card.infoText.destroy(true);
@@ -1279,6 +1877,7 @@ export class InventorySystem {
         }
         
         // Regular attack logic for all weapons
+        const wasExhausted = this.scene.gameState.actionsLeft <= 0;
         if (!this.scene.useAction()) {
             this.returnWeaponToSlot(slotIndex, cardSprite);
             return;
@@ -1307,17 +1906,8 @@ export class InventorySystem {
             SoundHelper.playSound(this.scene, 'sword_swoosh', 0.5);
             let attackDamage = weapon.damage;
             
-            // Apply shadow blade multiplier if active
-            if (this.scene.gameState.shadowBlade && this.scene.gameState.shadowBlade.turns > 0) {
-                attackDamage = Math.floor(attackDamage * this.scene.gameState.shadowBlade.multiplier);
-            }
-            
-            // UPDATED: Check if player is exhausted BEFORE the action is consumed
-            // The action was not consumed yet when we're calculating damage
-            const isExhausted = this.scene.gameState.actionsLeft <= 0;
-            
             // Apply weakness penalty when exhausted (out of action points)
-            if (isExhausted) {
+            if (wasExhausted) {
                 attackDamage = Math.ceil(attackDamage * 0.8); // 20% weaker
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weakened Attack!', 0xffa500);
             }
@@ -1325,25 +1915,43 @@ export class InventorySystem {
             // Handle special abilities
             let attackCount = 1;
             
-            // DAGGER: Dual Wield - Attack twice
+            // DAGGER: Dual Wield - Attack twice. The SECOND hit uses the OTHER
+            // dagger's stats (damage AND gem), so two socketed daggers contribute
+            // both gems on a dual-wield swing — matching what players intuitively
+            // expect when they see two daggers in their hands.
+            let secondaryDagger = null;
+            let secondaryDaggerSlot = -1;
             if (weapon.special === 'dualWield') {
-                // Check if player has 2 daggers of the same type
-                const daggerCount = this.slots.filter(item => 
-                    item && item.name === weapon.name && item.special === 'dualWield'
-                ).length;
-                
-                if (daggerCount >= 2) {
+                // Find a different dual-wield dagger in inventory (skip the equipped one)
+                for (let s = 0; s < this.slots.length; s++) {
+                    const item = this.slots[s];
+                    if (!item || item === weapon || item.special !== 'dualWield') continue;
+                    if (item.durability <= 0) continue;
+                    secondaryDagger = item;
+                    secondaryDaggerSlot = s;
+                    break;
+                }
+                if (secondaryDagger) {
                     attackCount = 2;
                     this.scene.createFloatingText(cardSprite.x, cardSprite.y - 20, 'Dual Wield!', 0xffff00);
                 }
             }
-            // AXE: Special Attack - 150% damage but costs 2 durability
+            // AXE: Heavy Strike — 150% damage for +1 durability, but only fires
+            // when it would actually finish the enemy. Keeps axes from burning
+            // their pips on every swing.
             else if (weapon.special === 'specialAttack') {
-                // Only use special if weapon has at least 2 durability
                 if (weapon.durability >= 2) {
-                    attackDamage = Math.floor(attackDamage * 1.5);
-                    weapon.durability--; // Extra durability cost (not affected by amulet)
-                    this.scene.createFloatingText(cardSprite.x, cardSprite.y - 20, 'Heavy Strike!', 0xff6600);
+                    const targetCard = this.scene.cardSystem.boardCards[closestEnemy];
+                    const targetHP = targetCard?.data?.health ?? 0;
+                    const boostedDamage = Math.floor(attackDamage * 1.5);
+                    const regularWouldKill = targetHP <= attackDamage;
+                    const heavyWouldKill = targetHP <= boostedDamage;
+
+                    if (!regularWouldKill && heavyWouldKill) {
+                        attackDamage = boostedDamage;
+                        weapon.durability--; // Extra durability cost — finisher only
+                        this.scene.createFloatingText(cardSprite.x, cardSprite.y - 20, 'Heavy Strike!', 0xff6600);
+                    }
                 }
             }
             
@@ -1351,12 +1959,59 @@ export class InventorySystem {
             for (let i = 0; i < attackCount; i++) {
                 // Check if enemy still exists for subsequent attacks
                 const currentEnemy = this.scene.cardSystem.boardCards[closestEnemy];
-                if (!currentEnemy || !currentEnemy.revealed || 
+                if (!currentEnemy || !currentEnemy.revealed ||
                     (currentEnemy.data.type !== 'enemy' && currentEnemy.data.type !== 'boss')) {
                     break;
                 }
-                
-                this.scene.cardSystem.attackEnemy(closestEnemy, attackDamage, false, weapon);
+
+                if (i === 0) {
+                    // First hit: the dragged weapon. skipDurability=false so its
+                    // pip is spent normally inside attackEnemy.
+                    this.scene.cardSystem.attackEnemy(closestEnemy, attackDamage, false, weapon, false);
+                } else {
+                    // Second dual-wield hit: use the OTHER dagger's stats — its
+                    // damage AND its gem. We pass skipDurability=true so attackEnemy
+                    // doesn't tick the equipped weapon (the primary), then manually
+                    // spend a pip from the secondary dagger so the pair still costs
+                    // 1 pip from EACH dagger (one each, not one total).
+                    let secondaryDamage = secondaryDagger.damage || 1;
+                    if (wasExhausted) secondaryDamage = Math.ceil(secondaryDamage * 0.8);
+                    this.scene.cardSystem.attackEnemy(closestEnemy, secondaryDamage, false, secondaryDagger, true);
+                    // Halve-durability amulet (Tempered Steel) applies here too.
+                    const durRate = this.scene.amuletManager?.getWeaponDurabilityRate?.() ?? 1;
+                    const lost = Math.random() < durRate ? 1 : 0;
+                    secondaryDagger.durability -= lost;
+                    if (secondaryDagger.durability <= 0) {
+                        // Secondary dagger broke — clear its slot and rebuild
+                        // inventory sprites. We DO call rebuildInventorySprites
+                        // here because the inventory shape changed (a slot went
+                        // null). Important: this also destroys the PRIMARY
+                        // dagger's cardSprite, so we defer the rebuild via
+                        // delayedCall(0) — that way the in-flight drag flow
+                        // (the surrounding for-loop + returnWeaponToSlotDelayed)
+                        // finishes with the original cardSprite reference intact,
+                        // and the rebuild happens cleanly on the next tick.
+                        this.scene.createFloatingText(cardSprite.x, cardSprite.y - 32, `${secondaryDagger.name} broke!`, 0xff6666);
+                        this.scene.grantCardSpentRelicBonus?.(secondaryDagger, cardSprite.x, cardSprite.y);
+                        if (secondaryDaggerSlot >= 0) {
+                            this.slots[secondaryDaggerSlot] = null;
+                            this.scene.gameState.inventory = this.slots;
+                        }
+                        this.scene.time.delayedCall(350, () => this.rebuildInventorySprites?.());
+                    } else {
+                        // Secondary dagger still alive — just refresh its slot's
+                        // pip display (its infoText) without touching the rest
+                        // of the inventory. This is the fix for the "after-image"
+                        // bug: rebuildInventorySprites() destroyed the primary
+                        // cardSprite mid-attack, orphaning its infoText at the
+                        // enemy's location.
+                        const secondarySlot = this.slotSprites[secondaryDaggerSlot];
+                        if (secondarySlot && secondarySlot.card) {
+                            this.updateWeaponInfoText(secondarySlot.card, secondaryDagger);
+                        }
+                    }
+                    this.scene.updateUI?.();
+                }
                 if (i < attackCount - 1) {
                     this.scene.time.delayedCall(150, () => {
                         SoundHelper.playSound(this.scene, 'sword_swoosh', 0.3);
@@ -1427,6 +2082,34 @@ export class InventorySystem {
                 infoText.x = cardSprite.x;
                 infoText.y = cardSprite.y;
             }
+            if (slotSprite.shadow && slotSprite.shadow.scene) {
+                slotSprite.shadow.x = cardSprite.x;
+                slotSprite.shadow.y = cardSprite.y + 28;
+                slotSprite.shadow.setAlpha(0);
+                slotSprite.shadow.setDepth(11);
+            }
+            if (slotSprite.hoverSprite && slotSprite.hoverSprite.scene) {
+                slotSprite.hoverSprite.x = cardSprite.x;
+                slotSprite.hoverSprite.y = cardSprite.y;
+                slotSprite.hoverSprite.setVisible(false);
+                slotSprite.hoverSprite.stop();
+            }
+            if (slotSprite.gemEffectSprite && slotSprite.gemEffectSprite.scene) {
+                slotSprite.gemEffectSprite.x = cardSprite.x;
+                slotSprite.gemEffectSprite.y = cardSprite.y;
+                slotSprite.gemEffectSprite.setVisible(false);
+                slotSprite.gemEffectSprite.stop();
+            }
+            if (slotSprite.gemIndicator && slotSprite.gemIndicator.scene) {
+                const indicator = slotSprite.gemIndicator;
+                const halfW = (cardSprite.displayWidth || 45) / 2;
+                const halfH = (cardSprite.displayHeight || 65) / 2;
+                indicator.x = cardSprite.x + halfW - 1;
+                indicator.y = cardSprite.y - halfH + 1;
+                indicator.restX = indicator.x;
+                indicator.restY = indicator.y;
+                indicator.setVisible(true);
+            }
             // Move twinkle sprite back too
             if (slotSprite.twinkleSprite && slotSprite.twinkleSprite.scene) {
                 slotSprite.twinkleSprite.x = cardSprite.x;
@@ -1456,19 +2139,46 @@ export class InventorySystem {
                     infoText.y = cardSprite.y;
                 }
                 cardSprite.setScale(1);
+
+                if (originalSlot.shadow && originalSlot.shadow.scene) {
+                    originalSlot.shadow.x = cardSprite.x;
+                    originalSlot.shadow.y = cardSprite.y + 28;
+                    originalSlot.shadow.setAlpha(0);
+                    originalSlot.shadow.setDepth(11);
+                }
+
+                if (originalSlot.hoverSprite && originalSlot.hoverSprite.scene) {
+                    originalSlot.hoverSprite.x = cardSprite.x;
+                    originalSlot.hoverSprite.y = cardSprite.y;
+                    originalSlot.hoverSprite.setVisible(false);
+                    originalSlot.hoverSprite.stop();
+                }
                 
                 // Move twinkle sprite back too
                 if (originalSlot.twinkleSprite && originalSlot.twinkleSprite.scene) {
                     originalSlot.twinkleSprite.x = cardSprite.x;
                     originalSlot.twinkleSprite.y = cardSprite.y;
                 }
+
+                // Restore gem indicator — dragstart hid it when attacking
+                if (originalSlot.gemIndicator && originalSlot.gemIndicator.scene) {
+                    const indicator = originalSlot.gemIndicator;
+                    const halfW = (cardSprite.displayWidth || 45) / 2;
+                    const halfH = (cardSprite.displayHeight || 65) / 2;
+                    indicator.x = cardSprite.x + halfW - 1;
+                    indicator.y = cardSprite.y - halfH + 1;
+                    indicator.restX = indicator.x;
+                    indicator.restY = indicator.y;
+                    indicator.setVisible(true);
+                }
             }
         });
     }
     
     equipArmor(slotIndex, draggedSprite = null) {
-        if (!this.scene.useAction()) return false;
-        
+        // Equipping inside a shop / station is free — there's no enemy turn to spend AP on.
+        if (!this.stationMode && !this.scene.useAction()) return false;
+
         const armorData = this.slots[slotIndex];
         if (!armorData) return false;
         
@@ -1613,7 +2323,7 @@ export class InventorySystem {
         }
         
         // Determine which card is higher tier for upgrade
-        const rarityOrder = ['common', 'uncommon', 'rare', 'legendary'];
+        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
         const indexA_tier = rarityOrder.indexOf(cardA.rarity);
         const indexB_tier = rarityOrder.indexOf(cardB.rarity);
         
@@ -1647,8 +2357,17 @@ export class InventorySystem {
         
         // Add upgraded card
         this.addCard(upgradedCard);
-        
+
         this.scene.createFloatingText(512, 400, 'Cards Merged!', 0x00ff00);
+
+        // Echo Stone relic: small chance one of the two consumed cards reappears
+        // on the floor board face-down. Picks one of the source cards at random
+        // so the player can't predict which copy comes back.
+        const echoChance = this.scene.gameState?.relicEffects?.mergeRespawnChance || 0;
+        if (echoChance > 0 && Math.random() < echoChance) {
+            const sourceCard = Math.random() < 0.5 ? cardA : cardB;
+            this.scene.cardSystem?.respawnCardOnBoard?.(sourceCard);
+        }
     }
     
     createMergedCard(baseCard, secondCard) {
@@ -1656,7 +2375,8 @@ export class InventorySystem {
         const rarityMap = {
             common: 'uncommon',
             uncommon: 'rare',
-            rare: 'legendary'
+            rare: 'epic',
+            epic: 'legendary'
         };
         const newRarity = rarityMap[baseCard.rarity] || 'legendary';
         
@@ -1672,8 +2392,14 @@ export class InventorySystem {
             // Override with specific armor type and rarity  
             upgradedCard = this.forceArmorTypeAndRarity(upgradedCard, baseCard, newRarity);
         } else if (baseCard.type === 'thorns') {
-            const multiplier = newRarity === 'uncommon' ? 1.5 : newRarity === 'rare' ? 2 : 2.5;
-            const maxDurability = newRarity === 'uncommon' ? 7 : newRarity === 'rare' ? 8 : 10;
+            const multiplier = newRarity === 'uncommon' ? 1.5
+                : newRarity === 'rare' ? 2
+                : newRarity === 'epic' ? 2.25
+                : 2.5;
+            const maxDurability = newRarity === 'uncommon' ? 7
+                : newRarity === 'rare' ? 9
+                : newRarity === 'epic' ? 10
+                : 11;
             upgradedCard = {
                 ...baseCard,
                 name: 'Thorns Card',
@@ -1687,30 +2413,47 @@ export class InventorySystem {
             // For other items (potions, food), use simple upgrade logic
             const multiplier = newRarity === 'uncommon' ? 1.8 : newRarity === 'rare' ? 2.5 : 3;
             const healAmount = baseCard.healAmount ? Math.floor(baseCard.healAmount * multiplier) : undefined;
+            const actionAmount = baseCard.actionAmount ? Math.floor(baseCard.actionAmount * multiplier) : undefined;
             upgradedCard = {
                 ...baseCard,
                 name: baseCard.type === 'potion' ? this.getPotionNameForHealAmount(healAmount) :
+                    baseCard.type === 'food' ? this.getFoodNameForActionAmount(actionAmount) :
                     baseCard.name.replace(/Common|Uncommon|Rare/, newRarity.charAt(0).toUpperCase() + newRarity.slice(1)),
                 rarity: newRarity,
                 healAmount,
-                actionAmount: baseCard.actionAmount ? Math.floor(baseCard.actionAmount * multiplier) : undefined,
+                actionAmount,
                 sprite: baseCard.type === 'potion' && newRarity === 'uncommon' ? 'potionCardUncommon' : baseCard.sprite
             };
         }
         
-        // Handle durability combining for weapons and armor
+        // Merging fully refreshes durability — the upgraded card already
+        // comes out at maxDurability from forceWeaponTypeAndRarity/forceArmor...
+        // (Previous behavior summed the two worn-down cards' remaining pips,
+        // which meant two beat-up daggers gave a weak uncommon dagger.)
         if (baseCard.type === 'weapon' || baseCard.type === 'armor' || baseCard.type === 'thorns') {
-            const combinedDurability = (baseCard.durability || 0) + (secondCard.durability || 0);
-            const maxDurability = upgradedCard.maxDurability;
-            
-            upgradedCard.durability = Math.min(combinedDurability, maxDurability);
-            
-            // Show durability feedback
-            const addedDur = Math.min(secondCard.durability || 0, maxDurability - baseCard.durability);
-            if (combinedDurability > maxDurability) {
-                this.scene.createFloatingText(512, 380, `Durability capped at ${maxDurability}`, 0xffa500);
+            upgradedCard.durability = upgradedCard.maxDurability;
+            this.scene.createFloatingText(512, 380, `Refreshed: ${upgradedCard.maxDurability} pips`, 0x00ff00);
+        }
+
+        if (baseCard.type === 'weapon') {
+            const baseGem = baseCard.gemEffect ? baseCard : null;
+            const secondGem = secondCard.gemEffect ? secondCard : null;
+
+            if (baseGem && secondGem && baseGem.gemEffect === secondGem.gemEffect) {
+                // Same gem type on both — combine stacks (capped at 3)
+                upgradedCard.gemEffect = baseGem.gemEffect;
+                upgradedCard.gemName = baseGem.gemName;
+                upgradedCard.gemColor = baseGem.gemColor;
+                upgradedCard.gemCount = Math.min(3, (baseGem.gemCount || 1) + (secondGem.gemCount || 1));
             } else {
-                this.scene.createFloatingText(512, 380, `+${addedDur} durability`, 0x00ff00);
+                // Different (or only one) — take whichever has a gem
+                const gemSource = baseGem || secondGem;
+                if (gemSource) {
+                    upgradedCard.gemEffect = gemSource.gemEffect;
+                    upgradedCard.gemName = gemSource.gemName;
+                    upgradedCard.gemColor = gemSource.gemColor;
+                    upgradedCard.gemCount = gemSource.gemCount || 1;
+                }
             }
         }
         
@@ -1723,6 +2466,13 @@ export class InventorySystem {
         if (healAmount >= 30) return 'Healing Potion';
         return 'Minor Healing Potion';
     }
+
+    getFoodNameForActionAmount(actionAmount = 0) {
+        if (actionAmount >= 25) return 'Feast';
+        if (actionAmount >= 18) return 'Hearty Meal';
+        if (actionAmount >= 12) return 'Rations';
+        return 'Bread';
+    }
     
     forceWeaponTypeAndRarity(generatedCard, originalCard, targetRarity) {
         const weaponType = this.getWeaponTypeFromCard(originalCard);
@@ -1731,18 +2481,14 @@ export class InventorySystem {
         if (cardGenerator.weaponUnlocks[weaponType] && cardGenerator.weaponUnlocks[weaponType][targetRarity]) {
             const weaponData = cardGenerator.weaponUnlocks[weaponType][targetRarity];
             const rarityName = targetRarity.charAt(0).toUpperCase() + targetRarity.slice(1);
-            const weaponNames = {
-                venomousDagger: 'Venomous Dagger'
-            };
-            const weaponName = weaponNames[weaponType] || weaponType.charAt(0).toUpperCase() + weaponType.slice(1);
-            
+            const weaponName = weaponType.charAt(0).toUpperCase() + weaponType.slice(1);
+
             // Get proper durability
             const durabilityMap = {
-                dagger: { common: 4, uncommon: 5, rare: 6, legendary: 7 },
-                venomousDagger: { common: 5, uncommon: 5, rare: 5, legendary: 5 },
-                spear: { common: 5, uncommon: 6, rare: 7, legendary: 8 },
-                sword: { common: 6, uncommon: 8, rare: 10, legendary: 13 },
-                axe: { common: 3, uncommon: 4, rare: 5, legendary: 7 }
+                dagger: { common: 4, uncommon: 5, rare: 6, epic: 7, legendary: 8 },
+                spear: { common: 5, uncommon: 6, rare: 7, epic: 8, legendary: 9 },
+                sword: { common: 6, uncommon: 8, rare: 10, epic: 11, legendary: 13 },
+                axe: { common: 6, uncommon: 8, rare: 10, epic: 12, legendary: 14 }
             };
             const maxDurability = durabilityMap[weaponType][targetRarity] || 6;
             
@@ -1776,7 +2522,7 @@ export class InventorySystem {
             const rarityName = targetRarity.charAt(0).toUpperCase() + targetRarity.slice(1);
             const armorName = armorType.charAt(0).toUpperCase() + armorType.slice(1);
             
-            const durabilityBonus = { uncommon: 5, rare: 10, legendary: 15 };
+            const durabilityBonus = { uncommon: 5, rare: 10, epic: 13, legendary: 15 };
             const maxDurability = 20 + (durabilityBonus[targetRarity] || 0);
             
             return {
@@ -1805,6 +2551,7 @@ export class InventorySystem {
     }
 
     removeCard(slotIndex, destroySprite = true) {
+        this.hideCardTooltip();
         const slotSprite = this.slotSprites[slotIndex];
         if (destroySprite && slotSprite) {
             // Clean up all associated sprites
@@ -1828,6 +2575,16 @@ export class InventorySystem {
             if (slotSprite.hoverSprite) {
                 slotSprite.hoverSprite.destroy();
                 slotSprite.hoverSprite = null;
+            }
+
+            if (slotSprite.gemEffectSprite) {
+                slotSprite.gemEffectSprite.destroy();
+                slotSprite.gemEffectSprite = null;
+            }
+
+            if (slotSprite.gemIndicator) {
+                slotSprite.gemIndicator.destroy();
+                slotSprite.gemIndicator = null;
             }
             
             if (slotSprite.shadow) {
@@ -1854,7 +2611,7 @@ export class InventorySystem {
         
         // Find items that can be merged and apply twinkle animation.
         this.slots.forEach((card, index) => {
-            if (card && card.type !== 'magic') {
+            if (card && card.type !== 'magic' && card.type !== 'gem') {
                 const hasMatch = this.slots.some((otherCard, otherIndex) => (
                     otherIndex !== index && this.canCardsMerge(card, otherCard, false)
                 ));

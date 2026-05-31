@@ -1,8 +1,10 @@
 export class GameState {
     constructor(scene) {
         this.scene = scene;
-        this.playerHealth = 100;
-        this.maxHealth = 100;
+        // Bumped from 100 to 115 — act 1 was killing players too often before
+        // they could find armor or gems. Extra buffer covers the early ramp.
+        this.playerHealth = 115;
+        this.maxHealth = 115;
         this.coins = 0;
         this.crystals = 0;
         this.activeAmulets = [];
@@ -13,6 +15,24 @@ export class GameState {
         this.equippedWeapon = null;
         this.equippedArmor = null;
         this.inventory = new Array(5).fill(null);
+        this.startingCardsGranted = false; // Guards the one-time starting swords (prevents resume/restart dupes)
+        this.discardedCardsThisRun = 0;
+        this.discardCritChance = 0;
+        this.storyRun = {
+            caravanSeen: false,
+            donkeySaved: false,
+            donkeyLost: false,
+            banditsStopped: false,
+            banditsEscaped: false,
+            merchantGrateful: false,
+            hermitState: 'unknown',
+            pendingEvents: []
+        };
+        this.heroMemory = {
+            learnedBanditsThreatenHermit: false,
+            learnedDonkeyCanBeSaved: false,
+            solvedCaravanPerfectly: false
+        };
         
         
         this.blockNextAttack = false;
@@ -25,8 +45,11 @@ export class GameState {
         
         // Amulet-related properties
         this.firstActionUsed = false; // For Speed Boots
-        this.bonusInventorySlots = 0; // For Bottomless Bag
+        this.bonusInventorySlots = 0; // For Bottomless Bag / Diviner's Spade
         this.baseMaxHealth = 50; // Store base max health for cursed amulets
+        this.journalBonusHP = 0; // Traveler's Journal: tracks HP added so it isn't double-applied
+        this.mapBonusAP = 0; // Wayfarer's Map: AP gained so far (cap 15)
+        this.mapFloorCount = 0; // Wayfarer's Map: floors counted toward the every-other cadence
         
         // Meta progression tracking
         this.damageTracking = {
@@ -126,8 +149,12 @@ export class GameState {
                 }
             }
             
-            // Durability tick if armor was used and damage was dealt
-            if (protection > 0 && amount > 0) {
+            // Durability tick if armor was used and damage was dealt.
+            // Ironhide relic: chance to skip the durability loss entirely,
+            // roughly doubling how long the armor lasts.
+            const durabilitySave = this.relicEffects?.armorDurabilitySave || 0;
+            const skipTick = durabilitySave > 0 && Math.random() < durabilitySave;
+            if (protection > 0 && amount > 0 && !skipTick) {
                 this.equippedArmor.durability--;
                 if (this.equippedArmor.durability <= 0) {
                     this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y + 20, `${this.equippedArmor.name} broke!`, 0xffa500);

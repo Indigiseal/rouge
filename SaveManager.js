@@ -101,6 +101,12 @@ export class SaveManager {
         firstActionUsed: gameState?.firstActionUsed ?? false,
         baseMaxHealth: gameState?.baseMaxHealth ?? 50,
         bottomlessBagApplied: gameState?.bottomlessBagApplied ?? false,
+        discardedCardsThisRun: gameState?.discardedCardsThisRun ?? 0,
+        discardCritChance: gameState?.discardCritChance ?? 0,
+        // Amulet-tracking fields (Traveler's Journal, Wayfarer's Map)
+        journalBonusHP: gameState?.journalBonusHP ?? 0,
+        mapBonusAP: gameState?.mapBonusAP ?? 0,
+        mapFloorCount: gameState?.mapFloorCount ?? 0,
       },
       equipment: {
         equippedWeapon: gameState?.equippedWeapon ?? null,
@@ -125,6 +131,10 @@ export class SaveManager {
         lastDamageSource: null,
         deathCause: null,
         runStats: { floorsReached: 1, enemiesDefeated: 0, trapsTriggered: 0, coinsEarned: 0, crystalsEarned: 0 }
+      },
+      story: {
+        storyRun: gameState?.storyRun ?? null,
+        heroMemory: gameState?.heroMemory ?? null,
       },
       board: {
         cards: cardSystem ? this.serializeBoardCards(cardSystem.boardCards) : [],
@@ -165,6 +175,11 @@ export class SaveManager {
           firstActionUsed: parsed.player?.firstActionUsed ?? false,
           baseMaxHealth: parsed.player?.baseMaxHealth ?? 50,
           bottomlessBagApplied: parsed.player?.bottomlessBagApplied ?? false,
+          discardedCardsThisRun: parsed.player?.discardedCardsThisRun ?? 0,
+          discardCritChance: parsed.player?.discardCritChance ?? 0,
+          journalBonusHP: parsed.player?.journalBonusHP ?? 0,
+          mapBonusAP: parsed.player?.mapBonusAP ?? 0,
+          mapFloorCount: parsed.player?.mapFloorCount ?? 0,
         },
         equipment: {
           equippedWeapon: parsed.equipment?.equippedWeapon ?? null,
@@ -187,6 +202,10 @@ export class SaveManager {
           lastDamageSource: null,
           deathCause: null,
           runStats: { floorsReached: 1, enemiesDefeated: 0, trapsTriggered: 0, coinsEarned: 0, crystalsEarned: 0 }
+        },
+        story: {
+          storyRun: parsed.story?.storyRun ?? null,
+          heroMemory: parsed.story?.heroMemory ?? null,
         },
         board: {
           cards: Array.isArray(parsed.board?.cards) ? parsed.board.cards : [],
