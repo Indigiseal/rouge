@@ -2100,10 +2100,20 @@ export class CardSystem {
         
         this.scene.shakeCard(card.sprite);
         
+        // Gem effects fire BEFORE the weapon damage lands. If we waited until
+        // after, a killing weapon hit would knock the target's health to ≤ 0
+        // and burnEnemy / damageGemTarget would short-circuit, silently
+        // dropping the gem damage and its "-X Fire" / "Zap" floating text on
+        // the main target. Splash to neighbours still works because they
+        // weren't touched by the weapon yet.
+        if (!isReflection && weapon?.gemEffect && card.sprite?.scene) {
+            this.applyWeaponGemEffect(index, weapon, finalDamage);
+        }
+
         // Handle Hungry Dagger special damage
         if (!isReflection && this.scene.amuletManager) {
             const originalHealth = card.data.health;
-            
+
             // Check for hungry dagger effect
             const hasHungryDagger = this.scene.amuletManager.hasAmulet('hungryDagger');
             if (hasHungryDagger) {
@@ -2116,7 +2126,7 @@ export class CardSystem {
                     // Heal enemy by 1
                     card.data.health = newHealth + 1;
                     this.scene.createFloatingText(card.sprite.x, card.sprite.y, '+1 HP', 0x00ff00);
-                    
+
                     // Update info text
                     this.updateEnemyInfoText(card);
                     return; // Don't process normal damage
@@ -2164,9 +2174,8 @@ export class CardSystem {
             this.applyRelicSlow(card);
         }
 
-        if (!isReflection && weapon?.gemEffect && card.sprite?.scene) {
-            this.applyWeaponGemEffect(index, weapon, finalDamage);
-        }
+        // (Gem effect ran above, before the weapon damage was applied, so we
+        // don't re-trigger it here.)
 
         this.updateEnemyInfoText(card);
 
