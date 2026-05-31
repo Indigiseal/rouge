@@ -1842,6 +1842,12 @@ export class CardSystem {
         }
 
         this.scene.updateUI();
+        // Defensive: a few death paths (fire splash on hidden enemies, etc.)
+        // can take the last enemy off the board without then triggering the
+        // clear check. Re-validating after any card interaction guarantees
+        // that picking up a coin / "Nothing" / etc. unsticks a phantom
+        // "still in combat" state if the board is actually clear.
+        this.checkFloorClear();
     }
 
     consumeAmulet(amulet, index) {

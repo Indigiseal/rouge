@@ -1208,7 +1208,14 @@ export class GameScene extends Phaser.Scene {
     onEnemiesCleared() {
         this.clearEnemyTurnTimers();
         this.enemiesCleared = true;
-        this.nextFloorButton.setVisible(true);
+        // Null-guard: if the button hasn't been (re)created yet, do NOT throw
+        // — that would leave enemiesCleared=true with a still-hidden button,
+        // and the next checkFloorClear would short-circuit on !enemiesCleared.
+        if (this.nextFloorButton) {
+            this.nextFloorButton.setVisible(true);
+            this.nextFloorButton.setInteractive();
+            this.nextFloorButton.clearTint();
+        }
         this.nextFloorButtonText?.setVisible(true);
         this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
         this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
@@ -1738,16 +1745,23 @@ export class GameScene extends Phaser.Scene {
         const isNewRoom = data?.isNewRoom || false;
         
         if (['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType)) {
-            // Check if we need to spawn new enemies
-            const hasEnemies = this.cardSystem.boardCards && 
-                this.cardSystem.boardCards.some(c => 
-                    c && (c.data?.type === 'enemy' || c.data?.type === 'boss')
-            );
-            
+            // Check if we need to spawn new enemies. Include 'eliteEnemy'
+            // — it's a third enemy type used throughout cardSystem; missing
+            // it here would cause an unresolved-enemy room to look empty
+            // and skip the respawn.
+            const isEnemyType = (t) => t === 'enemy' || t === 'boss' || t === 'eliteEnemy';
+            const hasEnemies = this.cardSystem.boardCards &&
+                this.cardSystem.boardCards.some(c => c && isEnemyType(c.data?.type));
+
             if (!hasEnemies || isNewRoom) {
                 this.startNewFloor();
             } else {
                 this.updateUI(); // Refresh UI without spawning
+                // Defensive: if the board genuinely has no live enemies on
+                // wake (e.g. we returned from a non-combat scene mid-room
+                // with everything already dead), make sure the Next button
+                // surfaces instead of leaving the player stuck.
+                this.cardSystem.checkFloorClear?.();
             }
         }
     }
