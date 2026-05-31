@@ -539,7 +539,7 @@ export class CardSystem {
         this.scene.gameState.playerHealth = Math.min(this.scene.gameState.maxHealth, before + heal);
         const gained = this.scene.gameState.playerHealth - before;
         if (gained > 0 && this.scene.playerAvatar) {
-          this.scene.createFloatingText?.(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${gained} HP (Gravekeeper)`, 0x66ff99);
+          this.scene.createFloatingText?.(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${gained} HP (Pact)`, 0x66ff99);
         }
         this.scene.updateUI?.();
       }
@@ -2113,6 +2113,11 @@ export class CardSystem {
         if (!isReflection && weapon && this.scene.amuletManager) {
             finalDamage = this.scene.amuletManager.modifyWeaponDamage(damage);
         }
+        // Giant's Strength relic: +1 flat damage on every weapon attack.
+        if (!isReflection && weapon) {
+            const dmgBonus = this.scene.gameState?.relicEffects?.weaponDamageBonus || 0;
+            if (dmgBonus) finalDamage += dmgBonus;
+        }
         if (!isReflection && weapon && this.scene.gameState?.shadowBlade?.turns > 0) {
             finalDamage = Math.floor(finalDamage * (this.scene.gameState.shadowBlade.multiplier || 1.5));
         }
@@ -2129,7 +2134,7 @@ export class CardSystem {
             && !this.scene.gameState.firstAttackThisFloorUsed) {
             finalDamage *= 2;
             this.scene.gameState.firstAttackThisFloorUsed = true;
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'EXECUTE!', 0xffaa00);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'LUCKY STRIKE!', 0xffaa00);
         }
         
         // Evasion doesn't work against reflection damage
@@ -2383,7 +2388,7 @@ export class CardSystem {
                 this.scene.createFloatingText(
                     this.scene.playerAvatar.x,
                     this.scene.playerAvatar.y,
-                    `+${relicLifesteal} HP (Lifesteal)`,
+                    `+${relicLifesteal} HP (Lich)`,
                     0x9932cc
                 );
             }

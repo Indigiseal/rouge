@@ -1,306 +1,395 @@
 // MetaProgressionManager.js
 
-import { SaveManager } from './SaveManager.js';
-import { CardDataGenerator } from './CardDataGenerator.js';
-
 export class MetaProgressionManager {
     constructor(scene) {
         this.scene = scene;
-        this.saveManager = new SaveManager();
         this.loadMetaProgression();
     }
-
+    
+    // Load saved meta progression data
     loadMetaProgression() {
-        const data = this.saveManager.loadMetaProgression();
-        this.unlockedRelics = data.unlockedRelics || [];
-        this.totalDeaths = data.totalDeaths || 0;
-        this.bestFloor = data.bestFloor || 1;
-        this.enemyKillStats = data.enemyKillStats || {};
-        this.totalRuns = data.totalRuns || 0;
-        this.totalEnemiesKilled = data.totalEnemiesKilled || 0;
+        const saved = localStorage.getItem('metaProgression');
+        if (saved) {
+            const data = JSON.parse(saved);
+            this.unlockedRelics = data.unlockedRelics || [];
+            this.totalDeaths = data.totalDeaths || 0;
+            this.bestFloor = data.bestFloor || 1;
+            this.enemyKillStats = data.enemyKillStats || {};
+        } else {
+            this.unlockedRelics = [];
+            this.totalDeaths = 0;
+            this.bestFloor = 1;
+            this.enemyKillStats = {};
+        }
     }
-
+    
+    // Save meta progression data
     saveMetaProgression() {
-        this.saveManager.saveMetaProgression({
+        const data = {
             unlockedRelics: this.unlockedRelics,
             totalDeaths: this.totalDeaths,
             bestFloor: this.bestFloor,
-            enemyKillStats: this.enemyKillStats,
-            totalRuns: this.totalRuns,
-            totalEnemiesKilled: this.totalEnemiesKilled,
-        });
+            enemyKillStats: this.enemyKillStats
+        };
+        localStorage.setItem('metaProgression', JSON.stringify(data));
     }
-
-    // ─── Relic roster ────────────────────────────────────────────────────────
-    // Each relic is triggered/conditional so it changes how you play, not just
-    // a flat stat bump. Effect keys are consumed at these hook points:
-    //   weaponPoisonChance/poisonDamage/poisonTurns → CardSystem.applyWeaponPoison
-    //   poisonDamageBonus                            → CardSystem.applyWeaponPoison
-    //   slowChance                                   → CardSystem.applyRelicSlow
-    //   firstAttackDoubleDamage                      → CardSystem.attackEnemy
-    //   lifestealOnKill                              → CardSystem.removeDefeatedEnemy
-    //   healPerFloor / revealExtraCard               → CardSystem.spawnFloorCards
-    //   coinMultiplier                               → AmuletManager.modifyGoldFound
-    //   weaponDurabilityRate                         → AmuletManager.getWeaponDurabilityRate
-    //   poisonImmunity                               → GameState.addPlayerEffect
-    //   reviveOncePerRun                             → GameState.takeDamage
-    //   bonus/startingX, maxHPPenalty, startingWeapon → applyRelicEffects (below)
-    //
-    // Unlock sources:
-    //   killedBy: 'spider' | 'skeleton' | 'goblin'  → substring match on killer
-    //   killedBy: '<exact boss name>'               → Giant Spider / Skeleton King / Dragon
-    //   unlockCondition: 'deaths_N' | 'floor_N'     → milestone
+    
+    // Define all possible relics and their effects
     getRelicDefinitions() {
         return {
-            // ── Spider line ──────────────────────────────────────────────
+            // Spider relics
             spiderVenom: {
                 id: 'spiderVenom',
-                name: 'Venom Glands',
-                description: 'Every weapon hit poisons the enemy (2 dmg, 3 turns).',
+                name: 'Spider Venom',
+                description: 'Weapons have 20% chance to poison enemies',
                 icon: 'relic_spider',
+                iconSheet: 'relicsOthers',
+                iconFrame: 11,
                 killedBy: 'spider',
-                effect: { weaponPoisonChance: 1.0, poisonDamage: 2, poisonTurns: 3 },
+                effect: {
+                    weaponPoisonChance: 0.2,
+                    poisonDamage: 2,
+                    poisonTurns: 3
+                }
             },
+            
             webWeaver: {
                 id: 'webWeaver',
-                name: 'Web Weaver',
-                description: '25% chance to freeze an enemy for a turn when you hit it.',
+                name: 'Echo Stone',
+                description: '10% chance a merged card respawns face-down on the board',
                 icon: 'relic_web',
+                iconSheet: 'relicsOthers',
+                iconFrame: 12,
                 killedBy: 'spider',
                 tier: 2,
-                effect: { slowChance: 0.25 },
+                effect: {
+                    mergeRespawnChance: 0.10
+                }
             },
-
-            // ── Skeleton line ────────────────────────────────────────────
-            secondWind: {
-                id: 'secondWind',
-                name: 'Second Wind',
-                description: 'Once per run, survive a lethal hit at 1 HP.',
+            
+            // Skeleton relics
+            boneArmor: {
+                id: 'boneArmor',
+                name: 'Bone Armor',
+                description: 'Start each run with bone armor',
                 icon: 'relic_bone',
+                iconSheet: 'relicsOthers',
+                iconFrame: 13,
                 killedBy: 'skeleton',
-                effect: { reviveOncePerRun: true },
+                effect: {
+                    startingArmor: 2
+                }
             },
-            gravekeeper: {
-                id: 'gravekeeper',
-                name: 'Gravekeeper',
-                description: 'Heal 4 HP at the start of every floor.',
+            
+            undeadResilience: {
+                id: 'undeadResilience',
+                name: 'Healing Pact',
+                description: 'Heal 2 HP at the start of every floor',
                 icon: 'relic_skull',
+                iconSheet: 'relicsOthers',
+                iconFrame: 14,
                 killedBy: 'skeleton',
-                tier: 2,
-                effect: { healPerFloor: 4 },
+                effect: {
+                    // Tuned 4 → 2 after the spear-bypass fix dropped the
+                    // overall difficulty more than expected. 2 HP/floor still
+                    // adds up to ~90 HP over a full run but you feel late-floor
+                    // damage again instead of trivially regenerating it.
+                    healPerFloor: 2
+                }
             },
 
-            // ── Goblin line ──────────────────────────────────────────────
-            bloodMoney: {
-                id: 'bloodMoney',
-                name: 'Blood Money',
-                description: 'Enemy coin drops +50%, and killing blows heal 1 HP.',
+            // Goblin relics
+            greedyPockets: {
+                id: 'greedyPockets',
+                name: 'Lucky Strike',
+                description: 'First attack each floor deals double damage',
                 icon: 'relic_coin_pouch',
+                iconSheet: 'relicsOthers',
+                iconFrame: 15,
                 killedBy: 'goblin',
-                effect: { coinMultiplier: 1.5, lifestealOnKill: 1 },
+                effect: {
+                    firstAttackDoubleDamage: true
+                }
             },
-
-            // ── Boss relics (exact name match) ───────────────────────────
-            broodmother: {
-                id: 'broodmother',
-                name: "Broodmother's Spite",
-                description: 'Immune to poison. Your poison deals +2 damage.',
-                icon: 'relic_crown',
-                killedBy: 'Giant Spider',
-                boss: true,
-                effect: { poisonImmunity: true, poisonDamageBonus: 2 },
+            
+            scavenger: {
+                id: 'scavenger',
+                name: 'Scavenger',
+                description: '+20% coins from all sources',
+                icon: 'relic_goblin',
+                iconSheet: 'relicsOthers',
+                iconFrame: 16,
+                killedBy: 'goblin',
+                effect: {
+                    coinMultiplier: 1.2
+                }
             },
-            giantsGrip: {
-                id: 'giantsGrip',
-                name: "Giant's Grip",
-                description: 'Weapons lose durability half as often.',
+            
+            // Boss relics (more powerful)
+            giantStrength: {
+                id: 'giantStrength',
+                name: "Giant's Strength",
+                description: 'All weapons deal +1 damage',
                 icon: 'relic_giant',
-                killedBy: 'Skeleton King',
+                iconSheet: 'relicsOthers',
+                iconFrame: 17,
+                killedBy: 'Giant Skeleton',
                 boss: true,
-                effect: { weaponDurabilityRate: 0.5 },
+                effect: {
+                    weaponDamageBonus: 1
+                }
             },
-            dragonHunger: {
-                id: 'dragonHunger',
-                name: "Dragon's Hunger",
-                description: 'Heal 3 HP per kill, but −15 max HP.',
+            
+            queenBlessing: {
+                id: 'queenBlessing',
+                name: "Queen's Blessing",
+                description: 'Immune to poison',
+                icon: 'relic_crown',
+                iconSheet: 'relicsOthers',
+                iconFrame: 18,
+                killedBy: 'Spider Queen',
+                boss: true,
+                effect: {
+                    poisonImmunity: true
+                }
+            },
+            
+            lichCurse: {
+                id: 'lichCurse',
+                name: "Lich's Curse",
+                description: 'Heal 1 HP per enemy killed, -10 max HP',
                 icon: 'relic_lich',
-                killedBy: 'Dragon',
+                iconSheet: 'relicsOthers',
+                iconFrame: 19,
+                killedBy: 'Lich',
                 boss: true,
                 cursed: true,
-                effect: { lifestealOnKill: 3, maxHPPenalty: -15 },
+                effect: {
+                    lifestealOnKill: 1,
+                    maxHPPenalty: -10
+                }
+            },
+            
+            // General progression relics
+            veteranExplorer: {
+                id: 'veteranExplorer',
+                name: "Adventurer's Pack",
+                description: '+1 permanent inventory slot',
+                icon: 'relic_boots',
+                iconSheet: 'relicsOthers',
+                iconFrame: 20,
+                unlockCondition: 'deaths_5',
+                effect: {
+                    bonusInventorySlot: 1
+                }
             },
 
-            // ── Milestone relics ─────────────────────────────────────────
-            quartermaster: {
-                id: 'quartermaster',
-                name: 'Quartermaster',
-                description: 'Start each run with an uncommon weapon in your pack.',
-                icon: 'relic_boots',
+            tent: {
+                id: 'tent',
+                name: 'Tent',
+                description: '+1 max HP whenever a durability card is fully used',
+                icon: 'relic_tent',
+                iconSheet: 'relicsOthers',
+                iconFrame: 23,
+                unlockCondition: 'floor_7',
+                effect: {
+                    cardSpentMaxHP: 1
+                }
+            },
+
+            luckyScrap: {
+                id: 'luckyScrap',
+                name: 'Ironhide',
+                description: 'Your armor loses durability half as often (lasts about twice as long)',
+                icon: 'relic_scrap',
+                iconSheet: 'relicsOthers',
+                iconFrame: 22,
                 unlockCondition: 'deaths_3',
-                effect: { startingWeapon: 'uncommon' },
+                effect: {
+                    armorDurabilitySave: 0.5
+                }
             },
-            cartographer: {
-                id: 'cartographer',
-                name: 'Cartographer',
-                description: 'Reveal 2 extra cards at the start of each floor.',
+            
+            dungeonMaster: {
+                id: 'dungeonMaster',
+                name: 'Dungeon Master',
+                description: 'See one extra card at start',
                 icon: 'relic_eye',
+                iconSheet: 'relicsOthers',
+                iconFrame: 21,
                 unlockCondition: 'floor_10',
-                effect: { revealExtraCard: 2 },
-            },
-            executioner: {
-                id: 'executioner',
-                name: 'Executioner',
-                description: 'Your first attack each floor deals double damage.',
-                icon: 'relic_giant',
-                unlockCondition: 'floor_20',
-                effect: { firstAttackDoubleDamage: true },
-            },
+                effect: {
+                    revealExtraCard: 1
+                }
+            }
         };
     }
-
-    // ─── Death → reward ──────────────────────────────────────────────────────
-
+    
+    // Handle player death and grant appropriate relic
     handlePlayerDeath(killedBy, floor) {
         this.totalDeaths++;
-        if (floor > this.bestFloor) this.bestFloor = floor;
+        
+        if (floor > this.bestFloor) {
+            this.bestFloor = floor;
+        }
+        
+        // Track enemy kill stats
         this.enemyKillStats[killedBy] = (this.enemyKillStats[killedBy] || 0) + 1;
-
+        
+        // Determine which relic to grant
         const newRelic = this.determineRelicReward(killedBy);
+        
         if (newRelic && !this.hasRelic(newRelic.id)) {
             this.unlockRelic(newRelic.id);
             this.saveMetaProgression();
             return newRelic;
         }
-
+        
+        // Check for milestone relics
         const milestoneRelic = this.checkMilestoneUnlocks();
         if (milestoneRelic) {
             this.unlockRelic(milestoneRelic.id);
             this.saveMetaProgression();
             return milestoneRelic;
         }
-
+        
         this.saveMetaProgression();
         return null;
     }
-
+    
+    // Determine which relic to grant based on death
     determineRelicReward(killedBy) {
-        const relics = Object.values(this.getRelicDefinitions());
-        const killer = (killedBy || '').toLowerCase();
-
-        // Boss relics match the EXACT killer name. Check these first — boss
-        // names like "Giant Spider" / "Skeleton King" contain the substrings
-        // used for regular-enemy relics, so substring matching would otherwise
-        // steal boss kills and the boss relics would be unreachable.
-        const bossRelic = relics.find(r =>
-            r.boss && r.killedBy === killedBy && !this.hasRelic(r.id)
-        );
-        if (bossRelic) return bossRelic;
-
-        // Regular enemies match by family substring (spider / skeleton / goblin).
-        const family = killer.includes('spider') ? 'spider'
-            : killer.includes('skeleton') ? 'skeleton'
-            : killer.includes('goblin') ? 'goblin'
-            : null;
-        if (!family) return null;
-
-        // Prefer lower-tier relics first so the line unlocks in order.
-        const familyRelics = relics
-            .filter(r => !r.boss && r.killedBy === family && !this.hasRelic(r.id))
-            .sort((a, b) => (a.tier || 1) - (b.tier || 1));
-        return familyRelics[0] || null;
+        const relics = this.getRelicDefinitions();
+        
+        // Find relics that match the killer
+        const matchingRelics = Object.values(relics).filter(relic => {
+            // For regular enemies, match by type
+            if (killedBy.toLowerCase().includes('spider')) {
+                return relic.killedBy === 'spider' && !this.hasRelic(relic.id);
+            }
+            if (killedBy.toLowerCase().includes('skeleton')) {
+                return relic.killedBy === 'skeleton' && !this.hasRelic(relic.id);
+            }
+            if (killedBy.toLowerCase().includes('goblin')) {
+                return relic.killedBy === 'goblin' && !this.hasRelic(relic.id);
+            }
+            
+            // For bosses, match exact name
+            return relic.killedBy === killedBy && !this.hasRelic(relic.id);
+        });
+        
+        // Return the first unowned matching relic
+        return matchingRelics[0] || null;
     }
-
+    
+    // Check for milestone-based unlocks
     checkMilestoneUnlocks() {
         const relics = this.getRelicDefinitions();
-        const milestones = [
-            { relic: relics.quartermaster, ok: this.totalDeaths >= 3 },
-            { relic: relics.cartographer,  ok: this.bestFloor >= 10 },
-            { relic: relics.executioner,   ok: this.bestFloor >= 20 },
-        ];
-        for (const m of milestones) {
-            if (m.ok && m.relic && !this.hasRelic(m.relic.id)) return m.relic;
+        
+        // Check death count milestones
+        if (this.totalDeaths >= 3 && !this.hasRelic('luckyScrap')) {
+            return relics.luckyScrap;
         }
+
+        if (this.totalDeaths >= 5 && !this.hasRelic('veteranExplorer')) {
+            return relics.veteranExplorer;
+        }
+        
+        // Check floor milestones
+        if (this.bestFloor >= 7 && !this.hasRelic('tent')) {
+            return relics.tent;
+        }
+
+        if (this.bestFloor >= 10 && !this.hasRelic('dungeonMaster')) {
+            return relics.dungeonMaster;
+        }
+        
         return null;
     }
-
+    
+    // Check if player has a specific relic
     hasRelic(relicId) {
         return this.unlockedRelics.includes(relicId);
     }
-
+    
+    // Unlock a new relic
     unlockRelic(relicId) {
-        if (!this.hasRelic(relicId)) this.unlockedRelics.push(relicId);
+        if (!this.hasRelic(relicId)) {
+            this.unlockedRelics.push(relicId);
+        }
     }
-
-    // ─── Apply at run start ──────────────────────────────────────────────────
-
+    
+    // Apply all relic effects at the start of a run
     applyRelicEffects(gameState, applyStartingBonuses = true) {
         const relics = this.getRelicDefinitions();
         gameState.relicEffects = {};
-
+        
         this.unlockedRelics.forEach(relicId => {
             const relic = relics[relicId];
             if (!relic || !relic.effect) return;
+            
             const effect = relic.effect;
-
+            
+            // Apply starting bonuses
             if (applyStartingBonuses && effect.bonusStartingHP) {
                 gameState.maxHealth += effect.bonusStartingHP;
                 gameState.playerHealth += effect.bonusStartingHP;
             }
+            
             if (applyStartingBonuses && effect.maxHPPenalty) {
-                gameState.maxHealth += effect.maxHPPenalty; // negative
+                gameState.maxHealth += effect.maxHPPenalty; // Negative value
                 gameState.playerHealth = Math.min(gameState.playerHealth, gameState.maxHealth);
             }
+            
             if (applyStartingBonuses && effect.startingCoins) {
                 gameState.coins += effect.startingCoins;
             }
+            
             if (applyStartingBonuses && effect.bonusStartingAP) {
                 gameState.actionsLeft += effect.bonusStartingAP;
                 gameState.maxActions += effect.bonusStartingAP;
             }
-            if (applyStartingBonuses && effect.startingArmor && !gameState.equippedArmor) {
-                gameState.equippedArmor = {
-                    type: 'armor', name: 'Uncommon Bone Armor', armorType: 'bone',
-                    protection: effect.startingArmor, rarity: 'uncommon',
-                    sprite: 'boneArmor_U', durability: 25, maxDurability: 25,
-                };
-            }
-            if (applyStartingBonuses && effect.startingWeapon) {
-                this.grantStartingWeapon(gameState, effect.startingWeapon);
+            
+            // Adventurer's Pack: permanent +1 inventory slot at run start.
+            // Pads gameState.inventory to match so InventorySystem doesn't shrink
+            // back to 5 slots when it later syncs to gameState.inventory.
+            if (applyStartingBonuses && effect.bonusInventorySlot) {
+                gameState.bonusInventorySlots = (gameState.bonusInventorySlots || 0) + effect.bonusInventorySlot;
+                if (Array.isArray(gameState.inventory)) {
+                    for (let i = 0; i < effect.bonusInventorySlot; i++) gameState.inventory.push(null);
+                }
             }
 
-            // Copy ALL effect flags through for runtime consumers to read.
+            if (applyStartingBonuses && effect.startingArmor && !gameState.equippedArmor) {
+                gameState.equippedArmor = {
+                    type: 'armor',
+                    name: 'Common Bone Armor',
+                    armorType: 'bone',
+                    protection: effect.startingArmor,
+                    rarity: 'common',
+                    sprite: 'boneArmor_U',
+                    durability: 15,
+                    maxDurability: 15
+                };
+            }
+            
+            // Copy all effects for runtime checks
             Object.assign(gameState.relicEffects, effect);
         });
     }
-
-    // Places a generated weapon into the first empty inventory slot. Runs in
-    // GameScene.init (after initNewRun built the inventory array, before the
-    // InventorySystem reads gameState.inventory), so it shows up in the pack.
-    grantStartingWeapon(gameState, rarity) {
-        if (!Array.isArray(gameState.inventory)) return;
-        const slot = gameState.inventory.findIndex(s => s === null);
-        if (slot === -1) return;
-        try {
-            this._gen = this._gen || new CardDataGenerator();
-            const weapon = this._gen.createCardData('weapon', 1, false, null, rarity);
-            if (weapon) gameState.inventory[slot] = weapon;
-        } catch (e) {
-            console.warn('Quartermaster: failed to grant starting weapon', e);
-        }
-    }
-
+    
+    // Get list of all unlocked relics for display
     getUnlockedRelics() {
         const relics = this.getRelicDefinitions();
         return this.unlockedRelics.map(id => relics[id]).filter(r => r);
     }
-
+    
+    // Reset meta progression (for testing or new game+)
     resetProgression() {
         this.unlockedRelics = [];
         this.totalDeaths = 0;
         this.bestFloor = 1;
         this.enemyKillStats = {};
-        this.totalRuns = 0;
-        this.totalEnemiesKilled = 0;
         this.saveMetaProgression();
     }
 }
