@@ -2380,6 +2380,11 @@ export class CardSystem {
             const dropChance = this.scene.amuletManager?.getDeathDropChance?.() || 0;
             if (dropChance > 0 && Math.random() < dropChance) {
                 this.spawnDeathDrop(index, card);
+                // The slot now holds a non-enemy pickup. If that enemy was the
+                // last one on the board, the floor is actually clear — we must
+                // still run the clear check before bailing, or the Next button
+                // never appears.
+                this.checkFloorClear();
                 return; // skip the normal removal; new card stands in its place
             }
 
@@ -2399,15 +2404,20 @@ export class CardSystem {
     }
 
     checkFloorClear() {
-        const enemiesRemaining = this.boardCards.some(c => 
-            c && c.revealed && (c.data.type === 'enemy' || c.data.type === 'boss')
+        // 'eliteEnemy' is used as a third enemy type throughout the codebase;
+        // it must be treated the same as 'enemy' here or hidden elites get
+        // ignored and the floor "clears" while one is still on the board.
+        const isEnemyType = (t) => t === 'enemy' || t === 'boss' || t === 'eliteEnemy';
+
+        const enemiesRemaining = this.boardCards.some(c =>
+            c && c.revealed && isEnemyType(c.data?.type)
         );
-        
+
         if (!enemiesRemaining && !this.scene.enemiesCleared) {
             // Check if there are any unrevealed cards that could be enemies
             // A hidden mimic is optional treasure — it shouldn't block floor clear
             const potentialEnemies = this.boardCards.some(c =>
-                c && !c.revealed && c.data.type === 'enemy' && !c.data.isMimic
+                c && !c.revealed && isEnemyType(c.data?.type) && !c.data?.isMimic
             );
             
             if (potentialEnemies) return;
