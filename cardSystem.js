@@ -2168,18 +2168,8 @@ export class CardSystem {
             this.applyWeaponGemEffect(index, weapon, finalDamage);
         }
 
-        if (card.infoText) {
-            // Role is shown by the corner marker (attachRoleMarker), not text.
-            let infoText = `${card.data.health}HP ${card.data.attack}ATK`;
-            const poisonSummary = this.getEnemyPoisonSummary(card.data);
-            if (poisonSummary) infoText += ` (Poison x${poisonSummary.stacks})`;
-            if (card.data.abilities && card.data.abilities.some(a => a.type === 'evade')) {
-                infoText += ' (Evasive)';
-            }
-            if (card.data.name === 'Mimic') infoText += ' (Surprise Attack)';
-            card.infoText.setText(infoText);
-        }
-        
+        this.updateEnemyInfoText(card);
+
         this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${finalDamage}`, 0xff0000);
 
         if (card.data.health <= 0) {
@@ -2431,16 +2421,30 @@ export class CardSystem {
     }
     
     updateEnemyInfoText(card) {
-        if (card.infoText) {
-            // Role is shown by the corner marker (attachRoleMarker), not text.
-            let infoText = `${card.data.health}HP ${card.data.attack}ATK`;
-            const poisonSummary = this.getEnemyPoisonSummary(card.data);
-            if (poisonSummary) infoText += ` (Poison x${poisonSummary.stacks})`;
-            if (card.data.abilities && card.data.abilities.some(a => a.type === 'evade')) {
-                infoText += ' (Evasive)';
-            }
-            if (card.data.name === 'Mimic') infoText += ' (Surprise Attack)';
-            card.infoText.setText(infoText);
+        if (!card) return;
+        // Role is shown by the corner marker (attachRoleMarker), not text.
+        let infoText = `${card.data.health}HP ${card.data.attack}ATK`;
+        const poisonSummary = this.getEnemyPoisonSummary(card.data);
+        if (poisonSummary) infoText += ` (Poison x${poisonSummary.stacks})`;
+        if (card.data.abilities && card.data.abilities.some(a => a.type === 'evade')) {
+            infoText += ' (Evasive)';
+        }
+        if (card.data.name === 'Mimic') infoText += ' (Surprise Attack)';
+
+        // Phaser objects that have been destroyed still leave a truthy
+        // reference behind but their methods are stripped. Treat any
+        // missing setText as "stale" and rebuild a fresh text label so
+        // attacks don't crash on lingering corpses of UI objects.
+        const t = card.infoText;
+        if (t && typeof t.setText === 'function') {
+            try { t.setText(infoText); return; } catch (_) { /* fall through to rebuild */ }
+        }
+        try { if (t && typeof t.destroy === 'function') t.destroy(); } catch (_) {}
+        card.infoText = null;
+        // Rebuild via the standard path so the same styling/font logic
+        // applies as on initial reveal.
+        if (typeof this.createCardInfoText === 'function' && card.sprite) {
+            this.createCardInfoText(card);
         }
     }
     
