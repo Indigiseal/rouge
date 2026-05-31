@@ -1198,7 +1198,10 @@ export class CardSystem {
         // shadow for them (gems get their own hand-painted shadow instead).
         if (card.shadow) {
             const t = card.data?.type;
-            const notACard = t === 'gem' || t === 'amulet' || t === 'relic';
+            // No card-shaped shadow under gems/amulets/relics (they have
+            // their own art) or under the "Nothing" card (we want the slot
+            // to read as visually empty).
+            const notACard = t === 'gem' || t === 'amulet' || t === 'relic' || t === 'empty';
             card.shadow.setAlpha(notACard ? 0 : 1);
         }
 
@@ -1212,6 +1215,15 @@ export class CardSystem {
                 let spriteKey = card.data.sprite || 'default_enemy';
                 if (card.data.name === 'Mimic') spriteKey = 'mimic';
                 card.sprite.setTexture(spriteKey, card.data.spriteFrame);
+            } else if (card.data.type === 'empty') {
+                // "Nothing" card: don't render any tile body. Replace the
+                // flipped sprite with an invisible hit target so the slot
+                // remains clickable (interactWithCard fires the floating
+                // "Nothing..." text), but the space looks empty.
+                const px = card.sprite.x;
+                const py = card.sprite.y;
+                card.sprite.destroy();
+                card.sprite = this.scene.add.rectangle(px, py, 70, 90, 0x000000, 0);
             } else {
                 card.sprite.destroy();
                 const colors = {
@@ -1223,7 +1235,7 @@ export class CardSystem {
                     gem: card.data.color || 0xffe066
                 };
                 card.sprite = this.scene.add.rectangle(
-                    card.sprite.x, card.sprite.y, 70, 90, 
+                    card.sprite.x, card.sprite.y, 70, 90,
                     colors[card.data.type] || 0x666666
                 );
             }
