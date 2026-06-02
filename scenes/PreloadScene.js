@@ -25,7 +25,12 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('cardBack', 'assets/cardBack.png');
         this.load.image('panelCards', 'assets/panelCards.png');
         this.load.image('gamingBoard', 'assets/gamingBoard.png');
+        this.load.image('gamingBoard2', 'assets/gamingBoard2.png');
         this.load.image('gamingBoardSideExtra', 'assets/gamingBoardSIdewaysExtra.png');
+        this.load.spritesheet('gamingBoardSideSmall', 'assets/gamingBoardSIdewaysSmall.png', { frameWidth: 208, frameHeight: 144 });
+        this.load.image('eventPaper', 'assets/paper.png');
+        this.load.image('eventPaper9Slice', 'assets/paper9Slice.png');
+        this.load.spritesheet('eventsShops', 'assets/eventsShops80x80.png', { frameWidth: 80, frameHeight: 80 });
         this.load.image('panelArmor', 'assets/panelArmor.png');
         this.load.bitmapFont('pixel-font', 'assets/fonts/minogram_6x10.png', 'assets/fonts/minogram_6x10.xml');
         this.load.bitmapFont('cyrillic-ui-font', 'assets/fonts/probly12NEW_crisp.png', 'assets/fonts/probly12NEW_crisp.xml');
@@ -184,8 +189,8 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('amulet_blood', 'assets/HealingRing.png');
         this.load.image('amulet_rage', 'assets/dragonClaw.png');
         this.load.image('amulet_berserker', 'assets/dragonClaw.png');
-        this.load.image('goblin_archer', 'assets/goblin_c.png');
-        this.load.image('skeleton_archer', 'assets/skeleton_c.png');
+        this.load.image('goblin_archer', 'assets/goblinArcher_c.png');
+        this.load.image('skeleton_archer', 'assets/skeletonArcher_c.png');
         this.load.image('Lich', 'assets/giantSkeleton.png');
         this.load.image('SoulEater', 'assets/giantSkeleton.png');
         this.load.image('Cerberus', 'assets/goblinKing.png');

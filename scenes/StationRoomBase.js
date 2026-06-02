@@ -21,8 +21,11 @@ export class StationRoomBase extends Phaser.Scene {
     }
 
     closeStation() {
+        this.clearShopBoard();
+        this.stationInventoryLayerActive = false;
         if (this.gameScene?.inventorySystem) {
             this.gameScene.inventorySystem.setStationMode(false);
+            this.restoreGameInventoryLayering();
             this.gameScene.inventorySystem.setVisibility(false);
             this.scene.sleep('GameScene');
         }
@@ -60,42 +63,33 @@ export class StationRoomBase extends Phaser.Scene {
         this.boardHelper = boardHelper;
         this.shopCards = [];
         this.shopBoardObjects = [];
+        const renderScene = this.gameScene || this;
 
         const n = this.shopItems.length;
         if (n === 0) return;
 
-        // Confine the shop board so it doesn't overlap the inventory bar.
-        // The bar sits at y=309 (70px tall), so its top edge is ~274.
-        // Passing no areaBottom lets computePlacement use the same natural
-        // centring as battle rooms, matching the board position players expect.
-        const INVENTORY_TOP = 274;
-        // Shops with bonus slots or a busy lineup get the wing. We compute
-        // the placement with extra width so the cards actually spread across
-        // the main board AND the wing instead of bunching up.
-        const bonusSlots = this.gameScene?.amuletManager?.getBonusShopSlots?.() || 0;
-        const wantsWing = n >= 6 || bonusSlots > 0;
+        // Keep buy cards clear of the inventory bar while the board art can tuck behind it.
+        const SHOP_BOARD_BOTTOM = 336;
+        const SHOP_BOARD_Y_OFFSET = -20;
         const cells = boardHelper.buildCompactBrickCluster(n);
         const place = boardHelper.computePlacement(cells, {
-            areaBottom: INVENTORY_TOP,
-            ...(wantsWing ? { extraRightWidth: 100, maxHStep: 78 } : {}),
+            areaBottom: SHOP_BOARD_BOTTOM,
         });
-        boardHelper.createFloorBoardPanel(cells, place, false);
-        const panel = boardHelper.floorBoardPanel;
+        place.cx -= 46;
+        place.cy += SHOP_BOARD_Y_OFFSET;
+        const boardTexture = this.shopBoardTexture || 'gamingBoard';
+        const panel = this.createStationFloorBoardPanel(boardHelper, cells, place, boardTexture);
         if (panel) {
-            panel.setDepth(-1);
             const panelBottom = panel.y + panel.displayHeight / 2;
-            if (panelBottom > INVENTORY_TOP) panel.y -= (panelBottom - INVENTORY_TOP);
+            if (panelBottom > SHOP_BOARD_BOTTOM) panel.y -= (panelBottom - SHOP_BOARD_BOTTOM);
         }
-        if (wantsWing) {
-            boardHelper.createSideExtraPanel('right', { delayMs: 140 });
-            if (boardHelper.sideExtraPanel) boardHelper.sideExtraPanel.setDepth(-2);
-        }
+        this.refreshStationInventoryDisplay();
 
         // Lay every item face-down (cardBack) at its brick position.
         this.shopItems.forEach((item, i) => {
             const { r, c } = cells[i];
             const { x, y } = boardHelper.brickToPixel(r, c, place);
-            const sprite = this.add.sprite(x, y, 'cardBack').setScale(1);
+            const sprite = renderScene.add.sprite(x, y, 'cardBack').setScale(1).setDepth(9);
             const entry = { item, sprite, x, y };
             this.shopCards.push(entry);
             this.shopBoardObjects.push(sprite);
@@ -108,7 +102,28 @@ export class StationRoomBase extends Phaser.Scene {
             this.shopCards.forEach((entry, i) => {
                 this.time.delayedCall(i * perCardMs, () => this.flipShopCard(entry));
             });
+            this.time.delayedCall(this.shopCards.length * perCardMs + 20, () => {
+                this.syncStationInventoryLayering();
+            });
         });
+    }
+
+    createStationFloorBoardPanel(boardHelper, cells, place, textureKey = 'gamingBoard') {
+        const targetScene = this.gameScene || this;
+        if (!targetScene?.textures?.exists?.(textureKey)) return null;
+
+        const points = cells.map(({ r, c }) => boardHelper.brickToPixel(r, c, place));
+        const minX = Math.min(...points.map(p => p.x));
+        const maxX = Math.max(...points.map(p => p.x));
+        const minY = Math.min(...points.map(p => p.y));
+        const maxY = Math.max(...points.map(p => p.y));
+        const cam = targetScene.cameras.main;
+        const x = ((minX + maxX) / 2) + 10;
+        const y = Math.min(cam.height - 122, ((minY + maxY) / 2) + 8) - 18;
+
+        const panel = targetScene.add.image(x, y, textureKey).setDepth(6);
+        this.stationFloorBoardPanel = panel;
+        return panel;
     }
 
     flipShopCard(entry) {
@@ -126,9 +141,10 @@ export class StationRoomBase extends Phaser.Scene {
         const { item, sprite, x, y } = entry;
         if (!sprite.scene) return;
         const data = item.data;
+        const renderScene = sprite.scene;
 
         // Swap to the item's art
-        if (data?.sprite && this.textures.exists(data.sprite)) {
+        if (data?.sprite && renderScene.textures.exists(data.sprite)) {
             if (data.spriteFrame !== undefined) sprite.setTexture(data.sprite, data.spriteFrame);
             else sprite.setTexture(data.sprite);
             snapOriginToPixelGrid(sprite);
@@ -137,11 +153,12 @@ export class StationRoomBase extends Phaser.Scene {
 
         // Price label underneath the card
         const glyph = item.currency === 'crystals' ? '◆' : '¢';
-        const priceText = this.add.text(x, y + 26, item.purchased ? t(this, 'ui.shop.sold') : `${item.price}${glyph}`, {
+        const priceText = renderScene.add.text(x, y + 26, item.purchased ? t(this, 'ui.shop.sold') : `${item.price}${glyph}`, {
             fontSize: '11px',
             fill: item.purchased ? '#888888' : (item.currency === 'crystals' ? '#00ffff' : '#ffd700'),
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5);
+        });
+        priceText.setOrigin(0.5).setDepth(10);
         entry.priceText = priceText;
         this.shopBoardObjects.push(priceText);
 
@@ -162,6 +179,7 @@ export class StationRoomBase extends Phaser.Scene {
         sprite.on('pointerdown', () => {
             const wasPurchased = item.purchased;
             this.buyItem(item, priceText);
+            this.refreshStationInventoryDisplay();
             if (item.purchased && !wasPurchased) {
                 sprite.clearTint();
                 sprite.removeInteractive();
@@ -171,9 +189,156 @@ export class StationRoomBase extends Phaser.Scene {
         });
     }
 
+    createShopIllustrationBoard(frame = 1, boardFrame = 0, y = 224) {
+        if (!this.textures.exists('gamingBoardSideSmall')) return;
+        if (this.shopIllustrationBoard) {
+            this.shopIllustrationBoard.scene?.tweens?.killTweensOf?.(this.shopIllustrationBoard);
+            this.shopIllustrationBoard.destroy();
+        }
+
+        const targetScene = this.gameScene || this;
+        if (!targetScene?.add) return;
+
+        const targetX = 486;
+        const targetY = y - 5;
+        const slideDistance = 56;
+        const container = targetScene.add.container(targetX - slideDistance, targetY).setDepth(4).setAlpha(0);
+        container.add(targetScene.add.image(0, 0, 'gamingBoardSideSmall', boardFrame).setOrigin(0.5));
+
+        if (targetScene.textures.exists('eventsShops')) {
+            container.add(targetScene.add.image(17, -5, 'eventsShops', frame).setOrigin(0.5));
+        }
+
+        this.shopIllustrationBoard = container;
+        targetScene.tweens.add({
+            targets: container,
+            x: targetX,
+            alpha: 1,
+            duration: 320,
+            ease: 'Cubic.easeOut'
+        });
+    }
+
+    syncStationInventoryLayering() {
+        if (!this.stationInventoryLayerActive) return;
+        const inv = this.gameScene?.inventorySystem;
+        if (!inv) return;
+
+        const raise = object => {
+            if (!object?.scene) return;
+            object.scene.children?.bringToTop?.(object);
+        };
+
+        inv.inventoryPanelPieces?.forEach(piece => {
+            piece?.setDepth?.(200);
+            raise(piece);
+        });
+        inv.slotSprites?.forEach(slot => {
+            slot?.background?.setDepth?.(201);
+            raise(slot?.background);
+            slot?.shadow?.setDepth?.(202);
+            raise(slot?.shadow);
+            slot?.card?.setDepth?.(203);
+            raise(slot?.card);
+
+            const infoText = slot?.card?.getData?.('infoText');
+            infoText?.setDepth?.(204);
+            raise(infoText);
+
+            slot?.hoverSprite?.setDepth?.(205);
+            raise(slot?.hoverSprite);
+            slot?.gemEffectSprite?.setDepth?.(206);
+            raise(slot?.gemEffectSprite);
+            slot?.gemIndicator?.setDepth?.(207);
+            raise(slot?.gemIndicator);
+            slot?.twinkleSprite?.setDepth?.(208);
+            raise(slot?.twinkleSprite);
+        });
+    }
+
+    refreshStationInventoryDisplay() {
+        const inv = this.gameScene?.inventorySystem;
+        if (!inv) return;
+
+        this.stationInventoryLayerActive = true;
+        inv.setStationMode?.(true);
+        inv.uiGroup?.setVisible?.(true);
+        inv.rebuildInventorySprites?.();
+        this.syncStationInventoryLayering();
+        this.gameScene.time?.delayedCall?.(0, () => this.syncStationInventoryLayering());
+    }
+
+    restoreGameInventoryLayering() {
+        const inv = this.gameScene?.inventorySystem;
+        if (!inv) return;
+
+        inv.inventoryPanelPieces?.forEach(piece => piece?.setDepth?.(10));
+        inv.slotSprites?.forEach(slot => {
+            slot?.background?.setDepth?.(11);
+            slot?.shadow?.setDepth?.(11);
+            slot?.card?.setDepth?.(12);
+
+            const infoText = slot?.card?.getData?.('infoText');
+            infoText?.setDepth?.(1001);
+
+            slot?.hoverSprite?.setDepth?.(13);
+            slot?.gemEffectSprite?.setDepth?.(14);
+            slot?.gemIndicator?.setDepth?.(15);
+            slot?.twinkleSprite?.setDepth?.(100);
+        });
+    }
+
     // ─── Item tooltip (hover info) ───────────────────────────────────────────
     // Thin wrappers so legacy in-scene calls keep working; the actual render
     // lives in utils/ItemTooltip.js, shared with the gaming board.
+    createStationContinueButton(x, y, label, onClick) {
+        const baseY = y;
+        let button;
+        if (this.textures.exists('nextTurnUp')) {
+            button = this.add.image(x, y, 'nextTurnUp')
+                .setInteractive({ useHandCursor: true });
+        } else {
+            button = this.add.rectangle(x, y, 78, 30, 0x080808, 0.66)
+                .setInteractive({ useHandCursor: true });
+        }
+
+        const text = this.add.text(x, y, label, {
+            fontSize: '12px',
+            fill: '#e5bca4',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5);
+
+        button.on('pointerdown', () => {
+            if (button.setTexture && this.textures.exists('nextTurnDown')) button.setTexture('nextTurnDown');
+            if (button.setTint) button.setTint(0x888888);
+            button.y = baseY + 1;
+            text.y = baseY + 1;
+            onClick?.();
+        });
+        button.on('pointerup', () => {
+            if (button.clearTint) button.clearTint();
+            if (button.setTexture && this.textures.exists('nextTurnUp')) button.setTexture('nextTurnUp');
+            button.y = baseY;
+            text.y = baseY;
+        });
+        button.on('pointerover', () => {
+            if (button.setTint) button.setTint(0xd4eaf7);
+            else button.setFillStyle?.(0x151515, 0.78);
+        });
+        button.on('pointerout', () => {
+            if (button.clearTint) {
+                button.clearTint();
+                if (button.setTexture && this.textures.exists('nextTurnUp')) button.setTexture('nextTurnUp');
+            } else {
+                button.setFillStyle?.(0x080808, 0.66);
+            }
+            button.y = baseY;
+            text.y = baseY;
+        });
+
+        return { button, text };
+    }
+
     showItemTooltip(data, cardX, cardY) {
         // Amulet descriptions live on the game scene's AmuletManager; expose
         // it via this.amuletManager so the util can find them without
@@ -190,9 +355,8 @@ export class StationRoomBase extends Phaser.Scene {
 
     setShopBoardVisible(visible) {
         (this.shopBoardObjects || []).forEach(o => o?.setVisible?.(visible));
-        if (this.boardHelper?.floorBoardPanel) {
-            this.boardHelper.floorBoardPanel.setVisible(visible);
-        }
+        this.stationFloorBoardPanel?.setVisible?.(visible);
+        this.shopIllustrationBoard?.setVisible?.(visible);
     }
 
     clearShopBoard() {
@@ -201,8 +365,17 @@ export class StationRoomBase extends Phaser.Scene {
         this.shopBoardObjects = [];
         this.shopCards = [];
         if (this.boardHelper) {
-            this.boardHelper.clearFloorBoardPanel?.();
             this.boardHelper = null;
+        }
+        if (this.stationFloorBoardPanel) {
+            this.stationFloorBoardPanel.scene?.tweens?.killTweensOf?.(this.stationFloorBoardPanel);
+            this.stationFloorBoardPanel.destroy();
+            this.stationFloorBoardPanel = null;
+        }
+        if (this.shopIllustrationBoard) {
+            this.shopIllustrationBoard.scene?.tweens?.killTweensOf?.(this.shopIllustrationBoard);
+            this.shopIllustrationBoard.destroy();
+            this.shopIllustrationBoard = null;
         }
     }
 

@@ -21,36 +21,12 @@ export class RareShopScene extends StationRoomBase {
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
 
-        this.coinsText = this.add.text(450, 60, t(this, 'ui.shop.coins', { amount: this.gameState.coins }), {
-            fontSize: '16px',
-            fill: '#ffd700',
-            fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5);
-
-        this.crystalsText = this.add.text(190, 60, t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }), {
-            fontSize: '16px',
-            fill: '#00ffff',
-            fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5);
-
-        const _rareAct = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
-        this.add.text(580, 12, t(this, 'ui.shop.floor', { act: _rareAct, floor: this.gameState.currentFloor }), {
-            fontSize: '11px',
-            fill: '#a78f70',
-            fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5);
-
+        this.shopBoardTexture = 'gamingBoard2';
         this.generateShopItems();
         this.displayShopItems();
+        this.createShopIllustrationBoard(0, 1, 174);
 
-        this.add.text(320, 330, t(this, 'ui.shop.continue'), {
-            fontSize: '18px',
-            fill: '#00ff00',
-            fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        })
-            .setOrigin(0.5)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerdown', () => this.closeStation());
+        this.createStationContinueButton(595, 50, 'Next', () => this.closeStation());
     }
 
     generateShopItems() {
@@ -270,9 +246,10 @@ export class RareShopScene extends StationRoomBase {
         SoundHelper.playSound(this, 'shop_buy', 0.5);
         item.purchased = true;
 
-        this.coinsText.setText(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
-        this.crystalsText.setText(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
+        this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+        this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
         this.markButtonDone(button, t(this, 'ui.shop.sold'));
+        this.refreshStationInventoryDisplay();
         this.gameScene?.updateUI?.();
     }
 

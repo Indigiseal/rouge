@@ -477,9 +477,9 @@ export class CardSystem {
       this.boardCards = [];
     }
 
-    createFloorBoardPanel(cells, place, animate = true) {
+    createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamingBoard') {
       this.clearFloorBoardPanel();
-      if (!this.scene.textures.exists('gamingBoard')) return;
+      if (!this.scene.textures.exists(textureKey)) return;
 
       const points = cells.map(({ r, c }) => this.brickToPixel(r, c, place));
       const minX = Math.min(...points.map(p => p.x));
@@ -490,7 +490,7 @@ export class CardSystem {
       const x = ((minX + maxX) / 2) + 10;
       const y = Math.min(cam.height - 122, ((minY + maxY) / 2) + 8) - 18;
 
-      const panel = this.scene.add.image(x, animate ? y + 34 : y, 'gamingBoard');
+      const panel = this.scene.add.image(x, animate ? y + 34 : y, textureKey);
       panel.setDepth(0);
       this.floorBoardPanel = panel;
 

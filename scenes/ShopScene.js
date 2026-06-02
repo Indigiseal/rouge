@@ -25,26 +25,6 @@ export class ShopScene extends StationRoomBase {
             fontFamily: '"HoMM Pixel", Arial, sans-serif' 
         }).setOrigin(0.5);
         
-        // Coins and Crystals display
-        this.coinsText = this.add.text(270, 45, t(this, 'ui.shop.coins', { amount: this.gameState.coins }), { 
-            fontSize: '16px', 
-            fill: '#ffd700', 
-            fontFamily: '"HoMM Pixel", Arial, sans-serif' 
-        }).setOrigin(0.5);
-        
-        this.crystalsText = this.add.text(370, 45, t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }), {
-            fontSize: '16px',
-            fill: '#00ffff',
-            fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5);
-
-        const _shopAct = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
-        this.add.text(580, 12, t(this, 'ui.shop.floor', { act: _shopAct, floor: this.gameState.currentFloor }), {
-            fontSize: '11px',
-            fill: '#a78f70',
-            fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5);
-
         // Mode toggle button
         this.modeButton = this.add.text(480, 45, t(this, 'ui.shop.sellItems'), {
             fontSize: '14px',
@@ -60,19 +40,13 @@ export class ShopScene extends StationRoomBase {
         // Generate and display shop items
         this.generateShopItems();
         this.displayShopItems();
+        this.createShopIllustrationBoard(1, 0, 164);
         
         // Create inventory display (initially hidden)
         this.createInventoryDisplay();
         
         // Continue button
-        const continueButton = this.add.text(320, 340, t(this, 'ui.shop.continue'), { 
-            fontSize: '18px', 
-            fill: '#00ff00', 
-            fontFamily: '"HoMM Pixel", Arial, sans-serif' 
-        })
-        .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => this.closeStation());
-        continueButton.setOrigin(0.5);
+        this.createStationContinueButton(595, 50, 'Next', () => this.closeStation());
     }
 
     // enableShopStation / closeStation now live on StationRoomBase
@@ -503,8 +477,9 @@ export class ShopScene extends StationRoomBase {
             vars: { name: this.getItemDisplayName(item), price: sellPrice, before: coinsBefore, after: this.gameState.coins }
         }, 0xffd700);
         
-        this.coinsText.setText(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+        this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
         this.updateInventoryDisplay();
+        this.refreshStationInventoryDisplay();
         
         // Update GameScene UI if it exists
         if (this.gameScene && this.gameScene.updateUI) {
@@ -536,10 +511,10 @@ export class ShopScene extends StationRoomBase {
                     // Deduct crystals for amulets
                     if (item.currency === 'crystals') {
                         this.gameState.crystals -= item.price;
-                        this.crystalsText.setText(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
+                        this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
                     } else {
                         this.gameState.coins -= item.price;
-                        this.coinsText.setText(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+                        this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
                     }
                     
                     this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x9932cc);
@@ -560,10 +535,10 @@ export class ShopScene extends StationRoomBase {
                 
                 if (item.currency === 'crystals') {
                     this.gameState.crystals -= item.price;
-                    this.crystalsText.setText(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
+                    this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
                 } else {
                     this.gameState.coins -= item.price;
-                    this.coinsText.setText(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+                    this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
                 }
                 
                 if (item.data.effect === 'health') {
@@ -610,15 +585,16 @@ export class ShopScene extends StationRoomBase {
         // Deduct appropriate currency
         if (item.currency === 'crystals') {
             this.gameState.crystals -= item.price;
-            this.crystalsText.setText(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
+            this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
         } else {
             this.gameState.coins -= item.price;
-            this.coinsText.setText(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+            this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
         }
         
         item.purchased = true;
         this.markButtonDone(button, t(this, 'ui.shop.sold'));
         this.showFeedback('Purchased!', 0x00ff00);
+        this.refreshStationInventoryDisplay();
         
         // Update GameScene UI
         if (this.gameScene && this.gameScene.updateUI) {
