@@ -1,6 +1,7 @@
 // scenes/MapViewScene.js
 // Phaser is provided as a UMD global (see index.html) — no import needed.
 import { MapGenerator } from '../utils/MapGenerator.js';
+import { t } from '../utils/i18n.js';
 
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
@@ -83,8 +84,8 @@ export class MapViewScene extends Phaser.Scene {
     // Background & title
     this.add.rectangle(320, 180, 640, 360, 0x8b7355);
     this.add.rectangle(320, 30, 640, 60, 0x6b5d4f);
-    this.add.text(320, 30, `Act ${this.currentAct} – Floor ${this.gameState.currentFloor || 1}`, {
-      fontSize: '20px', fill: '#f2d3aa', fontFamily: '"HoMM Pixel"'
+    this.add.text(320, 30, t(this, 'ui.map.title', { act: this.currentAct, floor: this.gameState.currentFloor || 1 }), {
+      fontSize: '20px', fill: '#f2d3aa', fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5);
 
     // Drag area sits BEHIND nodes so it won't eat clicks
@@ -103,8 +104,8 @@ export class MapViewScene extends Phaser.Scene {
     this.add.text(600, 30, 'X', { fontSize: '16px', fill: '#f2d3aa' }).setOrigin(0.5);
     closeBtn.on('pointerdown', () => { this.scene.stop(); this.scene.wake('GameScene'); });
 
-    this.add.text(320, 340, 'Click glowing nodes to proceed • Drag to pan', {
-      fontSize: '12px', fill: '#d4b896', fontFamily: '"HoMM Pixel"'
+    this.add.text(320, 340, t(this, 'ui.map.instructions'), {
+      fontSize: '12px', fill: '#d4b896', fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5);
   }
 
@@ -298,18 +299,10 @@ export class MapViewScene extends Phaser.Scene {
     if (nodeSprite.setTint) nodeSprite.setTint(tint);
     this.mapContainer.add(nodeSprite);
 
-    const tooltipDesc = {
-      COMBAT: 'Fight room', ELITE: 'Elite fight – tougher enemy, better loot',
-      SHOP: 'Shop – buy items', RARE_SHOP: 'Rare shop – special goods',
-      REST: 'Rest – restore HP & actions', ANVIL: 'Blacksmith – repair or upgrade gear',
-      EVENT: 'Unknown encounter', BOSS: 'Boss fight!',
-      TREASURE: 'Chest room', TREASURE_GOOD: 'Treasure room – richer rewards!'
-    };
-
     if (state === 'available') {
       nodeSprite.setInteractive({ useHandCursor: true });
       nodeSprite.on('pointerover', () => {
-        if (!this.isDragging) this.showTooltip(tooltipDesc[node.type] || '?', node.__x, node.__y - 30);
+        if (!this.isDragging) this.showTooltip(t(this, this.getNodeTooltipKey(node.type)), node.__x, node.__y - 30);
       });
       nodeSprite.on('pointerout', () => this.hideTooltip());
       nodeSprite.on('pointerdown', () => {
@@ -318,12 +311,34 @@ export class MapViewScene extends Phaser.Scene {
     }
   }
 
+  getNodeTooltipKey(type) {
+    const keyByType = {
+      COMBAT: 'map.tooltip.combat',
+      ELITE: 'map.tooltip.elite',
+      SHOP: 'map.tooltip.shop',
+      RARE_SHOP: 'map.tooltip.rareShop',
+      REST: 'map.tooltip.rest',
+      ANVIL: 'map.tooltip.anvil',
+      EVENT: 'map.tooltip.event',
+      BOSS: 'map.tooltip.boss',
+      TREASURE: 'map.tooltip.treasure',
+      TREASURE_GOOD: 'map.tooltip.treasureGood'
+    };
+    return keyByType[type] || 'tooltip.item';
+  }
+
   showTooltip(text, x, y) {
     this.hideTooltip();
-    const bg = this.add.rectangle(x, y, 10, 10, 0x2c1810, 0.95).setStrokeStyle(1, 0x3f2f28);
-    const t = this.add.text(x, y, text, { fontSize: '12px', fill: '#f2d3aa', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
-    bg.width = t.width + 12; bg.height = t.height + 8;
-    this.tooltip = this.add.container(0, 0, [bg, t]);
+    const label = this.add.text(0, 0, text, {
+      fontSize: '12px',
+      fill: '#f2d3aa',
+      fontFamily: '"HoMM Pixel", Arial, sans-serif',
+      align: 'center'
+    }).setOrigin(0.5);
+    const bg = this.add.rectangle(0, 0, Math.ceil(label.width) + 12, Math.ceil(label.height) + 8, 0x2c1810, 0.95)
+      .setStrokeStyle(1, 0x3f2f28)
+      .setOrigin(0.5);
+    this.tooltip = this.add.container(Math.round(x), Math.round(y), [bg, label]);
     this.mapContainer.add(this.tooltip);
   }
   hideTooltip() { if (this.tooltip) { this.tooltip.destroy(); this.tooltip = null; } }

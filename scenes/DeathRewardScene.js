@@ -1,4 +1,5 @@
 // scenes/DeathRewardScene.js
+import { t, translateDescription, translateItemName } from '../utils/i18n.js';
 
 export class DeathRewardScene extends Phaser.Scene {
     constructor() {
@@ -16,17 +17,17 @@ export class DeathRewardScene extends Phaser.Scene {
         this.add.rectangle(320, 180, 640, 360, 0x000000, 0.9);
         
         // Death message
-        this.add.text(320, 40, 'YOU HAVE FALLEN', {
+        this.add.text(320, 40, t(this, 'ui.death.fallen'), {
             fontSize: '32px',
             fill: '#ff0000',
-            fontFamily: '"HoMM Pixel"',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
             fontStyle: 'bold'
         }).setOrigin(0.5);
         
-        this.add.text(320, 70, `Killed by ${this.killedBy} on Floor ${this.floor}`, {
+        this.add.text(320, 70, t(this, 'ui.death.killedBy', { enemy: this.killedBy, floor: this.floor }), {
             fontSize: '16px',
             fill: '#cccccc',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
         
         // Process death and get relic reward
@@ -49,10 +50,10 @@ export class DeathRewardScene extends Phaser.Scene {
             .on('pointerout', () => continueButton.setFillStyle(0x444444))
             .on('pointerdown', () => this.returnToMenu());
         
-        this.add.text(320, 320, 'Continue', {
+        this.add.text(320, 320, t(this, 'ui.common.continue'), {
             fontSize: '18px',
             fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
     }
     
@@ -61,10 +62,10 @@ export class DeathRewardScene extends Phaser.Scene {
         const banner = this.add.rectangle(320, 150, 400, 120, 0x2c1810)
             .setStrokeStyle(3, 0xffd700);
         
-        this.add.text(320, 120, 'NEW RELIC UNLOCKED!', {
+        this.add.text(320, 120, t(this, 'ui.death.newRelic'), {
             fontSize: '20px',
             fill: '#ffd700',
-            fontFamily: '"HoMM Pixel"',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
             fontStyle: 'bold'
         }).setOrigin(0.5);
         
@@ -78,16 +79,16 @@ export class DeathRewardScene extends Phaser.Scene {
         }
         
         // Relic name and description
-        this.add.text(320, 150, relic.name, {
+        this.add.text(320, 150, translateItemName(this, relic), {
             fontSize: '18px',
             fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
         
-        this.add.text(320, 175, relic.description, {
+        this.add.text(320, 175, translateDescription(this, relic.description), {
             fontSize: '14px',
             fill: '#aaaaaa',
-            fontFamily: '"HoMM Pixel"',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
             wordWrap: { width: 350 },
             align: 'center'
         }).setOrigin(0.5);
@@ -105,16 +106,16 @@ export class DeathRewardScene extends Phaser.Scene {
     }
     
     showNoReward() {
-        this.add.text(320, 150, 'No new relic this time', {
+        this.add.text(320, 150, t(this, 'ui.death.noRelic'), {
             fontSize: '16px',
             fill: '#888888',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
         
-        this.add.text(320, 175, 'Try dying to different enemies to unlock more relics!', {
+        this.add.text(320, 175, t(this, 'ui.death.tryDifferent'), {
             fontSize: '14px',
             fill: '#666666',
-            fontFamily: '"HoMM Pixel"',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
             wordWrap: { width: 350 },
             align: 'center'
         }).setOrigin(0.5);
@@ -122,16 +123,16 @@ export class DeathRewardScene extends Phaser.Scene {
     
     showDeathStats() {
         const stats = [
-            `Total Deaths: ${this.metaManager.totalDeaths}`,
-            `Best Floor: ${this.metaManager.bestFloor}`,
-            `Relics Unlocked: ${this.metaManager.unlockedRelics.length}`
+            t(this, 'ui.death.totalDeaths', { amount: this.metaManager.totalDeaths }),
+            t(this, 'ui.death.bestFloor', { floor: this.metaManager.bestFloor }),
+            t(this, 'ui.death.relicsUnlocked', { amount: this.metaManager.unlockedRelics.length })
         ];
         
         stats.forEach((stat, i) => {
             this.add.text(320, 230 + i * 20, stat, {
                 fontSize: '14px',
                 fill: '#aaaaaa',
-                fontFamily: '"HoMM Pixel"'
+                fontFamily: '"HoMM Pixel", Arial, sans-serif'
             }).setOrigin(0.5);
         });
     }

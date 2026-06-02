@@ -271,7 +271,7 @@ export class SaveManager {
   saveSettings(settings) {
     const def = { 
       volume: { master: 1, sfx: 1, music: 0.5 }, 
-      language: 'English', 
+      language: 'en', 
       displayMode: 'windowed' 
     };
     const merged = {
@@ -285,7 +285,7 @@ export class SaveManager {
   loadSettings() {
     const def = { 
       volume: { master: 1, sfx: 1, music: 0.5 }, 
-      language: 'English', 
+      language: 'en', 
       displayMode: 'windowed' 
     };
     const saved = this.safeGet(this.SETTINGS_SAVE_KEY);

@@ -6,6 +6,7 @@ import { SoundHelper } from './utils/SoundHelper.js';
 import { SaveManager } from './SaveManager.js';
 import { MetaProgressionManager } from './MetaProgressionManager.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
+import { t, translateDescription, translateItemName } from './utils/i18n.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -160,7 +161,7 @@ export class GameScene extends Phaser.Scene {
         this.healthText = this.add.text(87, 105, '50/50', {
             fontSize: '10px',
             fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
             stroke: '#000000',
             strokeThickness: 2
         }).setOrigin(0.5, 0);
@@ -923,33 +924,67 @@ export class GameScene extends Phaser.Scene {
         }
     }
     createFloatingText(x, y, text, color) {
-        // Small random spawn offset so simultaneous texts don't stack exactly
-        const xOffset = Phaser.Math.Between(-12, 12);
-        const yOffset = Phaser.Math.Between(-6, 6);
-        const floatText = this.add.text(x + xOffset, y + yOffset, text, {
-            fontSize: '16px',
-            fill: Phaser.Display.Color.IntegerToColor(color).rgba,
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
+        const message = t(this, text);
+        const slot = this.reserveFloatingTextSlot(x, y);
+        const startX = Phaser.Math.Clamp(x + slot.xOffset, 32, 608);
+        const startY = Phaser.Math.Clamp(y + slot.yOffset, 24, 336);
+        const fill = Phaser.Display.Color.IntegerToColor(color).rgba;
+        const floatText = this.add.text(startX, startY, message, {
+            fontSize: '15px',
+            fill,
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            align: 'center',
+            stroke: '#000000',
+            strokeThickness: 3,
+            shadow: {
+                offsetX: 1,
+                offsetY: 1,
+                color: '#000000',
+                blur: 0,
+                fill: true
+            }
+        }).setOrigin(0.5).setDepth(10000);
 
-        // Phase 1: drift up a little, stay fully visible so the player can read it
         this.tweens.add({
             targets: floatText,
             y: floatText.y - 28,
-            duration: 500,
+            duration: 650,
             ease: 'Cubic.easeOut',
             onComplete: () => {
-                // Phase 2: short hold then gentle fade in place
                 this.tweens.add({
                     targets: floatText,
                     alpha: 0,
-                    duration: 700,
-                    delay: 250,
+                    duration: 450,
+                    delay: 450,
                     ease: 'Linear',
-                    onComplete: () => floatText.destroy()
+                    onComplete: () => {
+                        slot.active = false;
+                        floatText.destroy();
+                    }
                 });
             }
         });
+    }
+
+    reserveFloatingTextSlot(x, y) {
+        const now = this.time.now;
+        this.floatingTextSlots = (this.floatingTextSlots || []).filter(slot => slot.active && slot.expiresAt > now);
+
+        const nearby = this.floatingTextSlots.filter(slot =>
+            Math.abs(slot.x - x) < 72 && Math.abs(slot.y - y) < 48
+        ).length;
+        const lane = nearby % 6;
+        const row = Math.floor(nearby / 6);
+        const slot = {
+            x,
+            y,
+            xOffset: ((lane % 3) - 1) * 10,
+            yOffset: -lane * 15 - row * 10,
+            expiresAt: now + 1700,
+            active: true
+        };
+        this.floatingTextSlots.push(slot);
+        return slot;
     }
     
     createSlashEffect(x, y) {
@@ -1414,13 +1449,13 @@ export class GameScene extends Phaser.Scene {
             this.relicTooltip.destroy();
         }
 
-        const description = `${relic.name}\n${relic.description}`;
+        const description = `${translateItemName(this, relic)}\n${translateDescription(this, relic.description)}`;
         const bg = this.add.rectangle(0, 0, 200, 44, 0x000000, 0.85)
             .setStrokeStyle(1, relic.cursed ? 0xff6666 : 0xffd700);
         const tooltipText = this.add.text(0, 0, description, {
             fontSize: '10px',
             fill: relic.cursed ? '#ff9999' : '#ffd700',
-            fontFamily: '"HoMM Pixel"',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
             align: 'center',
             wordWrap: { width: 190 }
         }).setOrigin(0.5);
@@ -1434,21 +1469,21 @@ export class GameScene extends Phaser.Scene {
             this.armorTooltip.destroy();
             this.armorTooltip = null;
         }
-        let lines = `${armor.name}\nProtection: ${armor.protection}`;
+        let lines = `${translateItemName(this, armor)}\n${t(this, 'tooltip.protectionShort', { amount: armor.protection })}`;
         if (armor.dodgeChance) {
-            lines += `\nDodge: ${Math.round(armor.dodgeChance * 100)}%`;
+            lines += `\n${t(this, 'tooltip.dodge', { percent: Math.round(armor.dodgeChance * 100) })}`;
         }
         if (armor.reflection) {
-            lines += `\nReflect: ${armor.reflection}%`;
+            lines += `\n${t(this, 'tooltip.reflect', { value: `${armor.reflection}%` })}`;
         }
-        lines += `\nDur: ${armor.durability}/${armor.maxDurability}`;
+        lines += `\n${t(this, 'tooltip.pips', { value: `${armor.durability}/${armor.maxDurability}` })}`;
 
         const tooltipX = Math.round(this.armorPanel.x + 50);
         const tooltipY = Math.round(this.armorPanel.y - 20);
         const tooltipText = this.add.text(0, 0, lines, {
             fontSize: '10px',
             fill: '#66aaff',
-            fontFamily: '"HoMM Pixel"',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
             align: 'center',
             lineSpacing: 2
         }).setOrigin(0, 0);
@@ -1602,31 +1637,31 @@ export class GameScene extends Phaser.Scene {
         const definition = this.amuletManager ? 
             this.amuletManager.amuletDefinitions[amulet.id] : null;
         
-        let description = amulet.name;
+        let description = translateItemName(this, amulet);
         
         if (definition) {
-            description += `\n${definition.description}`;
+            description += `\n${translateDescription(this, definition.description)}`;
             
             // Add level info for stackable amulets
             if (amulet.level && amulet.level > 1) {
-                description += ` (Level ${amulet.level})`;
+                description += ` (${t(this, 'tooltip.level', { level: amulet.level })})`;
             }
             
             // Add uses left for limited use amulets
             if (amulet.usesLeft !== undefined) {
-                description += `\n(${amulet.usesLeft} uses left)`;
+                description += `\n(${t(this, 'tooltip.usesLeft', { uses: amulet.usesLeft })})`;
             }
             
             // Add cursed indicator
             if (definition.cursed) {
-                description = `[CURSED] ${description}`;
+                description = `${t(this, 'tooltip.cursed')} ${description}`;
             }
         }
         
         const tooltipText = this.add.text(0, 0, description, {
             fontSize: '11px',
             fill: definition && definition.cursed ? '#ff6666' : '#ffffff',
-            fontFamily: '"HoMM Pixel"',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
             backgroundColor: '#000000',
             padding: { x: 5, y: 3 },
             wordWrap: { width: 200 }

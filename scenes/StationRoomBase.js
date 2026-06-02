@@ -7,6 +7,7 @@ import { CardSystem } from '../cardSystem.js';
 import { SoundHelper } from '../utils/SoundHelper.js';
 import { showItemTooltip, hideItemTooltip } from '../utils/ItemTooltip.js';
 import { snapOriginToPixelGrid } from '../utils/PixelSnap.js';
+import { t } from '../utils/i18n.js';
 
 export class StationRoomBase extends Phaser.Scene {
     // ─── Inventory station mode ──────────────────────────────────────────────
@@ -136,10 +137,10 @@ export class StationRoomBase extends Phaser.Scene {
 
         // Price label underneath the card
         const glyph = item.currency === 'crystals' ? '◆' : '¢';
-        const priceText = this.add.text(x, y + 26, item.purchased ? 'Sold' : `${item.price}${glyph}`, {
+        const priceText = this.add.text(x, y + 26, item.purchased ? t(this, 'ui.shop.sold') : `${item.price}${glyph}`, {
             fontSize: '11px',
             fill: item.purchased ? '#888888' : (item.currency === 'crystals' ? '#00ffff' : '#ffd700'),
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
         entry.priceText = priceText;
         this.shopBoardObjects.push(priceText);
@@ -225,17 +226,32 @@ export class StationRoomBase extends Phaser.Scene {
     }
 
     showFeedback(message, color, y = 300) {
-        const text = this.add.text(320, y, message, {
-            fontSize: '16px',
+        const now = this.time.now;
+        this.feedbackTextSlots = (this.feedbackTextSlots || []).filter(slot => slot > now);
+        const lane = this.feedbackTextSlots.length;
+        this.feedbackTextSlots.push(now + 1700);
+
+        const text = this.add.text(320, y - lane * 18, t(this, message), {
+            fontSize: '15px',
             fill: Phaser.Display.Color.IntegerToColor(color).rgba,
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            align: 'center',
+            stroke: '#000000',
+            strokeThickness: 3,
+            shadow: {
+                offsetX: 1,
+                offsetY: 1,
+                color: '#000000',
+                blur: 0,
+                fill: true
+            }
+        }).setOrigin(0.5).setDepth(10000);
 
         this.tweens.add({
             targets: text,
             alpha: 0,
-            y: y - 20,
-            duration: 1500,
+            y: text.y - 26,
+            duration: 1600,
             onComplete: () => text.destroy()
         });
     }

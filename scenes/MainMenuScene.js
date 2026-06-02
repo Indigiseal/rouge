@@ -1,5 +1,6 @@
 // scenes/MainMenuScene.js
 import { SaveManager } from '../SaveManager.js';
+import { getLanguageName, getLanguageOptions, normalizeLanguageCode, t } from '../utils/i18n.js';
 export class MainMenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainMenuScene' });
@@ -25,17 +26,27 @@ export class MainMenuScene extends Phaser.Scene {
         this.add.text(10, 350, 'v1.0.0', {
             fontSize: '12px',
             fill: '#888888',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         });
     }
     
     createMainMenuButtons() {
         const hasSavedRun = this.saveManager.hasCurrentRun();
         // 6px visible gap between buttons (29px tall + 6px = 35px center-to-center)
-        this.createSpriteButton(320, 104, 'New Run',   () => this.startNewGame());
-        this.createSpriteButton(320, 139, 'Continue',  hasSavedRun ? () => this.continueGame() : null);
-        this.createSpriteButton(320, 174, 'Options',   () => this.showOptionsMenu());
-        this.createSpriteButton(320, 209, 'Exit Game', () => this.exitGame());
+        this.mainMenuButtons = {
+            newRun: this.createSpriteButton(320, 104, t(this, 'ui.menu.newRun'),   () => this.startNewGame()),
+            continue: this.createSpriteButton(320, 139, t(this, 'ui.menu.continue'),  hasSavedRun ? () => this.continueGame() : null),
+            options: this.createSpriteButton(320, 174, t(this, 'ui.menu.options'),   () => this.showOptionsMenu()),
+            exit: this.createSpriteButton(320, 209, t(this, 'ui.menu.exit'), () => this.exitGame()),
+        };
+    }
+
+    refreshMainMenuText() {
+        if (!this.mainMenuButtons) return;
+        this.mainMenuButtons.newRun.text.setText(t(this, 'ui.menu.newRun'));
+        this.mainMenuButtons.continue.text.setText(t(this, 'ui.menu.continue'));
+        this.mainMenuButtons.options.text.setText(t(this, 'ui.menu.options'));
+        this.mainMenuButtons.exit.text.setText(t(this, 'ui.menu.exit'));
     }
 
     // Sprite-based button using nextTurnUp (normal) / nextTurnDown (pressed).
@@ -67,7 +78,7 @@ export class MainMenuScene extends Phaser.Scene {
         const txt = this.add.text(x, y, label, {
             fontSize: '14px',
             fill: disabled ? '#888888' : '#ffffff',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
 
         if (!disabled) {
@@ -103,7 +114,7 @@ export class MainMenuScene extends Phaser.Scene {
         const buttonText = this.add.text(x, y, text, {
             fontSize: '18px',
             fill: disabled ? '#666666' : '#ffffff',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
 
         if (!disabled) {
@@ -134,32 +145,32 @@ export class MainMenuScene extends Phaser.Scene {
             .setStrokeStyle(3, 0xffffff);
         
         // Options title
-        const optionsTitle = this.add.text(320, 60, 'OPTIONS', {
+        const optionsTitle = this.add.text(320, 60, t(this, 'ui.options.title'), {
             fontSize: '32px',
             fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
         
         // Language button
         const languageButton = this.createButton(320, 130, 300, 40, 
-            `Language: ${this.getCurrentLanguage()}`, 0x00aaff, () => {
+            t(this, 'ui.options.language', { language: this.getCurrentLanguage() }), 0x00aaff, () => {
                 this.cycleLanguage();
-                languageButton.text.setText(`Language: ${this.getCurrentLanguage()}`);
+                this.refreshOptionsMenuText({ optionsTitle, languageButton, resetButton, backButton });
             });
         
         // Music Volume
-        this.createVolumeControl('Music Volume', 180);
+        this.createVolumeControl(t(this, 'ui.options.musicVolume'), 180, 'music');
         
         // Sound Effects Volume
-        this.createVolumeControl('Sound Effects', 230);
+        this.createVolumeControl(t(this, 'ui.options.soundEffects'), 230, 'sfx');
         
         // Reset Progress button (wipes unlocked relics + saved run)
-        const resetButton = this.createButton(320, 270, 220, 32, 'Reset All Progress', 0xff4444, () => {
+        const resetButton = this.createButton(320, 270, 220, 32, t(this, 'ui.options.resetAll'), 0xff4444, () => {
             this.confirmResetProgress();
         });
 
         // Back button
-        const backButton = this.createButton(320, 315, 150, 30, 'Back', 0x888888, () => {
+        const backButton = this.createButton(320, 315, 150, 30, t(this, 'ui.options.back'), 0x888888, () => {
             // Clean up options menu
             [optionsBg, optionsTitle,
              languageButton.button, languageButton.text,
@@ -184,15 +195,32 @@ export class MainMenuScene extends Phaser.Scene {
         // Store references for cleanup
         this.optionsElements = [optionsBg, optionsTitle, languageButton, backButton];
     }
+
+    refreshOptionsMenuText({ optionsTitle, languageButton, resetButton, backButton }) {
+        optionsTitle.setText(t(this, 'ui.options.title'));
+        languageButton.text.setText(t(this, 'ui.options.language', { language: this.getCurrentLanguage() }));
+        resetButton.text.setText(t(this, 'ui.options.resetAll'));
+        backButton.text.setText(t(this, 'ui.options.back'));
+
+        if (this.volumeControls) {
+            this.volumeControls.forEach(control => {
+                if (control.type === 'music') {
+                    control.label.setText(`${t(this, 'ui.options.musicVolume')}:`);
+                } else if (control.type === 'sfx') {
+                    control.label.setText(`${t(this, 'ui.options.soundEffects')}:`);
+                }
+            });
+        }
+    }
     
-    createVolumeControl(label, y) {
+    createVolumeControl(label, y, volumeType) {
         if (!this.volumeControls) this.volumeControls = [];
         
         // Label
         const labelText = this.add.text(120, y, label + ':', {
             fontSize: '16px',
             fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0, 0.5);
         
         // Slider background
@@ -200,7 +228,6 @@ export class MainMenuScene extends Phaser.Scene {
             .setStrokeStyle(1, 0x666666);
         
         // Determine which volume to use
-        const volumeType = label.includes('Music') ? 'music' : 'sfx';
         const currentVolume = this.game.globalVolume[volumeType];
         
         // Slider fill
@@ -222,7 +249,7 @@ export class MainMenuScene extends Phaser.Scene {
             Math.round(currentVolume * 100) + '%', {
             fontSize: '14px',
             fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0, 0.5);
         
         // Handle dragging
@@ -246,6 +273,7 @@ export class MainMenuScene extends Phaser.Scene {
         
         // Store controls for cleanup
         this.volumeControls.push({
+            type: volumeType,
             label: labelText,
             bg: sliderBg,
             fill: sliderFill,
@@ -255,18 +283,17 @@ export class MainMenuScene extends Phaser.Scene {
     }
     
     getCurrentLanguage() {
-        if (!this.game.language) {
-            this.game.language = 'English';
-        }
-        return this.game.language;
+        this.game.language = normalizeLanguageCode(this.game.language);
+        return getLanguageName(this.game.language);
     }
     
     cycleLanguage() {
-        const languages = ['English', 'Spanish', 'French', 'German', 'Japanese', 'Chinese'];
-        const currentIndex = languages.indexOf(this.game.language || 'English');
+        const languages = getLanguageOptions().map(option => option.code);
+        const currentIndex = languages.indexOf(normalizeLanguageCode(this.game.language));
         const nextIndex = (currentIndex + 1) % languages.length;
         this.game.language = languages[nextIndex];
         this.saveSettings();
+        this.refreshMainMenuText();
     }
     
     loadSettings() {
@@ -284,7 +311,7 @@ export class MainMenuScene extends Phaser.Scene {
         
         // Load language
         const savedLanguage = localStorage.getItem('gameLanguage');
-        this.game.language = savedLanguage || 'English';
+        this.game.language = normalizeLanguageCode(savedLanguage);
         
         // Apply volume
         this.sound.volume = this.game.globalVolume.master;
@@ -317,25 +344,25 @@ export class MainMenuScene extends Phaser.Scene {
     confirmResetProgress() {
         const dimmer = this.add.rectangle(320, 180, 640, 360, 0x000000, 0.75);
         const box = this.add.rectangle(320, 180, 380, 170, 0x2c1810).setStrokeStyle(2, 0xff4444);
-        const title = this.add.text(320, 130, 'Reset All Progress?', {
-            fontSize: '20px', fill: '#ff8888', fontFamily: '"HoMM Pixel"'
+        const title = this.add.text(320, 130, t(this, 'ui.options.resetTitle'), {
+            fontSize: '20px', fill: '#ff8888', fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
         const body = this.add.text(320, 170,
-            'Wipes unlocked relics, stats, and\nany saved run. Settings are kept.', {
-            fontSize: '13px', fill: '#ffffff', fontFamily: '"HoMM Pixel"', align: 'center'
+            t(this, 'ui.options.resetBody'), {
+            fontSize: '13px', fill: '#ffffff', fontFamily: '"HoMM Pixel", Arial, sans-serif', align: 'center'
         }).setOrigin(0.5);
 
         const cleanup = () => [dimmer, box, title, body,
             yes.button, yes.text, no.button, no.text].forEach(o => o.destroy());
 
-        const yes = this.createButton(265, 230, 90, 30, 'Reset', 0xff4444, () => {
+        const yes = this.createButton(265, 230, 90, 30, t(this, 'ui.options.reset'), 0xff4444, () => {
             this.saveManager.clearCurrentRun();
             this.saveManager.safeRemove(this.saveManager.META_SAVE_KEY);
             cleanup();
             // Rebuild main menu so Continue gets disabled, etc.
             this.scene.restart();
         });
-        const no = this.createButton(375, 230, 90, 30, 'Cancel', 0x888888, () => cleanup());
+        const no = this.createButton(375, 230, 90, 30, t(this, 'ui.options.cancel'), 0x888888, () => cleanup());
     }
 
     exitGame() {

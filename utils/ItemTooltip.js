@@ -1,14 +1,8 @@
 // utils/ItemTooltip.js
-// Shared hover tooltip for items shown anywhere on screen — gaming board,
-// shop rooms, chest rewards, etc. Renders a small dark panel above the
-// hovered card with the item name (in rarity colour) and a description
-// tailored to the item type. The amulet description is pulled from the
-// AmuletManager runtime (where the effect callbacks live), not from the
-// card data itself.
+// Shared hover tooltip for items shown anywhere on screen: gaming board,
+// shop rooms, chest rewards, etc.
 
-function capitalize(s) {
-    return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
-}
+import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from './i18n.js';
 
 function rarityFill(rarity) {
     switch (rarity) {
@@ -21,53 +15,51 @@ function rarityFill(rarity) {
     }
 }
 
-// Best-effort guess at whether a weapon is ranged. Avoids importing
-// CardSystem; mirrors the heuristic used elsewhere.
-function describeWeaponKind(data) {
+function describeWeaponKindKey(data) {
     const text = `${data.name || ''} ${data.sprite || ''} ${data.weaponType || ''}`.toLowerCase();
     if (data.isRanged || data.range > 1 || text.includes('spear') || text.includes('bow') || text.includes('chain')) {
-        return 'Ranged';
+        return 'tooltip.ranged';
     }
-    return 'Melee';
+    return 'tooltip.melee';
 }
 
 // Returns { name, body } strings for the tooltip. Body may be empty.
 export function getTooltipLines(scene, data) {
     if (!data) return { name: '', body: '' };
-    const name = data.name || capitalize(data.type) || 'Item';
+    const name = translateItemName(scene, data) || translateCardType(scene, data.type) || t(scene, 'tooltip.item');
     let body = '';
 
     if (data.type === 'amulet') {
         const def = scene?.amuletManager?.amuletDefinitions?.[data.id];
-        body = def?.description || data.description || '';
-        const rarityWord = data.rarity ? capitalize(data.rarity) : '';
+        body = translateDescription(scene, def?.description || data.description || '');
+        const rarityWord = data.rarity ? translateRarity(scene, data.rarity) : '';
         if (rarityWord) body = `${rarityWord}\n${body}`.trim();
     } else if (data.type === 'weapon') {
         const dmg = data.damage ?? 0;
         const dur = data.durability ?? data.maxDurability ?? 0;
-        const rarityWord = data.rarity ? capitalize(data.rarity) + ' ' : '';
-        body = `${rarityWord}${describeWeaponKind(data)}\n${dmg} DMG  •  ${dur} DUR`;
+        const rarityWord = data.rarity ? `${translateRarity(scene, data.rarity)} ` : '';
+        body = `${rarityWord}${t(scene, describeWeaponKindKey(data))}\n${t(scene, 'tooltip.dmgDur', { dmg, dur })}`;
     } else if (data.type === 'armor') {
         const def = data.protection ?? 0;
         const dur = data.durability ?? data.maxDurability ?? 0;
-        const rarityWord = data.rarity ? capitalize(data.rarity) + ' Armor' : 'Armor';
-        body = `${rarityWord}\n${def} DEF  •  ${dur} DUR`;
+        const rarityWord = data.rarity ? translateRarity(scene, data.rarity) : '';
+        body = `${t(scene, 'tooltip.armorBody', { rarity: rarityWord })}\n${t(scene, 'tooltip.defDur', { def, dur })}`;
     } else if (data.type === 'potion') {
-        body = `Heals ${data.healAmount ?? 0} HP`;
+        body = t(scene, 'tooltip.heals', { amount: data.healAmount ?? 0 });
     } else if (data.type === 'food') {
-        body = `Restores ${data.actionAmount ?? 0} AP`;
+        body = t(scene, 'tooltip.restores', { amount: data.actionAmount ?? 0 });
     } else if (data.type === 'magic') {
-        body = data.description || 'Magic spell';
+        body = data.description ? translateDescription(scene, data.description) : t(scene, 'tooltip.magicSpell');
     } else if (data.type === 'gem') {
         const effect = data.gemEffect || data.effect;
-        body = `Socket: ${effect ? capitalize(effect) : 'Gem'}`;
+        body = t(scene, 'tooltip.socket', { effect: effect ? translateGemEffect(scene, effect) : t(scene, 'tooltip.gem') });
     } else if (data.type === 'thorns') {
-        const rarityWord = data.rarity ? capitalize(data.rarity) + ' ' : '';
-        body = `${rarityWord}${data.thornDamage ?? 0} Thorn DMG  •  ${data.durability ?? 0} DUR`;
+        const rarityWord = data.rarity ? `${translateRarity(scene, data.rarity)} ` : '';
+        body = t(scene, 'tooltip.thornBody', { rarity: rarityWord, amount: data.thornDamage ?? 0, dur: data.durability ?? 0 });
     } else if (data.type === 'key') {
-        body = 'Opens locked treasure chests';
+        body = t(scene, 'tooltip.keyBody');
     } else if (data.description) {
-        body = data.description;
+        body = translateDescription(scene, data.description);
     }
 
     return { name, body };
@@ -93,7 +85,7 @@ export function showItemTooltip(scene, data, anchorX, anchorY) {
     const nameText = scene.add.text(0, 0, lines.name, {
         fontSize: '11px',
         fill: nameColor,
-        fontFamily: '"HoMM Pixel"',
+        fontFamily: '"HoMM Pixel", Arial, sans-serif',
         wordWrap: { width: maxWidth },
         align: 'center',
     }).setOrigin(0, 0);
@@ -102,19 +94,14 @@ export function showItemTooltip(scene, data, anchorX, anchorY) {
         ? scene.add.text(0, Math.ceil(nameText.height) + 3, lines.body, {
             fontSize: '10px',
             fill: '#dddddd',
-            fontFamily: '"HoMM Pixel"',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
             wordWrap: { width: maxWidth },
             align: 'center',
             lineSpacing: 2,
         }).setOrigin(0, 0)
         : null;
 
-    // Round ALL dimensions and positions to whole pixels. Phaser's text
-    // measureText returns sub-pixel widths (e.g. 92.4 px), which cascade
-    // into fractional container positions. With pixelArt/roundPixels on,
-    // adding a fractional-positioned object on hover causes Phaser's
-    // renderer to nudge the camera by a half-pixel as it re-snaps the
-    // frame, visually shifting every other sprite by 1 px to the left.
+    // Round all dimensions/positions to whole pixels to avoid hover jitter.
     const nameWidth = Math.ceil(nameText.width);
     const bodyWidth = Math.ceil(bodyText?.width ?? 0);
     const nameHeight = Math.ceil(nameText.height);

@@ -1,5 +1,6 @@
 import { SoundHelper } from './utils/SoundHelper.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
+import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from './utils/i18n.js';
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
         this.scene = scene;
@@ -865,7 +866,7 @@ export class InventorySystem {
         const tooltipText = this.scene.add.text(0, 0, lines.join('\n'), {
             fontSize: '8px',
             fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
             lineSpacing: 1,
             wordWrap: { width: 138 }
         }).setOrigin(0, 0);
@@ -901,64 +902,69 @@ export class InventorySystem {
         card = this.normalizeCardIdentity(card);
         if (slotIndex >= 0 && this.slots[slotIndex] === card) this.syncGameStateInventory();
 
-        const rarity = card.rarity ? this.capitalize(card.rarity) : 'No rarity';
+        const rarity = card.rarity ? translateRarity(this.scene, card.rarity) : t(this.scene, 'tooltip.noRarity');
         const type = this.getDisplayCardType(card);
         const lines = [
-            card.name || type,
+            translateItemName(this.scene, card) || type,
             `${type} - ${rarity}`
         ];
 
         if (card.type === 'weapon') {
-            const weaponType = this.capitalize(this.getWeaponTypeFromCard(card));
-            lines.push(`Family: ${weaponType}`);
-            lines.push(`DMG: ${card.damage || 0}`);
+            const weaponType = translateItemName(this.scene, { type: 'weapon', weaponType: this.getWeaponTypeFromCard(card) }).replace(translateRarity(this.scene, undefined), '').trim();
+            lines.push(t(this.scene, 'tooltip.family', { value: weaponType }));
+            lines.push(t(this.scene, 'tooltip.damageShort', { amount: card.damage || 0 }));
             const critChance = this.scene?.gameState?.discardCritChance || 0;
             if (critChance > 0) lines.push(`Crit: ${Math.round(critChance * 100)}%`);
-            lines.push(`Range: ${this.capitalize(card.range || 'melee')}`);
+            lines.push(t(this.scene, 'tooltip.range', {
+                value: t(this.scene, (card.range || 'melee') === 'ranged' ? 'tooltip.ranged' : 'tooltip.melee')
+            }));
             if (card.gemEffect) {
                 const stack = Math.max(1, Math.min(3, card.gemCount || 1));
-                lines.push(`Gem: ${this.capitalize(card.gemEffect)}${stack > 1 ? ` x${stack}` : ''}`);
+                lines.push(t(this.scene, 'tooltip.gemLine', {
+                    effect: translateGemEffect(this.scene, card.gemEffect),
+                    stack: stack > 1 ? ` x${stack}` : ''
+                }));
                 const baseDmg = card.damage || 0;
                 if (card.gemEffect === 'fire') {
                     const splashPct = [50, 75, 100][stack - 1];
                     const splashDmg = Math.max(1, Math.floor(baseDmg * splashPct / 100));
-                    lines.push(`Fire splash: ${splashDmg} dmg to neighbors`);
+                    lines.push(t(this.scene, 'tooltip.fireSplash', { amount: splashDmg }));
                 } else if (card.gemEffect === 'lightning') {
                     const zapPct = [40, 55, 70][stack - 1];
                     const zapDmg = Math.max(1, Math.floor(baseDmg * zapPct / 100));
-                    lines.push(`Lightning: ${zapDmg} dmg to up to 3 enemies`);
+                    lines.push(t(this.scene, 'tooltip.lightningZap', { amount: zapDmg }));
                 } else if (card.gemEffect === 'poison') {
-                    lines.push(`Poison: ${stack} stack${stack > 1 ? 's' : ''} (1 dmg / 3 turns each)`);
+                    lines.push(t(this.scene, 'tooltip.poisonStacks', { stack, plural: stack > 1 ? 's' : '' }));
                 }
             }
-            if (card.special) lines.push(`Special: ${this.describeWeaponSpecial(card)}`);
-            if (card.poisonDamage) lines.push(`Poison: ${card.poisonDamage} x ${card.poisonTurns || 0} turns`);
-            if (card.durability !== undefined) lines.push(`Pips: ${card.durability}/${card.maxDurability || card.durability}`);
+            if (card.special) lines.push(t(this.scene, 'tooltip.special', { value: this.describeWeaponSpecial(card) }));
+            if (card.poisonDamage) lines.push(t(this.scene, 'tooltip.poisonTurns', { amount: card.poisonDamage, turns: card.poisonTurns || 0 }));
+            if (card.durability !== undefined) lines.push(t(this.scene, 'tooltip.pips', { value: `${card.durability}/${card.maxDurability || card.durability}` }));
             this.addCanonicalDiffLines(lines, card, 'weapon');
         } else if (card.type === 'armor') {
-            const armorType = this.capitalize(this.getArmorTypeFromCard(card));
-            lines.push(`Family: ${armorType}`);
-            lines.push(`PROT: ${card.protection || 0}`);
-            if (card.dodgeChance) lines.push(`Dodge: ${Math.round(card.dodgeChance * 100)}%`);
-            if (card.reflection) lines.push(`Reflect: ${card.reflection}`);
-            if (card.durability !== undefined) lines.push(`Pips: ${card.durability}/${card.maxDurability || card.durability}`);
+            const armorType = translateItemName(this.scene, { type: 'armor', armorType: this.getArmorTypeFromCard(card) });
+            lines.push(t(this.scene, 'tooltip.family', { value: armorType }));
+            lines.push(t(this.scene, 'tooltip.protectionShort', { amount: card.protection || 0 }));
+            if (card.dodgeChance) lines.push(t(this.scene, 'tooltip.dodge', { percent: Math.round(card.dodgeChance * 100) }));
+            if (card.reflection) lines.push(t(this.scene, 'tooltip.reflect', { value: card.reflection }));
+            if (card.durability !== undefined) lines.push(t(this.scene, 'tooltip.pips', { value: `${card.durability}/${card.maxDurability || card.durability}` }));
             this.addCanonicalDiffLines(lines, card, 'armor');
         } else if (card.type === 'thorns') {
-            lines.push(`Thorn damage: ${card.thornDamage || 0}`);
-            lines.push(`Pips: ${card.durability || 0}/${card.maxDurability || card.durability || 0}`);
-            lines.push('Melee attackers take damage back.');
+            lines.push(t(this.scene, 'tooltip.thornDamage', { amount: card.thornDamage || 0 }));
+            lines.push(t(this.scene, 'tooltip.pips', { value: `${card.durability || 0}/${card.maxDurability || card.durability || 0}` }));
+            lines.push(t(this.scene, 'tooltip.meleeAttackers'));
         } else if (card.type === 'potion') {
-            lines.push(`Heals: ${card.healAmount || 0} HP`);
+            lines.push(t(this.scene, 'tooltip.healsColon', { amount: card.healAmount || 0 }));
         } else if (card.type === 'food') {
-            lines.push(`Restores: ${card.actionAmount || 0} AP`);
+            lines.push(t(this.scene, 'tooltip.restoresColon', { amount: card.actionAmount || 0 }));
         } else if (card.type === 'magic') {
-            lines.push(card.description || this.describeMagicCard(card));
+            lines.push(card.description ? translateDescription(this.scene, card.description) : this.describeMagicCard(card));
         } else if (card.type === 'amulet') {
             lines.push(this.describeAmuletCard(card));
         } else if (card.type === 'key') {
-            lines.push('Opens a chest safely.');
+            lines.push(t(this.scene, 'tooltip.keySafe'));
         } else if (card.type === 'gem') {
-            lines.push(`Effect: ${this.describeGemEffect(card.gemEffect)}`);
+            lines.push(t(this.scene, 'tooltip.effect', { effect: this.describeGemEffect(card.gemEffect) }));
         }
 
         return lines;
@@ -972,19 +978,19 @@ export class InventorySystem {
 
         const differences = [];
         if (category === 'weapon' && card.damage !== undefined && card.damage !== canonical.damage) {
-            differences.push(`base damage ${canonical.damage}`);
+            differences.push(t(this.scene, 'tooltip.baseDamage', { amount: canonical.damage }));
         }
         if (category === 'armor' && card.protection !== undefined && card.protection !== canonical.protection) {
-            differences.push(`base protection ${canonical.protection}`);
+            differences.push(t(this.scene, 'tooltip.baseProtection', { amount: canonical.protection }));
         }
         if (differences.length > 0) {
-            lines.push(`Note: unusual stats (${differences.join(', ')})`);
+            lines.push(t(this.scene, 'tooltip.noteUnusual', { details: differences.join(', ') }));
         }
     }
 
     getMergeTooltipLine(card, slotIndex) {
         if (card.type === 'magic' || card.type === 'coin' || card.type === 'crystal' || card.type === 'key') {
-            return 'No merge';
+            return t(this.scene, 'tooltip.noMerge');
         }
 
         const mergeableSlots = [];
@@ -1001,10 +1007,10 @@ export class InventorySystem {
         });
 
         if (mergeableSlots.length > 0) {
-            return `Merges: slot ${mergeableSlots.join(', ')}`;
+            return t(this.scene, 'tooltip.merges', { slots: mergeableSlots.join(', ') });
         }
         if (blockedReasons.size > 0) {
-            return `No merge: ${Array.from(blockedReasons).slice(0, 2).join('; ')}`;
+            return t(this.scene, 'tooltip.noMergeReasons', { reasons: Array.from(blockedReasons).slice(0, 2).join('; ') });
         }
         return '';
     }
@@ -1012,67 +1018,67 @@ export class InventorySystem {
     getMergeBlockReason(cardA, cardB) {
         if (!cardA || !cardB) return '';
         if (cardA.type !== cardB.type) return '';
-        if (cardA.type === 'magic' || cardB.type === 'magic') return 'magic cards cannot merge';
-        if (cardA.type === 'gem' || cardB.type === 'gem') return 'gems socket into weapons';
-        if (this.getMergeKey(cardA) !== this.getMergeKey(cardB)) return 'different family';
+        if (cardA.type === 'magic' || cardB.type === 'magic') return translateDescription(this.scene, 'magic cards cannot merge');
+        if (cardA.type === 'gem' || cardB.type === 'gem') return translateDescription(this.scene, 'gems socket into weapons');
+        if (this.getMergeKey(cardA) !== this.getMergeKey(cardB)) return translateDescription(this.scene, 'different family');
         if (cardA.rarity !== cardB.rarity) return `rarity ${cardA.rarity || '?'} vs ${cardB.rarity || '?'}`;
-        if (this.getMergeStatsKey(cardA) !== this.getMergeStatsKey(cardB)) return 'stats/effect differ';
+        if (this.getMergeStatsKey(cardA) !== this.getMergeStatsKey(cardB)) return translateDescription(this.scene, 'stats/effect differ');
         return '';
     }
 
     getDisplayCardType(card) {
         if (!card?.type) return 'Card';
         const names = {
-            weapon: 'Weapon',
-            armor: 'Armor',
-            thorns: 'Thorns',
-            potion: 'Potion',
-            food: 'Food',
-            magic: 'Magic',
-            gem: 'Gem',
-            amulet: 'Relic',
-            key: 'Key',
-            coin: 'Coins',
-            crystal: 'Ruby'
+            weapon: 'tooltip.weapon',
+            armor: 'tooltip.armor',
+            thorns: 'tooltip.thorns',
+            potion: 'tooltip.potion',
+            food: 'tooltip.food',
+            magic: 'tooltip.magic',
+            gem: 'tooltip.gem',
+            amulet: 'tooltip.relic',
+            key: 'tooltip.key',
+            coin: 'tooltip.coins',
+            crystal: 'tooltip.ruby'
         };
-        return names[card.type] || this.capitalize(card.type);
+        return names[card.type] ? t(this.scene, names[card.type]) : this.capitalize(card.type);
     }
 
     describeWeaponSpecial(card) {
         const special = card.special || '';
-        if (special === 'dualWield') return 'dual wield';
-        if (special === 'throwing') return 'hits any enemy';
-        if (special === 'block') return 'can block';
-        if (special === 'specialAttack') return 'heavy strike';
+        if (special === 'dualWield') return translateDescription(this.scene, 'dual wield');
+        if (special === 'throwing') return translateDescription(this.scene, 'hits any enemy');
+        if (special === 'block') return translateDescription(this.scene, 'can block');
+        if (special === 'specialAttack') return translateDescription(this.scene, 'heavy strike');
         return special;
     }
 
     describeMagicCard(card) {
-        if (card.magicType === 'fireball') return 'Deals damage to one enemy.';
-        if (card.magicType === 'frostRing') return 'Freezes all enemies.';
-        if (card.magicType === 'restoration') return 'Fully restores HP and AP.';
-        if (card.magicType === 'soulDrain') return 'Kills a non-boss enemy and heals.';
-        if (card.magicType === 'shadowBlade') return 'Boosts weapon damage.';
-        if (card.magicType === 'weakness') return 'Weakens enemies.';
-        if (card.magicType === 'boneWall') return 'Reflects the next attacks.';
-        if (card.magicType === 'magicShield') return 'Boosts armor.';
-        if (card.magicType === 'mirrorShield') return 'Reflects one attack.';
-        if (card.magicType === 'smokeScreen') return 'Hides revealed enemies.';
-        return 'Single-use magic.';
+        if (card.magicType === 'fireball') return translateDescription(this.scene, 'Deals damage to one enemy.');
+        if (card.magicType === 'frostRing') return translateDescription(this.scene, 'Freezes all enemies.');
+        if (card.magicType === 'restoration') return translateDescription(this.scene, 'Fully restores HP and AP.');
+        if (card.magicType === 'soulDrain') return translateDescription(this.scene, 'Kills a non-boss enemy and heals.');
+        if (card.magicType === 'shadowBlade') return translateDescription(this.scene, 'Boosts weapon damage.');
+        if (card.magicType === 'weakness') return translateDescription(this.scene, 'Weakens enemies.');
+        if (card.magicType === 'boneWall') return translateDescription(this.scene, 'Reflects the next attacks.');
+        if (card.magicType === 'magicShield') return translateDescription(this.scene, 'Boosts armor.');
+        if (card.magicType === 'mirrorShield') return translateDescription(this.scene, 'Reflects one attack.');
+        if (card.magicType === 'smokeScreen') return translateDescription(this.scene, 'Hides revealed enemies.');
+        return translateDescription(this.scene, 'Single-use magic.');
     }
 
     describeAmuletCard(card) {
         const definitions = this.scene?.amuletManager?.amuletDefinitions;
-        if (card.id && definitions?.[card.id]) return definitions[card.id].description;
-        if (card.description) return card.description;
-        return 'A passive relic effect.';
+        if (card.id && definitions?.[card.id]) return translateDescription(this.scene, definitions[card.id].description);
+        if (card.description) return translateDescription(this.scene, card.description);
+        return translateDescription(this.scene, 'A passive relic effect.');
     }
 
     describeGemEffect(effect) {
-        if (effect === 'fire') return 'splash adjacent enemies';
-        if (effect === 'poison') return 'stacking poison on hit';
-        if (effect === 'lightning') return 'zaps up to 3 open enemies';
-        return 'adds an effect to a weapon';
+        if (effect === 'fire') return translateDescription(this.scene, 'splash adjacent enemies');
+        if (effect === 'poison') return translateDescription(this.scene, 'stacking poison on hit');
+        if (effect === 'lightning') return translateDescription(this.scene, 'zaps up to 3 open enemies');
+        return translateDescription(this.scene, 'adds an effect to a weapon');
     }
 
     capitalize(value) {

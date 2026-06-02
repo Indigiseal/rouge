@@ -1,5 +1,6 @@
 import { CardSystem } from '../cardSystem.js';
 import { SoundHelper } from '../utils/SoundHelper.js';
+import { t, translateItemName } from '../utils/i18n.js';
 import { StationRoomBase } from './StationRoomBase.js';
 
 export class RareShopScene extends StationRoomBase {
@@ -14,38 +15,38 @@ export class RareShopScene extends StationRoomBase {
         this.gameScene = this.scene.get('GameScene');
         this.enableShopStation();
 
-        this.add.text(320, 30, 'Rare Goods', {
+        this.add.text(320, 30, t(this, 'ui.shop.rareTitle'), {
             fontSize: '28px',
             fill: '#DA70D6',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
 
-        this.coinsText = this.add.text(450, 60, `Coins: ${this.gameState.coins}`, {
+        this.coinsText = this.add.text(450, 60, t(this, 'ui.shop.coins', { amount: this.gameState.coins }), {
             fontSize: '16px',
             fill: '#ffd700',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
 
-        this.crystalsText = this.add.text(190, 60, `Crystals: ${this.gameState.crystals}`, {
+        this.crystalsText = this.add.text(190, 60, t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }), {
             fontSize: '16px',
             fill: '#00ffff',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
 
         const _rareAct = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
-        this.add.text(580, 12, `Act ${_rareAct}  Floor ${this.gameState.currentFloor}`, {
+        this.add.text(580, 12, t(this, 'ui.shop.floor', { act: _rareAct, floor: this.gameState.currentFloor }), {
             fontSize: '11px',
             fill: '#a78f70',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
 
         this.generateShopItems();
         this.displayShopItems();
 
-        this.add.text(320, 330, 'Continue to Next Floor', {
+        this.add.text(320, 330, t(this, 'ui.shop.continue'), {
             fontSize: '18px',
             fill: '#00ff00',
-            fontFamily: '"HoMM Pixel"'
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
         })
             .setOrigin(0.5)
             .setInteractive({ useHandCursor: true })
@@ -211,6 +212,16 @@ export class RareShopScene extends StationRoomBase {
         this.displayItemsAsBoard();
     }
 
+    getItemDisplayName(item) {
+        return translateItemName(this, item) || item?.name || t(this, 'tooltip.item');
+    }
+
+    getCurrencyDisplay(currency) {
+        return currency === 'crystals'
+            ? t(this, 'ui.shop.currencyCrystals')
+            : t(this, 'ui.shop.currencyCoins');
+    }
+
     buyItem(item, button) {
         if (item.purchased) return;
 
@@ -219,7 +230,7 @@ export class RareShopScene extends StationRoomBase {
             : this.gameState.crystals >= item.price;
 
         if (!hasEnoughCurrency) {
-            this.showFeedback(`Not enough ${item.currency}!`, 0xff0000, 100);
+            this.showFeedback({ key: 'float.notEnoughCurrency', vars: { currency: this.getCurrencyDisplay(item.currency) } }, 0xff0000, 100);
             return;
         }
 
@@ -230,7 +241,7 @@ export class RareShopScene extends StationRoomBase {
                     this.showFeedback('Already owned!', 0xff0000, 100);
                     return;
                 }
-                this.showFeedback(`${item.data.name} equipped!`, 0x9932cc, 100);
+                this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x9932cc, 100);
             } else {
                 this.consumeAmulet(item.data);
             }
@@ -259,9 +270,9 @@ export class RareShopScene extends StationRoomBase {
         SoundHelper.playSound(this, 'shop_buy', 0.5);
         item.purchased = true;
 
-        this.coinsText.setText(`Coins: ${this.gameState.coins}`);
-        this.crystalsText.setText(`Crystals: ${this.gameState.crystals}`);
-        this.markButtonDone(button, 'Sold');
+        this.coinsText.setText(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+        this.crystalsText.setText(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
+        this.markButtonDone(button, t(this, 'ui.shop.sold'));
         this.gameScene?.updateUI?.();
     }
 
@@ -274,7 +285,7 @@ export class RareShopScene extends StationRoomBase {
             this.gameState.maxActions += amulet.value;
             this.showFeedback(`+${amulet.value} Max Actions!`, 0x00ff00, 100);
         } else {
-            this.showFeedback(`${amulet.name} equipped!`, 0x9932cc, 100);
+            this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(amulet) } }, 0x9932cc, 100);
         }
         this.gameState.activeAmulets.push(amulet);
     }
