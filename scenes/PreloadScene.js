@@ -4,6 +4,20 @@ export class PreloadScene extends Phaser.Scene {
     }
 
     preload() {
+        // Append a timestamp to every asset URL so Phaser never serves a
+        // stale texture from its internal cache during development.
+        // Remove queryURL before shipping (or it bloats itch.io logs).
+        this.load.setCORS('anonymous');
+        this.load.on('filedatareceived', () => {});
+        const _origImage = this.load.image.bind(this.load);
+        const _origSheet = this.load.spritesheet.bind(this.load);
+        const _origAudio = this.load.audio.bind(this.load);
+        const _origBitmap = this.load.bitmapFont.bind(this.load);
+        const v = `?v=${Date.now()}`;
+        this.load.image = (key, url, ...rest) => _origImage(key, Array.isArray(url) ? url.map(u => u + v) : url + v, ...rest);
+        this.load.spritesheet = (key, url, ...rest) => _origSheet(key, url + v, ...rest);
+        this.load.audio = (key, url, ...rest) => _origAudio(key, Array.isArray(url) ? url.map(u => u + v) : url + v, ...rest);
+        this.load.bitmapFont = (key, textureURL, xmlURL, ...rest) => _origBitmap(key, textureURL + v, xmlURL + v, ...rest);
         //this.load.image('warrior', 'assets/playerAvatarWarrior.png');
         this.load.image('axeCard', 'assets/commonAxeCard.png');
         this.load.image('goblinCard', 'assets/goblinEnemyCard.png');
@@ -11,6 +25,7 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('cardBack', 'assets/cardBack.png');
         this.load.image('panelCards', 'assets/panelCards.png');
         this.load.image('gamingBoard', 'assets/gamingBoard.png');
+        this.load.image('gamingBoardSideExtra', 'assets/gamingBoardSIdewaysExtra.png');
         this.load.image('panelArmor', 'assets/panelArmor.png');
         this.load.bitmapFont('pixel-font', 'assets/fonts/minogram_6x10.png', 'assets/fonts/minogram_6x10.xml');
         this.load.bitmapFont('cyrillic-ui-font', 'assets/fonts/probly12NEW_crisp.png', 'assets/fonts/probly12NEW_crisp.xml');
@@ -71,7 +86,9 @@ export class PreloadScene extends Phaser.Scene {
         this.load.spritesheet('mapNodes', 'assets/mapNodes42x42.png', { frameWidth: 42, frameHeight: 42 });
         this.load.spritesheet('gemsRGY', 'assets/gemsRGY-Sheet.png', { frameWidth: 16, frameHeight: 16 });
         // Enemy role marker: frame 0 = melee, frame 1 = ranged
-        this.load.spritesheet('enemyCardType', 'assets/enemyCardType.png', { frameWidth: 16, frameHeight: 16 });
+        // 'enemyCardType' sprite sheet was the old melee/ranged/poison badge
+        // overlay. The new enemy art bakes those icons into the cards, and
+        // HP / ATK now render as corner numbers, so we no longer load it.
         this.load.spritesheet('gemEffectsOnCards', 'assets/gemEffectsOnCards64x80.png', { frameWidth: 64, frameHeight: 80 });
         this.load.spritesheet('enemiesHitEffects', 'assets/enemiesHitEffects64x80.png', { frameWidth: 64, frameHeight: 80 });
         this.load.spritesheet('shadowsGems', 'assets/shadowsGems.png', { frameWidth: 16, frameHeight: 20 });
@@ -84,7 +101,9 @@ export class PreloadScene extends Phaser.Scene {
         this.load.audio('trap_woosh', 'assets/fast-woosh-230497.mp3');
         this.load.audio('armor_equip', 'assets/metal_clank.mp3');
         this.load.audio('crystal_collect', 'assets/crystal_pick_up.mp3');
-        // Food 
+        // Main menu
+        this.load.image('mainBG', 'assets/mainBG.png');
+        // Food
         this.load.image('berries', 'assets/foodCommon4AP.png');
         this.load.image('bread', 'assets/bread.png');
         // New Cards
@@ -94,10 +113,10 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('MaskOfHollowWispers', 'assets/MaskOfHollowWispers.png');
         this.load.spritesheet('relicsOthers', 'assets/relicsOthers.png', { frameWidth: 32, frameHeight: 32 });
         // Load specific amulet sprites
-        this.load.image('Healing Ring', 'assets/Healing Ring.png');
-        this.load.image('Boots of Evasion', 'assets/Boots of Evasion.png');
+        this.load.image('Healing Ring', 'assets/HealingRing.png');
+        this.load.image('Boots of Evasion', 'assets/BootsOfEvasion.png');
         this.load.image('dragonClaw', 'assets/dragonClaw.png');
-        this.load.image('Bottomless Bag', 'assets/Bottomless Bag.png');
+        this.load.image('Bottomless Bag', 'assets/BottomlessBag.png');
         this.load.image('amulet_scales_of_basilisk', 'assets/amulet_scales_of_basilisk.png');
         this.load.audio('shop_buy', 'assets/dropInBagStore.mp3');
         this.load.audio('card_flip', 'assets/flipcard-91468.mp3');
@@ -147,22 +166,22 @@ export class PreloadScene extends Phaser.Scene {
 
         // Placeholder aliases for art that was never drawn or exported.
         this.load.image('amulet_regen', 'assets/amulet.png');
-        this.load.image('amulet_healing', 'assets/Healing Ring.png');
+        this.load.image('amulet_healing', 'assets/HealingRing.png');
         this.load.image('amulet_invuln', 'assets/amulet.png');
-        this.load.image('amulet_boots', 'assets/Boots of Evasion.png');
+        this.load.image('amulet_boots', 'assets/BootsOfEvasion.png');
         this.load.image('amulet_claw', 'assets/dragonClaw.png');
-        this.load.image('amulet_pouch', 'assets/Bottomless Bag.png');
+        this.load.image('amulet_pouch', 'assets/BottomlessBag.png');
         this.load.image('amulet_golem', 'assets/AmuletOfVigor.png');
         this.load.image('amulet_hammer', 'assets/AmuletOfVigor.png');
         this.load.image('amulet_chronos', 'assets/amulet_scales_of_basilisk.png');
-        this.load.image('amulet_speed', 'assets/Boots of Evasion.png');
+        this.load.image('amulet_speed', 'assets/BootsOfEvasion.png');
         this.load.image('amulet_hourglass', 'assets/amulet_scales_of_basilisk.png');
         this.load.image('amulet_steel', 'assets/AmuletOfVigor.png');
-        this.load.image('amulet_kitchen', 'assets/Bottomless Bag.png');
-        this.load.image('amulet_vampiric', 'assets/Healing Ring.png');
+        this.load.image('amulet_kitchen', 'assets/BottomlessBag.png');
+        this.load.image('amulet_vampiric', 'assets/HealingRing.png');
         this.load.image('amulet_soul', 'assets/MaskOfHollowWispers.png');
-        this.load.image('amulet_hungry', 'assets/Bottomless Bag.png');
-        this.load.image('amulet_blood', 'assets/Healing Ring.png');
+        this.load.image('amulet_hungry', 'assets/BottomlessBag.png');
+        this.load.image('amulet_blood', 'assets/HealingRing.png');
         this.load.image('amulet_rage', 'assets/dragonClaw.png');
         this.load.image('amulet_berserker', 'assets/dragonClaw.png');
         this.load.image('goblin_archer', 'assets/goblin_c.png');

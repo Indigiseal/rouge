@@ -1,5 +1,5 @@
 // scenes/MapViewScene.js
-import Phaser from 'phaser';
+// Phaser is provided as a UMD global (see index.html) — no import needed.
 import { MapGenerator } from '../utils/MapGenerator.js';
 
 export class MapViewScene extends Phaser.Scene {

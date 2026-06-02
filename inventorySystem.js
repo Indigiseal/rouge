@@ -1,4 +1,5 @@
 import { SoundHelper } from './utils/SoundHelper.js';
+import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
         this.scene = scene;
@@ -144,7 +145,7 @@ export class InventorySystem {
         const totalWidth = slotCount * slotWidth + (slotCount - 1) * spacing;
         const inventoryCenterX = 340;
         const startX = inventoryCenterX - (totalWidth / 2) + (slotWidth / 2);
-        const y = 304;
+        const y = 309;
         this.createInventoryPanel(inventoryCenterX, y, Math.max(368, totalWidth + 90), 112);
         
         for (let i = 0; i < slotCount; i++) {
@@ -444,7 +445,7 @@ export class InventorySystem {
         
         let cardSprite;
         if (cardData.sprite) {
-            cardSprite = this.scene.add.image(x, y, cardData.sprite, cardData.spriteFrame);
+            cardSprite = snapOriginToPixelGrid(this.scene.add.image(x, y, cardData.sprite, cardData.spriteFrame));
         } else {
             const colors = {
                 armor: 0x888888,
@@ -480,7 +481,7 @@ export class InventorySystem {
 
         // Create hover "shine" animation sprite (initially hidden) — cards only
         if (isCard) {
-            const hoverSprite = this.scene.add.sprite(x, y, 'hoverCardsUp1');
+            const hoverSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, 'hoverCardsUp1'));
             hoverSprite.setVisible(false);
             hoverSprite.setBlendMode(Phaser.BlendModes.SCREEN);
             hoverSprite.setDepth(13);
@@ -869,17 +870,19 @@ export class InventorySystem {
             wordWrap: { width: 138 }
         }).setOrigin(0, 0);
 
-        const width = Math.min(154, Math.max(92, tooltipText.width + 10));
-        const height = tooltipText.height + 10;
+        const width = Math.ceil(Math.min(154, Math.max(92, tooltipText.width + 10)));
+        const height = Math.ceil(tooltipText.height + 10);
         const bg = this.scene.add.rectangle(0, 0, width, height, 0x111122, 0.94)
             .setOrigin(0, 0)
             .setStrokeStyle(1, 0xf2d3aa);
 
-        const preferLeft = pointerX + width + 14 > 640;
-        const targetX = preferLeft ? pointerX - width - 10 : pointerX + 10;
-        const targetY = pointerY - Math.min(24, height / 2);
-        const clampedX = Phaser.Math.Clamp(targetX, 6, 640 - width - 6);
-        const clampedY = Phaser.Math.Clamp(targetY, 6, 360 - height - 6);
+        const pointerPixelX = Math.round(pointerX);
+        const pointerPixelY = Math.round(pointerY);
+        const preferLeft = pointerPixelX + width + 14 > 640;
+        const targetX = preferLeft ? pointerPixelX - width - 10 : pointerPixelX + 10;
+        const targetY = pointerPixelY - Math.round(Math.min(24, height / 2));
+        const clampedX = Math.round(Phaser.Math.Clamp(targetX, 6, 640 - width - 6));
+        const clampedY = Math.round(Phaser.Math.Clamp(targetY, 6, 360 - height - 6));
         tooltipText.setPosition(5, 5);
 
         this.cardTooltip = this.scene.add.container(clampedX, clampedY, [bg, tooltipText]);
@@ -2620,7 +2623,7 @@ export class InventorySystem {
                     const cardSprite = this.slotSprites[index].card;
                     if (cardSprite && cardSprite.scene) {
                         // Create twinkle sprite at the same position as the card
-                        const twinkleSprite = this.scene.add.sprite(cardSprite.x, cardSprite.y, 'twinkle1');
+                        const twinkleSprite = snapOriginToPixelGrid(this.scene.add.sprite(cardSprite.x, cardSprite.y, 'twinkle1'));
                         twinkleSprite.setScale(1.0);
                         twinkleSprite.setDepth(100); // High depth to ensure visibility
                         twinkleSprite.play('twinkle_anim');

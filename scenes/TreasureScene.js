@@ -179,7 +179,10 @@ export class TreasureScene extends StationRoomBase {
       good: {
         coins: 12 + Math.floor(floor / 2),
         crystals: 1 + Math.floor(floor / 12),
-        rarity: gen.capRewardRarity(floor >= 20 ? 'epic' : 'rare', floor)
+        // Threshold pushed from floor 20 → 38: epic chests are now late-act-3
+        // only. Earlier "good" chests still pay out rare-tier loot via the
+        // capRewardRarity ladder (uncommon in act 1, rare from act 2 onward).
+        rarity: gen.capRewardRarity(floor >= 38 ? 'epic' : 'rare', floor)
       },
       elite: {
         coins: 15 + Math.floor(floor / 2),

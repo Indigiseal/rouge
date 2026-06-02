@@ -1,5 +1,7 @@
 // main.js
-import Phaser from 'phaser';
+// Phaser is loaded as a UMD script in index.html and lives on window.Phaser.
+// No import here — esm.sh's wrapped ESM build had a host-root Node import
+// that breaks on itch.io's CDN.
 import { PreloadScene } from './scenes/PreloadScene.js';
 import { MainMenuScene } from './scenes/MainMenuScene.js';
 import { GameScene } from './gameScene.js';
@@ -50,8 +52,20 @@ const config = {
     }
 };
 
-if (document.fonts?.load) {
-    await document.fonts.load('12px "HoMM Pixel"');
+// Best-effort font preload. Top-level await would block Phaser from
+// starting if the font fetch hangs or 403s (some CDNs reject paths
+// with spaces, others have strict CSP). Race with a short timeout
+// and swallow errors — the CSS @font-face still picks the font up
+// once it eventually arrives.
+try {
+    if (document.fonts?.load) {
+        await Promise.race([
+            document.fonts.load('12px "HoMM Pixel"'),
+            new Promise(resolve => setTimeout(resolve, 1500)),
+        ]);
+    }
+} catch (e) {
+    console.warn('Font preload skipped:', e);
 }
 
 new Phaser.Game(config);

@@ -5,6 +5,7 @@ import { AmuletManager } from './AmuletManager.js';
 import { SoundHelper } from './utils/SoundHelper.js';
 import { SaveManager } from './SaveManager.js';
 import { MetaProgressionManager } from './MetaProgressionManager.js';
+import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -151,7 +152,7 @@ export class GameScene extends Phaser.Scene {
 
     createUI() {
         // Player avatar
-        this.playerAvatar = this.add.image(45, 45, 'MainPlayerAvatar');
+        this.playerAvatar = this.add.image(41, 44, 'MainPlayerAvatar');
         this.playerAvatar.setScale(1);
         // Health orb under avatar
         this.healthOrbEmpty = this.add.image(87, 102, 'healthOrb', 1).setOrigin(0.5, 1);
@@ -166,7 +167,7 @@ export class GameScene extends Phaser.Scene {
         this.healthText.setDepth(30);
 
         // Armor equip panel under hero portrait
-        this.armorPanel = this.add.image(39, 138, 'panelArmor');
+        this.armorPanel = snapOriginToPixelGrid(this.add.image(40, 138, 'panelArmor'));
         this.armorPanel.setInteractive();
         this.armorPanel.setDepth(5);
         this.armorPanelEquippedSprite = null;
@@ -178,15 +179,15 @@ export class GameScene extends Phaser.Scene {
         this.createActionPointUI();
         
         // Coin and Crystal UI under armor panel with animations
-        this.coinSprite = this.add.sprite(25, 210, 'coinUI').setScale(1);
-        this.coinsText = this.add.text(25, 227, '0', {
+        this.coinSprite = this.add.sprite(26, 210, 'coinUI').setScale(1);
+        this.coinsText = this.add.text(26, 227, '0', {
             fontSize: '12px',
             fill: '#cf8834',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
-        
-        this.crystalSprite = this.add.sprite(55, 211, 'CrystalUI').setScale(1);
-        this.crystalsText = this.add.text(55, 228, '0', {
+
+        this.crystalSprite = this.add.sprite(54, 211, 'CrystalUI').setScale(1);
+        this.crystalsText = this.add.text(54, 228, '0', {
             fontSize: '12px',
             fill: '#a83c69',
             fontFamily: '"HoMM Pixel"'
@@ -229,8 +230,8 @@ export class GameScene extends Phaser.Scene {
         // Also add ESC key binding for pause
         this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
         // Discard area
-        this.discardArea = this.add.image(585, 305, 'discardSprite');
-        this.add.text(585, 305, 'Discard', { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+        this.discardArea = snapOriginToPixelGrid(this.add.image(601, 305, 'discardSprite'));
+        this.add.text(601, 305, 'Discard', { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
         // Rest button removed - players must manage action points carefully
         // Amulet UI
         // Player effects label
@@ -241,7 +242,7 @@ export class GameScene extends Phaser.Scene {
         }).setOrigin(0.5, 0);
         this.playerEffectsUIGroup = this.add.group();
         // Next Floor Button (initially hidden) - top right, under pause
-        this.nextFloorButton = this.add.image(595, 50, 'nextTurnUp')
+        this.nextFloorButton = snapOriginToPixelGrid(this.add.image(595, 50, 'nextTurnUp'))
             .setInteractive({ useHandCursor: true })
             .on('pointerover', () => this.nextFloorButton.setTint(0xd4eaf7))
             .on('pointerout', () => {
@@ -367,12 +368,24 @@ export class GameScene extends Phaser.Scene {
 
         const maxActions = Math.max(1, this.gameState?.maxActions || 1);
         const nodeCount = Math.ceil(maxActions / 4);
+        // Stack into two rows once we have more than 5 nodes so the strip
+        // doesn't run off the left edge of the screen on AP-heavy builds.
+        const MAX_PER_ROW = 5;
+        const rows = nodeCount > MAX_PER_ROW ? 2 : 1;
+        const perRow = Math.ceil(nodeCount / rows);
         const spacing = 18;
-        const startX = 52 - ((nodeCount - 1) * spacing) / 2;
-        const y = 189;
+        const rowGap = 18; // vertical gap between the two rows of nodes
+        const centerX = 41;
+        const baseY = 189;
 
         for (let i = 0; i < nodeCount; i++) {
-            const x = startX + i * spacing;
+            const row = Math.floor(i / perRow);
+            const colInRow = i % perRow;
+            const rowCount = (row === rows - 1) ? (nodeCount - row * perRow) : perRow;
+            const startX = centerX - ((rowCount - 1) * spacing) / 2;
+            const x = startX + colInRow * spacing;
+            const y = baseY + row * rowGap;
+
             const sprite = this.add.image(x, y, 'actionPoint');
             sprite.setDepth(8);
             this.actionPointSprites.push(sprite);
@@ -441,7 +454,7 @@ export class GameScene extends Phaser.Scene {
         const armor = this.gameState.equippedArmor;
         if (!armor || !armor.sprite || !this.armorPanel) return;
 
-        this.armorPanelEquippedSprite = this.add.image(this.armorPanel.x, this.armorPanel.y - 6, armor.sprite);
+        this.armorPanelEquippedSprite = snapOriginToPixelGrid(this.add.image(this.armorPanel.x, this.armorPanel.y - 6, armor.sprite));
         this.armorPanelEquippedSprite.setDepth(6);
         this.armorPanelEquippedSprite.setInteractive({ useHandCursor: true });
         this.armorPanelEquippedSprite.on('pointerdown', () => {
@@ -1381,7 +1394,7 @@ export class GameScene extends Phaser.Scene {
                 const progress = atMax ? perCards : (discarded % perCards);
 
                 const pipSize = 2;
-                const pipSpacing = 4;
+                const pipSpacing = 3;
                 const totalWidth = (perCards - 1) * pipSpacing;
                 const pipY = y + 11;
                 for (let p = 0; p < perCards; p++) {
@@ -1430,20 +1443,26 @@ export class GameScene extends Phaser.Scene {
         }
         lines += `\nDur: ${armor.durability}/${armor.maxDurability}`;
 
-        const tooltipX = this.armorPanel.x + 50;
-        const tooltipY = this.armorPanel.y - 20;
-        const bg = this.add.rectangle(0, 0, 110, armor.dodgeChance ? 64 : 54, 0x000000, 0.85)
-            .setStrokeStyle(1, 0x66aaff);
+        const tooltipX = Math.round(this.armorPanel.x + 50);
+        const tooltipY = Math.round(this.armorPanel.y - 20);
         const tooltipText = this.add.text(0, 0, lines, {
             fontSize: '10px',
             fill: '#66aaff',
             fontFamily: '"HoMM Pixel"',
             align: 'center',
             lineSpacing: 2
-        }).setOrigin(0.5);
+        }).setOrigin(0, 0);
         // Auto-size the background to fit however many lines we have
         const lineCount = lines.split('\n').length;
-        bg.setSize(120, lineCount * 13 + 10);
+        const width = Math.max(120, Math.ceil(tooltipText.width) + 10);
+        const height = lineCount * 13 + 10;
+        const bg = this.add.rectangle(0, 0, width, height, 0x000000, 0.85)
+            .setOrigin(0, 0)
+            .setStrokeStyle(1, 0x66aaff);
+        tooltipText.setPosition(
+            Math.round((width - Math.ceil(tooltipText.width)) / 2),
+            5
+        );
 
         this.armorTooltip = this.add.container(tooltipX, tooltipY, [bg, tooltipText]);
         this.armorTooltip.setDepth(1000);

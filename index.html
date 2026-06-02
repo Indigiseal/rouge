@@ -4,17 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dungeon Card Crawler</title>
-    <script type="importmap">
-    {
-        "imports": {
-            "phaser": "./vendor/phaser-3.70.0.mjs"
-        }
-    }
-    </script>
+    <!-- Phaser as a plain UMD script. Previously this file used an
+         esm.sh-wrapped Phaser ESM build whose source had
+         `import __Process$ from "/node/process.mjs"` — a host-root
+         import that 403s on itch.io's CDN, leaving Phaser undefined
+         and the game stuck on a black screen. The standalone UMD
+         build below is self-contained and sets window.Phaser. -->
+    <script src="vendor/phaser-3.70.0.min.js"></script>
     <style>
         @font-face {
             font-family: "HoMM Pixel";
-            src: url("assets/fonts/Able 5.ttf") format("truetype");
+            src: url("assets/fonts/Able5.ttf") format("truetype");
             font-display: block;
         }
 

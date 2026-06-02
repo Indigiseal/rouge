@@ -205,10 +205,11 @@ export class ShopScene extends StationRoomBase {
     }
 
     // Creates a higher-rarity weapon or armor that appears as the Merchant's Pact
-    // bonus slot. Toned down — epics/legendaries should be scarce, so the
-    // regular shop tops out at epic only very late, rare otherwise.
+    // bonus slot. The regular shop tops out at RARE — epics and legendaries are
+    // reserved for boss rewards and the rare shop's late-game tier so they stay
+    // a treat.
     createMerchantBonusItem(cardGenerator, floor) {
-        let quality = floor >= 30 ? 'epic' : floor >= 15 ? 'rare' : 'uncommon';
+        let quality = floor >= 15 ? 'rare' : 'uncommon';
         const type = Math.random() < 0.5 ? 'weapon' : 'armor';
         let item = cardGenerator.createCardData(type, floor, false, null, quality);
         if (!item) return null;

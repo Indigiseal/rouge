@@ -96,37 +96,52 @@ export function showItemTooltip(scene, data, anchorX, anchorY) {
         fontFamily: '"HoMM Pixel"',
         wordWrap: { width: maxWidth },
         align: 'center',
-    }).setOrigin(0.5, 0);
+    }).setOrigin(0, 0);
 
     const bodyText = lines.body
-        ? scene.add.text(0, nameText.height + 3, lines.body, {
+        ? scene.add.text(0, Math.ceil(nameText.height) + 3, lines.body, {
             fontSize: '10px',
             fill: '#dddddd',
             fontFamily: '"HoMM Pixel"',
             wordWrap: { width: maxWidth },
             align: 'center',
             lineSpacing: 2,
-        }).setOrigin(0.5, 0)
+        }).setOrigin(0, 0)
         : null;
 
-    const contentWidth = Math.max(nameText.width, bodyText?.width ?? 0);
-    const contentHeight = nameText.height + (bodyText ? bodyText.height + 3 : 0);
-    const boxWidth = Math.min(maxWidth, contentWidth) + padX * 2;
-    const boxHeight = contentHeight + padY * 2;
+    // Round ALL dimensions and positions to whole pixels. Phaser's text
+    // measureText returns sub-pixel widths (e.g. 92.4 px), which cascade
+    // into fractional container positions. With pixelArt/roundPixels on,
+    // adding a fractional-positioned object on hover causes Phaser's
+    // renderer to nudge the camera by a half-pixel as it re-snaps the
+    // frame, visually shifting every other sprite by 1 px to the left.
+    const nameWidth = Math.ceil(nameText.width);
+    const bodyWidth = Math.ceil(bodyText?.width ?? 0);
+    const nameHeight = Math.ceil(nameText.height);
+    const bodyHeight = Math.ceil(bodyText?.height ?? 0);
+    const contentWidth = Math.max(nameWidth, bodyWidth);
+    const contentHeight = nameHeight + (bodyText ? bodyHeight + 3 : 0);
+    const boxWidth = Math.ceil(Math.min(maxWidth, contentWidth) + padX * 2);
+    const boxHeight = Math.ceil(contentHeight + padY * 2);
 
     const bg = scene.add.rectangle(0, 0, boxWidth, boxHeight, 0x1a120a, 0.95)
         .setStrokeStyle(1, 0xb89968)
-        .setOrigin(0.5, 0);
+        .setOrigin(0, 0);
 
-    let tipY = anchorY - 60 - boxHeight;
-    if (tipY < 4) tipY = anchorY + 60;
+    let tipY = Math.round(anchorY) - 60 - boxHeight;
+    if (tipY < 4) tipY = Math.round(anchorY) + 60;
     const cam = scene.cameras?.main;
     const screenW = cam?.width || 640;
-    const tipX = Phaser.Math.Clamp(
-        anchorX,
-        boxWidth / 2 + 4,
-        screenW - boxWidth / 2 - 4
-    );
+    const tipX = Math.round(Phaser.Math.Clamp(
+        Math.round(anchorX) - Math.round(boxWidth / 2),
+        4,
+        screenW - boxWidth - 4
+    ));
+
+    nameText.setPosition(Math.round((boxWidth - nameWidth) / 2), padY);
+    if (bodyText) {
+        bodyText.setPosition(Math.round((boxWidth - bodyWidth) / 2), padY + nameHeight + 3);
+    }
 
     const children = [bg, nameText];
     if (bodyText) children.push(bodyText);

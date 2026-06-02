@@ -2,6 +2,7 @@
 import { CardDataGenerator } from './CardDataGenerator.js';
 import { SoundHelper } from './utils/SoundHelper.js';
 import { showItemTooltip, hideItemTooltip } from './utils/ItemTooltip.js';
+import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 
 export class CardSystem {
     constructor(scene) {
@@ -348,6 +349,13 @@ export class CardSystem {
       // Optional caller override: clamp the bottom of the usable area so the
       // cluster stays above e.g. the shop's inventory bar.
       if (typeof opts.areaBottom === 'number') areaBottom = Math.min(areaBottom, opts.areaBottom);
+      // Optional caller override: widen the usable area when an extension
+      // panel (the wing) is being shown so cards actually spread into the
+      // extra space instead of crowding the original panel.
+      const extraRight = Math.max(0, opts.extraRightWidth || 0);
+      const extraLeft  = Math.max(0, opts.extraLeftWidth  || 0);
+      areaRight += extraRight;
+      areaLeft  -= extraLeft;
 
       const areaW = Math.max(10, areaRight - areaLeft);
       const areaH = Math.max(10, areaBottom - areaTop);
@@ -355,7 +363,11 @@ export class CardSystem {
       const heightUnits = (maxR  - minR ) + 1;
       // a little breathing room
       const padX = 24, padY = 24;
-      const HSTEP = Math.min((areaW - padX) / Math.max(1, widthUnits), 65);
+      // Cap on per-cell horizontal step. Default 65 keeps small clusters
+      // from spreading out absurdly; callers extending the area can raise
+      // it so cards actually use the new room.
+      const maxHStep = opts.maxHStep ?? 65;
+      const HSTEP = Math.min((areaW - padX) / Math.max(1, widthUnits), maxHStep);
       const VSTEP = Math.min((areaH - padY) / Math.max(1, heightUnits), 75);
       const cx = areaLeft + areaW / 2 + 40;
       const cy = areaTop  + areaH / 2 - 27;
@@ -371,14 +383,66 @@ export class CardSystem {
       const xp = c + ((r & 1) ? 0.5 : 0);        // primitive x' (offset for odd rows = brick stagger)
       const x  = place.cx + (xp - place.midXp) * place.HSTEP;
       const y  = place.cy + (r  - place.midR)  * place.VSTEP;
-      return { x, y };
+      // Snap to integer pixels. Sub-pixel positions caused the whole board
+      // to look like it shifted 1px every time a card hovered/tweened — the
+      // pixel-rounded render position would alternate as decimals carried.
+      return { x: Math.round(x), y: Math.round(y) };
     }
 
     clearFloorBoardPanel() {
+      // Tear down the side-extra panel first; it sits behind the main board
+      // and shares its lifecycle.
+      if (this.sideExtraPanel) {
+        this.scene.tweens.killTweensOf(this.sideExtraPanel);
+        this.sideExtraPanel.destroy();
+        this.sideExtraPanel = null;
+      }
       if (!this.floorBoardPanel) return;
       this.scene.tweens.killTweensOf(this.floorBoardPanel);
       this.floorBoardPanel.destroy();
       this.floorBoardPanel = null;
+    }
+
+    // Slides a wing-shaped extra board out from under the main panel for
+    // crowded boards (lots of cards, or shops with bonus slots). Pass
+    // side='left' to flip the art horizontally for left-side reveal.
+    // animate=false drops it straight into its final position.
+    createSideExtraPanel(side = 'right', { animate = true, delayMs = 200 } = {}) {
+      if (!this.floorBoardPanel) return;
+      if (!this.scene.textures.exists('gamingBoardSideExtra')) return;
+      // Replace any existing side panel so re-spawns don't stack.
+      if (this.sideExtraPanel) {
+        this.scene.tweens.killTweensOf(this.sideExtraPanel);
+        this.sideExtraPanel.destroy();
+        this.sideExtraPanel = null;
+      }
+
+      const main = this.floorBoardPanel;
+      const dir = side === 'left' ? -1 : 1;
+      // Start tucked behind the main board's centre, then slide outward so
+      // roughly half of the extra panel pokes past the main board edge.
+      const startX = main.x;
+      const tex = this.scene.textures.get('gamingBoardSideExtra').getSourceImage();
+      const sideW = tex.width || 200;
+      const endX  = main.x + dir * (main.displayWidth * 0.45 - sideW * 0.1);
+
+      const panel = this.scene.add.image(startX, main.y, 'gamingBoardSideExtra');
+      panel.setOrigin(0.5);
+      panel.setDepth(main.depth - 1); // sit BEHIND the main board
+      if (side === 'left') panel.setFlipX(true);
+      panel.setAlpha(animate ? 0 : 1);
+      this.sideExtraPanel = panel;
+
+      if (!animate) {
+        panel.x = endX;
+        return;
+      }
+      this.scene.tweens.add({
+        targets: panel, alpha: 1, duration: 180, delay: delayMs
+      });
+      this.scene.tweens.add({
+        targets: panel, x: endX, duration: 420, delay: delayMs, ease: 'Cubic.easeOut'
+      });
     }
 
     // Public: tears down every board card and the board panel.
@@ -517,13 +581,20 @@ export class CardSystem {
     }
     // ===== FLOOR-SCALED CARD COUNT =====
     static MIN_CARDS = 6;
-    static MAX_CARDS = 18; // was 22 — late floors flooded the board; trimmed so each card matters
+    static MAX_CARDS = 16;
     static ELITE_MULT = 1.15;
-    // 1..45 -> 6..26 (linear). Clamp to be safe.
+    // Piecewise card-count curve. Tuned via the balance sim — the old 6→18
+    // linear ramp made late floors a loot firehose with only 3-4 enemies.
+    // The new piecewise shape gives the player enough merge fodder while
+    // letting ensureEnemyMinimum push enemies up to 30-35% of the board.
+    //   Act 1 (1-15) :  6 → 11
+    //   Act 2 (16-30): 11 → 14
+    //   Act 3 (31-45): 14 → 16
     _baseCardsForFloor(cf) {
-        const clamped = Math.max(1, Math.min(45, cf));
-        const t = (clamped - 1) / 44; // 0..1
-        return Math.round(CardSystem.MIN_CARDS + t * (CardSystem.MAX_CARDS - CardSystem.MIN_CARDS));
+        const f = Math.max(1, Math.min(45, cf));
+        if (f <= 15)      return Math.round(6  + ((f - 1)  / 14) * (11 - 6));
+        else if (f <= 30) return Math.round(11 + ((f - 15) / 15) * (14 - 11));
+        else              return Math.round(14 + ((f - 30) / 15) * (16 - 14));
     }
     _effectiveCardCount(roomType, cf) {
         const base = this._baseCardsForFloor(cf);
@@ -562,9 +633,14 @@ export class CardSystem {
       const cardCount = this._effectiveCardCount ? this._effectiveCardCount(roomType, cf) : Math.min(6 + Math.floor((cf - 1) * (20 / 44)), 26);
       // 1) build a connected brick "blob" for a nicer cluster
       const cells = this.buildCompactBrickCluster(cardCount);
-      // 2) compute steps & centering for current camera
-      const place = this.computePlacement(cells);
+      // 2) compute steps & centering. Crowded boards request a widened area
+      // and a larger per-cell step so cards actually use the wing panel.
+      const wantsWing = cardCount > 14;
+      const place = wantsWing
+        ? this.computePlacement(cells, { extraRightWidth: 100, maxHStep: 78 })
+        : this.computePlacement(cells);
       this.createFloorBoardPanel(cells, place, true);
+      if (wantsWing) this.createSideExtraPanel('right', { delayMs: 260 });
       // Cache layout so mid-floor respawns (Echo Stone relic) can reuse positions.
       this._boardCells = cells;
       this._boardPlace = place;
@@ -579,7 +655,7 @@ export class CardSystem {
         const { x, y } = this.brickToPixel(r, c, place);
         const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
         shadow.setAlpha(0);
-        const cardSprite = this.scene.add.sprite(x, y, 'cardBack');
+        const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, 'cardBack'));
         cardSprite.setScale(1);          // tweak if you want tighter/looser
         cardSprite.setInteractive();
         cardSprite.on('pointerdown', () => this.revealCard(i));
@@ -588,6 +664,8 @@ export class CardSystem {
           if (card && !card.revealed) {
             shadow.setAlpha(1);
             this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
+            cardSprite.setTexture('cardBack');
+            snapOriginToPixelGrid(cardSprite);
             cardSprite.play('card_hover_anim');
           }
         });
@@ -596,23 +674,28 @@ export class CardSystem {
           if (card && !card.revealed) {
             shadow.setAlpha(0);
             this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
+            cardSprite.stop();
+            cardSprite.setTexture('cardBack');
+            snapOriginToPixelGrid(cardSprite);
           }
         });
+        // Act 1 keeps the single-trap cap; act 2+ can stack two traps per
+        // floor to punish careless flips on harder runs.
+        const trapCap = cf <= 15 ? 1 : 2;
         let type = this.pickCardType(cf);
-        if (type === 'trap' && trapsPlaced >= 1) {
+        if (type === 'trap' && trapsPlaced >= trapCap) {
           type = this.pickCardType(cf, ['trap']);
         }
         if (type === 'key' && keysPlaced >= 1) {
-          // Cap keys at one per floor — re-roll excluding 'key' (and trap if already capped)
           const exclude = ['key'];
-          if (trapsPlaced >= 1) exclude.push('trap');
+          if (trapsPlaced >= trapCap) exclude.push('trap');
           type = this.pickCardType(cf, exclude);
         }
         if (type === 'gem' && gemsPlaced >= 2) {
           // Cap gems at two per floor — re-roll excluding 'gem' (and any other
           // already-capped types) so floors don't hand out a stack of sockets.
           const exclude = ['gem'];
-          if (trapsPlaced >= 1) exclude.push('trap');
+          if (trapsPlaced >= trapCap) exclude.push('trap');
           if (keysPlaced >= 1) exclude.push('key');
           if (emptyPlaced >= 1) exclude.push('empty');
           type = this.pickCardType(cf, exclude);
@@ -621,7 +704,7 @@ export class CardSystem {
           // Cap "nothing" cards at one per floor — re-roll excluding 'empty'
           // (and any other already-capped types).
           const exclude = ['empty'];
-          if (trapsPlaced >= 1) exclude.push('trap');
+          if (trapsPlaced >= trapCap) exclude.push('trap');
           if (keysPlaced >= 1) exclude.push('key');
           if (gemsPlaced >= 2) exclude.push('gem');
           type = this.pickCardType(cf, exclude);
@@ -820,9 +903,9 @@ export class CardSystem {
             shadow.setAlpha(notACard ? 0 : 1);
 
             const spriteKey = item.sprite || 'cardBack';
-            const cardSprite = item.spriteFrame !== undefined
+            const cardSprite = snapOriginToPixelGrid(item.spriteFrame !== undefined
                 ? this.scene.add.sprite(x, cardY, spriteKey, item.spriteFrame)
-                : this.scene.add.sprite(x, cardY, spriteKey);
+                : this.scene.add.sprite(x, cardY, spriteKey));
             cardSprite.setScale(1);
             cardSprite.setInteractive({ useHandCursor: true });
 
@@ -932,9 +1015,9 @@ export class CardSystem {
 
         // Build a new sprite already in the "revealed" state
         const spriteKey = newData.sprite || 'cardBack';
-        const newSprite = newData.spriteFrame !== undefined
+        const newSprite = snapOriginToPixelGrid(newData.spriteFrame !== undefined
             ? this.scene.add.sprite(x, y, spriteKey, newData.spriteFrame)
-            : this.scene.add.sprite(x, y, spriteKey);
+            : this.scene.add.sprite(x, y, spriteKey));
         newSprite.setScale(1);
         newSprite.setInteractive();
         newSprite.on('pointerdown', () => this.interactWithCard(index));
@@ -978,6 +1061,7 @@ export class CardSystem {
 
         const spriteKey = card.data.sprite || 'default_enemy';
         card.sprite.setTexture(spriteKey, card.data.spriteFrame);
+        snapOriginToPixelGrid(card.sprite);
         this.createCardInfoText(card);
         SoundHelper.playSound(this.scene, 'card_flip', 0.4);
         this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Trap! Remember…', 0xff6644);
@@ -996,6 +1080,7 @@ export class CardSystem {
                 onComplete: () => {
                     if (!card.sprite || !card.sprite.scene) return;
                     card.sprite.setTexture('cardBack');
+                    snapOriginToPixelGrid(card.sprite);
                     if (card.infoText) {
                         if (card.infoText.list) card.infoText.destroy(true);
                         else card.infoText.destroy();
@@ -1082,9 +1167,13 @@ export class CardSystem {
     // way too easy). Runs AFTER limitEnemyDensity so the cap isn't undone.
     ensureEnemyMinimum(floor, roomType) {
       if (!this.boardCards?.length || roomType === 'BOSS') return;
-      // Small floor — just kill the "0/1 enemy free-loot floor" case; most
-      // floors already have plenty of enemies from the weights.
-      const minRatio = floor <= 14 ? 0.12 : 0.16;
+      // Sim showed the old 12/16% ratios let the player kill a few enemies
+      // then loot the rest of the board — way too easy. Act 2 jumps to 35%
+      // and act 3 to 45%, so most cards on the board are fights.
+      const minRatio =
+          floor <= 15 ? 0.18 :   // act 1 — gentle
+          floor <= 30 ? 0.28 :   // act 2 — fights become majority
+                        0.33;    // act 3 — pressure without wall
       const bonus = roomType === 'ELITE' ? 1 : 0;
       const minEnemies = Math.max(2, Math.round(this.boardCards.length * minRatio) + bonus);
       const isEnemy = (c) => c?.data?.type === 'enemy' || c?.data?.type === 'boss';
@@ -1115,7 +1204,7 @@ export class CardSystem {
         const bossOffsetY = bossData.name === 'Spider Queen' ? -100 : 0;
         const y = cam.height / 2 + bossOffsetY;
         this.createBossBoardPanel();
-        const cardSprite = this.scene.add.image(x, y, bossData.sprite);
+        const cardSprite = snapOriginToPixelGrid(this.scene.add.image(x, y, bossData.sprite));
         this.playBossEntrance(cardSprite, bossData);
         
         const card = {
@@ -1221,6 +1310,7 @@ export class CardSystem {
                 let spriteKey = card.data.sprite || 'default_enemy';
                 if (card.data.name === 'Mimic') spriteKey = 'mimic';
                 card.sprite.setTexture(spriteKey, card.data.spriteFrame);
+                snapOriginToPixelGrid(card.sprite);
             } else if (card.data.type === 'empty') {
                 // "Nothing" card: don't render any tile body. Replace the
                 // flipped sprite with an invisible hit target so the slot
@@ -1337,14 +1427,13 @@ export class CardSystem {
         switch (card.data.type) {
             case 'enemy':
             case 'boss':
-                // Role is shown by the corner marker (attachRoleMarker), not text.
-                infoText = `${card.data.health}HP ${card.data.attack}ATK`;
-
-                if (card.data.abilities && card.data.abilities.some(a => a.type === 'evade')) {
-                    infoText += ' (Evasive)';
-                }
-                if (card.data.name === 'Mimic') infoText += ' (Surprise Attack)';
-                break;
+                // Enemy HP/ATK are rendered as two small numbers tucked into
+                // the lower corners of the card art itself — no descriptive
+                // text below the card. The new enemy sprites already bake the
+                // melee/ranged/poison badges into the art, so the old role
+                // and poison marker sprites are gone too.
+                this._buildEnemyCornerStats(card);
+                return;
                 
             case 'coin':
                 const coinLabel = this.scene.add.text(x, card.sprite.y + 7, 'Coins', {
@@ -1434,20 +1523,20 @@ export class CardSystem {
                 container.add(damageText);
 
                 const startY = -27;
-                const dotSpacing = 7;
-                const tenDurabilitySpacing = 12;
+                const dotSpacing = 6;
+                const tenDurabilitySpacing = 11;
                 const tensCount = Math.floor(card.data.durability / 10);
                 const remainingDots = card.data.durability % 10;
                 let currentY = startY;
 
                 for (let i = 0; i < tensCount; i++) {
-                    const tenSprite = this.scene.add.image(-19, currentY, 'ten_durability');
+                    const tenSprite = snapOriginToPixelGrid(this.scene.add.image(-19, currentY, 'ten_durability'));
                     container.add(tenSprite);
                     currentY += tenDurabilitySpacing;
                 }
 
                 for (let i = 0; i < remainingDots; i++) {
-                    const dot = this.scene.add.image(-19, currentY + (i * dotSpacing), 'durability_dot');
+                    const dot = snapOriginToPixelGrid(this.scene.add.image(-19, currentY + (i * dotSpacing), 'durability_dot'));
                     container.add(dot);
                 }
 
@@ -1469,16 +1558,6 @@ export class CardSystem {
             case 'weapon': {
                 const container = this.scene.add.container(card.sprite.x, card.sprite.y);
                 
-                // Add weapon type indicator
-                const weaponTypeText = this.isRangedWeapon(card.data) ? 'Ranged' :
-                                       this.isMeleeWeapon(card.data) ? 'Melee' : 'Unknown';
-                const typeLabel = this.scene.add.text(0, -40, weaponTypeText, {
-                    fontSize: '9px',
-                    fill: '#aaaaaa',
-                    fontFamily: '"HoMM Pixel"'
-                }).setOrigin(0.5);
-                container.add(typeLabel);
-                
                 const damageText = this.scene.add.text(17, 22, `${card.data.damage}`, {
                     fontSize: '11px',
                     fill: '#ffcf7f',
@@ -1488,8 +1567,8 @@ export class CardSystem {
                 
                 // Durability display with 10-point sprites and individual dots
                 const startY = -27;
-                const dotSpacing = 7;
-                const tenDurabilitySpacing = 12; // Space between 10-point sprites
+                const dotSpacing = 6;
+                const tenDurabilitySpacing = 11; // Space between 10-point sprites
                 
                 const tensCount = Math.floor(card.data.durability / 10);
                 const remainingDots = card.data.durability % 10;
@@ -1498,14 +1577,14 @@ export class CardSystem {
                 
                 // Add 10-durability sprites
                 for (let i = 0; i < tensCount; i++) {
-                    const tenSprite = this.scene.add.image(-19, currentY, 'ten_durability');
+                    const tenSprite = snapOriginToPixelGrid(this.scene.add.image(-19, currentY, 'ten_durability'));
                     container.add(tenSprite);
                     currentY += tenDurabilitySpacing;
                 }
                 
                 // Add remaining individual dots
                 for (let i = 0; i < remainingDots; i++) {
-                    const dot = this.scene.add.image(-19, currentY + (i * dotSpacing), 'durability_dot');
+                    const dot = snapOriginToPixelGrid(this.scene.add.image(-19, currentY + (i * dotSpacing), 'durability_dot'));
                     container.add(dot);
                 }
                 
@@ -1525,8 +1604,8 @@ export class CardSystem {
                 
                 // Durability display with 10-point sprites and individual dots
                 const startY = -25;
-                const dotSpacing = 7;
-                const tenDurabilitySpacing = 12; // Space between 10-point sprites
+                const dotSpacing = 6;
+                const tenDurabilitySpacing = 11; // Space between 10-point sprites
                 
                 const tensCount = Math.floor(card.data.durability / 10);
                 const remainingDots = card.data.durability % 10;
@@ -1535,14 +1614,14 @@ export class CardSystem {
                 
                 // Add 10-durability sprites
                 for (let i = 0; i < tensCount; i++) {
-                    const tenSprite = this.scene.add.image(-22, currentY, 'ten_durability');
+                    const tenSprite = snapOriginToPixelGrid(this.scene.add.image(-22, currentY, 'ten_durability'));
                     container.add(tenSprite);
                     currentY += tenDurabilitySpacing;
                 }
                 
                 // Add remaining individual dots
                 for (let i = 0; i < remainingDots; i++) {
-                    const dot = this.scene.add.image(-22, currentY + (i * dotSpacing), 'durability_dot');
+                    const dot = snapOriginToPixelGrid(this.scene.add.image(-22, currentY + (i * dotSpacing), 'durability_dot'));
                     container.add(dot);
                 }
                 
@@ -1595,40 +1674,48 @@ export class CardSystem {
             }).setOrigin(0.5);
         }
 
-        // Stamp a role marker (melee/ranged) and a poison marker on enemy & boss cards.
-        this.attachRoleMarker(card);
-        this.attachPoisonMarker(card);
+        // Old role/poison markers used the enemyCardType.png sprite sheet. The
+        // new enemy artwork already includes those badges, and stat numbers
+        // now live in the card corners — so nothing extra to stamp here.
     }
 
-    // Adds a small badge to enemy/boss cards: frame 0 = melee, frame 1 = ranged.
-    // Called from createCardInfoText (the shared reveal/refresh point), so it runs
-    // for every reveal path. Destroys any prior marker to avoid duplicates on refresh.
-    attachRoleMarker(card) {
+    // Renders HP (bottom-left, red) and ATK (bottom-right, orange) directly
+    // on top of the card art. Both numbers share a container stored on
+    // card.infoText, so the existing reveal/update/teardown plumbing handles
+    // them without changes.
+    _buildEnemyCornerStats(card) {
         if (!card?.sprite || !card.data) return;
-        const t = card.data.type;
-        if (t !== 'enemy' && t !== 'boss' && t !== 'eliteEnemy') return;
-        if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
-        if (!this.scene.textures.exists('enemyCardType')) return;
-        const frame = card.data.role === 'RANGED' ? 1 : 0;
-        // Lower-right corner of the card art.
-        const marker = this.scene.add.sprite(card.sprite.x + 22, card.sprite.y + 30, 'enemyCardType', frame)
-            .setOrigin(0.5);
-        marker.setDepth((card.sprite.depth || 1) + 1);
-        card.roleMarker = marker;
-    }
 
-    attachPoisonMarker(card) {
-        if (!card?.sprite || !card.data) return;
-        const t = card.data.type;
-        if (t !== 'enemy' && t !== 'boss' && t !== 'eliteEnemy') return;
-        if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
-        if (!card.data.abilities?.some(a => a.type === 'poison')) return;
-        if (!this.scene.textures.exists('enemyCardType')) return;
-        // Lower-left corner of the card, mirroring the role marker at lower-right.
-        const marker = this.scene.add.sprite(card.sprite.x - 22, card.sprite.y + 30, 'enemyCardType', 2)
-            .setOrigin(0.5);
-        marker.setDepth((card.sprite.depth || 1) + 1);
-        card.poisonMarker = marker;
+        // Corner inset (px from the card centre). Tuned to drop into the
+        // little stat-plate slots painted onto the new card art — HP to the
+        // bottom-left, ATK to the bottom-right.
+        const dx = 18;   // pulled further inward so the digits sit in the slots
+        const dy = 27;   // raised 5px from the original bottom edge
+
+        const style = (fill) => ({
+            fontSize: '11px',
+            fill,
+            fontFamily: '"HoMM Pixel"',
+        });
+
+        // Dark fills with a thin white outline for legibility on the busy
+        // enemy art. HP keeps a red tint, ATK a warm amber.
+        const hpText = this.scene.add.text(
+            -dx, dy, `${card.data.health ?? 0}`, style('#5a0000')
+        ).setOrigin(0.5);
+        const atkText = this.scene.add.text(
+            dx, dy, `${card.data.attack ?? 0}`, style('#3a1f00')
+        ).setOrigin(0.5);
+
+        const container = this.scene.add.container(card.sprite.x, card.sprite.y, [hpText, atkText]);
+        container.setDepth((card.sprite.depth || 1) + 2);
+
+        // Tag the child texts so updateEnemyInfoText can refresh in place
+        // without rebuilding the whole container.
+        container._hpText = hpText;
+        container._atkText = atkText;
+
+        card.infoText = container;
     }
 
     getGemLabel(gem) {
@@ -1975,7 +2062,7 @@ export class CardSystem {
         const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
         shadow.setAlpha(0);
         
-        const cardSprite = this.scene.add.sprite(x, y, summonedEnemy.sprite);
+        const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, summonedEnemy.sprite));
         cardSprite.setAlpha(0);
         cardSprite.setInteractive();
         
@@ -2032,7 +2119,7 @@ export class CardSystem {
 
         const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
         shadow.setAlpha(0);
-        const cardSprite = this.scene.add.sprite(x, y, 'cardBack');
+        const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, 'cardBack'));
         cardSprite.setScale(1);
         cardSprite.setInteractive();
         cardSprite.on('pointerdown', () => this.revealCard(slot));
@@ -2041,6 +2128,8 @@ export class CardSystem {
             if (c && !c.revealed) {
                 shadow.setAlpha(1);
                 this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
+                cardSprite.setTexture('cardBack');
+                snapOriginToPixelGrid(cardSprite);
                 if (this.scene.anims.exists('card_hover_anim')) cardSprite.play('card_hover_anim');
             }
         });
@@ -2049,6 +2138,9 @@ export class CardSystem {
             if (c && !c.revealed) {
                 shadow.setAlpha(0);
                 this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
+                cardSprite.stop();
+                cardSprite.setTexture('cardBack');
+                snapOriginToPixelGrid(cardSprite);
             }
         });
 
@@ -2492,31 +2584,29 @@ export class CardSystem {
     }
     
     updateEnemyInfoText(card) {
-        if (!card) return;
-        // Role is shown by the corner marker (attachRoleMarker), not text.
-        let infoText = `${card.data.health}HP ${card.data.attack}ATK`;
-        const poisonSummary = this.getEnemyPoisonSummary(card.data);
-        if (poisonSummary) infoText += ` (Poison x${poisonSummary.stacks})`;
-        if (card.data.abilities && card.data.abilities.some(a => a.type === 'evade')) {
-            infoText += ' (Evasive)';
-        }
-        if (card.data.name === 'Mimic') infoText += ' (Surprise Attack)';
+        if (!card?.data || !card.sprite) return;
 
-        // Phaser objects that have been destroyed still leave a truthy
-        // reference behind but their methods are stripped. Treat any
-        // missing setText as "stale" and rebuild a fresh text label so
-        // attacks don't crash on lingering corpses of UI objects.
-        const t = card.infoText;
-        if (t && typeof t.setText === 'function') {
-            try { t.setText(infoText); return; } catch (_) { /* fall through to rebuild */ }
+        // Fast path: the corner-stat container we built in createCardInfoText
+        // exposes _hpText / _atkText. Refresh those in place when they're
+        // still valid Phaser objects.
+        const container = card.infoText;
+        const hpText = container?._hpText;
+        const atkText = container?._atkText;
+        if (hpText && atkText
+            && typeof hpText.setText === 'function'
+            && typeof atkText.setText === 'function') {
+            try {
+                hpText.setText(`${card.data.health ?? 0}`);
+                atkText.setText(`${card.data.attack ?? 0}`);
+                return;
+            } catch (_) { /* fall through to rebuild */ }
         }
-        try { if (t && typeof t.destroy === 'function') t.destroy(); } catch (_) {}
+
+        // Stale or wrong-shaped container — drop and rebuild via the standard
+        // reveal path so styling stays consistent.
+        try { if (container && typeof container.destroy === 'function') container.destroy(true); } catch (_) {}
         card.infoText = null;
-        // Rebuild via the standard path so the same styling/font logic
-        // applies as on initial reveal.
-        if (typeof this.createCardInfoText === 'function' && card.sprite) {
-            this.createCardInfoText(card);
-        }
+        this._buildEnemyCornerStats(card);
     }
     
     createCardData(type, floor, isElite = false, gameState = null, targetRarity = null) {

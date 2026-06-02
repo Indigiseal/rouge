@@ -7,82 +7,112 @@ export class MainMenuScene extends Phaser.Scene {
     
     create() {
         this.saveManager = new SaveManager();
-        
+
         // Load saved settings
         this.loadSettings();
-        
-        // Background
-        this.add.rectangle(320, 180, 640, 360, 0x1a1a1a);
-        
-        // Title
-        this.add.text(320, 80, 'DUNGEON CARDS', {
-            fontSize: '48px',
-            fill: '#ffd700',
-            fontFamily: '"HoMM Pixel"',
-            fontStyle: 'bold'
-        }).setOrigin(0.5);
-        
-        // Subtitle
-        this.add.text(320, 120, 'A Roguelike Card Adventure', {
-            fontSize: '16px',
-            fill: '#cccccc',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
-        
+
+        // Background image (640×360, covers exactly the game canvas)
+        if (this.textures.exists('mainBG')) {
+            this.add.image(320, 180, 'mainBG');
+        } else {
+            this.add.rectangle(320, 180, 640, 360, 0x1a1a1a);
+        }
+
         // Main menu buttons
         this.createMainMenuButtons();
-        
+
         // Version text
         this.add.text(10, 350, 'v1.0.0', {
             fontSize: '12px',
-            fill: '#666666',
+            fill: '#888888',
             fontFamily: '"HoMM Pixel"'
         });
     }
     
     createMainMenuButtons() {
-        // New Run button
-        const newRunButton = this.createButton(320, 180, 200, 40, 'New Run', 0x00ff00, () => {
-            this.startNewGame();
-        });
-        
-        // Check if there's a current run to continue
         const hasSavedRun = this.saveManager.hasCurrentRun();
-        
-        // Continue button is enabled if there's a saved run
-        const continueButton = this.createButton(320, 230, 200, 40, 'Continue', 
-            hasSavedRun ? 0x00aaff : 0x666666, () => {
-                if (hasSavedRun) this.continueGame();
-            }, !hasSavedRun);
-        
-        // Options button
-        const optionsButton = this.createButton(320, 280, 200, 40, 'Options', 0xffaa00, () => {
-            this.showOptionsMenu();
-        });
-        
-        // Exit button
-        const exitButton = this.createButton(320, 330, 200, 40, 'Exit Game', 0xff6666, () => {
-            this.exitGame();
-        });
+        // 6px visible gap between buttons (29px tall + 6px = 35px center-to-center)
+        this.createSpriteButton(320, 104, 'New Run',   () => this.startNewGame());
+        this.createSpriteButton(320, 139, 'Continue',  hasSavedRun ? () => this.continueGame() : null);
+        this.createSpriteButton(320, 174, 'Options',   () => this.showOptionsMenu());
+        this.createSpriteButton(320, 209, 'Exit Game', () => this.exitGame());
     }
-    
+
+    // Sprite-based button using nextTurnUp (normal) / nextTurnDown (pressed).
+    // Pass null for callback to render the button as disabled (greyed out).
+    createSpriteButton(x, y, label, callback) {
+        const disabled = !callback;
+
+        // Drop shadow that matches the button's silhouette: a black-tinted
+        // copy of the button image, offset straight down (no sideways shift)
+        // for a clean "lifted off the page" look.
+        const hasSprite = this.textures.exists('nextTurnUp') && this.textures.exists('nextTurnDown');
+        let shadow;
+        if (hasSprite) {
+            shadow = this.add.image(x, y + 5, 'nextTurnUp').setOrigin(0.5)
+                .setTint(0x000000)
+                .setAlpha(disabled ? 0 : 0.7);
+        } else {
+            shadow = this.add.rectangle(x, y + 5, 90, 29, 0x000000, disabled ? 0 : 0.7).setOrigin(0.5);
+        }
+        let btn;
+        if (hasSprite) {
+            btn = this.add.image(x, y, 'nextTurnUp').setOrigin(0.5);
+            if (disabled) btn.setAlpha(0.35);
+        } else {
+            btn = this.add.rectangle(x, y, 120, 29, disabled ? 0x444444 : 0x888888)
+                .setStrokeStyle(1, 0xffffff);
+        }
+
+        const txt = this.add.text(x, y, label, {
+            fontSize: '14px',
+            fill: disabled ? '#888888' : '#ffffff',
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5);
+
+        if (!disabled) {
+            btn.setInteractive({ useHandCursor: true })
+                .on('pointerover', () => {
+                    // Lighten on hover
+                    if (hasSprite) btn.setTint(0xdddddd);
+                })
+                .on('pointerout', () => {
+                    btn.clearTint();
+                    if (hasSprite) btn.setTexture('nextTurnUp');
+                    txt.setY(y);
+                })
+                .on('pointerdown', () => {
+                    if (hasSprite) btn.setTexture('nextTurnDown');
+                    txt.setY(y + 1); // subtle press down
+                })
+                .on('pointerup', () => {
+                    if (hasSprite) btn.setTexture('nextTurnUp');
+                    txt.setY(y);
+                    callback();
+                });
+        }
+
+        return { button: btn, text: txt };
+    }
+
+    // Legacy rectangle button — still used by the Options / Reset dialogs.
     createButton(x, y, width, height, text, color, callback, disabled = false) {
         const button = this.add.rectangle(x, y, width, height, color, disabled ? 0.2 : 0.3)
             .setStrokeStyle(2, color);
-        
+
         const buttonText = this.add.text(x, y, text, {
             fontSize: '18px',
             fill: disabled ? '#666666' : '#ffffff',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
-        
+
         if (!disabled) {
             button.setInteractive({ useHandCursor: true })
                 .on('pointerover', () => button.setFillStyle(color, 0.5))
                 .on('pointerout', () => button.setFillStyle(color, 0.3))
                 .on('pointerdown', callback);
         }
-        
+
         return { button, text: buttonText };
     }
     

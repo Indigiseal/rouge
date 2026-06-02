@@ -113,9 +113,11 @@ export class RareShopScene extends StationRoomBase {
     }
 
     // Rare shop's bonus slot — capped via capRewardRarity so it follows the
-    // same act-based schedule as boss rewards and chests.
+    // same act-based schedule as boss rewards and chests. Act-3 threshold
+    // raised so epics don't appear the instant act 3 starts; they wait until
+    // mid-act 3 when the player has the gold for the rare shop anyway.
     createMerchantBonusItem(cardGenerator, floor) {
-        const rawQuality = floor >= 30 ? 'epic' : 'rare';
+        const rawQuality = floor >= 38 ? 'epic' : 'rare';
         const quality = cardGenerator.capRewardRarity(rawQuality, floor);
         const type = Math.random() < 0.5 ? 'weapon' : 'armor';
         let item = cardGenerator.createCardData(type, floor, false, null, quality);

@@ -180,11 +180,13 @@ export class CardDataGenerator {
         // REMOVED reflection property from all armor types
         this.armorUnlocks = {
             leather: {
-                common:    { floor: 1,  protection: 1, dodgeChance: 0.1,  sprite: 'leather_C' },
-                uncommon:  { floor: 4,  protection: 2, dodgeChance: 0.15, sprite: 'leather_U' },
-                rare:      { floor: 8,  protection: 3, dodgeChance: 0.2,  sprite: 'leather_R' },
-                epic:      { floor: 10, protection: 4, dodgeChance: 0.22, sprite: 'leather_E' },
-                legendary: { floor: 13, protection: 5, dodgeChance: 0.25, sprite: 'leather_L' }
+                // Dodge ladder rebalanced — legendary caps at 15% (was 25%);
+                // lower tiers scaled down so the gradient stays meaningful.
+                common:    { floor: 1,  protection: 1, dodgeChance: 0.05, sprite: 'leather_C' },
+                uncommon:  { floor: 4,  protection: 2, dodgeChance: 0.08, sprite: 'leather_U' },
+                rare:      { floor: 8,  protection: 3, dodgeChance: 0.10, sprite: 'leather_R' },
+                epic:      { floor: 10, protection: 4, dodgeChance: 0.12, sprite: 'leather_E' },
+                legendary: { floor: 13, protection: 5, dodgeChance: 0.15, sprite: 'leather_L' }
             },
             chain: {
                 // Act 2 armor — appears fresh at the act-2 start (floor 16) and merges
@@ -1074,10 +1076,14 @@ export class CardDataGenerator {
         else if (floor <= 15)  weights = [70, 25, 5,  0];
         else if (floor <= 20)  weights = [55, 35, 10, 0];   // early act 2 — no epics yet
         else if (floor <= 25)  weights = [40, 40, 20, 0];   // mid act 2   — no epics yet
-        else if (floor <= 30)  weights = [25, 40, 30, 5];   // late act 2  — epics begin
-        else if (floor <= 35)  weights = [10, 35, 40, 15];  // early act 3
-        else if (floor <= 40)  weights = [5,  25, 45, 25];  // mid act 3
-        else                   weights = [0,  15, 45, 40];  // late act 3
+        else if (floor <= 30)  weights = [25, 45, 28, 2];   // late act 2  — epics very rare
+        // Act 3 (rebalance): playtest showed the old weights flooded act 3
+        // with epics & rares. The new curve keeps uncommons + rares dominant
+        // through act 3, with epics as a slow-arriving treat — boss room is
+        // still where you reliably see a legendary.
+        else if (floor <= 35)  weights = [25, 50, 22, 3];   // early act 3 — uncommons still dominant
+        else if (floor <= 40)  weights = [15, 45, 33, 7];   // mid act 3   — balanced uncommon/rare
+        else                   weights = [5,  35, 45, 15];  // late act 3  — rares lead, epics scarce
         const total = weights.reduce((s, w) => s + w, 0);
         let pick = Math.random() * total;
         const tiers = ['common', 'uncommon', 'rare', 'epic'];

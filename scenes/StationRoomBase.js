@@ -6,6 +6,7 @@
 import { CardSystem } from '../cardSystem.js';
 import { SoundHelper } from '../utils/SoundHelper.js';
 import { showItemTooltip, hideItemTooltip } from '../utils/ItemTooltip.js';
+import { snapOriginToPixelGrid } from '../utils/PixelSnap.js';
 
 export class StationRoomBase extends Phaser.Scene {
     // ─── Inventory station mode ──────────────────────────────────────────────
@@ -34,9 +35,9 @@ export class StationRoomBase extends Phaser.Scene {
     // the texture isn't loaded — callers should guard.
     createItemSprite(data, x, y) {
         if (!data?.sprite || !this.textures.exists(data.sprite)) return null;
-        return data.spriteFrame !== undefined
+        return snapOriginToPixelGrid(data.spriteFrame !== undefined
             ? this.add.image(x, y, data.sprite, data.spriteFrame)
-            : this.add.image(x, y, data.sprite);
+            : this.add.image(x, y, data.sprite));
     }
 
     // Helper — flips a button to its "done" state. Use after a successful buy/take.
@@ -62,22 +63,31 @@ export class StationRoomBase extends Phaser.Scene {
         const n = this.shopItems.length;
         if (n === 0) return;
 
-        // Confine the shop board to the UPPER region so it never overlaps the
-        // inventory bar at the bottom (~y 248+). ShopScene has no background of
-        // its own, so GameScene's inventory bar shows through below the board.
-        const INVENTORY_TOP = 240;
+        // Confine the shop board so it doesn't overlap the inventory bar.
+        // The bar sits at y=309 (70px tall), so its top edge is ~274.
+        // Passing no areaBottom lets computePlacement use the same natural
+        // centring as battle rooms, matching the board position players expect.
+        const INVENTORY_TOP = 274;
+        // Shops with bonus slots or a busy lineup get the wing. We compute
+        // the placement with extra width so the cards actually spread across
+        // the main board AND the wing instead of bunching up.
+        const bonusSlots = this.gameScene?.amuletManager?.getBonusShopSlots?.() || 0;
+        const wantsWing = n >= 6 || bonusSlots > 0;
         const cells = boardHelper.buildCompactBrickCluster(n);
-        const place = boardHelper.computePlacement(cells, { areaBottom: INVENTORY_TOP });
-        // animate=false so we can reposition the board immediately without a
-        // tween overriding our y adjustment below.
+        const place = boardHelper.computePlacement(cells, {
+            areaBottom: INVENTORY_TOP,
+            ...(wantsWing ? { extraRightWidth: 100, maxHStep: 78 } : {}),
+        });
         boardHelper.createFloorBoardPanel(cells, place, false);
-        // Keep the board behind the shop cards, and shift it up so its bottom
-        // edge never reaches the inventory bar (no covering, no z-fighting).
         const panel = boardHelper.floorBoardPanel;
         if (panel) {
             panel.setDepth(-1);
             const panelBottom = panel.y + panel.displayHeight / 2;
             if (panelBottom > INVENTORY_TOP) panel.y -= (panelBottom - INVENTORY_TOP);
+        }
+        if (wantsWing) {
+            boardHelper.createSideExtraPanel('right', { delayMs: 140 });
+            if (boardHelper.sideExtraPanel) boardHelper.sideExtraPanel.setDepth(-2);
         }
 
         // Lay every item face-down (cardBack) at its brick position.
@@ -120,6 +130,7 @@ export class StationRoomBase extends Phaser.Scene {
         if (data?.sprite && this.textures.exists(data.sprite)) {
             if (data.spriteFrame !== undefined) sprite.setTexture(data.sprite, data.spriteFrame);
             else sprite.setTexture(data.sprite);
+            snapOriginToPixelGrid(sprite);
         }
         sprite.setScale(1);
 
