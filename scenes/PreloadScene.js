@@ -114,15 +114,7 @@ export class PreloadScene extends Phaser.Scene {
         // New Cards
         this.load.image('amulet', 'assets/amulet.png');
         this.load.image('key', 'assets/key.png');
-        this.load.image('AmuletOfVigor', 'assets/AmuletOfVigor.png');
-        this.load.image('MaskOfHollowWispers', 'assets/MaskOfHollowWispers.png');
         this.load.spritesheet('relicsOthers', 'assets/relicsOthers.png', { frameWidth: 32, frameHeight: 32 });
-        // Load specific amulet sprites
-        this.load.image('Healing Ring', 'assets/HealingRing.png');
-        this.load.image('Boots of Evasion', 'assets/BootsOfEvasion.png');
-        this.load.image('dragonClaw', 'assets/dragonClaw.png');
-        this.load.image('Bottomless Bag', 'assets/BottomlessBag.png');
-        this.load.image('amulet_scales_of_basilisk', 'assets/amulet_scales_of_basilisk.png');
         this.load.audio('shop_buy', 'assets/dropInBagStore.mp3');
         this.load.audio('card_flip', 'assets/flipcard-91468.mp3');
         // Load flip animation frames
@@ -169,26 +161,6 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('GoblinKingSprite', 'assets/goblinKing.png');
         this.load.image('SpiderQween', 'assets/spiderBoss.png');
 
-        // Placeholder aliases for art that was never drawn or exported.
-        this.load.image('amulet_regen', 'assets/amulet.png');
-        this.load.image('amulet_healing', 'assets/HealingRing.png');
-        this.load.image('amulet_invuln', 'assets/amulet.png');
-        this.load.image('amulet_boots', 'assets/BootsOfEvasion.png');
-        this.load.image('amulet_claw', 'assets/dragonClaw.png');
-        this.load.image('amulet_pouch', 'assets/BottomlessBag.png');
-        this.load.image('amulet_golem', 'assets/AmuletOfVigor.png');
-        this.load.image('amulet_hammer', 'assets/AmuletOfVigor.png');
-        this.load.image('amulet_chronos', 'assets/amulet_scales_of_basilisk.png');
-        this.load.image('amulet_speed', 'assets/BootsOfEvasion.png');
-        this.load.image('amulet_hourglass', 'assets/amulet_scales_of_basilisk.png');
-        this.load.image('amulet_steel', 'assets/AmuletOfVigor.png');
-        this.load.image('amulet_kitchen', 'assets/BottomlessBag.png');
-        this.load.image('amulet_vampiric', 'assets/HealingRing.png');
-        this.load.image('amulet_soul', 'assets/MaskOfHollowWispers.png');
-        this.load.image('amulet_hungry', 'assets/BottomlessBag.png');
-        this.load.image('amulet_blood', 'assets/HealingRing.png');
-        this.load.image('amulet_rage', 'assets/dragonClaw.png');
-        this.load.image('amulet_berserker', 'assets/dragonClaw.png');
         this.load.image('goblin_archer', 'assets/goblinArcher_c.png');
         this.load.image('skeleton_archer', 'assets/skeletonArcher_c.png');
         this.load.image('Lich', 'assets/giantSkeleton.png');

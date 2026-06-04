@@ -1,5 +1,7 @@
 // SaveManager.js - Complete fixed version
 
+import { applyAmuletAtlasPresentation } from './utils/RelicsOthersAtlas.js';
+
 export class SaveManager {
   constructor() {
     this.META_SAVE_KEY = 'metaProgression';
@@ -114,7 +116,9 @@ export class SaveManager {
         inventory: inventorySystem ? this.serializeInventory(inventorySystem.slots) : [],
       },
       effects: {
-        activeAmulets: gameState?.activeAmulets ?? [],
+        activeAmulets: (gameState?.activeAmulets ?? []).map(amulet =>
+          applyAmuletAtlasPresentation(amulet)
+        ),
         playerEffects: gameState?.playerEffects ?? [],
         // Fixed: Preserve full object data instead of converting to boolean
         shadowBlade: gameState?.shadowBlade || null,
@@ -233,13 +237,28 @@ export class SaveManager {
       run.player.bottomlessBagApplied = run.player.bottomlessBagApplied ?? false;
     }
 
-    // Ensure board cards are properly structured
+    if (Array.isArray(run.effects?.activeAmulets)) {
+      run.effects.activeAmulets = run.effects.activeAmulets.map(amulet =>
+        applyAmuletAtlasPresentation(amulet)
+      );
+    }
+
+    if (Array.isArray(run.equipment?.inventory)) {
+      run.equipment.inventory = run.equipment.inventory.map(item =>
+        item?.type === 'amulet' ? applyAmuletAtlasPresentation(item) : item
+      );
+    }
+
+    // Ensure board cards are properly structured and refresh saved amulet art.
     if (Array.isArray(run.board.cards)) {
       run.board.cards = run.board.cards.map(c => {
         if (!c) return null;
+        const data = c.data?.type === 'amulet'
+          ? applyAmuletAtlasPresentation(c.data)
+          : (c.data ?? null);
         return {
           revealed: !!c.revealed,
-          data: c.data ?? null,
+          data,
           position: c.position && typeof c.position.x === 'number' && typeof c.position.y === 'number'
             ? { x: c.position.x, y: c.position.y }
             : null,

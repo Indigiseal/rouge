@@ -13,7 +13,7 @@ export class TreasureScene extends StationRoomBase {
     // and elite chests only.
     this.rewardMode = data.rewardMode === 'boss' ? 'elite' : (data.rewardMode || 'treasure');
     this.gameScene = this.scene.get('GameScene');
-    // Skeleton Key amulet bypasses the key requirement on treasure chests
+    // Skeleton's Lockpicks bypass the key requirement on treasure chests
     const bypassKey = this.gameScene?.amuletManager?.canBypassChestKey?.();
     this.requiresKey = (this.rewardMode === 'treasure' || this.rewardMode === 'good') && !bypassKey;
     this.opened = false;

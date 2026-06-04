@@ -1,3 +1,5 @@
+import { getAmuletAtlasPresentation } from './utils/RelicsOthersAtlas.js';
+
 export class AmuletManager {
     constructor(scene) {
         this.scene = scene;
@@ -7,11 +9,9 @@ export class AmuletManager {
         this.amuletDefinitions = {
             // REGULAR AMULETS
             regeneration: {
-                name: 'Amulet of Regeneration',
+                ...getAmuletAtlasPresentation('regeneration'),
                 description: 'Restores 1 HP per stack at end of each floor',
                 rarity: 'uncommon',
-                sprite: 'relicsOthers',
-                spriteFrame: 2,
                 stackable: true,
                 maxLevel: Infinity,
                 onFloorEnd: (level) => {
@@ -30,19 +30,16 @@ export class AmuletManager {
             },
             
             healingRing: {
-                name: 'Healing Ring',
+                ...getAmuletAtlasPresentation('healingRing'),
                 description: 'Potions heal 20% more',
                 rarity: 'uncommon',
-                sprite: 'relicsOthers',
-                spriteFrame: 3,
                 modifyPotionHealing: (amount) => Math.floor(amount * 1.2)
             },
             
             invulnerability: {
-                name: 'Amulet of Invulnerability',
+                ...getAmuletAtlasPresentation('invulnerability'),
                 description: 'Prevents death once per run',
                 rarity: 'legendary',
-                sprite: 'amulet_invuln',
                 usesPerRun: 1,
                 onLethalDamage: () => {
                     if (this.getAmuletData('invulnerability').usesLeft > 0) {
@@ -60,34 +57,30 @@ export class AmuletManager {
             },
             
             evasionBoots: {
-                name: 'Boots of Evasion',
+                ...getAmuletAtlasPresentation('evasionBoots'),
                 description: '10% dodge chance',
                 rarity: 'uncommon',
-                sprite: 'Boots of Evasion',
                 dodgeChance: 0.1
             },
             
             dragonClaw: {
-                name: 'Dragon Claw',
+                ...getAmuletAtlasPresentation('dragonClaw'),
                 description: '+1 weapon damage',
-                rarity: 'uncommon',
-                sprite: 'dragonClaw',
+                rarity: 'rare',
                 modifyWeaponDamage: (damage) => damage + 1
             },
             
             greedPouch: {
-                name: 'Pouch of Greed',
+                ...getAmuletAtlasPresentation('greedPouch'),
                 description: '+30% gold found',
                 rarity: 'uncommon',
-                sprite: 'amulet_pouch',
                 modifyGoldFound: (amount) => Math.floor(amount * 1.3)
             },
             
             golemHeart: {
-                name: "Golem's Heart",
+                ...getAmuletAtlasPresentation('golemHeart'),
                 description: '+5 max health',
                 rarity: 'uncommon',
-                sprite: 'AmuletOfVigor',
                 onEquip: function() {
                     this.gameState.maxHealth += 5;
                     this.gameState.playerHealth += 5;
@@ -95,29 +88,25 @@ export class AmuletManager {
             },
             
             chronosHeart: {
-                name: 'Chronos Heart',
+                ...getAmuletAtlasPresentation('chronosHeart'),
                 description: '+3 max action points',
-                rarity: 'uncommon',
-                sprite: 'relicsOthers',
-                spriteFrame: 4,
+                rarity: 'rare',
                 onEquip: function() {
                     this.gameState.maxActions += 3;
                 }
             },
             
             speedBoots: {
-                name: 'Speed Boots',
+                ...getAmuletAtlasPresentation('speedBoots'),
                 description: '15% chance for free actions',
-                rarity: 'uncommon',
-                sprite: 'amulet_speed',
+                rarity: 'rare',
                 freeActionChance: 0.15
             },
             
             abyssHourglass: {
-                name: 'Abyss Hourglass',
+                ...getAmuletAtlasPresentation('abyssHourglass'),
                 description: '+2 AP after completing floor',
                 rarity: 'uncommon',
-                sprite: 'amulet_hourglass',
                 onFloorEnd: () => {
                     this.gameState.actionsLeft = Math.min(
                         this.gameState.maxActions,
@@ -126,25 +115,23 @@ export class AmuletManager {
                     this.scene.createFloatingText(
                         this.scene.playerAvatar.x,
                         this.scene.playerAvatar.y,
-                        '+1 AP (Hourglass)',
+                        '+1 AP (Moonwell)',
                         0x00ffff
                     );
                 }
             },
             
             temperedSteel: {
-                name: 'Tempered Steel',
+                ...getAmuletAtlasPresentation('temperedSteel'),
                 description: 'Weapons lose half durability',
-                rarity: 'uncommon',
-                sprite: 'amulet_steel',
+                rarity: 'rare',
                 weaponDurabilityRate: 0.5
             },
             
             bottomlessBag: {
-                name: 'Bottomless Bag',
+                ...getAmuletAtlasPresentation('bottomlessBag'),
                 description: '+2 inventory slots',
-                rarity: 'uncommon',
-                sprite: 'Bottomless Bag',
+                rarity: 'common',
                 onEquip: function() {
                     // expandInventory grows the slots array AND bumps
                     // bonusInventorySlots, so don't increment it again here.
@@ -157,19 +144,17 @@ export class AmuletManager {
             },
             
             travelKitchen: {
-                name: 'Travel Kitchen',
+                ...getAmuletAtlasPresentation('travelKitchen'),
                 description: 'Food restores 50% more AP',
                 rarity: 'uncommon',
-                sprite: 'amulet_kitchen',
                 modifyFoodAP: (amount) => Math.floor(amount * 1.5)
             },
             
             // CURSED AMULETS (with debuffs)
             hungryDagger: {
-                name: 'Dagger of the Hungry Spirit',
+                ...getAmuletAtlasPresentation('hungryDagger'),
                 description: 'Instant kill at 1 HP, but heals enemies otherwise',
                 rarity: 'cursed',
-                sprite: 'amulet_hungry',
                 cursed: true,
                 onEnemyDamage: (enemy, damage) => {
                     const newHealth = enemy.health - damage;
@@ -194,11 +179,9 @@ export class AmuletManager {
             },
             
             bloodyHarvest: {
-                name: 'Rune of Balance',
+                ...getAmuletAtlasPresentation('bloodyHarvest'),
                 description: '+3 HP per kill, -30% max health',
                 rarity: 'cursed',
-                sprite: 'relicsOthers',
-                spriteFrame: 5,
                 cursed: true,
                 onEquip: function() {
                     this.gameState.maxHealth = Math.floor(this.gameState.maxHealth * 0.7);
@@ -223,10 +206,9 @@ export class AmuletManager {
             },
             
             vampiricRing: {
-                name: 'Vampiric Ring',
+                ...getAmuletAtlasPresentation('vampiricRing'),
                 description: 'Heal 2 HP per enemy kill',
                 rarity: 'uncommon',
-                sprite: 'amulet_vampiric',
                 onEnemyKill: () => {
                     const healAmount = 2;
                     this.gameState.playerHealth = Math.min(
@@ -243,11 +225,9 @@ export class AmuletManager {
             },
             
             soulHarvester: {
-                name: 'Soul Harvester',
+                ...getAmuletAtlasPresentation('soulHarvester'),
                 description: 'Heal 1 HP per kill, +3 AP every 3 kills',
                 rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 6,
                 killCount: 0,
                 onEnemyKill: () => {
                     // Heal 1 HP
@@ -286,10 +266,9 @@ export class AmuletManager {
             },
             
             eternalRage: {
-                name: 'Amulet of Eternal Rage',
+                ...getAmuletAtlasPresentation('eternalRage'),
                 description: '+20% damage below 30% HP, +10% damage taken',
                 rarity: 'cursed',
-                sprite: 'amulet_rage',
                 cursed: true,
                 modifyWeaponDamage: (damage) => {
                     const healthPercent = this.gameState.playerHealth / this.gameState.maxHealth;
@@ -299,10 +278,9 @@ export class AmuletManager {
             },
             
             berserkerBelt: {
-                name: 'Berserker Belt',
+                ...getAmuletAtlasPresentation('berserkerBelt'),
                 description: '+50% damage below 50% HP, cannot heal above 50%',
                 rarity: 'cursed',
-                sprite: 'amulet_berserker',
                 cursed: true,
                 modifyWeaponDamage: (damage) => {
                     const healthPercent = this.gameState.playerHealth / this.gameState.maxHealth;
@@ -311,13 +289,11 @@ export class AmuletManager {
                 maxHealthCap: 0.5 // Can't heal above 50%
             },
 
-            // ─── relicsOthers row 1 (frames 7-11) ──────────────────────────
+            // Exploration and utility amulets
             diviners_spade: {
-                name: "Diviner's Spade",
+                ...getAmuletAtlasPresentation('diviners_spade'),
                 description: '+5 max action points',
                 rarity: 'uncommon',
-                sprite: 'relicsOthers',
-                spriteFrame: 7,
                 onEquip: function() {
                     // Permanent +5 AP: raises both the cap and the current pool so
                     // the player feels the boost immediately on pickup.
@@ -329,42 +305,34 @@ export class AmuletManager {
             },
 
             wayfinder: {
-                name: 'Wayfinder',
+                ...getAmuletAtlasPresentation('wayfinder'),
                 description: 'Reveals one extra non-enemy card at the start of each floor',
                 rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 8,
                 extraStartNonEnemyReveals: 1
             },
 
             skeletonKey: {
-                name: 'Skeleton Key',
+                ...getAmuletAtlasPresentation('skeletonKey'),
                 description: 'Treasure chests open without needing a key card',
                 rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 9,
                 bypassChestKey: true
             },
 
             greasewingFeast: {
-                name: "Greasewing's Feast",
+                ...getAmuletAtlasPresentation('greasewingFeast'),
                 description: 'One card per floor becomes food (except boss rooms)',
                 rarity: 'uncommon',
-                sprite: 'relicsOthers',
-                spriteFrame: 10,
                 convertOneCardToFood: true
             },
 
             sunstone: {
-                name: 'Sunstone',
+                ...getAmuletAtlasPresentation('sunstone'),
                 description: '+1 Max HP for every card left behind when the floor clears',
                 rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 11,
                 onFloorEnd: () => {
                     // Count any card still on the board — revealed or not.
                     // Reward the player for leaving stuff behind with a PERMANENT
-                    // max-HP boost (current HP rises with it, like Golem's Heart).
+                    // max-HP boost (current HP rises with it, like Stoneheart Medallion).
                     const remaining = this.scene.cardSystem?.boardCards?.filter(c => c).length || 0;
                     if (remaining > 0) {
                         this.gameState.maxHealth += remaining;
@@ -383,59 +351,47 @@ export class AmuletManager {
             },
 
             merchantPact: {
-                name: "Merchant's Pact",
+                ...getAmuletAtlasPresentation('merchantPact'),
                 description: '+1 bonus item slot in shops with better quality',
                 rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 12,
                 bonusShopSlots: 1
             },
 
-            // ─── relicsOthers row 3 (frames 24-29) ─────────────────────────
+            // Rare utility amulets
             watchersLamp: {
-                name: "Watcher's Lamp",
+                ...getAmuletAtlasPresentation('watchersLamp'),
                 description: 'Briefly reveals one trap at floor start — memorize it!',
                 rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 24,
                 previewOneTrap: true
             },
 
             reapersMask: {
-                name: "Reaper's Mask",
+                ...getAmuletAtlasPresentation('reapersMask'),
                 description: '15% chance an enemy leaves a random card behind on death',
                 rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 25,
                 deathDropChance: 0.15
             },
 
             travelersJournal: {
-                name: "Traveler's Journal",
+                ...getAmuletAtlasPresentation('travelersJournal'),
                 description: '+2 max HP for each unique amulet you carry',
                 rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 26,
                 onEquip: function() {
                     this.recalculateJournalBonus();
                 }
             },
 
             charmingTune: {
-                name: 'Charming Tune',
+                ...getAmuletAtlasPresentation('charmingTune'),
                 description: 'First melee enemy on each floor skips its first attack',
                 rarity: 'uncommon',
-                sprite: 'relicsOthers',
-                spriteFrame: 27,
                 charmingTune: true
             },
 
             wayfarersMap: {
-                name: "Wayfarer's Map",
+                ...getAmuletAtlasPresentation('wayfarersMap'),
                 description: '+1 max AP every other floor (max +15)',
                 rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 28,
                 onFloorEnd: () => {
                     if (!this.gameState.mapBonusAP) this.gameState.mapBonusAP = 0;
                     if (!this.gameState.mapFloorCount) this.gameState.mapFloorCount = 0;
@@ -454,11 +410,9 @@ export class AmuletManager {
             },
 
             sirensPendant: {
-                name: "Siren's Pendant",
+                ...getAmuletAtlasPresentation('sirensPendant'),
                 description: '15% chance enemies attack their own kind instead of you',
                 rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 29,
                 charmChance: 0.15
             }
         };
@@ -669,7 +623,7 @@ export class AmuletManager {
         return amount;
     }
 
-    // Sum of extraStartNonEnemyReveals from all equipped amulets (Wayfinder)
+    // Sum of extraStartNonEnemyReveals from all equipped amulets (Wayfinder's Compass)
     getExtraNonEnemyReveals() {
         let total = 0;
         this.gameState.activeAmulets.forEach(amulet => {
@@ -681,7 +635,7 @@ export class AmuletManager {
         return total;
     }
 
-    // Sum of bonusShopSlots from all equipped amulets (Merchant's Pact)
+    // Sum of bonusShopSlots from all equipped amulets (Merchant's Seal)
     getBonusShopSlots() {
         let total = 0;
         this.gameState.activeAmulets.forEach(amulet => {
@@ -693,7 +647,7 @@ export class AmuletManager {
         return total;
     }
 
-    // Combined charm chance — sum from all equipped amulets (Siren's Pendant)
+    // Combined charm chance — sum from all equipped amulets (Siren's Perfume)
     getCharmChance() {
         let chance = 0;
         this.gameState.activeAmulets.forEach(amulet => {
@@ -705,7 +659,7 @@ export class AmuletManager {
         return chance;
     }
 
-    // Combined deathDropChance — Reaper's Mask
+    // Combined deathDropChance — Mask of Hollow Whispers
     getDeathDropChance() {
         let chance = 0;
         this.gameState.activeAmulets.forEach(amulet => {
@@ -724,7 +678,7 @@ export class AmuletManager {
         );
     }
 
-    // Charming Tune — first melee attack per floor is no-damage
+    // Lute of First Light — first melee attack per floor is no-damage
     hasCharmingTune() {
         return this.gameState.activeAmulets.some(a =>
             this.amuletDefinitions[a.id]?.charmingTune
@@ -800,10 +754,10 @@ export class AmuletManager {
         return cap;
     }
     
-    // Check for free action chance (Speed Boots amulet)
+    // Check for free action chance (Quickhand Gloves amulet)
     getFreeActionChance() {
         if (this.hasAmulet('speedBoots')) {
-            return 0.15; // 15% chance for free action with Speed Boots
+            return 0.15; // 15% chance for a free action with Quickhand Gloves
         }
         return 0;
     }
@@ -818,7 +772,7 @@ export class AmuletManager {
         });
     }
     
-    // Check if player has free first action (Speed Boots)
+    // Check if player has free first action (Quickhand Gloves)
     hasFreeFirstAction() {
         return this.hasAmulet('speedBoots') && !this.gameState.firstActionUsed;
     }

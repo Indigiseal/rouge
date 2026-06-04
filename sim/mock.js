@@ -96,7 +96,14 @@ export class MockScene {
       addEvent: (cfg) => ({ remove() {}, ...cfg }),
     };
     this.cameras = { main: { width: 640, height: 360, shake() {}, flash() {} } };
-    this.textures = { exists: () => false, get: () => ({ getSourceImage: () => ({ width: 100, height: 100 }), getFrame: () => ({ width: 42, height: 42 }) }) };
+    this.textures = {
+      exists: () => false,
+      getFrame: () => ({ width: 84, height: 8 }),
+      get: () => ({
+        getSourceImage: () => ({ width: 100, height: 100 }),
+        getFrame: () => ({ width: 42, height: 42 })
+      })
+    };
     this.anims = { exists: () => false, create: () => {} };
     this.sound = { play: () => {}, add: () => makeGameObject(), get: () => null, stopByKey: () => {} };
     this.cache = { audio: { exists: () => false } };

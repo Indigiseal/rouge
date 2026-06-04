@@ -1,5 +1,7 @@
 // MetaProgressionManager.js
 
+import { getRelicAtlasPresentation } from './utils/RelicsOthersAtlas.js';
+
 export class MetaProgressionManager {
     constructor(scene) {
         this.scene = scene;
@@ -40,11 +42,8 @@ export class MetaProgressionManager {
             // Spider relics
             spiderVenom: {
                 id: 'spiderVenom',
-                name: 'Spider Venom',
+                ...getRelicAtlasPresentation('spiderVenom'),
                 description: 'Weapons have 20% chance to poison enemies',
-                icon: 'relic_spider',
-                iconSheet: 'relicsOthers',
-                iconFrame: 11,
                 killedBy: 'spider',
                 effect: {
                     weaponPoisonChance: 0.2,
@@ -55,11 +54,8 @@ export class MetaProgressionManager {
             
             webWeaver: {
                 id: 'webWeaver',
-                name: 'Echo Stone',
+                ...getRelicAtlasPresentation('webWeaver'),
                 description: '10% chance a merged card respawns face-down on the board',
-                icon: 'relic_web',
-                iconSheet: 'relicsOthers',
-                iconFrame: 12,
                 killedBy: 'spider',
                 tier: 2,
                 effect: {
@@ -70,11 +66,8 @@ export class MetaProgressionManager {
             // Skeleton relics
             boneArmor: {
                 id: 'boneArmor',
-                name: 'Bone Armor',
+                ...getRelicAtlasPresentation('boneArmor'),
                 description: 'Start each run with bone armor',
-                icon: 'relic_bone',
-                iconSheet: 'relicsOthers',
-                iconFrame: 13,
                 killedBy: 'skeleton',
                 effect: {
                     startingArmor: 2
@@ -83,11 +76,8 @@ export class MetaProgressionManager {
             
             undeadResilience: {
                 id: 'undeadResilience',
-                name: 'Healing Pact',
+                ...getRelicAtlasPresentation('undeadResilience'),
                 description: 'Heal 2 HP at the start of every floor',
-                icon: 'relic_skull',
-                iconSheet: 'relicsOthers',
-                iconFrame: 14,
                 killedBy: 'skeleton',
                 effect: {
                     // Tuned 4 → 2 after the spear-bypass fix dropped the
@@ -101,11 +91,8 @@ export class MetaProgressionManager {
             // Goblin relics
             greedyPockets: {
                 id: 'greedyPockets',
-                name: 'Lucky Strike',
+                ...getRelicAtlasPresentation('greedyPockets'),
                 description: 'First attack each floor deals double damage',
-                icon: 'relic_coin_pouch',
-                iconSheet: 'relicsOthers',
-                iconFrame: 15,
                 killedBy: 'goblin',
                 effect: {
                     firstAttackDoubleDamage: true
@@ -114,11 +101,8 @@ export class MetaProgressionManager {
             
             scavenger: {
                 id: 'scavenger',
-                name: 'Scavenger',
+                ...getRelicAtlasPresentation('scavenger'),
                 description: '+20% coins from all sources',
-                icon: 'relic_goblin',
-                iconSheet: 'relicsOthers',
-                iconFrame: 16,
                 killedBy: 'goblin',
                 effect: {
                     coinMultiplier: 1.2
@@ -128,11 +112,8 @@ export class MetaProgressionManager {
             // Boss relics (more powerful)
             giantStrength: {
                 id: 'giantStrength',
-                name: "Giant's Strength",
+                ...getRelicAtlasPresentation('giantStrength'),
                 description: 'All weapons deal +1 damage',
-                icon: 'relic_giant',
-                iconSheet: 'relicsOthers',
-                iconFrame: 17,
                 killedBy: 'Giant Skeleton',
                 boss: true,
                 effect: {
@@ -142,11 +123,8 @@ export class MetaProgressionManager {
             
             queenBlessing: {
                 id: 'queenBlessing',
-                name: "Queen's Blessing",
+                ...getRelicAtlasPresentation('queenBlessing'),
                 description: 'Immune to poison',
-                icon: 'relic_crown',
-                iconSheet: 'relicsOthers',
-                iconFrame: 18,
                 killedBy: 'Spider Queen',
                 boss: true,
                 effect: {
@@ -156,11 +134,8 @@ export class MetaProgressionManager {
             
             lichCurse: {
                 id: 'lichCurse',
-                name: "Lich's Curse",
+                ...getRelicAtlasPresentation('lichCurse'),
                 description: 'Heal 1 HP per enemy killed, -10 max HP',
-                icon: 'relic_lich',
-                iconSheet: 'relicsOthers',
-                iconFrame: 19,
                 killedBy: 'Lich',
                 boss: true,
                 cursed: true,
@@ -173,11 +148,8 @@ export class MetaProgressionManager {
             // General progression relics
             veteranExplorer: {
                 id: 'veteranExplorer',
-                name: "Adventurer's Pack",
+                ...getRelicAtlasPresentation('veteranExplorer'),
                 description: '+1 permanent inventory slot',
-                icon: 'relic_boots',
-                iconSheet: 'relicsOthers',
-                iconFrame: 20,
                 unlockCondition: 'deaths_5',
                 effect: {
                     bonusInventorySlot: 1
@@ -186,11 +158,8 @@ export class MetaProgressionManager {
 
             tent: {
                 id: 'tent',
-                name: 'Tent',
+                ...getRelicAtlasPresentation('tent'),
                 description: '+1 max HP whenever a durability card is fully used',
-                icon: 'relic_tent',
-                iconSheet: 'relicsOthers',
-                iconFrame: 23,
                 unlockCondition: 'floor_7',
                 effect: {
                     cardSpentMaxHP: 1
@@ -199,11 +168,8 @@ export class MetaProgressionManager {
 
             luckyScrap: {
                 id: 'luckyScrap',
-                name: 'Ironhide',
+                ...getRelicAtlasPresentation('luckyScrap'),
                 description: 'Your armor loses durability half as often (lasts about twice as long)',
-                icon: 'relic_scrap',
-                iconSheet: 'relicsOthers',
-                iconFrame: 22,
                 unlockCondition: 'deaths_3',
                 effect: {
                     armorDurabilitySave: 0.5
@@ -212,11 +178,8 @@ export class MetaProgressionManager {
             
             dungeonMaster: {
                 id: 'dungeonMaster',
-                name: 'Dungeon Master',
+                ...getRelicAtlasPresentation('dungeonMaster'),
                 description: 'See one extra card at start',
-                icon: 'relic_eye',
-                iconSheet: 'relicsOthers',
-                iconFrame: 21,
                 unlockCondition: 'floor_10',
                 effect: {
                     revealExtraCard: 1
@@ -350,7 +313,7 @@ export class MetaProgressionManager {
                 gameState.maxActions += effect.bonusStartingAP;
             }
             
-            // Adventurer's Pack: permanent +1 inventory slot at run start.
+            // Veteran's Carryall: permanent +1 inventory slot at run start.
             // Pads gameState.inventory to match so InventorySystem doesn't shrink
             // back to 5 slots when it later syncs to gameState.inventory.
             if (applyStartingBonuses && effect.bonusInventorySlot) {

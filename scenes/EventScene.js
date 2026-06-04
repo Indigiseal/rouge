@@ -180,7 +180,7 @@ const EVENTS = [
         outcome: 'You leave the hermit arguing with his soup pot. You will remember what the escaped bandits did.'
       },
       {
-        text: 'Use Travel Kitchen to remake the soup',
+        text: 'Use the Harvest Crown to remake the soup',
         condition: (gs, scene) => scene.hasAmulet('travelKitchen'),
         action: (gs, scene) => {
           scene.ensureStoryState();
@@ -393,12 +393,8 @@ const EVENTS = [
         outcome: 'The duel is mostly shouting and footwork, but you leave with a few coins and a new bruise.'
       },
       {
-        text: 'Show royal authority',
-        condition: (gs, scene) => (
-          scene.hasAmulet('diademCrown')
-          || scene.hasAmulet('crown')
-          || scene.hasAmulet('royalDiadem')
-        ),
+        text: "Show the Lost Princess's Diadem",
+        condition: (gs, scene) => scene.hasAmulet('invulnerability'),
         action: (gs, scene) => {
           scene.ensureStoryState();
           scene.logStoryKeyChoice('royal_authority_masked_duelist');
@@ -411,8 +407,8 @@ const EVENTS = [
         outcome: 'You declare yourself Judge of the Grand Duel. The duelist salutes immediately, then whispers that he has been waiting years for proper paperwork.'
       },
       {
-        text: 'Sound the horn',
-        condition: (gs, scene) => scene.hasAmulet('horn'),
+        text: 'Sound the Goblin War Horn',
+        condition: (gs, scene) => scene.hasRelic('greedyPockets'),
         action: (gs, scene) => {
           scene.ensureStoryState();
           scene.logStoryKeyChoice('horn_masked_duelist');
@@ -480,7 +476,7 @@ const EVENTS = [
         outcome: 'The bird examines your card, decides it is treasure, and leaves the golden string behind.'
       },
       {
-        text: 'Play Charming Tune',
+        text: 'Play the Lute of First Light',
         condition: (gs, scene) => scene.hasAmulet('charmingTune'),
         action: (gs, scene) => {
           scene.ensureStoryState();
@@ -494,8 +490,8 @@ const EVENTS = [
         outcome: 'The bird chirps the harmony back at you. The golden string stops trembling and glows warmly.'
       },
       {
-        text: 'Wear the Straw Hat',
-        condition: (gs, scene) => scene.hasAmulet('strawHat') || scene.hasAmulet('straw_hat'),
+        text: 'Wear the Harvest Crown',
+        condition: (gs, scene) => scene.hasAmulet('travelKitchen'),
         action: (gs, scene) => {
           scene.ensureStoryState();
           scene.logStoryKeyChoice('strawHat_tiny_thief_bird');
@@ -577,15 +573,14 @@ const EVENTS = [
         outcome: 'You leave the camp as you found it. The song follows for a few steps, then lets you go.'
       },
       {
-        text: 'Use Glasses to read the tiny music notes',
-        condition: (gs, scene) => scene.hasAmulet('glasses') || scene.hasAmulet('spectacles'),
+        text: "Use Dungeonmaster's Spectacles to read the tiny music notes",
+        condition: (gs, scene) => scene.hasRelic('dungeonMaster'),
         action: (gs, scene) => {
           scene.ensureStoryState();
           scene.logStoryKeyChoice('glasses_missing_bard_camp');
           scene.clearPendingEvent('missing_bard_camp');
           gs.storyRun.bardThreadState = 'complete';
           scene.markHeroMemory('solvedBardSong');
-          console.log('[EventScene] TODO: remove glasses amulet when a safe removeAmulet helper exists.');
           scene.gainCrystals(3);
           scene.repairRandomDamagedItem(2);
         },
@@ -722,6 +717,10 @@ export class EventScene extends Phaser.Scene {
       ? this.gameState.activeAmulets
       : [];
     return activeAmulets.some(amulet => amulet === id || amulet?.id === id);
+  }
+
+  hasRelic(id) {
+    return Boolean(this.gameScene?.metaManager?.hasRelic?.(id));
   }
 
   hasKeyCard() {

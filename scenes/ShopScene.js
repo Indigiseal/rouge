@@ -171,7 +171,7 @@ export class ShopScene extends StationRoomBase {
             });
         }
 
-        // Bonus slots from Merchant's Pact — one higher-quality item per amulet stack
+        // Bonus slots from Merchant's Seal — one higher-quality item per amulet stack
         const bonusSlots = this.gameScene?.amuletManager?.getBonusShopSlots?.() || 0;
         for (let i = 0; i < bonusSlots; i++) {
             const bonusItem = this.createMerchantBonusItem(cardGenerator, floor);
@@ -179,7 +179,7 @@ export class ShopScene extends StationRoomBase {
         }
     }
 
-    // Creates a higher-rarity weapon or armor that appears as the Merchant's Pact
+    // Creates a higher-rarity weapon or armor that appears as the Merchant's Seal
     // bonus slot. The regular shop tops out at RARE — epics and legendaries are
     // reserved for boss rewards and the rare shop's late-game tier so they stay
     // a treat.

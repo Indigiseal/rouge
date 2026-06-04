@@ -603,18 +603,18 @@ export class CardSystem {
     }
     spawnFloorCards() {
       // === per-floor relic effects ===
-      // Healing Pact relic: heal at the start of every combat floor.
+      // Gravebloom Bundle relic: heal at the start of every combat floor.
       const heal = this.scene.gameState?.relicEffects?.healPerFloor || 0;
       if (heal > 0 && this.scene.gameState && this.scene.gameState.playerHealth > 0 && this.scene.gameState.playerHealth < this.scene.gameState.maxHealth) {
         const before = this.scene.gameState.playerHealth;
         this.scene.gameState.playerHealth = Math.min(this.scene.gameState.maxHealth, before + heal);
         const gained = this.scene.gameState.playerHealth - before;
         if (gained > 0 && this.scene.playerAvatar) {
-          this.scene.createFloatingText?.(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${gained} HP (Pact)`, 0x66ff99);
+          this.scene.createFloatingText?.(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${gained} HP (Gravebloom)`, 0x66ff99);
         }
         this.scene.updateUI?.();
       }
-      // Lucky Strike relic: arm the "first attack" flag for this floor.
+      // Goblin War Horn relic: arm the "first attack" flag for this floor.
       if (this.scene.gameState) this.scene.gameState.firstAttackThisFloorUsed = false;
 
       // === clear previous ===
@@ -641,7 +641,7 @@ export class CardSystem {
         : this.computePlacement(cells);
       this.createFloorBoardPanel(cells, place, true);
       if (wantsWing) this.createSideExtraPanel('right', { delayMs: 260 });
-      // Cache layout so mid-floor respawns (Echo Stone relic) can reuse positions.
+      // Cache layout so mid-floor respawns (Webweaver's Thread relic) can reuse positions.
       this._boardCells = cells;
       this._boardPlace = place;
       // 3) create the cards at proper pixels
@@ -825,7 +825,7 @@ export class CardSystem {
         if (trapIdx !== -1) this.previewTrapAt(trapIdx);
       }
 
-      // Wayfinder: reveal extra non-enemy cards (skip traps so we don't auto-trigger them)
+      // Wayfinder's Compass: reveal extra non-enemy cards (skip traps so we don't auto-trigger them)
       const extraNonEnemy = this.scene.amuletManager?.getExtraNonEnemyReveals?.() || 0;
       if (extraNonEnemy > 0) {
         const candidates = [];
@@ -977,7 +977,7 @@ export class CardSystem {
         }
     }
 
-    // Reaper's Mask — replace a defeated enemy with a random pickup card.
+    // Mask of Hollow Whispers — replace a defeated enemy with a random pickup card.
     // The drop sits in the enemy's exact brick position so neighbor logic
     // stays intact, already revealed and immediately clickable.
     spawnDeathDrop(index, originalCard) {
@@ -2145,7 +2145,7 @@ export class CardSystem {
         SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
     }
 
-    // Echo Stone relic: respawn a card on the board after a merge.
+    // Webweaver's Thread relic: respawn a card on the board after a merge.
     // Uses the cached floor layout (this._boardCells / this._boardPlace) so the
     // new card slots into the original brick grid. Spawns face-down — the player
     // has to click to reveal, same as any normal floor card.
@@ -2197,7 +2197,7 @@ export class CardSystem {
             onComplete: () => flash.destroy()
         });
         SoundHelper.playSound(this.scene, 'magic_cast', 0.4);
-        this.scene.createFloatingText(x, y - 30, 'Echoed!', 0x66ddff);
+        this.scene.createFloatingText(x, y - 30, 'Webwoven!', 0x66ddff);
 
         // Card is face-down — player must reveal it like any other floor card.
         // Deep-copy the data so it's independent from the merged source object.
@@ -2249,7 +2249,7 @@ export class CardSystem {
         if (!isReflection && weapon && this.scene.amuletManager) {
             finalDamage = this.scene.amuletManager.modifyWeaponDamage(damage);
         }
-        // Giant's Strength relic: +1 flat damage on every weapon attack.
+        // Giant's Morningstar relic: +1 flat damage on every weapon attack.
         if (!isReflection && weapon) {
             const dmgBonus = this.scene.gameState?.relicEffects?.weaponDamageBonus || 0;
             if (dmgBonus) finalDamage += dmgBonus;
@@ -2264,13 +2264,13 @@ export class CardSystem {
             this.scene.createFloatingText(card.sprite.x, card.sprite.y - 24, 'CRIT!', 0xffd700);
         }
 
-        // Lucky Strike relic: the first attack each floor deals double damage.
+        // Goblin War Horn relic: the first attack each floor deals double damage.
         // (Stacks multiplicatively with CRIT — if both fire, you get x4.)
         if (!isReflection && weapon && this.scene.gameState?.relicEffects?.firstAttackDoubleDamage
             && !this.scene.gameState.firstAttackThisFloorUsed) {
             finalDamage *= 2;
             this.scene.gameState.firstAttackThisFloorUsed = true;
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'LUCKY STRIKE!', 0xffaa00);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'WAR HORN!', 0xffaa00);
         }
         
         // Evasion doesn't work against reflection damage
@@ -2332,7 +2332,7 @@ export class CardSystem {
         }
         
         // Reduce weapon durability on attack (only if not reflection damage).
-        // Tempered Steel: halves the rate at which durability is lost.
+        // Tempered Ingot: halves the rate at which durability is lost.
         // skipDurability=true for the second hit of a dual-wield so it costs only 1 pip total.
         if (!isReflection && !skipDurability && this.scene.gameState.equippedWeapon) {
             const durabilityLoss = this.scene.amuletManager
@@ -2564,7 +2564,7 @@ export class CardSystem {
                 });
             });
             
-            // Reaper's Mask — chance to drop a random pickup in the enemy's spot
+            // Mask of Hollow Whispers — chance to drop a random pickup in the enemy's spot
             const dropChance = this.scene.amuletManager?.getDeathDropChance?.() || 0;
             if (dropChance > 0 && Math.random() < dropChance) {
                 this.spawnDeathDrop(index, card);

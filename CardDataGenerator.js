@@ -1,3 +1,5 @@
+import { getAmuletAtlasPresentation } from './utils/RelicsOthersAtlas.js';
+
 export class CardDataGenerator {
     constructor() {
         this.initializeWeaponUnlocks();
@@ -415,279 +417,49 @@ export class CardDataGenerator {
     }
 
     initializeAmuletData() {
-        this.amuletTypes = [
-            // REGULAR AMULETS
-            {
-                id: 'regeneration',
-                name: 'Amulet of Regeneration',
-                minFloor: 1,
-                weight: 10,
-                rarity: 'uncommon',
-                sprite: 'relicsOthers',
-                spriteFrame: 2
-            },
-            {
-                id: 'healingRing',
-                name: 'Healing Ring',
-                minFloor: 2,
-                weight: 10,
-                rarity: 'uncommon',
-                sprite: 'relicsOthers',
-                spriteFrame: 3
-            },
-            {
-                id: 'invulnerability',
-                name: 'Amulet of Invulnerability',
-                minFloor: 15,
-                weight: 2,
-                rarity: 'legendary',
-                sprite: 'amulet_invuln'
-            },
-            {
-                id: 'evasionBoots',
-                name: 'Boots of Evasion',
-                minFloor: 3,
-                weight: 8,
-                rarity: 'uncommon',
-                sprite: 'relicsOthers',
-                spriteFrame: 1
-            },
-            {
-                id: 'dragonClaw',
-                name: 'Dragon Claw',
-                minFloor: 8,
-                weight: 5,
-                rarity: 'rare',
-                sprite: 'amulet_claw'
-            },
-            {
-                id: 'greedPouch',
-                name: 'Pouch of Greed',
-                minFloor: 1,
-                weight: 10,
-                rarity: 'uncommon',
-                sprite: 'amulet_pouch'
-            },
-            {
-                id: 'golemHeart',
-                name: "Golem's Heart",
-                minFloor: 2,
-                weight: 8,
-                rarity: 'uncommon',
-                sprite: 'amulet_golem'
-            },
-            {
-                id: 'chronosHeart',
-                name: 'Chronos Heart',
-                minFloor: 5,
-                weight: 5,
-                rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 4
-            },
-            {
-                id: 'speedBoots',
-                name: 'Speed Boots',
-                minFloor: 4,
-                weight: 6,
-                rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 1
-            },
-            {
-                id: 'abyssHourglass',
-                name: 'Abyss Hourglass',
-                minFloor: 3,
-                weight: 8,
-                rarity: 'uncommon',
-                sprite: 'amulet_hourglass'
-            },
-            {
-                id: 'temperedSteel',
-                name: 'Tempered Steel',
-                minFloor: 6,
-                weight: 6,
-                rarity: 'rare',
-                sprite: 'amulet_steel'
-            },
-            {
-                id: 'bottomlessBag',
-                name: 'Bottomless Bag',
-                minFloor: 1,
-                weight: 7,
-                rarity: 'common',
-                sprite: 'relicsOthers',
-                spriteFrame: 0
-            },
-            {
-                id: 'travelKitchen',
-                name: 'Travel Kitchen',
-                minFloor: 2,
-                weight: 8,
-                rarity: 'uncommon',
-                sprite: 'amulet_kitchen'
-            },
-            {
-                id: 'vampiricRing',
-                name: 'Vampiric Ring',
-                minFloor: 4,
-                weight: 7,
-                rarity: 'uncommon',
-                sprite: 'amulet_vampiric'
-            },
-            {
-                id: 'soulHarvester',
-                name: 'Soul Harvester',
-                minFloor: 10,
-                weight: 4,
-                rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 6
-            },
-            
-            // CURSED AMULETS (appear later, rarer)
-            {
-                id: 'hungryDagger',
-                name: 'Dagger of the Hungry Spirit',
-                minFloor: 12,
-                weight: 4,
-                rarity: 'cursed',
-                sprite: 'amulet_hungry'
-            },
-            {
-                id: 'bloodyHarvest',
-                name: 'Rune of Balance',
-                minFloor: 10,
-                weight: 4,
-                rarity: 'cursed',
-                sprite: 'relicsOthers',
-                spriteFrame: 5
-            },
-            {
-                id: 'eternalRage',
-                name: 'Amulet of Eternal Rage',
-                minFloor: 8,
-                weight: 4,
-                rarity: 'cursed',
-                sprite: 'amulet_rage'
-            },
-            {
-                id: 'berserkerBelt',
-                name: 'Berserker Belt',
-                minFloor: 14,
-                weight: 3,
-                rarity: 'cursed',
-                sprite: 'amulet_berserker'
-            },
-            {
-                id: 'diviners_spade',
-                name: "Diviner's Spade",
-                minFloor: 2,
-                weight: 7,
-                rarity: 'uncommon',
-                sprite: 'relicsOthers',
-                spriteFrame: 7
-            },
-            {
-                id: 'wayfinder',
-                name: 'Wayfinder',
-                minFloor: 4,
-                weight: 5,
-                rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 8
-            },
-            {
-                id: 'skeletonKey',
-                name: 'Skeleton Key',
-                minFloor: 3,
-                weight: 5,
-                rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 9
-            },
-            {
-                id: 'greasewingFeast',
-                name: "Greasewing's Feast",
-                minFloor: 5,
-                weight: 6,
-                rarity: 'uncommon',
-                sprite: 'relicsOthers',
-                spriteFrame: 10
-            },
-            {
-                id: 'sunstone',
-                name: 'Sunstone',
-                minFloor: 6,
-                weight: 5,
-                rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 11
-            },
-            {
-                id: 'merchantPact',
-                name: "Merchant's Pact",
-                minFloor: 3,
-                weight: 5,
-                rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 12
-            },
-            {
-                id: 'watchersLamp',
-                name: "Watcher's Lamp",
-                minFloor: 4,
-                weight: 5,
-                rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 24
-            },
-            {
-                id: 'reapersMask',
-                name: "Reaper's Mask",
-                minFloor: 5,
-                weight: 5,
-                rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 25
-            },
-            {
-                id: 'travelersJournal',
-                name: "Traveler's Journal",
-                minFloor: 6,
-                weight: 4,
-                rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 26
-            },
-            {
-                id: 'charmingTune',
-                name: 'Charming Tune',
-                minFloor: 3,
-                weight: 6,
-                rarity: 'uncommon',
-                sprite: 'relicsOthers',
-                spriteFrame: 27
-            },
-            {
-                id: 'wayfarersMap',
-                name: "Wayfarer's Map",
-                minFloor: 4,
-                weight: 5,
-                rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 28
-            },
-            {
-                id: 'sirensPendant',
-                name: "Siren's Pendant",
-                minFloor: 6,
-                weight: 4,
-                rarity: 'rare',
-                sprite: 'relicsOthers',
-                spriteFrame: 29
-            }
+        const dropData = [
+            // Regular amulets
+            { id: 'regeneration',     minFloor: 1,  weight: 10, rarity: 'uncommon' },
+            { id: 'healingRing',      minFloor: 2,  weight: 10, rarity: 'uncommon' },
+            { id: 'invulnerability',  minFloor: 15, weight: 2,  rarity: 'legendary' },
+            { id: 'evasionBoots',     minFloor: 3,  weight: 8,  rarity: 'uncommon' },
+            { id: 'dragonClaw',       minFloor: 8,  weight: 5,  rarity: 'rare' },
+            { id: 'greedPouch',       minFloor: 1,  weight: 10, rarity: 'uncommon' },
+            { id: 'golemHeart',       minFloor: 2,  weight: 8,  rarity: 'uncommon' },
+            { id: 'chronosHeart',     minFloor: 5,  weight: 5,  rarity: 'rare' },
+            { id: 'speedBoots',       minFloor: 4,  weight: 6,  rarity: 'rare' },
+            { id: 'abyssHourglass',   minFloor: 3,  weight: 8,  rarity: 'uncommon' },
+            { id: 'temperedSteel',    minFloor: 6,  weight: 6,  rarity: 'rare' },
+            { id: 'bottomlessBag',    minFloor: 1,  weight: 7,  rarity: 'common' },
+            { id: 'travelKitchen',    minFloor: 2,  weight: 8,  rarity: 'uncommon' },
+            { id: 'vampiricRing',     minFloor: 4,  weight: 7,  rarity: 'uncommon' },
+            { id: 'soulHarvester',    minFloor: 10, weight: 4,  rarity: 'rare' },
+
+            // Cursed amulets
+            { id: 'hungryDagger',     minFloor: 12, weight: 4,  rarity: 'cursed' },
+            { id: 'bloodyHarvest',    minFloor: 10, weight: 4,  rarity: 'cursed' },
+            { id: 'eternalRage',      minFloor: 8,  weight: 4,  rarity: 'cursed' },
+            { id: 'berserkerBelt',    minFloor: 14, weight: 3,  rarity: 'cursed' },
+
+            // Exploration and utility amulets
+            { id: 'diviners_spade',   minFloor: 2,  weight: 7,  rarity: 'uncommon' },
+            { id: 'wayfinder',        minFloor: 4,  weight: 5,  rarity: 'rare' },
+            { id: 'skeletonKey',      minFloor: 3,  weight: 5,  rarity: 'rare' },
+            { id: 'greasewingFeast',  minFloor: 5,  weight: 6,  rarity: 'uncommon' },
+            { id: 'sunstone',         minFloor: 6,  weight: 5,  rarity: 'rare' },
+            { id: 'merchantPact',     minFloor: 3,  weight: 5,  rarity: 'rare' },
+            { id: 'watchersLamp',     minFloor: 4,  weight: 5,  rarity: 'rare' },
+            { id: 'reapersMask',      minFloor: 5,  weight: 5,  rarity: 'rare' },
+            { id: 'travelersJournal', minFloor: 6,  weight: 4,  rarity: 'rare' },
+            { id: 'charmingTune',     minFloor: 3,  weight: 6,  rarity: 'uncommon' },
+            { id: 'wayfarersMap',     minFloor: 4,  weight: 5,  rarity: 'rare' },
+            { id: 'sirensPendant',    minFloor: 6,  weight: 4,  rarity: 'rare' }
         ];
+
+        this.amuletTypes = dropData.map(amulet => ({
+            ...amulet,
+            ...getAmuletAtlasPresentation(amulet.id)
+        }));
     }
 
     initializePotionData() {

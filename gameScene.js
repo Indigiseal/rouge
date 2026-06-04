@@ -508,7 +508,7 @@ export class GameScene extends Phaser.Scene {
         // Check if player will be exhausted BEFORE consuming the action
         const willBeExhausted = this.gameState.actionsLeft <= 0;
         
-        // Check for Speed Boots free first action
+        // Check for Quickhand Gloves free first action
         if (this.gameState.shouldUseFreeAction()) {
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Free Action!', 0x00ff00);
             this.updateUI();
@@ -733,16 +733,16 @@ export class GameScene extends Phaser.Scene {
             // Mimic still takes its small bite below
         }
 
-        // Charming Tune — first melee enemy on each floor skips its first attack
+        // Lute of First Light — first melee enemy on each floor skips its first attack
         if (this.amuletManager?.hasCharmingTune?.() &&
             !this.gameState.charmingTuneUsed &&
             card.data.role === 'MELEE') {
             this.gameState.charmingTuneUsed = true;
-            this.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed (Tune)', 0xff66ff);
+            this.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed (Lute)', 0xff66ff);
             return;
         }
 
-        // Siren's Pendant — chance to redirect attack onto another enemy
+        // Siren's Perfume — chance to redirect attack onto another enemy
         const charmChance = this.amuletManager?.getCharmChance?.() || 0;
         if (charmChance > 0 && Math.random() < charmChance) {
             const others = this.cardSystem.boardCards
@@ -1530,7 +1530,7 @@ export class GameScene extends Phaser.Scene {
             this.gameState.maxHealth,
             this.gameState.playerHealth + amount
         );
-        this.createFloatingText(x, y - 18, `+${amount} Max HP (Tent)`, 0xffd78a);
+        this.createFloatingText(x, y - 18, `+${amount} Max HP (Camp)`, 0xffd78a);
         this.updateUI();
     }
 

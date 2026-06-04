@@ -2038,7 +2038,7 @@ export class InventorySystem {
                     let secondaryDamage = secondaryDagger.damage || 1;
                     if (wasExhausted) secondaryDamage = Math.ceil(secondaryDamage * 0.8);
                     this.scene.cardSystem.attackEnemy(closestEnemy, secondaryDamage, false, secondaryDagger, true);
-                    // Halve-durability amulet (Tempered Steel) applies here too.
+                    // Halve-durability amulet (Tempered Ingot) applies here too.
                     const durRate = this.scene.amuletManager?.getWeaponDurabilityRate?.() ?? 1;
                     const lost = Math.random() < durRate ? 1 : 0;
                     secondaryDagger.durability -= lost;
@@ -2421,7 +2421,7 @@ export class InventorySystem {
 
         this.scene.createFloatingText(512, 400, 'Cards Merged!', 0x00ff00);
 
-        // Echo Stone relic: small chance one of the two consumed cards reappears
+        // Webweaver's Thread relic: small chance one of the two consumed cards reappears
         // on the floor board face-down. Picks one of the source cards at random
         // so the player can't predict which copy comes back.
         const echoChance = this.scene.gameState?.relicEffects?.mergeRespawnChance || 0;

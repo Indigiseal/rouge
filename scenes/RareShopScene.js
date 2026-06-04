@@ -78,7 +78,7 @@ export class RareShopScene extends StationRoomBase {
             purchased: false
         });
 
-        // Merchant's Pact bonus slots — even better items in the rare shop
+        // Merchant's Seal bonus slots — even better items in the rare shop
         const bonusSlots = this.gameScene?.amuletManager?.getBonusShopSlots?.() || 0;
         for (let i = 0; i < bonusSlots; i++) {
             const bonusItem = this.createMerchantBonusItem(cardGenerator, floor);

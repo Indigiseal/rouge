@@ -44,7 +44,7 @@ export class GameState {
         this.mirrorShield = false;
         
         // Amulet-related properties
-        this.firstActionUsed = false; // For Speed Boots
+        this.firstActionUsed = false; // For Quickhand Gloves
         this.bonusInventorySlots = 0; // For Bottomless Bag / Diviner's Spade
         this.baseMaxHealth = 50; // Store base max health for cursed amulets
         this.journalBonusHP = 0; // Traveler's Journal: tracks HP added so it isn't double-applied
@@ -150,7 +150,7 @@ export class GameState {
             }
             
             // Durability tick if armor was used and damage was dealt.
-            // Ironhide relic: chance to skip the durability loss entirely,
+            // Ironhide Tonic relic: chance to skip the durability loss entirely,
             // roughly doubling how long the armor lasts.
             const durabilitySave = this.relicEffects?.armorDurabilitySave || 0;
             const skipTick = durabilitySave > 0 && Math.random() < durabilitySave;
@@ -217,7 +217,7 @@ export class GameState {
         this.playerHealth = Math.min(cappedMaxHealth, this.playerHealth + amount);
     }
     
-    // Method to check if action should be free (Speed Boots)
+    // Method to check if action should be free (Quickhand Gloves)
     shouldUseFreeAction() {
         if (this.scene.amuletManager && this.scene.amuletManager.hasFreeFirstAction()) {
             this.firstActionUsed = true;

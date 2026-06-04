@@ -127,7 +127,7 @@ function mergeArmorList(gen, list, echoChance = 0, tracker = null, floor = 0) {
           const m = mergeArmor(gen, a, b, floor);
           list.splice(j, 1); list.splice(i, 1); list.push(m);
           if (tracker) tracker.recordMerge('armor', m.rarity, floor);
-          // Echo Stone: 10% chance one source armor respawns (refreshed durability)
+          // Webweaver's Thread: 10% chance one source armor respawns (refreshed durability)
           if (echoChance > 0 && Math.random() < echoChance) {
             const echo = Math.random() < 0.5 ? { ...a } : { ...b };
             echo.durability = echo.maxDurability;
@@ -141,7 +141,7 @@ function mergeArmorList(gen, list, echoChance = 0, tracker = null, floor = 0) {
 }
 
 // Greedily merge every same-type/same-rarity weapon pair (cascades upward).
-// echoChance: Echo Stone relic — 10% chance one source card respawns after merge.
+// echoChance: Webweaver's Thread relic — 10% chance one source card respawns after merge.
 function mergeWeaponList(gen, list, echoChance = 0, tracker = null, floor = 0) {
   let changed = true, guard = 0;
   while (changed && guard++ < 60) {
@@ -155,7 +155,7 @@ function mergeWeaponList(gen, list, echoChance = 0, tracker = null, floor = 0) {
           const merged = mergeWeapons(gen, a, b, floor);
           list.splice(j, 1); list.splice(i, 1); list.push(merged);
           if (tracker) tracker.recordMerge('weapon', merged.rarity, floor);
-          // Echo Stone: 10% chance one source card respawns (refreshed at its original rarity)
+          // Webweaver's Thread: 10% chance one source card respawns (refreshed at its original rarity)
           if (echoChance > 0 && Math.random() < echoChance) {
             const echo = Math.random() < 0.5 ? { ...a } : { ...b };
             echo.durability = echo.maxDurability; // respawned fresh
@@ -982,10 +982,10 @@ function runRelicCompare() {
   const runs = parseInt(process.argv[3], 10) || 500;
   const configs = [
     { label: 'No relics (baseline)       ', relics: [] },
-    { label: 'Ironhide only              ', relics: ['luckyScrap'] },
-    { label: 'Echo Stone only            ', relics: ['webWeaver'] },
-    { label: "Adventurer's Pack only     ", relics: ['veteranExplorer'] },
-    { label: 'All relics MINUS Ironhide  ', relics: ALL_RELICS.filter(r => r !== 'luckyScrap') },
+    { label: 'Ironhide Tonic only        ', relics: ['luckyScrap'] },
+    { label: "Webweaver's Thread only    ", relics: ['webWeaver'] },
+    { label: "Veteran's Carryall only    ", relics: ['veteranExplorer'] },
+    { label: 'All relics MINUS Tonic     ', relics: ALL_RELICS.filter(r => r !== 'luckyScrap') },
     { label: 'All relics (full account)  ', relics: ALL_RELICS },
   ];
   console.log(`\n=== Relic Impact Comparison — ${runs} runs each ===\n`);
