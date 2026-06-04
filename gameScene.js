@@ -193,6 +193,7 @@ export class GameScene extends Phaser.Scene {
             fill: '#a83c69',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
+        this.updateCurrencyUILayout();
         
         // Store previous values to detect changes
         this.previousCoins = 0;
@@ -335,6 +336,7 @@ export class GameScene extends Phaser.Scene {
         this.coinsText.setText(this.gameState.coins);
         this.crystalsText.setText(this.gameState.crystals);
         this.updateActionPointUI();
+        this.updateCurrencyUILayout();
         const _act = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
         this.floorText.setText(`Act ${_act}  Floor: ${this.gameState.currentFloor}`);
         this.updateEquippedArmorPanel();
@@ -395,6 +397,22 @@ export class GameScene extends Phaser.Scene {
             overlay.setDepth(9);
             this.actionPointOverlays.push(overlay);
         }
+
+        this.updateCurrencyUILayout();
+    }
+
+    updateCurrencyUILayout() {
+        if (!this.coinSprite || !this.coinsText || !this.crystalSprite || !this.crystalsText) return;
+
+        const maxActions = Math.max(1, this.gameState?.maxActions || 1);
+        const nodeCount = Math.ceil(maxActions / 4);
+        const hasExtraActionRow = nodeCount > 5;
+        const yOffset = hasExtraActionRow ? 24 : 0;
+
+        this.coinSprite.setPosition(26, 210 + yOffset);
+        this.coinsText.setPosition(26, 227 + yOffset);
+        this.crystalSprite.setPosition(54, 211 + yOffset);
+        this.crystalsText.setPosition(54, 228 + yOffset);
     }
 
     updateActionPointUI() {

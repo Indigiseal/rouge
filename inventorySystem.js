@@ -54,6 +54,57 @@ export class InventorySystem {
 
     setStationMode(isStationMode) {
         this.stationMode = isStationMode;
+        this.applyInventoryVisualDepths();
+    }
+
+    getInventoryDepths() {
+        return this.stationMode
+            ? {
+                panel: 200,
+                background: 201,
+                shadow: 202,
+                card: 203,
+                info: 204,
+                hover: 205,
+                gemEffect: 206,
+                gemIndicator: 207,
+                twinkle: 208
+            }
+            : {
+                panel: 10,
+                background: 11,
+                shadow: 11,
+                card: 12,
+                info: 1001,
+                hover: 13,
+                gemEffect: 14,
+                gemIndicator: 15,
+                twinkle: 100
+            };
+    }
+
+    applyInventoryVisualDepths() {
+        const depths = this.getInventoryDepths();
+        this.inventoryPanelPieces?.forEach(piece => piece?.setDepth?.(depths.panel));
+        this.slotSprites?.forEach((slot, index) => this.applySlotVisualDepths(index));
+    }
+
+    applySlotVisualDepths(slotIndex) {
+        const slot = this.slotSprites?.[slotIndex];
+        if (!slot) return;
+        const depths = this.getInventoryDepths();
+
+        slot.background?.setDepth?.(depths.background);
+        slot.shadow?.setDepth?.(depths.shadow);
+        slot.card?.setDepth?.(depths.card);
+
+        const infoText = slot.card?.getData?.('infoText');
+        infoText?.setDepth?.(depths.info);
+
+        slot.hoverSprite?.setDepth?.(depths.hover);
+        slot.gemEffectSprite?.setDepth?.(depths.gemEffect);
+        slot.gemIndicator?.setDepth?.(depths.gemIndicator);
+        slot.twinkleSprite?.setDepth?.(depths.twinkle);
     }
     
     setDiscardArea(discardArea) {
@@ -790,19 +841,18 @@ export class InventorySystem {
             if (typeof cardSprite.clearTint === 'function') {
                 cardSprite.clearTint();
             }
-            cardSprite.setDepth(12);
+            this.applySlotVisualDepths(slotIndex);
             
             const currentSlot = this.slotSprites[slotIndex];
             if (currentSlot) {
                 // Hide shadow after drag
                 if (currentSlot.shadow) {
                     currentSlot.shadow.setAlpha(0);
-                    currentSlot.shadow.setDepth(11);
                 }
                 
                 // Reset twinkle depth
                 if (currentSlot.twinkleSprite) {
-                    currentSlot.twinkleSprite.setDepth(100);
+                    currentSlot.twinkleSprite.setDepth(this.getInventoryDepths().twinkle);
                 }
             }
             
@@ -819,6 +869,7 @@ export class InventorySystem {
             this.uiGroup.add(cardWithSprite.infoText);
             cardSprite.setData('infoText', cardWithSprite.infoText);
         }
+        this.applySlotVisualDepths(slotIndex);
     }
 
     addStartingCards() {
@@ -1457,6 +1508,7 @@ export class InventorySystem {
                 // Ensure final position is exact
                 cardSprite.x = targetX;
                 cardSprite.y = targetY;
+                this.applySlotVisualDepths(slotIndex);
                 
                 // Update stored position data
                 cardSprite.setData('originalX', targetX);
@@ -2348,7 +2400,7 @@ export class InventorySystem {
                 secondCard = cardA;
             }
         }
-        
+
         // Create upgraded card using CardDataGenerator and handle durability combining
         const upgradedCard = this.createMergedCard(baseCard, secondCard);
         

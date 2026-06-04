@@ -1199,13 +1199,13 @@ export class CardSystem {
 
     spawnBoss() {
         const bossData = this.cardDataGenerator.createCardData('boss', this.scene.gameState.currentFloor);
+        bossData.maxHealth = bossData.maxHealth || bossData.health;
         const cam = this.scene.cameras.main;
         const x = cam.width / 2;
         const bossOffsetY = bossData.name === 'Spider Queen' ? -100 : 0;
         const y = cam.height / 2 + bossOffsetY;
         this.createBossBoardPanel();
         const cardSprite = snapOriginToPixelGrid(this.scene.add.image(x, y, bossData.sprite));
-        this.playBossEntrance(cardSprite, bossData);
         
         const card = {
             sprite: cardSprite,
@@ -1214,6 +1214,7 @@ export class CardSystem {
         };
         this.boardCards[4] = card;
         this.createCardInfoText(card);
+        this.playBossEntrance(cardSprite, bossData);
         card.sprite.setInteractive();
     }
 
@@ -1685,6 +1686,10 @@ export class CardSystem {
     // them without changes.
     _buildEnemyCornerStats(card) {
         if (!card?.sprite || !card.data) return;
+        if (card.data.type === 'boss') {
+            this._buildBossStats(card);
+            return;
+        }
 
         // Corner inset (px from the card centre). Tuned to drop into the
         // little stat-plate slots painted onto the new card art — HP to the
@@ -1716,6 +1721,45 @@ export class CardSystem {
         container._atkText = atkText;
 
         card.infoText = container;
+    }
+
+    _buildBossStats(card) {
+        if (!card?.sprite || !card.data) return;
+
+        const maxHealth = Math.max(1, card.data.maxHealth || card.data.health || 1);
+        card.data.maxHealth = maxHealth;
+
+        const barFrame = this.scene.textures.getFrame('healthBar');
+        const barWidth = barFrame?.width || 84;
+        const bossBottom = (card.sprite.displayHeight || card.sprite.height || 100) / 2;
+        const y = card.sprite.y + bossBottom + 18;
+
+        const emptyBar = this.scene.add.image(0, 0, 'healthBarEmpty').setOrigin(0.5);
+        const fillBar = this.scene.add.image(-barWidth / 2, 0, 'healthBar').setOrigin(0, 0.5);
+        const hpText = this.scene.add.text(0, -1, '', {
+            fontSize: '9px',
+            fill: '#ffffff',
+            fontFamily: '"HoMM Pixel"',
+            stroke: '#230000',
+            strokeThickness: 2
+        }).setOrigin(0.5);
+        const atkText = this.scene.add.text(0, 14, '', {
+            fontSize: '10px',
+            fill: '#ffcf7f',
+            fontFamily: '"HoMM Pixel"',
+            stroke: '#2b1600',
+            strokeThickness: 2
+        }).setOrigin(0.5);
+
+        const container = this.scene.add.container(card.sprite.x, y, [emptyBar, fillBar, hpText, atkText]);
+        container.setDepth((card.sprite.depth || 1) + 8);
+        container._bossHpFill = fillBar;
+        container._bossHpText = hpText;
+        container._bossAtkText = atkText;
+        container._bossBarWidth = barWidth;
+
+        card.infoText = container;
+        this.updateBossInfoText(card);
     }
 
     getGemLabel(gem) {
@@ -2590,6 +2634,11 @@ export class CardSystem {
         // exposes _hpText / _atkText. Refresh those in place when they're
         // still valid Phaser objects.
         const container = card.infoText;
+        if (card.data.type === 'boss' && container?._bossHpFill) {
+            this.updateBossInfoText(card);
+            return;
+        }
+
         const hpText = container?._hpText;
         const atkText = container?._atkText;
         if (hpText && atkText
@@ -2607,6 +2656,21 @@ export class CardSystem {
         try { if (container && typeof container.destroy === 'function') container.destroy(true); } catch (_) {}
         card.infoText = null;
         this._buildEnemyCornerStats(card);
+    }
+
+    updateBossInfoText(card) {
+        const container = card?.infoText;
+        if (!container?._bossHpFill || !container._bossHpText || !container._bossAtkText) return;
+
+        const maxHealth = Math.max(1, card.data.maxHealth || card.data.health || 1);
+        const health = Phaser.Math.Clamp(card.data.health || 0, 0, maxHealth);
+        const barWidth = container._bossBarWidth || 84;
+        const fillWidth = Math.max(0, Math.ceil(barWidth * (health / maxHealth)));
+
+        container._bossHpFill.setVisible(fillWidth > 0);
+        container._bossHpFill.setCrop(0, 0, fillWidth, container._bossHpFill.height);
+        container._bossHpText.setText(`${health}/${maxHealth}`);
+        container._bossAtkText.setText(`ATK ${card.data.attack ?? 0}`);
     }
     
     createCardData(type, floor, isElite = false, gameState = null, targetRarity = null) {

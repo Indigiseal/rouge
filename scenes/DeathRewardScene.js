@@ -69,13 +69,14 @@ export class DeathRewardScene extends Phaser.Scene {
             fontStyle: 'bold'
         }).setOrigin(0.5);
         
-        const iconBg = this.add.circle(250, 150, 25, 0x444444)
+        const relicIconX = 202;
+        const iconBg = this.add.circle(relicIconX, 150, 25, 0x444444)
             .setStrokeStyle(2, 0xffd700);
         const usesSheet = relic.iconSheet && this.textures.exists(relic.iconSheet);
         if (usesSheet) {
-            this.add.image(250, 150, relic.iconSheet, relic.iconFrame);
+            this.add.image(relicIconX, 150, relic.iconSheet, relic.iconFrame);
         } else if (relic.icon && this.textures.exists(relic.icon)) {
-            this.add.image(250, 150, relic.icon);
+            this.add.image(relicIconX, 150, relic.icon);
         }
         
         // Relic name and description
@@ -85,7 +86,7 @@ export class DeathRewardScene extends Phaser.Scene {
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
         
-        this.add.text(320, 175, translateDescription(this, relic.description), {
+        this.add.text(320, 195, translateDescription(this, relic.description), {
             fontSize: '14px',
             fill: '#aaaaaa',
             fontFamily: '"HoMM Pixel", Arial, sans-serif',

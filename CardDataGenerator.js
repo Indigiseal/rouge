@@ -77,15 +77,15 @@ export class CardDataGenerator {
         if (weights.boss) return weights;
 
         const balanced = { ...weights };
-        const weaponMinimum = floor >= 16 ? 16 : floor >= 11 ? 14 : 10;
-        const weaponBoost = floor >= 16 ? 8 : floor >= 11 ? 5 : floor >= 6 ? 3 : 0;
+        const weaponMinimum = floor >= 31 ? 12 : floor >= 18 ? 11 : floor >= 11 ? 9 : 7;
+        const weaponBoost = floor >= 31 ? 4 : floor >= 18 ? 3 : floor >= 11 ? 1 : 0;
 
         const enemyMultiplier = floor <= 14 ? 0.68 : 0.78; // back to original; enemy MINIMUM now guarantees fights
         balanced.enemy = Math.max(20, Math.floor((balanced.enemy || 0) * enemyMultiplier));
         balanced.coin = Math.max(1, Math.floor((balanced.coin || 0) * 0.25));
         balanced.trap = Math.max(3, Math.floor((balanced.trap || 0) * 0.75));
-        balanced.weapon = Math.max(weaponMinimum, Math.floor((balanced.weapon || 0) * 1.2) + weaponBoost);
-        balanced.armor = Math.max(14, Math.ceil((balanced.armor || 0) * 1.8));  // Bumped: armor needs to drop often enough to build a merge line
+        balanced.weapon = Math.max(weaponMinimum, Math.floor((balanced.weapon || 0) * 0.95) + weaponBoost);
+        balanced.armor = Math.max(floor >= 18 ? 12 : 10, Math.ceil((balanced.armor || 0) * 1.15));
         // Amulets were flooding the late game (~22% of cards, 4-5 per floor),
         // which trivialized runs once you stacked a dozen+. Cap the weight so
         // they stay an occasional reward (~6% of cards). Bigger rewards now
@@ -102,10 +102,10 @@ export class CardDataGenerator {
         // and then flooded act 3 (weight 27), which both broke the intended
         // "no gems early" feel and over-supplied the end game (only 3 gems
         // socket per weapon anyway).
-        balanced.gem = floor < 7 ? 0
-            : floor <= 15 ? 11  // rest of act 1: gems begin appearing
-            : floor <= 30 ? 13  // act 2: steady trickle
-            : 15;               // act 3: modest bump, not a flood
+        balanced.gem = floor < 12 ? 0
+            : floor <= 15 ? 3
+            : floor <= 30 ? 9
+            : 12;
         balanced.key = Math.max(2, balanced.key || 0);
         balanced.mimic = Math.max(0, balanced.mimic || 0); // keep mimic chance from formula
         balanced.empty = floor <= 15 ? 0 : Math.max(12, balanced.empty || 0); // no empty cards in Act 1 (floors 1-15)
@@ -143,17 +143,17 @@ export class CardDataGenerator {
         this.weaponUnlocks = {
             dagger: {
                 common: { floor: 1, damage: 3, sprite: 'dagger_C', special: 'dualWield' },
-                uncommon: { floor: 4, damage: 4, sprite: 'dagger_U', special: 'dualWield' },
-                rare: { floor: 8, damage: 5, sprite: 'dagger_R', special: 'dualWield' },
-                epic: { floor: 10, damage: 6, sprite: 'dagger_E', special: 'dualWield' },
-                legendary: { floor: 13, damage: 7, sprite: 'dagger_L', special: 'dualWield' }
+                uncommon: { floor: 10, damage: 4, sprite: 'dagger_U', special: 'dualWield' },
+                rare: { floor: 18, damage: 5, sprite: 'dagger_R', special: 'dualWield' },
+                epic: { floor: 26, damage: 6, sprite: 'dagger_E', special: 'dualWield' },
+                legendary: { floor: 34, damage: 7, sprite: 'dagger_L', special: 'dualWield' }
             },
             spear: {
-                common: { floor: 5, damage: 4, sprite: 'spear_c', special: 'block', range: 'ranged' },
-                uncommon: { floor: 9, damage: 5, sprite: 'spear_u', special: 'block', range: 'ranged' },
-                rare: { floor: 13, damage: 6, sprite: 'spear_R', special: 'block', range: 'ranged' },
-                epic: { floor: 15, damage: 7, sprite: 'spear_E', special: 'block', range: 'ranged' },
-                legendary: { floor: 18, damage: 9, sprite: 'spear_L', special: 'block', range: 'ranged' }
+                common: { floor: 8, damage: 4, sprite: 'spear_c', special: 'block', range: 'ranged' },
+                uncommon: { floor: 18, damage: 5, sprite: 'spear_u', special: 'block', range: 'ranged' },
+                rare: { floor: 24, damage: 6, sprite: 'spear_R', special: 'block', range: 'ranged' },
+                epic: { floor: 30, damage: 7, sprite: 'spear_E', special: 'block', range: 'ranged' },
+                legendary: { floor: 38, damage: 9, sprite: 'spear_L', special: 'block', range: 'ranged' }
             },
             sword: {
                 // Act 2 weapon — appears fresh at the act-2 start (floor 16) and merges
@@ -183,10 +183,10 @@ export class CardDataGenerator {
                 // Dodge ladder rebalanced — legendary caps at 15% (was 25%);
                 // lower tiers scaled down so the gradient stays meaningful.
                 common:    { floor: 1,  protection: 1, dodgeChance: 0.05, sprite: 'leather_C' },
-                uncommon:  { floor: 4,  protection: 2, dodgeChance: 0.08, sprite: 'leather_U' },
-                rare:      { floor: 8,  protection: 3, dodgeChance: 0.10, sprite: 'leather_R' },
-                epic:      { floor: 10, protection: 4, dodgeChance: 0.12, sprite: 'leather_E' },
-                legendary: { floor: 13, protection: 5, dodgeChance: 0.15, sprite: 'leather_L' }
+                uncommon:  { floor: 10, protection: 2, dodgeChance: 0.08, sprite: 'leather_U' },
+                rare:      { floor: 18, protection: 3, dodgeChance: 0.10, sprite: 'leather_R' },
+                epic:      { floor: 26, protection: 4, dodgeChance: 0.12, sprite: 'leather_E' },
+                legendary: { floor: 34, protection: 5, dodgeChance: 0.15, sprite: 'leather_L' }
             },
             chain: {
                 // Act 2 armor — appears fresh at the act-2 start (floor 16) and merges
@@ -220,9 +220,9 @@ export class CardDataGenerator {
                     // Act 1 softened by ~1 dmg (floors 1-14).
                     // Act 2 (floor 15+) and Act 3 (floor 31+) trimmed -1 dmg
                     // and ~10% HP for a gentler curve where the bot stalls.
-                    { minFloor: 1,  damage: 7,  health: 10 },
-                    { minFloor: 5,  damage: 9,  health: 13 },
-                    { minFloor: 10, damage: 9,  health: 13 },
+                    { minFloor: 1,  damage: 6,  health: 9  },
+                    { minFloor: 5,  damage: 8,  health: 12 },
+                    { minFloor: 10, damage: 8,  health: 12 },
                     { minFloor: 15, damage: 8,  health: 14 },
                     { minFloor: 31, damage: 11, health: 20 }
                 ]
@@ -234,9 +234,9 @@ export class CardDataGenerator {
                 minFloor: 3,
                 tiers: [
                     // Act 2/3 trimmed -1 dmg and ~10% HP to ease the curve.
-                    { minFloor: 3,  damage: 6,  health: 9  },
-                    { minFloor: 8,  damage: 7,  health: 11 },
-                    { minFloor: 13, damage: 6,  health: 10 },
+                    { minFloor: 3,  damage: 5,  health: 8  },
+                    { minFloor: 8,  damage: 6,  health: 10 },
+                    { minFloor: 13, damage: 5,  health: 9  },
                     { minFloor: 16, damage: 6,  health: 9  },
                     { minFloor: 18, damage: 7,  health: 13 },
                     { minFloor: 31, damage: 10, health: 18 }
@@ -250,8 +250,8 @@ export class CardDataGenerator {
                 minFloor: 4,
                 tiers: [
                     // Act 2/3 trimmed -1 dmg and ~10% HP.
-                    { minFloor: 4,  damage: 7,  health: 11 },
-                    { minFloor: 11, damage: 9,  health: 13 },
+                    { minFloor: 4,  damage: 6,  health: 10 },
+                    { minFloor: 11, damage: 8,  health: 12 },
                     { minFloor: 16, damage: 9,  health: 14 },
                     { minFloor: 20, damage: 9,  health: 14 },
                     { minFloor: 31, damage: 11, health: 20 }
@@ -265,9 +265,9 @@ export class CardDataGenerator {
                 minFloor: 2,
                 tiers: [
                     // Act 2/3 trimmed -1 dmg and ~15% HP.
-                    { minFloor: 2,  damage: 3,  health: 6  },
-                    { minFloor: 7,  damage: 5,  health: 9  },
-                    { minFloor: 12, damage: 5,  health: 8  },
+                    { minFloor: 2,  damage: 3,  health: 5  },
+                    { minFloor: 7,  damage: 4,  health: 8  },
+                    { minFloor: 12, damage: 4,  health: 7  },
                     { minFloor: 16, damage: 5,  health: 7  },
                     { minFloor: 22, damage: 7,  health: 10 },
                     { minFloor: 31, damage: 8,  health: 13 }
@@ -281,8 +281,8 @@ export class CardDataGenerator {
                 minFloor: 6,
                 tiers: [
                     // Act 2/3 trimmed -1 dmg and ~15% HP.
-                    { minFloor: 6,  damage: 4,  health: 7  },
-                    { minFloor: 11, damage: 5,  health: 9  },
+                    { minFloor: 6,  damage: 3,  health: 6  },
+                    { minFloor: 11, damage: 4,  health: 8  },
                     { minFloor: 16, damage: 5,  health: 8  },
                     { minFloor: 17, damage: 5,  health: 8  },
                     { minFloor: 25, damage: 7,  health: 10 },
@@ -945,7 +945,8 @@ export class CardDataGenerator {
         // Global difficulty scaling — the game was too soft (fresh, relic-less
         // runs could win, violating the "die ≥3 times to earn relics" design).
         // Enemies hit harder and are a bit tankier.
-        const ATK_MULT = 1.0, HP_MULT = 1.0; // global enemy buff off for now — difficulty comes from no-free-floors + bosses
+        const ATK_MULT = floor >= 16 ? 1.05 : 1.0;
+        const HP_MULT = floor >= 16 ? 1.05 : 1.0;
         const enemyCard = {
             type: 'enemy',
             name: enemy.name,
@@ -1071,12 +1072,11 @@ export class CardDataGenerator {
         // merge gate with a softer rarity-pipeline approach: rares are still
         // common in act 2 (great merge fodder), but epics arrive in late act 2
         // / act 3 where they make sense.
-        if (floor <= 5)        weights = [95, 5,  0,  0];
-        else if (floor <= 10)  weights = [85, 15, 0,  0];
-        else if (floor <= 15)  weights = [70, 25, 5,  0];
-        else if (floor <= 20)  weights = [55, 35, 10, 0];   // early act 2 — no epics yet
-        else if (floor <= 25)  weights = [40, 40, 20, 0];   // mid act 2   — no epics yet
-        else if (floor <= 30)  weights = [25, 45, 28, 2];   // late act 2  — epics very rare
+        if (floor <= 10)       weights = [100, 0,  0,  0];
+        else if (floor <= 17)  weights = [90,  10, 0,  0];
+        else if (floor <= 22)  weights = [65,  30, 5,  0];
+        else if (floor <= 27)  weights = [45,  40, 15, 0];
+        else if (floor <= 30)  weights = [30,  45, 23, 2];
         // Act 3 (rebalance): playtest showed the old weights flooded act 3
         // with epics & rares. The new curve keeps uncommons + rares dominant
         // through act 3, with epics as a slow-arriving treat — boss room is

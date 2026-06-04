@@ -485,25 +485,13 @@ function runRest(gs) {
   gs.actionsLeft = gs.maxActions;
 }
 
-// Events are still placeholders in the real game, so model them as a NEUTRAL
-// non-combat breather (no reward, no attrition). We'll flesh these out only
-// after the core combat/economy is tuned.
-// Event rooms (caravan/hermit/crossroads) now reward gems on most branches.
-// Modeled as: ~70% chance of a gem drop, plus the small coin/heal/crystal mix
-// that the real branches give. Inventory bot grabs the gem for socketing.
+// Story events are modeled as a small breather/reward. They do not hand out
+// socket gems by default, matching the current Caravan/Hermit and Bard webs.
 function runEvent(mock, gs, inv, floor) {
   gs.coins += 8 + Math.floor(floor / 6);
   if (Math.random() < 0.4) gs.crystals += 1;
   if (gs.playerHealth < gs.maxHealth) {
     gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 5);
-  }
-  if (Math.random() < 0.7) {
-    const gem = mock.cardSystem.cardDataGenerator.createGemCard(floor);
-    if (gem) {
-      inv.push(gem);
-      mock._gemsSeen = (mock._gemsSeen || 0) + 1;
-      (mock._gemFloors || (mock._gemFloors = [])).push(floor);
-    }
   }
 }
 
@@ -1017,10 +1005,18 @@ function runRelicCompare() {
 }
 
 // ── main ──────────────────────────────────────────────────────────────────
+function runFresh() {
+  const runs = parseInt(process.argv[3], 10) || 500;
+  const metrics = newMetrics();
+  for (let i = 0; i < runs; i++) runGame(metrics, { relics: [], noBag: true });
+  report(metrics);
+}
 const MODE = process.argv[2];
 const t0 = Date.now();
 if (MODE === 'reliccompare') {
   runRelicCompare();
+} else if (MODE === 'fresh') {
+  runFresh();
 } else if (MODE === 'sweep') {
   runSweep();
 } else if (MODE === 'career') {
