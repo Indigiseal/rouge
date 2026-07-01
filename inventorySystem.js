@@ -196,7 +196,10 @@ export class InventorySystem {
         const spacing = 5;
         const totalWidth = slotCount * slotWidth + (slotCount - 1) * spacing;
         const inventoryCenterX = 340;
-        const startX = inventoryCenterX - (totalWidth / 2) + (slotWidth / 2);
+        // Round to a whole pixel: with bonus slots totalWidth can be odd, leaving
+        // the slots on a half-pixel. Fractional positions re-round (and shift 1px)
+        // whenever a board card's blend-mode hover sprite forces a render-batch flush.
+        const startX = Math.round(inventoryCenterX - (totalWidth / 2) + (slotWidth / 2));
         const y = 309;
         this.createInventoryPanel(inventoryCenterX, y, Math.max(368, totalWidth + 90), 112);
         
@@ -250,8 +253,11 @@ export class InventorySystem {
         const stretchWidth = panelWidth - capWidth * 2;
         const scaleY = height / sourceHeight;
         const scaledCapWidth = capWidth * scaleY;
-        const leftX = centerX - panelWidth / 2 + scaledCapWidth / 2;
-        const rightX = centerX + panelWidth / 2 - scaledCapWidth / 2;
+        // Round cap positions to whole pixels — fractional positions re-round and
+        // shift the panel 1px when a render-batch flush happens (e.g. a board card's
+        // blend-mode hover shine).
+        const leftX = Math.round(centerX - panelWidth / 2 + scaledCapWidth / 2);
+        const rightX = Math.round(centerX + panelWidth / 2 - scaledCapWidth / 2);
 
         const left = this.scene.add.image(leftX, centerY, 'panelCards', 'leftCap').setScale(scaleY);
         const middle = this.scene.add.image(centerX, centerY, 'panelCards', 'middleStretch').setDisplaySize(stretchWidth, height);
@@ -614,14 +620,16 @@ export class InventorySystem {
                 currentSlot.shadow.setAlpha(1);
             }
             
-            // Float card up
+            // Float card up (round each frame so the card art and its pips lift
+            // together on whole pixels — keeps the pips locked to the card)
             this.scene.tweens.add({
                 targets: cardSprite,
                 y: currentSlot.originalY - 5,
                 duration: 150,
-                ease: 'Power2'
+                ease: 'Power2',
+                onUpdate: () => { cardSprite.y = Math.round(cardSprite.y); }
             });
-            
+
             // Move hover sprite with card
             if (currentSlot.hoverSprite) {
                 this.scene.tweens.add({
@@ -653,14 +661,17 @@ export class InventorySystem {
                 });
             }
 
-            // Move info text if it exists
+            // Move info text if it exists. Round y each frame so the pip
+            // container never sits on a fractional pixel during the lift —
+            // otherwise the pips visibly jitter as it animates.
             const infoText = cardSprite.getData('infoText');
             if (infoText && infoText.scene) {
                 this.scene.tweens.add({
                     targets: infoText,
                     y: currentSlot.originalY - 5,
                     duration: 150,
-                    ease: 'Power2'
+                    ease: 'Power2',
+                    onUpdate: () => { infoText.y = Math.round(infoText.y); }
                 });
             }
             
@@ -717,14 +728,16 @@ export class InventorySystem {
                 currentSlot.shadow.setAlpha(0);
             }
             
-            // Return card to original position
+            // Return card to original position (round each frame to keep the
+            // card and its pips on whole pixels during the drop)
             this.scene.tweens.add({
                 targets: cardSprite,
                 y: currentSlot.originalY,
                 duration: 150,
-                ease: 'Power2'
+                ease: 'Power2',
+                onUpdate: () => { cardSprite.y = Math.round(cardSprite.y); }
             });
-            
+
             // Return hover sprite to original position
             if (currentSlot.hoverSprite) {
                 this.scene.tweens.add({
@@ -735,14 +748,16 @@ export class InventorySystem {
                 });
             }
             
-            // Return info text to original position
+            // Return info text to original position (round each frame so the
+            // pips stay on whole pixels during the drop).
             const infoText = cardSprite.getData('infoText');
             if (infoText && infoText.scene) {
                 this.scene.tweens.add({
                     targets: infoText,
                     y: currentSlot.originalY,
                     duration: 150,
-                    ease: 'Power2'
+                    ease: 'Power2',
+                    onUpdate: () => { infoText.y = Math.round(infoText.y); }
                 });
             }
             
@@ -769,8 +784,12 @@ export class InventorySystem {
             if (typeof cardSprite.setTint === 'function') {
                 cardSprite.setTint(0xffff00);
             }
-            cardSprite.setDepth(1000); // High depth while dragging
-            
+            // Float the dragged card above every other slot's pips/info, which sit
+            // at depth 1001 — otherwise other cards' durability dots draw on top of it.
+            cardSprite.setDepth(1002);
+            const draggedInfo = cardSprite.getData('infoText');
+            draggedInfo?.setDepth?.(1003);
+
             const currentSlot = this.slotSprites[slotIndex];
             if (!currentSlot) return;
             
@@ -786,11 +805,14 @@ export class InventorySystem {
                 currentSlot.gemEffectSprite.setVisible(false);
             }
 
-            // Hide gem indicator (and shadow) while dragging
+            // Keep the gem indicator visible while dragging and bring it above the
+            // card so the socketed gem travels with the card instead of vanishing.
             if (currentSlot.gemIndicator) {
-                currentSlot.gemIndicator.setVisible(false);
+                currentSlot.gemIndicator.setVisible(true);
+                currentSlot.gemIndicator.setDepth(1004);
                 if (currentSlot.gemIndicator.shadow) {
-                    currentSlot.gemIndicator.shadow.setVisible(false);
+                    currentSlot.gemIndicator.shadow.setVisible(true);
+                    currentSlot.gemIndicator.shadow.setDepth(1003);
                 }
             }
 
@@ -800,19 +822,22 @@ export class InventorySystem {
                 currentSlot.shadow.setDepth(999);
             }
             
-            // Bring twinkle sprite to front if it exists
+            // Bring twinkle sprite to front if it exists (above the dragged card)
             if (currentSlot.twinkleSprite) {
-                currentSlot.twinkleSprite.setDepth(1001);
+                currentSlot.twinkleSprite.setDepth(1004);
             }
         });
         
         cardSprite.on('drag', (pointer, dragX, dragY) => {
             if (!cardSprite.scene) return;
             
-            // Ensure positions are valid numbers
-            cardSprite.x = Phaser.Math.Clamp(dragX, 0, 640);
-            cardSprite.y = Phaser.Math.Clamp(dragY, 0, 360);
-            
+            // Round to whole pixels: the pip container's children are pixel-art
+            // sprites, and at fractional positions roundPixels rounds each pip
+            // independently, making their spacing jitter (pips appear to shift /
+            // shrink and grow). Integer positions keep them rock-steady.
+            cardSprite.x = Math.round(Phaser.Math.Clamp(dragX, 0, 640));
+            cardSprite.y = Math.round(Phaser.Math.Clamp(dragY, 0, 360));
+
             const infoText = cardSprite.getData('infoText');
             if (infoText && infoText.scene) {
                 infoText.x = cardSprite.x;
@@ -832,6 +857,19 @@ export class InventorySystem {
             if (currentSlot.twinkleSprite && currentSlot.twinkleSprite.scene) {
                 currentSlot.twinkleSprite.x = cardSprite.x;
                 currentSlot.twinkleSprite.y = cardSprite.y;
+            }
+
+            // Move the gem indicator with the card, preserving its corner offset.
+            if (currentSlot.gemIndicator && currentSlot.gemIndicator.scene) {
+                const indicator = currentSlot.gemIndicator;
+                const ox = cardSprite.getData('originalX');
+                const oy = cardSprite.getData('originalY');
+                indicator.x = cardSprite.x + (indicator.restX - ox);
+                indicator.y = cardSprite.y + (indicator.restY - oy);
+                if (indicator.shadow && indicator.shadow.scene) {
+                    indicator.shadow.x = indicator.x;
+                    indicator.shadow.y = indicator.y;
+                }
             }
         });
         
@@ -1044,11 +1082,12 @@ export class InventorySystem {
             return t(this.scene, 'tooltip.noMerge');
         }
 
+        const canCrossTier = !!(this.scene.amuletManager && this.scene.amuletManager.canCrossTierMerge());
         const mergeableSlots = [];
         const blockedReasons = new Set();
         this.slots.forEach((otherCard, otherIndex) => {
             if (!otherCard || otherIndex === slotIndex) return;
-            if (this.canCardsMerge(card, otherCard, false)) {
+            if (this.canCardsMerge(card, otherCard, canCrossTier)) {
                 mergeableSlots.push(otherIndex + 1);
                 return;
             }
@@ -1253,6 +1292,27 @@ export class InventorySystem {
             Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.armorPanel.getBounds())
         ) {
             if (this.equipArmor(slotIndex, cardSprite)) return;
+        }
+
+        // Potions, food and self-targeted magic (e.g. Restoration) can be used on
+        // the hero even while in a shop, just like armor can be equipped — check
+        // BEFORE the stationMode early-return, otherwise dropping them on the avatar
+        // just bounces back to the inventory.
+        if (this.scene.playerAvatar) {
+            const avatarBounds = this.scene.playerAvatar.getBounds();
+            if (Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), avatarBounds)) {
+                if (cardData.type === 'potion') {
+                    if (this.usePotion(slotIndex, cardSprite)) return;
+                } else if (cardData.type === 'food') {
+                    if (this.useFood(slotIndex, cardSprite)) return;
+                } else if (cardData.type === 'magic') {
+                    const selfTarget = ['restoration', 'shadowBlade', 'magicShield', 'boneWall', 'mirrorShield'];
+                    if (selfTarget.includes(cardData.magicType)) {
+                        this.useMagicCard(slotIndex, cardSprite);
+                        return;
+                    }
+                }
+            }
         }
 
         if (this.stationMode) {
@@ -1853,6 +1913,10 @@ export class InventorySystem {
             this.cleanupCardSprites(slotIndex, cardSprite);
             cardSprite.destroy();
             this.removeCard(slotIndex);
+            // Refresh the HUD so any buff the spell just applied (Bone Wall,
+            // Shadow Blade, Magic Shield, Mirror Shield, etc.) shows up in the
+            // player-effects panel right away instead of only after the next turn.
+            this.scene.updateUI();
         } else {
             // Return card to slot if not used
             this.returnCardToSlot(slotIndex, cardSprite);
@@ -2301,7 +2365,9 @@ export class InventorySystem {
     }
     
     usePotion(slotIndex, cardSprite) {
-        if (!this.scene.useAction()) return false;
+        // In a shop (station mode) there are no enemy turns or action economy,
+        // so healing shouldn't spend an action or schedule an enemy turn.
+        if (!this.stationMode && !this.scene.useAction()) return false;
         const potionData = this.slots[slotIndex];
         if (!potionData) return false;
         
@@ -2313,14 +2379,17 @@ export class InventorySystem {
         
         // Use the GameState heal method to respect health caps
         this.scene.gameState.heal(healAmount);
-        
+
         this.scene.createFloatingText(
             this.scene.playerAvatar.x,
             this.scene.playerAvatar.y,
             `+${healAmount} HP`,
             0x00ff00
         );
-        
+
+        // Fire potion-use amulet hooks (e.g. Carrion Oath's poison purge).
+        this.scene.amuletManager?.processPotionUse?.();
+
         // Properly clean up all sprites
         if (cardSprite) {
             this.cleanupCardSprites(slotIndex, cardSprite);
@@ -2461,10 +2530,20 @@ export class InventorySystem {
                 : newRarity === 'rare' ? 9
                 : newRarity === 'epic' ? 10
                 : 11;
+            // Swap to the rarity-appropriate thorns art (was keeping the common
+            // sprite after a merge). Mirrors CardDataGenerator's thornsSpriteByRarity.
+            const thornsSpriteByRarity = {
+                common: 'thornsCard',
+                uncommon: 'thornsCard_U',
+                rare: 'thornsCard_R',
+                epic: 'thornsCard_E',
+                legendary: 'thornsCard_E'
+            };
             upgradedCard = {
                 ...baseCard,
                 name: 'Thorns Card',
                 rarity: newRarity,
+                sprite: thornsSpriteByRarity[newRarity] || 'thornsCard',
                 thornDamage: Math.max(baseCard.thornDamage + 1, Math.floor(baseCard.thornDamage * multiplier)),
                 durability: maxDurability,
                 maxDurability,
@@ -2670,20 +2749,30 @@ export class InventorySystem {
             }
         });
         
+        // Cross-tier merging (Golden Hammer) lets cards of different rarities
+        // combine, so the twinkle detection must use the same rule the real
+        // merge does — otherwise a freshly-merged higher-tier card that can
+        // still merge down with a lower-tier copy wouldn't sparkle.
+        const canCrossTier = !!(this.scene.amuletManager && this.scene.amuletManager.canCrossTierMerge());
+
         // Find items that can be merged and apply twinkle animation.
         this.slots.forEach((card, index) => {
             if (card && card.type !== 'magic' && card.type !== 'gem') {
                 const hasMatch = this.slots.some((otherCard, otherIndex) => (
-                    otherIndex !== index && this.canCardsMerge(card, otherCard, false)
+                    otherIndex !== index && this.canCardsMerge(card, otherCard, canCrossTier)
                 ));
 
                 if (hasMatch) {
                     const cardSprite = this.slotSprites[index].card;
                     if (cardSprite && cardSprite.scene) {
-                        // Create twinkle sprite at the same position as the card
+                        // Create twinkle sprite at the same position as the card.
+                        // Use the mode-aware twinkle depth: in a shop (station mode)
+                        // the inventory sits at depths 200+, so a hardcoded 100 would
+                        // hide the twinkle behind the shop panel after a merge.
+                        const twinkleDepth = this.getInventoryDepths().twinkle;
                         const twinkleSprite = snapOriginToPixelGrid(this.scene.add.sprite(cardSprite.x, cardSprite.y, 'twinkle1'));
                         twinkleSprite.setScale(1.0);
-                        twinkleSprite.setDepth(100); // High depth to ensure visibility
+                        twinkleSprite.setDepth(twinkleDepth);
                         twinkleSprite.play('twinkle_anim');
                         
                         // Make sure it's visible

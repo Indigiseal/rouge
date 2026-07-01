@@ -153,28 +153,29 @@ export class AmuletManager {
             // CURSED AMULETS (with debuffs)
             hungryDagger: {
                 ...getAmuletAtlasPresentation('hungryDagger'),
-                description: 'Instant kill at 1 HP, but heals enemies otherwise',
-                rarity: 'cursed',
-                cursed: true,
-                onEnemyDamage: (enemy, damage) => {
-                    const newHealth = enemy.health - damage;
-                    if (newHealth === 1) {
-                        enemy.health = 0; // Instant kill
-                        this.scene.createFloatingText(
-                            enemy.sprite.x,
-                            enemy.sprite.y,
-                            'EXECUTED!',
-                            0xff0000
-                        );
-                    } else if (newHealth > 1) {
-                        enemy.health = newHealth + 1; // Heal enemy
-                        this.scene.createFloatingText(
-                            enemy.sprite.x,
-                            enemy.sprite.y,
-                            '+1 HP',
-                            0x00ff00
-                        );
-                    }
+                // Displayed as "Carrion Oath" (bird-skull art). Reworked from the old
+                // confusing "instant kill at exactly 1 HP / otherwise heal the enemy"
+                // effect into a clear poison-cleanse: potions purge poison and the
+                // toxin is turned back into healing.
+                description: 'Drinking a healing potion cures all poison and heals +2 HP per poison stack removed',
+                rarity: 'rare',
+                onPotionUse: () => {
+                    const effects = this.gameState.playerEffects || [];
+                    const poisonStacks = effects.filter(e => e.type === 'poison').length;
+                    if (poisonStacks <= 0) return;
+                    // Purge poison and convert it into bonus healing.
+                    this.gameState.playerEffects = effects.filter(e => e.type !== 'poison');
+                    const bonus = poisonStacks * 2;
+                    this.gameState.playerHealth = Math.min(
+                        this.gameState.maxHealth,
+                        this.gameState.playerHealth + bonus
+                    );
+                    this.scene.createFloatingText(
+                        this.scene.playerAvatar.x,
+                        this.scene.playerAvatar.y - 16,
+                        `Poison Purged +${bonus} HP`,
+                        0x66ff66
+                    );
                 }
             },
             
@@ -489,6 +490,17 @@ export class AmuletManager {
         });
     }
     
+    // Fire any amulet hooks that respond to drinking a healing potion
+    // (e.g. Carrion Oath's poison purge). Call AFTER the heal is applied.
+    processPotionUse() {
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.onPotionUse) {
+                definition.onPotionUse(amulet.level || 1);
+            }
+        });
+    }
+
     // Modify potion healing
     modifyPotionHealing(baseAmount) {
         let amount = baseAmount;

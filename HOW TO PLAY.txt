@@ -1,0 +1,18 @@
+ROGUE - QUICK START
+===================
+
+1. Extract the entire ZIP file to a normal folder.
+2. Open that folder.
+3. Double-click "PLAY GAME.bat".
+4. Keep the launcher window open while playing.
+
+The game will open automatically in your default web browser.
+
+To stop playing, close the launcher window.
+
+Important:
+- Do not run the launcher from inside the ZIP preview.
+- Do not move "PLAY GAME.bat" out of the game folder.
+- Windows may show a security warning for downloaded files. Choose
+  "More info" and "Run anyway" only if you received the game from
+  someone you trust.

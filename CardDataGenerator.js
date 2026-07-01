@@ -300,33 +300,36 @@ export class CardDataGenerator {
         // act gates feel hard but beatable. Cerberus took the biggest dmg cut
         // (20→17) because its 20-attack spike was the single deadliest moment
         // in the sim, far above the Lich at floor 25.
+        // Bosses are keyed by id and grouped into three tiers. Each act rolls ONE
+        // boss at random from its tier pool (tier 1 -> act 1 @ floor 15, tier 2 ->
+        // act 2 @ floor 30, tier 3 -> act 3 @ floor 45), so every run's finales vary.
+        // Stats are normalized within a tier so difficulty stays consistent no matter
+        // which boss is rolled. Poison is intentionally exclusive to the Spider Queen.
         this.bossData = {
-            5: { // Floor 5 mini boss
-                type: 'boss',
+            // ---- Tier 1 (Act 1 finale, floor 15) ----
+            giantSkeleton: {
+                type: 'boss', tier: 1,
                 name: 'Giant Skeleton',
-                health: 32,
-                attack: 8,
+                health: 40,
+                attack: 7,
                 sprite: 'giantSkeleton',
                 abilities: [
-                    { type: 'poison', damage: 3, turns: 5 },
                     { type: 'summon', enemyType: 'skeleton', chance: 0.3, count: 1 }
                 ]
-
             },
-            10: { // Floor 10 boss
-                type: 'boss',
+            goblinKing: {
+                type: 'boss', tier: 1,
                 name: 'Goblin King',
-                health: 46,
-                attack: 9,
+                health: 44,
+                attack: 8,
                 sprite: 'GoblinKingSprite',
                 abilities: [
-                    { type: 'poison', damage: 5, turns: 5, stackable: true },
+                    { type: 'coin_steal', chance: 0.5, amount: 3 },
                     { type: 'summon', enemyType: 'goblin', chance: 0.3, count: 1 }
-
                 ]
             },
-            15: { // Floor 15 boss — Act 1 gate (was deadliest single floor)
-                type: 'boss',
+            spiderQueen: {
+                type: 'boss', tier: 1,
                 name: 'Spider Queen',
                 health: 40,
                 attack: 7,
@@ -336,32 +339,34 @@ export class CardDataGenerator {
                     { type: 'summon', enemyType: 'spider', chance: 0.3, count: 1 }
                 ]
             },
-            20: { // Floor 20 boss
-                type: 'boss',
+
+            // ---- Tier 2 (Act 2 finale, floor 30) ----
+            soulEater: {
+                type: 'boss', tier: 2,
                 name: 'Soul Eater',
-                health: 54,
-                attack: 11,
+                health: 88,
+                attack: 16,
                 sprite: 'SoulEater',
                 abilities: [
                     { type: 'lifesteal', percentage: 0.6 },
                     { type: 'summon', enemyType: 'skeleton', chance: 0.3, count: 1 },
-                    { type: 'armor_break', amount: 2 },
+                    { type: 'armor_break', amount: 4 },
                     { type: 'rage', threshold: 0.5, damageBoost: 1.5 }
                 ]
             },
-            25: { // Floor 25 boss
-                type: 'boss',
+            lich: {
+                type: 'boss', tier: 2,
                 name: 'Lich',
-                health: 66,
-                attack: 13,
+                health: 88,
+                attack: 17,
                 sprite: 'Lich',
                 abilities: [
-                    { type: 'poison', damage: 8, turns: 5, stackable: true },
-                    { type: 'lifesteal', percentage: 0.8 }
+                    { type: 'lifesteal', percentage: 0.8 },
+                    { type: 'summon', enemyType: 'skeleton', chance: 0.3, count: 1 }
                 ]
             },
-            30: { // Floor 30 final boss — Act 2 gate
-                type: 'boss',
+            cerberus: {
+                type: 'boss', tier: 2,
                 name: 'Cerberus',
                 health: 88,
                 attack: 17,
@@ -371,17 +376,27 @@ export class CardDataGenerator {
                     { type: 'armor_break', amount: 5 }
                 ]
             },
-            45: { // Floor 45 final boss — Act 3 gate
-                type: 'boss',
+
+            // ---- Tier 3 (Act 3 finale, floor 45) ----
+            ancientCerberus: {
+                type: 'boss', tier: 3,
                 name: 'Ancient Cerberus',
                 health: 124,
                 attack: 22,
                 sprite: 'Cerberus',
                 abilities: [
                     { type: 'rage', threshold: 0.3, damageBoost: 2 },
-                    { type: 'armor_break', amount: 6 }
+                    { type: 'armor_break', amount: 6 },
+                    { type: 'summon', enemyType: 'skeleton', chance: 0.3, count: 1 }
                 ]
             }
+        };
+
+        // Which bosses can appear as each act's finale.
+        this.bossTiers = {
+            1: ['giantSkeleton', 'goblinKing', 'spiderQueen'],
+            2: ['soulEater', 'lich', 'cerberus'],
+            3: ['ancientCerberus']
         };
     }
 
@@ -435,8 +450,11 @@ export class CardDataGenerator {
             { id: 'vampiricRing',     minFloor: 4,  weight: 7,  rarity: 'uncommon' },
             { id: 'soulHarvester',    minFloor: 10, weight: 4,  rarity: 'rare' },
 
+            // Carrion Oath (hungryDagger) — reworked into a beneficial poison-cleanse
+            // amulet, so it now sits with the regular rares instead of the cursed pool.
+            { id: 'hungryDagger',     minFloor: 10, weight: 4,  rarity: 'rare' },
+
             // Cursed amulets
-            { id: 'hungryDagger',     minFloor: 12, weight: 4,  rarity: 'cursed' },
             { id: 'bloodyHarvest',    minFloor: 10, weight: 4,  rarity: 'cursed' },
             { id: 'eternalRage',      minFloor: 8,  weight: 4,  rarity: 'cursed' },
             { id: 'berserkerBelt',    minFloor: 14, weight: 3,  rarity: 'cursed' },
@@ -642,12 +660,12 @@ export class CardDataGenerator {
         ];
     }
     
-    createCardData(type, floor, isElite = false, gameState = null, targetRarity = null) {
+    createCardData(type, floor, isElite = false, gameState = null, targetRarity = null, preferredRole = null) {
         switch (type) {
             case 'boss':
                 return this.createBossCard(floor);
             case 'enemy':
-                return this.createEnemyCard(floor, isElite);
+                return this.createEnemyCard(floor, isElite, preferredRole);
             case 'mimic':
                 return this.createMimicCard(floor);
             case 'coin':
@@ -688,14 +706,27 @@ export class CardDataGenerator {
     }
 
     createBossCard(floor) {
-        return this.bossData[floor] || this.bossData[30];
+        // The act determines the tier; roll one boss at random from that tier's pool.
+        const act = Math.max(1, Math.min(3, Math.floor((floor - 1) / 15) + 1));
+        const pool = this.bossTiers[act] || this.bossTiers[1];
+        const id = pool[Math.floor(Math.random() * pool.length)];
+        // Deep-copy so per-fight mutations (health dropping, rage flag) never corrupt
+        // the shared template for the next spawn/run.
+        return JSON.parse(JSON.stringify(this.bossData[id]));
     }
 
-    createEnemyCard(floor, isElite = false) {
+    createEnemyCard(floor, isElite = false, preferredRole = null) {
         // Fallback in case no enemies are available
-        const availableEnemies = Object.keys(this.enemyData).filter(key => floor >= this.enemyData[key].minFloor);
+        let availableEnemies = Object.keys(this.enemyData).filter(key => floor >= this.enemyData[key].minFloor);
         if (availableEnemies.length === 0) {
             return this.createFallbackEnemy(floor);
+        }
+        // Position-based typing: front rows draw only MELEE-type enemies, back rows
+        // only RANGED (archers), so the sprite always matches where it sits. Fall
+        // back to the full pool if no enemy of the requested role is unlocked yet.
+        if (preferredRole) {
+            const byRole = availableEnemies.filter(key => (this.enemyData[key].role || 'MELEE') === preferredRole);
+            if (byRole.length > 0) availableEnemies = byRole;
         }
         const enemyType = availableEnemies[Math.floor(Math.random() * availableEnemies.length)];
         return this.createTieredEnemy(enemyType, floor, isElite);
@@ -725,7 +756,11 @@ export class CardDataGenerator {
             health: Math.ceil(selectedTier.health * HP_MULT),
             attack: Math.ceil(selectedTier.damage * ATK_MULT),
             sprite: enemy.sprite,
-            role: enemy.role || 'MELEE' // Default to MELEE if role is missing
+            role: enemy.role || 'MELEE', // Default to MELEE if role is missing
+            // Intrinsic ranged flag from the enemy TYPE (archers). The board later
+            // overrides `role` by row position, but this flag is preserved so
+            // thorns/melee-only effects can tell a real archer from a front-row melee.
+            isRangedType: enemy.role === 'RANGED'
         };
 
         if (enemy.abilities) {

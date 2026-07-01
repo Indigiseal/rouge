@@ -13,9 +13,11 @@ const EVENT_ILLUSTRATION_FRAMES = {
   cheerful_hermit: 8,
   singing_box: 2,
   masked_duelist: 5,
-  tiny_thief_bird: 7,
-  missing_bard_camp: 7,
-  placeholder_a: 7
+  tiny_thief_bird: 6,
+  missing_bard_camp: 0,
+  caravan_aftermath: 3,
+  last_refrain: 0,
+  quiet_crossroads: 7
 };
 
 const EVENTS = [
@@ -137,6 +139,30 @@ const EVENTS = [
           scene.gainCoins(5);
         },
         outcome: 'You throw a spare card into the road at exactly the wrong angle. The bandits trip over destiny.'
+      },
+      {
+        text: 'Trust your memory: save everyone',
+        condition: (gs) => Boolean(
+          gs?.heroMemory?.solvedCaravanPerfectly
+          || (gs?.heroMemory?.learnedDonkeyCanBeSaved && gs?.heroMemory?.learnedBanditsThreatenHermit)
+        ),
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          scene.logStoryKeyChoice('hero_memory_caravan_perfect');
+          gs.storyRun.caravanSeen = true;
+          gs.storyRun.donkeySaved = true;
+          gs.storyRun.donkeyLost = false;
+          gs.storyRun.banditsStopped = true;
+          gs.storyRun.banditsEscaped = false;
+          gs.storyRun.merchantGrateful = true;
+          gs.storyRun.hermitState = 'safe';
+          scene.clearPendingEvent('robbed_hermit');
+          scene.markHeroMemory('solvedCaravanPerfectly');
+          scene.gainCoins(10);
+          scene.gainCrystals(1);
+          scene.heal(5);
+        },
+        outcome: 'You have seen every danger before it happens. Donkey, merchant, medicine, and soup all survive the afternoon.'
       }
     ]
   },
@@ -150,8 +176,11 @@ const EVENTS = [
         action: (gs, scene) => {
           scene.ensureStoryState();
           gs.storyRun.hermitState = 'robbed';
+          gs.storyRun.caravanResolved = true;
+          gs.storyRun.caravanEnding = 'helped_hermit';
           scene.markHeroMemory('learnedBanditsThreatenHermit');
           scene.clearPendingEvent('robbed_hermit');
+          scene.addPendingEvent('caravan_aftermath');
           if (!scene.repairRandomDamagedItem(1)) scene.heal(5);
         },
         outcome: 'The hermit grumbles, but he fixes what he can. "Next time," he mutters, "stop the soup criminals first."'
@@ -163,8 +192,11 @@ const EVENTS = [
           scene.ensureStoryState();
           gs.coins = Math.max(0, (gs.coins || 0) - 10);
           gs.storyRun.hermitState = 'robbed';
+          gs.storyRun.caravanResolved = true;
+          gs.storyRun.caravanEnding = 'supplied_hermit';
           scene.markHeroMemory('learnedBanditsThreatenHermit');
           scene.clearPendingEvent('robbed_hermit');
+          scene.addPendingEvent('caravan_aftermath');
           if (!scene.addPotionToInventory()) scene.heal(15);
         },
         outcome: 'He accepts the coins with wounded dignity and gives you a spare bottle from under his hat.'
@@ -174,8 +206,11 @@ const EVENTS = [
         action: (gs, scene) => {
           scene.ensureStoryState();
           gs.storyRun.hermitState = 'robbed';
+          gs.storyRun.caravanResolved = true;
+          gs.storyRun.caravanEnding = 'left_hermit';
           scene.markHeroMemory('learnedBanditsThreatenHermit');
           scene.clearPendingEvent('robbed_hermit');
+          scene.addPendingEvent('caravan_aftermath');
         },
         outcome: 'You leave the hermit arguing with his soup pot. You will remember what the escaped bandits did.'
       },
@@ -186,8 +221,11 @@ const EVENTS = [
           scene.ensureStoryState();
           scene.logStoryKeyChoice('travelKitchen_robbed_hermit_soup');
           gs.storyRun.hermitState = 'comforted';
+          gs.storyRun.caravanResolved = true;
+          gs.storyRun.caravanEnding = 'comforted_hermit';
           scene.markHeroMemory('learnedBanditsThreatenHermit');
           scene.clearPendingEvent('robbed_hermit');
+          scene.addPendingEvent('caravan_aftermath');
           scene.heal(15);
           scene.gainCoins(5);
         },
@@ -201,8 +239,11 @@ const EVENTS = [
           scene.logStoryKeyChoice('watchersLamp_robbed_hermit_trail');
           gs.storyRun.hermitState = 'robbed';
           gs.storyRun.banditTrailFound = true;
+          gs.storyRun.caravanResolved = true;
+          gs.storyRun.caravanEnding = 'found_bandit_trail';
           scene.markHeroMemory('learnedBanditsThreatenHermit');
           scene.clearPendingEvent('robbed_hermit');
+          scene.addPendingEvent('caravan_aftermath');
           scene.gainCrystals(1);
         },
         outcome: "The lamp reveals cinnamon footprints leading deeper into the dungeon. The hermit squints. 'That is either justice or very dirty baking.'"
@@ -218,6 +259,10 @@ const EVENTS = [
         text: 'Listen to advice',
         action: (gs, scene) => {
           scene.ensureStoryState();
+          gs.storyRun.cheerfulHermitVisited = true;
+          gs.storyRun.caravanResolved = true;
+          gs.storyRun.caravanEnding = gs.storyRun.donkeySaved ? 'road_saved' : 'hermit_saved';
+          scene.addPendingEvent('caravan_aftermath');
           if (!scene.repairRandomDamagedItem(1)) scene.heal(10);
         },
         outcome: 'He explains three impossible things about soup and somehow your gear feels better.'
@@ -226,6 +271,10 @@ const EVENTS = [
         text: 'Ask for medicine',
         action: (gs, scene) => {
           scene.ensureStoryState();
+          gs.storyRun.cheerfulHermitVisited = true;
+          gs.storyRun.caravanResolved = true;
+          gs.storyRun.caravanEnding = gs.storyRun.donkeySaved ? 'road_saved' : 'hermit_saved';
+          scene.addPendingEvent('caravan_aftermath');
           if (!scene.addPotionToInventory()) scene.heal(10);
         },
         outcome: 'He hands you a healing potion labeled "probably safe."'
@@ -234,6 +283,10 @@ const EVENTS = [
         text: 'Compliment the soup',
         action: (gs, scene) => {
           scene.ensureStoryState();
+          gs.storyRun.cheerfulHermitVisited = true;
+          gs.storyRun.caravanResolved = true;
+          gs.storyRun.caravanEnding = gs.storyRun.donkeySaved ? 'road_saved' : 'hermit_saved';
+          scene.addPendingEvent('caravan_aftermath');
           scene.heal(5);
         },
         outcome: 'The hermit beams. The soup bubbles approvingly.'
@@ -247,8 +300,78 @@ const EVENTS = [
           scene.heal(20);
           scene.gainCoins(5);
           gs.storyRun.hermitState = 'friend';
+          gs.storyRun.cheerfulHermitVisited = true;
+          gs.storyRun.caravanResolved = true;
+          gs.storyRun.caravanEnding = 'hermit_friend';
+          scene.addPendingEvent('caravan_aftermath');
         },
         outcome: 'Together you create a soup so sturdy it may legally count as armor. The hermit gives you supplies for the road.'
+      }
+    ]
+  },
+  {
+    id: 'caravan_aftermath',
+    title: 'The Cinnamon Road',
+    description: (gs) => {
+      const story = gs?.storyRun || {};
+      if (story.banditTrailFound) {
+        return 'The cinnamon footprints end at an abandoned cache. The hermit recovers his medicine, and the merchant quietly rebuilds the road beside him.';
+      }
+      if (story.donkeySaved && story.banditsStopped) {
+        return 'The caravan rolls again beneath a clean evening sky. The merchant, the hermit, and one extremely proud donkey are all arguing about who saved whom.';
+      }
+      if (story.donkeySaved) {
+        return 'The rescued donkey returns pulling a patched little cart. The merchant has rebuilt what he can, while the hermit guards a fresh pot of soup.';
+      }
+      if (story.banditsStopped) {
+        return 'The road is safe. The hermit has medicine, the merchant has new crates, and someone swears the missing donkey joined a richer caravan.';
+      }
+      if (story.hermitState === 'comforted') {
+        return 'The losses remain, but the hermit has rebuilt his fire. He serves the merchant a bowl of heroic soup, and the cinnamon road begins again.';
+      }
+      return 'The burned caravan is gone. In its place stands a small roadside marker wrapped with a rein, a spice ribbon, and one stubborn soup spoon.';
+    },
+    choices: [
+      {
+        text: 'Share one last bowl of soup',
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          scene.finishStoryEpilogue('caravan', 'shared_soup');
+          scene.heal(12);
+        },
+        outcome: 'The soup is too hot and exactly what the road needed. The story ends among friends.'
+      },
+      {
+        text: "Accept the merchant's road gift",
+        condition: (gs) => Boolean(gs?.storyRun?.merchantGrateful || gs?.storyRun?.banditsStopped),
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          scene.finishStoryEpilogue('caravan', 'accepted_gift');
+          scene.gainCoins(18);
+        },
+        outcome: 'The merchant presses a cinnamon-scented purse into your hand. Behind him, the caravan finally starts moving forward.'
+      },
+      {
+        text: "Scratch the donkey's ears",
+        condition: (gs) => Boolean(gs?.storyRun?.donkeySaved),
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          scene.finishStoryEpilogue('caravan', 'thanked_donkey');
+          scene.heal(8);
+          scene.gainCrystals(1);
+        },
+        outcome: 'The donkey leans against you with enough force to count as a blessing. Its bell rings once as you leave the cinnamon road behind.'
+      },
+      {
+        text: 'Recover the stolen medicine',
+        condition: (gs) => Boolean(gs?.storyRun?.banditTrailFound),
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          scene.finishStoryEpilogue('caravan', 'recovered_medicine');
+          scene.gainCrystals(2);
+          scene.heal(5);
+        },
+        outcome: 'You return the medicine shelf intact. The hermit calls this acceptable heroism, which appears to be his highest praise.'
       }
     ]
   },
@@ -276,6 +399,10 @@ const EVENTS = [
           scene.ensureStoryState();
           gs.storyRun.musicBoxSeen = true;
           gs.storyRun.musicBoxState = 'ignored';
+          gs.storyRun.bardThreadState = 'released';
+          gs.storyRun.bardResolved = true;
+          gs.storyRun.bardEnding = 'left_box_singing';
+          scene.addPendingEvent('last_refrain');
           scene.heal(5);
         },
         outcome: 'You leave the box singing to itself. The melody follows you for a while, like it is trying to remember your name.'
@@ -324,6 +451,35 @@ const EVENTS = [
           scene.gainCrystals(1);
         },
         outcome: 'The lamp reveals tiny footprints circling the box. Whoever left it here was very small, very proud, and probably stealing things.'
+      },
+      {
+        text: 'Remember the damage: open it gently',
+        condition: (gs) => Boolean(gs?.heroMemory?.learnedMusicBoxBreaks && !gs?.heroMemory?.solvedBardSong),
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          scene.logStoryKeyChoice('hero_memory_singing_box_careful');
+          gs.storyRun.musicBoxSeen = true;
+          gs.storyRun.musicBoxState = 'opened';
+          gs.storyRun.bardThreadState = 'clue_found';
+          scene.addPendingEvent('masked_duelist');
+          scene.gainCrystals(1);
+        },
+        outcome: 'Your hands remember the ugly snapped note. This time the lid opens without a struggle, revealing the silver feather beneath.'
+      },
+      {
+        text: 'Sing the final refrain you remember',
+        condition: (gs) => Boolean(gs?.heroMemory?.solvedBardSong),
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          scene.logStoryKeyChoice('hero_memory_singing_box_refrain');
+          gs.storyRun.musicBoxSeen = true;
+          gs.storyRun.musicBoxState = 'answered';
+          gs.storyRun.bardThreadState = 'song_repaired';
+          scene.addPendingEvent('masked_duelist');
+          scene.heal(10);
+          scene.gainCrystals(1);
+        },
+        outcome: 'The melody recognizes you. The box opens on the remembered note, and somewhere deeper below, another instrument answers.'
       }
     ]
   },
@@ -419,6 +575,22 @@ const EVENTS = [
           scene.heal(5);
         },
         outcome: 'The horn blast turns the duel into an official ceremony. Nobody knows the rules, but everyone respects them.'
+      },
+      {
+        text: 'Tell him you remember the missing song',
+        condition: (gs) => Boolean(gs?.heroMemory?.learnedDuelistKnowsSong),
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          scene.logStoryKeyChoice('hero_memory_masked_duelist');
+          scene.clearPendingEvent('masked_duelist');
+          gs.storyRun.duelistState = gs.storyRun.bardThreadState === 'song_repaired'
+            ? 'inspired'
+            : 'trusting';
+          scene.addPendingEvent('tiny_thief_bird');
+          scene.repairRandomDamagedItem(1);
+          scene.heal(5);
+        },
+        outcome: 'You repeat the words he once gave you. He goes still, then bows. "Good. Some songs are stronger the second time."'
       }
     ]
   },
@@ -501,6 +673,22 @@ const EVENTS = [
           scene.gainCoins(10);
         },
         outcome: 'The bird mistakes you for a scarecrow, drops everything, and flees. This works, but feels socially complicated.'
+      },
+      {
+        text: 'Offer the crumbs it liked before',
+        condition: (gs) => Boolean(gs?.heroMemory?.learnedBirdLikesFood),
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          scene.logStoryKeyChoice('hero_memory_tiny_thief_bird');
+          scene.clearPendingEvent('tiny_thief_bird');
+          gs.storyRun.birdState = 'friend';
+          gs.storyRun.bardThreadState = gs.storyRun.musicBoxState === 'answered'
+            ? 'song_repaired'
+            : 'clue_found';
+          scene.addPendingEvent('missing_bard_camp');
+          scene.heal(5);
+        },
+        outcome: 'You hold out the same crumbs in the same open palm. The bird recognizes the bargain and returns the golden string without ceremony.'
       }
     ]
   },
@@ -525,7 +713,11 @@ const EVENTS = [
           scene.clearPendingEvent('missing_bard_camp');
 
           if (gs.storyRun.bardThreadState === 'song_broken') {
+            gs.storyRun.bardThreadState = 'salvaged';
+            gs.storyRun.bardResolved = true;
+            gs.storyRun.bardEnding = 'salvaged_song';
             scene.markHeroMemory('learnedMusicBoxBreaks');
+            scene.addPendingEvent('last_refrain');
             scene.gainCoins(10);
             scene.repairRandomDamagedItem(1);
             return;
@@ -533,7 +725,10 @@ const EVENTS = [
 
           if (gs.storyRun.bardThreadState === 'song_repaired') {
             gs.storyRun.bardThreadState = 'complete';
+            gs.storyRun.bardResolved = true;
+            gs.storyRun.bardEnding = 'restored_song';
             scene.markHeroMemory('solvedBardSong');
+            scene.addPendingEvent('last_refrain');
             scene.gainCrystals(3);
             scene.heal(15);
             scene.repairRandomDamagedItem(2);
@@ -541,14 +736,17 @@ const EVENTS = [
           }
 
           gs.storyRun.bardThreadState = 'complete';
+          gs.storyRun.bardResolved = true;
+          gs.storyRun.bardEnding = 'completed_song';
+          scene.addPendingEvent('last_refrain');
           scene.gainCrystals(2);
           scene.repairRandomDamagedItem(1);
         },
         outcome: (gs) => {
-          if (gs?.storyRun?.bardThreadState === 'song_broken') {
+          if (gs?.storyRun?.bardEnding === 'salvaged_song') {
             return 'The song cannot fully return, but you salvage what remains. Somewhere, a lonely note finally rests.';
           }
-          if (gs?.heroMemory?.solvedBardSong) {
+          if (gs?.storyRun?.bardEnding === 'restored_song') {
             return 'The final note rings clear. For a moment, a smiling bard appears in the music and bows before fading into warm light.';
           }
           return 'You place the feather and string together. The song completes one bright phrase, then leaves you a gift.';
@@ -559,6 +757,10 @@ const EVENTS = [
         action: (gs, scene) => {
           scene.ensureStoryState();
           scene.clearPendingEvent('missing_bard_camp');
+          gs.storyRun.bardThreadState = 'abandoned';
+          gs.storyRun.bardResolved = true;
+          gs.storyRun.bardEnding = 'took_supplies';
+          scene.addPendingEvent('last_refrain');
           scene.gainCoins(20);
         },
         outcome: 'You take the useful supplies and leave the unfinished song behind. Practical, but not poetic.'
@@ -568,6 +770,10 @@ const EVENTS = [
         action: (gs, scene) => {
           scene.ensureStoryState();
           scene.clearPendingEvent('missing_bard_camp');
+          gs.storyRun.bardThreadState = 'released';
+          gs.storyRun.bardResolved = true;
+          gs.storyRun.bardEnding = 'left_camp_untouched';
+          scene.addPendingEvent('last_refrain');
           scene.heal(5);
         },
         outcome: 'You leave the camp as you found it. The song follows for a few steps, then lets you go.'
@@ -580,7 +786,10 @@ const EVENTS = [
           scene.logStoryKeyChoice('glasses_missing_bard_camp');
           scene.clearPendingEvent('missing_bard_camp');
           gs.storyRun.bardThreadState = 'complete';
+          gs.storyRun.bardResolved = true;
+          gs.storyRun.bardEnding = 'restored_song';
           scene.markHeroMemory('solvedBardSong');
+          scene.addPendingEvent('last_refrain');
           scene.gainCrystals(3);
           scene.repairRandomDamagedItem(2);
         },
@@ -589,7 +798,67 @@ const EVENTS = [
     ]
   },
   {
-    id: 'placeholder_a',
+    id: 'last_refrain',
+    title: 'The Last Refrain',
+    description: (gs) => {
+      const ending = gs?.storyRun?.bardEnding;
+      if (ending === 'restored_song') {
+        return 'The repaired melody fills the corridor. The duelist keeps time with his wooden sword, the tiny bird sings harmony, and a smiling bard appears in the warm light.';
+      }
+      if (ending === 'completed_song') {
+        return 'The silver feather and golden string answer each other. The song is not exactly as it was, but it stands on its own and bows to you.';
+      }
+      if (ending === 'salvaged_song') {
+        return 'One clear note survives the broken melody. The duelist removes his mask, the bird grows quiet, and together you let the smaller song be enough.';
+      }
+      if (ending === 'took_supplies') {
+        return 'A single coin from the bard\'s camp hums inside your purse. The tune has no ending now, only the faint sound of a choice that cannot be unmade.';
+      }
+      if (ending === 'left_camp_untouched') {
+        return 'Behind you, the untouched camp plays one final phrase by itself. The melody fades gently, keeping its mysteries and asking nothing more.';
+      }
+      return 'The singing box grows quiet at last. Its lonely melody drifts away through the dungeon, unfinished but freely given.';
+    },
+    choices: [
+      {
+        text: 'Carry the melody forward',
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          scene.finishStoryEpilogue('bard', 'carried_melody');
+          if (gs.storyRun.bardEnding === 'restored_song') {
+            scene.gainCrystals(2);
+            scene.heal(10);
+          } else {
+            scene.heal(8);
+          }
+        },
+        outcome: 'You leave with the final note held somewhere beyond inventory. The missing bard has an ending now, and the road ahead has music.'
+      },
+      {
+        text: 'Leave the last note here',
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          scene.finishStoryEpilogue('bard', 'left_last_note');
+          scene.repairRandomDamagedItem(2);
+        },
+        outcome: 'You set the feather beside the silent instrument. The dungeon keeps one gentle note, and the story closes around it.'
+      },
+      {
+        text: 'Return part of what you took',
+        condition: (gs) => gs?.storyRun?.bardEnding === 'took_supplies' && (gs?.coins || 0) >= 5,
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          gs.coins = Math.max(0, (gs.coins || 0) - 5);
+          gs.storyRun.bardEnding = 'made_amends';
+          scene.finishStoryEpilogue('bard', 'returned_keepsake');
+          scene.heal(5);
+        },
+        outcome: 'You leave a small purse beside the lute case. The humming coin falls silent, and the last note softens into forgiveness.'
+      }
+    ]
+  },
+  {
+    id: 'quiet_crossroads',
     title: 'Quiet Crossroads',
     description: 'For once, the road is only strange in the normal dungeon way.',
     choices: [
@@ -630,13 +899,19 @@ export class EventScene extends Phaser.Scene {
     const story = this.gameState.storyRun;
 
     if (story.pendingEvents.includes('robbed_hermit')) return this.getEventById('robbed_hermit');
+    if (story.pendingEvents.includes('caravan_aftermath')) return this.getEventById('caravan_aftermath');
     if (story.pendingEvents.includes('masked_duelist')) return this.getEventById('masked_duelist');
     if (story.pendingEvents.includes('tiny_thief_bird')) return this.getEventById('tiny_thief_bird');
     if (story.pendingEvents.includes('missing_bard_camp')) return this.getEventById('missing_bard_camp');
+    if (story.pendingEvents.includes('last_refrain')) return this.getEventById('last_refrain');
     if (story.caravanSeen === false) return this.getEventById('burning_caravan');
+    if (story.banditsStopped === true && story.hermitState === 'safe' && !story.cheerfulHermitVisited) {
+      return this.getEventById('cheerful_hermit');
+    }
+    if (story.caravanResolved && !story.caravanEpilogueSeen) return this.getEventById('caravan_aftermath');
     if (story.musicBoxSeen === false) return this.getEventById('singing_box');
-    if (story.banditsStopped === true && story.hermitState === 'safe') return this.getEventById('cheerful_hermit');
-    return this.getEventById('placeholder_a');
+    if (story.bardResolved && !story.bardEpilogueSeen) return this.getEventById('last_refrain');
+    return this.getEventById('quiet_crossroads');
   }
 
   getEventById(id) {
@@ -655,11 +930,20 @@ export class EventScene extends Phaser.Scene {
       merchantGrateful: false,
       hermitState: 'unknown',
       banditTrailFound: false,
+      cheerfulHermitVisited: false,
+      caravanResolved: false,
+      caravanEnding: 'unresolved',
+      caravanEpilogueSeen: false,
+      caravanEpilogueChoice: 'none',
       musicBoxSeen: false,
       musicBoxState: 'unknown',
       duelistState: 'unknown',
       birdState: 'unknown',
       bardThreadState: 'unknown',
+      bardResolved: false,
+      bardEnding: 'unresolved',
+      bardEpilogueSeen: false,
+      bardEpilogueChoice: 'none',
       pendingEvents: []
     };
 
@@ -679,10 +963,24 @@ export class EventScene extends Phaser.Scene {
     const pendingEvents = Array.isArray(existingStoryRun.pendingEvents)
       ? [...new Set(existingStoryRun.pendingEvents.filter(id => typeof id === 'string'))]
       : [];
+    const inferredCaravanResolved = Boolean(
+      existingStoryRun.caravanSeen
+      && ['robbed', 'comforted', 'friend'].includes(existingStoryRun.hermitState)
+    );
+    const inferredBardResolved = ['complete', 'salvaged', 'abandoned', 'released']
+      .includes(existingStoryRun.bardThreadState);
 
     this.gameState.storyRun = {
       ...defaultStoryRun,
       ...existingStoryRun,
+      caravanResolved: typeof existingStoryRun.caravanResolved === 'boolean'
+        ? existingStoryRun.caravanResolved
+        : inferredCaravanResolved,
+      caravanEnding: typeof existingStoryRun.caravanEnding === 'string'
+        ? existingStoryRun.caravanEnding
+        : inferredCaravanResolved ? 'legacy_resolved' : defaultStoryRun.caravanEnding,
+      caravanEpilogueSeen: Boolean(existingStoryRun.caravanEpilogueSeen),
+      cheerfulHermitVisited: Boolean(existingStoryRun.cheerfulHermitVisited),
       hermitState: typeof existingStoryRun.hermitState === 'string'
         ? existingStoryRun.hermitState
         : defaultStoryRun.hermitState,
@@ -698,6 +996,15 @@ export class EventScene extends Phaser.Scene {
       bardThreadState: typeof existingStoryRun.bardThreadState === 'string'
         ? existingStoryRun.bardThreadState
         : defaultStoryRun.bardThreadState,
+      bardResolved: typeof existingStoryRun.bardResolved === 'boolean'
+        ? existingStoryRun.bardResolved
+        : inferredBardResolved,
+      bardEnding: typeof existingStoryRun.bardEnding === 'string'
+        ? existingStoryRun.bardEnding
+        : existingStoryRun.bardThreadState === 'complete'
+          ? 'completed_song'
+          : defaultStoryRun.bardEnding,
+      bardEpilogueSeen: Boolean(existingStoryRun.bardEpilogueSeen),
       pendingEvents
     };
 
@@ -834,6 +1141,23 @@ export class EventScene extends Phaser.Scene {
     this.ensureStoryState();
     this.gameState.storyRun.pendingEvents = this.gameState.storyRun.pendingEvents
       .filter(eventId => eventId !== id);
+  }
+
+  finishStoryEpilogue(thread, choice) {
+    this.ensureStoryState();
+    if (thread === 'caravan') {
+      this.clearPendingEvent('caravan_aftermath');
+      this.gameState.storyRun.caravanResolved = true;
+      this.gameState.storyRun.caravanEpilogueSeen = true;
+      this.gameState.storyRun.caravanEpilogueChoice = choice;
+      return;
+    }
+    if (thread === 'bard') {
+      this.clearPendingEvent('last_refrain');
+      this.gameState.storyRun.bardResolved = true;
+      this.gameState.storyRun.bardEpilogueSeen = true;
+      this.gameState.storyRun.bardEpilogueChoice = choice;
+    }
   }
 
   markHeroMemory(key) {
@@ -1256,15 +1580,20 @@ export class EventScene extends Phaser.Scene {
     this.resolved = true;
 
     choice.action?.(this.gameState, this);
+    const compactResolution = this._choiceBtns.length > 4;
 
     // Highlight chosen, fade the rest
     this._choiceBtns.forEach(({ bg, label }, i) => {
       if (i === choiceIdx) {
         bg.setFillStyle(0x1f1a12, 0.86);
         bg.removeInteractive();
+        if (compactResolution) {
+          bg.setY(165);
+          label.setY(165);
+        }
       } else {
-        bg.setAlpha(0.3);
-        label.setAlpha(0.3);
+        bg.setAlpha(compactResolution ? 0 : 0.3);
+        label.setAlpha(compactResolution ? 0 : 0.3);
         bg.removeInteractive();
       }
     });
@@ -1272,6 +1601,9 @@ export class EventScene extends Phaser.Scene {
     // Show outcome and continue button
     const outcome = this._getChoiceOutcome(choice);
     if (outcome) {
+      if (compactResolution) {
+        this.outcomeText.setY(250).setFontSize('12px');
+      }
       this.outcomeText.setText(outcome);
       this.tweens.add({ targets: this.outcomeText, alpha: 1, duration: 300 });
     }

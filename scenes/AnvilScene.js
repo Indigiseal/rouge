@@ -8,6 +8,8 @@ export class AnvilScene extends Phaser.Scene {
     create(data) {
         this.gameState = data.gameState;
         this.itemSlotsUI = [];
+
+        this.add.image(540, 78, 'restRooms', 3).setOrigin(0.5);
         
         // Title and coins display
         this.add.text(320, 30, 'Anvil - Repair Station', { 

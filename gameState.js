@@ -26,12 +26,31 @@ export class GameState {
             banditsEscaped: false,
             merchantGrateful: false,
             hermitState: 'unknown',
+            banditTrailFound: false,
+            cheerfulHermitVisited: false,
+            caravanResolved: false,
+            caravanEnding: 'unresolved',
+            caravanEpilogueSeen: false,
+            caravanEpilogueChoice: 'none',
+            musicBoxSeen: false,
+            musicBoxState: 'unknown',
+            duelistState: 'unknown',
+            birdState: 'unknown',
+            bardThreadState: 'unknown',
+            bardResolved: false,
+            bardEnding: 'unresolved',
+            bardEpilogueSeen: false,
+            bardEpilogueChoice: 'none',
             pendingEvents: []
         };
         this.heroMemory = {
             learnedBanditsThreatenHermit: false,
             learnedDonkeyCanBeSaved: false,
-            solvedCaravanPerfectly: false
+            solvedCaravanPerfectly: false,
+            learnedMusicBoxBreaks: false,
+            learnedDuelistKnowsSong: false,
+            learnedBirdLikesFood: false,
+            solvedBardSong: false
         };
         
         
@@ -90,7 +109,7 @@ export class GameState {
         }
     }
 
-    takeDamage(amount, enemyIndex = -1, source = 'enemy') {
+    takeDamage(amount, enemyIndex = -1, source = 'enemy', armorPierce = 0) {
         if (source === 'poison' && this.relicEffects?.poisonImmunity) {
             if (this.scene?.playerAvatar) {
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poison Immune!', 0x66ff66);
@@ -165,7 +184,10 @@ export class GameState {
             }
         }
         
-        const actualDamage = Math.max(0, amount - protection);
+        // armor_break (boss ability) pierces some of the player's protection so the
+        // hit lands harder. Never turns armor into a damage bonus — just reduces it.
+        const effectiveProtection = Math.max(0, protection - Math.max(0, armorPierce));
+        const actualDamage = Math.max(0, amount - effectiveProtection);
         const wouldKill = this.playerHealth - actualDamage <= 0;
         
         // Check for invulnerability amulet

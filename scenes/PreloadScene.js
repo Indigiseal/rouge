@@ -28,6 +28,11 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('gamingBoard2', 'assets/gamingBoard2.png');
         this.load.image('gamingBoardSideExtra', 'assets/gamingBoardSIdewaysExtra.png');
         this.load.spritesheet('gamingBoardSideSmall', 'assets/gamingBoardSIdewaysSmall.png', { frameWidth: 208, frameHeight: 144 });
+        // Frame order: rest floor, defeat UI, victory UI, blacksmith floor.
+        this.load.spritesheet('restRooms', 'assets/rest.png', { frameWidth: 144, frameHeight: 122 });
+        // Frame order: defeat info, defeat detail, victory info, victory detail.
+        this.load.spritesheet('resultPanels', 'assets/defeatWin9x9panels.png', { frameWidth: 96, frameHeight: 96 });
+        this.load.spritesheet('resultBanners', 'assets/bannerLostWin.png', { frameWidth: 160, frameHeight: 32 });
         this.load.image('eventPaper', 'assets/paper.png');
         this.load.image('eventPaper9Slice', 'assets/paper9Slice.png');
         this.load.spritesheet('eventsShops', 'assets/eventsShops80x80.png', { frameWidth: 80, frameHeight: 80 });
@@ -136,6 +141,10 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('hoverCardsUp3', 'assets/hoverCardsUp3.png');
         this.load.image('hoverCardsUp4', 'assets/hoverCardsUp4.png');
         this.load.image('hoverCardsUp5', 'assets/hoverCardsUp5.png');
+        // Empty card poof effect (4 frames, 32x48 each)
+        this.load.spritesheet('poofEmpty', 'assets/poofEmpty32x48frames.png', { frameWidth: 32, frameHeight: 48 });
+        // Poison status indicator (5 frames, 16x32 each) — shown on poisoned enemies/hero
+        this.load.spritesheet('poisonedStatus', 'assets/poisonedStatus.png', { frameWidth: 16, frameHeight: 32 });
 
         this.load.image('healthBar', 'assets/healthBar.png');
         this.load.image('healthBarEmpty', 'assets/healthBarEmpty2.png');
@@ -295,6 +304,20 @@ export class PreloadScene extends Phaser.Scene {
             ],
             frameRate: 12, // Adjust speed (10fps)
             repeat: 0 // Play once
+        });
+
+        this.anims.create({
+            key: 'poof_empty_anim',
+            frames: this.anims.generateFrameNumbers('poofEmpty', { start: 0, end: 3 }),
+            frameRate: 10,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'poison_status_anim',
+            frames: this.anims.generateFrameNumbers('poisonedStatus', { start: 0, end: 4 }),
+            frameRate: 6,
+            repeat: -1
         });
 
         ['fire', 'poison', 'lightning'].forEach((effect, row) => {

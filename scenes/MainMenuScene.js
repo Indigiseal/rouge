@@ -288,6 +288,14 @@ export class MainMenuScene extends Phaser.Scene {
     }
     
     cycleLanguage() {
+        // Guard against a single click firing twice. pointerdown can be dispatched
+        // twice for one tap on some input setups (touch + mouse emulation); with only
+        // two languages a double-fire cycles en->ru->en and looks like the toggle did
+        // nothing — which is exactly the "sometimes it switches, sometimes not" bug.
+        const now = Date.now();
+        if (this._lastLangCycle && now - this._lastLangCycle < 250) return;
+        this._lastLangCycle = now;
+
         const languages = getLanguageOptions().map(option => option.code);
         const currentIndex = languages.indexOf(normalizeLanguageCode(this.game.language));
         const nextIndex = (currentIndex + 1) % languages.length;
@@ -358,6 +366,7 @@ export class MainMenuScene extends Phaser.Scene {
         const yes = this.createButton(265, 230, 90, 30, t(this, 'ui.options.reset'), 0xff4444, () => {
             this.saveManager.clearCurrentRun();
             this.saveManager.safeRemove(this.saveManager.META_SAVE_KEY);
+            this.saveManager.safeRemove('heroMemory');
             cleanup();
             // Rebuild main menu so Continue gets disabled, etc.
             this.scene.restart();

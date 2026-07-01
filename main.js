@@ -11,7 +11,6 @@ import { AnvilScene } from './scenes/AnvilScene.js';
 import { ShopScene } from './scenes/ShopScene.js';
 import { RareShopScene } from './scenes/RareShopScene.js';
 import { PauseMenuScene } from './scenes/PauseMenuScene.js';
-import { DeathRewardScene } from './scenes/DeathRewardScene.js';
 import { EventScene } from './scenes/EventScene.js';
 import { TreasureScene } from './scenes/TreasureScene.js';
 
@@ -41,7 +40,6 @@ const config = {
         ShopScene, 
         RareShopScene,
         PauseMenuScene,
-        DeathRewardScene,
         EventScene,
         TreasureScene
     ],

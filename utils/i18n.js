@@ -758,7 +758,7 @@ const DESCRIPTION_TRANSLATIONS = {
         'Weapons lose half durability': 'Оружие теряет вдвое меньше прочности',
         '+2 inventory slots': '+2 ячейки инвентаря',
         'Food restores 50% more AP': 'Еда восстанавливает на 50% больше ОД',
-        'Instant kill at 1 HP, but heals enemies otherwise': 'Мгновенно убивает при 1 ОЗ, иначе лечит врагов',
+        'Drinking a healing potion cures all poison and heals +2 HP per poison stack removed': 'Лечебное зелье снимает весь яд и восстанавливает +2 ОЗ за каждый снятый эффект яда',
         '+3 HP per kill, -30% max health': '+3 ОЗ за убийство, -30% макс. здоровья',
         'Heal 2 HP per enemy kill': 'Лечение 2 ОЗ за убийство врага',
         'Heal 1 HP per kill, +3 AP every 3 kills': 'Лечение 1 ОЗ за убийство, +3 ОД каждые 3 убийства',
@@ -867,8 +867,16 @@ function resolveTextKey(keyOrText, vars = {}) {
     return [raw, vars];
 }
 
+// Languages with complete string coverage (menu + all in-game text). Only these are
+// offered in the language selector. es/fr/de/ja/zh only had the ~15 menu strings
+// translated, so selecting them showed a mostly-English game and made the toggle feel
+// broken (it appeared to do nothing / only flip to German). Add a code here once that
+// language's translations are finished. LANGUAGE_OPTIONS is kept full so getLanguageName
+// and normalizeLanguageCode still resolve any previously-saved language code.
+const SUPPORTED_LANGUAGES = ['en', 'ru'];
+
 export function getLanguageOptions() {
-    return LANGUAGE_OPTIONS;
+    return LANGUAGE_OPTIONS.filter(option => SUPPORTED_LANGUAGES.includes(option.code));
 }
 
 export function normalizeLanguageCode(language) {

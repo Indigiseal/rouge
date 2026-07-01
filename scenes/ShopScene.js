@@ -342,7 +342,7 @@ export class ShopScene extends StationRoomBase {
             
             const sellPriceText = this.add.text(0, 15, '', {
                 fontSize: '10px',
-                fill: '#ffd700',
+                fill: '#cf8834',
                 fontFamily: '"HoMM Pixel", Arial, sans-serif'
             }).setOrigin(0.5);
             

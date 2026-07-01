@@ -122,8 +122,8 @@ export class MapViewScene extends Phaser.Scene {
     });
     this.dragArea.on('drag', (p) => {
       if (!this.mapContainer) return;
-      this.mapContainer.x = Phaser.Math.Clamp(p.x - this.dragStartX, this.mapPanBounds.minX, this.mapPanBounds.maxX);
-      this.mapContainer.y = Phaser.Math.Clamp(p.y - this.dragStartY, this.mapPanBounds.minY, this.mapPanBounds.maxY);
+      this.mapContainer.x = Math.round(Phaser.Math.Clamp(p.x - this.dragStartX, this.mapPanBounds.minX, this.mapPanBounds.maxX));
+      this.mapContainer.y = Math.round(Phaser.Math.Clamp(p.y - this.dragStartY, this.mapPanBounds.minY, this.mapPanBounds.maxY));
     });
     this.dragArea.on('dragend', () => { this.isDragging = false; });
   }
@@ -141,17 +141,22 @@ export class MapViewScene extends Phaser.Scene {
       const y = startY + f * floorGap;
       const count = floorNodes.length;
       floorNodes.forEach((node, i) => {
-        node.__x = (i - (count - 1) / 2) * laneGap;
-        node.__y = y;
+        // Round to whole pixels: even node counts give half-integer offsets,
+        // which leave the pixel-art nodes on fractional positions and make them
+        // (and the whole map) shimmer/shift by a pixel on render-batch flushes.
+        node.__x = Math.round((i - (count - 1) / 2) * laneGap);
+        node.__y = Math.round(y);
         node.__idx = i; // index within the floor
       });
     });
 
     this.updatePanBounds();
 
-    // Draw links (base)
-    this.linkGfx = this.add.graphics();
-    this.mapContainer.add(this.linkGfx);
+    // Draw links — baked into a RenderTexture (see drawLinks). A live Graphics
+    // object renders diagonal thick lines as anti-aliased quads whose vertices
+    // re-round by a pixel across render-batch flushes (e.g. when a tooltip's text
+    // texture is created), making the connections jitter. Baking them to a texture
+    // once turns them into a static image that snaps to the pixel grid like the nodes.
     this.drawLinks();
 
     // Draw nodes
@@ -194,8 +199,8 @@ export class MapViewScene extends Phaser.Scene {
       maxY: visibleTop - minY + pad
     };
 
-    this.mapContainer.x = Phaser.Math.Clamp(this.mapContainer.x, this.mapPanBounds.minX, this.mapPanBounds.maxX);
-    this.mapContainer.y = Phaser.Math.Clamp(this.mapContainer.y, this.mapPanBounds.minY, this.mapPanBounds.maxY);
+    this.mapContainer.x = Math.round(Phaser.Math.Clamp(this.mapContainer.x, this.mapPanBounds.minX, this.mapPanBounds.maxX));
+    this.mapContainer.y = Math.round(Phaser.Math.Clamp(this.mapContainer.y, this.mapPanBounds.minY, this.mapPanBounds.maxY));
   }
 
   centerOnCurrentNode() {
@@ -209,26 +214,27 @@ export class MapViewScene extends Phaser.Scene {
     const mapCenterX = (minX + maxX) / 2;
     const targetScreenX = MapViewScene.MAP_CENTER_X;
     const targetScreenY = MapViewScene.MAP_CENTER_Y;
-    this.mapContainer.x = Phaser.Math.Clamp(targetScreenX - mapCenterX, this.mapPanBounds.minX, this.mapPanBounds.maxX);
-    this.mapContainer.y = Phaser.Math.Clamp(targetScreenY - node.__y, this.mapPanBounds.minY, this.mapPanBounds.maxY);
+    this.mapContainer.x = Math.round(Phaser.Math.Clamp(targetScreenX - mapCenterX, this.mapPanBounds.minX, this.mapPanBounds.maxX));
+    this.mapContainer.y = Math.round(Phaser.Math.Clamp(targetScreenY - node.__y, this.mapPanBounds.minY, this.mapPanBounds.maxY));
   }
 
   drawLinks() {
-    this.linkGfx.clear();
-    const drawCurve = (ax, ay, bx, by, color, width, arch = -12) => {
-      this.linkGfx.lineStyle(width, color, 1);
-      this.linkGfx.lineBetween(ax, ay, bx, by);
+    // Draw all links into an off-display Graphics in node-coordinate space, then
+    // bake it into a RenderTexture so the connections become a static, pixel-snapped
+    // image instead of live geometry that jitters on render-batch flushes.
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    const drawCurve = (ax, ay, bx, by, color, width) => {
+      g.lineStyle(width, color, 1);
+      g.lineBetween(Math.round(ax), Math.round(ay), Math.round(bx), Math.round(by));
     };
-    // dim base
-    this.linkGfx.lineStyle(2, 0x5e5146, 0.35);
+
+    // dim base — every connection between adjacent floors
     for (let f = 0; f < this.actMap.floors.length - 1; f++) {
       const cur = this.actMap.floors[f];
       const nxt = this.actMap.floors[f + 1];
       cur.forEach(n => {
         n.connections.forEach(t => {
-          const a = { x: n.__x, y: n.__y };
-          const b = { x: nxt[t].__x, y: nxt[t].__y };
-          drawCurve(a.x, a.y, b.x, b.y, 0x5e5146, 2, -12);
+          drawCurve(n.__x, n.__y, nxt[t].__x, nxt[t].__y, 0x5e5146, 2);
         });
       });
     }
@@ -236,14 +242,35 @@ export class MapViewScene extends Phaser.Scene {
     const curF = this.gameState.mapCursor.floor;
     if (curF < this.actMap.floors.length - 1) {
       const from = this.actMap.floors[curF][this.gameState.mapCursor.node];
-      if (!from) return; // cursor out of range — skip highlight (cursor was already clamped in init)
-      const nxt = this.actMap.floors[curF + 1];
-      from.connections.forEach(t => {
-        const a = { x: from.__x, y: from.__y };
-        const b = { x: nxt[t].__x, y: nxt[t].__y };
-        drawCurve(a.x, a.y, b.x, b.y, 0xf2d3aa, 3, -14);
-      });
+      if (from) {
+        const nxt = this.actMap.floors[curF + 1];
+        from.connections.forEach(t => {
+          drawCurve(from.__x, from.__y, nxt[t].__x, nxt[t].__y, 0xf2d3aa, 3);
+        });
+      }
     }
+
+    // Bake into a RenderTexture sized to the node bounds (with padding for line width).
+    const nodes = this.actMap.floors.flat();
+    const minX = Math.min(...nodes.map(n => n.__x));
+    const maxX = Math.max(...nodes.map(n => n.__x));
+    const minY = Math.min(...nodes.map(n => n.__y));
+    const maxY = Math.max(...nodes.map(n => n.__y));
+    const pad = 6;
+    const w = Math.ceil(maxX - minX) + pad * 2;
+    const h = Math.ceil(maxY - minY) + pad * 2;
+
+    if (this.linkTexture) { this.linkTexture.destroy(); this.linkTexture = null; }
+    const rt = this.add.renderTexture(0, 0, w, h).setOrigin(0, 0);
+    // Offset the graphics so negative node coords land inside the texture.
+    rt.draw(g, -minX + pad, -minY + pad);
+    // Position the texture so its pixels line up with the node coordinates.
+    rt.x = minX - pad;
+    rt.y = minY - pad;
+    this.mapContainer.add(rt);
+    this.mapContainer.sendToBack(rt); // keep links behind the nodes
+    g.destroy();
+    this.linkTexture = rt;
   }
 
   getNodeVisualState(floorIdx, nodeIdx) {

@@ -643,6 +643,7 @@ export class GameScene extends Phaser.Scene {
                 this.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Reflected)`, 0xffffff);
                 this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Bone Wall!', 0xffffff);
                 this.isEnemyTurn = false;
+                this.updateUI(); // Refresh so the remaining Bone Wall charges update
                 return; // Bone wall blocks all attacks this action
             }
         }
@@ -662,6 +663,7 @@ export class GameScene extends Phaser.Scene {
                 this.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Mirrored)`, 0xc0c0c0);
                 this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Mirror Shield!', 0xc0c0c0);
                 this.isEnemyTurn = false;
+                this.updateUI(); // Refresh so Mirror Shield drops off the effects panel
                 return; // Mirror shield blocks all attacks this action
             }
         }
@@ -769,7 +771,29 @@ export class GameScene extends Phaser.Scene {
             });
         }
 
-        const damageDealt = card.data.attack;
+        let damageDealt = card.data.attack;
+
+        // RAGE — when the boss drops below its HP threshold it hits harder. Shows
+        // an "ENRAGED!" cue the first time it kicks in so the spike is legible.
+        const rage = card.data.abilities?.find(a => a.type === 'rage');
+        if (rage) {
+            const maxHp = card.data.maxHealth || card.data.health;
+            if (maxHp > 0 && (card.data.health / maxHp) <= (rage.threshold ?? 0.3)) {
+                damageDealt = Math.ceil(damageDealt * (rage.damageBoost || 1.5));
+                if (!card.data._rageShown) {
+                    card.data._rageShown = true;
+                    this.createFloatingText(card.sprite.x, card.sprite.y - 24, 'ENRAGED!', 0xff3333);
+                }
+            }
+        }
+
+        // ARMOR BREAK — this hit pierces some of the player's protection.
+        const armorBreak = card.data.abilities?.find(a => a.type === 'armor_break');
+        const armorPierce = armorBreak?.amount || 0;
+        if (armorPierce > 0 && this.gameState.equippedArmor) {
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y - 16, 'Armor Broken!', 0xffa500);
+        }
+
         this.createDamageEffect(card.sprite.x, card.sprite.y);
 
         // Apply abilities like poison on hit
@@ -789,7 +813,7 @@ export class GameScene extends Phaser.Scene {
         });
 
         const playerHealthBeforeDamage = this.gameState.playerHealth;
-        const { actualDamage, tookDamage } = this.gameState.takeDamage(damageDealt, index);
+        const { actualDamage, tookDamage } = this.gameState.takeDamage(damageDealt, index, 'enemy', armorPierce);
 
         if (tookDamage) {
             SoundHelper.playSound(this, 'player_hurt', 0.5);
@@ -828,7 +852,11 @@ export class GameScene extends Phaser.Scene {
 
     applyThornsDamage(card, index) {
         if (this.cardSystem.boardCards[index] !== card) return;
+        // Thorns only reflect onto melee attackers. Skip back-row (RANGED) enemies
+        // and archers — a front-row archer's role is forced to MELEE by position,
+        // but it still attacks from range, so its intrinsic ranged flag exempts it.
         if (card.data.role !== 'MELEE') return;
+        if (card.data.isRangedType) return;
 
         const thorns = this.getActiveThornsCard();
         if (!thorns) return;
@@ -1044,6 +1072,9 @@ export class GameScene extends Phaser.Scene {
     }
     
     gameOver() {
+        if (this._resultScreenShown) return;
+        this._resultScreenShown = true;
+
         // Clear the current run save (but keep meta progression)
         if (this.saveManager) {
             this.saveManager.clearCurrentRun();
@@ -1063,36 +1094,150 @@ export class GameScene extends Phaser.Scene {
         
         // Add killer information to death stats
         deathStats.killedBy = this.killedBy || 'Unknown Enemy';
-        
-        this.add.rectangle(320, 180, 300, 150, 0x000000, 0.8).setOrigin(0.5);
-        this.add.text(320, 140, 'GAME OVER', {
-            fontSize: '28px',
-            fill: '#ff0000',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
-        this.add.text(320, 180, `You reached floor ${this.gameState.currentFloor}`, {
-            fontSize: '14px',
-            fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
-        
-        // Launch DeathRewardScene instead of simple restart
-        const continueButton = this.add.rectangle(320, 220, 120, 30, 0x333333)
-            .setStrokeStyle(2, 0xffffff)
-            .setInteractive()
-            .on('pointerdown', () => {
-                this.scene.start('DeathRewardScene', { 
-                    deathStats: deathStats,
-                    gameState: this.gameState,
-                    metaManager: this.metaManager,
-                    killedBy: this.killedBy || 'Unknown Enemy'
-                });
-            });
-        this.add.text(320, 220, 'Continue', {
+        deathStats.floor = this.gameState.currentFloor;
+
+        const newRelic = this.metaManager
+            ? this.metaManager.handlePlayerDeath(this.killedBy || 'Unknown Enemy', this.gameState.currentFloor)
+            : null;
+
+        this.showDefeatResult(deathStats, newRelic);
+    }
+
+    addResultPanel(x, y, width, height, frame, depth) {
+        const addNineSlice = this.add.nineslice || this.add.nineSlice;
+        if (addNineSlice) {
+            return addNineSlice.call(this.add, x, y, 'resultPanels', frame, width, height, 12, 12, 12, 12)
+                .setOrigin(0.5)
+                .setDepth(depth);
+        }
+
+        return this.add.image(x, y, 'resultPanels', frame)
+            .setOrigin(0.5)
+            .setDisplaySize(width, height)
+            .setDepth(depth);
+    }
+
+    addResultButton(x, y, label, onClick, depth) {
+        const button = this.add.image(x, y, 'nextTurnUp')
+            .setOrigin(0.5)
+            .setDepth(depth)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerdown', onClick);
+
+        this.add.text(x, y - 1, label, {
             fontSize: '16px',
             fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(depth + 1);
+
+        return button;
+    }
+
+    showDefeatResult(deathStats, newRelic) {
+        const resultDepth = 11000;
+        this.add.rectangle(320, 180, 640, 360, 0x000000, 0.78).setOrigin(0.5).setDepth(resultDepth);
+        this.add.image(320, 36, 'resultBanners', 0).setOrigin(0.5).setDepth(resultDepth + 2);
+        this.add.text(320, 37, 'DEFEAT', {
+            fontSize: '24px',
+            fill: '#948b9b',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(resultDepth + 3).setScale(1, 0.75);
+
+        this.addResultPanel(320, 154, 304, 188, 0, resultDepth + 1);
+        this.add.text(320, 86, 'YOU HAVE FALLEN', {
+            fontSize: '20px',
+            fill: '#ffffff',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(resultDepth + 2);
+        this.add.text(320, 116, `Killed by ${deathStats.killedBy}`, {
+            fontSize: '14px',
+            fill: '#d8d1d8',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(resultDepth + 2);
+        this.add.text(320, 142, `Reached Floor ${deathStats.floor}`, {
+            fontSize: '14px',
+            fill: '#d8d1d8',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(resultDepth + 2);
+        this.add.text(320, 177, `Total Deaths: ${this.metaManager?.totalDeaths ?? 0}`, {
+            fontSize: '13px',
+            fill: '#b8b0b8',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(resultDepth + 2);
+        this.add.text(320, 199, `Best Floor: ${this.metaManager?.bestFloor ?? deathStats.floor}`, {
+            fontSize: '13px',
+            fill: '#b8b0b8',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(resultDepth + 2);
+
+        this.addResultPanel(320, 262, 304, 78, 1, resultDepth + 1);
+        if (newRelic) {
+            this.add.text(320, 237, 'NEW RELIC UNLOCKED!', {
+                fontSize: '15px',
+                fill: '#fed991',
+                fontFamily: '"HoMM Pixel", Arial, sans-serif'
+            }).setOrigin(0.5).setDepth(resultDepth + 2);
+            this.addRelicIcon(newRelic, 214, 264, resultDepth + 2);
+            this.add.text(336, 256, translateItemName(this, newRelic), {
+                fontSize: '14px',
+                fill: '#ffffff',
+                fontFamily: '"HoMM Pixel", Arial, sans-serif'
+            }).setOrigin(0.5).setDepth(resultDepth + 2);
+            this.add.text(336, 281, translateDescription(this, newRelic.description), {
+                fontSize: '11px',
+                fill: '#d8d1d8',
+                fontFamily: '"HoMM Pixel", Arial, sans-serif',
+                wordWrap: { width: 200 },
+                align: 'center'
+            }).setOrigin(0.5).setDepth(resultDepth + 2);
+            this.createUnlockParticles(resultDepth + 2);
+        } else {
+            this.add.text(320, 253, 'No new relic this time', {
+                fontSize: '15px',
+                fill: '#d8d1d8',
+                fontFamily: '"HoMM Pixel", Arial, sans-serif'
+            }).setOrigin(0.5).setDepth(resultDepth + 2);
+            this.add.text(320, 279, 'Try dying to different enemies to unlock more relics.', {
+                fontSize: '11px',
+                fill: '#b8b0b8',
+                fontFamily: '"HoMM Pixel", Arial, sans-serif',
+                wordWrap: { width: 236 },
+                align: 'center'
+            }).setOrigin(0.5).setDepth(resultDepth + 2);
+        }
+
+        this.addResultButton(320, 336, 'Continue', () => this.scene.start('MainMenuScene'), resultDepth + 4);
+    }
+
+    addRelicIcon(relic, x, y, depth) {
+        this.add.circle(x, y, 18, 0x2c1810, 0.75).setStrokeStyle(1, 0xfed991).setDepth(depth);
+        const usesSheet = relic.iconSheet && this.textures.exists(relic.iconSheet);
+        if (usesSheet) {
+            this.add.image(x, y, relic.iconSheet, relic.iconFrame).setDepth(depth + 1);
+        } else if (relic.icon && this.textures.exists(relic.icon)) {
+            this.add.image(x, y, relic.icon).setDepth(depth + 1);
+        }
+    }
+
+    createUnlockParticles(depth = 11002) {
+        for (let i = 0; i < 10; i++) {
+            const particle = this.add.circle(
+                320 + Phaser.Math.Between(-50, 50),
+                262 + Phaser.Math.Between(-20, 20),
+                3,
+                0xfed991
+            ).setDepth(depth);
+
+            this.tweens.add({
+                targets: particle,
+                y: particle.y - 42,
+                alpha: 0,
+                duration: 1000,
+                delay: i * 50,
+                ease: 'Cubic.easeOut',
+                onComplete: () => particle.destroy()
+            });
+        }
     }
     
     floorCleared() {
@@ -1129,13 +1274,23 @@ export class GameScene extends Phaser.Scene {
             this.amuletManager.processFloorEnd();
         }
 
-        const completedActBoss = this.gameState.roomType === 'BOSS' &&
-            this.gameState.mapCursor &&
-            this.gameState.mapCursor.floor >= 14;
+        // Use the SAME signals the boss-spawn uses, so spawning and completing the
+        // boss always agree. Relying on roomType alone was fragile: if it drifted to
+        // COMBAT (act transition / save-load / sub-scene return) the boss would spawn
+        // via the map-cursor fallback but never be recognized as completed — so the
+        // game kept handing out normal floors past the final boss instead of winning.
+        const bossFloors = [15, 30, 45];
+        const completedActBoss =
+            bossFloors.includes(this.gameState.currentFloor) ||
+            this.gameState.roomType === 'BOSS' ||
+            (this.gameState.mapCursor?.floor ?? -1) >= 14;
 
         if (completedActBoss) {
-            // Final boss → straight to victory, no reward room
-            if (this.gameState.currentFloor >= 45) {
+            // Final boss → straight to victory, no reward room. Detect the final act
+            // by the map cursor's act (robust to a 1-floor currentFloor drift) and
+            // keep the floor check as a fallback.
+            const isFinalAct = (this.gameState.mapCursor?.act >= 3) || this.gameState.currentFloor >= 45;
+            if (isFinalAct) {
                 this.saveCurrentRun();
                 this.time.delayedCall(1500, () => this.gameWon());
                 return;
@@ -1286,28 +1441,88 @@ export class GameScene extends Phaser.Scene {
         this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
         this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
     }
+
+    getVictoryStorySummary() {
+        const story = this.gameState?.storyRun || {};
+        const lines = [];
+
+        if (story.caravanResolved) {
+            if (story.donkeySaved && story.banditsStopped) {
+                lines.push('The cinnamon road is safe, and a proud little donkey remembers you.');
+            } else if (story.banditTrailFound) {
+                lines.push("The hermit's medicine returned, and the cinnamon road began again.");
+            } else if (story.banditsStopped) {
+                lines.push('The bandits are gone; merchant and hermit keep the road alive.');
+            } else {
+                lines.push('The battered caravan endured, carrying your choices down the road.');
+            }
+        } else if (story.caravanSeen) {
+            lines.push("The caravan's unfinished tale remains somewhere behind you.");
+        }
+
+        if (story.bardResolved) {
+            if (story.bardEnding === 'restored_song') {
+                lines.push("The missing bard's completed song echoes through the dungeon.");
+            } else if (story.bardEnding === 'made_amends') {
+                lines.push("The bard's last note rests in peace after your return.");
+            } else if (story.bardEnding === 'salvaged_song' || story.bardEnding === 'completed_song') {
+                lines.push("The missing bard's smaller song survives and travels with you.");
+            } else {
+                lines.push("The singing box is quiet now; its story has found an ending.");
+            }
+        } else if (story.musicBoxSeen) {
+            lines.push("A lonely melody still searches the dungeon for its final note.");
+        }
+
+        return lines.length > 0
+            ? lines.join('\n')
+            : 'You have conquered the dungeon, though many stories remain untold.';
+    }
+
+    getResolvedStoryCount() {
+        const story = this.gameState?.storyRun || {};
+        return Number(Boolean(story.caravanResolved)) + Number(Boolean(story.bardResolved));
+    }
     
     gameWon() {
-        this.add.rectangle(320, 180, 400, 150, 0x000000, 0.8).setOrigin(0.5);
-        this.add.text(320, 140, 'VICTORY!', {
-            fontSize: '28px',
-            fill: '#ffd700',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
-        this.add.text(320, 180, `You have conquered the dungeon!`, {
-            fontSize: '14px',
+        const resultDepth = 11000;
+        this.add.rectangle(320, 180, 640, 360, 0x000000, 0.78).setOrigin(0.5).setDepth(resultDepth);
+        this.add.image(320, 36, 'resultBanners', 1).setOrigin(0.5).setDepth(resultDepth + 2);
+        this.add.text(320, 32, 'VICTORY!', {
+            fontSize: '24px',
+            fill: '#fed991',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(resultDepth + 3).setScale(1, 0.75);
+
+        this.addResultPanel(320, 160, 304, 200, 2, resultDepth + 1);
+        this.add.text(320, 110, 'The dungeon is conquered.', {
+            fontSize: '20px',
             fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
-        const restartButton = this.add.rectangle(320, 220, 120, 30, 0x333333)
-            .setStrokeStyle(2, 0xffffff)
-            .setInteractive()
-            .on('pointerdown', () => this.scene.start('GameScene', {}));
-        this.add.text(320, 220, 'Play Again', {
-            fontSize: '16px',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(resultDepth + 2);
+        this.add.text(320, 156, this.getVictoryStorySummary(), {
+            fontSize: '11px',
+            fill: '#5b3b26',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            wordWrap: { width: 260 },
+            align: 'center'
+        }).setOrigin(0.5).setDepth(resultDepth + 2);
+
+        this.addResultPanel(320, 262, 304, 78, 3, resultDepth + 1);
+        this.add.text(320, 253, `Stories resolved: ${this.getResolvedStoryCount()}/2`, {
+            fontSize: '15px',
             fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(resultDepth + 2);
+        this.add.text(320, 279, 'No relic is granted for victory. Glory will have to do.', {
+            fontSize: '11px',
+            fill: '#5b3b26',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            wordWrap: { width: 236 },
+            align: 'center'
+        }).setOrigin(0.5).setDepth(resultDepth + 2);
+
+        this.addResultButton(320, 336, 'Play Again', () => this.scene.start('GameScene', {}), resultDepth + 4);
     }
     
     updateAmuletsUI() {
@@ -1639,6 +1854,33 @@ export class GameScene extends Phaser.Scene {
             });
             this.playerEffectsUIGroup.add(text);
         });
+
+        this.updatePlayerPoisonMarker();
+    }
+
+    // Animated poison icon pinned to the top-right corner of the hero portrait.
+    // Runs continuously while the player has any poison effect, removed once it wears off.
+    updatePlayerPoisonMarker() {
+        const poisoned = this.gameState.playerEffects?.some(e => e.type === 'poison');
+
+        if (poisoned) {
+            if (!this.playerPoisonMarker && this.playerAvatar && this.textures.exists('poisonedStatus')) {
+                const halfW = (this.playerAvatar.displayWidth || 0) / 2;
+                const halfH = (this.playerAvatar.displayHeight || 0) / 2;
+                const marker = this.add.sprite(
+                    Math.round(this.playerAvatar.x + halfW - 2),
+                    Math.round(this.playerAvatar.y - halfH + 2),
+                    'poisonedStatus'
+                );
+                marker.setOrigin(1, 0);
+                marker.setDepth(40);
+                if (this.anims.exists('poison_status_anim')) marker.play('poison_status_anim');
+                this.playerPoisonMarker = marker;
+            }
+        } else if (this.playerPoisonMarker) {
+            this.playerPoisonMarker.destroy();
+            this.playerPoisonMarker = null;
+        }
     }
 
     capitalizeEffect(value) {

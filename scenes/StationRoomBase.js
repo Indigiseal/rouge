@@ -151,16 +151,76 @@ export class StationRoomBase extends Phaser.Scene {
         }
         sprite.setScale(1);
 
+        // Stat value label — matches what the inventory shows on each card
+        let statValue = '';
+        let statColor = '#ffcf7f';
+        let statX = x + 17;
+        let statY = y + 22;
+        switch (data.type) {
+            case 'weapon':
+                statValue = `${data.damage}`;
+                break;
+            case 'armor':
+                statValue = `${data.protection}`;
+                statX = x + 18; statY = y + 25;
+                break;
+            case 'thorns':
+                statValue = `${data.thornDamage}`;
+                statColor = '#9dff7a';
+                break;
+            case 'potion':
+                statValue = `+${data.healAmount}`;
+                statX = x; statY = y + 19;
+                statColor = '#a8e870';
+                break;
+            case 'food':
+                statValue = `+${data.actionAmount} AP`;
+                statX = x; statY = y + 19;
+                statColor = '#a55119';
+                break;
+        }
+        if (statValue) {
+            const statText = renderScene.add.text(statX, statY, statValue, {
+                fontSize: '11px', fill: statColor, fontFamily: '"HoMM Pixel", Arial, sans-serif'
+            }).setOrigin(0.5).setDepth(10);
+            this.shopBoardObjects.push(statText);
+        }
+
         // Price label underneath the card
         const glyph = item.currency === 'crystals' ? '◆' : '¢';
         const priceText = renderScene.add.text(x, y + 26, item.purchased ? t(this, 'ui.shop.sold') : `${item.price}${glyph}`, {
             fontSize: '11px',
-            fill: item.purchased ? '#888888' : (item.currency === 'crystals' ? '#00ffff' : '#ffd700'),
+            fill: item.purchased ? '#888888' : (item.currency === 'crystals' ? '#a83c69' : '#cf8834'),
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         });
-        priceText.setOrigin(0.5).setDepth(10);
+        priceText.setOrigin(0.5).setDepth(11);
         entry.priceText = priceText;
         this.shopBoardObjects.push(priceText);
+
+        // Amulets/gems/relics are not cards — they get no float, shadow or shine.
+        const isCard = data.type !== 'amulet' && data.type !== 'gem' && data.type !== 'relic';
+
+        // Drop-shadow (cards only). Starts hidden; shown on hover.
+        let shadow = null;
+        if (isCard) {
+            shadow = renderScene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
+            shadow.setAlpha(0);
+            shadow.setDepth(8);
+            this.shopBoardObjects.push(shadow);
+        }
+
+        // Hover shine sprite (cards only). Use setAlpha(0) + setVisible(false) so
+        // no first-frame flash appears when the card is revealed — matching the exact
+        // same approach the inventory uses in addCardDirect.
+        let hoverSprite = null;
+        if (isCard && renderScene.textures.exists('hoverCardsUp1')) {
+            hoverSprite = snapOriginToPixelGrid(renderScene.add.sprite(x, y, 'hoverCardsUp1'));
+            hoverSprite.setVisible(false);
+            hoverSprite.setAlpha(0);
+            hoverSprite.setBlendMode(Phaser.BlendModes.SCREEN);
+            hoverSprite.setDepth(10);
+            this.shopBoardObjects.push(hoverSprite);
+        }
 
         if (item.purchased) {
             sprite.setAlpha(0.55);
@@ -169,11 +229,33 @@ export class StationRoomBase extends Phaser.Scene {
 
         sprite.setInteractive({ useHandCursor: true });
         sprite.on('pointerover', () => {
-            sprite.setTint(0xffe9a8);
+            // Float card up
+            renderScene.tweens.add({ targets: sprite, y: y - 5, duration: 150, ease: 'Power2' });
+            // Show shadow at original position (card lifts above it)
+            if (shadow) {
+                shadow.x = x;
+                shadow.y = y + 28;
+                shadow.setAlpha(0.6);
+            }
+            // Show and play shine animation; tween it up with the card
+            if (hoverSprite && renderScene.anims?.exists?.('hover_cards_anim')) {
+                hoverSprite.setVisible(true);
+                hoverSprite.setAlpha(1);
+                hoverSprite.play('hover_cards_anim');
+                renderScene.tweens.add({ targets: hoverSprite, y: y - 5, duration: 150, ease: 'Power2' });
+            }
             this.showItemTooltip(item.data, sprite.x, sprite.y);
         });
         sprite.on('pointerout', () => {
-            sprite.clearTint();
+            // Return card and shine to original position
+            renderScene.tweens.add({ targets: sprite, y: y, duration: 150, ease: 'Power2' });
+            if (hoverSprite) {
+                renderScene.tweens.add({ targets: hoverSprite, y: y, duration: 150, ease: 'Power2' });
+                hoverSprite.setVisible(false);
+                hoverSprite.setAlpha(0);
+                hoverSprite.stop?.();
+            }
+            if (shadow) shadow.setAlpha(0);
             this.hideItemTooltip();
         });
         sprite.on('pointerdown', () => {
@@ -181,7 +263,16 @@ export class StationRoomBase extends Phaser.Scene {
             this.buyItem(item, priceText);
             this.refreshStationInventoryDisplay();
             if (item.purchased && !wasPurchased) {
-                sprite.clearTint();
+                renderScene.tweens.killTweensOf(sprite);
+                sprite.y = y;
+                if (hoverSprite) {
+                    renderScene.tweens.killTweensOf(hoverSprite);
+                    hoverSprite.y = y;
+                    hoverSprite.setVisible(false);
+                    hoverSprite.setAlpha(0);
+                    hoverSprite.stop?.();
+                }
+                if (shadow) shadow.setAlpha(0);
                 sprite.removeInteractive();
                 sprite.setAlpha(0.55);
                 this.hideItemTooltip();
