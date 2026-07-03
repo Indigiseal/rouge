@@ -48,6 +48,12 @@ export function getTooltipLines(scene, data) {
         body = t(scene, 'tooltip.heals', { amount: data.healAmount ?? 0 });
     } else if (data.type === 'food') {
         body = t(scene, 'tooltip.restores', { amount: data.actionAmount ?? 0 });
+    } else if (data.type === 'companion') {
+        const damageType = data.damageType === 'physical' ? 'physical' : 'lightning';
+        const attackStyle = data.attackStyle === 'melee' || data.range === 'melee' ? 'Melee' : 'Ranged';
+        body = `${attackStyle} companion\nDeals ${data.attack ?? 0} ${damageType} damage after enemies`;
+        if (data.shockChance) body += `\nShock chance: ${Math.round(data.shockChance * 100)}%`;
+        if (data.guardProtection) body += `\nGuard: +${data.guardProtection} protection`;
     } else if (data.type === 'magic') {
         body = data.description ? translateDescription(scene, data.description) : t(scene, 'tooltip.magicSpell');
     } else if (data.type === 'gem') {
@@ -74,15 +80,89 @@ export function showItemTooltip(scene, data, anchorX, anchorY) {
     const lines = getTooltipLines(scene, data);
     if (!lines.name && !lines.body) return;
 
-    const padX = 6;
-    const padY = 5;
-    const maxWidth = 200;
-
     const nameColor = data.type === 'amulet' && data.rarity === 'cursed'
         ? '#ff8888'
         : rarityFill(data.rarity);
 
-    const nameText = scene.add.text(0, 0, lines.name, {
+    renderTooltipBox(scene, lines.name, lines.body, nameColor, anchorX, anchorY);
+}
+
+// Describes a boss's abilities as human-readable lines. Reads the same
+// `abilities` array the combat code consumes, so the tooltip can never drift
+// from what the boss actually does.
+export function getBossAbilityLines(scene, data) {
+    const abilities = Array.isArray(data?.abilities) ? data.abilities : [];
+    const lines = [];
+    abilities.forEach(ab => {
+        switch (ab?.type) {
+            case 'lifesteal':
+                lines.push(t(scene, 'boss.lifesteal', { pct: Math.round((ab.percentage || 0) * 100) }));
+                break;
+            case 'summon':
+                lines.push(t(scene, 'boss.summon', { enemy: translateEnemyName(scene, ab.enemyType) }));
+                break;
+            case 'poison':
+                lines.push(t(scene, 'boss.poison', { dmg: ab.damage || 0, turns: ab.turns || 0 }));
+                break;
+            case 'armor_break':
+                lines.push(t(scene, 'boss.armorBreak', { amount: ab.amount || 0 }));
+                break;
+            case 'rage':
+                lines.push(t(scene, 'boss.rage', {
+                    mult: ab.damageBoost || 1.5,
+                    pct: Math.round((ab.threshold ?? 0.3) * 100)
+                }));
+                break;
+            case 'coin_steal':
+                lines.push(t(scene, 'boss.coinSteal', { amount: ab.amount || 0 }));
+                break;
+            default:
+                break;
+        }
+    });
+    return lines;
+}
+
+function translateEnemyName(scene, enemyType) {
+    const key = String(enemyType || '').toLowerCase();
+    const byType = {
+        skeleton: 'tooltip.skeleton',
+        goblin: 'tooltip.goblin',
+        spider: 'tooltip.spider',
+    };
+    // Fall back to a capitalized raw type if there's no dedicated string.
+    const translated = byType[key] ? t(scene, byType[key]) : '';
+    if (translated && translated !== byType[key]) return translated;
+    return key ? key.charAt(0).toUpperCase() + key.slice(1) : t(scene, 'tooltip.card');
+}
+
+// Boss hover tooltip: name in boss gold, then attack and one line per ability.
+export function showBossTooltip(scene, data, anchorX, anchorY) {
+    if (!scene || !scene.add || !data) return;
+    hideItemTooltip(scene);
+
+    const name = data.name || t(scene, 'tooltip.card');
+    const abilityLines = getBossAbilityLines(scene, data);
+    const bodyParts = [t(scene, 'boss.attack', { atk: data.attack ?? 0 })];
+    if (abilityLines.length) {
+        bodyParts.push(`${t(scene, 'boss.abilitiesTitle')}:`, ...abilityLines);
+    } else {
+        bodyParts.push(t(scene, 'boss.noAbilities'));
+    }
+
+    renderTooltipBox(scene, name, bodyParts.join('\n'), '#ffcc33', anchorX, anchorY);
+}
+
+// Shared box renderer for item and boss tooltips. Stored on the scene as
+// `_itemTooltip` so any subsequent show (and hideItemTooltip) clears it.
+function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY) {
+    if (!name && !body) return;
+
+    const padX = 6;
+    const padY = 5;
+    const maxWidth = 200;
+
+    const nameText = scene.add.text(0, 0, name, {
         fontSize: '11px',
         fill: nameColor,
         fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -90,8 +170,8 @@ export function showItemTooltip(scene, data, anchorX, anchorY) {
         align: 'center',
     }).setOrigin(0, 0);
 
-    const bodyText = lines.body
-        ? scene.add.text(0, Math.ceil(nameText.height) + 3, lines.body, {
+    const bodyText = body
+        ? scene.add.text(0, Math.ceil(nameText.height) + 3, body, {
             fontSize: '10px',
             fill: '#dddddd',
             fontFamily: '"HoMM Pixel", Arial, sans-serif',

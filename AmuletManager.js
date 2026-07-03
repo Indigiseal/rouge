@@ -280,7 +280,7 @@ export class AmuletManager {
             
             berserkerBelt: {
                 ...getAmuletAtlasPresentation('berserkerBelt'),
-                description: '+50% damage below 50% HP, cannot heal above 50%',
+                description: '+50% damage below 50% HP, potions cannot heal above 50%',
                 rarity: 'cursed',
                 cursed: true,
                 modifyWeaponDamage: (damage) => {
@@ -415,6 +415,44 @@ export class AmuletManager {
                 description: '15% chance enemies attack their own kind instead of you',
                 rarity: 'rare',
                 charmChance: 0.15
+            },
+
+            // Special reward from the Too-Nice Room event. Not in the random
+            // amulet pool (amuletTypes) — only the fairy hands it out.
+            teaRoomBell: {
+                ...getAmuletAtlasPresentation('teaRoomBell'),
+                description: 'Restores 4 AP whenever you enter a non-battle room',
+                rarity: 'rare',
+                restoreApOnNonBattle: 4
+            },
+
+            // Standalone rewards from The Book Worm. These stay out of the
+            // random amulet pool and can only be earned through the event.
+            mothWingDust: {
+                name: 'Moth-Wing Dust',
+                sprite: 'relicsOthers',
+                spriteFrame: 60,
+                description: 'Magic cards have a 25% chance to return after use',
+                rarity: 'rare',
+                magicCardReturnChance: 0.25
+            },
+
+            wormVenomCharm: {
+                ...getAmuletAtlasPresentation('wormVenomCharm'),
+                description: 'Poison attacks are nullified and poison cannot be applied',
+                rarity: 'rare',
+                poisonImmunity: true,
+                onEquip: () => {
+                    this.gameState.playerEffects = (this.gameState.playerEffects || [])
+                        .filter(effect => effect?.type !== 'poison');
+                }
+            },
+
+            stolenInkPen: {
+                ...getAmuletAtlasPresentation('stolenInkPen'),
+                description: 'Gain 1 coin whenever you discard a card',
+                rarity: 'rare',
+                coinsPerDiscard: 1
             }
         };
     }
@@ -427,6 +465,25 @@ export class AmuletManager {
     // Get amulet data (for tracking uses, etc.)
     getAmuletData(amuletId) {
         return this.gameState.activeAmulets.find(a => a.id === amuletId);
+    }
+
+    isPoisonImmune() {
+        return this.gameState.activeAmulets.some(amulet => (
+            this.amuletDefinitions[amulet.id]?.poisonImmunity
+        ));
+    }
+
+    shouldReturnMagicCard() {
+        const chance = this.gameState.activeAmulets.reduce((total, amulet) => (
+            total + (this.amuletDefinitions[amulet.id]?.magicCardReturnChance || 0)
+        ), 0);
+        return chance > 0 && Math.random() < Math.min(1, chance);
+    }
+
+    getDiscardCoinBonus() {
+        return this.gameState.activeAmulets.reduce((total, amulet) => (
+            total + (this.amuletDefinitions[amulet.id]?.coinsPerDiscard || 0)
+        ), 0);
     }
     
     // Add an amulet to the player
@@ -566,6 +623,36 @@ export class AmuletManager {
         return false;
     }
     
+    // Fire AP-restore amulets (Tea Room Bell) when the player enters a
+    // non-battle room (shop, rest, anvil, event, treasure). AP carries into the
+    // next fight, so this is a small economy boost between battles.
+    processNonBattleSceneEnter() {
+        let total = 0;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.restoreApOnNonBattle) {
+                total += definition.restoreApOnNonBattle;
+            }
+        });
+        if (total <= 0) return;
+
+        const before = this.gameState.actionsLeft || 0;
+        this.gameState.actionsLeft = Math.min(this.gameState.maxActions, before + total);
+        const gained = this.gameState.actionsLeft - before;
+        if (gained <= 0) return;
+
+        this.scene.updateActionPointUI?.();
+        this.scene.updateUI?.();
+        if (this.scene.playerAvatar) {
+            this.scene.createFloatingText?.(
+                this.scene.playerAvatar.x,
+                this.scene.playerAvatar.y - 20,
+                `+${gained} AP (Bell)`,
+                0x66ddff
+            );
+        }
+    }
+
     // Process enemy kill
     processEnemyKill() {
         this.gameState.activeAmulets.forEach(amulet => {

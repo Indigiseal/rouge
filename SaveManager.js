@@ -7,7 +7,7 @@ export class SaveManager {
     this.META_SAVE_KEY = 'metaProgression';
     this.RUN_SAVE_KEY = 'currentRun';
     this.SETTINGS_SAVE_KEY = 'gameSettings';
-    this.SAVE_VERSION = '1.0.1'; // Bumped for new fields
+    this.SAVE_VERSION = '1.0.2'; // Navigation state added to run saves
   }
 
   // ============ Internal helpers ============
@@ -140,9 +140,19 @@ export class SaveManager {
         storyRun: gameState?.storyRun ?? null,
         heroMemory: gameState?.heroMemory ?? null,
       },
+      companions: {
+        history: gameState?.companionHistory ?? {},
+        roomParticipants: gameState?.companionRoomParticipants ?? {},
+      },
+      navigation: {
+        roomType: gameState?.roomType ?? 'COMBAT',
+        mapCursor: gameState?.mapCursor ?? null,
+        dungeonMap: gameState?.dungeonMap ?? null,
+        pendingActShop: gameState?.pendingActShop ?? null,
+      },
       board: {
         cards: cardSystem ? this.serializeBoardCards(cardSystem.boardCards) : [],
-        enemiesCleared: false,
+        enemiesCleared: gameState?.scene?.enemiesCleared ?? false,
       },
       savedAt: Date.now(),
       saveVersion: this.SAVE_VERSION,
@@ -174,7 +184,9 @@ export class SaveManager {
           maxActions: parsed.player?.maxActions ?? 15,
           coins: parsed.player?.coins ?? 0,
           crystals: parsed.player?.crystals ?? 0,
-          currentFloor: parsed.player?.currentFloor ?? 1,
+          currentFloor: Number.isFinite(parsed.player?.currentFloor)
+            ? Math.max(1, Math.min(45, Math.floor(parsed.player.currentFloor)))
+            : 1,
           bonusInventorySlots: parsed.player?.bonusInventorySlots ?? 0,
           firstActionUsed: parsed.player?.firstActionUsed ?? false,
           baseMaxHealth: parsed.player?.baseMaxHealth ?? 50,
@@ -211,6 +223,28 @@ export class SaveManager {
           storyRun: parsed.story?.storyRun ?? null,
           heroMemory: parsed.story?.heroMemory ?? null,
         },
+        companions: {
+          history: parsed.companions?.history && typeof parsed.companions.history === 'object'
+            ? parsed.companions.history
+            : {},
+          roomParticipants: parsed.companions?.roomParticipants && typeof parsed.companions.roomParticipants === 'object'
+            ? parsed.companions.roomParticipants
+            : {},
+        },
+        navigation: {
+          roomType: typeof parsed.navigation?.roomType === 'string'
+            ? parsed.navigation.roomType
+            : 'COMBAT',
+          mapCursor: parsed.navigation?.mapCursor && typeof parsed.navigation.mapCursor === 'object'
+            ? parsed.navigation.mapCursor
+            : null,
+          dungeonMap: parsed.navigation?.dungeonMap && typeof parsed.navigation.dungeonMap === 'object'
+            ? parsed.navigation.dungeonMap
+            : null,
+          pendingActShop: ['SHOP', 'RARE_SHOP'].includes(parsed.navigation?.pendingActShop)
+            ? parsed.navigation.pendingActShop
+            : null,
+        },
         board: {
           cards: Array.isArray(parsed.board?.cards) ? parsed.board.cards : [],
           enemiesCleared: parsed.board?.enemiesCleared ?? false,
@@ -241,6 +275,22 @@ export class SaveManager {
       run.effects.activeAmulets = run.effects.activeAmulets.map(amulet =>
         applyAmuletAtlasPresentation(amulet)
       );
+    }
+
+    run.navigation = run.navigation && typeof run.navigation === 'object'
+      ? run.navigation
+      : { roomType: 'COMBAT', mapCursor: null, dungeonMap: null, pendingActShop: null };
+
+    // Legacy saves had currentFloor but no map cursor. Reconstruct the matching
+    // act-local cursor so Continue cannot pair (for example) Floor 6 with the
+    // first node of Act 1.
+    if (!run.navigation.mapCursor) {
+      const floor = Math.max(1, Math.min(45, run.player?.currentFloor || 1));
+      run.navigation.mapCursor = {
+        act: Math.floor((floor - 1) / 15) + 1,
+        floor: (floor - 1) % 15,
+        node: 0,
+      };
     }
 
     if (Array.isArray(run.equipment?.inventory)) {
@@ -386,5 +436,7 @@ export class SaveManager {
     this.safeRemove(this.META_SAVE_KEY);
     this.safeRemove(this.RUN_SAVE_KEY);
     this.safeRemove(this.SETTINGS_SAVE_KEY);
+    this.safeRemove('heroMemory');
+    this.safeRemove('storyProgress');
   }
 }

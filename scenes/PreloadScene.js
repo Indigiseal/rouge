@@ -41,6 +41,7 @@ export class PreloadScene extends Phaser.Scene {
         this.load.bitmapFont('cyrillic-ui-font', 'assets/fonts/probly12NEW_crisp.png', 'assets/fonts/probly12NEW_crisp.xml');
         this.load.image('goblin_c', 'assets/goblin_c.png');
         this.load.image('skeletonSprite', 'assets/skeleton_c.png');
+        this.load.image('angryNestmother', 'assets/bird.png');
         
         // Load item sprites
         this.load.image('leather_C', 'assets/leatherCommon.png');
@@ -116,6 +117,10 @@ export class PreloadScene extends Phaser.Scene {
         // Food
         this.load.image('berries', 'assets/foodCommon4AP.png');
         this.load.image('bread', 'assets/bread.png');
+        this.load.image('egg', 'assets/egg.png');
+        this.load.image('chickCompanion', 'assets/chickCompanion.png');
+        this.load.image('skeletonCompanion', 'assets/skeletonCompanion.png');
+        this.load.image('skeletonCompanionUP', 'assets/skeletonCompanionUP.png');
         // New Cards
         this.load.image('amulet', 'assets/amulet.png');
         this.load.image('key', 'assets/key.png');
@@ -135,6 +140,7 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('cardHover4', 'assets/cardHover4.png');
         this.load.image('cardHover5', 'assets/cardHover5.png');
         this.load.image('discardSprite', 'assets/discard.png');
+        this.load.image('thornFrame', 'assets/thornFrame.png');
         // Card hover when in inventory effects
         this.load.image('hoverCardsUp1', 'assets/hoverCardsUp1.png');
         this.load.image('hoverCardsUp2', 'assets/hoverCardsUp2.png');
@@ -145,6 +151,8 @@ export class PreloadScene extends Phaser.Scene {
         this.load.spritesheet('poofEmpty', 'assets/poofEmpty32x48frames.png', { frameWidth: 32, frameHeight: 48 });
         // Poison status indicator (5 frames, 16x32 each) — shown on poisoned enemies/hero
         this.load.spritesheet('poisonedStatus', 'assets/poisonedStatus.png', { frameWidth: 16, frameHeight: 32 });
+        // Shock marker (6 frames, 16x32 each), positioned like poisonedStatus.
+        this.load.spritesheet('shockedStatus', 'assets/shockedStatus.png', { frameWidth: 16, frameHeight: 32 });
 
         this.load.image('healthBar', 'assets/healthBar.png');
         this.load.image('healthBarEmpty', 'assets/healthBarEmpty2.png');
@@ -157,6 +165,7 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('CrystalUI', 'assets/CrystalUI.png');
         this.load.image('skeleton_c', 'assets/skeleton_c.png');
         this.load.image('spider_c', 'assets/spider_c.png');
+        this.load.image('lostSoul', 'assets/ghostlyEnemy.png');
         this.load.image('sword_c_reworked', 'assets/sword_c_r.png');
         this.load.image('durability_dot', 'assets/durability_dot.png');
         this.load.image('ten_durability', 'assets/ten_durability.png');
@@ -172,9 +181,10 @@ export class PreloadScene extends Phaser.Scene {
 
         this.load.image('goblin_archer', 'assets/goblinArcher_c.png');
         this.load.image('skeleton_archer', 'assets/skeletonArcher_c.png');
-        this.load.image('Lich', 'assets/giantSkeleton.png');
-        this.load.image('SoulEater', 'assets/giantSkeleton.png');
-        this.load.image('Cerberus', 'assets/goblinKing.png');
+        this.load.image('Lich', 'assets/lich.png');
+        this.load.image('SoulEater', 'assets/soulEater.png');
+        this.load.image('Cerberus', 'assets/cerberus.png');
+        this.load.image('AncientCerberus', 'assets/ancientCerberus.png');
          // Magic Cards
         this.load.image('fireBall', 'assets/magicBallCard.png');
         this.load.image('frozenRing', 'assets/forzenRing.png');
@@ -317,6 +327,13 @@ export class PreloadScene extends Phaser.Scene {
             key: 'poison_status_anim',
             frames: this.anims.generateFrameNumbers('poisonedStatus', { start: 0, end: 4 }),
             frameRate: 6,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'shock_status_anim',
+            frames: this.anims.generateFrameNumbers('shockedStatus', { start: 0, end: 5 }),
+            frameRate: 8,
             repeat: -1
         });
 

@@ -213,7 +213,7 @@ export class MockScene {
       if (!card || !card.revealed || !this.isEnemyCard(card)) continue;
       if (card.data.frozen && card.data.frozen > 0) continue;
       if (card.data.health <= 0) continue;
-      this.gameState.takeDamage(card.data.attack, i, 'enemy');
+      const { actualDamage } = this.gameState.takeDamage(card.data.attack, i, 'enemy');
       if (this.gameState.playerHealth <= 0) { this._lastKiller = card.data.name || 'enemy'; return; }
       // Thorns: reflect to MELEE attackers (mirrors GameScene.applyThornsDamage),
       // consuming 1 durability per reflect; the bot's strongest thorns is active.
@@ -223,11 +223,12 @@ export class MockScene {
         t.durability -= 1;
         if (t.durability <= 0) this.gameState.activeThorns = null;
       }
-      // Boss abilities: leech (heal from raw attack) + summon minions.
+      // Boss abilities: leech (heal from damage ACTUALLY landed, after armor —
+      // mirrors GameScene) + summon minions.
       if (card.data.type === 'boss' && card.data.abilities) {
         for (const ab of card.data.abilities) {
-          if (ab.type === 'lifesteal') {
-            const heal = Math.max(1, Math.ceil((card.data.attack || 0) * (ab.percentage || 0.3)));
+          if (ab.type === 'lifesteal' && actualDamage > 0) {
+            const heal = Math.max(1, Math.ceil(actualDamage * (ab.percentage || 0.3)));
             if (card.data.maxHealth === undefined) card.data.maxHealth = card.data.health;
             card.data.health = Math.min(card.data.maxHealth, card.data.health + heal);
           } else if (ab.type === 'summon' && Math.random() < ab.chance) {
@@ -252,6 +253,11 @@ export class MockScene {
       ? gen.createTieredEnemy(enemyType, floor)
       : gen.createCardData('enemy', floor);
     if (!e) return;
+    // Mirror cardSystem.summonEnemy: summoned minions come in weaker than the
+    // real thing (0.6 attack / 0.65 HP) so boss summons don't overpower the sim.
+    e.attack = Math.max(1, Math.round((e.attack || 1) * 0.6));
+    e.health = Math.max(1, Math.round((e.health || 1) * 0.65));
+    e.maxHealth = e.health;
     // Summoned spiders carry the toned-down poison the real game gives them.
     if (enemyType === 'spider') e.abilities = [{ type: 'poison', damage: 1, turns: 2, stackable: true }];
     e.role = Math.random() < 0.5 ? 'MELEE' : 'RANGED';

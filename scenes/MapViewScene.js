@@ -19,7 +19,7 @@ export class MapViewScene extends Phaser.Scene {
     this.currentAct = Math.min(3, Math.max(1, Math.floor((cf - 1) / 15) + 1));
 
     // Build/keep full map. Regenerate when shape changes or when new node types were added.
-    const MAP_VERSION = 3; // bump when generator adds new node types
+    const MAP_VERSION = 4; // v4 guarantees at least one Rare Shop per act
     const hasCurrentMapShape =
       this.gameState.dungeonMap?.act1?.floors?.length === 15 &&
       this.gameState.dungeonMap?._version === MAP_VERSION;
@@ -41,17 +41,29 @@ export class MapViewScene extends Phaser.Scene {
     // Ensure a single authoritative cursor (act-local)
     // floor: 0..14 (0 is the fixed start node, 14 is boss floor)
     if (!this.gameState.mapCursor || this.gameState.mapCursor.act !== this.currentAct) {
-      this.gameState.mapCursor = { act: this.currentAct, floor: 0, node: 0 };
+      this.gameState.mapCursor = {
+        act: this.currentAct,
+        floor: (cf - 1) % 15,
+        node: 0
+      };
       // Mark the start as visited so connections from start are valid
       this.actMap.floors[0][0].visited = true;
     }
     // Validate cursor against the (possibly freshly regenerated) map.
     // If the saved node index no longer exists in this floor, clamp to 0.
     const cur = this.gameState.mapCursor;
+    if (!Number.isInteger(cur.floor) || cur.floor < 0 || cur.floor >= this.actMap.floors.length) {
+      cur.floor = (cf - 1) % 15;
+    }
     const curFloor = this.actMap.floors[cur.floor];
     if (!curFloor || cur.node >= curFloor.length || !curFloor[cur.node]) {
       cur.node = 0;
     }
+    // A migrated legacy save may reconstruct its cursor without a saved map.
+    // Mark that reconstructed current node visited so map visuals and movement
+    // rules agree about where the player actually is.
+    const validatedFloor = this.actMap.floors[cur.floor];
+    if (validatedFloor?.[cur.node]) validatedFloor[cur.node].visited = true;
 
     // Dragging
     this.isDragging = false;
@@ -386,6 +398,8 @@ export class MapViewScene extends Phaser.Scene {
     // Route
     const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE', 'TREASURE_GOOD'];
     if (nonCombat.includes(node.type)) {
+      // Tea Room Bell (and any future AP-on-non-battle amulet) triggers here.
+      this.scene.get('GameScene')?.amuletManager?.processNonBattleSceneEnter?.();
       this.scene.sleep(); // Sleep map for overlay
       const key =
         node.type === 'SHOP'           ? 'ShopScene' :

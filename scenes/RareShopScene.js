@@ -78,6 +78,35 @@ export class RareShopScene extends StationRoomBase {
             purchased: false
         });
 
+        // Cross-run Chick unlock: after a hero dies following a successful
+        // hatch, future heroes have a chance to find the unique companion here.
+        const liveInventory = this.gameScene?.inventorySystem?.slots || this.gameState.inventory || [];
+        const alreadyHasChick = liveInventory.some(item => item?.id === 'chickCompanion');
+        if (this.gameState.heroMemory?.chickRareShopUnlocked
+            && !alreadyHasChick
+            && Math.random() < 0.35) {
+            this.shopItems.push({
+                data: cardGenerator.cardDataGenerator.createChickCompanionCard(),
+                price: 35 + floor * 3,
+                currency: 'coins',
+                purchased: false
+            });
+        }
+
+        // Cross-run Skeleton Warrior unlock: after a hero who freed the skeleton
+        // mage dies, future heroes have a chance to buy the companion here too.
+        const alreadyHasSkeleton = liveInventory.some(item => item?.id === 'skeletonWarriorCompanion');
+        if (this.gameState.heroMemory?.skeletonRareShopUnlocked
+            && !alreadyHasSkeleton
+            && Math.random() < 0.35) {
+            this.shopItems.push({
+                data: cardGenerator.cardDataGenerator.createSkeletonWarriorCompanionCard(),
+                price: 35 + floor * 3,
+                currency: 'coins',
+                purchased: false
+            });
+        }
+
         // Merchant's Seal bonus slots — even better items in the rare shop
         const bonusSlots = this.gameScene?.amuletManager?.getBonusShopSlots?.() || 0;
         for (let i = 0; i < bonusSlots; i++) {

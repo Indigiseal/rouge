@@ -367,6 +367,7 @@ export class MainMenuScene extends Phaser.Scene {
             this.saveManager.clearCurrentRun();
             this.saveManager.safeRemove(this.saveManager.META_SAVE_KEY);
             this.saveManager.safeRemove('heroMemory');
+            this.saveManager.safeRemove('storyProgress');
             cleanup();
             // Rebuild main menu so Continue gets disabled, etc.
             this.scene.restart();

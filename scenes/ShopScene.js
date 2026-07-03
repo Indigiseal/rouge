@@ -403,6 +403,8 @@ export class ShopScene extends StationRoomBase {
                     statsText = t(this, 'float.plusHp', { amount: item.healAmount });
                 } else if (item.type === 'food') {
                     statsText = t(this, 'float.plusAp', { amount: item.actionAmount });
+                } else if (item.type === 'companion') {
+                    statsText = `${item.attack || 2} lightning damage`;
                 } else if (item.type === 'magic') {
                     statsText = t(this, 'ui.shop.magic');
                 }

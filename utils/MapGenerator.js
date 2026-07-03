@@ -23,7 +23,7 @@ export class MapGenerator {
   generateFullMap() {
     // Must match MapViewScene's MAP_VERSION. Otherwise the version-check there
     // fails on every load and the map regenerates after every floor.
-    const full = { _version: 3 };
+    const full = { _version: 4 };
     for (let act = 1; act <= 3; act++) full[`act${act}`] = this.generateAct(act);
     return full;
   }
@@ -228,8 +228,32 @@ export class MapGenerator {
         ...childTypes(floors, f, idx)
       ].some(type => supportTypes.has(type));
     };
+    // Longest run of consecutive EVENT rooms along any path ENDING at (f, idx),
+    // counting this node itself. Returns 0 if the node isn't an EVENT. Only reads
+    // already-assigned upstream floors, so it's exact during the top-down pass.
+    const eventChainEndingAt = (f, idx) => {
+      const node = floors[f]?.[idx];
+      if (!node || node.type !== 'EVENT') return 0;
+      if (f === 0) return 1;
+      let best = 0;
+      floors[f - 1].forEach((p, pi) => {
+        if (p.connections.includes(idx)) best = Math.max(best, eventChainEndingAt(f - 1, pi));
+      });
+      return 1 + best;
+    };
+    // True if making (f, idx) an EVENT would create three EVENTs in a row along
+    // some path into it (a parent already ends a run of >= 2 EVENTs).
+    const wouldMakeEventTriple = (f, idx) => {
+      if (f === 0) return false;
+      let maxParentChain = 0;
+      floors[f - 1].forEach((p, pi) => {
+        if (p.connections.includes(idx)) maxParentChain = Math.max(maxParentChain, eventChainEndingAt(f - 1, pi));
+      });
+      return maxParentChain >= 2;
+    };
 
     // pass 1: assign respecting simple rules
+    let rareShopCount = 0; // capped at 2 per act
     for (let f = 1; f <= preBoss; f++) {
       for (let i = 0; i < floors[f].length; i++) {
         const n = floors[f][i];
@@ -245,6 +269,8 @@ export class MapGenerator {
           if (f === preBoss && t === 'REST') continue;              // no rest before boss
           if ((t === 'TREASURE' || t === 'TREASURE_GOOD') && f <= 2) continue; // No early chests
           if (t === 'TREASURE_GOOD' && f <= 5) continue; // Good chests only in mid/late floors
+          if (t === 'RARE_SHOP' && rareShopCount >= 2) continue; // at most two rare shops per act
+          if (t === 'EVENT' && wouldMakeEventTriple(f, i)) continue; // no three EVENTs in a row
 
           const pTypes = parentsTypes(floors, f, i);
           const sTypes = siblingTypes(floors, f, i);
@@ -257,6 +283,7 @@ export class MapGenerator {
           chosen = t; break;
         }
         n.type = chosen || 'COMBAT';
+        if (n.type === 'RARE_SHOP') rareShopCount++;
       }
     }
 
@@ -279,6 +306,19 @@ export class MapGenerator {
             return;
           }
         }
+
+        // A dense support-room layout can leave no perfectly spaced slot.
+        // Guarantees must still be guarantees, so replace a non-support room
+        // inside the requested range before touching another support room.
+        const fallback = [];
+        for (let f = fromF; f <= Math.min(toF, preBoss); f++) {
+          floors[f].forEach(n => {
+            if (n.type !== 'BOSS' && !supportTypes.has(n.type)) fallback.push(n);
+          });
+        }
+        if (fallback.length > 0) {
+          fallback[Math.floor(Math.random() * fallback.length)].type = type;
+        }
       }
     };
     ensureOne('REST');
@@ -290,6 +330,9 @@ export class MapGenerator {
     ensureOne('ANVIL', preBoss - 3, preBoss - 1); // late-act blacksmith (near boss)
     ensureOne('TREASURE', 4, 8);             // At least one normal chest mid-act
     ensureOne('TREASURE_GOOD', 6, preBoss);  // At least one good chest per act
+    // Run this guarantee last so later support-room guarantees cannot replace
+    // the sole Rare Shop they are supposed to coexist with.
+    ensureOne('RARE_SHOP', 3, preBoss - 2);
   }
 
   _computeReachability(floors) {

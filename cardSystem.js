@@ -1,7 +1,7 @@
 //cardSystem
 import { CardDataGenerator } from './CardDataGenerator.js';
 import { SoundHelper } from './utils/SoundHelper.js';
-import { showItemTooltip, hideItemTooltip } from './utils/ItemTooltip.js';
+import { showItemTooltip, hideItemTooltip, showBossTooltip } from './utils/ItemTooltip.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 
 export class CardSystem {
@@ -105,6 +105,31 @@ export class CardSystem {
         stacks: stacks.length,
         damage: stacks.reduce((sum, effect) => sum + effect.damage, 0)
       };
+    }
+
+    applyShockStatus(card, turns = 1) {
+      if (!card?.data || !card.sprite || (card.data.health || 0) <= 0) return false;
+      if ((card.data.frozen || 0) > 0) return false;
+
+      card.data.frozen = Math.max(1, turns);
+      card.data.shockedTurns = Math.max(1, turns);
+      this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, 'Shocked!', 0x66ccff);
+
+      if (!card.shockMarker && this.scene.textures.exists('shockedStatus')) {
+        const halfW = (card.sprite.displayWidth || 52) / 2;
+        const halfH = (card.sprite.displayHeight || 70) / 2;
+        const bodyOffsetY = card.data.name === 'Spider Queen' ? 60 : 0;
+        const marker = this.scene.add.sprite(
+          Math.round(card.sprite.x + halfW - 2),
+          Math.round(card.sprite.y - halfH + 2 + bodyOffsetY),
+          'shockedStatus'
+        );
+        marker.setOrigin(1, 0);
+        marker.setDepth((card.sprite.depth || 1) + 4);
+        if (this.scene.anims?.exists('shock_status_anim')) marker.play('shock_status_anim');
+        card.shockMarker = marker;
+      }
+      return true;
     }
     processEnemyPoisonEffects() {
       for (let i = this.boardCards.length - 1; i >= 0; i--) {
@@ -493,6 +518,7 @@ export class CardSystem {
         card.glow?.destroy();
         card.roleMarker?.destroy();
         card.poisonMarker?.destroy();
+        card.shockMarker?.destroy();
         if (card.infoText) {
           if (card.infoText.list) card.infoText.destroy(true);
           else card.infoText.destroy();
@@ -505,6 +531,7 @@ export class CardSystem {
         card.glow = null;
         card.roleMarker = null;
         card.poisonMarker = null;
+        card.shockMarker = null;
         card.infoText = null;
       });
       this.boardCards = [];
@@ -777,6 +804,7 @@ export class CardSystem {
       this.ensureWeaponSupply(cf, roomType);
       this.limitEnemyDensity(cf, roomType);
       this.ensureEnemyMinimum(cf, roomType);
+      this.injectAngryNestmother(cf, roomType);
       // 4) second-pass: safe neighbor build (using brick offsets)
       const indexByRC = new Map();
       for (let i = 0; i < this.boardCards.length; i++) {
@@ -1122,6 +1150,7 @@ export class CardSystem {
         // The dying card may have carried enemy-only overlays (poison status icon,
         // role badge). Destroy them or they linger on top of the new loot card.
         if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
+        if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
         if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
         card.sprite.destroy();
         card.data = newData;
@@ -1310,6 +1339,45 @@ export class CardSystem {
       }
     }
 
+    // The Angry Nestmother stalks the player for the rest of the run in which
+    // they stole her egg (birdAngry, set by the bird-nest event and reset each
+    // new run). She turns up "once in a while" in regular AND elite battles —
+    // never bosses — as a single ranged archer. Never more than one per battle.
+    injectAngryNestmother(floor, roomType) {
+      const story = this.scene.gameState?.storyRun;
+      if (!story || story.birdAngry !== true) return false;
+      if (roomType !== 'COMBAT' && roomType !== 'ELITE') return false;
+
+      // One roll per floor spawn — re-entering the room won't re-roll.
+      if (story.angryNestmotherRollFloor === floor) return false;
+      story.angryNestmotherRollFloor = floor;
+
+      // Never stack a second nestmother onto a board that already has one.
+      if (this.boardCards.some(c => c?.data?.storyEnemy === 'angry_nestmother')) return false;
+
+      if (Math.random() >= 0.22) return false;
+
+      // Take over an existing enemy slot. Prefer a back-row (RANGED) slot so the
+      // archer sits where she belongs; fall back to any enemy on an all-melee
+      // board. She's forced to RANGED either way.
+      const enemyCards = this.boardCards
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => card?.data?.type === 'enemy' && card?.data?.storyEnemy !== 'angry_nestmother');
+      if (enemyCards.length === 0) return false;
+
+      const backRow = enemyCards.filter(({ card }) => (card.data.brick?.r ?? 1) === 0);
+      const pool = backRow.length > 0 ? backRow : enemyCards;
+      const { card } = pool[Math.floor(Math.random() * pool.length)];
+
+      const brick = card.data.brick;
+      const nestmother = this.cardDataGenerator.createAngryNestmotherCard(floor);
+      if (brick) nestmother.brick = brick;
+      nestmother.role = 'RANGED';
+      nestmother.isRangedType = true;
+      card.data = nestmother;
+      return true;
+    }
+
     spawnBoss() {
         const bossData = this.cardDataGenerator.createCardData('boss', this.scene.gameState.currentFloor);
         bossData.maxHealth = bossData.maxHealth || bossData.health;
@@ -1329,6 +1397,8 @@ export class CardSystem {
         this.createCardInfoText(card);
         this.playBossEntrance(cardSprite, bossData);
         card.sprite.setInteractive();
+        // Hover the boss to read its attack and abilities.
+        this._attachBossTooltip(card);
     }
 
     playBossEntrance(cardSprite, bossData) {
@@ -1499,8 +1569,9 @@ export class CardSystem {
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${actualDamage}`, 0xff0000);
             }
         } else if (card.data.subType === 'poison') {
-            this.scene.gameState.addPlayerEffect({ ...card.data.abilities[0] });
-            this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poisoned!', 0x00ff00);
+            if (this.scene.gameState.addPlayerEffect({ ...card.data.abilities[0] })) {
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poisoned!', 0x00ff00);
+            }
         } else if (card.data.subType === 'reveal') {
             SoundHelper.playSound(this.scene, 'trap_spring', 0.6);
             this.revealAdjacentCards(index);
@@ -2040,6 +2111,22 @@ export class CardSystem {
         sprite.once('destroy', () => hideItemTooltip(scene));
     }
 
+    // Hover info for boss cards: shows the boss's attack and a plain-language
+    // line for each ability (lifesteal, summon, rage, etc.) so the player can
+    // read what they're up against. Shares the item-tooltip container/renderer.
+    _attachBossTooltip(card) {
+        if (!card?.sprite || card.data?.type !== 'boss') return;
+        const sprite = card.sprite;
+        const data = card.data;
+        const scene = this.scene;
+
+        sprite.on('pointerover', () => {
+            showBossTooltip(scene, data, sprite.x, sprite.y);
+        });
+        sprite.on('pointerout', () => hideItemTooltip(scene));
+        sprite.once('destroy', () => hideItemTooltip(scene));
+    }
+
     removeCard(index) {
         const card = this.boardCards[index];
         if (card) {
@@ -2050,6 +2137,7 @@ export class CardSystem {
             if (card.hoverSprite) { card.hoverSprite.destroy(); card.hoverSprite = null; }
             if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
             if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
+            if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
             if (card.infoText) {
                 if (card.infoText.list) {
                     card.infoText.destroy(true);
@@ -2212,6 +2300,14 @@ export class CardSystem {
                 break;
         }
         
+        // Summoned minions come in weaker than the real thing — they're conjured
+        // mid-fight, so they hit softer and have less HP. Without this, a boss that
+        // summons every couple of turns (Lich, Giant Skeleton) buries the player
+        // under a wall of full-strength adds faster than they can be cleared.
+        summonedEnemy.attack = Math.max(1, Math.round(summonedEnemy.attack * 0.6));
+        summonedEnemy.health = Math.max(1, Math.round(summonedEnemy.health * 0.65));
+        summonedEnemy.maxHealth = summonedEnemy.health;
+
         // Add "Summoned" prefix to distinguish from regular enemies
         summonedEnemy.name = 'Summoned ' + summonedEnemy.name;
         
@@ -2335,6 +2431,20 @@ export class CardSystem {
         return true;
     }
 
+    // Shared evasion check. An enemy carrying an { type: 'evade', chance }
+    // ability (e.g. the Lost Soul) has that chance to phase through a direct
+    // attack — the player's weapon/magic OR a companion strike. Returns true when
+    // the hit is dodged (and shows the "Miss!" text); the caller must then skip
+    // its damage. Reflection (thorns) and damage-over-time bypass this.
+    rollEvade(card) {
+        if (!card?.data || !card.sprite?.scene) return false;
+        const evadeAbility = card.data.abilities?.find(a => a.type === 'evade');
+        const chance = Number(evadeAbility?.chance) || 0;
+        if (chance <= 0 || Math.random() >= chance) return false;
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Miss!', 0xffffff);
+        return true;
+    }
+
     attackEnemy(index, damage, isReflection = false, weaponUsed = null, skipDurability = false) {
         const card = this.boardCards[index];
         if (!card || !card.revealed || (card.data.type !== 'enemy' && card.data.type !== 'boss')) return;
@@ -2400,15 +2510,9 @@ export class CardSystem {
             this.scene.createFloatingText(card.sprite.x, card.sprite.y - 54, 'Double Damage!', 0xff8800);
         }
         
-        // Evasion doesn't work against reflection damage
-        if (!isReflection) {
-            const evadeAbility = card.data.abilities?.find(a => a.type === 'evade');
-            if (evadeAbility && Math.random() < evadeAbility.chance) {
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Miss!', 0xffffff);
-                return;
-            }
-        }
-        
+        // Evasion doesn't work against reflection damage (thorns can't "miss").
+        if (!isReflection && this.rollEvade(card)) return;
+
         if (!isReflection) {
             this.scene.createSlashEffect(card.sprite.x, card.sprite.y);
         }
@@ -2543,12 +2647,20 @@ export class CardSystem {
     }
 
     isOpenEnemyCard(card) {
-        return !!card?.revealed && !!card.sprite && (card.data?.type === 'enemy' || card.data?.type === 'boss');
+        return !!card?.revealed && !!card.sprite && (
+            card.data?.type === 'enemy'
+            || card.data?.type === 'eliteEnemy'
+            || card.data?.type === 'boss'
+        );
     }
 
     // Enemy/boss with HP left — revealed OR still face-down.
     isAnyEnemyCard(card) {
-        return !!card && (card.data?.type === 'enemy' || card.data?.type === 'boss') && card.data.health > 0;
+        return !!card && (
+            card.data?.type === 'enemy'
+            || card.data?.type === 'eliteEnemy'
+            || card.data?.type === 'boss'
+        ) && card.data.health > 0;
     }
 
     // Fire burn that also affects hidden enemies. Open enemies get the full
@@ -2608,6 +2720,10 @@ export class CardSystem {
     }
 
     removeDefeatedEnemy(index, card) {
+            // Note: defeating the Angry Nestmother does NOT end the grudge — she
+            // keeps turning up "once in a while" for the rest of the run you
+            // stole her egg (birdAngry stays set until the next run reseeds).
+
             // Process amulet kill effects
             if (this.scene.amuletManager) {
                 this.scene.amuletManager.processEnemyKill();
@@ -2690,20 +2806,28 @@ export class CardSystem {
     }
 
     checkFloorClear() {
+        // A reflect/thorns kill can finish off the boss on the same action that
+        // its own attack drops the player to 0 HP. Without this guard the floor
+        // still "clears" — the Next Floor button appears and, if clicked, revives
+        // the player via setupBossRewardRoom() — racing against the death screen
+        // that gameState.takeDamage() already scheduled.
+        if (this.scene.gameState.playerHealth <= 0) return;
+
         // 'eliteEnemy' is used as a third enemy type throughout the codebase;
         // it must be treated the same as 'enemy' here or hidden elites get
         // ignored and the floor "clears" while one is still on the board.
         const isEnemyType = (t) => t === 'enemy' || t === 'boss' || t === 'eliteEnemy';
 
         const enemiesRemaining = this.boardCards.some(c =>
-            c && c.revealed && isEnemyType(c.data?.type)
+            c && c.revealed && isEnemyType(c.data?.type) && (c.data?.health ?? 1) > 0
         );
 
         if (!enemiesRemaining && !this.scene.enemiesCleared) {
             // Check if there are any unrevealed cards that could be enemies
             // A hidden mimic is optional treasure — it shouldn't block floor clear
             const potentialEnemies = this.boardCards.some(c =>
-                c && !c.revealed && isEnemyType(c.data?.type) && !c.data?.isMimic
+                c && !c.revealed && isEnemyType(c.data?.type)
+                && (c.data?.health ?? 1) > 0 && !c.data?.isMimic
             );
             
             if (potentialEnemies) return;
@@ -2722,6 +2846,16 @@ export class CardSystem {
             } else {
                 this.scene.onEnemiesCleared();
             }
+        } else if (!enemiesRemaining && this.scene.enemiesCleared) {
+            // Clear detection is intentionally idempotent. If another scene or
+            // stale input state hid/disabled Next after the first check, any
+            // later interaction repairs the button instead of leaving the run
+            // permanently stuck with an empty board.
+            const potentialEnemies = this.boardCards.some(c =>
+                c && !c.revealed && isEnemyType(c.data?.type)
+                && (c.data?.health ?? 1) > 0 && !c.data?.isMimic
+            );
+            if (!potentialEnemies) this.scene.showNextFloorButton?.();
         }
     }
     

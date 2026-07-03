@@ -17,6 +17,13 @@ export class TreasureScene extends StationRoomBase {
     const bypassKey = this.gameScene?.amuletManager?.canBypassChestKey?.();
     this.requiresKey = (this.rewardMode === 'treasure' || this.rewardMode === 'good') && !bypassKey;
     this.opened = false;
+    this.lootTaken = false;
+
+    // Show the player's real inventory on top (same station the shops use) so
+    // they can discard / merge / use bread & potions to free a slot before
+    // picking up the chest loot. Without this the reward was auto-dumped into
+    // the first empty slot — or lost entirely when the bag was full.
+    this.enableShopStation();
 
     this.createChestRoom();
   }
@@ -24,33 +31,26 @@ export class TreasureScene extends StationRoomBase {
   // ─── STANDARD TREASURE / ELITE CHEST ─────────────────────────────────────
 
   createChestRoom() {
-    this.add.rectangle(320, 180, 640, 360, 0x1a1a2e);
-
+    // NOTE: no full-screen background here — that would cover the GameScene
+    // inventory station underneath. The dungeon backdrop shows through instead.
     const title = this.rewardMode === 'elite' ? 'ELITE CHEST' : 'TREASURE CHEST';
-    this.add.text(320, 50, title, {
+    this.add.text(320, 20, title, {
       fontSize: '24px',
       fill: '#ffd700',
-      fontFamily: '"HoMM Pixel"'
-    }).setOrigin(0.5);
-
-    const _treasureAct = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
-    this.add.text(580, 12, `Act ${_treasureAct}  Floor ${this.gameState.currentFloor}`, {
-      fontSize: '11px',
-      fill: '#a78f70',
       fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5);
 
     const instruction = this.requiresKey ?
       'Use a key to open safely, or click the chest to force it open.' :
       'Open your reward chest.';
-    this.add.text(320, 100, instruction, {
-      fontSize: '16px',
+    this.instructionText = this.add.text(320, 46, instruction, {
+      fontSize: '14px',
       fill: '#ffffff',
       fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5);
 
     const chestTexture = this.textures.exists('bigChestAnimation') ? 'bigChestAnimation' : 'chest';
-    const chest = this.add.sprite(320, 180, chestTexture, 0).setInteractive({ useHandCursor: true });
+    const chest = this.add.sprite(220, 130, chestTexture, 0).setInteractive({ useHandCursor: true });
     const paddedWidth = chest.width + 20;
     const paddedHeight = chest.height + 20;
     chest.input.hitArea.setTo(-paddedWidth / 2, -paddedHeight / 2, paddedWidth, paddedHeight);
@@ -63,43 +63,52 @@ export class TreasureScene extends StationRoomBase {
         this.openRewardChest(chest);
       }
     });
+    this.chest = chest;
 
-    const keyIndex = this.findKeyIndex();
-    const keyButton = this.add.rectangle(320, 255, 140, 28, !this.requiresKey || keyIndex !== -1 ? 0x5f4420 : 0x333333)
-      .setStrokeStyle(2, !this.requiresKey || keyIndex !== -1 ? 0xffd700 : 0x777777);
-    const keyButtonText = this.add.text(320, 255, !this.requiresKey ? 'Open' : keyIndex === -1 ? 'No Key' : 'Use Key', {
+    // Open / Use Key button under the chest, clear of the inventory bar (which
+    // sits centred around y≈309).
+    this.keyButton = this.add.rectangle(220, 205, 140, 28, 0x5f4420).setStrokeStyle(2, 0xffd700);
+    this.keyButtonText = this.add.text(220, 205, '', {
       fontSize: '14px',
-      fill: !this.requiresKey || keyIndex !== -1 ? '#ffd700' : '#888888',
+      fill: '#ffd700',
       fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5);
+    this.refreshKeyButton();
 
-    if (!this.requiresKey) {
-      keyButton.setInteractive({ useHandCursor: true });
-      keyButton.on('pointerdown', () => {
-        keyButton.disableInteractive();
-        keyButtonText.setText('Opened');
-        this.openRewardChest(chest);
-      });
-    } else if (keyIndex !== -1) {
-      keyButton.setInteractive({ useHandCursor: true });
-      keyButton.on('pointerdown', () => {
-        keyButton.disableInteractive();
-        keyButtonText.setText('Opened');
-        this.openWithKey(keyIndex, chest);
-      });
-    }
-
-    this.add.text(320, 320, 'Leave', {
-      fontSize: '18px',
-      fill: '#ff0000',
-      fontFamily: '"HoMM Pixel"'
-    })
-      .setInteractive({ useHandCursor: true })
-      .setOrigin(0.5)
-      .on('pointerdown', () => this.returnToMap());
+    // Leave button, top-right — matches the shops' Next button.
+    this.createStationContinueButton(595, 50, 'Leave', () => this.returnToMap());
   }
 
-  // ─── BOSS REWARD ROOM ────────────────────────────────────────────────────
+  // Re-evaluates the key button against the LIVE inventory each time it matters,
+  // so discarding/merging in the station can't leave it pointing at a stale slot.
+  refreshKeyButton() {
+    if (!this.keyButton || this.opened) return;
+    const keyIndex = this.findKeyIndex();
+    const enabled = !this.requiresKey || keyIndex !== -1;
+
+    this.keyButton.setFillStyle(enabled ? 0x5f4420 : 0x333333);
+    this.keyButton.setStrokeStyle(2, enabled ? 0xffd700 : 0x777777);
+    this.keyButtonText
+      .setText(!this.requiresKey ? 'Open' : keyIndex === -1 ? 'No Key' : 'Use Key')
+      .setColor(enabled ? '#ffd700' : '#888888');
+
+    this.keyButton.removeInteractive();
+    if (!enabled) return;
+
+    this.keyButton.setInteractive({ useHandCursor: true });
+    this.keyButton.removeAllListeners();
+    this.keyButton.on('pointerdown', () => {
+      if (this.opened) return;
+      if (!this.requiresKey) {
+        this.openRewardChest(this.chest);
+      } else {
+        // Re-find the key at click time in case the bag was rearranged.
+        const liveKeyIndex = this.findKeyIndex();
+        if (liveKeyIndex === -1) { this.refreshKeyButton(); return; }
+        this.openWithKey(liveKeyIndex, this.chest);
+      }
+    });
+  }
 
   // ─── STANDARD CHEST FLOW ─────────────────────────────────────────────────
 
@@ -110,6 +119,7 @@ export class TreasureScene extends StationRoomBase {
   openWithKey(keyIndex, chest) {
     if (this.opened || !chest.active) return;
     this.opened = true;
+    this.setKeyButtonOpened();
     this.setInventorySlot(keyIndex, null);
     this.playChestOpen(chest, () => this.grantChestRewards(chest, true, false));
   }
@@ -117,7 +127,14 @@ export class TreasureScene extends StationRoomBase {
   openRewardChest(chest) {
     if (this.opened || !chest.active) return;
     this.opened = true;
+    this.setKeyButtonOpened();
     this.playChestOpen(chest, () => this.grantChestRewards(chest, true, false));
+  }
+
+  setKeyButtonOpened() {
+    this.keyButton?.removeInteractive();
+    this.keyButton?.setFillStyle(0x333333).setStrokeStyle(2, 0x777777);
+    this.keyButtonText?.setText('Opened').setColor('#888888');
   }
 
   playChestOpen(chest, onComplete) {
@@ -140,24 +157,16 @@ export class TreasureScene extends StationRoomBase {
 
     const item = this.createRewardItem(reward.rarity);
     this.playLootScatter(chest.x, chest.y, reward.coins, reward.crystals);
-    this.showRewardCard(item);
-    const emptySlot = this.gameState.inventory.findIndex(slot => slot === null);
-    if (emptySlot === -1) {
-      this.add.text(320, 285, 'Inventory full - currency only!', {
-        fontSize: '14px',
-        fill: '#ff0000',
-        fontFamily: '"HoMM Pixel"'
-      }).setOrigin(0.5);
-    } else {
-      this.setInventorySlot(emptySlot, item);
-    }
 
-    const trapText = trapped ? ' Trap!' : '';
-    this.add.text(320, 285, `+${reward.coins} Coins +${reward.crystals} Crystals + ${reward.rarity} Item!${trapText}`, {
+    this.add.text(320, 235, `+${reward.coins} Coins +${reward.crystals} Crystals`, {
       fontSize: '14px',
-      fill: trapped ? '#ffff00' : '#00ff00',
+      fill: '#00ff00',
       fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5);
+
+    // Present the item as a takeable card instead of force-inserting it. The
+    // player can free a slot in the station inventory first if the bag is full.
+    this.presentLoot(item);
 
     this.gameScene?.updateUI?.();
     chest.destroy();
@@ -193,11 +202,24 @@ export class TreasureScene extends StationRoomBase {
     const reward = values[this.rewardMode] || values.treasure;
     if (openedWithKey) return reward;
 
+    // Forcing a chest without a key is a gamble: fewer coins/crystals and the
+    // loot drops ONE rarity tier. Previously this hard-reset to 'common', which
+    // made a force-opened elite chest on floor 44 spit out a worthless common
+    // dagger — a full three tiers below its keyed 'rare'. One tier keeps the
+    // "bring a key" incentive without gutting deep chests. (Trap risk is
+    // handled separately in forceOpenTreasureChest.)
     return {
       coins: Math.floor(reward.coins * 0.75),
       crystals: Math.max(1, Math.floor(reward.crystals * 0.5)),
-      rarity: 'common'
+      rarity: this.downgradeRarity(reward.rarity)
     };
+  }
+
+  downgradeRarity(rarity) {
+    const order = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const idx = order.indexOf(rarity);
+    if (idx <= 0) return 'common';
+    return order[idx - 1];
   }
 
   createRewardItem(rarity) {
@@ -209,13 +231,78 @@ export class TreasureScene extends StationRoomBase {
     return item;
   }
 
+  // Shows the chest loot as a card the player clicks to take. Respects a full
+  // inventory: taking simply fails with feedback until a slot is freed, so the
+  // reward is never silently lost.
+  presentLoot(item) {
+    this.pendingLoot = item;
+    this.showRewardCard(item);
+
+    this.takeHint = this.add.text(470, 205, 'Click the card to take it', {
+      fontSize: '11px',
+      fill: '#f2d3aa',
+      fontFamily: '"HoMM Pixel"',
+      wordWrap: { width: 120 },
+      align: 'center'
+    }).setOrigin(0.5);
+  }
+
+  takeLoot() {
+    if (this.lootTaken || !this.pendingLoot) return;
+    const item = this.pendingLoot;
+
+    const added = this.gameScene?.inventorySystem
+      ? this.gameScene.inventorySystem.addCard(item)
+      : (() => {
+          const slot = this.gameState.inventory.findIndex(s => s === null);
+          if (slot === -1) return false;
+          this.setInventorySlot(slot, item);
+          return true;
+        })();
+
+    if (!added) {
+      this.showFeedback('Inventory full — free a slot first', 0xff4444, 250);
+      return;
+    }
+
+    this.lootTaken = true;
+    this.pendingLoot = null;
+    SoundHelper.playSound(this, 'shop_buy', 0.5);
+    this.showFeedback('Taken!', 0x00ff00, 250);
+
+    if (this.rewardCardContainer) {
+      this.tweens.add({
+        targets: this.rewardCardContainer,
+        alpha: 0,
+        scale: 0.6,
+        duration: 200,
+        onComplete: () => { this.rewardCardContainer?.destroy(true); this.rewardCardContainer = null; }
+      });
+    }
+    this.takeHint?.setText('');
+    this.hideItemTooltip();
+    this.refreshStationInventoryDisplay();
+    this.gameScene?.updateUI?.();
+  }
+
+  getRewardStats(item) {
+    if (item.type === 'weapon') return `${item.rarity}  ${item.damage || 0} DMG`;
+    if (item.type === 'armor') return `${item.rarity}  ${item.protection || 0} DEF`;
+    if (item.type === 'magic') return `${item.rarity} Magic`;
+    if (item.type === 'thorns') return `${item.rarity} ${item.thornDamage || 0} Thorns`;
+    return item.rarity || '';
+  }
+
+  // getRarityColor / playLootScatter / scatterLootSprite / createItemSprite all
+  // inherited from StationRoomBase.
+
   showRewardCard(item) {
     if (this.rewardCardContainer) {
       this.rewardCardContainer.destroy(true);
     }
 
-    const x = 500;
-    const y = 190;
+    const x = 470;
+    const y = 130;
     const bg = this.add.rectangle(0, 0, 112, 132, 0x24180f, 0.95)
       .setStrokeStyle(2, this.getRarityColor(item.rarity));
     const sprite = this.add.image(0, -26, item.sprite || 'cardBack', item.spriteFrame ?? undefined)
@@ -245,23 +332,12 @@ export class TreasureScene extends StationRoomBase {
       ease: 'Back.Out'
     });
 
-    // Hover tooltip for the chest reward (same shared tooltip the shop uses).
-    // The card's bg rect is the hit target; container itself has no input area.
-    bg.setInteractive({ useHandCursor: false });
+    // The card is the take target; hovering also shows the shared tooltip.
+    bg.setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => this.showItemTooltip(item, x, y - 8));
     bg.on('pointerout', () => this.hideItemTooltip());
+    bg.on('pointerdown', () => this.takeLoot());
   }
-
-  getRewardStats(item) {
-    if (item.type === 'weapon') return `${item.rarity}  ${item.damage || 0} DMG`;
-    if (item.type === 'armor') return `${item.rarity}  ${item.protection || 0} DEF`;
-    if (item.type === 'magic') return `${item.rarity} Magic`;
-    if (item.type === 'thorns') return `${item.rarity} ${item.thornDamage || 0} Thorns`;
-    return item.rarity || '';
-  }
-
-  // getRarityColor / playLootScatter / scatterLootSprite / createItemSprite all
-  // inherited from StationRoomBase.
 
   setInventorySlot(index, value) {
     // Write to gameState first — this must stick regardless of what happens below.
@@ -285,11 +361,13 @@ export class TreasureScene extends StationRoomBase {
       inv.addCardDirect(value, index);
       inv.updateTwinkleEffects();
     }
+    this.refreshStationInventoryDisplay?.();
   }
 
   forceOpenTreasureChest(chest) {
     if (this.opened || !chest.active) return;
     this.opened = true;
+    this.setKeyButtonOpened();
 
     const trapTriggered = Math.random() < 0.45;
     if (!trapTriggered) {
@@ -311,11 +389,12 @@ export class TreasureScene extends StationRoomBase {
         onComplete: () => {
           SoundHelper.playSound(this, 'trap_spring1', 0.5);
           this.gameState.takeDamage(5, -1, 'trap');
-          this.add.text(320, 220, 'Trap Spawned! -5 HP', {
+          this.add.text(320, 250, 'Trap Spawned! -5 HP', {
             fontSize: '14px',
             fill: '#ff0000',
             fontFamily: '"HoMM Pixel"'
           }).setOrigin(0.5);
+          this.gameScene?.updateUI?.();
 
           this.grantForcedChestRewards(chest, true);
 
@@ -332,22 +411,31 @@ export class TreasureScene extends StationRoomBase {
 
     const item = this.createRewardItem(reward.rarity);
     this.playLootScatter(chest.x, chest.y, reward.coins, reward.crystals);
-    this.showRewardCard(item);
-    const emptySlot = this.gameState.inventory.findIndex(slot => slot === null);
-    if (emptySlot !== -1) {
-      this.setInventorySlot(emptySlot, item);
-    }
 
-    this.add.text(320, trapped ? 250 : 285, `+${reward.coins} Coins +${reward.crystals} Crystals + ${reward.rarity} Item${trapped ? ' (Trap)' : ''}`, {
+    this.add.text(320, 235, `+${reward.coins} Coins +${reward.crystals} Crystals${trapped ? ' (Trap)' : ''}`, {
       fontSize: '14px',
       fill: trapped ? '#ffff00' : '#00ff00',
       fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5);
+
+    this.presentLoot(item);
     this.gameScene?.updateUI?.();
     chest.destroy();
   }
 
   returnToMap() {
+    // Tear down the inventory station we opened, then hard-relaunch the map.
+    // A relaunch (stop + launch) is robust whether the map was slept (regular
+    // chest reached from the map) or stopped (elite chest reached via combat).
+    this.stationInventoryLayerActive = false;
+    const inv = this.gameScene?.inventorySystem;
+    if (inv) {
+      inv.setStationMode(false);
+      this.restoreGameInventoryLayering();
+      inv.setVisibility(false);
+      this.scene.sleep('GameScene');
+    }
+    this.hideItemTooltip?.();
     this.scene.stop();
     this.scene.stop('MapViewScene');
     this.scene.launch('MapViewScene', { gameState: this.gameState });

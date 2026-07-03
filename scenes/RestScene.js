@@ -6,7 +6,13 @@ export class RestScene extends Phaser.Scene {
 
     create(data) {
         this.gameState = data.gameState;
-        this.gameState.playerHealth = Math.min(this.gameState.maxHealth, this.gameState.playerHealth + 20);
+        // Resting heals freely (heal() ignores amulet caps) — only healing
+        // potions are limited by the Berserker's Warbelt.
+        if (typeof this.gameState.heal === 'function') {
+            this.gameState.heal(20);
+        } else {
+            this.gameState.playerHealth = Math.min(this.gameState.maxHealth, this.gameState.playerHealth + 20);
+        }
         this.gameState.actionsLeft = this.gameState.maxActions;
         this.add.image(320, 92, 'restRooms', 0).setOrigin(0.5);
         this.add.text(320, 165, 'You rest by the campfire.', { fontSize: '18px', fill: '#ffffff', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);

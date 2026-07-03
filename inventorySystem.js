@@ -68,6 +68,7 @@ export class InventorySystem {
                 hover: 205,
                 gemEffect: 206,
                 gemIndicator: 207,
+                briarFrame: 208,
                 twinkle: 208
             }
             : {
@@ -79,6 +80,7 @@ export class InventorySystem {
                 hover: 13,
                 gemEffect: 14,
                 gemIndicator: 15,
+                briarFrame: 16,
                 twinkle: 100
             };
     }
@@ -104,6 +106,7 @@ export class InventorySystem {
         slot.hoverSprite?.setDepth?.(depths.hover);
         slot.gemEffectSprite?.setDepth?.(depths.gemEffect);
         slot.gemIndicator?.setDepth?.(depths.gemIndicator);
+        slot.briarFrame?.setDepth?.(depths.briarFrame);
         slot.twinkleSprite?.setDepth?.(depths.twinkle);
     }
     
@@ -113,6 +116,96 @@ export class InventorySystem {
 
     setArmorPanel(armorPanel) {
         this.armorPanel = armorPanel;
+    }
+
+    // Custom drop targets a scene can register for the duration of an
+    // interaction (e.g. the copying-mirror event). Each handler is called with
+    // (slotIndex, cardData, cardSprite) when a dragged card is released over the
+    // zone, and returns true if it consumed the drop (taking responsibility for
+    // the dragged sprite). Cleared when the interaction ends.
+    addDropZone(zone, handler) {
+        if (!zone || typeof handler !== 'function') return;
+        (this.dropZones ||= []).push({ zone, handler });
+    }
+
+    clearDropZones() {
+        this.dropZones = [];
+    }
+
+    // A station may render above GameScene (EventScene does this for the mirror
+    // and well). Depth values cannot cross Phaser scene boundaries, so a card
+    // dragged out of the inventory needs a synchronized visual in that upper
+    // scene. The real card still moves and performs all drop detection.
+    setDragOverlayScene(scene = null) {
+        if (this.dragOverlayScene === scene) return;
+        this.destroyDragOverlay();
+        this.dragOverlayScene = scene;
+    }
+
+    createDragOverlay(cardSprite, slotIndex) {
+        this.destroyDragOverlay();
+        const overlayScene = this.dragOverlayScene;
+        if (!overlayScene?.add || !cardSprite?.texture?.key) return;
+
+        const slot = this.slotSprites?.[slotIndex];
+        const parts = [];
+        const cloneImage = (source, depth) => {
+            if (!source?.texture?.key) return null;
+            const clone = overlayScene.add.image(
+                source.x,
+                source.y,
+                source.texture.key,
+                source.frame?.name
+            )
+                .setOrigin(source.originX ?? 0.5, source.originY ?? 0.5)
+                .setScale(source.scaleX ?? 1, source.scaleY ?? 1)
+                .setRotation(source.rotation || 0)
+                .setAlpha(source.alpha ?? 1)
+                .setDepth(depth);
+            clone.setFlip?.(Boolean(source.flipX), Boolean(source.flipY));
+            if (source.isTinted) {
+                clone.setTint?.(
+                    source.tintTopLeft,
+                    source.tintTopRight,
+                    source.tintBottomLeft,
+                    source.tintBottomRight
+                );
+            }
+            parts.push({
+                clone,
+                offsetX: source.x - cardSprite.x,
+                offsetY: source.y - cardSprite.y
+            });
+            return clone;
+        };
+
+        // Clone in visual order. The real objects remain visible so Phaser's
+        // drag input cannot be interrupted by hiding its active game object.
+        cloneImage(slot?.shadow, 9998);
+        cloneImage(cardSprite, 10000);
+        cloneImage(slot?.gemIndicator?.shadow, 10001);
+        cloneImage(slot?.gemIndicator, 10002);
+        cloneImage(slot?.briarFrame, 10003);
+        cloneImage(slot?.twinkleSprite, 10003);
+
+        this.dragOverlay = { cardSprite, parts };
+    }
+
+    updateDragOverlay(cardSprite) {
+        const overlay = this.dragOverlay;
+        if (!overlay || overlay.cardSprite !== cardSprite) return;
+        overlay.parts.forEach(({ clone, offsetX, offsetY }) => {
+            if (!clone?.scene) return;
+            clone.x = cardSprite.x + offsetX;
+            clone.y = cardSprite.y + offsetY;
+        });
+    }
+
+    destroyDragOverlay() {
+        const overlay = this.dragOverlay;
+        if (!overlay) return;
+        overlay.parts?.forEach(({ clone }) => clone?.destroy?.());
+        this.dragOverlay = null;
     }
 
     syncGameStateInventory() {
@@ -228,6 +321,7 @@ export class InventorySystem {
                 hoverSprite: null,
                 gemEffectSprite: null,
                 gemIndicator: null,
+                briarFrame: null,
                 originalY: y
             };
         }
@@ -516,6 +610,20 @@ export class InventorySystem {
         this.uiGroup.add(cardSprite);
         cardSprite.setScale(1);
         cardSprite.setDepth(12);
+
+        // Use the gameplay property as the single source of truth: saved and
+        // merged Briar Room cards automatically regain their authored border.
+        if ((cardData.briarDamageBonus || 0) > 0 && this.scene.textures.exists('thornFrame')) {
+            const briarFrame = snapOriginToPixelGrid(this.scene.add.image(x, y, 'thornFrame'));
+            briarFrame.setDisplaySize(cardSprite.displayWidth || 54, cardSprite.displayHeight || 70);
+            briarFrame.setDepth(16);
+            this.uiGroup.add(briarFrame);
+            slotSprite.briarFrame = briarFrame;
+            cardSprite.once('destroy', () => {
+                briarFrame.destroy();
+                if (slotSprite.briarFrame === briarFrame) slotSprite.briarFrame = null;
+            });
+        }
         
         // IMPORTANT: Set the initial position data
         cardSprite.setData('originalX', x);
@@ -661,6 +769,15 @@ export class InventorySystem {
                 });
             }
 
+            if (currentSlot.briarFrame?.scene) {
+                this.scene.tweens.add({
+                    targets: currentSlot.briarFrame,
+                    y: currentSlot.originalY - 5,
+                    duration: 150,
+                    ease: 'Power2'
+                });
+            }
+
             // Move info text if it exists. Round y each frame so the pip
             // container never sits on a fractional pixel during the lift —
             // otherwise the pips visibly jitter as it animates.
@@ -715,6 +832,15 @@ export class InventorySystem {
                 this.scene.tweens.add({
                     targets: indicator,
                     y: indicator.restY,
+                    duration: 150,
+                    ease: 'Power2'
+                });
+            }
+
+            if (currentSlot.briarFrame?.scene) {
+                this.scene.tweens.add({
+                    targets: currentSlot.briarFrame,
+                    y: currentSlot.originalY,
                     duration: 150,
                     ease: 'Power2'
                 });
@@ -816,6 +942,10 @@ export class InventorySystem {
                 }
             }
 
+            if (currentSlot.briarFrame?.scene) {
+                currentSlot.briarFrame.setVisible(true).setDepth(1005);
+            }
+
             // Keep shadow visible while dragging
             if (currentSlot.shadow) {
                 currentSlot.shadow.setAlpha(1);
@@ -826,6 +956,8 @@ export class InventorySystem {
             if (currentSlot.twinkleSprite) {
                 currentSlot.twinkleSprite.setDepth(1004);
             }
+
+            this.createDragOverlay(cardSprite, slotIndex);
         });
         
         cardSprite.on('drag', (pointer, dragX, dragY) => {
@@ -871,6 +1003,14 @@ export class InventorySystem {
                     indicator.shadow.y = indicator.y;
                 }
             }
+
+            if (currentSlot.briarFrame?.scene) {
+                currentSlot.briarFrame.x = cardSprite.x;
+                currentSlot.briarFrame.y = cardSprite.y;
+            }
+
+
+            this.updateDragOverlay(cardSprite);
         });
         
         cardSprite.on('dragend', () => {
@@ -879,6 +1019,7 @@ export class InventorySystem {
             if (typeof cardSprite.clearTint === 'function') {
                 cardSprite.clearTint();
             }
+            this.destroyDragOverlay();
             this.applySlotVisualDepths(slotIndex);
             
             const currentSlot = this.slotSprites[slotIndex];
@@ -945,6 +1086,15 @@ export class InventorySystem {
             range: 'melee'
         };
         this.addCard(uncommonSwordData);
+
+        // Carry-over egg: a past hero who died still clutching an unhatched egg
+        // passes it to this new run. consumePendingEgg() clears the flag so the
+        // egg isn't re-granted on later floor-1 re-entries (it's guarded above
+        // by startingCardsGranted anyway, but the consume keeps meta clean).
+        if (this.scene.metaManager?.consumePendingEgg?.()) {
+            const egg = this.scene.cardSystem.cardDataGenerator.createEggCard();
+            this.addCard(egg);
+        }
     }
 
     showCardTooltip(cardData, slotIndex, pointerX, pointerY) {
@@ -1036,6 +1186,7 @@ export class InventorySystem {
             lines.push(t(this.scene, 'tooltip.protectionShort', { amount: card.protection || 0 }));
             if (card.dodgeChance) lines.push(t(this.scene, 'tooltip.dodge', { percent: Math.round(card.dodgeChance * 100) }));
             if (card.reflection) lines.push(t(this.scene, 'tooltip.reflect', { value: card.reflection }));
+            if (card.thornDamage) lines.push(t(this.scene, 'tooltip.thornDamage', { amount: card.thornDamage }));
             if (card.durability !== undefined) lines.push(t(this.scene, 'tooltip.pips', { value: `${card.durability}/${card.maxDurability || card.durability}` }));
             this.addCanonicalDiffLines(lines, card, 'armor');
         } else if (card.type === 'thorns') {
@@ -1046,6 +1197,14 @@ export class InventorySystem {
             lines.push(t(this.scene, 'tooltip.healsColon', { amount: card.healAmount || 0 }));
         } else if (card.type === 'food') {
             lines.push(t(this.scene, 'tooltip.restoresColon', { amount: card.actionAmount || 0 }));
+        } else if (card.type === 'companion') {
+            const damageType = card.damageType === 'physical' ? 'Physical' : 'Lightning';
+            const attackStyle = card.attackStyle === 'melee' || card.range === 'melee' ? 'Melee' : 'Ranged';
+            lines.push(`${damageType} damage: ${card.attack || 2}`);
+            lines.push(`${attackStyle} companion`);
+            lines.push('Acts after enemies');
+            if (card.shockChance) lines.push(`Shock chance: ${Math.round(card.shockChance * 100)}%`);
+            if (card.guardProtection) lines.push(`Guard: +${card.guardProtection} protection`);
         } else if (card.type === 'magic') {
             lines.push(card.description ? translateDescription(this.scene, card.description) : this.describeMagicCard(card));
         } else if (card.type === 'amulet') {
@@ -1315,6 +1474,18 @@ export class InventorySystem {
             }
         }
 
+        // Custom event drop zones (e.g. the copying mirror). Checked before the
+        // station-mode bounce-back so events can react to a card dropped on them.
+        // A handler returning true owns the dragged sprite from here on.
+        for (const entry of (this.dropZones || [])) {
+            const zone = entry?.zone;
+            if (!zone || !zone.scene || typeof zone.getBounds !== 'function') continue;
+            const bounds = zone.getBounds();
+            if (bounds && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), bounds)) {
+                if (entry.handler(slotIndex, cardData, cardSprite)) return;
+            }
+        }
+
         if (this.stationMode) {
             this.returnCardToSlot(slotIndex, cardSprite);
             return;
@@ -1360,6 +1531,7 @@ export class InventorySystem {
         cardA = this.normalizeCardIdentity(cardA);
         cardB = this.normalizeCardIdentity(cardB);
         if (!cardA || !cardB) return false;
+        if (cardA.type === 'companion' || cardB.type === 'companion') return false;
         if (cardA.type === 'magic' || cardB.type === 'magic') return false;
         if (cardA.type === 'gem' || cardB.type === 'gem') return false;
         if (cardA.type !== cardB.type) return false;
@@ -1614,6 +1786,13 @@ export class InventorySystem {
             indicator.y = indicator.restY;
             indicator.setVisible(true);
         }
+
+        if (slotSprite.briarFrame?.scene) {
+            slotSprite.briarFrame.x = targetX;
+            slotSprite.briarFrame.y = targetY;
+            slotSprite.briarFrame.setVisible(true);
+            slotSprite.briarFrame.setDepth(this.getInventoryDepths().briarFrame);
+        }
         
         // Move twinkle sprite back
         if (slotSprite.twinkleSprite && slotSprite.twinkleSprite.scene) {
@@ -1821,11 +2000,14 @@ export class InventorySystem {
                         SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
                         this.createSoulDrainEffect(enemy.sprite, this.scene.playerAvatar);
                         this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${healAmount} HP`, 0x9932cc);
-                        
-                        // Remove the enemy card AFTER creating the effect
-                        this.scene.cardSystem.removeCard(drainTarget);
+
+                        // Route the kill through the standard defeat handler (not a
+                        // bare removeCard) so every on-kill reward fires — normal
+                        // coins, amulet kill effects, death drops, and crucially the
+                        // Mimic's coin + crystal treasure burst. A soul-drained Mimic
+                        // now pays out exactly like one killed in melee.
+                        this.scene.cardSystem.removeDefeatedEnemy(drainTarget, enemy);
                         this.scene.updateUI();
-                        this.scene.cardSystem.checkFloorClear();
                         used = true;
                     }
                 }
@@ -1889,6 +2071,7 @@ export class InventorySystem {
                         // Destroy role/poison markers — they will be recreated on re-reveal.
                         if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
                         if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
+                        if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
                         if (card.infoText) {
                             if (card.infoText.list) {
                                 card.infoText.destroy(true);
@@ -1909,6 +2092,12 @@ export class InventorySystem {
         }
         
         if (used) {
+            if (this.scene.amuletManager?.shouldReturnMagicCard?.()) {
+                this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Moth-Wing Dust returned it!', 0xd8d8ff);
+                this.returnCardToSlot(slotIndex, cardSprite);
+                this.scene.updateUI();
+                return;
+            }
             // Clean up ALL sprites properly
             this.cleanupCardSprites(slotIndex, cardSprite);
             cardSprite.destroy();
@@ -2235,6 +2424,14 @@ export class InventorySystem {
                 indicator.restY = indicator.y;
                 indicator.setVisible(true);
             }
+            // Snap the thorn frame back onto the card — it's centered on the card
+            // like the art, so it tracks the card position (not a corner offset).
+            if (slotSprite.briarFrame && slotSprite.briarFrame.scene) {
+                slotSprite.briarFrame.x = cardSprite.x;
+                slotSprite.briarFrame.y = cardSprite.y;
+                slotSprite.briarFrame.setVisible(true);
+                slotSprite.briarFrame.setDepth(this.getInventoryDepths().briarFrame);
+            }
             // Move twinkle sprite back too
             if (slotSprite.twinkleSprite && slotSprite.twinkleSprite.scene) {
                 slotSprite.twinkleSprite.x = cardSprite.x;
@@ -2242,7 +2439,7 @@ export class InventorySystem {
             }
         }
     }
-    
+
     // Helper method to return weapon to slot with delay
     returnWeaponToSlotDelayed(slotIndex, cardSprite) {
         const originalSlot = this.slotSprites[slotIndex];
@@ -2295,6 +2492,15 @@ export class InventorySystem {
                     indicator.restX = indicator.x;
                     indicator.restY = indicator.y;
                     indicator.setVisible(true);
+                }
+
+                // Snap the thorn frame back onto the card too, or it stays orphaned
+                // on the board where the weapon was dropped to attack.
+                if (originalSlot.briarFrame && originalSlot.briarFrame.scene) {
+                    originalSlot.briarFrame.x = cardSprite.x;
+                    originalSlot.briarFrame.y = cardSprite.y;
+                    originalSlot.briarFrame.setVisible(true);
+                    originalSlot.briarFrame.setDepth(this.getInventoryDepths().briarFrame);
                 }
             }
         });
@@ -2377,8 +2583,9 @@ export class InventorySystem {
             healAmount = this.scene.amuletManager.modifyPotionHealing(healAmount);
         }
         
-        // Use the GameState heal method to respect health caps
-        this.scene.gameState.heal(healAmount);
+        // Potions are the ONLY heal source subject to amulet caps (e.g. the
+        // Berserker's Warbelt's 50% ceiling). Rest/events/spells use heal().
+        this.scene.gameState.healCapped(healAmount);
 
         this.scene.createFloatingText(
             this.scene.playerAvatar.x,
@@ -2573,6 +2780,20 @@ export class InventorySystem {
         if (baseCard.type === 'weapon' || baseCard.type === 'armor' || baseCard.type === 'thorns') {
             upgradedCard.durability = upgradedCard.maxDurability;
             this.scene.createFloatingText(512, 380, `Refreshed: ${upgradedCard.maxDurability} pips`, 0x00ff00);
+        }
+
+        // Briar upgrades belong to the card, not its current rarity. Carry the
+        // permanent bonus through merging, combining it when both inputs were blessed.
+        if (baseCard.type === 'weapon' || baseCard.type === 'armor') {
+            const briarBonus = (baseCard.briarDamageBonus || 0) + (secondCard.briarDamageBonus || 0);
+            if (briarBonus > 0) {
+                upgradedCard.briarDamageBonus = briarBonus;
+                if (baseCard.type === 'weapon') {
+                    upgradedCard.damage = (upgradedCard.damage || 0) + briarBonus;
+                } else {
+                    upgradedCard.thornDamage = briarBonus;
+                }
+            }
         }
 
         if (baseCard.type === 'weapon') {

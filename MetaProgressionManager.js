@@ -15,13 +15,17 @@ export class MetaProgressionManager {
             const data = JSON.parse(saved);
             this.unlockedRelics = data.unlockedRelics || [];
             this.totalDeaths = data.totalDeaths || 0;
+            this.totalRuns = Number.isFinite(data.totalRuns) ? data.totalRuns : 0;
             this.bestFloor = data.bestFloor || 1;
             this.enemyKillStats = data.enemyKillStats || {};
+            this.pendingEgg = data.pendingEgg || false;
         } else {
             this.unlockedRelics = [];
             this.totalDeaths = 0;
+            this.totalRuns = 0;
             this.bestFloor = 1;
             this.enemyKillStats = {};
+            this.pendingEgg = false;
         }
     }
     
@@ -30,10 +34,26 @@ export class MetaProgressionManager {
         const data = {
             unlockedRelics: this.unlockedRelics,
             totalDeaths: this.totalDeaths,
+            totalRuns: this.totalRuns,
             bestFloor: this.bestFloor,
-            enemyKillStats: this.enemyKillStats
+            enemyKillStats: this.enemyKillStats,
+            pendingEgg: this.pendingEgg
         };
         localStorage.setItem('metaProgression', JSON.stringify(data));
+    }
+
+    // Egg carry-over: a hero who dies still holding an unhatched egg passes it
+    // to the next run. Set on death, consumed once at the next run's start.
+    setPendingEgg(hasEgg) {
+        this.pendingEgg = Boolean(hasEgg);
+        this.saveMetaProgression();
+    }
+
+    consumePendingEgg() {
+        if (!this.pendingEgg) return false;
+        this.pendingEgg = false;
+        this.saveMetaProgression();
+        return true;
     }
     
     // Define all possible relics and their effects
@@ -351,6 +371,7 @@ export class MetaProgressionManager {
     resetProgression() {
         this.unlockedRelics = [];
         this.totalDeaths = 0;
+        this.totalRuns = 0;
         this.bestFloor = 1;
         this.enemyKillStats = {};
         this.saveMetaProgression();

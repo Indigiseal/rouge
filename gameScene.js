@@ -7,6 +7,7 @@ import { SaveManager } from './SaveManager.js';
 import { MetaProgressionManager } from './MetaProgressionManager.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 import { t, translateDescription, translateItemName } from './utils/i18n.js';
+import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from './utils/StoryProgress.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -19,11 +20,21 @@ export class GameScene extends Phaser.Scene {
         this.pendingEnemyTurns = 0;
     }
 
-    init(data) {
+    init(data = {}) {
         this.saveManager = new SaveManager();
         this.metaManager = new MetaProgressionManager(this);
+        // Phaser reuses the same Scene instance after Quit -> Main Menu -> New
+        // Run. Never let run-local flags from the previous instance leak into
+        // the next one (notably shouldLoadSave, which could restore an old floor).
+        this.shouldLoadSave = Boolean(data.loadSave);
+        this._transitioning = false;
+        this._resultScreenShown = false;
+        this._gameOverInProgress = false;
+        this.events.off('endPlayerTurn');
+        this.events.off('wake', this.wake, this);
+        this._turnHandlersBound = false;
         
-        if (data.loadSave) {
+        if (this.shouldLoadSave) {
             // Load existing run
             this.gameState = new GameState(this);
             // Load will happen in create() after systems are initialized
@@ -33,6 +44,53 @@ export class GameScene extends Phaser.Scene {
             this.gameState = new GameState(this);
             // Apply relic effects to fresh game state
             this.metaManager.applyRelicEffects(this.gameState);
+            // Cross-run story memory: seed the fresh run from any saved story
+            // progress so completed events don't repeat and story chains resume
+            // where a past life left off. (Continues restore storyRun from the
+            // run save instead, so we only seed brand-new runs.)
+            const storedStory = loadStoryProgress();
+            if (storedStory) {
+                Object.assign(this.gameState.storyRun, storedStory);
+                // birdAngry / angryNestmotherRollFloor are per-run combat
+                // consequences (the angry nestmother spawns in elite rooms and
+                // is cleared on kill in combat, which doesn't re-save story
+                // progress). Don't let them carry across deaths, or the bird
+                // would haunt every future run forever.
+                this.gameState.storyRun.birdAngry = false;
+                this.gameState.storyRun.angryNestmotherRollFloor = null;
+                // The copying-mirror and the too-nice room are once-per-run bonus
+                // encounters, not once-ever story beats — let each new run meet
+                // them again.
+                this.gameState.storyRun.mirrorSeen = false;
+                this.gameState.storyRun.tooNiceRoomSeen = false;
+                this.gameState.storyRun.wellSeen = false;
+                this.gameState.storyRun.bookWormSeen = false;
+                this.gameState.storyRun.briarRoomSeen = false;
+                this.gameState.storyRun.slimyPrisonSeen = false;
+            }
+        }
+
+        const storedHeroMemory = loadHeroMemory();
+        if (storedHeroMemory) {
+            Object.keys(this.gameState.heroMemory).forEach(key => {
+                this.gameState.heroMemory[key] = Boolean(
+                    this.gameState.heroMemory[key] || storedHeroMemory[key]
+                );
+            });
+        }
+
+        // Repair profiles created before the death check accepted the durable
+        // hatch flag. The hatch event is persisted across runs, so it is enough
+        // evidence to restore the shop unlock that should have been recorded.
+        if (this.gameState.storyRun?.chickHatched
+            && !this.gameState.heroMemory.chickRareShopUnlocked) {
+            this.gameState.heroMemory.chickRareShopUnlocked = true;
+            saveHeroMemory(this.gameState.heroMemory);
+        }
+        if (this.gameState.storyRun?.skeletonCompanionObtained
+            && !this.gameState.heroMemory.skeletonRareShopUnlocked) {
+            this.gameState.heroMemory.skeletonRareShopUnlocked = true;
+            saveHeroMemory(this.gameState.heroMemory);
         }
         
         this.skipNextEnemyAttack = false;
@@ -42,6 +100,7 @@ export class GameScene extends Phaser.Scene {
     }
     
     create() {
+        this.events.once('shutdown', this.shutdown, this);
         // Load saved volume settings
         const savedVolume = localStorage.getItem('gameVolume');
         if (savedVolume) {
@@ -87,8 +146,14 @@ export class GameScene extends Phaser.Scene {
         // Room title
         this.roomTitle = null;
         
-        // Start floor
-        this.startNewFloor();
+        // Start or restore the room. Boss rewards are already paid before the
+        // player can pause; rebuilding them via setupBossRewardRoom() would pay
+        // the currency twice, so restore only the still-unclaimed saved cards.
+        if (this.shouldLoadSave && this.gameState.roomType === 'BOSS_REWARD') {
+            this.restoreSavedBossRewardRoom();
+        } else {
+            this.startNewFloor();
+        }
         
         // Update room title after loading
         this.updateRoomTitle();
@@ -172,6 +237,7 @@ export class GameScene extends Phaser.Scene {
         this.armorPanel.setInteractive();
         this.armorPanel.setDepth(5);
         this.armorPanelEquippedSprite = null;
+        this.armorPanelBriarFrame = null;
         this.armorPanelInfoText = null;
 
         // Action points: each diamond is four AP, with spent quadrants darkened.
@@ -245,6 +311,7 @@ export class GameScene extends Phaser.Scene {
         this.playerEffectsUIGroup = this.add.group();
         // Next Floor Button (initially hidden) - top right, under pause
         this.nextFloorButton = snapOriginToPixelGrid(this.add.image(595, 50, 'nextTurnUp'))
+            .setDepth(5000)
             .setInteractive({ useHandCursor: true })
             .on('pointerover', () => this.nextFloorButton.setTint(0xd4eaf7))
             .on('pointerout', () => {
@@ -267,7 +334,7 @@ export class GameScene extends Phaser.Scene {
             fontSize: '12px',
             fill: '#e5bca4',
             fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(5001);
         this.nextFloorButton.setVisible(false);
         this.nextFloorButtonText.setVisible(false);
     }
@@ -311,6 +378,20 @@ export class GameScene extends Phaser.Scene {
         // DON'T replenish action points here
         this.updateUI();
         this.cardSystem.checkFloorClear();
+    }
+
+    showNextFloorButton() {
+        if (this._transitioning || this.gameState?.playerHealth <= 0) return;
+        if (this.nextFloorButton) {
+            this.nextFloorButton
+                .setVisible(true)
+                .setDepth(5000)
+                .setInteractive({ useHandCursor: true })
+                .clearTint();
+        }
+        if (this.nextFloorButtonText) {
+            this.nextFloorButtonText.setVisible(true).setDepth(5001);
+        }
     }
 
     updateUI() {
@@ -461,6 +542,10 @@ export class GameScene extends Phaser.Scene {
             this.armorPanelEquippedSprite.destroy();
             this.armorPanelEquippedSprite = null;
         }
+        if (this.armorPanelBriarFrame) {
+            this.armorPanelBriarFrame.destroy();
+            this.armorPanelBriarFrame = null;
+        }
         if (this.armorPanelInfoText) {
             if (this.armorPanelInfoText.list) {
                 this.armorPanelInfoText.destroy(true);
@@ -476,6 +561,17 @@ export class GameScene extends Phaser.Scene {
         this.armorPanelEquippedSprite = snapOriginToPixelGrid(this.add.image(this.armorPanel.x, this.armorPanel.y - 6, armor.sprite));
         this.armorPanelEquippedSprite.setDepth(6);
         this.armorPanelEquippedSprite.setInteractive({ useHandCursor: true });
+        if ((armor.briarDamageBonus || 0) > 0 && this.textures.exists('thornFrame')) {
+            this.armorPanelBriarFrame = snapOriginToPixelGrid(
+                this.add.image(this.armorPanelEquippedSprite.x, this.armorPanelEquippedSprite.y, 'thornFrame')
+            );
+            this.armorPanelBriarFrame
+                .setDisplaySize(
+                    this.armorPanelEquippedSprite.displayWidth || 54,
+                    this.armorPanelEquippedSprite.displayHeight || 70
+                )
+                .setDepth(6.5);
+        }
         this.armorPanelEquippedSprite.on('pointerdown', () => {
             this.inventorySystem?.unequipArmor?.();
         });
@@ -624,7 +720,7 @@ export class GameScene extends Phaser.Scene {
                 onComplete: () => blockEffect.destroy()
             });
             
-            this.isEnemyTurn = false;
+            this.finishEnemyTurnWithCompanion();
             return; // Block prevents ALL enemy attacks this action
         }
         
@@ -642,8 +738,8 @@ export class GameScene extends Phaser.Scene {
                 this.cardSystem.attackEnemy(firstAttacker.index, reflectedDamage, true);
                 this.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Reflected)`, 0xffffff);
                 this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Bone Wall!', 0xffffff);
-                this.isEnemyTurn = false;
                 this.updateUI(); // Refresh so the remaining Bone Wall charges update
+                this.finishEnemyTurnWithCompanion();
                 return; // Bone wall blocks all attacks this action
             }
         }
@@ -662,8 +758,8 @@ export class GameScene extends Phaser.Scene {
                 this.cardSystem.attackEnemy(firstAttacker.index, reflectedDamage, true);
                 this.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Mirrored)`, 0xc0c0c0);
                 this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Mirror Shield!', 0xc0c0c0);
-                this.isEnemyTurn = false;
                 this.updateUI(); // Refresh so Mirror Shield drops off the effects panel
+                this.finishEnemyTurnWithCompanion();
                 return; // Mirror shield blocks all attacks this action
             }
         }
@@ -710,11 +806,20 @@ export class GameScene extends Phaser.Scene {
     processEnemyAttack(card, index) {
         // Process frozen duration BEFORE checking if enemy can attack
         if (card.data.frozen && card.data.frozen > 0) {
+            const wasShocked = (card.data.shockedTurns || 0) > 0;
             card.data.frozen--;
+            if (wasShocked) card.data.shockedTurns--;
 
             if (card.data.frozen === 0 && card.sprite) {
                 card.sprite.clearTint();
-                this.createFloatingText(card.sprite.x, card.sprite.y, 'Thawed!', 0xffffff);
+                if (wasShocked) {
+                    card.shockMarker?.destroy?.();
+                    card.shockMarker = null;
+                    card.data.shockedTurns = 0;
+                    this.createFloatingText(card.sprite.x, card.sprite.y, 'Shock Wore Off!', 0x99ddff);
+                } else {
+                    this.createFloatingText(card.sprite.x, card.sprite.y, 'Thawed!', 0xffffff);
+                }
             } else {
                 this.createFloatingText(card.sprite.x, card.sprite.y, `Frozen (${card.data.frozen})`, 0x00ccff);
             }
@@ -799,8 +904,9 @@ export class GameScene extends Phaser.Scene {
         // Apply abilities like poison on hit
         card.data.abilities?.forEach(ability => {
             if (ability.type === 'poison') {
-                this.gameState.addPlayerEffect({ ...ability });
-                this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Poisoned!', 0x00ff00);
+                if (this.gameState.addPlayerEffect({ ...ability })) {
+                    this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Poisoned!', 0x00ff00);
+                }
             } else if (ability.type === 'coin_steal') {
                 // Goblin coin stealing ability
                 if (Math.random() < ability.chance && this.gameState.coins > 0) {
@@ -824,19 +930,21 @@ export class GameScene extends Phaser.Scene {
             }
         }
 
-        // Boss LIFESTEAL — the leech heals from the damage it dealt (off raw
-        // attack so player armor doesn't neuter it). This ability was previously
-        // defined but never applied.
+        // Boss LIFESTEAL — the leech heals from the damage it ACTUALLY landed on
+        // the player (after armor). Basing it on real damage means good armor
+        // throttles the heal, and fully blocking a hit stops it entirely — so a
+        // defensive build can out-race a healing boss like the Lich instead of
+        // watching it top itself off off a number your armor never touched.
         const leech = card.data.abilities?.find(a => a.type === 'lifesteal');
-        if (leech) {
-            const heal = Math.max(1, Math.ceil(damageDealt * (leech.percentage || 0.3)));
+        if (leech && actualDamage > 0) {
+            const heal = Math.max(1, Math.ceil(actualDamage * (leech.percentage || 0.3)));
             if (card.data.maxHealth === undefined) card.data.maxHealth = card.data.health;
             card.data.health = Math.min(card.data.maxHealth, card.data.health + heal);
             this.cardSystem.updateEnemyInfoText?.(card);
             if (card.sprite) this.createFloatingText(card.sprite.x, card.sprite.y - 16, `+${heal} Leech`, 0x66ff66);
         }
 
-        this.applyThornsDamage(card, index);
+        this.applyThornsDamage(card, index, tookDamage);
     }
 
     getActiveThornsCard() {
@@ -850,24 +958,29 @@ export class GameScene extends Phaser.Scene {
         return null;
     }
 
-    applyThornsDamage(card, index) {
+    applyThornsDamage(card, index, playerTookDamage = false) {
         if (this.cardSystem.boardCards[index] !== card) return;
         // Thorns only reflect onto melee attackers. Skip back-row (RANGED) enemies
         // and archers — a front-row archer's role is forced to MELEE by position,
         // but it still attacks from range, so its intrinsic ranged flag exempts it.
-        if (card.data.role !== 'MELEE') return;
-        if (card.data.isRangedType) return;
-
-        const thorns = this.getActiveThornsCard();
-        if (!thorns) return;
-
-        const damage = thorns.item.thornDamage || 2;
+        // Bosses have no row/role (they occupy a fixed slot) but strike the player
+        // in melee, so they always count as melee attackers for thorns.
+        const isBoss = card.data.type === 'boss';
+        const isMelee = isBoss || (card.data.role === 'MELEE' && !card.data.isRangedType);
+        const thorns = isMelee ? this.getActiveThornsCard() : null;
+        const armorDamage = playerTookDamage
+            ? (this.gameState.equippedArmor?.thornDamage || 0)
+            : 0;
+        const cardDamage = thorns ? (thorns.item.thornDamage || 2) : 0;
+        const damage = armorDamage + cardDamage;
+        if (damage <= 0) return;
         const x = card.sprite?.x || this.playerAvatar.x;
         const y = card.sprite?.y || this.playerAvatar.y;
 
         this.cardSystem.attackEnemy(index, damage, true);
         this.createFloatingText(x, y, `-${damage} Thorns`, 0x9dff7a);
 
+        if (!thorns) return;
         thorns.item.durability = Math.max(0, thorns.item.durability - 1);
         if (thorns.item.durability <= 0) {
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y + 20, 'Thorns broke!', 0x9dff7a);
@@ -883,8 +996,6 @@ export class GameScene extends Phaser.Scene {
     }
 
     finishEnemyTurnEffects() {
-        this.isEnemyTurn = false;
-
         // Process magic buff durations AFTER enemy attacks
         if (this.gameState.shadowBlade) {
             this.gameState.shadowBlade.turns--;
@@ -931,6 +1042,7 @@ export class GameScene extends Phaser.Scene {
             
             // Check for game over after poison damage
             if (this.gameState.playerHealth <= 0) {
+                this.isEnemyTurn = false;
                 this.time.delayedCall(100, () => this.gameOver());
                 return;
             }
@@ -938,11 +1050,221 @@ export class GameScene extends Phaser.Scene {
         
         this.updateUI();
         if (this.gameState.playerHealth <= 0) {
+            this.isEnemyTurn = false;
             this.time.delayedCall(500, () => this.gameOver());
             return;
         }
-        // Run the next queued enemy turn, if any actions stacked up during this one.
-        this._drainEnemyTurns();
+        this.finishEnemyTurnWithCompanion();
+    }
+
+    getChickCompanionEntry() {
+        const slots = this.inventorySystem?.slots || this.gameState?.inventory || [];
+        const index = slots.findIndex(item => item?.id === 'chickCompanion');
+        return index >= 0 ? { companion: slots[index], index } : null;
+    }
+
+    getSkeletonCompanionEntry() {
+        // The id is unchanged by the Slimebone Guard upgrade, so this catches
+        // both the base and the trained form.
+        const slots = this.inventorySystem?.slots || this.gameState?.inventory || [];
+        const index = slots.findIndex(item => item?.id === 'skeletonWarriorCompanion');
+        return index >= 0 ? { companion: slots[index], index } : null;
+    }
+
+    getCompanionEntries() {
+        const slots = this.inventorySystem?.slots || this.gameState?.inventory || [];
+        return slots
+            .map((companion, index) => ({ companion, index }))
+            .filter(({ companion }) => companion?.type === 'companion');
+    }
+
+    getCompanionKey(companion) {
+        const raw = companion?.companionId
+            || companion?.id
+            || companion?.companionType
+            || companion?.name;
+        return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+    }
+
+    syncCompanionHistory() {
+        if (!this.gameState.companionHistory || typeof this.gameState.companionHistory !== 'object') {
+            this.gameState.companionHistory = {};
+        }
+        this.getCompanionEntries().forEach(({ companion }) => {
+            const key = this.getCompanionKey(companion);
+            if (!key || this.gameState.companionHistory[key]) return;
+            this.gameState.companionHistory[key] = {
+                name: companion.name || 'Companion',
+                roomsFought: 0,
+                acquiredFloor: this.gameState.currentFloor || 1,
+                lastCountedFloor: null,
+                lastCountedRoomId: null,
+                upgraded: false
+            };
+        });
+        return this.gameState.companionHistory;
+    }
+
+    getCurrentCombatRoomId() {
+        const cursor = this.gameState.mapCursor || {};
+        return [
+            cursor.act ?? 'act',
+            cursor.floor ?? this.gameState.currentFloor ?? 1,
+            cursor.node ?? 'node',
+            this.gameState.roomType || this.roomType || 'COMBAT'
+        ].join(':');
+    }
+
+    markCompanionParticipated(companion) {
+        const combatTypes = new Set(['COMBAT', 'ELITE', 'HARD', 'BOSS']);
+        const roomType = this.gameState.roomType || this.roomType;
+        if (!combatTypes.has(roomType)) return false;
+        this.syncCompanionHistory();
+        const key = this.getCompanionKey(companion);
+        if (!key) return false;
+        if (!this.gameState.companionRoomParticipants || typeof this.gameState.companionRoomParticipants !== 'object') {
+            this.gameState.companionRoomParticipants = {};
+        }
+        this.gameState.companionRoomParticipants[key] = this.getCurrentCombatRoomId();
+        return true;
+    }
+
+    finalizeCompanionCombatHistory() {
+        const combatTypes = new Set(['COMBAT', 'ELITE', 'HARD', 'BOSS']);
+        const roomType = this.gameState.roomType || this.roomType;
+        if (!combatTypes.has(roomType)) return 0;
+
+        const history = this.syncCompanionHistory();
+        const participants = this.gameState.companionRoomParticipants || {};
+        const roomId = this.getCurrentCombatRoomId();
+        let counted = 0;
+        Object.entries(participants).forEach(([key, participatedRoomId]) => {
+            const entry = history[key];
+            if (!entry || participatedRoomId !== roomId || entry.lastCountedRoomId === roomId) return;
+            entry.roomsFought = (Number(entry.roomsFought) || 0) + 1;
+            entry.lastCountedFloor = this.gameState.currentFloor || 1;
+            entry.lastCountedRoomId = roomId;
+            counted++;
+        });
+        this.gameState.companionRoomParticipants = {};
+        return counted;
+    }
+
+    getCompanionProtectionBonus() {
+        return this.getCompanionEntries().reduce((total, { companion }) => (
+            total + Math.max(0, Number(companion.guardProtection) || 0)
+        ), 0);
+    }
+
+    selectCompanionTarget(companion) {
+        const candidates = (this.cardSystem?.boardCards || [])
+            .map((card, index) => ({ card, index }))
+            .filter(({ card }) => (
+                card?.revealed
+                && card?.sprite
+                && this.isEnemyCard(card)
+                && (card.data?.health || 0) > 0
+            ));
+        if (candidates.length === 0) return null;
+
+        if (companion?.attackStyle === 'melee' || companion?.range === 'melee') {
+            const frontline = candidates.filter(({ card }) => (
+                card.data?.role === 'MELEE' || card.data?.type === 'boss'
+            ));
+            if (frontline.length === 0) return null;
+            return frontline[Math.floor(Math.random() * frontline.length)];
+        }
+
+        const archers = candidates.filter(({ card }) => card.data?.isRangedType === true);
+        const pool = archers.length > 0 ? archers : candidates;
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    finishEnemyTurnWithCompanion() {
+        this.runCompanionTurns(() => {
+            this.isEnemyTurn = false;
+            this.updateUI();
+            // Run the next queued enemy turn, if any actions stacked up during this one.
+            this._drainEnemyTurns();
+        });
+    }
+
+    runCompanionTurns(onComplete = () => {}) {
+        const entries = this.getCompanionEntries();
+        const runNext = (position) => {
+            if (position >= entries.length) {
+                onComplete();
+                return;
+            }
+            this.runCompanionTurn(entries[position], () => runNext(position + 1));
+        };
+        runNext(0);
+    }
+
+    runCompanionTurn(entry, onComplete = () => {}) {
+        const target = this.selectCompanionTarget(entry?.companion);
+        if (!entry || !target || this._transitioning || this.gameState.playerHealth <= 0) {
+            onComplete();
+            return false;
+        }
+
+        const slot = this.inventorySystem?.slotSprites?.[entry.index];
+        const cardSprite = slot?.card;
+        const restY = slot?.originalY ?? cardSprite?.y;
+        const hoverSprite = slot?.hoverSprite;
+
+        if (cardSprite && Number.isFinite(restY)) {
+            if (hoverSprite) {
+                hoverSprite.setVisible(true);
+                hoverSprite.play('hover_cards_anim');
+            }
+            this.tweens.add({
+                targets: [cardSprite, hoverSprite].filter(Boolean),
+                y: restY - 5,
+                duration: 120,
+                ease: 'Power2',
+                yoyo: true,
+                onComplete: () => {
+                    if (hoverSprite?.scene) {
+                        hoverSprite.stop();
+                        hoverSprite.setVisible(false);
+                        hoverSprite.y = restY;
+                    }
+                    if (cardSprite?.scene) cardSprite.y = restY;
+                }
+            });
+        }
+
+        const attackTimer = this.time.delayedCall(120, () => {
+            const currentTarget = this.cardSystem.boardCards[target.index];
+            if (currentTarget === target.card && currentTarget?.data?.health > 0) {
+                this.markCompanionParticipated(entry.companion);
+                // Evasive enemies (Lost Soul) can dodge a companion's strike too —
+                // rollEvade shows "Miss!" and we skip the damage and the shock.
+                if (!this.cardSystem.rollEvade(currentTarget)) {
+                    const isMelee = entry.companion.attackStyle === 'melee'
+                        || entry.companion.range === 'melee';
+                    this.cardSystem.damageGemTarget(
+                        target.index,
+                        entry.companion.attack || 2,
+                        isMelee ? 'Skeleton Slash' : 'Chick Zap',
+                        isMelee ? 0xd8d8c8 : 0xffe066,
+                        isMelee ? null : 'lightning'
+                    );
+                    if ((entry.companion.shockChance || 0) > 0
+                        && Math.random() < entry.companion.shockChance) {
+                        const shockedTarget = this.cardSystem.boardCards[target.index];
+                        if (shockedTarget === target.card && shockedTarget?.data?.health > 0) {
+                            this.cardSystem.applyShockStatus(shockedTarget, 1);
+                        }
+                    }
+                }
+            }
+            const finishTimer = this.time.delayedCall(220, onComplete);
+            this.enemyTurnTimers.push(finishTimer);
+        });
+        this.enemyTurnTimers.push(attackTimer);
+        return true;
     }
 
     createDamageEffect(x, y) {
@@ -1072,35 +1394,109 @@ export class GameScene extends Phaser.Scene {
     }
     
     gameOver() {
-        if (this._resultScreenShown) return;
-        this._resultScreenShown = true;
+        if (this._resultScreenShown || this._gameOverInProgress) return;
+        this._gameOverInProgress = true;
+        this._transitioning = true;
+        this.clearEnemyTurnTimers();
+        this.nextFloorButton?.disableInteractive();
 
-        // Clear the current run save (but keep meta progression)
-        if (this.saveManager) {
-            this.saveManager.clearCurrentRun();
-        }
-        
-        // Update meta progression stats
-        if (this.metaManager) {
-            this.metaManager.totalRuns++;
-            if (this.gameState.currentFloor > this.metaManager.bestFloor) {
-                this.metaManager.bestFloor = this.gameState.currentFloor;
+        const killedBy = this.killedBy || 'Unknown Enemy';
+        const floor = this.gameState?.currentFloor ?? 1;
+        let deathStats = { killedBy, floor };
+        let newRelic = null;
+
+        try {
+            deathStats = this.gameState.getDeathStats();
+            deathStats.killedBy = killedBy;
+            deathStats.floor = floor;
+
+            this.unlockChickForRareShopAfterDeath();
+            this.unlockSkeletonForRareShopAfterDeath();
+            this.saveManager?.clearCurrentRun();
+
+            if (this.metaManager) {
+                this.metaManager.totalRuns++;
+                if (floor > this.metaManager.bestFloor) {
+                    this.metaManager.bestFloor = floor;
+                }
+                // Carry an unhatched egg to the next run (consumed at run start).
+                const hasEgg = (this.gameState.inventory || []).some(
+                    item => item?.id === 'monsterEgg' || item?.name === 'Egg'
+                );
+                this.metaManager.setPendingEgg(hasEgg);
+                newRelic = this.metaManager.handlePlayerDeath(killedBy, floor);
             }
-            this.metaManager.saveMetaProgression();
+        } catch (error) {
+            // Death UI is critical. Meta/save failures must never strand the run
+            // at zero health with no way back to the main menu.
+            console.error('Failed to finish death bookkeeping:', error);
         }
-        
-        // Get death statistics for meta progression and include killer info
-        const deathStats = this.gameState.getDeathStats();
-        
-        // Add killer information to death stats
-        deathStats.killedBy = this.killedBy || 'Unknown Enemy';
-        deathStats.floor = this.gameState.currentFloor;
 
-        const newRelic = this.metaManager
-            ? this.metaManager.handlePlayerDeath(this.killedBy || 'Unknown Enemy', this.gameState.currentFloor)
-            : null;
+        try {
+            this.showDefeatResult(deathStats, newRelic);
+            this._resultScreenShown = true;
+        } catch (error) {
+            console.error('Failed to render the full defeat screen:', error);
+            this.showDefeatFallback(deathStats);
+            this._resultScreenShown = true;
+        } finally {
+            this._gameOverInProgress = false;
+        }
+    }
 
-        this.showDefeatResult(deathStats, newRelic);
+    showDefeatFallback(deathStats) {
+        const depth = 12000;
+        this.add.rectangle(320, 180, 640, 360, 0x000000, 0.9)
+            .setDepth(depth)
+            .setInteractive();
+        this.add.text(320, 105, 'DEFEAT', {
+            fontSize: '28px',
+            fill: '#ffffff',
+            fontFamily: 'Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(depth + 1);
+        this.add.text(320, 160, `Killed by ${deathStats.killedBy}\nReached Floor ${deathStats.floor}`, {
+            fontSize: '16px',
+            fill: '#d8d1d8',
+            fontFamily: 'Arial, sans-serif',
+            align: 'center'
+        }).setOrigin(0.5).setDepth(depth + 1);
+        this.add.text(320, 245, 'Continue', {
+            fontSize: '18px',
+            fill: '#ffffff',
+            backgroundColor: '#513c2c',
+            padding: { x: 18, y: 10 },
+            fontFamily: 'Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(depth + 1).setInteractive({ useHandCursor: true })
+            .on('pointerdown', () => this.scene.start('MainMenuScene'));
+    }
+
+    unlockChickForRareShopAfterDeath() {
+        // Hatching is the achievement that unlocks the Chick for later heroes.
+        // Checking only the live inventory here was brittle: the companion can
+        // be removed by an event (or the inventory view can be between syncs)
+        // before gameOver runs even though this run did hatch it.
+        const chickWasHatched = Boolean(
+            this.gameState?.storyRun?.chickHatched
+            || this.getChickCompanionEntry()
+        );
+        if (!chickWasHatched) return false;
+        this.gameState.heroMemory.chickRareShopUnlocked = true;
+        saveHeroMemory(this.gameState.heroMemory);
+        return true;
+    }
+
+    unlockSkeletonForRareShopAfterDeath() {
+        // Obtaining the Skeleton Warrior (Slimy Prison → "Pull him free") is the
+        // achievement that lets future heroes buy it from the rare shop. Uses the
+        // durable story flag OR the live inventory, mirroring the Chick unlock.
+        const skeletonWasObtained = Boolean(
+            this.gameState?.storyRun?.skeletonCompanionObtained
+            || this.getSkeletonCompanionEntry()
+        );
+        if (!skeletonWasObtained) return false;
+        this.gameState.heroMemory.skeletonRareShopUnlocked = true;
+        saveHeroMemory(this.gameState.heroMemory);
+        return true;
     }
 
     addResultPanel(x, y, width, height, frame, depth) {
@@ -1135,7 +1531,9 @@ export class GameScene extends Phaser.Scene {
 
     showDefeatResult(deathStats, newRelic) {
         const resultDepth = 11000;
-        this.add.rectangle(320, 180, 640, 360, 0x000000, 0.78).setOrigin(0.5).setDepth(resultDepth);
+        // Interactive (even with no handlers) so it swallows clicks and stops them
+        // reaching buttons underneath, like a still-visible Next Floor button.
+        this.add.rectangle(320, 180, 640, 360, 0x000000, 0.78).setOrigin(0.5).setDepth(resultDepth).setInteractive();
         this.add.image(320, 36, 'resultBanners', 0).setOrigin(0.5).setDepth(resultDepth + 2);
         this.add.text(320, 37, 'DEFEAT', {
             fontSize: '24px',
@@ -1242,6 +1640,9 @@ export class GameScene extends Phaser.Scene {
     
     floorCleared() {
         if (this._transitioning) return;
+        // Player already dead (e.g. a mutual kill via Thorns/reflect) — don't let a
+        // stray click on the Next Floor button revive them via setupBossRewardRoom().
+        if (this.gameState.playerHealth <= 0) return;
 
         // Boss reward room → leaving means advancing to the next act
         if (this.gameState.roomType === 'BOSS_REWARD') {
@@ -1364,13 +1765,24 @@ export class GameScene extends Phaser.Scene {
         // Re-enable the Next button so the player can leave when ready
         this._transitioning = false;
         this.enemiesCleared = true;
-        if (this.nextFloorButton) {
-            this.nextFloorButton.setVisible(true);
-            this.nextFloorButton.setInteractive();
-            this.nextFloorButton.clearTint();
-        }
-        if (this.nextFloorButtonText) this.nextFloorButtonText.setVisible(true);
+        this.showNextFloorButton();
 
+        this.updateUI();
+    }
+
+    restoreSavedBossRewardRoom() {
+        this.gameState.roomType = 'BOSS_REWARD';
+        this.roomType = 'BOSS_REWARD';
+        this.updateRoomTitle();
+
+        const items = (this._loadedBoardCards || [])
+            .filter(card => card?.data)
+            .map(card => card.data);
+        this.cardSystem.spawnBossRewardBoard(items);
+        this._loadedBoardCards = null;
+        this._transitioning = false;
+        this.enemiesCleared = true;
+        this.showNextFloorButton();
         this.updateUI();
     }
 
@@ -1403,6 +1815,7 @@ export class GameScene extends Phaser.Scene {
         // Advance to next act now that the player is done picking
         this.gameState.currentFloor++;
         const nextAct = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
+        this.upgradeCompanionsForNextAct(nextAct);
         this.gameState.mapCursor = { act: nextAct, floor: 0, node: 0 };
         const nextActMap = this.gameState.dungeonMap?.[`act${nextAct}`];
         if (nextActMap?.floors?.[0]?.[0]) {
@@ -1425,19 +1838,41 @@ export class GameScene extends Phaser.Scene {
             this.scene.launch('MapViewScene', { gameState: this.gameState });
         });
     }
+
+    upgradeCompanionsForNextAct(nextAct) {
+        // Acts 2 and 3 are the only real crossings. Guarding the act number
+        // keeps a final-victory transition from granting a meaningless upgrade.
+        if (nextAct < 2 || nextAct > 3) return 0;
+
+        const slots = this.inventorySystem?.slots || this.gameState?.inventory || [];
+        const companions = slots.filter(item => item?.type === 'companion');
+        companions.forEach(companion => {
+            companion.attack = Math.max(0, Number(companion.attack) || 0) + 1;
+            companion.actUpgrades = (Number(companion.actUpgrades) || 0) + 1;
+            this.createFloatingText(
+                320,
+                145 + companions.indexOf(companion) * 14,
+                `${companion.name || 'Companion'} +1 ATK`,
+                0xffe066
+            );
+        });
+
+        if (companions.length > 0) {
+            this.gameState.inventory = slots;
+            this.inventorySystem?.rebuildInventorySprites?.();
+            this.updateUI();
+        }
+        return companions.length;
+    }
     
     onEnemiesCleared() {
         this.clearEnemyTurnTimers();
+        this.finalizeCompanionCombatHistory();
         this.enemiesCleared = true;
         // Null-guard: if the button hasn't been (re)created yet, do NOT throw
         // — that would leave enemiesCleared=true with a still-hidden button,
         // and the next checkFloorClear would short-circuit on !enemiesCleared.
-        if (this.nextFloorButton) {
-            this.nextFloorButton.setVisible(true);
-            this.nextFloorButton.setInteractive();
-            this.nextFloorButton.clearTint();
-        }
-        this.nextFloorButtonText?.setVisible(true);
+        this.showNextFloorButton();
         this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
         this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
     }
@@ -1460,18 +1895,14 @@ export class GameScene extends Phaser.Scene {
             lines.push("The caravan's unfinished tale remains somewhere behind you.");
         }
 
-        if (story.bardResolved) {
-            if (story.bardEnding === 'restored_song') {
-                lines.push("The missing bard's completed song echoes through the dungeon.");
-            } else if (story.bardEnding === 'made_amends') {
-                lines.push("The bard's last note rests in peace after your return.");
-            } else if (story.bardEnding === 'salvaged_song' || story.bardEnding === 'completed_song') {
-                lines.push("The missing bard's smaller song survives and travels with you.");
+        if (story.latchboxRewardClaimed) {
+            if (story.boxState === 'repaired') {
+                lines.push('The Loyal Latchbox carries one more burden than your pack should hold.');
             } else {
-                lines.push("The singing box is quiet now; its story has found an ending.");
+                lines.push('The broken trap box coughed up its valuables and retired in disgrace.');
             }
-        } else if (story.musicBoxSeen) {
-            lines.push("A lonely melody still searches the dungeon for its final note.");
+        } else if (story.boxState && story.boxState !== 'unknown') {
+            lines.push('A tiny robber box is still loose somewhere in the dungeon.');
         }
 
         return lines.length > 0
@@ -1481,12 +1912,14 @@ export class GameScene extends Phaser.Scene {
 
     getResolvedStoryCount() {
         const story = this.gameState?.storyRun || {};
-        return Number(Boolean(story.caravanResolved)) + Number(Boolean(story.bardResolved));
+        return Number(Boolean(story.caravanResolved)) + Number(Boolean(story.latchboxRewardClaimed));
     }
     
     gameWon() {
         const resultDepth = 11000;
-        this.add.rectangle(320, 180, 640, 360, 0x000000, 0.78).setOrigin(0.5).setDepth(resultDepth);
+        // Interactive (even with no handlers) so it swallows clicks and stops them
+        // reaching buttons underneath, like a still-visible Next Floor button.
+        this.add.rectangle(320, 180, 640, 360, 0x000000, 0.78).setOrigin(0.5).setDepth(resultDepth).setInteractive();
         this.add.image(320, 36, 'resultBanners', 1).setOrigin(0.5).setDepth(resultDepth + 2);
         this.add.text(320, 32, 'VICTORY!', {
             fontSize: '24px',
@@ -1522,9 +1955,14 @@ export class GameScene extends Phaser.Scene {
             align: 'center'
         }).setOrigin(0.5).setDepth(resultDepth + 2);
 
-        this.addResultButton(320, 336, 'Play Again', () => this.scene.start('GameScene', {}), resultDepth + 4);
+        // Victory ends the run: clear the saved run so it can't be "continued",
+        // then return to the main menu instead of dropping straight into a new game.
+        this.addResultButton(320, 336, 'Main Menu', () => {
+            this.saveManager?.clearCurrentRun();
+            this.scene.start('MainMenuScene');
+        }, resultDepth + 4);
     }
-    
+
     updateAmuletsUI() {
         this.amuletUIGroup.clear(true, true);
         if (this.amuletTooltip) {
@@ -1753,6 +2191,14 @@ export class GameScene extends Phaser.Scene {
         if (!card) return;
 
         this.gameState.discardedCardsThisRun = (this.gameState.discardedCardsThisRun || 0) + 1;
+
+        const coinBonus = this.amuletManager?.getDiscardCoinBonus?.() || 0;
+        if (coinBonus > 0) {
+            this.gameState.coins = (this.gameState.coins || 0) + coinBonus;
+            this.createFloatingText(x, y - 18, `+${coinBonus} Coin (Ink Pen)`, 0xffd700);
+            this.playCoinAnimation?.();
+            this.updateUI();
+        }
 
         // Refresh the relic pip display immediately so the Explorer Cape progress
         // is visible right when the item is discarded, not on the next unrelated UI update.
@@ -1996,13 +2442,37 @@ export class GameScene extends Phaser.Scene {
         this.gameState.blockNextAttack = runData.effects.blockNextAttack;
         // Damage tracking
         this.gameState.damageTracking = runData.damageTracking;
+        this.gameState.companionHistory = runData.companions?.history || {};
+        this.gameState.companionRoomParticipants = runData.companions?.roomParticipants || {};
         // Story consequence state
         if (runData.story?.storyRun) {
             this.gameState.storyRun = runData.story.storyRun;
         }
         if (runData.story?.heroMemory) {
-            this.gameState.heroMemory = runData.story.heroMemory;
+            const storedHeroMemory = loadHeroMemory() || {};
+            this.gameState.heroMemory = {
+                ...this.gameState.heroMemory,
+                ...runData.story.heroMemory
+            };
+            Object.keys(this.gameState.heroMemory).forEach(key => {
+                this.gameState.heroMemory[key] = Boolean(
+                    this.gameState.heroMemory[key] || storedHeroMemory[key]
+                );
+            });
         }
+        // Keep the numerical floor and map position as one saved unit. Older
+        // saves only had currentFloor, which could resume at Floor 6 with a
+        // freshly generated Act 1 map cursor at its start node.
+        if (runData.navigation) {
+            this.gameState.roomType = runData.navigation.roomType || 'COMBAT';
+            this.gameState.mapCursor = runData.navigation.mapCursor || null;
+            this.gameState.dungeonMap = runData.navigation.dungeonMap || null;
+            this.gameState.pendingActShop = runData.navigation.pendingActShop || null;
+            this.roomType = this.gameState.roomType;
+        }
+        this._loadedBoardCards = Array.isArray(runData.board?.cards)
+            ? runData.board.cards
+            : [];
         // Inventory
         if (this.inventorySystem && runData.equipment.inventory) {
             this.inventorySystem.slots = runData.equipment.inventory;
@@ -2030,8 +2500,10 @@ export class GameScene extends Phaser.Scene {
     }
     
     shutdown() {
+        this.clearEnemyTurnTimers();
         this.input.keyboard.off('keydown-ESC');
         this.events.off('endPlayerTurn');  // Unbind to avoid doubles
+        this.events.off('wake', this.wake, this);
         this._turnHandlersBound = false;
     }
     wake(sys, data) {

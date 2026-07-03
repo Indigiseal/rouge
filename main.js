@@ -66,4 +66,4 @@ try {
     console.warn('Font preload skipped:', e);
 }
 
-new Phaser.Game(config);
+window.__game = new Phaser.Game(config);

@@ -73,7 +73,10 @@ export const RELICS_OTHERS_ATLAS = Object.freeze({
     goldenMedallion:      { frame: 61, name: 'Stoneheart Medallion' },
     birdSkull:            { frame: 62, name: 'Carrion Oath' },
     dragonClaw:           { frame: 63, name: 'Dragon Claw' },
-    hollowWhispersMask:   { frame: 64, name: 'Mask of Hollow Whispers' }
+    hollowWhispersMask:   { frame: 64, name: 'Mask of Hollow Whispers' },
+    goldenBell:           { frame: 65, name: 'Tea Room Bell' },
+    wormVenomVial:        { frame: 66, name: 'Worm Venom Charm' },
+    stolenInkPen:         { frame: 67, name: 'Stolen Ink Pen' }
 });
 
 // Gameplay IDs stay stable for saves and balance code. These maps are the
@@ -109,7 +112,10 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     travelersJournal: 'travelersJournal',
     charmingTune: 'lute',
     wayfarersMap: 'wayfarersMap',
-    sirensPendant: 'perfumeBottle'
+    sirensPendant: 'perfumeBottle',
+    teaRoomBell: 'goldenBell',
+    wormVenomCharm: 'wormVenomVial',
+    stolenInkPen: 'stolenInkPen'
 });
 
 export const RELIC_ATLAS_KEYS = Object.freeze({

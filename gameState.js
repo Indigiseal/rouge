@@ -12,6 +12,12 @@ export class GameState {
         this.actionsLeft = 15;
         this.maxActions = 15;
         this.currentFloor = 1;
+        this.roomType = 'COMBAT';
+        this.mapCursor = null;
+        this.companionHistory = {};
+        this.companionRoomParticipants = {};
+        this.dungeonMap = null;
+        this.pendingActShop = null;
         this.equippedWeapon = null;
         this.equippedArmor = null;
         this.inventory = new Array(5).fill(null);
@@ -32,25 +38,35 @@ export class GameState {
             caravanEnding: 'unresolved',
             caravanEpilogueSeen: false,
             caravanEpilogueChoice: 'none',
-            musicBoxSeen: false,
-            musicBoxState: 'unknown',
-            duelistState: 'unknown',
-            birdState: 'unknown',
-            bardThreadState: 'unknown',
-            bardResolved: false,
-            bardEnding: 'unresolved',
-            bardEpilogueSeen: false,
-            bardEpilogueChoice: 'none',
+            boxState: 'unknown',
+            boxFollowing: false,
+            boxHasCog: false,
+            boxPrep: 'none',
+            boxRepairChance: 50,
+            birdAngry: false,
+            stoleBirdEgg: false,
+            latchboxRewardClaimed: false,
+            goblinEngineerResolved: false,
+            chickHatched: false,
+            skeletonCompanionObtained: false,
+            angryNestmotherRollFloor: null,
+            mirrorSeen: false,
+            tooNiceRoomSeen: false,
+            wellSeen: false,
+            slimyPrisonSeen: false,
+            bookWormSeen: false,
+            briarRoomSeen: false,
             pendingEvents: []
         };
         this.heroMemory = {
             learnedBanditsThreatenHermit: false,
             learnedDonkeyCanBeSaved: false,
             solvedCaravanPerfectly: false,
-            learnedMusicBoxBreaks: false,
-            learnedDuelistKnowsSong: false,
-            learnedBirdLikesFood: false,
-            solvedBardSong: false
+            learnedMusicBoxExplodes: false,
+            learnedBirdNestHasCog: false,
+            learnedEngineerCanRepairBox: false,
+            chickRareShopUnlocked: false,
+            skeletonRareShopUnlocked: false
         };
         
         
@@ -110,7 +126,10 @@ export class GameState {
     }
 
     takeDamage(amount, enemyIndex = -1, source = 'enemy', armorPierce = 0) {
-        if (source === 'poison' && this.relicEffects?.poisonImmunity) {
+        if (source === 'poison' && (
+            this.relicEffects?.poisonImmunity
+            || this.scene?.amuletManager?.isPoisonImmune?.()
+        )) {
             if (this.scene?.playerAvatar) {
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poison Immune!', 0x66ff66);
             }
@@ -183,6 +202,9 @@ export class GameState {
                 }
             }
         }
+
+        // Trained guard companions provide passive protection while carried.
+        protection += this.scene?.getCompanionProtectionBonus?.() || 0;
         
         // armor_break (boss ability) pierces some of the player's protection so the
         // hit lands harder. Never turns armor into a damage bonus — just reduces it.
@@ -214,11 +236,14 @@ export class GameState {
     }
 
     addPlayerEffect(effect) {
-        if (effect?.type === 'poison' && this.relicEffects?.poisonImmunity) {
+        if (effect?.type === 'poison' && (
+            this.relicEffects?.poisonImmunity
+            || this.scene?.amuletManager?.isPoisonImmune?.()
+        )) {
             if (this.scene?.playerAvatar) {
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poison Immune!', 0x66ff66);
             }
-            return;
+            return false;
         }
 
         // Prevent stacking the same effect, refresh duration instead
@@ -228,15 +253,27 @@ export class GameState {
         } else {
             this.playerEffects.push(effect);
         }
+        return true;
     }
     
-    // New method to handle healing with health cap check
+    // General healing — rest rooms, events, and spells all use this. It ignores
+    // amulet heal caps on purpose: only healing POTIONS are capped (see
+    // healCapped). Never heals past max HP.
     heal(amount) {
-        const maxCap = this.scene.amuletManager ? 
+        this.playerHealth = Math.min(this.maxHealth, this.playerHealth + amount);
+    }
+
+    // Capped healing used ONLY by healing potions, so a Berserker's Warbelt can
+    // hold potion healing to 50% max HP while rest/events/spells heal freely.
+    healCapped(amount) {
+        const maxCap = this.scene.amuletManager ?
             this.scene.amuletManager.getMaxHealthCap() : 1;
-        
+
         const cappedMaxHealth = Math.floor(this.maxHealth * maxCap);
-        this.playerHealth = Math.min(cappedMaxHealth, this.playerHealth + amount);
+        // Heal up toward the cap, but never DROP health: a wearer already above
+        // 50% (e.g. equipped the belt at high HP) must not lose HP from a potion.
+        const healed = Math.min(cappedMaxHealth, this.playerHealth + amount);
+        this.playerHealth = Math.max(this.playerHealth, healed);
     }
     
     // Method to check if action should be free (Quickhand Gloves)

@@ -291,6 +291,23 @@ export class CardDataGenerator {
                     { minFloor: 31, damage: 8,  health: 13 }
                 ],
                 abilities: []
+            },
+            lostSoul: {
+                // A shrouded, floating figure — the Soul Eater's lesser dead.
+                // Its whole gimmick is the 'evade' ability: attacks (from the
+                // player OR a companion) have a chance to phase right through it,
+                // so it's kept deliberately low-HP to balance the dodging.
+                // First appears in act 2 (the Soul Eater's act).
+                name: 'Lost Soul',
+                sprite: 'lostSoul',
+                role: 'MELEE',
+                minFloor: 16,
+                tiers: [
+                    { minFloor: 16, damage: 6, health: 8  },
+                    { minFloor: 24, damage: 7, health: 10 },
+                    { minFloor: 31, damage: 9, health: 13 }
+                ],
+                abilities: [{ type: 'evade', chance: 0.3 }]
             }
         };
     }
@@ -349,7 +366,7 @@ export class CardDataGenerator {
                 sprite: 'SoulEater',
                 abilities: [
                     { type: 'lifesteal', percentage: 0.6 },
-                    { type: 'summon', enemyType: 'skeleton', chance: 0.3, count: 1 },
+                    { type: 'summon', enemyType: 'lostSoul', chance: 0.3, count: 1 },
                     { type: 'armor_break', amount: 4 },
                     { type: 'rage', threshold: 0.5, damageBoost: 1.5 }
                 ]
@@ -357,12 +374,12 @@ export class CardDataGenerator {
             lich: {
                 type: 'boss', tier: 2,
                 name: 'Lich',
-                health: 88,
-                attack: 17,
+                health: 70,
+                attack: 14,
                 sprite: 'Lich',
                 abilities: [
-                    { type: 'lifesteal', percentage: 0.8 },
-                    { type: 'summon', enemyType: 'skeleton', chance: 0.3, count: 1 }
+                    { type: 'lifesteal', percentage: 0.5 },
+                    { type: 'summon', enemyType: 'skeleton', chance: 0.2, count: 1 }
                 ]
             },
             cerberus: {
@@ -383,7 +400,7 @@ export class CardDataGenerator {
                 name: 'Ancient Cerberus',
                 health: 124,
                 attack: 22,
-                sprite: 'Cerberus',
+                sprite: 'AncientCerberus',
                 abilities: [
                     { type: 'rage', threshold: 0.3, damageBoost: 2 },
                     { type: 'armor_break', amount: 6 },
@@ -785,6 +802,27 @@ export class CardDataGenerator {
         };
     }
 
+    createAngryNestmotherCard(floor) {
+        // She's a ranged ARCHER (attacks from the back row, so thorns can't
+        // reflect her) but noticeably sturdier and harder-hitting than a normal
+        // enemy. Base her off the baseline MELEE enemy (skeleton) at THIS floor,
+        // then bump. Using a fixed reference type — instead of the old random
+        // createEnemyCard roll — makes her stats scale smoothly with depth
+        // instead of swinging with whichever enemy type happened to be rolled.
+        const baseEnemy = this.createTieredEnemy('skeleton', floor);
+        return {
+            ...baseEnemy,
+            type: 'enemy',
+            name: 'Angry Nestmother',
+            health: Math.max(1, Math.ceil((baseEnemy.health || 1) * 1.2)),
+            attack: Math.max(1, (baseEnemy.attack || 1) + 2),
+            sprite: 'angryNestmother',
+            role: 'RANGED',
+            isRangedType: true,
+            storyEnemy: 'angry_nestmother'
+        };
+    }
+
     // Mimic — a treasure that bites back. Normal HP, small attack. The player
     // must kill it within 3 turns of revealing it; otherwise it escapes.
     // On a successful kill it bursts into coins and crystals.
@@ -1164,6 +1202,48 @@ export class CardDataGenerator {
             sprite: selectedFood.sprite,
             rarity: selectedFood.rarity,
             cost: selectedFood.cost
+        };
+    }
+
+    createEggCard() {
+        return {
+            id: 'monsterEgg',
+            type: 'food',
+            name: 'Egg',
+            actionAmount: 30,
+            sprite: 'egg',
+            rarity: 'uncommon',
+            cost: 6
+        };
+    }
+
+    createChickCompanionCard() {
+        return {
+            id: 'chickCompanion',
+            type: 'companion',
+            name: 'Chick Companion',
+            // Tuned down from 3 → 2: at 3 it was too strong even into act 3.
+            attack: 2,
+            sprite: 'chickCompanion',
+            rarity: 'rare',
+            cost: 20,
+            unique: true
+        };
+    }
+
+    createSkeletonWarriorCompanionCard() {
+        return {
+            id: 'skeletonWarriorCompanion',
+            type: 'companion',
+            name: 'Skeleton Warrior',
+            attack: 3,
+            attackStyle: 'melee',
+            damageType: 'physical',
+            range: 'melee',
+            sprite: 'skeletonCompanion',
+            rarity: 'rare',
+            cost: 20,
+            unique: true
         };
     }
     
