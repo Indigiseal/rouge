@@ -79,11 +79,11 @@ export class AmuletManager {
             
             golemHeart: {
                 ...getAmuletAtlasPresentation('golemHeart'),
-                description: '+5 max health',
+                description: '+10 max health',
                 rarity: 'uncommon',
                 onEquip: function() {
-                    this.gameState.maxHealth += 5;
-                    this.gameState.playerHealth += 5;
+                    this.gameState.maxHealth += 10;
+                    this.gameState.playerHealth += 10;
                 }
             },
             
@@ -417,6 +417,33 @@ export class AmuletManager {
                 charmChance: 0.15
             },
 
+            goldenSeed: {
+                ...getAmuletAtlasPresentation('goldenSeed'),
+                description: '+1 max HP whenever you discard a card',
+                rarity: 'uncommon',
+                maxHpPerDiscard: 1
+            },
+
+            fireRuneStone: {
+                ...getAmuletAtlasPresentation('fireRuneStone'),
+                description: 'Fire gem splash reaches slightly further',
+                rarity: 'uncommon',
+                fireSplashRadiusBonus: 25
+            },
+
+            // A small, opt-in echo of the old per-kill coin faucet (removed as a
+            // baseline mechanic for flooding the economy) — low odds, small payout,
+            // so it stays a flavorful trickle rather than reopening that faucet.
+            // The roll + grant lives in CardSystem.removeDefeatedEnemy (via
+            // rollProspectorPickReward) so the coin-jump / crystal-scatter pickup
+            // can play on the tile where the enemy actually died, not up at the
+            // player portrait like the HP-on-kill amulets.
+            prospectorsPick: {
+                ...getAmuletAtlasPresentation('prospectorsPick'),
+                description: '10% chance to find 1-2 coins or a crystal per kill',
+                rarity: 'uncommon'
+            },
+
             // Special reward from the Too-Nice Room event. Not in the random
             // amulet pool (amuletTypes) — only the fairy hands it out.
             teaRoomBell: {
@@ -429,9 +456,7 @@ export class AmuletManager {
             // Standalone rewards from The Book Worm. These stay out of the
             // random amulet pool and can only be earned through the event.
             mothWingDust: {
-                name: 'Moth-Wing Dust',
-                sprite: 'relicsOthers',
-                spriteFrame: 60,
+                ...getAmuletAtlasPresentation('mothWingDust'),
                 description: 'Magic cards have a 25% chance to return after use',
                 rarity: 'rare',
                 magicCardReturnChance: 0.25
@@ -473,19 +498,32 @@ export class AmuletManager {
         ));
     }
 
-    shouldReturnMagicCard() {
-        const chance = this.gameState.activeAmulets.reduce((total, amulet) => (
-            total + (this.amuletDefinitions[amulet.id]?.magicCardReturnChance || 0)
+    // Sum a numeric definition property across all active amulets.
+    sumAmuletProperty(prop) {
+        return this.gameState.activeAmulets.reduce((total, amulet) => (
+            total + (this.amuletDefinitions[amulet.id]?.[prop] || 0)
         ), 0);
+    }
+
+    shouldReturnMagicCard() {
+        const chance = this.sumAmuletProperty('magicCardReturnChance');
         return chance > 0 && Math.random() < Math.min(1, chance);
     }
 
     getDiscardCoinBonus() {
-        return this.gameState.activeAmulets.reduce((total, amulet) => (
-            total + (this.amuletDefinitions[amulet.id]?.coinsPerDiscard || 0)
-        ), 0);
+        return this.sumAmuletProperty('coinsPerDiscard');
     }
-    
+
+    // Golden Seed — permanent max HP gained per card discarded.
+    getDiscardMaxHpBonus() {
+        return this.sumAmuletProperty('maxHpPerDiscard');
+    }
+
+    // Ember Rune — extra pixels added to the fire gem's splash radius.
+    getFireSplashRadiusBonus() {
+        return this.sumAmuletProperty('fireSplashRadiusBonus');
+    }
+
     // Add an amulet to the player
     addAmulet(amuletId) {
         const definition = this.amuletDefinitions[amuletId];
@@ -662,7 +700,19 @@ export class AmuletManager {
             }
         });
     }
-    
+
+    // Prospector's Pick — 10% chance per kill to find 1-2 coins OR a crystal.
+    // Returns { kind: 'coin'|'crystal', amount } or null. The caller grants the
+    // currency and plays the pickup animation on the enemy's defeat tile.
+    rollProspectorPickReward() {
+        if (!this.hasAmulet('prospectorsPick')) return null;
+        if (Math.random() >= 0.10) return null;
+        if (Math.random() < 0.5) {
+            return { kind: 'coin', amount: 1 + Math.floor(Math.random() * 2) }; // 1 or 2
+        }
+        return { kind: 'crystal', amount: 1 };
+    }
+
     // Cross-tier merging was granted by Golden Hammer, which has been removed
     // for being too powerful. Kept as a stub (always false) so existing callers
     // in inventorySystem keep working.

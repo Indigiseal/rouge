@@ -7,7 +7,7 @@ export class SaveManager {
     this.META_SAVE_KEY = 'metaProgression';
     this.RUN_SAVE_KEY = 'currentRun';
     this.SETTINGS_SAVE_KEY = 'gameSettings';
-    this.SAVE_VERSION = '1.0.2'; // Navigation state added to run saves
+    this.SAVE_VERSION = '1.0.3'; // Combat board layout/state added to run saves
   }
 
   // ============ Internal helpers ============
@@ -153,6 +153,7 @@ export class SaveManager {
       board: {
         cards: cardSystem ? this.serializeBoardCards(cardSystem.boardCards) : [],
         enemiesCleared: gameState?.scene?.enemiesCleared ?? false,
+        layout: cardSystem?.getSerializableBoardLayout?.() ?? null,
       },
       savedAt: Date.now(),
       saveVersion: this.SAVE_VERSION,
@@ -248,6 +249,9 @@ export class SaveManager {
         board: {
           cards: Array.isArray(parsed.board?.cards) ? parsed.board.cards : [],
           enemiesCleared: parsed.board?.enemiesCleared ?? false,
+          layout: parsed.board?.layout && typeof parsed.board.layout === 'object'
+            ? parsed.board.layout
+            : null,
         },
         savedAt,
         saveVersion: parsed.saveVersion ?? this.SAVE_VERSION,
@@ -299,6 +303,13 @@ export class SaveManager {
       );
     }
 
+    run.board = run.board && typeof run.board === 'object'
+      ? run.board
+      : { cards: [], enemiesCleared: false, layout: null };
+    run.board.layout = run.board.layout && typeof run.board.layout === 'object'
+      ? run.board.layout
+      : null;
+
     // Ensure board cards are properly structured and refresh saved amulet art.
     if (Array.isArray(run.board.cards)) {
       run.board.cards = run.board.cards.map(c => {
@@ -308,6 +319,7 @@ export class SaveManager {
           : (c.data ?? null);
         return {
           revealed: !!c.revealed,
+          justRevealed: !!c.justRevealed,
           data,
           position: c.position && typeof c.position.x === 'number' && typeof c.position.y === 'number'
             ? { x: c.position.x, y: c.position.y }
@@ -388,6 +400,7 @@ export class SaveManager {
       if (!card) return null;
       return {
         revealed: !!card.revealed,
+        justRevealed: !!card.justRevealed,
         data: card.data ? JSON.parse(JSON.stringify(card.data)) : null,
         position: card.sprite && card.sprite.x != null && card.sprite.y != null
           ? { x: card.sprite.x, y: card.sprite.y }

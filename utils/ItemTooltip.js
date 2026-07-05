@@ -113,6 +113,9 @@ export function getBossAbilityLines(scene, data) {
                     pct: Math.round((ab.threshold ?? 0.3) * 100)
                 }));
                 break;
+            case 'evade':
+                lines.push(t(scene, 'boss.evade', { pct: Math.round((ab.chance || 0) * 100) }));
+                break;
             case 'coin_steal':
                 lines.push(t(scene, 'boss.coinSteal', { amount: ab.amount || 0 }));
                 break;

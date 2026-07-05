@@ -8,6 +8,7 @@ export class MainMenuScene extends Phaser.Scene {
     
     create() {
         this.saveManager = new SaveManager();
+        this.activeModal = null;
 
         // Load saved settings
         this.loadSettings();
@@ -132,6 +133,10 @@ export class MainMenuScene extends Phaser.Scene {
         this.children.list.forEach(child => {
             if (child !== this.children.list[0]) { // Keep background
                 child.setVisible(false);
+                // Visibility does not reliably remove a Phaser Game Object from
+                // input hit testing. Keep hidden menu buttons from receiving
+                // clicks through the options/reset dialogs.
+                if (child.input) child.disableInteractive();
             }
         });
         
@@ -190,6 +195,9 @@ export class MainMenuScene extends Phaser.Scene {
             
             // Show main menu again
             this.children.list.forEach(child => child.setVisible(true));
+            Object.values(this.mainMenuButtons || {}).forEach(entry => {
+                if (entry?.button?.input) entry.button.input.enabled = true;
+            });
         });
         
         // Store references for cleanup
@@ -350,18 +358,32 @@ export class MainMenuScene extends Phaser.Scene {
     }
     
     confirmResetProgress() {
-        const dimmer = this.add.rectangle(320, 180, 640, 360, 0x000000, 0.75);
-        const box = this.add.rectangle(320, 180, 380, 170, 0x2c1810).setStrokeStyle(2, 0xff4444);
+        if (this.activeModal) return;
+
+        // The full-screen interactive dimmer consumes input outside the dialog,
+        // preventing clicks from falling through to hidden menu controls.
+        const dimmer = this.add.rectangle(320, 180, 640, 360, 0x000000, 0.75)
+            .setDepth(1000)
+            .setInteractive();
+        const box = this.add.rectangle(320, 180, 380, 170, 0x2c1810)
+            .setStrokeStyle(2, 0xff4444)
+            .setDepth(1001);
         const title = this.add.text(320, 130, t(this, 'ui.options.resetTitle'), {
             fontSize: '20px', fill: '#ff8888', fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(1002);
         const body = this.add.text(320, 170,
             t(this, 'ui.options.resetBody'), {
             fontSize: '13px', fill: '#ffffff', fontFamily: '"HoMM Pixel", Arial, sans-serif', align: 'center'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(1002);
 
-        const cleanup = () => [dimmer, box, title, body,
-            yes.button, yes.text, no.button, no.text].forEach(o => o.destroy());
+        let closed = false;
+        const cleanup = () => {
+            if (closed) return;
+            closed = true;
+            [dimmer, box, title, body, yes.button, yes.text, no.button, no.text]
+                .forEach(o => o?.destroy());
+            this.activeModal = null;
+        };
 
         const yes = this.createButton(265, 230, 90, 30, t(this, 'ui.options.reset'), 0xff4444, () => {
             this.saveManager.clearCurrentRun();
@@ -369,40 +391,57 @@ export class MainMenuScene extends Phaser.Scene {
             this.saveManager.safeRemove('heroMemory');
             this.saveManager.safeRemove('storyProgress');
             cleanup();
-            // Rebuild main menu so Continue gets disabled, etc.
-            this.scene.restart();
+            // Restart on the next game tick so the click that confirmed the
+            // reset cannot also activate a button in the rebuilt main menu.
+            this.time.delayedCall(0, () => this.scene.restart());
         });
         const no = this.createButton(375, 230, 90, 30, t(this, 'ui.options.cancel'), 0x888888, () => cleanup());
+        [yes.button, yes.text, no.button, no.text].forEach(o => o.setDepth(1002));
+        this.activeModal = { type: 'reset', cleanup };
     }
 
     exitGame() {
-        // Show confirmation dialog
+        if (this.activeModal) return;
+
+        // Show confirmation dialog. The dimmer is interactive so only this
+        // dialog can receive input while it is open.
+        const dimmer = this.add.rectangle(320, 180, 640, 360, 0x000000, 0.6)
+            .setDepth(1000)
+            .setInteractive();
         const confirmBg = this.add.rectangle(320, 180, 300, 150, 0x000000, 0.9)
-            .setStrokeStyle(2, 0xffffff);
+            .setStrokeStyle(2, 0xffffff)
+            .setDepth(1001);
         
         const confirmText = this.add.text(320, 150, 'Are you sure you want to exit?', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel"',
             align: 'center'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(1002);
+
+        let closed = false;
+        const cleanup = () => {
+            if (closed) return;
+            closed = true;
+            [dimmer, confirmBg, confirmText, yesButton.button, yesButton.text,
+             noButton.button, noButton.text].forEach(item => item?.destroy());
+            this.activeModal = null;
+        };
         
         const yesButton = this.createButton(270, 200, 80, 30, 'Yes', 0x00ff00, () => {
-            // If in browser, show a message
-            if (window) {
-                window.close(); // This might not work in all browsers
-                // Fallback message
-                this.add.text(320, 240, 'Please close this tab to exit', {
-                    fontSize: '14px',
-                    fill: '#ffff00',
-                    fontFamily: '"HoMM Pixel"'
-                }).setOrigin(0.5);
-            }
+            cleanup();
+            // Browsers deliberately block window.close() for tabs opened by the
+            // user. Calling it can leave the game looking frozen, so give clear
+            // feedback while keeping the menu responsive.
+            const notice = this.add.text(320, 245, 'Close this browser tab to exit', {
+                fontSize: '14px', fill: '#ffff00', fontFamily: '"HoMM Pixel"'
+            }).setOrigin(0.5).setDepth(1000);
+            this.time.delayedCall(3000, () => notice?.destroy());
         });
         
-        const noButton = this.createButton(370, 200, 80, 30, 'No', 0xff0000, () => {
-            [confirmBg, confirmText, yesButton.button, yesButton.text, 
-             noButton.button, noButton.text].forEach(item => item.destroy());
-        });
+        const noButton = this.createButton(370, 200, 80, 30, 'No', 0xff0000, cleanup);
+        [yesButton.button, yesButton.text, noButton.button, noButton.text]
+            .forEach(o => o.setDepth(1002));
+        this.activeModal = { type: 'exit', cleanup };
     }
 }

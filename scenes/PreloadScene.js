@@ -19,8 +19,6 @@ export class PreloadScene extends Phaser.Scene {
         this.load.audio = (key, url, ...rest) => _origAudio(key, Array.isArray(url) ? url.map(u => u + v) : url + v, ...rest);
         this.load.bitmapFont = (key, textureURL, xmlURL, ...rest) => _origBitmap(key, textureURL + v, xmlURL + v, ...rest);
         //this.load.image('warrior', 'assets/playerAvatarWarrior.png');
-        this.load.image('axeCard', 'assets/commonAxeCard.png');
-        this.load.image('goblinCard', 'assets/goblinEnemyCard.png');
         this.load.image('stoneFloor', 'assets/dungeon.png');
         this.load.image('cardBack', 'assets/cardBack.png');
         this.load.image('panelCards', 'assets/panelCards.png');
@@ -35,10 +33,14 @@ export class PreloadScene extends Phaser.Scene {
         this.load.spritesheet('resultBanners', 'assets/bannerLostWin.png', { frameWidth: 160, frameHeight: 32 });
         this.load.image('eventPaper', 'assets/paper.png');
         this.load.image('eventPaper9Slice', 'assets/paper9Slice.png');
+        this.load.image('scrollHandle', 'assets/scroll.png');
         this.load.spritesheet('eventsShops', 'assets/eventsShops80x80.png', { frameWidth: 80, frameHeight: 80 });
         this.load.image('panelArmor', 'assets/panelArmor.png');
         this.load.bitmapFont('pixel-font', 'assets/fonts/minogram_6x10.png', 'assets/fonts/minogram_6x10.xml');
         this.load.bitmapFont('cyrillic-ui-font', 'assets/fonts/probly12NEW_crisp.png', 'assets/fonts/probly12NEW_crisp.xml');
+        // Dedicated crisp 16px title font (rasterized 1-bit from Able5.ttf) so
+        // event titles are pixel-sharp at a size the body bitmap font can't hit.
+        this.load.bitmapFont('title-font', 'assets/fonts/title16.png', 'assets/fonts/title16.xml');
         this.load.image('goblin_c', 'assets/goblin_c.png');
         this.load.image('skeletonSprite', 'assets/skeleton_c.png');
         this.load.image('angryNestmother', 'assets/bird.png');
@@ -88,7 +90,6 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('coin', 'assets/coin.png');
         this.load.image('crystalCard', 'assets/crystalCard.png');
         this.load.image('keyCard', 'assets/keyCard.png');
-        this.load.image('crystalSmall', 'assets/crystalSmall.png');
         this.load.image('trapTriggers', 'assets/trapTriggers.png');
         this.load.image('thornsCard', 'assets/thornsCard.png');
         this.load.image('thornsCard_U', 'assets/thornsCard_U.png');
@@ -119,6 +120,7 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('bread', 'assets/bread.png');
         this.load.image('egg', 'assets/egg.png');
         this.load.image('chickCompanion', 'assets/chickCompanion.png');
+        this.load.image('chickCompanionUP', 'assets/chickCompanionUP.png');
         this.load.image('skeletonCompanion', 'assets/skeletonCompanion.png');
         this.load.image('skeletonCompanionUP', 'assets/skeletonCompanionUP.png');
         // New Cards
@@ -166,6 +168,7 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('skeleton_c', 'assets/skeleton_c.png');
         this.load.image('spider_c', 'assets/spider_c.png');
         this.load.image('lostSoul', 'assets/ghostlyEnemy.png');
+        this.load.image('cerberusHead', 'assets/dogHead.png');
         this.load.image('sword_c_reworked', 'assets/sword_c_r.png');
         this.load.image('durability_dot', 'assets/durability_dot.png');
         this.load.image('ten_durability', 'assets/ten_durability.png');
@@ -209,40 +212,29 @@ export class PreloadScene extends Phaser.Scene {
         this.load.audio('weakening', 'assets/weakening.mp3');
         this.load.audio('trap_spring1', 'assets/trap_spring1.mp3');
 
-        // UI animations
-       this.load.image('crystalAnimation1', 'assets/crystalAnimation1.png');
-       this.load.image('crystalAnimation2', 'assets/crystalAnimation2.png');
-       this.load.image('crystalAnimation3', 'assets/crystalAnimation3.png');
-       this.load.image('crystalAnimation4', 'assets/crystalAnimation4.png');
-       this.load.image('crystalAnimation5', 'assets/crystalAnimation5.png');
-       this.load.image('crystalAnimation6', 'assets/crystalAnimation6.png');
-       this.load.image('coinAnimation1', 'assets/coinAnimation1.png');
-       this.load.image('coinAnimation2', 'assets/coinAnimation2.png');
-       this.load.image('coinAnimation3', 'assets/coinAnimation3.png');
-       this.load.image('coinAnimation4', 'assets/coinAnimation4.png');
-       this.load.image('coinAnimation5', 'assets/coinAnimation5.png');
-       this.load.image('coinAnimation6', 'assets/coinAnimation6.png');
+        // UI currency animations — the little coin/crystal flip shown when the
+        // value changes. Now single spritesheets (6 frames each) instead of the
+        // old crystalAnimation1-6 / coinAnimation1-6 individual PNGs.
+        this.load.spritesheet('coinAnimSheet', 'assets/coinAnimation20x24.png', { frameWidth: 20, frameHeight: 24 });
+        this.load.spritesheet('crystalAnimSheet', 'assets/crystalAnimation14x24.png', { frameWidth: 14, frameHeight: 24 });
+        // Board defeat-loot animations — a coin jump / crystal scatter played on
+        // the spot an enemy died when Prospector's Pick drops currency.
+        this.load.spritesheet('coinJumpSheet', 'assets/coinAnimationJump58x38.png', { frameWidth: 58, frameHeight: 38 });
+        this.load.spritesheet('crystalScatterSheet', 'assets/crystalAnimationSheet56x30.png', { frameWidth: 56, frameHeight: 30 });
         //Animation for Magic cards
         this.load.image('fireBall1', 'assets/fireBall1.png');
         this.load.image('fireBall2', 'assets/fireBall2.png');
         this.load.image('fireBall3', 'assets/fireBall3.png');
         this.load.image('fireBall4', 'assets/fireBall4.png');
         //treasure
-        this.load.image('chest', 'assets/treasureCHest.png');
         this.load.spritesheet('bigChestAnimation', 'assets/bigChestAnimation98x98.png', { frameWidth: 98, frameHeight: 98 });
         this.load.audio('chest_open', 'assets/wooden-trunk-latch-1-183944.mp3');
         this.load.audio('trap_trigger', 'assets/trap_spring1.mp3');
         this.load.image('mimic', 'assets/mimic.png'); 
         this.load.audio('treasure_explode', 'assets/coin-flip-37787.mp3'); 
-        //Animation for MIMIC
-        this.load.image('splash1', 'assets/splash1.png');
-        this.load.image('splash2', 'assets/splash2.png');
-        this.load.image('splash3', 'assets/splash3.png');
-        this.load.image('splash4', 'assets/splash4.png');        
-        this.load.image('splash5', 'assets/splash5.png');
-        this.load.image('splash6', 'assets/splash6.png');
-        this.load.image('splash7', 'assets/splash7.png');  
-     
+        //Animation for MIMIC — merged 7-frame splash spritesheet (was splash1-7).
+        this.load.spritesheet('splashSheet', 'assets/splashShee118x62t.png', { frameWidth: 118, frameHeight: 62 });
+
     }
 
     create() {
@@ -303,17 +295,24 @@ export class PreloadScene extends Phaser.Scene {
     
         this.anims.create({
             key: 'splash_anim',
-            frames: [
-                { key: 'splash1' },
-                { key: 'splash2' },
-                { key: 'splash3' },
-                { key: 'splash4' },
-                { key: 'splash5' },
-                { key: 'splash6' },
-                { key: 'splash7' }
-            ],
+            frames: this.anims.generateFrameNumbers('splashSheet', { start: 0, end: 6 }),
             frameRate: 12, // Adjust speed (10fps)
             repeat: 0 // Play once
+        });
+
+        // Board defeat-loot pickups (Prospector's Pick). Play on the tile where
+        // an enemy died, like the mimic's treasure scatter.
+        this.anims.create({
+            key: 'coin_jump_anim',
+            frames: this.anims.generateFrameNumbers('coinJumpSheet', { start: 0, end: 8 }),
+            frameRate: 15,
+            repeat: 0
+        });
+        this.anims.create({
+            key: 'crystal_scatter_anim',
+            frames: this.anims.generateFrameNumbers('crystalScatterSheet', { start: 0, end: 10 }),
+            frameRate: 15,
+            repeat: 0
         });
 
         this.anims.create({

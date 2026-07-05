@@ -1,5 +1,6 @@
 import { SoundHelper } from '../utils/SoundHelper.js';
 import { CardDataGenerator } from '../CardDataGenerator.js';
+import { createTitle } from '../utils/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
 
 export class TreasureScene extends StationRoomBase {
@@ -34,11 +35,10 @@ export class TreasureScene extends StationRoomBase {
     // NOTE: no full-screen background here — that would cover the GameScene
     // inventory station underneath. The dungeon backdrop shows through instead.
     const title = this.rewardMode === 'elite' ? 'ELITE CHEST' : 'TREASURE CHEST';
-    this.add.text(320, 20, title, {
-      fontSize: '24px',
-      fill: '#ffd700',
-      fontFamily: '"HoMM Pixel"'
-    }).setOrigin(0.5);
+    createTitle(this, 320, 20, title, {
+      color: '#ffd700',
+      fallbackSize: '24px'
+    });
 
     const instruction = this.requiresKey ?
       'Use a key to open safely, or click the chest to force it open.' :
@@ -49,7 +49,7 @@ export class TreasureScene extends StationRoomBase {
       fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5);
 
-    const chestTexture = this.textures.exists('bigChestAnimation') ? 'bigChestAnimation' : 'chest';
+    const chestTexture = this.textures.exists('bigChestAnimation') ? 'bigChestAnimation' : 'cardBack';
     const chest = this.add.sprite(220, 130, chestTexture, 0).setInteractive({ useHandCursor: true });
     const paddedWidth = chest.width + 20;
     const paddedHeight = chest.height + 20;

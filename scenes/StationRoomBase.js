@@ -523,7 +523,7 @@ export class StationRoomBase extends Phaser.Scene {
     // ─── Loot scatter effect (used by treasure room) ─────────────────────────
 
     playLootScatter(x, y, coins, crystals) {
-        const splash = this.add.sprite(x, y, 'splash1');
+        const splash = this.add.sprite(x, y, 'splashSheet');
         splash.setScale(1.2);
         if (this.anims.exists('splash_anim')) splash.play('splash_anim');
         splash.once('animationcomplete', () => splash.destroy());

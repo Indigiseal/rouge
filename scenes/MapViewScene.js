@@ -2,6 +2,7 @@
 // Phaser is provided as a UMD global (see index.html) — no import needed.
 import { MapGenerator } from '../utils/MapGenerator.js';
 import { t } from '../utils/i18n.js';
+import { createTitle } from '../utils/titleText.js';
 
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
@@ -96,9 +97,9 @@ export class MapViewScene extends Phaser.Scene {
     // Background & title
     this.add.rectangle(320, 180, 640, 360, 0x8b7355);
     this.add.rectangle(320, 30, 640, 60, 0x6b5d4f);
-    this.add.text(320, 30, t(this, 'ui.map.title', { act: this.currentAct, floor: this.gameState.currentFloor || 1 }), {
-      fontSize: '20px', fill: '#f2d3aa', fontFamily: '"HoMM Pixel", Arial, sans-serif'
-    }).setOrigin(0.5);
+    createTitle(this, 320, 30, t(this, 'ui.map.title', { act: this.currentAct, floor: this.gameState.currentFloor || 1 }), {
+      color: '#f2d3aa', fallbackSize: '20px'
+    });
 
     // Drag area sits BEHIND nodes so it won't eat clicks
     this.dragArea = this.add.rectangle(320, 200, 600, 280, 0xffffff, 0)

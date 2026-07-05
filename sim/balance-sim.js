@@ -366,6 +366,12 @@ function runCombat(mock, gs, inv, floor) {
   mock.enemiesCleared = false;
   mock.dead = false;
   mock.cardSystem.spawnFloorCards();
+  // The real rollEvade() bails on a scene-less sprite (a destroyed-sprite guard).
+  // Mock board sprites have scene=null, so give any evade-carrying card (Lost
+  // Soul, dodging Soul Eater) a scene ref so its dodge is actually simulated.
+  for (const c of mock.cardSystem.boardCards) {
+    if (c?.sprite && c.data?.abilities?.some((a) => a.type === 'evade')) c.sprite.scene = mock;
+  }
   regear(mock.cardSystem.cardDataGenerator, gs, inv);
 
   let guard = 0;
@@ -475,23 +481,127 @@ function runCombat(mock, gs, inv, floor) {
     break;
   }
 
-  // Floor-clear reward (mirrors GameScene.floorCleared base payout, cut hard).
-  if (gs.playerHealth > 0) gs.coins += 1 + Math.floor(floor / 3);
+  // Floor-clear reward (mirrors GameScene.onEnemiesCleared): coins are paid once
+  // per non-boss floor on clear, NOT per enemy kill (that faucet was removed).
+  // Boss floors pay nothing here — they have their own reward room (see
+  // runBossReward). Formula flattened from 20+floor*3 (act 1 was coin-starved
+  // while acts 2-3 hoarded 500-750 unspent) — keep in sync with GameScene.
+  // The real game also pays a token 1+floor/3 on the Next Floor click.
+  const isBossFloor = floor === 15 || floor === 30 || floor === 45;
+  if (gs.playerHealth > 0 && !isBossFloor) {
+    gs.coins += mock.amuletManager.modifyGoldFound(Math.floor(24 + floor * 1.2));
+    gs.coins += mock.amuletManager.modifyGoldFound(1 + Math.floor(floor / 3));
+  }
+}
+
+// Mirrors GameScene.setupBossRewardRoom (previously unmodeled, which made the
+// sim pessimistic right after each act boss): full HP/AP restore, a scaling
+// currency payout, and three reward cards — an amulet, a boss-quality
+// weapon/armor (rarity capped per act), and a socket gem.
+function runBossReward(mock, gs, inv, floor) {
+  const gen = mock.cardSystem.cardDataGenerator;
+  gs.playerHealth = gs.maxHealth;
+  gs.actionsLeft = gs.maxActions;
+  gs.coins += 25 + floor;
+  gs.crystals += 4 + Math.floor(floor / 6);
+
+  const amulet = mock.cardSystem.createCardData('amulet', floor, false, gs);
+  if (amulet && amulet.id && amulet.rarity !== 'cursed' && !amulet.cursed) {
+    mock.amuletManager.addAmulet(amulet.id);
+  }
+  const rawQuality = floor >= 31 ? 'legendary' : floor >= 16 ? 'epic' : 'rare';
+  const quality = gen.capRewardRarity ? gen.capRewardRarity(rawQuality, floor) : rawQuality;
+  const item = mock.cardSystem.createCardData(Math.random() < 0.5 ? 'weapon' : 'armor', floor, false, null, quality);
+  if (item) inv.push(item);
+  // (Not counted in _gemsSeen — that metric tracks floor drops only.)
+  const gem = mock.cardSystem.createCardData('gem', floor);
+  if (gem) inv.push(gem);
+  regear(gen, gs, inv);
 }
 
 // ── Station rooms (approximate economy) ───────────────────────────────────
 function runRest(gs) {
-  gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + Math.floor(gs.maxHealth * 0.3));
+  // Mirrors RestScene exactly: flat +20 HP (NOT a % of max — the sim used to
+  // heal ~30% of maxHP here, which overstated rests by ~50%) + full AP refill.
+  gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 20);
   gs.actionsLeft = gs.maxActions;
 }
 
-// Story events are modeled as a small breather/reward. They do not hand out
-// socket gems by default, matching the current Caravan/Hermit and Bard webs.
+// Calibrated against the REAL EventScene story webs (audited choice-by-choice):
+// a run's event visits walk the early story chain first (music box -> bird nest
+// -> goblin engineer, ~4 visits of small coins/heal/one slot), then draw from a
+// pool of ONE-TIME bonus rooms (the
+// amulet rooms, book worm, briar enhancement, the well, the mirror), and once
+// those are exhausted every further visit is the quiet_crossroads fallback
+// (+10 coins OR +5 HP). Events do NOT grant floor-scaled gear, and amulets
+// only come from the finite bonus rooms — the old model's perpetual 45%
+// amulet / 25% epic-gear rolls badly overstated event power.
 function runEvent(mock, gs, inv, floor) {
-  gs.coins += 8 + Math.floor(floor / 6);
-  if (Math.random() < 0.4) gs.crystals += 1;
-  if (gs.playerHealth < gs.maxHealth) {
+  const cs = mock.cardSystem;
+  const st = mock._eventState || (mock._eventState = { story: 0, bonus: [] });
+
+  // 1) Early story chain (music box → bird nest → goblin engineer).
+  if (st.story === 0) { st.story++; gs.coins += 18; gs.crystals += 1; return; }
+  if (st.story === 1) {
+    st.story++;
+    gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 8);
+    return;
+  }
+  if (st.story === 2) {
+    st.story++;
+    gs.coins += 12;
+    gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 6);
+    return;
+  }
+  if (st.story === 3) {
+    st.story++;
+    // Goblin engineer: 50% music-box repair → +1 inventory slot, else consolation.
+    if (Math.random() < 0.5) gs.bonusInventorySlots = (gs.bonusInventorySlots || 0) + 1;
+    else { gs.coins += 12; gs.crystals += 1; }
+    return;
+  }
+
+  // 2) One-time bonus rooms, drawn in random order until the pool is dry.
+  const POOL = ['fairy_room', 'slimy_prison', 'book_worm', 'briar_room', 'well', 'mirror'];
+  const remaining = POOL.filter((id) => !st.bonus.includes(id));
+  if (remaining.length) {
+    const id = remaining[Math.floor(Math.random() * remaining.length)];
+    st.bonus.push(id);
+    const gainAmulet = () => {
+      const amulet = cs.createCardData('amulet', floor, false, gs);
+      if (amulet && amulet.id && amulet.rarity !== 'cursed' && !amulet.cursed) {
+        mock.amuletManager.addAmulet(amulet.id);
+      }
+    };
+    switch (id) {
+      case 'fairy_room': // too_nice_room: confront the fairy → random amulet
+        gainAmulet();
+        break;
+      case 'slimy_prison': // grab the floating amulet: -8 HP for it
+        gs.takeDamage(8, -1, 'event');
+        if (gs.playerHealth > 0) gainAmulet();
+        break;
+      case 'book_worm': // free (specific) amulet
+        gainAmulet();
+        break;
+      case 'briar_room': // enhance a carried weapon: +1 damage
+        if (gs.equippedWeapon) gs.equippedWeapon.damage += 1;
+        break;
+      case 'well': // drop a crystal in → net +3 crystals
+        gs.crystals += 3;
+        break;
+      case 'mirror': // copy one card — merge fodder for the equipped weapon
+        if (gs.equippedWeapon) inv.push({ ...gs.equippedWeapon });
+        break;
+    }
+    return;
+  }
+
+  // 3) quiet_crossroads fallback, repeatable: +10 coins, or +5 HP when hurting.
+  if (gs.playerHealth < gs.maxHealth * 0.6) {
     gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 5);
+  } else {
+    gs.coins += 10;
   }
 }
 
@@ -502,6 +612,56 @@ function shopPrice(item, floor) {
   if (item.type === 'weapon') p += item.damage || 0;
   else if (item.type === 'armor') p += (item.protection || 0) * 2;
   return Math.floor(p);
+}
+
+// Exact mirror of ShopScene.calculateItemPrice — used ONLY for the
+// affordability probe below (real regular-shop item pricing), not the bot's
+// simplified shopPrice() above (kept as-is to avoid disturbing gear metrics).
+function realRegularShopPrice(item) {
+  const floor = item._priceFloor;
+  let p = (5 + floor * 2) * ({ common: 1, uncommon: 1.5, rare: 2, epic: 2.5, legendary: 3 }[item.rarity] || 1);
+  if (item.type === 'weapon') p += item.damage || 0;
+  else if (item.type === 'armor') p += (item.protection || 0) * 2;
+  else if (item.type === 'thorns') p += (item.thornDamage || 0) * 3;
+  else if (item.type === 'magic') p *= 1.2;
+  return Math.floor(p);
+}
+
+// Exact mirror of RareShopScene's fixed per-slot price formulas.
+function realRareShopPrices(floor) {
+  return [20 + floor * 5, 25 + floor * 5, 15 + floor * 4, 18 + floor * 4];
+}
+
+// Probe: "if the player walked into this shop RIGHT NOW with their current
+// coins, how many of the coin-priced items could they afford?" (cheapest-first,
+// i.e. best case). Uses REAL pricing formulas, independent of the bot's own
+// buying heuristics in runShop, so it measures the economy, not the bot's taste.
+function probeShopAffordability(mock, gs, floor, roomType, metrics) {
+  const cs = mock.cardSystem;
+  let prices;
+  if (roomType === 'RARE_SHOP') {
+    prices = realRareShopPrices(floor);
+  } else {
+    const offers = [
+      cs.createCardData('potion', floor),
+      cs.createCardData('weapon', floor),
+      cs.createCardData('armor', floor),
+      cs.createCardData('thorns', floor),
+      cs.createCardData('magic', floor),
+      cs.createCardData(['weapon', 'weapon', 'weapon', 'magic', 'potion', 'thorns', 'armor', 'food'][Math.floor(Math.random() * 8)], floor),
+    ].filter(Boolean);
+    prices = offers.map((item) => { item._priceFloor = floor; return realRegularShopPrice(item); });
+  }
+  prices.sort((a, b) => a - b);
+  let affordable = 0, spend = gs.coins;
+  for (const p of prices) { if (spend >= p) { affordable++; spend -= p; } }
+  const act = floor <= 15 ? 1 : floor <= 30 ? 2 : 3;
+  const bucket = roomType === 'RARE_SHOP' ? metrics.rareShopAfford : metrics.shopAfford;
+  bucket.count++;
+  bucket.affordable += affordable;
+  bucket.total += prices.length;
+  bucket.byAct[act].count++;
+  bucket.byAct[act].affordable += affordable;
 }
 
 function runShop(mock, gs, inv, floor) {
@@ -543,7 +703,10 @@ function runShop(mock, gs, inv, floor) {
   // (they're unbalanced; the bot avoids buying/equipping them).
   const amulet = cs.createCardData('amulet', floor, false, gs);
   if (amulet && amulet.id && amulet.rarity !== 'cursed' && !amulet.cursed) {
-    const price = Math.max(1, { common: 2, uncommon: 3, rare: 4, epic: 5, legendary: 6 }[amulet.rarity] || 2);
+    // Mirrors ShopScene.calculateAmuletCrystalPrice, including the stacking
+    // surcharge: +1 crystal per 3 amulets already worn.
+    const price = Math.max(1, ({ common: 2, uncommon: 3, rare: 4, epic: 5, legendary: 6 }[amulet.rarity] || 2)
+      + Math.floor((gs.activeAmulets?.length || 0) / 3));
     if (gs.crystals >= price && mock.amuletManager.addAmulet(amulet.id)) gs.crystals -= price;
   }
 
@@ -564,12 +727,20 @@ function runTreasure(mock, gs, inv, floor, good) {
 // for a coin cost (the bot prioritizes its gear). This is the durability
 // recovery the bot was previously missing.
 function runAnvil(gs, inv) {
+  // Mirrors AnvilScene.calculateRepairCost: weapons pay per durability point
+  // (axes 4/pt, everything else ~2/pt), armor pays 2 coins per 5 points.
+  const perPip = (item) => {
+    if (item.type === 'armor') return 2 / 5;
+    if (item.type === 'weapon' && item.weaponType === 'axe') return 4;
+    return 2;
+  };
   const repair = (item) => {
     if (!item || !item.maxDurability || item.durability >= item.maxDurability) return;
     const missing = item.maxDurability - item.durability;
-    const cost = missing * 2;
+    const rate = perPip(item);
+    const cost = Math.ceil(missing * rate);
     if (gs.coins >= cost) { gs.coins -= cost; item.durability = item.maxDurability; }
-    else if (gs.coins > 0) { const got = Math.floor(gs.coins / 2); gs.coins -= got * 2; item.durability = Math.min(item.maxDurability, item.durability + got); }
+    else if (gs.coins > 0) { const got = Math.floor(gs.coins / rate); gs.coins -= Math.ceil(got * rate); item.durability = Math.min(item.maxDurability, item.durability + got); }
   };
   // Repair the strongest weapons (your protected favorites), equipped armor,
   // and the carried thorns — restoring pips so the good weapon never dies.
@@ -638,6 +809,12 @@ function runGame(metrics, config = {}) {
     meta.unlockedRelics = config.relics.slice();
     meta.applyRelicEffects(gs, true);
   }
+  // Veteran bonus: permanent starting max HP earned from relic-less deaths
+  // (career mode threads it through; mirrors MetaProgressionManager.veteranHp).
+  if (config.veteranHp) {
+    gs.maxHealth += config.veteranHp;
+    gs.playerHealth += config.veteranHp;
+  }
   // Equip the requested amulet loadout via the REAL AmuletManager so all
   // passive modifiers (damage, dodge, durability, gold, free-action, max HP/AP,
   // regen, sunstone, lethal-prevention, ...) apply exactly as in-game.
@@ -679,10 +856,19 @@ function runGame(metrics, config = {}) {
 
       if (COMBAT_ROOMS.has(roomType)) {
         runCombat(mock, gs, inv, floor);
-        if (gs.playerHealth > 0) mock.amuletManager.processFloorEnd();
+        if (gs.playerHealth > 0) {
+          mock.amuletManager.processFloorEnd();
+          // Act-boss victory → the reward room (floor 45 is the win, no room).
+          if ((floor === 15 || floor === 30) && BOSS_FLOORS.has(floor)) {
+            runBossReward(mock, gs, inv, floor);
+          }
+        }
       }
       else if (roomType === 'REST') runRest(gs);
-      else if (roomType === 'SHOP' || roomType === 'RARE_SHOP') runShop(mock, gs, inv, floor);
+      else if (roomType === 'SHOP' || roomType === 'RARE_SHOP') {
+        probeShopAffordability(mock, gs, floor, roomType, metrics); // BEFORE any spend this visit
+        runShop(mock, gs, inv, floor);
+      }
       else if (roomType === 'TREASURE') runTreasure(mock, gs, inv, floor, false);
       else if (roomType === 'TREASURE_GOOD') runTreasure(mock, gs, inv, floor, true);
       else if (roomType === 'ANVIL') runAnvil(gs, inv);
@@ -739,6 +925,12 @@ function runGame(metrics, config = {}) {
 
 // ── Monte Carlo ───────────────────────────────────────────────────────────
 function blankFloor() { return { reached: 0, hpStart: 0, hpEnd: 0, hpLost: 0, coins: 0, crystals: 0, weaponDmg: 0, armor: 0, maxHp: 0, combats: 0 }; }
+function blankShopAfford() {
+  return {
+    count: 0, affordable: 0, total: 0,
+    byAct: { 1: { count: 0, affordable: 0 }, 2: { count: 0, affordable: 0 }, 3: { count: 0, affordable: 0 } },
+  };
+}
 function newMetrics() {
   const floors = {}; for (let f = 1; f <= MAX_FLOOR; f++) floors[f] = blankFloor();
   return {
@@ -746,6 +938,9 @@ function newMetrics() {
     totalActions: 0, hungryActions: 0, restorationUses: 0, gemsSeen: [], gemsByFloor: {}, floors,
     // mergeFirstFloor[kind][rarity] = [floor, floor, ...] — one entry per run that reached that tier.
     mergeFirstFloor: { weapon: {}, armor: {} },
+    // Shop affordability probe: "how many coin-priced items could you afford
+    // walking in with your current coins?" using REAL shop pricing formulas.
+    shopAfford: blankShopAfford(), rareShopAfford: blankShopAfford(),
   };
 }
 
@@ -772,6 +967,21 @@ function report(metrics) {
     console.log(`AP starvation: ${pct(metrics.hungryActions, metrics.totalActions)}% of all actions taken while out of AP (weakened)`);
     console.log(`Restoration cards used: ${(metrics.restorationUses / N).toFixed(2)} per run`);
   }
+
+  // Shop affordability: "walking in with your current coins, how many of the
+  // coin-priced items could you afford?" (real pricing formulas, cheapest-first).
+  const reportShopAfford = (label, bucket, outOf) => {
+    if (!bucket.count) return;
+    const avg = bucket.affordable / bucket.count;
+    const byAct = [1, 2, 3].map((a) => {
+      const b = bucket.byAct[a];
+      return b.count ? (b.affordable / b.count).toFixed(1) : '-';
+    });
+    console.log(`${label}: avg ${avg.toFixed(1)}/${outOf} affordable per visit  (Act1=${byAct[0]} Act2=${byAct[1]} Act3=${byAct[2]}, visits=${bucket.count})`);
+  };
+  console.log(`\nShop affordability (real pricing, cheapest-first, per visit):`);
+  reportShopAfford('  Regular shop', metrics.shopAfford, 6);
+  reportShopAfford('  Rare shop   ', metrics.rareShopAfford, 4);
 
   // Gem economy: how many socket gems the player encounters across a run.
   if (metrics.gemsSeen && metrics.gemsSeen.length) {
@@ -945,10 +1155,11 @@ function runCareer() {
   for (let c = 0; c < careers; c++) {
     const meta = new MetaProgressionManager({}); // persistent across this career
     meta.unlockedRelics = []; meta.totalDeaths = 0; meta.bestFloor = 1; meta.enemyKillStats = {};
+    meta.veteranHp = 0;
     let deaths = 0, won = false;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       // Fresh-account run: only the relics earned so far, no starting bag.
-      const r = runGame(throwaway, { relics: [...meta.unlockedRelics], noBag: true });
+      const r = runGame(throwaway, { relics: [...meta.unlockedRelics], noBag: true, veteranHp: meta.veteranHp });
       if (r.won) { won = true; break; }
       deaths++;
       meta.handlePlayerDeath(r.killer, r.reached); // may grant a relic

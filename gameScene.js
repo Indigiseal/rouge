@@ -151,6 +151,8 @@ export class GameScene extends Phaser.Scene {
         // the currency twice, so restore only the still-unclaimed saved cards.
         if (this.shouldLoadSave && this.gameState.roomType === 'BOSS_REWARD') {
             this.restoreSavedBossRewardRoom();
+        } else if (this.shouldLoadSave && this._loadedBoardAvailable) {
+            this.restoreSavedCombatRoom();
         } else {
             this.startNewFloor();
         }
@@ -167,7 +169,7 @@ export class GameScene extends Phaser.Scene {
 
     createAnimations() {
         // Create hover card animation
-        this.anims.create({
+        if (!this.anims.exists('hover_cards_anim')) this.anims.create({
             key: 'hover_cards_anim',
             frames: [
                 { key: 'hoverCardsUp1' },
@@ -180,29 +182,27 @@ export class GameScene extends Phaser.Scene {
             repeat: 0
         });
         
-        // Create coin animation
-        this.anims.create({
+        // Create coin animation. Now sourced from the coinAnimSheet spritesheet
+        // (frame 0 = old coinAnimation1 ... frame 5 = coinAnimation6). Sequence
+        // preserved: the old anim used coinAnimation2-6 = sheet frames 1-5.
+        if (!this.anims.exists('coin_spin_anim')) this.anims.create({
             key: 'coin_spin_anim',
-            frames: [
-                { key: 'coinAnimation2' },
-                { key: 'coinAnimation3' },
-                { key: 'coinAnimation4' },
-                { key: 'coinAnimation5' },
-                { key: 'coinAnimation6' }
-            ],
+            frames: this.anims.generateFrameNumbers('coinAnimSheet', { start: 1, end: 5 }),
             frameRate: 10,
             repeat: 0
         });
-        
-        // Create crystal animation
-        this.anims.create({
+
+        // Create crystal animation. From crystalAnimSheet (frame 0 = old
+        // crystalAnimation1). Old sequence was crystalAnimation2,3,4,5,1 —
+        // i.e. sheet frames 1,2,3,4,0 (loops back to the rest frame) — preserved.
+        if (!this.anims.exists('crystal_glow_anim')) this.anims.create({
             key: 'crystal_glow_anim',
-            frames: [                
-                { key: 'crystalAnimation2' },
-                { key: 'crystalAnimation3' },
-                { key: 'crystalAnimation4' },
-                { key: 'crystalAnimation5' },
-                { key: 'crystalAnimation1' }
+            frames: [
+                { key: 'crystalAnimSheet', frame: 1 },
+                { key: 'crystalAnimSheet', frame: 2 },
+                { key: 'crystalAnimSheet', frame: 3 },
+                { key: 'crystalAnimSheet', frame: 4 },
+                { key: 'crystalAnimSheet', frame: 0 }
             ],
             frameRate: 8,
             repeat: 0
@@ -800,7 +800,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     isEnemyCard(card) {
-        return card?.data?.type === 'enemy' || card?.data?.type === 'eliteEnemy' || card?.data?.type === 'boss';
+        return !!this.cardSystem?.isEnemyType(card?.data?.type);
     }
 
     processEnemyAttack(card, index) {
@@ -855,8 +855,7 @@ export class GameScene extends Phaser.Scene {
             const others = this.cardSystem.boardCards
                 .map((c, i) => ({ card: c, index: i }))
                 .filter(({ card: c, index: i }) =>
-                    c && c.revealed && i !== index &&
-                    (c.data?.type === 'enemy' || c.data?.type === 'boss')
+                    c && c.revealed && i !== index && this.isEnemyCard(c)
                 );
             if (others.length > 0) {
                 const target = others[Math.floor(Math.random() * others.length)];
@@ -1040,10 +1039,11 @@ export class GameScene extends Phaser.Scene {
                 this.killedBy = 'Poison';
             }
             
-            // Check for game over after poison damage
+            // Lethal poison: gameState.takeDamage() already scheduled
+            // gameOver(). Just halt the turn so companion/end-of-turn
+            // effects don't run on a dead player.
             if (this.gameState.playerHealth <= 0) {
                 this.isEnemyTurn = false;
-                this.time.delayedCall(100, () => this.gameOver());
                 return;
             }
         }
@@ -1051,7 +1051,6 @@ export class GameScene extends Phaser.Scene {
         this.updateUI();
         if (this.gameState.playerHealth <= 0) {
             this.isEnemyTurn = false;
-            this.time.delayedCall(500, () => this.gameOver());
             return;
         }
         this.finishEnemyTurnWithCompanion();
@@ -1285,10 +1284,6 @@ export class GameScene extends Phaser.Scene {
         if (tookDamage) {
             SoundHelper.playSound(this, 'player_hurt', 0.5);
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
-        }
-        // IMPORTANT: Check for game over immediately after taking damage
-        if (this.gameState.playerHealth <= 0) {
-            this.time.delayedCall(500, () => this.gameOver());
         }
     }
     createFloatingText(x, y, text, color) {
@@ -1786,6 +1781,36 @@ export class GameScene extends Phaser.Scene {
         this.updateUI();
     }
 
+    restoreSavedCombatRoom() {
+        this.clearEnemyTurnTimers();
+        this._transitioning = false;
+        this.roomType = this.gameState.roomType || 'COMBAT';
+        this.updateRoomTitle();
+
+        const cards = this._loadedBoardCards || [];
+        const restored = this.cardSystem.restoreSavedBoard(cards, this._loadedBoardLayout);
+        this._loadedBoardCards = null;
+        this._loadedBoardLayout = null;
+        this._loadedBoardAvailable = false;
+        this.enemiesCleared = !!this._loadedEnemiesCleared;
+        this._loadedEnemiesCleared = false;
+
+        if (!restored) {
+            this.startNewFloor();
+            return;
+        }
+
+        // The inventory came from the same save; the starting-card guard keeps
+        // this idempotent while preserving the normal new-run initialization.
+        this.inventorySystem.addStartingCards();
+        this.updateUI();
+        if (this.enemiesCleared) {
+            this.showNextFloorButton();
+        } else {
+            this.cardSystem.checkFloorClear();
+        }
+    }
+
     makeBossRewardGem() {
         const gems = [
             { effect: 'fire',      name: 'Fire Gem',      frame: 0,  color: 0xff7040 },
@@ -1869,6 +1894,25 @@ export class GameScene extends Phaser.Scene {
         this.clearEnemyTurnTimers();
         this.finalizeCompanionCombatHistory();
         this.enemiesCleared = true;
+
+        // Floor-clear coin reward. Coins are no longer paid per enemy kill (that
+        // faucet was flooding the economy); instead you're paid once for clearing
+        // a battle floor. Boss floors are skipped here — they hand out their own
+        // reward room. Honors the amulet gold modifier like the old kill payout.
+        // Formula tuned via sim/balance-sim.js's shop-affordability probe to hit
+        // "3-4 items affordable per regular shop visit, 2-3 per rare shop visit,
+        // no act-3 coin hoarding" — see its "Shop affordability" report section.
+        // Flattened from 20+floor*3: act 1 was coin-starved (2.7/6 affordable)
+        // while acts 2-3 hoarded 500-750 unspent coins (4.5/6 affordable).
+        const floor = this.gameState.currentFloor;
+        const isBossFloor = [15, 30, 45].includes(floor);
+        if (!isBossFloor) {
+            const base = Math.floor(24 + floor * 1.2);
+            const reward = this.amuletManager ? this.amuletManager.modifyGoldFound(base) : base;
+            this.gameState.coins += reward;
+            this.createFloatingText(320, 140, `+${reward} coins`, 0xffd700);
+            this.updateUI?.();
+        }
         // Null-guard: if the button hasn't been (re)created yet, do NOT throw
         // — that would leave enemiesCleared=true with a still-hidden button,
         // and the next checkFloorClear would short-circuit on !enemiesCleared.
@@ -1880,20 +1924,6 @@ export class GameScene extends Phaser.Scene {
     getVictoryStorySummary() {
         const story = this.gameState?.storyRun || {};
         const lines = [];
-
-        if (story.caravanResolved) {
-            if (story.donkeySaved && story.banditsStopped) {
-                lines.push('The cinnamon road is safe, and a proud little donkey remembers you.');
-            } else if (story.banditTrailFound) {
-                lines.push("The hermit's medicine returned, and the cinnamon road began again.");
-            } else if (story.banditsStopped) {
-                lines.push('The bandits are gone; merchant and hermit keep the road alive.');
-            } else {
-                lines.push('The battered caravan endured, carrying your choices down the road.');
-            }
-        } else if (story.caravanSeen) {
-            lines.push("The caravan's unfinished tale remains somewhere behind you.");
-        }
 
         if (story.latchboxRewardClaimed) {
             if (story.boxState === 'repaired') {
@@ -1912,7 +1942,7 @@ export class GameScene extends Phaser.Scene {
 
     getResolvedStoryCount() {
         const story = this.gameState?.storyRun || {};
-        return Number(Boolean(story.caravanResolved)) + Number(Boolean(story.latchboxRewardClaimed));
+        return Number(Boolean(story.latchboxRewardClaimed));
     }
     
     gameWon() {
@@ -1942,7 +1972,7 @@ export class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(resultDepth + 2);
 
         this.addResultPanel(320, 262, 304, 78, 3, resultDepth + 1);
-        this.add.text(320, 253, `Stories resolved: ${this.getResolvedStoryCount()}/2`, {
+        this.add.text(320, 253, `Stories resolved: ${this.getResolvedStoryCount()}/1`, {
             fontSize: '15px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
@@ -1972,9 +2002,11 @@ export class GameScene extends Phaser.Scene {
 
         const amulets = this.gameState.activeAmulets;
         const MAX_VISIBLE = 10;
-        const SPACING = 35;
+        // Atlas icons are 32px frames with transparent padding around the art.
+        // A 29px step overlaps frames by 3px without crowding the visible item.
+        const SPACING = 29;
         const ROW_X = 125;
-        const ROW_Y = 48;
+        const ROW_Y = 42;
 
         // Keep the offset in bounds (e.g. if amulets were removed since last scroll)
         const maxOffset = Math.max(0, amulets.length - MAX_VISIBLE);
@@ -2070,9 +2102,13 @@ export class GameScene extends Phaser.Scene {
         }
 
         const relics = this.metaManager?.getUnlockedRelics?.() || [];
+        // Relic silhouettes are a little narrower inside the same atlas frame,
+        // so use a 5px overlap to make their visible spacing match the amulets.
+        const RELIC_SPACING = 27;
+        const RELIC_Y = 13;       // transparent frame edge may safely sit above y=0
         relics.forEach((relic, i) => {
-            const x = 125 + i * 28;
-            const y = 16;
+            const x = 125 + i * RELIC_SPACING;
+            const y = RELIC_Y;
             const usesSheet = relic.iconSheet && this.textures.exists(relic.iconSheet);
             const iconKey = usesSheet ? relic.iconSheet : this.textures.exists(relic.icon) ? relic.icon : 'amulet';
             const iconFrame = usesSheet ? relic.iconFrame : undefined;
@@ -2197,6 +2233,14 @@ export class GameScene extends Phaser.Scene {
             this.gameState.coins = (this.gameState.coins || 0) + coinBonus;
             this.createFloatingText(x, y - 18, `+${coinBonus} Coin (Ink Pen)`, 0xffd700);
             this.playCoinAnimation?.();
+            this.updateUI();
+        }
+
+        const maxHpBonus = this.amuletManager?.getDiscardMaxHpBonus?.() || 0;
+        if (maxHpBonus > 0) {
+            this.gameState.maxHealth += maxHpBonus;
+            this.gameState.playerHealth += maxHpBonus;
+            this.createFloatingText(x, y - 32, `+${maxHpBonus} Max HP (Seed)`, 0x9dff7a);
             this.updateUI();
         }
 
@@ -2473,6 +2517,10 @@ export class GameScene extends Phaser.Scene {
         this._loadedBoardCards = Array.isArray(runData.board?.cards)
             ? runData.board.cards
             : [];
+        this._loadedBoardLayout = runData.board?.layout || null;
+        this._loadedEnemiesCleared = !!runData.board?.enemiesCleared;
+        this._loadedBoardAvailable = this._loadedBoardCards.some(Boolean)
+            || this._loadedEnemiesCleared;
         // Inventory
         if (this.inventorySystem && runData.equipment.inventory) {
             this.inventorySystem.slots = runData.equipment.inventory;
@@ -2507,6 +2555,12 @@ export class GameScene extends Phaser.Scene {
         this._turnHandlersBound = false;
     }
     wake(sys, data) {
+        // A lethal hit schedules gameOver() via delayedCall (gameState.takeDamage);
+        // that timer pauses while the scene sleeps and fires right after wake.
+        // Don't rebuild combat state underneath the pending death screen —
+        // EventScene deaths also wake us first and then call gameOver() directly.
+        if (this.gameState?.playerHealth <= 0) return;
+
         // Always sync inventory on wake
         if (this.inventorySystem) {
             this.inventorySystem.slots = this.gameState.inventory || this.inventorySystem.slots;
@@ -2523,6 +2577,16 @@ export class GameScene extends Phaser.Scene {
             this.updateUI();
             return;
         }
+
+        // A sleeping scene can strand station/turn state when an event, shop,
+        // map transition, or companion timer stops before its cleanup callback.
+        // Normal gameplay wake-ups must always start from an interactive combat
+        // state or every weapon/spell drop silently bounces out of useAction().
+        this.clearEnemyTurnTimers();
+        this.inventorySystem?.setDragOverlayScene?.(null);
+        this.inventorySystem?.clearDropZones?.();
+        this.inventorySystem?.setStationMode(false);
+
         // Restore current room type from gameState
         this.roomType = this.gameState.roomType || 'COMBAT';
         this.updateRoomTitle();
@@ -2531,13 +2595,9 @@ export class GameScene extends Phaser.Scene {
         const isNewRoom = data?.isNewRoom || false;
         
         if (['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType)) {
-            // Check if we need to spawn new enemies. Include 'eliteEnemy'
-            // — it's a third enemy type used throughout cardSystem; missing
-            // it here would cause an unresolved-enemy room to look empty
-            // and skip the respawn.
-            const isEnemyType = (t) => t === 'enemy' || t === 'boss' || t === 'eliteEnemy';
+            // Check if we need to spawn new enemies.
             const hasEnemies = this.cardSystem.boardCards &&
-                this.cardSystem.boardCards.some(c => c && isEnemyType(c.data?.type));
+                this.cardSystem.boardCards.some(c => this.isEnemyCard(c));
 
             if (!hasEnemies || isNewRoom) {
                 this.startNewFloor();

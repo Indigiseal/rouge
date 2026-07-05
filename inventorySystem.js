@@ -294,7 +294,7 @@ export class InventorySystem {
         // whenever a board card's blend-mode hover sprite forces a render-batch flush.
         const startX = Math.round(inventoryCenterX - (totalWidth / 2) + (slotWidth / 2));
         const y = 309;
-        this.createInventoryPanel(inventoryCenterX, y, Math.max(368, totalWidth + 90), 112);
+        this.createInventoryPanel(inventoryCenterX, y, Math.max(368, totalWidth + 90));
         
         for (let i = 0; i < slotCount; i++) {
             const x = startX + i * (slotWidth + spacing);
@@ -327,35 +327,43 @@ export class InventorySystem {
         }
     }
 
-    createInventoryPanel(centerX, centerY, width, height) {
+    createInventoryPanel(centerX, centerY, width) {
         if (!this.scene.textures.exists('panelCards')) return;
 
         const texture = this.scene.textures.get('panelCards');
         const source = texture.getSourceImage();
-        const sourceWidth = source.width || 368;
-        const sourceHeight = source.height || 112;
-        const capWidth = 56;
-        const middleWidth = Math.max(1, sourceWidth - capWidth * 2);
+        const sourceWidth = source.width || 362;
+        const sourceHeight = source.height || 102;
+        const leftWidth = Math.floor(sourceWidth / 2);
+        const rightStart = leftWidth;
+        const rightWidth = sourceWidth - rightStart;
+        const tileX = Math.max(0, leftWidth - 1);
 
-        if (!texture.has('leftCap')) {
-            texture.add('leftCap', 0, 0, 0, capWidth, sourceHeight);
-            texture.add('middleStretch', 0, capWidth, 0, middleWidth, sourceHeight);
-            texture.add('rightCap', 0, sourceWidth - capWidth, 0, capWidth, sourceHeight);
+        // Keep the complete artwork at native 1:1 scale. Only a plain 1px
+        // center column repeats when extra horizontal room is needed.
+        if (!texture.has('panelLeftHalf')) {
+            texture.add('panelLeftHalf', 0, 0, 0, leftWidth, sourceHeight);
+            texture.add('panelMiddleTile', 0, tileX, 0, 1, sourceHeight);
+            texture.add('panelRightHalf', 0, rightStart, 0, rightWidth, sourceHeight);
         }
 
-        const panelWidth = Math.max(capWidth * 2 + 1, width);
-        const stretchWidth = panelWidth - capWidth * 2;
-        const scaleY = height / sourceHeight;
-        const scaledCapWidth = capWidth * scaleY;
-        // Round cap positions to whole pixels — fractional positions re-round and
-        // shift the panel 1px when a render-batch flush happens (e.g. a board card's
-        // blend-mode hover shine).
-        const leftX = Math.round(centerX - panelWidth / 2 + scaledCapWidth / 2);
-        const rightX = Math.round(centerX + panelWidth / 2 - scaledCapWidth / 2);
+        const panelWidth = Math.max(sourceWidth, Math.ceil(width));
+        const extraWidth = panelWidth - sourceWidth;
+        // Keep the outside edge on a whole pixel even when bonus-slot widths are odd.
+        const leftX = Math.round(centerX - panelWidth / 2);
+        const rightX = leftX + leftWidth + extraWidth;
 
-        const left = this.scene.add.image(leftX, centerY, 'panelCards', 'leftCap').setScale(scaleY);
-        const middle = this.scene.add.image(centerX, centerY, 'panelCards', 'middleStretch').setDisplaySize(stretchWidth, height);
-        const right = this.scene.add.image(rightX, centerY, 'panelCards', 'rightCap').setScale(scaleY);
+        // Whole-pixel edges and native-size pieces keep the pixel art crisp.
+        const left = this.scene.add.image(leftX, centerY, 'panelCards', 'panelLeftHalf').setOrigin(0, 0.5);
+        const middle = this.scene.add.tileSprite(
+            leftX + leftWidth,
+            centerY,
+            extraWidth,
+            sourceHeight,
+            'panelCards',
+            'panelMiddleTile'
+        ).setOrigin(0, 0.5);
+        const right = this.scene.add.image(rightX, centerY, 'panelCards', 'panelRightHalf').setOrigin(0, 0.5);
 
         this.inventoryPanelPieces = [left, middle, right];
         this.inventoryPanelPieces.forEach(piece => piece.setDepth(10));
@@ -1486,19 +1494,25 @@ export class InventorySystem {
             }
         }
 
+        // Magic has historically been cast by dropping it on the gaming board.
+        // Keep that interaction in stations/events too; their special drop zones
+        // were checked above and therefore still take priority.
+        const onBoard = cardSprite.y < 280;
+        if (onBoard && cardData.type === 'magic') {
+            this.useMagicCard(slotIndex, cardSprite);
+            return;
+        }
+
         if (this.stationMode) {
             this.returnCardToSlot(slotIndex, cardSprite);
             return;
         }
 
-        // Check if dropped on board to use a weapon or magic card
-        const onBoard = cardSprite.y < 280;
+        // Check if dropped on board to use a weapon. Magic was handled above so
+        // its board-cast behavior is identical in combat and station scenes.
         if (onBoard) {
             if (cardData.type === 'weapon') {
                 this.useWeapon(slotIndex, cardSprite);
-                return;
-            } else if (cardData.type === 'magic') {
-                this.useMagicCard(slotIndex, cardSprite);
                 return;
             }
         }
@@ -1721,7 +1735,7 @@ export class InventorySystem {
         }
     }
     
-    returnCardToSlot(slotIndex, cardSprite) {
+    returnCardToSlot(slotIndex, cardSprite, onComplete = null) {
         const slotSprite = this.slotSprites[slotIndex];
         if (!slotSprite || !slotSprite.background) return;
         
@@ -1745,6 +1759,7 @@ export class InventorySystem {
                 // Update stored position data
                 cardSprite.setData('originalX', targetX);
                 cardSprite.setData('originalY', targetY);
+                onComplete?.();
             }
         });
         
@@ -1800,6 +1815,48 @@ export class InventorySystem {
             slotSprite.twinkleSprite.y = targetY;
         }
     }
+
+    playMothWingReturnAnimation(slotIndex, cardSprite) {
+        const slotSprite = this.slotSprites?.[slotIndex];
+        if (!slotSprite || !cardSprite?.scene) return;
+
+        const infoText = cardSprite.getData?.('infoText');
+        const hoverSprite = slotSprite.hoverSprite;
+        const parts = [cardSprite, infoText, hoverSprite]
+            .filter(part => part?.scene)
+            .map(part => ({ part, homeY: part.y }));
+
+        if (hoverSprite?.scene) {
+            hoverSprite.setVisible(true);
+            if (this.scene.anims?.exists?.('hover_cards_anim')) hoverSprite.play('hover_cards_anim');
+        }
+
+        this.scene.tweens.add({
+            targets: parts.map(({ part }) => part),
+            y: '-=8',
+            duration: 120,
+            ease: 'Sine.easeOut',
+            yoyo: true,
+            hold: 30,
+            onComplete: () => {
+                parts.forEach(({ part, homeY }) => {
+                    if (part?.scene) part.y = homeY;
+                });
+                if (hoverSprite?.scene) {
+                    hoverSprite.stop();
+                    hoverSprite.setVisible(false);
+                }
+            }
+        });
+        this.scene.tweens.add({
+            targets: cardSprite,
+            scaleX: 1.08,
+            scaleY: 1.08,
+            duration: 120,
+            ease: 'Back.easeOut',
+            yoyo: true
+        });
+    }
     
     // Add a new method to clean up board artifacts
     cleanupBoardArtifacts(cardSprite) {
@@ -1842,19 +1899,23 @@ export class InventorySystem {
         });
     }
     
+    isEnemyBoardCard(card, includeBoss = true) {
+        const type = card?.data?.type;
+        if (!this.scene.cardSystem?.isEnemyType(type)) return false;
+        return includeBoss || type !== 'boss';
+    }
+
     canMagicCardSucceed(magicCard, cardSprite) {
         if (!magicCard) return false;
         const board = this.scene.cardSystem?.boardCards || [];
-        const revealedEnemies = board.filter(c =>
-            c && c.revealed && (c.data?.type === 'enemy' || c.data?.type === 'boss')
-        );
+        const revealedEnemies = board.filter(c => c?.revealed && this.isEnemyBoardCard(c));
 
         switch (magicCard.magicType) {
             case 'fireball': {
                 // Needs a revealed enemy within 150px of where the card was dropped
                 let closest = Infinity;
                 board.forEach(c => {
-                    if (c && c.revealed && (c.data?.type === 'enemy' || c.data?.type === 'boss')) {
+                    if (c?.revealed && this.isEnemyBoardCard(c)) {
                         const d = Phaser.Math.Distance.Between(cardSprite.x, cardSprite.y, c.sprite.x, c.sprite.y);
                         if (d < closest) closest = d;
                     }
@@ -1862,8 +1923,10 @@ export class InventorySystem {
                 return closest < 150;
             }
             case 'soulDrain': {
-                // Needs a revealed non-boss enemy
-                return board.some(c => c && c.revealed && c.data?.type === 'enemy');
+                // Validation must match execution: the card is targeted by where
+                // it is dropped, not merely by having some enemy elsewhere.
+                return board.some(c => c?.revealed && this.isEnemyBoardCard(c, false)
+                    && Phaser.Math.Distance.Between(cardSprite.x, cardSprite.y, c.sprite.x, c.sprite.y) < 150);
             }
             case 'frostRing':
             case 'weakness':
@@ -1871,7 +1934,7 @@ export class InventorySystem {
                 return revealedEnemies.length > 0;
             case 'smokeScreen':
                 // Needs at least one revealed non-boss enemy (boss is not hideable)
-                return board.some(c => c && c.revealed && c.data?.type === 'enemy');
+                return board.some(c => c?.revealed && this.isEnemyBoardCard(c, false));
             // Self-targeted / persistent buffs — always succeed
             case 'restoration':
             case 'shadowBlade':
@@ -1895,7 +1958,8 @@ export class InventorySystem {
             return;
         }
 
-        if (!this.scene.useAction()) {
+        if (!this.stationMode && !this.scene.useAction()) {
+            this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Wait for the enemy turn!', 0xffaa66);
             this.returnCardToSlot(slotIndex, cardSprite);
             return;
         }
@@ -1909,7 +1973,7 @@ export class InventorySystem {
                 let closestDistance = Infinity;
                 
                 this.scene.cardSystem.boardCards.forEach((card, index) => {
-                    if (card && card.revealed && (card.data.type === 'enemy' || card.data.type === 'boss')) {
+                    if (card?.revealed && this.isEnemyBoardCard(card)) {
                         const distance = Phaser.Math.Distance.Between(
                             cardSprite.x, cardSprite.y,
                             card.sprite.x, card.sprite.y
@@ -1940,7 +2004,7 @@ export class InventorySystem {
                 // Freeze all revealed enemies
                 let frozeAny = false;
                 this.scene.cardSystem.boardCards.forEach((card) => {
-                    if (card && card.revealed && (card.data.type === 'enemy' || card.data.type === 'boss')) {
+                    if (card?.revealed && this.isEnemyBoardCard(card)) {
                         card.data.frozen = 3; // Frozen for 3 turns
                         card.sprite.setTint(0x00ccff); // Ice blue tint
                         frozeAny = true;
@@ -1968,7 +2032,7 @@ export class InventorySystem {
                 let drainDistance = Infinity;
                 
                 this.scene.cardSystem.boardCards.forEach((card, index) => {
-                    if (card && card.revealed && card.data.type === 'enemy') { // Only non-boss
+                    if (card?.revealed && this.isEnemyBoardCard(card, false)) { // Only non-boss
                         const distance = Phaser.Math.Distance.Between(
                             cardSprite.x, cardSprite.y,
                             card.sprite.x, card.sprite.y
@@ -2023,7 +2087,7 @@ export class InventorySystem {
             case 'weakness':
                 // Reduce all enemies' damage
                 this.scene.cardSystem.boardCards.forEach((card) => {
-                    if (card && card.data && (card.data.type === 'enemy' || card.data.type === 'boss')) {
+                    if (this.isEnemyBoardCard(card)) {
                         card.data.attack = Math.ceil(card.data.attack * 0.7);
                         if (card.revealed) {
                             this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Weakened!', 0x9932cc);
@@ -2060,7 +2124,7 @@ export class InventorySystem {
                 // Boss is intentionally excluded — it cannot be hidden.
                 let flippedAny = false;
                 this.scene.cardSystem.boardCards.forEach((card, idx) => {
-                    if (card && card.revealed && card.data.type === 'enemy') {
+                    if (card?.revealed && this.isEnemyBoardCard(card, false)) {
                         card.revealed = false;
                         card.sprite.setTexture('cardBack');
                         // Rebind click so the player can re-reveal this card normally.
@@ -2094,7 +2158,9 @@ export class InventorySystem {
         if (used) {
             if (this.scene.amuletManager?.shouldReturnMagicCard?.()) {
                 this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Moth-Wing Dust returned it!', 0xd8d8ff);
-                this.returnCardToSlot(slotIndex, cardSprite);
+                this.returnCardToSlot(slotIndex, cardSprite, () => {
+                    this.playMothWingReturnAnimation(slotIndex, cardSprite);
+                });
                 this.scene.updateUI();
                 return;
             }
@@ -2202,7 +2268,7 @@ export class InventorySystem {
         let closestDistance = Infinity;
         
         this.scene.cardSystem.boardCards.forEach((card, index) => {
-            if (card && card.revealed && (card.data.type === 'enemy' || card.data.type === 'boss')) {
+            if (card && card.revealed && this.isEnemyBoardCard(card)) {
                 const distance = Phaser.Math.Distance.Between(
                     cardSprite.x, cardSprite.y,
                     card.sprite.x, card.sprite.y
@@ -2984,14 +3050,23 @@ export class InventorySystem {
                 ));
 
                 if (hasMatch) {
-                    const cardSprite = this.slotSprites[index].card;
-                    if (cardSprite && cardSprite.scene) {
-                        // Create twinkle sprite at the same position as the card.
+                    const slotSprite = this.slotSprites[index];
+                    const cardSprite = slotSprite?.card;
+                    const slotBackground = slotSprite?.background;
+                    if (cardSprite?.scene && slotBackground?.scene) {
+                        // The slot is authoritative. During mirror copying the
+                        // original card is still tweening home when addCard()
+                        // refreshes twinkles; using cardSprite.x/y captures its
+                        // temporary mirror position and leaves a stray sparkle.
                         // Use the mode-aware twinkle depth: in a shop (station mode)
                         // the inventory sits at depths 200+, so a hardcoded 100 would
                         // hide the twinkle behind the shop panel after a merge.
                         const twinkleDepth = this.getInventoryDepths().twinkle;
-                        const twinkleSprite = snapOriginToPixelGrid(this.scene.add.sprite(cardSprite.x, cardSprite.y, 'twinkle1'));
+                        const twinkleSprite = snapOriginToPixelGrid(this.scene.add.sprite(
+                            slotBackground.x,
+                            slotBackground.y,
+                            'twinkle1'
+                        ));
                         twinkleSprite.setScale(1.0);
                         twinkleSprite.setDepth(twinkleDepth);
                         twinkleSprite.play('twinkle_anim');
@@ -3001,7 +3076,7 @@ export class InventorySystem {
                         twinkleSprite.setAlpha(1);
                         
                         this.uiGroup.add(twinkleSprite);
-                        this.slotSprites[index].twinkleSprite = twinkleSprite;
+                        slotSprite.twinkleSprite = twinkleSprite;
                     }
                 }
             }

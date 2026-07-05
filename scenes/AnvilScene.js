@@ -1,5 +1,6 @@
 //AnvilScene.js
 import { SoundHelper } from '../utils/SoundHelper.js';
+import { createTitle } from '../utils/titleText.js';
 export class AnvilScene extends Phaser.Scene {
     constructor() {
         super({ key: 'AnvilScene' });
@@ -12,11 +13,10 @@ export class AnvilScene extends Phaser.Scene {
         this.add.image(540, 78, 'restRooms', 3).setOrigin(0.5);
         
         // Title and coins display
-        this.add.text(320, 30, 'Anvil - Repair Station', { 
-            fontSize: '28px', 
-            fill: '#ffffff', 
-            fontFamily: '"HoMM Pixel"' 
-        }).setOrigin(0.5);
+        createTitle(this, 320, 30, 'Anvil - Repair Station', {
+            color: '#ffffff',
+            fallbackSize: '28px'
+        });
         
         this.coinsText = this.add.text(320, 60, `Coins: ${this.gameState.coins}`, { 
             fontSize: '16px', 

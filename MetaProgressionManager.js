@@ -19,6 +19,7 @@ export class MetaProgressionManager {
             this.bestFloor = data.bestFloor || 1;
             this.enemyKillStats = data.enemyKillStats || {};
             this.pendingEgg = data.pendingEgg || false;
+            this.veteranHp = data.veteranHp || 0;
         } else {
             this.unlockedRelics = [];
             this.totalDeaths = 0;
@@ -26,6 +27,7 @@ export class MetaProgressionManager {
             this.bestFloor = 1;
             this.enemyKillStats = {};
             this.pendingEgg = false;
+            this.veteranHp = 0;
         }
     }
     
@@ -37,7 +39,8 @@ export class MetaProgressionManager {
             totalRuns: this.totalRuns,
             bestFloor: this.bestFloor,
             enemyKillStats: this.enemyKillStats,
-            pendingEgg: this.pendingEgg
+            pendingEgg: this.pendingEgg,
+            veteranHp: this.veteranHp
         };
         localStorage.setItem('metaProgression', JSON.stringify(data));
     }
@@ -235,7 +238,16 @@ export class MetaProgressionManager {
             this.saveMetaProgression();
             return milestoneRelic;
         }
-        
+
+        // Only grant the fallback once every authored relic is owned. A death
+        // to an unmatched source (trap, poison, a newly added enemy, etc.) must
+        // not skip the remaining relic progression and award permanent HP early.
+        const relicPoolExhausted = Object.keys(this.getRelicDefinitions())
+            .every(relicId => this.hasRelic(relicId));
+        if (relicPoolExhausted) {
+            this.veteranHp = Math.min(20, (this.veteranHp || 0) + 2);
+        }
+
         this.saveMetaProgression();
         return null;
     }
@@ -306,7 +318,14 @@ export class MetaProgressionManager {
     applyRelicEffects(gameState, applyStartingBonuses = true) {
         const relics = this.getRelicDefinitions();
         gameState.relicEffects = {};
-        
+
+        // Veteran bonus: permanent max HP earned from deaths after the relic
+        // pool ran dry (see handlePlayerDeath).
+        if (applyStartingBonuses && this.veteranHp) {
+            gameState.maxHealth += this.veteranHp;
+            gameState.playerHealth += this.veteranHp;
+        }
+
         this.unlockedRelics.forEach(relicId => {
             const relic = relics[relicId];
             if (!relic || !relic.effect) return;
@@ -374,6 +393,7 @@ export class MetaProgressionManager {
         this.totalRuns = 0;
         this.bestFloor = 1;
         this.enemyKillStats = {};
+        this.veteranHp = 0;
         this.saveMetaProgression();
     }
 }

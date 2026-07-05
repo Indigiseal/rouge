@@ -1,6 +1,7 @@
 import { CardSystem } from '../cardSystem.js';
 import { SoundHelper } from '../utils/SoundHelper.js';
 import { t, translateItemName } from '../utils/i18n.js';
+import { createTitle } from '../utils/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
 
 export class RareShopScene extends StationRoomBase {
@@ -15,11 +16,10 @@ export class RareShopScene extends StationRoomBase {
         this.gameScene = this.scene.get('GameScene');
         this.enableShopStation();
 
-        this.add.text(320, 30, t(this, 'ui.shop.rareTitle'), {
-            fontSize: '28px',
-            fill: '#DA70D6',
-            fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5);
+        createTitle(this, 320, 30, t(this, 'ui.shop.rareTitle'), {
+            color: '#DA70D6',
+            fallbackSize: '28px'
+        });
 
         this.shopBoardTexture = 'gamingBoard2';
         this.generateShopItems();
