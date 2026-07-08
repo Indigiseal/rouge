@@ -5,6 +5,7 @@ import { AmuletManager } from './AmuletManager.js';
 import { SoundHelper } from './utils/SoundHelper.js';
 import { SaveManager } from './SaveManager.js';
 import { MetaProgressionManager } from './MetaProgressionManager.js';
+import { TutorialManager } from './TutorialManager.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 import { t, translateDescription, translateItemName } from './utils/i18n.js';
 import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from './utils/StoryProgress.js';
@@ -27,6 +28,11 @@ export class GameScene extends Phaser.Scene {
         // Run. Never let run-local flags from the previous instance leak into
         // the next one (notably shouldLoadSave, which could restore an old floor).
         this.shouldLoadSave = Boolean(data.loadSave);
+        // Guided tutorial: a self-contained rigged floor launched from the menu.
+        // It never loads/saves and skips relic/story seeding so the lesson board
+        // is identical every time.
+        this.tutorialMode = Boolean(data.tutorial);
+        if (this.tutorialMode) this.shouldLoadSave = false;
         this._transitioning = false;
         this._resultScreenShown = false;
         this._gameOverInProgress = false;
@@ -42,8 +48,9 @@ export class GameScene extends Phaser.Scene {
         } else {
             // New run
             this.gameState = new GameState(this);
-            // Apply relic effects to fresh game state
-            this.metaManager.applyRelicEffects(this.gameState);
+            // Apply relic effects to fresh game state (skip for the tutorial so
+            // its rigged board is deterministic).
+            if (!this.tutorialMode) this.metaManager.applyRelicEffects(this.gameState);
             // Cross-run story memory: seed the fresh run from any saved story
             // progress so completed events don't repeat and story chains resume
             // where a past life left off. (Continues restore storyRun from the
@@ -165,21 +172,50 @@ export class GameScene extends Phaser.Scene {
         
         // Listen for the wake event to reset the floor
         this.events.on('wake', this.wake, this);
+
+        // Guided tutorial overlay drives the rigged board created above.
+        if (this.tutorialMode) {
+            this.tutorialManager = new TutorialManager(this);
+            this.tutorialManager.start();
+        }
+    }
+
+    update() {
+        this.tutorialManager?.tick?.();
     }
 
     createAnimations() {
         // Create hover card animation
         if (!this.anims.exists('hover_cards_anim')) this.anims.create({
             key: 'hover_cards_anim',
-            frames: [
-                { key: 'hoverCardsUp1' },
-                { key: 'hoverCardsUp2' },
-                { key: 'hoverCardsUp3' },
-                { key: 'hoverCardsUp4' },
-                { key: 'hoverCardsUp5' },
-            ],
+            frames: this.anims.generateFrameNumbers('hoverCardsUpSheet', { start: 0, end: 4 }),
             frameRate: 12,
             repeat: 0
+        });
+
+        // Card disappear dissolve — played on top of a card as it is removed
+        // (enemy defeated, weapon pips spent). 6 frames, plays once.
+        if (this.textures.exists('cardDisappearSheet') && !this.anims.exists('card_disappear_anim')) this.anims.create({
+            key: 'card_disappear_anim',
+            frames: this.anims.generateFrameNumbers('cardDisappearSheet', { start: 0, end: 5 }),
+            frameRate: 22,
+            repeat: 0
+        });
+
+        // Card merge flicker — played on top of the merged card. 2 frames, looped
+        // once so the flicker plays twice (repeat: 1). Legendary merges use a
+        // separate, flashier sheet.
+        if (this.textures.exists('mergeSheet') && !this.anims.exists('merge_anim')) this.anims.create({
+            key: 'merge_anim',
+            frames: this.anims.generateFrameNumbers('mergeSheet', { start: 0, end: 1 }),
+            frameRate: 18,
+            repeat: 1
+        });
+        if (this.textures.exists('mergeLegendarySheet') && !this.anims.exists('merge_legendary_anim')) this.anims.create({
+            key: 'merge_legendary_anim',
+            frames: this.anims.generateFrameNumbers('mergeLegendarySheet', { start: 0, end: 1 }),
+            frameRate: 18,
+            repeat: 1
         });
         
         // Create coin animation. Now sourced from the coinAnimSheet spritesheet
@@ -373,14 +409,21 @@ export class GameScene extends Phaser.Scene {
         this.updateRoomTitle();
         // Reset per-floor amulet flags
         this.gameState.charmingTuneUsed = false;
-        this.cardSystem.spawnFloorCards();
-        this.inventorySystem.addStartingCards();
+        if (this.tutorialMode) {
+            // Rigged lesson board. No starter swords — the tutorial hands them
+            // out on the board so the player learns to pick them up.
+            this.cardSystem.spawnTutorialCards();
+        } else {
+            this.cardSystem.spawnFloorCards();
+            this.inventorySystem.addStartingCards();
+        }
         // DON'T replenish action points here
         this.updateUI();
         this.cardSystem.checkFloorClear();
     }
 
     showNextFloorButton() {
+        if (this.tutorialMode) return;
         if (this._transitioning || this.gameState?.playerHealth <= 0) return;
         if (this.nextFloorButton) {
             this.nextFloorButton
@@ -700,7 +743,7 @@ export class GameScene extends Phaser.Scene {
             if (card && card.justRevealed) card.justRevealed = false;
         });
         if (eligible.length === 0) {
-            this.finishEnemyTurnEffects();
+            this.finishEnemyTurnEffects({ runCompanions: false });
             return;
         }
 
@@ -812,6 +855,7 @@ export class GameScene extends Phaser.Scene {
 
             if (card.data.frozen === 0 && card.sprite) {
                 card.sprite.clearTint();
+                this.cardSystem.removeFrozenFrame(card);
                 if (wasShocked) {
                     card.shockMarker?.destroy?.();
                     card.shockMarker = null;
@@ -994,7 +1038,7 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    finishEnemyTurnEffects() {
+    finishEnemyTurnEffects({ runCompanions = true } = {}) {
         // Process magic buff durations AFTER enemy attacks
         if (this.gameState.shadowBlade) {
             this.gameState.shadowBlade.turns--;
@@ -1053,7 +1097,14 @@ export class GameScene extends Phaser.Scene {
             this.isEnemyTurn = false;
             return;
         }
-        this.finishEnemyTurnWithCompanion();
+        if (runCompanions) {
+            this.finishEnemyTurnWithCompanion();
+            return;
+        }
+
+        this.isEnemyTurn = false;
+        this.updateUI();
+        this._drainEnemyTurns();
     }
 
     getChickCompanionEntry() {
@@ -1795,7 +1846,15 @@ export class GameScene extends Phaser.Scene {
         this.enemiesCleared = !!this._loadedEnemiesCleared;
         this._loadedEnemiesCleared = false;
 
-        if (!restored) {
+        // A save can carry an empty/all-null board (corrupted, or written right
+        // at floor-clear so every card had already been removed). Restoring that
+        // strands the player in a hollow, card-less combat room. Whenever there
+        // are no live cards, recover by rolling this floor fresh — it keeps the
+        // player on their current floor (no rewind) with a playable board.
+        // startNewFloor() resets enemiesCleared and hides the Next button, so a
+        // stale "cleared" flag from the save can't leak into the new floor.
+        const hasLiveCards = this.cardSystem.boardCards.some(card => card);
+        if (!restored || !hasLiveCards) {
             this.startNewFloor();
             return;
         }
@@ -1894,6 +1953,10 @@ export class GameScene extends Phaser.Scene {
         this.clearEnemyTurnTimers();
         this.finalizeCompanionCombatHistory();
         this.enemiesCleared = true;
+        if (this.tutorialMode) {
+            this.updateUI?.();
+            return;
+        }
 
         // Floor-clear coin reward. Coins are no longer paid per enemy kill (that
         // faucet was flooding the economy); instead you're paid once for clearing
@@ -2548,6 +2611,8 @@ export class GameScene extends Phaser.Scene {
     }
     
     shutdown() {
+        this.tutorialManager?.destroy?.();
+        this.tutorialManager = null;
         this.clearEnemyTurnTimers();
         this.input.keyboard.off('keydown-ESC');
         this.events.off('endPlayerTurn');  // Unbind to avoid doubles

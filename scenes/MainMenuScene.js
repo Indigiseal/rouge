@@ -38,7 +38,7 @@ export class MainMenuScene extends Phaser.Scene {
             newRun: this.createSpriteButton(320, 104, t(this, 'ui.menu.newRun'),   () => this.startNewGame()),
             continue: this.createSpriteButton(320, 139, t(this, 'ui.menu.continue'),  hasSavedRun ? () => this.continueGame() : null),
             options: this.createSpriteButton(320, 174, t(this, 'ui.menu.options'),   () => this.showOptionsMenu()),
-            exit: this.createSpriteButton(320, 209, t(this, 'ui.menu.exit'), () => this.exitGame()),
+            tutorial: this.createSpriteButton(320, 209, 'Tutorial',                 () => this.startTutorial()),
         };
     }
 
@@ -47,7 +47,6 @@ export class MainMenuScene extends Phaser.Scene {
         this.mainMenuButtons.newRun.text.setText(t(this, 'ui.menu.newRun'));
         this.mainMenuButtons.continue.text.setText(t(this, 'ui.menu.continue'));
         this.mainMenuButtons.options.text.setText(t(this, 'ui.menu.options'));
-        this.mainMenuButtons.exit.text.setText(t(this, 'ui.menu.exit'));
     }
 
     // Sprite-based button using nextTurnUp (normal) / nextTurnDown (pressed).
@@ -356,6 +355,14 @@ export class MainMenuScene extends Phaser.Scene {
             this.scene.start('GameScene', { loadSave: true });
         });
     }
+
+    startTutorial() {
+        // Launch the guided, rigged tutorial floor. Does not touch the saved run.
+        this.cameras.main.fadeOut(400, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+            this.scene.start('GameScene', { tutorial: true });
+        });
+    }
     
     confirmResetProgress() {
         if (this.activeModal) return;
@@ -400,48 +407,4 @@ export class MainMenuScene extends Phaser.Scene {
         this.activeModal = { type: 'reset', cleanup };
     }
 
-    exitGame() {
-        if (this.activeModal) return;
-
-        // Show confirmation dialog. The dimmer is interactive so only this
-        // dialog can receive input while it is open.
-        const dimmer = this.add.rectangle(320, 180, 640, 360, 0x000000, 0.6)
-            .setDepth(1000)
-            .setInteractive();
-        const confirmBg = this.add.rectangle(320, 180, 300, 150, 0x000000, 0.9)
-            .setStrokeStyle(2, 0xffffff)
-            .setDepth(1001);
-        
-        const confirmText = this.add.text(320, 150, 'Are you sure you want to exit?', {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"',
-            align: 'center'
-        }).setOrigin(0.5).setDepth(1002);
-
-        let closed = false;
-        const cleanup = () => {
-            if (closed) return;
-            closed = true;
-            [dimmer, confirmBg, confirmText, yesButton.button, yesButton.text,
-             noButton.button, noButton.text].forEach(item => item?.destroy());
-            this.activeModal = null;
-        };
-        
-        const yesButton = this.createButton(270, 200, 80, 30, 'Yes', 0x00ff00, () => {
-            cleanup();
-            // Browsers deliberately block window.close() for tabs opened by the
-            // user. Calling it can leave the game looking frozen, so give clear
-            // feedback while keeping the menu responsive.
-            const notice = this.add.text(320, 245, 'Close this browser tab to exit', {
-                fontSize: '14px', fill: '#ffff00', fontFamily: '"HoMM Pixel"'
-            }).setOrigin(0.5).setDepth(1000);
-            this.time.delayedCall(3000, () => notice?.destroy());
-        });
-        
-        const noButton = this.createButton(370, 200, 80, 30, 'No', 0xff0000, cleanup);
-        [yesButton.button, yesButton.text, noButton.button, noButton.text]
-            .forEach(o => o.setDepth(1002));
-        this.activeModal = { type: 'exit', cleanup };
-    }
 }

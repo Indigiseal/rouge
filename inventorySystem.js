@@ -25,6 +25,7 @@ export class InventorySystem {
         this.slotSprites = [];
         this.discardArea = null;
         this.armorPanel = null;
+        this.armorTwinkleSprite = null;   // sparkle on the worn-armor slot when a bag armor can merge into it
         this.uiGroup = this.scene.add.group();
         this.inventoryPanelPieces = [];
         this.stationMode = false;
@@ -655,7 +656,7 @@ export class InventorySystem {
 
         // Create hover "shine" animation sprite (initially hidden) — cards only
         if (isCard) {
-            const hoverSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, 'hoverCardsUp1'));
+            const hoverSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, 'hoverCardsUpSheet', 0));
             hoverSprite.setVisible(false);
             hoverSprite.setBlendMode(Phaser.BlendModes.SCREEN);
             hoverSprite.setDepth(13);
@@ -1385,6 +1386,10 @@ export class InventorySystem {
         }
 
         this.addCardDirect(cardData, emptySlot);
+        if (cardData?.tutorialTag) {
+            this.scene.events.emit('tutorialProgress', `inventory:${cardData.tutorialTag}`);
+            this.scene.tutorialManager?._handleProgress?.(`inventory:${cardData.tutorialTag}`);
+        }
         this.updateTwinkleEffects();
         return true;
     }
@@ -1458,6 +1463,8 @@ export class InventorySystem {
             this.armorPanel &&
             Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.armorPanel.getBounds())
         ) {
+            // Same-tier armor as what's worn merges in place; otherwise swap.
+            if (this.tryMergeWithEquippedArmor(slotIndex, cardSprite)) return;
             if (this.equipArmor(slotIndex, cardSprite)) return;
         }
 
@@ -1521,6 +1528,7 @@ export class InventorySystem {
         const playerAvatarBounds = this.scene.playerAvatar.getBounds();
         if (Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), playerAvatarBounds)) {
             if (cardData.type === 'armor') {
+                if (this.tryMergeWithEquippedArmor(slotIndex, cardSprite)) return; // Merge into worn armor
                 if (this.equipArmor(slotIndex, cardSprite)) return; // Success - pass cardSprite for cleanup
             } else if (cardData.type === 'potion') {
                 if (this.usePotion(slotIndex, cardSprite)) return; // Success - pass cardSprite for cleanup
@@ -2006,7 +2014,7 @@ export class InventorySystem {
                 this.scene.cardSystem.boardCards.forEach((card) => {
                     if (card?.revealed && this.isEnemyBoardCard(card)) {
                         card.data.frozen = 3; // Frozen for 3 turns
-                        card.sprite.setTint(0x00ccff); // Ice blue tint
+                        this.scene.cardSystem.attachFrozenFrame(card); // Ice frame overlay
                         frozeAny = true;
                     }
                 });
@@ -2300,7 +2308,6 @@ export class InventorySystem {
             // both gems on a dual-wield swing — matching what players intuitively
             // expect when they see two daggers in their hands.
             let secondaryDagger = null;
-            let secondaryDaggerSlot = -1;
             if (weapon.special === 'dualWield') {
                 // Find a different dual-wield dagger in inventory (skip the equipped one)
                 for (let s = 0; s < this.slots.length; s++) {
@@ -2308,7 +2315,6 @@ export class InventorySystem {
                     if (!item || item === weapon || item.special !== 'dualWield') continue;
                     if (item.durability <= 0) continue;
                     secondaryDagger = item;
-                    secondaryDaggerSlot = s;
                     break;
                 }
                 if (secondaryDagger) {
@@ -2350,46 +2356,13 @@ export class InventorySystem {
                     this.scene.cardSystem.attackEnemy(closestEnemy, attackDamage, false, weapon, false);
                 } else {
                     // Second dual-wield hit: use the OTHER dagger's stats — its
-                    // damage AND its gem. We pass skipDurability=true so attackEnemy
-                    // doesn't tick the equipped weapon (the primary), then manually
-                    // spend a pip from the secondary dagger so the pair still costs
-                    // 1 pip from EACH dagger (one each, not one total).
+                    // damage AND its gem — but only the dragged dagger spends a
+                    // pip (already ticked on the first hit). The off-hand dagger
+                    // swings for free, so we pass skipDurability=true and never
+                    // touch its durability.
                     let secondaryDamage = secondaryDagger.damage || 1;
                     if (wasExhausted) secondaryDamage = Math.ceil(secondaryDamage * 0.8);
                     this.scene.cardSystem.attackEnemy(closestEnemy, secondaryDamage, false, secondaryDagger, true);
-                    // Halve-durability amulet (Tempered Ingot) applies here too.
-                    const durRate = this.scene.amuletManager?.getWeaponDurabilityRate?.() ?? 1;
-                    const lost = Math.random() < durRate ? 1 : 0;
-                    secondaryDagger.durability -= lost;
-                    if (secondaryDagger.durability <= 0) {
-                        // Secondary dagger broke — clear its slot and rebuild
-                        // inventory sprites. We DO call rebuildInventorySprites
-                        // here because the inventory shape changed (a slot went
-                        // null). Important: this also destroys the PRIMARY
-                        // dagger's cardSprite, so we defer the rebuild via
-                        // delayedCall(0) — that way the in-flight drag flow
-                        // (the surrounding for-loop + returnWeaponToSlotDelayed)
-                        // finishes with the original cardSprite reference intact,
-                        // and the rebuild happens cleanly on the next tick.
-                        this.scene.createFloatingText(cardSprite.x, cardSprite.y - 32, `${secondaryDagger.name} broke!`, 0xff6666);
-                        this.scene.grantCardSpentRelicBonus?.(secondaryDagger, cardSprite.x, cardSprite.y);
-                        if (secondaryDaggerSlot >= 0) {
-                            this.slots[secondaryDaggerSlot] = null;
-                            this.scene.gameState.inventory = this.slots;
-                        }
-                        this.scene.time.delayedCall(350, () => this.rebuildInventorySprites?.());
-                    } else {
-                        // Secondary dagger still alive — just refresh its slot's
-                        // pip display (its infoText) without touching the rest
-                        // of the inventory. This is the fix for the "after-image"
-                        // bug: rebuildInventorySprites() destroyed the primary
-                        // cardSprite mid-attack, orphaning its infoText at the
-                        // enemy's location.
-                        const secondarySlot = this.slotSprites[secondaryDaggerSlot];
-                        if (secondarySlot && secondarySlot.card) {
-                            this.updateWeaponInfoText(secondarySlot.card, secondaryDagger);
-                        }
-                    }
                     this.scene.updateUI?.();
                 }
                 if (i < attackCount - 1) {
@@ -2426,6 +2399,9 @@ export class InventorySystem {
         this.scene.createFloatingText(cardSprite.x, cardSprite.y, `${weapon.name} broke!`, 0xff0000);
         this.scene.grantCardSpentRelicBonus?.(weapon, cardSprite.x, cardSprite.y);
         
+        // Dissolve flourish on the spent weapon card before it's removed.
+        this.scene.cardSystem?.playCardDisappearEffect?.(cardSprite);
+
         // Clean up ALL sprites properly
         this.cleanupCardSprites(slotIndex, cardSprite);
         cardSprite.destroy();
@@ -2572,6 +2548,79 @@ export class InventorySystem {
         });
     }
     
+    // Merge an inventory armor card into the armor the hero is already wearing,
+    // without either card sitting in the inventory. Triggered when an armor card
+    // is dropped on the worn-armor slot (or the hero) and the two are mergeable.
+    // The upgraded armor stays equipped. Returns true when it handled the drop
+    // (merged, or bounced for lack of actions); false means "not mergeable —
+    // fall through to the normal equip/swap".
+    tryMergeWithEquippedArmor(slotIndex, draggedSprite = null) {
+        const cardData = this.slots[slotIndex];
+        const worn = this.scene.gameState.equippedArmor;
+        if (!cardData || cardData.type !== 'armor' || !worn) return false;
+
+        const canCrossTier = this.scene.amuletManager &&
+            this.scene.amuletManager.canCrossTierMerge();
+        if (!this.canCardsMerge(cardData, worn, canCrossTier)) return false;
+
+        // Same action cost as a normal merge (free inside shops/stations).
+        if (!this.stationMode && !this.scene.useAction()) {
+            this.scene.createFloatingText(512, 400, 'Not enough actions!', 0xff0000);
+            this.returnCardToSlot(slotIndex, draggedSprite);
+            return true;
+        }
+
+        // Upgrade off the higher-tier card, exactly like mergeCards().
+        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+        let baseCard = cardData;
+        let secondCard = worn;
+        if (canCrossTier &&
+            rarityOrder.indexOf(worn.rarity) > rarityOrder.indexOf(cardData.rarity)) {
+            baseCard = worn;
+            secondCard = cardData;
+        }
+        const upgradedArmor = this.createMergedCard(baseCard, secondCard);
+
+        // Consume the dragged inventory card and swap the worn armor for the
+        // upgrade (it stays equipped — no free inventory slot required).
+        if (draggedSprite) {
+            this.cleanupCardSprites(slotIndex, draggedSprite);
+            draggedSprite.destroy();
+        }
+        this.removeCard(slotIndex, true);
+        this.scene.gameState.equippedArmor = upgradedArmor;
+
+        SoundHelper.playSound(this.scene, 'armor_equip', 0.6);
+        this.scene.createFloatingText(
+            this.scene.playerAvatar.x,
+            this.scene.playerAvatar.y,
+            `Merged → ${upgradedArmor.name}`,
+            0x00ff00
+        );
+
+        // Merge flicker on the worn-armor slot (legendary variant when applicable).
+        if (this.armorPanel && typeof this.armorPanel.getBounds === 'function') {
+            const b = this.armorPanel.getBounds();
+            this.scene.cardSystem?.playMergeEffect?.(
+                b.centerX, b.centerY,
+                upgradedArmor.rarity === 'legendary'
+            );
+        }
+
+        // Webweaver's Thread relic: same small echo-respawn chance as a normal merge.
+        const echoChance = this.scene.gameState?.relicEffects?.mergeRespawnChance || 0;
+        if (echoChance > 0 && Math.random() < echoChance) {
+            const sourceCard = Math.random() < 0.5 ? cardData : worn;
+            this.scene.cardSystem?.respawnCardOnBoard?.(sourceCard);
+        }
+
+        this.scene.updateUI();
+        // The upgraded armor may still merge with another matching bag copy
+        // (cross-tier), so re-evaluate sparkles against the new worn armor.
+        this.updateTwinkleEffects();
+        return true;
+    }
+
     equipArmor(slotIndex, draggedSprite = null) {
         // Equipping inside a shop / station is free — there's no enemy turn to spend AP on.
         if (!this.stationMode && !this.scene.useAction()) return false;
@@ -2603,10 +2652,13 @@ export class InventorySystem {
         this.scene.createFloatingText(
             this.scene.playerAvatar.x, 
             this.scene.playerAvatar.y, 
-            `Equipped ${armorData.name}`, 
+            `Equipped ${armorData.name}`,
             0xaaaaaa
         );
         this.scene.updateUI();
+        // Refresh AFTER equippedArmor is set and the armor-panel sprite is
+        // rebuilt (by updateUI) so a matching bag armor + the worn slot sparkle.
+        this.updateTwinkleEffects();
         return true;
     }
 
@@ -2758,8 +2810,26 @@ export class InventorySystem {
         this.removeCard(firstIndex, true);
         this.removeCard(secondIndex, true);
         
-        // Add upgraded card
-        this.addCard(upgradedCard);
+        // Add upgraded card. Target the slot it will land in (first free one)
+        // up front so we can play the merge flicker on top of it afterward.
+        const mergedSlot = this.slots.findIndex(slot => slot === null);
+        this.addCard(upgradedCard, mergedSlot);
+        const mergedWeaponType = this.getWeaponTypeFromCard(upgradedCard);
+        if (upgradedCard?.type === 'weapon' && mergedWeaponType) {
+            this.scene.events.emit('tutorialProgress', `merged:${mergedWeaponType}`);
+            this.scene.tutorialManager?._handleProgress?.(`merged:${mergedWeaponType}`);
+        }
+
+        // Merge flicker on top of the freshly merged card (legendary variant for
+        // legendary results).
+        const mergedSlotSprite = mergedSlot !== -1 ? this.slotSprites[mergedSlot] : null;
+        if (mergedSlotSprite?.background) {
+            this.scene.cardSystem?.playMergeEffect?.(
+                mergedSlotSprite.background.x,
+                mergedSlotSprite.background.y,
+                upgradedCard.rarity === 'legendary'
+            );
+        }
 
         this.scene.createFloatingText(512, 400, 'Cards Merged!', 0x00ff00);
 
@@ -2979,6 +3049,11 @@ export class InventorySystem {
 
     removeCard(slotIndex, destroySprite = true) {
         this.hideCardTooltip();
+        const removedCard = this.slots?.[slotIndex];
+        if (removedCard?.tutorialTag) {
+            this.scene.events.emit('tutorialProgress', `inventoryRemoved:${removedCard.tutorialTag}`);
+            this.scene.tutorialManager?._handleProgress?.(`inventoryRemoved:${removedCard.tutorialTag}`);
+        }
         const slotSprite = this.slotSprites[slotIndex];
         if (destroySprite && slotSprite) {
             // Clean up all associated sprites
@@ -3028,26 +3103,49 @@ export class InventorySystem {
     }
     
     updateTwinkleEffects() {
-        // First, clear all existing twinkle sprites
+        // First, clear all existing twinkle sprites (bag slots + worn armor)
         this.slotSprites.forEach(slot => {
             if (slot.twinkleSprite) {
                 slot.twinkleSprite.destroy();
                 slot.twinkleSprite = null;
             }
         });
-        
+        if (this.armorTwinkleSprite) {
+            this.armorTwinkleSprite.destroy();
+            this.armorTwinkleSprite = null;
+        }
+
         // Cross-tier merging (Golden Hammer) lets cards of different rarities
         // combine, so the twinkle detection must use the same rule the real
         // merge does — otherwise a freshly-merged higher-tier card that can
         // still merge down with a lower-tier copy wouldn't sparkle.
         const canCrossTier = !!(this.scene.amuletManager && this.scene.amuletManager.canCrossTierMerge());
 
+        // The worn armor takes part in merge detection too: a bag armor can be
+        // dragged onto the equipped armor to upgrade it (tryMergeWithEquippedArmor),
+        // so that pairing should sparkle just like two bag cards would — on the
+        // bag armor AND on the armor slot itself.
+        const equippedArmor = this.scene.gameState?.equippedArmor || null;
+        const mergesWithWornArmor = (card) => (
+            !!equippedArmor
+            && card.type === 'armor'
+            && this.canCardsMerge(card, equippedArmor, canCrossTier)
+        );
+        let wornArmorHasMatch = false;
+
         // Find items that can be merged and apply twinkle animation.
         this.slots.forEach((card, index) => {
             if (card && card.type !== 'magic' && card.type !== 'gem') {
-                const hasMatch = this.slots.some((otherCard, otherIndex) => (
+                let hasMatch = this.slots.some((otherCard, otherIndex) => (
                     otherIndex !== index && this.canCardsMerge(card, otherCard, canCrossTier)
                 ));
+
+                // A bag armor that can merge into the worn armor also sparkles,
+                // and flags the armor slot to sparkle in return.
+                if (mergesWithWornArmor(card)) {
+                    hasMatch = true;
+                    wornArmorHasMatch = true;
+                }
 
                 if (hasMatch) {
                     const slotSprite = this.slotSprites[index];
@@ -3065,7 +3163,8 @@ export class InventorySystem {
                         const twinkleSprite = snapOriginToPixelGrid(this.scene.add.sprite(
                             slotBackground.x,
                             slotBackground.y,
-                            'twinkle1'
+                            'twinkle',
+                            0
                         ));
                         twinkleSprite.setScale(1.0);
                         twinkleSprite.setDepth(twinkleDepth);
@@ -3081,5 +3180,27 @@ export class InventorySystem {
                 }
             }
         });
+
+        // Sparkle the worn-armor slot when a bag armor can merge into it, so the
+        // pairing reads at a glance from either side.
+        if (wornArmorHasMatch && this.armorPanel?.scene) {
+            const anchor = this.scene.armorPanelEquippedSprite?.scene
+                ? this.scene.armorPanelEquippedSprite
+                : this.armorPanel;
+            const twinkleDepth = this.getInventoryDepths().twinkle;
+            const twinkleSprite = snapOriginToPixelGrid(this.scene.add.sprite(
+                anchor.x,
+                anchor.y,
+                'twinkle',
+                0
+            ));
+            twinkleSprite.setScale(1.0);
+            twinkleSprite.setDepth(twinkleDepth);
+            twinkleSprite.setVisible(true);
+            twinkleSprite.setAlpha(1);
+            twinkleSprite.play('twinkle_anim');
+            this.uiGroup.add(twinkleSprite);
+            this.armorTwinkleSprite = twinkleSprite;
+        }
     }
 }

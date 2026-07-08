@@ -213,8 +213,8 @@ export class StationRoomBase extends Phaser.Scene {
         // no first-frame flash appears when the card is revealed — matching the exact
         // same approach the inventory uses in addCardDirect.
         let hoverSprite = null;
-        if (isCard && renderScene.textures.exists('hoverCardsUp1')) {
-            hoverSprite = snapOriginToPixelGrid(renderScene.add.sprite(x, y, 'hoverCardsUp1'));
+        if (isCard && renderScene.textures.exists('hoverCardsUpSheet')) {
+            hoverSprite = snapOriginToPixelGrid(renderScene.add.sprite(x, y, 'hoverCardsUpSheet', 0));
             hoverSprite.setVisible(false);
             hoverSprite.setAlpha(0);
             hoverSprite.setBlendMode(Phaser.BlendModes.SCREEN);

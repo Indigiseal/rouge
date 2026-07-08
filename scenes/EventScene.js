@@ -1507,12 +1507,6 @@ export class EventScene extends Phaser.Scene {
       .setStrokeStyle(1, 0x8f6b45)
       .setAlpha(0)
       .setDepth(3);
-    this.outcomeLabel = this.add.text(this.eventLayout.centerX, 50, 'Outcome', {
-      fontSize: '11px',
-      fill: PURPLE,
-      fontFamily: '"HoMM Pixel"'
-    }).setOrigin(0.5, 0).setAlpha(0).setDepth(4);
-
     // Rewards summary (hidden until a choice is made) — a concrete "what you
     // gained/lost" list shown under the outcome, so amulets/HP/crystals that
     // otherwise land silently in the corners are actually announced.
@@ -1676,7 +1670,6 @@ export class EventScene extends Phaser.Scene {
     // Show narration immediately. A short fade on a previously invisible text
     // object made the reward animation easier to notice than the actual story.
     this.outcomeBackdrop?.setAlpha(1);
-    this.outcomeLabel?.setAlpha(1);
     if (outcome) this.outcomeText?.setAlpha(1);
     if (rewards.length) this.rewardText?.setAlpha(1);
 
@@ -1838,7 +1831,6 @@ export class EventScene extends Phaser.Scene {
     if (!this.resolved) return;
     this._layoutResolvedOutcome(this._resolvedOutcome, this._rewardLines || []);
     this.outcomeBackdrop?.setAlpha(1);
-    this.outcomeLabel?.setAlpha(1);
     if (this._resolvedOutcome) this.outcomeText?.setAlpha(1);
     if ((this._rewardLines || []).length) this.rewardText?.setAlpha(1);
   }

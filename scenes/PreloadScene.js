@@ -43,6 +43,8 @@ export class PreloadScene extends Phaser.Scene {
         this.load.bitmapFont('title-font', 'assets/fonts/title16.png', 'assets/fonts/title16.xml');
         this.load.image('goblin_c', 'assets/goblin_c.png');
         this.load.image('skeletonSprite', 'assets/skeleton_c.png');
+        // Tutorial coach-mark pointer (16x16 cursor-style arrow).
+        this.load.image('tutorialPointer', 'assets/pointer.png');
         this.load.image('angryNestmother', 'assets/bird.png');
         
         // Load item sprites
@@ -143,18 +145,27 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('cardHover5', 'assets/cardHover5.png');
         this.load.image('discardSprite', 'assets/discard.png');
         this.load.image('thornFrame', 'assets/thornFrame.png');
-        // Card hover when in inventory effects
-        this.load.image('hoverCardsUp1', 'assets/hoverCardsUp1.png');
-        this.load.image('hoverCardsUp2', 'assets/hoverCardsUp2.png');
-        this.load.image('hoverCardsUp3', 'assets/hoverCardsUp3.png');
-        this.load.image('hoverCardsUp4', 'assets/hoverCardsUp4.png');
-        this.load.image('hoverCardsUp5', 'assets/hoverCardsUp5.png');
+        // Card hover when in inventory effects (5 frames, 54x70 each)
+        this.load.spritesheet('hoverCardsUpSheet', 'assets/hoverCardsUp54x70Sheet.png', { frameWidth: 54, frameHeight: 70 });
+        // Card disappear dissolve (6 frames, 54x70 each) — plays on top of a card
+        // as it is removed (enemy defeated, weapon pips spent).
+        this.load.spritesheet('cardDisappearSheet', 'assets/cardDissappearAnimation54x70.png', { frameWidth: 54, frameHeight: 70 });
+        // Card merge flicker (2 frames, 54x70 each) — plays on top of the merged
+        // card. `mergeLegendarySheet` is the legendary-tier variant.
+        this.load.spritesheet('mergeSheet', 'assets/merge.png', { frameWidth: 54, frameHeight: 70 });
+        this.load.spritesheet('mergeLegendarySheet', 'assets/mergeLegendary.png', { frameWidth: 54, frameHeight: 70 });
         // Empty card poof effect (4 frames, 32x48 each)
         this.load.spritesheet('poofEmpty', 'assets/poofEmpty32x48frames.png', { frameWidth: 32, frameHeight: 48 });
         // Poison status indicator (5 frames, 16x32 each) — shown on poisoned enemies/hero
         this.load.spritesheet('poisonedStatus', 'assets/poisonedStatus.png', { frameWidth: 16, frameHeight: 32 });
         // Shock marker (6 frames, 16x32 each), positioned like poisonedStatus.
         this.load.spritesheet('shockedStatus', 'assets/shockedStatus.png', { frameWidth: 16, frameHeight: 32 });
+        // Poison trap trigger poof (5 frames, 92x92 each)
+        this.load.spritesheet('poisonPoof', 'assets/poisonPoof92x92.png', { frameWidth: 92, frameHeight: 92 });
+        // Frozen frame overlay (66x80) — drawn on top of a frozen card in place
+        // of the old blue tint.
+        this.load.image('frozenFrame', 'assets/frozen.png');
+        this.load.image('bossFrozenFrame', 'assets/bossFrozen.png');
 
         this.load.image('healthBar', 'assets/healthBar.png');
         this.load.image('healthBarEmpty', 'assets/healthBarEmpty2.png');
@@ -173,10 +184,7 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('durability_dot', 'assets/durability_dot.png');
         this.load.image('ten_durability', 'assets/ten_durability.png');
         // Load twinkle animation frames
-        this.load.image('twinkle1', 'assets/twinkle1.png');
-        this.load.image('twinkle2', 'assets/twinkle2.png');
-        this.load.image('twinkle3', 'assets/twinkle3.png');
-        this.load.image('twinkle4', 'assets/twinkle4.png');
+        this.load.spritesheet('twinkle', 'assets/twinkle60x78Sheet.png', { frameWidth: 60, frameHeight: 78 });
         // Bosses
         this.load.image('giantSkeleton', 'assets/giantSkeleton.png');
         this.load.image('GoblinKingSprite', 'assets/goblinKing.png');
@@ -267,12 +275,7 @@ export class PreloadScene extends Phaser.Scene {
         // Create twinkle animation for mergeable cards
         this.anims.create({
             key: 'twinkle_anim',
-            frames: [
-                { key: 'twinkle1' },
-                { key: 'twinkle2' },
-                { key: 'twinkle3' },
-                { key: 'twinkle4' }
-            ],
+            frames: this.anims.generateFrameNumbers('twinkle', { start: 0, end: 3 }),
             frameRate: 8,
             repeat: -1
         });
@@ -319,6 +322,13 @@ export class PreloadScene extends Phaser.Scene {
             key: 'poof_empty_anim',
             frames: this.anims.generateFrameNumbers('poofEmpty', { start: 0, end: 3 }),
             frameRate: 10,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'poison_poof_anim',
+            frames: this.anims.generateFrameNumbers('poisonPoof', { start: 0, end: 4 }),
+            frameRate: 12,
             repeat: 0
         });
 

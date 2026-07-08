@@ -44,16 +44,19 @@ export class RareShopScene extends StationRoomBase {
         });
 
         // 2. Uncommon weapon (rescue option)
+        const firstWeapon = this.createUpgradedWeapon();
         this.shopItems.push({
-            data: this.createUpgradedWeapon(),
+            data: firstWeapon,
             price: 20 + floor * 5,
             currency: 'coins',
             purchased: false
         });
 
-        // 3. Second uncommon weapon
+        // 3. Second uncommon weapon — pick a different weapon type than the first
+        // when the floor's unlocked pool allows, so the shop doesn't offer two of
+        // the same weapon (e.g. two daggers).
         this.shopItems.push({
-            data: this.createUpgradedWeapon(),
+            data: this.createUpgradedWeapon(firstWeapon?.weaponType),
             price: 25 + floor * 5,
             currency: 'coins',
             purchased: false
@@ -157,12 +160,12 @@ export class RareShopScene extends StationRoomBase {
         };
     }
 
-    createUpgradedWeapon() {
+    createUpgradedWeapon(excludeType = null) {
         const cardGenerator = new CardSystem(this);
         const floor = this.gameState.currentFloor;
 
         const weaponTypes = ['dagger', 'spear', 'sword', 'axe'];
-        const availableWeapons = [];
+        let availableWeapons = [];
 
         weaponTypes.forEach(weaponType => {
             const weaponUnlocks = cardGenerator.cardDataGenerator.weaponUnlocks[weaponType];
@@ -170,6 +173,13 @@ export class RareShopScene extends StationRoomBase {
                 availableWeapons.push({ type: weaponType, data: weaponUnlocks.uncommon });
             }
         });
+
+        // Prefer a different weapon type than the one already offered — but only
+        // if excluding it still leaves at least one option (on early floors the
+        // pool can be a single type, e.g. dagger-only before floor 18).
+        if (excludeType && availableWeapons.some(w => w.type !== excludeType)) {
+            availableWeapons = availableWeapons.filter(w => w.type !== excludeType);
+        }
 
         if (availableWeapons.length === 0) {
             return {
