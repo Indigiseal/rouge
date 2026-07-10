@@ -120,7 +120,8 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     mothWingDust: 'mothWingDust',
     goldenSeed: 'goldenSeed',
     fireRuneStone: 'fireRuneStone',
-    prospectorsPick: 'pickaxe'
+    prospectorsPick: 'pickaxe',
+    fortuneCard: 'fishbowl'
 });
 
 export const RELIC_ATLAS_KEYS = Object.freeze({

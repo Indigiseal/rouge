@@ -23,7 +23,7 @@ export class CardSystem {
         w.isRanged === false ||
         w.subType === 'sword' ||
         n.includes('sword') || n.includes('dagger') || n.includes('mace') || n.includes('hammer') ||
-        n.includes('axe') || n.includes('spear')
+        n.includes('axe')
       );
     }
     isRangedWeapon(w) {
@@ -949,6 +949,9 @@ export class CardSystem {
         this.scene.time.delayedCall(revealSettleMs + order * revealStaggerMs, () => this.revealCard(idx, true));
       });
 
+      const omenDelay = revealSettleMs + (Math.max(0, revealOrder.length - 1) * revealStaggerMs) + 160;
+      this.scene.time.delayedCall(omenDelay, () => this.applyHolographicOmenStartEffect());
+
       // Watcher's Lamp — preview one trap (no damage)
       if (this.scene.amuletManager?.wantsTrapPreview?.()) {
         const trapIdx = this.boardCards.findIndex(c => c && !c.revealed && c.data?.type === 'trap');
@@ -1773,6 +1776,7 @@ export class CardSystem {
         card.sprite.setInteractive();
         // Hover the boss to read its attack and abilities.
         this._attachBossTooltip(card);
+        this.scene.time.delayedCall(650, () => this.applyHolographicOmenStartEffect());
     }
 
     playBossEntrance(cardSprite, bossData) {
@@ -2869,7 +2873,7 @@ export class CardSystem {
             // Check if there are any melee enemies alive (revealed or hidden)
             const meleeBlockers = this._anyMeleeAlive({ includeHidden: true });
 
-            // RANGED weapons (spears, bows) bypass the frontline gate — that's
+            // RANGED weapons (bows) bypass the frontline gate — that's
             // their whole point. They pay a damage penalty (RANGED_MULTIPLIER)
             // in exchange for being able to hit back-row archers regardless
             // of front-row blockers.
@@ -2912,7 +2916,8 @@ export class CardSystem {
         // CRIT or spend a one-shot bonus that never dealt damage.
         if (!isReflection && this.rollEvade(card)) return;
 
-        const critChance = this.scene.gameState?.discardCritChance || 0;
+        const critChance = (this.scene.gameState?.discardCritChance || 0)
+            + (this.scene.amuletManager?.getCriticalChanceBonus?.() || 0);
         if (!isReflection && weapon && critChance > 0 && Math.random() < critChance) {
             finalDamage *= 2;
             this.scene.createFloatingText(card.sprite.x, card.sprite.y - 24, 'CRIT!', 0xffd700);
@@ -3072,6 +3077,55 @@ export class CardSystem {
 
     isOpenEnemyCard(card) {
         return !!card?.revealed && !!card.sprite && this.isEnemyType(card.data?.type);
+    }
+
+    hasHolographicOmen() {
+        const slots = this.scene.inventorySystem?.slots || this.scene.gameState?.inventory || [];
+        return slots.some(item => item?.id === 'holographicOmen' || item?.passiveEffect === 'holographicOmen');
+    }
+
+    applyHolographicOmenStartEffect() {
+        if (!this.hasHolographicOmen()) return false;
+        const roomType = this.scene.gameState?.roomType || this.scene.roomType || 'COMBAT';
+        if (!['COMBAT', 'ELITE', 'BOSS'].includes(roomType)) return false;
+
+        const revealedEnemies = this.boardCards
+            .map((card, index) => ({ card, index }))
+            .filter(({ card }) => this.isOpenEnemyCard(card));
+        if (revealedEnemies.length === 0) return false;
+
+        revealedEnemies.forEach(({ card, index }) => {
+            const roll = Math.floor(Math.random() * 4);
+            if (roll === 0) {
+                card.data.frozen = Math.max(card.data.frozen || 0, 1);
+                this.attachFrozenFrame(card);
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, 'Frozen!', 0x66ddff);
+            } else if (roll === 1) {
+                this.applyWeaponPoison(card, { poisonDamage: 1, poisonTurns: 3 });
+            } else if (roll === 2) {
+                this.burnEnemy(index, 1);
+            } else {
+                this.applyShockStatus(card, 1);
+            }
+            if (this.boardCards[index] === card && card.data?.health > 0) {
+                this.updateEnemyInfoText(card);
+            }
+        });
+
+        if (Math.random() < 0.10) {
+            const before = this.scene.gameState?.actionsLeft || 0;
+            this.scene.gameState.actionsLeft = Math.max(0, before - 2);
+            const lost = before - this.scene.gameState.actionsLeft;
+            if (lost > 0) {
+                const x = this.scene.playerAvatar?.x || 320;
+                const y = this.scene.playerAvatar?.y || 300;
+                this.scene.createFloatingText?.(x, y, 'Omen Backfires!', 0xff66cc);
+                this.scene.createFloatingText?.(x, y - 16, `-${lost} AP`, 0xff99dd);
+                this.scene.updateActionPointUI?.();
+                this.scene.updateUI?.();
+            }
+        }
+        return true;
     }
 
     // Enemy/boss with HP left — revealed OR still face-down.

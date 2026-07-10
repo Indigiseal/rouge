@@ -59,7 +59,7 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('sword_C', 'assets/sword_C.png');
         this.load.image('dagger_C', 'assets/dagger_c.png');
         this.load.image('axe_C', 'assets/axe_C.png');
-        this.load.image('spear_c', 'assets/spear_c.png');
+        this.load.image('bow_c', 'assets/bow_c.png');
         // Load Uncommon / Rare / Epic / Legendary item sprites
         this.load.image('axe_U', 'assets/axe_U.png');
         this.load.image('axe_R', 'assets/axe_R.png');
@@ -69,10 +69,10 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('dagger_R', 'assets/dagger_r.png');
         this.load.image('dagger_E', 'assets/dagger_e.png');
         this.load.image('dagger_L', 'assets/dagger_l.png');
-        this.load.image('spear_u', 'assets/spear_u.png');
-        this.load.image('spear_R', 'assets/spear_R.png');
-        this.load.image('spear_E', 'assets/spear_E.png');
-        this.load.image('spear_L', 'assets/spear_L.png');
+        this.load.image('bow_U', 'assets/bow_U.png');
+        this.load.image('bow_R', 'assets/bow_R.png');
+        this.load.image('bow_E', 'assets/bow_E.png');
+        this.load.image('bow_L', 'assets/bow_L.png');
         this.load.image('sword_U', 'assets/sword_u.png');
         this.load.image('sword_R', 'assets/sword_R.png');
         this.load.image('sword_E', 'assets/sword_E.png');
@@ -97,6 +97,10 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('thornsCard_U', 'assets/thornsCard_U.png');
         this.load.image('thornsCard_R', 'assets/thornsCard_R.png');
         this.load.image('thornsCard_E', 'assets/thornsCard_E.png');
+        this.load.image('carnivalPipe', 'assets/pipe.png');
+        this.load.image('carnivalDucky', 'assets/ducky.png');
+        this.load.image('holographicOmen', 'assets/omen.png');
+        this.load.spritesheet('luckyClover', 'assets/clover.png', { frameWidth: 53, frameHeight: 70 });
         this.load.spritesheet('mapNodes', 'assets/mapNodes42x42.png', { frameWidth: 42, frameHeight: 42 });
         this.load.spritesheet('gemsRGY', 'assets/gemsRGY-Sheet.png', { frameWidth: 16, frameHeight: 16 });
         // Enemy role marker: frame 0 = melee, frame 1 = ranged

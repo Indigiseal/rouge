@@ -747,7 +747,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        // Check if player is blocking with spear
+        // Check if player is blocking with bow
         if (this.gameState.blockNextAttack) {
             this.gameState.blockNextAttack = false; // Reset block
             SoundHelper.playSound(this, 'armor_equip', 0.5);

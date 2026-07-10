@@ -17,7 +17,7 @@ function rarityFill(rarity) {
 
 function describeWeaponKindKey(data) {
     const text = `${data.name || ''} ${data.sprite || ''} ${data.weaponType || ''}`.toLowerCase();
-    if (data.isRanged || data.range > 1 || text.includes('spear') || text.includes('bow') || text.includes('chain')) {
+    if (data.isRanged || data.range > 1 || text.includes('bow') || text.includes('chain')) {
         return 'tooltip.ranged';
     }
     return 'tooltip.melee';

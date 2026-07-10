@@ -103,7 +103,7 @@ export class MetaProgressionManager {
                 description: 'Heal 2 HP at the start of every floor',
                 killedBy: 'skeleton',
                 effect: {
-                    // Tuned 4 → 2 after the spear-bypass fix dropped the
+                    // Tuned 4 → 2 after the bow-bypass fix dropped the
                     // overall difficulty more than expected. 2 HP/floor still
                     // adds up to ~90 HP over a full run but you feel late-floor
                     // damage again instead of trivially regenerating it.

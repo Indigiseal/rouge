@@ -150,12 +150,12 @@ export class CardDataGenerator {
                 epic: { floor: 26, damage: 6, sprite: 'dagger_E', special: 'dualWield' },
                 legendary: { floor: 34, damage: 7, sprite: 'dagger_L', special: 'dualWield' }
             },
-            spear: {
-                common: { floor: 8, damage: 4, sprite: 'spear_c', special: 'block', range: 'ranged' },
-                uncommon: { floor: 18, damage: 5, sprite: 'spear_u', special: 'block', range: 'ranged' },
-                rare: { floor: 24, damage: 6, sprite: 'spear_R', special: 'block', range: 'ranged' },
-                epic: { floor: 30, damage: 7, sprite: 'spear_E', special: 'block', range: 'ranged' },
-                legendary: { floor: 38, damage: 9, sprite: 'spear_L', special: 'block', range: 'ranged' }
+            bow: {
+                common: { floor: 8, damage: 4, sprite: 'bow_c', special: 'block', range: 'ranged' },
+                uncommon: { floor: 18, damage: 5, sprite: 'bow_U', special: 'block', range: 'ranged' },
+                rare: { floor: 24, damage: 6, sprite: 'bow_R', special: 'block', range: 'ranged' },
+                epic: { floor: 30, damage: 7, sprite: 'bow_E', special: 'block', range: 'ranged' },
+                legendary: { floor: 38, damage: 9, sprite: 'bow_L', special: 'block', range: 'ranged' }
             },
             sword: {
                 // Act 2 weapon — appears fresh at the act-2 start (floor 16) and merges
@@ -1045,7 +1045,7 @@ export class CardDataGenerator {
 
         const durabilityMap = {
             dagger: { common: 4, uncommon: 5, rare: 6, epic: 7, legendary: 8 },
-            spear: { common: 5, uncommon: 6, rare: 7, epic: 8, legendary: 9 },
+            bow: { common: 5, uncommon: 6, rare: 7, epic: 8, legendary: 9 },
             sword: { common: 6, uncommon: 8, rare: 10, epic: 11, legendary: 13 },
             axe: { common: 6, uncommon: 8, rare: 10, epic: 12, legendary: 14 }
         };

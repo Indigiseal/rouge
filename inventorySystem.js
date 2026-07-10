@@ -1161,7 +1161,8 @@ export class InventorySystem {
             const weaponType = translateItemName(this.scene, { type: 'weapon', weaponType: this.getWeaponTypeFromCard(card) }).replace(translateRarity(this.scene, undefined), '').trim();
             lines.push(t(this.scene, 'tooltip.family', { value: weaponType }));
             lines.push(t(this.scene, 'tooltip.damageShort', { amount: card.damage || 0 }));
-            const critChance = this.scene?.gameState?.discardCritChance || 0;
+            const critChance = (this.scene?.gameState?.discardCritChance || 0)
+                + (this.scene?.amuletManager?.getCriticalChanceBonus?.() || 0);
             if (critChance > 0) lines.push(`Crit: ${Math.round(critChance * 100)}%`);
             lines.push(t(this.scene, 'tooltip.range', {
                 value: t(this.scene, (card.range || 'melee') === 'ranged' ? 'tooltip.ranged' : 'tooltip.melee')
@@ -1216,12 +1217,18 @@ export class InventorySystem {
             if (card.guardProtection) lines.push(`Guard: +${card.guardProtection} protection`);
         } else if (card.type === 'magic') {
             lines.push(card.description ? translateDescription(this.scene, card.description) : this.describeMagicCard(card));
+        } else if (card.type === 'passive') {
+            lines.push(card.description ? translateDescription(this.scene, card.description) : 'Passive effect while carried.');
+            if (card.flavor) lines.push(translateDescription(this.scene, card.flavor));
         } else if (card.type === 'amulet') {
             lines.push(this.describeAmuletCard(card));
         } else if (card.type === 'key') {
             lines.push(t(this.scene, 'tooltip.keySafe'));
         } else if (card.type === 'gem') {
             lines.push(t(this.scene, 'tooltip.effect', { effect: this.describeGemEffect(card.gemEffect) }));
+        } else if (card.type === 'junk') {
+            lines.push(card.description ? translateDescription(this.scene, card.description) : 'No effect.');
+            if (card.carnivalToken) lines.push('A carnival token.');
         }
 
         return lines;
@@ -1386,6 +1393,7 @@ export class InventorySystem {
         }
 
         this.addCardDirect(cardData, emptySlot);
+        this.scene.amuletManager?.processCardReward?.(cardData);
         if (cardData?.tutorialTag) {
             this.scene.events.emit('tutorialProgress', `inventory:${cardData.tutorialTag}`);
             this.scene.tutorialManager?._handleProgress?.(`inventory:${cardData.tutorialTag}`);
@@ -1680,7 +1688,7 @@ export class InventorySystem {
 
         const text = this.normalizeCardText(`${card.name || ''} ${card.sprite || ''} ${card.id || ''}`);
         if (text.includes('dagger')) return 'dagger';
-        if (text.includes('spear')) return 'spear';
+        if (text.includes('bow')) return 'bow';
         if (text.includes('sword')) return 'sword';
         if (text.includes('axe')) return 'axe';
 
@@ -2225,7 +2233,7 @@ export class InventorySystem {
         const weapon = this.slots[slotIndex];
         if (!weapon) return;
         
-        // Handle SPEAR BLOCK ability separately (defensive use, doesn't need enemy)
+        // Handle BOW BLOCK ability separately (defensive use, doesn't need enemy)
         if (weapon.special === 'block') {
             // Check if dropped on player avatar for blocking
             const playerAvatarBounds = this.scene.playerAvatar.getBounds();
@@ -2245,7 +2253,7 @@ export class InventorySystem {
                     0x00aaff
                 );
                 
-                // Reduce spear durability for blocking (with amulet modifier)
+                // Reduce bow durability for blocking (with amulet modifier)
                 const durabilityLoss = this.scene.amuletManager ? 
                     Math.random() < this.scene.amuletManager.getWeaponDurabilityRate() ? 1 : 0 
                     : 1;
@@ -2983,7 +2991,7 @@ export class InventorySystem {
             // Get proper durability
             const durabilityMap = {
                 dagger: { common: 4, uncommon: 5, rare: 6, epic: 7, legendary: 8 },
-                spear: { common: 5, uncommon: 6, rare: 7, epic: 8, legendary: 9 },
+                bow: { common: 5, uncommon: 6, rare: 7, epic: 8, legendary: 9 },
                 sword: { common: 6, uncommon: 8, rare: 10, epic: 11, legendary: 13 },
                 axe: { common: 6, uncommon: 8, rare: 10, epic: 12, legendary: 14 }
             };

@@ -164,7 +164,7 @@ export class RareShopScene extends StationRoomBase {
         const cardGenerator = new CardSystem(this);
         const floor = this.gameState.currentFloor;
 
-        const weaponTypes = ['dagger', 'spear', 'sword', 'axe'];
+        const weaponTypes = ['dagger', 'bow', 'sword', 'axe'];
         let availableWeapons = [];
 
         weaponTypes.forEach(weaponType => {
@@ -201,7 +201,7 @@ export class RareShopScene extends StationRoomBase {
         const weaponName = selected.type.charAt(0).toUpperCase() + selected.type.slice(1);
 
         const durabilityMap = {
-            dagger: 5, spear: 6, sword: 8, axe: 8
+            dagger: 5, bow: 6, sword: 8, axe: 8
         };
         const maxDurability = durabilityMap[selected.type] ?? 6;
 

@@ -226,7 +226,7 @@ export class AnvilScene extends Phaser.Scene {
             // Weapon repair costs per durability point
             const repairCosts = {
                 'dagger': { 1: 1, 2: 2, 3: 2, 4: 2 },
-                'spear': { 1: 2, 2: 2, 3: 2, 4: 3 },
+                'bow': { 1: 2, 2: 2, 3: 2, 4: 3 },
                 'sword': { 1: 2, 2: 2, 3: 2, 4: 2 },
                 'axe': { 1: 4, 2: 4, 3: 4, 4: 4 }
             };
@@ -247,7 +247,7 @@ export class AnvilScene extends Phaser.Scene {
     getWeaponType(itemName) {
         const name = itemName.toLowerCase();
         if (name.includes('dagger')) return 'dagger';
-        if (name.includes('spear')) return 'spear';
+        if (name.includes('bow')) return 'bow';
         if (name.includes('sword')) return 'sword';
         if (name.includes('axe')) return 'axe';
         return 'sword'; // Default

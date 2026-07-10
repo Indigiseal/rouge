@@ -841,7 +841,6 @@ const RARITY_TRANSLATIONS = {
 const WEAPON_TRANSLATIONS = {
     ru: {
         dagger: 'Кинжал',
-        spear: 'Копье',
         sword: 'Меч',
         axe: 'Топор',
         bow: 'Лук',

@@ -21,8 +21,12 @@ const EVENT_ILLUSTRATION_FRAMES = {
   slimy_prison: 16,
   book_worm: 19,
   briar_room: 23,
-  old_drill_room: 26
+  old_drill_room: 26,
+  something_wicked: 7,
+  brass_wizard: 28
 };
+
+const CARNIVAL_HAG_FRAME = 27;
 
 const EVENTS = [
   {
@@ -340,6 +344,69 @@ const EVENTS = [
     }
   },
   {
+    id: 'something_wicked',
+    title: 'Something Wicked',
+    description: 'In the dark of the dungeon, you hear voices.\n\nCrowd chatter. Laughter. A thin happy tune played slightly out of tune.\n\nAt first, you think it is a hallucination.\n\nThen the corridor opens into a vast carnival chamber.\n\nColored lanterns swing from the ceiling. Balloons drift between stone pillars. Monsters crowd around prize booths, puppet stages, crooked games, and painted doors.\n\nEveryone is smiling.\n\nNo one looks at you.\n\nYou walk through the crowd in a daze, trying to understand what feels wrong.\n\nThen a hand grabs your shoulder from behind.\n\nYou turn around, ready to strike.\n\nAn old woman stands too close, holding a tray of dusty trinkets against your chest. Her fingers are thin, but her grip is surprisingly strong.\n\n"One coin," she says. "Wonderful things. Very cheap."\n\nYou try to step away.\n\nHer hand does not move.\n\nOn the tray, you see four objects:\n\na dusty pipe\n\na rubber duck\n\na broken ring with a cracked gem\n\na four-leaf clover pressed under glass',
+    choices: [
+      {
+        text: 'Buy the dusty pipe',
+        condition: (gs) => (gs?.coins || 0) >= 1,
+        outcomeFrame: CARNIVAL_HAG_FRAME,
+        action: (gs, scene) => scene.buyCarnivalJunk('dustyPipe'),
+        outcome: 'You press one coin into the old woman\'s hand.\n\nHer fingers finally release your shoulder.\n\nThe pipe remains in your palm. It smells like cold ash.\n\nWhen you look up, the old woman has vanished into the crowd.'
+      },
+      {
+        text: 'Buy the rubber duck',
+        condition: (gs) => (gs?.coins || 0) >= 1,
+        outcomeFrame: CARNIVAL_HAG_FRAME,
+        action: (gs, scene) => scene.buyCarnivalJunk('rubberDuck'),
+        outcome: 'You press one coin into the old woman\'s hand.\n\nHer fingers finally release your shoulder.\n\nThe rubber duck remains in your palm. Its painted eyes are almost worn away.\n\nWhen you look up, the old woman has vanished into the crowd.'
+      },
+      {
+        text: 'Buy the broken ring',
+        condition: (gs) => (gs?.coins || 0) >= 1,
+        outcomeFrame: CARNIVAL_HAG_FRAME,
+        action: (gs, scene) => scene.buyCarnivalJunk('brokenRing'),
+        outcome: 'You press one coin into the old woman\'s hand.\n\nHer fingers finally release your shoulder.\n\nThe broken ring remains in your palm. The cracked gem catches no light.\n\nWhen you look up, the old woman has vanished into the crowd.'
+      },
+      {
+        text: 'Buy the four-leaf clover',
+        condition: (gs) => (gs?.coins || 0) >= 1,
+        outcomeFrame: CARNIVAL_HAG_FRAME,
+        action: (gs, scene) => scene.buyLuckyClover(),
+        outcome: 'You press one coin into the old woman\'s hand.\n\nHer fingers finally release your shoulder.\n\nThe clover remains in your palm, sealed under cloudy glass.\n\nFor one second, it glitters green.\n\nWhen you look up, the old woman has vanished into the crowd.'
+      },
+      {
+        text: 'Refuse',
+        outcomeFrame: CARNIVAL_HAG_FRAME,
+        action: (gs, scene) => scene.refuseCarnivalHag(),
+        outcome: 'You twist away from the old woman\'s grip.\n\nHer nails scrape your shoulder.\n\nShe watches you disappear into the carnival crowd without blinking.'
+      }
+    ]
+  },
+  {
+    id: 'brass_wizard',
+    title: 'The Brass Wizard',
+    description: 'The carnival music leads you to a narrow booth with cracked blue curtains.\n\nBehind the glass sits an old fortune-telling machine.\n\nIt is shaped like a brass wizard in a faded blue robe. Old stars are painted across the robe, but most of the color has peeled away.\n\nThe wizard\'s pale eyes stare forward. They may have been blue once.\n\nIts puppet-like mouth hangs slightly open.\n\nA coin slot waits beneath the glass.',
+    choices: [
+      {
+        text: 'Insert 1 coin',
+        condition: (gs) => (gs?.coins || 0) >= 1,
+        action: (gs, scene) => scene.insertBrassWizardCoin(),
+        outcome: (gs, scene) => scene.brassWizardOutcome
+      },
+      {
+        text: 'Leave the booth',
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          gs.storyRun.brassWizardSeen = true;
+          scene.clearPendingEvent('brass_wizard');
+        },
+        outcome: 'You leave the coin slot empty.\n\nThe brass wizard watches you through the dusty glass.\n\nIts mouth hangs open, waiting for a fortune it does not get to speak.'
+      }
+    ]
+  },
+  {
     id: 'almost_you_well',
     title: 'The Well of Almost-You',
     description: 'A stone well stands in the middle of the room, filled almost to the top with thick black water — more tar than water.\n\nYou lean over and see your reflection. But it is wrong: frizzled hair, cracked armor, and one card in its hand you have never seen.\n\n(Drag a weapon, armor or thorns card onto the well. It sinks — and a different item of the same rarity rises back in its place.)',
@@ -473,6 +540,7 @@ export class EventScene extends Phaser.Scene {
       if (this.canShowEggHatchingEvent()) return this.getEventById('hatching_egg');
       story.pendingEvents = story.pendingEvents.filter(id => id !== 'hatching_egg');
     }
+    if (story.pendingEvents.includes('brass_wizard')) return this.getEventById('brass_wizard');
     // The music box is the sole story opener. (The donkey caravan + hermit
     // thread was removed and no longer appears at all.)
     if (story.boxState === 'unknown') return this.getEventById('broken_music_box');
@@ -486,6 +554,8 @@ export class EventScene extends Phaser.Scene {
     if (!story.slimyPrisonSeen) bonusFillers.push('slimy_prison');
     if (!story.bookWormSeen) bonusFillers.push('book_worm');
     if (!story.briarRoomSeen) bonusFillers.push('briar_room');
+    if (!story.carnivalVisited) bonusFillers.push('something_wicked');
+    if (story.carnivalVisited && !story.brassWizardSeen) bonusFillers.push('brass_wizard');
     if (this.getQualifyingCompanions().length > 0) bonusFillers.push('old_drill_room');
     if (bonusFillers.length > 0) {
       return this.getEventById(bonusFillers[Math.floor(Math.random() * bonusFillers.length)]);
@@ -504,7 +574,7 @@ export class EventScene extends Phaser.Scene {
       const requestedId = new URLSearchParams(window.location.search).get('event');
       if (!requestedId) return null;
       const resolvedId = requestedId === 'singing_box' ? 'broken_music_box' : requestedId;
-      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'old_drill_room']);
+      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'old_drill_room', 'something_wicked', 'brass_wizard']);
       return forceable.has(resolvedId) ? resolvedId : null;
     } catch {
       return null;
@@ -546,6 +616,9 @@ export class EventScene extends Phaser.Scene {
       slimyPrisonSeen: false,
       bookWormSeen: false,
       briarRoomSeen: false,
+      carnivalVisited: false,
+      carnivalHagMet: false,
+      brassWizardSeen: false,
       pendingEvents: []
     };
 
@@ -621,6 +694,9 @@ export class EventScene extends Phaser.Scene {
       slimyPrisonSeen: Boolean(existingStoryRun.slimyPrisonSeen),
       bookWormSeen: Boolean(existingStoryRun.bookWormSeen),
       briarRoomSeen: Boolean(existingStoryRun.briarRoomSeen),
+      carnivalVisited: Boolean(existingStoryRun.carnivalVisited),
+      carnivalHagMet: Boolean(existingStoryRun.carnivalHagMet),
+      brassWizardSeen: Boolean(existingStoryRun.brassWizardSeen),
       pendingEvents
     };
 
@@ -954,6 +1030,250 @@ export class EventScene extends Phaser.Scene {
     const added = this._addCardToInventory(potion);
     if (added) this._reward(`Gained: ${potion?.name || 'Potion'}`);
     return added;
+  }
+
+  markCarnivalHagMet() {
+    this.ensureStoryState();
+    this.gameState.storyRun.carnivalVisited = true;
+    this.gameState.storyRun.carnivalHagMet = true;
+  }
+
+  spendCoins(amount) {
+    if (!this.gameState || !Number.isFinite(amount) || amount <= 0) return false;
+    const before = Number.isFinite(this.gameState.coins) ? this.gameState.coins : 0;
+    if (before < amount) return false;
+    this.gameState.coins = before - amount;
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.updateUI?.();
+    this._reward(`-${amount} coin${amount === 1 ? '' : 's'}`);
+    return true;
+  }
+
+  buyCarnivalJunk(junkId) {
+    this.markCarnivalHagMet();
+    if (!this.spendCoins(1)) return false;
+    const junk = this.createCarnivalJunkCard(junkId);
+    const added = this._deliverCardReward(junk, junk.name || 'Carnival Junk', `Gained junk card: ${junk.name || 'Carnival Junk'}`);
+    this.addPendingEvent('brass_wizard');
+    return added;
+  }
+
+  buyLuckyClover() {
+    this.markCarnivalHagMet();
+    if (!this.spendCoins(1)) return false;
+    this.addPendingEvent('brass_wizard');
+    return this.gainAmulet('luckyClover');
+  }
+
+  refuseCarnivalHag() {
+    this.markCarnivalHagMet();
+    this.loseHealthCapped(3);
+    this.addPendingEvent('brass_wizard');
+  }
+
+  createCarnivalJunkCard(junkId) {
+    const data = {
+      dustyPipe: {
+        id: 'carnivalDustyPipe',
+        name: 'Dusty Pipe',
+        sprite: 'carnivalPipe',
+        description: 'Cold ash clings to the bowl. The stem points toward bad ideas.'
+      },
+      rubberDuck: {
+        id: 'carnivalRubberDuck',
+        name: 'Rubber Duck',
+        sprite: 'carnivalDucky',
+        description: 'Its painted eyes are almost gone. It still seems amused.'
+      },
+      brokenRing: {
+        id: 'carnivalBrokenRing',
+        name: 'Broken Ring',
+        description: 'A cracked gem catches no light, but it remembers being expensive.'
+      }
+    }[junkId] || {
+      id: 'carnivalJunk',
+      name: 'Carnival Junk',
+      description: 'A cheap prize from a carnival that should not fit inside the dungeon.'
+    };
+
+    return {
+      ...data,
+      type: 'junk',
+      rarity: 'common',
+      carnivalToken: true,
+      noEffect: true,
+      cost: 1
+    };
+  }
+
+  hasCarnivalJunk() {
+    return Boolean(this.getFirstCarnivalJunk());
+  }
+
+  getFirstCarnivalJunk() {
+    const slots = this.getInventorySlots();
+    if (!Array.isArray(slots)) return null;
+    return slots.find(item => this.isCarnivalJunk(item)) || null;
+  }
+
+  isCarnivalJunk(item) {
+    return Boolean(item?.type === 'junk' && item?.carnivalToken);
+  }
+
+  createRespectableCarnivalCard() {
+    const generator = new CardDataGenerator();
+    const floor = this.gameState?.currentFloor || 1;
+    const types = ['weapon', 'armor', 'thorns', 'potion', 'food', 'magic'];
+    let type = types[Math.floor(Math.random() * types.length)];
+    const rarityRoll = Math.random();
+    const rarity = rarityRoll < 0.12 ? 'rare' : rarityRoll < 0.42 ? 'uncommon' : 'common';
+
+    for (let tries = 0; tries < 8; tries++) {
+      const targetRarity = ['weapon', 'armor', 'thorns'].includes(type) ? rarity : null;
+      const card = generator.createCardData(type, floor, false, this.gameState, targetRarity);
+      if (card) {
+        card.carnivalTouched = true;
+        return card;
+      }
+      type = types[Math.floor(Math.random() * types.length)];
+    }
+
+    const fallback = generator.createPotionCard(floor);
+    fallback.carnivalTouched = true;
+    return fallback;
+  }
+
+  insertBrassWizardCoin() {
+    this.ensureStoryState();
+    this.clearPendingEvent('brass_wizard');
+    this.gameState.storyRun.carnivalVisited = true;
+    this.gameState.storyRun.brassWizardSeen = true;
+    if (!this.spendCoins(1)) return false;
+
+    const roll = Math.random();
+    if (roll < 0.25) {
+      this.brassWizardOutcome = 'The brass wizard\'s hand jerks toward the deck inside its chest.\n\nThen it stops.\n\nIts painted mouth snaps open.\n\nClick.\n\nClick-click.\n\nClick-click-click.\n\nThe sound grows louder, sharp and metallic, echoing from inside the booth.\n\nThe wizard\'s pale eyes stare past you while its puppet mouth keeps clacking faster and faster.\n\nFor a moment, you are sure you broke something.\n\nOr woke something.\n\nYou step back, then turn and push your way into the carnival crowd, just to get away from that awful clicking.';
+      this._reward('No reward');
+      return true;
+    }
+
+    if (roll < 0.55) {
+      const card = this.createRespectableCarnivalCard();
+      this._deliverCardReward(card, card?.name || 'fortune card', `Gained card: ${card?.name || 'Fortune Card'}`);
+      this.brassWizardOutcome = 'The brass wizard\'s hand moves stiffly behind the glass.\n\nIts fingers scrape across the deck inside its chest.\n\nAfter a long pause, one card slides out through the slot.\n\nThe card is warm, as if the machine had been holding it for years.';
+      return true;
+    }
+
+    if (roll < 0.80) {
+      this.brassWizardOutcome = 'The brass wizard\'s hand lifts behind the glass.\n\nIt cannot reach you.\n\nInstead, a narrow tray snaps out from the booth with a hard wooden clack.\n\nThe tray is exactly the size of a card.\n\nThe wizard\'s pale eyes lower toward your inventory.\n\nIts puppet mouth clicks once.\n\nThen it waits.';
+      this._brassWizardTrayOpen = true;
+      return true;
+    }
+
+    this.gainAmulet('fortuneCard');
+    this.brassWizardOutcome = 'The brass wizard\'s pale eyes roll upward.\n\nFor a moment, they are blank.\n\nThen they settle into a color they should not have.\n\nHuman eyes.\n\nThe machine goes still.\n\nIt looks at you for a little too long.\n\nNo music reaches this booth now.\n\nThe puppet mouth opens.\n\nClick.\n\nClick.\n\nIts brass hand opens slowly behind the glass.\n\nA single fortune card slides out.';
+    return true;
+  }
+
+  getBrassWizardTrayChoices() {
+    const choices = [];
+    if (this.hasCarnivalJunk()) {
+      choices.push({
+        text: 'Place a carnival junk card on the tray',
+        action: (gs, scene) => {
+          scene._reward('-1 coin');
+          scene.tradeJunkForHolographicOmen();
+        },
+        outcome: 'You place the useless carnival trinket on the tray.\n\nThe tray snaps back into the booth.\n\nBehind the glass, the brass wizard lowers one hand over it.\n\nThe booth goes dark.\n\nThen a rainbow sheen spreads across the glass from the inside, thin and oily, like light on spilled ink.\n\nA card slides out.\n\nIt is too bright for the old machine that made it.\n\nFor a moment, every painted star on the wizard\'s robe seems to look at you.'
+      });
+    }
+    if (this.hasBrassWizardRealCard()) {
+      choices.push({
+        text: 'Place a real card on the tray',
+        action: (gs, scene) => {
+          scene._reward('-1 coin');
+          scene.rerollFirstRealCardOnBrassTray();
+        },
+        outcome: 'You place one of your cards on the tray.\n\nThe tray snaps back before you can change your mind.\n\nBehind the glass, the brass wizard stares down at the card for a long time.\n\nThen its metal fingers tap the glass.\n\nOnce.\n\nTwice.\n\nA different card slides out.'
+      });
+    }
+    choices.push({
+      text: 'Pull your hand back',
+      action: (gs, scene) => scene._reward('-1 coin'),
+      outcome: 'You step away from the waiting tray.\n\nThe brass wizard does not move.\n\nAfter a few seconds, the tray slides back into the booth by itself.'
+    });
+    return choices;
+  }
+
+  hasBrassWizardRealCard() {
+    return this.getInventorySlots().some(item => this.isBrassWizardRerollable(item));
+  }
+
+  isBrassWizardRerollable(item) {
+    return Boolean(
+      item
+      && !this.isCarnivalJunk(item)
+      && item.type !== 'junk'
+      && item.type !== 'companion'
+      && item.id !== 'monsterEgg'
+    );
+  }
+
+  tradeJunkForHolographicOmen() {
+    const index = this._findInventoryIndex(item => this.isCarnivalJunk(item));
+    if (index < 0) return false;
+    const junkName = this.getInventorySlots()[index]?.name || 'Carnival Junk';
+    this._removeInventoryCard(index);
+    this._reward(`Traded: ${junkName}`);
+    return this._deliverCardReward(
+      this.createHolographicOmenCard(),
+      'Holographic Omen',
+      'Gained passive card: Holographic Omen'
+    );
+  }
+
+  createHolographicOmenCard() {
+    return {
+      id: 'holographicOmen',
+      type: 'passive',
+      name: 'Holographic Omen',
+      rarity: 'rare',
+      sprite: 'holographicOmen',
+      passiveEffect: 'holographicOmen',
+      description: 'At the start of combat, revealed enemies receive random status effects. Sometimes backfires.',
+      flavor: 'A shiny carnival card that makes every fight begin wrong.',
+      unique: true
+    };
+  }
+
+  rerollFirstRealCardOnBrassTray() {
+    const index = this._findInventoryIndex(item => this.isBrassWizardRerollable(item));
+    if (index < 0) return false;
+    const oldCard = this.getInventorySlots()[index];
+    const oldName = oldCard?.name || 'card';
+    const newCard = this.createSameTypeRerollCard(oldCard);
+    if (!newCard) return false;
+    this._removeInventoryCard(index);
+    this._reward(`Traded: ${oldName}`);
+    return this._deliverCardReward(newCard, newCard.name || 'rerolled card', `Gained card: ${newCard.name || 'Rerolled Card'}`);
+  }
+
+  createSameTypeRerollCard(oldCard) {
+    const generator = new CardDataGenerator();
+    const floor = this.gameState?.currentFloor || 1;
+    const rarity = oldCard?.rarity || 'common';
+    const type = oldCard?.type;
+    const targetRarity = ['weapon', 'armor', 'thorns'].includes(type) ? rarity : null;
+
+    for (let tries = 0; tries < 12; tries++) {
+      const card = generator.createCardData(type, floor, false, this.gameState, targetRarity);
+      if (!card) continue;
+      if (oldCard?.rarity && card.rarity && card.rarity !== oldCard.rarity) continue;
+      if ((card.name || card.id) === (oldCard.name || oldCard.id) && tries < 8) continue;
+      card.carnivalTouched = true;
+      return card;
+    }
+    return this.createRespectableCarnivalCard();
   }
 
   repairRandomDamagedItem(amount) {
@@ -1630,6 +1950,11 @@ export class EventScene extends Phaser.Scene {
     if (!opts.keepRewards) { this._rewardLines = []; this._rewardIcons = []; }
     choice.action?.(this.gameState, this);
 
+    if (this.event?.id === 'brass_wizard' && this._brassWizardTrayOpen) {
+      this._brassWizardTrayOpen = false;
+      choice.next = { choices: this.getBrassWizardTrayChoices() };
+    }
+
     // A choice with `next` isn't terminal — it reveals more choices in place
     // (e.g. Inspect → Confront/Fight) instead of ending the event.
     if (choice.next && Array.isArray(choice.next.choices)) {
@@ -2289,7 +2614,9 @@ export class EventScene extends Phaser.Scene {
       almost_you_well: 'wellSeen',
       slimy_prison: 'slimyPrisonSeen',
       book_worm: 'bookWormSeen',
-      briar_room: 'briarRoomSeen'
+      briar_room: 'briarRoomSeen',
+      something_wicked: 'carnivalVisited',
+      brass_wizard: 'brassWizardSeen'
     };
     const flag = flagByEvent[this.event?.id];
     if (!flag) return;

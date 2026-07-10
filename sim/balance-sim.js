@@ -83,7 +83,7 @@ const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 // Durability map copied from CardDataGenerator.createWeaponCard.
 const WEAPON_DUR = {
   dagger: { common: 4, uncommon: 5, rare: 6, epic: 7, legendary: 8 },
-  spear: { common: 5, uncommon: 6, rare: 7, epic: 8, legendary: 9 },
+  bow: { common: 5, uncommon: 6, rare: 7, epic: 8, legendary: 9 },
   sword: { common: 6, uncommon: 8, rare: 10, epic: 11, legendary: 13 },
   axe: { common: 6, uncommon: 8, rare: 10, epic: 12, legendary: 14 },
 };
@@ -406,7 +406,7 @@ function runCombat(mock, gs, inv, floor) {
         // waste a hit on the (blocked) archer; fall through to REVEAL and hunt
         // the melee instead (key tactic the bot was missing).
       } else {
-        // Ranged weapon (spear bypasses the gate) or no melee blockers → hit
+        // Ranged weapon (bow bypasses the gate) or no melee blockers → hit
         // the lowest-HP revealed enemy.
         const t = revealed.slice().sort((a, b) => board[a].data.health - board[b].data.health);
         attackIdx = t[0];

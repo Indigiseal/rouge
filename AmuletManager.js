@@ -478,6 +478,26 @@ export class AmuletManager {
                 description: 'Gain 1 coin whenever you discard a card',
                 rarity: 'rare',
                 coinsPerDiscard: 1
+            },
+
+            // Special reward from the carnival hag in Something Wicked.
+            luckyClover: {
+                name: 'Lucky Clover',
+                sprite: 'luckyClover',
+                spriteFrame: 0,
+                description: '+3% crit chance',
+                rarity: 'rare',
+                critChanceBonus: 0.03
+            },
+
+            // Special reward from The Brass Wizard. Uses the fallback hook:
+            // the first card added to inventory each floor also grants a crystal.
+            fortuneCard: {
+                ...getAmuletAtlasPresentation('fortuneCard'),
+                name: 'Fortune Card',
+                description: 'First card reward each floor also grants +1 crystal',
+                rarity: 'rare',
+                crystalOnFirstCardReward: 1
             }
         };
     }
@@ -818,6 +838,23 @@ export class AmuletManager {
             }
         });
         return chance;
+    }
+
+    getCriticalChanceBonus() {
+        return this.sumAmuletProperty('critChanceBonus');
+    }
+
+    processCardReward(cardData) {
+        if (!cardData || cardData.type === 'coin' || cardData.type === 'crystal') return;
+        const bonus = this.sumAmuletProperty('crystalOnFirstCardReward');
+        if (bonus <= 0) return;
+
+        const floor = this.gameState.currentFloor || 1;
+        if (this.gameState.fortuneCardRewardFloor === floor) return;
+        this.gameState.fortuneCardRewardFloor = floor;
+        this.gameState.crystals = (this.gameState.crystals || 0) + bonus;
+        this.scene.updateUI?.();
+        this.scene.createFloatingText?.(512, 382, `+${bonus} crystal (Fortune)`, 0x66ddff);
     }
 
     // Watcher's Lamp — wants one trap revealed at floor start
