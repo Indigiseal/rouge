@@ -212,6 +212,7 @@ export class CardSystem {
       for (let i = 0; i < this.boardCards.length; i++) {
         const c = this.boardCards[i];
         if (!c) continue;
+        if (c.data?.tutorialDormant) continue;
         if (!this.isEnemyType(c.data?.type)) continue;
         if (!includeHidden && !c.revealed) continue;
         if (c.data.role === 'MELEE') return true;
@@ -257,6 +258,7 @@ export class CardSystem {
         const candidates = arr.filter(i => {
           const c = this.boardCards[i];
           if (!c || c.revealed) return false;
+          if (c.data?.tutorialDormant) return false;
           return this.isEnemyType(c.data?.type) && c.data.role !== 'MELEE';
         });
         if (candidates.length) {
@@ -1016,11 +1018,13 @@ export class CardSystem {
         const enemy = this.cardDataGenerator.createTieredEnemy(enemyType, cf);
         enemy.role = role;
         enemy.isRangedType = role === 'RANGED';
-        enemy.health = 20;
-        enemy.maxHealth = 20;
+        const health = tag === 'lightningTarget1' ? 9 : 3;
+        enemy.health = health;
+        enemy.maxHealth = health;
         enemy.attack = 1;
         enemy.abilities = [];
         enemy.tutorialTag = tag;
+        enemy.tutorialDormant = true;
         return enemy;
       };
 
@@ -1123,7 +1127,9 @@ export class CardSystem {
 
       ['lightningTarget1', 'lightningTarget2', 'lightningTarget3'].forEach(tag => {
         const target = this.findTutorialCard(tag);
-        if (target && !target.card.revealed) this.revealCard(target.index, true);
+        if (!target) return;
+        target.card.data.tutorialDormant = false;
+        if (!target.card.revealed) this.revealCard(target.index, true);
       });
     }
 
@@ -2061,6 +2067,11 @@ export class CardSystem {
         const x = card.sprite.x;
         const y = card.sprite.y + 50;
         let infoText = '';
+        const attachInfoText = (info) => {
+            card.infoText = info;
+            card.sprite?.setData?.('infoText', info);
+            return info;
+        };
         
         switch (card.data.type) {
             case 'enemy':
@@ -2086,7 +2097,7 @@ export class CardSystem {
                     fontSize: '12px', fill: '#ffcf7f', fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 container.add([coinLabel, coinAmount]);
-                card.infoText = container;
+                attachInfoText(container);
                 return;
             }
 
@@ -2099,7 +2110,7 @@ export class CardSystem {
                     fontSize: '12px', fill: '#a83c69', fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 container.add([crystalLabel, crystalAmount]);
-                card.infoText = container;
+                attachInfoText(container);
                 return;
             }
                 
@@ -2122,7 +2133,7 @@ export class CardSystem {
                     }).setOrigin(0.5);
                     container.add(damageText);
                     container.setDepth(1001);
-                    card.infoText = container;
+                    attachInfoText(container);
                     return;
                 }
 
@@ -2142,7 +2153,7 @@ export class CardSystem {
                     fontSize: '12px', fill: '#a55119', fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 container.add(foodLabel);
-                card.infoText = container;
+                attachInfoText(container);
                 return;
             }
 
@@ -2152,7 +2163,7 @@ export class CardSystem {
                     fontSize: '12px', fill: '#51484b', fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 container.add(keyLabel);
-                card.infoText = container;
+                attachInfoText(container);
                 return;
             }
 
@@ -2188,7 +2199,7 @@ export class CardSystem {
                 }).setOrigin(0.5);
 
                 container.add([magicLabel, magicDesc]);
-                card.infoText = container;
+                attachInfoText(container);
                 return;
             }
 
@@ -2220,7 +2231,7 @@ export class CardSystem {
                 }
 
                 container.setDepth(1001);
-                card.infoText = container;
+                attachInfoText(container);
                 return;
             }
 
@@ -2230,7 +2241,7 @@ export class CardSystem {
                     fill: '#ffe8b0',
                     fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
-                card.infoText = label;
+                attachInfoText(label);
                 return;
             }
                 
@@ -2268,7 +2279,7 @@ export class CardSystem {
                 }
                 
                 container.setDepth(1001);
-                card.infoText = container;
+                attachInfoText(container);
                 return;
             }
             
@@ -2305,7 +2316,7 @@ export class CardSystem {
                 }
                 
                 container.setDepth(1001);
-                card.infoText = container;
+                attachInfoText(container);
                 return;
             }
                 
@@ -2324,13 +2335,13 @@ export class CardSystem {
                 this.scene.amuletManager.amuletDefinitions[card.data.id]?.cursed 
                 ? '#ff6666' : '#ffffff';
                 
-            card.infoText = this.scene.add.text(x, y, infoText, {
+            attachInfoText(this.scene.add.text(x, y, infoText, {
                 fontSize: '10px',
                 fill: textColor,
                 fontFamily: '"HoMM Pixel"',
                 align: 'center',
                 lineSpacing: 2
-            }).setOrigin(0.5);
+            }).setOrigin(0.5));
         }
 
         // Old role/poison markers used the enemyCardType.png sprite sheet. The
@@ -2379,6 +2390,7 @@ export class CardSystem {
         container._atkText = atkText;
 
         card.infoText = container;
+        card.sprite?.setData?.('infoText', container);
     }
 
     _buildBossStats(card) {
@@ -2417,6 +2429,7 @@ export class CardSystem {
         container._bossBarWidth = barWidth;
 
         card.infoText = container;
+        card.sprite?.setData?.('infoText', container);
         this.updateBossInfoText(card);
     }
 

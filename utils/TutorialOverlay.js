@@ -51,7 +51,7 @@ export class TutorialOverlay {
         this.skipText = null;
         this._onSkip = null;
 
-        this._raised = null;        // { obj, depth } currently lifted target
+        this._raised = null;        // [{ obj, depth }] currently lifted target + attached visuals
 
         this._buildBlocker();
         this._buildDim();
@@ -61,7 +61,15 @@ export class TutorialOverlay {
         // which would slide it *under* our dim frame and make it disappear
         // mid-drag. Globally float any dragged object above the dim so the
         // player can always see the card they're moving.
-        this._onDragRaise = (pointer, obj) => { if (obj?.setDepth) obj.setDepth(this.RAISE_DEPTH + 5); };
+        this._onDragRaise = (pointer, obj) => {
+            if (!obj?.setDepth) return;
+            [
+                obj,
+                obj.getData?.('infoText'),
+                obj.getData?.('gemIndicator'),
+                obj.getData?.('briarFrame'),
+            ].forEach((item, index) => item?.setDepth?.(this.RAISE_DEPTH + 5 + index));
+        };
         this.scene.input.on('dragstart', this._onDragRaise);
         this.scene.input.on('drag', this._onDragRaise);
 
@@ -210,16 +218,31 @@ export class TutorialOverlay {
     // Lift the interactive target above the blocker so its own input fires.
     _raise(obj) {
         this._restore();
-        if (obj && typeof obj.setDepth === 'function') {
-            this._raised = { obj, depth: obj.depth };
-            obj.setDepth(this.RAISE_DEPTH);
-        }
+        if (!obj || typeof obj.setDepth !== 'function') return;
+
+        const attached = [
+            obj,
+            obj.getData?.('infoText'),
+            obj.getData?.('gemIndicator'),
+            obj.getData?.('briarFrame'),
+        ].filter((item, index, arr) => (
+            item
+            && typeof item.setDepth === 'function'
+            && arr.indexOf(item) === index
+        ));
+
+        this._raised = attached.map((item, index) => {
+            const depth = item.depth;
+            item.setDepth(this.RAISE_DEPTH + index);
+            return { obj: item, depth };
+        });
     }
 
     _restore() {
         if (this._raised) {
-            const { obj, depth } = this._raised;
-            if (obj && obj.active && typeof obj.setDepth === 'function') obj.setDepth(depth);
+            this._raised.forEach(({ obj, depth }) => {
+                if (obj && obj.active && typeof obj.setDepth === 'function') obj.setDepth(depth);
+            });
             this._raised = null;
         }
     }

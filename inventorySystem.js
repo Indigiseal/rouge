@@ -635,6 +635,7 @@ export class InventorySystem {
             briarFrame.setDepth(16);
             this.uiGroup.add(briarFrame);
             slotSprite.briarFrame = briarFrame;
+            cardSprite.setData('briarFrame', briarFrame);
             cardSprite.once('destroy', () => {
                 briarFrame.destroy();
                 if (slotSprite.briarFrame === briarFrame) slotSprite.briarFrame = null;
@@ -679,6 +680,7 @@ export class InventorySystem {
             gemEffectSprite.setDepth(14);
             this.uiGroup.add(gemEffectSprite);
             slotSprite.gemEffectSprite = gemEffectSprite;
+            cardSprite.setData('gemEffectSprite', gemEffectSprite);
 
             // Static gem indicator(s) in top-right corner of card — one per stacked gem
             const gemFrameByEffect = { fire: 0, poison: 6, lightning: 12 };
@@ -708,6 +710,7 @@ export class InventorySystem {
             gemContainer.restX = gemX;
             gemContainer.restY = gemY;
             slotSprite.gemIndicator = gemContainer;
+            cardSprite.setData('gemIndicator', gemContainer);
         }
 
         // Store original Y position for floating effect
@@ -928,9 +931,12 @@ export class InventorySystem {
             }
             // Float the dragged card above every other slot's pips/info, which sit
             // at depth 1001 — otherwise other cards' durability dots draw on top of it.
-            cardSprite.setDepth(1002);
+            const dragBaseDepth = this.scene.tutorialManager?.overlay?.RAISE_DEPTH
+                ? this.scene.tutorialManager.overlay.RAISE_DEPTH + 5
+                : 1002;
+            cardSprite.setDepth(dragBaseDepth);
             const draggedInfo = cardSprite.getData('infoText');
-            draggedInfo?.setDepth?.(1003);
+            draggedInfo?.setDepth?.(dragBaseDepth + 1);
 
             const currentSlot = this.slotSprites[slotIndex];
             if (!currentSlot) return;
@@ -951,15 +957,15 @@ export class InventorySystem {
             // card so the socketed gem travels with the card instead of vanishing.
             if (currentSlot.gemIndicator) {
                 currentSlot.gemIndicator.setVisible(true);
-                currentSlot.gemIndicator.setDepth(1004);
+                currentSlot.gemIndicator.setDepth(dragBaseDepth + 2);
                 if (currentSlot.gemIndicator.shadow) {
                     currentSlot.gemIndicator.shadow.setVisible(true);
-                    currentSlot.gemIndicator.shadow.setDepth(1003);
+                    currentSlot.gemIndicator.shadow.setDepth(dragBaseDepth + 1);
                 }
             }
 
             if (currentSlot.briarFrame?.scene) {
-                currentSlot.briarFrame.setVisible(true).setDepth(1005);
+                currentSlot.briarFrame.setVisible(true).setDepth(dragBaseDepth + 3);
             }
 
             // Keep shadow visible while dragging
@@ -970,7 +976,7 @@ export class InventorySystem {
             
             // Bring twinkle sprite to front if it exists (above the dragged card)
             if (currentSlot.twinkleSprite) {
-                currentSlot.twinkleSprite.setDepth(1004);
+                currentSlot.twinkleSprite.setDepth(dragBaseDepth + 2);
             }
 
             this.createDragOverlay(cardSprite, slotIndex);
