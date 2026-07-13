@@ -37,6 +37,9 @@ export class GameScene extends Phaser.Scene {
         this._transitioning = false;
         this._resultScreenShown = false;
         this._gameOverInProgress = false;
+        // Reset per-scene-entry so a cleared-room restore flag can't leak into
+        // the next run (Phaser reuses the GameScene instance across runs).
+        this._floorEndAlreadyProcessed = false;
         this.events.off('endPlayerTurn');
         this.events.off('wake', this.wake, this);
         this._turnHandlersBound = false;
@@ -159,6 +162,30 @@ export class GameScene extends Phaser.Scene {
         this.bindEnemyTurnHandler();
         this.inventorySystem.setDiscardArea(this.discardArea);
         this.inventorySystem.setArmorPanel(this.armorPanel);
+
+        // Decide where a loaded run resumes — the authoritative "where did the
+        // player leave from" call, made purely from the save so it holds no
+        // matter when the last save was written (floor-clear autosave, shop,
+        // rest, elite chest, tab close, etc.).
+        //
+        // We only drop the player straight back INTO a room for two cases:
+        //   - a genuine in-progress fight (combat/elite/boss, not yet cleared), or
+        //   - an unclaimed boss-reward room.
+        // Everything else resumes on the MAP, which owns the next-room choice:
+        //   - a CLEARED combat room (its remaining cards are just uncollected
+        //     loot, forfeited on leaving anyway) — restoring it would strand the
+        //     player back in a fight they already won (the reported Continue bug), and
+        //   - a save taken inside a shop/rest/anvil/event/treasure (roomType like
+        //     'SHOP'/'REST'/…), e.g. after quitting from there.
+        if (this.shouldLoadSave) {
+            const rt = this.gameState.roomType;
+            const inProgressCombat =
+                ['COMBAT', 'ELITE', 'BOSS'].includes(rt) && !this._loadedEnemiesCleared;
+            if (rt !== 'MAP' && rt !== 'BOSS_REWARD' && !inProgressCombat) {
+                this.gameState.roomType = 'MAP';
+                this.roomType = 'MAP';
+            }
+        }
 
         // Continue from the map before restoring a combat board. The map owns
         // the next-room choice, while the saved cursor keeps its exact position.
@@ -388,6 +415,7 @@ export class GameScene extends Phaser.Scene {
     startNewFloor() {
         this.clearEnemyTurnTimers();
         this.clearFloatingTexts();
+        this._floorEndAlreadyProcessed = false;
         this._transitioning = false;
         this.enemiesCleared = false;
         if (this.nextFloorButton) {
@@ -1789,10 +1817,14 @@ export class GameScene extends Phaser.Scene {
         // Elite rooms still use the chest-click TreasureScene flow
         const rewardChestMode = this.gameState.roomType === 'ELITE' ? 'elite' : null;
 
-        // Process amulet floor end effects before moving to next floor
-        if (this.amuletManager) {
+        // Process amulet floor end effects before moving to next floor.
+        // Skip when leaving a combat room that was already cleared before a
+        // save/restore — its floor-end effects ran the first time it cleared, so
+        // running them again on Continue would double-apply (e.g. bonus HP/AP).
+        if (this.amuletManager && !this._floorEndAlreadyProcessed) {
             this.amuletManager.processFloorEnd();
         }
+        this._floorEndAlreadyProcessed = false;
 
         // Use the SAME signals the boss-spawn uses, so spawning and completing the
         // boss always agree. Relying on roomType alone was fragile: if it drifted to
@@ -1937,6 +1969,10 @@ export class GameScene extends Phaser.Scene {
         this.inventorySystem.addStartingCards();
         this.updateUI();
         if (this.enemiesCleared) {
+            // This room's floor-end amulet effects already ran when it first
+            // cleared (before the save). Guard the next floorCleared() so they
+            // don't fire again when the player clicks Next.
+            this._floorEndAlreadyProcessed = true;
             this.showNextFloorButton();
         } else {
             this.cardSystem.checkFloorClear();
@@ -2704,6 +2740,10 @@ export class GameScene extends Phaser.Scene {
             this.inventorySystem.setVisibility(true);
         }
         if (data?.shopStation) {
+            // Arriving at the shop completes the floor-clear transition. Clear the
+            // flag or pauseGame()/ESC stay dead here (they bail while _transitioning
+            // is true) — the reported "pause button does nothing in the shop" bug.
+            this._transitioning = false;
             this.inventorySystem?.setStationMode(true);
             // Clear the previous floor's cards so they don't bleed through the shop UI.
             this.cardSystem?.clearBoard?.();

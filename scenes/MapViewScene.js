@@ -66,6 +66,22 @@ export class MapViewScene extends Phaser.Scene {
     const validatedFloor = this.actMap.floors[cur.floor];
     if (validatedFloor?.[cur.node]) validatedFloor[cur.node].visited = true;
 
+    // Persist the run every time we land on the map — the authoritative
+    // "between rooms" checkpoint. Every path back to the map runs through here
+    // (floor-clear launch, treasure relaunch, and shop/rest/anvil/event wake ->
+    // restart), so this single save:
+    //   - records roomType 'MAP', so Continue reopens the map instead of
+    //     re-rolling the just-cleared floor (the old save kept roomType 'COMBAT'
+    //     with an emptied board), and
+    //   - captures coins/items/HP the player just gained in a shop, rest, anvil,
+    //     event or treasure room, none of which saved on their own.
+    const gameScene = this.scene.get('GameScene');
+    if (gameScene?.gameState) {
+      gameScene.gameState.roomType = 'MAP';
+      gameScene.roomType = 'MAP';
+    }
+    gameScene?.saveCurrentRun?.();
+
     // Dragging
     this.isDragging = false;
     this.dragStartX = 0; this.dragStartY = 0;

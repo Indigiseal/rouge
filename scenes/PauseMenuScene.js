@@ -175,15 +175,21 @@ export class PauseMenuScene extends Phaser.Scene {
     }
     
     quitToMainMenu() {
-        // Save the current run so it can be resumed from the main menu.
+        // Save the current run so it can be resumed from the main menu. The load
+        // side treats a save taken in a shop/rest/etc. as "resume on the map", so
+        // quitting from a station room comes back cleanly.
         const gameScene = this.scene.get(this.pausedScene);
         if (gameScene && typeof gameScene.saveCurrentRun === 'function') {
             gameScene.saveCurrentRun();
         }
 
-        // Stop active gameplay scenes, then go to the main menu.
+        // Stop active gameplay scenes, then go to the main menu. Include the
+        // station scenes: pausing is now possible from a shop, and leaving one
+        // running would leak its board over the main menu.
         this.scene.stop(this.pausedScene);
         this.scene.stop('MapViewScene');
+        ['ShopScene', 'RareShopScene', 'RestScene', 'AnvilScene', 'TreasureScene', 'EventScene']
+            .forEach(key => this.scene.stop(key));
         this.scene.stop();
         this.scene.start('MainMenuScene');
     }
