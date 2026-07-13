@@ -15,6 +15,7 @@ globalThis.Phaser = {
     Clamp: (v, min, max) => Math.max(min, Math.min(max, v)),
     Between: (a, b) => rngInt(a, b),
     FloatBetween: (a, b) => Math.random() * (b - a) + a,
+    Linear: (a, b, t) => a + (b - a) * t,
     Distance: { Between: (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1) },
   },
   Geom: {
