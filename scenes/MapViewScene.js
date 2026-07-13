@@ -2,6 +2,7 @@
 // Phaser is provided as a UMD global (see index.html) — no import needed.
 import { MapGenerator } from '../utils/MapGenerator.js';
 import { t } from '../utils/i18n.js';
+import { createTitle } from '../utils/titleText.js';
 
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
@@ -96,9 +97,9 @@ export class MapViewScene extends Phaser.Scene {
     // Background & title
     this.add.rectangle(320, 180, 640, 360, 0x8b7355);
     this.add.rectangle(320, 30, 640, 60, 0x6b5d4f);
-    this.add.text(320, 30, t(this, 'ui.map.title', { act: this.currentAct, floor: this.gameState.currentFloor || 1 }), {
-      fontSize: '20px', fill: '#f2d3aa', fontFamily: '"HoMM Pixel", Arial, sans-serif'
-    }).setOrigin(0.5);
+    createTitle(this, 320, 30, t(this, 'ui.map.title', { act: this.currentAct, floor: this.gameState.currentFloor || 1 }), {
+      color: '#f2d3aa', fallbackSize: '20px'
+    });
 
     // Drag area sits BEHIND nodes so it won't eat clicks
     this.dragArea = this.add.rectangle(320, 200, 600, 280, 0xffffff, 0)
@@ -111,10 +112,18 @@ export class MapViewScene extends Phaser.Scene {
     // Render structured map
     this.drawStructuredMap();
 
-    // Close/Return (optional)
+    // Close → save the run and quit to the main menu. (Waking GameScene here
+    // would drop the player back onto their already-cleared current floor, which
+    // is empty — this is a between-floors screen, so there is no room to return
+    // to.) The run persists so "Continue" from the menu resumes it.
     const closeBtn = this.add.circle(600, 30, 15, 0xae5347).setInteractive({ useHandCursor: true });
     this.add.text(600, 30, 'X', { fontSize: '16px', fill: '#f2d3aa' }).setOrigin(0.5);
-    closeBtn.on('pointerdown', () => { this.scene.stop(); this.scene.wake('GameScene'); });
+    closeBtn.on('pointerdown', () => {
+      this.scene.get('GameScene')?.saveCurrentRun?.();
+      this.scene.stop('GameScene');
+      this.scene.stop();
+      this.scene.start('MainMenuScene');
+    });
 
     this.add.text(320, 340, t(this, 'ui.map.instructions'), {
       fontSize: '12px', fill: '#d4b896', fontFamily: '"HoMM Pixel", Arial, sans-serif'
@@ -318,7 +327,11 @@ export class MapViewScene extends Phaser.Scene {
     else if (state === 'current')                             alpha = 1;
 
     // Tint: lighten available and current nodes slightly so they stand out
-    const tint = (state === 'available' || state === 'current') ? 0xddddff : 0xffffff;
+    const AVAILABLE_TINT = 0xddddff;
+    const tint = (state === 'available' || state === 'current') ? AVAILABLE_TINT : 0xffffff;
+
+    // Quiet "you are here" ring behind the current node (added before it).
+    if (state === 'current') this._addCurrentRing(node);
 
     // Node sprite
     const useSheet = this.textures.exists('mapNodes');
@@ -341,13 +354,37 @@ export class MapViewScene extends Phaser.Scene {
     if (state === 'available') {
       nodeSprite.setInteractive({ useHandCursor: true });
       nodeSprite.on('pointerover', () => {
-        if (!this.isDragging) this.showTooltip(t(this, this.getNodeTooltipKey(node.type)), node.__x, node.__y - 30);
+        if (this.isDragging) return;
+        // Rise one pixel and lighten while hovered.
+        nodeSprite.y = node.__y - 1;
+        if (nodeSprite.setTint) nodeSprite.setTint(0xffffff);
+        this.showTooltip(t(this, this.getNodeTooltipKey(node.type)), node.__x, node.__y - 30);
       });
-      nodeSprite.on('pointerout', () => this.hideTooltip());
+      nodeSprite.on('pointerout', () => {
+        nodeSprite.y = node.__y;
+        if (nodeSprite.setTint) nodeSprite.setTint(AVAILABLE_TINT);
+        this.hideTooltip();
+      });
       nodeSprite.on('pointerdown', () => {
         if (!this.isDragging) this.selectNode(floorIdx, nodeIdx, node);
       });
     }
+  }
+
+  // A soft, static gold ring marking the player's current node. Kept understated
+  // (no radar pulse) — just a faint outline that gently breathes.
+  _addCurrentRing(node) {
+    const ring = this.add.circle(node.__x, node.__y, 19, 0xf2d3aa, 0)
+      .setStrokeStyle(2, 0xf2d3aa, 0.4);
+    this.mapContainer.add(ring);
+    this.tweens.add({
+      targets: ring,
+      alpha: 0.65,
+      duration: 1100,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
   }
 
   getNodeTooltipKey(type) {

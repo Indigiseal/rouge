@@ -1,5 +1,6 @@
 //AnvilScene.js
 import { SoundHelper } from '../utils/SoundHelper.js';
+import { createTitle } from '../utils/titleText.js';
 export class AnvilScene extends Phaser.Scene {
     constructor() {
         super({ key: 'AnvilScene' });
@@ -12,11 +13,10 @@ export class AnvilScene extends Phaser.Scene {
         this.add.image(540, 78, 'restRooms', 3).setOrigin(0.5);
         
         // Title and coins display
-        this.add.text(320, 30, 'Anvil - Repair Station', { 
-            fontSize: '28px', 
-            fill: '#ffffff', 
-            fontFamily: '"HoMM Pixel"' 
-        }).setOrigin(0.5);
+        createTitle(this, 320, 30, 'Anvil - Repair Station', {
+            color: '#ffffff',
+            fallbackSize: '28px'
+        });
         
         this.coinsText = this.add.text(320, 60, `Coins: ${this.gameState.coins}`, { 
             fontSize: '16px', 
@@ -226,7 +226,7 @@ export class AnvilScene extends Phaser.Scene {
             // Weapon repair costs per durability point
             const repairCosts = {
                 'dagger': { 1: 1, 2: 2, 3: 2, 4: 2 },
-                'spear': { 1: 2, 2: 2, 3: 2, 4: 3 },
+                'bow': { 1: 2, 2: 2, 3: 2, 4: 3 },
                 'sword': { 1: 2, 2: 2, 3: 2, 4: 2 },
                 'axe': { 1: 4, 2: 4, 3: 4, 4: 4 }
             };
@@ -247,7 +247,7 @@ export class AnvilScene extends Phaser.Scene {
     getWeaponType(itemName) {
         const name = itemName.toLowerCase();
         if (name.includes('dagger')) return 'dagger';
-        if (name.includes('spear')) return 'spear';
+        if (name.includes('bow')) return 'bow';
         if (name.includes('sword')) return 'sword';
         if (name.includes('axe')) return 'axe';
         return 'sword'; // Default

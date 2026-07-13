@@ -17,7 +17,7 @@ function rarityFill(rarity) {
 
 function describeWeaponKindKey(data) {
     const text = `${data.name || ''} ${data.sprite || ''} ${data.weaponType || ''}`.toLowerCase();
-    if (data.isRanged || data.range > 1 || text.includes('spear') || text.includes('bow') || text.includes('chain')) {
+    if (data.isRanged || data.range > 1 || text.includes('bow') || text.includes('chain')) {
         return 'tooltip.ranged';
     }
     return 'tooltip.melee';
@@ -112,6 +112,9 @@ export function getBossAbilityLines(scene, data) {
                     mult: ab.damageBoost || 1.5,
                     pct: Math.round((ab.threshold ?? 0.3) * 100)
                 }));
+                break;
+            case 'evade':
+                lines.push(t(scene, 'boss.evade', { pct: Math.round((ab.chance || 0) * 100) }));
                 break;
             case 'coin_steal':
                 lines.push(t(scene, 'boss.coinSteal', { amount: ab.amount || 0 }));

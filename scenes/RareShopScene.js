@@ -1,6 +1,7 @@
 import { CardSystem } from '../cardSystem.js';
 import { SoundHelper } from '../utils/SoundHelper.js';
 import { t, translateItemName } from '../utils/i18n.js';
+import { createTitle } from '../utils/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
 
 export class RareShopScene extends StationRoomBase {
@@ -15,11 +16,10 @@ export class RareShopScene extends StationRoomBase {
         this.gameScene = this.scene.get('GameScene');
         this.enableShopStation();
 
-        this.add.text(320, 30, t(this, 'ui.shop.rareTitle'), {
-            fontSize: '28px',
-            fill: '#DA70D6',
-            fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5);
+        createTitle(this, 320, 30, t(this, 'ui.shop.rareTitle'), {
+            color: '#DA70D6',
+            fallbackSize: '28px'
+        });
 
         this.shopBoardTexture = 'gamingBoard2';
         this.generateShopItems();
@@ -44,16 +44,19 @@ export class RareShopScene extends StationRoomBase {
         });
 
         // 2. Uncommon weapon (rescue option)
+        const firstWeapon = this.createUpgradedWeapon();
         this.shopItems.push({
-            data: this.createUpgradedWeapon(),
+            data: firstWeapon,
             price: 20 + floor * 5,
             currency: 'coins',
             purchased: false
         });
 
-        // 3. Second uncommon weapon
+        // 3. Second uncommon weapon — pick a different weapon type than the first
+        // when the floor's unlocked pool allows, so the shop doesn't offer two of
+        // the same weapon (e.g. two daggers).
         this.shopItems.push({
-            data: this.createUpgradedWeapon(),
+            data: this.createUpgradedWeapon(firstWeapon?.weaponType),
             price: 25 + floor * 5,
             currency: 'coins',
             purchased: false
@@ -157,12 +160,12 @@ export class RareShopScene extends StationRoomBase {
         };
     }
 
-    createUpgradedWeapon() {
+    createUpgradedWeapon(excludeType = null) {
         const cardGenerator = new CardSystem(this);
         const floor = this.gameState.currentFloor;
 
-        const weaponTypes = ['dagger', 'spear', 'sword', 'axe'];
-        const availableWeapons = [];
+        const weaponTypes = ['dagger', 'bow', 'sword', 'axe'];
+        let availableWeapons = [];
 
         weaponTypes.forEach(weaponType => {
             const weaponUnlocks = cardGenerator.cardDataGenerator.weaponUnlocks[weaponType];
@@ -170,6 +173,13 @@ export class RareShopScene extends StationRoomBase {
                 availableWeapons.push({ type: weaponType, data: weaponUnlocks.uncommon });
             }
         });
+
+        // Prefer a different weapon type than the one already offered — but only
+        // if excluding it still leaves at least one option (on early floors the
+        // pool can be a single type, e.g. dagger-only before floor 18).
+        if (excludeType && availableWeapons.some(w => w.type !== excludeType)) {
+            availableWeapons = availableWeapons.filter(w => w.type !== excludeType);
+        }
 
         if (availableWeapons.length === 0) {
             return {
@@ -191,7 +201,7 @@ export class RareShopScene extends StationRoomBase {
         const weaponName = selected.type.charAt(0).toUpperCase() + selected.type.slice(1);
 
         const durabilityMap = {
-            dagger: 5, spear: 6, sword: 8, axe: 8
+            dagger: 5, bow: 6, sword: 8, axe: 8
         };
         const maxDurability = durabilityMap[selected.type] ?? 6;
 

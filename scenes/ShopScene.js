@@ -1,6 +1,7 @@
 import { CardSystem } from '../cardSystem.js';
 import { SoundHelper } from '../utils/SoundHelper.js';
 import { t, translateItemName } from '../utils/i18n.js';
+import { createTitle } from '../utils/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
 
 export class ShopScene extends StationRoomBase {
@@ -19,11 +20,10 @@ export class ShopScene extends StationRoomBase {
         this.enableShopStation();
         
         // Title
-        this.add.text(320, 20, t(this, 'ui.shop.title'), { 
-            fontSize: '28px', 
-            fill: '#ffffff', 
-            fontFamily: '"HoMM Pixel", Arial, sans-serif' 
-        }).setOrigin(0.5);
+        createTitle(this, 320, 20, t(this, 'ui.shop.title'), {
+            color: '#ffffff',
+            fallbackSize: '28px'
+        });
         
         // Mode toggle button
         this.modeButton = this.add.text(480, 45, t(this, 'ui.shop.sellItems'), {
@@ -213,7 +213,12 @@ export class ShopScene extends StationRoomBase {
         };
         
         basePrice = Math.floor(basePrice * (rarityMultiplier[amulet.rarity] || 1));
-        
+
+        // Each 3 amulets already worn make the next one 1 crystal pricier —
+        // crystals were tight in act 1 but piling up unspent by act 3, and a
+        // stacked build should cost more to extend than a fresh one.
+        basePrice += Math.floor((this.gameState.activeAmulets?.length || 0) / 3);
+
         // Minimum price is 1 crystal
         return Math.max(1, basePrice);
     }

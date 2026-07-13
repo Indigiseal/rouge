@@ -89,10 +89,10 @@ export class CardDataGenerator {
         balanced.weapon = Math.max(weaponMinimum, Math.floor((balanced.weapon || 0) * 0.95) + weaponBoost);
         balanced.armor = Math.max(floor >= 18 ? 12 : 10, Math.ceil((balanced.armor || 0) * 1.15));
         // Amulets were flooding the late game (~22% of cards, 4-5 per floor),
-        // which trivialized runs once you stacked a dozen+. Cap the weight so
-        // they stay an occasional reward (~6% of cards). Bigger rewards now
-        // come from curated events instead.
-        balanced.amulet = Math.min(floor >= 15 ? 14 : 8, Math.max(3, balanced.amulet || 0));
+        // which trivialized runs once you stacked a dozen+. Cut the weight hard
+        // (~2-3% of cards) so floor drops are a rare bonus; amulets should
+        // mostly come from curated events instead.
+        balanced.amulet = Math.min(floor >= 15 ? 6 : 4, Math.max(1, Math.floor((balanced.amulet || 0) * 0.4)));
         balanced.potion = Math.max(8, Math.floor((balanced.potion || 0) * 1.2));
         balanced.food = Math.max(19, Math.floor((balanced.food || 0) * 1.7));  // Bumped — players were starving for AP (~43% of actions while hungry); tuned for ~30% hunger
         balanced.magic = Math.max(5, Math.floor((balanced.magic || 0) * 1.25));
@@ -131,7 +131,7 @@ export class CardDataGenerator {
             armor: Math.min(6 + Math.floor(floor / 3), 18),     // Grows with floor instead of shrinking
             amulet: Math.min(4 + Math.floor(floor * 0.8), 35),  // Grows faster as floors increase
             potion: 10,
-            food: Math.max(10, 18 - Math.floor(floor / 3)),     // Decays slowly, floors at 10 minimum
+            food: Math.max(12, 18 - Math.floor(floor / 3)),     // Decays slowly, floors at 12 minimum (10 left a third of all actions exhausted)
             magic: Math.min(3 + Math.floor(floor / 2), 15),
             gem: 9,
             key: Math.min(1 + Math.floor(floor / 4), 2),
@@ -150,16 +150,18 @@ export class CardDataGenerator {
                 epic: { floor: 26, damage: 6, sprite: 'dagger_E', special: 'dualWield' },
                 legendary: { floor: 34, damage: 7, sprite: 'dagger_L', special: 'dualWield' }
             },
-            spear: {
-                common: { floor: 8, damage: 4, sprite: 'spear_c', special: 'block', range: 'ranged' },
-                uncommon: { floor: 18, damage: 5, sprite: 'spear_u', special: 'block', range: 'ranged' },
-                rare: { floor: 24, damage: 6, sprite: 'spear_R', special: 'block', range: 'ranged' },
-                epic: { floor: 30, damage: 7, sprite: 'spear_E', special: 'block', range: 'ranged' },
-                legendary: { floor: 38, damage: 9, sprite: 'spear_L', special: 'block', range: 'ranged' }
+            bow: {
+                common: { floor: 8, damage: 4, sprite: 'bow_c', special: 'block', range: 'ranged' },
+                uncommon: { floor: 18, damage: 5, sprite: 'bow_U', special: 'block', range: 'ranged' },
+                rare: { floor: 24, damage: 6, sprite: 'bow_R', special: 'block', range: 'ranged' },
+                epic: { floor: 30, damage: 7, sprite: 'bow_E', special: 'block', range: 'ranged' },
+                legendary: { floor: 38, damage: 9, sprite: 'bow_L', special: 'block', range: 'ranged' }
             },
             sword: {
                 // Act 2 weapon — appears fresh at the act-2 start (floor 16) and merges
-                // up through act 2 before the axe takes over in act 3.
+                // up through act 2 before the axe takes over in act 3. Deliberately
+                // NOT available in act 1: the two starting swords are the whole act-1
+                // sword budget, so weapon durability is the act-1 boss's real teeth.
                 common: { floor: 16, damage: 6, sprite: 'sword_C', special: null },
                 uncommon: { floor: 19, damage: 7, sprite: 'sword_U', special: null },
                 rare: { floor: 22, damage: 8, sprite: 'sword_R', special: null },
@@ -308,6 +310,25 @@ export class CardDataGenerator {
                     { minFloor: 31, damage: 9, health: 13 }
                 ],
                 abilities: [{ type: 'evade', chance: 0.3 }]
+            },
+            cerberusHead: {
+                // A disembodied Cerberus head, conjured mid-fight by Cerberus and
+                // its ancient form — floats in and bites. Summoned minions get the
+                // standard summon nerf (weaker than the tier below), so these are
+                // light board pressure that splits the player's focus rather than
+                // a heavy threat. Boss-summon EXCLUSIVE — unlike Lost Soul, this
+                // never appears as a regular floor enemy; createEnemyCard's random
+                // pool explicitly excludes it (see SUMMON_ONLY_ENEMY_TYPES below).
+                // Only reachable via createTieredEnemy('cerberusHead', ...), which
+                // the boss's 'summon' ability calls directly.
+                name: 'Cerberus Head',
+                sprite: 'cerberusHead',
+                role: 'MELEE',
+                minFloor: 16,
+                tiers: [
+                    { minFloor: 16, damage: 7, health: 9  },
+                    { minFloor: 31, damage: 9, health: 12 }
+                ]
             }
         };
     }
@@ -327,7 +348,7 @@ export class CardDataGenerator {
             giantSkeleton: {
                 type: 'boss', tier: 1,
                 name: 'Giant Skeleton',
-                health: 40,
+                health: 36,
                 attack: 7,
                 sprite: 'giantSkeleton',
                 abilities: [
@@ -337,7 +358,7 @@ export class CardDataGenerator {
             goblinKing: {
                 type: 'boss', tier: 1,
                 name: 'Goblin King',
-                health: 44,
+                health: 40,
                 attack: 8,
                 sprite: 'GoblinKingSprite',
                 abilities: [
@@ -348,7 +369,7 @@ export class CardDataGenerator {
             spiderQueen: {
                 type: 'boss', tier: 1,
                 name: 'Spider Queen',
-                health: 40,
+                health: 36,
                 attack: 7,
                 sprite: 'SpiderQween',
                 abilities: [
@@ -361,20 +382,24 @@ export class CardDataGenerator {
             soulEater: {
                 type: 'boss', tier: 2,
                 name: 'Soul Eater',
-                health: 88,
+                health: 110,
                 attack: 16,
                 sprite: 'SoulEater',
+                // A slippery bruiser, NOT a healer (that's the Lich's profile).
+                // Like the Lost Souls it commands, attacks have a 15% chance to
+                // phase right through it — so it out-lasts you by dodging, not
+                // by leeching. Rounds out with armor-break + a late rage spike.
                 abilities: [
-                    { type: 'lifesteal', percentage: 0.6 },
-                    { type: 'summon', enemyType: 'lostSoul', chance: 0.3, count: 1 },
-                    { type: 'armor_break', amount: 4 },
-                    { type: 'rage', threshold: 0.5, damageBoost: 1.5 }
+                    { type: 'evade', chance: 0.15 },
+                    { type: 'summon', enemyType: 'lostSoul', chance: 0.2, count: 1 },
+                    { type: 'armor_break', amount: 3 },
+                    { type: 'rage', threshold: 0.35, damageBoost: 1.5 }
                 ]
             },
             lich: {
                 type: 'boss', tier: 2,
                 name: 'Lich',
-                health: 70,
+                health: 84,
                 attack: 14,
                 sprite: 'Lich',
                 abilities: [
@@ -385,12 +410,16 @@ export class CardDataGenerator {
             cerberus: {
                 type: 'boss', tier: 2,
                 name: 'Cerberus',
-                health: 88,
+                // Pulled toward the tier average (was 128 HP / rage x2 — an
+                // 80%-more-HP luck swing vs rolling the Lich, and its raged
+                // ~34-damage hits were the deadliest spike in the sim).
+                health: 118,
                 attack: 17,
                 sprite: 'Cerberus',
                 abilities: [
-                    { type: 'rage', threshold: 0.3, damageBoost: 2 },
-                    { type: 'armor_break', amount: 5 }
+                    { type: 'rage', threshold: 0.4, damageBoost: 1.5 },
+                    { type: 'armor_break', amount: 5 },
+                    { type: 'summon', enemyType: 'cerberusHead', chance: 0.25, count: 1 }
                 ]
             },
 
@@ -398,13 +427,13 @@ export class CardDataGenerator {
             ancientCerberus: {
                 type: 'boss', tier: 3,
                 name: 'Ancient Cerberus',
-                health: 124,
+                health: 136,
                 attack: 22,
                 sprite: 'AncientCerberus',
                 abilities: [
                     { type: 'rage', threshold: 0.3, damageBoost: 2 },
                     { type: 'armor_break', amount: 6 },
-                    { type: 'summon', enemyType: 'skeleton', chance: 0.3, count: 1 }
+                    { type: 'summon', enemyType: 'cerberusHead', chance: 0.3, count: 1 }
                 ]
             }
         };
@@ -488,7 +517,11 @@ export class CardDataGenerator {
             { id: 'travelersJournal', minFloor: 6,  weight: 4,  rarity: 'rare' },
             { id: 'charmingTune',     minFloor: 3,  weight: 6,  rarity: 'uncommon' },
             { id: 'wayfarersMap',     minFloor: 4,  weight: 5,  rarity: 'rare' },
-            { id: 'sirensPendant',    minFloor: 6,  weight: 4,  rarity: 'rare' }
+            { id: 'sirensPendant',    minFloor: 6,  weight: 4,  rarity: 'rare' },
+
+            { id: 'goldenSeed',       minFloor: 2,  weight: 7,  rarity: 'uncommon' },
+            { id: 'fireRuneStone',    minFloor: 10, weight: 5,  rarity: 'uncommon' },
+            { id: 'prospectorsPick',  minFloor: 3,  weight: 7,  rarity: 'uncommon' }
         ];
 
         this.amuletTypes = dropData.map(amulet => ({
@@ -732,9 +765,17 @@ export class CardDataGenerator {
         return JSON.parse(JSON.stringify(this.bossData[id]));
     }
 
+    // Enemy types that only ever appear via a boss's 'summon' ability
+    // (createTieredEnemy called directly with the type) and must never be
+    // picked for a regular floor's random enemy roll.
+    static SUMMON_ONLY_ENEMY_TYPES = new Set(['cerberusHead']);
+
     createEnemyCard(floor, isElite = false, preferredRole = null) {
         // Fallback in case no enemies are available
-        let availableEnemies = Object.keys(this.enemyData).filter(key => floor >= this.enemyData[key].minFloor);
+        let availableEnemies = Object.keys(this.enemyData).filter(key =>
+            floor >= this.enemyData[key].minFloor
+            && !CardDataGenerator.SUMMON_ONLY_ENEMY_TYPES.has(key)
+        );
         if (availableEnemies.length === 0) {
             return this.createFallbackEnemy(floor);
         }
@@ -1004,7 +1045,7 @@ export class CardDataGenerator {
 
         const durabilityMap = {
             dagger: { common: 4, uncommon: 5, rare: 6, epic: 7, legendary: 8 },
-            spear: { common: 5, uncommon: 6, rare: 7, epic: 8, legendary: 9 },
+            bow: { common: 5, uncommon: 6, rare: 7, epic: 8, legendary: 9 },
             sword: { common: 6, uncommon: 8, rare: 10, epic: 11, legendary: 13 },
             axe: { common: 6, uncommon: 8, rare: 10, epic: 12, legendary: 14 }
         };

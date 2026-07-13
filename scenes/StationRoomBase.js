@@ -213,8 +213,8 @@ export class StationRoomBase extends Phaser.Scene {
         // no first-frame flash appears when the card is revealed — matching the exact
         // same approach the inventory uses in addCardDirect.
         let hoverSprite = null;
-        if (isCard && renderScene.textures.exists('hoverCardsUp1')) {
-            hoverSprite = snapOriginToPixelGrid(renderScene.add.sprite(x, y, 'hoverCardsUp1'));
+        if (isCard && renderScene.textures.exists('hoverCardsUpSheet')) {
+            hoverSprite = snapOriginToPixelGrid(renderScene.add.sprite(x, y, 'hoverCardsUpSheet', 0));
             hoverSprite.setVisible(false);
             hoverSprite.setAlpha(0);
             hoverSprite.setBlendMode(Phaser.BlendModes.SCREEN);
@@ -523,7 +523,7 @@ export class StationRoomBase extends Phaser.Scene {
     // ─── Loot scatter effect (used by treasure room) ─────────────────────────
 
     playLootScatter(x, y, coins, crystals) {
-        const splash = this.add.sprite(x, y, 'splash1');
+        const splash = this.add.sprite(x, y, 'splashSheet');
         splash.setScale(1.2);
         if (this.anims.exists('splash_anim')) splash.play('splash_anim');
         splash.once('animationcomplete', () => splash.destroy());

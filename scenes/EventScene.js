@@ -6,16 +6,14 @@
 
 import { CardDataGenerator } from '../CardDataGenerator.js';
 import { loadHeroMemory, saveHeroMemory, saveStoryProgress } from '../utils/StoryProgress.js';
+import { t, translateDescription, translateItemName } from '../utils/i18n.js';
+import { createTitle } from '../utils/titleText.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
-  burning_caravan: 3,
-  robbed_hermit: 4,
-  cheerful_hermit: 8,
   broken_music_box: 2,
   monster_bird_nest: 9,
   goblin_engineer: 12,
   hatching_egg: 9,
-  caravan_aftermath: 3,
   quiet_crossroads: 7,
   mirror: 11,
   too_nice_room: 14,
@@ -23,364 +21,14 @@ const EVENT_ILLUSTRATION_FRAMES = {
   slimy_prison: 16,
   book_worm: 19,
   briar_room: 23,
-  old_drill_room: 26
+  old_drill_room: 26,
+  something_wicked: 7,
+  brass_wizard: 28
 };
 
+const CARNIVAL_HAG_FRAME = 27;
+
 const EVENTS = [
-  {
-    id: 'burning_caravan',
-    title: 'Burning Caravan',
-    description: 'A spice caravan is half-stuck, half-burning, and fully chaotic. A little donkey is tangled in the reins. Bandits are running away with a sack of supplies. A merchant is yelling about cinnamon.',
-    choices: [
-      {
-        text: 'Save the donkey',
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          gs.storyRun.caravanSeen = true;
-          gs.storyRun.donkeySaved = true;
-          gs.storyRun.banditsEscaped = true;
-          scene.addPendingEvent('robbed_hermit');
-          scene.markHeroMemory('learnedDonkeyCanBeSaved');
-          scene.heal(5);
-        },
-        outcome: 'You cut the donkey free. It bumps your shoulder gratefully, then trots away. In the distance, the bandits vanish with the supply sack.'
-      },
-      {
-        text: 'Chase the bandits',
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          gs.storyRun.caravanSeen = true;
-          gs.storyRun.banditsStopped = true;
-          gs.storyRun.donkeyLost = true;
-          gs.storyRun.hermitState = 'safe';
-          scene.gainCoins(15);
-          scene.gainCrystals(1);
-        },
-        outcome: 'You sprint after the bandits and scatter them before they can cause more trouble. When you return, the donkey is gone.'
-      },
-      {
-        text: 'Save the merchant crates',
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          gs.storyRun.caravanSeen = true;
-          gs.storyRun.merchantGrateful = true;
-          gs.storyRun.banditsEscaped = true;
-          gs.storyRun.donkeyLost = true;
-          scene.addPendingEvent('robbed_hermit');
-          scene.gainCoins(25);
-        },
-        outcome: 'You drag the spice crates away from the flames. The merchant pays you with shaking hands. The donkey and bandits are both gone.'
-      },
-      {
-        text: "Use a key to unlock the donkey's hitch",
-        condition: (gs, scene) => scene.hasKeyCard() || scene.hasAmulet('skeletonKey'),
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          const usesSkeletonKey = scene.hasAmulet('skeletonKey');
-          scene.logStoryKeyChoice(usesSkeletonKey ? 'skeletonKey_caravan_hitch' : 'key_card_caravan_hitch');
-          gs.storyRun.caravanSeen = true;
-          gs.storyRun.donkeySaved = true;
-          gs.storyRun.donkeyLost = false;
-          gs.storyRun.banditsStopped = true;
-          gs.storyRun.banditsEscaped = false;
-          gs.storyRun.hermitState = 'safe';
-          scene.clearPendingEvent('robbed_hermit');
-          if (!usesSkeletonKey) scene.consumeKeyCard();
-          scene.markHeroMemory('solvedCaravanPerfectly');
-          scene.gainCoins(10);
-          scene.gainCrystals(1);
-        },
-        outcome: 'The lock gives way almost too easily. You free the donkey, then block the bandits before they reach the trees.'
-      },
-      {
-        text: "Use Watcher's Lamp to reveal the bandits' path",
-        condition: (gs, scene) => scene.hasAmulet('watchersLamp'),
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          scene.logStoryKeyChoice('watchersLamp_caravan_path');
-          gs.storyRun.caravanSeen = true;
-          gs.storyRun.donkeySaved = false;
-          gs.storyRun.donkeyLost = true;
-          gs.storyRun.banditsStopped = true;
-          gs.storyRun.banditsEscaped = false;
-          gs.storyRun.hermitState = 'safe';
-          scene.clearPendingEvent('robbed_hermit');
-          scene.markHeroMemory('learnedBanditsThreatenHermit');
-          scene.gainCrystals(2);
-        },
-        outcome: "The lamp flickers toward the stolen sack. You suddenly understand where the bandits are headed and cut them off before they reach the hermit."
-      },
-      {
-        text: 'Play a charming tune to calm the donkey',
-        condition: (gs, scene) => scene.hasAmulet('charmingTune'),
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          scene.logStoryKeyChoice('charmingTune_caravan_donkey');
-          gs.storyRun.caravanSeen = true;
-          gs.storyRun.donkeySaved = true;
-          gs.storyRun.donkeyLost = false;
-          gs.storyRun.banditsEscaped = true;
-          gs.storyRun.banditsStopped = false;
-          gs.storyRun.merchantGrateful = true;
-          scene.addPendingEvent('robbed_hermit');
-          scene.heal(10);
-        },
-        outcome: 'The tune settles the terrified donkey instantly. The merchant cheers, the donkey bows, and the bandits use the applause as cover to escape.'
-      },
-      {
-        text: 'Sacrifice an unwanted card to block the road',
-        condition: (gs, scene) => scene.hasSacrificeCard(),
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          scene.logStoryKeyChoice('inventory_sacrifice_caravan_roadblock');
-          gs.storyRun.caravanSeen = true;
-          gs.storyRun.donkeySaved = true;
-          gs.storyRun.donkeyLost = false;
-          gs.storyRun.banditsStopped = true;
-          gs.storyRun.banditsEscaped = false;
-          gs.storyRun.hermitState = 'safe';
-          scene.clearPendingEvent('robbed_hermit');
-          scene.sacrificeFirstNonEssentialCard();
-          scene.markHeroMemory('solvedCaravanPerfectly');
-          scene.gainCoins(5);
-        },
-        outcome: 'You throw a spare card into the road at exactly the wrong angle. The bandits trip over destiny.'
-      },
-      {
-        text: 'Trust your memory: save everyone',
-        condition: (gs) => Boolean(
-          gs?.heroMemory?.solvedCaravanPerfectly
-          || (gs?.heroMemory?.learnedDonkeyCanBeSaved && gs?.heroMemory?.learnedBanditsThreatenHermit)
-        ),
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          scene.logStoryKeyChoice('hero_memory_caravan_perfect');
-          gs.storyRun.caravanSeen = true;
-          gs.storyRun.donkeySaved = true;
-          gs.storyRun.donkeyLost = false;
-          gs.storyRun.banditsStopped = true;
-          gs.storyRun.banditsEscaped = false;
-          gs.storyRun.merchantGrateful = true;
-          gs.storyRun.hermitState = 'safe';
-          scene.clearPendingEvent('robbed_hermit');
-          scene.markHeroMemory('solvedCaravanPerfectly');
-          scene.gainCoins(10);
-          scene.gainCrystals(1);
-          scene.heal(5);
-        },
-        outcome: 'You have seen every danger before it happens. Donkey, merchant, medicine, and soup all survive the afternoon.'
-      }
-    ]
-  },
-  {
-    id: 'robbed_hermit',
-    title: 'The Robbed Hermit',
-    description: 'You find the old hermit beside an overturned soup pot. Bandits stole his medicine shelf and spilled something he insists was "structurally important soup."',
-    choices: [
-      {
-        text: 'Help clean up',
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          gs.storyRun.hermitState = 'robbed';
-          gs.storyRun.caravanResolved = true;
-          gs.storyRun.caravanEnding = 'helped_hermit';
-          scene.markHeroMemory('learnedBanditsThreatenHermit');
-          scene.clearPendingEvent('robbed_hermit');
-          scene.addPendingEvent('caravan_aftermath');
-          if (!scene.repairRandomDamagedItem(1)) scene.heal(5);
-        },
-        outcome: 'The hermit grumbles, but he fixes what he can. "Next time," he mutters, "stop the soup criminals first."'
-      },
-      {
-        text: 'Offer 10 coins for supplies',
-        condition: (gs) => (gs?.coins || 0) >= 10,
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          gs.coins = Math.max(0, (gs.coins || 0) - 10);
-          gs.storyRun.hermitState = 'robbed';
-          gs.storyRun.caravanResolved = true;
-          gs.storyRun.caravanEnding = 'supplied_hermit';
-          scene.markHeroMemory('learnedBanditsThreatenHermit');
-          scene.clearPendingEvent('robbed_hermit');
-          scene.addPendingEvent('caravan_aftermath');
-          if (!scene.addPotionToInventory()) scene.heal(15);
-        },
-        outcome: 'He accepts the coins with wounded dignity and gives you a spare bottle from under his hat.'
-      },
-      {
-        text: 'Leave quietly',
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          gs.storyRun.hermitState = 'robbed';
-          gs.storyRun.caravanResolved = true;
-          gs.storyRun.caravanEnding = 'left_hermit';
-          scene.markHeroMemory('learnedBanditsThreatenHermit');
-          scene.clearPendingEvent('robbed_hermit');
-          scene.addPendingEvent('caravan_aftermath');
-        },
-        outcome: 'You leave the hermit arguing with his soup pot. You will remember what the escaped bandits did.'
-      },
-      {
-        text: 'Use the Harvest Crown to remake the soup',
-        condition: (gs, scene) => scene.hasAmulet('travelKitchen'),
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          scene.logStoryKeyChoice('travelKitchen_robbed_hermit_soup');
-          gs.storyRun.hermitState = 'comforted';
-          gs.storyRun.caravanResolved = true;
-          gs.storyRun.caravanEnding = 'comforted_hermit';
-          scene.markHeroMemory('learnedBanditsThreatenHermit');
-          scene.clearPendingEvent('robbed_hermit');
-          scene.addPendingEvent('caravan_aftermath');
-          scene.heal(15);
-          scene.gainCoins(5);
-        },
-        outcome: "You somehow rebuild the soup from three crumbs and one heroic bubble. The hermit stops yelling at the pot and calls you 'almost competent.'"
-      },
-      {
-        text: "Use Watcher's Lamp to find the thieves' trail",
-        condition: (gs, scene) => scene.hasAmulet('watchersLamp'),
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          scene.logStoryKeyChoice('watchersLamp_robbed_hermit_trail');
-          gs.storyRun.hermitState = 'robbed';
-          gs.storyRun.banditTrailFound = true;
-          gs.storyRun.caravanResolved = true;
-          gs.storyRun.caravanEnding = 'found_bandit_trail';
-          scene.markHeroMemory('learnedBanditsThreatenHermit');
-          scene.clearPendingEvent('robbed_hermit');
-          scene.addPendingEvent('caravan_aftermath');
-          scene.gainCrystals(1);
-        },
-        outcome: "The lamp reveals cinnamon footprints leading deeper into the dungeon. The hermit squints. 'That is either justice or very dirty baking.'"
-      }
-    ]
-  },
-  {
-    id: 'cheerful_hermit',
-    title: 'The Cheerful Hermit',
-    description: 'The hermit is peacefully stirring soup in a dented helmet. He says fewer bandits means better soup weather.',
-    choices: [
-      {
-        text: 'Listen to advice',
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          gs.storyRun.cheerfulHermitVisited = true;
-          gs.storyRun.caravanResolved = true;
-          gs.storyRun.caravanEnding = gs.storyRun.donkeySaved ? 'road_saved' : 'hermit_saved';
-          scene.addPendingEvent('caravan_aftermath');
-          if (!scene.repairRandomDamagedItem(1)) scene.heal(10);
-        },
-        outcome: 'He explains three impossible things about soup and somehow your gear feels better.'
-      },
-      {
-        text: 'Ask for medicine',
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          gs.storyRun.cheerfulHermitVisited = true;
-          gs.storyRun.caravanResolved = true;
-          gs.storyRun.caravanEnding = gs.storyRun.donkeySaved ? 'road_saved' : 'hermit_saved';
-          scene.addPendingEvent('caravan_aftermath');
-          if (!scene.addPotionToInventory()) scene.heal(10);
-        },
-        outcome: 'He hands you a healing potion labeled "probably safe."'
-      },
-      {
-        text: 'Compliment the soup',
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          gs.storyRun.cheerfulHermitVisited = true;
-          gs.storyRun.caravanResolved = true;
-          gs.storyRun.caravanEnding = gs.storyRun.donkeySaved ? 'road_saved' : 'hermit_saved';
-          scene.addPendingEvent('caravan_aftermath');
-          scene.heal(5);
-        },
-        outcome: 'The hermit beams. The soup bubbles approvingly.'
-      },
-      {
-        text: 'Cook with the hermit',
-        condition: (gs, scene) => scene.hasAmulet('travelKitchen'),
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          scene.logStoryKeyChoice('travelKitchen_cheerful_hermit_cook');
-          scene.heal(20);
-          scene.gainCoins(5);
-          gs.storyRun.hermitState = 'friend';
-          gs.storyRun.cheerfulHermitVisited = true;
-          gs.storyRun.caravanResolved = true;
-          gs.storyRun.caravanEnding = 'hermit_friend';
-          scene.addPendingEvent('caravan_aftermath');
-        },
-        outcome: 'Together you create a soup so sturdy it may legally count as armor. The hermit gives you supplies for the road.'
-      }
-    ]
-  },
-  {
-    id: 'caravan_aftermath',
-    title: 'The Cinnamon Road',
-    description: (gs) => {
-      const story = gs?.storyRun || {};
-      if (story.banditTrailFound) {
-        return 'The cinnamon footprints end at an abandoned cache. The hermit recovers his medicine, and the merchant quietly rebuilds the road beside him.';
-      }
-      if (story.donkeySaved && story.banditsStopped) {
-        return 'The caravan rolls again beneath a clean evening sky. The merchant, the hermit, and one extremely proud donkey are all arguing about who saved whom.';
-      }
-      if (story.donkeySaved) {
-        return 'The rescued donkey returns pulling a patched little cart. The merchant has rebuilt what he can, while the hermit guards a fresh pot of soup.';
-      }
-      if (story.banditsStopped) {
-        return 'The road is safe. The hermit has medicine, the merchant has new crates, and someone swears the missing donkey joined a richer caravan.';
-      }
-      if (story.hermitState === 'comforted') {
-        return 'The losses remain, but the hermit has rebuilt his fire. He serves the merchant a bowl of heroic soup, and the cinnamon road begins again.';
-      }
-      return 'The burned caravan is gone. In its place stands a small roadside marker wrapped with a rein, a spice ribbon, and one stubborn soup spoon.';
-    },
-    choices: [
-      {
-        text: 'Share one last bowl of soup',
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          scene.finishStoryEpilogue('caravan', 'shared_soup');
-          scene.heal(12);
-        },
-        outcome: 'The soup is too hot and exactly what the road needed. The story ends among friends.'
-      },
-      {
-        text: "Accept the merchant's road gift",
-        condition: (gs) => Boolean(gs?.storyRun?.merchantGrateful || gs?.storyRun?.banditsStopped),
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          scene.finishStoryEpilogue('caravan', 'accepted_gift');
-          scene.gainCoins(18);
-        },
-        outcome: 'The merchant presses a cinnamon-scented purse into your hand. Behind him, the caravan finally starts moving forward.'
-      },
-      {
-        text: "Scratch the donkey's ears",
-        condition: (gs) => Boolean(gs?.storyRun?.donkeySaved),
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          scene.finishStoryEpilogue('caravan', 'thanked_donkey');
-          scene.heal(8);
-          scene.gainCrystals(1);
-        },
-        outcome: 'The donkey leans against you with enough force to count as a blessing. Its bell rings once as you leave the cinnamon road behind.'
-      },
-      {
-        text: 'Recover the stolen medicine',
-        condition: (gs) => Boolean(gs?.storyRun?.banditTrailFound),
-        action: (gs, scene) => {
-          scene.ensureStoryState();
-          scene.finishStoryEpilogue('caravan', 'recovered_medicine');
-          scene.gainCrystals(2);
-          scene.heal(5);
-        },
-        outcome: 'You return the medicine shelf intact. The hermit calls this acceptable heroism, which appears to be his highest praise.'
-      }
-    ]
-  },
   {
     id: 'broken_music_box',
     title: 'The Broken Music Box',
@@ -604,7 +252,7 @@ const EVENTS = [
   {
     id: 'book_worm',
     title: 'The Book Worm',
-    description: 'You step into a quiet underground library.\n\nTall shelves vanish into the darkness above. Small lanterns drift between them.\n\nAt a reading desk, a dark elf woman is reading a huge book. She does not look up. You stand beside her awkwardly. She does not notice you.\n\nThen you see a pale book worm crawling across the open page. It drags itself slowly over the letters, eating a thin path through the ink.\n\nYou gently lift it from the book. The librarian finally looks at you.\n\n“Book worms,” she says. “They ruin old spells if you let them feed too long.”',
+    description: 'You step into a quiet underground library.\n\nTall shelves vanish into the darkness above. Small lanterns drift between them.\n\nAt a reading desk, a dark elf woman is reading a huge book. She does not look up. You stand beside her awkwardly. She does not notice you.\n\nThen you see a pale book worm crawling across the open page. It drags itself slowly over the letters, eating a thin path through the ink.\n\nYou gently lift it from the book. The librarian finally looks at you.\n\n"Book worms," she says. "They ruin old spells if you let them feed too long."',
     choices: [
       {
         text: 'Feed it a magic card',
@@ -614,19 +262,19 @@ const EVENTS = [
           scene.gainAmulet('mothWingDust');
         },
         outcomeFrame: 20,
-        outcome: 'You hold out one of your magic cards.\n\nThe book worm sways toward it, then devours half the card quickly, as if it has been starving. Its pale body curls tight.\n\nThen it unfolds into a small library moth.\n\nThe moth circles once above your hand, shaking silver dust from its wings. You collect the dust in a small vial.\n\nThe librarian watches the moth disappear into the shelves.\n\n“Moths are better,” she says. “They leave the books alone.”'
+        outcome: 'You hold out one of your magic cards.\n\nThe book worm sways toward it, then devours half the card quickly, as if it has been starving. Its pale body curls tight.\n\nThen it unfolds into a small library moth.\n\nThe moth circles once above your hand, shaking silver dust from its wings. You collect the dust in a small vial.\n\nThe librarian watches the moth disappear into the shelves.\n\n"Moths are better," she says. "They leave the books alone."'
       },
       {
         text: 'Squish the book worm',
         action: (gs, scene) => scene.gainAmulet('wormVenomCharm'),
         outcomeFrame: 21,
-        outcome: 'You close your fingers around the book worm.\n\nIt leaves a smear of bitter green venom on your palm.\n\nThe librarian looks at it, then reaches for a tiny glass charm. She scrapes the venom inside and seals it.\n\n“Useful,” she says, and gives it to you.'
+        outcome: 'You close your fingers around the book worm.\n\nIt leaves a smear of bitter green venom on your palm.\n\nThe librarian looks at it, then reaches for a tiny glass charm. She scrapes the venom inside and seals it.\n\n"Useful," she says, and gives it to you.'
       },
       {
         text: 'Put it back on the book',
         action: (gs, scene) => scene.gainAmulet('stolenInkPen'),
         outcomeFrame: 22,
-        outcome: 'You put the book worm back on the page.\n\nIt immediately starts eating the next line.\n\nThe librarian stares at you. Then she says a quiet “Ugh,” just loud enough for you to hear, gathers her things, and retreats deeper into the library.\n\nOn the desk, she leaves behind a black ink pen. You steal it.'
+        outcome: 'You put the book worm back on the page.\n\nIt immediately starts eating the next line.\n\nThe librarian stares at you. Then she says a quiet "Ugh," just loud enough for you to hear, gathers her things, and retreats deeper into the library.\n\nOn the desk, she leaves behind a black ink pen. You steal it.'
       }
     ]
   },
@@ -694,6 +342,78 @@ const EVENTS = [
         outcome: () => scene.companionTrainingOutcome
       }));
     }
+  },
+  {
+    id: 'something_wicked',
+    title: 'Something Wicked',
+    description: 'In the dark of the dungeon, you hear voices.\n\nCrowd chatter. Laughter. A thin happy tune played slightly out of tune.\n\nThe corridor opens into a vast carnival chamber. Colored lanterns swing overhead. Monsters crowd the prize booths. Everyone is smiling. No one looks at you.\n\nThen a hand grabs your shoulder. You turn, ready to strike — an old woman stands too close, pressing a tray of dusty trinkets against your chest.\n\n"One coin," she says. "Wonderful things. Very cheap."\n\nHer grip does not move.',
+    choices: [
+      {
+        text: 'Buy the dusty pipe',
+        trayItem: 'dustyPipe',
+        traySprite: 'carnivalPipe',
+        condition: (gs) => (gs?.coins || 0) >= 1,
+        outcomeFrame: CARNIVAL_HAG_FRAME,
+        action: (gs, scene) => scene.buyCarnivalJunk('dustyPipe'),
+        outcome: 'You press one coin into the old woman\'s hand.\n\nHer fingers finally release your shoulder.\n\nThe pipe remains in your palm. It smells like cold ash.\n\nWhen you look up, the old woman has vanished into the crowd.'
+      },
+      {
+        text: 'Buy the rubber duck',
+        trayItem: 'rubberDuck',
+        traySprite: 'carnivalDucky',
+        condition: (gs) => (gs?.coins || 0) >= 1,
+        outcomeFrame: CARNIVAL_HAG_FRAME,
+        action: (gs, scene) => scene.buyCarnivalJunk('rubberDuck'),
+        outcome: 'You press one coin into the old woman\'s hand.\n\nHer fingers finally release your shoulder.\n\nThe rubber duck remains in your palm. Its painted eyes are almost worn away.\n\nWhen you look up, the old woman has vanished into the crowd.'
+      },
+      {
+        text: 'Buy the broken ring',
+        trayItem: 'brokenRing',
+        traySprite: 'carnivalRing',
+        condition: (gs) => (gs?.coins || 0) >= 1,
+        outcomeFrame: CARNIVAL_HAG_FRAME,
+        action: (gs, scene) => scene.buyCarnivalJunk('brokenRing'),
+        outcome: 'You press one coin into the old woman\'s hand.\n\nHer fingers finally release your shoulder.\n\nThe broken ring remains in your palm. The cracked gem catches no light.\n\nWhen you look up, the old woman has vanished into the crowd.'
+      },
+      {
+        text: 'Buy the four-leaf clover',
+        trayItem: 'luckyClover',
+        traySprite: 'luckyClover',
+        condition: (gs) => (gs?.coins || 0) >= 1,
+        outcomeFrame: CARNIVAL_HAG_FRAME,
+        action: (gs, scene) => scene.buyLuckyClover(),
+        outcome: 'You press one coin into the old woman\'s hand.\n\nHer fingers finally release your shoulder.\n\nThe clover remains in your palm, sealed under cloudy glass.\n\nFor one second, it glitters green.\n\nWhen you look up, the old woman has vanished into the crowd.'
+      },
+      {
+        text: 'Refuse',
+        trayRefuse: true,
+        outcomeFrame: CARNIVAL_HAG_FRAME,
+        action: (gs, scene) => scene.refuseCarnivalHag(),
+        outcome: 'You twist away from the old woman\'s grip.\n\nHer nails scrape your shoulder.\n\nShe watches you disappear into the carnival crowd without blinking.'
+      }
+    ]
+  },
+  {
+    id: 'brass_wizard',
+    title: 'The Brass Wizard',
+    description: 'The carnival music leads you to a narrow booth with cracked blue curtains.\n\nBehind the glass sits an old fortune-telling machine.\n\nIt is shaped like a brass wizard in a faded blue robe. Old stars are painted across the robe, but most of the color has peeled away.\n\nThe wizard\'s pale eyes stare forward. They may have been blue once.\n\nIts puppet-like mouth hangs slightly open.\n\nA coin slot waits beneath the glass.',
+    choices: [
+      {
+        text: 'Insert 1 coin',
+        condition: (gs) => (gs?.coins || 0) >= 1,
+        action: (gs, scene) => scene.insertBrassWizardCoin(),
+        outcome: (gs, scene) => scene.brassWizardOutcome
+      },
+      {
+        text: 'Leave the booth',
+        action: (gs, scene) => {
+          scene.ensureStoryState();
+          gs.storyRun.brassWizardSeen = true;
+          scene.clearPendingEvent('brass_wizard');
+        },
+        outcome: 'You leave the coin slot empty.\n\nThe brass wizard watches you through the dusty glass.\n\nIts mouth hangs open, waiting for a fortune it does not get to speak.'
+      }
+    ]
   },
   {
     id: 'almost_you_well',
@@ -819,8 +539,6 @@ export class EventScene extends Phaser.Scene {
       return this.getEventById(forcedId);
     }
 
-    if (story.pendingEvents.includes('robbed_hermit')) return this.getEventById('robbed_hermit');
-    if (story.pendingEvents.includes('caravan_aftermath')) return this.getEventById('caravan_aftermath');
     if (story.pendingEvents.includes('monster_bird_nest')) return this.getEventById('monster_bird_nest');
     if (
       story.pendingEvents.includes('goblin_engineer')
@@ -831,17 +549,9 @@ export class EventScene extends Phaser.Scene {
       if (this.canShowEggHatchingEvent()) return this.getEventById('hatching_egg');
       story.pendingEvents = story.pendingEvents.filter(id => id !== 'hatching_egg');
     }
-    // Fresh profiles used to be forced into the donkey caravan before every
-    // other storyline. Randomize the two unresolved story openers; the one not
-    // selected remains unresolved and naturally appears later.
-    if (story.caravanSeen === false && story.boxState === 'unknown') {
-      return this.getEventById(Math.random() < 0.5 ? 'burning_caravan' : 'broken_music_box');
-    }
-    if (story.caravanSeen === false) return this.getEventById('burning_caravan');
-    if (story.banditsStopped === true && story.hermitState === 'safe' && !story.cheerfulHermitVisited) {
-      return this.getEventById('cheerful_hermit');
-    }
-    if (story.caravanResolved && !story.caravanEpilogueSeen) return this.getEventById('caravan_aftermath');
+    if (story.pendingEvents.includes('brass_wizard')) return this.getEventById('brass_wizard');
+    // The music box is the sole story opener. (The donkey caravan + hermit
+    // thread was removed and no longer appears at all.)
     if (story.boxState === 'unknown') return this.getEventById('broken_music_box');
     // Once the main story beats are past, offer a special bonus room (copying
     // mirror / too-nice room) once each per run, chosen at random, before
@@ -853,6 +563,8 @@ export class EventScene extends Phaser.Scene {
     if (!story.slimyPrisonSeen) bonusFillers.push('slimy_prison');
     if (!story.bookWormSeen) bonusFillers.push('book_worm');
     if (!story.briarRoomSeen) bonusFillers.push('briar_room');
+    if (!story.carnivalVisited) bonusFillers.push('something_wicked');
+    if (story.carnivalVisited && !story.brassWizardSeen) bonusFillers.push('brass_wizard');
     if (this.getQualifyingCompanions().length > 0) bonusFillers.push('old_drill_room');
     if (bonusFillers.length > 0) {
       return this.getEventById(bonusFillers[Math.floor(Math.random() * bonusFillers.length)]);
@@ -871,7 +583,7 @@ export class EventScene extends Phaser.Scene {
       const requestedId = new URLSearchParams(window.location.search).get('event');
       if (!requestedId) return null;
       const resolvedId = requestedId === 'singing_box' ? 'broken_music_box' : requestedId;
-      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'old_drill_room']);
+      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'old_drill_room', 'something_wicked', 'brass_wizard']);
       return forceable.has(resolvedId) ? resolvedId : null;
     } catch {
       return null;
@@ -913,6 +625,9 @@ export class EventScene extends Phaser.Scene {
       slimyPrisonSeen: false,
       bookWormSeen: false,
       briarRoomSeen: false,
+      carnivalVisited: false,
+      carnivalHagMet: false,
+      brassWizardSeen: false,
       pendingEvents: []
     };
 
@@ -988,6 +703,9 @@ export class EventScene extends Phaser.Scene {
       slimyPrisonSeen: Boolean(existingStoryRun.slimyPrisonSeen),
       bookWormSeen: Boolean(existingStoryRun.bookWormSeen),
       briarRoomSeen: Boolean(existingStoryRun.briarRoomSeen),
+      carnivalVisited: Boolean(existingStoryRun.carnivalVisited),
+      carnivalHagMet: Boolean(existingStoryRun.carnivalHagMet),
+      brassWizardSeen: Boolean(existingStoryRun.brassWizardSeen),
       pendingEvents
     };
 
@@ -1112,32 +830,46 @@ export class EventScene extends Phaser.Scene {
     return this._removeStoryInventoryCard(index);
   }
 
-  heal(amount) {
-    if (!this.gameState || !Number.isFinite(amount)) return;
+  // Raw HP mutation, no reward text — shared by heal() and fullHeal() so each
+  // can report its own wording without double-printing a reward line.
+  _applyHeal(amount) {
+    if (!this.gameState || !Number.isFinite(amount)) return 0;
+    const before = Number.isFinite(this.gameState.playerHealth) ? this.gameState.playerHealth : 0;
     if (typeof this.gameState.heal === 'function') {
       this.gameState.heal(amount);
-      return;
+    } else {
+      const maxHealth = Number.isFinite(this.gameState.maxHealth)
+        ? this.gameState.maxHealth
+        : before + amount;
+      this.gameState.playerHealth = Math.min(maxHealth, before + amount);
     }
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.updateUI?.();
+    return (this.gameState.playerHealth || 0) - before;
+  }
 
-    const currentHealth = Number.isFinite(this.gameState.playerHealth)
-      ? this.gameState.playerHealth
-      : 0;
-    const maxHealth = Number.isFinite(this.gameState.maxHealth)
-      ? this.gameState.maxHealth
-      : currentHealth + amount;
-    this.gameState.playerHealth = Math.min(maxHealth, currentHealth + amount);
+  heal(amount) {
+    const gained = this._applyHeal(amount);
+    if (gained > 0) this._reward(`+${gained} HP`);
+    return gained;
   }
 
   gainCoins(amount) {
-    if (!this.gameState || !Number.isFinite(amount)) return;
+    if (!this.gameState || !Number.isFinite(amount) || amount === 0) return;
     const currentCoins = Number.isFinite(this.gameState.coins) ? this.gameState.coins : 0;
     this.gameState.coins = currentCoins + amount;
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.updateUI?.();
+    this._reward(`${amount > 0 ? '+' : ''}${amount} coins`);
   }
 
   gainCrystals(amount) {
-    if (!this.gameState || !Number.isFinite(amount)) return;
+    if (!this.gameState || !Number.isFinite(amount) || amount === 0) return;
     const currentCrystals = Number.isFinite(this.gameState.crystals) ? this.gameState.crystals : 0;
     this.gameState.crystals = currentCrystals + amount;
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.updateUI?.();
+    this._reward(`${amount > 0 ? '+' : ''}${amount} crystals`);
   }
 
   damagePlayer(amount, deathCause = 'environmental', killedBy = 'Dungeon Event') {
@@ -1166,7 +898,10 @@ export class EventScene extends Phaser.Scene {
 
   addEggOrFallback() {
     const egg = new CardDataGenerator().createEggCard();
-    if (this._addCardToInventory(egg)) return true;
+    if (this._addCardToInventory(egg)) {
+      this._reward(`Gained: ${egg?.name || 'Egg'}`);
+      return true;
+    }
     this.heal(5);
     return false;
   }
@@ -1290,17 +1025,6 @@ export class EventScene extends Phaser.Scene {
       .filter(eventId => eventId !== id);
   }
 
-  finishStoryEpilogue(thread, choice) {
-    this.ensureStoryState();
-    if (thread === 'caravan') {
-      this.clearPendingEvent('caravan_aftermath');
-      this.gameState.storyRun.caravanResolved = true;
-      this.gameState.storyRun.caravanEpilogueSeen = true;
-      this.gameState.storyRun.caravanEpilogueChoice = choice;
-      return;
-    }
-  }
-
   markHeroMemory(key) {
     this.ensureStoryState();
     if (!(key in this.gameState.heroMemory)) return false;
@@ -1312,7 +1036,220 @@ export class EventScene extends Phaser.Scene {
 
   addPotionToInventory() {
     const potion = new CardDataGenerator().createPotionCard(this.gameState?.currentFloor || 1);
-    return this._addCardToInventory(potion);
+    const added = this._addCardToInventory(potion);
+    if (added) this._reward(`Gained: ${potion?.name || 'Potion'}`);
+    return added;
+  }
+
+  markCarnivalHagMet() {
+    this.ensureStoryState();
+    this.gameState.storyRun.carnivalVisited = true;
+    this.gameState.storyRun.carnivalHagMet = true;
+  }
+
+  spendCoins(amount) {
+    if (!this.gameState || !Number.isFinite(amount) || amount <= 0) return false;
+    const before = Number.isFinite(this.gameState.coins) ? this.gameState.coins : 0;
+    if (before < amount) return false;
+    this.gameState.coins = before - amount;
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.updateUI?.();
+    this._reward(`-${amount} coin${amount === 1 ? '' : 's'}`);
+    return true;
+  }
+
+  buyCarnivalJunk(junkId) {
+    this.markCarnivalHagMet();
+    if (!this.spendCoins(1)) return false;
+    const junk = this.createCarnivalJunkCard(junkId);
+    const added = this._deliverCardReward(junk, junk.name || 'Carnival Junk', `Gained junk card: ${junk.name || 'Carnival Junk'}`);
+    this.addPendingEvent('brass_wizard');
+    return added;
+  }
+
+  buyLuckyClover() {
+    this.markCarnivalHagMet();
+    if (!this.spendCoins(1)) return false;
+    this.addPendingEvent('brass_wizard');
+
+    // The clover lands in the bag as an equipable amulet card (with a little
+    // card→amulet morph), rather than auto-equipping. The player taps it in a
+    // later battle to actually wear it. If the bag is full, fall back to
+    // equipping it outright so the coin is never wasted.
+    const inv = this.gameScene?.inventorySystem;
+    const slot = inv?.deliverCloverAmulet?.();
+    if (Number.isInteger(slot) && slot >= 0) {
+      this.gameScene?.updateUI?.();
+      this._reward('Gained: Lucky Clover — tap it in battle to equip');
+      this._pushRewardIcon('relicsOthers', 69, 'luckyClover');
+      return true;
+    }
+    return this.gainAmulet('luckyClover');
+  }
+
+  refuseCarnivalHag() {
+    this.markCarnivalHagMet();
+    this.loseHealthCapped(3);
+    this.addPendingEvent('brass_wizard');
+  }
+
+  createCarnivalJunkCard(junkId) {
+    const data = {
+      dustyPipe: {
+        id: 'carnivalDustyPipe',
+        name: 'Dusty Pipe',
+        sprite: 'carnivalPipe',
+        description: 'Cold ash clings to the bowl. The stem points toward bad ideas.'
+      },
+      rubberDuck: {
+        id: 'carnivalRubberDuck',
+        name: 'Rubber Duck',
+        sprite: 'carnivalDucky',
+        description: 'Its painted eyes are almost gone. It still seems amused.'
+      },
+      brokenRing: {
+        id: 'carnivalBrokenRing',
+        name: 'Broken Ring',
+        sprite: 'carnivalRing',
+        description: 'A cracked gem catches no light, but it remembers being expensive.'
+      }
+    }[junkId] || {
+      id: 'carnivalJunk',
+      name: 'Carnival Junk',
+      description: 'A cheap prize from a carnival that should not fit inside the dungeon.'
+    };
+
+    return {
+      ...data,
+      type: 'junk',
+      rarity: 'common',
+      carnivalToken: true,
+      noEffect: true,
+      cost: 1
+    };
+  }
+
+  hasCarnivalJunk() {
+    return Boolean(this.getFirstCarnivalJunk());
+  }
+
+  getFirstCarnivalJunk() {
+    const slots = this.getInventorySlots();
+    if (!Array.isArray(slots)) return null;
+    return slots.find(item => this.isCarnivalJunk(item)) || null;
+  }
+
+  isCarnivalJunk(item) {
+    return Boolean(item?.type === 'junk' && item?.carnivalToken);
+  }
+
+  createRespectableCarnivalCard() {
+    const generator = new CardDataGenerator();
+    const floor = this.gameState?.currentFloor || 1;
+    const types = ['weapon', 'armor', 'thorns', 'potion', 'food', 'magic'];
+    let type = types[Math.floor(Math.random() * types.length)];
+    const rarityRoll = Math.random();
+    const rarity = rarityRoll < 0.12 ? 'rare' : rarityRoll < 0.42 ? 'uncommon' : 'common';
+
+    for (let tries = 0; tries < 8; tries++) {
+      const targetRarity = ['weapon', 'armor', 'thorns'].includes(type) ? rarity : null;
+      const card = generator.createCardData(type, floor, false, this.gameState, targetRarity);
+      if (card) {
+        card.carnivalTouched = true;
+        return card;
+      }
+      type = types[Math.floor(Math.random() * types.length)];
+    }
+
+    const fallback = generator.createPotionCard(floor);
+    fallback.carnivalTouched = true;
+    return fallback;
+  }
+
+  insertBrassWizardCoin() {
+    this.ensureStoryState();
+    this.clearPendingEvent('brass_wizard');
+    this.gameState.storyRun.carnivalVisited = true;
+    this.gameState.storyRun.brassWizardSeen = true;
+    if (!this.spendCoins(1)) return false;
+
+    const roll = Math.random();
+    if (roll < 0.25) {
+      this.brassWizardOutcome = 'The brass wizard\'s hand jerks toward the deck inside its chest.\n\nThen it stops.\n\nIts painted mouth snaps open.\n\nClick.\n\nClick-click.\n\nClick-click-click.\n\nThe sound grows louder, sharp and metallic, echoing from inside the booth.\n\nThe wizard\'s pale eyes stare past you while its puppet mouth keeps clacking faster and faster.\n\nFor a moment, you are sure you broke something.\n\nOr woke something.\n\nYou step back, then turn and push your way into the carnival crowd, just to get away from that awful clicking.';
+      this._reward('No reward');
+      return true;
+    }
+
+    if (roll < 0.55) {
+      const card = this.createRespectableCarnivalCard();
+      this._deliverCardReward(card, card?.name || 'fortune card', `Gained card: ${card?.name || 'Fortune Card'}`);
+      this.brassWizardOutcome = 'The brass wizard\'s hand moves stiffly behind the glass.\n\nIts fingers scrape across the deck inside its chest.\n\nAfter a long pause, one card slides out through the slot.\n\nThe card is warm, as if the machine had been holding it for years.';
+      return true;
+    }
+
+    if (roll < 0.80) {
+      this.brassWizardOutcome = 'The brass wizard\'s hand lifts behind the glass.\n\nIt cannot reach you.\n\nInstead, a narrow tray snaps out from the booth with a hard wooden clack.\n\nThe tray is exactly the size of a card.\n\nThe wizard\'s pale eyes lower toward your inventory.\n\nIts puppet mouth clicks once.\n\nThen it waits.';
+      this._brassWizardTrayOpen = true;
+      return true;
+    }
+
+    this.gainAmulet('fortuneCard');
+    this.brassWizardOutcome = 'The brass wizard\'s pale eyes roll upward.\n\nFor a moment, they are blank.\n\nThen they settle into a color they should not have.\n\nHuman eyes.\n\nThe machine goes still.\n\nIt looks at you for a little too long.\n\nNo music reaches this booth now.\n\nThe puppet mouth opens.\n\nClick.\n\nClick.\n\nIts brass hand opens slowly behind the glass.\n\nA single fortune card slides out.';
+    return true;
+  }
+
+  // The wizard's tray is now a physical drop target (_setupWizardTray): the
+  // player drags a card from their bag onto it. Only the "decline" option
+  // remains as a button; the junk-trade and reroll happen on drop.
+  getBrassWizardTrayChoices() {
+    return [{
+      text: 'Pull your hand back',
+      trayDecline: true,
+      action: () => {},
+      outcome: 'You step away from the waiting tray.\n\nThe brass wizard does not move.\n\nAfter a few seconds, the tray slides back into the booth by itself.'
+    }];
+  }
+
+  isBrassWizardRerollable(item) {
+    return Boolean(
+      item
+      && !this.isCarnivalJunk(item)
+      && item.type !== 'junk'
+      && item.type !== 'companion'
+      && item.id !== 'monsterEgg'
+    );
+  }
+
+  createHolographicOmenCard() {
+    return {
+      id: 'holographicOmen',
+      type: 'passive',
+      name: 'Holographic Omen',
+      rarity: 'rare',
+      sprite: 'holographicOmen',
+      passiveEffect: 'holographicOmen',
+      description: 'At the start of combat, revealed enemies receive random status effects. Sometimes backfires.',
+      flavor: 'A shiny carnival card that makes every fight begin wrong.',
+      unique: true
+    };
+  }
+
+  createSameTypeRerollCard(oldCard) {
+    const generator = new CardDataGenerator();
+    const floor = this.gameState?.currentFloor || 1;
+    const rarity = oldCard?.rarity || 'common';
+    const type = oldCard?.type;
+    const targetRarity = ['weapon', 'armor', 'thorns'].includes(type) ? rarity : null;
+
+    for (let tries = 0; tries < 12; tries++) {
+      const card = generator.createCardData(type, floor, false, this.gameState, targetRarity);
+      if (!card) continue;
+      if (oldCard?.rarity && card.rarity && card.rarity !== oldCard.rarity) continue;
+      if ((card.name || card.id) === (oldCard.name || oldCard.id) && tries < 8) continue;
+      card.carnivalTouched = true;
+      return card;
+    }
+    return this.createRespectableCarnivalCard();
   }
 
   repairRandomDamagedItem(amount) {
@@ -1333,10 +1270,13 @@ export class EventScene extends Phaser.Scene {
 
     if (candidates.length === 0) return false;
     const item = candidates[Math.floor(Math.random() * candidates.length)];
-    item.durability = Math.min(Number(item.maxDurability), Number(item.durability) + amount);
+    const before = Number(item.durability);
+    item.durability = Math.min(Number(item.maxDurability), before + amount);
+    const repaired = item.durability - before;
     this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
     this.gameScene?.updateEquippedArmorPanel?.();
     this.gameScene?.updateUI?.();
+    if (repaired > 0) this._reward(`Repaired: ${item.name || 'item'} (+${repaired} durability)`);
     return true;
   }
 
@@ -1478,11 +1418,23 @@ export class EventScene extends Phaser.Scene {
     return EVENT_ILLUSTRATION_FRAMES[this.event?.id] ?? 7;
   }
 
+  _centerTextOnPixel(textObject, centerX) {
+    if (!textObject) return textObject;
+    // A centered origin can put an odd-width text texture on a half pixel,
+    // which makes the pixel font look soft (most visible in Book Worm's long
+    // scrolling paragraph). Anchor its top-left corner to whole pixels instead.
+    textObject.setOrigin(0, 0);
+    textObject.x = Math.round(centerX - textObject.width / 2);
+    textObject.y = Math.round(textObject.y);
+    return textObject;
+  }
+
   _createEventPaper(x, y) {
-    // Shorter than before so the panel sits in the top region and never covers
-    // the inventory strip (bottom ~110px) shown during the event.
+    // Grown upward (taller top, same bottom) so the parchment sits behind the
+    // title instead of the title floating at its top edge. The bottom is
+    // unchanged so it still clears the inventory strip shown during the event.
     const paperWidth = 388;
-    const paperHeight = 232;
+    const paperHeight = 244;
     const startY = y + 34;
     let paper = null;
     if (this.textures.exists('eventPaper9Slice')) {
@@ -1545,7 +1497,7 @@ export class EventScene extends Phaser.Scene {
     // Shortened to match the compressed paper so the decorative board doesn't
     // spill over the inventory strip at the bottom of the screen.
     const board = this.add.image(x, y + 34, boardTexture)
-      .setDisplaySize(456, 236)
+      .setDisplaySize(456, 248)
       .setDepth(-1)
       .setAlpha(0);
     this.tweens.add({
@@ -1566,7 +1518,7 @@ export class EventScene extends Phaser.Scene {
     container.add(this.add.image(0, 0, 'gamingBoardSideSmall', 1).setOrigin(0.5));
 
     if (this.textures.exists('eventsShops')) {
-      this.eventIllustrationImage = this.add.image(17, -5, 'eventsShops', frame)
+      this.eventIllustrationImage = this.add.image(23, -5, 'eventsShops', frame)
         .setOrigin(0.5)
         .setScale(1);
       container.add(this.eventIllustrationImage);
@@ -1595,6 +1547,171 @@ export class EventScene extends Phaser.Scene {
     saveStoryProgress(this.gameState.storyRun);
   }
 
+  _clearReadingScroll() {
+    const scroll = this._readingScroll;
+    if (!scroll) return;
+    scroll.targets?.forEach(entry => (entry?.target || entry)?.clearMask?.());
+    scroll.mask?.destroy?.();
+    scroll.maskShape?.destroy?.();
+    scroll.up?.destroy?.();
+    scroll.down?.destroy?.();
+    scroll.track?.destroy?.();
+    scroll.thumb?.destroy?.();
+    this._readingScroll = null;
+  }
+
+  _setReadingScroll(targets, top, bottom, contentBottom) {
+    this._clearReadingScroll();
+    const liveTargets = (targets || []).filter(target => target?.scene);
+    if (!liveTargets.length) return;
+
+    const maxOffset = Math.max(0, Math.ceil(contentBottom - bottom));
+    const maskShape = this.make.graphics({ add: false });
+    maskShape.fillStyle(0xffffff).fillRect(
+      this.eventLayout.centerX - 172,
+      top,
+      344,
+      bottom - top
+    );
+    const mask = maskShape.createGeometryMask();
+    liveTargets.forEach(target => target.setMask(mask));
+
+    const scroll = {
+      targets: liveTargets.map(target => ({ target, baseY: target.y })),
+      top,
+      bottom,
+      maxOffset,
+      offset: 0,
+      mask,
+      maskShape,
+      bounds: new Phaser.Geom.Rectangle(this.eventLayout.centerX - 172, top, 344, bottom - top)
+    };
+    this._readingScroll = scroll;
+
+    if (maxOffset <= 0) return;
+
+    const arrowX = this.eventLayout.centerX + 178;
+    const makeArrow = (label, y, delta) => {
+      const arrow = this.add.text(arrowX, y, label, {
+        fontSize: '11px', fill: '#6c4f35', fontFamily: '"HoMM Pixel"',
+        backgroundColor: '#ead2aa', padding: { x: 3, y: 1 }
+      }).setOrigin(0.5).setDepth(8).setInteractive({ useHandCursor: true });
+      arrow.on('pointerdown', () => this._scrollReading(delta));
+      return arrow;
+    };
+
+    scroll.up = makeArrow('^', top + 10, -24);
+    scroll.down = makeArrow('v', bottom - 10, 24);
+
+    // Regular scroll bar: a track rail between the arrows with a draggable thumb
+    // (replaces the old vertical "scroll" hint word). The thumb is the scroll.png
+    // pixel-art icon at native size — a fixed-size handle rather than one sized
+    // to the visible-content proportion, since stretching an 8x24 pixel-art
+    // sprite to arbitrary heights would smear it. Drag the thumb, or click the
+    // track, to scroll.
+    const trackTop = top + 20;
+    const trackBottom = bottom - 20;
+    const trackHeight = Math.max(10, trackBottom - trackTop);
+    scroll.track = this.add.rectangle(arrowX, (trackTop + trackBottom) / 2, 4, trackHeight, 0x8f6b45, 0.35)
+      .setDepth(8).setInteractive({ useHandCursor: true });
+
+    const hasHandleTexture = this.textures.exists('scrollHandle');
+    const thumbHeight = hasHandleTexture
+      ? Math.min(this.textures.get('scrollHandle').getSourceImage().height, trackHeight)
+      : Phaser.Math.Clamp(Math.round(trackHeight * (bottom - top) / ((bottom - top) + maxOffset)), 12, trackHeight);
+    scroll.thumbMinY = trackTop + thumbHeight / 2;
+    scroll.thumbMaxY = trackBottom - thumbHeight / 2;
+    scroll.thumbTravel = scroll.thumbMaxY - scroll.thumbMinY;
+    scroll.thumb = hasHandleTexture
+      ? this.add.image(arrowX, scroll.thumbMinY, 'scrollHandle').setOrigin(0.5)
+      : this.add.rectangle(arrowX, scroll.thumbMinY, 6, thumbHeight, 0x6c4f35, 1);
+    scroll.thumb.setDepth(9).setInteractive({ useHandCursor: true, draggable: true });
+    this.input.setDraggable(scroll.thumb);
+    scroll.thumb.on('drag', (pointer, dragX, dragY) => {
+      const clamped = Phaser.Math.Clamp(dragY, scroll.thumbMinY, scroll.thumbMaxY);
+      const frac = scroll.thumbTravel > 0 ? (clamped - scroll.thumbMinY) / scroll.thumbTravel : 0;
+      this._setScrollOffset(Math.round(frac * scroll.maxOffset));
+    });
+    scroll.track.on('pointerdown', (pointer) => {
+      const frac = scroll.thumbTravel > 0
+        ? Phaser.Math.Clamp((pointer.y - scroll.thumbMinY) / scroll.thumbTravel, 0, 1)
+        : 0;
+      this._setScrollOffset(Math.round(frac * scroll.maxOffset));
+    });
+
+    this._setScrollOffset(0);
+  }
+
+  _scrollReading(delta) {
+    const scroll = this._readingScroll;
+    if (!scroll?.maxOffset) return;
+    this._setScrollOffset(scroll.offset + delta);
+  }
+
+  _setScrollOffset(value) {
+    const scroll = this._readingScroll;
+    if (!scroll?.maxOffset) return;
+    scroll.offset = Phaser.Math.Clamp(value, 0, scroll.maxOffset);
+    scroll.targets.forEach(({ target, baseY }) => {
+      if (target?.scene) target.y = baseY - scroll.offset;
+    });
+    scroll.up?.setAlpha(scroll.offset > 0 ? 1 : 0.35);
+    scroll.down?.setAlpha(scroll.offset < scroll.maxOffset ? 1 : 0.35);
+    if (scroll.thumb) {
+      const frac = scroll.maxOffset > 0 ? scroll.offset / scroll.maxOffset : 0;
+      scroll.thumb.y = scroll.thumbMinY + frac * scroll.thumbTravel;
+    }
+  }
+
+  _enableReadingWheel() {
+    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+      const scroll = this._readingScroll;
+      if (!scroll?.maxOffset || !Phaser.Geom.Rectangle.Contains(scroll.bounds, pointer.x, pointer.y)) return;
+      this._scrollReading(deltaY > 0 ? 24 : -24);
+    });
+  }
+
+  _getChoiceBounds() {
+    const objects = (this._choiceBtns || [])
+      .flatMap(({ bg, label }) => [bg, label])
+      .filter(object => object?.scene && object.visible !== false);
+    if (!objects.length) return null;
+
+    let top = Infinity;
+    let bottom = -Infinity;
+    objects.forEach(object => {
+      const height = object.displayHeight || object.height || 0;
+      const originY = Number.isFinite(object.originY) ? object.originY : 0.5;
+      const objectTop = object.y - height * originY;
+      top = Math.min(top, objectTop);
+      bottom = Math.max(bottom, objectTop + height);
+    });
+
+    return Number.isFinite(top) && Number.isFinite(bottom)
+      ? { top: Math.floor(top), bottom: Math.ceil(bottom), height: Math.ceil(bottom - top) }
+      : null;
+  }
+
+  _fitDescriptionAboveChoices() {
+    if (!this.descText?.scene) return;
+
+    const top = 42;
+    const choiceBounds = this._getChoiceBounds();
+    const fallbackBottom = 132;
+    const gapAboveChoices = 6;
+    const bottom = choiceBounds
+      ? Math.max(top + 24, Math.floor(choiceBounds.top - gapAboveChoices))
+      : fallbackBottom;
+
+    this._descriptionViewportBottom = bottom;
+    this._setReadingScroll(
+      [this.descText],
+      top,
+      bottom,
+      this.descText.y + this.descText.height
+    );
+  }
+
   _isPlainObject(value) {
     return Boolean(value && typeof value === 'object' && !Array.isArray(value));
   }
@@ -1620,46 +1737,58 @@ export class EventScene extends Phaser.Scene {
     // nest. The event panel is laid out in the top ~2/3; the inventory owns the
     // bottom strip (below y≈250), so nothing opaque is drawn over it.
     this._enableEventStation();
+    this._enableReadingWheel();
     this.events.once('shutdown', () => {
-      this.gameScene?.inventorySystem?.setDragOverlayScene?.(null);
+      // Also clean up abnormal exits (scene replacement, defeat, etc.). The
+      // normal Continue path already does this, making the call idempotent.
+      this._disableEventStation();
     });
 
     // Background — dim only the top region so the bottom inventory strip shows
     // through on the dungeon floor (like combat) instead of being covered.
     this.add.rectangle(W / 2, 124, W, 250, 0x1a1a2e, 0.92).setDepth(-10);
     this._createEventIllustrationBoard(this._getEventIllustrationFrame());
-    this._createEventBoardBase(this.eventLayout.centerX, 132);
-    this._createEventPaper(this.eventLayout.centerX, 132);
+    this._createEventBoardBase(this.eventLayout.centerX, 126);
+    this._createEventPaper(this.eventLayout.centerX, 126);
 
     // The copying mirror and the well use their illustration as a card drop target.
     if (this.event?.id === 'mirror') this._setupMirrorDropZone();
     if (this.event?.id === 'almost_you_well') this._setupWellDropZone();
 
-    // Title
-    this.add.text(this.eventLayout.centerX, 26, this.event.title, {
-      fontSize: '20px', fill: PURPLE, fontFamily: '"HoMM Pixel"'
-    }).setOrigin(0.5).setDepth(2);
+    // Title — dedicated crisp 16px bitmap font (1-bit rasterized from Able5.ttf),
+    // shared with the other screen titles via createTitle. The body bitmap font
+    // only has crisp 10px/20px steps and a scaled TTF was soft; this pre-
+    // rasterized font is pixel-sharp at 16px under the 2x zoom.
+    createTitle(this, this.eventLayout.centerX, 26, this.event.title, {
+      color: PURPLE, fallbackSize: '20px', depth: 2
+    });
 
     // Description — top-anchored just under the title so a tall description
     // grows downward instead of overlapping the title.
     const eventDescription = this._getEventDescription();
-    const veryCompactDescription = eventDescription.length > 450;
-    const compactDescription = eventDescription.length > 280;
     this.descText = this.add.text(this.eventLayout.centerX, 42, eventDescription, {
-      fontSize: veryCompactDescription ? '7px' : compactDescription ? '9px' : '12px', fill: INK, fontFamily: '"HoMM Pixel"',
-      align: 'center', wordWrap: { width: compactDescription ? 328 : this.eventLayout.textWidth }
-    }).setOrigin(0.5, 0).setDepth(2);
+      fontSize: '12px', fill: INK, fontFamily: '"HoMM Pixel"',
+      align: 'center', wordWrap: { width: 328 }
+    }).setDepth(2);
+    this._centerTextOnPixel(this.descText, this.eventLayout.centerX);
 
-    // Divider — below the description (derived from its real height), above the
-    // choice stack. Capped so a very tall description still leaves room for the
-    // choices above the inventory strip.
-    const dividerY = Math.min(150, 42 + this.descText.height + 8);
-    this.dividerRect = this.add.rectangle(this.eventLayout.centerX, dividerY, 340, 1, 0x8f6b45).setDepth(2);
+    // The choices keep their own safe area above the inventory. Once they are
+    // rendered, their measured bounds determine how tall the description's
+    // reading viewport can be.
+    // The thin divider between the story text and the choices is intentionally
+    // omitted — the open gap between the two blocks separates them well enough.
+    // dividerY is kept only to anchor where the choice stack may begin.
+    const dividerY = 138;
     this._choiceTopY = dividerY + 8;
 
     // Choice buttons
     this._choiceBtns = [];
     this._buildChoices();
+    this._fitDescriptionAboveChoices();
+
+    // The carnival hag presents her wares as a physical tray of trinkets the
+    // player drags into their bag, instead of a stack of text buttons.
+    if (this.event?.id === 'something_wicked') this._setupCarnivalTray();
 
     // Outcome text (hidden until a choice is made). Positioned on resolve so it
     // stays within the panel, above the inventory strip.
@@ -1678,12 +1807,6 @@ export class EventScene extends Phaser.Scene {
       .setStrokeStyle(1, 0x8f6b45)
       .setAlpha(0)
       .setDepth(3);
-    this.outcomeLabel = this.add.text(this.eventLayout.centerX, 50, 'Outcome', {
-      fontSize: '11px',
-      fill: PURPLE,
-      fontFamily: '"HoMM Pixel"'
-    }).setOrigin(0.5, 0).setAlpha(0).setDepth(4);
-
     // Rewards summary (hidden until a choice is made) — a concrete "what you
     // gained/lost" list shown under the outcome, so amulets/HP/crystals that
     // otherwise land silently in the corners are actually announced.
@@ -1736,6 +1859,10 @@ export class EventScene extends Phaser.Scene {
   }
 
   _buildChoices() {
+    // The carnival hag renders her buy/refuse options as a draggable tray
+    // (_setupCarnivalTray), so skip the normal text-button stack entirely.
+    if (this.event?.id === 'something_wicked') return;
+
     const choices = this._visibleChoices || this._getVisibleChoices();
     const n = choices.length;
     const layout = this.eventLayout || {
@@ -1744,20 +1871,27 @@ export class EventScene extends Phaser.Scene {
       buttonTextWidth: 300
     };
 
-    // The choice stack must fit between the divider and the inventory strip.
-    // Dense events use two columns; the old forced minimum gap pushed later
-    // choices off the paper and underneath the inventory strip.
+    // Choices are packed tightly and bottom-anchored low on the paper, so the
+    // stack reads as one grouped block near the inventory strip rather than a
+    // spread-out ladder starting right under the description. Dense events
+    // (>5 choices) still split into two columns; the gap compresses to fit
+    // when there are enough rows to need it.
     const INV_TOP = 246;
-    const startY = this._choiceTopY ?? 108;
     const columns = n > 5 ? 2 : 1;
     const rows = Math.max(1, Math.ceil(n / columns));
-    const lastCenterY = INV_TOP - 12;
-    const maxGap = columns === 2 ? 28 : (n > 4 ? 24 : n > 3 ? 32 : 38);
+    const lastCenterY = INV_TOP - 19;                  // bottom-most row center (nudged up 3px)
+    const topLimit = (this._choiceTopY ?? 146) + 20;   // stay >=20px below the story text
+    const availSpan = lastCenterY - topLimit;
     const gap = rows > 1
-      ? Math.max(18, Math.min(maxGap, Math.floor((lastCenterY - startY) / (rows - 1))))
-      : maxGap;
-    const buttonHeight = Math.max(14, Math.min(24, gap - 4));
-    const smallFont = columns === 2 || gap < 24;
+      ? Math.max(16, Math.min(24, Math.floor(availSpan / (rows - 1))))
+      : 0;
+    // Anchor the block to the bottom; clamp so it never rides up into the text.
+    const startY = rows > 1
+      ? Math.max(topLimit, lastCenterY - (rows - 1) * gap)
+      : Math.round((topLimit + lastCenterY) / 2);
+    // buttonHeight = gap - 2 keeps a consistent ~2px gutter between buttons.
+    const buttonHeight = gap ? Math.max(12, gap - 2) : 22;
+    const smallFont = columns === 2 || buttonHeight < 16;
     this._choiceStartY = startY;
 
     choices.forEach((choice, i) => {
@@ -1774,7 +1908,7 @@ export class EventScene extends Phaser.Scene {
         .setDepth(2);
 
       const label = this.add.text(x, y, choice.text, {
-        fontSize: smallFont ? (choice.text.length > 34 ? '8px' : '9px') : (choice.text.length > 44 ? '11px' : '13px'),
+        fontSize: smallFont ? '10px' : (choice.text.length > 44 ? '11px' : '13px'),
         fill: '#ffffff',
         fontFamily: '"HoMM Pixel"',
         align: 'center',
@@ -1794,10 +1928,16 @@ export class EventScene extends Phaser.Scene {
     if (this.resolved) return;
     this.resolved = true;
 
-    // Effect helpers push concrete "gained/lost" lines here during the action.
-    // (The well trade fills these before calling _resolve, so keepRewards.)
-    if (!opts.keepRewards) this._rewardLines = [];
+    // Effect helpers push concrete "gained/lost" lines (and amulet icons) here
+    // during the action. (The well trade fills these before calling _resolve,
+    // so keepRewards.)
+    if (!opts.keepRewards) { this._rewardLines = []; this._rewardIcons = []; }
     choice.action?.(this.gameState, this);
+
+    if (this.event?.id === 'brass_wizard' && this._brassWizardTrayOpen) {
+      this._brassWizardTrayOpen = false;
+      choice.next = { choices: this.getBrassWizardTrayChoices(), wizardTray: true };
+    }
 
     // A choice with `next` isn't terminal — it reveals more choices in place
     // (e.g. Inspect → Confront/Fight) instead of ending the event.
@@ -1832,6 +1972,8 @@ export class EventScene extends Phaser.Scene {
       bg.setAlpha(0);
       label.setAlpha(0);
     });
+    this._destroyCarnivalTray();
+    this._destroyWizardTray();
 
     const rewards = this._rewardLines || [];
     this._layoutResolvedOutcome(outcome, rewards);
@@ -1839,7 +1981,6 @@ export class EventScene extends Phaser.Scene {
     // Show narration immediately. A short fade on a previously invisible text
     // object made the reward animation easier to notice than the actual story.
     this.outcomeBackdrop?.setAlpha(1);
-    this.outcomeLabel?.setAlpha(1);
     if (outcome) this.outcomeText?.setAlpha(1);
     if (rewards.length) this.rewardText?.setAlpha(1);
 
@@ -1854,17 +1995,17 @@ export class EventScene extends Phaser.Scene {
   // long second-stage outcome can no longer be covered by a reward block that
   // has been forcibly moved upward.
   _layoutResolvedOutcome(outcome, rewards) {
+    this._clearReadingScroll();
+    this._hideRewardAmuletTooltip();
     const story = typeof outcome === 'string' ? outcome : '';
     const rewardLines = Array.isArray(rewards) ? rewards : [];
     const top = 66;
     const gap = story && rewardLines.length ? 8 : 0;
 
-    // Choose the compact size up front. Phaser's setFontSize() internally
-    // refreshes a Text object without preserving its contents, so resizing an
-    // already-populated outcome is precisely what made long outcomes vanish.
-    const denseOutcome = story.length > 400 || (story.length > 300 && rewardLines.length >= 3);
-    const storyFont = denseOutcome ? 8 : story.length > 300 ? 9 : story.length > 150 ? 10 : 12;
-    const rewardFont = denseOutcome || rewardLines.length > 3 ? 8 : 10;
+    // Never shrink narrative copy below the normal UI reading size. Overflow
+    // is handled by the scroll window below.
+    const storyFont = story.length > 150 ? 11 : 12;
+    const rewardFont = 10;
 
     // Recreate the narration object instead of resizing the hidden placeholder.
     // Phaser clears that reused Text object's internal value on the nested
@@ -1886,6 +2027,84 @@ export class EventScene extends Phaser.Scene {
     this.rewardText?.setY(rewardY);
     if (!story) this.outcomeText?.setAlpha(0);
     if (!rewardLines.length) this.rewardText?.setAlpha(0).setText('');
+
+    this._layoutRewardIcons(rewardY, rewardLines.length ? this.rewardText?.height || 0 : 0);
+    const scrollTargets = [this.outcomeText, this.rewardText, ...(this._rewardIconSprites || [])];
+    const iconBottom = (this._rewardIconSprites || []).reduce(
+      (bottom, sprite) => Math.max(bottom, sprite.y + (sprite.displayHeight || 0)),
+      0
+    );
+    const contentBottom = Math.max(
+      story ? this.outcomeText.y + this.outcomeText.height : top,
+      rewardLines.length ? this.rewardText.y + this.rewardText.height : top,
+      iconBottom
+    );
+    this._setReadingScroll(scrollTargets, top, 238, contentBottom);
+  }
+
+  // Draws the sprite for any amulet(s) gained this resolution, centered under
+  // the reward text summary — so a "Gained amulet: X" line is immediately
+  // backed by the actual icon instead of just a name.
+  _layoutRewardIcons(rewardY, rewardTextHeight) {
+    this._rewardIconSprites?.forEach(sprite => sprite.destroy());
+    this._rewardIconSprites = [];
+
+    const icons = this._rewardIcons || [];
+    if (!icons.length) return;
+
+    const iconGap = 6;
+    const iconY = rewardY + rewardTextHeight + iconGap;
+    const spacing = 34;
+    const startX = this.eventLayout.centerX - ((icons.length - 1) * spacing) / 2;
+
+    icons.forEach((icon, i) => {
+      if (!icon?.sprite || !this.textures.exists(icon.sprite)) return;
+      const x = startX + i * spacing;
+      const sprite = this.add.image(x, iconY, icon.sprite, icon.spriteFrame)
+        .setOrigin(0.5, 0)
+        .setDepth(4);
+      if (icon.amuletId) {
+        sprite.setInteractive({ useHandCursor: true });
+        sprite.on('pointerover', () => this._showRewardAmuletTooltip(icon.amuletId, sprite));
+        sprite.on('pointerout', () => this._hideRewardAmuletTooltip());
+      }
+      this._rewardIconSprites.push(sprite);
+    });
+  }
+
+  _showRewardAmuletTooltip(amuletId, iconSprite) {
+    this._hideRewardAmuletTooltip();
+    const mgr = this.gameScene?.amuletManager;
+    const definition = mgr?.amuletDefinitions?.[amuletId];
+    if (!definition || !iconSprite?.scene) return;
+
+    const amulet = (this.gameState?.activeAmulets || []).find(item => item?.id === amuletId)
+      || { id: amuletId, name: definition.name };
+    let description = translateItemName(this, amulet) || definition.name || 'Amulet';
+    description += `\n${translateDescription(this, definition.description)}`;
+    if (amulet.level > 1) description += ` (${t(this, 'tooltip.level', { level: amulet.level })})`;
+    if (definition.cursed) description = `${t(this, 'tooltip.cursed')} ${description}`;
+
+    const text = this.add.text(6, 4, description, {
+      fontSize: '11px',
+      fill: definition.cursed ? '#ff7777' : '#ffffff',
+      fontFamily: '"HoMM Pixel", Arial, sans-serif',
+      wordWrap: { width: 190 }
+    }).setOrigin(0);
+    const width = Math.ceil(text.width + 12);
+    const height = Math.ceil(text.height + 8);
+    const bg = this.add.rectangle(0, 0, width, height, 0x080808, 0.96)
+      .setOrigin(0)
+      .setStrokeStyle(1, definition.cursed ? 0xff6666 : 0xf2d3aa);
+
+    const x = Phaser.Math.Clamp(iconSprite.x + 18, 6, 640 - width - 6);
+    const y = Phaser.Math.Clamp(iconSprite.y - height - 4, 6, 244 - height);
+    this.rewardAmuletTooltip = this.add.container(x, y, [bg, text]).setDepth(30);
+  }
+
+  _hideRewardAmuletTooltip() {
+    this.rewardAmuletTooltip?.destroy?.(true);
+    this.rewardAmuletTooltip = null;
   }
 
   // Records a concrete reward/loss line shown in the outcome's summary.
@@ -1923,7 +2142,6 @@ export class EventScene extends Phaser.Scene {
     if (!this.resolved) return;
     this._layoutResolvedOutcome(this._resolvedOutcome, this._rewardLines || []);
     this.outcomeBackdrop?.setAlpha(1);
-    this.outcomeLabel?.setAlpha(1);
     if (this._resolvedOutcome) this.outcomeText?.setAlpha(1);
     if ((this._rewardLines || []).length) this.rewardText?.setAlpha(1);
   }
@@ -1934,7 +2152,9 @@ export class EventScene extends Phaser.Scene {
     const revealText = this._getChoiceOutcome(choice) || '';
     if (this.descText) {
       this.descText.setVisible(true).setAlpha(1).setText(revealText);
-      const dividerY = Math.min(150, 42 + this.descText.height + 8);
+      this.descText.setY(42);
+      this._centerTextOnPixel(this.descText, this.eventLayout.centerX);
+      const dividerY = 138;
       this.dividerRect?.setY(dividerY);
       this._choiceTopY = dividerY + 8;
     }
@@ -1943,7 +2163,14 @@ export class EventScene extends Phaser.Scene {
     this._choiceBtns = [];
 
     this._visibleChoices = choice.next.choices.filter(c => this._isChoiceVisible(c));
-    this._buildChoices();
+
+    if (choice.next.wizardTray) {
+      // The brass wizard's tray is a drop target, not a button stack.
+      this._setupWizardTray(this._visibleChoices);
+    } else {
+      this._buildChoices();
+      this._fitDescriptionAboveChoices();
+    }
 
     if (Number.isInteger(choice.outcomeFrame) && this.eventIllustrationImage?.setFrame) {
       this.eventIllustrationImage.setFrame(choice.outcomeFrame);
@@ -1955,12 +2182,10 @@ export class EventScene extends Phaser.Scene {
   // ─── Too-Nice Room effects ───────────────────────────────────────────────
 
   fullHeal() {
-    // Heals up to the (amulet-capped) max via the shared heal path.
-    const before = Number.isFinite(this.gameState?.playerHealth) ? this.gameState.playerHealth : 0;
-    this.heal(this.gameState?.maxHealth || 9999);
-    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
-    this.gameScene?.updateUI?.();
-    const gained = (this.gameState?.playerHealth || 0) - before;
+    // Heals up to the (amulet-capped) max via the shared raw-heal path — NOT
+    // heal(), which would push its own "+X HP" line and double-report
+    // alongside this method's "Fully healed" wording.
+    const gained = this._applyHeal(this.gameState?.maxHealth || 9999);
     this._reward(gained > 0 ? `Fully healed (+${gained} HP)` : 'Already at full HP');
   }
 
@@ -2011,10 +2236,9 @@ export class EventScene extends Phaser.Scene {
     if (!mgr?.addAmulet) return false;
     const amulet = new CardDataGenerator().createAmuletCard(this.gameState?.currentFloor || 1, this.gameState);
     if (!amulet?.id) return false;
-    const ok = mgr.addAmulet(amulet.id);
-    this.gameScene.updateUI?.();
-    if (ok) this._reward(`Gained amulet: ${amulet.name || 'Amulet'}`);
-    return ok;
+    // Delegate to gainAmulet so both entry points share one reward-text +
+    // reward-icon path instead of duplicating the addAmulet/_reward calls.
+    return this.gainAmulet(amulet.id);
   }
 
   gainRandomCursedAmulet() {
@@ -2090,6 +2314,7 @@ export class EventScene extends Phaser.Scene {
       companion.name = 'Storm Hatchling';
       companion.shockChance = 0.20;
       companion.upgradedForm = 'stormHatchling';
+      companion.sprite = 'chickCompanionUP'; // upgraded art: crackling storm chick
       this.companionTrainingOutcome = 'You place the Storm Chick card near the old lightning rods.\n\nThe rods begin to hum.\n\nA small bolt jumps between them and strikes the card.\n\nInside the picture, the chick puffs up, feathers crackling with blue sparks.';
       this._reward('Storm Hatchling: 20% chance to Shock for 1 turn');
     } else if (companion.id === 'skeletonWarriorCompanion') {
@@ -2118,11 +2343,23 @@ export class EventScene extends Phaser.Scene {
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     const mgr = this.gameScene?.amuletManager;
     if (!mgr?.addAmulet || typeof id !== 'string') return false;
-    const name = mgr.amuletDefinitions?.[id]?.name || 'Amulet';
+    const def = mgr.amuletDefinitions?.[id];
+    const name = def?.name || 'Amulet';
     const ok = mgr.addAmulet(id);
     this.gameScene.updateUI?.();
-    if (ok) this._reward(`Gained amulet: ${name}`);
+    if (ok) {
+      this._reward(`Gained amulet: ${name}`);
+      this._pushRewardIcon(def?.sprite || 'relicsOthers', def?.spriteFrame ?? 0, id);
+    }
     return ok;
+  }
+
+  // Records an icon to render under the reward text summary — currently only
+  // used for gained amulets, so the player can immediately see what they got
+  // instead of just reading its name.
+  _pushRewardIcon(sprite, spriteFrame, amuletId = null) {
+    if (!sprite) return;
+    (this._rewardIcons ||= []).push({ sprite, spriteFrame, amuletId });
   }
 
   // Brings the GameScene inventory forward, in station mode, beneath the event.
@@ -2252,6 +2489,7 @@ export class EventScene extends Phaser.Scene {
     this.gameScene?.updateUI?.();
 
     this._rewardLines = [];
+    this._rewardIcons = [];
     this._reward(cardData.type === 'weapon'
       ? `${cardData.name || 'Weapon'}: +1 permanent damage`
       : `${cardData.name || 'Armor'}: +1 thorn damage`);
@@ -2307,6 +2545,7 @@ export class EventScene extends Phaser.Scene {
     // The trade is one of the well's outcomes — resolve the event with it,
     // carrying the reward line we just recorded.
     this._rewardLines = [];
+    this._rewardIcons = [];
     this._reward(`Traded: ${oldName} → ${newCard.name || 'upgraded card'}`);
     this._resolve({
       text: 'Trade',
@@ -2359,6 +2598,274 @@ export class EventScene extends Phaser.Scene {
     return chosen;
   }
 
+  // ─── Something Wicked (drag a trinket off the hag's tray into your bag) ───
+
+  // Renders the carnival hag's wares as a physical tray of draggable trinkets
+  // instead of a stack of text buttons. Each trinket maps to one of the event's
+  // buy choices; dropping it over the inventory resolves that choice. "Refuse"
+  // stays as a small button tucked below the tray.
+  _setupCarnivalTray() {
+    const visible = this._visibleChoices || this._getVisibleChoices();
+    const trayChoices = visible.filter(choice => choice.trayItem);
+    const refuseChoice = visible.find(choice => choice.trayRefuse);
+    const centerX = this.eventLayout.centerX;
+
+    // Pull the story text's reading window up so it clears the tray region.
+    this._setReadingScroll([this.descText], 42, 124, this.descText.y + this.descText.height);
+
+    this._carnivalItems = [];
+
+    this._carnivalHint = this.add.text(
+      centerX, 131,
+      trayChoices.length ? 'Drag a trinket into your bag   ·   1 coin each' : 'Nothing here you can afford.',
+      { fontSize: '10px', fill: '#ffe8b0', fontFamily: '"HoMM Pixel"', align: 'center' }
+    ).setOrigin(0.5).setDepth(5);
+
+    if (this.textures.exists('carnivalTray')) {
+      this._carnivalTray = this.add.image(centerX, 198, 'carnivalTray').setDepth(3);
+    }
+
+    const n = trayChoices.length;
+    const spacing = 62;
+    const startX = centerX - ((n - 1) * spacing) / 2;
+    const cardY = 176;
+
+    trayChoices.forEach((choice, i) => {
+      const x = Math.round(startX + i * spacing);
+      const card = this.add.image(x, cardY, choice.traySprite)
+        .setDepth(6)
+        .setInteractive({ useHandCursor: true, draggable: true });
+      card.setData('choice', choice);
+      card.setData('homeX', x);
+      card.setData('homeY', cardY);
+      this.input.setDraggable(card);
+
+      card.on('pointerover', () => {
+        if (this.resolved || card.getData('dragging')) return;
+        this.tweens.add({ targets: card, y: cardY - 7, scale: 1.06, duration: 110, ease: 'Cubic.easeOut' });
+      });
+      card.on('pointerout', () => {
+        if (this.resolved || card.getData('dragging')) return;
+        this.tweens.add({ targets: card, y: cardY, scale: 1, duration: 110, ease: 'Cubic.easeOut' });
+      });
+      card.on('dragstart', () => {
+        card.setData('dragging', true);
+        card.setDepth(30).setScale(1.06);
+      });
+      card.on('drag', (pointer, dragX, dragY) => {
+        card.x = dragX;
+        card.y = dragY;
+      });
+      card.on('dragend', (pointer) => this._handleCarnivalDrop(card, pointer));
+
+      this._carnivalItems.push(card);
+    });
+
+    if (refuseChoice) {
+      const y = 244;
+      const bg = this.add.rectangle(centerX, y, 130, 15, 0x050505, 0.58)
+        .setDepth(5)
+        .setInteractive({ useHandCursor: true });
+      const label = this.add.text(centerX, y, refuseChoice.text, {
+        fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
+      }).setOrigin(0.5).setDepth(6);
+      bg.on('pointerover', () => bg.setFillStyle(0x111111, 0.78));
+      bg.on('pointerout', () => bg.setFillStyle(0x050505, 0.58));
+      bg.on('pointerdown', () => this._resolve(refuseChoice, -1));
+      this._carnivalRefuse = { bg, label };
+    }
+  }
+
+  _handleCarnivalDrop(card, pointer) {
+    card.setData('dragging', false);
+    if (this.resolved) { this._returnCarnivalCard(card); return; }
+
+    const choice = card.getData('choice');
+    const target = this._carnivalDropTarget(pointer);
+    const isAmulet = choice.trayItem === 'luckyClover';
+
+    if (!target.over) { this._returnCarnivalCard(card); return; }
+    if ((this.gameState?.coins || 0) < 1) {
+      this.gameScene?.createFloatingText?.(pointer.x, pointer.y, 'You need a coin', 0xff6666);
+      this._returnCarnivalCard(card);
+      return;
+    }
+    // Junk trinkets need an open slot; the clover becomes an amulet and doesn't.
+    if (!isAmulet && target.emptySlot < 0) {
+      this.gameScene?.createFloatingText?.(pointer.x, pointer.y, 'Your bag is full', 0xff6666);
+      this._returnCarnivalCard(card);
+      return;
+    }
+
+    card.disableInteractive();
+    this._resolve(choice, -1);
+  }
+
+  // Returns whether the pointer was released over the inventory strip and, if so,
+  // the first empty slot to receive a junk trinket.
+  _carnivalDropTarget(pointer) {
+    const inv = this.gameScene?.inventorySystem;
+    const slots = inv?.slotSprites || [];
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let midY = 309;
+    let halfH = 35;
+    slots.forEach(slot => {
+      const bg = slot?.background;
+      if (!bg) return;
+      const halfW = (bg.width || 50) / 2;
+      minX = Math.min(minX, bg.x - halfW);
+      maxX = Math.max(maxX, bg.x + halfW);
+      midY = bg.y;
+      halfH = (bg.height || 70) / 2;
+    });
+    if (minX === Infinity) return { over: false, emptySlot: -1 };
+
+    const pad = 14;
+    const over = pointer.x >= minX - pad && pointer.x <= maxX + pad
+      && pointer.y >= midY - halfH - pad && pointer.y <= midY + halfH + pad;
+    if (!over) return { over: false, emptySlot: -1 };
+
+    let emptySlot = -1;
+    slots.forEach((slot, i) => {
+      const bg = slot?.background;
+      if (!bg || inv.slots[i] != null || emptySlot >= 0) return;
+      if (Math.abs(pointer.x - bg.x) <= (bg.width || 50) / 2 + pad) emptySlot = i;
+    });
+    if (emptySlot < 0) emptySlot = inv.slots.findIndex(item => item == null);
+    return { over: true, emptySlot };
+  }
+
+  _returnCarnivalCard(card) {
+    if (!card?.scene) return;
+    card.setDepth(6);
+    this.tweens.add({
+      targets: card,
+      x: card.getData('homeX'),
+      y: card.getData('homeY'),
+      scale: 1,
+      duration: 200,
+      ease: 'Cubic.easeOut'
+    });
+  }
+
+  _destroyCarnivalTray() {
+    (this._carnivalItems || []).forEach(card => card?.destroy?.());
+    this._carnivalItems = [];
+    this._carnivalTray?.destroy?.();
+    this._carnivalTray = null;
+    this._carnivalHint?.destroy?.();
+    this._carnivalHint = null;
+    if (this._carnivalRefuse) {
+      this._carnivalRefuse.bg?.destroy?.();
+      this._carnivalRefuse.label?.destroy?.();
+      this._carnivalRefuse = null;
+    }
+  }
+
+  // ─── Brass Wizard tray (drag a card from the bag onto the wizard's tray) ──
+
+  // Presents the wizard's tray as a physical drop target. Dropping a carnival
+  // junk card trades it for the Holographic Omen; dropping a real card rerolls
+  // it into another of the same type. A "pull your hand back" button declines.
+  _setupWizardTray(choices) {
+    const inv = this.gameScene?.inventorySystem;
+    const declineChoice = (choices || []).find(c => c.trayDecline) || (choices || [])[0];
+    const centerX = this.eventLayout.centerX;
+
+    // Shorten the wizard's narration window so it clears the tray.
+    this._setReadingScroll([this.descText], 42, 120, this.descText.y + this.descText.height);
+
+    this._wizardHint = this.add.text(centerX, 128, 'Drag a card onto the tray', {
+      fontSize: '11px', fill: '#ffe8b0', fontFamily: '"HoMM Pixel"', align: 'center'
+    }).setOrigin(0.5).setDepth(5);
+
+    if (this.textures.exists('wizardTray')) {
+      this._wizardTray = this.add.image(centerX, 182, 'wizardTray').setDepth(3);
+    }
+
+    if (inv?.addDropZone && this._wizardTray) {
+      inv.clearDropZones();
+      inv.addDropZone(this._wizardTray, (slotIndex, cardData, cardSprite) =>
+        this._handleWizardTrayDrop(slotIndex, cardData, cardSprite));
+    }
+
+    if (declineChoice) {
+      const y = 244;
+      const bg = this.add.rectangle(centerX, y, 150, 15, 0x050505, 0.58)
+        .setDepth(5).setInteractive({ useHandCursor: true });
+      const label = this.add.text(centerX, y, declineChoice.text, {
+        fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
+      }).setOrigin(0.5).setDepth(6);
+      bg.on('pointerover', () => bg.setFillStyle(0x111111, 0.78));
+      bg.on('pointerout', () => bg.setFillStyle(0x050505, 0.58));
+      bg.on('pointerdown', () => this._resolve(declineChoice, -1));
+      this._wizardDecline = { bg, label };
+    }
+  }
+
+  _handleWizardTrayDrop(slotIndex, cardData, cardSprite) {
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv || !cardData || this.resolved) return false;
+
+    if (this.isCarnivalJunk(cardData)) {
+      inv.cleanupCardSprites?.(slotIndex, cardSprite);
+      inv.cleanupBoardArtifacts?.(cardSprite);
+      inv.removeCard(slotIndex, false);
+      cardSprite.destroy();
+      this._rewardLines = [];
+      this._rewardIcons = [];
+      this._reward(`Traded: ${cardData.name || 'Carnival Junk'}`);
+      this._deliverCardReward(this.createHolographicOmenCard(), 'Holographic Omen', 'Gained passive card: Holographic Omen');
+      this._resolve({
+        text: 'Trade junk',
+        action: () => {},
+        outcome: 'You place the useless carnival trinket on the tray.\n\nThe tray snaps back into the booth. The booth goes dark, then a rainbow sheen spreads across the glass from the inside — thin and oily, like light on spilled ink.\n\nA card slides out. It is too bright for the old machine that made it.'
+      }, -1, { keepRewards: true });
+      return true;
+    }
+
+    if (this.isBrassWizardRerollable(cardData)) {
+      const newCard = this.createSameTypeRerollCard(cardData);
+      if (!newCard) {
+        this._mirrorFloat("The wizard won't take that", 0xff6666, cardSprite);
+        return false;
+      }
+      const oldName = cardData.name || 'card';
+      inv.cleanupCardSprites?.(slotIndex, cardSprite);
+      inv.cleanupBoardArtifacts?.(cardSprite);
+      inv.removeCard(slotIndex, false);
+      cardSprite.destroy();
+      inv.addCard(newCard);
+      this.gameScene?.updateUI?.();
+      this._rewardLines = [];
+      this._rewardIcons = [];
+      this._reward(`Traded: ${oldName} → ${newCard.name || 'a new card'}`);
+      this._resolve({
+        text: 'Reroll',
+        action: () => {},
+        outcome: 'You place one of your cards on the tray.\n\nThe tray snaps back before you can change your mind. Behind the glass, the brass wizard stares down at it for a long time, then taps the glass twice.\n\nA different card slides out.'
+      }, -1, { keepRewards: true });
+      return true;
+    }
+
+    this._mirrorFloat("The wizard doesn't want that", 0xff6666, cardSprite);
+    return false;
+  }
+
+  _destroyWizardTray() {
+    this.gameScene?.inventorySystem?.clearDropZones?.();
+    this._wizardTray?.destroy?.();
+    this._wizardTray = null;
+    this._wizardHint?.destroy?.();
+    this._wizardHint = null;
+    if (this._wizardDecline) {
+      this._wizardDecline.bg?.destroy?.();
+      this._wizardDecline.label?.destroy?.();
+      this._wizardDecline = null;
+    }
+  }
+
   // Marks the once-per-run bonus rooms as seen when they resolve.
   _markBonusEventSeen() {
     const flagByEvent = {
@@ -2367,7 +2874,9 @@ export class EventScene extends Phaser.Scene {
       almost_you_well: 'wellSeen',
       slimy_prison: 'slimyPrisonSeen',
       book_worm: 'bookWormSeen',
-      briar_room: 'briarRoomSeen'
+      briar_room: 'briarRoomSeen',
+      something_wicked: 'carnivalVisited',
+      brass_wizard: 'brassWizardSeen'
     };
     const flag = flagByEvent[this.event?.id];
     if (!flag) return;

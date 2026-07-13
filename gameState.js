@@ -226,7 +226,10 @@ export class GameState {
             this.trackDamage(actualDamage, source, enemyIndex);
         }
         
-        // Check for game over immediately after health change
+        // SINGLE authority for combat death: every lethal hit schedules
+        // gameOver() here, so callers must not schedule their own duplicate.
+        // (EventScene damage bypasses takeDamage and invokes gameOver()
+        // directly on wake — see EventScene.continueAdventure.)
         if (this.playerHealth <= 0) {
             this.setDeathCause(source, enemyIndex);
             this.scene.time.delayedCall(100, () => this.scene.gameOver());

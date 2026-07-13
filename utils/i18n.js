@@ -103,6 +103,7 @@ const STRINGS = {
         'boss.poison': 'Poison: stacks {dmg} damage per turn for {turns} turns',
         'boss.armorBreak': 'Armor Break: pierces {amount} of your armor',
         'boss.rage': 'Rage: hits {mult}x harder below {pct}% HP',
+        'boss.evade': 'Evasion: {pct}% chance your attack misses',
         'boss.coinSteal': 'Coin Steal: may steal up to {amount} coins when it hits',
         'boss.noAbilities': 'A brute — no special abilities.',
         'tooltip.skeleton': 'skeleton',
@@ -396,6 +397,7 @@ const STRINGS = {
         'boss.poison': 'Яд: накладывает {dmg} урона за ход на {turns} ходов',
         'boss.armorBreak': 'Пробой брони: пробивает {amount} вашей брони',
         'boss.rage': 'Ярость: бьёт в {mult}x сильнее ниже {pct}% ОЗ',
+        'boss.evade': 'Уклонение: {pct}% шанс, что ваша атака промахнётся',
         'boss.coinSteal': 'Кража монет: может украсть до {amount} монет при ударе',
         'boss.noAbilities': 'Громила — без особых способностей.',
         'tooltip.skeleton': 'скелета',
@@ -839,7 +841,6 @@ const RARITY_TRANSLATIONS = {
 const WEAPON_TRANSLATIONS = {
     ru: {
         dagger: 'Кинжал',
-        spear: 'Копье',
         sword: 'Меч',
         axe: 'Топор',
         bow: 'Лук',
@@ -896,8 +897,8 @@ function resolveTextKey(keyOrText, vars = {}) {
 // translated, so selecting them showed a mostly-English game and made the toggle feel
 // broken (it appeared to do nothing / only flip to German). Add a code here once that
 // language's translations are finished. LANGUAGE_OPTIONS is kept full so getLanguageName
-// and normalizeLanguageCode still resolve any previously-saved language code.
-const SUPPORTED_LANGUAGES = ['en', 'ru'];
+// can still resolve labels for legacy settings.
+const SUPPORTED_LANGUAGES = ['en'];
 
 export function getLanguageOptions() {
     return LANGUAGE_OPTIONS.filter(option => SUPPORTED_LANGUAGES.includes(option.code));
@@ -921,6 +922,7 @@ export function normalizeLanguageCode(language) {
         russian: 'ru',
         'русский': 'ru',
     };
+    if (lower === 'ru' || legacy[lower] === 'ru') return 'en';
     return LANGUAGE_OPTIONS.some(option => option.code === lower)
         ? lower
         : legacy[lower] || 'en';
