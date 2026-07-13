@@ -59,6 +59,17 @@ export class TutorialManager {
         const i = slots.findIndex(s => s && s.type === 'weapon' && s.weaponType === 'sword');
         return i >= 0 ? (this.inv.slotSprites[i]?.card || null) : null;
     }
+    tutorialSwordPipArea() {
+        const sword = this.tutorialSwordSprite();
+        if (!sword || typeof sword.getBounds !== 'function') return null;
+        const b = sword.getBounds();
+        return {
+            x: b.x,
+            y: b.y,
+            width: Math.max(14, b.width * 0.36),
+            height: b.height,
+        };
+    }
     actionPointArea() {
         const sprites = (this.scene.actionPointSprites || []).filter(sprite => sprite?.active);
         if (!sprites.length) return null;
@@ -208,7 +219,8 @@ export class TutorialManager {
         const target = step.target ? step.target() : null;
         const hintTarget = step.hintTarget ? step.hintTarget() : null;
         const interactiveTarget = step.interactiveTarget ? step.interactiveTarget() : target;
-        const boundsList = this._targetBoundsList(target, hintTarget, interactiveTarget);
+        const targetBounds = step.targetBounds ? step.targetBounds() : null;
+        const boundsList = this._targetBoundsList(targetBounds || target, hintTarget, interactiveTarget);
         const alreadyRendered = (
             this._lastRenderedStep === this.stepIndex
             && target === this._lastTarget
@@ -238,7 +250,9 @@ export class TutorialManager {
             this.overlay.show({ target: null, interactive: null, text: step.text, noHole: true });
             return;
         }
-        const holeTargets = hintTarget ? [target, hintTarget].filter(Boolean) : null;
+        const holeTargets = targetBounds
+            ? [targetBounds, hintTarget].filter(Boolean)
+            : (hintTarget ? [target, hintTarget].filter(Boolean) : null);
         this.overlay.show({
             target,
             interactive: interactiveTarget,
@@ -361,6 +375,7 @@ export class TutorialManager {
             {
                 text: 'The pips on a weapon are durability. Each attack spends one pip; at zero, the weapon breaks forever. Merging matching cards restores every pip.',
                 target: () => this.tutorialSwordSprite(),
+                targetBounds: () => this.tutorialSwordPipArea(),
                 enter: () => {
                     this.scene.time.delayedCall(3200, () => {
                         if (this.active && this.steps[this.stepIndex]?.durabilityLesson) this._advance();
@@ -443,7 +458,7 @@ export class TutorialManager {
             // 16 — done
             {
                 text: "That's the whole loop: flip, fight, collect, and grow stronger. Press Finish when you're ready.",
-                target: () => avatar(),
+                target: () => null,
                 noHole: true,
                 done: () => false, // ends only via the Finish (skip) button
             },
