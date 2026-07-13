@@ -884,7 +884,8 @@ export class CardDataGenerator {
     createCoinCard(floor) {
         return {
             type: 'coin',
-            amount: 2 + Math.floor(Math.random() * 4), // 2-5 (was 5-14)
+            // Coin cards remain meaningful as store prices rise.
+            amount: 3 + Math.floor(floor / 8) + Math.floor(Math.random() * 4),
             name: 'Coins',
             sprite: 'coin'
         };

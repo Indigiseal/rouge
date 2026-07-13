@@ -75,6 +75,72 @@ function startingInventory() {
 
 const armorScore = (a) => (a && a.durability > 0 ? (a.protection || 0) : -1);
 
+function inventoryCapacity(gs) {
+  return 5 + Math.max(0, gs.bonusInventorySlots || 0);
+}
+
+function reservedEventSlots(gs) {
+  const story = gs._simStory;
+  return story?.reserveRewardSlot ? 1 : 0;
+}
+
+function carriedCount(gs, inv) {
+  const carried = new Set(inv);
+  [gs.equippedWeapon, gs.equippedArmor, gs.activeThorns].forEach((item) => {
+    if (item) carried.add(item);
+  });
+  return carried.size;
+}
+
+function cardKeepScore(card) {
+  if (!card) return -Infinity;
+  if (card.id === 'monsterEgg' || card.type === 'companion') return 1000;
+  if (card.type === 'magic' && card.magicType === 'restoration') return 300;
+  if (card.type === 'gem') return 220;
+  if (card.type === 'weapon') return (card.weaponType === 'dagger' ? 5 : 120) + (card.damage || 0) * 8;
+  if (card.type === 'armor') return 110 + (card.protection || 0) * 12;
+  if (card.type === 'thorns') return 100 + (card.thornDamage || 0) * 10;
+  if (card.type === 'potion') return 70 + (card.healAmount || 0);
+  return 10;
+}
+
+function bestEventWeapon(gs, inv) {
+  return [gs.equippedWeapon, ...inv]
+    .filter((card) => card?.type === 'weapon' && (card.weaponType === 'sword' || card.weaponType === 'bow'))
+    .sort((a, b) => (b.damage || 0) - (a.damage || 0))[0] || null;
+}
+
+function hasUsableNonDaggerWeapon(gs, inv) {
+  return [gs.equippedWeapon, ...inv].some((card) => (
+    card?.type === 'weapon'
+    && card.weaponType !== 'dagger'
+    && (card.durability || 0) > 0
+  ));
+}
+
+// Real inventory pressure matters most at events. Keep one empty slot when the
+// story is about to offer an egg, then discard the least valuable carried card
+// only when the incoming event reward is better.
+function tryCarry(gs, inv, card, { eventReward = false } = {}) {
+  if (!card) return false;
+  const reserve = eventReward ? 0 : reservedEventSlots(gs);
+  if (carriedCount(gs, inv) < inventoryCapacity(gs) - reserve) {
+    inv.push(card);
+    return true;
+  }
+  let lowestIndex = -1;
+  let lowestScore = Infinity;
+  for (let i = 0; i < inv.length; i++) {
+    const score = cardKeepScore(inv[i]);
+    if (score < lowestScore) { lowestScore = score; lowestIndex = i; }
+  }
+  if (lowestIndex >= 0 && cardKeepScore(card) > lowestScore) {
+    inv.splice(lowestIndex, 1, card);
+    return true;
+  }
+  return false;
+}
+
 // ── Merging (mirrors inventorySystem: same type+rarity → next rarity, refreshed
 // durability, gems carried). Damage/durability pulled from the REAL tables. ──
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
@@ -126,7 +192,10 @@ function mergeArmorList(gen, list, echoChance = 0, tracker = null, floor = 0) {
             RARITY_ORDER.indexOf(a.rarity) < RARITY_ORDER.length - 1) {
           const m = mergeArmor(gen, a, b, floor);
           list.splice(j, 1); list.splice(i, 1); list.push(m);
-          if (tracker) tracker.recordMerge('armor', m.rarity, floor);
+          if (tracker) {
+            tracker.recordMerge('armor', m.rarity, floor);
+            tracker.mergeCounts.armor++;
+          }
           // Webweaver's Thread: 10% chance one source armor respawns (refreshed durability)
           if (echoChance > 0 && Math.random() < echoChance) {
             const echo = Math.random() < 0.5 ? { ...a } : { ...b };
@@ -154,7 +223,10 @@ function mergeWeaponList(gen, list, echoChance = 0, tracker = null, floor = 0) {
             RARITY_ORDER.indexOf(a.rarity) < RARITY_ORDER.length - 1) {
           const merged = mergeWeapons(gen, a, b, floor);
           list.splice(j, 1); list.splice(i, 1); list.push(merged);
-          if (tracker) tracker.recordMerge('weapon', merged.rarity, floor);
+          if (tracker) {
+            tracker.recordMerge('weapon', merged.rarity, floor);
+            tracker.mergeCounts.weapon++;
+          }
           // Webweaver's Thread: 10% chance one source card respawns (refreshed at its original rarity)
           if (echoChance > 0 && Math.random() < echoChance) {
             const echo = Math.random() < 0.5 ? { ...a } : { ...b };
@@ -180,7 +252,7 @@ function wpnValue(w) {
 // Thorns merging: two equal-damage thorns → stronger thorns with refreshed
 // durability (mirrors inventorySystem merge for thorns). The bot "always
 // carries and merges thorns," so we accumulate and fuse them.
-function mergeThornsList(list) {
+function mergeThornsList(list, tracker = null) {
   let changed = true, guard = 0;
   while (changed && guard++ < 40) {
     changed = false;
@@ -192,6 +264,7 @@ function mergeThornsList(list) {
           const dur = Math.max(a.maxDurability || 3, b.maxDurability || 3) + 1;
           list.splice(j, 1); list.splice(i, 1);
           list.push({ type: 'thorns', name: 'Thorns Card', thornDamage: dmg, durability: dur, maxDurability: dur, rarity: nextRarity(a.rarity || 'common') });
+          if (tracker) tracker.mergeCounts.thorns++;
           changed = true; break;
         }
       }
@@ -218,7 +291,7 @@ function regear(gen, gs, inv) {
   const echoChance = gs.relicEffects?.mergeRespawnChance || 0;
   mergeWeaponList(gen, weapons, echoChance, gs._mergeTracker || null, gs.currentFloor || 0);
   mergeArmorList(gen, armors, echoChance, gs._mergeTracker || null, gs.currentFloor || 0);
-  mergeThornsList(thorns);
+  mergeThornsList(thorns, gs._mergeTracker || null);
 
   weapons.sort((a, b) => wpnValue(b) - wpnValue(a));
   // Protect a strong weapon on its LAST pip: if the best weapon is at 1
@@ -246,6 +319,16 @@ function regear(gen, gs, inv) {
 
   inv.length = 0;
   inv.push(...weapons, ...armors, ...thorns, ...rest);
+  while (carriedCount(gs, inv) > inventoryCapacity(gs)) {
+    let lowestIndex = -1;
+    let lowestScore = Infinity;
+    for (let i = 0; i < inv.length; i++) {
+      const score = cardKeepScore(inv[i]);
+      if (score < lowestScore) { lowestScore = score; lowestIndex = i; }
+    }
+    if (lowestIndex < 0) break;
+    inv.splice(lowestIndex, 1);
+  }
 }
 
 function isMelee(w) { return !w || w.range !== 'ranged'; }
@@ -259,19 +342,22 @@ function collectLoot(mock, gs, inv, idx) {
     case 'coin': gs.coins += d.amount || 0; break;
     case 'crystal': gs.crystals += d.amount || 0; break;
     case 'food': gs.actionsLeft = Math.min(gs.maxActions, gs.actionsLeft + (d.actionAmount || 0)); break;
-    case 'potion': inv.push(d); break; // used later when hurt
+    case 'potion': tryCarry(gs, inv, d); break; // used later when hurt
     case 'trap':
       gs.takeDamage(d.damage || d.attack || 5, -1, 'trap');
       if (gs.playerHealth <= 0) mock._lastKiller = 'trap';
       break;
-    case 'weapon': case 'armor': inv.push(d); break;
-    case 'gem': inv.push(d); mock._gemsSeen = (mock._gemsSeen || 0) + 1; (mock._gemFloors || (mock._gemFloors = [])).push(gs.currentFloor); break; // kept for socketing into weapons
-    case 'thorns': inv.push(d); break; // always carried + merged
+    case 'weapon':
+      if (d.weaponType !== 'dagger' || !hasUsableNonDaggerWeapon(gs, inv)) tryCarry(gs, inv, d);
+      break;
+    case 'armor': tryCarry(gs, inv, d); break;
+    case 'gem': if (tryCarry(gs, inv, d)) { mock._gemsSeen = (mock._gemsSeen || 0) + 1; (mock._gemFloors || (mock._gemFloors = [])).push(gs.currentFloor); } break; // kept for socketing into weapons
+    case 'thorns': tryCarry(gs, inv, d); break; // always carried + merged
     case 'amulet': // equip dropped amulets (skip cursed — unbalanced)
       if (d.id && d.rarity !== 'cursed' && !d.cursed) mock.amuletManager.addAmulet(d.id);
       break;
     case 'magic': // keep only Restoration (full HP+AP); discard the rest
-      if (d.magicType === 'restoration') inv.push(d);
+      if (d.magicType === 'restoration') tryCarry(gs, inv, d);
       break;
     default: break; // empty/key — nothing
   }
@@ -452,8 +538,10 @@ function runCombat(mock, gs, inv, floor) {
       }
 
       const dmg = effDmg(gs.equippedWeapon);
+      const weaponBeforeAttack = gs.equippedWeapon;
       mock.useAction();
       mock.cardSystem.attackEnemy(attackIdx, dmg, false, gs.equippedWeapon || null);
+      if (weaponBeforeAttack && !gs.equippedWeapon) mock._weaponBreaks = (mock._weaponBreaks || 0) + 1;
       if (!gs.equippedWeapon || gs.equippedWeapon.durability <= 0) regear(mock.cardSystem.cardDataGenerator, gs, inv);
       mock.resolvePendingEnemyTurn();
       maybeHeal(gs, inv);
@@ -486,11 +574,9 @@ function runCombat(mock, gs, inv, floor) {
   // Boss floors pay nothing here — they have their own reward room (see
   // runBossReward). Formula flattened from 20+floor*3 (act 1 was coin-starved
   // while acts 2-3 hoarded 500-750 unspent) — keep in sync with GameScene.
-  // The real game also pays a token 1+floor/3 on the Next Floor click.
   const isBossFloor = floor === 15 || floor === 30 || floor === 45;
   if (gs.playerHealth > 0 && !isBossFloor) {
     gs.coins += mock.amuletManager.modifyGoldFound(Math.floor(24 + floor * 1.2));
-    gs.coins += mock.amuletManager.modifyGoldFound(1 + Math.floor(floor / 3));
   }
 }
 
@@ -512,7 +598,9 @@ function runBossReward(mock, gs, inv, floor) {
   const rawQuality = floor >= 31 ? 'legendary' : floor >= 16 ? 'epic' : 'rare';
   const quality = gen.capRewardRarity ? gen.capRewardRarity(rawQuality, floor) : rawQuality;
   const item = mock.cardSystem.createCardData(Math.random() < 0.5 ? 'weapon' : 'armor', floor, false, null, quality);
-  if (item) inv.push(item);
+  if (item && (item.type !== 'weapon' || item.weaponType !== 'dagger' || !hasUsableNonDaggerWeapon(gs, inv))) {
+    tryCarry(gs, inv, item, { eventReward: true });
+  }
   // (Not counted in _gemsSeen — that metric tracks floor drops only.)
   const gem = mock.cardSystem.createCardData('gem', floor);
   if (gem) inv.push(gem);
@@ -536,7 +624,7 @@ function runRest(gs) {
 // (+10 coins OR +5 HP). Events do NOT grant floor-scaled gear, and amulets
 // only come from the finite bonus rooms — the old model's perpetual 45%
 // amulet / 25% epic-gear rolls badly overstated event power.
-function runEvent(mock, gs, inv, floor) {
+function runEventLegacy(mock, gs, inv, floor) {
   const cs = mock.cardSystem;
   const st = mock._eventState || (mock._eventState = { story: 0, bonus: [] });
 
@@ -602,6 +690,143 @@ function runEvent(mock, gs, inv, floor) {
     gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 5);
   } else {
     gs.coins += 10;
+  }
+}
+
+// Mirrors the current EventScene selection order and makes the strongest
+// available choice. Story rewards that require a card slot reserve that slot
+// before ordinary loot can fill it.
+function runEvent(mock, gs, inv, floor) {
+  const gen = mock.cardSystem.cardDataGenerator;
+  const story = gs._simStory || (gs._simStory = {
+    stage: 'music_box', seen: new Set(), reserveRewardSlot: false,
+    hasEgg: false, hasChick: false,
+  });
+  const gainAmulet = (id = null) => {
+    const amulet = id ? { id, rarity: 'uncommon' } : gen.createCardData('amulet', floor, false, gs);
+    if (amulet?.id && amulet.rarity !== 'cursed' && !amulet.cursed) mock.amuletManager.addAmulet(amulet.id);
+  };
+
+  if (story.stage === 'music_box') {
+    // Leaving is the best safe opening: it preserves HP and starts the cog path.
+    gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 5);
+    story.stage = 'bird_nest';
+    story.reserveRewardSlot = true;
+    return;
+  }
+  if (story.stage === 'bird_nest') {
+    // The egg becomes a companion later, so reserve and use one real bag slot.
+    const egg = { type: 'quest', id: 'monsterEgg', name: 'Egg' };
+    const healthyEnough = gs.playerHealth >= gs.maxHealth * 0.8
+      && (!gs.equippedArmor || gs.equippedArmor.durability > 2);
+    if (healthyEnough && tryCarry(gs, inv, egg, { eventReward: true })) {
+      story.hasEgg = true;
+      gs.playerHealth = Math.max(0, gs.playerHealth - 20);
+      if (gs.equippedArmor) gs.equippedArmor.durability = Math.max(0, gs.equippedArmor.durability - 1);
+    }
+    story.reserveRewardSlot = false;
+    story.stage = 'engineer';
+    return;
+  }
+  if (story.stage === 'engineer') {
+    // A guaranteed Latchbox is worth its 30 coins: it pays back a permanent
+    // slot and enables the egg to hatch. If poor, use a spare card for 80%.
+    let repaired = false;
+    if (gs.coins >= 30) {
+      gs.coins -= 30;
+      repaired = true;
+    } else {
+      const sacrifice = inv
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => cardKeepScore(card) < 220)
+        .sort((a, b) => cardKeepScore(a.card) - cardKeepScore(b.card))[0];
+      if (sacrifice) {
+        inv.splice(sacrifice.index, 1);
+        repaired = Math.random() < 0.8;
+      }
+    }
+    if (repaired) gs.bonusInventorySlots = (gs.bonusInventorySlots || 0) + 1;
+    else { gs.coins += 12; gs.crystals += 1; }
+    story.stage = story.hasEgg && repaired ? 'hatch_egg' : 'bonus';
+    return;
+  }
+  if (story.stage === 'hatch_egg') {
+    const eggIndex = inv.findIndex((card) => card?.id === 'monsterEgg');
+    if (eggIndex >= 0) {
+      inv[eggIndex] = gen.createChickCompanionCard();
+      story.hasChick = true;
+    }
+    story.stage = 'bonus';
+    return;
+  }
+
+  const choices = ['too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'mirror', 'something_wicked'];
+  if (story.seen.has('something_wicked')) choices.push('brass_wizard');
+  if (story.hasChick) choices.push('old_drill_room');
+  const remaining = choices.filter((id) => !story.seen.has(id));
+  if (!remaining.length) {
+    if (gs.playerHealth < gs.maxHealth * 0.6) gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 5);
+    else gs.coins += 10;
+    return;
+  }
+  const id = remaining[Math.floor(Math.random() * remaining.length)];
+  story.seen.add(id);
+  switch (id) {
+    case 'too_nice_room': gainAmulet(); break; // inspect, then confront the fairy
+    case 'almost_you_well':
+      if (gs.crystals >= 1) gs.crystals += 3; // spend 1, receive 4
+      else gainAmulet();
+      break;
+    case 'slimy_prison': {
+      const companion = gen.createSkeletonWarriorCompanionCard();
+      gs.playerHealth = Math.max(0, gs.playerHealth - 10);
+      tryCarry(gs, inv, companion, { eventReward: true });
+      break;
+    }
+    case 'book_worm': {
+      const magicIndex = inv.findIndex((card) => card?.type === 'magic');
+      if (magicIndex >= 0) { inv.splice(magicIndex, 1); gainAmulet('mothWingDust'); }
+      else gainAmulet('wormVenomCharm');
+      break;
+    }
+    case 'briar_room': {
+      const fireball = inv.findIndex((card) => card?.type === 'magic' && card.magicType === 'fireball');
+      if (fireball >= 0) { inv.splice(fireball, 1); gainAmulet(); }
+      else {
+        const weapon = bestEventWeapon(gs, inv);
+        if (weapon) {
+          weapon.damage = (weapon.damage || 0) + 1;
+          weapon.briarDamageBonus = (weapon.briarDamageBonus || 0) + 1;
+        }
+      }
+      break;
+    }
+    case 'mirror': {
+      const copy = bestEventWeapon(gs, inv);
+      if (copy && tryCarry(gs, inv, { ...copy }, { eventReward: true })) regear(gen, gs, inv);
+      break;
+    }
+    case 'something_wicked':
+      if (gs.coins >= 1) { gs.coins -= 1; gainAmulet('luckyClover'); }
+      break;
+    case 'brass_wizard': {
+      if (gs.coins < 1) break;
+      gs.coins -= 1;
+      const roll = Math.random();
+      if (roll < 0.55) {
+        const types = ['weapon', 'armor', 'thorns', 'potion', 'magic'];
+        const card = gen.createCardData(types[Math.floor(Math.random() * types.length)], floor, false, gs);
+        tryCarry(gs, inv, card, { eventReward: true });
+      } else if (roll >= 0.80) {
+        gainAmulet('fortuneCard');
+      }
+      break;
+    }
+    case 'old_drill_room': {
+      const companion = inv.find((card) => card?.type === 'companion');
+      if (companion) companion.attack = (companion.attack || 0) + 1;
+      break;
+    }
   }
 }
 
@@ -719,14 +944,16 @@ function runTreasure(mock, gs, inv, floor, good) {
   if (good) { gs.coins += 12 + Math.floor(floor / 2); gs.crystals += 1 + Math.floor(floor / 12); }
   else { gs.coins += 8 + Math.floor(floor / 3); gs.crystals += 1 + Math.floor(floor / 14); }
   const item = mock.cardSystem.createCardData(Math.random() < 0.55 ? 'weapon' : 'armor', floor, false, null, good && floor >= 20 ? 'epic' : 'rare');
-  if (item) inv.push(item);
+  if (item && (item.type !== 'weapon' || item.weaponType !== 'dagger' || !hasUsableNonDaggerWeapon(gs, inv))) {
+    tryCarry(gs, inv, item);
+  }
   regear(mock.cardSystem.cardDataGenerator, gs, inv);
 }
 
 // Blacksmith: repair the equipped weapon and armor back to full durability
 // for a coin cost (the bot prioritizes its gear). This is the durability
 // recovery the bot was previously missing.
-function runAnvil(gs, inv) {
+function runAnvil(gs, inv, metrics) {
   // Mirrors AnvilScene.calculateRepairCost: weapons pay per durability point
   // (axes 4/pt, everything else ~2/pt), armor pays 2 coins per 5 points.
   const perPip = (item) => {
@@ -739,8 +966,21 @@ function runAnvil(gs, inv) {
     const missing = item.maxDurability - item.durability;
     const rate = perPip(item);
     const cost = Math.ceil(missing * rate);
-    if (gs.coins >= cost) { gs.coins -= cost; item.durability = item.maxDurability; }
-    else if (gs.coins > 0) { const got = Math.floor(gs.coins / rate); gs.coins -= Math.ceil(got * rate); item.durability = Math.min(item.maxDurability, item.durability + got); }
+    if (gs.coins >= cost) {
+      gs.coins -= cost;
+      item.durability = item.maxDurability;
+      metrics.repairCoins += cost;
+      metrics.repairPips += missing;
+      metrics.repairActions++;
+    } else if (gs.coins > 0) {
+      const got = Math.floor(gs.coins / rate);
+      const spend = Math.ceil(got * rate);
+      gs.coins -= spend;
+      item.durability = Math.min(item.maxDurability, item.durability + got);
+      metrics.repairCoins += spend;
+      metrics.repairPips += got;
+      metrics.repairActions++;
+    }
   };
   // Repair the strongest weapons (your protected favorites), equipped armor,
   // and the carried thorns — restoring pips so the good weapon never dies.
@@ -770,19 +1010,45 @@ function reachesType(floors, f, idx, type, memo) {
   return res;
 }
 
+function nodeRouteValue(type) {
+  switch (type) {
+    case 'EVENT': return 90;
+    case 'SHOP': return 70;
+    case 'RARE_SHOP': return 65;
+    case 'ANVIL': return 60;
+    case 'REST': return 45;
+    case 'TREASURE_GOOD': return 40;
+    case 'TREASURE': return 30;
+    case 'COMBAT': return -45;
+    case 'ELITE': return -80;
+    case 'BOSS': return -30;
+    default: return 0;
+  }
+}
+
+function bestFutureNodeValue(floors, f, idx, memo) {
+  const key = `route:${f}:${idx}`;
+  if (memo.has(key)) return memo.get(key);
+  const node = floors[f]?.[idx];
+  if (!node) return -Infinity;
+  const next = node.connections || [];
+  const future = next.length
+    ? Math.max(...next.map((nextIdx) => bestFutureNodeValue(floors, f + 1, nextIdx, memo)))
+    : 0;
+  const value = nodeRouteValue(node.type) + future;
+  memo.set(key, value);
+  return value;
+}
+
 function chooseNextNode(floors, f, cur, memo) {
   const conns = floors[f - 1][cur].connections || [];
   if (!conns.length) return -1;
   let best = -1, bestScore = -Infinity;
   for (const idx of conns) {
     const t = floors[f][idx].type;
-    let s = Math.random() * 0.1; // tiny tiebreak
-    if (t === 'ANVIL') s += 100;
-    else if (reachesType(floors, f, idx, 'ANVIL', memo)) s += 50;
-    if (t === 'SHOP' || t === 'RARE_SHOP') s += 20;
-    if (t === 'REST') s += 12;
-    if (t === 'TREASURE' || t === 'TREASURE_GOOD') s += 8;
-    if (t === 'ELITE') s -= 30;
+    let s = bestFutureNodeValue(floors, f, idx, memo) + Math.random() * 0.1;
+    if (t === 'EVENT') s += 25;
+    if (t === 'ANVIL' && reachesType(floors, f, idx, 'SHOP', memo)) s += 10;
     if (s > bestScore) { bestScore = s; best = idx; }
   }
   return best;
@@ -796,6 +1062,7 @@ function runGame(metrics, config = {}) {
   // call recordMerge() whenever a tier-up happens.
   const tracker = {
     firstFloor: { weapon: {}, armor: {} }, // {weapon: {uncommon: 7, rare: 12, ...}, armor: {...}}
+    mergeCounts: { weapon: 0, armor: 0, thorns: 0 },
     recordMerge(kind, rarity, floor) {
       const slot = this.firstFloor[kind];
       if (slot[rarity] === undefined || floor < slot[rarity]) slot[rarity] = floor;
@@ -825,6 +1092,7 @@ function runGame(metrics, config = {}) {
   const amulets = (config.noBag ? [] : ['bottomlessBag']).concat(config.amulets || []);
   for (const id of amulets) mock.amuletManager.addAmulet(id);
   const inv = startingInventory();
+  mock._simInventory = inv;
   gs.equippedWeapon = null;
   regear(mock.cardSystem.cardDataGenerator, gs, inv);
   // Isolation test: an unbreakable, fully-gemmed legendary axe to see if pure
@@ -871,7 +1139,7 @@ function runGame(metrics, config = {}) {
       }
       else if (roomType === 'TREASURE') runTreasure(mock, gs, inv, floor, false);
       else if (roomType === 'TREASURE_GOOD') runTreasure(mock, gs, inv, floor, true);
-      else if (roomType === 'ANVIL') runAnvil(gs, inv);
+      else if (roomType === 'ANVIL') runAnvil(gs, inv, metrics);
       else if (roomType === 'EVENT') runEvent(mock, gs, inv, floor);
 
       reached = floor;
@@ -895,6 +1163,12 @@ function runGame(metrics, config = {}) {
           gem: gs.equippedWeapon?.gemEffect || 'none',
           thorn: gs.activeThorns?.thornDamage || 0,
           armor: gs.equippedArmor?.protection || 0,
+          weaponDurability: gs.equippedWeapon?.durability || 0,
+          weaponMaxDurability: gs.equippedWeapon?.maxDurability || 0,
+          armorDurability: gs.equippedArmor?.durability || 0,
+          armorMaxDurability: gs.equippedArmor?.maxDurability || 0,
+          thornDurability: gs.activeThorns?.durability || 0,
+          thornMaxDurability: gs.activeThorns?.maxDurability || 0,
         });
         dead = true; break;
       }
@@ -907,6 +1181,12 @@ function runGame(metrics, config = {}) {
   metrics.totalActions += mock._actionCount || 0;
   metrics.hungryActions += mock._hungryActions || 0;
   metrics.restorationUses += mock._restorationUses || 0;
+  metrics.weaponBreaks += mock._weaponBreaks || 0;
+  metrics.armorBreaks += mock._armorBreaks || 0;
+  metrics.thornBreaks += mock._thornBreaks || 0;
+  metrics.weaponMerges += tracker.mergeCounts.weapon;
+  metrics.armorMerges += tracker.mergeCounts.armor;
+  metrics.thornMerges += tracker.mergeCounts.thorns;
   metrics.gemsSeen.push(mock._gemsSeen || 0);
   for (const f of (mock._gemFloors || [])) metrics.gemsByFloor[f] = (metrics.gemsByFloor[f] || 0) + 1;
   // Roll up the per-run merge milestones into the aggregate metrics.
@@ -936,6 +1216,9 @@ function newMetrics() {
   return {
     runs: 0, wins: 0, deaths: {}, deathInfo: [], finalFloors: [], finalAmulets: [],
     totalActions: 0, hungryActions: 0, restorationUses: 0, gemsSeen: [], gemsByFloor: {}, floors,
+    weaponBreaks: 0, armorBreaks: 0, thornBreaks: 0,
+    repairActions: 0, repairPips: 0, repairCoins: 0,
+    weaponMerges: 0, armorMerges: 0, thornMerges: 0,
     // mergeFirstFloor[kind][rarity] = [floor, floor, ...] — one entry per run that reached that tier.
     mergeFirstFloor: { weapon: {}, armor: {} },
     // Shop affordability probe: "how many coin-priced items could you afford
@@ -967,6 +1250,11 @@ function report(metrics) {
     console.log(`AP starvation: ${pct(metrics.hungryActions, metrics.totalActions)}% of all actions taken while out of AP (weakened)`);
     console.log(`Restoration cards used: ${(metrics.restorationUses / N).toFixed(2)} per run`);
   }
+
+  console.log(`\nDurability per run:`);
+  console.log(`  Breaks: weapons ${(metrics.weaponBreaks / N).toFixed(2)}, armor ${(metrics.armorBreaks / N).toFixed(2)}, thorns ${(metrics.thornBreaks / N).toFixed(2)}`);
+  console.log(`  Anvil: ${(metrics.repairActions / N).toFixed(2)} repairs, ${(metrics.repairPips / N).toFixed(1)} pips restored, ${(metrics.repairCoins / N).toFixed(1)} coins spent`);
+  console.log(`  Refreshing merges: weapons ${(metrics.weaponMerges / N).toFixed(2)}, armor ${(metrics.armorMerges / N).toFixed(2)}, thorns ${(metrics.thornMerges / N).toFixed(2)}`);
 
   // Shop affordability: "walking in with your current coins, how many of the
   // coin-priced items could you afford?" (real pricing formulas, cheapest-first).
@@ -1016,6 +1304,8 @@ function report(metrics) {
     const mean = (f) => (di.reduce((s, d) => s + f(d), 0) / di.length);
     const share = (pred) => pct(di.filter(pred).length, di.length);
     console.log(`  at death: avg weaponDmg=${mean((d) => d.wpnDmg).toFixed(1)}, avg armor=${mean((d) => d.armor).toFixed(1)}, avg thorns=${mean((d) => d.thorn).toFixed(1)}`);
+    const durabilityPercent = (current, max) => max > 0 ? (100 * current / max) : 0;
+    console.log(`  durability at death: weapon ${mean((d) => durabilityPercent(d.weaponDurability, d.weaponMaxDurability)).toFixed(0)}%, armor ${mean((d) => durabilityPercent(d.armorDurability, d.armorMaxDurability)).toFixed(0)}%, thorns ${mean((d) => durabilityPercent(d.thornDurability, d.thornMaxDurability)).toFixed(0)}%`);
     console.log(`  had a gem socketed: ${share((d) => d.gem !== 'none')}%  (poison ${share((d) => d.gem === 'poison')}%, lightning ${share((d) => d.gem === 'lightning')}%, fire ${share((d) => d.gem === 'fire')}%)`);
     console.log(`  had thorns: ${share((d) => d.thorn > 0)}%`);
   }

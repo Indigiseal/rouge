@@ -1701,6 +1701,7 @@ export class InventorySystem {
         if (cardA.type === 'companion' || cardB.type === 'companion') return false;
         if (cardA.type === 'magic' || cardB.type === 'magic') return false;
         if (cardA.type === 'gem' || cardB.type === 'gem') return false;
+        if (cardA.type === 'key' || cardB.type === 'key') return false;
         if (cardA.type !== cardB.type) return false;
         if (!canCrossTier && cardA.rarity !== cardB.rarity) return false;
         if (this.getMergeKey(cardA) !== this.getMergeKey(cardB)) return false;

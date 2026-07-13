@@ -54,6 +54,11 @@ export class TutorialManager {
         const i = this.invSlot(tag);
         return i >= 0 ? (this.inv.slotSprites[i]?.card || null) : null;
     }
+    tutorialSwordSprite() {
+        const slots = this.inv?.slots || [];
+        const i = slots.findIndex(s => s && s.type === 'weapon' && s.weaponType === 'sword');
+        return i >= 0 ? (this.inv.slotSprites[i]?.card || null) : null;
+    }
     actionPointArea() {
         const sprites = (this.scene.actionPointSprites || []).filter(sprite => sprite?.active);
         if (!sprites.length) return null;
@@ -73,6 +78,9 @@ export class TutorialManager {
     }
     hasUncommonSword() {
         return (this.inv?.slots || []).some(s => s && s.weaponType === 'sword' && s.rarity === 'uncommon');
+    }
+    hasLightningGemSocketed() {
+        return (this.inv?.slots || []).some(s => s && s.weaponType === 'sword' && s.gemEffect === 'lightning');
     }
     // ---- lifecycle ------------------------------------------------------
     start() {
@@ -344,11 +352,59 @@ export class TutorialManager {
             },
             // 12 — merge the two swords
             {
-                text: 'Drag one sword onto the other to merge them. Merging refills every pip; each hit spends one, and at zero pips a weapon breaks.',
+                text: 'Drag one sword onto the other to merge them into a stronger weapon.',
                 target: () => this.invSprite('sword2'),
                 hintTarget: () => this.invSprite('sword1'),
                 eventKey: 'merged:sword',
                 done: () => this.hasUncommonSword(),
+            },
+            {
+                text: 'The pips on a weapon are durability. Each attack spends one pip; at zero, the weapon breaks forever. Merging matching cards restores every pip.',
+                target: () => this.tutorialSwordSprite(),
+                enter: () => {
+                    this.scene.time.delayedCall(3200, () => {
+                        if (this.active && this.steps[this.stepIndex]?.durabilityLesson) this._advance();
+                    });
+                },
+                durabilityLesson: true,
+                done: () => false,
+            },
+            {
+                text: 'A Lightning Gem is on the board. Flip it over.',
+                target: () => this.boardSprite('lightningGem'),
+                eventKey: 'revealed:lightningGem',
+                done: () => this.boardRevealed('lightningGem'),
+            },
+            {
+                text: 'Tap the Lightning Gem to add it to your inventory.',
+                target: () => this.boardSprite('lightningGem'),
+                eventKey: 'inventory:lightningGem',
+                done: () => this.invSlot('lightningGem') >= 0,
+            },
+            {
+                text: 'Drag the Lightning Gem from your inventory onto your sword to socket it. It zaps the struck enemy and up to two other open enemies.',
+                target: () => this.invSprite('lightningGem'),
+                hintTarget: () => this.tutorialSwordSprite(),
+                done: () => this.hasLightningGemSocketed(),
+            },
+            {
+                text: 'Three enemies are open. Strike one with your socketed sword and watch lightning jump to all three.',
+                enter: () => this.cs.revealTutorialLightningTargets(),
+                target: () => this.tutorialSwordSprite(),
+                hintTarget: () => this.boardSprite('lightningTarget1'),
+                eventKey: 'gemEffect:lightning',
+                done: () => false,
+            },
+            {
+                text: 'Lightning damages the target plus two other open enemies. It is especially useful for reaching enemies behind the front line.',
+                target: () => this.tutorialSwordSprite(),
+                enter: () => {
+                    this.scene.time.delayedCall(900, () => {
+                        if (this.active && this.steps[this.stepIndex]?.lightningLesson) this._advance();
+                    });
+                },
+                lightningLesson: true,
+                done: () => false,
             },
             // 13 — flip the potion
             {

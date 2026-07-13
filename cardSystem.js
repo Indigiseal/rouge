@@ -977,7 +977,7 @@ export class CardSystem {
       }
     }
 
-    // Deal a fixed, rigged 8-card board for the guided tutorial. Unlike
+    // Deal a fixed, rigged 12-card board for the guided tutorial. Unlike
     // spawnFloorCards this uses no randomness: each card carries a
     // `tutorialTag` so TutorialManager can locate it, and only the front-row
     // skeleton starts revealed. The front/back reach lesson works because the
@@ -1007,9 +1007,25 @@ export class CardSystem {
       const food = this.cardDataGenerator.createCardData('food', cf);   food.tutorialTag = 'food';
       const potion = this.cardDataGenerator.createCardData('potion', cf); potion.tutorialTag = 'potion';
       const coin = this.cardDataGenerator.createCardData('coin', cf);   coin.tutorialTag = 'coin';
+      const lightningGem = {
+        type: 'gem', gemEffect: 'lightning', name: 'Lightning Gem',
+        sprite: 'gemsRGY', spriteFrame: 12, color: 0xffe066,
+        rarity: 'common', tutorialTag: 'lightningGem'
+      };
+      const mkLightningTarget = (tag, enemyType, role) => {
+        const enemy = this.cardDataGenerator.createTieredEnemy(enemyType, cf);
+        enemy.role = role;
+        enemy.isRangedType = role === 'RANGED';
+        enemy.health = 20;
+        enemy.maxHealth = 20;
+        enemy.attack = 1;
+        enemy.abilities = [];
+        enemy.tutorialTag = tag;
+        return enemy;
+      };
 
       // 8-cell compact cluster (rows: back r=0 → front larger r).
-      const cells = this.buildCompactBrickCluster(8);
+      const cells = this.buildCompactBrickCluster(12);
       const place = this.computePlacement(cells);
       this.createFloorBoardPanel(cells, place, true);
       this._boardCells = cells;
@@ -1028,7 +1044,12 @@ export class CardSystem {
       deck[takeFrom(frontIdx)] = mkMelee('skeleton');   // first foe, front row
       deck[takeFrom(frontIdx.length > 1 ? frontIdx : cells.map((_, i) => i))] = mkMelee('guard');
       // Fill the remaining slots with the item deck.
-      const items = [mkSword('sword1'), food, mkSword('sword2'), potion, coin];
+      const items = [
+        mkSword('sword1'), food, mkSword('sword2'), potion, coin, lightningGem,
+        mkLightningTarget('lightningTarget1', 'skeleton', 'MELEE'),
+        mkLightningTarget('lightningTarget2', 'skeleton', 'MELEE'),
+        mkLightningTarget('lightningTarget3', 'goblin_archer', 'RANGED')
+      ];
       for (let i = 0; i < cells.length && items.length; i++) {
         if (!deck[i]) deck[i] = items.shift();
       }
@@ -1094,6 +1115,16 @@ export class CardSystem {
       // Only the front skeleton is face-up at the start (free — no enemy turn).
       const skelIdx = this.boardCards.findIndex(c => c?.data?.tutorialTag === 'skeleton');
       if (skelIdx >= 0) this.revealCard(skelIdx, true);
+    }
+
+    revealTutorialLightningTargets() {
+      if (!this.scene.tutorialMode || this._tutorialLightningTargetsRevealed) return;
+      this._tutorialLightningTargetsRevealed = true;
+
+      ['lightningTarget1', 'lightningTarget2', 'lightningTarget3'].forEach(tag => {
+        const target = this.findTutorialCard(tag);
+        if (target && !target.card.revealed) this.revealCard(target.index, true);
+      });
     }
 
     // Find a live board card by its tutorial tag; returns { index, card } or null.
@@ -2671,6 +2702,7 @@ export class CardSystem {
         // that picking up a coin / "Nothing" / etc. unsticks a phantom
         // "still in combat" state if the board is actually clear.
         this.checkFloorClear();
+        this.scene.queueStalemateEnemyTurn?.();
     }
 
     consumeAmulet(amulet, index) {
@@ -2808,7 +2840,7 @@ export class CardSystem {
     // Uses the cached floor layout (this._boardCells / this._boardPlace) so the
     // new card slots into the original brick grid. Spawns face-down — the player
     // has to click to reveal, same as any normal floor card.
-    respawnCardOnBoard(cardData) {
+    respawnCardOnBoard(cardData, options = {}) {
         if (!cardData) return false;
         // Find a slot that's currently empty (a previously-cleared brick cell).
         let slot = -1;
@@ -2848,15 +2880,17 @@ export class CardSystem {
         });
 
         // Sparkly entry — quick scale-in + magic flash so the player notices.
-        cardSprite.setScale(0.1);
-        this.scene.tweens.add({ targets: cardSprite, scale: 1, duration: 250, ease: 'Back.easeOut' });
-        const flash = this.scene.add.circle(x, y, 30, 0x66ddff, 0.7);
-        this.scene.tweens.add({
-            targets: flash, alpha: 0, scale: 2, duration: 400,
-            onComplete: () => flash.destroy()
-        });
-        SoundHelper.playSound(this.scene, 'magic_cast', 0.4);
-        this.scene.createFloatingText(x, y - 30, 'Webwoven!', 0x66ddff);
+        if (!options.silent) {
+            cardSprite.setScale(0.1);
+            this.scene.tweens.add({ targets: cardSprite, scale: 1, duration: 250, ease: 'Back.easeOut' });
+            const flash = this.scene.add.circle(x, y, 30, 0x66ddff, 0.7);
+            this.scene.tweens.add({
+                targets: flash, alpha: 0, scale: 2, duration: 400,
+                onComplete: () => flash.destroy()
+            });
+            SoundHelper.playSound(this.scene, 'magic_cast', 0.4);
+            this.scene.createFloatingText(x, y - 30, 'Webwoven!', 0x66ddff);
+        }
 
         // Card is face-down — player must reveal it like any other floor card.
         // Deep-copy the data so it's independent from the merged source object.
@@ -3082,6 +3116,10 @@ export class CardSystem {
             // Back-row RANGED enemies prioritized as zap targets.
             const zapDamage = [3, 4, 5][stack - 1];
             const extraZaps = 2; // always 2 additional = 3 total
+            if (this.scene.tutorialMode) {
+                this.scene.events.emit('tutorialProgress', 'gemEffect:lightning');
+                this.scene.tutorialManager?._handleProgress?.('gemEffect:lightning');
+            }
             // Main target: bonus lightning damage on top of the weapon hit.
             this.damageGemTarget(targetIndex, zapDamage, 'Zap', 0xffe066, 'lightning');
             if (extraZaps > 0) {

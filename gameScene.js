@@ -19,6 +19,7 @@ export class GameScene extends Phaser.Scene {
         this.enemyTurnTimers = [];
         this.enemyTurnQueued = false;
         this.pendingEnemyTurns = 0;
+        this.stalemateEnemyTurnQueued = false;
     }
 
     init(data = {}) {
@@ -152,6 +153,21 @@ export class GameScene extends Phaser.Scene {
         
         // Room title
         this.roomTitle = null;
+
+        // Restored combat rooms bypass startNewFloor(), so bind turn handling
+        // before choosing between a fresh board and a saved one.
+        this.bindEnemyTurnHandler();
+        this.inventorySystem.setDiscardArea(this.discardArea);
+        this.inventorySystem.setArmorPanel(this.armorPanel);
+
+        // Continue from the map before restoring a combat board. The map owns
+        // the next-room choice, while the saved cursor keeps its exact position.
+        this.events.on('wake', this.wake, this);
+        if (this.shouldLoadSave && this.gameState.roomType === 'MAP') {
+            this.scene.sleep();
+            this.scene.launch('MapViewScene', { gameState: this.gameState });
+            return;
+        }
         
         // Start or restore the room. Boss rewards are already paid before the
         // player can pause; rebuilding them via setupBossRewardRoom() would pay
@@ -167,12 +183,6 @@ export class GameScene extends Phaser.Scene {
         // Update room title after loading
         this.updateRoomTitle();
         
-        this.inventorySystem.setDiscardArea(this.discardArea);
-        this.inventorySystem.setArmorPanel(this.armorPanel);
-        
-        // Listen for the wake event to reset the floor
-        this.events.on('wake', this.wake, this);
-
         // Guided tutorial overlay drives the rigged board created above.
         if (this.tutorialMode) {
             this.tutorialManager = new TutorialManager(this);
@@ -400,11 +410,6 @@ export class GameScene extends Phaser.Scene {
             this.gameState.equippedArmor.durability = Math.max(0, Math.floor(this.gameState.equippedArmor.durability || 25));
         }
         
-        // Bind turns only once
-        if (!this._turnHandlersBound) {
-            this._turnHandlersBound = true;
-            this.events.on('endPlayerTurn', () => this.runEnemyTurn());
-        }
         // Refresh type before spawn
         this.roomType = this.gameState.roomType || 'COMBAT';
         this.updateRoomTitle();
@@ -642,6 +647,12 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
+    bindEnemyTurnHandler() {
+        if (this._turnHandlersBound) return;
+        this._turnHandlersBound = true;
+        this.events.on('endPlayerTurn', () => this.runEnemyTurn());
+    }
+
     useAction() {
         if (this.isEnemyTurn) return false;
 
@@ -693,6 +704,45 @@ export class GameScene extends Phaser.Scene {
         // a single attack — each one earns its own enemy response.
         this.pendingEnemyTurns = (this.pendingEnemyTurns || 0) + 1;
         this._drainEnemyTurns();
+    }
+
+    hasCombatStalemate() {
+        if (this._transitioning || this.enemiesCleared || this.gameState?.playerHealth <= 0) return false;
+
+        const board = this.cardSystem?.boardCards || [];
+        const enemiesRemain = board.some(card => (
+            card?.revealed
+            && this.isEnemyCard(card)
+            && (card.data?.health ?? 1) > 0
+        ));
+        if (!enemiesRemain) return false;
+
+        // A remaining board card can still reveal or provide a way forward.
+        if (board.some(card => card && !this.isEnemyCard(card))) return false;
+
+        const inventory = this.inventorySystem?.slots || this.gameState?.inventory || [];
+        const hasUsableWeapon = inventory.some(card => (
+            card?.type === 'weapon' && (card.durability ?? 1) > 0
+        )) || (
+            this.gameState?.equippedWeapon?.type === 'weapon'
+            && (this.gameState.equippedWeapon.durability ?? 1) > 0
+        );
+        if (hasUsableWeapon) return false;
+
+        // Magic can still change or resolve a fight without a weapon.
+        return !inventory.some(card => card?.type === 'magic');
+    }
+
+    queueStalemateEnemyTurn() {
+        if (this.stalemateEnemyTurnQueued || this.enemyTurnQueued || this.isEnemyTurn) return;
+        if ((this.pendingEnemyTurns || 0) > 0 || !this.hasCombatStalemate()) return;
+
+        this.stalemateEnemyTurnQueued = true;
+        const timer = this.time.delayedCall(900, () => {
+            this.stalemateEnemyTurnQueued = false;
+            if (this.hasCombatStalemate()) this.scheduleEnemyTurn();
+        });
+        this.enemyTurnTimers.push(timer);
     }
 
     _drainEnemyTurns() {
@@ -840,6 +890,7 @@ export class GameScene extends Phaser.Scene {
         this.enemyTurnTimers = [];
         this.enemyTurnQueued = false;
         this.pendingEnemyTurns = 0;
+        this.stalemateEnemyTurnQueued = false;
         this.isEnemyTurn = false;
     }
 
@@ -1108,6 +1159,7 @@ export class GameScene extends Phaser.Scene {
         this.isEnemyTurn = false;
         this.updateUI();
         this._drainEnemyTurns();
+        this.queueStalemateEnemyTurn();
     }
 
     getChickCompanionEntry() {
@@ -1239,6 +1291,7 @@ export class GameScene extends Phaser.Scene {
             this.updateUI();
             // Run the next queued enemy turn, if any actions stacked up during this one.
             this._drainEnemyTurns();
+            this.queueStalemateEnemyTurn();
         });
     }
 
@@ -1887,6 +1940,7 @@ export class GameScene extends Phaser.Scene {
             this.showNextFloorButton();
         } else {
             this.cardSystem.checkFloorClear();
+            this.queueStalemateEnemyTurn();
         }
     }
 
@@ -2478,11 +2532,6 @@ export class GameScene extends Phaser.Scene {
             // Add level info for stackable amulets
             if (amulet.level && amulet.level > 1) {
                 description += ` (${t(this, 'tooltip.level', { level: amulet.level })})`;
-            }
-            
-            // Add uses left for limited use amulets
-            if (amulet.usesLeft !== undefined) {
-                description += `\n(${t(this, 'tooltip.usesLeft', { uses: amulet.usesLeft })})`;
             }
             
             // Add cursed indicator
