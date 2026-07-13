@@ -377,6 +377,7 @@ export class GameScene extends Phaser.Scene {
 
     startNewFloor() {
         this.clearEnemyTurnTimers();
+        this.clearFloatingTexts();
         this._transitioning = false;
         this.enemiesCleared = false;
         if (this.nextFloorButton) {
@@ -1361,6 +1362,17 @@ export class GameScene extends Phaser.Scene {
             }
         }).setOrigin(0.5).setDepth(10000);
 
+        // Track the live text so a floor transition (which sleeps the scene and
+        // freezes its tweens mid-flight) can sweep away any stragglers instead
+        // of leaving them frozen on the next floor's board.
+        (this._floatingTexts || (this._floatingTexts = [])).push(floatText);
+        floatText.once('destroy', () => {
+            const list = this._floatingTexts;
+            if (!list) return;
+            const idx = list.indexOf(floatText);
+            if (idx !== -1) list.splice(idx, 1);
+        });
+
         this.tweens.add({
             targets: floatText,
             y: floatText.y - 28,
@@ -1401,6 +1413,24 @@ export class GameScene extends Phaser.Scene {
         };
         this.floatingTextSlots.push(slot);
         return slot;
+    }
+
+    // Immediately destroy any live floating numbers/labels and free their
+    // layout slots. Called on floor transitions and scene shutdown so a text
+    // whose fade-out tween was paused (scene slept mid-flight) can't linger on
+    // the next floor's board.
+    clearFloatingTexts() {
+        if (Array.isArray(this._floatingTexts)) {
+            // Copy first: destroy() fires the 'destroy' handler that splices the
+            // live array, which would corrupt a direct iteration.
+            [...this._floatingTexts].forEach(txt => {
+                if (!txt) return;
+                this.tweens?.killTweensOf(txt);
+                txt.destroy();
+            });
+        }
+        this._floatingTexts = [];
+        this.floatingTextSlots = [];
     }
     
     createSlashEffect(x, y) {
@@ -2616,6 +2646,7 @@ export class GameScene extends Phaser.Scene {
         this.tutorialManager?.destroy?.();
         this.tutorialManager = null;
         this.clearEnemyTurnTimers();
+        this.clearFloatingTexts();
         this.input.keyboard.off('keydown-ESC');
         this.events.off('endPlayerTurn');  // Unbind to avoid doubles
         this.events.off('wake', this.wake, this);
