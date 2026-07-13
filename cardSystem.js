@@ -850,6 +850,7 @@ export class CardSystem {
       this.limitEnemyDensity(cf, roomType);
       this.ensureEnemyMinimum(cf, roomType);
       this.injectAngryNestmother(cf, roomType);
+      this.assignEliteMiniBoss(roomType);
       // 4) second-pass: safe neighbor build (using brick offsets)
       const indexByRC = new Map();
       for (let i = 0; i < this.boardCards.length; i++) {
@@ -1186,6 +1187,7 @@ export class CardSystem {
           data
         };
         this.boardCards[index] = card;
+        this.applyEliteMiniBossVisual(card);
 
         if (!revealed) {
           cardSprite.on('pointerdown', () => this.revealCard(index));
@@ -1716,6 +1718,28 @@ export class CardSystem {
       }
     }
 
+    assignEliteMiniBoss(roomType) {
+      if (roomType !== 'ELITE' || !this.boardCards?.length) return;
+      const enemies = this.boardCards
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => (
+          card?.data
+          && this.isEnemyType(card.data.type)
+          && card.data.type !== 'boss'
+          && card.data.name !== 'Angry Nestmother'
+        ));
+      if (enemies.length === 0) return;
+      if (enemies.some(({ card }) => card.data.isEliteMiniBoss)) return;
+
+      const selected = Phaser.Utils.Array.GetRandom(enemies);
+      if (!selected?.card?.data) return;
+
+      const data = selected.card.data;
+      data.isEliteMiniBoss = true;
+      data.health = Math.max(1, Math.ceil((data.health || 1) * 1.3));
+      data.attack = Math.max(1, Math.ceil((data.attack || 1) * 1.3));
+    }
+
     // The Angry Nestmother stalks the player for the rest of the run in which
     // they stole her egg (birdAngry, set by the bird-nest event and reset each
     // new run). She turns up "once in a while" in regular AND elite battles —
@@ -1907,6 +1931,7 @@ export class CardSystem {
                 );
             }
             card.sprite.setScale(1);
+            this.applyEliteMiniBossVisual(card);
             
             this.createCardInfoText(card);
             card.sprite.setInteractive();
@@ -1937,6 +1962,11 @@ export class CardSystem {
                 this.handleTrap(card, index);
             }
         });
+    }
+
+    applyEliteMiniBossVisual(card) {
+        if (!card?.revealed || !card.data?.isEliteMiniBoss || !card.sprite?.setTint) return;
+        card.sprite.setTint(0xfff0c8);
     }
 
     handleTrap(card, index) {

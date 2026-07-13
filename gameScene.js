@@ -1733,18 +1733,6 @@ export class GameScene extends Phaser.Scene {
         // Hard-disable the button so it can't be clicked again
         if (this.nextFloorButton) this.nextFloorButton.disableInteractive();
         this.nextFloorButtonText?.setVisible(false);
-        // Give a modest floor clear payout; elite chests pay out separately.
-        // Cut hard — the economy was badly over-fauceted (gold piled up unspent).
-        const baseReward = 1 + Math.floor(this.gameState.currentFloor / 3);
-
-        // Apply gold modifier from amulets
-        const reward = this.amuletManager ?
-            this.amuletManager.modifyGoldFound(baseReward) : baseReward;
-
-        this.gameState.coins += reward;
-        SoundHelper.playSound(this, 'coin_collect', 0.4);
-        this.createFloatingText(320, 180, `Floor Cleared! +${reward} coins`, 0xffd700);
-
         // Elite rooms still use the chest-click TreasureScene flow
         const rewardChestMode = this.gameState.roomType === 'ELITE' ? 'elite' : null;
 

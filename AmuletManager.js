@@ -110,12 +110,12 @@ export class AmuletManager {
                 onFloorEnd: () => {
                     this.gameState.actionsLeft = Math.min(
                         this.gameState.maxActions,
-                        this.gameState.actionsLeft + 1
+                        this.gameState.actionsLeft + 2
                     );
                     this.scene.createFloatingText(
                         this.scene.playerAvatar.x,
                         this.scene.playerAvatar.y,
-                        '+1 AP (Moonwell)',
+                        '+2 AP (Moonwell)',
                         0x00ffff
                     );
                 }

@@ -824,11 +824,6 @@ export class CardDataGenerator {
         if (enemy.abilities) {
             enemyCard.abilities = [...enemy.abilities];
         }
-        // Boost for elite
-        if (isElite) {
-            enemyCard.health = Math.floor(enemyCard.health * 1.2); // +20% health
-            enemyCard.attack += 2; // +2 attack
-        }
         return enemyCard;
     }
 
