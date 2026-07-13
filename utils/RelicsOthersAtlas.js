@@ -1,6 +1,6 @@
 export const RELICS_OTHERS_TEXTURE = 'relicsOthers';
 
-// Canonical names for every authored frame in assets/relicsOthers.png.
+// Canonical names for every authored frame in assets/art/relicsOthers.png.
 // Keep the keys visual and stable so a renamed artifact does not require
 // reshuffling the atlas itself.
 export const RELICS_OTHERS_ATLAS = Object.freeze({
@@ -77,7 +77,8 @@ export const RELICS_OTHERS_ATLAS = Object.freeze({
     goldenBell:           { frame: 65, name: 'Tea Room Bell' },
     wormVenomVial:        { frame: 66, name: 'Worm Venom Charm' },
     stolenInkPen:         { frame: 67, name: 'Stolen Ink Pen' },
-    mothWingDust:         { frame: 68, name: 'Moth-Wing Dust' }
+    mothWingDust:         { frame: 68, name: 'Moth-Wing Dust' },
+    luckyClover:          { frame: 69, name: 'Lucky Clover' }
 });
 
 // Gameplay IDs stay stable for saves and balance code. These maps are the
@@ -121,7 +122,8 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     goldenSeed: 'goldenSeed',
     fireRuneStone: 'fireRuneStone',
     prospectorsPick: 'pickaxe',
-    fortuneCard: 'fishbowl'
+    fortuneCard: 'fishbowl',
+    luckyClover: 'luckyClover'
 });
 
 export const RELIC_ATLAS_KEYS = Object.freeze({

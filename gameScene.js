@@ -1011,7 +1011,9 @@ export class GameScene extends Phaser.Scene {
         const isBoss = card.data.type === 'boss';
         const isMelee = isBoss || (card.data.role === 'MELEE' && !card.data.isRangedType);
         const thorns = isMelee ? this.getActiveThornsCard() : null;
-        const armorDamage = playerTookDamage
+        // Armor thorns (Briar Room bonus) also only bite melee attackers — a ranged
+        // archer never touches your armor, so it shouldn't take thorn damage.
+        const armorDamage = (isMelee && playerTookDamage)
             ? (this.gameState.equippedArmor?.thornDamage || 0)
             : 0;
         const cardDamage = thorns ? (thorns.item.thornDamage || 2) : 0;
@@ -1337,14 +1339,14 @@ export class GameScene extends Phaser.Scene {
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
         }
     }
-    createFloatingText(x, y, text, color) {
+    createFloatingText(x, y, text, color, fontSize = '15px') {
         const message = t(this, text);
         const slot = this.reserveFloatingTextSlot(x, y);
         const startX = Phaser.Math.Clamp(x + slot.xOffset, 32, 608);
         const startY = Phaser.Math.Clamp(y + slot.yOffset, 24, 336);
         const fill = Phaser.Display.Color.IntegerToColor(color).rgba;
         const floatText = this.add.text(startX, startY, message, {
-            fontSize: '15px',
+            fontSize,
             fill,
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             align: 'center',

@@ -50,7 +50,7 @@ export class InventorySystem {
     // get the rectangular card drop-shadow or the hover "shine" animation.
     isCardItem(item) {
         const t = item?.type;
-        return t !== 'gem' && t !== 'amulet' && t !== 'relic';
+        return t !== 'gem' && t !== 'amulet' && t !== 'relic' && t !== 'amuletPickup';
     }
 
     setStationMode(isStationMode) {
@@ -295,7 +295,14 @@ export class InventorySystem {
         // whenever a board card's blend-mode hover sprite forces a render-batch flush.
         const startX = Math.round(inventoryCenterX - (totalWidth / 2) + (slotWidth / 2));
         const y = 309;
-        this.createInventoryPanel(inventoryCenterX, y, Math.max(368, totalWidth + 90));
+        // The panel wraps the slots with generous padding, but is capped so its
+        // right edge never reaches the discard bin (~x 567) once the bag grows to
+        // many slots. The panel is centered on inventoryCenterX, so the cap is
+        // symmetric. 5–7 slots keep the roomy framing; only a near-full 8-slot bag
+        // tightens up (its slots already run close to the bin either way).
+        const desiredPanelWidth = Math.max(368, totalWidth + 90);
+        const discardClearWidth = 2 * (562 - inventoryCenterX);
+        this.createInventoryPanel(inventoryCenterX, y, Math.min(desiredPanelWidth, discardClearWidth));
         
         for (let i = 0; i < slotCount; i++) {
             const x = startX + i * (slotWidth + spacing);
@@ -1220,8 +1227,9 @@ export class InventorySystem {
         } else if (card.type === 'passive') {
             lines.push(card.description ? translateDescription(this.scene, card.description) : 'Passive effect while carried.');
             if (card.flavor) lines.push(translateDescription(this.scene, card.flavor));
-        } else if (card.type === 'amulet') {
+        } else if (card.type === 'amulet' || card.type === 'amuletPickup') {
             lines.push(this.describeAmuletCard(card));
+            if (card.type === 'amuletPickup') lines.push('Tap to equip · drag to bag to discard');
         } else if (card.type === 'key') {
             lines.push(t(this.scene, 'tooltip.keySafe'));
         } else if (card.type === 'gem') {
@@ -1302,6 +1310,7 @@ export class InventorySystem {
             magic: 'tooltip.magic',
             gem: 'tooltip.gem',
             amulet: 'tooltip.relic',
+            amuletPickup: 'tooltip.relic',
             key: 'tooltip.key',
             coin: 'tooltip.coins',
             crystal: 'tooltip.ruby'
@@ -1334,7 +1343,8 @@ export class InventorySystem {
 
     describeAmuletCard(card) {
         const definitions = this.scene?.amuletManager?.amuletDefinitions;
-        if (card.id && definitions?.[card.id]) return translateDescription(this.scene, definitions[card.id].description);
+        const defId = card.amuletId || card.id;
+        if (defId && definitions?.[defId]) return translateDescription(this.scene, definitions[defId].description);
         if (card.description) return translateDescription(this.scene, card.description);
         return translateDescription(this.scene, 'A passive relic effect.');
     }
@@ -1382,6 +1392,125 @@ export class InventorySystem {
         return true;
     }
 
+    // ─── Amulet pickups (equipable amulet cards that live in a slot) ─────────
+
+    // Moves an amulet pickup card out of its slot and into the active amulet
+    // collection. Bounces back if the amulet is already worn (and non-stackable).
+    equipAmuletFromSlot(slotIndex, cardData, cardSprite) {
+        const mgr = this.scene.amuletManager;
+        const amuletId = cardData?.amuletId;
+        if (!mgr?.addAmulet || !amuletId) {
+            this.returnCardToSlot(slotIndex, cardSprite);
+            return false;
+        }
+
+        const def = mgr.amuletDefinitions?.[amuletId];
+        if (mgr.hasAmulet(amuletId) && !def?.stackable) {
+            this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Already equipped!', 0xffa500);
+            this.returnCardToSlot(slotIndex, cardSprite);
+            return false;
+        }
+
+        if (!mgr.addAmulet(amuletId)) {
+            this.returnCardToSlot(slotIndex, cardSprite);
+            return false;
+        }
+
+        this.scene.createFloatingText(cardSprite.x, cardSprite.y - 8, `${def?.name || 'Amulet'} equipped!`, 0x88ff88);
+        SoundHelper.playSound(this.scene, 'crystal_collect', 0.5);
+        this.cleanupCardSprites(slotIndex, cardSprite);
+        this.removeCard(slotIndex, false);
+        cardSprite.destroy();
+        this.scene.updateUI?.();
+        return true;
+    }
+
+    // Drops the carnival clover into the bag as an equipable amulet card, then
+    // plays the "card morphs into a little amulet" reveal. Returns the slot index,
+    // or -1 if the bag was full.
+    deliverCloverAmulet() {
+        const slotIndex = this.slots.findIndex(slot => slot === null);
+        if (slotIndex < 0) return -1;
+
+        this.addCardDirect({
+            type: 'amuletPickup',
+            id: 'luckyCloverPickup',
+            amuletId: 'luckyClover',
+            name: 'Lucky Clover',
+            sprite: 'relicsOthers',
+            spriteFrame: 69,
+            rarity: 'rare',
+            description: '+3% crit chance'
+        }, slotIndex);
+        this.playCloverMorph(slotIndex);
+        return slotIndex;
+    }
+
+    // Covers the freshly-placed amulet icon with the full clover card art, waits a
+    // beat, then jumps + shrinks the card away to reveal the small amulet beneath.
+    playCloverMorph(slotIndex, delay = 650) {
+        const slot = this.slotSprites[slotIndex];
+        if (!slot?.background || !this.scene.textures.exists('luckyClover')) return;
+
+        const x = slot.background.x;
+        const y = slot.background.y;
+        const cardDepth = (this.getInventoryDepths().card || 12) + 3;
+
+        const revealIcon = () => {
+            const live = this.slotSprites[slotIndex];
+            if (live?.card?.scene) live.card.setAlpha(1);
+        };
+
+        if (slot.card?.scene) slot.card.setAlpha(0);
+        const cardImg = snapOriginToPixelGrid(this.scene.add.image(x, y, 'luckyClover')).setDepth(cardDepth);
+        this.uiGroup.add(cardImg);
+
+        // If the player leaves before the morph plays, drop the overlay and just
+        // show the amulet — the slot already holds the correct, equipable card.
+        const cleanup = () => { if (cardImg.scene) cardImg.destroy(); revealIcon(); };
+        this.scene.events.once('sleep', cleanup);
+        this.scene.events.once('shutdown', cleanup);
+
+        this.scene.time.delayedCall(delay, () => {
+            if (!cardImg.scene) return;
+            this.scene.tweens.add({
+                targets: cardImg,
+                y: y - 18,
+                duration: 170,
+                ease: 'Cubic.easeOut',
+                yoyo: true,
+                onUpdate: () => { cardImg.y = Math.round(cardImg.y); },
+                onComplete: () => {
+                    if (!cardImg.scene) return;
+                    revealIcon();
+                    const live = this.slotSprites[slotIndex];
+                    if (live?.card?.scene) {
+                        live.card.setScale(0.35);
+                        this.scene.tweens.add({ targets: live.card, scale: 1, duration: 220, ease: 'Back.easeOut' });
+                    }
+                    this.scene.tweens.add({
+                        targets: cardImg,
+                        scale: 0.35,
+                        alpha: 0,
+                        duration: 200,
+                        ease: 'Cubic.easeIn',
+                        onComplete: () => {
+                            if (cardImg.scene) cardImg.destroy();
+                            this.sparkleAtSlot(slotIndex);
+                        }
+                    });
+                }
+            });
+        });
+    }
+
+    sparkleAtSlot(slotIndex) {
+        const slot = this.slotSprites[slotIndex];
+        if (!slot?.card?.scene) return;
+        slot.card.setTint(0xaaffaa);
+        this.scene.time.delayedCall(170, () => { if (slot.card?.scene) slot.card.clearTint(); });
+    }
+
     // Modified addCard to use addCardDirect when appropriate
     addCard(cardData, preferredSlot = -1) {
         let emptySlot = preferredSlot !== -1 && this.slots[preferredSlot] === null 
@@ -1421,7 +1550,15 @@ export class InventorySystem {
             if (!this.stationMode) this.scene.useAction?.();
             return;
         }
-        
+
+        // Amulet pickups (e.g. the carnival clover) equip on any interaction that
+        // isn't a discard — a plain tap or a drag anywhere onto the hero. Handled
+        // before the merge/station checks so it works in combat and stations alike.
+        if (cardData.type === 'amuletPickup') {
+            this.equipAmuletFromSlot(slotIndex, cardData, cardSprite);
+            return;
+        }
+
         // Check for drop on another inventory item for merging
         for (let i = 0; i < this.slotSprites.length; i++) {
             if (i === slotIndex) continue;

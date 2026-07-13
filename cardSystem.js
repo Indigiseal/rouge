@@ -2920,8 +2920,13 @@ export class CardSystem {
             + (this.scene.amuletManager?.getCriticalChanceBonus?.() || 0);
         if (!isReflection && weapon && critChance > 0 && Math.random() < critChance) {
             finalDamage *= 2;
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 24, 'CRIT!', 0xffd700);
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 42, 'Double Damage!', 0xff8800);
+            // Big yellow CRIT! plus a sharp screen shake so a crit really lands.
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 24, 'CRIT!', 0xffe066, '26px');
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 46, 'Double Damage!', 0xff8800);
+            this.scene.cameras.main.shake(200, 0.012);
+            // Lucky Streak (Fortune Card): a crit can shake loose a coin or crystal.
+            const luckyReward = this.scene.amuletManager?.rollLuckyStreakCritReward?.();
+            if (luckyReward) this.playKillLootPickup(card.sprite.x, card.sprite.y, luckyReward, 'Lucky');
         }
 
         // Goblin War Horn relic: the first attack each floor deals double damage.
@@ -3155,6 +3160,9 @@ export class CardSystem {
     // effect: 'fire' | 'poison' | 'lightning'
     playEnemyHitEffect(card, effect) {
         if (!card?.sprite?.scene) return;
+        // Lightning gets an extra electric shine (bright flash + jagged bolts) on
+        // top of its sprite animation, so chick zaps and lightning-gem hits crackle.
+        if (effect === 'lightning') this.playLightningShine(card.sprite.x, card.sprite.y, card.sprite);
         const animKey = `enemy_hit_${effect}`;
         if (!this.scene.anims.exists(animKey)) return;
         const fx = this.scene.add.sprite(card.sprite.x, card.sprite.y, 'enemiesHitEffects');
@@ -3163,6 +3171,67 @@ export class CardSystem {
         fx.once('animationcomplete', () => fx.destroy());
         // Safety cleanup in case the complete event is missed
         this.scene.time.delayedCall(600, () => fx.active && fx.destroy());
+    }
+
+    // A quick, asset-free electric flourish over a struck enemy: a bright additive
+    // glow that pops and fades, a couple of jagged bolts striking down into it, and
+    // a brief white flash on the enemy sprite (restoring any status tint after).
+    playLightningShine(x, y, targetSprite) {
+        const scene = this.scene;
+        const depth = (targetSprite?.depth || 0) + 6;
+
+        // Bright electric burst.
+        const glow = scene.add.circle(x, y, 24, 0xfff6a0, 0.9)
+            .setBlendMode(Phaser.BlendModes.SCREEN)
+            .setDepth(depth)
+            .setScale(0.4);
+        scene.tweens.add({
+            targets: glow, scale: 1.5, alpha: 0, duration: 200, ease: 'Cubic.easeOut',
+            onComplete: () => glow.destroy()
+        });
+
+        // Jagged bolts striking down into the enemy — a glowing yellow core under a
+        // crisp white streak.
+        const bolts = scene.add.graphics().setDepth(depth + 1).setBlendMode(Phaser.BlendModes.SCREEN);
+        const drawBolt = (startX) => {
+            const segs = 5;
+            const topY = y - 46;
+            const pts = [{ x: startX, y: topY }];
+            for (let s = 1; s <= segs; s++) {
+                const f = s / segs;
+                pts.push({
+                    x: Math.round(Phaser.Math.Linear(startX, x, f) + (Math.random() - 0.5) * 12),
+                    y: Math.round(Phaser.Math.Linear(topY, y, f))
+                });
+            }
+            const stroke = (width, color, alpha) => {
+                bolts.lineStyle(width, color, alpha);
+                bolts.beginPath();
+                bolts.moveTo(pts[0].x, pts[0].y);
+                for (let k = 1; k < pts.length; k++) bolts.lineTo(pts[k].x, pts[k].y);
+                bolts.strokePath();
+            };
+            stroke(4, 0xffe066, 0.6);
+            stroke(2, 0xffffff, 1);
+        };
+        drawBolt(x - 6);
+        drawBolt(x + 8);
+        scene.tweens.add({
+            targets: bolts, alpha: 0, duration: 170, ease: 'Cubic.easeIn', delay: 70,
+            onComplete: () => bolts.destroy()
+        });
+
+        // Brief white flash on the struck enemy, then restore its prior tint.
+        if (targetSprite?.setTint) {
+            const hadTint = targetSprite.isTinted;
+            const prevTint = targetSprite.tintTopLeft;
+            targetSprite.setTint(0xffffff);
+            scene.time.delayedCall(90, () => {
+                if (!targetSprite?.scene) return;
+                if (hadTint) targetSprite.setTint(prevTint);
+                else targetSprite.clearTint();
+            });
+        }
     }
 
     damageGemTarget(index, amount, label, color, effect = null) {
@@ -3263,8 +3332,13 @@ export class CardSystem {
                 return; // skip the normal removal; new card stands in its place
             }
 
-            // Dissolve flourish on the enemy's card before it's removed.
-            this.playCardDisappearEffect(card.sprite);
+            // Bosses get a bespoke death — a mask animation over the boss, then
+            // the silhouette recolors and fades. Regular enemies dissolve as usual.
+            if (card.data?.type === 'boss') {
+                this.playBossDeathEffect(card.sprite);
+            } else {
+                this.playCardDisappearEffect(card.sprite);
+            }
 
             const savedNeighbors = card.data?.brickNeighbors ? card.data.brickNeighbors.slice() : null;
             this.removeCard(index);
@@ -3400,7 +3474,7 @@ export class CardSystem {
     
     // Prospector's Pick pickup: grant the rolled coin/crystal and play its
     // jump/scatter animation at (x, y), the tile where the enemy died.
-    playKillLootPickup(x, y, reward) {
+    playKillLootPickup(x, y, reward, sourceLabel = 'Pick') {
         const isCoin = reward?.kind === 'coin';
         const amount = reward?.amount || 1;
 
@@ -3413,7 +3487,7 @@ export class CardSystem {
         }
         this.scene.createFloatingText(
             x, y - 18,
-            isCoin ? `+${amount} Coin (Pick)` : `+${amount} Crystal (Pick)`,
+            isCoin ? `+${amount} Coin (${sourceLabel})` : `+${amount} Crystal (${sourceLabel})`,
             isCoin ? 0xffd700 : 0x00ffff
         );
         this.scene.updateUI?.();
@@ -3427,6 +3501,61 @@ export class CardSystem {
         if (this.scene.anims.exists(animKey)) fx.play(animKey);
         fx.once('animationcomplete', () => fx.destroy());
         this.scene.time.delayedCall(1000, () => fx.active && fx.destroy());
+    }
+
+    // Bespoke boss death. Clones the boss into a ghost (so the effect survives the
+    // card's removal), plays the boss-death mask over it, then recolors the ghost
+    // to a dark silhouette and fades it out quickly. Safe headlessly / if the mask
+    // asset is missing — it just recolors and fades.
+    playBossDeathEffect(sprite) {
+        if (!sprite?.scene) return;
+        const scene = this.scene;
+        const x = sprite.x;
+        const y = sprite.y;
+        const depth = (sprite.depth || 0) + 5;
+
+        // Ghost clone so the visual persists after removeCard() destroys the boss.
+        let ghost = null;
+        const texKey = sprite.texture?.key;
+        if (texKey && texKey !== '__MISSING' && texKey !== '__DEFAULT') {
+            ghost = scene.add.sprite(x, y, texKey, sprite.frame?.name);
+            ghost.setScale(sprite.scaleX, sprite.scaleY);
+            ghost.setOrigin(sprite.originX, sprite.originY);
+            ghost.setFlipX?.(sprite.flipX);
+            ghost.setDepth(depth);
+        }
+
+        // Recolor the silhouette to 0x2f2230 and fade it out quickly.
+        const dissolveGhost = () => {
+            if (!ghost?.scene) return;
+            ghost.setTint(0x2f2230);
+            scene.tweens.add({
+                targets: ghost,
+                alpha: 0,
+                duration: 240,
+                ease: 'Cubic.easeIn',
+                onComplete: () => ghost.destroy()
+            });
+        };
+
+        if (scene.textures?.exists?.('bossDeathMask') && scene.anims?.exists?.('boss_death_mask')) {
+            const mask = scene.add.sprite(x, y, 'bossDeathMask');
+            mask.setDepth(depth + 1);
+            // Overlay the mask exactly on top of the boss, whatever its display size.
+            if (sprite.displayWidth && sprite.displayHeight) {
+                mask.setDisplaySize(sprite.displayWidth, sprite.displayHeight);
+            }
+            mask.play('boss_death_mask');
+            const finish = () => {
+                if (mask.active) mask.destroy();
+                dissolveGhost();
+            };
+            mask.once('animationcomplete', finish);
+            // Safety net in case the complete event is missed.
+            scene.time.delayedCall(1200, () => { if (mask.active) finish(); });
+        } else {
+            dissolveGhost();
+        }
     }
 
     // Card disappear flourish. Lifts a ghost clone of the card a couple of

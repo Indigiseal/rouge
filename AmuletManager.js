@@ -482,22 +482,21 @@ export class AmuletManager {
 
             // Special reward from the carnival hag in Something Wicked.
             luckyClover: {
-                name: 'Lucky Clover',
-                sprite: 'luckyClover',
-                spriteFrame: 0,
+                ...getAmuletAtlasPresentation('luckyClover'),
                 description: '+3% crit chance',
                 rarity: 'rare',
                 critChanceBonus: 0.03
             },
 
-            // Special reward from The Brass Wizard. Uses the fallback hook:
-            // the first card added to inventory each floor also grants a crystal.
+            // Special reward from The Brass Wizard. "Lucky Streak": raises crit
+            // chance, and landing a crit has a small chance to shake loose a coin
+            // or crystal (see AmuletManager.rollLuckyStreakCritReward).
             fortuneCard: {
                 ...getAmuletAtlasPresentation('fortuneCard'),
                 name: 'Fortune Card',
-                description: 'First card reward each floor also grants +1 crystal',
+                description: '+8% crit chance; critical hits sometimes drop a coin or crystal',
                 rarity: 'rare',
-                crystalOnFirstCardReward: 1
+                critChanceBonus: 0.08
             }
         };
     }
@@ -728,6 +727,18 @@ export class AmuletManager {
         if (!this.hasAmulet('prospectorsPick')) return null;
         if (Math.random() >= 0.10) return null;
         if (Math.random() < 0.5) {
+            return { kind: 'coin', amount: 1 + Math.floor(Math.random() * 2) }; // 1 or 2
+        }
+        return { kind: 'crystal', amount: 1 };
+    }
+
+    // Lucky Streak (Fortune Card) — when the player lands a CRIT, a 25% chance to
+    // shake loose 1-2 coins or a crystal. Returns { kind: 'coin'|'crystal', amount }
+    // or null. The caller grants it and plays the coin-jump / crystal-scatter fx.
+    rollLuckyStreakCritReward() {
+        if (!this.hasAmulet('fortuneCard')) return null;
+        if (Math.random() >= 0.25) return null;
+        if (Math.random() < 0.65) {
             return { kind: 'coin', amount: 1 + Math.floor(Math.random() * 2) }; // 1 or 2
         }
         return { kind: 'crystal', amount: 1 };

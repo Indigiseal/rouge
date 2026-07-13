@@ -18,234 +18,238 @@ export class PreloadScene extends Phaser.Scene {
         this.load.spritesheet = (key, url, ...rest) => _origSheet(key, url + v, ...rest);
         this.load.audio = (key, url, ...rest) => _origAudio(key, Array.isArray(url) ? url.map(u => u + v) : url + v, ...rest);
         this.load.bitmapFont = (key, textureURL, xmlURL, ...rest) => _origBitmap(key, textureURL + v, xmlURL + v, ...rest);
-        //this.load.image('warrior', 'assets/playerAvatarWarrior.png');
-        this.load.image('stoneFloor', 'assets/dungeon.png');
-        this.load.image('cardBack', 'assets/cardBack.png');
-        this.load.image('panelCards', 'assets/panelCards.png');
-        this.load.image('gamingBoard', 'assets/gamingBoard.png');
-        this.load.image('gamingBoard2', 'assets/gamingBoard2.png');
-        this.load.image('gamingBoardSideExtra', 'assets/gamingBoardSIdewaysExtra.png');
-        this.load.spritesheet('gamingBoardSideSmall', 'assets/gamingBoardSIdewaysSmall.png', { frameWidth: 208, frameHeight: 144 });
+        //this.load.image('warrior', 'assets/art/playerAvatarWarrior.png');
+        this.load.image('stoneFloor', 'assets/art/dungeon.png');
+        this.load.image('cardBack', 'assets/art/cardBack.png');
+        this.load.image('panelCards', 'assets/art/panelCards.png');
+        this.load.image('gamingBoard', 'assets/art/gamingBoard.png');
+        this.load.image('gamingBoard2', 'assets/art/gamingBoard2.png');
+        this.load.image('gamingBoardSideExtra', 'assets/art/gamingBoardSIdewaysExtra.png');
+        this.load.spritesheet('gamingBoardSideSmall', 'assets/art/gamingBoardSIdewaysSmall.png', { frameWidth: 208, frameHeight: 144 });
         // Frame order: rest floor, defeat UI, victory UI, blacksmith floor.
-        this.load.spritesheet('restRooms', 'assets/rest.png', { frameWidth: 144, frameHeight: 122 });
+        this.load.spritesheet('restRooms', 'assets/art/rest.png', { frameWidth: 144, frameHeight: 122 });
         // Frame order: defeat info, defeat detail, victory info, victory detail.
-        this.load.spritesheet('resultPanels', 'assets/defeatWin9x9panels.png', { frameWidth: 96, frameHeight: 96 });
-        this.load.spritesheet('resultBanners', 'assets/bannerLostWin.png', { frameWidth: 160, frameHeight: 32 });
-        this.load.image('eventPaper', 'assets/paper.png');
-        this.load.image('eventPaper9Slice', 'assets/paper9Slice.png');
-        this.load.image('scrollHandle', 'assets/scroll.png');
-        this.load.spritesheet('eventsShops', 'assets/eventsShops80x80.png', { frameWidth: 80, frameHeight: 80 });
-        this.load.image('panelArmor', 'assets/panelArmor.png');
+        this.load.spritesheet('resultPanels', 'assets/art/defeatWin9x9panels.png', { frameWidth: 96, frameHeight: 96 });
+        this.load.spritesheet('resultBanners', 'assets/art/bannerLostWin.png', { frameWidth: 160, frameHeight: 32 });
+        this.load.image('eventPaper', 'assets/art/paper.png');
+        this.load.image('eventPaper9Slice', 'assets/art/paper9Slice.png');
+        this.load.image('scrollHandle', 'assets/art/scroll.png');
+        this.load.spritesheet('eventsShops', 'assets/art/eventsShops80x80.png', { frameWidth: 80, frameHeight: 80 });
+        this.load.image('panelArmor', 'assets/art/panelArmor.png');
         this.load.bitmapFont('pixel-font', 'assets/fonts/minogram_6x10.png', 'assets/fonts/minogram_6x10.xml');
         this.load.bitmapFont('cyrillic-ui-font', 'assets/fonts/probly12NEW_crisp.png', 'assets/fonts/probly12NEW_crisp.xml');
         // Dedicated crisp 16px title font (rasterized 1-bit from Able5.ttf) so
         // event titles are pixel-sharp at a size the body bitmap font can't hit.
         this.load.bitmapFont('title-font', 'assets/fonts/title16.png', 'assets/fonts/title16.xml');
-        this.load.image('goblin_c', 'assets/goblin_c.png');
-        this.load.image('skeletonSprite', 'assets/skeleton_c.png');
+        this.load.image('goblin_c', 'assets/art/goblin_c.png');
+        this.load.image('skeletonSprite', 'assets/art/skeleton_c.png');
         // Tutorial coach-mark pointer (16x16 cursor-style arrow).
-        this.load.image('tutorialPointer', 'assets/pointer.png');
-        this.load.image('angryNestmother', 'assets/bird.png');
+        this.load.image('tutorialPointer', 'assets/art/pointer.png');
+        this.load.image('angryNestmother', 'assets/art/bird.png');
         
         // Load item sprites
-        this.load.image('leather_C', 'assets/leatherCommon.png');
-        this.load.image('leather_U', 'assets/leather_U.png');
-        this.load.image('leather_R', 'assets/leather_R.png');
-        this.load.image('leather_E', 'assets/leather_E.png');
-        this.load.image('leather_L', 'assets/leather_L.png');
-        this.load.image('chain_C', 'assets/chain_C.png');
-        this.load.image('plate_C', 'assets/plate_C.png');
-        this.load.image('boneArmor_U', 'assets/boneArmor_U.png');
-        this.load.image('sword_C', 'assets/sword_C.png');
-        this.load.image('dagger_C', 'assets/dagger_c.png');
-        this.load.image('axe_C', 'assets/axe_C.png');
-        this.load.image('bow_c', 'assets/bow_c.png');
+        this.load.image('leather_C', 'assets/art/leatherCommon.png');
+        this.load.image('leather_U', 'assets/art/leather_U.png');
+        this.load.image('leather_R', 'assets/art/leather_R.png');
+        this.load.image('leather_E', 'assets/art/leather_E.png');
+        this.load.image('leather_L', 'assets/art/leather_L.png');
+        this.load.image('chain_C', 'assets/art/chain_C.png');
+        this.load.image('plate_C', 'assets/art/plate_C.png');
+        this.load.image('boneArmor_U', 'assets/art/boneArmor_U.png');
+        this.load.image('sword_C', 'assets/art/sword_C.png');
+        this.load.image('dagger_C', 'assets/art/dagger_c.png');
+        this.load.image('axe_C', 'assets/art/axe_C.png');
+        this.load.image('bow_c', 'assets/art/bow_c.png');
         // Load Uncommon / Rare / Epic / Legendary item sprites
-        this.load.image('axe_U', 'assets/axe_U.png');
-        this.load.image('axe_R', 'assets/axe_R.png');
-        this.load.image('axe_E', 'assets/axe_E.png');
-        this.load.image('axe_L', 'assets/axe_L.png');
-        this.load.image('dagger_U', 'assets/dagger_u.png');
-        this.load.image('dagger_R', 'assets/dagger_r.png');
-        this.load.image('dagger_E', 'assets/dagger_e.png');
-        this.load.image('dagger_L', 'assets/dagger_l.png');
-        this.load.image('bow_U', 'assets/bow_U.png');
-        this.load.image('bow_R', 'assets/bow_R.png');
-        this.load.image('bow_E', 'assets/bow_E.png');
-        this.load.image('bow_L', 'assets/bow_L.png');
-        this.load.image('sword_U', 'assets/sword_u.png');
-        this.load.image('sword_R', 'assets/sword_R.png');
-        this.load.image('sword_E', 'assets/sword_E.png');
-        this.load.image('sword_L', 'assets/sword_L.png');
-        this.load.image('chain_U', 'assets/chain_U.png');
-        this.load.image('chain_R', 'assets/chain_R.png');
-        this.load.image('chain_E', 'assets/chain_E.png');
-        this.load.image('chain_L', 'assets/chain_L.png');
-        this.load.image('plate_U', 'assets/plate_U.png');
-        this.load.image('plate_R', 'assets/plate_R.png');
-        this.load.image('plate_E', 'assets/plate_E.png');
-        this.load.image('plate_L', 'assets/plate_L.png');
-        this.load.image('potionCardCommon', 'assets/potionCardCommon.png');
-        this.load.image('potionCardUncommon', 'assets/potionCardUncommon.png');
-        this.load.image('trap', 'assets/trap.png');
-        this.load.image('trap2', 'assets/trap2.png');
-        this.load.image('coin', 'assets/coin.png');
-        this.load.image('crystalCard', 'assets/crystalCard.png');
-        this.load.image('keyCard', 'assets/keyCard.png');
-        this.load.image('trapTriggers', 'assets/trapTriggers.png');
-        this.load.image('thornsCard', 'assets/thornsCard.png');
-        this.load.image('thornsCard_U', 'assets/thornsCard_U.png');
-        this.load.image('thornsCard_R', 'assets/thornsCard_R.png');
-        this.load.image('thornsCard_E', 'assets/thornsCard_E.png');
-        this.load.image('carnivalPipe', 'assets/pipe.png');
-        this.load.image('carnivalDucky', 'assets/ducky.png');
-        this.load.image('holographicOmen', 'assets/omen.png');
-        this.load.spritesheet('luckyClover', 'assets/clover.png', { frameWidth: 53, frameHeight: 70 });
-        this.load.spritesheet('mapNodes', 'assets/mapNodes42x42.png', { frameWidth: 42, frameHeight: 42 });
-        this.load.spritesheet('gemsRGY', 'assets/gemsRGY-Sheet.png', { frameWidth: 16, frameHeight: 16 });
+        this.load.image('axe_U', 'assets/art/axe_U.png');
+        this.load.image('axe_R', 'assets/art/axe_R.png');
+        this.load.image('axe_E', 'assets/art/axe_E.png');
+        this.load.image('axe_L', 'assets/art/axe_L.png');
+        this.load.image('dagger_U', 'assets/art/dagger_u.png');
+        this.load.image('dagger_R', 'assets/art/dagger_r.png');
+        this.load.image('dagger_E', 'assets/art/dagger_e.png');
+        this.load.image('dagger_L', 'assets/art/dagger_l.png');
+        this.load.image('bow_U', 'assets/art/bow_U.png');
+        this.load.image('bow_R', 'assets/art/bow_R.png');
+        this.load.image('bow_E', 'assets/art/bow_E.png');
+        this.load.image('bow_L', 'assets/art/bow_L.png');
+        this.load.image('sword_U', 'assets/art/sword_u.png');
+        this.load.image('sword_R', 'assets/art/sword_R.png');
+        this.load.image('sword_E', 'assets/art/sword_E.png');
+        this.load.image('sword_L', 'assets/art/sword_L.png');
+        this.load.image('chain_U', 'assets/art/chain_U.png');
+        this.load.image('chain_R', 'assets/art/chain_R.png');
+        this.load.image('chain_E', 'assets/art/chain_E.png');
+        this.load.image('chain_L', 'assets/art/chain_L.png');
+        this.load.image('plate_U', 'assets/art/plate_U.png');
+        this.load.image('plate_R', 'assets/art/plate_R.png');
+        this.load.image('plate_E', 'assets/art/plate_E.png');
+        this.load.image('plate_L', 'assets/art/plate_L.png');
+        this.load.image('potionCardCommon', 'assets/art/potionCardCommon.png');
+        this.load.image('potionCardUncommon', 'assets/art/potionCardUncommon.png');
+        this.load.image('trap', 'assets/art/trap.png');
+        this.load.image('trap2', 'assets/art/trap2.png');
+        this.load.image('coin', 'assets/art/coin.png');
+        this.load.image('crystalCard', 'assets/art/crystalCard.png');
+        this.load.image('keyCard', 'assets/art/keyCard.png');
+        this.load.image('trapTriggers', 'assets/art/trapTriggers.png');
+        this.load.image('thornsCard', 'assets/art/thornsCard.png');
+        this.load.image('thornsCard_U', 'assets/art/thornsCard_U.png');
+        this.load.image('thornsCard_R', 'assets/art/thornsCard_R.png');
+        this.load.image('thornsCard_E', 'assets/art/thornsCard_E.png');
+        this.load.image('carnivalPipe', 'assets/art/pipe.png');
+        this.load.image('carnivalDucky', 'assets/art/ducky.png');
+        this.load.image('carnivalRing', 'assets/art/brokenRing.png');
+        this.load.image('carnivalTray', 'assets/art/tray.png');
+        this.load.image('wizardTray', 'assets/art/trayWizard.png');
+        this.load.image('holographicOmen', 'assets/art/omen.png');
+        this.load.spritesheet('luckyClover', 'assets/art/clover.png', { frameWidth: 53, frameHeight: 70 });
+        this.load.spritesheet('mapNodes', 'assets/art/mapNodes42x42.png', { frameWidth: 42, frameHeight: 42 });
+        this.load.spritesheet('gemsRGY', 'assets/art/gemsRGY-Sheet.png', { frameWidth: 16, frameHeight: 16 });
         // Enemy role marker: frame 0 = melee, frame 1 = ranged
         // 'enemyCardType' sprite sheet was the old melee/ranged/poison badge
         // overlay. The new enemy art bakes those icons into the cards, and
         // HP / ATK now render as corner numbers, so we no longer load it.
-        this.load.spritesheet('gemEffectsOnCards', 'assets/gemEffectsOnCards64x80.png', { frameWidth: 64, frameHeight: 80 });
-        this.load.spritesheet('enemiesHitEffects', 'assets/enemiesHitEffects64x80.png', { frameWidth: 64, frameHeight: 80 });
-        this.load.spritesheet('shadowsGems', 'assets/shadowsGems.png', { frameWidth: 16, frameHeight: 20 });
-        this.load.audio('sword_swoosh', 'assets/knife-slice-41231.mp3');
-        this.load.audio('coin_collect', 'assets/coin-recieved.mp3');
-        this.load.audio('player_hurt', 'assets/male_hurt.mp3');
-        this.load.audio('anvil_upgrade', 'assets/anvil-hit-2-14845.mp3');
-        this.load.audio('item_discard', 'assets/discard-sound-effect-221455.mp3');
-        this.load.audio('trap_spring', 'assets/trap_spring1.mp3');
-        this.load.audio('trap_woosh', 'assets/fast-woosh-230497.mp3');
-        this.load.audio('armor_equip', 'assets/metal_clank.mp3');
-        this.load.audio('crystal_collect', 'assets/crystal_pick_up.mp3');
+        this.load.spritesheet('gemEffectsOnCards', 'assets/art/gemEffectsOnCards64x80.png', { frameWidth: 64, frameHeight: 80 });
+        this.load.spritesheet('enemiesHitEffects', 'assets/art/enemiesHitEffects64x80.png', { frameWidth: 64, frameHeight: 80 });
+        this.load.spritesheet('shadowsGems', 'assets/art/shadowsGems.png', { frameWidth: 16, frameHeight: 20 });
+        this.load.audio('sword_swoosh', 'assets/music/knife-slice-41231.mp3');
+        this.load.audio('coin_collect', 'assets/music/coin-recieved.mp3');
+        this.load.audio('player_hurt', 'assets/music/male_hurt.mp3');
+        this.load.audio('anvil_upgrade', 'assets/music/anvil-hit-2-14845.mp3');
+        this.load.audio('item_discard', 'assets/music/discard-sound-effect-221455.mp3');
+        this.load.audio('trap_spring', 'assets/music/trap_spring1.mp3');
+        this.load.audio('trap_woosh', 'assets/music/fast-woosh-230497.mp3');
+        this.load.audio('armor_equip', 'assets/music/metal_clank.mp3');
+        this.load.audio('crystal_collect', 'assets/music/crystal_pick_up.mp3');
         // Main menu
-        this.load.image('mainBG', 'assets/mainBG.png');
+        this.load.image('mainBG', 'assets/art/mainBG.png');
         // Food
-        this.load.image('berries', 'assets/foodCommon4AP.png');
-        this.load.image('bread', 'assets/bread.png');
-        this.load.image('egg', 'assets/egg.png');
-        this.load.image('chickCompanion', 'assets/chickCompanion.png');
-        this.load.image('chickCompanionUP', 'assets/chickCompanionUP.png');
-        this.load.image('skeletonCompanion', 'assets/skeletonCompanion.png');
-        this.load.image('skeletonCompanionUP', 'assets/skeletonCompanionUP.png');
+        this.load.image('berries', 'assets/art/foodCommon4AP.png');
+        this.load.image('bread', 'assets/art/bread.png');
+        this.load.image('egg', 'assets/art/egg.png');
+        this.load.image('chickCompanion', 'assets/art/chickCompanion.png');
+        this.load.image('chickCompanionUP', 'assets/art/chickCompanionUP.png');
+        this.load.image('skeletonCompanion', 'assets/art/skeletonCompanion.png');
+        this.load.image('skeletonCompanionUP', 'assets/art/skeletonCompanionUP.png');
         // New Cards
-        this.load.image('amulet', 'assets/amulet.png');
-        this.load.image('key', 'assets/key.png');
-        this.load.spritesheet('relicsOthers', 'assets/relicsOthers.png', { frameWidth: 32, frameHeight: 32 });
-        this.load.audio('shop_buy', 'assets/dropInBagStore.mp3');
-        this.load.audio('card_flip', 'assets/flipcard-91468.mp3');
+        this.load.image('amulet', 'assets/art/amulet.png');
+        this.load.spritesheet('relicsOthers', 'assets/art/relicsOthers.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.audio('shop_buy', 'assets/music/dropInBagStore.mp3');
+        this.load.audio('card_flip', 'assets/music/flipcard-91468.mp3');
         // Load flip animation frames
-        this.load.image('cardFlip1', 'assets/cardFlip1.png');
-        this.load.image('cardFlip2', 'assets/cardFlip2.png');
-        this.load.image('cardFlip3', 'assets/cardFlip3.png');
-        this.load.image('cardFlip4', 'assets/cardFlip4.png');
-        this.load.image('cardFlip5', 'assets/cardFlip5.png');
+        this.load.image('cardFlip1', 'assets/art/cardFlip1.png');
+        this.load.image('cardFlip2', 'assets/art/cardFlip2.png');
+        this.load.image('cardFlip3', 'assets/art/cardFlip3.png');
+        this.load.image('cardFlip4', 'assets/art/cardFlip4.png');
+        this.load.image('cardFlip5', 'assets/art/cardFlip5.png');
         // Load card hover animation frames
-        this.load.image('cardHover1', 'assets/cardHover1.png');
-        this.load.image('cardHover2', 'assets/cardHover2.png');
-        this.load.image('cardHover3', 'assets/cardHover3.png');
-        this.load.image('cardHover4', 'assets/cardHover4.png');
-        this.load.image('cardHover5', 'assets/cardHover5.png');
-        this.load.image('discardSprite', 'assets/discard.png');
-        this.load.image('thornFrame', 'assets/thornFrame.png');
+        this.load.image('cardHover1', 'assets/art/cardHover1.png');
+        this.load.image('cardHover2', 'assets/art/cardHover2.png');
+        this.load.image('cardHover3', 'assets/art/cardHover3.png');
+        this.load.image('cardHover4', 'assets/art/cardHover4.png');
+        this.load.image('cardHover5', 'assets/art/cardHover5.png');
+        this.load.image('discardSprite', 'assets/art/discard.png');
+        this.load.image('thornFrame', 'assets/art/thornFrame.png');
         // Card hover when in inventory effects (5 frames, 54x70 each)
-        this.load.spritesheet('hoverCardsUpSheet', 'assets/hoverCardsUp54x70Sheet.png', { frameWidth: 54, frameHeight: 70 });
+        this.load.spritesheet('hoverCardsUpSheet', 'assets/art/hoverCardsUp54x70Sheet.png', { frameWidth: 54, frameHeight: 70 });
         // Card disappear dissolve (6 frames, 54x70 each) — plays on top of a card
         // as it is removed (enemy defeated, weapon pips spent).
-        this.load.spritesheet('cardDisappearSheet', 'assets/cardDissappearAnimation54x70.png', { frameWidth: 54, frameHeight: 70 });
+        this.load.spritesheet('cardDisappearSheet', 'assets/art/cardDissappearAnimation54x70.png', { frameWidth: 54, frameHeight: 70 });
         // Card merge flicker (2 frames, 54x70 each) — plays on top of the merged
         // card. `mergeLegendarySheet` is the legendary-tier variant.
-        this.load.spritesheet('mergeSheet', 'assets/merge.png', { frameWidth: 54, frameHeight: 70 });
-        this.load.spritesheet('mergeLegendarySheet', 'assets/mergeLegendary.png', { frameWidth: 54, frameHeight: 70 });
+        this.load.spritesheet('mergeSheet', 'assets/art/merge.png', { frameWidth: 54, frameHeight: 70 });
+        this.load.spritesheet('mergeLegendarySheet', 'assets/art/mergeLegendary.png', { frameWidth: 54, frameHeight: 70 });
         // Empty card poof effect (4 frames, 32x48 each)
-        this.load.spritesheet('poofEmpty', 'assets/poofEmpty32x48frames.png', { frameWidth: 32, frameHeight: 48 });
+        this.load.spritesheet('poofEmpty', 'assets/art/poofEmpty32x48frames.png', { frameWidth: 32, frameHeight: 48 });
         // Poison status indicator (5 frames, 16x32 each) — shown on poisoned enemies/hero
-        this.load.spritesheet('poisonedStatus', 'assets/poisonedStatus.png', { frameWidth: 16, frameHeight: 32 });
+        this.load.spritesheet('poisonedStatus', 'assets/art/poisonedStatus.png', { frameWidth: 16, frameHeight: 32 });
         // Shock marker (6 frames, 16x32 each), positioned like poisonedStatus.
-        this.load.spritesheet('shockedStatus', 'assets/shockedStatus.png', { frameWidth: 16, frameHeight: 32 });
+        this.load.spritesheet('shockedStatus', 'assets/art/shockedStatus.png', { frameWidth: 16, frameHeight: 32 });
         // Poison trap trigger poof (5 frames, 92x92 each)
-        this.load.spritesheet('poisonPoof', 'assets/poisonPoof92x92.png', { frameWidth: 92, frameHeight: 92 });
+        this.load.spritesheet('poisonPoof', 'assets/art/poisonPoof92x92.png', { frameWidth: 92, frameHeight: 92 });
         // Frozen frame overlay (66x80) — drawn on top of a frozen card in place
         // of the old blue tint.
-        this.load.image('frozenFrame', 'assets/frozen.png');
-        this.load.image('bossFrozenFrame', 'assets/bossFrozen.png');
+        this.load.image('frozenFrame', 'assets/art/frozen.png');
+        this.load.image('bossFrozenFrame', 'assets/art/bossFrozen.png');
 
-        this.load.image('healthBar', 'assets/healthBar.png');
-        this.load.image('healthBarEmpty', 'assets/healthBarEmpty2.png');
-        this.load.spritesheet('healthOrb', 'assets/healthOrbFullEmpty62x54.png', { frameWidth: 62, frameHeight: 54 });
-        this.load.image('actionPoint', 'assets/actionPoint.png');
-        this.load.image('nextTurnUp', 'assets/nextTurnUp.png');
-        this.load.image('nextTurnDown', 'assets/nextTurnDown.png');
-        this.load.image('MainPlayerAvatar', 'assets/MainPlayerAvatar.png');
-        this.load.image('coinUI', 'assets/coinUI.png');
-        this.load.image('CrystalUI', 'assets/CrystalUI.png');
-        this.load.image('skeleton_c', 'assets/skeleton_c.png');
-        this.load.image('spider_c', 'assets/spider_c.png');
-        this.load.image('lostSoul', 'assets/ghostlyEnemy.png');
-        this.load.image('cerberusHead', 'assets/dogHead.png');
-        this.load.image('sword_c_reworked', 'assets/sword_c_r.png');
-        this.load.image('durability_dot', 'assets/durability_dot.png');
-        this.load.image('ten_durability', 'assets/ten_durability.png');
+        this.load.image('healthBar', 'assets/art/healthBar.png');
+        this.load.image('healthBarEmpty', 'assets/art/healthBarEmpty2.png');
+        this.load.spritesheet('healthOrb', 'assets/art/healthOrbFullEmpty62x54.png', { frameWidth: 62, frameHeight: 54 });
+        this.load.image('actionPoint', 'assets/art/actionPoint.png');
+        this.load.image('nextTurnUp', 'assets/art/nextTurnUp.png');
+        this.load.image('nextTurnDown', 'assets/art/nextTurnDown.png');
+        this.load.image('MainPlayerAvatar', 'assets/art/MainPlayerAvatar.png');
+        this.load.image('coinUI', 'assets/art/coinUI.png');
+        this.load.image('CrystalUI', 'assets/art/CrystalUI.png');
+        this.load.image('skeleton_c', 'assets/art/skeleton_c.png');
+        this.load.image('spider_c', 'assets/art/spider_c.png');
+        this.load.image('lostSoul', 'assets/art/ghostlyEnemy.png');
+        this.load.image('cerberusHead', 'assets/art/dogHead.png');
+        this.load.image('sword_c_reworked', 'assets/art/sword_c_r.png');
+        this.load.image('durability_dot', 'assets/art/durability_dot.png');
+        this.load.image('ten_durability', 'assets/art/ten_durability.png');
         // Load twinkle animation frames
-        this.load.spritesheet('twinkle', 'assets/twinkle60x78Sheet.png', { frameWidth: 60, frameHeight: 78 });
+        this.load.spritesheet('twinkle', 'assets/art/twinkle60x78Sheet.png', { frameWidth: 60, frameHeight: 78 });
         // Bosses
-        this.load.image('giantSkeleton', 'assets/giantSkeleton.png');
-        this.load.image('GoblinKingSprite', 'assets/goblinKing.png');
-        this.load.image('SpiderQween', 'assets/spiderBoss.png');
+        this.load.image('giantSkeleton', 'assets/art/giantSkeleton.png');
+        this.load.image('GoblinKingSprite', 'assets/art/goblinKing.png');
+        this.load.image('SpiderQween', 'assets/art/spiderBoss.png');
 
-        this.load.image('goblin_archer', 'assets/goblinArcher_c.png');
-        this.load.image('skeleton_archer', 'assets/skeletonArcher_c.png');
-        this.load.image('Lich', 'assets/lich.png');
-        this.load.image('SoulEater', 'assets/soulEater.png');
-        this.load.image('Cerberus', 'assets/cerberus.png');
-        this.load.image('AncientCerberus', 'assets/ancientCerberus.png');
+        this.load.image('goblin_archer', 'assets/art/goblinArcher_c.png');
+        this.load.image('skeleton_archer', 'assets/art/skeletonArcher_c.png');
+        this.load.image('Lich', 'assets/art/lich.png');
+        this.load.image('SoulEater', 'assets/art/soulEater.png');
+        this.load.image('Cerberus', 'assets/art/cerberus.png');
+        this.load.image('AncientCerberus', 'assets/art/ancientCerberus.png');
          // Magic Cards
-        this.load.image('fireBall', 'assets/magicBallCard.png');
-        this.load.image('frozenRing', 'assets/forzenRing.png');
-        this.load.image('recovery', 'assets/recovery.png');
-        this.load.image('soulSucking', 'assets/soulSucking.png');
-        this.load.image('shadowDagger', 'assets/shadowDagger.png');
-        this.load.image('weakening', 'assets/weakening.png');
-        this.load.image('boneWall', 'assets/boneWall.png');
-        this.load.image('macigShield', 'assets/macicShield.png');
-        this.load.image('mirrorShield', 'assets/mirrorShield.png');
-        this.load.image('smokeBomb', 'assets/smokeBomb.png');
-        this.load.audio('magic_cast', 'assets/fast-woosh-230497.mp3');
-        this.load.audio('recovery', 'assets/recovery.mp3');
-        this.load.audio('boneWall', 'assets/boneWall.mp3');
-        this.load.audio('mirrorShield', 'assets/mirrorShield.mp3');
-        this.load.audio('fireball_whoosh', 'assets/fireball-whoosh-1-179125.mp3');
-        this.load.audio('smoke_bomb', 'assets/smoke-bomb-6761.mp3');
-        this.load.audio('frozenRing', 'assets/frozenRing.mp3');
-        this.load.audio('shadowDagger', 'assets/shadowDagger.mp3');
-        this.load.audio('soulSucking', 'assets/soulSucking.mp3');
-        this.load.audio('magicShield', 'assets/magicShield.mp3');
-        this.load.audio('weakening', 'assets/weakening.mp3');
-        this.load.audio('trap_spring1', 'assets/trap_spring1.mp3');
+        this.load.image('fireBall', 'assets/art/magicBallCard.png');
+        this.load.image('frozenRing', 'assets/art/forzenRing.png');
+        this.load.image('recovery', 'assets/art/recovery.png');
+        this.load.image('soulSucking', 'assets/art/soulSucking.png');
+        this.load.image('shadowDagger', 'assets/art/shadowDagger.png');
+        this.load.image('weakening', 'assets/art/weakening.png');
+        this.load.image('boneWall', 'assets/art/boneWall.png');
+        this.load.image('macigShield', 'assets/art/macicShield.png');
+        this.load.image('mirrorShield', 'assets/art/mirrorShield.png');
+        this.load.image('smokeBomb', 'assets/art/smokeBomb.png');
+        this.load.audio('magic_cast', 'assets/music/fast-woosh-230497.mp3');
+        this.load.audio('recovery', 'assets/music/recovery.mp3');
+        this.load.audio('boneWall', 'assets/music/boneWall.mp3');
+        this.load.audio('mirrorShield', 'assets/music/mirrorShield.mp3');
+        this.load.audio('fireball_whoosh', 'assets/music/fireball-whoosh-1-179125.mp3');
+        this.load.audio('smoke_bomb', 'assets/music/smoke-bomb-6761.mp3');
+        this.load.audio('frozenRing', 'assets/music/frozenRing.mp3');
+        this.load.audio('shadowDagger', 'assets/music/shadowDagger.mp3');
+        this.load.audio('soulSucking', 'assets/music/soulSucking.mp3');
+        this.load.audio('magicShield', 'assets/music/magicShield.mp3');
+        this.load.audio('weakening', 'assets/music/weakening.mp3');
+        this.load.audio('trap_spring1', 'assets/music/trap_spring1.mp3');
 
         // UI currency animations — the little coin/crystal flip shown when the
         // value changes. Now single spritesheets (6 frames each) instead of the
         // old crystalAnimation1-6 / coinAnimation1-6 individual PNGs.
-        this.load.spritesheet('coinAnimSheet', 'assets/coinAnimation20x24.png', { frameWidth: 20, frameHeight: 24 });
-        this.load.spritesheet('crystalAnimSheet', 'assets/crystalAnimation14x24.png', { frameWidth: 14, frameHeight: 24 });
+        this.load.spritesheet('coinAnimSheet', 'assets/art/coinAnimation20x24.png', { frameWidth: 20, frameHeight: 24 });
+        this.load.spritesheet('crystalAnimSheet', 'assets/art/crystalAnimation14x24.png', { frameWidth: 14, frameHeight: 24 });
         // Board defeat-loot animations — a coin jump / crystal scatter played on
         // the spot an enemy died when Prospector's Pick drops currency.
-        this.load.spritesheet('coinJumpSheet', 'assets/coinAnimationJump58x38.png', { frameWidth: 58, frameHeight: 38 });
-        this.load.spritesheet('crystalScatterSheet', 'assets/crystalAnimationSheet56x30.png', { frameWidth: 56, frameHeight: 30 });
+        this.load.spritesheet('coinJumpSheet', 'assets/art/coinAnimationJump58x38.png', { frameWidth: 58, frameHeight: 38 });
+        this.load.spritesheet('crystalScatterSheet', 'assets/art/crystalAnimationSheet56x30.png', { frameWidth: 56, frameHeight: 30 });
+        // Bespoke boss death: a 5-frame mask played over the boss sprite.
+        this.load.spritesheet('bossDeathMask', 'assets/art/bossDeathMask232x194.png', { frameWidth: 232, frameHeight: 194 });
         //Animation for Magic cards
-        this.load.image('fireBall1', 'assets/fireBall1.png');
-        this.load.image('fireBall2', 'assets/fireBall2.png');
-        this.load.image('fireBall3', 'assets/fireBall3.png');
-        this.load.image('fireBall4', 'assets/fireBall4.png');
+        this.load.image('fireBall1', 'assets/art/fireBall1.png');
+        this.load.image('fireBall2', 'assets/art/fireBall2.png');
+        this.load.image('fireBall3', 'assets/art/fireBall3.png');
+        this.load.image('fireBall4', 'assets/art/fireBall4.png');
         //treasure
-        this.load.spritesheet('bigChestAnimation', 'assets/bigChestAnimation98x98.png', { frameWidth: 98, frameHeight: 98 });
-        this.load.audio('chest_open', 'assets/wooden-trunk-latch-1-183944.mp3');
-        this.load.audio('trap_trigger', 'assets/trap_spring1.mp3');
-        this.load.image('mimic', 'assets/mimic.png'); 
-        this.load.audio('treasure_explode', 'assets/coin-flip-37787.mp3'); 
+        this.load.spritesheet('bigChestAnimation', 'assets/art/bigChestAnimation98x98.png', { frameWidth: 98, frameHeight: 98 });
+        this.load.audio('chest_open', 'assets/music/wooden-trunk-latch-1-183944.mp3');
+        this.load.audio('trap_trigger', 'assets/music/trap_spring1.mp3');
+        this.load.image('mimic', 'assets/art/mimic.png'); 
+        this.load.audio('treasure_explode', 'assets/music/coin-flip-37787.mp3'); 
         //Animation for MIMIC — merged 7-frame splash spritesheet (was splash1-7).
-        this.load.spritesheet('splashSheet', 'assets/splashShee118x62t.png', { frameWidth: 118, frameHeight: 62 });
+        this.load.spritesheet('splashSheet', 'assets/art/splashShee118x62t.png', { frameWidth: 118, frameHeight: 62 });
 
     }
 
@@ -321,6 +325,15 @@ export class PreloadScene extends Phaser.Scene {
             frameRate: 15,
             repeat: 0
         });
+
+        if (this.textures.exists('bossDeathMask')) {
+            this.anims.create({
+                key: 'boss_death_mask',
+                frames: this.anims.generateFrameNumbers('bossDeathMask', { start: 0, end: 4 }),
+                frameRate: 12,
+                repeat: 0
+            });
+        }
 
         this.anims.create({
             key: 'poof_empty_anim',

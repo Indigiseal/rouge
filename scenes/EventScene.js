@@ -346,10 +346,12 @@ const EVENTS = [
   {
     id: 'something_wicked',
     title: 'Something Wicked',
-    description: 'In the dark of the dungeon, you hear voices.\n\nCrowd chatter. Laughter. A thin happy tune played slightly out of tune.\n\nAt first, you think it is a hallucination.\n\nThen the corridor opens into a vast carnival chamber.\n\nColored lanterns swing from the ceiling. Balloons drift between stone pillars. Monsters crowd around prize booths, puppet stages, crooked games, and painted doors.\n\nEveryone is smiling.\n\nNo one looks at you.\n\nYou walk through the crowd in a daze, trying to understand what feels wrong.\n\nThen a hand grabs your shoulder from behind.\n\nYou turn around, ready to strike.\n\nAn old woman stands too close, holding a tray of dusty trinkets against your chest. Her fingers are thin, but her grip is surprisingly strong.\n\n"One coin," she says. "Wonderful things. Very cheap."\n\nYou try to step away.\n\nHer hand does not move.\n\nOn the tray, you see four objects:\n\na dusty pipe\n\na rubber duck\n\na broken ring with a cracked gem\n\na four-leaf clover pressed under glass',
+    description: 'In the dark of the dungeon, you hear voices.\n\nCrowd chatter. Laughter. A thin happy tune played slightly out of tune.\n\nThe corridor opens into a vast carnival chamber. Colored lanterns swing overhead. Monsters crowd the prize booths. Everyone is smiling. No one looks at you.\n\nThen a hand grabs your shoulder. You turn, ready to strike — an old woman stands too close, pressing a tray of dusty trinkets against your chest.\n\n"One coin," she says. "Wonderful things. Very cheap."\n\nHer grip does not move.',
     choices: [
       {
         text: 'Buy the dusty pipe',
+        trayItem: 'dustyPipe',
+        traySprite: 'carnivalPipe',
         condition: (gs) => (gs?.coins || 0) >= 1,
         outcomeFrame: CARNIVAL_HAG_FRAME,
         action: (gs, scene) => scene.buyCarnivalJunk('dustyPipe'),
@@ -357,6 +359,8 @@ const EVENTS = [
       },
       {
         text: 'Buy the rubber duck',
+        trayItem: 'rubberDuck',
+        traySprite: 'carnivalDucky',
         condition: (gs) => (gs?.coins || 0) >= 1,
         outcomeFrame: CARNIVAL_HAG_FRAME,
         action: (gs, scene) => scene.buyCarnivalJunk('rubberDuck'),
@@ -364,6 +368,8 @@ const EVENTS = [
       },
       {
         text: 'Buy the broken ring',
+        trayItem: 'brokenRing',
+        traySprite: 'carnivalRing',
         condition: (gs) => (gs?.coins || 0) >= 1,
         outcomeFrame: CARNIVAL_HAG_FRAME,
         action: (gs, scene) => scene.buyCarnivalJunk('brokenRing'),
@@ -371,6 +377,8 @@ const EVENTS = [
       },
       {
         text: 'Buy the four-leaf clover',
+        trayItem: 'luckyClover',
+        traySprite: 'luckyClover',
         condition: (gs) => (gs?.coins || 0) >= 1,
         outcomeFrame: CARNIVAL_HAG_FRAME,
         action: (gs, scene) => scene.buyLuckyClover(),
@@ -378,6 +386,7 @@ const EVENTS = [
       },
       {
         text: 'Refuse',
+        trayRefuse: true,
         outcomeFrame: CARNIVAL_HAG_FRAME,
         action: (gs, scene) => scene.refuseCarnivalHag(),
         outcome: 'You twist away from the old woman\'s grip.\n\nHer nails scrape your shoulder.\n\nShe watches you disappear into the carnival crowd without blinking.'
@@ -1062,6 +1071,19 @@ export class EventScene extends Phaser.Scene {
     this.markCarnivalHagMet();
     if (!this.spendCoins(1)) return false;
     this.addPendingEvent('brass_wizard');
+
+    // The clover lands in the bag as an equipable amulet card (with a little
+    // card→amulet morph), rather than auto-equipping. The player taps it in a
+    // later battle to actually wear it. If the bag is full, fall back to
+    // equipping it outright so the coin is never wasted.
+    const inv = this.gameScene?.inventorySystem;
+    const slot = inv?.deliverCloverAmulet?.();
+    if (Number.isInteger(slot) && slot >= 0) {
+      this.gameScene?.updateUI?.();
+      this._reward('Gained: Lucky Clover — tap it in battle to equip');
+      this._pushRewardIcon('relicsOthers', 69, 'luckyClover');
+      return true;
+    }
     return this.gainAmulet('luckyClover');
   }
 
@@ -1088,6 +1110,7 @@ export class EventScene extends Phaser.Scene {
       brokenRing: {
         id: 'carnivalBrokenRing',
         name: 'Broken Ring',
+        sprite: 'carnivalRing',
         description: 'A cracked gem catches no light, but it remembers being expensive.'
       }
     }[junkId] || {
@@ -1175,38 +1198,16 @@ export class EventScene extends Phaser.Scene {
     return true;
   }
 
+  // The wizard's tray is now a physical drop target (_setupWizardTray): the
+  // player drags a card from their bag onto it. Only the "decline" option
+  // remains as a button; the junk-trade and reroll happen on drop.
   getBrassWizardTrayChoices() {
-    const choices = [];
-    if (this.hasCarnivalJunk()) {
-      choices.push({
-        text: 'Place a carnival junk card on the tray',
-        action: (gs, scene) => {
-          scene._reward('-1 coin');
-          scene.tradeJunkForHolographicOmen();
-        },
-        outcome: 'You place the useless carnival trinket on the tray.\n\nThe tray snaps back into the booth.\n\nBehind the glass, the brass wizard lowers one hand over it.\n\nThe booth goes dark.\n\nThen a rainbow sheen spreads across the glass from the inside, thin and oily, like light on spilled ink.\n\nA card slides out.\n\nIt is too bright for the old machine that made it.\n\nFor a moment, every painted star on the wizard\'s robe seems to look at you.'
-      });
-    }
-    if (this.hasBrassWizardRealCard()) {
-      choices.push({
-        text: 'Place a real card on the tray',
-        action: (gs, scene) => {
-          scene._reward('-1 coin');
-          scene.rerollFirstRealCardOnBrassTray();
-        },
-        outcome: 'You place one of your cards on the tray.\n\nThe tray snaps back before you can change your mind.\n\nBehind the glass, the brass wizard stares down at the card for a long time.\n\nThen its metal fingers tap the glass.\n\nOnce.\n\nTwice.\n\nA different card slides out.'
-      });
-    }
-    choices.push({
+    return [{
       text: 'Pull your hand back',
-      action: (gs, scene) => scene._reward('-1 coin'),
+      trayDecline: true,
+      action: () => {},
       outcome: 'You step away from the waiting tray.\n\nThe brass wizard does not move.\n\nAfter a few seconds, the tray slides back into the booth by itself.'
-    });
-    return choices;
-  }
-
-  hasBrassWizardRealCard() {
-    return this.getInventorySlots().some(item => this.isBrassWizardRerollable(item));
+    }];
   }
 
   isBrassWizardRerollable(item) {
@@ -1216,19 +1217,6 @@ export class EventScene extends Phaser.Scene {
       && item.type !== 'junk'
       && item.type !== 'companion'
       && item.id !== 'monsterEgg'
-    );
-  }
-
-  tradeJunkForHolographicOmen() {
-    const index = this._findInventoryIndex(item => this.isCarnivalJunk(item));
-    if (index < 0) return false;
-    const junkName = this.getInventorySlots()[index]?.name || 'Carnival Junk';
-    this._removeInventoryCard(index);
-    this._reward(`Traded: ${junkName}`);
-    return this._deliverCardReward(
-      this.createHolographicOmenCard(),
-      'Holographic Omen',
-      'Gained passive card: Holographic Omen'
     );
   }
 
@@ -1244,18 +1232,6 @@ export class EventScene extends Phaser.Scene {
       flavor: 'A shiny carnival card that makes every fight begin wrong.',
       unique: true
     };
-  }
-
-  rerollFirstRealCardOnBrassTray() {
-    const index = this._findInventoryIndex(item => this.isBrassWizardRerollable(item));
-    if (index < 0) return false;
-    const oldCard = this.getInventorySlots()[index];
-    const oldName = oldCard?.name || 'card';
-    const newCard = this.createSameTypeRerollCard(oldCard);
-    if (!newCard) return false;
-    this._removeInventoryCard(index);
-    this._reward(`Traded: ${oldName}`);
-    return this._deliverCardReward(newCard, newCard.name || 'rerolled card', `Gained card: ${newCard.name || 'Rerolled Card'}`);
   }
 
   createSameTypeRerollCard(oldCard) {
@@ -1810,6 +1786,10 @@ export class EventScene extends Phaser.Scene {
     this._buildChoices();
     this._fitDescriptionAboveChoices();
 
+    // The carnival hag presents her wares as a physical tray of trinkets the
+    // player drags into their bag, instead of a stack of text buttons.
+    if (this.event?.id === 'something_wicked') this._setupCarnivalTray();
+
     // Outcome text (hidden until a choice is made). Positioned on resolve so it
     // stays within the panel, above the inventory strip.
     this.outcomeText = this.add.text(this.eventLayout.centerX, 150, '', {
@@ -1879,6 +1859,10 @@ export class EventScene extends Phaser.Scene {
   }
 
   _buildChoices() {
+    // The carnival hag renders her buy/refuse options as a draggable tray
+    // (_setupCarnivalTray), so skip the normal text-button stack entirely.
+    if (this.event?.id === 'something_wicked') return;
+
     const choices = this._visibleChoices || this._getVisibleChoices();
     const n = choices.length;
     const layout = this.eventLayout || {
@@ -1952,7 +1936,7 @@ export class EventScene extends Phaser.Scene {
 
     if (this.event?.id === 'brass_wizard' && this._brassWizardTrayOpen) {
       this._brassWizardTrayOpen = false;
-      choice.next = { choices: this.getBrassWizardTrayChoices() };
+      choice.next = { choices: this.getBrassWizardTrayChoices(), wizardTray: true };
     }
 
     // A choice with `next` isn't terminal — it reveals more choices in place
@@ -1988,6 +1972,8 @@ export class EventScene extends Phaser.Scene {
       bg.setAlpha(0);
       label.setAlpha(0);
     });
+    this._destroyCarnivalTray();
+    this._destroyWizardTray();
 
     const rewards = this._rewardLines || [];
     this._layoutResolvedOutcome(outcome, rewards);
@@ -2177,8 +2163,14 @@ export class EventScene extends Phaser.Scene {
     this._choiceBtns = [];
 
     this._visibleChoices = choice.next.choices.filter(c => this._isChoiceVisible(c));
-    this._buildChoices();
-    this._fitDescriptionAboveChoices();
+
+    if (choice.next.wizardTray) {
+      // The brass wizard's tray is a drop target, not a button stack.
+      this._setupWizardTray(this._visibleChoices);
+    } else {
+      this._buildChoices();
+      this._fitDescriptionAboveChoices();
+    }
 
     if (Number.isInteger(choice.outcomeFrame) && this.eventIllustrationImage?.setFrame) {
       this.eventIllustrationImage.setFrame(choice.outcomeFrame);
@@ -2604,6 +2596,274 @@ export class EventScene extends Phaser.Scene {
     const chosen = cs.createCardData(type, generationFloor, false, null, rarity);
     if (!chosen || chosen.type !== type || chosen.rarity !== rarity) return null;
     return chosen;
+  }
+
+  // ─── Something Wicked (drag a trinket off the hag's tray into your bag) ───
+
+  // Renders the carnival hag's wares as a physical tray of draggable trinkets
+  // instead of a stack of text buttons. Each trinket maps to one of the event's
+  // buy choices; dropping it over the inventory resolves that choice. "Refuse"
+  // stays as a small button tucked below the tray.
+  _setupCarnivalTray() {
+    const visible = this._visibleChoices || this._getVisibleChoices();
+    const trayChoices = visible.filter(choice => choice.trayItem);
+    const refuseChoice = visible.find(choice => choice.trayRefuse);
+    const centerX = this.eventLayout.centerX;
+
+    // Pull the story text's reading window up so it clears the tray region.
+    this._setReadingScroll([this.descText], 42, 124, this.descText.y + this.descText.height);
+
+    this._carnivalItems = [];
+
+    this._carnivalHint = this.add.text(
+      centerX, 131,
+      trayChoices.length ? 'Drag a trinket into your bag   ·   1 coin each' : 'Nothing here you can afford.',
+      { fontSize: '10px', fill: '#ffe8b0', fontFamily: '"HoMM Pixel"', align: 'center' }
+    ).setOrigin(0.5).setDepth(5);
+
+    if (this.textures.exists('carnivalTray')) {
+      this._carnivalTray = this.add.image(centerX, 198, 'carnivalTray').setDepth(3);
+    }
+
+    const n = trayChoices.length;
+    const spacing = 62;
+    const startX = centerX - ((n - 1) * spacing) / 2;
+    const cardY = 176;
+
+    trayChoices.forEach((choice, i) => {
+      const x = Math.round(startX + i * spacing);
+      const card = this.add.image(x, cardY, choice.traySprite)
+        .setDepth(6)
+        .setInteractive({ useHandCursor: true, draggable: true });
+      card.setData('choice', choice);
+      card.setData('homeX', x);
+      card.setData('homeY', cardY);
+      this.input.setDraggable(card);
+
+      card.on('pointerover', () => {
+        if (this.resolved || card.getData('dragging')) return;
+        this.tweens.add({ targets: card, y: cardY - 7, scale: 1.06, duration: 110, ease: 'Cubic.easeOut' });
+      });
+      card.on('pointerout', () => {
+        if (this.resolved || card.getData('dragging')) return;
+        this.tweens.add({ targets: card, y: cardY, scale: 1, duration: 110, ease: 'Cubic.easeOut' });
+      });
+      card.on('dragstart', () => {
+        card.setData('dragging', true);
+        card.setDepth(30).setScale(1.06);
+      });
+      card.on('drag', (pointer, dragX, dragY) => {
+        card.x = dragX;
+        card.y = dragY;
+      });
+      card.on('dragend', (pointer) => this._handleCarnivalDrop(card, pointer));
+
+      this._carnivalItems.push(card);
+    });
+
+    if (refuseChoice) {
+      const y = 244;
+      const bg = this.add.rectangle(centerX, y, 130, 15, 0x050505, 0.58)
+        .setDepth(5)
+        .setInteractive({ useHandCursor: true });
+      const label = this.add.text(centerX, y, refuseChoice.text, {
+        fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
+      }).setOrigin(0.5).setDepth(6);
+      bg.on('pointerover', () => bg.setFillStyle(0x111111, 0.78));
+      bg.on('pointerout', () => bg.setFillStyle(0x050505, 0.58));
+      bg.on('pointerdown', () => this._resolve(refuseChoice, -1));
+      this._carnivalRefuse = { bg, label };
+    }
+  }
+
+  _handleCarnivalDrop(card, pointer) {
+    card.setData('dragging', false);
+    if (this.resolved) { this._returnCarnivalCard(card); return; }
+
+    const choice = card.getData('choice');
+    const target = this._carnivalDropTarget(pointer);
+    const isAmulet = choice.trayItem === 'luckyClover';
+
+    if (!target.over) { this._returnCarnivalCard(card); return; }
+    if ((this.gameState?.coins || 0) < 1) {
+      this.gameScene?.createFloatingText?.(pointer.x, pointer.y, 'You need a coin', 0xff6666);
+      this._returnCarnivalCard(card);
+      return;
+    }
+    // Junk trinkets need an open slot; the clover becomes an amulet and doesn't.
+    if (!isAmulet && target.emptySlot < 0) {
+      this.gameScene?.createFloatingText?.(pointer.x, pointer.y, 'Your bag is full', 0xff6666);
+      this._returnCarnivalCard(card);
+      return;
+    }
+
+    card.disableInteractive();
+    this._resolve(choice, -1);
+  }
+
+  // Returns whether the pointer was released over the inventory strip and, if so,
+  // the first empty slot to receive a junk trinket.
+  _carnivalDropTarget(pointer) {
+    const inv = this.gameScene?.inventorySystem;
+    const slots = inv?.slotSprites || [];
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let midY = 309;
+    let halfH = 35;
+    slots.forEach(slot => {
+      const bg = slot?.background;
+      if (!bg) return;
+      const halfW = (bg.width || 50) / 2;
+      minX = Math.min(minX, bg.x - halfW);
+      maxX = Math.max(maxX, bg.x + halfW);
+      midY = bg.y;
+      halfH = (bg.height || 70) / 2;
+    });
+    if (minX === Infinity) return { over: false, emptySlot: -1 };
+
+    const pad = 14;
+    const over = pointer.x >= minX - pad && pointer.x <= maxX + pad
+      && pointer.y >= midY - halfH - pad && pointer.y <= midY + halfH + pad;
+    if (!over) return { over: false, emptySlot: -1 };
+
+    let emptySlot = -1;
+    slots.forEach((slot, i) => {
+      const bg = slot?.background;
+      if (!bg || inv.slots[i] != null || emptySlot >= 0) return;
+      if (Math.abs(pointer.x - bg.x) <= (bg.width || 50) / 2 + pad) emptySlot = i;
+    });
+    if (emptySlot < 0) emptySlot = inv.slots.findIndex(item => item == null);
+    return { over: true, emptySlot };
+  }
+
+  _returnCarnivalCard(card) {
+    if (!card?.scene) return;
+    card.setDepth(6);
+    this.tweens.add({
+      targets: card,
+      x: card.getData('homeX'),
+      y: card.getData('homeY'),
+      scale: 1,
+      duration: 200,
+      ease: 'Cubic.easeOut'
+    });
+  }
+
+  _destroyCarnivalTray() {
+    (this._carnivalItems || []).forEach(card => card?.destroy?.());
+    this._carnivalItems = [];
+    this._carnivalTray?.destroy?.();
+    this._carnivalTray = null;
+    this._carnivalHint?.destroy?.();
+    this._carnivalHint = null;
+    if (this._carnivalRefuse) {
+      this._carnivalRefuse.bg?.destroy?.();
+      this._carnivalRefuse.label?.destroy?.();
+      this._carnivalRefuse = null;
+    }
+  }
+
+  // ─── Brass Wizard tray (drag a card from the bag onto the wizard's tray) ──
+
+  // Presents the wizard's tray as a physical drop target. Dropping a carnival
+  // junk card trades it for the Holographic Omen; dropping a real card rerolls
+  // it into another of the same type. A "pull your hand back" button declines.
+  _setupWizardTray(choices) {
+    const inv = this.gameScene?.inventorySystem;
+    const declineChoice = (choices || []).find(c => c.trayDecline) || (choices || [])[0];
+    const centerX = this.eventLayout.centerX;
+
+    // Shorten the wizard's narration window so it clears the tray.
+    this._setReadingScroll([this.descText], 42, 120, this.descText.y + this.descText.height);
+
+    this._wizardHint = this.add.text(centerX, 128, 'Drag a card onto the tray', {
+      fontSize: '11px', fill: '#ffe8b0', fontFamily: '"HoMM Pixel"', align: 'center'
+    }).setOrigin(0.5).setDepth(5);
+
+    if (this.textures.exists('wizardTray')) {
+      this._wizardTray = this.add.image(centerX, 182, 'wizardTray').setDepth(3);
+    }
+
+    if (inv?.addDropZone && this._wizardTray) {
+      inv.clearDropZones();
+      inv.addDropZone(this._wizardTray, (slotIndex, cardData, cardSprite) =>
+        this._handleWizardTrayDrop(slotIndex, cardData, cardSprite));
+    }
+
+    if (declineChoice) {
+      const y = 244;
+      const bg = this.add.rectangle(centerX, y, 150, 15, 0x050505, 0.58)
+        .setDepth(5).setInteractive({ useHandCursor: true });
+      const label = this.add.text(centerX, y, declineChoice.text, {
+        fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
+      }).setOrigin(0.5).setDepth(6);
+      bg.on('pointerover', () => bg.setFillStyle(0x111111, 0.78));
+      bg.on('pointerout', () => bg.setFillStyle(0x050505, 0.58));
+      bg.on('pointerdown', () => this._resolve(declineChoice, -1));
+      this._wizardDecline = { bg, label };
+    }
+  }
+
+  _handleWizardTrayDrop(slotIndex, cardData, cardSprite) {
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv || !cardData || this.resolved) return false;
+
+    if (this.isCarnivalJunk(cardData)) {
+      inv.cleanupCardSprites?.(slotIndex, cardSprite);
+      inv.cleanupBoardArtifacts?.(cardSprite);
+      inv.removeCard(slotIndex, false);
+      cardSprite.destroy();
+      this._rewardLines = [];
+      this._rewardIcons = [];
+      this._reward(`Traded: ${cardData.name || 'Carnival Junk'}`);
+      this._deliverCardReward(this.createHolographicOmenCard(), 'Holographic Omen', 'Gained passive card: Holographic Omen');
+      this._resolve({
+        text: 'Trade junk',
+        action: () => {},
+        outcome: 'You place the useless carnival trinket on the tray.\n\nThe tray snaps back into the booth. The booth goes dark, then a rainbow sheen spreads across the glass from the inside — thin and oily, like light on spilled ink.\n\nA card slides out. It is too bright for the old machine that made it.'
+      }, -1, { keepRewards: true });
+      return true;
+    }
+
+    if (this.isBrassWizardRerollable(cardData)) {
+      const newCard = this.createSameTypeRerollCard(cardData);
+      if (!newCard) {
+        this._mirrorFloat("The wizard won't take that", 0xff6666, cardSprite);
+        return false;
+      }
+      const oldName = cardData.name || 'card';
+      inv.cleanupCardSprites?.(slotIndex, cardSprite);
+      inv.cleanupBoardArtifacts?.(cardSprite);
+      inv.removeCard(slotIndex, false);
+      cardSprite.destroy();
+      inv.addCard(newCard);
+      this.gameScene?.updateUI?.();
+      this._rewardLines = [];
+      this._rewardIcons = [];
+      this._reward(`Traded: ${oldName} → ${newCard.name || 'a new card'}`);
+      this._resolve({
+        text: 'Reroll',
+        action: () => {},
+        outcome: 'You place one of your cards on the tray.\n\nThe tray snaps back before you can change your mind. Behind the glass, the brass wizard stares down at it for a long time, then taps the glass twice.\n\nA different card slides out.'
+      }, -1, { keepRewards: true });
+      return true;
+    }
+
+    this._mirrorFloat("The wizard doesn't want that", 0xff6666, cardSprite);
+    return false;
+  }
+
+  _destroyWizardTray() {
+    this.gameScene?.inventorySystem?.clearDropZones?.();
+    this._wizardTray?.destroy?.();
+    this._wizardTray = null;
+    this._wizardHint?.destroy?.();
+    this._wizardHint = null;
+    if (this._wizardDecline) {
+      this._wizardDecline.bg?.destroy?.();
+      this._wizardDecline.label?.destroy?.();
+      this._wizardDecline = null;
+    }
   }
 
   // Marks the once-per-run bonus rooms as seen when they resolve.
