@@ -19,6 +19,7 @@ Primary source files:
 | Boss floors | 15, 30, 45 |
 | Player start | 115 HP, 15 AP, 0 coins, 0 crystals, 5 inventory slots |
 | Progression | Floor-based loot, gear merging, amulets, relics, event outcomes |
+| Magic cards | Carryable, single-use inventory cards. Casting costs 1 AP; target spells require a revealed valid target, while recovery and buff spells can be cast directly. |
 | XP | No XP system found in the current codebase |
 | Regular enemy kill coins | None by default |
 | Main combat payout | Paid once when all enemies are defeated |
@@ -123,7 +124,7 @@ Formula weights for floors not explicitly listed:
 
 | Source | Reward |
 |---|---|
-| Coin card | 2-5 coins |
+| Coin card | `3 + floor / 8 rounded down` through `6 + floor / 8 rounded down` coins |
 | Crystal card | 1 crystal |
 | All enemies defeated | Non-boss only: `floor(24 + floor * 1.2)` coins, modified by gold bonuses |
 | Boss reward room | Full heal, full AP, `25 + floor` coins, `4 + floor / 6 rounded down` crystals, plus 3 reward cards |
@@ -131,6 +132,21 @@ Formula weights for floors not explicitly listed:
 | Prospector's Pick kill bonus | 10% per kill; then 50% for 1-2 coins, 50% for 1 crystal |
 | Fortune Card crit bonus | 25% per crit; then 65% for 1-2 coins, 35% for 1 crystal |
 | Mask of Hollow Whispers | 15% enemy death chance to leave a random card in the enemy spot |
+
+### Coin Card Scaling
+
+Coin cards remain a small tactical cache, not a replacement for the once-per-floor combat-clear payout. Their value rises by 1 every eight floors so store access keeps pace with prices:
+
+`minimum = 3 + floor(floor / 8)`; payout is `minimum` through `minimum + 3`.
+
+| Floors | Coin card payout |
+|---|---:|
+| 1-7 | 3-6 |
+| 8-15 | 4-7 |
+| 16-23 | 5-8 |
+| 24-31 | 6-9 |
+| 32-39 | 7-10 |
+| 40-45 | 8-11 |
 
 Chest rewards:
 
@@ -272,6 +288,8 @@ Defined food merge tiers:
 | 4 | Feast | 40 | 8 | Rare | 13 |
 
 Magic cards:
+
+Magic cards take an inventory slot during the run. They are collected from the board or shops, then dragged from inventory to cast. A successful cast consumes the card, except when Moth-Wing Dust returns it (25% chance). This makes magic a flexible tactical resource, but also an inventory-space decision.
 
 | Magic | Min floor | Rarity | Cost | Effect |
 |---|---:|---|---:|---|

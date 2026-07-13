@@ -214,7 +214,11 @@ export class MockScene {
       if (!card || !card.revealed || !this.isEnemyCard(card)) continue;
       if (card.data.frozen && card.data.frozen > 0) continue;
       if (card.data.health <= 0) continue;
+      const armorBeforeHit = this.gameState.equippedArmor;
       const { actualDamage } = this.gameState.takeDamage(card.data.attack, i, 'enemy');
+      if (armorBeforeHit && !this.gameState.equippedArmor) {
+        this._armorBreaks = (this._armorBreaks || 0) + 1;
+      }
       if (this.gameState.playerHealth <= 0) { this._lastKiller = card.data.name || 'enemy'; return; }
       // Thorns: reflect to MELEE attackers (mirrors GameScene.applyThornsDamage),
       // consuming 1 durability per reflect; the bot's strongest thorns is active.
@@ -222,7 +226,10 @@ export class MockScene {
       if (card.data.role === 'MELEE' && t && t.durability > 0 && card.data.health > 0) {
         this.cardSystem.attackEnemy(i, t.thornDamage || 2, true);
         t.durability -= 1;
-        if (t.durability <= 0) this.gameState.activeThorns = null;
+        if (t.durability <= 0) {
+          this.gameState.activeThorns = null;
+          this._thornBreaks = (this._thornBreaks || 0) + 1;
+        }
       }
       // Boss abilities: leech (heal from damage ACTUALLY landed, after armor —
       // mirrors GameScene) + summon minions.
@@ -238,6 +245,22 @@ export class MockScene {
           }
         }
       }
+    }
+    // Companions strike after the enemy phase in the live game. The simulator
+    // keeps its inventory on the mock scene, so event-earned companions now
+    // contribute their real card attack instead of being dead weight.
+    const companions = (this._simInventory || []).filter((item) => item?.type === 'companion');
+    for (const companion of companions) {
+      const targets = board
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => card?.revealed && this.isEnemyCard(card) && card.data.health > 0);
+      if (!targets.length) break;
+      const meleeTargets = companion.attackStyle === 'melee'
+        ? targets.filter(({ card }) => card.data.role === 'MELEE')
+        : targets;
+      const pool = meleeTargets.length ? meleeTargets : targets;
+      pool.sort((a, b) => a.card.data.health - b.card.data.health);
+      this.cardSystem.attackEnemy(pool[0].index, companion.attack || 2, true);
     }
     // End-of-enemy-turn effects: poison damage-over-time ticks on enemies
     // (mirrors GameScene.finishEnemyTurnEffects → processEnemyPoisonEffects).
