@@ -1,4 +1,7 @@
 // scenes/PauseMenuScene.js
+import { MusicManager } from '../utils/MusicManager.js';
+import { SoundHelper } from '../utils/SoundHelper.js';
+import { loadVolumeSettings, saveVolumeSettings } from '../utils/VolumeSettings.js';
 
 export class PauseMenuScene extends Phaser.Scene {
     constructor() {
@@ -7,15 +10,8 @@ export class PauseMenuScene extends Phaser.Scene {
     
     init(data) {
         this.pausedScene = data.pausedScene || 'GameScene';
-        
-        // Initialize volume settings if they don't exist
-        if (!this.game.globalVolume) {
-            this.game.globalVolume = {
-                master: 1.0,
-                sfx: 1.0,
-                music: 0.5
-            };
-        }
+        this.game.globalVolume = loadVolumeSettings();
+        saveVolumeSettings(this.game.globalVolume);
     }
     
     create() {
@@ -40,14 +36,8 @@ export class PauseMenuScene extends Phaser.Scene {
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
-        // Master Volume
-        this.createVolumeSlider('Master Volume', 150, 'master');
-        
-        // Sound Effects Volume
-        this.createVolumeSlider('Sound Effects', 190, 'sfx');
-        
-        // Music Volume (for future use)
-        this.createVolumeSlider('Music', 230, 'music');
+        this.createVolumeSlider('Music', 165, 'music');
+        this.createVolumeSlider('Sound Effects', 215, 'sfx');
         
         // Resume button
         const resumeButton = this.add.rectangle(230, 280, 120, 35, 0x00ff00, 0.3)
@@ -151,12 +141,11 @@ export class PauseMenuScene extends Phaser.Scene {
         
         // Apply volume changes to the game
         this.applyVolumeSettings();
+        if (volumeType === 'music') MusicManager.updateCurrentVolume(this);
         
         // Play a test sound for feedback (except for music)
         if (volumeType !== 'music' && newVolume > 0) {
-            this.sound.play('coin_collect', { 
-                volume: this.game.globalVolume.master * this.game.globalVolume.sfx * 0.3 
-            });
+            SoundHelper.playSound(this, 'coin_collect', 0.3);
         }
     }
     
@@ -165,7 +154,7 @@ export class PauseMenuScene extends Phaser.Scene {
         this.sound.volume = this.game.globalVolume.master;
         
         // Store in localStorage for persistence
-        localStorage.setItem('gameVolume', JSON.stringify(this.game.globalVolume));
+        saveVolumeSettings(this.game.globalVolume);
     }
     
     resumeGame() {

@@ -2,6 +2,7 @@ import { CardSystem } from './cardSystem.js';
 import { InventorySystem } from './inventorySystem.js';
 import { GameState } from './gameState.js';
 import { AmuletManager } from './AmuletManager.js';
+import { MusicManager } from './utils/MusicManager.js';
 import { SoundHelper } from './utils/SoundHelper.js';
 import { SaveManager } from './SaveManager.js';
 import { MetaProgressionManager } from './MetaProgressionManager.js';
@@ -9,6 +10,7 @@ import { TutorialManager } from './TutorialManager.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 import { t, translateDescription, translateItemName } from './utils/i18n.js';
 import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from './utils/StoryProgress.js';
+import { loadVolumeSettings, saveVolumeSettings } from './utils/VolumeSettings.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -112,17 +114,10 @@ export class GameScene extends Phaser.Scene {
     
     create() {
         this.events.once('shutdown', this.shutdown, this);
-        // Load saved volume settings
-        const savedVolume = localStorage.getItem('gameVolume');
-        if (savedVolume) {
-            this.game.globalVolume = JSON.parse(savedVolume);
-        } else {
-            this.game.globalVolume = {
-                master: 1.0,
-                sfx: 1.0,
-                music: 0.5
-            };
-        }
+        // Load saved volume settings. Master volume is kept internally at 1;
+        // players adjust Music and Sound Effects directly.
+        this.game.globalVolume = loadVolumeSettings();
+        saveVolumeSettings(this.game.globalVolume);
         
         // Apply volume settings
         this.sound.volume = this.game.globalVolume.master;
@@ -360,7 +355,7 @@ export class GameScene extends Phaser.Scene {
             .setInteractive({ useHandCursor: true })
             .on('pointerover', () => pauseButton.setFillStyle(0x6f5452, 0.32))
             .on('pointerout', () => pauseButton.setFillStyle(0x6f5452, 0.18))
-            .on('pointerdown', () => this.pauseGame());
+            .on('pointerdown', () => { SoundHelper.playVariant(this, 'button_click', 0.5); this.pauseGame(); });
         
         this.add.text(600, 15, 'PAUSE', {
             fontSize: '9px',
@@ -393,6 +388,7 @@ export class GameScene extends Phaser.Scene {
                 if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
             })
             .on('pointerdown', () => {
+                SoundHelper.playVariant(this, 'button_click', 0.5);
                 this.nextFloorButton.setTint(0x888888);
                 this.nextFloorButton.y = 51;
                 if (this.nextFloorButtonText) this.nextFloorButtonText.y = 51;
@@ -588,6 +584,8 @@ export class GameScene extends Phaser.Scene {
         // Fresh fight → fresh log, shown only in combat rooms.
         this.clearCombatLog();
         this.refreshCombatLogVisibility();
+        // Boss floors get their own battle-drums track; everything else is silent.
+        if (this.roomType === 'BOSS') this.startBossMusic(); else this.stopBossMusic();
         // Reset per-floor amulet flags
         this.gameState.charmingTuneUsed = false;
         if (this.tutorialMode) {
@@ -601,6 +599,14 @@ export class GameScene extends Phaser.Scene {
         // DON'T replenish action points here
         this.updateUI();
         this.cardSystem.checkFloorClear();
+    }
+
+    startBossMusic() {
+        MusicManager.play(this, 'boss_music', 0.6, 700);
+    }
+
+    stopBossMusic() {
+        MusicManager.stopIfPlaying(this, 'boss_music', 600);
     }
 
     showNextFloorButton() {
@@ -1174,7 +1180,8 @@ export class GameScene extends Phaser.Scene {
         // Apply abilities like poison on hit
         card.data.abilities?.forEach(ability => {
             if (ability.type === 'poison') {
-                if (this.gameState.addPlayerEffect({ ...ability })) {
+                const killedBy = card.data.name || card.data.type || 'Enemy';
+                if (this.gameState.addPlayerEffect({ ...ability, killedBy })) {
                     this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Poisoned!', 0x00ff00);
                 }
             } else if (ability.type === 'coin_steal') {
@@ -1250,6 +1257,7 @@ export class GameScene extends Phaser.Scene {
         const y = card.sprite?.y || this.playerAvatar.y;
 
         this.cardSystem.attackEnemy(index, damage, true);
+        SoundHelper.playSound(this, 'thorns_hit', 0.45);
         this.createFloatingText(x, y, `-${damage} Thorns`, 0x9dff7a);
 
         if (!thorns) return;
@@ -1289,10 +1297,12 @@ export class GameScene extends Phaser.Scene {
         
         // Process player poison effects
         let effectDamage = 0;
+        let poisonKilledBy = null;
         for (let i = this.gameState.playerEffects.length - 1; i >= 0; i--) {
             const effect = this.gameState.playerEffects[i];
             if (effect.type === 'poison') {
                 effectDamage += effect.damage;
+                poisonKilledBy = effect.killedBy || poisonKilledBy;
             }
             effect.turns--;
             if (effect.turns <= 0) {
@@ -1309,7 +1319,7 @@ export class GameScene extends Phaser.Scene {
             
             // Track poison death
             if (playerHealthBeforePoison > 0 && this.gameState.playerHealth <= 0) {
-                this.killedBy = 'Poison';
+                this.killedBy = poisonKilledBy || 'Poison';
             }
             
             // Lethal poison: gameState.takeDamage() already scheduled
@@ -1708,6 +1718,7 @@ export class GameScene extends Phaser.Scene {
         if (this._resultScreenShown || this._gameOverInProgress) return;
         this._gameOverInProgress = true;
         this._transitioning = true;
+        this.stopBossMusic();
         this.clearEnemyTurnTimers();
         this.nextFloorButton?.disableInteractive();
 
@@ -1954,6 +1965,9 @@ export class GameScene extends Phaser.Scene {
         // Player already dead (e.g. a mutual kill via Thorns/reflect) — don't let a
         // stray click on the Next Floor button revive them via setupBossRewardRoom().
         if (this.gameState.playerHealth <= 0) return;
+
+        // Leaving any floor ends the boss track (harmless no-op off boss floors).
+        this.stopBossMusic();
 
         // Boss reward room → leaving means advancing to the next act
         if (this.gameState.roomType === 'BOSS_REWARD') {
@@ -2870,6 +2884,7 @@ export class GameScene extends Phaser.Scene {
     shutdown() {
         this.tutorialManager?.destroy?.();
         this.tutorialManager = null;
+        this.stopBossMusic();
         this.clearEnemyTurnTimers();
         this.clearFloatingTexts();
         this.input.keyboard.off('keydown-ESC');
@@ -2923,6 +2938,9 @@ export class GameScene extends Phaser.Scene {
         // Show the log for combat rooms, hide it when we wake into loot/reward
         // rooms; startNewFloor() below re-clears it only for genuinely new fights.
         this.refreshCombatLogVisibility();
+        // Resume/stop boss drums to match the room we woke into (startBossMusic
+        // guards against double-play if startNewFloor also fires below).
+        if (this.roomType === 'BOSS') this.startBossMusic(); else this.stopBossMusic();
 
         // Check if this is actually a new floor/room transition
         const isNewRoom = data?.isNewRoom || false;

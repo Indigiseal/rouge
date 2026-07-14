@@ -1902,6 +1902,10 @@ export class CardSystem {
         if (!freeAction && !this.scene.useAction()) return;
         
         SoundHelper.playSound(this.scene, 'card_flip', 0.7);
+        // Flipping a legendary item gets its own reveal fanfare.
+        if (card.data?.rarity === 'legendary') {
+            SoundHelper.playVariant(this.scene, 'legendary_reveal', 0.6);
+        }
         card.revealed = true;
         if (card.data?.tutorialTag) {
             this.scene.events.emit('tutorialProgress', `revealed:${card.data.tutorialTag}`);
@@ -2011,9 +2015,11 @@ export class CardSystem {
     }
 
     handleTrap(card, index) {
+        const trapName = card.data.name || 'Trap';
         if (card.data.subType === 'spike') {
             SoundHelper.playSound(this.scene, 'trap_woosh', 0.7);
-            const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(card.data.damage);
+            const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(card.data.damage, -1, 'trap');
+            if (this.scene.gameState.playerHealth <= 0) this.scene.killedBy = trapName;
             if (tookDamage) {
                 SoundHelper.playSound(this.scene, 'player_hurt', 0.5);
             }
@@ -2025,7 +2031,8 @@ export class CardSystem {
             // Immediate hit on top of the lingering poison-over-time.
             const hit = card.data.damage || 0;
             if (hit > 0) {
-                const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(hit);
+                const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(hit, -1, 'trap');
+                if (this.scene.gameState.playerHealth <= 0) this.scene.killedBy = trapName;
                 if (tookDamage) {
                     SoundHelper.playSound(this.scene, 'player_hurt', 0.5);
                 }
@@ -2038,7 +2045,7 @@ export class CardSystem {
                 poof.play('poison_poof_anim');
                 poof.once('animationcomplete', () => poof.destroy());
             }
-            if (this.scene.gameState.addPlayerEffect({ ...card.data.abilities[0] })) {
+            if (this.scene.gameState.addPlayerEffect({ ...card.data.abilities[0], killedBy: trapName })) {
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poisoned!', 0x00ff00);
             }
         } else if (card.data.subType === 'reveal') {
@@ -2685,6 +2692,8 @@ export class CardSystem {
             case 'weapon':
             case 'armor':
             case 'key':
+                SoundHelper.playVariant(this.scene, 'key_pickup', 0.5);
+                // falls through to the shared pickup handling below
             case 'magic':
             case 'thorns':
             case 'gem':
@@ -2948,6 +2957,7 @@ export class CardSystem {
         const evadeAbility = card.data.abilities?.find(a => a.type === 'evade');
         const chance = Number(evadeAbility?.chance) || 0;
         if (chance <= 0 || Math.random() >= chance) return false;
+        SoundHelper.playVariant(this.scene, 'dodge_miss', 0.5);
         this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Miss!', 0xffffff);
         return true;
     }
@@ -2971,6 +2981,7 @@ export class CardSystem {
             // in exchange for being able to hit back-row archers regardless
             // of front-row blockers.
             if (!isRanged && meleeBlockers && card.data.role !== 'MELEE') {
+                SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
                 this.scene.createFloatingText(
                     this.scene.playerAvatar.x,
                     this.scene.playerAvatar.y,
@@ -3034,8 +3045,10 @@ export class CardSystem {
         
         if (!isReflection) {
             this.scene.createSlashEffect(card.sprite.x, card.sprite.y);
+            // Random impact sound on the struck enemy (variants avoid monotony).
+            SoundHelper.playVariant(this.scene, 'enemy_hit', 0.4);
         }
-        
+
         this.scene.shakeCard(card.sprite);
         
         // Gem effects fire BEFORE the weapon damage lands. If we waited until
@@ -3426,6 +3439,8 @@ export class CardSystem {
             // Note: defeating the Angry Nestmother does NOT end the grudge — she
             // keeps turning up "once in a while" for the rest of the run you
             // stole her egg (birdAngry stays set until the next run reseeds).
+
+            SoundHelper.playSound(this.scene, 'enemy_death', 0.5);
 
             // Process amulet kill effects
             if (this.scene.amuletManager) {
