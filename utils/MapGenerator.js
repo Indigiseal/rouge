@@ -23,7 +23,7 @@ export class MapGenerator {
   generateFullMap() {
     // Must match MapViewScene's MAP_VERSION. Otherwise the version-check there
     // fails on every load and the map regenerates after every floor.
-    const full = { _version: 4 };
+    const full = { _version: 5 };
     for (let act = 1; act <= 3; act++) full[`act${act}`] = this.generateAct(act);
     return full;
   }
@@ -252,6 +252,38 @@ export class MapGenerator {
       return maxParentChain >= 2;
     };
 
+    // A "fight" room (COMBAT/ELITE/BOSS) resets the non-combat run; everything
+    // else (EVENT, TREASURE, SHOP, REST, ANVIL, …) extends it.
+    const isFightType = (type) => type === 'COMBAT' || type === 'ELITE' || type === 'BOSS';
+    // Cap on how many non-combat rooms may appear back-to-back along any path.
+    // Stops branches like EVENT -> TREASURE -> EVENT -> TREASURE (the "4 rooms
+    // with no fight" complaint) while still allowing a fight -> reward -> reward
+    // -> fight rhythm. Bump to 3 for looser pacing.
+    const MAX_NONCOMBAT_RUN = 2;
+    // Longest run of consecutive NON-COMBAT rooms along any path ending at
+    // (f, idx), counting this node. 0 if this node is a fight room. Only reads
+    // already-assigned upstream floors, so it's exact during the top-down pass.
+    const nonCombatRunEndingAt = (f, idx) => {
+      const node = floors[f]?.[idx];
+      if (!node || !node.type || isFightType(node.type)) return 0;
+      if (f === 0) return 1;
+      let best = 0;
+      floors[f - 1].forEach((p, pi) => {
+        if (p.connections.includes(idx)) best = Math.max(best, nonCombatRunEndingAt(f - 1, pi));
+      });
+      return 1 + best;
+    };
+    // True if making (f, idx) a non-combat room would push some path past
+    // MAX_NONCOMBAT_RUN back-to-back non-combat rooms.
+    const wouldExceedNonCombatRun = (f, idx) => {
+      if (f === 0) return false;
+      let maxParent = 0;
+      floors[f - 1].forEach((p, pi) => {
+        if (p.connections.includes(idx)) maxParent = Math.max(maxParent, nonCombatRunEndingAt(f - 1, pi));
+      });
+      return maxParent >= MAX_NONCOMBAT_RUN;
+    };
+
     // pass 1: assign respecting simple rules
     let rareShopCount = 0; // capped at 2 per act
     for (let f = 1; f <= preBoss; f++) {
@@ -271,6 +303,8 @@ export class MapGenerator {
           if (t === 'TREASURE_GOOD' && f <= 5) continue; // Good chests only in mid/late floors
           if (t === 'RARE_SHOP' && rareShopCount >= 2) continue; // at most two rare shops per act
           if (t === 'EVENT' && wouldMakeEventTriple(f, i)) continue; // no three EVENTs in a row
+          // Cap consecutive non-combat rooms so branches always break for a fight.
+          if (!isFightType(t) && wouldExceedNonCombatRun(f, i)) continue;
 
           const pTypes = parentsTypes(floors, f, i);
           const sTypes = siblingTypes(floors, f, i);

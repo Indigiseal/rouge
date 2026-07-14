@@ -20,7 +20,7 @@ export class MapViewScene extends Phaser.Scene {
     this.currentAct = Math.min(3, Math.max(1, Math.floor((cf - 1) / 15) + 1));
 
     // Build/keep full map. Regenerate when shape changes or when new node types were added.
-    const MAP_VERSION = 4; // v4 guarantees at least one Rare Shop per act
+    const MAP_VERSION = 5; // v5 caps consecutive non-combat rooms (max 2 in a row)
     const hasCurrentMapShape =
       this.gameState.dungeonMap?.act1?.floors?.length === 15 &&
       this.gameState.dungeonMap?._version === MAP_VERSION;
