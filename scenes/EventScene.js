@@ -8,6 +8,7 @@ import { CardDataGenerator } from '../CardDataGenerator.js';
 import { loadHeroMemory, saveHeroMemory, saveStoryProgress } from '../utils/StoryProgress.js';
 import { t, translateDescription, translateItemName } from '../utils/i18n.js';
 import { createTitle } from '../utils/titleText.js';
+import { SoundHelper } from '../utils/SoundHelper.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
@@ -1845,6 +1846,7 @@ export class EventScene extends Phaser.Scene {
     });
     this.continueBtn.on('pointerup', () => this.continueAdventure());
     this.continueBtn.on('pointerover', () => {
+      SoundHelper.playSound(this, 'hover_soft', 0.4);
       if (this.continueBtn.setTint) this.continueBtn.setTint(0xfff2c8);
       else this.continueBtn.setFillStyle?.(0x151515, 0.78);
     });
@@ -1916,7 +1918,7 @@ export class EventScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(3);
 
       bg.setInteractive({ useHandCursor: true });
-      bg.on('pointerover', () => { bg.setFillStyle(0x111111, 0.78); });
+      bg.on('pointerover', () => { SoundHelper.playSound(this, 'hover_soft', 0.4); bg.setFillStyle(0x111111, 0.78); });
       bg.on('pointerout', () => { bg.setFillStyle(0x050505, 0.58); });
       bg.on('pointerdown', () => this._resolve(choice, i));
 
@@ -2669,7 +2671,7 @@ export class EventScene extends Phaser.Scene {
       const label = this.add.text(centerX, y, refuseChoice.text, {
         fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
       }).setOrigin(0.5).setDepth(6);
-      bg.on('pointerover', () => bg.setFillStyle(0x111111, 0.78));
+      bg.on('pointerover', () => { SoundHelper.playSound(this, 'hover_soft', 0.4); bg.setFillStyle(0x111111, 0.78); });
       bg.on('pointerout', () => bg.setFillStyle(0x050505, 0.58));
       bg.on('pointerdown', () => this._resolve(refuseChoice, -1));
       this._carnivalRefuse = { bg, label };
@@ -2797,7 +2799,7 @@ export class EventScene extends Phaser.Scene {
       const label = this.add.text(centerX, y, declineChoice.text, {
         fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
       }).setOrigin(0.5).setDepth(6);
-      bg.on('pointerover', () => bg.setFillStyle(0x111111, 0.78));
+      bg.on('pointerover', () => { SoundHelper.playSound(this, 'hover_soft', 0.4); bg.setFillStyle(0x111111, 0.78); });
       bg.on('pointerout', () => bg.setFillStyle(0x050505, 0.58));
       bg.on('pointerdown', () => this._resolve(declineChoice, -1));
       this._wizardDecline = { bg, label };

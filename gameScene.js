@@ -353,7 +353,7 @@ export class GameScene extends Phaser.Scene {
         const pauseButton = this.add.rectangle(600, 15, 46, 18, 0x6f5452, 0.18)
             .setStrokeStyle(1, 0x6f5452)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => pauseButton.setFillStyle(0x6f5452, 0.32))
+            .on('pointerover', () => { SoundHelper.playSound(this, 'hover_soft', 0.4); pauseButton.setFillStyle(0x6f5452, 0.32); })
             .on('pointerout', () => pauseButton.setFillStyle(0x6f5452, 0.18))
             .on('pointerdown', () => { SoundHelper.playVariant(this, 'button_click', 0.5); this.pauseGame(); });
         
@@ -381,7 +381,7 @@ export class GameScene extends Phaser.Scene {
         this.nextFloorButton = snapOriginToPixelGrid(this.add.image(595, 50, 'nextTurnUp'))
             .setDepth(5000)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => this.nextFloorButton.setTint(0xd4eaf7))
+            .on('pointerover', () => { SoundHelper.playSound(this, 'hover_soft', 0.4); this.nextFloorButton.setTint(0xd4eaf7); })
             .on('pointerout', () => {
                 this.nextFloorButton.clearTint();
                 this.nextFloorButton.y = 50;
@@ -1199,7 +1199,7 @@ export class GameScene extends Phaser.Scene {
         const { actualDamage, tookDamage } = this.gameState.takeDamage(damageDealt, index, 'enemy', armorPierce);
 
         if (tookDamage) {
-            SoundHelper.playSound(this, 'player_hurt', 0.5);
+            SoundHelper.playVariant(this, 'player_hurt', 0.5);
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
 
             if (playerHealthBeforeDamage > 0 && this.gameState.playerHealth <= 0) {
@@ -1313,7 +1313,7 @@ export class GameScene extends Phaser.Scene {
         
         if (effectDamage > 0) {
             const playerHealthBeforePoison = this.gameState.playerHealth;
-            SoundHelper.playSound(this, 'player_hurt', 0.5);
+            SoundHelper.playVariant(this, 'player_hurt', 0.5);
             const { actualDamage, tookDamage } = this.gameState.takeDamage(effectDamage, -1, 'poison');
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage} (Poison)`, 0x00ff00);
             
@@ -1574,7 +1574,7 @@ export class GameScene extends Phaser.Scene {
         // Player takes damage and reflection is handled inside takeDamage
         const { actualDamage, tookDamage } = this.gameState.takeDamage(rawDamage, enemyIndex);
         if (tookDamage) {
-            SoundHelper.playSound(this, 'player_hurt', 0.5);
+            SoundHelper.playVariant(this, 'player_hurt', 0.5);
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
         }
     }

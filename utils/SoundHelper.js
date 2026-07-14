@@ -7,13 +7,15 @@ export class SoundHelper {
         enemy_hit: ['enemy_hit_1', 'enemy_hit_2', 'enemy_hit_3', 'enemy_hit_4'],
         card_place: ['card_place_1', 'card_place_2', 'card_place_3', 'card_place_4'],
         gem_socket: ['gem_socket_1', 'gem_socket_2', 'gem_socket_3'],
+        lightning_zap: ['lightning_zap_1', 'lightning_zap_2', 'lightning_zap_3'],
         key_pickup: ['key_pickup_1', 'key_pickup_2', 'key_pickup_3'],
         dodge_miss: ['dodge_miss_1', 'dodge_miss_2', 'dodge_miss_3'],
         map_select: ['map_select_3'],
         armor_break: ['armor_break_1', 'armor_break_2', 'armor_break_3'],
         button_click: ['button_click_1', 'button_click_2'],
         invalid_action: ['invalid_action_1', 'invalid_action_2'],
-        legendary_reveal: ['legendary_reveal_1', 'legendary_reveal_2']
+        legendary_reveal: ['legendary_reveal_1', 'legendary_reveal_2'],
+        player_hurt: ['player_hurt_1', 'player_hurt_2', 'player_hurt_3']
     };
 
     static ensureGlobalVolume(scene) {

@@ -1953,6 +1953,8 @@ export class CardSystem {
                 const px = card.sprite.x;
                 const py = card.sprite.y;
                 card.sprite.destroy();
+                // Nothing under the card — whoosh paired with the empty poof.
+                SoundHelper.playSound(this.scene, 'empty_whoosh', 0.6);
                 // Poof effect
                 if (this.scene.anims.exists('poof_empty_anim')) {
                     const poof = this.scene.add.sprite(px, py, 'poofEmpty').setDepth(5);
@@ -2021,20 +2023,21 @@ export class CardSystem {
             const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(card.data.damage, -1, 'trap');
             if (this.scene.gameState.playerHealth <= 0) this.scene.killedBy = trapName;
             if (tookDamage) {
-                SoundHelper.playSound(this.scene, 'player_hurt', 0.5);
+                SoundHelper.playVariant(this.scene, 'player_hurt', 0.5);
             }
             if (actualDamage > 0) {
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${actualDamage}`, 0xff0000);
             }
         } else if (card.data.subType === 'poison') {
-            SoundHelper.playSound(this.scene, 'trap_woosh', 0.7);
+            // Acid trap opens with its smoke-poof SFX (paired with the poof anim below).
+            SoundHelper.playSound(this.scene, 'smoke_poof', 0.6);
             // Immediate hit on top of the lingering poison-over-time.
             const hit = card.data.damage || 0;
             if (hit > 0) {
                 const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(hit, -1, 'trap');
                 if (this.scene.gameState.playerHealth <= 0) this.scene.killedBy = trapName;
                 if (tookDamage) {
-                    SoundHelper.playSound(this.scene, 'player_hurt', 0.5);
+                    SoundHelper.playVariant(this.scene, 'player_hurt', 0.5);
                 }
                 if (actualDamage > 0) {
                     this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${actualDamage}`, 0xff0000);
@@ -2697,6 +2700,8 @@ export class CardSystem {
             case 'magic':
             case 'thorns':
             case 'gem':
+                // A gem picked off the board gets the same glass clink as socketing.
+                if (card.data.type === 'gem') SoundHelper.playVariant(this.scene, 'gem_socket', 0.5);
                 if (this.scene.inventorySystem.addCard(card.data)) {
                     this.removeCard(index);
                     // Picking an item off the board costs an action point and wakes the enemies.
@@ -3166,6 +3171,8 @@ export class CardSystem {
             // Back-row RANGED enemies prioritized as zap targets.
             const zapDamage = [3, 4, 5][stack - 1];
             const extraZaps = 2; // always 2 additional = 3 total
+            // One random zap SFX per lightning-gem swing (not per hop).
+            SoundHelper.playVariant(this.scene, 'lightning_zap', 0.45);
             if (this.scene.tutorialMode) {
                 this.scene.events.emit('tutorialProgress', 'gemEffect:lightning');
                 this.scene.tutorialManager?._handleProgress?.('gemEffect:lightning');
@@ -3301,6 +3308,8 @@ export class CardSystem {
         if (!this.scene.anims.exists(animKey)) return;
         const fx = this.scene.add.sprite(card.sprite.x, card.sprite.y, 'enemiesHitEffects');
         fx.setDepth((card.sprite.depth || 0) + 5);
+        // Fire's burst reads as oversized on the card, so shrink it a touch.
+        if (effect === 'fire') fx.setScale(0.6);
         fx.play(animKey);
         fx.once('animationcomplete', () => fx.destroy());
         // Safety cleanup in case the complete event is missed

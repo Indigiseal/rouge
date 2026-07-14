@@ -95,6 +95,7 @@ export class MainMenuScene extends Phaser.Scene {
         if (!disabled) {
             btn.setInteractive({ useHandCursor: true })
                 .on('pointerover', () => {
+                    SoundHelper.playSound(this, 'hover_soft', 0.4);
                     // Lighten on hover
                     if (hasSprite) btn.setTint(0xdddddd);
                 })
@@ -130,7 +131,10 @@ export class MainMenuScene extends Phaser.Scene {
 
         if (!disabled) {
             button.setInteractive({ useHandCursor: true })
-                .on('pointerover', () => button.setFillStyle(color, 0.5))
+                .on('pointerover', () => {
+                    SoundHelper.playSound(this, 'hover_soft', 0.4);
+                    button.setFillStyle(color, 0.5);
+                })
                 .on('pointerout', () => button.setFillStyle(color, 0.3))
                 .on('pointerdown', callback);
         }

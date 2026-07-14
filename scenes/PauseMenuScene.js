@@ -43,7 +43,7 @@ export class PauseMenuScene extends Phaser.Scene {
         const resumeButton = this.add.rectangle(230, 280, 120, 35, 0x00ff00, 0.3)
             .setStrokeStyle(2, 0x00ff00)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => resumeButton.setFillStyle(0x00ff00, 0.5))
+            .on('pointerover', () => { SoundHelper.playSound(this, 'hover_soft', 0.4); resumeButton.setFillStyle(0x00ff00, 0.5); })
             .on('pointerout', () => resumeButton.setFillStyle(0x00ff00, 0.3))
             .on('pointerdown', () => this.resumeGame());
         
@@ -57,7 +57,7 @@ export class PauseMenuScene extends Phaser.Scene {
         const mainMenuButton = this.add.rectangle(410, 280, 120, 35, 0xff6666, 0.3)
             .setStrokeStyle(2, 0xff6666)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => mainMenuButton.setFillStyle(0xff6666, 0.5))
+            .on('pointerover', () => { SoundHelper.playSound(this, 'hover_soft', 0.4); mainMenuButton.setFillStyle(0xff6666, 0.5); })
             .on('pointerout', () => mainMenuButton.setFillStyle(0xff6666, 0.3))
             .on('pointerdown', () => this.quitToMainMenu());
         

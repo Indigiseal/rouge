@@ -1902,7 +1902,13 @@ export class InventorySystem {
     returnCardToSlot(slotIndex, cardSprite, onComplete = null) {
         const slotSprite = this.slotSprites[slotIndex];
         if (!slotSprite || !slotSprite.background) return;
-        
+
+        // A key card can't be merged, equipped or used, so dropping it anywhere
+        // just settles it back into the bag — give that its own clink.
+        if (this.slots[slotIndex]?.type === 'key') {
+            SoundHelper.playSound(this.scene, 'key_drop', 0.5);
+        }
+
         // Use the slot background position as the authoritative position
         const targetX = slotSprite.background.x;
         const targetY = slotSprite.background.y;
@@ -2175,7 +2181,7 @@ export class InventorySystem {
                     }
                 });
                 if (frozeAny) {
-                    SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+                    SoundHelper.playSound(this.scene, 'enemy_freeze', 0.5);
                     this.scene.createFloatingText(320, 180, 'Enemies Frozen!', 0x00ccff);
                     used = true;
                 }
@@ -2705,6 +2711,12 @@ export class InventorySystem {
                     originalSlot.briarFrame.setVisible(true);
                     originalSlot.briarFrame.setDepth(this.getInventoryDepths().briarFrame);
                 }
+
+                // The merge twinkle followed the weapon onto the board, where
+                // cleanupBoardArtifacts (run at the top of this method) destroyed
+                // it as a stray board sprite. Re-derive twinkles from the slots so
+                // a still-mergeable weapon gets its sparkle back on return.
+                this.updateTwinkleEffects();
             }
         });
     }

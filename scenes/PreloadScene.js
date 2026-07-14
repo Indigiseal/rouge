@@ -114,7 +114,7 @@ export class PreloadScene extends Phaser.Scene {
         this.load.spritesheet('enemiesHitEffects', 'assets/art/enemiesHitEffects64x80.png', { frameWidth: 64, frameHeight: 80 });
         this.load.spritesheet('shadowsGems', 'assets/art/shadowsGems.png', { frameWidth: 16, frameHeight: 20 });
         this.load.audio('coin_collect', 'assets/music/coin-recieved.mp3');
-        this.load.audio('player_hurt', 'assets/music/male_hurt.mp3');
+        // player_hurt now rotates through 3 male-hurt variants (loaded in the SFX batch below)
         this.load.audio('anvil_upgrade', 'assets/music/anvil-hit-2-14845.mp3');
         this.load.audio('item_discard', 'assets/music/discard-sound-effect-221455.mp3');
         this.load.audio('trap_spring', 'assets/music/trap_spring1.mp3');
@@ -261,9 +261,10 @@ export class PreloadScene extends Phaser.Scene {
         this.load.audio('card_place_2', M + 'Card_Pick_Up_Place_02.mp3');
         this.load.audio('card_place_3', M + 'Card_Pick_Up_Place_03.mp3');
         this.load.audio('card_place_4', M + 'Card_Pick_Up_Place_04.mp3');
-        this.load.audio('gem_socket_1', M + 'Gem_Socketed_01.mp3');
-        this.load.audio('gem_socket_2', M + 'Gem_Socketed_02.mp3');
-        this.load.audio('gem_socket_3', M + 'Gem_Socketed_03.mp3');
+        // Gem socketing now uses the glass-clink SFX, 3 variants (was Gem_Socketed_01-03)
+        this.load.audio('gem_socket_1', M + 'Glass_Clink_01.mp3');
+        this.load.audio('gem_socket_2', M + 'Glass_Clink_02.mp3');
+        this.load.audio('gem_socket_3', M + 'Glass_Clink_03.mp3');
         this.load.audio('key_pickup_1', M + 'Key_Pickup_01.mp3');
         this.load.audio('key_pickup_2', M + 'Key_Pickup_02.mp3');
         this.load.audio('key_pickup_3', M + 'Key_Pickup_03.mp3');
@@ -280,6 +281,23 @@ export class PreloadScene extends Phaser.Scene {
         this.load.audio('invalid_action_2', M + 'Invalid_Action_02.mp3');
         this.load.audio('legendary_reveal_1', M + 'Legendary_Relic_Reveal_01.mp3');
         this.load.audio('legendary_reveal_2', M + 'Legendary_Relic_Reveal_02.mp3');
+        this.load.audio('player_hurt_1', M + 'Player_Hurt_01.wav');
+        this.load.audio('player_hurt_2', M + 'Player_Hurt_02.wav');
+        this.load.audio('player_hurt_3', M + 'Player_Hurt_03.wav');
+        // Soft UI hover click — plays on map-node and button hover
+        this.load.audio('hover_soft', M + 'Hover_Soft_01.wav');
+        // Key card dropped back into the inventory
+        this.load.audio('key_drop', M + 'Key_Drop_02.mp3');
+        // Lightning-gem zap — 3 variants, loudness-normalized
+        this.load.audio('lightning_zap_1', M + 'Lightning_Zap_01.mp3');
+        this.load.audio('lightning_zap_2', M + 'Lightning_Zap_02.mp3');
+        this.load.audio('lightning_zap_3', M + 'Lightning_Zap_03.mp3');
+        // Acid/poison trap smoke poof
+        this.load.audio('smoke_poof', M + 'Poof_Smoke_01.mp3');
+        // "Nothing" card revealed — empty-slot whoosh
+        this.load.audio('empty_whoosh', M + 'Folder_Whoosh_01.mp3');
+        // Enemies frozen (Frost Ring) — icy magic cast
+        this.load.audio('enemy_freeze', M + 'Enemy_Freeze_01.mp3');
         // Single-shot effects
         this.load.audio('bow_shot', M + 'Bow_Shot_01.mp3');
         this.load.audio('enemy_death', M + 'Enemy_Death_01.mp3');

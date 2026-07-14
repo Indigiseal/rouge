@@ -383,6 +383,8 @@ export class MapViewScene extends Phaser.Scene {
       nodeSprite.setInteractive({ useHandCursor: true });
       nodeSprite.on('pointerover', () => {
         if (this.isDragging) return;
+        // Soft click when the pointer lands on a selectable node.
+        SoundHelper.playSound(this, 'hover_soft', 0.4);
         // Rise one pixel and lighten while hovered.
         nodeSprite.y = node.__y - 1;
         if (nodeSprite.setTint) nodeSprite.setTint(0xffffff);
