@@ -463,6 +463,9 @@ export class CardDataGenerator {
                 name: 'Poison Trap',
                 sprite: 'trap2',
                 createData: (floor) => ({
+                    // Immediate hit (lower than a spike trap, since it also
+                    // poisons over the next few turns) plus the lingering poison.
+                    damage: 2 + Math.floor(floor * 0.4),
                     abilities: [{ type: 'poison', damage: 1 + Math.floor(floor / 3), turns: 3 }]
                 })
             },

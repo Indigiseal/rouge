@@ -410,6 +410,150 @@ export class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(5001);
         this.nextFloorButton.setVisible(false);
         this.nextFloorButtonText.setVisible(false);
+
+        // Running combat log on the right side.
+        this.createCombatLog();
+    }
+
+    // A paper panel on the right that keeps a running, scrollable record of the
+    // fight (damage, status effects, kills) so players can read back what the
+    // fast-fading floating text already showed. Text uses the same muted brown
+    // as the PAUSE label rather than the bright floating-text colors.
+    createCombatLog() {
+        // Narrow panel hugging the right edge (right edge fixed at ~639, so the
+        // extra width grows leftward) that still clears the gaming board.
+        const CX = 575, CY = 150, W = 128, H = 200;
+        const BROWN = '#6f5452';
+        this.combatLog = { lines: [], maxVisible: 12, scroll: 0, visible: false, objects: [] };
+        this.combatLog.bounds = { left: CX - W / 2, right: CX + W / 2, top: CY - H / 2, bottom: CY + H / 2 };
+
+        // Reuse the event paper art as a nine-slice panel (already preloaded).
+        let panel = null;
+        if (this.textures.exists('eventPaper9Slice')) {
+            const addNineSlice = this.add.nineslice || this.add.nineSlice;
+            if (addNineSlice) {
+                try {
+                    panel = addNineSlice.call(this.add, CX, CY, 'eventPaper9Slice', null, W, H, 32, 32, 32, 32);
+                } catch { panel = null; }
+            }
+        }
+        if (!panel) {
+            // Fallback if the art/nine-slice helper is unavailable.
+            panel = this.add.rectangle(CX, CY, W, H, 0xe8d6ad, 0.96).setStrokeStyle(2, 0x6f5452, 0.6);
+        }
+        panel.setDepth(40);
+
+        const top = CY - H / 2;
+        const title = this.add.text(CX, top + 8, 'Combat Log', {
+            fontSize: '10px', fill: BROWN, fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5, 0).setDepth(42);
+        const rule = this.add.rectangle(CX, top + 22, W - 18, 1, 0x6f5452, 0.4).setDepth(42);
+
+        const bodyTop = top + 27;
+        const body = this.add.text(CX - W / 2 + 7, bodyTop, '', {
+            fontSize: '8px', fill: BROWN, fontFamily: '"HoMM Pixel"',
+            lineSpacing: 2, wordWrap: { width: W - 14 }
+        }).setOrigin(0, 0).setDepth(42);
+
+        this.combatLog.panel = panel;
+        this.combatLog.body = body;
+        // Pixel height available for text before it would spill past the panel
+        // bottom. Entries can wrap to 2+ lines, so we cap by height, not count.
+        this.combatLog.bodyMaxHeight = (CY + H / 2 - 10) - bodyTop;
+        this.combatLog.objects = [panel, title, rule, body];
+
+        // Wheel over the panel scrolls back through the fight history. A
+        // scene-level listener with a manual bounds check is far more reliable
+        // than a per-object 'wheel' event (which frequently never fires).
+        this.input.on('wheel', (pointer, over, dx, dy) => {
+            if (!this.combatLog?.visible) return;
+            const b = this.combatLog.bounds;
+            if (pointer.x < b.left || pointer.x > b.right
+                || pointer.y < b.top || pointer.y > b.bottom) return;
+            const maxScroll = Math.max(0, this.combatLog.lines.length - 1);
+            // Wheel up (dy < 0) goes back in history; wheel down returns to newest.
+            this.combatLog.scroll = Phaser.Math.Clamp(
+                this.combatLog.scroll + (dy > 0 ? -1 : 1), 0, maxScroll
+            );
+            this.renderCombatLog();
+        });
+
+        this.setCombatLogVisible(false);
+    }
+
+    renderCombatLog() {
+        if (!this.combatLog?.body) return;
+        const { lines, maxVisible, scroll, bodyMaxHeight } = this.combatLog;
+        const body = this.combatLog.body;
+        const end = lines.length - scroll;
+        let start = Math.max(0, end - maxVisible);
+        body.setText(lines.slice(start, end).join('\n'));
+        // Wrapped entries can push the text past the panel bottom — drop the
+        // oldest visible lines until what's shown fits inside the paper.
+        while (start < end - 1 && body.height > bodyMaxHeight) {
+            start++;
+            body.setText(lines.slice(start, end).join('\n'));
+        }
+    }
+
+    // Push a fully-formed line into the log (no auto-attribution). Used for
+    // explicitly-labelled entries like the player's own weapon hits.
+    pushCombatLog(text) {
+        if (!this.combatLog?.visible) return;
+        const line = (text == null ? '' : String(text)).trim();
+        if (!line) return;
+        this.combatLog.lines.push(line);
+        if (this.combatLog.lines.length > 200) this.combatLog.lines.shift();
+        this.combatLog.scroll = 0; // pin to newest on a fresh event
+        this.renderCombatLog();
+    }
+
+    addCombatLog(message, x, y) {
+        if (!this.combatLog?.visible) return;
+        let text = (message == null ? '' : String(message)).trim();
+        if (!text) return;
+        // Attribute the event to whoever the floating text sits on.
+        const label = (Number.isFinite(x) && Number.isFinite(y))
+            ? this.combatLogLabel(x, y) : null;
+        if (label) text = `${label} ${text}`;
+        this.pushCombatLog(text);
+    }
+
+    clearCombatLog() {
+        if (!this.combatLog) return;
+        this.combatLog.lines = [];
+        this.combatLog.scroll = 0;
+        this.renderCombatLog();
+    }
+
+    setCombatLogVisible(v) {
+        if (!this.combatLog) return;
+        this.combatLog.visible = v;
+        this.combatLog.objects.forEach(o => o?.setVisible?.(v));
+    }
+
+    refreshCombatLogVisibility() {
+        this.setCombatLogVisible(['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType));
+    }
+
+    // Works out who a floating-text event belongs to from its position: text on
+    // the player avatar is "You", text on a revealed enemy card takes that
+    // enemy's name. Returns null for centre-screen / global messages.
+    combatLogLabel(x, y) {
+        const pa = this.playerAvatar;
+        if (pa) {
+            const dx = pa.x - x, dy = pa.y - y;
+            if (dx * dx + dy * dy <= 48 * 48) return 'You';
+        }
+        const cards = this.cardSystem?.boardCards || [];
+        let best = null, bestD = 52 * 52;
+        for (const c of cards) {
+            if (!c?.sprite || !c.revealed || !c.data) continue;
+            const dx = c.sprite.x - x, dy = c.sprite.y - y;
+            const d = dx * dx + dy * dy;
+            if (d < bestD) { bestD = d; best = c; }
+        }
+        return best?.data?.name || null;
     }
 
     startNewFloor() {
@@ -441,6 +585,9 @@ export class GameScene extends Phaser.Scene {
         // Refresh type before spawn
         this.roomType = this.gameState.roomType || 'COMBAT';
         this.updateRoomTitle();
+        // Fresh fight → fresh log, shown only in combat rooms.
+        this.clearCombatLog();
+        this.refreshCombatLogVisibility();
         // Reset per-floor amulet flags
         this.gameState.charmingTuneUsed = false;
         if (this.tutorialMode) {
@@ -1421,8 +1568,13 @@ export class GameScene extends Phaser.Scene {
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
         }
     }
-    createFloatingText(x, y, text, color, fontSize = '15px') {
+    createFloatingText(x, y, text, color, fontSize = '15px', opts = {}) {
         const message = t(this, text);
+        // Mirror every combat event into the running log (brown, not the
+        // bright floating-text color) so players can read the fight back. The
+        // position tells us who the number belongs to (You / enemy name).
+        // Callers that log the event themselves pass { skipLog: true }.
+        if (!opts.skipLog) this.addCombatLog(message, x, y);
         const slot = this.reserveFloatingTextSlot(x, y);
         const startX = Phaser.Math.Clamp(x + slot.xOffset, 32, 608);
         const startY = Phaser.Math.Clamp(y + slot.yOffset, 24, 336);
@@ -2749,6 +2901,9 @@ export class GameScene extends Phaser.Scene {
             this.cardSystem?.clearBoard?.();
             // Also hide the room title (it would still say "Combat Room" from the prior floor).
             if (this.roomTitle) this.roomTitle.setText('');
+            // The shop is a station inside the combat scene, so roomType is still
+            // 'COMBAT' here — hide the fight log explicitly.
+            this.setCombatLogVisible(false);
             this.updateUI();
             return;
         }
@@ -2765,7 +2920,10 @@ export class GameScene extends Phaser.Scene {
         // Restore current room type from gameState
         this.roomType = this.gameState.roomType || 'COMBAT';
         this.updateRoomTitle();
-        
+        // Show the log for combat rooms, hide it when we wake into loot/reward
+        // rooms; startNewFloor() below re-clears it only for genuinely new fights.
+        this.refreshCombatLogVisibility();
+
         // Check if this is actually a new floor/room transition
         const isNewRoom = data?.isNewRoom || false;
         
