@@ -15,12 +15,29 @@
 //    documented inline — refine these as needed.
 //  - Baseline carries NO meta relics and buys NO amulets.
 
+import { writeFileSync } from 'node:fs';
 import { MockScene } from './mock.js'; // also installs globalThis.Phaser + localStorage
 import { GameState } from '../gameState.js';
 import { CardSystem } from '../cardSystem.js';
 import { AmuletManager } from '../AmuletManager.js';
 import { MetaProgressionManager } from '../MetaProgressionManager.js';
 import { MapGenerator } from '../utils/MapGenerator.js';
+import {
+  newLootStats, recordBoard, recordWeapon, recordFloorSnapshot,
+  recordFloorInventoryStart, recordFloorInventoryEnd, recordCombatEnemySnapshot,
+  sumCarriedWeaponPips,
+  recordRunBonuses,
+  reportLootStats, lootStatsToJson,
+} from './loot-stats.js';
+import { StatsDatabase, DEFAULT_DB_PATH } from './db/stats-db.js';
+import { StatsRecorder } from './stats-recorder.js';
+import {
+  areAmuletsDisabled,
+  isMetaProgressionDisabled,
+  setSimTestOptionsOverride,
+  clearSimTestOptionsOverride,
+  TEST_OPTION_IDS,
+} from '../utils/TestOptions.js';
 
 // ── Config ────────────────────────────────────────────────────────────────
 const RUNS = parseInt(process.argv[2], 10) || 2000;
@@ -110,12 +127,45 @@ function bestEventWeapon(gs, inv) {
     .sort((a, b) => (b.damage || 0) - (a.damage || 0))[0] || null;
 }
 
+function hasUsableWeaponDurability(gs, inv) {
+  return [gs.equippedWeapon, ...inv].some((item) => (
+    item?.type === 'weapon' && (item.durability ?? 0) > 0
+  ));
+}
+
 function hasUsableNonDaggerWeapon(gs, inv) {
   return [gs.equippedWeapon, ...inv].some((card) => (
     card?.type === 'weapon'
     && card.weaponType !== 'dagger'
     && (card.durability || 0) > 0
   ));
+}
+
+function hasCombatStalemate(board, gs, inv) {
+  const enemiesRemain = (board || []).some((card) => (
+    card?.revealed
+    && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+    && (card.data?.health ?? 0) > 0
+  ));
+  if (!enemiesRemain) return false;
+  if ((board || []).some((card) => card && card.data?.type !== 'enemy' && card.data?.type !== 'boss')) {
+    return false;
+  }
+  if (hasUsableWeaponDurability(gs, inv)) return false;
+  return !inv.some((card) => card?.type === 'magic');
+}
+
+function computeRunEndReason(gs, inv, { won, dead, lastEncounterType, stalemateDeath }) {
+  if (won) return 'win';
+  if (!dead) return null;
+  if (stalemateDeath || (
+    COMBAT_ROOMS.has(lastEncounterType)
+    && !hasUsableWeaponDurability(gs, inv)
+    && !inv.some((card) => card?.type === 'magic')
+  )) {
+    return 'weapon';
+  }
+  return 'hp';
 }
 
 // Real inventory pressure matters most at events. Keep one empty slot when the
@@ -444,21 +494,36 @@ function computeContext(board, floor) {
   return { boss, ranged, hiddenCluster: hidden >= 4 };
 }
 
-function runCombat(mock, gs, inv, floor) {
+function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
   // Grace is now per-enemy (card.justRevealed, set in the real revealCard) — no
   // global first-turn skip. A freshly revealed enemy sits out only its reveal action.
   mock.isEnemyTurn = false;
   mock._enemyTurnPending = false;
   mock.enemiesCleared = false;
   mock.dead = false;
+  let combatDamageDealt = 0;
+  let combatDamageWasted = 0;
   mock.cardSystem.spawnFloorCards();
+  regear(mock.cardSystem.cardDataGenerator, gs, inv);
+  if (gs._lootStats) {
+    recordBoard(gs._lootStats, floor, mock.cardSystem.boardCards);
+    recordCombatEnemySnapshot(
+      gs._lootStats,
+      floor,
+      mock.cardSystem.boardCards,
+      floorStartWeaponPips,
+    );
+  }
+  if (gs._statsRecorder?.floorVisitId) {
+    gs._statsRecorder.recordEnemies(mock.cardSystem.boardCards);
+  }
   // The real rollEvade() bails on a scene-less sprite (a destroyed-sprite guard).
   // Mock board sprites have scene=null, so give any evade-carrying card (Lost
   // Soul, dodging Soul Eater) a scene ref so its dodge is actually simulated.
   for (const c of mock.cardSystem.boardCards) {
     if (c?.sprite && c.data?.abilities?.some((a) => a.type === 'evade')) c.sprite.scene = mock;
   }
-  regear(mock.cardSystem.cardDataGenerator, gs, inv);
+  // regear already ran above (before clearability snapshot)
 
   let guard = 0;
   while (guard++ < 500) {
@@ -477,6 +542,9 @@ function runCombat(mock, gs, inv, floor) {
 
     // 1) Pick an attack target, respecting the melee frontline gate.
     const revealed = aliveEnemies(board, true);
+    if (revealed.length && hasCombatStalemate(board, gs, inv)) {
+      mock._stalemateDeath = true;
+    }
     let attackIdx = -1;
     if (revealed.length) {
       const w = gs.equippedWeapon;
@@ -539,6 +607,8 @@ function runCombat(mock, gs, inv, floor) {
 
       const dmg = effDmg(gs.equippedWeapon);
       const weaponBeforeAttack = gs.equippedWeapon;
+      combatDamageDealt += dmg;
+      combatDamageWasted += Math.max(0, dmg - targetHP);
       mock.useAction();
       mock.cardSystem.attackEnemy(attackIdx, dmg, false, gs.equippedWeapon || null);
       if (weaponBeforeAttack && !gs.equippedWeapon) mock._weaponBreaks = (mock._weaponBreaks || 0) + 1;
@@ -567,6 +637,10 @@ function runCombat(mock, gs, inv, floor) {
 
     // 3) Nothing left to reveal and no revealed enemies → floor cleared.
     break;
+  }
+
+  if (gs._statsRecorder?.floorVisitId) {
+    gs._statsRecorder.recordCombatStats(combatDamageDealt, combatDamageWasted);
   }
 
   // Floor-clear reward (mirrors GameScene.onEnemiesCleared): coins are paid once
@@ -598,6 +672,7 @@ function runBossReward(mock, gs, inv, floor) {
   const rawQuality = floor >= 31 ? 'legendary' : floor >= 16 ? 'epic' : 'rare';
   const quality = gen.capRewardRarity ? gen.capRewardRarity(rawQuality, floor) : rawQuality;
   const item = mock.cardSystem.createCardData(Math.random() < 0.5 ? 'weapon' : 'armor', floor, false, null, quality);
+  if (item?.type === 'weapon' && gs._lootStats) recordWeapon(gs._lootStats, floor, item, 'boss_reward');
   if (item && (item.type !== 'weapon' || item.weaponType !== 'dagger' || !hasUsableNonDaggerWeapon(gs, inv))) {
     tryCarry(gs, inv, item, { eventReward: true });
   }
@@ -901,6 +976,11 @@ function runShop(mock, gs, inv, floor) {
     cs.createCardData('thorns', floor),
     cs.createCardData('potion', floor),
   ].filter(Boolean);
+  if (gs._lootStats) {
+    for (const item of offers) {
+      if (item?.type === 'weapon') recordWeapon(gs._lootStats, floor, item, 'shop');
+    }
+  }
   const eqDmg = gs.equippedWeapon?.damage || 0;
   const matchesForMerge = (w) => [...inv, gs.equippedWeapon].some(
     (c) => c && c.type === 'weapon' && c.weaponType === w.weaponType && c.rarity === w.rarity);
@@ -944,6 +1024,7 @@ function runTreasure(mock, gs, inv, floor, good) {
   if (good) { gs.coins += 12 + Math.floor(floor / 2); gs.crystals += 1 + Math.floor(floor / 12); }
   else { gs.coins += 8 + Math.floor(floor / 3); gs.crystals += 1 + Math.floor(floor / 14); }
   const item = mock.cardSystem.createCardData(Math.random() < 0.55 ? 'weapon' : 'armor', floor, false, null, good && floor >= 20 ? 'epic' : 'rare');
+  if (item?.type === 'weapon' && gs._lootStats) recordWeapon(gs._lootStats, floor, item, 'treasure');
   if (item && (item.type !== 'weapon' || item.weaponType !== 'dagger' || !hasUsableNonDaggerWeapon(gs, inv))) {
     tryCarry(gs, inv, item);
   }
@@ -1069,16 +1150,16 @@ function runGame(metrics, config = {}) {
     },
   };
   gs._mergeTracker = tracker;
+  if (config.lootStats) gs._lootStats = config.lootStats;
+  if (config.statsRecorder) gs._statsRecorder = config.statsRecorder;
   // Apply meta RELICS via the REAL MetaProgressionManager (starting HP/coins/AP/
   // armor bonuses + runtime relicEffects honored by the real combat code).
-  if (config.relics && config.relics.length) {
+  if (config.relics && config.relics.length && !isMetaProgressionDisabled()) {
     const meta = new MetaProgressionManager(mock);
     meta.unlockedRelics = config.relics.slice();
     meta.applyRelicEffects(gs, true);
   }
-  // Veteran bonus: permanent starting max HP earned from relic-less deaths
-  // (career mode threads it through; mirrors MetaProgressionManager.veteranHp).
-  if (config.veteranHp) {
+  if (config.veteranHp && !isMetaProgressionDisabled()) {
     gs.maxHealth += config.veteranHp;
     gs.playerHealth += config.veteranHp;
   }
@@ -1089,10 +1170,13 @@ function runGame(metrics, config = {}) {
   // pass config.noBag to exclude it (the sweep does, for clean deltas).
   // NOTE: the sim currently has UNLIMITED inventory, so the bag is effectively
   // a no-op here — see report caveat.
-  const amulets = (config.noBag ? [] : ['bottomlessBag']).concat(config.amulets || []);
-  for (const id of amulets) mock.amuletManager.addAmulet(id);
+  if (!areAmuletsDisabled()) {
+    const amulets = (config.noBag ? [] : ['bottomlessBag']).concat(config.amulets || []);
+    for (const id of amulets) mock.amuletManager.addAmulet(id);
+  }
   const inv = startingInventory();
   mock._simInventory = inv;
+  mock._stalemateDeath = false;
   gs.equippedWeapon = null;
   regear(mock.cardSystem.cardDataGenerator, gs, inv);
   // Isolation test: an unbreakable, fully-gemmed legendary axe to see if pure
@@ -1116,14 +1200,22 @@ function runGame(metrics, config = {}) {
       if (next < 0) break;
       cur = next;
       const node = floors[f][cur];
-      const floor = (act - 1) * 15 + f + 1; // global currentFloor (boss → 15/30/45)
+      const floor = (act - 1) * 15 + (f === floors.length - 1 ? 15 : f);
       gs.currentFloor = floor;
       const roomType = node.type || 'COMBAT';
       gs.roomType = roomType;
       const hpStart = gs.playerHealth;
 
+      regear(mock.cardSystem.cardDataGenerator, gs, inv);
+      const floorStartWeaponPips = gs._lootStats ? sumCarriedWeaponPips(gs, inv) : 0;
+      if (gs._lootStats) recordFloorInventoryStart(gs._lootStats, floor, gs, inv);
+      if (gs._statsRecorder) {
+        gs._statsRecorder.beginFloorVisit(floor, roomType, hpStart, gs.maxHealth);
+        gs._statsRecorder.recordWeapons('start', gs, inv);
+      }
+
       if (COMBAT_ROOMS.has(roomType)) {
-        runCombat(mock, gs, inv, floor);
+        runCombat(mock, gs, inv, floor, floorStartWeaponPips);
         if (gs.playerHealth > 0) {
           mock.amuletManager.processFloorEnd();
           // Act-boss victory → the reward room (floor 45 is the win, no room).
@@ -1142,6 +1234,13 @@ function runGame(metrics, config = {}) {
       else if (roomType === 'ANVIL') runAnvil(gs, inv, metrics);
       else if (roomType === 'EVENT') runEvent(mock, gs, inv, floor);
 
+      regear(mock.cardSystem.cardDataGenerator, gs, inv);
+      if (gs._lootStats) recordFloorInventoryEnd(gs._lootStats, floor, gs, inv);
+      if (gs._statsRecorder) {
+        gs._statsRecorder.recordWeapons('end', gs, inv);
+        gs._statsRecorder.finishFloorVisit(gs.playerHealth, gs.maxHealth);
+      }
+
       reached = floor;
       const m = metrics.floors[floor];
       m.reached++;
@@ -1154,6 +1253,10 @@ function runGame(metrics, config = {}) {
       m.armor += gs.equippedArmor ? gs.equippedArmor.protection : 0;
       m.maxHp += gs.maxHealth;
       if (COMBAT_ROOMS.has(roomType)) m.combats++;
+
+      if (gs._lootStats) {
+        recordFloorSnapshot(gs._lootStats, floor, gs, inv, mock.cardSystem.boardCards);
+      }
 
       if (gs.playerHealth <= 0) {
         metrics.deaths[floor] = (metrics.deaths[floor] || 0) + 1;
@@ -1200,7 +1303,21 @@ function runGame(metrics, config = {}) {
     }
   }
   metrics.runs++;
-  return { reached, won: !dead && reached >= MAX_FLOOR, killer: mock._lastKiller || 'enemy' };
+  const runResult = {
+    reached,
+    won: !dead && reached >= MAX_FLOOR,
+    died: dead,
+    killer: mock._lastKiller || 'enemy',
+    endReason: computeRunEndReason(gs, inv, {
+      won: !dead && reached >= MAX_FLOOR,
+      dead,
+      lastEncounterType: gs.roomType,
+      stalemateDeath: mock._stalemateDeath && dead,
+    }),
+    deathEncounterType: dead ? gs.roomType : null,
+  };
+  if (config.lootStats) recordRunBonuses(config.lootStats, gs, mock, config, runResult);
+  return runResult;
 }
 
 // ── Monte Carlo ───────────────────────────────────────────────────────────
@@ -1505,6 +1622,239 @@ function runRelicCompare() {
   console.log('\n(noBag=true for clean deltas — no Bottomless Bag on any config)');
 }
 
+// ── Loot-stats playtest: weapon damage + enemy HP curves + run-end bonuses ─
+// Usage:
+//   node sim/balance-sim.js loot-stats [runs] [fresh|geared|accumulate|balance] [--json]
+//   fresh      — no relics, no starting bag (default)
+//   geared     — all relics unlocked
+//   accumulate — one account: meta relics + veteran HP carry across all runs
+//   balance    — Test Options: no amulets, no meta progression
+function runLootStats() {
+  const runs = parseInt(process.argv[3], 10) || 100;
+  const args = process.argv.slice(4);
+  const metaMode = args.find((a) => !a.startsWith('--')) || 'fresh';
+  const writeJson = args.includes('--json');
+  const lootStats = newLootStats();
+  const throwaway = newMetrics();
+
+  if (metaMode === 'balance') {
+    setSimTestOptionsOverride({
+      [TEST_OPTION_IDS.disableAmulets]: true,
+      [TEST_OPTION_IDS.disableMetaProgression]: true,
+    });
+  }
+
+  const runOne = (config) => {
+    runGame(throwaway, {
+      ...config,
+      lootStats,
+      noBag: true,
+      relics: isMetaProgressionDisabled() ? [] : (config.relics || []),
+      veteranHp: isMetaProgressionDisabled() ? 0 : (config.veteranHp || 0),
+    });
+  };
+
+  try {
+    if (metaMode === 'accumulate') {
+      const meta = new MetaProgressionManager({});
+      meta.unlockedRelics = [];
+      meta.totalDeaths = 0;
+      meta.bestFloor = 1;
+      meta.veteranHp = 0;
+      console.log(`\nLoot-stats: ${runs} runs on one accumulating account (death meta carries over)\n`);
+      for (let i = 0; i < runs; i++) {
+        const r = runOne({ relics: [...meta.unlockedRelics], veteranHp: meta.veteranHp });
+        if (!r.won) meta.handlePlayerDeath(r.killer, r.reached);
+      }
+    } else if (metaMode === 'geared') {
+      console.log(`\nLoot-stats: ${runs} runs (all relics unlocked)\n`);
+      for (let i = 0; i < runs; i++) runOne({ relics: ALL_RELICS });
+    } else if (metaMode === 'balance') {
+      console.log(`\nLoot-stats: ${runs} runs (balance — no amulets, no meta progression)\n`);
+      for (let i = 0; i < runs; i++) runOne({ relics: [] });
+    } else {
+      console.log(`\nLoot-stats: ${runs} runs (fresh account, bot buys amulets in shops)\n`);
+      for (let i = 0; i < runs; i++) runOne({ relics: [] });
+    }
+
+    reportLootStats(lootStats);
+    if (writeJson) {
+      const outPath = metaMode === 'balance'
+        ? 'sim/output/loot-stats-balance.json'
+        : 'sim/output/loot-stats.json';
+      writeFileSync(outPath, lootStatsToJson(lootStats));
+      console.log(`\nJSON written to ${outPath}`);
+    }
+  } finally {
+    clearSimTestOptionsOverride();
+  }
+}
+
+// ── DB-backed floor stats (3NF SQLite) ───────────────────────────────────
+// Usage:
+//   node sim/balance-sim.js stats-db [runs] [fresh|geared|accumulate|balance] [name] [--name label] [--db path]
+//   npm run sim:stats-db-balance -- 500 baseline-v1
+function parseStatsDbArgs() {
+  const MODES = new Set(['fresh', 'geared', 'accumulate', 'balance']);
+  const rest = process.argv.slice(3);
+  let runs = 100;
+  let metaMode = 'fresh';
+  let runLabel = null;
+  let dbPath = DEFAULT_DB_PATH;
+  const positional = [];
+
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i];
+    if (a === '--db') { dbPath = rest[++i]; continue; }
+    if (a === '--name') { runLabel = rest[++i]; continue; }
+    if (a.startsWith('--')) continue;
+    positional.push(a);
+  }
+
+  for (const a of positional) {
+    const n = parseInt(a, 10);
+    if (!Number.isNaN(n) && String(n) === a) {
+      runs = n;
+      continue;
+    }
+    if (MODES.has(a)) {
+      metaMode = a;
+      continue;
+    }
+    if (!runLabel) runLabel = a;
+  }
+
+  const label = runLabel || `stats-db ${metaMode}`;
+  return { runs, metaMode, dbPath, label, runLabel };
+}
+
+function runStatsDb() {
+  const { runs, metaMode, dbPath, label, runLabel } = parseStatsDbArgs();
+  const throwaway = newMetrics();
+  const db = new StatsDatabase(dbPath);
+  const recorder = new StatsRecorder(db);
+
+  if (metaMode === 'balance') {
+    setSimTestOptionsOverride({
+      [TEST_OPTION_IDS.disableAmulets]: true,
+      [TEST_OPTION_IDS.disableMetaProgression]: true,
+    });
+  }
+
+  const buildRunConfig = (base = {}) => ({
+    ...base,
+    statsRecorder: recorder,
+    noBag: true,
+    relics: isMetaProgressionDisabled() ? [] : (base.relics || []),
+    veteranHp: isMetaProgressionDisabled() ? 0 : (base.veteranHp || 0),
+  });
+
+  console.log(`\nStats DB: ${runs} runs → ${dbPath}`);
+  console.log(`  label: ${label}${runLabel ? '' : ' (default)'}`);
+  console.log(`  mode: ${metaMode}\n`);
+
+  try {
+    recorder.beginBatch({
+      label,
+      mode: metaMode,
+      runsPlanned: runs,
+      config: { noBag: true, metaMode, runLabel: runLabel || null },
+    });
+
+    db.runInTransaction(() => {
+      if (metaMode === 'accumulate') {
+        const meta = new MetaProgressionManager({});
+        meta.unlockedRelics = [];
+        meta.totalDeaths = 0;
+        meta.bestFloor = 1;
+        meta.veteranHp = 0;
+        for (let i = 0; i < runs; i++) {
+          recorder.beginRun();
+          const r = runGame(throwaway, buildRunConfig({ relics: [...meta.unlockedRelics], veteranHp: meta.veteranHp }));
+          recorder.finishRun({
+            won: r.won,
+            reachedFloor: r.reached,
+            died: r.died,
+            endReason: r.endReason,
+            deathEncounterType: r.deathEncounterType,
+          });
+          if (!r.won) meta.handlePlayerDeath(r.killer, r.reached);
+        }
+      } else if (metaMode === 'geared') {
+        for (let i = 0; i < runs; i++) {
+          recorder.beginRun();
+          const r = runGame(throwaway, buildRunConfig({ relics: ALL_RELICS }));
+          recorder.finishRun({
+            won: r.won,
+            reachedFloor: r.reached,
+            died: r.died,
+            endReason: r.endReason,
+            deathEncounterType: r.deathEncounterType,
+          });
+        }
+      } else if (metaMode === 'balance') {
+        for (let i = 0; i < runs; i++) {
+          recorder.beginRun();
+          const r = runGame(throwaway, buildRunConfig({ relics: [] }));
+          recorder.finishRun({
+            won: r.won,
+            reachedFloor: r.reached,
+            died: r.died,
+            endReason: r.endReason,
+            deathEncounterType: r.deathEncounterType,
+          });
+        }
+      } else {
+        for (let i = 0; i < runs; i++) {
+          recorder.beginRun();
+          const r = runGame(throwaway, buildRunConfig({ relics: [] }));
+          recorder.finishRun({
+            won: r.won,
+            reachedFloor: r.reached,
+            died: r.died,
+            endReason: r.endReason,
+            deathEncounterType: r.deathEncounterType,
+          });
+        }
+      }
+      recorder.finishBatch(runs);
+    });
+
+    const batchId = recorder.batchId;
+    const summary = db.query(`
+      SELECT
+        b.id AS batch_id,
+        b.runs_completed,
+        COUNT(DISTINCT r.id) AS runs,
+        COUNT(fv.id) AS floor_visits,
+        COUNT(DISTINCT fv.floor_number) AS distinct_floors,
+        SUM(CASE WHEN fv.encounter_type IN ('COMBAT','ELITE','BOSS') THEN 1 ELSE 0 END) AS combat_visits,
+        (SELECT COUNT(*) FROM sim_weapon_snapshots w
+         JOIN sim_floor_visits fv2 ON fv2.id = w.floor_visit_id
+         JOIN sim_runs r2 ON r2.id = fv2.run_id WHERE r2.batch_id = b.id) AS weapon_rows,
+        (SELECT COUNT(*) FROM sim_enemy_spawns e
+         JOIN sim_floor_visits fv3 ON fv3.id = e.floor_visit_id
+         JOIN sim_runs r3 ON r3.id = fv3.run_id WHERE r3.batch_id = b.id) AS enemy_rows
+      FROM sim_batches b
+      LEFT JOIN sim_runs r ON r.batch_id = b.id
+      LEFT JOIN sim_floor_visits fv ON fv.run_id = r.id
+      WHERE b.id = @batchId
+      GROUP BY b.id
+    `, { batchId });
+
+    if (summary[0]) {
+      const s = summary[0];
+      console.log('Batch saved:');
+      console.log(`  batch_id=${s.batch_id}  label=${label}`);
+      console.log(`  runs=${s.runs}  floor_visits=${s.floor_visits}`);
+      console.log(`  combat_visits=${s.combat_visits}  weapon_rows=${s.weapon_rows}  enemy_rows=${s.enemy_rows}`);
+    }
+  } finally {
+    clearSimTestOptionsOverride();
+    db.close();
+  }
+}
+
 // ── main ──────────────────────────────────────────────────────────────────
 function runFresh() {
   const runs = parseInt(process.argv[3], 10) || 500;
@@ -1532,6 +1882,10 @@ if (MODE === 'reliccompare') {
   const metrics = newMetrics();
   for (let i = 0; i < runs; i++) runGame(metrics, { relics: ALL_RELICS, superWeapon: true });
   report(metrics);
+} else if (MODE === 'loot-stats') {
+  runLootStats();
+} else if (MODE === 'stats-db') {
+  runStatsDb();
 } else {
   // Default run models a fully-progressed account: ALL relics + Bottomless Bag.
   const metrics = newMetrics();

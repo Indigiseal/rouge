@@ -36,12 +36,14 @@ export class RareShopScene extends StationRoomBase {
         // The rare shop is the premium store — its goods cost a clear premium.
         // 1. Amulet (costs crystals)
         const amuletData = cardGenerator.createCardData('amulet', floor, false, this.gameState);
-        this.shopItems.push({
-            data: amuletData,
-            price: Math.max(2, Math.floor(floor / 10) + 2),
-            currency: 'crystals',
-            purchased: false
-        });
+        if (amuletData) {
+            this.shopItems.push({
+                data: amuletData,
+                price: Math.max(2, Math.floor(floor / 10) + 2),
+                currency: 'crystals',
+                purchased: false
+            });
+        }
 
         // 2. Uncommon weapon (rescue option)
         const firstWeapon = this.createUpgradedWeapon();

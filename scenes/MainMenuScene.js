@@ -1,6 +1,13 @@
 // scenes/MainMenuScene.js
 import { SaveManager } from '../SaveManager.js';
 import { getLanguageName, getLanguageOptions, normalizeLanguageCode, t } from '../utils/i18n.js';
+import {
+    attachTestOptionsToGame,
+    invalidateTestOptionsCache,
+    isTestOptionEnabled,
+    setTestOption,
+    TEST_OPTION_DEFS,
+} from '../utils/TestOptions.js';
 export class MainMenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainMenuScene' });
@@ -39,6 +46,7 @@ export class MainMenuScene extends Phaser.Scene {
             continue: this.createSpriteButton(320, 139, t(this, 'ui.menu.continue'),  hasSavedRun ? () => this.continueGame() : null),
             options: this.createSpriteButton(320, 174, t(this, 'ui.menu.options'),   () => this.showOptionsMenu()),
             tutorial: this.createSpriteButton(320, 209, 'Tutorial',                 () => this.startTutorial()),
+            testOptions: this.createSpriteButton(320, 244, t(this, 'ui.menu.testOptions'), () => this.showTestOptionsMenu()),
         };
     }
 
@@ -47,6 +55,9 @@ export class MainMenuScene extends Phaser.Scene {
         this.mainMenuButtons.newRun.text.setText(t(this, 'ui.menu.newRun'));
         this.mainMenuButtons.continue.text.setText(t(this, 'ui.menu.continue'));
         this.mainMenuButtons.options.text.setText(t(this, 'ui.menu.options'));
+        if (this.mainMenuButtons.testOptions) {
+            this.mainMenuButtons.testOptions.text.setText(t(this, 'ui.menu.testOptions'));
+        }
     }
 
     // Sprite-based button using nextTurnUp (normal) / nextTurnDown (pressed).
@@ -127,6 +138,113 @@ export class MainMenuScene extends Phaser.Scene {
         return { button, text: buttonText };
     }
     
+    showTestOptionsMenu() {
+        this.children.list.forEach(child => {
+            if (child !== this.children.list[0]) {
+                child.setVisible(false);
+                if (child.input) child.disableInteractive();
+            }
+        });
+        this.createTestOptionsMenu();
+    }
+
+    createTestOptionsMenu() {
+        const elements = [];
+        const optionRows = [];
+
+        const panel = this.add.rectangle(320, 180, 520, 300, 0x2c1810)
+            .setStrokeStyle(3, 0xffffff);
+        elements.push(panel);
+
+        const title = this.add.text(320, 45, t(this, 'ui.testOptions.title'), {
+            fontSize: '28px',
+            fill: '#ffffff',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5);
+        elements.push(title);
+
+        const subtitle = this.add.text(320, 68, t(this, 'ui.testOptions.subtitle'), {
+            fontSize: '11px',
+            fill: '#bbbbbb',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            align: 'center'
+        }).setOrigin(0.5);
+        elements.push(subtitle);
+
+        TEST_OPTION_DEFS.forEach((def, index) => {
+            const y = 110 + index * 72;
+            const rowBg = this.add.rectangle(320, y + 8, 470, 58, 0x1a120c)
+                .setStrokeStyle(1, 0x666666);
+            elements.push(rowBg);
+
+            const label = this.add.text(70, y - 6, t(this, def.labelKey), {
+                fontSize: '14px',
+                fill: '#ffffff',
+                fontFamily: '"HoMM Pixel", Arial, sans-serif'
+            }).setOrigin(0, 0.5);
+            elements.push(label);
+
+            const description = this.add.text(70, y + 12, t(this, def.descriptionKey), {
+                fontSize: '10px',
+                fill: '#aaaaaa',
+                fontFamily: '"HoMM Pixel", Arial, sans-serif',
+                wordWrap: { width: 330 }
+            }).setOrigin(0, 0.5);
+            elements.push(description);
+
+            const toggle = this.createToggleButton(500, y + 8, def.id, () => {
+                this.refreshTestOptionsMenu(optionRows);
+            });
+            elements.push(toggle.button, toggle.text);
+            optionRows.push({ def, toggle });
+        });
+
+        const backButton = this.createButton(320, 305, 150, 30, t(this, 'ui.testOptions.back'), 0x888888, () => {
+            elements.forEach(item => item?.destroy?.());
+            this.children.list.forEach(child => child.setVisible(true));
+            Object.values(this.mainMenuButtons || {}).forEach(entry => {
+                if (entry?.button?.input) entry.button.input.enabled = true;
+            });
+        });
+        elements.push(backButton.button, backButton.text);
+    }
+
+    createToggleButton(x, y, optionId, onChange) {
+        const enabled = isTestOptionEnabled(optionId);
+        const color = enabled ? 0x228822 : 0x664444;
+        const button = this.add.rectangle(x, y, 72, 28, color, 0.85)
+            .setStrokeStyle(2, enabled ? 0x66ff66 : 0xff6666)
+            .setInteractive({ useHandCursor: true });
+
+        const text = this.add.text(x, y, enabled ? t(this, 'ui.testOptions.on') : t(this, 'ui.testOptions.off'), {
+            fontSize: '13px',
+            fill: '#ffffff',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5);
+
+        button.on('pointerdown', () => {
+            const next = !isTestOptionEnabled(optionId);
+            setTestOption(optionId, next);
+            invalidateTestOptionsCache();
+            onChange?.();
+            const on = isTestOptionEnabled(optionId);
+            button.setFillStyle(on ? 0x228822 : 0x664444, 0.85);
+            button.setStrokeStyle(2, on ? 0x66ff66 : 0xff6666);
+            text.setText(on ? t(this, 'ui.testOptions.on') : t(this, 'ui.testOptions.off'));
+        });
+
+        return { button, text, optionId };
+    }
+
+    refreshTestOptionsMenu(optionRows) {
+        optionRows.forEach(({ def, toggle }) => {
+            const on = isTestOptionEnabled(def.id);
+            toggle.button.setFillStyle(on ? 0x228822 : 0x664444, 0.85);
+            toggle.button.setStrokeStyle(2, on ? 0x66ff66 : 0xff6666);
+            toggle.text.setText(on ? t(this, 'ui.testOptions.on') : t(this, 'ui.testOptions.off'));
+        });
+    }
+
     showOptionsMenu() {
         // Hide main menu buttons
         this.children.list.forEach(child => {
@@ -327,6 +445,8 @@ export class MainMenuScene extends Phaser.Scene {
         // Load language
         const savedLanguage = localStorage.getItem('gameLanguage');
         this.game.language = normalizeLanguageCode(savedLanguage);
+
+        attachTestOptionsToGame(this.game);
         
         // Apply volume
         this.sound.volume = this.game.globalVolume.master;

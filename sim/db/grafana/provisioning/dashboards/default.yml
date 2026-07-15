@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: Sim Balance
+    orgId: 1
+    folder: Sim
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

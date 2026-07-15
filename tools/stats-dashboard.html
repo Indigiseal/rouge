@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sim Balance Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --border: #30363d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+    h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+    select, button {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.9rem;
+    }
+    button { cursor: pointer; }
+    button:hover, select:hover { border-color: var(--accent); }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+    }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    .stat .label { color: var(--muted); font-size: 0.8rem; margin-bottom: 0.35rem; }
+    .stat .value { font-size: 1.6rem; font-weight: 700; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 1rem;
+      padding: 0 1.5rem 2rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    .card h2 {
+      margin: 0 0 0.75rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .card.wide { grid-column: 1 / -1; }
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap.tall { height: 320px; }
+    .error {
+      margin: 2rem;
+      padding: 1rem;
+      background: #3d1f1f;
+      border: 1px solid #8b3a3a;
+      border-radius: 8px;
+    }
+    footer {
+      padding: 0 1.5rem 1.5rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Sim Balance Dashboard</h1>
+    <div>
+      <label>
+        Пакет:
+        <select id="batchSelect"></select>
+      </label>
+      <button id="refreshBtn" type="button">Обновить</button>
+    </div>
+  </header>
+
+  <div class="stats" id="overview"></div>
+  <div class="grid" id="charts"></div>
+  <footer>
+    Локальный дашборд поверх <code>sim/db/stats.sqlite</code>.
+    Для Grafana: <code>npm run sim:grafana</code> → <a href="http://localhost:3030">localhost:3030</a> (Docker, login admin/admin).
+  </footer>
+
+  <script>
+    const charts = {};
+    const palette = ['#58a6ff', '#3fb950', '#f85149', '#d29922', '#a371f7', '#f778ba', '#79c0ff'];
+
+    function mkCanvas(id, title, { wide = false, tall = false } = {}) {
+      const card = document.createElement('div');
+      card.className = 'card' + (wide ? ' wide' : '');
+      card.innerHTML = `<h2>${title}</h2><div class="chart-wrap${tall ? ' tall' : ''}"><canvas id="${id}"></canvas></div>`;
+      document.getElementById('charts').appendChild(card);
+      return document.getElementById(id);
+    }
+
+    function destroyCharts() {
+      for (const c of Object.values(charts)) c.destroy();
+      for (const k of Object.keys(charts)) delete charts[k];
+    }
+
+    function lineChart(id, title, labels, datasets) {
+      const ctx = mkCanvas(id, title);
+      charts[id] = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { labels: { color: '#e6edf3' } } },
+          scales: {
+            x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
+            y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
+          },
+        },
+      });
+    }
+
+    function barChart(id, title, labels, data, color = palette[0], opts = {}) {
+      const ctx = mkCanvas(id, title, opts);
+      charts[id] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{ label: title, data, backgroundColor: color + '99', borderColor: color, borderWidth: 1 }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              ticks: {
+                color: '#8b949e',
+                maxRotation: opts.rotateX ?? 0,
+                minRotation: opts.rotateX ?? 0,
+                autoSkip: opts.autoSkipX ?? true,
+                maxTicksLimit: opts.maxTicksX ?? undefined,
+              },
+              grid: { color: '#30363d' },
+            },
+            y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
+          },
+        },
+      });
+    }
+
+    function doughnutChart(id, title, labels, data) {
+      const ctx = mkCanvas(id, title);
+      charts[id] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{ data, backgroundColor: palette.slice(0, labels.length) }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'right', labels: { color: '#e6edf3' } } },
+        },
+      });
+    }
+
+    function renderOverview(o) {
+      const el = document.getElementById('overview');
+      el.innerHTML = [
+        ['Забегов', o.runs ?? 0],
+        ['Побед %', o.win_pct ?? 0],
+        ['Ср. этаж', o.avg_floor ?? 0],
+        ['Побед', o.wins ?? 0],
+      ].map(([label, value]) => `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div></div>`).join('');
+    }
+
+    function renderCharts(data) {
+      destroyCharts();
+      document.getElementById('charts').innerHTML = '';
+
+      doughnutChart('enc', 'Типы комнат',
+        data.encounters.map((r) => r.label),
+        data.encounters.map((r) => r.value));
+
+      barChart('reach', 'Дошли до этажа (накопительно)',
+        data.floorReach.map((r) => 'F' + r.floor),
+        data.floorReach.map((r) => r.runs_reached), palette[0],
+        { wide: true, tall: true, rotateX: 45, maxTicksX: 45 });
+
+      const ps = data.pipStart;
+      lineChart('pipStart', 'Σ pip на старте боя', ps.map((r) => r.floor), [
+        { label: 'min', data: ps.map((r) => r.min_pips), borderColor: palette[2], tension: 0.25 },
+        { label: 'avg', data: ps.map((r) => r.avg_pips), borderColor: palette[0], tension: 0.25 },
+        { label: 'max', data: ps.map((r) => r.max_pips), borderColor: palette[1], tension: 0.25 },
+      ]);
+
+      const eh = data.enemyHp;
+      lineChart('enemyHp', 'Σ HP врагов', eh.map((r) => r.floor), [
+        { label: 'min', data: eh.map((r) => r.min_hp), borderColor: palette[3], tension: 0.25 },
+        { label: 'avg', data: eh.map((r) => r.avg_hp), borderColor: palette[4], tension: 0.25 },
+        { label: 'max', data: eh.map((r) => r.max_hp), borderColor: palette[5], tension: 0.25 },
+      ]);
+
+      barChart('clear', 'Хватает оружия %',
+        data.clearPct.map((r) => r.floor),
+        data.clearPct.map((r) => r.clear_pct), palette[1]);
+
+      const pe = data.pipEnd;
+      lineChart('pipEnd', 'Σ pip на конце этажа', pe.map((r) => r.floor), [
+        { label: 'min', data: pe.map((r) => r.min_end), borderColor: palette[2], tension: 0.25 },
+        { label: 'avg', data: pe.map((r) => r.avg_end), borderColor: palette[0], tension: 0.25 },
+        { label: 'max', data: pe.map((r) => r.max_end), borderColor: palette[1], tension: 0.25 },
+      ]);
+    }
+
+    async function load(batchId) {
+      const url = batchId ? `/api/data?batch_id=${batchId}` : '/api/data';
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.error) {
+        document.getElementById('charts').innerHTML = `<div class="error">${data.error}</div>`;
+        return;
+      }
+      renderOverview(data.overview);
+      renderCharts(data);
+
+      const sel = document.getElementById('batchSelect');
+      sel.innerHTML = data.batches.map((b) => {
+        const name = (b.label && b.label.trim()) ? b.label.trim() : `прогон #${b.id}`;
+        const modeDesc = { balance: 'баланс', fresh: 'fresh', geared: 'geared', accumulate: 'accumulate' }[b.mode] || b.mode;
+        return `<option value="${b.id}" ${b.id === data.batchId ? 'selected' : ''}>${name} (${modeDesc}, ${b.runs_completed} runs)</option>`;
+      }).join('');
+    }
+
+    document.getElementById('batchSelect').addEventListener('change', (e) => load(e.target.value));
+    document.getElementById('refreshBtn').addEventListener('click', () => load(document.getElementById('batchSelect').value));
+    load();
+    setInterval(() => load(document.getElementById('batchSelect').value), 30000);
+  </script>
+</body>
+</html>

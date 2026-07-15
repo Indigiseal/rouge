@@ -3,6 +3,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "sim": "node sim/balance-sim.js"
+    "start": "node tools/server.mjs",
+    "sim": "node sim/balance-sim.js",
+    "sim:loot-stats": "node sim/balance-sim.js loot-stats 100",
+    "sim:loot-stats-balance": "node sim/balance-sim.js loot-stats 100 balance --json",
+    "sim:stats-db": "node sim/balance-sim.js stats-db",
+    "sim:stats-db-balance": "node sim/balance-sim.js stats-db balance",
+    "sim:grafana": "bash sim/db/grafana-up.sh",
+    "sim:grafana:down": "docker compose -f sim/db/docker-compose.yml down",
+    "sim:grafana:logs": "docker compose -f sim/db/docker-compose.yml logs -f grafana",
+    "sim:dashboard": "node tools/stats-dashboard.mjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1"
   }
 }

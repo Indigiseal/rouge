@@ -1320,6 +1320,7 @@ export class CardSystem {
     // shell (avatar, inventory, UI) and just swaps the board contents.
 
     spawnBossRewardBoard(items) {
+        items = (items || []).filter(Boolean);
         // Clear whatever was on the board (boss fight remnants)
         this.clearFloorBoardPanel();
         this.boardCards.forEach(card => {

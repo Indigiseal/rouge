@@ -9,6 +9,7 @@ import { TutorialManager } from './TutorialManager.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 import { t, translateDescription, translateItemName } from './utils/i18n.js';
 import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from './utils/StoryProgress.js';
+import { isMetaProgressionDisabled } from './utils/TestOptions.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -54,7 +55,9 @@ export class GameScene extends Phaser.Scene {
             this.gameState = new GameState(this);
             // Apply relic effects to fresh game state (skip for the tutorial so
             // its rigged board is deterministic).
-            if (!this.tutorialMode) this.metaManager.applyRelicEffects(this.gameState);
+            if (!this.tutorialMode && !isMetaProgressionDisabled()) {
+                this.metaManager.applyRelicEffects(this.gameState);
+            }
             // Cross-run story memory: seed the fresh run from any saved story
             // progress so completed events don't repeat and story chains resume
             // where a past life left off. (Continues restore storyRun from the
@@ -1573,7 +1576,7 @@ export class GameScene extends Phaser.Scene {
             this.unlockSkeletonForRareShopAfterDeath();
             this.saveManager?.clearCurrentRun();
 
-            if (this.metaManager) {
+            if (this.metaManager && !isMetaProgressionDisabled()) {
                 this.metaManager.totalRuns++;
                 if (floor > this.metaManager.bestFloor) {
                     this.metaManager.bestFloor = floor;
@@ -1908,7 +1911,7 @@ export class GameScene extends Phaser.Scene {
             gen.createCardData('amulet', floor, false, this.gameState),
             gen.createCardData(Math.random() < 0.5 ? 'weapon' : 'armor', floor, false, null, quality),
             this.makeBossRewardGem()
-        ];
+        ].filter(Boolean);
 
         // Spawn chest + reward cards on the existing board
         this.cardSystem.spawnBossRewardBoard(items);
@@ -2700,7 +2703,7 @@ export class GameScene extends Phaser.Scene {
         // inventory — never re-grant them on Continue/resume/restart.
         this.gameState.startingCardsGranted = true;
         // Re-apply relic effects on top of loaded state
-        if (this.metaManager) {
+        if (this.metaManager && !isMetaProgressionDisabled()) {
             this.metaManager.applyRelicEffects(this.gameState, false);
         }
         return true;

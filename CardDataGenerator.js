@@ -1,4 +1,5 @@
 import { getAmuletAtlasPresentation } from './utils/RelicsOthersAtlas.js';
+import { areAmuletsDisabled } from './utils/TestOptions.js';
 
 export class CardDataGenerator {
     constructor() {
@@ -93,6 +94,7 @@ export class CardDataGenerator {
         // (~2-3% of cards) so floor drops are a rare bonus; amulets should
         // mostly come from curated events instead.
         balanced.amulet = Math.min(floor >= 15 ? 6 : 4, Math.max(1, Math.floor((balanced.amulet || 0) * 0.4)));
+        if (areAmuletsDisabled()) balanced.amulet = 0;
         balanced.potion = Math.max(8, Math.floor((balanced.potion || 0) * 1.2));
         balanced.food = Math.max(19, Math.floor((balanced.food || 0) * 1.7));  // Bumped — players were starving for AP (~43% of actions while hungry); tuned for ~30% hunger
         balanced.magic = Math.max(5, Math.floor((balanced.magic || 0) * 1.25));
@@ -729,6 +731,7 @@ export class CardDataGenerator {
             case 'armor':
                 return this.createArmorCard(floor, targetRarity);
             case 'amulet':
+                if (areAmuletsDisabled()) return null;
                 return this.createAmuletCard(floor, gameState);
             case 'potion':
                 return this.createPotionCard(floor);

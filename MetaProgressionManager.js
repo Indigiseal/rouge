@@ -1,6 +1,7 @@
 // MetaProgressionManager.js
 
 import { getRelicAtlasPresentation } from './utils/RelicsOthersAtlas.js';
+import { isMetaProgressionDisabled } from './utils/TestOptions.js';
 
 export class MetaProgressionManager {
     constructor(scene) {
@@ -213,6 +214,8 @@ export class MetaProgressionManager {
     
     // Handle player death and grant appropriate relic
     handlePlayerDeath(killedBy, floor) {
+        if (isMetaProgressionDisabled()) return null;
+
         this.totalDeaths++;
         
         if (floor > this.bestFloor) {
@@ -316,8 +319,10 @@ export class MetaProgressionManager {
     
     // Apply all relic effects at the start of a run
     applyRelicEffects(gameState, applyStartingBonuses = true) {
-        const relics = this.getRelicDefinitions();
         gameState.relicEffects = {};
+        if (isMetaProgressionDisabled()) return;
+
+        const relics = this.getRelicDefinitions();
 
         // Veteran bonus: permanent max HP earned from deaths after the relic
         // pool ran dry (see handlePlayerDeath).

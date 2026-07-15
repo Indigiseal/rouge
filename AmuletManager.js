@@ -1,4 +1,5 @@
 import { getAmuletAtlasPresentation } from './utils/RelicsOthersAtlas.js';
+import { areAmuletsDisabled } from './utils/TestOptions.js';
 
 export class AmuletManager {
     constructor(scene) {
@@ -545,6 +546,8 @@ export class AmuletManager {
 
     // Add an amulet to the player
     addAmulet(amuletId) {
+        if (areAmuletsDisabled()) return false;
+
         const definition = this.amuletDefinitions[amuletId];
         if (!definition) return false;
         
