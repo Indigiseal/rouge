@@ -13,6 +13,7 @@ import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from './utils/Story
 import { isMetaProgressionDisabled } from './utils/TestOptions.js';
 import { loadVolumeSettings, saveVolumeSettings } from './utils/VolumeSettings.js';
 import { CombatSequencer } from './utils/CombatSequencer.js';
+import { isMetaProgressionDisabled } from './utils/TestOptions.js';
 
 // Gap between consecutive enemies' attacks. Derived from the sequencer's last
 // beat so it always clears one attacker's full timeline — retuning the beats

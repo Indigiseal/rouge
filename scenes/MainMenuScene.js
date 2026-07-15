@@ -11,6 +11,13 @@ import {
 import { MusicManager } from '../utils/MusicManager.js';
 import { SoundHelper } from '../utils/SoundHelper.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../utils/VolumeSettings.js';
+import {
+    attachTestOptionsToGame,
+    invalidateTestOptionsCache,
+    isTestOptionEnabled,
+    setTestOption,
+    TEST_OPTION_DEFS,
+} from '../utils/TestOptions.js';
 export class MainMenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainMenuScene' });
