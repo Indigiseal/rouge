@@ -1,0 +1,2915 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "dashboard",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "Sim Balance (single)",
+      "tooltip": "",
+      "type": "link",
+      "url": "/d/sim-balance/sim-balance"
+    }
+  ],
+  "panels": [
+    {
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "**Batch A** — baseline run (vivid bars). **Batch B** — comparison run (muted bars). Leave Batch B as *none* for single-batch view.\n\nColors: Batch A uses standard palette; Batch B uses desaturated shades of the same hues."
+      },
+      "title": "",
+      "type": "text"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "id": 7,
+      "panels": [],
+      "title": "Overview",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sim-sqlite"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "batch_a"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "batch_b"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#3D5A80",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 55
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 2
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "format": "table",
+          "queryText": "SELECT SUM(CASE WHEN batch_id = $batch_id THEN (1) END) AS batch_a,\n    CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN batch_id = $batch_id_b THEN (1) END) END AS batch_b FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b))",
+          "rawQueryText": "SELECT SUM(CASE WHEN batch_id = $batch_id THEN (1) END) AS batch_a,\n    CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN batch_id = $batch_id_b THEN (1) END) END AS batch_b FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b))",
+          "refId": "A"
+        }
+      ],
+      "title": "Runs",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sim-sqlite"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "green",
+                "value": 15
+              }
+            ]
+          },
+          "unit": "percent",
+          "max": 100,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "batch_a"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "batch_b"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#4A7346",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 55
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 2
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "format": "table",
+          "queryText": "SELECT ROUND(100.0 * SUM(CASE WHEN batch_id = $batch_id THEN won END) / NULLIF(COUNT(CASE WHEN batch_id = $batch_id THEN 1 END), 0), 1) AS batch_a,\n    CASE WHEN $batch_id_b > 0 THEN ROUND(100.0 * SUM(CASE WHEN batch_id = $batch_id_b THEN won END) / NULLIF(COUNT(CASE WHEN batch_id = $batch_id_b THEN 1 END), 0), 1) END AS batch_b FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b))",
+          "rawQueryText": "SELECT ROUND(100.0 * SUM(CASE WHEN batch_id = $batch_id THEN won END) / NULLIF(COUNT(CASE WHEN batch_id = $batch_id THEN 1 END), 0), 1) AS batch_a,\n    CASE WHEN $batch_id_b > 0 THEN ROUND(100.0 * SUM(CASE WHEN batch_id = $batch_id_b THEN won END) / NULLIF(COUNT(CASE WHEN batch_id = $batch_id_b THEN 1 END), 0), 1) END AS batch_b FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b))",
+          "refId": "A"
+        }
+      ],
+      "title": "Win rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sim-sqlite"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none",
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "batch_a"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "batch_b"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#3D5A80",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 55
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 2
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "format": "table",
+          "queryText": "SELECT ROUND(AVG(CASE WHEN batch_id = $batch_id THEN (reached_floor) END), 1) AS batch_a,\n    CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN batch_id = $batch_id_b THEN (reached_floor) END), 1) END AS batch_b FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b))",
+          "rawQueryText": "SELECT ROUND(AVG(CASE WHEN batch_id = $batch_id THEN (reached_floor) END), 1) AS batch_a,\n    CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN batch_id = $batch_id_b THEN (reached_floor) END), 1) END AS batch_b FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b))",
+          "refId": "A"
+        }
+      ],
+      "title": "Avg floor",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sim-sqlite"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "batch_a"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "batch_b"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#992D3A",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 55
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 2
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "showPercentChange": false,
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "format": "table",
+          "queryText": "SELECT SUM(CASE WHEN batch_id = $batch_id THEN (CASE WHEN died = 1 THEN 1 END) END) AS batch_a,\n    CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN batch_id = $batch_id_b THEN (CASE WHEN died = 1 THEN 1 END) END) END AS batch_b FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b))",
+          "rawQueryText": "SELECT SUM(CASE WHEN batch_id = $batch_id THEN (CASE WHEN died = 1 THEN 1 END) END) AS batch_a,\n    CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN batch_id = $batch_id_b THEN (CASE WHEN died = 1 THEN 1 END) END) END AS batch_b FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b))",
+          "refId": "A"
+        }
+      ],
+      "title": "Deaths",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sim-sqlite"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 75,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "batch_a"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "batch_b"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#3D5A80",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 55
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "label"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 2
+      },
+      "id": 6,
+      "options": {
+        "barRadius": 0.05,
+        "barWidth": 0.85,
+        "fullHighlight": false,
+        "groupWidth": 0.72,
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "horizontal",
+        "showValue": "never",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "label",
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 100
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "format": "table",
+          "queryText": "SELECT fv.encounter_type AS label,\n           SUM(CASE WHEN r.batch_id = $batch_id THEN 1 END) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN r.batch_id = $batch_id_b THEN 1 END) END AS batch_b\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b))\n         GROUP BY fv.encounter_type ORDER BY batch_a DESC",
+          "rawQueryText": "SELECT fv.encounter_type AS label,\n           SUM(CASE WHEN r.batch_id = $batch_id THEN 1 END) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN r.batch_id = $batch_id_b THEN 1 END) END AS batch_b\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b))\n         GROUP BY fv.encounter_type ORDER BY batch_a DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Encounter types",
+      "type": "barchart"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 15,
+      "panels": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_a"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794F2",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_b"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#3D5A80",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "label"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 1
+          },
+          "id": 8,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "orientation": "horizontal",
+            "showValue": "never",
+            "stacking": "none",
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "xField": "label",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "SELECT end_reason AS label,\n           SUM(CASE WHEN batch_id = $batch_id THEN 1 END) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN batch_id = $batch_id_b THEN 1 END) END AS batch_b\n         FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b)) AND end_reason IS NOT NULL\n         GROUP BY end_reason ORDER BY batch_a DESC",
+              "rawQueryText": "SELECT end_reason AS label,\n           SUM(CASE WHEN batch_id = $batch_id THEN 1 END) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN batch_id = $batch_id_b THEN 1 END) END AS batch_b\n         FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b)) AND end_reason IS NOT NULL\n         GROUP BY end_reason ORDER BY batch_a DESC",
+              "refId": "A"
+            }
+          ],
+          "title": "Run end reason",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_a"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794F2",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_b"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#3D5A80",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "floor"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 1
+          },
+          "id": 9,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [
+                "sum"
+              ],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "orientation": "auto",
+            "showValue": "never",
+            "stacking": "none",
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "xField": "floor",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "SELECT 'F' || reached_floor AS floor,\n           SUM(CASE WHEN batch_id = $batch_id THEN 1 END) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN batch_id = $batch_id_b THEN 1 END) END AS batch_b\n         FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b))\n         GROUP BY reached_floor ORDER BY reached_floor",
+              "rawQueryText": "SELECT 'F' || reached_floor AS floor,\n           SUM(CASE WHEN batch_id = $batch_id THEN 1 END) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN batch_id = $batch_id_b THEN 1 END) END AS batch_b\n         FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b))\n         GROUP BY reached_floor ORDER BY reached_floor",
+              "refId": "A"
+            }
+          ],
+          "title": "Last floor reached",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_a"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794F2",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_b"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#3D5A80",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "encounter"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 1
+          },
+          "id": 10,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "orientation": "horizontal",
+            "showValue": "never",
+            "stacking": "none",
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "xField": "encounter",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "SELECT COALESCE(death_encounter_type, 'unknown') AS encounter,\n           SUM(CASE WHEN batch_id = $batch_id THEN 1 END) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN batch_id = $batch_id_b THEN 1 END) END AS batch_b\n         FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b)) AND died = 1\n         GROUP BY death_encounter_type ORDER BY batch_a DESC",
+              "rawQueryText": "SELECT COALESCE(death_encounter_type, 'unknown') AS encounter,\n           SUM(CASE WHEN batch_id = $batch_id THEN 1 END) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN batch_id = $batch_id_b THEN 1 END) END AS batch_b\n         FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b)) AND died = 1\n         GROUP BY death_encounter_type ORDER BY batch_a DESC",
+              "refId": "A"
+            }
+          ],
+          "title": "Deaths by room type",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 9
+          },
+          "id": 11,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": []
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "WITH a AS (\n           SELECT reached_floor AS floor, COALESCE(death_encounter_type, 'unknown') AS encounter, COUNT(*) AS n\n           FROM sim_runs WHERE batch_id = $batch_id AND died = 1\n           GROUP BY reached_floor, death_encounter_type\n         ), b AS (\n           SELECT reached_floor AS floor, COALESCE(death_encounter_type, 'unknown') AS encounter, COUNT(*) AS n\n           FROM sim_runs WHERE $batch_id_b > 0 AND batch_id = $batch_id_b AND died = 1\n           GROUP BY reached_floor, death_encounter_type\n         )\n         SELECT 'F' || COALESCE(a.floor, b.floor) AS floor, COALESCE(a.encounter, b.encounter) AS encounter,\n           COALESCE(a.n, 0) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN COALESCE(b.n, 0) END AS batch_b,\n           CASE WHEN $batch_id_b > 0 THEN COALESCE(b.n, 0) - COALESCE(a.n, 0) END AS delta\n         FROM a LEFT JOIN b ON a.floor = b.floor AND a.encounter = b.encounter\n         ORDER BY floor, batch_a DESC LIMIT 200",
+              "rawQueryText": "WITH a AS (\n           SELECT reached_floor AS floor, COALESCE(death_encounter_type, 'unknown') AS encounter, COUNT(*) AS n\n           FROM sim_runs WHERE batch_id = $batch_id AND died = 1\n           GROUP BY reached_floor, death_encounter_type\n         ), b AS (\n           SELECT reached_floor AS floor, COALESCE(death_encounter_type, 'unknown') AS encounter, COUNT(*) AS n\n           FROM sim_runs WHERE $batch_id_b > 0 AND batch_id = $batch_id_b AND died = 1\n           GROUP BY reached_floor, death_encounter_type\n         )\n         SELECT 'F' || COALESCE(a.floor, b.floor) AS floor, COALESCE(a.encounter, b.encounter) AS encounter,\n           COALESCE(a.n, 0) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN COALESCE(b.n, 0) END AS batch_b,\n           CASE WHEN $batch_id_b > 0 THEN COALESCE(b.n, 0) - COALESCE(a.n, 0) END AS delta\n         FROM a LEFT JOIN b ON a.floor = b.floor AND a.encounter = b.encounter\n         ORDER BY floor, batch_a DESC LIMIT 200",
+              "refId": "A"
+            }
+          ],
+          "title": "Deaths: floor × room (batch A / B / delta)",
+          "type": "table"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_a"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794F2",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_b"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#3D5A80",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "floor"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 9
+          },
+          "id": 12,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "orientation": "auto",
+            "showValue": "never",
+            "stacking": "none",
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            },
+            "xField": "floor",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "WITH floors AS (\n           SELECT DISTINCT floor_number AS floor FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b))\n           UNION SELECT DISTINCT reached_floor AS floor FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b))\n         )\n         SELECT 'F' || f.floor AS floor,\n           (SELECT COUNT(*) FROM sim_runs r WHERE r.batch_id = $batch_id AND r.reached_floor >= f.floor) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN (SELECT COUNT(*) FROM sim_runs r WHERE r.batch_id = $batch_id_b AND r.reached_floor >= f.floor) END AS batch_b\n         FROM floors f ORDER BY f.floor",
+              "rawQueryText": "WITH floors AS (\n           SELECT DISTINCT floor_number AS floor FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b))\n           UNION SELECT DISTINCT reached_floor AS floor FROM sim_runs WHERE (batch_id = $batch_id OR ($batch_id_b > 0 AND batch_id = $batch_id_b))\n         )\n         SELECT 'F' || f.floor AS floor,\n           (SELECT COUNT(*) FROM sim_runs r WHERE r.batch_id = $batch_id AND r.reached_floor >= f.floor) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN (SELECT COUNT(*) FROM sim_runs r WHERE r.batch_id = $batch_id_b AND r.reached_floor >= f.floor) END AS batch_b\n         FROM floors f ORDER BY f.floor",
+              "refId": "A"
+            }
+          ],
+          "title": "Funnel: runs reaching floor",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_a"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794F2",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_b"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#3D5A80",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "floor"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 18
+          },
+          "id": 13,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "orientation": "auto",
+            "showValue": "never",
+            "stacking": "none",
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "xField": "floor",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "SELECT 'F' || fv.floor_number AS floor, ROUND(AVG(CASE WHEN r.batch_id = $batch_id THEN (MAX(0, fv.player_hp_start - fv.player_hp_end)) END), 1) AS batch_a,\n    CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN r.batch_id = $batch_id_b THEN (MAX(0, fv.player_hp_start - fv.player_hp_end)) END), 1) END AS batch_b\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b))\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "rawQueryText": "SELECT 'F' || fv.floor_number AS floor, ROUND(AVG(CASE WHEN r.batch_id = $batch_id THEN (MAX(0, fv.player_hp_start - fv.player_hp_end)) END), 1) AS batch_a,\n    CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN r.batch_id = $batch_id_b THEN (MAX(0, fv.player_hp_start - fv.player_hp_end)) END), 1) END AS batch_b\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b))\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "refId": "A"
+            }
+          ],
+          "title": "Avg player HP lost per visit",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 18
+          },
+          "id": 14,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": []
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "WITH a AS (SELECT end_reason, COUNT(*) AS n FROM sim_runs WHERE batch_id = $batch_id GROUP BY end_reason),\n         b AS (SELECT end_reason, COUNT(*) AS n FROM sim_runs WHERE $batch_id_b > 0 AND batch_id = $batch_id_b GROUP BY end_reason),\n         ta AS (SELECT COUNT(*) AS t FROM sim_runs WHERE batch_id = $batch_id),\n         tb AS (SELECT COUNT(*) AS t FROM sim_runs WHERE $batch_id_b > 0 AND batch_id = $batch_id_b)\n         SELECT COALESCE(a.end_reason, b.end_reason) AS end_reason,\n           COALESCE(a.n, 0) AS batch_a,\n           ROUND(100.0 * COALESCE(a.n, 0) / ta.t, 1) AS pct_a,\n           CASE WHEN $batch_id_b > 0 THEN COALESCE(b.n, 0) END AS batch_b,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(100.0 * COALESCE(b.n, 0) / tb.t, 1) END AS pct_b,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(100.0 * COALESCE(b.n, 0) / tb.t, 1) - ROUND(100.0 * COALESCE(a.n, 0) / ta.t, 1) END AS delta_pct\n         FROM a LEFT JOIN b ON a.end_reason = b.end_reason, ta, tb\n         ORDER BY batch_a DESC",
+              "rawQueryText": "WITH a AS (SELECT end_reason, COUNT(*) AS n FROM sim_runs WHERE batch_id = $batch_id GROUP BY end_reason),\n         b AS (SELECT end_reason, COUNT(*) AS n FROM sim_runs WHERE $batch_id_b > 0 AND batch_id = $batch_id_b GROUP BY end_reason),\n         ta AS (SELECT COUNT(*) AS t FROM sim_runs WHERE batch_id = $batch_id),\n         tb AS (SELECT COUNT(*) AS t FROM sim_runs WHERE $batch_id_b > 0 AND batch_id = $batch_id_b)\n         SELECT COALESCE(a.end_reason, b.end_reason) AS end_reason,\n           COALESCE(a.n, 0) AS batch_a,\n           ROUND(100.0 * COALESCE(a.n, 0) / ta.t, 1) AS pct_a,\n           CASE WHEN $batch_id_b > 0 THEN COALESCE(b.n, 0) END AS batch_b,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(100.0 * COALESCE(b.n, 0) / tb.t, 1) END AS pct_b,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(100.0 * COALESCE(b.n, 0) / tb.t, 1) - ROUND(100.0 * COALESCE(a.n, 0) / ta.t, 1) END AS delta_pct\n         FROM a LEFT JOIN b ON a.end_reason = b.end_reason, ta, tb\n         ORDER BY batch_a DESC",
+              "refId": "A"
+            }
+          ],
+          "title": "Run outcomes (A / B / delta %)",
+          "type": "table"
+        }
+      ],
+      "title": "1 · Deaths & progression",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "id": 23,
+      "panels": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "weapon_pips_start"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794F2",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "b_weapon_pips_start"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#3D5A80",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "enemy_hp_spawn"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#FF9830",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "b_enemy_hp_spawn"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#996026",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "floor"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 1
+          },
+          "id": 16,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "orientation": "auto",
+            "showValue": "never",
+            "stacking": "none",
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "xField": "floor",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(CASE WHEN r.batch_id = $batch_id THEN ws.start_pips END), 1) AS weapon_pips_start,\n           ROUND(AVG(CASE WHEN r.batch_id = $batch_id THEN es.enemy_hp END), 1) AS enemy_hp_spawn,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN r.batch_id = $batch_id_b THEN ws.start_pips END), 1) END AS b_weapon_pips_start,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN r.batch_id = $batch_id_b THEN es.enemy_hp END), 1) END AS b_enemy_hp_spawn\n         \n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         JOIN (SELECT floor_visit_id, SUM(pip_output) AS start_pips FROM sim_weapon_snapshots WHERE phase = 'start' GROUP BY floor_visit_id) ws ON ws.floor_visit_id = fv.id\n         JOIN (SELECT floor_visit_id, SUM(health) AS enemy_hp FROM sim_enemy_spawns GROUP BY floor_visit_id) es ON es.floor_visit_id = fv.id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b)) AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "rawQueryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(CASE WHEN r.batch_id = $batch_id THEN ws.start_pips END), 1) AS weapon_pips_start,\n           ROUND(AVG(CASE WHEN r.batch_id = $batch_id THEN es.enemy_hp END), 1) AS enemy_hp_spawn,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN r.batch_id = $batch_id_b THEN ws.start_pips END), 1) END AS b_weapon_pips_start,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN r.batch_id = $batch_id_b THEN es.enemy_hp END), 1) END AS b_enemy_hp_spawn\n         \n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         JOIN (SELECT floor_visit_id, SUM(pip_output) AS start_pips FROM sim_weapon_snapshots WHERE phase = 'start' GROUP BY floor_visit_id) ws ON ws.floor_visit_id = fv.id\n         JOIN (SELECT floor_visit_id, SUM(health) AS enemy_hp FROM sim_enemy_spawns GROUP BY floor_visit_id) es ON es.floor_visit_id = fv.id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b)) AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "refId": "A"
+            }
+          ],
+          "title": "Weapon pips vs enemy HP (combat start)",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "pips_start"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73BF69",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "b_pips_start"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#4A7346",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "pips_end"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#FADE2A",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "b_pips_end"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#96901A",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "floor"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 1
+          },
+          "id": 17,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "orientation": "auto",
+            "showValue": "never",
+            "stacking": "none",
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "xField": "floor",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(CASE WHEN r.batch_id = $batch_id THEN ws.start_pips END), 1) AS pips_start,\n           ROUND(AVG(CASE WHEN r.batch_id = $batch_id THEN we.end_pips END), 1) AS pips_end,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN r.batch_id = $batch_id_b THEN ws.start_pips END), 1) END AS b_pips_start,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN r.batch_id = $batch_id_b THEN we.end_pips END), 1) END AS b_pips_end\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         JOIN (SELECT floor_visit_id, SUM(pip_output) AS start_pips FROM sim_weapon_snapshots WHERE phase = 'start' GROUP BY floor_visit_id) ws ON ws.floor_visit_id = fv.id\n         JOIN (SELECT floor_visit_id, SUM(pip_output) AS end_pips FROM sim_weapon_snapshots WHERE phase = 'end' GROUP BY floor_visit_id) we ON we.floor_visit_id = fv.id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b)) AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "rawQueryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(CASE WHEN r.batch_id = $batch_id THEN ws.start_pips END), 1) AS pips_start,\n           ROUND(AVG(CASE WHEN r.batch_id = $batch_id THEN we.end_pips END), 1) AS pips_end,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN r.batch_id = $batch_id_b THEN ws.start_pips END), 1) END AS b_pips_start,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN r.batch_id = $batch_id_b THEN we.end_pips END), 1) END AS b_pips_end\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         JOIN (SELECT floor_visit_id, SUM(pip_output) AS start_pips FROM sim_weapon_snapshots WHERE phase = 'start' GROUP BY floor_visit_id) ws ON ws.floor_visit_id = fv.id\n         JOIN (SELECT floor_visit_id, SUM(pip_output) AS end_pips FROM sim_weapon_snapshots WHERE phase = 'end' GROUP BY floor_visit_id) we ON we.floor_visit_id = fv.id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b)) AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "refId": "A"
+            }
+          ],
+          "title": "Weapon pips: floor start vs end",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "max": 100,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_a"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73BF69",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_b"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#4A7346",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "floor"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 10
+          },
+          "id": 18,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "orientation": "auto",
+            "showValue": "always",
+            "stacking": "none",
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "xField": "floor",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(100.0 * SUM(CASE WHEN r.batch_id = $batch_id AND ws.start_pips >= es.enemy_hp THEN 1 ELSE 0 END)\n             / NULLIF(SUM(CASE WHEN r.batch_id = $batch_id THEN 1 END), 0), 1) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(100.0 * SUM(CASE WHEN r.batch_id = $batch_id_b AND ws.start_pips >= es.enemy_hp THEN 1 ELSE 0 END)\n             / NULLIF(SUM(CASE WHEN r.batch_id = $batch_id_b THEN 1 END), 0), 1) END AS batch_b\n         \n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         JOIN (SELECT floor_visit_id, SUM(pip_output) AS start_pips FROM sim_weapon_snapshots WHERE phase = 'start' GROUP BY floor_visit_id) ws ON ws.floor_visit_id = fv.id\n         JOIN (SELECT floor_visit_id, SUM(health) AS enemy_hp FROM sim_enemy_spawns GROUP BY floor_visit_id) es ON es.floor_visit_id = fv.id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b)) AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "rawQueryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(100.0 * SUM(CASE WHEN r.batch_id = $batch_id AND ws.start_pips >= es.enemy_hp THEN 1 ELSE 0 END)\n             / NULLIF(SUM(CASE WHEN r.batch_id = $batch_id THEN 1 END), 0), 1) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(100.0 * SUM(CASE WHEN r.batch_id = $batch_id_b AND ws.start_pips >= es.enemy_hp THEN 1 ELSE 0 END)\n             / NULLIF(SUM(CASE WHEN r.batch_id = $batch_id_b THEN 1 END), 0), 1) END AS batch_b\n         \n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         JOIN (SELECT floor_visit_id, SUM(pip_output) AS start_pips FROM sim_weapon_snapshots WHERE phase = 'start' GROUP BY floor_visit_id) ws ON ws.floor_visit_id = fv.id\n         JOIN (SELECT floor_visit_id, SUM(health) AS enemy_hp FROM sim_enemy_spawns GROUP BY floor_visit_id) es ON es.floor_visit_id = fv.id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b)) AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "refId": "A"
+            }
+          ],
+          "title": "Can clear room (pips ≥ HP) %",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "damage_effective"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#73BF69",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "damage_wasted"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#F2495C",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "floor"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 8,
+            "y": 10
+          },
+          "id": 19,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "orientation": "auto",
+            "showValue": "never",
+            "stacking": "normal",
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "xField": "floor",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(fv.combat_damage_dealt - fv.combat_damage_wasted), 1) AS damage_effective,\n           ROUND(AVG(fv.combat_damage_wasted), 1) AS damage_wasted\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE r.batch_id = $batch_id AND fv.combat_damage_dealt IS NOT NULL\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "rawQueryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(fv.combat_damage_dealt - fv.combat_damage_wasted), 1) AS damage_effective,\n           ROUND(AVG(fv.combat_damage_wasted), 1) AS damage_wasted\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE r.batch_id = $batch_id AND fv.combat_damage_dealt IS NOT NULL\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "refId": "A"
+            }
+          ],
+          "title": "Combat damage A: effective vs overkill",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "damage_effective"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#4A7346",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "damage_wasted"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#992D3A",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "floor"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 14,
+            "y": 10
+          },
+          "id": 20,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "orientation": "auto",
+            "showValue": "never",
+            "stacking": "normal",
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "xField": "floor",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(fv.combat_damage_dealt - fv.combat_damage_wasted), 1) AS damage_effective,\n           ROUND(AVG(fv.combat_damage_wasted), 1) AS damage_wasted\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE $batch_id_b > 0 AND r.batch_id = $batch_id_b AND fv.combat_damage_dealt IS NOT NULL\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "rawQueryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(fv.combat_damage_dealt - fv.combat_damage_wasted), 1) AS damage_effective,\n           ROUND(AVG(fv.combat_damage_wasted), 1) AS damage_wasted\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE $batch_id_b > 0 AND r.batch_id = $batch_id_b AND fv.combat_damage_dealt IS NOT NULL\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "refId": "A"
+            }
+          ],
+          "title": "Combat damage B: effective vs overkill",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "max": 100,
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_a"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#F2495C",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_b"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#992D3A",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "floor"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 10
+          },
+          "id": 21,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "orientation": "auto",
+            "showValue": "always",
+            "stacking": "none",
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "xField": "floor",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(100.0 * SUM(CASE WHEN r.batch_id = $batch_id THEN fv.combat_damage_wasted END)\n             / NULLIF(SUM(CASE WHEN r.batch_id = $batch_id THEN fv.combat_damage_dealt END), 0), 1) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(100.0 * SUM(CASE WHEN r.batch_id = $batch_id_b THEN fv.combat_damage_wasted END)\n             / NULLIF(SUM(CASE WHEN r.batch_id = $batch_id_b THEN fv.combat_damage_dealt END), 0), 1) END AS batch_b\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b)) AND fv.combat_damage_dealt IS NOT NULL\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "rawQueryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(100.0 * SUM(CASE WHEN r.batch_id = $batch_id THEN fv.combat_damage_wasted END)\n             / NULLIF(SUM(CASE WHEN r.batch_id = $batch_id THEN fv.combat_damage_dealt END), 0), 1) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(100.0 * SUM(CASE WHEN r.batch_id = $batch_id_b THEN fv.combat_damage_wasted END)\n             / NULLIF(SUM(CASE WHEN r.batch_id = $batch_id_b THEN fv.combat_damage_dealt END), 0), 1) END AS batch_b\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b)) AND fv.combat_damage_dealt IS NOT NULL\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "refId": "A"
+            }
+          ],
+          "title": "Overkill % of damage dealt",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 18
+          },
+          "id": 22,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": []
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "WITH a AS (\n           SELECT fv.floor_number AS floor,\n             ROUND(AVG(ws.start_pips), 1) AS start_pips, ROUND(AVG(es.enemy_hp), 1) AS enemy_hp,\n             ROUND(AVG(fv.combat_damage_wasted), 1) AS overkill\n           FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n           LEFT JOIN (SELECT floor_visit_id, SUM(pip_output) AS start_pips FROM sim_weapon_snapshots WHERE phase = 'start' GROUP BY floor_visit_id) ws ON ws.floor_visit_id = fv.id\n           LEFT JOIN (SELECT floor_visit_id, SUM(health) AS enemy_hp FROM sim_enemy_spawns GROUP BY floor_visit_id) es ON es.floor_visit_id = fv.id\n           WHERE r.batch_id = $batch_id AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')\n           GROUP BY fv.floor_number\n         ), b AS (\n           SELECT fv.floor_number AS floor,\n             ROUND(AVG(ws.start_pips), 1) AS start_pips, ROUND(AVG(es.enemy_hp), 1) AS enemy_hp,\n             ROUND(AVG(fv.combat_damage_wasted), 1) AS overkill\n           FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n           LEFT JOIN (SELECT floor_visit_id, SUM(pip_output) AS start_pips FROM sim_weapon_snapshots WHERE phase = 'start' GROUP BY floor_visit_id) ws ON ws.floor_visit_id = fv.id\n           LEFT JOIN (SELECT floor_visit_id, SUM(health) AS enemy_hp FROM sim_enemy_spawns GROUP BY floor_visit_id) es ON es.floor_visit_id = fv.id\n           WHERE $batch_id_b > 0 AND r.batch_id = $batch_id_b AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')\n           GROUP BY fv.floor_number\n         )\n         SELECT 'F' || COALESCE(a.floor, b.floor) AS floor,\n           a.start_pips AS a_pips, CASE WHEN $batch_id_b > 0 THEN b.start_pips END AS b_pips,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(b.start_pips - a.start_pips, 1) END AS d_pips,\n           a.enemy_hp AS a_hp, CASE WHEN $batch_id_b > 0 THEN b.enemy_hp END AS b_hp,\n           a.overkill AS a_overkill, CASE WHEN $batch_id_b > 0 THEN b.overkill END AS b_overkill\n         FROM a LEFT JOIN b ON a.floor = b.floor ORDER BY floor LIMIT 45",
+              "rawQueryText": "WITH a AS (\n           SELECT fv.floor_number AS floor,\n             ROUND(AVG(ws.start_pips), 1) AS start_pips, ROUND(AVG(es.enemy_hp), 1) AS enemy_hp,\n             ROUND(AVG(fv.combat_damage_wasted), 1) AS overkill\n           FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n           LEFT JOIN (SELECT floor_visit_id, SUM(pip_output) AS start_pips FROM sim_weapon_snapshots WHERE phase = 'start' GROUP BY floor_visit_id) ws ON ws.floor_visit_id = fv.id\n           LEFT JOIN (SELECT floor_visit_id, SUM(health) AS enemy_hp FROM sim_enemy_spawns GROUP BY floor_visit_id) es ON es.floor_visit_id = fv.id\n           WHERE r.batch_id = $batch_id AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')\n           GROUP BY fv.floor_number\n         ), b AS (\n           SELECT fv.floor_number AS floor,\n             ROUND(AVG(ws.start_pips), 1) AS start_pips, ROUND(AVG(es.enemy_hp), 1) AS enemy_hp,\n             ROUND(AVG(fv.combat_damage_wasted), 1) AS overkill\n           FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n           LEFT JOIN (SELECT floor_visit_id, SUM(pip_output) AS start_pips FROM sim_weapon_snapshots WHERE phase = 'start' GROUP BY floor_visit_id) ws ON ws.floor_visit_id = fv.id\n           LEFT JOIN (SELECT floor_visit_id, SUM(health) AS enemy_hp FROM sim_enemy_spawns GROUP BY floor_visit_id) es ON es.floor_visit_id = fv.id\n           WHERE $batch_id_b > 0 AND r.batch_id = $batch_id_b AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')\n           GROUP BY fv.floor_number\n         )\n         SELECT 'F' || COALESCE(a.floor, b.floor) AS floor,\n           a.start_pips AS a_pips, CASE WHEN $batch_id_b > 0 THEN b.start_pips END AS b_pips,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(b.start_pips - a.start_pips, 1) END AS d_pips,\n           a.enemy_hp AS a_hp, CASE WHEN $batch_id_b > 0 THEN b.enemy_hp END AS b_hp,\n           a.overkill AS a_overkill, CASE WHEN $batch_id_b > 0 THEN b.overkill END AS b_overkill\n         FROM a LEFT JOIN b ON a.floor = b.floor ORDER BY floor LIMIT 45",
+              "refId": "A"
+            }
+          ],
+          "title": "Combats by floor (A / B / delta)",
+          "type": "table"
+        }
+      ],
+      "title": "2 · Weapons & damage",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "id": 27,
+      "panels": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_a"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#5794F2",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_b"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#3D5A80",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "label"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 1
+          },
+          "id": 24,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "orientation": "horizontal",
+            "showValue": "never",
+            "stacking": "none",
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "xField": "label",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "SELECT COALESCE(e.enemy_type, 'unknown') AS label,\n           SUM(CASE WHEN r.batch_id = $batch_id THEN 1 END) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN r.batch_id = $batch_id_b THEN 1 END) END AS batch_b\n         FROM sim_enemy_spawns e\n         JOIN sim_floor_visits fv ON fv.id = e.floor_visit_id\n         JOIN sim_runs r ON r.id = fv.run_id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b))\n         GROUP BY e.enemy_type ORDER BY batch_a DESC",
+              "rawQueryText": "SELECT COALESCE(e.enemy_type, 'unknown') AS label,\n           SUM(CASE WHEN r.batch_id = $batch_id THEN 1 END) AS batch_a,\n           CASE WHEN $batch_id_b > 0 THEN SUM(CASE WHEN r.batch_id = $batch_id_b THEN 1 END) END AS batch_b\n         FROM sim_enemy_spawns e\n         JOIN sim_floor_visits fv ON fv.id = e.floor_visit_id\n         JOIN sim_runs r ON r.id = fv.run_id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b))\n         GROUP BY e.enemy_type ORDER BY batch_a DESC",
+              "refId": "A"
+            }
+          ],
+          "title": "Enemy types at spawn",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "fillOpacity": 75,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineWidth": 1,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_a"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#FF9830",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 85
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "batch_b"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "#996026",
+                      "mode": "fixed"
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 55
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "floor"
+                },
+                "properties": [
+                  {
+                    "id": "custom.hideFrom",
+                    "value": {
+                      "legend": true,
+                      "tooltip": false,
+                      "viz": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 16,
+            "x": 8,
+            "y": 1
+          },
+          "id": 25,
+          "options": {
+            "barRadius": 0.05,
+            "barWidth": 0.85,
+            "fullHighlight": false,
+            "groupWidth": 0.72,
+            "legend": {
+              "calcs": [],
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "orientation": "auto",
+            "showValue": "never",
+            "stacking": "none",
+            "tooltip": {
+              "mode": "multi",
+              "sort": "none"
+            },
+            "xField": "floor",
+            "xTickLabelRotation": -45,
+            "xTickLabelSpacing": 100
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "SELECT 'F' || fv.floor_number AS floor, ROUND(AVG(CASE WHEN r.batch_id = $batch_id THEN (tot.hp) END), 1) AS batch_a,\n    CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN r.batch_id = $batch_id_b THEN (tot.hp) END), 1) END AS batch_b\n         FROM (SELECT e.floor_visit_id, SUM(e.health) AS hp FROM sim_enemy_spawns e GROUP BY e.floor_visit_id) tot\n         JOIN sim_floor_visits fv ON fv.id = tot.floor_visit_id\n         JOIN sim_runs r ON r.id = fv.run_id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b))\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "rawQueryText": "SELECT 'F' || fv.floor_number AS floor, ROUND(AVG(CASE WHEN r.batch_id = $batch_id THEN (tot.hp) END), 1) AS batch_a,\n    CASE WHEN $batch_id_b > 0 THEN ROUND(AVG(CASE WHEN r.batch_id = $batch_id_b THEN (tot.hp) END), 1) END AS batch_b\n         FROM (SELECT e.floor_visit_id, SUM(e.health) AS hp FROM sim_enemy_spawns e GROUP BY e.floor_visit_id) tot\n         JOIN sim_floor_visits fv ON fv.id = tot.floor_visit_id\n         JOIN sim_runs r ON r.id = fv.run_id\n         WHERE (r.batch_id = $batch_id OR ($batch_id_b > 0 AND r.batch_id = $batch_id_b))\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+              "refId": "A"
+            }
+          ],
+          "title": "Avg enemy HP at spawn by floor",
+          "type": "barchart"
+        },
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                },
+                "inspect": false
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 11,
+            "w": 24,
+            "x": 0,
+            "y": 9
+          },
+          "id": 26,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": [
+                "sum"
+              ],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": []
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "frser-sqlite-datasource",
+                "uid": "sim-sqlite"
+              },
+              "format": "table",
+              "queryText": "WITH a AS (\n           SELECT fv.floor_number AS floor, COALESCE(e.name, e.enemy_type) AS enemy,\n             COUNT(*) AS spawns, ROUND(AVG(e.health), 1) AS avg_hp, ROUND(AVG(e.attack), 1) AS avg_atk\n           FROM sim_enemy_spawns e JOIN sim_floor_visits fv ON fv.id = e.floor_visit_id JOIN sim_runs r ON r.id = fv.run_id\n           WHERE r.batch_id = $batch_id\n           GROUP BY fv.floor_number, COALESCE(e.name, e.enemy_type)\n         ), b AS (\n           SELECT fv.floor_number AS floor, COALESCE(e.name, e.enemy_type) AS enemy,\n             COUNT(*) AS spawns, ROUND(AVG(e.health), 1) AS avg_hp, ROUND(AVG(e.attack), 1) AS avg_atk\n           FROM sim_enemy_spawns e JOIN sim_floor_visits fv ON fv.id = e.floor_visit_id JOIN sim_runs r ON r.id = fv.run_id\n           WHERE $batch_id_b > 0 AND r.batch_id = $batch_id_b\n           GROUP BY fv.floor_number, COALESCE(e.name, e.enemy_type)\n         )\n         SELECT 'F' || COALESCE(a.floor, b.floor) AS floor, COALESCE(a.enemy, b.enemy) AS enemy,\n           a.spawns AS a_spawns, CASE WHEN $batch_id_b > 0 THEN b.spawns END AS b_spawns,\n           a.avg_hp AS a_hp, CASE WHEN $batch_id_b > 0 THEN b.avg_hp END AS b_hp,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(b.avg_hp - a.avg_hp, 1) END AS d_hp,\n           a.avg_atk AS a_atk, CASE WHEN $batch_id_b > 0 THEN b.avg_atk END AS b_atk\n         FROM a LEFT JOIN b ON a.floor = b.floor AND a.enemy = b.enemy\n         ORDER BY floor, a_spawns DESC LIMIT 200",
+              "rawQueryText": "WITH a AS (\n           SELECT fv.floor_number AS floor, COALESCE(e.name, e.enemy_type) AS enemy,\n             COUNT(*) AS spawns, ROUND(AVG(e.health), 1) AS avg_hp, ROUND(AVG(e.attack), 1) AS avg_atk\n           FROM sim_enemy_spawns e JOIN sim_floor_visits fv ON fv.id = e.floor_visit_id JOIN sim_runs r ON r.id = fv.run_id\n           WHERE r.batch_id = $batch_id\n           GROUP BY fv.floor_number, COALESCE(e.name, e.enemy_type)\n         ), b AS (\n           SELECT fv.floor_number AS floor, COALESCE(e.name, e.enemy_type) AS enemy,\n             COUNT(*) AS spawns, ROUND(AVG(e.health), 1) AS avg_hp, ROUND(AVG(e.attack), 1) AS avg_atk\n           FROM sim_enemy_spawns e JOIN sim_floor_visits fv ON fv.id = e.floor_visit_id JOIN sim_runs r ON r.id = fv.run_id\n           WHERE $batch_id_b > 0 AND r.batch_id = $batch_id_b\n           GROUP BY fv.floor_number, COALESCE(e.name, e.enemy_type)\n         )\n         SELECT 'F' || COALESCE(a.floor, b.floor) AS floor, COALESCE(a.enemy, b.enemy) AS enemy,\n           a.spawns AS a_spawns, CASE WHEN $batch_id_b > 0 THEN b.spawns END AS b_spawns,\n           a.avg_hp AS a_hp, CASE WHEN $batch_id_b > 0 THEN b.avg_hp END AS b_hp,\n           CASE WHEN $batch_id_b > 0 THEN ROUND(b.avg_hp - a.avg_hp, 1) END AS d_hp,\n           a.avg_atk AS a_atk, CASE WHEN $batch_id_b > 0 THEN b.avg_atk END AS b_atk\n         FROM a LEFT JOIN b ON a.floor = b.floor AND a.enemy = b.enemy\n         ORDER BY floor, a_spawns DESC LIMIT 200",
+              "refId": "A"
+            }
+          ],
+          "title": "Summary: floor × enemy (A / B avg HP / delta)",
+          "type": "table"
+        }
+      ],
+      "title": "3 · Monsters",
+      "type": "row"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "sim",
+    "balance",
+    "compare"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "sim-sqlite"
+        },
+        "definition": "SELECT b.id AS __value, COALESCE(NULLIF(TRIM(b.label), ''), 'run #' || b.id)\n  || ' ('\n  || CASE b.mode\n       WHEN 'balance' THEN 'balance: no meta/amulets'\n       WHEN 'fresh' THEN 'fresh: clean start'\n       WHEN 'geared' THEN 'geared: all relics'\n       WHEN 'accumulate' THEN 'accumulate: career meta'\n       ELSE b.mode\n     END\n  || ', ' || b.runs_completed || ' runs)' AS __text FROM sim_batches b ORDER BY b.id DESC",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Batch A",
+        "multi": false,
+        "name": "batch_id",
+        "options": [],
+        "query": "SELECT b.id AS __value, COALESCE(NULLIF(TRIM(b.label), ''), 'run #' || b.id)\n  || ' ('\n  || CASE b.mode\n       WHEN 'balance' THEN 'balance: no meta/amulets'\n       WHEN 'fresh' THEN 'fresh: clean start'\n       WHEN 'geared' THEN 'geared: all relics'\n       WHEN 'accumulate' THEN 'accumulate: career meta'\n       ELSE b.mode\n     END\n  || ', ' || b.runs_completed || ' runs)' AS __text FROM sim_batches b ORDER BY b.id DESC",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "— none (single batch) —",
+          "value": "0"
+        },
+        "datasource": {
+          "type": "frser-sqlite-datasource",
+          "uid": "sim-sqlite"
+        },
+        "definition": "SELECT * FROM (\n  SELECT 0 AS __value, '— none (single batch) —' AS __text\n  UNION ALL\n  SELECT b.id AS __value, COALESCE(NULLIF(TRIM(b.label), ''), 'run #' || b.id)\n  || ' ('\n  || CASE b.mode\n       WHEN 'balance' THEN 'balance: no meta/amulets'\n       WHEN 'fresh' THEN 'fresh: clean start'\n       WHEN 'geared' THEN 'geared: all relics'\n       WHEN 'accumulate' THEN 'accumulate: career meta'\n       ELSE b.mode\n     END\n  || ', ' || b.runs_completed || ' runs)' AS __text FROM sim_batches b\n) ORDER BY __value DESC",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Batch B",
+        "multi": false,
+        "name": "batch_id_b",
+        "options": [],
+        "query": "SELECT * FROM (\n  SELECT 0 AS __value, '— none (single batch) —' AS __text\n  UNION ALL\n  SELECT b.id AS __value, COALESCE(NULLIF(TRIM(b.label), ''), 'run #' || b.id)\n  || ' ('\n  || CASE b.mode\n       WHEN 'balance' THEN 'balance: no meta/amulets'\n       WHEN 'fresh' THEN 'fresh: clean start'\n       WHEN 'geared' THEN 'geared: all relics'\n       WHEN 'accumulate' THEN 'accumulate: career meta'\n       ELSE b.mode\n     END\n  || ', ' || b.runs_completed || ' runs)' AS __text FROM sim_batches b\n) ORDER BY __value DESC",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "timezone": "browser",
+  "title": "Sim Balance Compare",
+  "uid": "sim-balance-compare",
+  "version": 3,
+  "weekStart": ""
+}

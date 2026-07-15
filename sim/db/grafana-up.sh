@@ -21,7 +21,12 @@ pull_with_retry() {
 pull_with_retry
 "${COMPOSE[@]}" up -d
 
+node "$ROOT/sim/db/grafana/build-dashboard.mjs" 2>/dev/null || true
+node "$ROOT/sim/db/grafana/build-compare-dashboard.mjs" 2>/dev/null || true
+
 echo ""
 echo "Grafana: http://localhost:3030"
 echo "Login:   admin / admin"
-echo "Dashboard: Sim Balance (выбери batch_id вверху)"
+echo "Dashboards:"
+echo "  Sim Balance         — single batch"
+echo "  Sim Balance Compare — A vs B (Batch B optional)"

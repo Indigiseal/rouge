@@ -3,6 +3,7 @@ import { CardDataGenerator } from './CardDataGenerator.js';
 import { SoundHelper } from './utils/SoundHelper.js';
 import { showItemTooltip, hideItemTooltip, showBossTooltip } from './utils/ItemTooltip.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
+import { minEnemyRatioForFloor } from './sim/balance-knobs.js';
 
 export class CardSystem {
     constructor(scene) {
@@ -1733,10 +1734,7 @@ export class CardSystem {
       // Sim showed the old 12/16% ratios let the player kill a few enemies
       // then loot the rest of the board — way too easy. Act 2 jumps to 35%
       // and act 3 to 45%, so most cards on the board are fights.
-      const minRatio =
-          floor <= 15 ? 0.18 :   // act 1 — gentle
-          floor <= 30 ? 0.28 :   // act 2 — fights become majority
-                        0.33;    // act 3 — pressure without wall
+      const minRatio = minEnemyRatioForFloor(floor);
       const bonus = roomType === 'ELITE' ? 1 : 0;
       const minEnemies = Math.max(2, Math.round(this.boardCards.length * minRatio) + bonus);
       const isEnemy = (c) => this.isEnemyType(c?.data?.type);

@@ -1,12 +1,13 @@
 import { SoundHelper } from './utils/SoundHelper.js';
+import { KNOBS } from './sim/balance-knobs.js';
 
 export class GameState {
     constructor(scene) {
         this.scene = scene;
         // Bumped from 100 to 115 — act 1 was killing players too often before
         // they could find armor or gems. Extra buffer covers the early ramp.
-        this.playerHealth = 115;
-        this.maxHealth = 115;
+        this.playerHealth = KNOBS.playerStartHp;
+        this.maxHealth = KNOBS.playerStartHp;
         this.coins = 0;
         this.crystals = 0;
         this.activeAmulets = [];

@@ -398,7 +398,9 @@ const dashboard = {
   fiscalYearStartMonth: 0,
   graphTooltip: 1,
   id: null,
-  links: [],
+  links: [
+    { asDropdown: false, icon: 'dashboard', includeVars: false, keepTime: true, tags: [], targetBlank: false, title: 'Compare A vs B', tooltip: '', type: 'link', url: '/d/sim-balance-compare/sim-balance-compare' },
+  ],
   panels,
   refresh: '30s',
   schemaVersion: 39,

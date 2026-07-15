@@ -1,5 +1,6 @@
 import { getAmuletAtlasPresentation } from './utils/RelicsOthersAtlas.js';
 import { areAmuletsDisabled } from './utils/TestOptions.js';
+import { KNOBS, enemyHpScale, enemyAtkScale, globalCombatMult, postBossWeaponFloor, actForFloor } from './sim/balance-knobs.js';
 
 export class CardDataGenerator {
     constructor() {
@@ -82,13 +83,26 @@ export class CardDataGenerator {
         const balanced = { ...weights };
         const weaponMinimum = floor >= 31 ? 12 : floor >= 18 ? 11 : floor >= 11 ? 9 : 7;
         const weaponBoost = floor >= 31 ? 4 : floor >= 18 ? 3 : floor >= 11 ? 1 : 0;
+        const postBossMin = postBossWeaponFloor(floor) ? KNOBS.postBossWeaponMin : 0;
+        const postBossBoost = postBossWeaponFloor(floor) ? KNOBS.postBossWeaponBoost : 0;
+        const inAct2 = actForFloor(floor) === 'act2';
+        const act2WeaponScale = inAct2 ? (KNOBS.act2WeaponMult ?? 1) : 1;
+        const weaponMinBonus = inAct2
+            ? Math.max(0, Math.floor((KNOBS.weaponMinBonus ?? 0) * (KNOBS.act2WeaponMinFactor ?? 0.35)))
+            : (KNOBS.weaponMinBonus ?? 0);
 
-        const enemyMultiplier = floor <= 14 ? 0.68 : 0.78; // back to original; enemy MINIMUM now guarantees fights
-        balanced.enemy = Math.max(20, Math.floor((balanced.enemy || 0) * enemyMultiplier));
+        const enemyMultiplier = floor <= 14 ? 0.68 : 0.78;
+        balanced.enemy = Math.max(20, Math.floor((balanced.enemy || 0) * enemyMultiplier * (inAct2 ? (KNOBS.act2EnemyWeightMult ?? 1) : 1)));
         balanced.coin = Math.max(1, Math.floor((balanced.coin || 0) * 0.25));
         balanced.trap = Math.max(3, Math.floor((balanced.trap || 0) * 0.75));
-        balanced.weapon = Math.max(weaponMinimum, Math.floor((balanced.weapon || 0) * 0.95) + weaponBoost);
-        balanced.armor = Math.max(floor >= 18 ? 12 : 10, Math.ceil((balanced.armor || 0) * 1.15));
+        balanced.weapon = Math.max(
+            weaponMinimum + weaponMinBonus + postBossMin,
+            Math.floor((balanced.weapon || 0) * 0.95 * KNOBS.weaponWeightMult * act2WeaponScale) + weaponBoost + postBossBoost
+        );
+        balanced.armor = Math.max(
+            floor >= 18 ? 12 : 10,
+            Math.ceil((balanced.armor || 0) * 1.15 * KNOBS.armorWeightMult)
+        );
         // Amulets were flooding the late game (~22% of cards, 4-5 per floor),
         // which trivialized runs once you stacked a dozen+. Cut the weight hard
         // (~2-3% of cards) so floor drops are a rare bonus; amulets should
@@ -768,7 +782,13 @@ export class CardDataGenerator {
         const id = pool[Math.floor(Math.random() * pool.length)];
         // Deep-copy so per-fight mutations (health dropping, rage flag) never corrupt
         // the shared template for the next spawn/run.
-        return JSON.parse(JSON.stringify(this.bossData[id]));
+        const boss = JSON.parse(JSON.stringify(this.bossData[id]));
+        const bossHpMult = act === 2 ? KNOBS.bossHp * (KNOBS.bossHpAct2Mult ?? 1)
+            : act === 3 ? KNOBS.bossHp * (KNOBS.bossHpAct3Mult ?? 1)
+            : KNOBS.bossHp;
+        boss.health = Math.ceil(boss.health * bossHpMult);
+        boss.attack = Math.ceil(boss.attack * KNOBS.bossAtk);
+        return boss;
     }
 
     // Enemy types that only ever appear via a boss's 'summon' ability
@@ -812,13 +832,14 @@ export class CardDataGenerator {
         // Global difficulty scaling — the game was too soft (fresh, relic-less
         // runs could win, violating the "die ≥3 times to earn relics" design).
         // Enemies hit harder and are a bit tankier.
-        const ATK_MULT = floor >= 16 ? 1.05 : 1.0;
-        const HP_MULT = floor >= 16 ? 1.05 : 1.0;
+        const global = globalCombatMult(floor);
+        const hpMult = global.hp * enemyHpScale(floor);
+        const atkMult = global.atk * enemyAtkScale(floor);
         const enemyCard = {
             type: 'enemy',
             name: enemy.name,
-            health: Math.ceil(selectedTier.health * HP_MULT),
-            attack: Math.ceil(selectedTier.damage * ATK_MULT),
+            health: Math.ceil(selectedTier.health * hpMult),
+            attack: Math.ceil(selectedTier.damage * atkMult),
             sprite: enemy.sprite,
             role: enemy.role || 'MELEE', // Default to MELEE if role is missing
             // Intrinsic ranged flag from the enemy TYPE (archers). The board later
@@ -1127,7 +1148,7 @@ export class CardDataGenerator {
             type: 'armor',
             name: `${rarityName} ${armorName} Armor`,
             armorType: selected.type,
-            protection: selected.protection,
+            protection: selected.protection + KNOBS.armorProtectionBonus,
             dodgeChance: selected.dodgeChance,
             rarity: selected.rarity,
             sprite: selected.sprite,
