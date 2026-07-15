@@ -1,5 +1,6 @@
 import { KNOBS } from './sim/balance-knobs.js';
 import { CombatSequencer } from './utils/CombatSequencer.js';
+import { KNOBS } from './sim/balance-knobs.js';
 
 export class GameState {
     constructor(scene) {
