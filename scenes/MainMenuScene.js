@@ -8,6 +8,9 @@ import {
     setTestOption,
     TEST_OPTION_DEFS,
 } from '../utils/TestOptions.js';
+import { MusicManager } from '../utils/MusicManager.js';
+import { SoundHelper } from '../utils/SoundHelper.js';
+import { loadVolumeSettings, saveVolumeSettings } from '../utils/VolumeSettings.js';
 export class MainMenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainMenuScene' });
@@ -36,6 +39,14 @@ export class MainMenuScene extends Phaser.Scene {
             fill: '#888888',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         });
+
+        MusicManager.play(this, 'menu_music', 0.6, 900);
+    }
+
+    // Fade the menu theme out over the same span as the camera fade before we
+    // hand off to gameplay.
+    fadeOutMenuMusic() {
+        MusicManager.stopIfPlaying(this, 'menu_music', 450);
     }
     
     createMainMenuButtons() {
@@ -95,6 +106,7 @@ export class MainMenuScene extends Phaser.Scene {
         if (!disabled) {
             btn.setInteractive({ useHandCursor: true })
                 .on('pointerover', () => {
+                    SoundHelper.playSound(this, 'hover_soft', 0.4);
                     // Lighten on hover
                     if (hasSprite) btn.setTint(0xdddddd);
                 })
@@ -130,7 +142,10 @@ export class MainMenuScene extends Phaser.Scene {
 
         if (!disabled) {
             button.setInteractive({ useHandCursor: true })
-                .on('pointerover', () => button.setFillStyle(color, 0.5))
+                .on('pointerover', () => {
+                    SoundHelper.playSound(this, 'hover_soft', 0.4);
+                    button.setFillStyle(color, 0.5);
+                })
                 .on('pointerout', () => button.setFillStyle(color, 0.3))
                 .on('pointerdown', callback);
         }
@@ -387,12 +402,11 @@ export class MainMenuScene extends Phaser.Scene {
             volumeText.setText(Math.round(newVolume * 100) + '%');
             
             this.saveSettings();
+            if (volumeType === 'music') MusicManager.updateCurrentVolume(this);
             
             // Play test sound for feedback
             if (volumeType === 'sfx' && newVolume > 0) {
-                this.sound.play('coin_collect', { 
-                    volume: this.game.globalVolume.master * newVolume * 0.3 
-                });
+                SoundHelper.playSound(this, 'coin_collect', 0.3);
             }
         });
         
@@ -430,17 +444,8 @@ export class MainMenuScene extends Phaser.Scene {
     }
     
     loadSettings() {
-        // Load volume settings
-        const savedVolume = localStorage.getItem('gameVolume');
-        if (savedVolume) {
-            this.game.globalVolume = JSON.parse(savedVolume);
-        } else {
-            this.game.globalVolume = {
-                master: 1.0,
-                sfx: 1.0,
-                music: 0.5
-            };
-        }
+        this.game.globalVolume = loadVolumeSettings();
+        saveVolumeSettings(this.game.globalVolume);
         
         // Load language
         const savedLanguage = localStorage.getItem('gameLanguage');
@@ -453,14 +458,15 @@ export class MainMenuScene extends Phaser.Scene {
     }
     
     saveSettings() {
-        localStorage.setItem('gameVolume', JSON.stringify(this.game.globalVolume));
+        saveVolumeSettings(this.game.globalVolume);
         localStorage.setItem('gameLanguage', this.game.language);
     }
     
     startNewGame() {
         // Clear any existing run save
         this.saveManager.clearCurrentRun();
-        
+
+        this.fadeOutMenuMusic();
         // Start fresh run (meta progression is kept)
         this.cameras.main.fadeOut(500, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
@@ -469,6 +475,7 @@ export class MainMenuScene extends Phaser.Scene {
     }
     
     continueGame() {
+        this.fadeOutMenuMusic();
         // Load the saved run
         this.cameras.main.fadeOut(500, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
@@ -477,6 +484,7 @@ export class MainMenuScene extends Phaser.Scene {
     }
 
     startTutorial() {
+        this.fadeOutMenuMusic();
         // Launch the guided, rigged tutorial floor. Does not touch the saved run.
         this.cameras.main.fadeOut(400, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {

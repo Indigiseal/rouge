@@ -3,6 +3,8 @@
 import { MapGenerator } from '../utils/MapGenerator.js';
 import { t } from '../utils/i18n.js';
 import { createTitle } from '../utils/titleText.js';
+import { MusicManager } from '../utils/MusicManager.js';
+import { SoundHelper } from '../utils/SoundHelper.js';
 
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
@@ -20,7 +22,7 @@ export class MapViewScene extends Phaser.Scene {
     this.currentAct = Math.min(3, Math.max(1, Math.floor((cf - 1) / 15) + 1));
 
     // Build/keep full map. Regenerate when shape changes or when new node types were added.
-    const MAP_VERSION = 4; // v4 guarantees at least one Rare Shop per act
+    const MAP_VERSION = 5; // v5 caps consecutive non-combat rooms (max 2 in a row)
     const hasCurrentMapShape =
       this.gameState.dungeonMap?.act1?.floors?.length === 15 &&
       this.gameState.dungeonMap?._version === MAP_VERSION;
@@ -96,6 +98,7 @@ export class MapViewScene extends Phaser.Scene {
     this.events.once('shutdown', () => {
       this.events.off('wake', this.handleWake, this);
     });
+    this._leavingMap = false;
 
     // Post-act shop: the player just beat the act boss. Skip drawing the map
     // entirely on this pass — sleep ourselves and launch the shop directly so
@@ -149,6 +152,10 @@ export class MapViewScene extends Phaser.Scene {
     this.add.text(320, 340, t(this, 'ui.map.instructions'), {
       fontSize: '12px', fill: '#d4b896', fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5);
+
+    // Peaceful theme fades in whenever the map is shown (create() re-runs on
+    // every wake because handleWake restarts the scene).
+    MusicManager.play(this, 'map_music', 0.5, 900);
   }
 
   handleWake() {
@@ -376,6 +383,8 @@ export class MapViewScene extends Phaser.Scene {
       nodeSprite.setInteractive({ useHandCursor: true });
       nodeSprite.on('pointerover', () => {
         if (this.isDragging) return;
+        // Soft click when the pointer lands on a selectable node.
+        SoundHelper.playSound(this, 'hover_soft', 0.4);
         // Rise one pixel and lighten while hovered.
         nodeSprite.y = node.__y - 1;
         if (nodeSprite.setTint) nodeSprite.setTint(0xffffff);
@@ -442,10 +451,12 @@ export class MapViewScene extends Phaser.Scene {
 
   // Only allow moving from the SINGLE current node to connected nodes on the NEXT floor
   selectNode(targetFloorIdx, targetNodeIdx, node) {
+    if (this._leavingMap) return; // ignore extra clicks during the exit fade
     const cur = this.gameState.mapCursor;
     if (targetFloorIdx !== cur.floor + 1) return;
     const fromNode = this.actMap.floors[cur.floor][cur.node];
     if (!fromNode.connections.includes(targetNodeIdx)) return;
+    SoundHelper.playVariant(this, 'map_select', 0.5);
     // Mark from and to visited (fixes stuck visuals)
     fromNode.visited = true;
     node.visited = true;
@@ -453,31 +464,42 @@ export class MapViewScene extends Phaser.Scene {
     this.gameState.currentFloor = (this.gameState.currentFloor || 1) + 1;
     // Store type
     this.gameState.roomType = node.type;
-    // Route
+
+    // Route (deferred so the map theme can fade out first).
     const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE', 'TREASURE_GOOD'];
-    if (nonCombat.includes(node.type)) {
-      // Tea Room Bell (and any future AP-on-non-battle amulet) triggers here.
-      this.scene.get('GameScene')?.amuletManager?.processNonBattleSceneEnter?.();
-      this.scene.sleep(); // Sleep map for overlay
-      const key =
-        node.type === 'SHOP'           ? 'ShopScene' :
-        node.type === 'RARE_SHOP'      ? 'RareShopScene' :
-        node.type === 'REST'           ? 'RestScene' :
-        node.type === 'ANVIL'          ? 'AnvilScene' :
-        node.type === 'TREASURE'       ? 'TreasureScene' :
-        node.type === 'TREASURE_GOOD'  ? 'TreasureScene' : 'EventScene';
-      const sceneData = { gameState: this.gameState };
-      if (node.type === 'TREASURE_GOOD') sceneData.rewardMode = 'good';
-      this.scene.launch(key, sceneData);
-      return;
-    }
-    // Combat-like
-    this.scene.stop();
-    // Pass a flag to indicate this is a new room transition
-    this.scene.wake('GameScene', { 
-        roomType: node.type,
-        isNewRoom: true 
-    });
-    console.log('Woke GameScene for type:', node.type);
+    const proceed = () => {
+      if (nonCombat.includes(node.type)) {
+        // Tea Room Bell (and any future AP-on-non-battle amulet) triggers here.
+        this.scene.get('GameScene')?.amuletManager?.processNonBattleSceneEnter?.();
+        this.scene.sleep(); // Sleep map for overlay
+        const key =
+          node.type === 'SHOP'           ? 'ShopScene' :
+          node.type === 'RARE_SHOP'      ? 'RareShopScene' :
+          node.type === 'REST'           ? 'RestScene' :
+          node.type === 'ANVIL'          ? 'AnvilScene' :
+          node.type === 'TREASURE'       ? 'TreasureScene' :
+          node.type === 'TREASURE_GOOD'  ? 'TreasureScene' : 'EventScene';
+        const sceneData = { gameState: this.gameState };
+        if (node.type === 'TREASURE_GOOD') sceneData.rewardMode = 'good';
+        this.scene.launch(key, sceneData);
+        return;
+      }
+      // Combat-like
+      this.scene.stop();
+      // Pass a flag to indicate this is a new room transition
+      this.scene.wake('GameScene', {
+          roomType: node.type,
+          isNewRoom: true
+      });
+      console.log('Woke GameScene for type:', node.type);
+    };
+
+    // Fade the peaceful theme out, then hand off (scene stays alive during the
+    // fade so the tween actually runs).
+    this._leavingMap = true;
+    // Fade (300ms) finishes just before the handoff (380ms) so the track is
+    // fully stopped while the scene is still awake and the tween can run.
+    MusicManager.stopIfPlaying(this, 'map_music', 300);
+    this.time.delayedCall(380, proceed);
   }
 }

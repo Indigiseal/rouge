@@ -2,6 +2,7 @@ import { CardSystem } from './cardSystem.js';
 import { InventorySystem } from './inventorySystem.js';
 import { GameState } from './gameState.js';
 import { AmuletManager } from './AmuletManager.js';
+import { MusicManager } from './utils/MusicManager.js';
 import { SoundHelper } from './utils/SoundHelper.js';
 import { SaveManager } from './SaveManager.js';
 import { MetaProgressionManager } from './MetaProgressionManager.js';
@@ -10,6 +11,7 @@ import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 import { t, translateDescription, translateItemName } from './utils/i18n.js';
 import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from './utils/StoryProgress.js';
 import { isMetaProgressionDisabled } from './utils/TestOptions.js';
+import { loadVolumeSettings, saveVolumeSettings } from './utils/VolumeSettings.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -115,17 +117,10 @@ export class GameScene extends Phaser.Scene {
     
     create() {
         this.events.once('shutdown', this.shutdown, this);
-        // Load saved volume settings
-        const savedVolume = localStorage.getItem('gameVolume');
-        if (savedVolume) {
-            this.game.globalVolume = JSON.parse(savedVolume);
-        } else {
-            this.game.globalVolume = {
-                master: 1.0,
-                sfx: 1.0,
-                music: 0.5
-            };
-        }
+        // Load saved volume settings. Master volume is kept internally at 1;
+        // players adjust Music and Sound Effects directly.
+        this.game.globalVolume = loadVolumeSettings();
+        saveVolumeSettings(this.game.globalVolume);
         
         // Apply volume settings
         this.sound.volume = this.game.globalVolume.master;
@@ -361,9 +356,9 @@ export class GameScene extends Phaser.Scene {
         const pauseButton = this.add.rectangle(600, 15, 46, 18, 0x6f5452, 0.18)
             .setStrokeStyle(1, 0x6f5452)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => pauseButton.setFillStyle(0x6f5452, 0.32))
+            .on('pointerover', () => { SoundHelper.playSound(this, 'hover_soft', 0.4); pauseButton.setFillStyle(0x6f5452, 0.32); })
             .on('pointerout', () => pauseButton.setFillStyle(0x6f5452, 0.18))
-            .on('pointerdown', () => this.pauseGame());
+            .on('pointerdown', () => { SoundHelper.playVariant(this, 'button_click', 0.5); this.pauseGame(); });
         
         this.add.text(600, 15, 'PAUSE', {
             fontSize: '9px',
@@ -389,13 +384,14 @@ export class GameScene extends Phaser.Scene {
         this.nextFloorButton = snapOriginToPixelGrid(this.add.image(595, 50, 'nextTurnUp'))
             .setDepth(5000)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => this.nextFloorButton.setTint(0xd4eaf7))
+            .on('pointerover', () => { SoundHelper.playSound(this, 'hover_soft', 0.4); this.nextFloorButton.setTint(0xd4eaf7); })
             .on('pointerout', () => {
                 this.nextFloorButton.clearTint();
                 this.nextFloorButton.y = 50;
                 if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
             })
             .on('pointerdown', () => {
+                SoundHelper.playVariant(this, 'button_click', 0.5);
                 this.nextFloorButton.setTint(0x888888);
                 this.nextFloorButton.y = 51;
                 if (this.nextFloorButtonText) this.nextFloorButtonText.y = 51;
@@ -413,6 +409,150 @@ export class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(5001);
         this.nextFloorButton.setVisible(false);
         this.nextFloorButtonText.setVisible(false);
+
+        // Running combat log on the right side.
+        this.createCombatLog();
+    }
+
+    // A paper panel on the right that keeps a running, scrollable record of the
+    // fight (damage, status effects, kills) so players can read back what the
+    // fast-fading floating text already showed. Text uses the same muted brown
+    // as the PAUSE label rather than the bright floating-text colors.
+    createCombatLog() {
+        // Narrow panel hugging the right edge (right edge fixed at ~639, so the
+        // extra width grows leftward) that still clears the gaming board.
+        const CX = 575, CY = 150, W = 128, H = 200;
+        const BROWN = '#6f5452';
+        this.combatLog = { lines: [], maxVisible: 12, scroll: 0, visible: false, objects: [] };
+        this.combatLog.bounds = { left: CX - W / 2, right: CX + W / 2, top: CY - H / 2, bottom: CY + H / 2 };
+
+        // Reuse the event paper art as a nine-slice panel (already preloaded).
+        let panel = null;
+        if (this.textures.exists('eventPaper9Slice')) {
+            const addNineSlice = this.add.nineslice || this.add.nineSlice;
+            if (addNineSlice) {
+                try {
+                    panel = addNineSlice.call(this.add, CX, CY, 'eventPaper9Slice', null, W, H, 32, 32, 32, 32);
+                } catch { panel = null; }
+            }
+        }
+        if (!panel) {
+            // Fallback if the art/nine-slice helper is unavailable.
+            panel = this.add.rectangle(CX, CY, W, H, 0xe8d6ad, 0.96).setStrokeStyle(2, 0x6f5452, 0.6);
+        }
+        panel.setDepth(40);
+
+        const top = CY - H / 2;
+        const title = this.add.text(CX, top + 8, 'Combat Log', {
+            fontSize: '10px', fill: BROWN, fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5, 0).setDepth(42);
+        const rule = this.add.rectangle(CX, top + 22, W - 18, 1, 0x6f5452, 0.4).setDepth(42);
+
+        const bodyTop = top + 27;
+        const body = this.add.text(CX - W / 2 + 7, bodyTop, '', {
+            fontSize: '8px', fill: BROWN, fontFamily: '"HoMM Pixel"',
+            lineSpacing: 2, wordWrap: { width: W - 14 }
+        }).setOrigin(0, 0).setDepth(42);
+
+        this.combatLog.panel = panel;
+        this.combatLog.body = body;
+        // Pixel height available for text before it would spill past the panel
+        // bottom. Entries can wrap to 2+ lines, so we cap by height, not count.
+        this.combatLog.bodyMaxHeight = (CY + H / 2 - 10) - bodyTop;
+        this.combatLog.objects = [panel, title, rule, body];
+
+        // Wheel over the panel scrolls back through the fight history. A
+        // scene-level listener with a manual bounds check is far more reliable
+        // than a per-object 'wheel' event (which frequently never fires).
+        this.input.on('wheel', (pointer, over, dx, dy) => {
+            if (!this.combatLog?.visible) return;
+            const b = this.combatLog.bounds;
+            if (pointer.x < b.left || pointer.x > b.right
+                || pointer.y < b.top || pointer.y > b.bottom) return;
+            const maxScroll = Math.max(0, this.combatLog.lines.length - 1);
+            // Wheel up (dy < 0) goes back in history; wheel down returns to newest.
+            this.combatLog.scroll = Phaser.Math.Clamp(
+                this.combatLog.scroll + (dy > 0 ? -1 : 1), 0, maxScroll
+            );
+            this.renderCombatLog();
+        });
+
+        this.setCombatLogVisible(false);
+    }
+
+    renderCombatLog() {
+        if (!this.combatLog?.body) return;
+        const { lines, maxVisible, scroll, bodyMaxHeight } = this.combatLog;
+        const body = this.combatLog.body;
+        const end = lines.length - scroll;
+        let start = Math.max(0, end - maxVisible);
+        body.setText(lines.slice(start, end).join('\n'));
+        // Wrapped entries can push the text past the panel bottom — drop the
+        // oldest visible lines until what's shown fits inside the paper.
+        while (start < end - 1 && body.height > bodyMaxHeight) {
+            start++;
+            body.setText(lines.slice(start, end).join('\n'));
+        }
+    }
+
+    // Push a fully-formed line into the log (no auto-attribution). Used for
+    // explicitly-labelled entries like the player's own weapon hits.
+    pushCombatLog(text) {
+        if (!this.combatLog?.visible) return;
+        const line = (text == null ? '' : String(text)).trim();
+        if (!line) return;
+        this.combatLog.lines.push(line);
+        if (this.combatLog.lines.length > 200) this.combatLog.lines.shift();
+        this.combatLog.scroll = 0; // pin to newest on a fresh event
+        this.renderCombatLog();
+    }
+
+    addCombatLog(message, x, y) {
+        if (!this.combatLog?.visible) return;
+        let text = (message == null ? '' : String(message)).trim();
+        if (!text) return;
+        // Attribute the event to whoever the floating text sits on.
+        const label = (Number.isFinite(x) && Number.isFinite(y))
+            ? this.combatLogLabel(x, y) : null;
+        if (label) text = `${label} ${text}`;
+        this.pushCombatLog(text);
+    }
+
+    clearCombatLog() {
+        if (!this.combatLog) return;
+        this.combatLog.lines = [];
+        this.combatLog.scroll = 0;
+        this.renderCombatLog();
+    }
+
+    setCombatLogVisible(v) {
+        if (!this.combatLog) return;
+        this.combatLog.visible = v;
+        this.combatLog.objects.forEach(o => o?.setVisible?.(v));
+    }
+
+    refreshCombatLogVisibility() {
+        this.setCombatLogVisible(['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType));
+    }
+
+    // Works out who a floating-text event belongs to from its position: text on
+    // the player avatar is "You", text on a revealed enemy card takes that
+    // enemy's name. Returns null for centre-screen / global messages.
+    combatLogLabel(x, y) {
+        const pa = this.playerAvatar;
+        if (pa) {
+            const dx = pa.x - x, dy = pa.y - y;
+            if (dx * dx + dy * dy <= 48 * 48) return 'You';
+        }
+        const cards = this.cardSystem?.boardCards || [];
+        let best = null, bestD = 52 * 52;
+        for (const c of cards) {
+            if (!c?.sprite || !c.revealed || !c.data) continue;
+            const dx = c.sprite.x - x, dy = c.sprite.y - y;
+            const d = dx * dx + dy * dy;
+            if (d < bestD) { bestD = d; best = c; }
+        }
+        return best?.data?.name || null;
     }
 
     startNewFloor() {
@@ -444,6 +584,11 @@ export class GameScene extends Phaser.Scene {
         // Refresh type before spawn
         this.roomType = this.gameState.roomType || 'COMBAT';
         this.updateRoomTitle();
+        // Fresh fight → fresh log, shown only in combat rooms.
+        this.clearCombatLog();
+        this.refreshCombatLogVisibility();
+        // Boss floors get their own battle-drums track; everything else is silent.
+        if (this.roomType === 'BOSS') this.startBossMusic(); else this.stopBossMusic();
         // Reset per-floor amulet flags
         this.gameState.charmingTuneUsed = false;
         if (this.tutorialMode) {
@@ -457,6 +602,14 @@ export class GameScene extends Phaser.Scene {
         // DON'T replenish action points here
         this.updateUI();
         this.cardSystem.checkFloorClear();
+    }
+
+    startBossMusic() {
+        MusicManager.play(this, 'boss_music', 0.6, 700);
+    }
+
+    stopBossMusic() {
+        MusicManager.stopIfPlaying(this, 'boss_music', 600);
     }
 
     showNextFloorButton() {
@@ -1030,7 +1183,8 @@ export class GameScene extends Phaser.Scene {
         // Apply abilities like poison on hit
         card.data.abilities?.forEach(ability => {
             if (ability.type === 'poison') {
-                if (this.gameState.addPlayerEffect({ ...ability })) {
+                const killedBy = card.data.name || card.data.type || 'Enemy';
+                if (this.gameState.addPlayerEffect({ ...ability, killedBy })) {
                     this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Poisoned!', 0x00ff00);
                 }
             } else if (ability.type === 'coin_steal') {
@@ -1048,7 +1202,7 @@ export class GameScene extends Phaser.Scene {
         const { actualDamage, tookDamage } = this.gameState.takeDamage(damageDealt, index, 'enemy', armorPierce);
 
         if (tookDamage) {
-            SoundHelper.playSound(this, 'player_hurt', 0.5);
+            SoundHelper.playVariant(this, 'player_hurt', 0.5);
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
 
             if (playerHealthBeforeDamage > 0 && this.gameState.playerHealth <= 0) {
@@ -1106,6 +1260,7 @@ export class GameScene extends Phaser.Scene {
         const y = card.sprite?.y || this.playerAvatar.y;
 
         this.cardSystem.attackEnemy(index, damage, true);
+        SoundHelper.playSound(this, 'thorns_hit', 0.45);
         this.createFloatingText(x, y, `-${damage} Thorns`, 0x9dff7a);
 
         if (!thorns) return;
@@ -1145,10 +1300,12 @@ export class GameScene extends Phaser.Scene {
         
         // Process player poison effects
         let effectDamage = 0;
+        let poisonKilledBy = null;
         for (let i = this.gameState.playerEffects.length - 1; i >= 0; i--) {
             const effect = this.gameState.playerEffects[i];
             if (effect.type === 'poison') {
                 effectDamage += effect.damage;
+                poisonKilledBy = effect.killedBy || poisonKilledBy;
             }
             effect.turns--;
             if (effect.turns <= 0) {
@@ -1159,13 +1316,13 @@ export class GameScene extends Phaser.Scene {
         
         if (effectDamage > 0) {
             const playerHealthBeforePoison = this.gameState.playerHealth;
-            SoundHelper.playSound(this, 'player_hurt', 0.5);
+            SoundHelper.playVariant(this, 'player_hurt', 0.5);
             const { actualDamage, tookDamage } = this.gameState.takeDamage(effectDamage, -1, 'poison');
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage} (Poison)`, 0x00ff00);
             
             // Track poison death
             if (playerHealthBeforePoison > 0 && this.gameState.playerHealth <= 0) {
-                this.killedBy = 'Poison';
+                this.killedBy = poisonKilledBy || 'Poison';
             }
             
             // Lethal poison: gameState.takeDamage() already scheduled
@@ -1420,12 +1577,17 @@ export class GameScene extends Phaser.Scene {
         // Player takes damage and reflection is handled inside takeDamage
         const { actualDamage, tookDamage } = this.gameState.takeDamage(rawDamage, enemyIndex);
         if (tookDamage) {
-            SoundHelper.playSound(this, 'player_hurt', 0.5);
+            SoundHelper.playVariant(this, 'player_hurt', 0.5);
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
         }
     }
-    createFloatingText(x, y, text, color, fontSize = '15px') {
+    createFloatingText(x, y, text, color, fontSize = '15px', opts = {}) {
         const message = t(this, text);
+        // Mirror every combat event into the running log (brown, not the
+        // bright floating-text color) so players can read the fight back. The
+        // position tells us who the number belongs to (You / enemy name).
+        // Callers that log the event themselves pass { skipLog: true }.
+        if (!opts.skipLog) this.addCombatLog(message, x, y);
         const slot = this.reserveFloatingTextSlot(x, y);
         const startX = Phaser.Math.Clamp(x + slot.xOffset, 32, 608);
         const startY = Phaser.Math.Clamp(y + slot.yOffset, 24, 336);
@@ -1559,6 +1721,7 @@ export class GameScene extends Phaser.Scene {
         if (this._resultScreenShown || this._gameOverInProgress) return;
         this._gameOverInProgress = true;
         this._transitioning = true;
+        this.stopBossMusic();
         this.clearEnemyTurnTimers();
         this.nextFloorButton?.disableInteractive();
 
@@ -1805,6 +1968,9 @@ export class GameScene extends Phaser.Scene {
         // Player already dead (e.g. a mutual kill via Thorns/reflect) — don't let a
         // stray click on the Next Floor button revive them via setupBossRewardRoom().
         if (this.gameState.playerHealth <= 0) return;
+
+        // Leaving any floor ends the boss track (harmless no-op off boss floors).
+        this.stopBossMusic();
 
         // Boss reward room → leaving means advancing to the next act
         if (this.gameState.roomType === 'BOSS_REWARD') {
@@ -2721,6 +2887,7 @@ export class GameScene extends Phaser.Scene {
     shutdown() {
         this.tutorialManager?.destroy?.();
         this.tutorialManager = null;
+        this.stopBossMusic();
         this.clearEnemyTurnTimers();
         this.clearFloatingTexts();
         this.input.keyboard.off('keydown-ESC');
@@ -2752,6 +2919,9 @@ export class GameScene extends Phaser.Scene {
             this.cardSystem?.clearBoard?.();
             // Also hide the room title (it would still say "Combat Room" from the prior floor).
             if (this.roomTitle) this.roomTitle.setText('');
+            // The shop is a station inside the combat scene, so roomType is still
+            // 'COMBAT' here — hide the fight log explicitly.
+            this.setCombatLogVisible(false);
             this.updateUI();
             return;
         }
@@ -2768,7 +2938,13 @@ export class GameScene extends Phaser.Scene {
         // Restore current room type from gameState
         this.roomType = this.gameState.roomType || 'COMBAT';
         this.updateRoomTitle();
-        
+        // Show the log for combat rooms, hide it when we wake into loot/reward
+        // rooms; startNewFloor() below re-clears it only for genuinely new fights.
+        this.refreshCombatLogVisibility();
+        // Resume/stop boss drums to match the room we woke into (startBossMusic
+        // guards against double-play if startNewFloor also fires below).
+        if (this.roomType === 'BOSS') this.startBossMusic(); else this.stopBossMusic();
+
         // Check if this is actually a new floor/room transition
         const isNewRoom = data?.isNewRoom || false;
         

@@ -921,7 +921,8 @@ export class InventorySystem {
         cardSprite.on('dragstart', () => {
             if (!cardSprite.scene) return;
             this.hideCardTooltip();
-            
+            SoundHelper.playVariant(this.scene, 'card_place', 0.4);
+
             // Store the starting position
             cardSprite.setData('dragStartX', cardSprite.x);
             cardSprite.setData('dragStartY', cardSprite.y);
@@ -1094,20 +1095,21 @@ export class InventorySystem {
             range: 'melee'
         };
         this.addCard(swordData);
-        // Add starting uncommon sword
-        const uncommonSwordData = {
+        // Add a second common (tier 1) sword so the player starts with two
+        // matching tier-1 swords they can merge into an uncommon.
+        const secondSwordData = {
             type: 'weapon',
-            name: 'Uncommon Sword',
+            name: 'Common Sword',
             weaponType: 'sword',
-            damage: 7,
-            rarity: 'uncommon',
-            sprite: 'sword_U',
-            durability: 8,
-            maxDurability: 8,
+            damage: 6,
+            rarity: 'common',
+            sprite: 'sword_C',
+            durability: 6,
+            maxDurability: 6,
             special: null,  // Sword has no special ability
             range: 'melee'
         };
-        this.addCard(uncommonSwordData);
+        this.addCard(secondSwordData);
 
         // Carry-over egg: a past hero who died still clutching an unhatched egg
         // passes it to this new run. consumePendingEgg() clears the flag so the
@@ -1376,12 +1378,14 @@ export class InventorySystem {
 
         // Reject mismatched gem types
         if (weapon.gemEffect && weapon.gemEffect !== gem.gemEffect) {
+            SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
             this.scene.createFloatingText(512, 380, 'Different gem already socketed!', 0xff4444);
             return false;
         }
 
         // Reject if already at max
         if (currentCount >= MAX_GEM_STACK) {
+            SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
             this.scene.createFloatingText(512, 380, 'Gem slots full!', 0xff4444);
             return false;
         }
@@ -1394,7 +1398,7 @@ export class InventorySystem {
         if (rebuild) this.rebuildInventorySprites();
         const stackLabel = weapon.gemCount > 1 ? ` (x${weapon.gemCount})` : '';
         this.scene.createFloatingText(512, 380, `${gem.name} socketed${stackLabel}`, gem.color || 0xffe066);
-        SoundHelper.playSound(this.scene, 'crystal_collect', 0.45);
+        SoundHelper.playVariant(this.scene, 'gem_socket', 0.5);
         return true;
     }
 
@@ -1898,7 +1902,13 @@ export class InventorySystem {
     returnCardToSlot(slotIndex, cardSprite, onComplete = null) {
         const slotSprite = this.slotSprites[slotIndex];
         if (!slotSprite || !slotSprite.background) return;
-        
+
+        // A key card can't be merged, equipped or used, so dropping it anywhere
+        // just settles it back into the bag — give that its own clink.
+        if (this.slots[slotIndex]?.type === 'key') {
+            SoundHelper.playSound(this.scene, 'key_drop', 0.5);
+        }
+
         // Use the slot background position as the authoritative position
         const targetX = slotSprite.background.x;
         const targetY = slotSprite.background.y;
@@ -2171,7 +2181,7 @@ export class InventorySystem {
                     }
                 });
                 if (frozeAny) {
-                    SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+                    SoundHelper.playSound(this.scene, 'enemy_freeze', 0.5);
                     this.scene.createFloatingText(320, 180, 'Enemies Frozen!', 0x00ccff);
                     used = true;
                 }
@@ -2308,7 +2318,7 @@ export class InventorySystem {
                     }
                 });
                 if (flippedAny) {
-                    this.scene.sound.play('magic_cast', { volume: 0.5 });
+                    SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
                     this.createSmokeEffect();
                     used = true;
                 }
@@ -2443,7 +2453,12 @@ export class InventorySystem {
         if (closestEnemy !== -1 && closestDistance < 150) {
             // Equip weapon before attacking
             this.scene.gameState.equippedWeapon = weapon;
-            SoundHelper.playSound(this.scene, 'sword_swoosh', 0.5);
+            // Weapon-appropriate swing sound from the new SFX batch.
+            if (this.scene.cardSystem?.isRangedWeapon?.(weapon)) {
+                SoundHelper.playSound(this.scene, 'bow_shot', 0.5);
+            } else {
+                SoundHelper.playSound(this.scene, 'heavy_swing', 0.5);
+            }
             let attackDamage = weapon.damage;
             
             // Apply weakness penalty when exhausted (out of action points)
@@ -2519,7 +2534,7 @@ export class InventorySystem {
                 }
                 if (i < attackCount - 1) {
                     this.scene.time.delayedCall(150, () => {
-                        SoundHelper.playSound(this.scene, 'sword_swoosh', 0.3);
+                        SoundHelper.playSound(this.scene, 'heavy_swing', 0.3);
                     });
                 }
             }
@@ -2696,6 +2711,12 @@ export class InventorySystem {
                     originalSlot.briarFrame.setVisible(true);
                     originalSlot.briarFrame.setDepth(this.getInventoryDepths().briarFrame);
                 }
+
+                // The merge twinkle followed the weapon onto the board, where
+                // cleanupBoardArtifacts (run at the top of this method) destroyed
+                // it as a stray board sprite. Re-derive twinkles from the slots so
+                // a still-mergeable weapon gets its sparkle back on return.
+                this.updateTwinkleEffects();
             }
         });
     }
@@ -2984,6 +3005,7 @@ export class InventorySystem {
         }
 
         this.scene.createFloatingText(512, 400, 'Cards Merged!', 0x00ff00);
+        SoundHelper.playSound(this.scene, 'card_merge', 0.55);
 
         // Webweaver's Thread relic: small chance one of the two consumed cards reappears
         // on the floor board face-down. Picks one of the source cards at random

@@ -35,11 +35,12 @@ export class RareShopScene extends StationRoomBase {
 
         // The rare shop is the premium store — its goods cost a clear premium.
         // 1. Amulet (costs crystals)
+        const amuletPrice = Math.max(2, Math.floor(floor / 10) + 2);
         const amuletData = cardGenerator.createCardData('amulet', floor, false, this.gameState);
         if (amuletData) {
             this.shopItems.push({
                 data: amuletData,
-                price: Math.max(2, Math.floor(floor / 10) + 2),
+                price: amuletPrice,
                 currency: 'crystals',
                 purchased: false
             });
@@ -54,11 +55,13 @@ export class RareShopScene extends StationRoomBase {
             purchased: false
         });
 
-        // 3. Second uncommon weapon — pick a different weapon type than the first
-        // when the floor's unlocked pool allows, so the shop doesn't offer two of
-        // the same weapon (e.g. two daggers).
+        // 3. Uncommon armor — always pair the weapon with a piece of armor so the
+        // shop offers a weapon AND armor instead of two of the same weapon type
+        // (the uncommon weapon pool can be a single type, e.g. dagger-only).
+        const armorData = cardGenerator.createCardData('armor', floor, false, null,
+            cardGenerator.capRewardRarity('uncommon', floor));
         this.shopItems.push({
-            data: this.createUpgradedWeapon(firstWeapon?.weaponType),
+            data: armorData || this.createUpgradedWeapon(firstWeapon?.weaponType),
             price: 25 + floor * 5,
             currency: 'coins',
             purchased: false
@@ -92,8 +95,10 @@ export class RareShopScene extends StationRoomBase {
             && Math.random() < 0.35) {
             this.shopItems.push({
                 data: cardGenerator.cardDataGenerator.createChickCompanionCard(),
-                price: 35 + floor * 3,
-                currency: 'coins',
+                // Unique companions are priced like an amulet (crystals), a touch
+                // dearer — not like a normal coin-priced card.
+                price: amuletPrice + 1,
+                currency: 'crystals',
                 purchased: false
             });
         }
@@ -106,8 +111,9 @@ export class RareShopScene extends StationRoomBase {
             && Math.random() < 0.35) {
             this.shopItems.push({
                 data: cardGenerator.cardDataGenerator.createSkeletonWarriorCompanionCard(),
-                price: 35 + floor * 3,
-                currency: 'coins',
+                // Priced like an amulet (crystals), a touch dearer.
+                price: amuletPrice + 1,
+                currency: 'crystals',
                 purchased: false
             });
         }

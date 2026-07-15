@@ -113,9 +113,8 @@ export class PreloadScene extends Phaser.Scene {
         this.load.spritesheet('gemEffectsOnCards', 'assets/art/gemEffectsOnCards64x80.png', { frameWidth: 64, frameHeight: 80 });
         this.load.spritesheet('enemiesHitEffects', 'assets/art/enemiesHitEffects64x80.png', { frameWidth: 64, frameHeight: 80 });
         this.load.spritesheet('shadowsGems', 'assets/art/shadowsGems.png', { frameWidth: 16, frameHeight: 20 });
-        this.load.audio('sword_swoosh', 'assets/music/knife-slice-41231.mp3');
         this.load.audio('coin_collect', 'assets/music/coin-recieved.mp3');
-        this.load.audio('player_hurt', 'assets/music/male_hurt.mp3');
+        // player_hurt now rotates through 3 male-hurt variants (loaded in the SFX batch below)
         this.load.audio('anvil_upgrade', 'assets/music/anvil-hit-2-14845.mp3');
         this.load.audio('item_discard', 'assets/music/discard-sound-effect-221455.mp3');
         this.load.audio('trap_spring', 'assets/music/trap_spring1.mp3');
@@ -251,6 +250,64 @@ export class PreloadScene extends Phaser.Scene {
         //Animation for MIMIC — merged 7-frame splash spritesheet (was splash1-7).
         this.load.spritesheet('splashSheet', 'assets/art/splashShee118x62t.png', { frameWidth: 118, frameHeight: 62 });
 
+        // ---- New SFX batch (variants rotate via SoundHelper.playVariant) ----
+        const M = 'assets/music/';
+        // Multi-variant groups
+        this.load.audio('enemy_hit_1', M + 'Enemy_Hit_01.mp3');
+        this.load.audio('enemy_hit_2', M + 'Enemy_Hit_02.mp3');
+        this.load.audio('enemy_hit_3', M + 'Enemy_Hit_03.mp3');
+        this.load.audio('enemy_hit_4', M + 'Enemy_Hit_04.mp3');
+        this.load.audio('card_place_1', M + 'Card_Pick_Up_Place_01.mp3');
+        this.load.audio('card_place_2', M + 'Card_Pick_Up_Place_02.mp3');
+        this.load.audio('card_place_3', M + 'Card_Pick_Up_Place_03.mp3');
+        this.load.audio('card_place_4', M + 'Card_Pick_Up_Place_04.mp3');
+        // Gem socketing now uses the glass-clink SFX, 3 variants (was Gem_Socketed_01-03)
+        this.load.audio('gem_socket_1', M + 'Glass_Clink_01.mp3');
+        this.load.audio('gem_socket_2', M + 'Glass_Clink_02.mp3');
+        this.load.audio('gem_socket_3', M + 'Glass_Clink_03.mp3');
+        this.load.audio('key_pickup_1', M + 'Key_Pickup_01.mp3');
+        this.load.audio('key_pickup_2', M + 'Key_Pickup_02.mp3');
+        this.load.audio('key_pickup_3', M + 'Key_Pickup_03.mp3');
+        this.load.audio('dodge_miss_1', M + 'Dodge_Miss_01.mp3');
+        this.load.audio('dodge_miss_2', M + 'Dodge_Miss_02.mp3');
+        this.load.audio('dodge_miss_3', M + 'Dodge_Miss_03.mp3');
+        this.load.audio('map_select_3', M + 'Map_Node_Select_03.mp3');
+        this.load.audio('armor_break_1', M + 'Armor_Break_01.mp3');
+        this.load.audio('armor_break_2', M + 'Armor_Break_02.mp3');
+        this.load.audio('armor_break_3', M + 'Armor_Break_03.mp3');
+        this.load.audio('button_click_1', M + 'Button_Click_01.mp3');
+        this.load.audio('button_click_2', M + 'Button_Click_02.mp3');
+        this.load.audio('invalid_action_1', M + 'Invalid_Action_01.mp3');
+        this.load.audio('invalid_action_2', M + 'Invalid_Action_02.mp3');
+        this.load.audio('legendary_reveal_1', M + 'Legendary_Relic_Reveal_01.mp3');
+        this.load.audio('legendary_reveal_2', M + 'Legendary_Relic_Reveal_02.mp3');
+        this.load.audio('player_hurt_1', M + 'Player_Hurt_01.wav');
+        this.load.audio('player_hurt_2', M + 'Player_Hurt_02.wav');
+        this.load.audio('player_hurt_3', M + 'Player_Hurt_03.wav');
+        // Soft UI hover click — plays on map-node and button hover
+        this.load.audio('hover_soft', M + 'Hover_Soft_01.wav');
+        // Key card dropped back into the inventory
+        this.load.audio('key_drop', M + 'Key_Drop_02.mp3');
+        // Lightning-gem zap — 3 variants, loudness-normalized
+        this.load.audio('lightning_zap_1', M + 'Lightning_Zap_01.mp3');
+        this.load.audio('lightning_zap_2', M + 'Lightning_Zap_02.mp3');
+        this.load.audio('lightning_zap_3', M + 'Lightning_Zap_03.mp3');
+        // Acid/poison trap smoke poof
+        this.load.audio('smoke_poof', M + 'Poof_Smoke_01.mp3');
+        // "Nothing" card revealed — empty-slot whoosh
+        this.load.audio('empty_whoosh', M + 'Folder_Whoosh_01.mp3');
+        // Enemies frozen (Frost Ring) — icy magic cast
+        this.load.audio('enemy_freeze', M + 'Enemy_Freeze_01.mp3');
+        // Single-shot effects
+        this.load.audio('bow_shot', M + 'Bow_Shot_01.mp3');
+        this.load.audio('enemy_death', M + 'Enemy_Death_01.mp3');
+        this.load.audio('heavy_swing', M + 'Heavy_Attack_Swing_01.mp3');
+        this.load.audio('thorns_hit', M + 'Thorns_Retaliation_01.mp3');
+        this.load.audio('card_merge', M + 'Card_Merge_Success_01.mp3');
+        // Looping music tracks
+        this.load.audio('menu_music', M + 'TOE_Campfire.mp3');   // main menu (campfire)
+        this.load.audio('boss_music', M + 'TOE_BattleDrums.mp3'); // boss battles
+        this.load.audio('map_music', M + 'TOE_Peaceful.mp3');    // map view (peaceful)
     }
 
     create() {

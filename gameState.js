@@ -1,3 +1,5 @@
+import { SoundHelper } from './utils/SoundHelper.js';
+
 export class GameState {
     constructor(scene) {
         this.scene = scene;
@@ -195,6 +197,7 @@ export class GameState {
             if (protection > 0 && amount > 0 && !skipTick) {
                 this.equippedArmor.durability--;
                 if (this.equippedArmor.durability <= 0) {
+                    SoundHelper.playVariant(this.scene, 'armor_break', 0.55);
                     this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y + 20, `${this.equippedArmor.name} broke!`, 0xffa500);
                     this.scene.grantCardSpentRelicBonus?.(this.equippedArmor, this.scene.playerAvatar.x, this.scene.playerAvatar.y);
                     this.equippedArmor = null;
@@ -253,6 +256,7 @@ export class GameState {
         const existingEffect = this.playerEffects.find(e => e.type === effect.type);
         if (existingEffect) {
             existingEffect.turns = effect.turns;
+            if (effect.killedBy) existingEffect.killedBy = effect.killedBy;
         } else {
             this.playerEffects.push(effect);
         }

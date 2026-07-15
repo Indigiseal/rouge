@@ -453,7 +453,9 @@ export class CardSystem {
       // same spot regardless of card count, while the extra width still feeds
       // HSTEP so the cards spread out instead of overlapping.
       const baseAreaW = areaW - extraRight - extraLeft;
-      const cx = areaLeft + extraLeft + baseAreaW / 2 + 40;
+      // +20 (was +40) nudges the cluster right of centre; trimmed by 20px to
+      // make room for the combat-log panel on the right without overlap.
+      const cx = areaLeft + extraLeft + baseAreaW / 2 + 20;
       const cy = areaTop  + areaH / 2 - 27;
       const midXp = (minXp + maxXp) / 2;
       const midR  = (minR  + maxR ) / 2;
@@ -622,7 +624,9 @@ export class CardSystem {
 
       const cam = this.scene.cameras.main;
       const y = Math.min(cam.height - 122, cam.height / 2 + 8) - 18;
-      const panel = this.scene.add.image((cam.width / 2) + 10, y + 34, 'gamingBoard');
+      // -10 (was +10): shifted 20px left to match the combat board and clear
+      // the combat-log panel on the right.
+      const panel = this.scene.add.image((cam.width / 2) - 10, y + 34, 'gamingBoard');
       panel.setDepth(0);
       this.floorBoardPanel = panel;
       this.scene.tweens.add({
@@ -1821,7 +1825,7 @@ export class CardSystem {
         const bossData = this.cardDataGenerator.createCardData('boss', this.scene.gameState.currentFloor);
         bossData.maxHealth = bossData.maxHealth || bossData.health;
         const cam = this.scene.cameras.main;
-        const x = cam.width / 2;
+        const x = cam.width / 2 - 20; // match the 20px-left board shift
         const bossOffsetY = bossData.name === 'Spider Queen' ? -100 : 0;
         const y = cam.height / 2 + bossOffsetY;
         this.createBossBoardPanel();
@@ -1899,6 +1903,10 @@ export class CardSystem {
         if (!freeAction && !this.scene.useAction()) return;
         
         SoundHelper.playSound(this.scene, 'card_flip', 0.7);
+        // Flipping a legendary item gets its own reveal fanfare.
+        if (card.data?.rarity === 'legendary') {
+            SoundHelper.playVariant(this.scene, 'legendary_reveal', 0.6);
+        }
         card.revealed = true;
         if (card.data?.tutorialTag) {
             this.scene.events.emit('tutorialProgress', `revealed:${card.data.tutorialTag}`);
@@ -1946,6 +1954,8 @@ export class CardSystem {
                 const px = card.sprite.x;
                 const py = card.sprite.y;
                 card.sprite.destroy();
+                // Nothing under the card — whoosh paired with the empty poof.
+                SoundHelper.playSound(this.scene, 'empty_whoosh', 0.6);
                 // Poof effect
                 if (this.scene.anims.exists('poof_empty_anim')) {
                     const poof = this.scene.add.sprite(px, py, 'poofEmpty').setDepth(5);
@@ -2008,22 +2018,38 @@ export class CardSystem {
     }
 
     handleTrap(card, index) {
+        const trapName = card.data.name || 'Trap';
         if (card.data.subType === 'spike') {
             SoundHelper.playSound(this.scene, 'trap_woosh', 0.7);
-            const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(card.data.damage);
+            const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(card.data.damage, -1, 'trap');
+            if (this.scene.gameState.playerHealth <= 0) this.scene.killedBy = trapName;
             if (tookDamage) {
-                SoundHelper.playSound(this.scene, 'player_hurt', 0.5);
+                SoundHelper.playVariant(this.scene, 'player_hurt', 0.5);
             }
             if (actualDamage > 0) {
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${actualDamage}`, 0xff0000);
             }
         } else if (card.data.subType === 'poison') {
+            // Acid trap opens with its smoke-poof SFX (paired with the poof anim below).
+            SoundHelper.playSound(this.scene, 'smoke_poof', 0.6);
+            // Immediate hit on top of the lingering poison-over-time.
+            const hit = card.data.damage || 0;
+            if (hit > 0) {
+                const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(hit, -1, 'trap');
+                if (this.scene.gameState.playerHealth <= 0) this.scene.killedBy = trapName;
+                if (tookDamage) {
+                    SoundHelper.playVariant(this.scene, 'player_hurt', 0.5);
+                }
+                if (actualDamage > 0) {
+                    this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${actualDamage}`, 0xff0000);
+                }
+            }
             if (this.scene.anims.exists('poison_poof_anim')) {
                 const poof = this.scene.add.sprite(card.sprite.x, card.sprite.y, 'poisonPoof').setDepth(6);
                 poof.play('poison_poof_anim');
                 poof.once('animationcomplete', () => poof.destroy());
             }
-            if (this.scene.gameState.addPlayerEffect({ ...card.data.abilities[0] })) {
+            if (this.scene.gameState.addPlayerEffect({ ...card.data.abilities[0], killedBy: trapName })) {
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poisoned!', 0x00ff00);
             }
         } else if (card.data.subType === 'reveal') {
@@ -2670,9 +2696,13 @@ export class CardSystem {
             case 'weapon':
             case 'armor':
             case 'key':
+                SoundHelper.playVariant(this.scene, 'key_pickup', 0.5);
+                // falls through to the shared pickup handling below
             case 'magic':
             case 'thorns':
             case 'gem':
+                // A gem picked off the board gets the same glass clink as socketing.
+                if (card.data.type === 'gem') SoundHelper.playVariant(this.scene, 'gem_socket', 0.5);
                 if (this.scene.inventorySystem.addCard(card.data)) {
                     this.removeCard(index);
                     // Picking an item off the board costs an action point and wakes the enemies.
@@ -2933,6 +2963,7 @@ export class CardSystem {
         const evadeAbility = card.data.abilities?.find(a => a.type === 'evade');
         const chance = Number(evadeAbility?.chance) || 0;
         if (chance <= 0 || Math.random() >= chance) return false;
+        SoundHelper.playVariant(this.scene, 'dodge_miss', 0.5);
         this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Miss!', 0xffffff);
         return true;
     }
@@ -2956,6 +2987,7 @@ export class CardSystem {
             // in exchange for being able to hit back-row archers regardless
             // of front-row blockers.
             if (!isRanged && meleeBlockers && card.data.role !== 'MELEE') {
+                SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
                 this.scene.createFloatingText(
                     this.scene.playerAvatar.x,
                     this.scene.playerAvatar.y,
@@ -3019,8 +3051,10 @@ export class CardSystem {
         
         if (!isReflection) {
             this.scene.createSlashEffect(card.sprite.x, card.sprite.y);
+            // Random impact sound on the struck enemy (variants avoid monotony).
+            SoundHelper.playVariant(this.scene, 'enemy_hit', 0.4);
         }
-        
+
         this.scene.shakeCard(card.sprite);
         
         // Gem effects fire BEFORE the weapon damage lands. If we waited until
@@ -3073,7 +3107,15 @@ export class CardSystem {
 
         this.updateEnemyInfoText(card);
 
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${finalDamage}`, 0xff0000);
+        // Show the weapon damage number on screen, but log it ourselves with an
+        // explicit label so the player's own hit is unmistakable in the combat
+        // log next to gem "Zap"/"Fire" numbers (skipLog avoids double-logging).
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${finalDamage}`, 0xff0000, '15px', { skipLog: true });
+        const targetName = card.data?.name || 'Enemy';
+        const weaponLabel = (!isReflection && weapon?.weaponType)
+            ? ` (${weapon.weaponType.charAt(0).toUpperCase()}${weapon.weaponType.slice(1)})`
+            : (isReflection ? ' (Reflected)' : '');
+        this.scene.pushCombatLog?.(`${targetName} -${finalDamage}${weaponLabel}`);
 
         if (card.data.health <= 0) {
             this.removeDefeatedEnemy(index, card);
@@ -3100,9 +3142,9 @@ export class CardSystem {
             // Measure to the NEAREST EDGE of each enemy's sprite, not its center.
             // A big sprite like the boss has a far-off center but its body can be
             // right next to the minion you hit — center distance would miss it.
-            // Max brick-adjacent distance is ~82px; 100px gives a safe margin.
-            // Ember Rune extends this a little further on top of the base radius.
-            const SPLASH_RADIUS = 100 + (this.scene.amuletManager?.getFireSplashRadiusBonus?.() || 0);
+            // Tightened to 70px so the splash mostly catches directly-adjacent
+            // enemies instead of a wide blast; Ember Rune still extends it.
+            const SPLASH_RADIUS = 70 + (this.scene.amuletManager?.getFireSplashRadiusBonus?.() || 0);
             const tx = target.sprite?.x ?? 0;
             const ty = target.sprite?.y ?? 0;
             this.boardCards.forEach((card, i) => {
@@ -3130,6 +3172,8 @@ export class CardSystem {
             // Back-row RANGED enemies prioritized as zap targets.
             const zapDamage = [3, 4, 5][stack - 1];
             const extraZaps = 2; // always 2 additional = 3 total
+            // One random zap SFX per lightning-gem swing (not per hop).
+            SoundHelper.playVariant(this.scene, 'lightning_zap', 0.45);
             if (this.scene.tutorialMode) {
                 this.scene.events.emit('tutorialProgress', 'gemEffect:lightning');
                 this.scene.tutorialManager?._handleProgress?.('gemEffect:lightning');
@@ -3146,10 +3190,26 @@ export class CardSystem {
                     ...Phaser.Utils.Array.Shuffle(ranged).slice(0, extraZaps),
                     ...Phaser.Utils.Array.Shuffle(melee),
                 ].slice(0, extraZaps);
+                // The spark travels enemy → enemy: each hop waits ZAP_STEP ms, draws
+                // an arc from the previous target's position, then lands its hit.
+                const ZAP_STEP = 170;
+                const mainCard = this.boardCards[targetIndex];
+                let fromPos = mainCard?.sprite
+                    ? { x: mainCard.sprite.x, y: mainCard.sprite.y }
+                    : null;
                 picks.forEach(({ i }, zapIndex) => {
-                    this.scene.time.delayedCall((zapIndex + 1) * 90, () => {
+                    const targetCard = this.boardCards[i];
+                    const toPos = targetCard?.sprite
+                        ? { x: targetCard.sprite.x, y: targetCard.sprite.y }
+                        : null;
+                    const arcFrom = fromPos;
+                    this.scene.time.delayedCall((zapIndex + 1) * ZAP_STEP, () => {
+                        if (arcFrom && toPos) {
+                            this.playLightningArc(arcFrom.x, arcFrom.y, toPos.x, toPos.y);
+                        }
                         this.damageGemTarget(i, zapDamage, 'Zap', 0xffe066, 'lightning');
                     });
+                    if (toPos) fromPos = toPos; // next hop starts where this one landed
                 });
             }
         }
@@ -3249,6 +3309,8 @@ export class CardSystem {
         if (!this.scene.anims.exists(animKey)) return;
         const fx = this.scene.add.sprite(card.sprite.x, card.sprite.y, 'enemiesHitEffects');
         fx.setDepth((card.sprite.depth || 0) + 5);
+        // Fire's burst reads as oversized on the card, so shrink it a touch.
+        if (effect === 'fire') fx.setScale(0.6);
         fx.play(animKey);
         fx.once('animationcomplete', () => fx.destroy());
         // Safety cleanup in case the complete event is missed
@@ -3316,6 +3378,49 @@ export class CardSystem {
         }
     }
 
+    // Jagged bolt that arcs FROM one enemy TO the next, so a chain zap reads as
+    // a single spark travelling across the board rather than three separate
+    // strikes. Drawn just before the destination enemy takes its hit.
+    playLightningArc(fromX, fromY, toX, toY) {
+        const scene = this.scene;
+        if (!scene?.add) return;
+        const bolts = scene.add.graphics().setDepth(10050).setBlendMode(Phaser.BlendModes.SCREEN);
+
+        // Break the line into jagged segments, jittered perpendicular to the
+        // travel direction so the crackle follows the path between the two enemies.
+        const segs = 7;
+        const dx = toX - fromX;
+        const dy = toY - fromY;
+        const len = Math.max(1, Math.hypot(dx, dy));
+        const nx = -dy / len; // unit normal
+        const ny = dx / len;
+        const pts = [{ x: fromX, y: fromY }];
+        for (let s = 1; s < segs; s++) {
+            const f = s / segs;
+            const jitter = (Math.random() - 0.5) * 22;
+            pts.push({
+                x: Math.round(Phaser.Math.Linear(fromX, toX, f) + nx * jitter),
+                y: Math.round(Phaser.Math.Linear(fromY, toY, f) + ny * jitter)
+            });
+        }
+        pts.push({ x: toX, y: toY });
+
+        const stroke = (width, color, alpha) => {
+            bolts.lineStyle(width, color, alpha);
+            bolts.beginPath();
+            bolts.moveTo(pts[0].x, pts[0].y);
+            for (let k = 1; k < pts.length; k++) bolts.lineTo(pts[k].x, pts[k].y);
+            bolts.strokePath();
+        };
+        stroke(5, 0xffe066, 0.5);
+        stroke(2, 0xffffff, 1);
+
+        scene.tweens.add({
+            targets: bolts, alpha: 0, duration: 180, ease: 'Cubic.easeIn', delay: 60,
+            onComplete: () => bolts.destroy()
+        });
+    }
+
     damageGemTarget(index, amount, label, color, effect = null) {
         const card = this.boardCards[index];
         if (!this.isOpenEnemyCard(card)) return;
@@ -3344,6 +3449,8 @@ export class CardSystem {
             // Note: defeating the Angry Nestmother does NOT end the grudge — she
             // keeps turning up "once in a while" for the rest of the run you
             // stole her egg (birdAngry stays set until the next run reseeds).
+
+            SoundHelper.playSound(this.scene, 'enemy_death', 0.5);
 
             // Process amulet kill effects
             if (this.scene.amuletManager) {

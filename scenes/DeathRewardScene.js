@@ -1,5 +1,6 @@
 // scenes/DeathRewardScene.js
 import { t, translateDescription, translateItemName } from '../utils/i18n.js';
+import { SoundHelper } from '../utils/SoundHelper.js';
 
 export class DeathRewardScene extends Phaser.Scene {
     constructor() {
@@ -46,7 +47,7 @@ export class DeathRewardScene extends Phaser.Scene {
         const continueButton = this.add.rectangle(320, 320, 150, 40, 0x444444)
             .setStrokeStyle(2, 0xffffff)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => continueButton.setFillStyle(0x666666))
+            .on('pointerover', () => { SoundHelper.playSound(this, 'hover_soft', 0.4); continueButton.setFillStyle(0x666666); })
             .on('pointerout', () => continueButton.setFillStyle(0x444444))
             .on('pointerdown', () => this.returnToMenu());
         
