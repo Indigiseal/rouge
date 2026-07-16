@@ -287,6 +287,9 @@ export class PreloadScene extends Phaser.Scene {
         // Gem picked off the board / socketed into a weapon
         this.load.audio('gem_pickup', M + 'Gem_Pickup_01.mp3');
         this.load.audio('gem_socket', M + 'Gem_Socket_01.mp3');
+        // Crystal card picked off the board. Distinct from 'crystal_collect',
+        // which the amulet equip still uses.
+        this.load.audio('crystal_pickup', M + 'Glass_Clink_03.mp3');
         // Key card dropped back into the inventory
         this.load.audio('key_drop', M + 'Key_Drop_02.mp3');
         // Lightning-gem zap — 3 variants, loudness-normalized

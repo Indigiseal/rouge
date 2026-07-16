@@ -1547,6 +1547,14 @@ export class GameScene extends Phaser.Scene {
                 if (!this.cardSystem.rollEvade(currentTarget)) {
                     const isMelee = entry.companion.attackStyle === 'melee'
                         || entry.companion.range === 'melee';
+                    // The chick's zap borrows the lightning-gem visual, but the
+                    // zap SFX lives in applyWeaponGemEffect — a path a companion
+                    // never runs through, so it struck in silence. Same 'gem'
+                    // beat damageGemTarget uses below, so sound and flash land
+                    // together.
+                    if (!isMelee) {
+                        CombatSequencer.playVariant(this, 'gem', 'lightning_zap', 0.45);
+                    }
                     this.cardSystem.damageGemTarget(
                         target.index,
                         entry.companion.attack || 2,
