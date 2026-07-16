@@ -1,4 +1,5 @@
 import { SoundHelper } from './utils/SoundHelper.js';
+import { CombatSequencer } from './utils/CombatSequencer.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from './utils/i18n.js';
 export class InventorySystem {
@@ -2512,12 +2513,12 @@ export class InventorySystem {
         if (closestEnemy !== -1 && closestDistance < 150) {
             // Equip weapon before attacking
             this.scene.gameState.equippedWeapon = weapon;
-            // Weapon-appropriate swing sound from the new SFX batch.
-            if (this.scene.cardSystem?.isRangedWeapon?.(weapon)) {
-                SoundHelper.playSound(this.scene, 'bow_shot', 0.5);
-            } else {
-                SoundHelper.playSound(this.scene, 'heavy_swing', 0.5);
-            }
+            // Weapon-appropriate swing sound from the new SFX batch. Routed
+            // through the CombatSequencer 'attack' beat so it claims a slot on
+            // the shared timeline — for a single swing this still fires now, but
+            // it lets a dual-wield's off-hand swing slot in cleanly below.
+            const swingKey = this.scene.cardSystem?.isRangedWeapon?.(weapon) ? 'bow_shot' : 'heavy_swing';
+            CombatSequencer.playSound(this.scene, 'attack', swingKey, 0.5);
             let attackDamage = weapon.damage;
             
             // Apply weakness penalty when exhausted (out of action points)
@@ -2534,6 +2535,7 @@ export class InventorySystem {
             // both gems on a dual-wield swing — matching what players intuitively
             // expect when they see two daggers in their hands.
             let secondaryDagger = null;
+            let secondaryIndex = -1;
             if (weapon.special === 'dualWield') {
                 // Find a different dual-wield dagger in inventory (skip the equipped one)
                 for (let s = 0; s < this.slots.length; s++) {
@@ -2541,6 +2543,7 @@ export class InventorySystem {
                     if (!item || item === weapon || item.special !== 'dualWield') continue;
                     if (item.durability <= 0) continue;
                     secondaryDagger = item;
+                    secondaryIndex = s;
                     break;
                 }
                 if (secondaryDagger) {
@@ -2592,9 +2595,14 @@ export class InventorySystem {
                     this.scene.updateUI?.();
                 }
                 if (i < attackCount - 1) {
-                    this.scene.time.delayedCall(150, () => {
-                        SoundHelper.playSound(this.scene, 'heavy_swing', 0.3);
-                    });
+                    // The off-hand dagger joins the swing. Lift its inventory
+                    // card the same way a companion does when it attacks, and
+                    // give it its own swing on the sequencer. Scheduled here —
+                    // before the second attackEnemy() claims its impact slot —
+                    // so the two blades read as swing → hit → swing → hit rather
+                    // than a single doubled-up frame.
+                    this.animateOffhandDaggerRaise(secondaryIndex);
+                    CombatSequencer.playSound(this.scene, 'attack', swingKey, 0.4);
                 }
             }
             
@@ -2615,7 +2623,68 @@ export class InventorySystem {
         // Return weapon to slot after use
         this.returnWeaponToSlotDelayed(slotIndex, cardSprite);
     }
-    
+
+    // Lift the off-hand dagger's inventory card during a dual-wield swing, the
+    // same 5px hop (with the hover shine) a companion plays when it joins an
+    // attack — so a dual-wield visibly comes from BOTH daggers, not just the
+    // dragged one. Purely cosmetic; the off-hand's damage is applied by the
+    // caller's attackEnemy() call.
+    animateOffhandDaggerRaise(index) {
+        const slot = this.slotSprites?.[index];
+        const cardSprite = slot?.card;
+        if (!cardSprite?.scene) return;
+
+        const restY = Number.isFinite(slot?.originalY) ? slot.originalY : cardSprite.y;
+        const hoverSprite = slot?.hoverSprite;
+
+        if (hoverSprite && this.scene.anims?.exists?.('hover_cards_anim')) {
+            hoverSprite.setVisible(true);
+            hoverSprite.play('hover_cards_anim');
+        }
+
+        // Hop the card art AND everything pinned to it — the value/pip container
+        // (infoText), gem overlays, briar frame, twinkle — so the whole card
+        // lifts as one, exactly like the inventory hover lift. Without this the
+        // damage number and durability pips stay put while only the art moves.
+        // Round y each frame so pips never land on a fractional pixel and jitter.
+        const lift = (target, baseY, round = false) => {
+            if (!target?.scene) return;
+            this.scene.tweens.add({
+                targets: target,
+                y: baseY - 5,
+                duration: 120,
+                ease: 'Power2',
+                yoyo: true,
+                onUpdate: round ? () => { target.y = Math.round(target.y); } : undefined,
+                onComplete: () => { if (target?.scene) target.y = baseY; }
+            });
+        };
+
+        lift(cardSprite, restY, true);
+        lift(cardSprite.getData?.('infoText'), restY, true);
+        if (slot.gemEffectSprite?.visible) lift(slot.gemEffectSprite, restY);
+        lift(slot.briarFrame, restY);
+        lift(slot.twinkleSprite, restY);
+        if (slot.gemIndicator) lift(slot.gemIndicator, slot.gemIndicator.restY ?? restY);
+
+        if (hoverSprite) {
+            this.scene.tweens.add({
+                targets: hoverSprite,
+                y: restY - 5,
+                duration: 120,
+                ease: 'Power2',
+                yoyo: true,
+                onComplete: () => {
+                    if (hoverSprite?.scene) {
+                        hoverSprite.stop();
+                        hoverSprite.setVisible(false);
+                        hoverSprite.y = restY;
+                    }
+                }
+            });
+        }
+    }
+
     // Helper method to handle weapon breaking
     handleWeaponBreak(weapon, cardSprite, slotIndex) {
         // Clean up board artifacts before destroying
@@ -2966,7 +3035,9 @@ export class InventorySystem {
     useFood(slotIndex, cardSprite) {
         const foodData = this.slots[slotIndex];
         if (!foodData) return false;
-        
+
+        SoundHelper.playVariant(this.scene, 'bread_eaten', 0.5);
+
         // Apply food AP modifiers from amulets
         let actionGain = foodData.actionAmount;
         if (this.scene.amuletManager) {

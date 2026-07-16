@@ -154,6 +154,11 @@ export class MockScene {
   updateEquippedArmorPanel() {}
   updateRoomTitle() {}
   recordCardDiscarded() {}
+  getCompanionProtectionBonus() {
+    return (this._simInventory || []).reduce((total, item) => (
+      total + (item?.type === 'companion' ? Math.max(0, Number(item.guardProtection) || 0) : 0)
+    ), 0);
+  }
   // Tent relic: gain max HP whenever a card (weapon/armor) is spent/breaks.
   grantCardSpentRelicBonus(card) {
     const amount = this.gameState?.relicEffects?.cardSpentMaxHP || 0;
@@ -214,8 +219,39 @@ export class MockScene {
       if (!card || !card.revealed || !this.isEnemyCard(card)) continue;
       if (card.data.frozen && card.data.frozen > 0) continue;
       if (card.data.health <= 0) continue;
+
+      if (card.data.type === 'boss' && card.data.abilities) {
+        for (const ab of card.data.abilities) {
+          if (ab.type === 'summon' && Math.random() < ab.chance) {
+            const n = ab.count || 1;
+            for (let k = 0; k < n; k++) this._summonMinion(ab.enemyType);
+          }
+        }
+      }
+
+      let damageDealt = card.data.attack;
+      const rage = card.data.abilities?.find((a) => a.type === 'rage');
+      if (rage) {
+        const maxHp = card.data.maxHealth || card.data.health;
+        if (maxHp > 0 && (card.data.health / maxHp) <= (rage.threshold ?? 0.3)) {
+          damageDealt = Math.ceil(damageDealt * (rage.damageBoost || 1.5));
+        }
+      }
+      const armorBreak = card.data.abilities?.find((a) => a.type === 'armor_break');
+      const armorPierce = armorBreak?.amount || 0;
+
+      card.data.abilities?.forEach((ability) => {
+        if (ability.type === 'poison') {
+          this.gameState.addPlayerEffect({ ...ability, killedBy: card.data.name || 'Enemy' });
+        } else if (ability.type === 'coin_steal') {
+          if (Math.random() < ability.chance && this.gameState.coins > 0) {
+            this.gameState.coins -= Math.min(ability.amount, this.gameState.coins);
+          }
+        }
+      });
+
       const armorBeforeHit = this.gameState.equippedArmor;
-      const { actualDamage } = this.gameState.takeDamage(card.data.attack, i, 'enemy');
+      const { actualDamage } = this.gameState.takeDamage(damageDealt, i, 'enemy', armorPierce);
       if (armorBeforeHit && !this.gameState.equippedArmor) {
         this._armorBreaks = (this._armorBreaks || 0) + 1;
       }
@@ -223,7 +259,8 @@ export class MockScene {
       // Thorns: reflect to MELEE attackers (mirrors GameScene.applyThornsDamage),
       // consuming 1 durability per reflect; the bot's strongest thorns is active.
       const t = this.gameState.activeThorns;
-      if (card.data.role === 'MELEE' && t && t.durability > 0 && card.data.health > 0) {
+      const isMeleeAttacker = card.data.type === 'boss' || (card.data.role === 'MELEE' && !card.data.isRangedType);
+      if (isMeleeAttacker && t && t.durability > 0 && card.data.health > 0) {
         this.cardSystem.attackEnemy(i, t.thornDamage || 2, true);
         t.durability -= 1;
         if (t.durability <= 0) {
@@ -239,9 +276,6 @@ export class MockScene {
             const heal = Math.max(1, Math.ceil(actualDamage * (ab.percentage || 0.3)));
             if (card.data.maxHealth === undefined) card.data.maxHealth = card.data.health;
             card.data.health = Math.min(card.data.maxHealth, card.data.health + heal);
-          } else if (ab.type === 'summon' && Math.random() < ab.chance) {
-            const n = ab.count || 1;
-            for (let k = 0; k < n; k++) this._summonMinion(ab.enemyType);
           }
         }
       }
@@ -256,15 +290,38 @@ export class MockScene {
         .filter(({ card }) => card?.revealed && this.isEnemyCard(card) && card.data.health > 0);
       if (!targets.length) break;
       const meleeTargets = companion.attackStyle === 'melee'
-        ? targets.filter(({ card }) => card.data.role === 'MELEE')
+        ? targets.filter(({ card }) => card.data.role === 'MELEE' || card.data.type === 'boss')
         : targets;
       const pool = meleeTargets.length ? meleeTargets : targets;
       pool.sort((a, b) => a.card.data.health - b.card.data.health);
-      this.cardSystem.attackEnemy(pool[0].index, companion.attack || 2, true);
+      const target = pool[0];
+      this.cardSystem.attackEnemy(target.index, companion.attack || 2, true);
+      const shockedTarget = board[target.index];
+      if ((companion.shockChance || 0) > 0
+          && shockedTarget === target.card
+          && shockedTarget?.data?.health > 0
+          && Math.random() < companion.shockChance) {
+        this.cardSystem.applyShockStatus?.(shockedTarget, 1);
+      }
     }
     // End-of-enemy-turn effects: poison damage-over-time ticks on enemies
     // (mirrors GameScene.finishEnemyTurnEffects → processEnemyPoisonEffects).
     this.cardSystem.processEnemyPoisonEffects?.();
+    let effectDamage = 0;
+    let poisonKilledBy = null;
+    for (let i = this.gameState.playerEffects.length - 1; i >= 0; i--) {
+      const effect = this.gameState.playerEffects[i];
+      if (effect.type === 'poison') {
+        effectDamage += effect.damage || 0;
+        poisonKilledBy = effect.killedBy || poisonKilledBy;
+      }
+      effect.turns--;
+      if (effect.turns <= 0) this.gameState.playerEffects.splice(i, 1);
+    }
+    if (effectDamage > 0) {
+      this.gameState.takeDamage(effectDamage, -1, 'poison');
+      if (this.gameState.playerHealth <= 0) this._lastKiller = poisonKilledBy || 'Poison';
+    }
   }
 
   // Inject a summoned minion (revealed enemy) onto the board — boss summon.

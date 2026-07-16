@@ -15,7 +15,11 @@ export class SoundHelper {
         button_click: ['button_click_1', 'button_click_2'],
         invalid_action: ['invalid_action_1', 'invalid_action_2'],
         legendary_reveal: ['legendary_reveal_1', 'legendary_reveal_2'],
-        player_hurt: ['player_hurt_1', 'player_hurt_2', 'player_hurt_3']
+        player_hurt: ['player_hurt_1', 'player_hurt_2', 'player_hurt_3'],
+        bread_eaten: ['bread_eaten_1', 'bread_eaten_2', 'bread_eaten_3'],
+        empty_stomach: ['empty_stomach_1', 'empty_stomach_2'],
+        new_level: ['new_level_1', 'new_level_3'],
+        hero_death: ['hero_death_1', 'hero_death_2', 'hero_death_3']
     };
 
     static ensureGlobalVolume(scene) {

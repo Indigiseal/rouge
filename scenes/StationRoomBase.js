@@ -183,8 +183,10 @@ export class StationRoomBase extends Phaser.Scene {
                 statColor = '#a55119';
                 break;
         }
+        // Hoisted so the hover handlers below can lift it with the card face.
+        let statText = null;
         if (statValue) {
-            const statText = renderScene.add.text(statX, statY, statValue, {
+            statText = renderScene.add.text(statX, statY, statValue, {
                 fontSize: '11px', fill: statColor, fontFamily: '"HoMM Pixel", Arial, sans-serif'
             }).setOrigin(0.5).setDepth(10);
             this.shopBoardObjects.push(statText);
@@ -202,13 +204,13 @@ export class StationRoomBase extends Phaser.Scene {
         // this one — a potion's heal sits dead centre at y+19 and a weapon's
         // damage at x+17, so a tag drawn over them would hide the numbers.
         if (!item.purchased && renderScene.textures.exists('priceTag')) {
-            const tag = snapOriginToPixelGrid(renderScene.add.image(x, y + 26, 'priceTag'));
+            const tag = snapOriginToPixelGrid(renderScene.add.image(x, y + 31, 'priceTag'));
             tag.setDepth(9.5);
             entry.priceTag = tag;
             this.shopBoardObjects.push(tag);
         }
 
-        const priceText = renderScene.add.text(x, y + 26, item.purchased ? t(this, 'ui.shop.sold') : `${item.price}${glyph}`, {
+        const priceText = renderScene.add.text(x, y + 31, item.purchased ? t(this, 'ui.shop.sold') : `${item.price}${glyph}`, {
             fontSize: '11px',
             fill: item.purchased ? '#888888' : (item.currency === 'crystals' ? '#a83c69' : '#cf8834'),
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
@@ -254,6 +256,8 @@ export class StationRoomBase extends Phaser.Scene {
         sprite.on('pointerover', () => {
             // Float card up
             renderScene.tweens.add({ targets: sprite, y: y - 5, duration: 150, ease: 'Power2' });
+            // Lift the on-card stat value with the card face
+            if (statText) renderScene.tweens.add({ targets: statText, y: statY - 5, duration: 150, ease: 'Power2' });
             // Show shadow at original position (card lifts above it)
             if (shadow) {
                 shadow.x = x;
@@ -272,6 +276,7 @@ export class StationRoomBase extends Phaser.Scene {
         sprite.on('pointerout', () => {
             // Return card and shine to original position
             renderScene.tweens.add({ targets: sprite, y: y, duration: 150, ease: 'Power2' });
+            if (statText) renderScene.tweens.add({ targets: statText, y: statY, duration: 150, ease: 'Power2' });
             if (hoverSprite) {
                 renderScene.tweens.add({ targets: hoverSprite, y: y, duration: 150, ease: 'Power2' });
                 hoverSprite.setVisible(false);
@@ -288,6 +293,10 @@ export class StationRoomBase extends Phaser.Scene {
             if (item.purchased && !wasPurchased) {
                 renderScene.tweens.killTweensOf(sprite);
                 sprite.y = y;
+                if (statText) {
+                    renderScene.tweens.killTweensOf(statText);
+                    statText.y = statY;
+                }
                 if (hoverSprite) {
                     renderScene.tweens.killTweensOf(hoverSprite);
                     hoverSprite.y = y;

@@ -378,18 +378,30 @@ export class TreasureScene extends StationRoomBase {
     this.playChestOpen(chest, () => {
       const trapX = chest.x + Math.random() * 50 - 25;
       const trapY = chest.y + Math.random() * 50 - 25;
-      const trapSprite = this.add.sprite(trapX, trapY, 'trap');
-      trapSprite.setAlpha(0);
+      const TRAP_DAMAGE = 5;
+
+      // Wrap the trap art and its damage value in one container so the value
+      // reads like a real trap card (board traps show their damage at the same
+      // 17,22 value-slot offset) AND stays pinned to the card — it fades and is
+      // destroyed together with the art instead of floating loose.
+      const trapSprite = this.add.image(0, 0, 'trap');
+      const trapValue = this.add.text(17, 22, `${TRAP_DAMAGE}`, {
+        fontSize: '11px',
+        fill: '#ffcf7f',
+        fontFamily: '"HoMM Pixel"'
+      }).setOrigin(0.5);
+      const trapCard = this.add.container(trapX, trapY, [trapSprite, trapValue]);
+      trapCard.setAlpha(0);
 
       this.tweens.add({
-        targets: trapSprite,
+        targets: trapCard,
         alpha: 1,
         duration: 500,
         ease: 'Power2',
         onComplete: () => {
           SoundHelper.playSound(this, 'trap_spring1', 0.5);
-          this.gameState.takeDamage(5, -1, 'trap');
-          this.add.text(320, 250, 'Trap Spawned! -5 HP', {
+          this.gameState.takeDamage(TRAP_DAMAGE, -1, 'trap');
+          this.add.text(320, 250, `Trap Spawned! -${TRAP_DAMAGE} HP`, {
             fontSize: '14px',
             fill: '#ff0000',
             fontFamily: '"HoMM Pixel"'
@@ -398,7 +410,7 @@ export class TreasureScene extends StationRoomBase {
 
           this.grantForcedChestRewards(chest, true);
 
-          this.time.delayedCall(1000, () => trapSprite.destroy());
+          this.time.delayedCall(1000, () => trapCard.destroy(true));
         }
       });
     });

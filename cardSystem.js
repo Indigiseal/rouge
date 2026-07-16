@@ -1735,7 +1735,8 @@ export class CardSystem {
       // and act 3 to 45%, so most cards on the board are fights.
       const minRatio =
           floor <= 15 ? 0.18 :   // act 1 — gentle
-          floor <= 30 ? 0.28 :   // act 2 — fights become majority
+          floor <= 23 ? 0.28 :   // act 2 ramp-up
+          floor <= 30 ? 0.25 :   // late act 2: let the player catch up before boss
                         0.33;    // act 3 — pressure without wall
       const bonus = roomType === 'ELITE' ? 1 : 0;
       const minEnemies = Math.max(2, Math.round(this.boardCards.length * minRatio) + bonus);
@@ -2054,6 +2055,18 @@ export class CardSystem {
             }
         } else if (card.data.subType === 'reveal') {
             SoundHelper.playSound(this.scene, 'trap_spring', 0.6);
+            // Light nick before it reveals the neighbours.
+            const hit = card.data.damage || 0;
+            if (hit > 0) {
+                const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(hit, -1, 'trap');
+                if (this.scene.gameState.playerHealth <= 0) this.scene.killedBy = trapName;
+                if (tookDamage) {
+                    SoundHelper.playVariant(this.scene, 'player_hurt', 0.5);
+                }
+                if (actualDamage > 0) {
+                    this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${actualDamage}`, 0xff0000);
+                }
+            }
             this.revealAdjacentCards(index);
         }
         this.scene.updateUI();
@@ -2142,10 +2155,11 @@ export class CardSystem {
             }
                 
             case 'trap': {
-                // Spike/poison traps show their damage in the same value slot
-                // that weapon cards use (offset 17,22 from card centre).
+                // Traps show their damage in the same value slot weapon cards
+                // use (offset 17,22 from card centre). Spike and the pressure
+                // plate read their flat hit; poison shows its per-turn tick.
                 let trapDamage = null;
-                if (card.data.subType === 'spike') {
+                if (card.data.subType === 'spike' || card.data.subType === 'reveal') {
                     trapDamage = card.data.damage;
                 } else if (card.data.subType === 'poison') {
                     trapDamage = card.data.abilities?.[0]?.damage;
@@ -2162,11 +2176,6 @@ export class CardSystem {
                     container.setDepth(1001);
                     attachInfoText(container);
                     return;
-                }
-
-                // Reveal traps have no damage value — keep the descriptive label.
-                if (card.data.subType === 'reveal') {
-                    infoText = `Reveals adjacent cards!`;
                 }
                 break;
             }
@@ -3549,6 +3558,7 @@ export class CardSystem {
             // Bosses get a bespoke death — a mask animation over the boss, then
             // the silhouette recolors and fades. Regular enemies dissolve as usual.
             if (card.data?.type === 'boss') {
+                SoundHelper.playSound(this.scene, 'boss_defeated', 0.6);
                 this.playBossDeathEffect(card.sprite);
             } else {
                 this.playCardDisappearEffect(card.sprite);

@@ -14,6 +14,9 @@ export class RestScene extends Phaser.Scene {
             this.gameState.playerHealth = Math.min(this.gameState.maxHealth, this.gameState.playerHealth + 20);
         }
         this.gameState.actionsLeft = this.gameState.maxActions;
+        // Looping campfire crackle while resting; faded out when leaving.
+        this.campfireLoop = SoundHelper.fadeInMusic(this, 'campfire_loop', 0.5, 600, true);
+        this.events.once('shutdown', () => SoundHelper.fadeOutMusic(this, this.campfireLoop));
         this.add.image(320, 92, 'restRooms', 0).setOrigin(0.5);
         this.add.text(320, 165, 'You rest by the campfire.', { fontSize: '18px', fill: '#ffffff', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
         this.add.text(320, 205, '+20 HP Restored', { fontSize: '22px', fill: '#00ff00', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
