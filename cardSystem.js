@@ -2275,13 +2275,13 @@ export class CardSystem {
             case 'weapon': {
                 const container = this.scene.add.container(card.sprite.x, card.sprite.y);
                 
-                const damageText = this.scene.add.text(17, 22, `${card.data.damage}`, {
+                const damageText = this.scene.add.text(18, 23, `${card.data.damage}`, {
                     fontSize: '11px',
                     fill: '#ffcf7f',
                     fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
                 container.add(damageText);
-                
+
                 // Durability display with 10-point sprites and individual dots
                 const startY = -27;
                 const dotSpacing = 6;
@@ -2312,7 +2312,7 @@ export class CardSystem {
             
             case 'armor': {
                 const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-                const protectionText = this.scene.add.text(18, 25, `${card.data.protection}`, {
+                const protectionText = this.scene.add.text(19, 26, `${card.data.protection}`, {
                     fontSize: '12px',
                     fill: '#ffcf7f',
                     fontFamily: '"HoMM Pixel"'
@@ -2393,19 +2393,19 @@ export class CardSystem {
         const dx = 18;   // pulled further inward so the digits sit in the slots
         const dy = 27;   // raised 5px from the original bottom edge
 
-        const style = (fill) => ({
+        // Warm parchment cream, shared by both stats.
+        const STAT_FILL = '#fef0cf';
+        const style = () => ({
             fontSize: '11px',
-            fill,
+            fill: STAT_FILL,
             fontFamily: '"HoMM Pixel"',
         });
 
-        // Dark fills with a thin white outline for legibility on the busy
-        // enemy art. HP keeps a red tint, ATK a warm amber.
         const hpText = this.scene.add.text(
-            -dx, dy, `${card.data.health ?? 0}`, style('#5a0000')
+            -dx, dy, `${card.data.health ?? 0}`, style()
         ).setOrigin(0.5);
         const atkText = this.scene.add.text(
-            dx, dy, `${card.data.attack ?? 0}`, style('#3a1f00')
+            dx, dy, `${card.data.attack ?? 0}`, style()
         ).setOrigin(0.5);
 
         const container = this.scene.add.container(card.sprite.x, card.sprite.y, [hpText, atkText]);
@@ -2682,7 +2682,7 @@ export class CardSystem {
                 break;
                 
             case 'crystal': {
-                SoundHelper.playSound(this.scene, 'crystal_collect', 0.5);
+                SoundHelper.playSound(this.scene, 'crystal_pickup', 0.5);
                 const crystalAmount = this.scene.amuletManager
                     ? this.scene.amuletManager.modifyCrystalFound(card.data.amount)
                     : card.data.amount;
@@ -3129,6 +3129,15 @@ export class CardSystem {
         }
     }
 
+    // How far a fire gem's splash reaches, measured from the struck enemy's
+    // centre to the nearest EDGE of any other enemy. 70px keeps it to
+    // directly-adjacent cards instead of a wide blast; Ember Rune extends it.
+    // The drag-time reach ring reads this too, so the ring can never promise a
+    // radius the damage doesn't deliver.
+    getFireSplashRadius() {
+        return 70 + (this.scene.amuletManager?.getFireSplashRadiusBonus?.() || 0);
+    }
+
     applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
         const target = this.boardCards[targetIndex];
         if (!target?.data) return;
@@ -3149,9 +3158,7 @@ export class CardSystem {
             // Measure to the NEAREST EDGE of each enemy's sprite, not its center.
             // A big sprite like the boss has a far-off center but its body can be
             // right next to the minion you hit — center distance would miss it.
-            // Tightened to 70px so the splash mostly catches directly-adjacent
-            // enemies instead of a wide blast; Ember Rune still extends it.
-            const SPLASH_RADIUS = 70 + (this.scene.amuletManager?.getFireSplashRadiusBonus?.() || 0);
+            const SPLASH_RADIUS = this.getFireSplashRadius();
             const tx = target.sprite?.x ?? 0;
             const ty = target.sprite?.y ?? 0;
             this.boardCards.forEach((card, i) => {

@@ -209,6 +209,61 @@ export class InventorySystem {
         this.dragOverlay = null;
     }
 
+    // The enemy a swing would land on: closest revealed enemy within 150px of
+    // the dragged card. Mirrors the pick in useWeapon() so the ring previews the
+    // same target the drop will actually hit.
+    findWeaponTargetSprite(cardSprite) {
+        let closest = null;
+        let closestDistance = Infinity;
+        this.scene.cardSystem?.boardCards?.forEach(card => {
+            if (!card?.revealed || !card.sprite || !this.isEnemyBoardCard(card)) return;
+            const distance = Phaser.Math.Distance.Between(
+                cardSprite.x, cardSprite.y, card.sprite.x, card.sprite.y
+            );
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closest = card.sprite;
+            }
+        });
+        return closestDistance < 150 ? closest : null;
+    }
+
+    // Translucent red ring showing how far a fire gem's splash would reach from
+    // the enemy this swing would strike. Because the splash tests centre-to-
+    // nearest-edge, the rule reads straight off the picture: any enemy card the
+    // ring touches burns. Drawn at depth 1 — above the board panel (0), below
+    // the cards (2) — so it looks like scorched ground, not an overlay.
+    updateFireReachIndicator(cardSprite, slotIndex) {
+        const weapon = this.slots[slotIndex];
+        if (this.stationMode || weapon?.type !== 'weapon' || weapon.gemEffect !== 'fire') {
+            this.destroyFireReachIndicator();
+            return;
+        }
+
+        const target = this.findWeaponTargetSprite(cardSprite);
+        if (!target?.scene) {
+            this.destroyFireReachIndicator();
+            return;
+        }
+
+        if (!this.fireReachIndicator?.scene) {
+            this.fireReachIndicator = this.scene.add.graphics().setDepth(1);
+        }
+
+        const radius = this.scene.cardSystem.getFireSplashRadius();
+        const g = this.fireReachIndicator;
+        g.clear();
+        g.fillStyle(0xff4020, 0.16);
+        g.fillCircle(target.x, target.y, radius);
+        g.lineStyle(1, 0xff6040, 0.5);
+        g.strokeCircle(target.x, target.y, radius);
+    }
+
+    destroyFireReachIndicator() {
+        if (this.fireReachIndicator?.scene) this.fireReachIndicator.destroy();
+        this.fireReachIndicator = null;
+    }
+
     syncGameStateInventory() {
         if (this.scene.gameState) {
             this.scene.gameState.inventory = this.slots;
@@ -1034,11 +1089,15 @@ export class InventorySystem {
 
 
             this.updateDragOverlay(cardSprite);
+            this.updateFireReachIndicator(cardSprite, slotIndex);
         });
-        
+
         cardSprite.on('dragend', () => {
+            // Ahead of the scene guard below: if the card was destroyed mid-drag
+            // the ring has no owner left to clear it and would sit on the board.
+            this.destroyFireReachIndicator();
             if (!cardSprite.scene) return;
-            
+
             if (typeof cardSprite.clearTint === 'function') {
                 cardSprite.clearTint();
             }
