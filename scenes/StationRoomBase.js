@@ -46,6 +46,10 @@ export class StationRoomBase extends Phaser.Scene {
 
     // Helper — flips a button to its "done" state. Use after a successful buy/take.
     markButtonDone(button, label) {
+        // Drop the price banner with the price it framed — "Sold" is wider than
+        // the 30px art in several languages, and there's no price left to frame.
+        button._priceTag?.destroy();
+        button._priceTag = null;
         button.setText(label).setStyle({ fill: '#888888' }).removeInteractive();
     }
 
@@ -186,14 +190,33 @@ export class StationRoomBase extends Phaser.Scene {
             this.shopBoardObjects.push(statText);
         }
 
-        // Price label underneath the card
+        // Price label underneath the card, on a little banner.
         const glyph = item.currency === 'crystals' ? '◆' : '¢';
+
+        // The banner is 30px wide — sized for a short numeric price. A sold item
+        // has no price to frame, and the localized "Sold" (RU 'Продано') would
+        // overrun the art, so sold cards show bare text and get no tag.
+        //
+        // Depth 9.5 threads a narrow gap: above the card (9) so it reads as a tag
+        // pinned to it, but below the stat labels (10), whose footprints overlap
+        // this one — a potion's heal sits dead centre at y+19 and a weapon's
+        // damage at x+17, so a tag drawn over them would hide the numbers.
+        if (!item.purchased && renderScene.textures.exists('priceTag')) {
+            const tag = snapOriginToPixelGrid(renderScene.add.image(x, y + 26, 'priceTag'));
+            tag.setDepth(9.5);
+            entry.priceTag = tag;
+            this.shopBoardObjects.push(tag);
+        }
+
         const priceText = renderScene.add.text(x, y + 26, item.purchased ? t(this, 'ui.shop.sold') : `${item.price}${glyph}`, {
             fontSize: '11px',
             fill: item.purchased ? '#888888' : (item.currency === 'crystals' ? '#a83c69' : '#cf8834'),
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         });
         priceText.setOrigin(0.5).setDepth(11);
+        // markButtonDone() only ever receives this text, so hang the tag off it
+        // — that's the one choke point every shop routes a purchase through.
+        priceText._priceTag = entry.priceTag || null;
         entry.priceText = priceText;
         this.shopBoardObjects.push(priceText);
 

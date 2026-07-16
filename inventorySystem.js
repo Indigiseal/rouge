@@ -2926,7 +2926,11 @@ export class InventorySystem {
         if (!this.stationMode && !this.scene.useAction()) return false;
         const potionData = this.slots[slotIndex];
         if (!potionData) return false;
-        
+
+        // Below both guards above: the gulp should only sound once the hero is
+        // actually drinking, not on an attempt that bounced off the action check.
+        SoundHelper.playSound(this.scene, 'potion_drink', 0.5);
+
         // Apply healing modifiers from amulets
         let healAmount = potionData.healAmount;
         if (this.scene.amuletManager) {

@@ -36,6 +36,8 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('scrollHandle', 'assets/art/scroll.png');
         this.load.spritesheet('eventsShops', 'assets/art/eventsShops80x80.png', { frameWidth: 80, frameHeight: 80 });
         this.load.image('panelArmor', 'assets/art/panelArmor.png');
+        // Little banner behind each shop item's price (30x14)
+        this.load.image('priceTag', 'assets/art/priceTag.png');
         this.load.bitmapFont('pixel-font', 'assets/fonts/minogram_6x10.png', 'assets/fonts/minogram_6x10.xml');
         this.load.bitmapFont('cyrillic-ui-font', 'assets/fonts/probly12NEW_crisp.png', 'assets/fonts/probly12NEW_crisp.xml');
         // Dedicated crisp 16px title font (rasterized 1-bit from Able5.ttf) so
@@ -290,6 +292,10 @@ export class PreloadScene extends Phaser.Scene {
         // Crystal card picked off the board. Distinct from 'crystal_collect',
         // which the amulet equip still uses.
         this.load.audio('crystal_pickup', M + 'Glass_Clink_03.mp3');
+        // Hero drinks a potion dropped onto him. Trimmed from the 1.04s source to
+        // 0.56s — everything past that was silence — and re-encoded from 24-bit
+        // 48k stereo, which cost 301KB for half a second of gulp.
+        this.load.audio('potion_drink', M + 'Potion_Drink_01.mp3');
         // Key card dropped back into the inventory
         this.load.audio('key_drop', M + 'Key_Drop_02.mp3');
         // Lightning-gem zap — 3 variants, loudness-normalized
