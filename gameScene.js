@@ -18,6 +18,12 @@ import { CombatSequencer } from './utils/CombatSequencer.js';
 // retunes this with them.
 const ENEMY_ATTACK_GAP = CombatSequencer.BEATS.death + 20;
 
+// One volume for every companion's attack, deliberately under the hero's own
+// impact (0.4) and swing (0.5): a companion acts on its own each turn, and if it
+// matched the hero it would compete with the swing the player actually chose.
+// Shared by melee and ranged so the two never drift apart on tuning.
+const COMPANION_SFX_VOLUME = 0.35;
+
 export class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
@@ -1544,14 +1550,18 @@ export class GameScene extends Phaser.Scene {
                 if (!this.cardSystem.rollEvade(currentTarget)) {
                     const isMelee = entry.companion.attackStyle === 'melee'
                         || entry.companion.range === 'melee';
-                    // The chick's zap borrows the lightning-gem visual, but the
-                    // zap SFX lives in applyWeaponGemEffect — a path a companion
-                    // never runs through, so it struck in silence. Same 'gem'
-                    // beat damageGemTarget uses below, so sound and flash land
-                    // together.
-                    if (!isMelee) {
-                        CombatSequencer.playVariant(this, 'gem', 'lightning_zap', 0.45);
-                    }
+                    // Companions never ran through the weapon/gem paths that own
+                    // the combat SFX, so both of them used to strike in silence.
+                    // Each borrows the sound of the effect whose visual it already
+                    // shares: melee lands a blade, so it takes the hero's impact
+                    // variants; the chick takes the lightning-gem zap. Both ride
+                    // the 'gem' beat damageGemTarget uses below, so the sound and
+                    // the number land together.
+                    CombatSequencer.playVariant(
+                        this, 'gem',
+                        isMelee ? 'enemy_hit' : 'lightning_zap',
+                        COMPANION_SFX_VOLUME
+                    );
                     this.cardSystem.damageGemTarget(
                         target.index,
                         entry.companion.attack || 2,
