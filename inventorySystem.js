@@ -657,7 +657,8 @@ export class InventorySystem {
         if (slotIndex >= this.slots.length || slotIndex < 0) return;
 
         cardData = this.normalizeCardIdentity(cardData);
-        
+        cardData = this.canonicalizeCardStats(cardData);
+
         this.slots[slotIndex] = cardData;
         this.syncGameStateInventory();
         
@@ -1847,6 +1848,22 @@ export class InventorySystem {
         const rarity = card?.rarity;
         const unlocks = this.scene?.cardSystem?.cardDataGenerator?.armorUnlocks;
         return unlocks?.[armorType]?.[rarity] || null;
+    }
+
+    // Heal legacy off-canonical stats so same-rarity cards never display
+    // different values. Thorns power is purely a function of rarity (see
+    // CardDataGenerator.getThornStats), but the old merge formula could stamp a
+    // rare with 4 damage instead of the canonical 3 — snap it back so it reads
+    // correctly and merges with shop copies again. New merges are already
+    // canonical, so this only ever touches cards from older saves.
+    canonicalizeCardStats(card) {
+        if (card?.type === 'thorns' && card.rarity) {
+            const canonical = this.scene?.cardSystem?.cardDataGenerator?.getThornStats?.(card.rarity);
+            if (canonical && typeof canonical.thornDamage === 'number') {
+                card.thornDamage = canonical.thornDamage;
+            }
+        }
+        return card;
     }
 
     normalizeCardIdentity(card) {
@@ -3173,47 +3190,31 @@ export class InventorySystem {
             // Override with specific armor type and rarity  
             upgradedCard = this.forceArmorTypeAndRarity(upgradedCard, baseCard, newRarity);
         } else if (baseCard.type === 'thorns') {
-            const multiplier = newRarity === 'uncommon' ? 1.5
-                : newRarity === 'rare' ? 2
-                : newRarity === 'epic' ? 2.25
-                : 2.5;
-            const maxDurability = newRarity === 'uncommon' ? 7
-                : newRarity === 'rare' ? 9
-                : newRarity === 'epic' ? 10
-                : 11;
-            // Swap to the rarity-appropriate thorns art (was keeping the common
-            // sprite after a merge). Mirrors CardDataGenerator's thornsSpriteByRarity.
-            const thornsSpriteByRarity = {
-                common: 'thornsCard',
-                uncommon: 'thornsCard_U',
-                rare: 'thornsCard_R',
-                epic: 'thornsCard_E',
-                legendary: 'thornsCard_E'
-            };
-            upgradedCard = {
-                ...baseCard,
-                name: 'Thorns Card',
-                rarity: newRarity,
-                sprite: thornsSpriteByRarity[newRarity] || 'thornsCard',
-                thornDamage: Math.max(baseCard.thornDamage + 1, Math.floor(baseCard.thornDamage * multiplier)),
-                durability: maxDurability,
-                maxDurability,
-                cost: Math.floor((baseCard.cost || 8) * multiplier)
-            };
+            // Rebuild from the canonical per-rarity table (createThornsCard) so a
+            // merged thorns matches a shop thorns of the same rarity exactly — a
+            // rare is always 3 damage, never an off-table 4. No more "why is my
+            // merged thorns stronger than the shop one?" mismatch.
+            upgradedCard = this.scene.cardSystem.createCardData(
+                'thorns', this.scene.gameState.currentFloor, false, null, newRarity
+            );
+        } else if (baseCard.type === 'potion') {
+            // Climb the canonical potion ladder (35 -> 70 -> 110 -> 200) instead
+            // of multiplying into off-ladder heal values that got mislabeled
+            // (e.g. a 63-heal potion named "Strong"). A merged potion is now
+            // always a real shop-tier potion.
+            upgradedCard = this.scene.cardSystem.cardDataGenerator.getUpgradedPotion(baseCard.healAmount || 0);
         } else {
-            // For other items (potions, food), use simple upgrade logic
+            // Food (and any other simple item): keep the multiplier upgrade.
             const multiplier = newRarity === 'uncommon' ? 1.8 : newRarity === 'rare' ? 2.5 : 3;
-            const healAmount = baseCard.healAmount ? Math.floor(baseCard.healAmount * multiplier) : undefined;
             const actionAmount = baseCard.actionAmount ? Math.floor(baseCard.actionAmount * multiplier) : undefined;
             upgradedCard = {
                 ...baseCard,
-                name: baseCard.type === 'potion' ? this.getPotionNameForHealAmount(healAmount) :
-                    baseCard.type === 'food' ? this.getFoodNameForActionAmount(actionAmount) :
-                    baseCard.name.replace(/Common|Uncommon|Rare/, newRarity.charAt(0).toUpperCase() + newRarity.slice(1)),
+                name: baseCard.type === 'food'
+                    ? this.getFoodNameForActionAmount(actionAmount)
+                    : baseCard.name?.replace(/Common|Uncommon|Rare/, newRarity.charAt(0).toUpperCase() + newRarity.slice(1)),
                 rarity: newRarity,
-                healAmount,
                 actionAmount,
-                sprite: baseCard.type === 'potion' && newRarity === 'uncommon' ? 'potionCardUncommon' : baseCard.sprite
+                sprite: baseCard.sprite
             };
         }
         

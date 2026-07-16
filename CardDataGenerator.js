@@ -348,33 +348,34 @@ export class CardDataGenerator {
             giantSkeleton: {
                 type: 'boss', tier: 1,
                 name: 'Giant Skeleton',
-                health: 36,
+                health: 46,
                 attack: 7,
+                armor: 2,
                 sprite: 'giantSkeleton',
                 abilities: [
-                    { type: 'summon', enemyType: 'skeleton', chance: 0.3, count: 1 }
+                    { type: 'summon', enemyType: 'skeleton', chance: 0.35, count: 1 }
                 ]
             },
             goblinKing: {
                 type: 'boss', tier: 1,
                 name: 'Goblin King',
-                health: 40,
-                attack: 8,
+                health: 62,
+                attack: 11,
                 sprite: 'GoblinKingSprite',
                 abilities: [
                     { type: 'coin_steal', chance: 0.5, amount: 3 },
-                    { type: 'summon', enemyType: 'goblin', chance: 0.3, count: 1 }
+                    { type: 'summon', enemyType: 'goblin', chance: 0.35, count: 1 }
                 ]
             },
             spiderQueen: {
                 type: 'boss', tier: 1,
                 name: 'Spider Queen',
-                health: 36,
-                attack: 7,
+                health: 64,
+                attack: 12,
                 sprite: 'SpiderQween',
                 abilities: [
-                    { type: 'poison', damage: 5, turns: 5, stackable: true },
-                    { type: 'summon', enemyType: 'spider', chance: 0.3, count: 1 }
+                    { type: 'poison', damage: 3, turns: 3, stackable: true, maxStacks: 3 },
+                    { type: 'summon', enemyType: 'spider', chance: 0.35, count: 1 }
                 ]
             },
 
@@ -1225,6 +1226,26 @@ export class CardDataGenerator {
         };
     }
     
+    // Next canonical potion tier up from `baseHealAmount`. Merging two identical
+    // potions climbs this ladder (35 -> 70 -> 110 -> 200) so a merged potion is
+    // always a real shop-tier potion, never an off-ladder heal value. Tops out
+    // at the strongest tier.
+    getUpgradedPotion(baseHealAmount) {
+        const idx = this.potionTiers.findIndex(p => p.healAmount === baseHealAmount);
+        const next = idx === -1
+            ? (this.potionTiers.find(p => p.healAmount > baseHealAmount)
+                || this.potionTiers[this.potionTiers.length - 1])
+            : (this.potionTiers[idx + 1] || this.potionTiers[idx]);
+        return {
+            type: 'potion',
+            name: next.name,
+            healAmount: next.healAmount,
+            sprite: next.sprite,
+            rarity: next.rarity,
+            cost: next.cost
+        };
+    }
+
     createFoodCard(floor) {
         // Generated food stays at base tier. Merging is what creates stronger versions.
         const selectedFood = this.foodTiers[0];
@@ -1315,6 +1336,19 @@ export class CardDataGenerator {
         };
     }
 
+    // Canonical thorns stats per rarity — the single source of truth for both
+    // freshly generated thorns and merge results, so a rare is always 3 damage.
+    getThornStats(rarity) {
+        const tiers = {
+            common:    { thornDamage: 1, durability: 6,  cost: 8 },
+            uncommon:  { thornDamage: 2, durability: 7,  cost: 12 },
+            rare:      { thornDamage: 3, durability: 9,  cost: 18 },
+            epic:      { thornDamage: 4, durability: 10, cost: 23 },
+            legendary: { thornDamage: 5, durability: 11, cost: 28 }
+        };
+        return tiers[rarity] || tiers.common;
+    }
+
     createThornsCard(floor, targetRarity = null) {
         const rarity = targetRarity || 'common';
         // Per-rarity art. No legendary asset yet, so legendary borrows the
@@ -1327,14 +1361,7 @@ export class CardDataGenerator {
             legendary: 'thornsCard_E',
         };
         const thornsSprite = thornsSpriteByRarity[rarity] || 'thornsCard';
-        const tiers = {
-            common:    { thornDamage: 1, durability: 6,  cost: 8 },
-            uncommon:  { thornDamage: 2, durability: 7,  cost: 12 },
-            rare:      { thornDamage: 3, durability: 9,  cost: 18 },
-            epic:      { thornDamage: 4, durability: 10, cost: 23 },
-            legendary: { thornDamage: 5, durability: 11, cost: 28 }
-        };
-        const tier = tiers[rarity] || tiers.common;
+        const tier = this.getThornStats(rarity);
         return {
             type: 'thorns',
             name: 'Thorns Card',
