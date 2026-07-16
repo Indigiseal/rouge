@@ -1,4 +1,4 @@
-import { SoundHelper } from './utils/SoundHelper.js';
+import { CombatSequencer } from './utils/CombatSequencer.js';
 
 export class GameState {
     constructor(scene) {
@@ -184,7 +184,8 @@ export class GameState {
                     const enemySprite = this.scene.cardSystem.boardCards[enemyIndex]?.sprite;
                     this.scene.cardSystem.attackEnemy(enemyIndex, reflectedDamage, true);
                     if (enemySprite) {
-                        this.scene.createFloatingText(enemySprite.x, enemySprite.y - 20, `-${reflectedDamage} (Reflect)`, 0x00ffff);
+                        CombatSequencer.floatingText(this.scene, 'reflect',
+                            enemySprite.x, enemySprite.y - 20, `-${reflectedDamage} (Reflect)`, 0x00ffff);
                     }
                 }
             }
@@ -197,8 +198,9 @@ export class GameState {
             if (protection > 0 && amount > 0 && !skipTick) {
                 this.equippedArmor.durability--;
                 if (this.equippedArmor.durability <= 0) {
-                    SoundHelper.playVariant(this.scene, 'armor_break', 0.55);
-                    this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y + 20, `${this.equippedArmor.name} broke!`, 0xffa500);
+                    CombatSequencer.playVariant(this.scene, 'break', 'armor_break', 0.55);
+                    CombatSequencer.floatingText(this.scene, 'break',
+                        this.scene.playerAvatar.x, this.scene.playerAvatar.y + 20, `${this.equippedArmor.name} broke!`, 0xffa500);
                     this.scene.grantCardSpentRelicBonus?.(this.equippedArmor, this.scene.playerAvatar.x, this.scene.playerAvatar.y);
                     this.equippedArmor = null;
                     this.scene.updateUI();

@@ -11,6 +11,12 @@ import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 import { t, translateDescription, translateItemName } from './utils/i18n.js';
 import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from './utils/StoryProgress.js';
 import { loadVolumeSettings, saveVolumeSettings } from './utils/VolumeSettings.js';
+import { CombatSequencer } from './utils/CombatSequencer.js';
+
+// Gap between consecutive enemies' attacks. Derived from the sequencer's last
+// beat so it always clears one attacker's full timeline — retuning the beats
+// retunes this with them.
+const ENEMY_ATTACK_GAP = CombatSequencer.BEATS.death + 20;
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -353,7 +359,7 @@ export class GameScene extends Phaser.Scene {
         const pauseButton = this.add.rectangle(600, 15, 46, 18, 0x6f5452, 0.18)
             .setStrokeStyle(1, 0x6f5452)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => { SoundHelper.playSound(this, 'hover_soft', 0.4); pauseButton.setFillStyle(0x6f5452, 0.32); })
+            .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); pauseButton.setFillStyle(0x6f5452, 0.32); })
             .on('pointerout', () => pauseButton.setFillStyle(0x6f5452, 0.18))
             .on('pointerdown', () => { SoundHelper.playVariant(this, 'button_click', 0.5); this.pauseGame(); });
         
@@ -381,7 +387,7 @@ export class GameScene extends Phaser.Scene {
         this.nextFloorButton = snapOriginToPixelGrid(this.add.image(595, 50, 'nextTurnUp'))
             .setDepth(5000)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => { SoundHelper.playSound(this, 'hover_soft', 0.4); this.nextFloorButton.setTint(0xd4eaf7); })
+            .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); this.nextFloorButton.setTint(0xd4eaf7); })
             .on('pointerout', () => {
                 this.nextFloorButton.clearTint();
                 this.nextFloorButton.y = 50;
@@ -1055,7 +1061,10 @@ export class GameScene extends Phaser.Scene {
                 this.updateUI();
             }
 
-            const timer = this.time.delayedCall(320, attackNext);
+            // Long enough for one attacker's whole timeline (hit → thorns →
+            // armor break) to finish before the next one swings, so two enemies
+            // never narrate over each other.
+            const timer = this.time.delayedCall(ENEMY_ATTACK_GAP, attackNext);
             this.enemyTurnTimers.push(timer);
         };
 
@@ -1199,8 +1208,8 @@ export class GameScene extends Phaser.Scene {
         const { actualDamage, tookDamage } = this.gameState.takeDamage(damageDealt, index, 'enemy', armorPierce);
 
         if (tookDamage) {
-            SoundHelper.playVariant(this, 'player_hurt', 0.5);
-            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
+            CombatSequencer.playVariant(this, 'hurt', 'player_hurt', 0.5);
+            CombatSequencer.floatingText(this, 'hurt', this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
 
             if (playerHealthBeforeDamage > 0 && this.gameState.playerHealth <= 0) {
                 this.killedBy = card.data.name || card.data.type || 'Enemy';
@@ -1257,13 +1266,13 @@ export class GameScene extends Phaser.Scene {
         const y = card.sprite?.y || this.playerAvatar.y;
 
         this.cardSystem.attackEnemy(index, damage, true);
-        SoundHelper.playSound(this, 'thorns_hit', 0.45);
-        this.createFloatingText(x, y, `-${damage} Thorns`, 0x9dff7a);
+        CombatSequencer.playSound(this, 'reflect', 'thorns_hit', 0.45);
+        CombatSequencer.floatingText(this, 'reflect', x, y, `-${damage} Thorns`, 0x9dff7a);
 
         if (!thorns) return;
         thorns.item.durability = Math.max(0, thorns.item.durability - 1);
         if (thorns.item.durability <= 0) {
-            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y + 20, 'Thorns broke!', 0x9dff7a);
+            CombatSequencer.floatingText(this, 'break', this.playerAvatar.x, this.playerAvatar.y + 20, 'Thorns broke!', 0x9dff7a);
             this.grantCardSpentRelicBonus(thorns.item, this.playerAvatar.x, this.playerAvatar.y);
             if (this.inventorySystem) {
                 this.inventorySystem.removeCard(thorns.index);
@@ -1313,9 +1322,9 @@ export class GameScene extends Phaser.Scene {
         
         if (effectDamage > 0) {
             const playerHealthBeforePoison = this.gameState.playerHealth;
-            SoundHelper.playVariant(this, 'player_hurt', 0.5);
+            CombatSequencer.playVariant(this, 'hurt', 'player_hurt', 0.5);
             const { actualDamage, tookDamage } = this.gameState.takeDamage(effectDamage, -1, 'poison');
-            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage} (Poison)`, 0x00ff00);
+            CombatSequencer.floatingText(this, 'hurt', this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage} (Poison)`, 0x00ff00);
             
             // Track poison death
             if (playerHealthBeforePoison > 0 && this.gameState.playerHealth <= 0) {

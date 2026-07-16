@@ -1398,7 +1398,7 @@ export class InventorySystem {
         if (rebuild) this.rebuildInventorySprites();
         const stackLabel = weapon.gemCount > 1 ? ` (x${weapon.gemCount})` : '';
         this.scene.createFloatingText(512, 380, `${gem.name} socketed${stackLabel}`, gem.color || 0xffe066);
-        SoundHelper.playVariant(this.scene, 'gem_socket', 0.5);
+        SoundHelper.playSound(this.scene, 'gem_socket', 0.5);
         return true;
     }
 

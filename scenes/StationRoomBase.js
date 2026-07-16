@@ -413,7 +413,7 @@ export class StationRoomBase extends Phaser.Scene {
             text.y = baseY;
         });
         button.on('pointerover', () => {
-            SoundHelper.playSound(this, 'hover_soft', 0.4);
+            SoundHelper.playVariant(this, 'hover_button', 0.4);
             if (button.setTint) button.setTint(0xd4eaf7);
             else button.setFillStyle?.(0x151515, 0.78);
         });
