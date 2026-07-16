@@ -292,10 +292,9 @@ export class PreloadScene extends Phaser.Scene {
         // Crystal card picked off the board. Distinct from 'crystal_collect',
         // which the amulet equip still uses.
         this.load.audio('crystal_pickup', M + 'Glass_Clink_03.mp3');
-        // Hero drinks a potion dropped onto him. Trimmed from the 1.04s source to
-        // 0.56s — everything past that was silence — and re-encoded from 24-bit
-        // 48k stereo, which cost 301KB for half a second of gulp.
-        this.load.audio('potion_drink', M + 'Potion_Drink_01.mp3');
+        // Hero drinks a potion dropped onto him (or drunk from inventory).
+        // Swapped from the old Potion_Drink_01.mp3 gulp to this fuller swallow.
+        this.load.audio('potion_drink', M + 'Potion_Drink_02.wav');
         // Key card dropped back into the inventory
         this.load.audio('key_drop', M + 'Key_Drop_02.mp3');
         // Lightning-gem zap — 3 variants, loudness-normalized
@@ -315,6 +314,24 @@ export class PreloadScene extends Phaser.Scene {
         this.load.audio('heavy_swing', M + 'Heavy_Attack_Swing_01.mp3');
         this.load.audio('thorns_hit', M + 'Thorns_Retaliation_01.mp3');
         this.load.audio('card_merge', M + 'Card_Merge_Success_01.mp3');
+        // Hero eats food (bread) — restores actions. 3 variants rotate.
+        this.load.audio('bread_eaten_1', M + 'Bread_Eaten_01.wav');
+        this.load.audio('bread_eaten_2', M + 'Bread_Eaten_02.wav');
+        this.load.audio('bread_eaten_3', M + 'Bread_Eaten_03.wav');
+        // Out of actions — hero acts while exhausted ("Weakened!"). 2 variants.
+        this.load.audio('empty_stomach_1', M + 'Empty_Stomach_01.wav');
+        this.load.audio('empty_stomach_2', M + 'Empty_Stomach_02.wav');
+        // Arriving on a fresh combat floor. 3 variants rotate.
+        this.load.audio('new_level_1', M + 'New_Level_01.wav');
+        this.load.audio('new_level_3', M + 'New_Level_03.wav');
+        // Hero death / defeat screen. 3 variants rotate.
+        this.load.audio('hero_death_1', M + 'Death_01.wav');
+        this.load.audio('hero_death_2', M + 'Death_02.wav');
+        this.load.audio('hero_death_3', M + 'Death_03.wav');
+        // Act boss defeated — plays over the bespoke boss death animation.
+        this.load.audio('boss_defeated', M + 'Boss_Defeated_01.wav');
+        // Looping campfire ambience for the Rest room.
+        this.load.audio('campfire_loop', M + 'Campfire_Loop_01.wav');
         // Looping music tracks
         this.load.audio('menu_music', M + 'TOE_Campfire.mp3');   // main menu (campfire)
         this.load.audio('boss_music', M + 'TOE_BattleDrums.mp3'); // boss battles

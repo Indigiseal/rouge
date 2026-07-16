@@ -91,7 +91,7 @@ export class CardDataGenerator {
             ? Math.max(0, Math.floor((KNOBS.weaponMinBonus ?? 0) * (KNOBS.act2WeaponMinFactor ?? 0.35)))
             : (KNOBS.weaponMinBonus ?? 0);
 
-        const enemyMultiplier = floor <= 14 ? 0.68 : 0.78;
+        const enemyMultiplier = floor <= 14 ? 0.68 : floor <= 23 ? 0.78 : floor <= 30 ? 0.70 : 0.78;
         balanced.enemy = Math.max(20, Math.floor((balanced.enemy || 0) * enemyMultiplier * (inAct2 ? (KNOBS.act2EnemyWeightMult ?? 1) : 1)));
         balanced.coin = Math.max(1, Math.floor((balanced.coin || 0) * 0.25));
         balanced.trap = Math.max(3, Math.floor((balanced.trap || 0) * 0.75));
@@ -398,29 +398,29 @@ export class CardDataGenerator {
             soulEater: {
                 type: 'boss', tier: 2,
                 name: 'Soul Eater',
-                health: 110,
-                attack: 16,
+                health: 100,
+                attack: 15,
                 sprite: 'SoulEater',
                 // A slippery bruiser, NOT a healer (that's the Lich's profile).
                 // Like the Lost Souls it commands, attacks have a 15% chance to
                 // phase right through it — so it out-lasts you by dodging, not
                 // by leeching. Rounds out with armor-break + a late rage spike.
                 abilities: [
-                    { type: 'evade', chance: 0.15 },
-                    { type: 'summon', enemyType: 'lostSoul', chance: 0.2, count: 1 },
-                    { type: 'armor_break', amount: 3 },
+                    { type: 'evade', chance: 0.12 },
+                    { type: 'summon', enemyType: 'lostSoul', chance: 0.15, count: 1 },
+                    { type: 'armor_break', amount: 2 },
                     { type: 'rage', threshold: 0.35, damageBoost: 1.5 }
                 ]
             },
             lich: {
                 type: 'boss', tier: 2,
                 name: 'Lich',
-                health: 84,
-                attack: 14,
+                health: 102,
+                attack: 15,
                 sprite: 'Lich',
                 abilities: [
-                    { type: 'lifesteal', percentage: 0.5 },
-                    { type: 'summon', enemyType: 'skeleton', chance: 0.2, count: 1 }
+                    { type: 'lifesteal', percentage: 0.55 },
+                    { type: 'summon', enemyType: 'skeleton', chance: 0.22, count: 1 }
                 ]
             },
             cerberus: {
@@ -429,13 +429,13 @@ export class CardDataGenerator {
                 // Pulled toward the tier average (was 128 HP / rage x2 — an
                 // 80%-more-HP luck swing vs rolling the Lich, and its raged
                 // ~34-damage hits were the deadliest spike in the sim).
-                health: 118,
-                attack: 17,
+                health: 105,
+                attack: 15,
                 sprite: 'Cerberus',
                 abilities: [
                     { type: 'rage', threshold: 0.4, damageBoost: 1.5 },
-                    { type: 'armor_break', amount: 5 },
-                    { type: 'summon', enemyType: 'cerberusHead', chance: 0.25, count: 1 }
+                    { type: 'armor_break', amount: 4 },
+                    { type: 'summon', enemyType: 'cerberusHead', chance: 0.18, count: 1 }
                 ]
             },
 
@@ -490,7 +490,12 @@ export class CardDataGenerator {
                 subType: 'reveal',
                 name: 'Pressure Plate',
                 sprite: 'trapTriggers',
-                createData: (floor) => ({})
+                // A light nick on top of its reveal effect — kept below the spike
+                // (3 + 0.6·floor) and poison (2 + 0.4·floor) so it stays the
+                // gentlest trap while still showing a number on the card.
+                createData: (floor) => ({
+                    damage: 1 + Math.floor(floor * 0.3)
+                })
             }
             // Add more trap types here
         ];

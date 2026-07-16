@@ -173,9 +173,21 @@ function computeRunEndReason(gs, inv, { won, dead, lastEncounterType, stalemateD
 // only when the incoming event reward is better.
 function tryCarry(gs, inv, card, { eventReward = false } = {}) {
   if (!card) return false;
+  const grantCardRewardBonus = () => {
+    if (card.type === 'coin' || card.type === 'crystal') return;
+    const bonus = (gs.activeAmulets || []).reduce((sum, amulet) => (
+      sum + (amulet?.id === 'fortuneCard' ? 1 : 0)
+    ), 0);
+    if (bonus <= 0) return;
+    const floor = gs.currentFloor || 1;
+    if (gs.fortuneCardRewardFloor === floor) return;
+    gs.fortuneCardRewardFloor = floor;
+    gs.crystals = (gs.crystals || 0) + bonus;
+  };
   const reserve = eventReward ? 0 : reservedEventSlots(gs);
   if (carriedCount(gs, inv) < inventoryCapacity(gs) - reserve) {
     inv.push(card);
+    grantCardRewardBonus();
     return true;
   }
   let lowestIndex = -1;
@@ -186,6 +198,7 @@ function tryCarry(gs, inv, card, { eventReward = false } = {}) {
   }
   if (lowestIndex >= 0 && cardKeepScore(card) > lowestScore) {
     inv.splice(lowestIndex, 1, card);
+    grantCardRewardBonus();
     return true;
   }
   return false;
@@ -504,7 +517,16 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
   let combatDamageDealt = 0;
   let combatDamageWasted = 0;
   mock.cardSystem.spawnFloorCards();
+  const bossName = mock.cardSystem.boardCards.find((c) => c?.data?.type === 'boss')?.data?.name || null;
+  // The real rollEvade() bails on a scene-less sprite (a destroyed-sprite guard).
+  // Mock board sprites have scene=null, so give any evade-carrying card (Lost
+  // Soul, dodging Soul Eater) a scene ref so its dodge is actually simulated.
+  for (const c of mock.cardSystem.boardCards) {
+    if (c?.sprite && c.data?.abilities?.some((a) => a.type === 'evade')) c.sprite.scene = mock;
+  }
+  equipAmuletPickups(mock, inv);
   regear(mock.cardSystem.cardDataGenerator, gs, inv);
+  applyHolographicOmenStartEffect(mock, gs, inv);
   if (gs._lootStats) {
     recordBoard(gs._lootStats, floor, mock.cardSystem.boardCards);
     recordCombatEnemySnapshot(
@@ -517,13 +539,6 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
   if (gs._statsRecorder?.floorVisitId) {
     gs._statsRecorder.recordEnemies(mock.cardSystem.boardCards);
   }
-  // The real rollEvade() bails on a scene-less sprite (a destroyed-sprite guard).
-  // Mock board sprites have scene=null, so give any evade-carrying card (Lost
-  // Soul, dodging Soul Eater) a scene ref so its dodge is actually simulated.
-  for (const c of mock.cardSystem.boardCards) {
-    if (c?.sprite && c.data?.abilities?.some((a) => a.type === 'evade')) c.sprite.scene = mock;
-  }
-  // regear already ran above (before clearability snapshot)
 
   let guard = 0;
   while (guard++ < 500) {
@@ -652,6 +667,111 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
   if (gs.playerHealth > 0 && !isBossFloor) {
     gs.coins += mock.amuletManager.modifyGoldFound(Math.floor(24 + floor * 1.2));
   }
+  if (gs.playerHealth > 0) markCompanionCombatSurvived(inv);
+  return { bossName, cleared: gs.playerHealth > 0 };
+}
+
+function companionsIn(inv) {
+  return (inv || []).filter((card) => card?.type === 'companion');
+}
+
+function upgradeCompanionsForNextAct(inv, nextAct) {
+  if (nextAct < 2 || nextAct > 3) return 0;
+  const companions = companionsIn(inv);
+  for (const companion of companions) {
+    companion.attack = Math.max(0, Number(companion.attack) || 0) + 1;
+    companion.actUpgrades = (Number(companion.actUpgrades) || 0) + 1;
+  }
+  return companions.length;
+}
+
+function markCompanionCombatSurvived(inv) {
+  for (const companion of companionsIn(inv)) {
+    companion._simRoomsFought = (Number(companion._simRoomsFought) || 0) + 1;
+  }
+}
+
+function trainCompanion(companion) {
+  if (!companion || companion.trained) return false;
+  if (companion.id === 'chickCompanion') {
+    companion.name = 'Storm Hatchling';
+    companion.shockChance = 0.20;
+    companion.upgradedForm = 'stormHatchling';
+  } else if (companion.id === 'skeletonWarriorCompanion') {
+    companion.name = 'Slimebone Guard';
+    companion.guardProtection = Math.max(1, Number(companion.guardProtection) || 0);
+    companion.upgradedForm = 'slimeboneGuard';
+  } else {
+    companion.attack = Math.max(0, Number(companion.attack) || 0) + 1;
+    companion.upgradedForm = 'trained';
+  }
+  companion.trained = true;
+  return true;
+}
+
+function createLuckyCloverPickup() {
+  return {
+    type: 'amuletPickup',
+    id: 'luckyCloverPickup',
+    amuletId: 'luckyClover',
+    name: 'Lucky Clover',
+    rarity: 'rare',
+    sprite: 'relicsOthers',
+    spriteFrame: 69,
+    description: '+3% crit chance',
+  };
+}
+
+function equipAmuletPickups(mock, inv) {
+  for (let i = inv.length - 1; i >= 0; i--) {
+    const card = inv[i];
+    if (card?.type !== 'amuletPickup' || !card.amuletId) continue;
+    if (mock.amuletManager.addAmulet(card.amuletId)) inv.splice(i, 1);
+  }
+}
+
+function buyLuckyClover(mock, gs, inv) {
+  if (gs.coins < 1) return false;
+  gs.coins -= 1;
+  const pickup = createLuckyCloverPickup();
+  if (tryCarry(gs, inv, pickup, { eventReward: true })) {
+    equipAmuletPickups(mock, inv);
+  } else {
+    // Live game falls back to direct equip when the bag is full, so the coin is
+    // never wasted.
+    mock.amuletManager.addAmulet('luckyClover');
+  }
+  return true;
+}
+
+function hasHolographicOmen(inv) {
+  return (inv || []).some((item) => item?.id === 'holographicOmen' || item?.passiveEffect === 'holographicOmen');
+}
+
+function applyHolographicOmenStartEffect(mock, gs, inv) {
+  if (!hasHolographicOmen(inv)) return;
+  const board = mock.cardSystem.boardCards || [];
+  const revealedEnemies = board
+    .map((card, index) => ({ card, index }))
+    .filter(({ card }) => card?.revealed && mock.isEnemyCard(card) && card.data.health > 0);
+  if (!revealedEnemies.length) return;
+
+  for (const { card, index } of revealedEnemies) {
+    const roll = Math.floor(Math.random() * 4);
+    if (roll === 0) {
+      card.data.frozen = Math.max(card.data.frozen || 0, 1);
+    } else if (roll === 1) {
+      mock.cardSystem.applyWeaponPoison?.(card, { poisonDamage: 1, poisonTurns: 3 });
+    } else if (roll === 2) {
+      mock.cardSystem.burnEnemy?.(index, 1);
+    } else {
+      mock.cardSystem.applyShockStatus?.(card, 1);
+    }
+  }
+
+  if (Math.random() < 0.10) {
+    gs.actionsLeft = Math.max(0, (gs.actionsLeft || 0) - 2);
+  }
 }
 
 // Mirrors GameScene.setupBossRewardRoom (previously unmodeled, which made the
@@ -678,7 +798,7 @@ function runBossReward(mock, gs, inv, floor) {
   }
   // (Not counted in _gemsSeen — that metric tracks floor drops only.)
   const gem = mock.cardSystem.createCardData('gem', floor);
-  if (gem) inv.push(gem);
+  if (gem) tryCarry(gs, inv, gem, { eventReward: true });
   regear(gen, gs, inv);
 }
 
@@ -768,6 +888,98 @@ function runEventLegacy(mock, gs, inv, floor) {
   }
 }
 
+function createHolographicOmenCard() {
+  return {
+    id: 'holographicOmen',
+    type: 'passive',
+    name: 'Holographic Omen',
+    rarity: 'rare',
+    passiveEffect: 'holographicOmen',
+  };
+}
+
+function createRespectableCarnivalCard(gen, gs, floor) {
+  const types = ['weapon', 'armor', 'thorns', 'potion', 'food', 'magic'];
+  let type = types[Math.floor(Math.random() * types.length)];
+  const rarityRoll = Math.random();
+  const rarity = rarityRoll < 0.12 ? 'rare' : rarityRoll < 0.42 ? 'uncommon' : 'common';
+  for (let tries = 0; tries < 8; tries++) {
+    const targetRarity = ['weapon', 'armor', 'thorns'].includes(type) ? rarity : null;
+    const card = gen.createCardData(type, floor, false, gs, targetRarity);
+    if (card) {
+      card.carnivalTouched = true;
+      return card;
+    }
+    type = types[Math.floor(Math.random() * types.length)];
+  }
+  const fallback = gen.createCardData('potion', floor);
+  if (fallback) fallback.carnivalTouched = true;
+  return fallback;
+}
+
+function createSameTypeRerollCard(gen, gs, oldCard, floor) {
+  const type = oldCard?.type;
+  const rarity = oldCard?.rarity || 'common';
+  const targetRarity = ['weapon', 'armor', 'thorns'].includes(type) ? rarity : null;
+  for (let tries = 0; tries < 12; tries++) {
+    const card = gen.createCardData(type, floor, false, gs, targetRarity);
+    if (!card) continue;
+    if (oldCard?.rarity && card.rarity && card.rarity !== oldCard.rarity) continue;
+    if ((card.name || card.id) === (oldCard.name || oldCard.id) && tries < 8) continue;
+    card.carnivalTouched = true;
+    return card;
+  }
+  return createRespectableCarnivalCard(gen, gs, floor);
+}
+
+function isBrassWizardRerollable(card) {
+  return Boolean(
+    card
+    && card.type !== 'junk'
+    && card.type !== 'companion'
+    && card.id !== 'monsterEgg'
+    && card.type !== 'amuletPickup'
+  );
+}
+
+function runBrassWizard(mock, gs, inv, floor, story) {
+  story.pendingBrassWizard = false;
+  story.brassWizardSeen = true;
+  story.carnivalVisited = true;
+  story.seen.add('brass_wizard');
+  if (gs.coins < 1) return; // live player can leave the booth.
+  gs.coins -= 1;
+
+  const gen = mock.cardSystem.cardDataGenerator;
+  const roll = Math.random();
+  if (roll < 0.25) return; // no reward
+
+  if (roll < 0.55) {
+    tryCarry(gs, inv, createRespectableCarnivalCard(gen, gs, floor), { eventReward: true });
+    return;
+  }
+
+  if (roll < 0.80) {
+    const junkIndex = inv.findIndex((card) => card?.type === 'junk' && card.carnivalToken);
+    if (junkIndex >= 0) {
+      inv.splice(junkIndex, 1);
+      tryCarry(gs, inv, createHolographicOmenCard(), { eventReward: true });
+      return;
+    }
+    const reroll = inv
+      .map((card, index) => ({ card, index }))
+      .filter(({ card }) => isBrassWizardRerollable(card))
+      .sort((a, b) => cardKeepScore(a.card) - cardKeepScore(b.card))[0];
+    if (reroll) {
+      const replacement = createSameTypeRerollCard(gen, gs, reroll.card, floor);
+      if (replacement) inv.splice(reroll.index, 1, replacement);
+    }
+    return;
+  }
+
+  mock.amuletManager.addAmulet('fortuneCard');
+}
+
 // Mirrors the current EventScene selection order and makes the strongest
 // available choice. Story rewards that require a card slot reserve that slot
 // before ordinary loot can fill it.
@@ -775,7 +987,8 @@ function runEvent(mock, gs, inv, floor) {
   const gen = mock.cardSystem.cardDataGenerator;
   const story = gs._simStory || (gs._simStory = {
     stage: 'music_box', seen: new Set(), reserveRewardSlot: false,
-    hasEgg: false, hasChick: false,
+    hasEgg: false, hasChick: false, carnivalVisited: false, brassWizardSeen: false,
+    pendingBrassWizard: false,
   });
   const gainAmulet = (id = null) => {
     const amulet = id ? { id, rarity: 'uncommon' } : gen.createCardData('amulet', floor, false, gs);
@@ -830,14 +1043,22 @@ function runEvent(mock, gs, inv, floor) {
     if (eggIndex >= 0) {
       inv[eggIndex] = gen.createChickCompanionCard();
       story.hasChick = true;
+      gs.heroMemory = gs.heroMemory || {};
+      gs.heroMemory.chickRareShopUnlocked = true;
     }
     story.stage = 'bonus';
     return;
   }
 
-  const choices = ['too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'mirror', 'something_wicked'];
-  if (story.seen.has('something_wicked')) choices.push('brass_wizard');
-  if (story.hasChick) choices.push('old_drill_room');
+  if (story.pendingBrassWizard && !story.brassWizardSeen) {
+    runBrassWizard(mock, gs, inv, floor, story);
+    return;
+  }
+
+  const choices = ['too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'mirror'];
+  if (!story.carnivalVisited) choices.push('something_wicked');
+  if (story.carnivalVisited && !story.brassWizardSeen) choices.push('brass_wizard');
+  if (companionsIn(inv).some((c) => (Number(c._simRoomsFought) || 0) >= 3 && !c.trained)) choices.push('old_drill_room');
   const remaining = choices.filter((id) => !story.seen.has(id));
   if (!remaining.length) {
     if (gs.playerHealth < gs.maxHealth * 0.6) gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 5);
@@ -855,7 +1076,10 @@ function runEvent(mock, gs, inv, floor) {
     case 'slimy_prison': {
       const companion = gen.createSkeletonWarriorCompanionCard();
       gs.playerHealth = Math.max(0, gs.playerHealth - 10);
-      tryCarry(gs, inv, companion, { eventReward: true });
+      if (tryCarry(gs, inv, companion, { eventReward: true })) {
+        gs.heroMemory = gs.heroMemory || {};
+        gs.heroMemory.skeletonRareShopUnlocked = true;
+      }
       break;
     }
     case 'book_worm': {
@@ -882,24 +1106,20 @@ function runEvent(mock, gs, inv, floor) {
       break;
     }
     case 'something_wicked':
-      if (gs.coins >= 1) { gs.coins -= 1; gainAmulet('luckyClover'); }
+      story.carnivalVisited = true;
+      story.pendingBrassWizard = true;
+      if (gs.coins >= 1) buyLuckyClover(mock, gs, inv);
+      else gs.playerHealth = Math.max(1, gs.playerHealth - 3);
       break;
     case 'brass_wizard': {
-      if (gs.coins < 1) break;
-      gs.coins -= 1;
-      const roll = Math.random();
-      if (roll < 0.55) {
-        const types = ['weapon', 'armor', 'thorns', 'potion', 'magic'];
-        const card = gen.createCardData(types[Math.floor(Math.random() * types.length)], floor, false, gs);
-        tryCarry(gs, inv, card, { eventReward: true });
-      } else if (roll >= 0.80) {
-        gainAmulet('fortuneCard');
-      }
+      runBrassWizard(mock, gs, inv, floor, story);
       break;
     }
     case 'old_drill_room': {
-      const companion = inv.find((card) => card?.type === 'companion');
-      if (companion) companion.attack = (companion.attack || 0) + 1;
+      const companion = companionsIn(inv)
+        .filter((card) => (Number(card._simRoomsFought) || 0) >= 3 && !card.trained)
+        .sort((a, b) => (b.attack || 0) - (a.attack || 0))[0];
+      if (companion) trainCompanion(companion);
       break;
     }
   }
@@ -1000,8 +1220,7 @@ function runShop(mock, gs, inv, floor) {
       (item.type === 'thorns' && (!gs.activeThorns || thornMatch(item))) ||
       (item.type === 'potion' && gs.playerHealth < gs.maxHealth * 0.7);
     if (!buy) continue;
-    gs.coins -= price;
-    inv.push(item);
+    if (tryCarry(gs, inv, item, { eventReward: true })) gs.coins -= price;
   }
 
   // Always buy an amulet if we can afford one — but NEVER cursed ones
@@ -1015,6 +1234,84 @@ function runShop(mock, gs, inv, floor) {
     if (gs.crystals >= price && mock.amuletManager.addAmulet(amulet.id)) gs.crystals -= price;
   }
 
+  regear(mock.cardSystem.cardDataGenerator, gs, inv);
+  maybeHeal(gs, inv);
+}
+
+function alreadyHasCompanion(inv, id) {
+  return (inv || []).some((item) => item?.id === id);
+}
+
+function createRareShopOffers(mock, gs, inv, floor) {
+  const cs = mock.cardSystem;
+  const gen = cs.cardDataGenerator;
+  const amuletPrice = Math.max(2, Math.floor(floor / 10) + 2);
+  const offers = [];
+  const amulet = cs.createCardData('amulet', floor, false, gs);
+  if (amulet) offers.push({ data: amulet, price: amuletPrice, currency: 'crystals' });
+
+  offers.push({ data: cs.createCardData('weapon', floor, false, null, gen.capRewardRarity('uncommon', floor)), price: 20 + floor * 5, currency: 'coins' });
+  offers.push({ data: cs.createCardData('armor', floor, false, null, gen.capRewardRarity('uncommon', floor)), price: 25 + floor * 5, currency: 'coins' });
+  offers.push({ data: cs.createCardData('thorns', floor, false, null, gen.capRewardRarity('rare', floor)), price: 15 + floor * 4, currency: 'coins' });
+  offers.push({ data: cs.createCardData('gem', floor), price: 18 + floor * 4, currency: 'coins' });
+
+  const heroMemory = gs.heroMemory || {};
+  if (heroMemory.chickRareShopUnlocked && !alreadyHasCompanion(inv, 'chickCompanion') && Math.random() < 0.35) {
+    offers.push({ data: gen.createChickCompanionCard(), price: amuletPrice + 1, currency: 'crystals' });
+  }
+  if (heroMemory.skeletonRareShopUnlocked && !alreadyHasCompanion(inv, 'skeletonWarriorCompanion') && Math.random() < 0.35) {
+    offers.push({ data: gen.createSkeletonWarriorCompanionCard(), price: amuletPrice + 1, currency: 'crystals' });
+  }
+
+  return offers.filter((offer) => offer.data);
+}
+
+function wantsShopItem(gs, inv, item, price) {
+  if (!item) return false;
+  const eqDmg = gs.equippedWeapon?.damage || 0;
+  const matchesForMerge = (w) => [...inv, gs.equippedWeapon].some(
+    (c) => c && c.type === 'weapon' && c.weaponType === w.weaponType && c.rarity === w.rarity);
+  const armorMerge = (a) => [...inv, gs.equippedArmor].some(
+    (c) => c && c.type === 'armor' && c.armorType === a.armorType && c.rarity === a.rarity);
+  const thornMatch = (t) => [...inv, gs.activeThorns].some((c) => c && c.type === 'thorns' && (c.thornDamage || 0) === (t.thornDamage || 0));
+  const armorLow = !gs.equippedArmor || gs.equippedArmor.durability < (gs.equippedArmor.maxDurability || 1) * 0.5;
+  return (
+    (item.type === 'weapon' && item.weaponType !== 'dagger' && ((item.damage || 0) > eqDmg || matchesForMerge(item))) ||
+    (item.type === 'armor' && ((item.protection || 0) > (gs.equippedArmor?.protection || 0) || armorMerge(item) || armorLow || gs.coins > price * 3)) ||
+    (item.type === 'thorns' && (!gs.activeThorns || thornMatch(item))) ||
+    (item.type === 'potion' && gs.playerHealth < gs.maxHealth * 0.7) ||
+    item.type === 'gem' ||
+    item.type === 'companion'
+  );
+}
+
+function runPostActShop(mock, gs, inv, floor, metrics) {
+  const roomType = Math.random() < 0.35 ? 'RARE_SHOP' : 'SHOP';
+  probeShopAffordability(mock, gs, floor, roomType, metrics);
+  if (roomType === 'RARE_SHOP') runRareShop(mock, gs, inv, floor);
+  else runShop(mock, gs, inv, floor);
+}
+
+function runRareShop(mock, gs, inv, floor) {
+  const offers = createRareShopOffers(mock, gs, inv, floor);
+  for (const offer of offers) {
+    const item = offer.data;
+    if (offer.currency === 'crystals') {
+      if (gs.crystals < offer.price) continue;
+      if (item.type === 'amulet') {
+        if (item.id && item.rarity !== 'cursed' && !item.cursed && mock.amuletManager.addAmulet(item.id)) {
+          gs.crystals -= offer.price;
+        }
+      } else if (item.type === 'companion' && tryCarry(gs, inv, item, { eventReward: true })) {
+        gs.crystals -= offer.price;
+      }
+      continue;
+    }
+
+    if (gs.coins < offer.price) continue;
+    if (!wantsShopItem(gs, inv, item, offer.price)) continue;
+    if (tryCarry(gs, inv, item, { eventReward: true })) gs.coins -= offer.price;
+  }
   regear(mock.cardSystem.cardDataGenerator, gs, inv);
   maybeHeal(gs, inv);
 }
@@ -1214,20 +1511,34 @@ function runGame(metrics, config = {}) {
         gs._statsRecorder.recordWeapons('start', gs, inv);
       }
 
+      let combatResult = null;
       if (COMBAT_ROOMS.has(roomType)) {
-        runCombat(mock, gs, inv, floor, floorStartWeaponPips);
+        combatResult = runCombat(mock, gs, inv, floor, floorStartWeaponPips);
+        if (combatResult?.bossName) {
+          const bucket = metrics.bossStats[combatResult.bossName] || (metrics.bossStats[combatResult.bossName] = {
+            encounters: 0, kills: 0, deaths: 0, hpStart: 0, hpEnd: 0,
+          });
+          bucket.encounters++;
+          bucket.hpStart += hpStart;
+          bucket.hpEnd += Math.max(0, gs.playerHealth);
+          if (combatResult.cleared) bucket.kills++;
+          else bucket.deaths++;
+        }
         if (gs.playerHealth > 0) {
           mock.amuletManager.processFloorEnd();
           // Act-boss victory → the reward room (floor 45 is the win, no room).
           if ((floor === 15 || floor === 30) && BOSS_FLOORS.has(floor)) {
             runBossReward(mock, gs, inv, floor);
+            upgradeCompanionsForNextAct(inv, Math.floor(floor / 15) + 1);
+            runPostActShop(mock, gs, inv, floor + 1, metrics);
           }
         }
       }
       else if (roomType === 'REST') runRest(gs);
       else if (roomType === 'SHOP' || roomType === 'RARE_SHOP') {
         probeShopAffordability(mock, gs, floor, roomType, metrics); // BEFORE any spend this visit
-        runShop(mock, gs, inv, floor);
+        if (roomType === 'RARE_SHOP') runRareShop(mock, gs, inv, floor);
+        else runShop(mock, gs, inv, floor);
       }
       else if (roomType === 'TREASURE') runTreasure(mock, gs, inv, floor, false);
       else if (roomType === 'TREASURE_GOOD') runTreasure(mock, gs, inv, floor, true);
@@ -1279,8 +1590,14 @@ function runGame(metrics, config = {}) {
   }
 
   if (!dead && reached >= MAX_FLOOR) metrics.wins++;
+  const finalCompanions = companionsIn(inv);
   metrics.finalFloors.push(reached);
   metrics.finalAmulets.push((gs.activeAmulets || []).length);
+  metrics.finalCompanions.push(finalCompanions.length);
+  metrics.finalCompanionAttack.push(finalCompanions.reduce((sum, c) => sum + (Number(c.attack) || 0), 0));
+  metrics.finalTrainedCompanions.push(finalCompanions.filter((c) => c.trained).length);
+  metrics.finalGuardCompanions.push(finalCompanions.filter((c) => (Number(c.guardProtection) || 0) > 0).length);
+  metrics.finalShockCompanions.push(finalCompanions.filter((c) => (Number(c.shockChance) || 0) > 0).length);
   metrics.totalActions += mock._actionCount || 0;
   metrics.hungryActions += mock._hungryActions || 0;
   metrics.restorationUses += mock._restorationUses || 0;
@@ -1332,10 +1649,13 @@ function newMetrics() {
   const floors = {}; for (let f = 1; f <= MAX_FLOOR; f++) floors[f] = blankFloor();
   return {
     runs: 0, wins: 0, deaths: {}, deathInfo: [], finalFloors: [], finalAmulets: [],
+    finalCompanions: [], finalCompanionAttack: [], finalTrainedCompanions: [],
+    finalGuardCompanions: [], finalShockCompanions: [],
     totalActions: 0, hungryActions: 0, restorationUses: 0, gemsSeen: [], gemsByFloor: {}, floors,
     weaponBreaks: 0, armorBreaks: 0, thornBreaks: 0,
     repairActions: 0, repairPips: 0, repairCoins: 0,
     weaponMerges: 0, armorMerges: 0, thornMerges: 0,
+    bossStats: {},
     // mergeFirstFloor[kind][rarity] = [floor, floor, ...] — one entry per run that reached that tier.
     mergeFirstFloor: { weapon: {}, armor: {} },
     // Shop affordability probe: "how many coin-priced items could you afford
@@ -1361,6 +1681,15 @@ function report(metrics) {
   if (fa.length) {
     const am = fa.reduce((a, b) => a + b, 0) / fa.length;
     console.log(`Amulets held at run end: mean=${am.toFixed(1)}  max=${Math.max(...fa)}`);
+  }
+  const fc = metrics.finalCompanions || [];
+  if (fc.length) {
+    const compMean = fc.reduce((a, b) => a + b, 0) / fc.length;
+    const attackMean = metrics.finalCompanionAttack.reduce((a, b) => a + b, 0) / fc.length;
+    const trainedMean = metrics.finalTrainedCompanions.reduce((a, b) => a + b, 0) / fc.length;
+    const guardMean = metrics.finalGuardCompanions.reduce((a, b) => a + b, 0) / fc.length;
+    const shockMean = metrics.finalShockCompanions.reduce((a, b) => a + b, 0) / fc.length;
+    console.log(`Companions at run end: mean=${compMean.toFixed(2)}  atkSum=${attackMean.toFixed(1)}  trained=${trainedMean.toFixed(2)}  guard=${guardMean.toFixed(2)}  shock=${shockMean.toFixed(2)}`);
   }
   // AP / food economy
   if (metrics.totalActions) {
@@ -1409,6 +1738,19 @@ function report(metrics) {
   const actDeaths = [0, 0, 0];
   for (const f in metrics.deaths) { const a = Math.floor((f - 1) / 15); actDeaths[a] += metrics.deaths[f]; }
   ['Act 1 (1-15)', 'Act 2 (16-30)', 'Act 3 (31-45)'].forEach((label, i) => console.log(`  ${label}: ${metrics.deaths ? actDeaths[i] : 0} (${pct(actDeaths[i], N)}%)`));
+
+  const bossRows = Object.entries(metrics.bossStats || {}).sort((a, b) => b[1].encounters - a[1].encounters);
+  if (bossRows.length) {
+    console.log(`\nBoss outcomes:`);
+    for (const [name, b] of bossRows) {
+      console.log(
+        `  ${name.padEnd(17)} encounters=${String(b.encounters).padStart(4)} ` +
+        `kills=${pct(b.kills, b.encounters).padStart(5)}% ` +
+        `deaths=${pct(b.deaths, b.encounters).padStart(5)}% ` +
+        `playerHP ${avg(b.hpStart, b.encounters).toFixed(0)}→${avg(b.hpEnd, b.encounters).toFixed(0)}`
+      );
+    }
+  }
 
   // ── Death diagnostics: what's actually killing the bot ──────────────────
   const di = metrics.deathInfo;

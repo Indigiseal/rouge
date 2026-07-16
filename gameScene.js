@@ -570,6 +570,8 @@ export class GameScene extends Phaser.Scene {
     startNewFloor() {
         this.clearEnemyTurnTimers();
         this.clearFloatingTexts();
+        // Fresh combat floor reached (restores bypass startNewFloor()).
+        SoundHelper.playVariant(this, 'new_level', 0.5);
         this._floorEndAlreadyProcessed = false;
         this._transitioning = false;
         this.enemiesCleared = false;
@@ -702,7 +704,7 @@ export class GameScene extends Phaser.Scene {
         const MAX_PER_ROW = 5;
         const rows = nodeCount > MAX_PER_ROW ? 2 : 1;
         const perRow = Math.ceil(nodeCount / rows);
-        const spacing = 18;
+        const spacing = 16; // = diamond width, so nodes butt together into one strip
         const rowGap = 18; // vertical gap between the two rows of nodes
         const centerX = 41;
         const baseY = 189;
@@ -878,8 +880,9 @@ export class GameScene extends Phaser.Scene {
         // REMOVED: Exhaustion damage - player is just weakened now
         // Only show the weakened message when out of action points
         if (willBeExhausted && actionConsumed) {
-            // Just show weakened state, no damage
+            // Just show weakened state, no damage. Empty stomach = out of energy.
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Weakened!', 0xff6600);
+            SoundHelper.playVariant(this, 'empty_stomach', 0.5);
         }
         
         // Consume action point if not a free action and player has AP
@@ -1748,6 +1751,7 @@ export class GameScene extends Phaser.Scene {
         if (this._resultScreenShown || this._gameOverInProgress) return;
         this._gameOverInProgress = true;
         this._transitioning = true;
+        SoundHelper.playVariant(this, 'hero_death', 0.6);
         this.stopBossMusic();
         this.clearEnemyTurnTimers();
         this.nextFloorButton?.disableInteractive();
@@ -2007,8 +2011,12 @@ export class GameScene extends Phaser.Scene {
 
         this._transitioning = true;
         this.clearEnemyTurnTimers();
-        // Hard-disable the button so it can't be clicked again
-        if (this.nextFloorButton) this.nextFloorButton.disableInteractive();
+        // Hard-disable AND hide the button so it can't be clicked again — and so
+        // the label and its skin vanish together, not just the "Next" text.
+        if (this.nextFloorButton) {
+            this.nextFloorButton.disableInteractive();
+            this.nextFloorButton.setVisible(false);
+        }
         this.nextFloorButtonText?.setVisible(false);
         // Elite rooms still use the chest-click TreasureScene flow
         const rewardChestMode = this.gameState.roomType === 'ELITE' ? 'elite' : null;
@@ -2196,7 +2204,10 @@ export class GameScene extends Phaser.Scene {
 
     leaveBossRewardRoom() {
         this._transitioning = true;
-        if (this.nextFloorButton) this.nextFloorButton.disableInteractive();
+        if (this.nextFloorButton) {
+            this.nextFloorButton.disableInteractive();
+            this.nextFloorButton.setVisible(false);
+        }
         this.nextFloorButtonText?.setVisible(false);
 
         // Clean up the chest visual
