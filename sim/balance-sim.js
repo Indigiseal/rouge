@@ -397,7 +397,61 @@ function regear(gen, gs, inv) {
 function isMelee(w) { return !w || w.range !== 'ranged'; }
 
 // Collect a freshly revealed non-enemy card: apply its effect, drop from board.
-function collectLoot(mock, gs, inv, idx) {
+function usePotionCard(gs, potion, force = false) {
+  const heal = potion?.healAmount || 20;
+  const missing = gs.maxHealth - gs.playerHealth;
+  if (missing <= 0) return false;
+  if (!force && gs.playerHealth > gs.maxHealth * 0.72 && missing < Math.ceil(heal * 0.45)) return false;
+  gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + heal);
+  return true;
+}
+
+function useRestorationCard(mock, gs, card, force = false) {
+  if (card?.type !== 'magic' || card.magicType !== 'restoration') return false;
+  const missingHp = gs.maxHealth - gs.playerHealth;
+  const missingAp = gs.maxActions - gs.actionsLeft;
+  if (!force && gs.playerHealth > gs.maxHealth * 0.55 && gs.actionsLeft > 0 && missingAp < 2) return false;
+  if (missingHp <= 0 && missingAp <= 0) return false;
+  gs.playerHealth = gs.maxHealth;
+  gs.actionsLeft = gs.maxActions;
+  mock._restorationUses = (mock._restorationUses || 0) + 1;
+  return true;
+}
+
+function gemFitsWeapon(weapon, gem) {
+  if (!weapon || weapon.type !== 'weapon' || !gem || gem.type !== 'gem') return false;
+  const count = weapon.gemEffect ? (weapon.gemCount || 1) : 0;
+  return count < 3 && (!weapon.gemEffect || weapon.gemEffect === gem.gemEffect);
+}
+
+function socketGemIntoWeapon(weapon, gem) {
+  const count = weapon.gemEffect ? (weapon.gemCount || 1) : 0;
+  if (count >= 3) return false;
+  weapon.gemEffect = gem.gemEffect;
+  weapon.gemName = gem.name;
+  weapon.gemColor = gem.color;
+  weapon.gemCount = count + 1;
+  return true;
+}
+
+function bestGemTarget(gs, inv, gem) {
+  const weapons = [gs.equippedWeapon, ...inv.filter((card) => card?.type === 'weapon')]
+    .filter((weapon) => gemFitsWeapon(weapon, gem));
+  if (!weapons.length) return null;
+  weapons.sort((a, b) => {
+    const aEmpty = a.gemEffect ? 0 : 1;
+    const bEmpty = b.gemEffect ? 0 : 1;
+    return (wpnValue(b) + bEmpty) - (wpnValue(a) + aEmpty);
+  });
+  return weapons[0];
+}
+
+function trySocketGemNow(gs, inv, gem) {
+  const target = bestGemTarget(gs, inv, gem);
+  return target ? socketGemIntoWeapon(target, gem) : false;
+}
+
+function collectLoot(mock, gs, inv, idx, ctx = null) {
   const card = mock.cardSystem.boardCards[idx];
   if (!card || !card.data) return;
   const d = card.data;
@@ -405,7 +459,9 @@ function collectLoot(mock, gs, inv, idx) {
     case 'coin': gs.coins += d.amount || 0; break;
     case 'crystal': gs.crystals += d.amount || 0; break;
     case 'food': gs.actionsLeft = Math.min(gs.maxActions, gs.actionsLeft + (d.actionAmount || 0)); break;
-    case 'potion': tryCarry(gs, inv, d); break; // used later when hurt
+    case 'potion':
+      if (!usePotionCard(gs, d)) tryCarry(gs, inv, d);
+      break; // used now when hurt, otherwise saved
     case 'trap':
       gs.takeDamage(d.damage || d.attack || 5, -1, 'trap');
       if (gs.playerHealth <= 0) mock._lastKiller = 'trap';
@@ -414,17 +470,73 @@ function collectLoot(mock, gs, inv, idx) {
       if (d.weaponType !== 'dagger' || !hasUsableNonDaggerWeapon(gs, inv)) tryCarry(gs, inv, d);
       break;
     case 'armor': tryCarry(gs, inv, d); break;
-    case 'gem': if (tryCarry(gs, inv, d)) { mock._gemsSeen = (mock._gemsSeen || 0) + 1; (mock._gemFloors || (mock._gemFloors = [])).push(gs.currentFloor); } break; // kept for socketing into weapons
+    case 'gem':
+      if (trySocketGemNow(gs, inv, d) || tryCarry(gs, inv, d)) {
+        mock._gemsSeen = (mock._gemsSeen || 0) + 1;
+        (mock._gemFloors || (mock._gemFloors = [])).push(gs.currentFloor);
+        socketGems(gs, inv, ctx || computeContext(mock.cardSystem.boardCards || [], gs.currentFloor || 1));
+      }
+      break; // socket immediately when possible; otherwise keep for later
     case 'thorns': tryCarry(gs, inv, d); break; // always carried + merged
     case 'amulet': // equip dropped amulets (skip cursed — unbalanced)
       if (d.id && d.rarity !== 'cursed' && !d.cursed) mock.amuletManager.addAmulet(d.id);
       break;
     case 'magic': // keep only Restoration (full HP+AP); discard the rest
-      if (d.magicType === 'restoration') tryCarry(gs, inv, d);
+      if (d.magicType === 'restoration' && !useRestorationCard(mock, gs, d)) tryCarry(gs, inv, d);
       break;
     default: break; // empty/key — nothing
   }
   mock.cardSystem.removeCard(idx);
+}
+
+function visibleLootPriority(card) {
+  const type = card?.data?.type;
+  if (type === 'coin' || type === 'crystal' || type === 'food') return 0;
+  if (type === 'potion' || type === 'magic') return 1;
+  if (type === 'gem') return 2;
+  if (type === 'amulet' || type === 'amuletPickup') return 3;
+  if (type === 'weapon' || type === 'armor' || type === 'thorns') return 5;
+  return 6;
+}
+
+function shouldTakeVisibleLootNow(gs, inv, card, mode) {
+  const data = card?.data;
+  if (!data || data.type === 'trap') return false;
+  if (mode === 'all') return data.type !== 'empty' && data.type !== 'key';
+  if (data.type === 'coin' || data.type === 'crystal' || data.type === 'food') return true;
+  if (data.type === 'amulet' || data.type === 'amuletPickup') return true;
+  if (data.type === 'gem') return Boolean(bestGemTarget(gs, inv, data));
+  if (data.type === 'potion') {
+    const heal = data.healAmount || 20;
+    const missing = gs.maxHealth - gs.playerHealth;
+    return missing > 0 && (gs.playerHealth <= gs.maxHealth * 0.72 || missing >= Math.ceil(heal * 0.45));
+  }
+  if (data.type === 'magic' && data.magicType === 'restoration') {
+    return gs.playerHealth <= gs.maxHealth * 0.55 || gs.actionsLeft <= 0;
+  }
+  return false;
+}
+
+function collectVisibleLootSmart(mock, gs, inv, floor, mode = 'all') {
+  const board = mock.cardSystem.boardCards || [];
+  let collected = false;
+  let guard = 0;
+  while (guard++ < 40) {
+    const ctx = computeContext(board, floor);
+    const visible = board
+      .map((card, index) => ({ card, index }))
+      .filter(({ card }) => card?.revealed && card.data?.type !== 'enemy' && card.data?.type !== 'boss')
+      .filter(({ card }) => shouldTakeVisibleLootNow(gs, inv, card, mode))
+      .sort((a, b) => visibleLootPriority(a.card) - visibleLootPriority(b.card));
+    if (!visible.length) break;
+    collectLoot(mock, gs, inv, visible[0].index, ctx);
+    socketGems(gs, inv, ctx);
+    maybeHeal(gs, inv);
+    regear(mock.cardSystem.cardDataGenerator, gs, inv);
+    collected = true;
+    if (gs.playerHealth <= 0) break;
+  }
+  return collected;
 }
 
 // Use a Restoration magic card (full HP + AP) when starving for AP or low HP.
@@ -507,6 +619,102 @@ function computeContext(board, floor) {
   return { boss, ranged, hiddenCluster: hidden >= 4 };
 }
 
+function estimateGemSplash(board, targetIndex, weapon, baseDamage) {
+  const stack = Math.max(1, Math.min(3, weapon?.gemCount || 1));
+  const armor = Math.max(0, board[targetIndex]?.data?.armor || 0);
+  const directDamage = Math.max(1, baseDamage - armor);
+  const affected = new Map([[targetIndex, directDamage]]);
+  if (!weapon?.gemEffect) return affected;
+
+  if (weapon.gemEffect === 'fire') {
+    const splashDamage = [3, 4, 5][stack - 1];
+    affected.set(targetIndex, (affected.get(targetIndex) || 0) + splashDamage);
+    const target = board[targetIndex];
+    const radius = 70;
+    const tx = target?.sprite?.x ?? 0;
+    const ty = target?.sprite?.y ?? 0;
+    for (let i = 0; i < board.length; i++) {
+      if (i === targetIndex) continue;
+      const card = board[i];
+      if (!card?.revealed || !(card.data?.type === 'enemy' || card.data?.type === 'boss') || card.data.health <= 0) continue;
+      const b = card.sprite?.getBounds?.();
+      const nearestX = b ? Math.max(b.x, Math.min(tx, b.x + b.width)) : (card.sprite?.x ?? 0);
+      const nearestY = b ? Math.max(b.y, Math.min(ty, b.y + b.height)) : (card.sprite?.y ?? 0);
+      if (Math.hypot(nearestX - tx, nearestY - ty) <= radius) {
+        affected.set(i, (affected.get(i) || 0) + splashDamage);
+      }
+    }
+  } else if (weapon.gemEffect === 'lightning') {
+    const zapDamage = [3, 4, 5][stack - 1];
+    affected.set(targetIndex, (affected.get(targetIndex) || 0) + zapDamage);
+    const candidates = board
+      .map((card, index) => ({ card, index }))
+      .filter(({ card, index }) => (
+        index !== targetIndex
+        && card?.revealed
+        && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+        && card.data.health > 0
+      ));
+    candidates.sort((a, b) => {
+      const ar = a.card.data.role === 'RANGED' ? 1 : 0;
+      const br = b.card.data.role === 'RANGED' ? 1 : 0;
+      if (br !== ar) return br - ar;
+      return a.card.data.health - b.card.data.health;
+    });
+    for (const { index } of candidates.slice(0, 2)) {
+      affected.set(index, (affected.get(index) || 0) + zapDamage);
+    }
+  } else if (weapon.gemEffect === 'poison') {
+    const poison = stack * 3; // 1 damage for 3 turns per socket.
+    affected.set(targetIndex, (affected.get(targetIndex) || 0) + poison);
+  }
+  return affected;
+}
+
+function chooseEfficientAttack(board, gs, inv, wasExhausted) {
+  const revealed = aliveEnemies(board, true);
+  if (!revealed.length) return null;
+  const roster = [];
+  if (gs.equippedWeapon && gs.equippedWeapon.durability > 0) roster.push(gs.equippedWeapon);
+  for (const card of inv) if (card.type === 'weapon' && card.durability > 0) roster.push(card);
+  if (!roster.length) roster.push(null);
+
+  const anyRevealedMelee = anyMeleeAlive(board, true);
+  const effDmg = (wp) => {
+    const d = wp ? wp.damage : 1;
+    return wasExhausted ? Math.ceil(d * 0.8) : d;
+  };
+  let best = null;
+  for (const weapon of roster) {
+    const validTargets = revealed.filter((index) => {
+      const target = board[index];
+      return !anyRevealedMelee || !isMelee(weapon) || target.data.role === 'MELEE';
+    });
+    for (const index of validTargets) {
+      const baseDamage = effDmg(weapon);
+      const affected = estimateGemSplash(board, index, weapon, baseDamage);
+      let kills = 0;
+      let totalDamage = 0;
+      let overkill = 0;
+      for (const [hitIndex, damage] of affected.entries()) {
+        const hp = board[hitIndex]?.data?.health || 0;
+        totalDamage += Math.min(hp, damage);
+        if (damage >= hp) {
+          kills++;
+          overkill += damage - hp;
+        }
+      }
+      const targetHp = board[index]?.data?.health || 0;
+      const targetKill = (affected.get(index) || 0) >= targetHp ? 1 : 0;
+      const gemBonus = weapon?.gemEffect === 'fire' || weapon?.gemEffect === 'lightning' ? 3 : 0;
+      const durabilityConserve = weapon ? Math.max(0, 20 - effDmg(weapon)) * 0.02 : 0;
+      const score = kills * 1000 + targetKill * 80 + totalDamage * 8 + gemBonus - overkill * 0.4 + durabilityConserve;
+      if (!best || score > best.score) best = { index, weapon, score };
+    }
+  }
+  return best;
+}
+
 function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
   // Grace is now per-enemy (card.justRevealed, set in the real revealCard) — no
   // global first-turn skip. A freshly revealed enemy sits out only its reveal action.
@@ -554,34 +762,14 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
         inv.some((c) => c.type === 'armor' && c.durability > 0)) {
       regear(mock.cardSystem.cardDataGenerator, gs, inv);
     }
-
-    // 1) Pick an attack target, respecting the melee frontline gate.
+    // 1) Pick an attack target (best weapon for board state), respecting melee gate.
     const revealed = aliveEnemies(board, true);
     if (revealed.length && hasCombatStalemate(board, gs, inv)) {
       mock._stalemateDeath = true;
     }
     let attackIdx = -1;
-    if (revealed.length) {
-      const w = gs.equippedWeapon;
-      if (w && isMelee(w) && anyMeleeAlive(board, true)) {
-        // Melee weapon is blocked from hitting archers while ANY melee (even
-        // hidden) lives. Only revealed MELEE are valid targets.
-        const meleeTargets = revealed.filter((i) => board[i].data.role === 'MELEE');
-        if (meleeTargets.length) {
-          meleeTargets.sort((a, b) => board[a].data.health - board[b].data.health);
-          attackIdx = meleeTargets[0];
-        }
-        // else: only archers revealed but a hidden melee blocks them — do NOT
-        // waste a hit on the (blocked) archer; fall through to REVEAL and hunt
-        // the melee instead (key tactic the bot was missing).
-      } else {
-        // Ranged weapon (bow bypasses the gate) or no melee blockers → hit
-        // the lowest-HP revealed enemy.
-        const t = revealed.slice().sort((a, b) => board[a].data.health - board[b].data.health);
-        attackIdx = t[0];
-      }
-    }
-    if (attackIdx >= 0) {
+    const attackPlan = chooseEfficientAttack(board, gs, inv, gs.actionsLeft <= 0);
+    if (attackPlan) {
       if (!gs.equippedWeapon || gs.equippedWeapon.durability <= 0) regear(mock.cardSystem.cardDataGenerator, gs, inv);
       // Exhaustion penalty: attacks while out of AP deal 20% less (real game rule).
       const wasExhausted = gs.actionsLeft <= 0;
@@ -590,25 +778,9 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
         return wasExhausted ? Math.ceil(d * 0.8) : d;
       };
 
-      // --- Economical weapon choice (mirrors a smart player dragging the RIGHT
-      // weapon onto an enemy). Each swing is still ONE action; the only thing
-      // optimized is which weapon's durability is spent. If any usable weapon
-      // would one-shot the target, swing the WEAKEST such weapon to conserve the
-      // strong (often gemmed) one; otherwise swing the strongest to chunk it. ---
-      const targetCard = board[attackIdx];
-      const targetHP = targetCard?.data?.health ?? 0;
-      const targetIsRanged = targetCard?.data?.role === 'RANGED';
-      const meleeBlocked = targetIsRanged && anyMeleeAlive(board, true);
-      const canHit = (wp) => !meleeBlocked || !isMelee(wp);
-      const roster = [];
-      if (gs.equippedWeapon && gs.equippedWeapon.durability > 0) roster.push(gs.equippedWeapon);
-      for (const c of inv) if (c.type === 'weapon' && c.durability > 0) roster.push(c);
-      const usable = roster.filter(canHit);
-      let chosen = gs.equippedWeapon;
-      if (usable.length) {
-        const finishers = usable.filter((wp) => effDmg(wp) >= targetHP).sort((a, b) => effDmg(a) - effDmg(b));
-        chosen = finishers.length ? finishers[0] : usable.slice().sort((a, b) => effDmg(b) - effDmg(a))[0];
-      }
+      // Attack the target/weapon pair chosen by the efficiency planner.
+      attackIdx = attackPlan.index;
+      const chosen = attackPlan.weapon;
       // Swap the chosen weapon into the equipped slot so the REAL attackEnemy
       // (which decrements gameState.equippedWeapon) spends ITS durability.
       if (chosen && chosen !== gs.equippedWeapon) {
@@ -640,17 +812,14 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
     }
     if (nextUnrevealed >= 0) {
       mock.cardSystem.revealCard(nextUnrevealed); // calls useAction internally
-      const c = board[nextUnrevealed];
-      if (c && c.revealed && c.data?.type !== 'enemy' && c.data?.type !== 'boss') {
-        collectLoot(mock, gs, inv, nextUnrevealed);
-        regear(mock.cardSystem.cardDataGenerator, gs, inv);
-      }
       mock.resolvePendingEnemyTurn();
       maybeHeal(gs, inv);
       continue;
     }
 
-    // 3) Nothing left to reveal and no revealed enemies → floor cleared.
+    // 3) Nothing left to reveal and no revealed enemies: solve the visible loot
+    // pile as an inventory puzzle, then clear the floor.
+    if (collectVisibleLootSmart(mock, gs, inv, floor, 'all')) continue;
     break;
   }
 

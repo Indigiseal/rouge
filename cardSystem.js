@@ -282,8 +282,13 @@ export class CardSystem {
     static BOARD_SAFE_PX = { left: 16, right: 16, top: 16, bottom: 16 };
     
     static USE_FIXED_PANEL = true; // turn on fixed panel layout
-    // Design-space rect tuned for 640x360 (centered panel now)
-    static FIXED_PANEL_640x360 = { left: 200, top: 50, width: 240, height: 260 };
+    // Design-space rect tuned for 640x360 (centered panel now). Widened from
+    // 240x260 into the empty margins of the 366x300 board art: cards are ~52x70
+    // at scale 1, so the old area forced the per-cell step below card size on
+    // busy floors (HSTEP<52 / VSTEP<70) and cards overlapped. This expands
+    // symmetrically (cx stays 340, right edge still clears the combat log) so
+    // the extra room feeds HSTEP/VSTEP and the cards spread out.
+    static FIXED_PANEL_640x360 = { left: 184, top: 50, width: 272, height: 272 };
     // Odd-row (r%2===1) offset neighbors for a "brick"/offset grid
     static OFFS_EVEN = [  // r % 2 === 0
       [+1,  0], [ 0, +1], [-1, +1],
@@ -3079,6 +3084,10 @@ export class CardSystem {
 
         // Apply damage. (Carrion Oath / hungryDagger no longer alters combat — it was
         // reworked into a potion-based poison cleanse, handled in AmuletManager.)
+        const enemyArmor = Math.max(0, card.data.armor || 0);
+        if (enemyArmor > 0) {
+            finalDamage = Math.max(1, finalDamage - enemyArmor);
+        }
         card.data.health -= finalDamage;
         
         // Reduce weapon durability on attack (only if not reflection damage).

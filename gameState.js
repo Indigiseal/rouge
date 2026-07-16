@@ -255,6 +255,20 @@ export class GameState {
             return false;
         }
 
+        if (effect?.type === 'poison' && effect.stackable) {
+            const maxStacks = Math.max(1, effect.maxStacks || 3);
+            const poisonStacks = this.playerEffects.filter(e => e.type === 'poison');
+            if (poisonStacks.length < maxStacks) {
+                this.playerEffects.push({ ...effect });
+            } else {
+                poisonStacks.forEach(stack => {
+                    stack.turns = Math.max(stack.turns || 0, effect.turns || 0);
+                    if (effect.killedBy) stack.killedBy = effect.killedBy;
+                });
+            }
+            return true;
+        }
+
         // Prevent stacking the same effect, refresh duration instead
         const existingEffect = this.playerEffects.find(e => e.type === effect.type);
         if (existingEffect) {
