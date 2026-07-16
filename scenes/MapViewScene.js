@@ -22,7 +22,7 @@ export class MapViewScene extends Phaser.Scene {
     this.currentAct = Math.min(3, Math.max(1, Math.floor((cf - 1) / 15) + 1));
 
     // Build/keep full map. Regenerate when shape changes or when new node types were added.
-    const MAP_VERSION = 5; // v5 caps consecutive non-combat rooms (max 2 in a row)
+    const MAP_VERSION = 6; // v6 enforces the non-combat cap after the room guarantees, + 3 events per act
     const hasCurrentMapShape =
       this.gameState.dungeonMap?.act1?.floors?.length === 15 &&
       this.gameState.dungeonMap?._version === MAP_VERSION;
@@ -384,7 +384,7 @@ export class MapViewScene extends Phaser.Scene {
       nodeSprite.on('pointerover', () => {
         if (this.isDragging) return;
         // Soft click when the pointer lands on a selectable node.
-        SoundHelper.playSound(this, 'hover_soft', 0.4);
+        SoundHelper.playSound(this, 'hover_node', 0.4);
         // Rise one pixel and lighten while hovered.
         nodeSprite.y = node.__y - 1;
         if (nodeSprite.setTint) nodeSprite.setTint(0xffffff);

@@ -6,9 +6,9 @@ export class SoundHelper {
     static SFX_VARIANTS = {
         enemy_hit: ['enemy_hit_1', 'enemy_hit_2', 'enemy_hit_3', 'enemy_hit_4'],
         card_place: ['card_place_1', 'card_place_2', 'card_place_3', 'card_place_4'],
-        gem_socket: ['gem_socket_1', 'gem_socket_2', 'gem_socket_3'],
         lightning_zap: ['lightning_zap_1', 'lightning_zap_2', 'lightning_zap_3'],
-        key_pickup: ['key_pickup_1', 'key_pickup_2', 'key_pickup_3'],
+        enemy_death: ['enemy_death_1', 'enemy_death_2'],
+        hover_button: ['hover_button_1', 'hover_button_2'],
         dodge_miss: ['dodge_miss_1', 'dodge_miss_2', 'dodge_miss_3'],
         map_select: ['map_select_3'],
         armor_break: ['armor_break_1', 'armor_break_2', 'armor_break_3'],
@@ -108,11 +108,23 @@ export class SoundHelper {
         return false;
     }
 
+    // Two copies of one sample started this close together don't read as two
+    // hits — they phase into a single louder, muddier hit. Well under the gap
+    // CombatSequencer puts between beats, so only genuine same-instant repeats
+    // collapse.
+    static DEDUPE_MS = 40;
+    static _lastPlayedAt = new Map();
+
     static playSound(scene, soundKey, baseVolume = 1.0) {
         const gv = this.ensureGlobalVolume(scene);
 
         // Skip unloaded keys quietly instead of spamming Phaser warnings.
         if (scene.cache?.audio && !scene.cache.audio.exists(soundKey)) return;
+
+        const now = scene.time?.now ?? performance.now();
+        const last = this._lastPlayedAt.get(soundKey);
+        if (last !== undefined && now - last < this.DEDUPE_MS) return;
+        this._lastPlayedAt.set(soundKey, now);
 
         const finalVolume = baseVolume * gv.master * gv.sfx;
         this.runWhenAudioReady(scene, () => {
@@ -130,6 +142,19 @@ export class SoundHelper {
         this.playRandom(scene, this.SFX_VARIANTS[group], baseVolume);
     }
 
+    // Stop whatever fade is currently animating this track's volume.
+    // The tween handle lives on the sound rather than being looked up via
+    // scene.tweens.killTweensOf(): a track started by one scene is often faded
+    // out by another, and each scene owns a separate tween manager, so the
+    // stopping scene can't find (or kill) the starting scene's tween.
+    static cancelFade(music) {
+        const tween = music?._rogueFadeTween;
+        if (!tween) return;
+        music._rogueFadeTween = null;
+        try { tween.stop(); } catch (_) {}
+        try { tween.remove(); } catch (_) {}
+    }
+
     // Start a looping track from silence and tween up to its target volume.
     // Returns the sound so the caller can fade it back out later.
     static fadeInMusic(scene, musicKey, baseVolume = 0.6, fadeMs = 800, loop = true) {
@@ -145,7 +170,14 @@ export class SoundHelper {
 
             music.play();
             if (scene.tweens && target > 0) {
-                scene.tweens.add({ targets: music, volume: target, duration: fadeMs, ease: 'Linear' });
+                this.cancelFade(music);
+                music._rogueFadeTween = scene.tweens.add({
+                    targets: music,
+                    volume: target,
+                    duration: fadeMs,
+                    ease: 'Linear',
+                    onComplete: () => { music._rogueFadeTween = null; }
+                });
             } else {
                 music.setVolume?.(target);
             }
@@ -159,10 +191,21 @@ export class SoundHelper {
         if (!music) return;
 
         music._rogueCancelled = true;
-        const hardStop = () => { try { music.stop(); music.destroy(); } catch {} };
+        // Kill the fade-in before touching this track. Fades overlap whenever a
+        // scene swaps music mid-fade (menu fades in over 900ms but is faded out
+        // in 450ms), and the fade-in tween would otherwise keep writing volume
+        // to a sound this fade-out has already destroyed — Phaser's volume
+        // setter then throws on the null gain node.
+        this.cancelFade(music);
+
+        const hardStop = () => {
+            music._rogueFadeTween = null;
+            try { music.stop(); } catch (_) {}
+            try { music.destroy(); } catch (_) {}
+        };
 
         if (scene?.tweens && music.isPlaying) {
-            scene.tweens.add({
+            music._rogueFadeTween = scene.tweens.add({
                 targets: music,
                 volume: 0,
                 duration: fadeMs,

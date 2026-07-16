@@ -51,13 +51,16 @@ export class MainMenuScene extends Phaser.Scene {
     
     createMainMenuButtons() {
         const hasSavedRun = this.saveManager.hasCurrentRun();
-        // 6px visible gap between buttons (29px tall + 6px = 35px center-to-center)
+        // 6px visible gap between buttons (29px tall + 6px = 35px center-to-center).
+        // Options moved out to the cog in the corner, so the three that remain
+        // re-center on the same spot the old four-button stack occupied (156).
         this.mainMenuButtons = {
-            newRun: this.createSpriteButton(320, 104, t(this, 'ui.menu.newRun'),   () => this.startNewGame()),
-            continue: this.createSpriteButton(320, 139, t(this, 'ui.menu.continue'),  hasSavedRun ? () => this.continueGame() : null),
-            options: this.createSpriteButton(320, 174, t(this, 'ui.menu.options'),   () => this.showOptionsMenu()),
-            tutorial: this.createSpriteButton(320, 209, 'Tutorial',                 () => this.startTutorial()),
-            testOptions: this.createSpriteButton(320, 244, t(this, 'ui.menu.testOptions'), () => this.showTestOptionsMenu()),
+            newRun: this.createSpriteButton(320, 122, t(this, 'ui.menu.newRun'),   () => this.startNewGame()),
+            continue: this.createSpriteButton(320, 157, t(this, 'ui.menu.continue'),  hasSavedRun ? () => this.continueGame() : null),
+            tutorial: this.createSpriteButton(320, 192, 'Tutorial',                 () => this.startTutorial()),
+            testOptions: this.createSpriteButton(320, 227, t(this, 'ui.menu.testOptions'), () => this.showTestOptionsMenu()),
+            // Cog tucked into the top-right corner (32x32, 6px margin).
+            options: this.createIconButton(618, 22, 'optionsButton', () => this.showOptionsMenu()),
         };
     }
 
@@ -65,7 +68,7 @@ export class MainMenuScene extends Phaser.Scene {
         if (!this.mainMenuButtons) return;
         this.mainMenuButtons.newRun.text.setText(t(this, 'ui.menu.newRun'));
         this.mainMenuButtons.continue.text.setText(t(this, 'ui.menu.continue'));
-        this.mainMenuButtons.options.text.setText(t(this, 'ui.menu.options'));
+        // Options is the cog icon now — a glyph, nothing to translate.
         if (this.mainMenuButtons.testOptions) {
             this.mainMenuButtons.testOptions.text.setText(t(this, 'ui.menu.testOptions'));
         }
@@ -106,7 +109,7 @@ export class MainMenuScene extends Phaser.Scene {
         if (!disabled) {
             btn.setInteractive({ useHandCursor: true })
                 .on('pointerover', () => {
-                    SoundHelper.playSound(this, 'hover_soft', 0.4);
+                    SoundHelper.playVariant(this, 'hover_button', 0.4);
                     // Lighten on hover
                     if (hasSprite) btn.setTint(0xdddddd);
                 })
@@ -129,6 +132,54 @@ export class MainMenuScene extends Phaser.Scene {
         return { button: btn, text: txt };
     }
 
+    // Icon-only variant of createSpriteButton for a 2-frame up/down skin
+    // (frame 0 = up, frame 1 = pressed). Carries the same shadow, hover sound,
+    // hover lighten and press swap as the text buttons — the art is a different
+    // skin, not different behaviour. The glyph is the label, so there's no text.
+    createIconButton(x, y, sheet, callback) {
+        // Options is the only way to reach language, volume and reset, so it must
+        // exist even if the skin fails to load — same fallback habit as
+        // createSpriteButton, with a cog glyph standing in for the art.
+        const hasSprite = this.textures.exists(sheet);
+
+        // Same silhouette shadow as the text buttons: a black-tinted copy of the
+        // resting frame, offset straight down.
+        const shadow = hasSprite
+            ? this.add.image(x, y + 5, sheet, 0).setOrigin(0.5).setTint(0x000000).setAlpha(0.7)
+            : this.add.rectangle(x, y + 5, 32, 32, 0x000000, 0.7).setOrigin(0.5);
+
+        const btn = hasSprite
+            ? this.add.image(x, y, sheet, 0).setOrigin(0.5)
+            : this.add.rectangle(x, y, 32, 32, 0x888888).setStrokeStyle(1, 0xffffff).setOrigin(0.5);
+
+        const glyph = hasSprite ? null : this.add.text(x, y, '⚙', {
+            fontSize: '18px',
+            fill: '#ffffff',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5);
+
+        btn.setInteractive({ useHandCursor: true })
+            .on('pointerover', () => {
+                SoundHelper.playVariant(this, 'hover_button', 0.4);
+                if (hasSprite) btn.setTint(0xdddddd);
+            })
+            .on('pointerout', () => {
+                if (hasSprite) { btn.clearTint(); btn.setFrame(0); }
+                glyph?.setY(y);
+            })
+            .on('pointerdown', () => {
+                if (hasSprite) btn.setFrame(1);
+                glyph?.setY(y + 1);
+            })
+            .on('pointerup', () => {
+                if (hasSprite) btn.setFrame(0);
+                glyph?.setY(y);
+                callback();
+            });
+
+        return { button: btn, shadow, text: glyph };
+    }
+
     // Legacy rectangle button — still used by the Options / Reset dialogs.
     createButton(x, y, width, height, text, color, callback, disabled = false) {
         const button = this.add.rectangle(x, y, width, height, color, disabled ? 0.2 : 0.3)
@@ -143,7 +194,7 @@ export class MainMenuScene extends Phaser.Scene {
         if (!disabled) {
             button.setInteractive({ useHandCursor: true })
                 .on('pointerover', () => {
-                    SoundHelper.playSound(this, 'hover_soft', 0.4);
+                    SoundHelper.playVariant(this, 'hover_button', 0.4);
                     button.setFillStyle(color, 0.5);
                 })
                 .on('pointerout', () => button.setFillStyle(color, 0.3))

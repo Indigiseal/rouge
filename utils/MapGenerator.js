@@ -23,7 +23,7 @@ export class MapGenerator {
   generateFullMap() {
     // Must match MapViewScene's MAP_VERSION. Otherwise the version-check there
     // fails on every load and the map regenerates after every floor.
-    const full = { _version: 5 };
+    const full = { _version: 6 };
     for (let act = 1; act <= 3; act++) full[`act${act}`] = this.generateAct(act);
     return full;
   }
@@ -321,40 +321,123 @@ export class MapGenerator {
       }
     }
 
-    // pass 2: ensure at least one SHOP & REST in floors 2..7 (if present)
-    const ensureOne = (type, fromF = 2, toF = 7) => {
-      let found = false;
-      for (let f = fromF; f <= Math.min(toF, preBoss); f++)
-        for (const n of floors[f]) if (n.type === type) found = true;
-      if (!found) {
-        // choose a safe spot
-        for (let f = toF; f >= fromF; f--) {
-          const candidates = floors[f].filter(n =>
-            n.type !== 'BOSS' &&
-            !(f <= 1 && (type === 'ELITE' || type === 'REST')) &&
-            !(f === preBoss && type === 'REST') &&
-            !(supportTypes.has(type) && hasSupportNeighbor(floors, f, floors[f].indexOf(n)))
-          );
-          if (candidates.length) {
-            candidates[Math.floor(Math.random() * candidates.length)].type = type;
-            return;
-          }
-        }
-
-        // A dense support-room layout can leave no perfectly spaced slot.
-        // Guarantees must still be guarantees, so replace a non-support room
-        // inside the requested range before touching another support room.
-        const fallback = [];
-        for (let f = fromF; f <= Math.min(toF, preBoss); f++) {
-          floors[f].forEach(n => {
-            if (n.type !== 'BOSS' && !supportTypes.has(n.type)) fallback.push(n);
+    // ---- whole-graph non-combat run analysis ----
+    // Pass 1's wouldExceedNonCombatRun() only inspects parents, which is exact
+    // while assigning top-down (children aren't typed yet). The guarantees below
+    // rewrite already-typed nodes, so flipping one can lengthen a chain in BOTH
+    // directions — these helpers re-measure the finished graph instead.
+    // Floors are processed in order, so one sweep is exact.
+    const computeRuns = () => {
+      const runs = floors.map(row => row.map(() => 0));
+      for (let f = 0; f < floors.length; f++) {
+        for (let i = 0; i < floors[f].length; i++) {
+          const n = floors[f][i];
+          if (!n?.type || isFightType(n.type)) continue;
+          let best = 0;
+          if (f > 0) floors[f - 1].forEach((p, pi) => {
+            if (p.connections.includes(i)) best = Math.max(best, runs[f - 1][pi]);
           });
-        }
-        if (fallback.length > 0) {
-          fallback[Math.floor(Math.random() * fallback.length)].type = type;
+          runs[f][i] = 1 + best;
         }
       }
+      return runs;
     };
+    const firstCapViolation = (runs) => {
+      for (let f = 0; f < floors.length; f++)
+        for (let i = 0; i < floors[f].length; i++)
+          if (runs[f][i] > MAX_NONCOMBAT_RUN) return { f, i };
+      return null;
+    };
+    // Would giving (f, idx) this type keep the whole map inside the cap?
+    const typeKeepsCap = (f, idx, type) => {
+      const node = floors[f][idx];
+      const prev = node.type;
+      node.type = type;
+      const ok = !firstCapViolation(computeRuns());
+      node.type = prev;
+      return ok;
+    };
+
+    // Break any run longer than the cap by turning a non-guaranteed room in it
+    // back into a fight. Runs after every guarantee placement, so the map is
+    // always inside the cap before the next placement measures it — and so the
+    // rooms pass 1 scattered around are spent breaking chains before any
+    // guaranteed room has to be.
+    const repairNonCombatRuns = () => {
+      for (let guard = 0; guard < 200; guard++) {
+        const runs = computeRuns();
+        const target = firstCapViolation(runs);
+        if (!target) return;
+        // Walk back along the longest incoming run to collect the offending chain.
+        const chain = [];
+        let cf = target.f, ci = target.i;
+        while (true) {
+          chain.push({ f: cf, i: ci });
+          if (cf === 0 || runs[cf][ci] <= 1) break;
+          let bestParent = -1, bestRun = 0;
+          floors[cf - 1].forEach((p, pi) => {
+            if (p.connections.includes(ci) && runs[cf - 1][pi] > bestRun) {
+              bestRun = runs[cf - 1][pi];
+              bestParent = pi;
+            }
+          });
+          if (bestParent < 0) break;
+          cf -= 1; ci = bestParent;
+        }
+        const victim = chain.find(({ f, i }) => !guaranteed.has(floors[f][i]));
+        // Whole chain is guaranteed: leave it rather than drop a guarantee.
+        if (!victim) return;
+        floors[victim.f][victim.i].type = 'COMBAT';
+      }
+    };
+
+    // pass 2: per-act room guarantees.
+    // Rooms placed (or kept) to satisfy a guarantee. The cap repair never
+    // converts these back to COMBAT, so a guarantee can't be silently undone.
+    const guaranteed = new Set();
+    const nodesInRange = (fromF, toF) => {
+      const out = [];
+      for (let f = Math.max(1, fromF); f <= Math.min(toF, preBoss); f++)
+        floors[f].forEach((n, i) => out.push({ n, f, i }));
+      return out;
+    };
+
+    // Guarantee at least `min` rooms of `type` within [fromF..toF]. Rooms that
+    // are already there count toward the minimum. Any shortfall is placed by
+    // converting another room, preferring slots that keep the non-combat cap
+    // intact and preferring to eat a fight over a support room.
+    const ensureCount = (type, min, fromF = 2, toF = 7) => {
+      const already = nodesInRange(fromF, toF).filter(({ n }) => n.type === type);
+      already.slice(0, min).forEach(({ n }) => guaranteed.add(n));
+      let missing = min - already.length;
+      while (missing-- > 0) {
+        const placeable = ({ n, f, i }) =>
+          n.type !== 'BOSS' && n.type !== type && !guaranteed.has(n) &&
+          !(f <= 1 && (type === 'ELITE' || type === 'REST')) &&
+          !(f === preBoss && type === 'REST') &&
+          !((type === 'TREASURE' || type === 'TREASURE_GOOD') && f <= 2) &&
+          !(supportTypes.has(type) && hasSupportNeighbor(floors, f, i));
+        let pool = nodesInRange(fromF, toF).filter(placeable);
+        const capSafe = pool.filter(({ f, i }) => typeKeepsCap(f, i, type));
+        if (capSafe.length) pool = capSafe;
+        const fights = pool.filter(({ n }) => isFightType(n.type));
+        if (fights.length) pool = fights;
+        if (!pool.length) {
+          // A dense layout can leave no perfectly spaced slot. A guarantee is
+          // still a guarantee: drop the spacing rule, but never overwrite
+          // another guaranteed room.
+          pool = nodesInRange(fromF, toF)
+            .filter(({ n }) => n.type !== 'BOSS' && n.type !== type && !guaranteed.has(n));
+          if (!pool.length) return;
+        }
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        pick.n.type = type;
+        guaranteed.add(pick.n);
+        repairNonCombatRuns();
+      }
+    };
+    const ensureOne = (type, fromF = 2, toF = 7) => ensureCount(type, 1, fromF, toF);
+
     ensureOne('REST');
     ensureOne('SHOP');
     // Two blacksmiths per act: one early (never floor 1) so durability can be
@@ -367,6 +450,11 @@ export class MapGenerator {
     // Run this guarantee last so later support-room guarantees cannot replace
     // the sole Rare Shop they are supposed to coexist with.
     ensureOne('RARE_SHOP', 3, preBoss - 2);
+    // At least three events per act, anywhere between the start and the boss.
+    ensureCount('EVENT', 3, 1, preBoss);
+
+    // pass 3: final sweep, in case the last guarantee left a chain behind.
+    repairNonCombatRuns();
   }
 
   _computeReachability(floors) {

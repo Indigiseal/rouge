@@ -1,6 +1,7 @@
 //cardSystem
 import { CardDataGenerator } from './CardDataGenerator.js';
 import { SoundHelper } from './utils/SoundHelper.js';
+import { CombatSequencer } from './utils/CombatSequencer.js';
 import { showItemTooltip, hideItemTooltip, showBossTooltip } from './utils/ItemTooltip.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 import { minEnemyRatioForFloor } from './sim/balance-knobs.js';
@@ -2029,7 +2030,7 @@ export class CardSystem {
             }
         } else if (card.data.subType === 'poison') {
             // Acid trap opens with its smoke-poof SFX (paired with the poof anim below).
-            SoundHelper.playSound(this.scene, 'smoke_poof', 0.6);
+            SoundHelper.playSound(this.scene, 'poison_trap', 0.6);
             // Immediate hit on top of the lingering poison-over-time.
             const hit = card.data.damage || 0;
             if (hit > 0) {
@@ -2694,13 +2695,12 @@ export class CardSystem {
             case 'weapon':
             case 'armor':
             case 'key':
-                SoundHelper.playVariant(this.scene, 'key_pickup', 0.5);
+                SoundHelper.playSound(this.scene, 'key_pickup', 0.5);
                 // falls through to the shared pickup handling below
             case 'magic':
             case 'thorns':
             case 'gem':
-                // A gem picked off the board gets the same glass clink as socketing.
-                if (card.data.type === 'gem') SoundHelper.playVariant(this.scene, 'gem_socket', 0.5);
+                if (card.data.type === 'gem') SoundHelper.playSound(this.scene, 'gem_pickup', 0.5);
                 if (this.scene.inventorySystem.addCard(card.data)) {
                     this.removeCard(index);
                     // Picking an item off the board costs an action point and wakes the enemies.
@@ -3048,12 +3048,16 @@ export class CardSystem {
         }
         
         if (!isReflection) {
-            this.scene.createSlashEffect(card.sprite.x, card.sprite.y);
+            const sx = card.sprite.x;
+            const sy = card.sprite.y;
+            CombatSequencer.schedule(this.scene, 'hit', () => this.scene.createSlashEffect(sx, sy));
             // Random impact sound on the struck enemy (variants avoid monotony).
-            SoundHelper.playVariant(this.scene, 'enemy_hit', 0.4);
+            CombatSequencer.playVariant(this.scene, 'hit', 'enemy_hit', 0.4);
         }
 
-        this.scene.shakeCard(card.sprite);
+        // Reflected damage is the answer to a blow, not a blow of its own, so it
+        // shakes on the reflect beat rather than crowding the enemy's own hit.
+        CombatSequencer.shakeCard(this.scene, isReflection ? 'reflect' : 'hit', card.sprite);
         
         // Gem effects fire BEFORE the weapon damage lands. If we waited until
         // after, a killing weapon hit would knock the target's health to ≤ 0
@@ -3079,7 +3083,8 @@ export class CardSystem {
             this.scene.gameState.equippedWeapon.durability -= durabilityLoss;
             if (this.scene.gameState.equippedWeapon.durability <= 0) {
                 this.scene.gameState.equippedWeapon = null;
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weapon Broke!', 0xff0000);
+                CombatSequencer.floatingText(this.scene, 'break',
+                    this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weapon Broke!', 0xff0000);
             }
             this.scene.updateUI();
         }
@@ -3092,7 +3097,9 @@ export class CardSystem {
             } else if (weapon.poisonDamage > 0) {
                 hitFx = 'poison'; // native venomous weapons
             }
-            if (hitFx) this.playEnemyHitEffect(card, hitFx);
+            if (hitFx) CombatSequencer.schedule(this.scene, 'gem', () => {
+                if (card.sprite?.scene) this.playEnemyHitEffect(card, hitFx);
+            });
         }
 
         if (!isReflection && weapon && card.data.health > 0) {
@@ -3108,7 +3115,8 @@ export class CardSystem {
         // Show the weapon damage number on screen, but log it ourselves with an
         // explicit label so the player's own hit is unmistakable in the combat
         // log next to gem "Zap"/"Fire" numbers (skipLog avoids double-logging).
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${finalDamage}`, 0xff0000, '15px', { skipLog: true });
+        CombatSequencer.floatingText(this.scene, isReflection ? 'reflect_damage' : 'damage',
+            card.sprite.x, card.sprite.y, `-${finalDamage}`, 0xff0000, '15px', { skipLog: true });
         const targetName = card.data?.name || 'Enemy';
         const weaponLabel = (!isReflection && weapon?.weaponType)
             ? ` (${weapon.weaponType.charAt(0).toUpperCase()}${weapon.weaponType.slice(1)})`
@@ -3170,8 +3178,9 @@ export class CardSystem {
             // Back-row RANGED enemies prioritized as zap targets.
             const zapDamage = [3, 4, 5][stack - 1];
             const extraZaps = 2; // always 2 additional = 3 total
-            // One random zap SFX per lightning-gem swing (not per hop).
-            SoundHelper.playVariant(this.scene, 'lightning_zap', 0.45);
+            // One random zap SFX per lightning-gem swing (not per hop). Sits on
+            // the gem beat so the zap answers the sword hit instead of racing it.
+            CombatSequencer.playVariant(this.scene, 'gem', 'lightning_zap', 0.45);
             if (this.scene.tutorialMode) {
                 this.scene.events.emit('tutorialProgress', 'gemEffect:lightning');
                 this.scene.tutorialManager?._handleProgress?.('gemEffect:lightning');
@@ -3201,12 +3210,18 @@ export class CardSystem {
                         ? { x: targetCard.sprite.x, y: targetCard.sprite.y }
                         : null;
                     const arcFrom = fromPos;
-                    this.scene.time.delayedCall((zapIndex + 1) * ZAP_STEP, () => {
+                    // Hops start from the gem beat, not from now, so the first
+                    // hop follows the main target's zap instead of landing on it.
+                    const hopDelay = CombatSequencer.BEATS.gem + (zapIndex + 1) * ZAP_STEP;
+                    const hopTimer = this.scene.time.delayedCall(hopDelay, () => {
                         if (arcFrom && toPos) {
                             this.playLightningArc(arcFrom.x, arcFrom.y, toPos.x, toPos.y);
                         }
-                        this.damageGemTarget(i, zapDamage, 'Zap', 0xffe066, 'lightning');
+                        // Each hop opens its own moment: the arc flies, then the
+                        // number lands on the hit beat a beat later.
+                        this.damageGemTarget(i, zapDamage, 'Zap', 0xffe066, 'lightning', 'hit');
                     });
+                    this.scene.enemyTurnTimers?.push(hopTimer);
                     if (toPos) fromPos = toPos; // next hop starts where this one landed
                 });
             }
@@ -3286,12 +3301,14 @@ export class CardSystem {
         if (!this.isAnyEnemyCard(card)) return;
         card.data.health -= amount;
         if (card.revealed && card.sprite?.scene) {
-            this.playEnemyHitEffect(card, 'fire');
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, `-${amount} Fire`, 0xff7040);
-            this.scene.shakeCard(card.sprite);
+            CombatSequencer.schedule(this.scene, 'gem', () => {
+                if (card.sprite?.scene) this.playEnemyHitEffect(card, 'fire');
+            });
+            CombatSequencer.floatingText(this.scene, 'gem', card.sprite.x, card.sprite.y - 18, `-${amount} Fire`, 0xff7040);
+            CombatSequencer.shakeCard(this.scene, 'gem', card.sprite);
             this.updateEnemyInfoText(card);
         } else if (card.sprite?.scene) {
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, `-${amount} Burn`, 0xff7040);
+            CombatSequencer.floatingText(this.scene, 'gem', card.sprite.x, card.sprite.y - 18, `-${amount} Burn`, 0xff7040);
         }
         if (card.data.health <= 0) this.removeDefeatedEnemy(index, card);
     }
@@ -3419,13 +3436,15 @@ export class CardSystem {
         });
     }
 
-    damageGemTarget(index, amount, label, color, effect = null) {
+    damageGemTarget(index, amount, label, color, effect = null, beat = 'gem') {
         const card = this.boardCards[index];
         if (!this.isOpenEnemyCard(card)) return;
-        if (effect) this.playEnemyHitEffect(card, effect);
+        if (effect) CombatSequencer.schedule(this.scene, beat, () => {
+            if (card.sprite?.scene) this.playEnemyHitEffect(card, effect);
+        });
         card.data.health -= amount;
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, `-${amount} ${label}`, color);
-        this.scene.shakeCard(card.sprite);
+        CombatSequencer.floatingText(this.scene, beat, card.sprite.x, card.sprite.y - 18, `-${amount} ${label}`, color);
+        CombatSequencer.shakeCard(this.scene, beat, card.sprite);
         if (card.data.health <= 0) {
             this.removeDefeatedEnemy(index, card);
         } else {
@@ -3448,7 +3467,7 @@ export class CardSystem {
             // keeps turning up "once in a while" for the rest of the run you
             // stole her egg (birdAngry stays set until the next run reseeds).
 
-            SoundHelper.playSound(this.scene, 'enemy_death', 0.5);
+            CombatSequencer.playVariant(this.scene, 'death', 'enemy_death', 0.5);
 
             // Process amulet kill effects
             if (this.scene.amuletManager) {
