@@ -18,6 +18,7 @@ import { CombatSequencer } from './utils/CombatSequencer.js';
 // beat so it always clears one attacker's full timeline — retuning the beats
 // retunes this with them.
 const ENEMY_ATTACK_GAP = CombatSequencer.BEATS.death + 20;
+const BOSS_SWARM_ATTACK_GAP = 220;
 
 // One volume for every companion's attack, deliberately under the hero's own
 // impact (0.4) and swing (0.5): a companion acts on its own each turn, and if it
@@ -854,8 +855,8 @@ export class GameScene extends Phaser.Scene {
     useAction() {
         if (this.isEnemyTurn) return false;
 
-        // Check if player will be exhausted BEFORE consuming the action
-        const willBeExhausted = this.gameState.actionsLeft <= 0;
+        // Check if player is already exhausted BEFORE consuming the action
+        const wasExhausted = this.gameState.actionsLeft <= 0;
         
         // Check for Quickhand Gloves free first action
         if (this.gameState.shouldUseFreeAction()) {
@@ -879,15 +880,17 @@ export class GameScene extends Phaser.Scene {
         
         // REMOVED: Exhaustion damage - player is just weakened now
         // Only show the weakened message when out of action points
-        if (willBeExhausted && actionConsumed) {
+        if (wasExhausted && actionConsumed) {
             // Just show weakened state, no damage. Empty stomach = out of energy.
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Weakened!', 0xff6600);
-            SoundHelper.playVariant(this, 'empty_stomach', 0.5);
         }
         
         // Consume action point if not a free action and player has AP
         if (actionConsumed && this.gameState.actionsLeft > 0) {
             this.gameState.actionsLeft--;
+            if (this.gameState.actionsLeft <= 0) {
+                SoundHelper.playVariant(this, 'empty_stomach', 0.5);
+            }
         }
         
         this.updateUI();
@@ -1058,6 +1061,7 @@ export class GameScene extends Phaser.Scene {
         }
         
         const attackers = eligible;
+        const enemyAttackGap = this.getEnemyAttackGap(attackers);
 
         let attackerIndex = 0;
         const attackNext = () => {
@@ -1076,11 +1080,19 @@ export class GameScene extends Phaser.Scene {
             // Long enough for one attacker's whole timeline (hit → thorns →
             // armor break) to finish before the next one swings, so two enemies
             // never narrate over each other.
-            const timer = this.time.delayedCall(ENEMY_ATTACK_GAP, attackNext);
+            const timer = this.time.delayedCall(enemyAttackGap, attackNext);
             this.enemyTurnTimers.push(timer);
         };
 
         attackNext();
+    }
+
+    getEnemyAttackGap(attackers = []) {
+        const roomType = this.gameState?.roomType || this.roomType;
+        const hasBoss = attackers.some(({ card }) => card?.data?.type === 'boss');
+        return roomType === 'BOSS' && hasBoss && attackers.length >= 3
+            ? BOSS_SWARM_ATTACK_GAP
+            : ENEMY_ATTACK_GAP;
     }
 
     clearEnemyTurnTimers() {
@@ -1786,7 +1798,7 @@ export class GameScene extends Phaser.Scene {
         this.add.rectangle(320, 180, 640, 360, 0x000000, 0.9)
             .setDepth(depth)
             .setInteractive();
-        this.add.text(320, 105, 'DEFEAT', {
+        this.add.text(320, 99, 'DEFEAT', {
             fontSize: '28px',
             fill: '#ffffff',
             fontFamily: 'Arial, sans-serif'
@@ -1872,7 +1884,7 @@ export class GameScene extends Phaser.Scene {
         // reaching buttons underneath, like a still-visible Next Floor button.
         this.add.rectangle(320, 180, 640, 360, 0x000000, 0.78).setOrigin(0.5).setDepth(resultDepth).setInteractive();
         this.add.image(320, 36, 'resultBanners', 0).setOrigin(0.5).setDepth(resultDepth + 2);
-        this.add.text(320, 37, 'DEFEAT', {
+        this.add.text(320, 31, 'DEFEAT', {
             fontSize: '24px',
             fill: '#948b9b',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
@@ -2251,6 +2263,11 @@ export class GameScene extends Phaser.Scene {
         this.clearEnemyTurnTimers();
         this.finalizeCompanionCombatHistory();
         this.enemiesCleared = true;
+        const floor = this.gameState.currentFloor;
+        const isBossFloor = [15, 30, 45].includes(floor);
+        if (this.roomType === 'BOSS' || this.gameState.roomType === 'BOSS' || isBossFloor) {
+            this.stopBossMusic();
+        }
         if (this.tutorialMode) {
             this.updateUI?.();
             return;
@@ -2265,8 +2282,6 @@ export class GameScene extends Phaser.Scene {
         // no act-3 coin hoarding" — see its "Shop affordability" report section.
         // Flattened from 20+floor*3: act 1 was coin-starved (2.7/6 affordable)
         // while acts 2-3 hoarded 500-750 unspent coins (4.5/6 affordable).
-        const floor = this.gameState.currentFloor;
-        const isBossFloor = [15, 30, 45].includes(floor);
         if (!isBossFloor) {
             const base = Math.floor(24 + floor * 1.2);
             const reward = this.amuletManager ? this.amuletManager.modifyGoldFound(base) : base;
@@ -2307,6 +2322,10 @@ export class GameScene extends Phaser.Scene {
     }
     
     gameWon() {
+        this.stopBossMusic();
+        MusicManager.stop(this, 700);
+        this.clearEnemyTurnTimers();
+
         const resultDepth = 11000;
         // Interactive (even with no handlers) so it swallows clicks and stops them
         // reaching buttons underneath, like a still-visible Next Floor button.
@@ -2518,17 +2537,24 @@ export class GameScene extends Phaser.Scene {
         }
 
         const description = `${translateItemName(this, relic)}\n${translateDescription(this, relic.description)}`;
-        const bg = this.add.rectangle(0, 0, 200, 44, 0x000000, 0.85)
-            .setStrokeStyle(1, relic.cursed ? 0xff6666 : 0xffd700);
-        const tooltipText = this.add.text(0, 0, description, {
+        const tooltipText = this.add.text(6, 6, description, {
             fontSize: '10px',
             fill: relic.cursed ? '#ff9999' : '#ffd700',
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
-            align: 'center',
+            align: 'left',
             wordWrap: { width: 190 }
-        }).setOrigin(0.5);
+        }).setOrigin(0);
 
-        this.relicTooltip = this.add.container(x, y, [bg, tooltipText]);
+        const width = Math.ceil(Math.min(220, Math.max(120, tooltipText.width + 12)));
+        const height = Math.ceil(tooltipText.height + 12);
+        const bg = this.add.rectangle(0, 0, width, height, 0x000000, 0.9)
+            .setOrigin(0)
+            .setStrokeStyle(1, relic.cursed ? 0xff6666 : 0xffd700);
+
+        const clampedX = Phaser.Math.Clamp(Math.round(x), 4, 640 - width - 4);
+        const clampedY = Phaser.Math.Clamp(Math.round(y), 4, 360 - height - 4);
+
+        this.relicTooltip = this.add.container(clampedX, clampedY, [bg, tooltipText]);
         this.relicTooltip.setDepth(1000);
     }
 
@@ -2636,7 +2662,7 @@ export class GameScene extends Phaser.Scene {
         this.gameState.playerEffects.forEach((effect) => {
             switch (effect.type) {
                 case 'poison':
-                    entries.push({ text: `Poison (${effect.turns} turns)`, color: '#66ff66' });
+                    entries.push({ text: `Poison ${effect.turns}`, color: '#66ff66' });
                     break;
                 case 'burn':
                     entries.push({ text: `Burn (${effect.turns} turns)`, color: '#ff7040' });

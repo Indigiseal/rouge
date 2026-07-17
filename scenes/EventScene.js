@@ -2306,9 +2306,11 @@ export class EventScene extends Phaser.Scene {
   }
 
   trainCompanion(key) {
-    const companion = this.getInventorySlots().find(item => (
+    const inventorySlots = this.getInventorySlots();
+    const companionSlotIndex = inventorySlots.findIndex(item => (
       item?.type === 'companion' && this.getCompanionKey(item) === key
     ));
+    const companion = companionSlotIndex >= 0 ? inventorySlots[companionSlotIndex] : null;
     const history = this.gameState?.companionHistory?.[key];
     if (!companion || !history || history.upgraded === true) return false;
 
@@ -2337,6 +2339,7 @@ export class EventScene extends Phaser.Scene {
     history.upgraded = true;
     history.name = companion.name || history.name;
     this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
+    this.gameScene?.inventorySystem?.playSlotStrikeAnimation?.(companionSlotIndex);
     this.gameScene?.updateUI?.();
     return true;
   }

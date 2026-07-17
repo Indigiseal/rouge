@@ -255,17 +255,16 @@ export class GameState {
             return false;
         }
 
-        if (effect?.type === 'poison' && effect.stackable) {
-            const maxStacks = Math.max(1, effect.maxStacks || 3);
-            const poisonStacks = this.playerEffects.filter(e => e.type === 'poison');
-            if (poisonStacks.length < maxStacks) {
-                this.playerEffects.push({ ...effect });
-            } else {
-                poisonStacks.forEach(stack => {
-                    stack.turns = Math.max(stack.turns || 0, effect.turns || 0);
-                    if (effect.killedBy) stack.killedBy = effect.killedBy;
-                });
+        if (effect?.type === 'poison') {
+            const existingPoison = this.playerEffects.find(e => e.type === 'poison');
+            if (existingPoison) {
+                existingPoison.turns = Math.max(0, existingPoison.turns || 0) + Math.max(0, effect.turns || 0);
+                existingPoison.damage = Math.max(existingPoison.damage || 0, effect.damage || 0);
+                existingPoison.stacks = Math.max(1, existingPoison.stacks || 1) + Math.max(1, effect.stacks || 1);
+                if (effect.killedBy) existingPoison.killedBy = effect.killedBy;
+                return true;
             }
+            this.playerEffects.push({ ...effect, stacks: Math.max(1, effect.stacks || 1) });
             return true;
         }
 

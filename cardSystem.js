@@ -2722,6 +2722,7 @@ export class CardSystem {
                 break;
 
             case 'food': {
+                SoundHelper.playVariant(this.scene, 'bread_eaten', 0.5);
                 // Apply amulet food AP modifiers
                 const baseAP = card.data.actionAmount;
                 const modifiedAP = this.scene.amuletManager ?

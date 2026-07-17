@@ -89,6 +89,10 @@ export class SaveManager {
   // ============ CURRENT RUN (Temporary) ============
 
   saveCurrentRun(gameState, inventorySystem, cardSystem) {
+    const serializedBoard = cardSystem ? this.serializeBoardCards(cardSystem.boardCards) : [];
+    const enemiesCleared = gameState?.scene?.enemiesCleared ?? false;
+    const roomType = this.resolveRoomTypeForSave(gameState, serializedBoard, enemiesCleared);
+
     const runData = {
       player: {
         health: gameState?.playerHealth ?? 50,
@@ -145,14 +149,14 @@ export class SaveManager {
         roomParticipants: gameState?.companionRoomParticipants ?? {},
       },
       navigation: {
-        roomType: gameState?.roomType ?? 'COMBAT',
+        roomType,
         mapCursor: gameState?.mapCursor ?? null,
         dungeonMap: gameState?.dungeonMap ?? null,
         pendingActShop: gameState?.pendingActShop ?? null,
       },
       board: {
-        cards: cardSystem ? this.serializeBoardCards(cardSystem.boardCards) : [],
-        enemiesCleared: gameState?.scene?.enemiesCleared ?? false,
+        cards: serializedBoard,
+        enemiesCleared,
         layout: cardSystem?.getSerializableBoardLayout?.() ?? null,
       },
       savedAt: Date.now(),
@@ -327,6 +331,12 @@ export class SaveManager {
         };
       });
     }
+
+    run.navigation.roomType = this.resolveRoomTypeForSave(
+      { roomType: run.navigation.roomType, scene: { roomType: run.navigation.roomType } },
+      run.board.cards,
+      run.board.enemiesCleared
+    );
     return run;
   }
 
@@ -406,6 +416,29 @@ export class SaveManager {
           ? { x: card.sprite.x, y: card.sprite.y }
           : null,
       };
+    });
+  }
+
+  resolveRoomTypeForSave(gameState, boardCards, enemiesCleared = false) {
+    const savedRoomType = gameState?.roomType || gameState?.scene?.roomType || 'COMBAT';
+    const sceneRoomType = gameState?.scene?.roomType || savedRoomType;
+    const combatTypes = ['COMBAT', 'ELITE', 'BOSS'];
+
+    if (combatTypes.includes(savedRoomType)) return savedRoomType;
+    if (combatTypes.includes(sceneRoomType)) return sceneRoomType;
+    if (enemiesCleared || !this.hasLiveEnemyOnBoard(boardCards)) return savedRoomType;
+
+    if (boardCards.some(card => card?.data?.type === 'boss')) return 'BOSS';
+    if (boardCards.some(card => card?.data?.type === 'eliteEnemy')) return 'ELITE';
+    return 'COMBAT';
+  }
+
+  hasLiveEnemyOnBoard(boardCards) {
+    if (!Array.isArray(boardCards)) return false;
+    return boardCards.some(card => {
+      const type = card?.data?.type;
+      if (type !== 'enemy' && type !== 'eliteEnemy' && type !== 'boss') return false;
+      return (card.data?.health ?? 1) > 0;
     });
   }
 
