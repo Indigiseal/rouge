@@ -1240,7 +1240,7 @@ export class CardDataGenerator {
             type: 'potion',
             name: next.name,
             healAmount: next.healAmount,
-            sprite: next.sprite,
+            sprite: next.healAmount > this.potionTiers[0].healAmount ? 'potionCardUncommon' : next.sprite,
             rarity: next.rarity,
             cost: next.cost
         };

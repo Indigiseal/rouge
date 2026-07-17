@@ -16,20 +16,20 @@ export class CombatSequencer {
     static BEATS = {
         attack: 0,           // the swing/cast leaves the player's hand
         enemy_attack: 0,     // an enemy lunges
-        hit: 60,             // it connects — impact sound, slash, shake
-        hurt: 60,            // the player takes it
-        damage: 120,         // the number comes off the target
-        gem: 200,            // a socketed gem discharges (zap / fire / poison)
-        reflect: 260,        // thorns and armor bite back at the attacker
-        reflect_damage: 300, // the number that reflection knocks off
-        break: 340,          // armor or a weapon gives out
-        death: 400           // the target drops
+        hit: 0,              // it connects: impact sound, slash, shake
+        hurt: 0,             // the player takes it
+        damage: 45,          // the number comes off the target
+        gem: 95,             // a socketed gem discharges
+        reflect: 145,        // thorns and armor bite back at the attacker
+        reflect_damage: 175, // the number that reflection knocks off
+        break: 205,          // armor or a weapon gives out
+        death: 245           // the target drops
     };
 
     // Two SOUNDS never land closer than this. Only audio needs the protection —
     // it's the one channel where simultaneous events mask each other. A beat's
     // sound, floating text, and shake are one event and should land together.
-    static MIN_GAP = 60;
+    static MIN_GAP = 35;
     static DEFAULT_BEAT = 'hit';
 
     static _moment = null;

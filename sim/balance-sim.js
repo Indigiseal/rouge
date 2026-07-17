@@ -1931,6 +1931,10 @@ function runLoadout() {
 const ALL_RELICS = ['spiderVenom', 'webWeaver', 'boneArmor', 'undeadResilience', 'greedyPockets',
   'scavenger', 'giantStrength', 'queenBlessing', 'lichCurse', 'veteranExplorer', 'tent',
   'luckyScrap', 'dungeonMaster'];
+const relicSanity = new MetaProgressionManager({}).getRelicDefinitions();
+if (relicSanity.undeadResilience?.effect?.healPerFloor !== 3) {
+  throw new Error(`Sim relic mismatch: undeadResilience healPerFloor=${relicSanity.undeadResilience?.effect?.healPerFloor}`);
+}
 const STRONG_AMULETS = ['golemHeart', 'chronosHeart', 'regeneration', 'evasionBoots',
   'temperedSteel', 'healingRing', 'merchantPact', 'vampiricRing'];
 

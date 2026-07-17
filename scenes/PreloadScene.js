@@ -282,9 +282,9 @@ export class PreloadScene extends Phaser.Scene {
         this.load.audio('player_hurt_1', M + 'Player_Hurt_01.wav');
         this.load.audio('player_hurt_2', M + 'Player_Hurt_02.wav');
         this.load.audio('player_hurt_3', M + 'Player_Hurt_03.wav');
-        // Soft UI hover clicks — map nodes get their own; buttons rotate 2 variants
+        // Soft UI hover clicks. Buttons and map nodes both use Hover_Click_01.
         this.load.audio('hover_node', M + 'Hover_Click_01.mp3');
-        this.load.audio('hover_button_1', M + 'Hover_Click_02.mp3');
+        this.load.audio('hover_button_1', M + 'Hover_Click_01.mp3');
         this.load.audio('hover_button_2', M + 'Hover_Click_03.mp3');
         // Gem picked off the board / socketed into a weapon
         this.load.audio('gem_pickup', M + 'Gem_Pickup_01.mp3');

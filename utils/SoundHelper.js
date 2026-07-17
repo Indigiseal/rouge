@@ -8,7 +8,7 @@ export class SoundHelper {
         card_place: ['card_place_1', 'card_place_2', 'card_place_3', 'card_place_4'],
         lightning_zap: ['lightning_zap_1', 'lightning_zap_2', 'lightning_zap_3'],
         enemy_death: ['enemy_death_1', 'enemy_death_2'],
-        hover_button: ['hover_button_1', 'hover_button_2'],
+        hover_button: ['hover_button_1'],
         dodge_miss: ['dodge_miss_1', 'dodge_miss_2', 'dodge_miss_3'],
         map_select: ['map_select_3'],
         armor_break: ['armor_break_1', 'armor_break_2', 'armor_break_3'],
@@ -118,6 +118,47 @@ export class SoundHelper {
     // collapse.
     static DEDUPE_MS = 40;
     static _lastPlayedAt = new Map();
+    static PENDING_AUDIO_TTL_MS = 900;
+    static MAX_ACTIVE_SFX = 32;
+    static _activeSfx = [];
+
+    // Only cap genuinely oversized one-shot clips. Most gameplay SFX are meant
+    // to keep their full tail; cutting those makes deaths/impacts feel wrong.
+    static SFX_MAX_DURATION_MS = {
+        recovery: 1200,
+        magicShield: 1200,
+        weakening: 1200
+    };
+
+    static SFX_PROTECTED = new Set([
+        'boss_defeated',
+        'enemy_death_1',
+        'enemy_death_2',
+        'hero_death_1',
+        'hero_death_2',
+        'hero_death_3'
+    ]);
+
+    static getMaxDurationMs(soundKey) {
+        if (this.SFX_MAX_DURATION_MS[soundKey] !== undefined) return this.SFX_MAX_DURATION_MS[soundKey];
+        return null;
+    }
+
+    static pruneActiveSfx() {
+        this._activeSfx = this._activeSfx.filter(entry => entry.sound?.isPlaying);
+    }
+
+    static makeRoomForSfx() {
+        this.pruneActiveSfx();
+        if (this._activeSfx.length < this.MAX_ACTIVE_SFX) return;
+
+        const index = this._activeSfx.findIndex(entry => !entry.protected);
+        if (index === -1) return;
+
+        const [entry] = this._activeSfx.splice(index, 1);
+        try { entry.sound.stop(); } catch (_) {}
+        try { entry.sound.destroy(); } catch (_) {}
+    }
 
     static playSound(scene, soundKey, baseVolume = 1.0) {
         const gv = this.ensureGlobalVolume(scene);
@@ -131,8 +172,43 @@ export class SoundHelper {
         this._lastPlayedAt.set(soundKey, now);
 
         const finalVolume = baseVolume * gv.master * gv.sfx;
+        const requestedAt = now;
         this.runWhenAudioReady(scene, () => {
-            scene.sound.play(soundKey, { volume: finalVolume });
+            const currentTime = scene.time?.now ?? performance.now();
+            if (currentTime - requestedAt > this.PENDING_AUDIO_TTL_MS) return;
+
+            this.makeRoomForSfx();
+
+            const sound = scene.sound.add(soundKey, { volume: finalVolume });
+            let cleanedUp = false;
+            const cleanup = () => {
+                if (cleanedUp) return;
+                cleanedUp = true;
+                this._activeSfx = this._activeSfx.filter(entry => entry.sound !== sound);
+                try { sound.destroy(); } catch (_) {}
+            };
+
+            this._activeSfx.push({
+                sound,
+                key: soundKey,
+                protected: this.SFX_PROTECTED.has(soundKey)
+            });
+
+            sound.once?.('complete', cleanup);
+            sound.once?.('stop', cleanup);
+            if (sound.play() === false) {
+                cleanup();
+                return;
+            }
+
+            const maxDuration = this.getMaxDurationMs(soundKey);
+            if (maxDuration && scene.time?.delayedCall) {
+                scene.time.delayedCall(maxDuration, () => {
+                    if (!sound.isPlaying) return;
+                    try { sound.stop(); } catch (_) {}
+                    cleanup();
+                });
+            }
         });
     }
 
@@ -202,11 +278,18 @@ export class SoundHelper {
         // setter then throws on the null gain node.
         this.cancelFade(music);
 
+        let fallbackTimer = null;
         const hardStop = () => {
+            if (fallbackTimer !== null) {
+                clearTimeout(fallbackTimer);
+                fallbackTimer = null;
+            }
             music._rogueFadeTween = null;
             try { music.stop(); } catch (_) {}
             try { music.destroy(); } catch (_) {}
         };
+
+        fallbackTimer = setTimeout(hardStop, Math.max(0, fadeMs) + 120);
 
         if (scene?.tweens && music.isPlaying) {
             music._rogueFadeTween = scene.tweens.add({

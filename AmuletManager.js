@@ -161,7 +161,9 @@ export class AmuletManager {
                 rarity: 'rare',
                 onPotionUse: () => {
                     const effects = this.gameState.playerEffects || [];
-                    const poisonStacks = effects.filter(e => e.type === 'poison').length;
+                    const poisonStacks = effects
+                        .filter(e => e.type === 'poison')
+                        .reduce((sum, effect) => sum + Math.max(1, effect.stacks || 1), 0);
                     if (poisonStacks <= 0) return;
                     // Purge poison and convert it into bonus healing.
                     this.gameState.playerEffects = effects.filter(e => e.type !== 'poison');
