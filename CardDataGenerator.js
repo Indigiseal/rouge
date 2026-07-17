@@ -348,8 +348,8 @@ export class CardDataGenerator {
             giantSkeleton: {
                 type: 'boss', tier: 1,
                 name: 'Giant Skeleton',
-                health: 46,
-                attack: 7,
+                health: 44,
+                attack: 6,
                 armor: 2,
                 sprite: 'giantSkeleton',
                 abilities: [

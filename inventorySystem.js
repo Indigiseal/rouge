@@ -2618,7 +2618,7 @@ export class InventorySystem {
                     // before the second attackEnemy() claims its impact slot —
                     // so the two blades read as swing → hit → swing → hit rather
                     // than a single doubled-up frame.
-                    this.animateOffhandDaggerRaise(secondaryIndex);
+                    this.playSlotStrikeAnimation(secondaryIndex);
                     CombatSequencer.playSound(this.scene, 'attack', swingKey, 0.4);
                 }
             }
@@ -2641,29 +2641,36 @@ export class InventorySystem {
         this.returnWeaponToSlotDelayed(slotIndex, cardSprite);
     }
 
-    // Lift the off-hand dagger's inventory card during a dual-wield swing, the
-    // same 5px hop (with the hover shine) a companion plays when it joins an
-    // attack — so a dual-wield visibly comes from BOTH daggers, not just the
-    // dragged one. Purely cosmetic; the off-hand's damage is applied by the
-    // caller's attackEnemy() call.
-    animateOffhandDaggerRaise(index) {
+    // Shared "this card is acting" flourish for an inventory slot — the little
+    // hop a companion (Chick / Slimebone), a dual-wield off-hand dagger, or a
+    // retaliating thorns card plays to show it joined the turn. Lifts the card
+    // art AND everything pinned to it (the value/pip container, gem overlay,
+    // briar frame, twinkle), pops the drop-shadow at the resting spot, and runs
+    // the hover shine, then settles it all back. Purely cosmetic; callers apply
+    // their own damage/sound. Round y each frame so pips never sit on a
+    // fractional pixel and jitter.
+    playSlotStrikeAnimation(index) {
         const slot = this.slotSprites?.[index];
         const cardSprite = slot?.card;
         if (!cardSprite?.scene) return;
 
         const restY = Number.isFinite(slot?.originalY) ? slot.originalY : cardSprite.y;
         const hoverSprite = slot?.hoverSprite;
+        const shadow = slot?.shadow;
 
         if (hoverSprite && this.scene.anims?.exists?.('hover_cards_anim')) {
             hoverSprite.setVisible(true);
             hoverSprite.play('hover_cards_anim');
         }
 
-        // Hop the card art AND everything pinned to it — the value/pip container
-        // (infoText), gem overlays, briar frame, twinkle — so the whole card
-        // lifts as one, exactly like the inventory hover lift. Without this the
-        // damage number and durability pips stay put while only the art moves.
-        // Round y each frame so pips never land on a fractional pixel and jitter.
+        // Drop-shadow stays put at the resting spot so the card reads as lifting
+        // up off it (same as the hover lift). Faded back out when the hop ends.
+        if (shadow?.scene) {
+            shadow.x = cardSprite.x;
+            shadow.y = restY + 28;
+            shadow.setAlpha(0.6);
+        }
+
         const lift = (target, baseY, round = false) => {
             if (!target?.scene) return;
             this.scene.tweens.add({
@@ -2684,6 +2691,7 @@ export class InventorySystem {
         lift(slot.twinkleSprite, restY);
         if (slot.gemIndicator) lift(slot.gemIndicator, slot.gemIndicator.restY ?? restY);
 
+        const hideShadow = () => { if (shadow?.scene) shadow.setAlpha(0); };
         if (hoverSprite) {
             this.scene.tweens.add({
                 targets: hoverSprite,
@@ -2697,8 +2705,12 @@ export class InventorySystem {
                         hoverSprite.setVisible(false);
                         hoverSprite.y = restY;
                     }
+                    hideShadow();
                 }
             });
+        } else if (shadow?.scene) {
+            // No shine to hang the shadow fade off — drop it with the hop.
+            this.scene.tweens.add({ targets: shadow, alpha: 0, duration: 120, delay: 120, onComplete: hideShadow });
         }
     }
 
