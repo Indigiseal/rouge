@@ -33,6 +33,88 @@ function q(db, sql, params = {}) {
   return db.prepare(sql).all(params);
 }
 
+function previousBatchId(db, batchId) {
+  return db.prepare(`
+    SELECT id FROM sim_batches
+    WHERE id < @batchId
+    ORDER BY id DESC LIMIT 1
+  `).get({ batchId })?.id ?? null;
+}
+
+function batchSeries(db, batchId) {
+  if (!batchId) {
+    return { floorReach: [], pipStart: [], pipEnd: [], enemyHp: [] };
+  }
+
+  const floorReach = q(db, `
+    WITH floors AS (
+      SELECT DISTINCT floor_number AS floor
+      FROM sim_floor_visits fv
+      JOIN sim_runs r ON r.id = fv.run_id
+      WHERE r.batch_id = @batchId
+      UNION
+      SELECT DISTINCT reached_floor AS floor FROM sim_runs WHERE batch_id = @batchId
+    )
+    SELECT f.floor,
+      (SELECT COUNT(*) FROM sim_runs r
+       WHERE r.batch_id = @batchId AND r.reached_floor >= f.floor) AS runs_reached
+    FROM floors f
+    ORDER BY f.floor
+  `, { batchId });
+
+  const pipStart = q(db, `
+    SELECT fv.floor_number AS floor,
+           ROUND(AVG(tot.pips), 1) AS avg_pips
+    FROM (
+      SELECT floor_visit_id, SUM(pip_output) AS pips
+      FROM sim_weapon_snapshots WHERE phase = 'start'
+      GROUP BY floor_visit_id
+    ) tot
+    JOIN sim_floor_visits fv ON fv.id = tot.floor_visit_id
+    JOIN sim_runs r ON r.id = fv.run_id
+    WHERE r.batch_id = @batchId
+      AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')
+    GROUP BY fv.floor_number ORDER BY fv.floor_number
+  `, { batchId });
+
+  const pipEnd = q(db, `
+    SELECT fv.floor_number AS floor,
+           ROUND(AVG(tot.pips), 1) AS avg_end
+    FROM (
+      SELECT floor_visit_id, SUM(pip_output) AS pips
+      FROM sim_weapon_snapshots WHERE phase = 'end'
+      GROUP BY floor_visit_id
+    ) tot
+    JOIN sim_floor_visits fv ON fv.id = tot.floor_visit_id
+    JOIN sim_runs r ON r.id = fv.run_id
+    WHERE r.batch_id = @batchId
+    GROUP BY fv.floor_number ORDER BY fv.floor_number
+  `, { batchId });
+
+  const enemyHp = q(db, `
+    SELECT fv.floor_number AS floor,
+           ROUND(AVG(tot.hp), 1) AS avg_hp
+    FROM (
+      SELECT floor_visit_id, SUM(health) AS hp
+      FROM sim_enemy_spawns GROUP BY floor_visit_id
+    ) tot
+    JOIN sim_floor_visits fv ON fv.id = tot.floor_visit_id
+    JOIN sim_runs r ON r.id = fv.run_id
+    WHERE r.batch_id = @batchId
+    GROUP BY fv.floor_number ORDER BY fv.floor_number
+  `, { batchId });
+
+  return { floorReach, pipStart, pipEnd, enemyHp };
+}
+
+function batchMeta(db, batchId) {
+  if (!batchId) return null;
+  return db.prepare(`
+    SELECT id, label, mode, runs_completed, created_at
+    FROM sim_batches WHERE id = @batchId
+  `).get({ batchId }) || null;
+}
+
 function buildPayload(batchId) {
   const db = openDb();
   try {
@@ -45,103 +127,25 @@ function buildPayload(batchId) {
       FROM sim_runs WHERE batch_id = @batchId
     `, { batchId })[0] || {};
 
-    const encounters = q(db, `
-      SELECT fv.encounter_type AS label, COUNT(*) AS value
-      FROM sim_floor_visits fv
-      JOIN sim_runs r ON r.id = fv.run_id
-      WHERE r.batch_id = @batchId
-      GROUP BY fv.encounter_type ORDER BY value DESC
-    `, { batchId });
-
-    const floorReach = q(db, `
-      WITH floors AS (
-        SELECT DISTINCT floor_number AS floor
-        FROM sim_floor_visits fv
-        JOIN sim_runs r ON r.id = fv.run_id
-        WHERE r.batch_id = @batchId
-        UNION
-        SELECT DISTINCT reached_floor AS floor FROM sim_runs WHERE batch_id = @batchId
-      )
-      SELECT f.floor,
-        (SELECT COUNT(*) FROM sim_runs r
-         WHERE r.batch_id = @batchId AND r.reached_floor >= f.floor) AS runs_reached
-      FROM floors f
-      ORDER BY f.floor
-    `, { batchId });
-
-    const pipStart = q(db, `
-      SELECT fv.floor_number AS floor,
-             MIN(tot.pips) AS min_pips,
-             MAX(tot.pips) AS max_pips,
-             ROUND(AVG(tot.pips), 1) AS avg_pips
-      FROM (
-        SELECT floor_visit_id, SUM(pip_output) AS pips
-        FROM sim_weapon_snapshots WHERE phase = 'start'
-        GROUP BY floor_visit_id
-      ) tot
-      JOIN sim_floor_visits fv ON fv.id = tot.floor_visit_id
-      JOIN sim_runs r ON r.id = fv.run_id
-      WHERE r.batch_id = @batchId
-        AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')
-      GROUP BY fv.floor_number ORDER BY fv.floor_number
-    `, { batchId });
-
-    const enemyHp = q(db, `
-      SELECT fv.floor_number AS floor,
-             MIN(tot.hp) AS min_hp,
-             MAX(tot.hp) AS max_hp,
-             ROUND(AVG(tot.hp), 1) AS avg_hp
-      FROM (
-        SELECT floor_visit_id, SUM(health) AS hp
-        FROM sim_enemy_spawns GROUP BY floor_visit_id
-      ) tot
-      JOIN sim_floor_visits fv ON fv.id = tot.floor_visit_id
-      JOIN sim_runs r ON r.id = fv.run_id
-      WHERE r.batch_id = @batchId
-      GROUP BY fv.floor_number ORDER BY fv.floor_number
-    `, { batchId });
-
-    const clearPct = q(db, `
-      SELECT fv.floor_number AS floor,
-             ROUND(100.0 * SUM(CASE WHEN ws.start_pips >= es.enemy_hp THEN 1 ELSE 0 END) / COUNT(*), 1) AS clear_pct
-      FROM sim_floor_visits fv
-      JOIN sim_runs r ON r.id = fv.run_id
-      JOIN (
-        SELECT floor_visit_id, SUM(pip_output) AS start_pips
-        FROM sim_weapon_snapshots WHERE phase = 'start'
-        GROUP BY floor_visit_id
-      ) ws ON ws.floor_visit_id = fv.id
-      JOIN (
-        SELECT floor_visit_id, SUM(health) AS enemy_hp
-        FROM sim_enemy_spawns GROUP BY floor_visit_id
-      ) es ON es.floor_visit_id = fv.id
-      WHERE r.batch_id = @batchId
-        AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')
-      GROUP BY fv.floor_number ORDER BY fv.floor_number
-    `, { batchId });
-
-    const pipEnd = q(db, `
-      SELECT fv.floor_number AS floor,
-             MIN(tot.pips) AS min_end,
-             MAX(tot.pips) AS max_end,
-             ROUND(AVG(tot.pips), 1) AS avg_end
-      FROM (
-        SELECT floor_visit_id, SUM(pip_output) AS pips
-        FROM sim_weapon_snapshots WHERE phase = 'end'
-        GROUP BY floor_visit_id
-      ) tot
-      JOIN sim_floor_visits fv ON fv.id = tot.floor_visit_id
-      JOIN sim_runs r ON r.id = fv.run_id
-      WHERE r.batch_id = @batchId
-      GROUP BY fv.floor_number ORDER BY fv.floor_number
-    `, { batchId });
-
     const batches = q(db, `
       SELECT id, label, mode, runs_completed, created_at
       FROM sim_batches ORDER BY id DESC
     `);
 
-    return { batchId, batches, overview, encounters, floorReach, pipStart, enemyHp, clearPct, pipEnd };
+    const prevId = previousBatchId(db, batchId);
+    const current = batchSeries(db, batchId);
+    const previous = batchSeries(db, prevId);
+
+    return {
+      batchId,
+      previousBatchId: prevId,
+      batch: batchMeta(db, batchId),
+      previousBatch: batchMeta(db, prevId),
+      batches,
+      overview,
+      ...current,
+      previous,
+    };
   } finally {
     db.close();
   }
@@ -320,5 +324,5 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`Stats dashboard: http://localhost:${PORT}`);
   console.log(`Database: ${DB_PATH}`);
-  console.log('Refresh after new sim runs (auto every 30s in browser).');
+  console.log('Open in browser; charts refresh on batch change / after sim finish.');
 });

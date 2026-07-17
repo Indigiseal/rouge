@@ -111,7 +111,7 @@
     .stat .value { font-size: 1.6rem; font-weight: 700; }
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      grid-template-columns: 1fr;
       gap: 1rem;
       padding: 0 1.5rem 1rem;
     }
@@ -128,8 +128,8 @@
       color: var(--muted);
     }
     .card.wide { grid-column: 1 / -1; }
-    .chart-wrap { position: relative; height: 280px; }
-    .chart-wrap.tall { height: 320px; }
+    .chart-wrap { position: relative; height: 340px; }
+    .chart-wrap.tall { height: 400px; }
     .error {
       margin: 2rem;
       padding: 1rem;
@@ -426,7 +426,12 @@
 
   <script>
     const charts = {};
-    const palette = ['#58a6ff', '#3fb950', '#f85149', '#d29922', '#a371f7', '#f778ba', '#79c0ff'];
+    const COLORS = {
+      pipStart: '#58a6ff',
+      pipEnd: '#3fb950',
+      enemyHp: '#a371f7',
+      reach: '#58a6ff',
+    };
     let currentBatchId = null;
     let catalog = { relics: [], amulets: [], hints: {}, behaviors: [] };
     const STRONG_START = ['golemHeart', 'chronosHeart', 'regeneration', 'evasionBoots',
@@ -439,9 +444,37 @@
       accumulate: 'Мета-карьера: стартовых реликов нет, пул открывается смертями.',
     };
 
-    function mkCanvas(id, title, { wide = false, tall = false } = {}) {
+    function pale(hex, alpha = 0.32) {
+      const h = hex.replace('#', '');
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function batchTitle(batch) {
+      if (!batch) return 'пред.';
+      const name = (batch.label && String(batch.label).trim()) ? String(batch.label).trim() : `#${batch.id}`;
+      return name;
+    }
+
+    function seriesMap(rows, key) {
+      const m = new Map();
+      for (const row of rows || []) m.set(Number(row.floor), row[key]);
+      return m;
+    }
+
+    function unionFloors(...rowSets) {
+      const set = new Set();
+      for (const rows of rowSets) {
+        for (const row of rows || []) set.add(Number(row.floor));
+      }
+      return [...set].sort((a, b) => a - b);
+    }
+
+    function mkCanvas(id, title, { tall = false } = {}) {
       const card = document.createElement('div');
-      card.className = 'card' + (wide ? ' wide' : '');
+      card.className = 'card wide';
       card.innerHTML = `<h2>${title}</h2><div class="chart-wrap${tall ? ' tall' : ''}"><canvas id="${id}"></canvas></div>`;
       document.getElementById('charts').appendChild(card);
       return document.getElementById(id);
@@ -452,8 +485,8 @@
       for (const k of Object.keys(charts)) delete charts[k];
     }
 
-    function lineChart(id, title, labels, datasets) {
-      const ctx = mkCanvas(id, title);
+    function lineChart(id, title, labels, datasets, { tall = false } = {}) {
+      const ctx = mkCanvas(id, title, { tall });
       charts[id] = new Chart(ctx, {
         type: 'line',
         data: { labels, datasets },
@@ -463,54 +496,9 @@
           interaction: { mode: 'index', intersect: false },
           plugins: { legend: { labels: { color: '#e6edf3' } } },
           scales: {
-            x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
+            x: { ticks: { color: '#8b949e', maxRotation: 45, minRotation: 0, autoSkip: true, maxTicksLimit: 45 }, grid: { color: '#30363d' } },
             y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
           },
-        },
-      });
-    }
-
-    function barChart(id, title, labels, data, color = palette[0], opts = {}) {
-      const ctx = mkCanvas(id, title, opts);
-      charts[id] = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [{ label: title, data, backgroundColor: color + '99', borderColor: color, borderWidth: 1 }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: {
-              ticks: {
-                color: '#8b949e',
-                maxRotation: opts.rotateX ?? 0,
-                minRotation: opts.rotateX ?? 0,
-                autoSkip: opts.autoSkipX ?? true,
-                maxTicksLimit: opts.maxTicksX ?? undefined,
-              },
-              grid: { color: '#30363d' },
-            },
-            y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
-          },
-        },
-      });
-    }
-
-    function doughnutChart(id, title, labels, data) {
-      const ctx = mkCanvas(id, title);
-      charts[id] = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels,
-          datasets: [{ data, backgroundColor: palette.slice(0, labels.length) }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'right', labels: { color: '#e6edf3' } } },
         },
       });
     }
@@ -529,39 +517,105 @@
       destroyCharts();
       document.getElementById('charts').innerHTML = '';
 
-      doughnutChart('enc', 'Типы комнат',
-        data.encounters.map((r) => r.label),
-        data.encounters.map((r) => r.value));
+      const prev = data.previous || {};
+      const prevName = batchTitle(data.previousBatch);
+      const curName = batchTitle(data.batch);
 
-      barChart('reach', 'Дошли до этажа (накопительно)',
-        data.floorReach.map((r) => 'F' + r.floor),
-        data.floorReach.map((r) => r.runs_reached), palette[0],
-        { wide: true, tall: true, rotateX: 45, maxTicksX: 45 });
+      const combatFloors = unionFloors(data.pipStart, data.pipEnd, data.enemyHp, prev.pipStart, prev.pipEnd, prev.enemyHp);
+      const pipStartCur = seriesMap(data.pipStart, 'avg_pips');
+      const pipEndCur = seriesMap(data.pipEnd, 'avg_end');
+      const enemyHpCur = seriesMap(data.enemyHp, 'avg_hp');
+      const pipStartPrev = seriesMap(prev.pipStart, 'avg_pips');
+      const pipEndPrev = seriesMap(prev.pipEnd, 'avg_end');
+      const enemyHpPrev = seriesMap(prev.enemyHp, 'avg_hp');
 
-      const ps = data.pipStart;
-      lineChart('pipStart', 'Σ pip на старте боя', ps.map((r) => r.floor), [
-        { label: 'min', data: ps.map((r) => r.min_pips), borderColor: palette[2], tension: 0.25 },
-        { label: 'avg', data: ps.map((r) => r.avg_pips), borderColor: palette[0], tension: 0.25 },
-        { label: 'max', data: ps.map((r) => r.max_pips), borderColor: palette[1], tension: 0.25 },
-      ]);
+      const combatLabels = combatFloors.map((f) => 'F' + f);
+      const combatDatasets = [
+        {
+          label: `Σ pip старт (${curName})`,
+          data: combatFloors.map((f) => pipStartCur.get(f) ?? null),
+          borderColor: COLORS.pipStart,
+          backgroundColor: pale(COLORS.pipStart, 0.12),
+          tension: 0.25,
+          spanGaps: true,
+        },
+        {
+          label: `Σ pip конец (${curName})`,
+          data: combatFloors.map((f) => pipEndCur.get(f) ?? null),
+          borderColor: COLORS.pipEnd,
+          backgroundColor: pale(COLORS.pipEnd, 0.12),
+          tension: 0.25,
+          spanGaps: true,
+        },
+        {
+          label: `Σ HP врагов (${curName})`,
+          data: combatFloors.map((f) => enemyHpCur.get(f) ?? null),
+          borderColor: COLORS.enemyHp,
+          backgroundColor: pale(COLORS.enemyHp, 0.12),
+          tension: 0.25,
+          spanGaps: true,
+        },
+      ];
+      if (data.previousBatchId) {
+        combatDatasets.push(
+          {
+            label: `Σ pip старт (${prevName})`,
+            data: combatFloors.map((f) => pipStartPrev.get(f) ?? null),
+            borderColor: pale(COLORS.pipStart, 0.4),
+            borderDash: [5, 4],
+            pointRadius: 0,
+            tension: 0.25,
+            spanGaps: true,
+          },
+          {
+            label: `Σ pip конец (${prevName})`,
+            data: combatFloors.map((f) => pipEndPrev.get(f) ?? null),
+            borderColor: pale(COLORS.pipEnd, 0.4),
+            borderDash: [5, 4],
+            pointRadius: 0,
+            tension: 0.25,
+            spanGaps: true,
+          },
+          {
+            label: `Σ HP врагов (${prevName})`,
+            data: combatFloors.map((f) => enemyHpPrev.get(f) ?? null),
+            borderColor: pale(COLORS.enemyHp, 0.4),
+            borderDash: [5, 4],
+            pointRadius: 0,
+            tension: 0.25,
+            spanGaps: true,
+          },
+        );
+      }
+      lineChart('combatPower', 'Pip старт / pip конец / HP врагов (avg Σ)', combatLabels, combatDatasets, { tall: true });
 
-      const eh = data.enemyHp;
-      lineChart('enemyHp', 'Σ HP врагов', eh.map((r) => r.floor), [
-        { label: 'min', data: eh.map((r) => r.min_hp), borderColor: palette[3], tension: 0.25 },
-        { label: 'avg', data: eh.map((r) => r.avg_hp), borderColor: palette[4], tension: 0.25 },
-        { label: 'max', data: eh.map((r) => r.max_hp), borderColor: palette[5], tension: 0.25 },
-      ]);
-
-      barChart('clear', 'Хватает оружия %',
-        data.clearPct.map((r) => r.floor),
-        data.clearPct.map((r) => r.clear_pct), palette[1]);
-
-      const pe = data.pipEnd;
-      lineChart('pipEnd', 'Σ pip на конце этажа', pe.map((r) => r.floor), [
-        { label: 'min', data: pe.map((r) => r.min_end), borderColor: palette[2], tension: 0.25 },
-        { label: 'avg', data: pe.map((r) => r.avg_end), borderColor: palette[0], tension: 0.25 },
-        { label: 'max', data: pe.map((r) => r.max_end), borderColor: palette[1], tension: 0.25 },
-      ]);
+      const reachFloors = unionFloors(data.floorReach, prev.floorReach);
+      const reachCur = seriesMap(data.floorReach, 'runs_reached');
+      const reachPrev = seriesMap(prev.floorReach, 'runs_reached');
+      const reachDatasets = [
+        {
+          label: `Дошли (${curName})`,
+          data: reachFloors.map((f) => reachCur.get(f) ?? null),
+          borderColor: COLORS.reach,
+          backgroundColor: pale(COLORS.reach, 0.15),
+          tension: 0.2,
+          fill: false,
+          spanGaps: true,
+        },
+      ];
+      if (data.previousBatchId) {
+        reachDatasets.push({
+          label: `Дошли (${prevName})`,
+          data: reachFloors.map((f) => reachPrev.get(f) ?? null),
+          borderColor: pale(COLORS.reach, 0.4),
+          borderDash: [5, 4],
+          pointRadius: 0,
+          tension: 0.2,
+          fill: false,
+          spanGaps: true,
+        });
+      }
+      lineChart('reach', 'Дошли до этажа (накопительно)', reachFloors.map((f) => 'F' + f), reachDatasets, { tall: true });
     }
 
     async function load(batchId) {
@@ -762,7 +816,8 @@
       const wasRunning = document.getElementById('runBtn').disabled;
       renderRunStatus(status);
       if (wasRunning && !status.running) {
-        await load(currentBatchId);
+        // Always switch to the newest batch after a finished run.
+        await load();
       }
     }
 
@@ -838,10 +893,7 @@
     initMeta().then(() => load()).catch((err) => {
       document.getElementById('charts').innerHTML = `<div class="error">${err.message || err}</div>`;
     });
-    setInterval(() => {
-      load(document.getElementById('batchSelect').value).catch(() => {});
-      refreshRunStatus().catch(() => {});
-    }, 30000);
+    // Poll run status only (no full-page stats auto-refresh).
     setInterval(() => refreshRunStatus().catch(() => {}), 3000);
   </script>
 </body>
