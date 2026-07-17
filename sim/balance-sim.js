@@ -1132,6 +1132,7 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
 
       const dmg = effDmg(gs.equippedWeapon);
       const weaponBeforeAttack = gs.equippedWeapon;
+      const targetHP = board[attackIdx]?.data?.health || 0;
       combatDamageDealt += dmg;
       combatDamageWasted += Math.max(0, dmg - targetHP);
       mock.useAction();
