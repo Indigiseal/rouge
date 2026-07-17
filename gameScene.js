@@ -1292,7 +1292,11 @@ export class GameScene extends Phaser.Scene {
                 this.gameState.inventory[thorns.index] = null;
             }
         } else if (this.inventorySystem) {
+            // Rebuild first (durability pip just dropped), then play the "acting"
+            // hop on the fresh sprite so the thorns card visibly retaliates —
+            // same flourish a companion / off-hand dagger uses.
             this.inventorySystem.rebuildInventorySprites();
+            this.inventorySystem.playSlotStrikeAnimation(thorns.index);
         }
     }
 
@@ -1520,32 +1524,9 @@ export class GameScene extends Phaser.Scene {
             return false;
         }
 
-        const slot = this.inventorySystem?.slotSprites?.[entry.index];
-        const cardSprite = slot?.card;
-        const restY = slot?.originalY ?? cardSprite?.y;
-        const hoverSprite = slot?.hoverSprite;
-
-        if (cardSprite && Number.isFinite(restY)) {
-            if (hoverSprite) {
-                hoverSprite.setVisible(true);
-                hoverSprite.play('hover_cards_anim');
-            }
-            this.tweens.add({
-                targets: [cardSprite, hoverSprite].filter(Boolean),
-                y: restY - 5,
-                duration: 120,
-                ease: 'Power2',
-                yoyo: true,
-                onComplete: () => {
-                    if (hoverSprite?.scene) {
-                        hoverSprite.stop();
-                        hoverSprite.setVisible(false);
-                        hoverSprite.y = restY;
-                    }
-                    if (cardSprite?.scene) cardSprite.y = restY;
-                }
-            });
-        }
+        // Shared "acting" hop — lifts the card art, its value/pips, shadow and
+        // shine together, same as the off-hand dagger and thorns.
+        this.inventorySystem?.playSlotStrikeAnimation(entry.index);
 
         const attackTimer = this.time.delayedCall(120, () => {
             const currentTarget = this.cardSystem.boardCards[target.index];
