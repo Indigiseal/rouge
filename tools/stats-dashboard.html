@@ -32,7 +32,7 @@
       justify-content: space-between;
     }
     h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
-    select, button {
+    select, button, input, textarea {
       background: var(--panel);
       color: var(--text);
       border: 1px solid var(--border);
@@ -41,7 +41,60 @@
       font-size: 0.9rem;
     }
     button { cursor: pointer; }
-    button:hover, select:hover { border-color: var(--accent); }
+    button:hover, select:hover, input:hover, textarea:hover { border-color: var(--accent); }
+    input, textarea { width: 100%; }
+    textarea { min-height: 84px; resize: vertical; }
+    .controls {
+      padding: 1rem 1.5rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.15rem;
+      width: 100%;
+    }
+    .panel h2 {
+      margin: 0 0 0.8rem;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.75rem;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.9rem;
+    }
+    .inline {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .status-line {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 0;
+    }
+    pre.log {
+      margin: 0.5rem 0 0;
+      padding: 0.65rem 0.75rem;
+      background: #0b1016;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: auto;
+      max-height: 180px;
+      white-space: pre-wrap;
+      font-size: 0.78rem;
+    }
     .stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -60,7 +113,7 @@
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
       gap: 1rem;
-      padding: 0 1.5rem 2rem;
+      padding: 0 1.5rem 1rem;
     }
     .card {
       background: var(--panel);
@@ -89,6 +142,133 @@
       color: var(--muted);
       font-size: 0.85rem;
     }
+    .hint {
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.35;
+    }
+    .behavior-box {
+      margin-top: 0.35rem;
+      padding: 0.55rem 0.7rem;
+      background: #0b1016;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+    .behavior-box strong { color: var(--text); }
+    .behavior-box ul {
+      margin: 0.4rem 0 0;
+      padding-left: 1.1rem;
+      color: var(--muted);
+    }
+    .behavior-box li { margin: 0.15rem 0; }
+    .pickers-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    @media (min-width: 960px) {
+      .pickers-row.both-open {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .picker-panel { display: none; min-width: 0; }
+    .picker-panel.open { display: block; }
+    .picker-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 0.55rem;
+    }
+    .picker-toolbar button {
+      font-size: 0.78rem;
+      padding: 0.3rem 0.55rem;
+    }
+    .picker-scroll {
+      max-height: 420px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0b1016;
+    }
+    table.picker-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 0.82rem;
+    }
+    table.picker-table th,
+    table.picker-table td {
+      padding: 0.45rem 0.55rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      text-align: left;
+    }
+    table.picker-table th {
+      position: sticky;
+      top: 0;
+      background: #121820;
+      color: var(--muted);
+      font-weight: 600;
+      z-index: 1;
+    }
+    table.picker-table tr:last-child td { border-bottom: none; }
+    table.picker-table .col-pool,
+    table.picker-table .col-start {
+      width: 4.5rem;
+      text-align: center;
+    }
+    table.picker-table .col-pool label,
+    table.picker-table .col-start label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      cursor: pointer;
+    }
+    table.picker-table .name {
+      font-weight: 600;
+      margin: 0 0 0.15rem;
+      word-break: break-word;
+    }
+    table.picker-table .desc {
+      color: var(--muted);
+      font-size: 0.75rem;
+      line-height: 1.35;
+      margin: 0;
+    }
+    table.picker-table input[type="checkbox"] {
+      width: 1rem;
+      height: 1rem;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .run-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--border);
+    }
+    .log-panel summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.9rem;
+      list-style: none;
+    }
+    .log-panel summary::-webkit-details-marker { display: none; }
+    .log-panel summary::before { content: '▸ '; }
+    .log-panel[open] summary::before { content: '▾ '; }
+    details.help summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
     a { color: var(--accent); }
   </style>
 </head>
@@ -104,8 +284,141 @@
     </div>
   </header>
 
+  <div class="controls">
+    <div class="panel">
+      <h2>Запуск симуляции</h2>
+      <details class="help">
+        <summary title="Краткая справка по полям формы">Справка по опциям</summary>
+        <p class="hint" id="formHelp">
+          Meta и Amulets включаются независимо от preset. В таблицах:
+          <b>Пул</b> — может появиться в эксперименте;
+          <b>Старт</b> — уже есть на старте run.
+        </p>
+      </details>
+      <div class="form-grid">
+        <label class="field" title="stats-db пишет в SQLite; sweep — solo-амулеты">
+          <span>Режим</span>
+          <select id="runMode">
+            <option value="stats-db">stats-db</option>
+            <option value="sweep">sweep</option>
+          </select>
+          <span class="hint">stats-db → графики; sweep → сравнение амулетов по одному</span>
+        </label>
+        <label class="field" title="Базовый профиль: balance / fresh / geared / accumulate">
+          <span>Preset</span>
+          <select id="preset">
+            <option value="balance">balance</option>
+            <option value="fresh">fresh</option>
+            <option value="geared">geared</option>
+            <option value="accumulate">accumulate</option>
+          </select>
+          <span class="hint" id="presetHint">Дефолты meta/amulets для профиля</span>
+        </label>
+        <label class="field" title="Число независимых run в пакете">
+          <span>Runs</span>
+          <input id="runs" type="number" min="1" value="1000" />
+        </label>
+        <label class="field" title="Метка пакета в sim_batches.label">
+          <span>Label</span>
+          <input id="label" type="text" value="ui-run" />
+        </label>
+        <div class="field" title="Эвристики бота: лут, магия, риск" style="grid-column: 1 / -1">
+          <label for="behavior">Behavior</label>
+          <select id="behavior" style="max-width: 320px"></select>
+          <div id="behaviorHint" class="behavior-box"></div>
+        </div>
+        <label class="field" title="Включить метапрогрессию (релики)">
+          <span>Meta</span>
+          <select id="meta">
+            <option value="off">off</option>
+            <option value="on">on</option>
+          </select>
+          <span class="hint">Выкл = без реликов; вкл = таблица призов ниже</span>
+        </label>
+        <label class="field" title="Включить амулеты (дроп/шоп/старт)">
+          <span>Amulets</span>
+          <select id="amulets">
+            <option value="off">off</option>
+            <option value="on">on</option>
+          </select>
+          <span class="hint">Выкл = полностью без амулетов; вкл = таблица ниже</span>
+        </label>
+        <label class="field" id="subsetWrap" title="Опциональный фильтр id для sweep">
+          <span>Sweep subset (comma-separated)</span>
+          <input id="amuletSubset" type="text" placeholder="temperedSteel,regeneration" />
+          <span class="hint">Пусто = все амулеты по одному</span>
+        </label>
+      </div>
+
+      <div class="pickers-row" id="pickersRow">
+        <div id="metaPicker" class="picker-panel">
+          <h2 title="Мета-призы: релики аккаунта">Мета-призы (релики)</h2>
+          <p class="hint">Пул = в эксперименте. Старт = уже разблокирован (в accumulate — начальный набор; остальное пула открывается смертями).</p>
+          <div class="picker-toolbar">
+            <button type="button" data-act="meta-all-pool" title="Отметить все как доступные">Все в пуле</button>
+            <button type="button" data-act="meta-none-pool" title="Снять доступность у всех">Пусто</button>
+            <button type="button" data-act="meta-all-start" title="Все из пула также на старте">Все на старт</button>
+            <button type="button" data-act="meta-none-start" title="Стартовый набор пуст">Без старта</button>
+            <button type="button" data-act="meta-geared" title="Все в пуле и все на старте">Как geared</button>
+          </div>
+          <div class="picker-scroll">
+            <table class="picker-table">
+              <thead>
+                <tr>
+                  <th class="col-pool" title="Может быть в эксперименте">Пул</th>
+                  <th class="col-start" title="Уже есть на старте run">Старт</th>
+                  <th>Приз</th>
+                </tr>
+              </thead>
+              <tbody id="metaList"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="amuletPicker" class="picker-panel">
+          <h2 title="Амулеты: пул дропа и стартовый loadout">Амулеты</h2>
+          <p class="hint">Пул = может выпасть/купиться/выдаться. Старт = экипирован с F1 (автоматически входит в пул).</p>
+          <div class="picker-toolbar">
+            <button type="button" data-act="amulet-all-pool" title="Весь каталог в пуле">Все в пуле</button>
+            <button type="button" data-act="amulet-none-pool" title="Пустой пул (только стартовые, если отмечены)">Пусто</button>
+            <button type="button" data-act="amulet-droppable" title="Только обычный дроп/шоп">Только дроп</button>
+            <button type="button" data-act="amulet-strong" title="Стартовый strong loadout">Старт: strong</button>
+            <button type="button" data-act="amulet-bag" title="Только Bottomless Bag на старте">Старт: bag</button>
+            <button type="button" data-act="amulet-none-start" title="Без стартовых амулетов">Без старта</button>
+          </div>
+          <div class="picker-scroll">
+            <table class="picker-table">
+              <thead>
+                <tr>
+                  <th class="col-pool" title="Может выпасть/купиться">Пул</th>
+                  <th class="col-start" title="Экипирован с F1">Старт</th>
+                  <th>Амулет</th>
+                </tr>
+              </thead>
+              <tbody id="amuletList"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="run-bar">
+        <button id="runBtn" type="button" title="Запустить node sim/balance-sim.js с выбранными флагами">Запустить</button>
+        <span id="runHint" class="status-line"></span>
+        <span id="runStatus" class="status-line">idle</span>
+      </div>
+    </div>
+  </div>
+
   <div class="stats" id="overview"></div>
   <div class="grid" id="charts"></div>
+
+  <div class="controls" style="padding-bottom: 0.5rem">
+    <details class="panel log-panel" id="logPanel">
+      <summary>Лог запуска (вторично)</summary>
+      <pre id="runLog" class="log"></pre>
+    </details>
+  </div>
+
   <footer>
     Локальный дашборд поверх <code>sim/db/stats.sqlite</code>.
     Для Grafana: <code>npm run sim:grafana</code> → <a href="http://localhost:3030">localhost:3030</a> (Docker, login admin/admin).
@@ -114,6 +427,17 @@
   <script>
     const charts = {};
     const palette = ['#58a6ff', '#3fb950', '#f85149', '#d29922', '#a371f7', '#f778ba', '#79c0ff'];
+    let currentBatchId = null;
+    let catalog = { relics: [], amulets: [], hints: {}, behaviors: [] };
+    const STRONG_START = ['golemHeart', 'chronosHeart', 'regeneration', 'evasionBoots',
+      'temperedSteel', 'healingRing', 'merchantPact', 'vampiricRing'];
+
+    const PRESET_HINTS = {
+      balance: 'Без меты и амулетов — чистый баланс.',
+      fresh: 'Амулеты в пуле, без стартовых; мета выкл.',
+      geared: 'Мета: все релики на старте; амулеты в пуле.',
+      accumulate: 'Мета-карьера: стартовых реликов нет, пул открывается смертями.',
+    };
 
     function mkCanvas(id, title, { wide = false, tall = false } = {}) {
       const card = document.createElement('div');
@@ -250,6 +574,7 @@
       }
       renderOverview(data.overview);
       renderCharts(data);
+      currentBatchId = data.batchId;
 
       const sel = document.getElementById('batchSelect');
       sel.innerHTML = data.batches.map((b) => {
@@ -259,10 +584,265 @@
       }).join('');
     }
 
+    function updateModeUi() {
+      const isSweep = document.getElementById('runMode').value === 'sweep';
+      const metaOn = !isSweep && document.getElementById('meta').value === 'on';
+      const amuletsOn = !isSweep && document.getElementById('amulets').value === 'on';
+      document.getElementById('preset').disabled = isSweep;
+      document.getElementById('label').disabled = isSweep;
+      document.getElementById('meta').disabled = isSweep;
+      document.getElementById('amulets').disabled = isSweep;
+      document.getElementById('subsetWrap').style.display = isSweep ? 'flex' : 'none';
+      document.getElementById('metaPicker').classList.toggle('open', metaOn);
+      document.getElementById('amuletPicker').classList.toggle('open', amuletsOn);
+      document.getElementById('pickersRow').classList.toggle('both-open', metaOn && amuletsOn);
+      document.getElementById('presetHint').textContent = PRESET_HINTS[document.getElementById('preset').value] || '';
+      updateBehaviorHint();
+    }
+
+    function updateBehaviorHint() {
+      const id = document.getElementById('behavior').value;
+      const b = (catalog.behaviors || []).find((x) => x.id === id);
+      const el = document.getElementById('behaviorHint');
+      if (!b) {
+        el.innerHTML = '<span class="hint">Политика решений бота в бою и станциях</span>';
+        return;
+      }
+      const details = (b.details || []).map((d) => `<li>${escapeHtml(d)}</li>`).join('');
+      el.innerHTML = `<strong>${escapeHtml(b.title)}</strong> — ${escapeHtml(b.summary)}`
+        + (details ? `<ul>${details}</ul>` : '');
+    }
+
+    function renderPickerRows(containerId, items, kind) {
+      const el = document.getElementById(containerId);
+      const poolTitle = kind === 'meta'
+        ? (catalog.hints.metaPool || 'В пуле эксперимента')
+        : (catalog.hints.amuletPool || 'Может выпасть/купиться');
+      const startTitle = kind === 'meta'
+        ? (catalog.hints.metaStart || 'Уже на старте')
+        : (catalog.hints.amuletStart || 'Экипирован с F1');
+      el.innerHTML = items.map((item) => `
+        <tr data-id="${item.id}" title="${escapeAttr(item.hint || item.description || '')}">
+          <td class="col-pool">
+            <label title="${escapeAttr(poolTitle)}">
+              <input type="checkbox" data-role="pool" checked />
+            </label>
+          </td>
+          <td class="col-start">
+            <label title="${escapeAttr(startTitle)}">
+              <input type="checkbox" data-role="start" />
+            </label>
+          </td>
+          <td>
+            <div class="name" title="${escapeAttr(item.id)}">${escapeHtml(item.name)}</div>
+            <p class="desc">${escapeHtml(item.description || '')}</p>
+          </td>
+        </tr>`).join('');
+      el.querySelectorAll('tr').forEach((row) => {
+        const pool = row.querySelector('[data-role="pool"]');
+        const start = row.querySelector('[data-role="start"]');
+        start.addEventListener('change', () => {
+          if (start.checked) pool.checked = true;
+        });
+        pool.addEventListener('change', () => {
+          if (!pool.checked) start.checked = false;
+        });
+      });
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[c]));
+    }
+    function escapeAttr(s) {
+      return escapeHtml(s).replace(/\n/g, ' ');
+    }
+
+    function readPicker(containerId) {
+      const pool = [];
+      const start = [];
+      document.querySelectorAll(`#${containerId} tr[data-id]`).forEach((row) => {
+        const id = row.dataset.id;
+        if (row.querySelector('[data-role="pool"]').checked) pool.push(id);
+        if (row.querySelector('[data-role="start"]').checked) start.push(id);
+      });
+      return { pool, start };
+    }
+
+    function setPicker(containerId, { poolAll, startIds, poolIds } = {}) {
+      const startSet = new Set(startIds || []);
+      const poolSet = poolIds ? new Set(poolIds) : null;
+      document.querySelectorAll(`#${containerId} tr[data-id]`).forEach((row) => {
+        const id = row.dataset.id;
+        const pool = row.querySelector('[data-role="pool"]');
+        const start = row.querySelector('[data-role="start"]');
+        pool.checked = poolSet ? poolSet.has(id) : poolAll !== false;
+        start.checked = startSet.has(id);
+        if (start.checked) pool.checked = true;
+      });
+    }
+
+    function applyPresetDefaults() {
+      const preset = document.getElementById('preset').value;
+      if (preset === 'balance') {
+        document.getElementById('meta').value = 'off';
+        document.getElementById('amulets').value = 'off';
+      } else if (preset === 'fresh') {
+        document.getElementById('meta').value = 'off';
+        document.getElementById('amulets').value = 'on';
+        setPicker('amuletList', { poolAll: true, startIds: [] });
+      } else if (preset === 'geared') {
+        document.getElementById('meta').value = 'on';
+        document.getElementById('amulets').value = 'on';
+        setPicker('metaList', { poolAll: true, startIds: catalog.relics.map((r) => r.id) });
+        setPicker('amuletList', { poolAll: true, startIds: [] });
+      } else if (preset === 'accumulate') {
+        document.getElementById('meta').value = 'on';
+        document.getElementById('amulets').value = 'on';
+        setPicker('metaList', { poolAll: true, startIds: [] });
+        setPicker('amuletList', { poolAll: true, startIds: [] });
+      }
+      updateModeUi();
+    }
+
+    function onPickerAction(act) {
+      if (act === 'meta-all-pool') setPicker('metaList', { poolAll: true, startIds: readPicker('metaList').start });
+      if (act === 'meta-none-pool') setPicker('metaList', { poolIds: [], startIds: [] });
+      if (act === 'meta-all-start') {
+        const { pool } = readPicker('metaList');
+        setPicker('metaList', { poolIds: pool.length ? pool : catalog.relics.map((r) => r.id), startIds: pool.length ? pool : catalog.relics.map((r) => r.id) });
+      }
+      if (act === 'meta-none-start') {
+        const { pool } = readPicker('metaList');
+        setPicker('metaList', { poolIds: pool, startIds: [] });
+      }
+      if (act === 'meta-geared') {
+        setPicker('metaList', { poolAll: true, startIds: catalog.relics.map((r) => r.id) });
+      }
+      if (act === 'amulet-all-pool') setPicker('amuletList', { poolAll: true, startIds: readPicker('amuletList').start });
+      if (act === 'amulet-none-pool') setPicker('amuletList', { poolIds: readPicker('amuletList').start, startIds: readPicker('amuletList').start });
+      if (act === 'amulet-droppable') {
+        const drop = catalog.amulets.filter((a) => a.droppable).map((a) => a.id);
+        const { start } = readPicker('amuletList');
+        setPicker('amuletList', { poolIds: [...new Set([...drop, ...start])], startIds: start });
+      }
+      if (act === 'amulet-strong') setPicker('amuletList', { poolAll: true, startIds: STRONG_START });
+      if (act === 'amulet-bag') setPicker('amuletList', { poolAll: true, startIds: ['bottomlessBag'] });
+      if (act === 'amulet-none-start') {
+        const { pool } = readPicker('amuletList');
+        setPicker('amuletList', { poolIds: pool, startIds: [] });
+      }
+    }
+
+    function renderRunStatus(status) {
+      const el = document.getElementById('runStatus');
+      const hint = document.getElementById('runHint');
+      const btn = document.getElementById('runBtn');
+      const logPanel = document.getElementById('logPanel');
+      if (!status || !status.running && !status.finishedAt && !status.output) {
+        el.textContent = 'idle';
+        hint.textContent = '';
+        btn.disabled = false;
+        document.getElementById('runLog').textContent = '';
+        return;
+      }
+      const state = status.running ? 'running' : `finished (exit ${status.exitCode})`;
+      el.textContent = `${state}`;
+      el.title = `args=${(status.args || []).join(' ')}`;
+      hint.textContent = status.running ? 'Симуляция выполняется...' : 'Можно запускать следующий прогон';
+      btn.disabled = Boolean(status.running);
+      document.getElementById('runLog').textContent = status.output || '';
+      if (status.running || status.output) logPanel.open = true;
+    }
+
+    async function refreshRunStatus() {
+      const res = await fetch('/api/run-status');
+      const status = await res.json();
+      const wasRunning = document.getElementById('runBtn').disabled;
+      renderRunStatus(status);
+      if (wasRunning && !status.running) {
+        await load(currentBatchId);
+      }
+    }
+
+    async function initMeta() {
+      const res = await fetch('/api/meta');
+      const data = await res.json();
+      catalog = data;
+      const behavior = document.getElementById('behavior');
+      behavior.innerHTML = (data.behaviors || []).map((b) =>
+        `<option value="${b.id}" title="${escapeAttr(b.summary || '')}">${b.id} — ${escapeHtml(b.title || b.id)}</option>`
+      ).join('') || (data.presets || []).map((name) => `<option value="${name}">${name}</option>`).join('');
+      renderPickerRows('metaList', data.relics || [], 'meta');
+      renderPickerRows('amuletList', data.amulets || [], 'amulet');
+      applyPresetDefaults();
+      renderRunStatus(data.runStatus);
+      updateModeUi();
+    }
+
+    async function startRun() {
+      const mode = document.getElementById('runMode').value;
+      const body = {
+        mode,
+        runs: Number(document.getElementById('runs').value || 100),
+        behavior: document.getElementById('behavior').value || 'balanced',
+      };
+      if (mode === 'stats-db') {
+        body.preset = document.getElementById('preset').value;
+        body.label = document.getElementById('label').value;
+        body.meta = document.getElementById('meta').value === 'on';
+        body.amulets = document.getElementById('amulets').value === 'on';
+        if (body.meta) {
+          const m = readPicker('metaList');
+          body.metaPool = m.pool;
+          body.metaStart = m.start;
+        } else {
+          body.metaPool = [];
+          body.metaStart = [];
+        }
+        if (body.amulets) {
+          const a = readPicker('amuletList');
+          body.amuletPool = a.pool;
+          body.amuletStart = a.start;
+        } else {
+          body.amuletPool = [];
+          body.amuletStart = [];
+        }
+      } else {
+        body.amuletSubset = document.getElementById('amuletSubset').value.trim();
+      }
+      const res = await fetch('/api/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      renderRunStatus(data);
+    }
+
     document.getElementById('batchSelect').addEventListener('change', (e) => load(e.target.value));
     document.getElementById('refreshBtn').addEventListener('click', () => load(document.getElementById('batchSelect').value));
-    load();
-    setInterval(() => load(document.getElementById('batchSelect').value), 30000);
+    document.getElementById('runMode').addEventListener('change', updateModeUi);
+    document.getElementById('meta').addEventListener('change', updateModeUi);
+    document.getElementById('amulets').addEventListener('change', updateModeUi);
+    document.getElementById('behavior').addEventListener('change', updateBehaviorHint);
+    document.getElementById('preset').addEventListener('change', applyPresetDefaults);
+    document.querySelectorAll('[data-act]').forEach((btn) => {
+      btn.addEventListener('click', () => onPickerAction(btn.dataset.act));
+    });
+    document.getElementById('runBtn').addEventListener('click', () => startRun().catch((err) => {
+      document.getElementById('runStatus').textContent = String(err.message || err);
+    }));
+    initMeta().then(() => load()).catch((err) => {
+      document.getElementById('charts').innerHTML = `<div class="error">${err.message || err}</div>`;
+    });
+    setInterval(() => {
+      load(document.getElementById('batchSelect').value).catch(() => {});
+      refreshRunStatus().catch(() => {});
+    }, 30000);
+    setInterval(() => refreshRunStatus().catch(() => {}), 3000);
   </script>
 </body>
 </html>

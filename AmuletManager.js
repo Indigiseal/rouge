@@ -546,9 +546,12 @@ export class AmuletManager {
         return this.sumAmuletProperty('fireSplashRadiusBonus');
     }
 
-    // Add an amulet to the player
-    addAmulet(amuletId) {
-        if (areAmuletsDisabled()) return false;
+    // Add an amulet to the player.
+    // force=true bypasses the "amulets disabled" test option — used by the
+    // balance sim for controlled solo-amulet sweeps (starting loadout only;
+    // floor/shop drops stay blocked while the option is on).
+    addAmulet(amuletId, { force = false } = {}) {
+        if (areAmuletsDisabled() && !force) return false;
 
         const definition = this.amuletDefinitions[amuletId];
         if (!definition) return false;

@@ -34,15 +34,29 @@ import { StatsRecorder } from './stats-recorder.js';
 import {
   areAmuletsDisabled,
   isMetaProgressionDisabled,
-  setSimTestOptionsOverride,
   clearSimTestOptionsOverride,
+  setSimTestOptionsOverride,
   TEST_OPTION_IDS,
 } from '../utils/TestOptions.js';
+import {
+  SIM_META_MODES,
+  splitSimArgv,
+  parseSimFlags,
+  applySimFlags,
+  formatSimFlagsLabel,
+  buildSimRunExtras,
+  normalizeSimPools,
+  simFlagsUsage,
+} from './parse-sim-flags.js';
+import { getDefaultAmuletIds } from './sim-catalog.js';
+import { getBehaviorProfile, getBehaviorPresetNames } from './behavior-knobs.js';
 
 // ── Config ────────────────────────────────────────────────────────────────
 const RUNS = parseInt(process.argv[2], 10) || 2000;
 const MAX_FLOOR = 45;
 const BOSS_FLOORS = new Set([15, 30, 45]);
+const DEFAULT_BEHAVIOR_PRESET = parseBehaviorPresetArg(process.argv);
+let CURRENT_BEHAVIOR = getBehaviorProfile('balanced');
 
 // Room-type mix for non-boss floors (approximates the map generator's feel).
 function roomTypeForFloor(floor) {
@@ -58,6 +72,85 @@ function roomTypeForFloor(floor) {
 
 const COMBAT_ROOMS = new Set(['COMBAT', 'ELITE', 'BOSS']);
 
+function parseBehaviorPresetArg(argv = process.argv) {
+  const eq = argv.find((arg) => arg.startsWith('--behavior='));
+  if (eq) return eq.split('=')[1] || 'balanced';
+  const idx = argv.indexOf('--behavior');
+  if (idx >= 0 && argv[idx + 1] && !argv[idx + 1].startsWith('--')) return argv[idx + 1];
+  return 'balanced';
+}
+
+function stripBehaviorArgs(argv) {
+  const out = [];
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--behavior') {
+      if (argv[i + 1] && !argv[i + 1].startsWith('--')) i++;
+      continue;
+    }
+    if (arg.startsWith('--behavior=')) continue;
+    out.push(arg);
+  }
+  return out;
+}
+
+function cloneCard(card) {
+  return card ? { ...card } : null;
+}
+
+class SimInventorySystem {
+  constructor(gs) {
+    this.gameState = gs;
+    this.slots = new Array(5 + Math.max(0, gs.bonusInventorySlots || 0)).fill(null);
+    this.slotSprites = [];
+    this.discardArea = null;
+  }
+
+  getCurrentWeapon() {
+    return this.gameState?.equippedWeapon || null;
+  }
+
+  syncGameStateInventory() {
+    if (this.gameState) this.gameState.inventory = this.slots;
+  }
+
+  expandInventory(n = 0) {
+    if (n <= 0) return;
+    this.gameState.bonusInventorySlots = (this.gameState.bonusInventorySlots || 0) + n;
+    for (let i = 0; i < n; i++) this.slots.push(null);
+    this.syncGameStateInventory();
+  }
+
+  addInventorySlots(n = 0) {
+    this.expandInventory(n);
+  }
+
+  rebuildInventorySprites() {}
+
+  updateTwinkleEffects() {}
+
+  addCard(card) {
+    const idx = this.slots.findIndex((slot) => slot == null);
+    if (idx < 0) return false;
+    this.slots[idx] = card;
+    this.syncGameStateInventory();
+    return true;
+  }
+
+  addCardDirect(card, idx) {
+    if (idx < 0 || idx >= this.slots.length) return false;
+    this.slots[idx] = card;
+    this.syncGameStateInventory();
+    return true;
+  }
+
+  removeCard(idx) {
+    if (idx < 0 || idx >= this.slots.length) return;
+    this.slots[idx] = null;
+    this.syncGameStateInventory();
+  }
+}
+
 // ── One game ────────────────────────────────────────────────────────────
 function setupRun() {
   const mock = new MockScene();
@@ -65,29 +158,61 @@ function setupRun() {
   mock.gameState = gs;
   mock.amuletManager = new AmuletManager(mock);
   mock.cardSystem = new CardSystem(mock);
-  // Light inventory stub: combat only needs getCurrentWeapon + slots shape.
-  // A few amulets (Bottomless Bag, etc.) poke inventory methods on equip.
-  mock.inventorySystem = {
-    getCurrentWeapon: () => gs.equippedWeapon,
-    slots: [],
-    slotSprites: [],
-    discardArea: null,
-    addCard: () => true,
-    addCardDirect: () => true,
-    removeCard: () => {},
-    updateTwinkleEffects: () => {},
-    rebuildInventorySprites: () => {},
-    expandInventory: (n = 0) => { gs.bonusInventorySlots = (gs.bonusInventorySlots || 0) + n; },
-    addInventorySlots: (n = 0) => { gs.bonusInventorySlots = (gs.bonusInventorySlots || 0) + n; },
-  };
+  mock.inventorySystem = new SimInventorySystem(gs);
+  mock.inventorySystem.syncGameStateInventory();
   return { mock, gs };
 }
 
-function startingInventory() {
-  return [
+/** Limit drop/shop amulet RNG to the experiment pool. */
+function applyAmuletPool(mock, poolIds) {
+  if (!poolIds) return;
+  const allow = new Set(poolIds);
+  const gen = mock.cardSystem?.cardDataGenerator;
+  if (gen?.amuletTypes) {
+    gen.amuletTypes = gen.amuletTypes.filter((a) => allow.has(a.id));
+  }
+  const orig = mock.amuletManager.addAmulet.bind(mock.amuletManager);
+  mock.amuletManager.addAmulet = (id, opts = {}) => {
+    if (!allow.has(id) && !opts.force) return false;
+    return orig(id, opts);
+  };
+}
+
+/** Restrict MetaProgressionManager definitions so accumulate unlocks stay in-pool. */
+function restrictMetaPool(meta, poolIds) {
+  if (!poolIds) return meta;
+  const allow = new Set(poolIds);
+  const orig = meta.getRelicDefinitions.bind(meta);
+  meta.getRelicDefinitions = () => {
+    const all = orig();
+    return Object.fromEntries(Object.entries(all).filter(([id]) => allow.has(id)));
+  };
+  return meta;
+}
+
+function startingInventory(inv) {
+  const start = [
     { type: 'weapon', name: 'Common Sword', weaponType: 'sword', damage: 6, rarity: 'common', durability: 6, maxDurability: 6, range: 'melee' },
     { type: 'weapon', name: 'Uncommon Sword', weaponType: 'sword', damage: 7, rarity: 'uncommon', durability: 8, maxDurability: 8, range: 'melee' },
   ];
+  for (let i = 0; i < start.length && i < inv.length; i++) inv[i] = cloneCard(start[i]);
+}
+
+function invItems(inv) {
+  return (inv || []).filter(Boolean);
+}
+
+function firstEmptySlot(inv) {
+  return inv.findIndex((slot) => slot == null);
+}
+
+function countInventoryItems(inv) {
+  return invItems(inv).length;
+}
+
+function syncInventoryState(gs, inv) {
+  gs.inventory = inv;
+  if (gs.scene?.inventorySystem) gs.scene.inventorySystem.slots = inv;
 }
 
 const armorScore = (a) => (a && a.durability > 0 ? (a.protection || 0) : -1);
@@ -102,23 +227,26 @@ function reservedEventSlots(gs) {
 }
 
 function carriedCount(gs, inv) {
-  const carried = new Set(inv);
-  [gs.equippedWeapon, gs.equippedArmor, gs.activeThorns].forEach((item) => {
-    if (item) carried.add(item);
-  });
-  return carried.size;
+  return countInventoryItems(inv);
 }
 
-function cardKeepScore(card) {
+function cardKeepScore(card, behavior = CURRENT_BEHAVIOR) {
+  const k = behavior.keepScore;
   if (!card) return -Infinity;
-  if (card.id === 'monsterEgg' || card.type === 'companion') return 1000;
-  if (card.type === 'magic' && card.magicType === 'restoration') return 300;
-  if (card.type === 'gem') return 220;
-  if (card.type === 'weapon') return (card.weaponType === 'dagger' ? 5 : 120) + (card.damage || 0) * 8;
-  if (card.type === 'armor') return 110 + (card.protection || 0) * 12;
-  if (card.type === 'thorns') return 100 + (card.thornDamage || 0) * 10;
-  if (card.type === 'potion') return 70 + (card.healAmount || 0);
-  return 10;
+  if (card.id === 'monsterEgg') return k.monsterEgg;
+  if (card.type === 'companion') return k.companion;
+  if (card.type === 'amuletPickup') return k.amuletPickup;
+  if (card.type === 'magic') return (k.magicByType[card.magicType] ?? k.magicBase);
+  if (card.type === 'gem') return k.gemBase + (k.gemByEffect[card.gemEffect] ?? 0);
+  if (card.type === 'weapon') {
+    const daggerPenalty = card.weaponType === 'dagger' ? k.daggerPenalty : 0;
+    return k.weaponBase - daggerPenalty + (card.damage || 0) * k.weaponDamageWeight + (card.gemEffect ? k.weaponGemBonus : 0);
+  }
+  if (card.type === 'armor') return k.armorBase + (card.protection || 0) * k.armorProtectionWeight;
+  if (card.type === 'thorns') return k.thornsBase + (card.thornDamage || 0) * k.thornsDamageWeight;
+  if (card.type === 'potion') return k.potionBase + (card.healAmount || 0) * k.potionHealWeight;
+  if (card.type === 'key') return k.key;
+  return k.default;
 }
 
 function bestEventWeapon(gs, inv) {
@@ -186,18 +314,22 @@ function tryCarry(gs, inv, card, { eventReward = false } = {}) {
   };
   const reserve = eventReward ? 0 : reservedEventSlots(gs);
   if (carriedCount(gs, inv) < inventoryCapacity(gs) - reserve) {
-    inv.push(card);
+    const slot = firstEmptySlot(inv);
+    if (slot >= 0) inv[slot] = card;
+    syncInventoryState(gs, inv);
     grantCardRewardBonus();
     return true;
   }
   let lowestIndex = -1;
   let lowestScore = Infinity;
   for (let i = 0; i < inv.length; i++) {
+    if (!inv[i]) continue;
     const score = cardKeepScore(inv[i]);
     if (score < lowestScore) { lowestScore = score; lowestIndex = i; }
   }
   if (lowestIndex >= 0 && cardKeepScore(card) > lowestScore) {
-    inv.splice(lowestIndex, 1, card);
+    inv[lowestIndex] = card;
+    syncInventoryState(gs, inv);
     grantCardRewardBonus();
     return true;
   }
@@ -343,13 +475,12 @@ function regear(gen, gs, inv) {
   void tracker; // used implicitly via mergeWeaponList/mergeArmorList args below
   // Keep broken weapons/armor/thorns too — they still merge into fresh,
   // full-durability higher tiers (a key way to recover from breakage).
-  const weapons = inv.filter((c) => c.type === 'weapon');
-  const armors = inv.filter((c) => c.type === 'armor');
-  const thorns = inv.filter((c) => c.type === 'thorns');
-  const rest = inv.filter((c) => c.type !== 'weapon' && c.type !== 'armor' && c.type !== 'thorns');
-  if (gs.equippedWeapon) weapons.push(gs.equippedWeapon);
+  const items = invItems(inv);
+  const weapons = items.filter((c) => c.type === 'weapon');
+  const armors = items.filter((c) => c.type === 'armor');
+  const thorns = items.filter((c) => c.type === 'thorns');
+  const rest = items.filter((c) => c.type !== 'weapon' && c.type !== 'armor' && c.type !== 'thorns');
   if (gs.equippedArmor) armors.push(gs.equippedArmor);
-  if (gs.activeThorns && !thorns.includes(gs.activeThorns)) thorns.push(gs.activeThorns);
 
   const echoChance = gs.relicEffects?.mergeRespawnChance || 0;
   mergeWeaponList(gen, weapons, echoChance, gs._mergeTracker || null, gs.currentFloor || 0);
@@ -369,7 +500,7 @@ function regear(gen, gs, inv) {
     pickIdx = weapons.findIndex((w) => w.durability > 0);
     if (pickIdx < 0) pickIdx = 0;
   }
-  gs.equippedWeapon = weapons.splice(pickIdx, 1)[0] || null;
+  gs.equippedWeapon = weapons[pickIdx] || null;
   if (gs._superWeapon) gs.equippedWeapon = gs._superWeapon; // isolation test: never swap it out
   // Equip the highest-protection armor that still has durability.
   armors.sort((a, b) => armorScore(b) - armorScore(a));
@@ -378,20 +509,22 @@ function regear(gen, gs, inv) {
   // Carry the strongest thorns that still has durability.
   thorns.sort((a, b) => (b.thornDamage || 0) - (a.thornDamage || 0));
   const usableThorns = thorns.findIndex((t) => (t.durability ?? 0) > 0);
-  gs.activeThorns = usableThorns >= 0 ? thorns.splice(usableThorns, 1)[0] : null;
+  gs.activeThorns = usableThorns >= 0 ? thorns[usableThorns] : null;
 
-  inv.length = 0;
-  inv.push(...weapons, ...armors, ...thorns, ...rest);
-  while (carriedCount(gs, inv) > inventoryCapacity(gs)) {
+  const mergedInventory = [...weapons, ...armors, ...thorns, ...rest];
+  while (mergedInventory.length > inventoryCapacity(gs)) {
     let lowestIndex = -1;
     let lowestScore = Infinity;
-    for (let i = 0; i < inv.length; i++) {
-      const score = cardKeepScore(inv[i]);
+    for (let i = 0; i < mergedInventory.length; i++) {
+      const score = cardKeepScore(mergedInventory[i]);
       if (score < lowestScore) { lowestScore = score; lowestIndex = i; }
     }
     if (lowestIndex < 0) break;
-    inv.splice(lowestIndex, 1);
+    mergedInventory.splice(lowestIndex, 1);
   }
+  inv.fill(null);
+  for (let i = 0; i < Math.min(inv.length, mergedInventory.length); i++) inv[i] = mergedInventory[i];
+  syncInventoryState(gs, inv);
 }
 
 function isMelee(w) { return !w || w.range !== 'ranged'; }
@@ -400,8 +533,9 @@ function isMelee(w) { return !w || w.range !== 'ranged'; }
 function usePotionCard(gs, potion, force = false) {
   const heal = potion?.healAmount || 20;
   const missing = gs.maxHealth - gs.playerHealth;
+  const t = CURRENT_BEHAVIOR.thresholds;
   if (missing <= 0) return false;
-  if (!force && gs.playerHealth > gs.maxHealth * 0.72 && missing < Math.ceil(heal * 0.45)) return false;
+  if (!force && gs.playerHealth > gs.maxHealth * t.potionUseHpPct && missing < Math.ceil(heal * t.potionUseMissingHealPct)) return false;
   gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + heal);
   return true;
 }
@@ -410,7 +544,8 @@ function useRestorationCard(mock, gs, card, force = false) {
   if (card?.type !== 'magic' || card.magicType !== 'restoration') return false;
   const missingHp = gs.maxHealth - gs.playerHealth;
   const missingAp = gs.maxActions - gs.actionsLeft;
-  if (!force && gs.playerHealth > gs.maxHealth * 0.55 && gs.actionsLeft > 0 && missingAp < 2) return false;
+  const t = CURRENT_BEHAVIOR.thresholds;
+  if (!force && gs.playerHealth > gs.maxHealth * t.restorationSafeHpPct && gs.actionsLeft > 0 && missingAp < t.restorationMinMissingAp) return false;
   if (missingHp <= 0 && missingAp <= 0) return false;
   gs.playerHealth = gs.maxHealth;
   gs.actionsLeft = gs.maxActions;
@@ -435,7 +570,7 @@ function socketGemIntoWeapon(weapon, gem) {
 }
 
 function bestGemTarget(gs, inv, gem) {
-  const weapons = [gs.equippedWeapon, ...inv.filter((card) => card?.type === 'weapon')]
+  const weapons = [gs.equippedWeapon, ...invItems(inv).filter((card) => card?.type === 'weapon')]
     .filter((weapon) => gemFitsWeapon(weapon, gem));
   if (!weapons.length) return null;
   weapons.sort((a, b) => {
@@ -481,8 +616,9 @@ function collectLoot(mock, gs, inv, idx, ctx = null) {
     case 'amulet': // equip dropped amulets (skip cursed — unbalanced)
       if (d.id && d.rarity !== 'cursed' && !d.cursed) mock.amuletManager.addAmulet(d.id);
       break;
-    case 'magic': // keep only Restoration (full HP+AP); discard the rest
-      if (d.magicType === 'restoration' && !useRestorationCard(mock, gs, d)) tryCarry(gs, inv, d);
+    case 'magic':
+      if (d.magicType === 'restoration' && useRestorationCard(mock, gs, d)) break;
+      tryCarry(gs, inv, d);
       break;
     default: break; // empty/key — nothing
   }
@@ -491,28 +627,24 @@ function collectLoot(mock, gs, inv, idx, ctx = null) {
 
 function visibleLootPriority(card) {
   const type = card?.data?.type;
-  if (type === 'coin' || type === 'crystal' || type === 'food') return 0;
-  if (type === 'potion' || type === 'magic') return 1;
-  if (type === 'gem') return 2;
-  if (type === 'amulet' || type === 'amuletPickup') return 3;
-  if (type === 'weapon' || type === 'armor' || type === 'thorns') return 5;
-  return 6;
+  return CURRENT_BEHAVIOR.visibleLootPriority[type] ?? CURRENT_BEHAVIOR.visibleLootPriority.default;
 }
 
 function shouldTakeVisibleLootNow(gs, inv, card, mode) {
   const data = card?.data;
+  const t = CURRENT_BEHAVIOR.thresholds;
   if (!data || data.type === 'trap') return false;
   if (mode === 'all') return data.type !== 'empty' && data.type !== 'key';
   if (data.type === 'coin' || data.type === 'crystal' || data.type === 'food') return true;
   if (data.type === 'amulet' || data.type === 'amuletPickup') return true;
-  if (data.type === 'gem') return Boolean(bestGemTarget(gs, inv, data));
+  if (data.type === 'gem') return Boolean(bestGemTarget(gs, inv, data) || firstEmptySlot(inv) >= 0);
   if (data.type === 'potion') {
     const heal = data.healAmount || 20;
     const missing = gs.maxHealth - gs.playerHealth;
-    return missing > 0 && (gs.playerHealth <= gs.maxHealth * 0.72 || missing >= Math.ceil(heal * 0.45));
+    return missing > 0 && (gs.playerHealth <= gs.maxHealth * t.potionUseHpPct || missing >= Math.ceil(heal * t.potionUseMissingHealPct));
   }
-  if (data.type === 'magic' && data.magicType === 'restoration') {
-    return gs.playerHealth <= gs.maxHealth * 0.55 || gs.actionsLeft <= 0;
+  if (data.type === 'magic') {
+    return true;
   }
   return false;
 }
@@ -539,14 +671,204 @@ function collectVisibleLootSmart(mock, gs, inv, floor, mode = 'all') {
   return collected;
 }
 
+function removeInventoryCard(gs, inv, idx) {
+  if (idx < 0 || idx >= inv.length) return;
+  inv[idx] = null;
+  syncInventoryState(gs, inv);
+}
+
+function maybeReturnMagicToInventory(mock, gs, inv, card) {
+  if (!card || !mock.amuletManager?.shouldReturnMagicCard?.()) return;
+  tryCarry(gs, inv, { ...card });
+}
+
+function castMagicCard(mock, gs, inv, slotIndex, board, floor) {
+  const magicCard = inv[slotIndex];
+  if (!magicCard || magicCard.type !== 'magic') return false;
+  const revealedEnemies = board
+    .map((card, index) => ({ card, index }))
+    .filter(({ card }) => card?.revealed && (card.data?.type === 'enemy' || card.data?.type === 'boss') && card.data.health > 0);
+  const nonBossEnemies = revealedEnemies.filter(({ card }) => card.data?.type !== 'boss');
+  let used = false;
+
+  switch (magicCard.magicType) {
+    case 'restoration':
+      used = useRestorationCard(mock, gs, magicCard, true);
+      break;
+    case 'fireball': {
+      const target = revealedEnemies
+        .slice()
+        .sort((a, b) => (b.card.data.attack || 0) - (a.card.data.attack || 0) || (a.card.data.health || 0) - (b.card.data.health || 0))[0];
+      if (target) {
+        mock.useAction();
+        mock.cardSystem.attackEnemy(target.index, magicCard.damage || 15);
+        used = true;
+      }
+      break;
+    }
+    case 'soulDrain': {
+      const target = nonBossEnemies
+        .slice()
+        .sort((a, b) => (b.card.data.attack || 0) - (a.card.data.attack || 0) || (b.card.data.health || 0) - (a.card.data.health || 0))[0];
+      if (target) {
+        target.card.data.health = 0;
+        let healAmount = 30;
+        if (mock.amuletManager) healAmount = mock.amuletManager.modifySpellHealing(healAmount);
+        gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + healAmount);
+        mock.cardSystem.removeDefeatedEnemy(target.index, target.card);
+        mock.useAction();
+        used = true;
+      }
+      break;
+    }
+    case 'frostRing': {
+      if (revealedEnemies.length) {
+        for (const { card } of revealedEnemies) {
+          card.data.frozen = 3;
+          mock.cardSystem.attachFrozenFrame?.(card);
+        }
+        mock.useAction();
+        used = true;
+      }
+      break;
+    }
+    case 'weakness': {
+      if (revealedEnemies.length) {
+        for (const { card } of revealedEnemies) card.data.attack = Math.ceil((card.data.attack || 0) * 0.7);
+        mock.useAction();
+        used = true;
+      }
+      break;
+    }
+    case 'shadowBlade':
+      if (!gs.shadowBlade || (gs.shadowBlade.turns || 0) <= CURRENT_BEHAVIOR.thresholds.shadowBladeMinTurns) {
+        gs.shadowBlade = { turns: 10, multiplier: 1.5 };
+        mock.useAction();
+        used = true;
+      }
+      break;
+    case 'boneWall':
+      if ((gs.boneWall || 0) <= 0) {
+        gs.boneWall = 2;
+        mock.useAction();
+        used = true;
+      }
+      break;
+    case 'magicShield':
+      if (!gs.magicShield || (gs.magicShield.turns || 0) <= 0) {
+        gs.magicShield = { turns: 10, multiplier: 1.2 };
+        mock.useAction();
+        used = true;
+      }
+      break;
+    case 'mirrorShield':
+      if (!gs.mirrorShield) {
+        gs.mirrorShield = true;
+        mock.useAction();
+        used = true;
+      }
+      break;
+    case 'smokeScreen': {
+      // Headless: flip face-up non-boss enemies face-down. No pointer rebinding —
+      // mock sprites aren't Phaser Input objects, and runCombat re-reveals via
+      // revealCard which already works on makeGameObject stubs.
+      const revealable = nonBossEnemies.filter(({ card }) => card.revealed);
+      if (revealable.length) {
+        for (const { card } of revealable) {
+          card.revealed = false;
+          card.sprite?.setTexture?.('cardBack');
+          if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
+          if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
+          if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
+          if (card.infoText) {
+            if (card.infoText.list) card.infoText.destroy(true);
+            else card.infoText.destroy();
+            card.infoText = null;
+          }
+        }
+        mock.useAction();
+        used = true;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  if (!used) return false;
+  removeInventoryCard(gs, inv, slotIndex);
+  maybeReturnMagicToInventory(mock, gs, inv, magicCard);
+  return true;
+}
+
+function scoreMagicUse(mock, gs, inv, board, slotIndex, floor) {
+  const magicCard = inv[slotIndex];
+  if (!magicCard || magicCard.type !== 'magic') return -Infinity;
+  const t = CURRENT_BEHAVIOR.thresholds;
+  const base = CURRENT_BEHAVIOR.magicPriority[magicCard.magicType] ?? CURRENT_BEHAVIOR.keepScore.magicBase;
+  const revealedEnemies = board.filter((card) => card?.revealed && (card.data?.type === 'enemy' || card.data?.type === 'boss') && card.data.health > 0);
+  const nonBossEnemies = revealedEnemies.filter((card) => card.data?.type !== 'boss');
+  const hpPct = gs.maxHealth > 0 ? gs.playerHealth / gs.maxHealth : 1;
+  switch (magicCard.magicType) {
+    case 'restoration':
+      if (gs.actionsLeft > 0 && hpPct > t.restorationEmergencyHpPct) return -Infinity;
+      return base + (1 - hpPct) * 120 + (gs.actionsLeft <= 0 ? 100 : 0);
+    case 'fireball': {
+      if (!revealedEnemies.length) return -Infinity;
+      const killable = revealedEnemies.some((card) => (card.data.health || 0) <= (magicCard.damage || 15));
+      return base + (killable ? 70 : 0) + revealedEnemies.length * 5;
+    }
+    case 'soulDrain':
+      if (!nonBossEnemies.length) return -Infinity;
+      return base + (hpPct < t.magicLowHpPct ? 80 : 0);
+    case 'frostRing':
+      if (!revealedEnemies.length) return -Infinity;
+      return base + revealedEnemies.length * 16 + (hpPct < t.defensiveMagicHpPct ? 40 : 0);
+    case 'weakness':
+      if (!revealedEnemies.length) return -Infinity;
+      return base + revealedEnemies.reduce((sum, card) => sum + (card.data.attack || 0), 0) * 2;
+    case 'shadowBlade':
+      if (!gs.equippedWeapon || (gs.shadowBlade?.turns || 0) > t.shadowBladeMinTurns) return -Infinity;
+      return base + (gs.equippedWeapon.damage || 0) * 8;
+    case 'boneWall':
+      if (revealedEnemies.length === 0 || (gs.boneWall || 0) > 0) return -Infinity;
+      return base + revealedEnemies.length * 12 + (hpPct < t.defensiveMagicHpPct ? 60 : 0);
+    case 'magicShield':
+      if (revealedEnemies.length === 0 || (gs.magicShield?.turns || 0) > 0) return -Infinity;
+      return base + ((gs.equippedArmor?.protection || 0) * 10) + (hpPct < t.defensiveMagicHpPct ? 40 : 0);
+    case 'mirrorShield':
+      if (revealedEnemies.length === 0 || gs.mirrorShield) return -Infinity;
+      return base + (hpPct < t.defensiveMagicHpPct ? 55 : 10);
+    case 'smokeScreen':
+      return nonBossEnemies.length >= 2 ? base + nonBossEnemies.length * 14 : -Infinity;
+    default:
+      return -Infinity;
+  }
+}
+
+function maybeUseCombatMagic(mock, gs, inv, floor) {
+  const board = mock.cardSystem.boardCards || [];
+  let best = null;
+  for (let i = 0; i < inv.length; i++) {
+    const card = inv[i];
+    if (card?.type !== 'magic') continue;
+    const score = scoreMagicUse(mock, gs, inv, board, i, floor);
+    if (score > -Infinity && (!best || score > best.score)) best = { index: i, score };
+  }
+  if (!best) return false;
+  return castMagicCard(mock, gs, inv, best.index, board, floor);
+}
+
 // Use a Restoration magic card (full HP + AP) when starving for AP or low HP.
 function maybeRestore(mock, gs, inv) {
-  if (gs.actionsLeft > 0 && gs.playerHealth > gs.maxHealth * 0.4) return;
-  const ri = inv.findIndex((c) => c.type === 'magic' && c.magicType === 'restoration');
+  const t = CURRENT_BEHAVIOR.thresholds;
+  if (gs.actionsLeft > 0 && gs.playerHealth > gs.maxHealth * t.restorationEmergencyHpPct) return;
+  const ri = inv.findIndex((c) => c?.type === 'magic' && c.magicType === 'restoration');
   if (ri < 0) return;
   gs.playerHealth = gs.maxHealth;
   gs.actionsLeft = gs.maxActions;
-  inv.splice(ri, 1);
+  inv[ri] = null;
+  syncInventoryState(gs, inv);
   mock._restorationUses = (mock._restorationUses || 0) + 1;
 }
 
@@ -557,32 +879,42 @@ function maybeRestore(mock, gs, inv) {
 function socketGems(gs, inv, ctx) {
   const w = gs.equippedWeapon;
   if (!w || w.type !== 'weapon') return;
-  const gems = inv.filter((c) => c.type === 'gem');
+  const gems = invItems(inv).filter((c) => c.type === 'gem');
   if (!gems.length) return;
+  const prefBias = CURRENT_BEHAVIOR.gemPreference;
 
   let pref = w.gemEffect || null; // weapon locks to one gem type
   if (!pref) {
-    const have = (e) => gems.some((g) => g.gemEffect === e);
-    if (ctx.boss && have('poison')) pref = 'poison';
-    else if (ctx.ranged && have('lightning')) pref = 'lightning';
-    else if (ctx.hiddenCluster && have('fire')) pref = 'fire';
-    else pref = have('poison') ? 'poison' : (have('lightning') ? 'lightning' : gems[0].gemEffect);
+    const scores = new Map();
+    for (const gem of gems) {
+      let score = (prefBias[`${gem.gemEffect}Base`] ?? 0) + prefBias.emptySocketBias;
+      if (ctx.boss && gem.gemEffect === 'poison') score += prefBias.bossPoisonBias;
+      if (ctx.ranged && gem.gemEffect === 'lightning') score += prefBias.rangedLightningBias;
+      if (ctx.hiddenCluster && gem.gemEffect === 'fire') score += prefBias.hiddenFireBias;
+      scores.set(gem.gemEffect, Math.max(score, scores.get(gem.gemEffect) ?? -Infinity));
+    }
+    pref = [...scores.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? gems[0].gemEffect;
   }
   for (let i = inv.length - 1; i >= 0; i--) {
     const g = inv[i];
-    if (g.type !== 'gem' || g.gemEffect !== pref) continue;
+    if (!g || g.type !== 'gem' || g.gemEffect !== pref) continue;
     const count = w.gemEffect ? (w.gemCount || 1) : 0;
     if (count >= 3) break;
     w.gemEffect = g.gemEffect; w.gemName = g.name; w.gemColor = g.color;
     w.gemCount = count + 1;
-    inv.splice(i, 1);
+    inv[i] = null;
   }
+  syncInventoryState(gs, inv);
 }
 
 function maybeHeal(gs, inv) {
-  if (gs.playerHealth > gs.maxHealth * 0.5) return;
-  const pi = inv.findIndex((c) => c.type === 'potion');
-  if (pi >= 0) { gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + (inv[pi].healAmount || 20)); inv.splice(pi, 1); }
+  if (gs.playerHealth > gs.maxHealth * CURRENT_BEHAVIOR.thresholds.emergencyHealHpPct) return;
+  const pi = inv.findIndex((c) => c?.type === 'potion');
+  if (pi >= 0) {
+    gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + (inv[pi].healAmount || 20));
+    inv[pi] = null;
+    syncInventoryState(gs, inv);
+  }
 }
 
 function aliveEnemies(board, revealedOnly) {
@@ -676,7 +1008,7 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
   if (!revealed.length) return null;
   const roster = [];
   if (gs.equippedWeapon && gs.equippedWeapon.durability > 0) roster.push(gs.equippedWeapon);
-  for (const card of inv) if (card.type === 'weapon' && card.durability > 0) roster.push(card);
+  for (const card of inv) if (card?.type === 'weapon' && card.durability > 0) roster.push(card);
   if (!roster.length) roster.push(null);
 
   const anyRevealedMelee = anyMeleeAlive(board, true);
@@ -684,6 +1016,7 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
     const d = wp ? wp.damage : 1;
     return wasExhausted ? Math.ceil(d * 0.8) : d;
   };
+  const aw = CURRENT_BEHAVIOR.attackWeights;
   let best = null;
   for (const weapon of roster) {
     const validTargets = revealed.filter((index) => {
@@ -706,9 +1039,9 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
       }
       const targetHp = board[index]?.data?.health || 0;
       const targetKill = (affected.get(index) || 0) >= targetHp ? 1 : 0;
-      const gemBonus = weapon?.gemEffect === 'fire' || weapon?.gemEffect === 'lightning' ? 3 : 0;
-      const durabilityConserve = weapon ? Math.max(0, 20 - effDmg(weapon)) * 0.02 : 0;
-      const score = kills * 1000 + targetKill * 80 + totalDamage * 8 + gemBonus - overkill * 0.4 + durabilityConserve;
+      const gemBonus = weapon?.gemEffect === 'fire' || weapon?.gemEffect === 'lightning' ? aw.elementalBonus : 0;
+      const durabilityConserve = weapon ? Math.max(0, 20 - effDmg(weapon)) * aw.durabilityConserve : 0;
+      const score = kills * aw.kills + targetKill * aw.targetKill + totalDamage * aw.totalDamage + gemBonus - overkill * aw.overkillPenalty + durabilityConserve;
       if (!best || score > best.score) best = { index, weapon, score };
     }
   }
@@ -757,9 +1090,15 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
     socketGems(gs, inv, computeContext(board, floor));
     // Pop a Restoration card if starving for AP or low on HP.
     maybeRestore(mock, gs, inv);
+    if (maybeUseCombatMagic(mock, gs, inv, floor)) {
+      mock.resolvePendingEnemyTurn();
+      maybeHeal(gs, inv);
+      regear(mock.cardSystem.cardDataGenerator, gs, inv);
+      continue;
+    }
     // If armor broke mid-fight, swap to a spare so we're not eating full hits.
     if ((!gs.equippedArmor || gs.equippedArmor.durability <= 0) &&
-        inv.some((c) => c.type === 'armor' && c.durability > 0)) {
+        inv.some((c) => c?.type === 'armor' && c.durability > 0)) {
       regear(mock.cardSystem.cardDataGenerator, gs, inv);
     }
     // 1) Pick an attack target (best weapon for board state), respecting melee gate.
@@ -786,9 +1125,8 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
       if (chosen && chosen !== gs.equippedWeapon) {
         const idx = inv.indexOf(chosen);
         if (idx >= 0) {
-          inv.splice(idx, 1);
-          if (gs.equippedWeapon) inv.push(gs.equippedWeapon);
           gs.equippedWeapon = chosen;
+          syncInventoryState(gs, inv);
         }
       }
 
@@ -895,7 +1233,10 @@ function equipAmuletPickups(mock, inv) {
   for (let i = inv.length - 1; i >= 0; i--) {
     const card = inv[i];
     if (card?.type !== 'amuletPickup' || !card.amuletId) continue;
-    if (mock.amuletManager.addAmulet(card.amuletId)) inv.splice(i, 1);
+    if (mock.amuletManager.addAmulet(card.amuletId)) {
+      inv[i] = null;
+      syncInventoryState(mock.gameState, inv);
+    }
   }
 }
 
@@ -1043,7 +1384,7 @@ function runEventLegacy(mock, gs, inv, floor) {
         gs.crystals += 3;
         break;
       case 'mirror': // copy one card — merge fodder for the equipped weapon
-        if (gs.equippedWeapon) inv.push({ ...gs.equippedWeapon });
+        if (gs.equippedWeapon) tryCarry(gs, inv, { ...gs.equippedWeapon }, { eventReward: true });
         break;
     }
     return;
@@ -1131,7 +1472,8 @@ function runBrassWizard(mock, gs, inv, floor, story) {
   if (roll < 0.80) {
     const junkIndex = inv.findIndex((card) => card?.type === 'junk' && card.carnivalToken);
     if (junkIndex >= 0) {
-      inv.splice(junkIndex, 1);
+      inv[junkIndex] = null;
+      syncInventoryState(gs, inv);
       tryCarry(gs, inv, createHolographicOmenCard(), { eventReward: true });
       return;
     }
@@ -1141,7 +1483,10 @@ function runBrassWizard(mock, gs, inv, floor, story) {
       .sort((a, b) => cardKeepScore(a.card) - cardKeepScore(b.card))[0];
     if (reroll) {
       const replacement = createSameTypeRerollCard(gen, gs, reroll.card, floor);
-      if (replacement) inv.splice(reroll.index, 1, replacement);
+      if (replacement) {
+        inv[reroll.index] = replacement;
+        syncInventoryState(gs, inv);
+      }
     }
     return;
   }
@@ -1195,14 +1540,15 @@ function runEvent(mock, gs, inv, floor) {
     } else {
       const sacrifice = inv
         .map((card, index) => ({ card, index }))
-        .filter(({ card }) => cardKeepScore(card) < 220)
+        .filter(({ card }) => card && cardKeepScore(card) < 220)
         .sort((a, b) => cardKeepScore(a.card) - cardKeepScore(b.card))[0];
       if (sacrifice) {
-        inv.splice(sacrifice.index, 1);
+        inv[sacrifice.index] = null;
+        syncInventoryState(gs, inv);
         repaired = Math.random() < 0.8;
       }
     }
-    if (repaired) gs.bonusInventorySlots = (gs.bonusInventorySlots || 0) + 1;
+    if (repaired) gs.scene.inventorySystem.expandInventory(1);
     else { gs.coins += 12; gs.crystals += 1; }
     story.stage = story.hasEgg && repaired ? 'hatch_egg' : 'bonus';
     return;
@@ -1253,13 +1599,13 @@ function runEvent(mock, gs, inv, floor) {
     }
     case 'book_worm': {
       const magicIndex = inv.findIndex((card) => card?.type === 'magic');
-      if (magicIndex >= 0) { inv.splice(magicIndex, 1); gainAmulet('mothWingDust'); }
+      if (magicIndex >= 0) { inv[magicIndex] = null; syncInventoryState(gs, inv); gainAmulet('mothWingDust'); }
       else gainAmulet('wormVenomCharm');
       break;
     }
     case 'briar_room': {
       const fireball = inv.findIndex((card) => card?.type === 'magic' && card.magicType === 'fireball');
-      if (fireball >= 0) { inv.splice(fireball, 1); gainAmulet(); }
+      if (fireball >= 0) { inv[fireball] = null; syncInventoryState(gs, inv); gainAmulet(); }
       else {
         const weapon = bestEventWeapon(gs, inv);
         if (weapon) {
@@ -1531,7 +1877,7 @@ function runAnvil(gs, inv, metrics) {
   };
   // Repair the strongest weapons (your protected favorites), equipped armor,
   // and the carried thorns — restoring pips so the good weapon never dies.
-  const weapons = (inv || []).filter((c) => c.type === 'weapon');
+  const weapons = invItems(inv).filter((c) => c.type === 'weapon');
   if (gs.equippedWeapon) weapons.push(gs.equippedWeapon);
   weapons.sort((a, b) => (b.damage || 0) - (a.damage || 0));
   repair(weapons[0]); repair(weapons[1]);
@@ -1558,19 +1904,7 @@ function reachesType(floors, f, idx, type, memo) {
 }
 
 function nodeRouteValue(type) {
-  switch (type) {
-    case 'EVENT': return 90;
-    case 'SHOP': return 70;
-    case 'RARE_SHOP': return 65;
-    case 'ANVIL': return 60;
-    case 'REST': return 45;
-    case 'TREASURE_GOOD': return 40;
-    case 'TREASURE': return 30;
-    case 'COMBAT': return -45;
-    case 'ELITE': return -80;
-    case 'BOSS': return -30;
-    default: return 0;
-  }
+  return CURRENT_BEHAVIOR.routeValue[type] ?? CURRENT_BEHAVIOR.routeValue.default ?? 0;
 }
 
 function bestFutureNodeValue(floors, f, idx, memo) {
@@ -1604,6 +1938,8 @@ function chooseNextNode(floors, f, cur, memo) {
 // ── Run one full game, recording per-floor metrics ────────────────────────
 function runGame(metrics, config = {}) {
   const { mock, gs } = setupRun();
+  CURRENT_BEHAVIOR = getBehaviorProfile(config.behaviorPreset || DEFAULT_BEHAVIOR_PRESET || 'balanced');
+  gs._behavior = CURRENT_BEHAVIOR;
   // Per-run merge tracker: records the FIRST floor we reach each rarity tier,
   // for weapons and armor separately. The mergeWeapon/Armor list functions
   // call recordMerge() whenever a tier-up happens.
@@ -1622,6 +1958,7 @@ function runGame(metrics, config = {}) {
   // armor bonuses + runtime relicEffects honored by the real combat code).
   if (config.relics && config.relics.length && !isMetaProgressionDisabled()) {
     const meta = new MetaProgressionManager(mock);
+    if (config.metaPool) restrictMetaPool(meta, config.metaPool);
     meta.unlockedRelics = config.relics.slice();
     meta.applyRelicEffects(gs, true);
   }
@@ -1629,18 +1966,25 @@ function runGame(metrics, config = {}) {
     gs.maxHealth += config.veteranHp;
     gs.playerHealth += config.veteranHp;
   }
+  // Limit mid-run amulet finds before equipping the starting loadout.
+  if (config.amuletPool) applyAmuletPool(mock, config.amuletPool);
   // Equip the requested amulet loadout via the REAL AmuletManager so all
   // passive modifiers (damage, dodge, durability, gold, free-action, max HP/AP,
   // regen, sunstone, lethal-prevention, ...) apply exactly as in-game.
   // Bottomless Bag is granted by default (you noted it's a huge early crutch);
   // pass config.noBag to exclude it (the sweep does, for clean deltas).
-  // NOTE: the sim currently has UNLIMITED inventory, so the bag is effectively
-  // a no-op here — see report caveat.
-  if (!areAmuletsDisabled()) {
-    const amulets = (config.noBag ? [] : ['bottomlessBag']).concat(config.amulets || []);
-    for (const id of amulets) mock.amuletManager.addAmulet(id);
+  // Unlike the older sim model, inventory pressure is now real: 5 base slots
+  // plus bonus slots from effects like Bottomless Bag / engineer reward.
+  // forceStartingAmulets: equip config.amulets even when drops are disabled
+  // (solo sweep / controlled loadout experiments).
+  const forceStart = !!config.forceStartingAmulets;
+  if (!areAmuletsDisabled() || forceStart) {
+    const amulets = (config.noBag || forceStart ? [] : ['bottomlessBag']).concat(config.amulets || []);
+    for (const id of amulets) mock.amuletManager.addAmulet(id, { force: forceStart });
   }
-  const inv = startingInventory();
+  const inv = mock.inventorySystem.slots;
+  startingInventory(inv);
+  syncInventoryState(gs, inv);
   mock._simInventory = inv;
   mock._stalemateDeath = false;
   gs.equippedWeapon = null;
@@ -1990,45 +2334,100 @@ function report(metrics) {
 // so PASSIVE amulets (regen, dodge, max HP/AP, gold, damage, durability,
 // free-action, lethal-prevention, sunstone) are measured accurately.
 // ACTIVE / gem-synergy amulets are understated until the bot uses gems & magic.
+//
+// Clean solo: meta off, floor/shop/event amulet drops off; only the starting
+// amulet is force-equipped. Usage:
+//   node sim/balance-sim.js sweep 100
+//   node sim/balance-sim.js sweep 100 regeneration,golemHeart   # subset
 function quickStats(amulets, runs) {
   const m = newMetrics();
-  for (let i = 0; i < runs; i++) runGame(m, { amulets, noBag: true });
-  const mean = m.finalFloors.reduce((a, b) => a + b, 0) / m.finalFloors.length;
-  return { win: (100 * m.wins) / runs, mean };
+  for (let i = 0; i < runs; i++) {
+    runGame(m, { amulets, noBag: true, forceStartingAmulets: true });
+  }
+  const floors = m.finalFloors;
+  const mean = floors.reduce((a, b) => a + b, 0) / floors.length;
+  const sorted = floors.slice().sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  const reach15 = (100 * floors.filter((f) => f >= 15).length) / runs;
+  const reach30 = (100 * floors.filter((f) => f >= 30).length) / runs;
+  return { win: (100 * m.wins) / runs, mean, median, reach15, reach30 };
 }
 
 function runSweep() {
-  const runs = parseInt(process.argv[3], 10) || 600;
-  const ids = Object.keys(setupRun().mock.amuletManager.amuletDefinitions);
-  console.log(`\n=== Per-Amulet Impact Sweep ===`);
-  console.log(`runs/config=${runs}, amulets=${ids.length}  (solo amulet vs baseline)\n`);
-
-  const base = quickStats([], runs);
-  console.log(`Baseline (no amulets):  win=${base.win.toFixed(1)}%  meanFloor=${base.mean.toFixed(1)}\n`);
-
-  const rows = ids.map((id) => {
-    const s = quickStats([id], runs);
-    return { id, win: s.win, mean: s.mean, dFloor: s.mean - base.mean, dWin: s.win - base.win };
-  });
-  rows.sort((a, b) => b.dFloor - a.dFloor);
-
-  console.log(`amulet                 win%   meanFloor   Δfloor   Δwin%`);
-  for (const r of rows) {
-    console.log(
-      `${r.id.padEnd(22)} ${r.win.toFixed(1).padStart(5)} ${r.mean.toFixed(1).padStart(10)} ` +
-      `${(r.dFloor >= 0 ? '+' : '') + r.dFloor.toFixed(1)}`.padStart(9) +
-      `   ${(r.dWin >= 0 ? '+' : '') + r.dWin.toFixed(1)}`.padStart(7)
-    );
+  const args = stripBehaviorArgs(process.argv.slice(3));
+  const runs = parseInt(args[0], 10) || 100;
+  const filterArg = args[1];
+  let ids = Object.keys(setupRun().mock.amuletManager.amuletDefinitions);
+  if (filterArg && filterArg !== 'all') {
+    const wanted = new Set(filterArg.split(',').map((s) => s.trim()).filter(Boolean));
+    ids = ids.filter((id) => wanted.has(id));
+    if (!ids.length) {
+      console.error(`No matching amulets in: ${filterArg}`);
+      process.exit(1);
+    }
   }
-  console.log(`\n(Δ vs baseline. Positive = amulet helps the bot survive deeper.`);
-  console.log(` Gem/active-synergy amulets are understated until the bot uses gems & magic.)`);
+
+  // No meta, no mid-run amulet drops — only the forced starting loadout.
+  setSimTestOptionsOverride({
+    [TEST_OPTION_IDS.disableAmulets]: true,
+    [TEST_OPTION_IDS.disableMetaProgression]: true,
+  });
+
+  try {
+    console.log(`\n=== Per-Amulet Impact Sweep (clean solo) ===`);
+    console.log(`runs/config=${runs}, amulets=${ids.length}`);
+    console.log(`flags: no-meta, no amulet drops/shops, force starting amulet only\n`);
+
+    const base = quickStats([], runs);
+    console.log(
+      `Baseline (no amulets):  win=${base.win.toFixed(1)}%  meanFloor=${base.mean.toFixed(1)}` +
+      `  median=${base.median.toFixed(0)}  reachF15=${base.reach15.toFixed(0)}%  reachF30=${base.reach30.toFixed(0)}%\n`
+    );
+
+    const rows = ids.map((id) => {
+      const s = quickStats([id], runs);
+      return {
+        id,
+        win: s.win,
+        mean: s.mean,
+        median: s.median,
+        reach15: s.reach15,
+        reach30: s.reach30,
+        dFloor: s.mean - base.mean,
+        dWin: s.win - base.win,
+        dReach15: s.reach15 - base.reach15,
+      };
+    });
+    rows.sort((a, b) => b.dFloor - a.dFloor);
+
+    console.log(
+      `amulet                 win%   mean   med  rF15%  rF30%   Δfloor   Δwin%  ΔrF15`
+    );
+    for (const r of rows) {
+      console.log(
+        `${r.id.padEnd(22)} ${r.win.toFixed(1).padStart(5)} ${r.mean.toFixed(1).padStart(6)}` +
+        `${String(Math.round(r.median)).padStart(6)} ${r.reach15.toFixed(0).padStart(6)}` +
+        `${r.reach30.toFixed(0).padStart(7)}` +
+        `${((r.dFloor >= 0 ? '+' : '') + r.dFloor.toFixed(1)).padStart(9)}` +
+        `${((r.dWin >= 0 ? '+' : '') + r.dWin.toFixed(1)).padStart(8)}` +
+        `${((r.dReach15 >= 0 ? '+' : '') + r.dReach15.toFixed(0)).padStart(7)}`
+      );
+    }
+    console.log(`\nSorted by Δmean floor vs baseline. Positive = helps go deeper.`);
+    console.log(`Note: gem/active-synergy amulets are understated (bot underuses gems/magic).`);
+    console.log(`Cursed amulets included — negative Δ is expected if downside dominates.`);
+  } finally {
+    clearSimTestOptionsOverride();
+  }
 }
 
 // ── Loadout mode: run with a fixed amulet set equipped from the start ──────
 // Usage: node sim/balance-sim.js loadout <id,id,...|auto> [runs]
 function runLoadout() {
-  const arg = process.argv[3] || 'auto';
-  const runs = parseInt(process.argv[4], 10) || RUNS;
+  const args = stripBehaviorArgs(process.argv.slice(3));
+  const arg = args[0] || 'auto';
+  const runs = parseInt(args[1], 10) || RUNS;
   let amulets;
   if (arg === 'auto') {
     // A representative "strong defensive + utility" stack.
@@ -2140,56 +2539,55 @@ function runRelicCompare() {
 // ── Loot-stats playtest: weapon damage + enemy HP curves + run-end bonuses ─
 // Usage:
 //   node sim/balance-sim.js loot-stats [runs] [fresh|geared|accumulate|balance] [--json]
-//   fresh      — no relics, no starting bag (default)
-//   geared     — all relics unlocked
-//   accumulate — one account: meta relics + veteran HP carry across all runs
-//   balance    — Test Options: no amulets, no meta progression
+//   Flags: --meta --no-meta --amulets --no-amulets --amulet-loadout none|bag|strong
 function runLootStats() {
-  const runs = parseInt(process.argv[3], 10) || 100;
-  const args = process.argv.slice(4);
-  const metaMode = args.find((a) => !a.startsWith('--')) || 'fresh';
-  const writeJson = args.includes('--json');
+  const raw = stripBehaviorArgs(process.argv.slice(3));
+  const runs = parseInt(raw[0], 10) || 100;
+  const { positional, flags } = splitSimArgv(raw.slice(1));
+  const metaMode = positional.find((a) => SIM_META_MODES.has(a)) || 'fresh';
+  const writeJson = flags.includes('--json') || positional.includes('--json');
+  const simFlags = parseSimFlags(flags, metaMode);
+  applySimFlags(simFlags);
   const lootStats = newLootStats();
   const throwaway = newMetrics();
+  const allAmulets = getDefaultAmuletIds();
 
-  if (metaMode === 'balance') {
-    setSimTestOptionsOverride({
-      [TEST_OPTION_IDS.disableAmulets]: true,
-      [TEST_OPTION_IDS.disableMetaProgression]: true,
+  const runOne = (overrides = {}) => {
+    const extras = buildSimRunExtras(simFlags, {
+      allRelics: ALL_RELICS,
+      strongAmulets: STRONG_AMULETS,
+      allAmulets,
+      metaMode,
     });
-  }
-
-  const runOne = (config) => {
     runGame(throwaway, {
-      ...config,
+      ...extras,
+      ...overrides,
       lootStats,
-      noBag: true,
-      relics: isMetaProgressionDisabled() ? [] : (config.relics || []),
-      veteranHp: isMetaProgressionDisabled() ? 0 : (config.veteranHp || 0),
+      relics: simFlags.enableMeta ? (overrides.relics ?? extras.relics) : [],
+      veteranHp: simFlags.enableMeta ? (overrides.veteranHp ?? 0) : 0,
+      metaPool: extras.metaPool,
+      amuletPool: extras.amuletPool,
     });
   };
 
+  console.log(`\nLoot-stats: ${runs} runs (${metaMode}; ${formatSimFlagsLabel(normalizeSimPools(simFlags, { allRelics: ALL_RELICS, allAmulets, metaMode }))})\n`);
+
   try {
-    if (metaMode === 'accumulate') {
-      const meta = new MetaProgressionManager({});
-      meta.unlockedRelics = [];
+    if (metaMode === 'accumulate' && simFlags.enableMeta) {
+      const extras = buildSimRunExtras(simFlags, {
+        allRelics: ALL_RELICS, strongAmulets: STRONG_AMULETS, allAmulets, metaMode,
+      });
+      const meta = restrictMetaPool(new MetaProgressionManager({}), extras.metaPool);
+      meta.unlockedRelics = extras.relics.slice();
       meta.totalDeaths = 0;
       meta.bestFloor = 1;
       meta.veteranHp = 0;
-      console.log(`\nLoot-stats: ${runs} runs on one accumulating account (death meta carries over)\n`);
       for (let i = 0; i < runs; i++) {
         const r = runOne({ relics: [...meta.unlockedRelics], veteranHp: meta.veteranHp });
         if (!r.won) meta.handlePlayerDeath(r.killer, r.reached);
       }
-    } else if (metaMode === 'geared') {
-      console.log(`\nLoot-stats: ${runs} runs (all relics unlocked)\n`);
-      for (let i = 0; i < runs; i++) runOne({ relics: ALL_RELICS });
-    } else if (metaMode === 'balance') {
-      console.log(`\nLoot-stats: ${runs} runs (balance — no amulets, no meta progression)\n`);
-      for (let i = 0; i < runs; i++) runOne({ relics: [] });
     } else {
-      console.log(`\nLoot-stats: ${runs} runs (fresh account, bot buys amulets in shops)\n`);
-      for (let i = 0; i < runs; i++) runOne({ relics: [] });
+      for (let i = 0; i < runs; i++) runOne({});
     }
 
     reportLootStats(lootStats);
@@ -2207,24 +2605,16 @@ function runLootStats() {
 
 // ── DB-backed floor stats (3NF SQLite) ───────────────────────────────────
 // Usage:
-//   node sim/balance-sim.js stats-db [runs] [fresh|geared|accumulate|balance] [name] [--name label] [--db path]
-//   npm run sim:stats-db-balance -- 500 baseline-v1
+//   node sim/balance-sim.js stats-db [runs] [fresh|geared|accumulate|balance] [name]
+//     [--name label] [--db path]
+//     [--meta | --no-meta] [--amulets | --no-amulets] [--amulet-loadout none|bag|strong]
+//   npm run sim:stats-db-balance -- 1000 my-run --meta --no-amulets
 function parseStatsDbArgs() {
-  const MODES = new Set(['fresh', 'geared', 'accumulate', 'balance']);
-  const rest = process.argv.slice(3);
+  const { positional, flags } = splitSimArgv(stripBehaviorArgs(process.argv.slice(3)));
   let runs = 100;
   let metaMode = 'fresh';
   let runLabel = null;
   let dbPath = DEFAULT_DB_PATH;
-  const positional = [];
-
-  for (let i = 0; i < rest.length; i++) {
-    const a = rest[i];
-    if (a === '--db') { dbPath = rest[++i]; continue; }
-    if (a === '--name') { runLabel = rest[++i]; continue; }
-    if (a.startsWith('--')) continue;
-    positional.push(a);
-  }
 
   for (const a of positional) {
     const n = parseInt(a, 10);
@@ -2232,54 +2622,81 @@ function parseStatsDbArgs() {
       runs = n;
       continue;
     }
-    if (MODES.has(a)) {
+    if (SIM_META_MODES.has(a)) {
       metaMode = a;
       continue;
     }
     if (!runLabel) runLabel = a;
   }
 
+  const simFlags = parseSimFlags(flags, metaMode);
   const label = runLabel || `stats-db ${metaMode}`;
-  return { runs, metaMode, dbPath, label, runLabel };
+  return { runs, metaMode, dbPath, label, runLabel, simFlags };
 }
 
 function runStatsDb() {
-  const { runs, metaMode, dbPath, label, runLabel } = parseStatsDbArgs();
+  const { runs, metaMode, dbPath, label, runLabel, simFlags } = parseStatsDbArgs();
   const throwaway = newMetrics();
   const db = new StatsDatabase(dbPath);
   const recorder = new StatsRecorder(db);
+  const allAmulets = getDefaultAmuletIds();
+  const normFlags = normalizeSimPools(simFlags, { allRelics: ALL_RELICS, allAmulets, metaMode });
 
-  if (metaMode === 'balance') {
-    setSimTestOptionsOverride({
-      [TEST_OPTION_IDS.disableAmulets]: true,
-      [TEST_OPTION_IDS.disableMetaProgression]: true,
+  applySimFlags(simFlags);
+
+  const buildRunConfig = (overrides = {}) => {
+    const extras = buildSimRunExtras(simFlags, {
+      allRelics: ALL_RELICS,
+      strongAmulets: STRONG_AMULETS,
+      allAmulets,
+      metaMode,
     });
-  }
-
-  const buildRunConfig = (base = {}) => ({
-    ...base,
-    statsRecorder: recorder,
-    noBag: true,
-    relics: isMetaProgressionDisabled() ? [] : (base.relics || []),
-    veteranHp: isMetaProgressionDisabled() ? 0 : (base.veteranHp || 0),
-  });
+    const cfg = {
+      statsRecorder: recorder,
+      ...extras,
+      ...overrides,
+      metaPool: extras.metaPool,
+      amuletPool: extras.amuletPool,
+    };
+    if (!simFlags.enableMeta) {
+      cfg.relics = [];
+      cfg.veteranHp = 0;
+    }
+    return cfg;
+  };
 
   console.log(`\nStats DB: ${runs} runs → ${dbPath}`);
   console.log(`  label: ${label}${runLabel ? '' : ' (default)'}`);
-  console.log(`  mode: ${metaMode}\n`);
+  console.log(`  preset: ${metaMode}`);
+  console.log(`  flags: ${formatSimFlagsLabel(normFlags)}\n`);
 
   try {
     recorder.beginBatch({
       label,
       mode: metaMode,
       runsPlanned: runs,
-      config: { noBag: true, metaMode, runLabel: runLabel || null },
+      config: {
+        noBag: true,
+        metaMode,
+        runLabel: runLabel || null,
+        behaviorPreset: DEFAULT_BEHAVIOR_PRESET,
+        enableMeta: normFlags.enableMeta,
+        enableAmulets: normFlags.enableAmulets,
+        amuletLoadout: normFlags.amuletLoadout,
+        metaPool: normFlags.metaPool,
+        metaStart: normFlags.metaStart,
+        amuletPool: normFlags.amuletPool,
+        amuletStart: normFlags.amuletStart,
+      },
     });
 
     db.runInTransaction(() => {
-      if (metaMode === 'accumulate') {
-        const meta = new MetaProgressionManager({});
-        meta.unlockedRelics = [];
+      if (metaMode === 'accumulate' && simFlags.enableMeta) {
+        const extras = buildSimRunExtras(simFlags, {
+          allRelics: ALL_RELICS, strongAmulets: STRONG_AMULETS, allAmulets, metaMode,
+        });
+        const meta = restrictMetaPool(new MetaProgressionManager({}), extras.metaPool);
+        meta.unlockedRelics = extras.relics.slice();
         meta.totalDeaths = 0;
         meta.bestFloor = 1;
         meta.veteranHp = 0;
@@ -2295,34 +2712,10 @@ function runStatsDb() {
           });
           if (!r.won) meta.handlePlayerDeath(r.killer, r.reached);
         }
-      } else if (metaMode === 'geared') {
-        for (let i = 0; i < runs; i++) {
-          recorder.beginRun();
-          const r = runGame(throwaway, buildRunConfig({ relics: ALL_RELICS }));
-          recorder.finishRun({
-            won: r.won,
-            reachedFloor: r.reached,
-            died: r.died,
-            endReason: r.endReason,
-            deathEncounterType: r.deathEncounterType,
-          });
-        }
-      } else if (metaMode === 'balance') {
-        for (let i = 0; i < runs; i++) {
-          recorder.beginRun();
-          const r = runGame(throwaway, buildRunConfig({ relics: [] }));
-          recorder.finishRun({
-            won: r.won,
-            reachedFloor: r.reached,
-            died: r.died,
-            endReason: r.endReason,
-            deathEncounterType: r.deathEncounterType,
-          });
-        }
       } else {
         for (let i = 0; i < runs; i++) {
           recorder.beginRun();
-          const r = runGame(throwaway, buildRunConfig({ relics: [] }));
+          const r = runGame(throwaway, buildRunConfig());
           recorder.finishRun({
             won: r.won,
             reachedFloor: r.reached,

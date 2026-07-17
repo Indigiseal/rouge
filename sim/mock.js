@@ -342,13 +342,10 @@ export class MockScene {
     // Summoned spiders carry the toned-down poison the real game gives them.
     if (enemyType === 'spider') e.abilities = [{ type: 'poison', damage: 1, turns: 2, stackable: true }];
     e.role = Math.random() < 0.5 ? 'MELEE' : 'RANGED';
-    const sprite = {
-      x: 0, y: 0, active: true, scene: this,
-      setTexture() { return this; }, setScale() { return this; }, setTint() { return this; },
-      clearTint() { return this; }, destroy() { this.active = false; return this; },
-      play() { return this; }, once() { return this; }, on() { return this; },
-      getBounds() { return { x: 0, y: 0, width: 1, height: 1 }; },
-    };
+    // Use the full GameObject stub (has off/on/play/once) so later
+    // revealCard / smokeScreen paths don't crash on missing Phaser APIs.
+    const sprite = makeGameObject();
+    sprite.scene = this;
     this.cardSystem.boardCards.push({ data: e, revealed: true, sprite });
   }
 

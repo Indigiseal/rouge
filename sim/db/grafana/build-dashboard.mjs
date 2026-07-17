@@ -15,12 +15,13 @@ const DS = { type: 'frser-sqlite-datasource', uid: 'sim-sqlite' };
 const BATCH_VAR_SQL = `SELECT b.id AS __value,
   COALESCE(NULLIF(TRIM(b.label), ''), 'run #' || b.id)
   || ' ('
-  || CASE b.mode
-       WHEN 'balance' THEN 'balance: no meta/amulets'
-       WHEN 'fresh' THEN 'fresh: clean start'
-       WHEN 'geared' THEN 'geared: all relics'
-       WHEN 'accumulate' THEN 'accumulate: career meta'
-       ELSE b.mode
+  || b.mode
+  || CASE WHEN COALESCE(json_extract(b.config_json, '$.enableMeta'), 0) = 1 THEN ', meta' ELSE ', no-meta' END
+  || CASE WHEN COALESCE(json_extract(b.config_json, '$.enableAmulets'), 0) = 1 THEN ', amulets' ELSE ', no-amulets' END
+  || CASE json_extract(b.config_json, '$.amuletLoadout')
+       WHEN 'strong' THEN ', loadout:strong'
+       WHEN 'bag' THEN ', loadout:bag'
+       ELSE ''
      END
   || ', ' || b.runs_completed || ' runs)'
   AS __text
