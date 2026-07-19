@@ -20,7 +20,7 @@ export const RELICS_OTHERS_ATLAS = Object.freeze({
     venomSpider:          { frame: 12, name: 'Spider Venom' },
     spiderWeb:            { frame: 13, name: "Webweaver's Thread" },
     boneArmor:            { frame: 14, name: 'Bone Armor' },
-    fireRuneStone:        { frame: 15, name: 'Ember Rune' },
+    fireRuneStone:        { frame: 15, name: 'Fire Rune' },
     greedPouch:           { frame: 16, name: 'Pouch of Greed' },
     goldenTrinketBox:     { frame: 17, name: "Scavenger's Coffer" },
     morningstar:          { frame: 18, name: "Giant's Morningstar" },
@@ -78,7 +78,9 @@ export const RELICS_OTHERS_ATLAS = Object.freeze({
     wormVenomVial:        { frame: 66, name: 'Worm Venom Charm' },
     stolenInkPen:         { frame: 67, name: 'Stolen Ink Pen' },
     mothWingDust:         { frame: 68, name: 'Moth-Wing Dust' },
-    luckyClover:          { frame: 69, name: 'Lucky Clover' }
+    luckyClover:          { frame: 69, name: 'Lucky Clover' },
+    lightningRune:        { frame: 70, name: 'Lightning Rune' },
+    poisonRune:           { frame: 71, name: 'Poison Rune' }
 });
 
 // Gameplay IDs stay stable for saves and balance code. These maps are the
@@ -123,7 +125,9 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     fireRuneStone: 'fireRuneStone',
     prospectorsPick: 'pickaxe',
     fortuneCard: 'fishbowl',
-    luckyClover: 'luckyClover'
+    luckyClover: 'luckyClover',
+    lightningRune: 'lightningRune',
+    poisonRune: 'poisonRune'
 });
 
 export const RELIC_ATLAS_KEYS = Object.freeze({

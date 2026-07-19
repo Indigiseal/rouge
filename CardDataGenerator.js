@@ -90,24 +90,23 @@ export class CardDataGenerator {
         balanced.armor = Math.max(floor >= 18 ? 12 : 10, Math.ceil((balanced.armor || 0) * 1.15));
         // Amulets were flooding the late game (~22% of cards, 4-5 per floor),
         // which trivialized runs once you stacked a dozen+. Cut the weight hard
-        // (~2-3% of cards) so floor drops are a rare bonus; amulets should
-        // mostly come from curated events instead.
-        balanced.amulet = Math.min(floor >= 15 ? 6 : 4, Math.max(1, Math.floor((balanced.amulet || 0) * 0.4)));
+        // so floor drops are a rare bonus; amulets should mostly come from
+        // curated events instead. The cap is graduated DOWN through the acts:
+        // late floors draw many cards, so a flat cap still spawned several
+        // amulets per floor in act 2/3 — hence 4 in act 2 and 3 in act 3.
+        const amuletCap = floor >= 31 ? 3 : 4; // act 3 → 3, act 1-2 → 4
+        balanced.amulet = Math.min(amuletCap, Math.max(1, Math.floor((balanced.amulet || 0) * 0.4)));
         balanced.potion = Math.max(8, Math.floor((balanced.potion || 0) * 1.2));
         balanced.food = Math.max(19, Math.floor((balanced.food || 0) * 1.7));  // Bumped — players were starving for AP (~43% of actions while hungry); tuned for ~30% hunger
         balanced.magic = Math.max(5, Math.floor((balanced.magic || 0) * 1.25));
         balanced.thorns = Math.max(3, balanced.thorns || 0);
         balanced.crystal = Math.max(3, Math.floor((balanced.crystal || 0) * (floor >= 15 ? 0.5 : 0.8))); // Cut hard in late game
-        // Socket gems are gated to start in the MIDDLE of act 1 (floor 7) and
-        // ramp gently so a full 45-floor clear nets ~12-15 gems total including
-        // both shop offers. Previously gems dropped flat from floor 1 (weight 9)
-        // and then flooded act 3 (weight 27), which both broke the intended
-        // "no gems early" feel and over-supplied the end game (only 3 gems
-        // socket per weapon anyway).
+        // Socket gems begin late in act 1 and ramp through the acts without
+        // flooding the three available weapon sockets.
         balanced.gem = floor < 12 ? 0
             : floor <= 15 ? 3
-            : floor <= 30 ? 9
-            : 12;
+            : floor <= 30 ? 8
+            : 10;
         balanced.key = Math.max(2, balanced.key || 0);
         balanced.mimic = Math.max(0, balanced.mimic || 0); // keep mimic chance from formula
         balanced.empty = floor <= 15 ? 0 : Math.max(12, balanced.empty || 0); // no empty cards in Act 1 (floors 1-15)
@@ -529,7 +528,6 @@ export class CardDataGenerator {
             { id: 'sirensPendant',    minFloor: 6,  weight: 4,  rarity: 'rare' },
 
             { id: 'goldenSeed',       minFloor: 2,  weight: 7,  rarity: 'uncommon' },
-            { id: 'fireRuneStone',    minFloor: 10, weight: 5,  rarity: 'uncommon' },
             { id: 'prospectorsPick',  minFloor: 3,  weight: 7,  rarity: 'uncommon' }
         ];
 
@@ -958,16 +956,17 @@ export class CardDataGenerator {
         // [common, uncommon, rare, epic] weights — caller will downgrade if
         // the picked rarity has no unlocked tier yet at this floor.
         let weights;
-        // Epics pushed to floor 26+ so battlefield drops don't let players
-        // merge to legendary in mid-act-2. Replaces the old floor-35 legendary
-        // merge gate with a softer rarity-pipeline approach: rares are still
-        // common in act 2 (great merge fodder), but epics arrive in late act 2
-        // / act 3 where they make sense.
+        // Slow rarity pipeline through act 2 so legendaries arrive closer to
+        // act 3. High-tier weapons are the merge fodder for legendaries, so the
+        // act-2 rare weights were cut (floors 23-30) and epic drops pushed fully
+        // into act 3 (floor 31+). Rares are still present as merge fodder, just
+        // scarcer, which stretches the rare→epic→legendary climb past act 2.
+        // (Softer than a hard merge gate — see lever-1 tuning.)
         if (floor <= 10)       weights = [100, 0,  0,  0];
         else if (floor <= 17)  weights = [90,  10, 0,  0];
-        else if (floor <= 22)  weights = [65,  30, 5,  0];
-        else if (floor <= 27)  weights = [45,  40, 15, 0];
-        else if (floor <= 30)  weights = [30,  45, 23, 2];
+        else if (floor <= 22)  weights = [68,  29, 3,  0];
+        else if (floor <= 27)  weights = [50,  40, 10, 0];
+        else if (floor <= 30)  weights = [38,  47, 15, 0];
         // Act 3 (rebalance): playtest showed the old weights flooded act 3
         // with epics & rares. The new curve keeps uncommons + rares dominant
         // through act 3, with epics as a slow-arriving treat — boss room is

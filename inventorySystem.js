@@ -2233,7 +2233,7 @@ export class InventorySystem {
                 });
                 
                 if (closestEnemy !== -1 && closestDistance < 150) {
-                    SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+                    SoundHelper.playSound(this.scene, 'fireball_whoosh', 0.5);
                     
                     // Get enemy reference before attacking (in case it gets destroyed)
                     const enemyCard = this.scene.cardSystem.boardCards[closestEnemy];
@@ -2258,7 +2258,7 @@ export class InventorySystem {
                     }
                 });
                 if (frozeAny) {
-                    SoundHelper.playSound(this.scene, 'enemy_freeze', 0.5);
+                    SoundHelper.playSound(this.scene, 'frozenRing', 0.5);
                     this.scene.createFloatingText(320, 180, 'Enemies Frozen!', 0x00ccff);
                     used = true;
                 }
@@ -2267,7 +2267,7 @@ export class InventorySystem {
             case 'restoration':
                 this.scene.gameState.playerHealth = this.scene.gameState.maxHealth;
                 this.scene.gameState.actionsLeft = this.scene.gameState.maxActions;
-                SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+                SoundHelper.playSound(this.scene, 'recovery', 0.5);
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `Full Restore!`, 0x00ff00);
                 this.scene.updateUI();
                 used = true;
@@ -2308,7 +2308,7 @@ export class InventorySystem {
                             this.scene.gameState.maxHealth,
                             this.scene.gameState.playerHealth + healAmount
                         );
-                        SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+                        SoundHelper.playSound(this.scene, 'soulSucking', 0.5);
                         this.createSoulDrainEffect(enemy.sprite, this.scene.playerAvatar);
                         this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${healAmount} HP`, 0x9932cc);
 
@@ -2347,21 +2347,21 @@ export class InventorySystem {
                 
             case 'boneWall':
                 this.scene.gameState.boneWall = 2; // Reflects next 2 attacks
-                SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+                SoundHelper.playSound(this.scene, 'boneWall', 0.5);
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Bone Wall Active!', 0xffffff);
                 used = true;
                 break;
                 
             case 'magicShield':
                 this.scene.gameState.magicShield = { turns: 10, multiplier: 1.2 };
-                SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+                SoundHelper.playSound(this.scene, 'magicShield', 0.5);
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Magic Shield Active!', 0x00aaff);
                 used = true;
                 break;
                 
             case 'mirrorShield':
                 this.scene.gameState.mirrorShield = true;
-                SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+                SoundHelper.playSound(this.scene, 'mirrorShield', 0.5);
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Mirror Shield Active!', 0xc0c0c0);
                 used = true;
                 break;
@@ -2395,7 +2395,7 @@ export class InventorySystem {
                     }
                 });
                 if (flippedAny) {
-                    SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+                    SoundHelper.playSound(this.scene, 'smoke_bomb', 0.5);
                     this.createSmokeEffect();
                     used = true;
                 }

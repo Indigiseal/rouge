@@ -24,7 +24,8 @@ const EVENT_ILLUSTRATION_FRAMES = {
   briar_room: 23,
   old_drill_room: 26,
   something_wicked: 7,
-  brass_wizard: 28
+  brass_wizard: 28,
+  screaming_head: 26
 };
 
 const CARNIVAL_HAG_FRAME = 27;
@@ -515,6 +516,65 @@ const EVENTS = [
         outcome: 'You decide not to linger.'
       }
     ]
+  },
+  {
+    id: 'screaming_head',
+    title: 'The Screaming Head',
+    description: 'You find a giant stone head half-buried in the dungeon floor.\n\nThe rest of the statue is gone.\n\nIts face is cracked and crumbling, but the expression remains: a scream frozen in stone.\n\nThe open mouth is full of broken teeth.\n\nThe eye sockets are empty.\n\nDust falls from the statue whenever you move closer.\n\nFor a moment, you think the head is only a ruin.\n\nThen something deep inside its mouth shifts.',
+    choices: [
+      {
+        text: 'Place a card in its mouth',
+        condition: (gs, scene) => scene.hasScreamingHeadOfferCard(),
+        action: (gs, scene) => scene.beginScreamingHeadOffering(),
+        outcome: 'Choose a card from your inventory and drag it into the statue\'s mouth.',
+        next: {
+          choices: [
+            {
+              text: 'Pull your hand back',
+              action: (gs, scene) => scene.cancelScreamingHeadOffering(),
+              outcome: 'You pull the card away. The stone teeth remain open and waiting.'
+            }
+          ]
+        }
+      },
+      {
+        text: 'Reach into the mouth',
+        action: (gs, scene) => {
+          scene.damagePlayer(12, 'screaming_head_bite', 'The Screaming Head');
+          if ((gs.playerHealth || 0) > 0) scene.gainRandomAmulet();
+        },
+        outcome: 'You reach into the screaming mouth.\n\nAt first, your fingers touch only cold stone and dust.\n\nThen the jaw snaps shut.\n\nPain shoots up your arm as the broken teeth bite down.\n\nYou pull free before the head can crush your hand.\n\nSomething small and hard is clenched in your bleeding palm.'
+      },
+      {
+        text: 'Place a Fire Gem in the eye socket',
+        condition: (gs, scene) => scene.hasGem('fire') && !scene.hasAmulet('fireRuneStone'),
+        action: (gs, scene) => {
+          if (scene.consumeGem('fire')) scene.gainAmulet('fireRuneStone');
+        },
+        outcome: 'You press the Fire Gem into one empty eye socket.\n\nIt fits perfectly.\n\nA red glow spreads through the cracks in the statue\'s face. The screaming mouth trembles.\n\nThen the head exhales a thick cloud of dusty smoke.\n\nWhen the smoke clears, something red is glowing between its broken teeth.\n\nA Fire Rune rests on the statue\'s stone tongue.'
+      },
+      {
+        text: 'Place a Lightning Gem in the eye socket',
+        condition: (gs, scene) => scene.hasGem('lightning') && !scene.hasAmulet('lightningRune'),
+        action: (gs, scene) => {
+          if (scene.consumeGem('lightning')) scene.gainAmulet('lightningRune');
+        },
+        outcome: 'You press the Lightning Gem into one empty eye socket.\n\nThe gem clicks into place.\n\nA thin bolt jumps across the statue\'s cracked forehead. The stone teeth chatter once, fast and sharp.\n\nThen the head exhales a cloud of dry gray dust.\n\nWhen the dust falls away, a bright rune flickers inside its open mouth.\n\nA Lightning Rune rests on the statue\'s stone tongue.'
+      },
+      {
+        text: 'Place a Poison Gem in the eye socket',
+        condition: (gs, scene) => scene.hasGem('poison') && !scene.hasAmulet('poisonRune'),
+        action: (gs, scene) => {
+          if (scene.consumeGem('poison')) scene.gainAmulet('poisonRune');
+        },
+        outcome: 'You press the Poison Gem into one empty eye socket.\n\nGreen light seeps through the cracks in the stone. The statue\'s mouth curls slightly, almost like it remembers pain.\n\nThen it exhales a bitter cloud of dusty smoke.\n\nWhen the smoke thins, a dark green rune lies between its broken teeth.\n\nA Poison Rune rests on the statue\'s stone tongue.'
+      },
+      {
+        text: 'Leave',
+        action: () => {},
+        outcome: 'You step away from the broken head.\n\nThe open mouth remains frozen in its silent scream.\n\nAs you leave, a few grains of stone dust fall from its teeth.'
+      }
+    ]
   }
 ];
 
@@ -564,6 +624,10 @@ export class EventScene extends Phaser.Scene {
     if (!story.slimyPrisonSeen) bonusFillers.push('slimy_prison');
     if (!story.bookWormSeen) bonusFillers.push('book_worm');
     if (!story.briarRoomSeen) bonusFillers.push('briar_room');
+    if ((this.gameState.currentFloor || 1) >= 31 && !story.screamingHeadSeen
+      && (!this.hasAmulet('fireRuneStone') || !this.hasAmulet('lightningRune') || !this.hasAmulet('poisonRune'))) {
+      bonusFillers.push('screaming_head');
+    }
     if (!story.carnivalVisited) bonusFillers.push('something_wicked');
     if (story.carnivalVisited && !story.brassWizardSeen) bonusFillers.push('brass_wizard');
     if (this.getQualifyingCompanions().length > 0) bonusFillers.push('old_drill_room');
@@ -584,7 +648,7 @@ export class EventScene extends Phaser.Scene {
       const requestedId = new URLSearchParams(window.location.search).get('event');
       if (!requestedId) return null;
       const resolvedId = requestedId === 'singing_box' ? 'broken_music_box' : requestedId;
-      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'old_drill_room', 'something_wicked', 'brass_wizard']);
+      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'old_drill_room', 'something_wicked', 'brass_wizard']);
       return forceable.has(resolvedId) ? resolvedId : null;
     } catch {
       return null;
@@ -626,6 +690,7 @@ export class EventScene extends Phaser.Scene {
       slimyPrisonSeen: false,
       bookWormSeen: false,
       briarRoomSeen: false,
+      screamingHeadSeen: false,
       carnivalVisited: false,
       carnivalHagMet: false,
       brassWizardSeen: false,
@@ -704,6 +769,7 @@ export class EventScene extends Phaser.Scene {
       slimyPrisonSeen: Boolean(existingStoryRun.slimyPrisonSeen),
       bookWormSeen: Boolean(existingStoryRun.bookWormSeen),
       briarRoomSeen: Boolean(existingStoryRun.briarRoomSeen),
+      screamingHeadSeen: Boolean(existingStoryRun.screamingHeadSeen),
       carnivalVisited: Boolean(existingStoryRun.carnivalVisited),
       carnivalHagMet: Boolean(existingStoryRun.carnivalHagMet),
       brassWizardSeen: Boolean(existingStoryRun.brassWizardSeen),
@@ -726,6 +792,20 @@ export class EventScene extends Phaser.Scene {
       ? this.gameState.activeAmulets
       : [];
     return activeAmulets.some(amulet => amulet === id || amulet?.id === id);
+  }
+
+  hasGem(effect) {
+    return this._findInventoryIndex(item => (
+      item?.type === 'gem' && item?.gemEffect === effect
+    )) >= 0;
+  }
+
+  consumeGem(effect) {
+    const index = this._findInventoryIndex(item => (
+      item?.type === 'gem' && item?.gemEffect === effect
+    ));
+    if (index < 0) return false;
+    return this._removeInventoryCard(index);
   }
 
   hasRelic(id) {
@@ -1379,6 +1459,22 @@ export class EventScene extends Phaser.Scene {
     );
   }
 
+  _isScreamingHeadOfferCard(item) {
+    // Keys, companions, and one-off story items are protected. Everything else
+    // in the inventory is a fair offering, including potions and gems.
+    return Boolean(
+      item
+      && item.type !== 'companion'
+      && item.id !== 'monsterEgg'
+      && !item.unique
+      && !this._isKeyCard(item)
+    );
+  }
+
+  hasScreamingHeadOfferCard() {
+    return this.getInventorySlots().some(item => this._isScreamingHeadOfferCard(item));
+  }
+
   logStoryKeyChoice(choiceId) {
     if (typeof choiceId !== 'string') return;
     console.log('[EventScene] Story key choice used:', choiceId);
@@ -1516,9 +1612,22 @@ export class EventScene extends Phaser.Scene {
     const targetX = 486;
     const slideDistance = 56;
     const container = this.add.container(targetX - slideDistance, 173).setDepth(-2).setAlpha(0);
-    container.add(this.add.image(0, 0, 'gamingBoardSideSmall', 1).setOrigin(0.5));
+    const isScreamingHead = this.event?.id === 'screaming_head';
+    const panel = this.add.image(isScreamingHead ? 7 : 0, 0, 'gamingBoardSideSmall', 1).setOrigin(0.5);
+    if (isScreamingHead) {
+      // Keep the panel's left edge aligned with normal event art, then extend
+      // only its right edge by 14px for the statue's larger native sprite.
+      panel.setDisplaySize(222, 144);
+    }
+    container.add(panel);
 
-    if (this.textures.exists('eventsShops')) {
+    if (isScreamingHead && this.textures.exists('statueHead')) {
+      // Keep the dedicated art at its native size; its anchor matches the usual
+      // event-art position even though it is larger than the 80px sheet frames.
+      this.eventIllustrationImage = this.add.image(23, -5, 'statueHead')
+        .setOrigin(0.5);
+      container.add(this.eventIllustrationImage);
+    } else if (this.textures.exists('eventsShops')) {
       this.eventIllustrationImage = this.add.image(23, -5, 'eventsShops', frame)
         .setOrigin(0.5)
         .setScale(1);
@@ -2455,6 +2564,58 @@ export class EventScene extends Phaser.Scene {
 
   // ─── Briar Room (drag a weapon/armor in to grow a permanent thorn) ───────
 
+  // The Screaming Head accepts a draggable inventory offering, then rerolls it
+  // at the same rarity/type where possible.
+  beginScreamingHeadOffering() {
+    const inv = this.gameScene?.inventorySystem;
+    const target = this.eventIllustrationImage;
+    if (!inv || !target?.getBounds) return false;
+    this.screamingHeadOfferingActive = true;
+    inv.clearDropZones();
+    inv.addDropZone(target, (slotIndex, cardData, cardSprite) => (
+      this._handleScreamingHeadOffering(slotIndex, cardData, cardSprite)
+    ));
+    return true;
+  }
+
+  cancelScreamingHeadOffering() {
+    this.screamingHeadOfferingActive = false;
+    this.gameScene?.inventorySystem?.clearDropZones?.();
+  }
+
+  _handleScreamingHeadOffering(slotIndex, cardData, cardSprite) {
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv || !cardData || !this.screamingHeadOfferingActive || this.resolved) return false;
+    if (!this._isScreamingHeadOfferCard(cardData)) {
+      this._mirrorFloat('The stone teeth reject that offering', 0xff6666, cardSprite);
+      return false;
+    }
+
+    const rerolledCard = this.createSameTypeRerollCard(cardData);
+    if (!rerolledCard) return false;
+    const oldName = cardData.name || 'a card';
+
+    inv.cleanupCardSprites(slotIndex, cardSprite);
+    inv.cleanupBoardArtifacts?.(cardSprite);
+    inv.removeCard(slotIndex, false);
+    cardSprite.destroy();
+    inv.addCard(rerolledCard);
+    inv.clearDropZones();
+    this.screamingHeadOfferingActive = false;
+    this.gameScene?.updateUI?.();
+
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    this._reward(`Offered: ${oldName}`);
+    this._reward(`Received: ${rerolledCard.name || 'a different card'}`);
+    this._resolve({
+      text: 'Offer card',
+      action: () => {},
+      outcome: 'You slide one of your cards between the stone teeth.\n\nThe statue\'s mouth closes slowly.\n\nStone grinds against stone.\n\nFor a few seconds, the head chews in silence.\n\nThen its jaw cracks open again.\n\nA different card lies on its tongue, damp with gray dust.'
+    }, -1, { keepRewards: true });
+    return true;
+  }
+
   beginBriarOffering() {
     const inv = this.gameScene?.inventorySystem;
     const target = this.eventIllustrationImage;
@@ -2880,6 +3041,7 @@ export class EventScene extends Phaser.Scene {
       slimy_prison: 'slimyPrisonSeen',
       book_worm: 'bookWormSeen',
       briar_room: 'briarRoomSeen',
+      screaming_head: 'screamingHeadSeen',
       something_wicked: 'carnivalVisited',
       brass_wizard: 'brassWizardSeen'
     };

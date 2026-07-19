@@ -23,7 +23,7 @@ export class MapGenerator {
   generateFullMap() {
     // Must match MapViewScene's MAP_VERSION. Otherwise the version-check there
     // fails on every load and the map regenerates after every floor.
-    const full = { _version: 6 };
+    const full = { _version: 7 };
     for (let act = 1; act <= 3; act++) full[`act${act}`] = this.generateAct(act);
     return full;
   }
@@ -450,6 +450,11 @@ export class MapGenerator {
     // Run this guarantee last so later support-room guarantees cannot replace
     // the sole Rare Shop they are supposed to coexist with.
     ensureOne('RARE_SHOP', 3, preBoss - 2);
+    // Two elite encounters per act, split across early and late windows so a
+    // whole act cannot roll zero elites (or bunch both into one moment).
+    // They are guaranteed map nodes; players may still choose another branch.
+    ensureOne('ELITE', 2, 6);
+    ensureOne('ELITE', 7, preBoss - 1);
     // At least three events per act, anywhere between the start and the boss.
     ensureCount('EVENT', 3, 1, preBoss);
 

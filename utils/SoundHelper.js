@@ -19,7 +19,21 @@ export class SoundHelper {
         bread_eaten: ['bread_eaten_1', 'bread_eaten_2', 'bread_eaten_3'],
         empty_stomach: ['empty_stomach_1', 'empty_stomach_2'],
         new_level: ['new_level_1', 'new_level_3'],
-        hero_death: ['hero_death_1', 'hero_death_2', 'hero_death_3']
+        hero_death: ['hero_death_1', 'hero_death_2', 'hero_death_3'],
+
+        // New SFX drop (2026-07). These groups are named after the SINGLE
+        // canonical key existing call sites already pass to playSound(), so the
+        // redirect in playSound() rotates a random take behind that same key —
+        // no call-site changes needed. Single-take sounds from the same drop
+        // are just swapped in place in PreloadScene, so they aren't listed here.
+        card_flip: ['card_flip_v1', 'card_flip_v2', 'card_flip_v3', 'card_flip_v4'],
+        coin_collect: ['coin_collect_v1', 'coin_collect_v2'],
+        shop_buy: ['shop_buy_v1', 'shop_buy_v2'],
+        chest_open: ['chest_open_v1', 'chest_open_v2'],
+        anvil_upgrade: ['anvil_upgrade_v1', 'anvil_upgrade_v2'],
+        fireball_whoosh: ['fireball_whoosh_v1', 'fireball_whoosh_v2'],
+        recovery: ['recovery_v1', 'recovery_v2'],
+        gem_pickup: ['gem_pickup_v1', 'gem_pickup_v2', 'gem_pickup_v3', 'gem_pickup_v4']
     };
 
     static ensureGlobalVolume(scene) {
@@ -161,6 +175,12 @@ export class SoundHelper {
     }
 
     static playSound(scene, soundKey, baseVolume = 1.0) {
+        // If this key names a variant group, play a random member instead so a
+        // canonical key (e.g. 'card_flip') transparently rotates its takes.
+        // Variant keys ('card_flip_v1', …) aren't group names, so no recursion.
+        const variants = this.SFX_VARIANTS[soundKey];
+        if (variants) return this.playRandom(scene, variants, baseVolume);
+
         const gv = this.ensureGlobalVolume(scene);
 
         // Skip unloaded keys quietly instead of spamming Phaser warnings.
