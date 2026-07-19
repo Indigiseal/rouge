@@ -35,6 +35,7 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('eventPaper9Slice', 'assets/art/paper9Slice.png');
         this.load.image('scrollHandle', 'assets/art/scroll.png');
         this.load.spritesheet('eventsShops', 'assets/art/eventsShops80x80.png', { frameWidth: 80, frameHeight: 80 });
+        this.load.image('statueHead', 'assets/art/statueHead.png');
         this.load.image('panelArmor', 'assets/art/panelArmor.png');
         // Little banner behind each shop item's price (30x14)
         this.load.image('priceTag', 'assets/art/priceTag.png');
@@ -218,14 +219,14 @@ export class PreloadScene extends Phaser.Scene {
         this.load.image('smokeBomb', 'assets/art/smokeBomb.png');
         this.load.audio('magic_cast', 'assets/music/fast-woosh-230497.mp3');
         this.load.audio('recovery', 'assets/music/recovery.mp3');
-        this.load.audio('boneWall', 'assets/music/boneWall.mp3');
-        this.load.audio('mirrorShield', 'assets/music/mirrorShield.mp3');
-        this.load.audio('fireball_whoosh', 'assets/music/fireball-whoosh-1-179125.mp3');
-        this.load.audio('smoke_bomb', 'assets/music/smoke-bomb-6761.mp3');
-        this.load.audio('frozenRing', 'assets/music/frozenRing.mp3');
+        this.load.audio('boneWall', 'assets/music/Bone_Wall_01.wav');       // was boneWall.mp3
+        this.load.audio('mirrorShield', 'assets/music/Mirror_Shield_01.wav'); // was mirrorShield.mp3
+        this.load.audio('fireball_whoosh', 'assets/music/fireball-whoosh-1-179125.mp3'); // now rotated via Fireball_0N.wav group
+        this.load.audio('smoke_bomb', 'assets/music/Smoke_Screen_02.wav');  // was smoke-bomb-6761.mp3
+        this.load.audio('frozenRing', 'assets/music/Ice_Cast_01.wav');      // was frozenRing.mp3
         this.load.audio('shadowDagger', 'assets/music/shadowDagger.mp3');
-        this.load.audio('soulSucking', 'assets/music/soulSucking.mp3');
-        this.load.audio('magicShield', 'assets/music/magicShield.mp3');
+        this.load.audio('soulSucking', 'assets/music/Soul_Drain_01.wav');   // was soulSucking.mp3
+        this.load.audio('magicShield', 'assets/music/Magic_Shield_01.wav'); // was magicShield.mp3
         this.load.audio('weakening', 'assets/music/weakening.mp3');
         this.load.audio('trap_spring1', 'assets/music/trap_spring1.mp3');
 
@@ -314,6 +315,33 @@ export class PreloadScene extends Phaser.Scene {
         this.load.audio('heavy_swing', M + 'Heavy_Attack_Swing_01.mp3');
         this.load.audio('thorns_hit', M + 'Thorns_Retaliation_01.mp3');
         this.load.audio('card_merge', M + 'Card_Merge_Success_01.mp3');
+        // ---- New SFX drop (2026-07): multi-take groups ----
+        // Loaded under _vN keys; SoundHelper.SFX_VARIANTS maps the canonical
+        // key (card_flip, coin_collect, …) onto these so playSound rotates them
+        // at random. Old single-file loads above stay put but go unused.
+        this.load.audio('card_flip_v1', M + 'Card_Flip_01.wav');
+        this.load.audio('card_flip_v2', M + 'Card_Flip_02.wav');
+        this.load.audio('card_flip_v3', M + 'Card_Flip_03.wav');
+        this.load.audio('card_flip_v4', M + 'Card_Flip_04.wav');
+        this.load.audio('coin_collect_v1', M + 'Coin_Pickup_01.wav');
+        this.load.audio('coin_collect_v2', M + 'Coin_Pickup_02.wav');
+        this.load.audio('shop_buy_v1', M + 'Purchase_01.wav');
+        this.load.audio('shop_buy_v2', M + 'Purchase_02.wav');
+        this.load.audio('chest_open_v1', M + 'Chest_Open_01.wav');
+        this.load.audio('chest_open_v2', M + 'Chest_Open_02.wav');
+        this.load.audio('anvil_upgrade_v1', M + 'Anvil_Strike_01.wav');
+        this.load.audio('anvil_upgrade_v2', M + 'Anvil_Strike_02.wav');
+        this.load.audio('fireball_whoosh_v1', M + 'Fireball_01.wav');
+        this.load.audio('fireball_whoosh_v2', M + 'Fireball_02.wav');
+        this.load.audio('recovery_v1', M + 'Heal_01.wav');
+        this.load.audio('recovery_v2', M + 'Heal_02.wav');
+        this.load.audio('gem_pickup_v1', M + 'Gem_01.wav');
+        this.load.audio('gem_pickup_v2', M + 'Gem_02.wav');
+        this.load.audio('gem_pickup_v3', M + 'Gem_03.wav');
+        this.load.audio('gem_pickup_v4', M + 'Gem_04.wav');
+        // Single-take swaps from the same drop are done in place on the
+        // original load lines above (boneWall, frozenRing, magicShield,
+        // mirrorShield, smoke_bomb, soulSucking) to avoid duplicate keys.
         // Hero eats food (bread) — restores actions. 3 variants rotate.
         this.load.audio('bread_eaten_1', M + 'Bread_Eaten_01.wav');
         this.load.audio('bread_eaten_2', M + 'Bread_Eaten_02.wav');

@@ -1000,6 +1000,20 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        // Summoning is a boss command, not an attack. It happens on every
+        // eligible boss turn even while the boss is frozen; Frost Ring still
+        // denies its damage and other on-hit effects, but cannot turn a boss
+        // fight into three completely free turns.
+        eligible.forEach(({ card }) => {
+            if (card.data?.type !== 'boss' || !card.data?.abilities || (card.data.health || 0) <= 0) return;
+            card.data.abilities.forEach(ability => {
+                if (ability.type === 'summon' && Math.random() < ability.chance) {
+                    const n = ability.count || 1;
+                    for (let k = 0; k < n; k++) this.cardSystem.summonEnemy(ability.enemyType, card);
+                }
+            });
+        });
+
         // Check if player is blocking with bow
         if (this.gameState.blockNextAttack) {
             this.gameState.blockNextAttack = false; // Reset block
@@ -1173,16 +1187,6 @@ export class GameScene extends Phaser.Scene {
                 this.cardSystem.attackEnemy(target.index, card.data.attack, false);
                 return; // skip player damage
             }
-        }
-
-        // BOSS SUMMONING ABILITY - Process before attack (now spawns multiple)
-        if (card.data.type === 'boss' && card.data.abilities) {
-            card.data.abilities.forEach(ability => {
-                if (ability.type === 'summon' && Math.random() < ability.chance) {
-                    const n = ability.count || 1;
-                    for (let k = 0; k < n; k++) this.cardSystem.summonEnemy(ability.enemyType, card);
-                }
-            });
         }
 
         let damageDealt = card.data.attack;

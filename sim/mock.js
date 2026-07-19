@@ -217,9 +217,10 @@ export class MockScene {
       if (!eligible.has(i)) continue;
       const card = board[i];
       if (!card || !card.revealed || !this.isEnemyCard(card)) continue;
-      if (card.data.frozen && card.data.frozen > 0) continue;
       if (card.data.health <= 0) continue;
 
+      // Boss summoning is independent of its attack, so freezing a boss does
+      // not suppress its scheduled minion command (matches GameScene).
       if (card.data.type === 'boss' && card.data.abilities) {
         for (const ab of card.data.abilities) {
           if (ab.type === 'summon' && Math.random() < ab.chance) {
@@ -228,6 +229,8 @@ export class MockScene {
           }
         }
       }
+
+      if (card.data.frozen && card.data.frozen > 0) continue;
 
       let damageDealt = card.data.attack;
       const rage = card.data.abilities?.find((a) => a.type === 'rage');

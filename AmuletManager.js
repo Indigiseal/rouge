@@ -429,8 +429,8 @@ export class AmuletManager {
 
             fireRuneStone: {
                 ...getAmuletAtlasPresentation('fireRuneStone'),
-                description: 'Fire gem splash reaches slightly further',
-                rarity: 'uncommon',
+                description: 'Fire gems burn farther.',
+                rarity: 'rare',
                 fireSplashRadiusBonus: 25
             },
 
@@ -500,6 +500,23 @@ export class AmuletManager {
                 description: '+8% crit chance; critical hits sometimes drop a coin or crystal',
                 rarity: 'rare',
                 critChanceBonus: 0.08
+            },
+
+            // Gem-synergy stone runes — earned from The Screaming Head, never from
+            // the regular amulet pool. Each restores a little of the power gems
+            // lost in the early-game rebalance.
+            poisonRune: {
+                ...getAmuletAtlasPresentation('poisonRune'),
+                description: 'Poison gems stack more poison.',
+                rarity: 'rare',
+                poisonStacking: true
+            },
+
+            lightningRune: {
+                ...getAmuletAtlasPresentation('lightningRune'),
+                description: 'Zap hits one extra enemy.',
+                rarity: 'rare',
+                extraZapTargets: 1
             }
         };
     }
@@ -541,9 +558,21 @@ export class AmuletManager {
         return this.sumAmuletProperty('maxHpPerDiscard');
     }
 
-    // Ember Rune — extra pixels added to the fire gem's splash radius.
+    // Fire Rune — extra pixels added to the fire gem's splash radius.
     getFireSplashRadiusBonus() {
         return this.sumAmuletProperty('fireSplashRadiusBonus');
+    }
+
+    // Lightning Rune — extra enemies the lightning gem's zap chains to.
+    getExtraZapTargets() {
+        return this.sumAmuletProperty('extraZapTargets');
+    }
+
+    // Poison Rune — re-enables true poison stacking for poison gems.
+    isPoisonStackingEnabled() {
+        return this.gameState.activeAmulets.some(amulet => (
+            this.amuletDefinitions[amulet.id]?.poisonStacking
+        ));
     }
 
     // Add an amulet to the player.

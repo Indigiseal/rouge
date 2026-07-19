@@ -436,31 +436,42 @@ export class MainMenuScene extends Phaser.Scene {
         .setInteractive({ draggable: true, useHandCursor: true });
         
         // Volume text
-        const volumeText = this.add.text(450, y, 
+        const volumeText = this.add.text(450, y,
             Math.round(currentVolume * 100) + '%', {
             fontSize: '14px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0, 0.5);
-        
-        // Handle dragging
-        handle.on('drag', (pointer, dragX) => {
-            handle.x = Phaser.Math.Clamp(dragX, 220, 420);
-            const newVolume = (handle.x - 220) / 200;
-            
+
+        // Move the slider to a target volume (0..1) and apply it. Shared by both
+        // dragging the handle and clicking anywhere on the track.
+        const applyVolume = (newVolume) => {
+            newVolume = Phaser.Math.Clamp(newVolume, 0, 1);
+            handle.x = 220 + (200 * newVolume);
             this.game.globalVolume[volumeType] = newVolume;
             sliderFill.width = 200 * newVolume;
             volumeText.setText(Math.round(newVolume * 100) + '%');
-            
+
             this.saveSettings();
             if (volumeType === 'music') MusicManager.updateCurrentVolume(this);
-            
+
             // Play test sound for feedback
             if (volumeType === 'sfx' && newVolume > 0) {
                 SoundHelper.playSound(this, 'coin_collect', 0.3);
             }
-        });
-        
+        };
+
+        // Click (or drag) anywhere on the track to jump the slider there — not
+        // just a slow drag of the handle. The zone spans the full 200px track.
+        const sliderZone = this.add.zone(320, y, 200, 30)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerdown', (pointer) => applyVolume((pointer.x - 220) / 200));
+        // Keep the handle above the zone so grabbing it still starts a drag.
+        this.children.bringToTop(handle);
+
+        // Handle dragging
+        handle.on('drag', (pointer, dragX) => applyVolume((dragX - 220) / 200));
+
         // Store controls for cleanup
         this.volumeControls.push({
             type: volumeType,
@@ -468,7 +479,8 @@ export class MainMenuScene extends Phaser.Scene {
             bg: sliderBg,
             fill: sliderFill,
             handle: handle,
-            text: volumeText
+            text: volumeText,
+            zone: sliderZone
         });
     }
     

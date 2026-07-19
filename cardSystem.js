@@ -48,45 +48,52 @@ export class CardSystem {
       return !!w && ((w.poisonDamage || 0) > 0 || (w.name || '').toLowerCase().includes('venomous dagger'));
     }
     applyWeaponPoison(card, weapon) {
-      const poisonStacks = [];
+      if (!card?.data) return;
+      if (!card.data.statusEffects) card.data.statusEffects = [];
+
+      // Per-turn poison damage actually applied by THIS hit (drives the text).
+      let appliedDamage = 0;
+      const pushStack = (damage, turns) => {
+        card.data.statusEffects.push({ type: 'poison', damage, turns, stackable: true });
+        appliedDamage += damage;
+      };
+
+      // Native venomous weapons stack as before.
       if (this.isVenomousWeapon(weapon)) {
-        poisonStacks.push({
-          damage: Math.max(1, weapon.poisonDamage || 1),
-          turns: Math.max(1, weapon.poisonTurns || 3)
-        });
+        pushStack(Math.max(1, weapon.poisonDamage || 1), Math.max(1, weapon.poisonTurns || 3));
       }
 
+      // Gem poison. BASELINE no longer stacks: a single refreshed stack whose
+      // per-turn damage equals the socketed gem count (re-hitting refreshes it,
+      // never adds). The Poison Rune restores true stacking — one
+      // independent stack per gem, accumulating across hits.
       if (weapon?.gemEffect === 'poison') {
-        const stacks = CardDataGenerator.weaponGemStack(weapon);
-        for (let i = 0; i < stacks; i++) {
-          poisonStacks.push({
-            damage: 1,
-            turns: 3
-          });
+        const gemStacks = CardDataGenerator.weaponGemStack(weapon);
+        const canStack = this.scene.amuletManager?.isPoisonStackingEnabled?.() === true;
+        if (canStack) {
+          for (let i = 0; i < gemStacks; i++) pushStack(1, 3);
+        } else {
+          const existing = card.data.statusEffects.find(e => e.type === 'poison' && e.gemPoison);
+          if (existing) {
+            existing.turns = Math.max(existing.turns, 3);
+            existing.damage = Math.max(existing.damage, gemStacks);
+          } else {
+            card.data.statusEffects.push({ type: 'poison', damage: gemStacks, turns: 3, stackable: false, gemPoison: true });
+          }
+          appliedDamage += gemStacks;
         }
       }
 
+
+      // Relic-granted poison chance stacks as before.
       const relicEffects = this.scene.gameState?.relicEffects || {};
       if (relicEffects.weaponPoisonChance && Math.random() < relicEffects.weaponPoisonChance) {
-        poisonStacks.push({
-          damage: Math.max(1, relicEffects.poisonDamage || 1),
-          turns: Math.max(1, relicEffects.poisonTurns || 3)
-        });
+        pushStack(Math.max(1, relicEffects.poisonDamage || 1), Math.max(1, relicEffects.poisonTurns || 3));
       }
 
-      if (poisonStacks.length === 0) return;
-      if (!card.data.statusEffects) card.data.statusEffects = [];
-      poisonStacks.forEach(stack => {
-        card.data.statusEffects.push({
-          type: 'poison',
-          damage: stack.damage,
-          turns: stack.turns,
-          stackable: true
-        });
-      });
-      const totalDamage = poisonStacks.reduce((sum, stack) => sum + stack.damage, 0);
+      if (appliedDamage <= 0) return;
       this.scene.createFloatingText(card.sprite.x, card.sprite.y - 16, 'Poisoned!', 0x44ff44);
-      this.scene.createFloatingText(card.sprite.x, card.sprite.y - 32, `poison -${totalDamage}/turn`, 0x88dd88);
+      this.scene.createFloatingText(card.sprite.x, card.sprite.y - 32, `poison -${appliedDamage}/turn`, 0x88dd88);
 
       // Show looping poison icon at top-right corner of the enemy card
       if (card.sprite && !card.poisonMarker && this.scene.textures.exists('poisonedStatus')) {
@@ -295,6 +302,10 @@ export class CardSystem {
     // symmetrically (cx stays 340, right edge still clears the combat log) so
     // the extra room feeds HSTEP/VSTEP and the cards spread out.
     static FIXED_PANEL_640x360 = { left: 184, top: 50, width: 272, height: 272 };
+    // Shared tint for elite "special" cards — the mystery-back highlights AND
+    // the revealed mini-boss. A light, near-white pale tone (not yellow): reads
+    // as "lighter / highlighted" rather than a coloured cast.
+    static ELITE_HIGHLIGHT_TINT = 0xeef2fa;
     // Odd-row (r%2===1) offset neighbors for a "brick"/offset grid
     static OFFS_EVEN = [  // r % 2 === 0
       [+1,  0], [ 0, +1], [-1, +1],
@@ -766,7 +777,7 @@ export class CardSystem {
       const cf = this.scene.gameState?.currentFloor || 1;
       const roomType = this.scene.gameState?.roomType || this.scene.roomType || 'COMBAT';
       const cardCount = this._effectiveCardCount ? this._effectiveCardCount(roomType, cf) : Math.min(6 + Math.floor((cf - 1) * (20 / 44)), 26);
-      // 1) build a connected brick "blob" for a nicer cluster
+      // Build the standard compact brick cluster used by every combat floor.
       const cells = this.buildCompactBrickCluster(cardCount);
       // 2) compute steps & centering. Crowded boards request a widened area
       // and a larger per-cell step so cards actually use the wing panel.
@@ -779,6 +790,14 @@ export class CardSystem {
       // Cache layout so mid-floor respawns (Webweaver's Thread relic) can reuse positions.
       this._boardCells = cells;
       this._boardPlace = place;
+      // TEMP (prototype): "falling waves" test. On the wave-test floor the room
+      // refills in waves that drop from the top once the board is nearly empty,
+      // instead of one crowded board. Reset every floor so it never leaks.
+      this._waveState = null;
+      const WAVE_TEST_FLOOR = 5;
+      if (cf === WAVE_TEST_FLOOR && roomType === 'COMBAT') {
+        this._waveState = { wavesLeft: 2, threshold: 3, dropping: false };
+      }
       // 3) create the cards at proper pixels
       this.boardCards = new Array(cardCount).fill(null);
       let trapsPlaced = 0;
@@ -870,6 +889,7 @@ export class CardSystem {
       this.ensureEnemyMinimum(cf, roomType);
       this.injectAngryNestmother(cf, roomType);
       this.assignEliteMiniBoss(roomType);
+      this.assignEliteHighlightCards(roomType, cf);
       // 4) second-pass: safe neighbor build (using brick offsets)
       const indexByRC = new Map();
       for (let i = 0; i < this.boardCards.length; i++) {
@@ -904,9 +924,14 @@ export class CardSystem {
         this.convertCardToFood(cf);
       }
 
-      // === reveal 2–3 enemies with a front/back mix and try to keep them close ===
+      // === reveal a random 3–4 enemies with a front/back mix, kept close ===
+      // Opening reveals are randomized so floors don't always feel identical:
+      // normal floors (4+) open 3 most of the time and 4 now and then; floors
+      // 1-3 stay a calmer 2 for a gentle start. Relic bonuses stack on top,
+      // and the pick loop below caps at however many enemies actually exist.
       const extraRelicReveals = this.scene.gameState?.relicEffects?.revealExtraCard || 0;
-      const wantReveals = Math.min(3, ((cf >= 4) ? 3 : 2) + extraRelicReveals);
+      const baseReveals = (cf >= 4) ? (Math.random() < 0.4 ? 4 : 3) : 2;
+      const wantReveals = Math.min(4, baseReveals + extraRelicReveals);
       const enemyIdx = [];
       const frontIdx = [];
       const backIdx  = [];
@@ -914,6 +939,9 @@ export class CardSystem {
         if (!c) return;
         // Mimics stay hidden — the player must reveal them to start the timer.
         if (c.data?.isMimic) return;
+        // Elite "mystery" cards (mini-boss / hidden reward) stay face-down so the
+        // player chooses to gamble on flipping their glowing gold backs.
+        if (c.data?.highlightedBack) return;
         if (this.isEnemyType(c.data?.type)) {
           enemyIdx.push(i);
           if (c.data.role === 'MELEE') frontIdx.push(i); else backIdx.push(i);
@@ -984,6 +1012,7 @@ export class CardSystem {
         const candidates = [];
         this.boardCards.forEach((c, i) => {
           if (!c || c.revealed) return;
+          if (c.data?.highlightedBack) return; // keep elite mystery cards hidden
           const t = c.data?.type;
           if (t === 'enemy' || t === 'boss' || t === 'trap') return;
           candidates.push(i);
@@ -1241,6 +1270,8 @@ export class CardSystem {
           data
         };
         this.boardCards[index] = card;
+        // Restore the elite "mystery" gold back on still-hidden highlight cards.
+        if (!revealed && data.highlightedBack && cardSprite.setTint) cardSprite.setTint(CardSystem.ELITE_HIGHLIGHT_TINT);
         this.applyEliteMiniBossVisual(card);
 
         if (!revealed) {
@@ -1792,6 +1823,50 @@ export class CardSystem {
       data.attack = Math.max(1, Math.ceil((data.attack || 1) * 1.3));
     }
 
+    // Elite-room "mystery" hook: mark TWO face-down cards with a special glowing
+    // gold back so they catch the eye. One is the elite mini-boss (danger, kept
+    // hidden instead of auto-revealed); the other is swapped to a rare item or
+    // amulet (reward). Same back on both, so the player gambles on which is
+    // which. Elite rooms only. The tint is cleared when a card is flipped.
+    assignEliteHighlightCards(roomType, floor) {
+      if (roomType !== 'ELITE' || !this.boardCards?.length) return;
+
+      const HL_TINT = CardSystem.ELITE_HIGHLIGHT_TINT; // light, non-yellow highlight
+      const markHighlight = (card) => {
+        if (!card?.data) return;
+        card.data.highlightedBack = true;
+        if (!card.revealed && card.sprite?.setTint) card.sprite.setTint(HL_TINT);
+      };
+
+      // 1) The mini-boss is the "danger" highlight (already boosted + flagged).
+      const miniBoss = this.boardCards.find(c => c?.data?.isEliteMiniBoss);
+      if (miniBoss) markHighlight(miniBoss);
+
+      // 2) The "reward" highlight: overwrite a still-hidden, non-essential card
+      //    with a rare item or amulet. Prefer a non-enemy slot so the elite
+      //    fight keeps its teeth; fall back to any non-mini-boss card.
+      const isReplaceable = (c) => c?.data && !c.data.highlightedBack
+        && !c.data.isMimic && c.data.type !== 'boss' && c.data.type !== 'key';
+      const nonEnemy = this.boardCards.filter(c => isReplaceable(c) && !this.isEnemyType(c.data.type));
+      const pool = nonEnemy.length ? nonEnemy
+        : this.boardCards.filter(c => isReplaceable(c) && !c.data.isEliteMiniBoss);
+      if (!pool.length) return;
+
+      const rewardCard = Phaser.Utils.Array.GetRandom(pool);
+      const brick = rewardCard.data.brick;
+      let rewardData;
+      if (Math.random() < 0.45) {
+        rewardData = this.createCardData('amulet', floor, false, this.scene.gameState);
+      } else {
+        const t = Phaser.Utils.Array.GetRandom(['weapon', 'armor']);
+        rewardData = this.createCardData(t, floor, false, null, 'rare');
+      }
+      if (!rewardData) return;
+      if (brick) rewardData.brick = brick;
+      rewardCard.data = rewardData;
+      markHighlight(rewardCard);
+    }
+
     // The Angry Nestmother stalks the player for the rest of the run in which
     // they stole her egg (birdAngry, set by the bird-nest event and reset each
     // new run). She turns up "once in a while" in regular AND elite battles —
@@ -1923,6 +1998,12 @@ export class CardSystem {
             SoundHelper.playVariant(this.scene, 'legendary_reveal', 0.6);
         }
         card.revealed = true;
+        // Elite "mystery" card being flipped — drop the gold back highlight so
+        // the real card (or the mini-boss's own yellow tint) shows cleanly.
+        if (card.data?.highlightedBack) {
+            card.sprite?.clearTint?.();
+            card.data.highlightedBack = false;
+        }
         if (card.data?.tutorialTag) {
             this.scene.events.emit('tutorialProgress', `revealed:${card.data.tutorialTag}`);
             this.scene.tutorialManager?._handleProgress?.(`revealed:${card.data.tutorialTag}`);
@@ -2029,7 +2110,7 @@ export class CardSystem {
 
     applyEliteMiniBossVisual(card) {
         if (!card?.revealed || !card.data?.isEliteMiniBoss || !card.sprite?.setTint) return;
-        card.sprite.setTint(0xfff0c8);
+        card.sprite.setTint(CardSystem.ELITE_HIGHLIGHT_TINT);
     }
 
     handleTrap(card, index) {
@@ -2975,6 +3056,120 @@ export class CardSystem {
         return true;
     }
 
+    // Rebuild the brick-neighbor links across the whole board. Cheap; run it
+    // after adding cards mid-floor (e.g. a falling wave) so reveal-behind and
+    // fire-splash adjacency stay correct.
+    _rebuildBrickNeighbors() {
+        const indexByRC = new Map();
+        for (let i = 0; i < this.boardCards.length; i++) {
+            const card = this.boardCards[i];
+            if (!card || !card.data?.brick) continue;
+            const { r, c } = card.data.brick;
+            indexByRC.set(`${r},${c}`, i);
+            card.data.brickNeighbors = [];
+        }
+        for (let i = 0; i < this.boardCards.length; i++) {
+            const card = this.boardCards[i];
+            if (!card || !card.data?.brick) continue;
+            const { r, c } = card.data.brick;
+            const OFFS = (r & 1) ? CardSystem.OFFS_ODD : CardSystem.OFFS_EVEN;
+            const nbrs = [];
+            for (const [dc, dr] of OFFS) {
+                const key = `${r + dr},${c + dc}`;
+                if (indexByRC.has(key)) nbrs.push(indexByRC.get(key));
+            }
+            card.data.brickNeighbors = nbrs;
+        }
+    }
+
+    // Prototype "falling wave": refill every currently-empty board cell with a
+    // fresh face-down card that drops in from above the panel and bounces to
+    // rest, staggered into a cascade. Reuses the cached floor layout
+    // (_boardCells / _boardPlace) so the new cards land on the original grid.
+    dropWaveCards() {
+        if (!this._boardCells || !this._boardPlace) { if (this._waveState) this._waveState.dropping = false; return false; }
+
+        // Every empty slot that still has a cached cell to drop into.
+        const emptySlots = [];
+        for (let i = 0; i < this.boardCards.length; i++) {
+            if (!this.boardCards[i] && this._boardCells[i]) emptySlots.push(i);
+        }
+        if (!emptySlots.length) { if (this._waveState) this._waveState.dropping = false; return false; }
+
+        if (this._waveState) this._waveState.dropping = true;
+        const cf = this.scene.gameState?.currentFloor || 1;
+        const roomType = this.scene.gameState?.roomType || this.scene.roomType || 'COMBAT';
+
+        // Cascade order: top rows first, then left→right, so it reads as a pour.
+        emptySlots.sort((a, b) => {
+            const ca = this._boardCells[a], cb = this._boardCells[b];
+            return (ca.r - cb.r) || (ca.c - cb.c);
+        });
+
+        const STAGGER = 90, FALL_MS = 430, DROP_HEIGHT = 280;
+        emptySlots.forEach((slot, order) => {
+            const cell = this._boardCells[slot];
+            const { x, y } = this.brickToPixel(cell.r, cell.c, this._boardPlace);
+
+            const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6).setAlpha(0);
+            const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y - DROP_HEIGHT, 'cardBack'));
+            cardSprite.setScale(1).setInteractive();
+            cardSprite.on('pointerdown', () => this.revealCard(slot));
+            cardSprite.on('pointerover', () => {
+                const c = this.boardCards[slot];
+                if (c && !c.revealed) {
+                    shadow.setAlpha(1);
+                    this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
+                    cardSprite.setTexture('cardBack');
+                    snapOriginToPixelGrid(cardSprite);
+                    if (this.scene.anims.exists('card_hover_anim')) cardSprite.play('card_hover_anim');
+                }
+            });
+            cardSprite.on('pointerout', () => {
+                const c = this.boardCards[slot];
+                if (c && !c.revealed) {
+                    shadow.setAlpha(0);
+                    this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
+                    cardSprite.stop();
+                    cardSprite.setTexture('cardBack');
+                    snapOriginToPixelGrid(cardSprite);
+                }
+            });
+
+            // Fresh floor-appropriate card (mostly enemies, via pickCardType).
+            const desiredRole = cell.r > 0 ? 'MELEE' : 'RANGED';
+            const type = this.pickCardType(cf);
+            const data = this.createCardData(type, cf, roomType === 'ELITE', null, null, desiredRole);
+            if (data) {
+                data.brick = { r: cell.r, c: cell.c };
+                if (this.isEnemyType(data.type)) data.role = desiredRole;
+            }
+            this.boardCards[slot] = { sprite: cardSprite, shadow, revealed: false, data };
+
+            this.scene.tweens.add({
+                targets: cardSprite,
+                y,
+                delay: order * STAGGER,
+                duration: FALL_MS,
+                ease: 'Bounce.easeOut',
+                onComplete: () => { if (cardSprite.active) SoundHelper.playVariant(this.scene, 'card_place', 0.35); }
+            });
+        });
+
+        this.scene.createFloatingText?.(320, 70, 'Reinforcements!', 0xffcc66);
+
+        // After the last card lands, refresh adjacency/bands, release the lock,
+        // and re-check clear (in case the wave was all loot and is already thin).
+        const settleMs = (emptySlots.length - 1) * STAGGER + FALL_MS + 60;
+        this.scene.time.delayedCall(settleMs, () => {
+            this._rebuildBrickNeighbors();
+            if (this._boardPlace?.VSTEP) this.computeRowBands(this.boardCards, this._boardPlace.VSTEP);
+            if (this._waveState) this._waveState.dropping = false;
+            this.checkFloorClear();
+        });
+        return true;
+    }
+
     // Shared evasion check. An enemy carrying an { type: 'evade', chance }
     // ability (e.g. the Lost Soul) has that chance to phase through a direct
     // attack — the player's weapon/magic OR a companion strike. Returns true when
@@ -3152,11 +3347,13 @@ export class CardSystem {
 
     // How far a fire gem's splash reaches, measured from the struck enemy's
     // centre to the nearest EDGE of any other enemy. 70px keeps it to
-    // directly-adjacent cards instead of a wide blast; Ember Rune extends it.
+    // directly-adjacent cards instead of a wide blast; Fire Rune extends it.
     // The drag-time reach ring reads this too, so the ring can never promise a
     // radius the damage doesn't deliver.
     getFireSplashRadius() {
-        return 70 + (this.scene.amuletManager?.getFireSplashRadiusBonus?.() || 0);
+        // Baseline trimmed 70 → 65 to make fire gems weaker early. The Ember
+        // Rune amulet adds its splash bonus back on top (and then some).
+        return 65 + (this.scene.amuletManager?.getFireSplashRadiusBonus?.() || 0);
     }
 
     applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
@@ -3194,10 +3391,13 @@ export class CardSystem {
 
         if (weapon.gemEffect === 'lightning') {
             // Lightning: flat zap by gem stack (stacks 4–5 provisional).
-            // Always hits 3 enemies total: main target + 2 others.
-            // Stacks only increase the damage.
+            // Baseline hits 2 enemies total (main + 1 other) — nerfed from 3 to
+            // make lightning gems weaker early. The Lightning Rune
+            // adds +1 extra zap target (back to 3 total). Gem stacks only change
+            // the damage, never the number of targets.
+            // Back-row RANGED enemies prioritized as zap targets.
             const zapDamage = [3, 4, 5, 6, 7][stack - 1];
-            const extraZaps = 2; // always 2 additional = 3 total
+            const extraZaps = 1 + (this.scene.amuletManager?.getExtraZapTargets?.() || 0);
             // One random zap SFX per lightning-gem swing (not per hop). Sits on
             // the gem beat so the zap answers the sword hit instead of racing it.
             CombatSequencer.playVariant(this.scene, 'gem', 'lightning_zap', 0.45);
@@ -3327,9 +3527,9 @@ export class CardSystem {
             CombatSequencer.floatingText(this.scene, 'gem', card.sprite.x, card.sprite.y - 18, `-${amount} Fire`, 0xff7040);
             CombatSequencer.shakeCard(this.scene, 'gem', card.sprite);
             this.updateEnemyInfoText(card);
-        } else if (card.sprite?.scene) {
-            CombatSequencer.floatingText(this.scene, 'gem', card.sprite.x, card.sprite.y - 18, `-${amount} Burn`, 0xff7040);
         }
+        // Face-down (unrevealed) enemies still take the damage above, but show no
+        // floating text — we don't want to hint that a hidden card is being hit.
         if (card.data.health <= 0) this.removeDefeatedEnemy(index, card);
     }
 
@@ -3589,6 +3789,22 @@ export class CardSystem {
         // the player via setupBossRewardRoom() — racing against the death screen
         // that gameState.takeDamage() already scheduled.
         if (this.scene.gameState.playerHealth <= 0) return;
+
+        // Wave-refill prototype: while this floor still has waves left, don't let
+        // it clear. Once the board is nearly empty — or the fight is fully won —
+        // drop the next wave from the top instead. A wave is only spent if cards
+        // actually dropped. When the waves run out, normal clear resumes below.
+        if (this._waveState && this._waveState.wavesLeft > 0) {
+            if (this._waveState.dropping) return;            // a wave is mid-fall
+            const liveCount = this.boardCards.filter(Boolean).length;
+            const enemiesLeft = this.boardCards.some(c =>
+                c && this.isEnemyType(c.data?.type) && (c.data?.health ?? 1) > 0 && !c.data?.isMimic
+            );
+            if (liveCount <= this._waveState.threshold || !enemiesLeft) {
+                if (this.dropWaveCards()) this._waveState.wavesLeft--;
+            }
+            return;                                          // hold the floor open
+        }
 
         const enemiesRemaining = this.boardCards.some(c =>
             c && c.revealed && this.isEnemyType(c.data?.type) && (c.data?.health ?? 1) > 0

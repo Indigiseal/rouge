@@ -22,7 +22,7 @@ export class MapViewScene extends Phaser.Scene {
     this.currentAct = Math.min(3, Math.max(1, Math.floor((cf - 1) / 15) + 1));
 
     // Build/keep full map. Regenerate when shape changes or when new node types were added.
-    const MAP_VERSION = 6; // v6 enforces the non-combat cap after the room guarantees, + 3 events per act
+    const MAP_VERSION = 7; // v7 adds two guaranteed elite nodes per act
     const hasCurrentMapShape =
       this.gameState.dungeonMap?.act1?.floors?.length === 15 &&
       this.gameState.dungeonMap?._version === MAP_VERSION;
