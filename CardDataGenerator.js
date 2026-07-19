@@ -1,8 +1,36 @@
 import { getAmuletAtlasPresentation } from './utils/RelicsOthersAtlas.js';
 import { areAmuletsDisabled } from './utils/TestOptions.js';
-import { KNOBS, enemyHpScale, enemyAtkScale, globalCombatMult, postBossWeaponFloor, actForFloor } from './sim/balance-knobs.js';
+
+function postBossWeaponFloor(floor) {
+  return (floor >= 16 && floor <= 19) || (floor >= 31 && floor <= 34);
+}
 
 export class CardDataGenerator {
+    // Gem socket capacity by weapon rarity. Overflow on merge / mixed gems:
+    // see docs/OPEN-QUESTIONS.md.
+    static GEM_SLOTS_BY_RARITY = {
+        common: 1,
+        uncommon: 2,
+        rare: 3,
+        epic: 4,
+        legendary: 5
+    };
+
+    static gemSlotsForRarity(rarity) {
+        return CardDataGenerator.GEM_SLOTS_BY_RARITY[rarity] || 1;
+    }
+
+    static weaponGemSlots(weapon) {
+        if (!weapon) return 1;
+        if (weapon.gemSlots != null) return weapon.gemSlots;
+        return CardDataGenerator.gemSlotsForRarity(weapon.rarity);
+    }
+
+    static weaponGemStack(weapon) {
+        const slots = CardDataGenerator.weaponGemSlots(weapon);
+        return Math.max(1, Math.min(slots, weapon?.gemCount || 1));
+    }
+
     constructor() {
         this.initializeWeaponUnlocks();
         this.initializeArmorUnlocks();
@@ -81,27 +109,27 @@ export class CardDataGenerator {
         if (weights.boss) return weights;
 
         const balanced = { ...weights };
-        const weaponMinimum = floor >= 31 ? 12 : floor >= 18 ? 11 : floor >= 11 ? 9 : 7;
-        const weaponBoost = floor >= 31 ? 4 : floor >= 18 ? 3 : floor >= 11 ? 1 : 0;
-        const postBossMin = postBossWeaponFloor(floor) ? KNOBS.postBossWeaponMin : 0;
-        const postBossBoost = postBossWeaponFloor(floor) ? KNOBS.postBossWeaponBoost : 0;
-        const inAct2 = actForFloor(floor) === 'act2';
-        const act2WeaponScale = inAct2 ? (KNOBS.act2WeaponMult ?? 1) : 1;
-        const weaponMinBonus = inAct2
-            ? Math.max(0, Math.floor((KNOBS.weaponMinBonus ?? 0) * (KNOBS.act2WeaponMinFactor ?? 0.35)))
-            : (KNOBS.weaponMinBonus ?? 0);
+        // All values below are REAL spawn numbers (rebalance "pure-runs-v1"):
+        // no knob multipliers. Weapon supply is the main survival faucet for
+        // the dagger+bow starting loadout, so its minimums are the first lever
+        // to touch when moving the reach-F15 target.
+        const weaponMinimum = floor >= 31 ? 12 : floor >= 16 ? 11 : 9;
+        const weaponBoost = floor >= 31 ? 4 : floor >= 16 ? 3 : 1;
+        // Post-boss recovery windows (F16-19, F31-34): fresh act weapons.
+        const postBossMin = postBossWeaponFloor(floor) ? 2 : 0;
+        const postBossBoost = postBossWeaponFloor(floor) ? 8 : 0;
 
         const enemyMultiplier = floor <= 14 ? 0.68 : floor <= 23 ? 0.78 : floor <= 30 ? 0.70 : 0.78;
-        balanced.enemy = Math.max(20, Math.floor((balanced.enemy || 0) * enemyMultiplier * (inAct2 ? (KNOBS.act2EnemyWeightMult ?? 1) : 1)));
+        balanced.enemy = Math.max(20, Math.floor((balanced.enemy || 0) * enemyMultiplier));
         balanced.coin = Math.max(1, Math.floor((balanced.coin || 0) * 0.25));
         balanced.trap = Math.max(3, Math.floor((balanced.trap || 0) * 0.75));
         balanced.weapon = Math.max(
-            weaponMinimum + weaponMinBonus + postBossMin,
-            Math.floor((balanced.weapon || 0) * 0.95 * KNOBS.weaponWeightMult * act2WeaponScale) + weaponBoost + postBossBoost
+            weaponMinimum + postBossMin,
+            Math.floor((balanced.weapon || 0) * 0.95) + weaponBoost + postBossBoost
         );
         balanced.armor = Math.max(
             floor >= 18 ? 12 : 10,
-            Math.ceil((balanced.armor || 0) * 1.15 * KNOBS.armorWeightMult)
+            Math.ceil((balanced.armor || 0) * 1.15)
         );
         // Amulets were flooding the late game (~22% of cards, 4-5 per floor),
         // which trivialized runs once you stacked a dozen+. Cut the weight hard
@@ -161,14 +189,16 @@ export class CardDataGenerator {
         this.weaponUnlocks = {
             dagger: {
                 common: { floor: 1, damage: 3, sprite: 'dagger_C', special: 'dualWield' },
-                uncommon: { floor: 10, damage: 4, sprite: 'dagger_U', special: 'dualWield' },
+                uncommon: { floor: 8, damage: 4, sprite: 'dagger_U', special: 'dualWield' },
                 rare: { floor: 18, damage: 5, sprite: 'dagger_R', special: 'dualWield' },
                 epic: { floor: 26, damage: 6, sprite: 'dagger_E', special: 'dualWield' },
                 legendary: { floor: 34, damage: 7, sprite: 'dagger_L', special: 'dualWield' }
             },
             bow: {
-                common: { floor: 8, damage: 4, sprite: 'bow_c', special: 'block', range: 'ranged' },
-                uncommon: { floor: 18, damage: 5, sprite: 'bow_U', special: 'block', range: 'ranged' },
+                // Common from F1: the bow is half of the starting loadout, so
+                // its resupply must exist from the very first floors.
+                common: { floor: 1, damage: 4, sprite: 'bow_c', special: 'block', range: 'ranged' },
+                uncommon: { floor: 12, damage: 5, sprite: 'bow_U', special: 'block', range: 'ranged' },
                 rare: { floor: 24, damage: 6, sprite: 'bow_R', special: 'block', range: 'ranged' },
                 epic: { floor: 30, damage: 7, sprite: 'bow_E', special: 'block', range: 'ranged' },
                 legendary: { floor: 38, damage: 9, sprite: 'bow_L', special: 'block', range: 'ranged' }
@@ -176,8 +206,8 @@ export class CardDataGenerator {
             sword: {
                 // Act 2 weapon — appears fresh at the act-2 start (floor 16) and merges
                 // up through act 2 before the axe takes over in act 3. Deliberately
-                // NOT available in act 1: the two starting swords are the whole act-1
-                // sword budget, so weapon durability is the act-1 boss's real teeth.
+                // NOT available in act 1: act 1 belongs to the dagger+bow loadout,
+                // and the sword is the act-2 power jump.
                 common: { floor: 16, damage: 6, sprite: 'sword_C', special: null },
                 uncommon: { floor: 19, damage: 7, sprite: 'sword_U', special: null },
                 rare: { floor: 22, damage: 8, sprite: 'sword_R', special: null },
@@ -197,20 +227,22 @@ export class CardDataGenerator {
     }
 
     initializeArmorUnlocks() {
-        // REMOVED reflection property from all armor types
+        // REMOVED reflection property from all armor types.
+        // Only leather is in the drop pool for now (createArmorCard filters).
+        // Chain/plate data kept for merge/force helpers + future re-enable —
+        // design notes in docs/OPEN-QUESTIONS.md.
         this.armorUnlocks = {
             leather: {
-                // Dodge ladder rebalanced — legendary caps at 15% (was 25%);
-                // lower tiers scaled down so the gradient stays meaningful.
-                common:    { floor: 1,  protection: 1, dodgeChance: 0.05, sprite: 'leather_C' },
-                uncommon:  { floor: 10, protection: 2, dodgeChance: 0.08, sprite: 'leather_U' },
-                rare:      { floor: 18, protection: 3, dodgeChance: 0.10, sprite: 'leather_R' },
-                epic:      { floor: 26, protection: 4, dodgeChance: 0.12, sprite: 'leather_E' },
-                legendary: { floor: 34, protection: 5, dodgeChance: 0.15, sprite: 'leather_L' }
+                // Dodge-only armor: no protection. Durability ticks on successful dodge.
+                common:    { floor: 1,  protection: 0, dodgeChance: 0.10, sprite: 'leather_C' },
+                uncommon:  { floor: 10, protection: 0, dodgeChance: 0.15, sprite: 'leather_U' },
+                rare:      { floor: 18, protection: 0, dodgeChance: 0.20, sprite: 'leather_R' },
+                epic:      { floor: 26, protection: 0, dodgeChance: 0.25, sprite: 'leather_E' },
+                legendary: { floor: 34, protection: 0, dodgeChance: 0.30, sprite: 'leather_L' }
             },
             chain: {
-                // Act 2 armor — appears fresh at the act-2 start (floor 16) and merges
-                // up through act 2 before plate takes over in act 3.
+                // DISABLED from spawn pool. Planned: no dodge; durability ticks
+                // every 2/3/4/5/6 enemy attacks by rarity.
                 common:    { floor: 16, protection: 2, sprite: 'chain_C' },
                 uncommon:  { floor: 19, protection: 3, sprite: 'chain_U' },
                 rare:      { floor: 22, protection: 4, sprite: 'chain_R' },
@@ -218,8 +250,8 @@ export class CardDataGenerator {
                 legendary: { floor: 28, protection: 7, sprite: 'chain_L' }
             },
             plate: {
-                // Act 3 only — the endgame armor. Spread across floors 31-45 to mirror
-                // the axe: found fresh in act 3, then merged up to legendary by the end.
+                // DISABLED from spawn pool. Planned: no dodge; 1 durability blocks
+                // 1/2/3/4/5 damage from a single enemy hit by rarity.
                 common:    { floor: 31, protection: 3,  sprite: 'plate_C' },
                 uncommon:  { floor: 34, protection: 5,  sprite: 'plate_U' },
                 rare:      { floor: 37, protection: 7,  sprite: 'plate_R' },
@@ -237,13 +269,13 @@ export class CardDataGenerator {
                 role: 'MELEE',
                 minFloor: 1,
                 tiers: [
-                    // Act 1 softened by ~1 dmg (floors 1-14).
-                    // Act 2 (floor 15+) and Act 3 (floor 31+) trimmed -1 dmg
-                    // and ~10% HP for a gentler curve where the bot stalls.
-                    { minFloor: 1,  damage: 6,  health: 9  },
-                    { minFloor: 5,  damage: 8,  health: 12 },
+                    // Act 1 softened for dagger+bow start (reach-F15 target ~50%).
+                    { minFloor: 1,  damage: 5,  health: 8  },
+                    { minFloor: 5,  damage: 7,  health: 11 },
                     { minFloor: 10, damage: 8,  health: 12 },
                     { minFloor: 15, damage: 8,  health: 14 },
+                    // Act 2: +20% HP vs F15 tier (steepen reach curve).
+                    { minFloor: 16, damage: 8,  health: 17 },
                     { minFloor: 31, damage: 11, health: 20 }
                 ]
             },
@@ -253,12 +285,12 @@ export class CardDataGenerator {
                 role: 'MELEE',
                 minFloor: 3,
                 tiers: [
-                    // Act 2/3 trimmed -1 dmg and ~10% HP to ease the curve.
-                    { minFloor: 3,  damage: 5,  health: 8  },
-                    { minFloor: 8,  damage: 6,  health: 10 },
+                    { minFloor: 3,  damage: 4,  health: 7  },
+                    { minFloor: 8,  damage: 5,  health: 9  },
                     { minFloor: 13, damage: 5,  health: 9  },
-                    { minFloor: 16, damage: 6,  health: 9  },
-                    { minFloor: 18, damage: 7,  health: 13 },
+                    // Act 2+ tiers: +20% HP.
+                    { minFloor: 16, damage: 6,  health: 11 },
+                    { minFloor: 18, damage: 7,  health: 16 },
                     { minFloor: 31, damage: 10, health: 18 }
                 ],
                 abilities: [{ type: 'poison', damage: 2, turns: 3, stackable: true }]
@@ -269,12 +301,12 @@ export class CardDataGenerator {
                 role: 'MELEE',
                 minFloor: 4,
                 tiers: [
-                    // Act 2/3 trimmed -1 dmg and ~10% HP.
-                    { minFloor: 4,  damage: 6,  health: 10 },
-                    { minFloor: 11, damage: 8,  health: 12 },
-                    { minFloor: 16, damage: 9,  health: 14 },
-                    { minFloor: 20, damage: 9,  health: 14 },
-                    { minFloor: 31, damage: 11, health: 20 }
+                    { minFloor: 4,  damage: 5,  health: 9  },
+                    { minFloor: 11, damage: 8,  health: 11 },
+                    // Act 2+ tiers: +20% HP.
+                    { minFloor: 16, damage: 10,  health: 17 },
+                    { minFloor: 20, damage: 10,  health: 17 },
+                    { minFloor: 31, damage: 12, health: 20 }
                 ],
                 abilities: [{ type: 'coin_steal', chance: 0.5, amount: 1 }]
             },
@@ -284,13 +316,13 @@ export class CardDataGenerator {
                 role: 'RANGED',
                 minFloor: 2,
                 tiers: [
-                    // Act 2/3 trimmed -1 dmg and ~15% HP.
                     { minFloor: 2,  damage: 3,  health: 5  },
-                    { minFloor: 7,  damage: 4,  health: 8  },
+                    { minFloor: 7,  damage: 3,  health: 7  },
                     { minFloor: 12, damage: 4,  health: 7  },
-                    { minFloor: 16, damage: 5,  health: 7  },
-                    { minFloor: 22, damage: 7,  health: 10 },
-                    { minFloor: 31, damage: 8,  health: 13 }
+                    // Act 2+ tiers: +20% HP.
+                    { minFloor: 16, damage: 6,  health: 9  },
+                    { minFloor: 22, damage: 8,  health: 12 },
+                    { minFloor: 31, damage: 9,  health: 13 }
                 ],
                 abilities: []
             },
@@ -300,13 +332,13 @@ export class CardDataGenerator {
                 role: 'RANGED',
                 minFloor: 6,
                 tiers: [
-                    // Act 2/3 trimmed -1 dmg and ~15% HP.
-                    { minFloor: 6,  damage: 3,  health: 6  },
-                    { minFloor: 11, damage: 4,  health: 8  },
-                    { minFloor: 16, damage: 5,  health: 8  },
-                    { minFloor: 17, damage: 5,  health: 8  },
-                    { minFloor: 25, damage: 7,  health: 10 },
-                    { minFloor: 31, damage: 8,  health: 13 }
+                    { minFloor: 6,  damage: 3,  health: 5  },
+                    { minFloor: 11, damage: 4,  health: 7  },
+                    // Act 2+ tiers: +20% HP.
+                    { minFloor: 16, damage: 6,  health: 10 },
+                    { minFloor: 17, damage: 6,  health: 10 },
+                    { minFloor: 25, damage: 8,  health: 12 },
+                    { minFloor: 31, damage: 9,  health: 13 }
                 ],
                 abilities: []
             },
@@ -321,9 +353,10 @@ export class CardDataGenerator {
                 role: 'MELEE',
                 minFloor: 16,
                 tiers: [
-                    { minFloor: 16, damage: 6, health: 8  },
-                    { minFloor: 24, damage: 7, health: 10 },
-                    { minFloor: 31, damage: 9, health: 13 }
+                    // Act 2 exclusive (+20% HP pass).
+                    { minFloor: 16, damage: 7, health: 10 },
+                    { minFloor: 24, damage: 8, health: 12 },
+                    { minFloor: 31, damage: 11, health: 13 }
                 ],
                 abilities: [{ type: 'evade', chance: 0.3 }]
             },
@@ -342,8 +375,9 @@ export class CardDataGenerator {
                 role: 'MELEE',
                 minFloor: 16,
                 tiers: [
-                    { minFloor: 16, damage: 7, health: 9  },
-                    { minFloor: 31, damage: 9, health: 12 }
+                    // Boss-summon only; act 2 tier +20% HP.
+                    { minFloor: 16, damage: 8, health: 11 },
+                    { minFloor: 31, damage: 10, health: 12 }
                 ]
             }
         };
@@ -364,8 +398,8 @@ export class CardDataGenerator {
             giantSkeleton: {
                 type: 'boss', tier: 1,
                 name: 'Giant Skeleton',
-                health: 44,
-                attack: 6,
+                health: 66,
+                attack: 10,
                 armor: 2,
                 sprite: 'giantSkeleton',
                 abilities: [
@@ -386,11 +420,14 @@ export class CardDataGenerator {
             spiderQueen: {
                 type: 'boss', tier: 1,
                 name: 'Spider Queen',
-                health: 64,
-                attack: 12,
+                health: 60,
+                attack: 10,
                 sprite: 'SpiderQween',
                 abilities: [
-                    { type: 'poison', damage: 3, turns: 3, stackable: true, maxStacks: 3 },
+                    // Poison 3 -> 2 dmg: power-budget put her fight cost 43%
+                    // above the tier median — the DoT stacked on top of median
+                    // stats made her the unlucky roll of tier 1.
+                    { type: 'poison', damage: 2, turns: 3, stackable: true, maxStacks: 3 },
                     { type: 'summon', enemyType: 'spider', chance: 0.35, count: 1 }
                 ]
             },
@@ -399,7 +436,7 @@ export class CardDataGenerator {
             soulEater: {
                 type: 'boss', tier: 2,
                 name: 'Soul Eater',
-                health: 100,
+                health: 120,
                 attack: 15,
                 sprite: 'SoulEater',
                 // A slippery bruiser, NOT a healer (that's the Lich's profile).
@@ -416,7 +453,8 @@ export class CardDataGenerator {
             lich: {
                 type: 'boss', tier: 2,
                 name: 'Lich',
-                health: 102,
+                // +20% HP vs prior 110 (act-2 boss HP pass).
+                health: 132,
                 attack: 15,
                 sprite: 'Lich',
                 abilities: [
@@ -427,10 +465,8 @@ export class CardDataGenerator {
             cerberus: {
                 type: 'boss', tier: 2,
                 name: 'Cerberus',
-                // Pulled toward the tier average (was 128 HP / rage x2 — an
-                // 80%-more-HP luck swing vs rolling the Lich, and its raged
-                // ~34-damage hits were the deadliest spike in the sim).
-                health: 105,
+                // +20% HP vs prior 105 (act-2 boss HP pass).
+                health: 126,
                 attack: 15,
                 sprite: 'Cerberus',
                 abilities: [
@@ -503,50 +539,60 @@ export class CardDataGenerator {
     }
 
     initializeAmuletData() {
+        // Every droppable amulet belongs to a group — the seed of the future
+        // class system (see docs/BALANCE-AMULETS.md):
+        //   offense  — damage / weapon synergy (warrior-rogue leaning)
+        //   survival — HP, regen, dodge, healing (tank leaning)
+        //   magic    — AP economy, spells, gems (mage leaning)
+        //   utility  — economy/exploration, no class identity
+        // The first amulet of a run steers toward a class group (see
+        // createAmuletCard); weights of sweep-proven outliers (dragonClaw,
+        // bottomlessBag, evasionBoots) are trimmed so no single pickup
+        // dominates the run.
         const dropData = [
             // Regular amulets
-            { id: 'regeneration',     minFloor: 1,  weight: 10, rarity: 'uncommon' },
-            { id: 'healingRing',      minFloor: 2,  weight: 10, rarity: 'uncommon' },
-            { id: 'invulnerability',  minFloor: 15, weight: 2,  rarity: 'legendary' },
-            { id: 'evasionBoots',     minFloor: 3,  weight: 8,  rarity: 'uncommon' },
-            { id: 'dragonClaw',       minFloor: 8,  weight: 5,  rarity: 'rare' },
-            { id: 'greedPouch',       minFloor: 1,  weight: 10, rarity: 'uncommon' },
-            { id: 'golemHeart',       minFloor: 2,  weight: 8,  rarity: 'uncommon' },
-            { id: 'chronosHeart',     minFloor: 5,  weight: 5,  rarity: 'rare' },
-            { id: 'speedBoots',       minFloor: 4,  weight: 6,  rarity: 'rare' },
-            { id: 'abyssHourglass',   minFloor: 3,  weight: 8,  rarity: 'uncommon' },
-            { id: 'temperedSteel',    minFloor: 6,  weight: 6,  rarity: 'rare' },
-            { id: 'bottomlessBag',    minFloor: 1,  weight: 7,  rarity: 'common' },
-            { id: 'travelKitchen',    minFloor: 2,  weight: 8,  rarity: 'uncommon' },
-            { id: 'vampiricRing',     minFloor: 4,  weight: 7,  rarity: 'uncommon' },
-            { id: 'soulHarvester',    minFloor: 10, weight: 4,  rarity: 'rare' },
+            { id: 'regeneration',     minFloor: 1,  weight: 10, rarity: 'uncommon',  group: 'survival' },
+            { id: 'healingRing',      minFloor: 2,  weight: 10, rarity: 'uncommon',  group: 'survival' },
+            { id: 'invulnerability',  minFloor: 15, weight: 2,  rarity: 'legendary', group: 'survival' },
+            { id: 'evasionBoots',     minFloor: 3,  weight: 6,  rarity: 'uncommon',  group: 'survival' },
+            { id: 'dragonClaw',       minFloor: 8,  weight: 3,  rarity: 'rare',      group: 'offense' },
+            { id: 'greedPouch',       minFloor: 1,  weight: 10, rarity: 'uncommon',  group: 'utility' },
+            { id: 'golemHeart',       minFloor: 2,  weight: 8,  rarity: 'uncommon',  group: 'survival' },
+            { id: 'chronosHeart',     minFloor: 5,  weight: 5,  rarity: 'rare',      group: 'magic' },
+            { id: 'speedBoots',       minFloor: 4,  weight: 6,  rarity: 'rare',      group: 'magic' },
+            { id: 'abyssHourglass',   minFloor: 3,  weight: 8,  rarity: 'uncommon',  group: 'magic' },
+            { id: 'temperedSteel',    minFloor: 6,  weight: 6,  rarity: 'rare',      group: 'offense' },
+            { id: 'bottomlessBag',    minFloor: 1,  weight: 5,  rarity: 'common',    group: 'utility' },
+            { id: 'travelKitchen',    minFloor: 2,  weight: 8,  rarity: 'uncommon',  group: 'magic' },
+            { id: 'vampiricRing',     minFloor: 4,  weight: 7,  rarity: 'uncommon',  group: 'survival' },
+            { id: 'soulHarvester',    minFloor: 10, weight: 4,  rarity: 'rare',      group: 'survival' },
 
             // Carrion Oath (hungryDagger) — reworked into a beneficial poison-cleanse
             // amulet, so it now sits with the regular rares instead of the cursed pool.
-            { id: 'hungryDagger',     minFloor: 10, weight: 4,  rarity: 'rare' },
+            { id: 'hungryDagger',     minFloor: 10, weight: 4,  rarity: 'rare',      group: 'survival' },
 
             // Cursed amulets
-            { id: 'bloodyHarvest',    minFloor: 10, weight: 4,  rarity: 'cursed' },
-            { id: 'eternalRage',      minFloor: 8,  weight: 4,  rarity: 'cursed' },
-            { id: 'berserkerBelt',    minFloor: 14, weight: 3,  rarity: 'cursed' },
+            { id: 'bloodyHarvest',    minFloor: 10, weight: 4,  rarity: 'cursed',    group: 'survival' },
+            { id: 'eternalRage',      minFloor: 8,  weight: 4,  rarity: 'cursed',    group: 'offense' },
+            { id: 'berserkerBelt',    minFloor: 14, weight: 3,  rarity: 'cursed',    group: 'offense' },
 
             // Exploration and utility amulets
-            { id: 'diviners_spade',   minFloor: 2,  weight: 7,  rarity: 'uncommon' },
-            { id: 'wayfinder',        minFloor: 4,  weight: 5,  rarity: 'rare' },
-            { id: 'skeletonKey',      minFloor: 3,  weight: 5,  rarity: 'rare' },
-            { id: 'greasewingFeast',  minFloor: 5,  weight: 6,  rarity: 'uncommon' },
-            { id: 'sunstone',         minFloor: 6,  weight: 5,  rarity: 'rare' },
-            { id: 'merchantPact',     minFloor: 3,  weight: 5,  rarity: 'rare' },
-            { id: 'watchersLamp',     minFloor: 4,  weight: 5,  rarity: 'rare' },
-            { id: 'reapersMask',      minFloor: 5,  weight: 5,  rarity: 'rare' },
-            { id: 'travelersJournal', minFloor: 6,  weight: 4,  rarity: 'rare' },
-            { id: 'charmingTune',     minFloor: 3,  weight: 6,  rarity: 'uncommon' },
-            { id: 'wayfarersMap',     minFloor: 4,  weight: 5,  rarity: 'rare' },
-            { id: 'sirensPendant',    minFloor: 6,  weight: 4,  rarity: 'rare' },
+            { id: 'diviners_spade',   minFloor: 2,  weight: 7,  rarity: 'uncommon',  group: 'magic' },
+            { id: 'wayfinder',        minFloor: 4,  weight: 5,  rarity: 'rare',      group: 'utility' },
+            { id: 'skeletonKey',      minFloor: 3,  weight: 5,  rarity: 'rare',      group: 'utility' },
+            { id: 'greasewingFeast',  minFloor: 5,  weight: 6,  rarity: 'uncommon',  group: 'magic' },
+            { id: 'sunstone',         minFloor: 6,  weight: 5,  rarity: 'rare',      group: 'survival' },
+            { id: 'merchantPact',     minFloor: 3,  weight: 5,  rarity: 'rare',      group: 'utility' },
+            { id: 'watchersLamp',     minFloor: 4,  weight: 5,  rarity: 'rare',      group: 'utility' },
+            { id: 'reapersMask',      minFloor: 5,  weight: 5,  rarity: 'rare',      group: 'utility' },
+            { id: 'travelersJournal', minFloor: 6,  weight: 4,  rarity: 'rare',      group: 'survival' },
+            { id: 'charmingTune',     minFloor: 3,  weight: 6,  rarity: 'uncommon',  group: 'survival' },
+            { id: 'wayfarersMap',     minFloor: 4,  weight: 5,  rarity: 'rare',      group: 'magic' },
+            { id: 'sirensPendant',    minFloor: 6,  weight: 4,  rarity: 'rare',      group: 'survival' },
 
-            { id: 'goldenSeed',       minFloor: 2,  weight: 7,  rarity: 'uncommon' },
-            { id: 'fireRuneStone',    minFloor: 10, weight: 5,  rarity: 'uncommon' },
-            { id: 'prospectorsPick',  minFloor: 3,  weight: 7,  rarity: 'uncommon' }
+            { id: 'goldenSeed',       minFloor: 2,  weight: 7,  rarity: 'uncommon',  group: 'survival' },
+            { id: 'fireRuneStone',    minFloor: 10, weight: 5,  rarity: 'uncommon',  group: 'magic' },
+            { id: 'prospectorsPick',  minFloor: 3,  weight: 7,  rarity: 'uncommon',  group: 'utility' }
         ];
 
         this.amuletTypes = dropData.map(amulet => ({
@@ -788,12 +834,9 @@ export class CardDataGenerator {
         const id = pool[Math.floor(Math.random() * pool.length)];
         // Deep-copy so per-fight mutations (health dropping, rage flag) never corrupt
         // the shared template for the next spawn/run.
+        // Boss stats are used verbatim from bossData (pure-runs-v1: no knob
+        // multipliers) — tune the tier tables directly.
         const boss = JSON.parse(JSON.stringify(this.bossData[id]));
-        const bossHpMult = act === 2 ? KNOBS.bossHp * (KNOBS.bossHpAct2Mult ?? 1)
-            : act === 3 ? KNOBS.bossHp * (KNOBS.bossHpAct3Mult ?? 1)
-            : KNOBS.bossHp;
-        boss.health = Math.ceil(boss.health * bossHpMult);
-        boss.attack = Math.ceil(boss.attack * KNOBS.bossAtk);
         return boss;
     }
 
@@ -835,17 +878,13 @@ export class CardDataGenerator {
             }
         }
 
-        // Global difficulty scaling — the game was too soft (fresh, relic-less
-        // runs could win, violating the "die ≥3 times to earn relics" design).
-        // Enemies hit harder and are a bit tankier.
-        const global = globalCombatMult(floor);
-        const hpMult = global.hp * enemyHpScale(floor);
-        const atkMult = global.atk * enemyAtkScale(floor);
+        // Tier stats are used verbatim (pure-runs-v1: no knob multipliers) —
+        // difficulty is tuned directly in the enemyData tier tables above.
         const enemyCard = {
             type: 'enemy',
             name: enemy.name,
-            health: Math.ceil(selectedTier.health * hpMult),
-            attack: Math.ceil(selectedTier.damage * atkMult),
+            health: selectedTier.health,
+            attack: selectedTier.damage,
             sprite: enemy.sprite,
             role: enemy.role || 'MELEE', // Default to MELEE if role is missing
             // Intrinsic ranged flag from the enemy TYPE (archers). The board later
@@ -1094,7 +1133,75 @@ export class CardDataGenerator {
             poisonTurns: selected.poisonTurns || 0,
             poisonStackable: selected.poisonStackable || false,
             durability: baseDurability,
-            maxDurability: baseDurability
+            maxDurability: baseDurability,
+            gemSlots: CardDataGenerator.gemSlotsForRarity(selected.rarity)
+        };
+    }
+
+    // Weapon CHOICE (docs/BALANCE-VISION.md, "Выбор геймплея при дропе"):
+    // returns 2-3 weapons of DIFFERENT types but the same rolled rarity band,
+    // so picking between them is a play-style decision (melee vs ranged vs
+    // merge fodder), not a raw power decision. Intended consumers: the boss
+    // reward room now, regular weapon drops once the pick-one UI exists.
+    // Falls back to a single createWeaponCard when the floor only has one
+    // weapon type unlocked.
+    createWeaponChoice(floor, count = 3) {
+        const rarity = this.pickFloorRarity(floor);
+        const types = Object.keys(this.weaponUnlocks);
+        const options = [];
+        for (const type of types) {
+            const card = this.createWeaponCardOfType(type, floor, rarity);
+            if (card) options.push(card);
+        }
+        if (options.length <= 1) {
+            return [this.createWeaponCard(floor, rarity)];
+        }
+        // Shuffle so the order carries no signal, then cap at `count`.
+        for (let i = options.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [options[i], options[j]] = [options[j], options[i]];
+        }
+        return options.slice(0, count);
+    }
+
+    // Build a weapon card of a specific type at the requested rarity,
+    // falling down to lower rarities the floor has unlocked. Returns null
+    // if the type has no tier available at this floor.
+    createWeaponCardOfType(weaponType, floor, targetRarity) {
+        const rarities = this.weaponUnlocks[weaponType];
+        if (!rarities) return null;
+        const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+        const start = Math.max(0, rarityOrder.indexOf(targetRarity));
+        let picked = null;
+        for (const r of rarityOrder.slice(start)) {
+            if (rarities[r] && floor >= rarities[r].floor) { picked = r; break; }
+        }
+        if (!picked) return null;
+        const data = rarities[picked];
+        const durabilityMap = {
+            dagger: { common: 4, uncommon: 5, rare: 6, epic: 7, legendary: 8 },
+            bow: { common: 5, uncommon: 6, rare: 7, epic: 8, legendary: 9 },
+            sword: { common: 6, uncommon: 8, rare: 10, epic: 11, legendary: 13 },
+            axe: { common: 6, uncommon: 8, rare: 10, epic: 12, legendary: 14 }
+        };
+        const baseDurability = durabilityMap[weaponType]?.[picked] || 5;
+        const rarityName = picked.charAt(0).toUpperCase() + picked.slice(1);
+        const weaponName = weaponType.charAt(0).toUpperCase() + weaponType.slice(1);
+        return {
+            type: 'weapon',
+            name: `${rarityName} ${weaponName}`,
+            weaponType,
+            damage: data.damage,
+            rarity: picked,
+            sprite: data.sprite,
+            special: data.special,
+            range: data.range || 'melee',
+            poisonDamage: data.poisonDamage || 0,
+            poisonTurns: data.poisonTurns || 0,
+            poisonStackable: data.poisonStackable || false,
+            durability: baseDurability,
+            maxDurability: baseDurability,
+            gemSlots: CardDataGenerator.gemSlotsForRarity(picked)
         };
     }
 
@@ -1112,7 +1219,10 @@ export class CardDataGenerator {
 
         const availableArmors = [];
 
+        // Spawn pool: leather only until chain/plate are redesigned
+        // (docs/OPEN-QUESTIONS.md).
         Object.entries(this.armorUnlocks).forEach(([armorType, rarities]) => {
+            if (armorType !== 'leather') return;
             const rarity = resolveRarity(rarities);
             const data = rarities[rarity];
             if (data && floor >= data.floor) {
@@ -1129,7 +1239,8 @@ export class CardDataGenerator {
                 type: 'armor',
                 name: 'Makeshift Armor',
                 armorType: 'leather',
-                protection: 1,
+                protection: 0,
+                dodgeChance: 0.10,
                 rarity: 'common',
                 sprite: 'leather_C',
                 durability: 10,
@@ -1154,7 +1265,7 @@ export class CardDataGenerator {
             type: 'armor',
             name: `${rarityName} ${armorName} Armor`,
             armorType: selected.type,
-            protection: selected.protection + KNOBS.armorProtectionBonus,
+            protection: selected.protection,
             dodgeChance: selected.dodgeChance,
             rarity: selected.rarity,
             sprite: selected.sprite,
@@ -1195,12 +1306,33 @@ export class CardDataGenerator {
             };
         }
         
+        // Group steering (docs/BALANCE-AMULETS.md). The FIRST amulet of a run
+        // should nudge the player toward a play style, so while the player owns
+        // no amulets the class groups (offense/survival/magic) are boosted and
+        // utility is muted. Once a build exists, later drops lean softly toward
+        // the player's dominant group — a nudge, not a lock-in.
+        const groupOf = (id) => this.amuletTypes.find(a => a.id === id)?.group;
+        const ownedGroups = (gameState?.activeAmulets || [])
+            .map(a => groupOf(a.id))
+            .filter(g => g && g !== 'utility');
+        let steer;
+        if (ownedGroups.length === 0) {
+            steer = (a) => a.group === 'utility' ? 0.35 : 1.6;
+        } else {
+            const counts = {};
+            ownedGroups.forEach(g => { counts[g] = (counts[g] || 0) + 1; });
+            const dominant = Object.keys(counts)
+                .sort((a, b) => counts[b] - counts[a])[0];
+            steer = (a) => a.group === dominant ? 1.5 : 1;
+        }
+        const effectiveWeight = (a) => a.weight * steer(a);
+
         // Weighted random selection
-        const totalWeight = availableAmulets.reduce((sum, a) => sum + a.weight, 0);
+        const totalWeight = availableAmulets.reduce((sum, a) => sum + effectiveWeight(a), 0);
         let random = Math.random() * totalWeight;
         
         for (let amulet of availableAmulets) {
-            random -= amulet.weight;
+            random -= effectiveWeight(amulet);
             if (random <= 0) {
                 return {
                     type: 'amulet',

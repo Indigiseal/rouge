@@ -3,3 +3,4 @@ Thumbs.db
 node_modules/
 sim/db/*.sqlite
 sim/db/*.sqlite-*
+sim/output/

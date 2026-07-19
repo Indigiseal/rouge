@@ -1,13 +1,12 @@
-import { KNOBS } from './sim/balance-knobs.js';
 import { CombatSequencer } from './utils/CombatSequencer.js';
+
+const PLAYER_START_HP = 100;
 
 export class GameState {
     constructor(scene) {
         this.scene = scene;
-        // Bumped from 100 to 115 — act 1 was killing players too often before
-        // they could find armor or gems. Extra buffer covers the early ramp.
-        this.playerHealth = KNOBS.playerStartHp;
-        this.maxHealth = KNOBS.playerStartHp;
+        this.playerHealth = PLAYER_START_HP;
+        this.maxHealth = PLAYER_START_HP;
         this.coins = 0;
         this.crystals = 0;
         this.activeAmulets = [];
@@ -128,6 +127,23 @@ export class GameState {
         }
     }
 
+    // Ironhide Tonic relic: chance to skip the durability loss entirely.
+    tickEquippedArmorDurability() {
+        if (!this.equippedArmor) return;
+        const durabilitySave = this.relicEffects?.armorDurabilitySave || 0;
+        if (durabilitySave > 0 && Math.random() < durabilitySave) return;
+
+        this.equippedArmor.durability--;
+        if (this.equippedArmor.durability <= 0) {
+            CombatSequencer.playVariant(this.scene, 'break', 'armor_break', 0.55);
+            CombatSequencer.floatingText(this.scene, 'break',
+                this.scene.playerAvatar.x, this.scene.playerAvatar.y + 20, `${this.equippedArmor.name} broke!`, 0xffa500);
+            this.scene.grantCardSpentRelicBonus?.(this.equippedArmor, this.scene.playerAvatar.x, this.scene.playerAvatar.y);
+            this.equippedArmor = null;
+            this.scene.updateUI();
+        }
+    }
+
     takeDamage(amount, enemyIndex = -1, source = 'enemy', armorPierce = 0) {
         if (source === 'poison' && (
             this.relicEffects?.poisonImmunity
@@ -154,17 +170,18 @@ export class GameState {
         let reflectedDamage = 0;
         
         if (this.equippedArmor) {
-            // Handle Dodge from equipped armor
+            // Handle Dodge from equipped armor — durability ticks on dodge.
             if (this.equippedArmor.dodgeChance && Math.random() < this.equippedArmor.dodgeChance) {
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Dodge!', 0x00ff00);
+                this.tickEquippedArmorDurability();
                 return { actualDamage: 0, tookDamage: false };
             }
             
-            // Add protection from equipped armor
-            let baseProtection = this.equippedArmor.protection;
+            // Add protection from equipped armor (leather is dodge-only: protection 0)
+            let baseProtection = this.equippedArmor.protection || 0;
             
             // Apply magic shield bonus (20% increase)
-            if (this.magicShield && this.magicShield.turns > 0) {
+            if (this.magicShield && this.magicShield.turns > 0 && baseProtection > 0) {
                 baseProtection = Math.floor(baseProtection * this.magicShield.multiplier);
             }
             
@@ -191,21 +208,10 @@ export class GameState {
                 }
             }
             
-            // Durability tick if armor was used and damage was dealt.
-            // Ironhide Tonic relic: chance to skip the durability loss entirely,
-            // roughly doubling how long the armor lasts.
-            const durabilitySave = this.relicEffects?.armorDurabilitySave || 0;
-            const skipTick = durabilitySave > 0 && Math.random() < durabilitySave;
-            if (protection > 0 && amount > 0 && !skipTick) {
-                this.equippedArmor.durability--;
-                if (this.equippedArmor.durability <= 0) {
-                    CombatSequencer.playVariant(this.scene, 'break', 'armor_break', 0.55);
-                    CombatSequencer.floatingText(this.scene, 'break',
-                        this.scene.playerAvatar.x, this.scene.playerAvatar.y + 20, `${this.equippedArmor.name} broke!`, 0xffa500);
-                    this.scene.grantCardSpentRelicBonus?.(this.equippedArmor, this.scene.playerAvatar.x, this.scene.playerAvatar.y);
-                    this.equippedArmor = null;
-                    this.scene.updateUI();
-                }
+            // Durability tick when armor's protection actually absorbs a hit.
+            // (Dodge-only leather never enters here — it ticks on dodge above.)
+            if (protection > 0 && amount > 0) {
+                this.tickEquippedArmorDurability();
             }
         }
 

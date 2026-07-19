@@ -15,11 +15,11 @@ npm install   # better-sqlite3 для stats-db
 | Задача | Команда |
 |--------|---------|
 | Баланс без меты/амулетов, 1000 runs → SQLite | `npm run sim:stats-db-balance -- 1000 my-batch` |
-| Анализ batch | `npm run sim:balance-analyze -- my-batch` |
 | Grafana | `npm run sim:grafana:build && npm run sim:grafana` |
+| UI дашборд | `npm run sim:dashboard` |
 
 БД: `sim/db/stats.sqlite`  
-Knobs баланса: `sim/balance-knobs.js` (влияют на sim и игру)
+Цели и рычаги тюнинга: `docs/BALANCE.md`. Открытые вопросы: `docs/OPEN-QUESTIONS.md`.
 
 ---
 
@@ -69,7 +69,7 @@ node sim/balance-sim.js loot-stats 200 fresh --json
 node sim/balance-sim.js loot-stats 100 geared --no-amulets
 ```
 
-JSON: `sim/output/loot-stats.json` или `loot-stats-balance.json`
+JSON (генерируется в `sim/output/`, в git не коммитится): `loot-stats.json` / `loot-stats-balance.json`
 
 ### Stats-db (SQLite + Grafana)
 
@@ -148,20 +148,9 @@ node sim/balance-sim.js stats-db 500 accumulate career --meta
 
 ---
 
-## Анализ и автотюнинг
+## Метрики
 
-```bash
-# Per-floor clear%, воронка, avg floor
-npm run sim:balance-analyze -- origin
-npm run sim:balance-analyze -- tune-act2-clear
-
-# 3 итерации × 1000 runs (пишет knobs + batches tune-iter-N)
-npm run sim:balance-tune -- origin 3 1000
-```
-
-Knobs: `sim/balance-knobs.js` — HP/ATK сегменты, веса оружия/брони, боссы, `minEnemyRatio`.
-
-Каталог метрик: `sim/METRICS-CATALOG.md`
+Каталог метрик: `sim/METRICS-CATALOG.md`. Цели pure-runs: `docs/BALANCE.md`.
 
 ---
 
@@ -218,7 +207,7 @@ FROM sim_batches ORDER BY id DESC LIMIT 10;
 
 | Цель | Режим |
 |------|-------|
-| Тюнинг knobs, «хватит урона», воронка | `stats-db balance` |
+| Pure-runs KPI (reach/clear) | `stats-db balance` |
 | Влияние только реликов | `--meta --no-amulets` |
 | Влияние только амулетов | `--amulets --no-meta` |
 | Полный прокачанный аккаунт | `geared` или `--meta` + `--amulet-loadout strong` |
@@ -230,7 +219,6 @@ FROM sim_batches ORDER BY id DESC LIMIT 10;
 
 ## Ограничения sim (vs игра)
 
-- Инвентарь теперь ограничен реальными слотами, но bot policy всё ещё эвристическая, а не player-perfect
+- Инвентарь ограничен реальными слотами, bot policy эвристическая
 - Упрощённые shop/treasure/event/rest/anvil
 - `RARE_SHOP`, ELITE chest и др. — см. комментарии в `sim/balance-sim.js`
-- Баланс-knobs общие для sim и клиента

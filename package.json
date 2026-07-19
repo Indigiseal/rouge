@@ -14,8 +14,6 @@
     "sim:stats-db-meta-only": "node sim/balance-sim.js stats-db fresh --meta --no-amulets",
     "sim:stats-db-amulets-only": "node sim/balance-sim.js stats-db fresh --amulets --no-meta",
     "sim:stats-db-full": "node sim/balance-sim.js stats-db geared --amulet-loadout strong",
-    "sim:balance-analyze": "node sim/balance-tune.mjs analyze",
-    "sim:balance-tune": "node sim/balance-tune.mjs tune",
     "sim:amulet-sweep": "node sim/balance-sim.js sweep",
     "sim:grafana": "bash sim/db/grafana-up.sh",
     "sim:grafana:build": "node sim/db/grafana/build-dashboard.mjs && node sim/db/grafana/build-compare-dashboard.mjs",

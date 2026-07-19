@@ -21,6 +21,7 @@ export class MetaProgressionManager {
             this.enemyKillStats = data.enemyKillStats || {};
             this.pendingEgg = data.pendingEgg || false;
             this.veteranHp = data.veteranHp || 0;
+            this.metaPoints = data.metaPoints || 0;
         } else {
             this.unlockedRelics = [];
             this.totalDeaths = 0;
@@ -29,6 +30,7 @@ export class MetaProgressionManager {
             this.enemyKillStats = {};
             this.pendingEgg = false;
             this.veteranHp = 0;
+            this.metaPoints = 0;
         }
     }
     
@@ -41,7 +43,8 @@ export class MetaProgressionManager {
             bestFloor: this.bestFloor,
             enemyKillStats: this.enemyKillStats,
             pendingEgg: this.pendingEgg,
-            veteranHp: this.veteranHp
+            veteranHp: this.veteranHp,
+            metaPoints: this.metaPoints
         };
         localStorage.setItem('metaProgression', JSON.stringify(data));
     }
@@ -208,11 +211,21 @@ export class MetaProgressionManager {
         };
     }
     
+    // Meta points earned for a run that ended at `floor` (bosses killed add
+    // a flat bonus). Deeper runs pay more so pushing is always rewarded even
+    // when no new relic drops. Spending (talent tree) is a future phase —
+    // see docs/BALANCE-META-PROGRESSION.md.
+    metaPointsForRun(floor, bossesKilled = 0) {
+        return 2 + Math.floor(floor / 5) + bossesKilled * 3;
+    }
+
     // Handle player death and grant appropriate relic
     handlePlayerDeath(killedBy, floor) {
         if (isMetaProgressionDisabled()) return null;
 
         this.totalDeaths++;
+        const bossesKilled = floor > 30 ? 2 : floor > 15 ? 1 : 0;
+        this.metaPoints = (this.metaPoints || 0) + this.metaPointsForRun(floor, bossesKilled);
         
         if (floor > this.bestFloor) {
             this.bestFloor = floor;
@@ -395,6 +408,7 @@ export class MetaProgressionManager {
         this.bestFloor = 1;
         this.enemyKillStats = {};
         this.veteranHp = 0;
+        this.metaPoints = 0;
         this.saveMetaProgression();
     }
 }

@@ -24,7 +24,7 @@ export const BEHAVIOR_PRESETS = {
         fire: 16,
       },
       weaponBase: 120,
-      daggerPenalty: 115,
+      daggerPenalty: 12,
       weaponDamageWeight: 8,
       weaponGemBonus: 18,
       armorBase: 110,

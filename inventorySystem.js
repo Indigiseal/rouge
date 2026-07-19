@@ -1,6 +1,7 @@
 import { SoundHelper } from './utils/SoundHelper.js';
 import { CombatSequencer } from './utils/CombatSequencer.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
+import { CardDataGenerator } from './CardDataGenerator.js';
 import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from './utils/i18n.js';
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
@@ -742,7 +743,7 @@ export class InventorySystem {
             // Static gem indicator(s) in top-right corner of card — one per stacked gem
             const gemFrameByEffect = { fire: 0, poison: 6, lightning: 12 };
             const gemFrame = gemFrameByEffect[cardData.gemEffect] ?? 0;
-            const stackCount = Math.max(1, Math.min(3, cardData.gemCount || 1));
+            const stackCount = CardDataGenerator.weaponGemStack(cardData);
 
             // Compute top-right corner of card with a 1px inset.
             // Round to integers so the gem indicator doesn't jitter a pixel
@@ -1142,35 +1143,39 @@ export class InventorySystem {
         if (this.scene.gameState.startingCardsGranted) return;
         if (this.scene.gameState.currentFloor > 1) return;
         this.scene.gameState.startingCardsGranted = true;
-        // Add starting sword with durability
-        const swordData = {
+        // Starting loadout (pure-runs-v1): one dagger + one bow. Mirrors the
+        // act-1 drop pool (dagger/bow only) and hands the player both stances
+        // from turn one — melee for the front row, ranged for the back row.
+        // Act 1 is balanced around exactly this budget; matches the common
+        // tiers in CardDataGenerator.weaponUnlocks.
+        const daggerData = {
             type: 'weapon',
-            name: 'Common Sword',
-            weaponType: 'sword',
-            damage: 6,
+            name: 'Common Dagger',
+            weaponType: 'dagger',
+            damage: 3,
             rarity: 'common',
-            sprite: 'sword_C',  // Fixed sprite name consistency
-            durability: 6,
-            maxDurability: 6,
-            special: null,  // Sword has no special ability
-            range: 'melee'
+            sprite: 'dagger_C',
+            durability: 4,
+            maxDurability: 4,
+            special: 'dualWield',
+            range: 'melee',
+            gemSlots: 1
         };
-        this.addCard(swordData);
-        // Add a second common (tier 1) sword so the player starts with two
-        // matching tier-1 swords they can merge into an uncommon.
-        const secondSwordData = {
+        this.addCard(daggerData);
+        const bowData = {
             type: 'weapon',
-            name: 'Common Sword',
-            weaponType: 'sword',
-            damage: 6,
+            name: 'Common Bow',
+            weaponType: 'bow',
+            damage: 4,
             rarity: 'common',
-            sprite: 'sword_C',
-            durability: 6,
-            maxDurability: 6,
-            special: null,  // Sword has no special ability
-            range: 'melee'
+            sprite: 'bow_c',
+            durability: 5,
+            maxDurability: 5,
+            special: 'block',
+            range: 'ranged',
+            gemSlots: 1
         };
-        this.addCard(secondSwordData);
+        this.addCard(bowData);
 
         // Carry-over egg: a past hero who died still clutching an unhatched egg
         // passes it to this new run. consumePendingEgg() clears the flag so the
@@ -1244,18 +1249,18 @@ export class InventorySystem {
                 value: t(this.scene, (card.range || 'melee') === 'ranged' ? 'tooltip.ranged' : 'tooltip.melee')
             }));
             if (card.gemEffect) {
-                const stack = Math.max(1, Math.min(3, card.gemCount || 1));
+                const stack = CardDataGenerator.weaponGemStack(card);
                 lines.push(t(this.scene, 'tooltip.gemLine', {
                     effect: translateGemEffect(this.scene, card.gemEffect),
                     stack: stack > 1 ? ` x${stack}` : ''
                 }));
                 const baseDmg = card.damage || 0;
                 if (card.gemEffect === 'fire') {
-                    const splashPct = [50, 75, 100][stack - 1];
+                    const splashPct = [50, 75, 100, 110, 120][stack - 1] ?? 100;
                     const splashDmg = Math.max(1, Math.floor(baseDmg * splashPct / 100));
                     lines.push(t(this.scene, 'tooltip.fireSplash', { amount: splashDmg }));
                 } else if (card.gemEffect === 'lightning') {
-                    const zapPct = [40, 55, 70][stack - 1];
+                    const zapPct = [40, 55, 70, 80, 90][stack - 1] ?? 70;
                     const zapDmg = Math.max(1, Math.floor(baseDmg * zapPct / 100));
                     lines.push(t(this.scene, 'tooltip.lightningZap', { amount: zapDmg }));
                 } else if (card.gemEffect === 'poison') {
@@ -1269,7 +1274,9 @@ export class InventorySystem {
         } else if (card.type === 'armor') {
             const armorType = translateItemName(this.scene, { type: 'armor', armorType: this.getArmorTypeFromCard(card) });
             lines.push(t(this.scene, 'tooltip.family', { value: armorType }));
-            lines.push(t(this.scene, 'tooltip.protectionShort', { amount: card.protection || 0 }));
+            if ((card.protection || 0) > 0) {
+                lines.push(t(this.scene, 'tooltip.protectionShort', { amount: card.protection || 0 }));
+            }
             if (card.dodgeChance) lines.push(t(this.scene, 'tooltip.dodge', { percent: Math.round(card.dodgeChance * 100) }));
             if (card.reflection) lines.push(t(this.scene, 'tooltip.reflect', { value: card.reflection }));
             if (card.thornDamage) lines.push(t(this.scene, 'tooltip.thornDamage', { amount: card.thornDamage }));
@@ -1434,7 +1441,7 @@ export class InventorySystem {
         const weapon = this.slots[weaponSlotIndex];
         if (!gem || gem.type !== 'gem' || !weapon || weapon.type !== 'weapon') return false;
 
-        const MAX_GEM_STACK = 3;
+        const maxSlots = CardDataGenerator.weaponGemSlots(weapon);
         const currentCount = weapon.gemEffect ? (weapon.gemCount || 1) : 0;
 
         // Reject mismatched gem types
@@ -1445,7 +1452,7 @@ export class InventorySystem {
         }
 
         // Reject if already at max
-        if (currentCount >= MAX_GEM_STACK) {
+        if (currentCount >= maxSlots) {
             SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
             this.scene.createFloatingText(512, 380, 'Gem slots full!', 0xff4444);
             return false;
@@ -1617,8 +1624,7 @@ export class InventorySystem {
             this.cleanupCardSprites(slotIndex, cardSprite);
             this.removeCard(slotIndex, false); // Don't destroy the sprite in removeCard
             cardSprite.destroy(); // Destroy the dragged sprite here
-            // Discarding costs an action point and wakes the enemies (free inside stations).
-            if (!this.stationMode) this.scene.useAction?.();
+            // Inventory discard does not spend AP.
             return;
         }
 
@@ -1659,10 +1665,10 @@ export class InventorySystem {
                         this.returnCardToSlot(slotIndex, cardSprite);
                         return;
                     }
-                    
-                    if (!this.stationMode && !this.scene.useAction()) {
+
+                    // Only weapon merges spend AP (armor/potion/food/thorns are free).
+                    if (cardData.type === 'weapon' && !this.stationMode && !this.scene.useAction()) {
                         this.scene.createFloatingText(512, 400, 'Not enough actions!', 0xff0000);
-                        // Return card to original slot if merge fails
                         this.returnCardToSlot(slotIndex, cardSprite);
                         return;
                     }
@@ -2469,13 +2475,14 @@ export class InventorySystem {
             // Check if dropped on player avatar for blocking
             const playerAvatarBounds = this.scene.playerAvatar.getBounds();
             if (Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), playerAvatarBounds)) {
-                if (!this.scene.useAction()) {
+                if (this.scene.isEnemyTurn) {
                     this.returnWeaponToSlot(slotIndex, cardSprite);
                     return;
                 }
-                
-                // Activate block for next enemy attack
+
+                // Bow block does not spend AP; it still wakes the enemy response.
                 this.scene.gameState.blockNextAttack = true;
+                this.scene.scheduleEnemyTurn?.();
                 SoundHelper.playSound(this.scene, 'armor_equip', 0.5);
                 this.scene.createFloatingText(
                     this.scene.playerAvatar.x, 
@@ -2893,12 +2900,7 @@ export class InventorySystem {
             this.scene.amuletManager.canCrossTierMerge();
         if (!this.canCardsMerge(cardData, worn, canCrossTier)) return false;
 
-        // Same action cost as a normal merge (free inside shops/stations).
-        if (!this.stationMode && !this.scene.useAction()) {
-            this.scene.createFloatingText(512, 400, 'Not enough actions!', 0xff0000);
-            this.returnCardToSlot(slotIndex, draggedSprite);
-            return true;
-        }
+        // Armor merge does not spend AP (only weapon merges do).
 
         // Upgrade off the higher-tier card, exactly like mergeCards().
         const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
@@ -3258,19 +3260,25 @@ export class InventorySystem {
             const secondGem = secondCard.gemEffect ? secondCard : null;
 
             if (baseGem && secondGem && baseGem.gemEffect === secondGem.gemEffect) {
-                // Same gem type on both — combine stacks (capped at 3)
+                // Same gem type — combine stacks, clamp to new rarity's slots.
+                // Overflow discard UI: docs/OPEN-QUESTIONS.md.
                 upgradedCard.gemEffect = baseGem.gemEffect;
                 upgradedCard.gemName = baseGem.gemName;
                 upgradedCard.gemColor = baseGem.gemColor;
-                upgradedCard.gemCount = Math.min(3, (baseGem.gemCount || 1) + (secondGem.gemCount || 1));
+                const slots = CardDataGenerator.weaponGemSlots(upgradedCard);
+                upgradedCard.gemCount = Math.min(
+                    slots,
+                    (baseGem.gemCount || 1) + (secondGem.gemCount || 1)
+                );
             } else {
-                // Different (or only one) — take whichever has a gem
+                // Different (or only one) — take whichever has a gem, clamp to slots.
                 const gemSource = baseGem || secondGem;
                 if (gemSource) {
                     upgradedCard.gemEffect = gemSource.gemEffect;
                     upgradedCard.gemName = gemSource.gemName;
                     upgradedCard.gemColor = gemSource.gemColor;
-                    upgradedCard.gemCount = gemSource.gemCount || 1;
+                    const slots = CardDataGenerator.weaponGemSlots(upgradedCard);
+                    upgradedCard.gemCount = Math.min(slots, gemSource.gemCount || 1);
                 }
             }
         }
@@ -3323,14 +3331,15 @@ export class InventorySystem {
                 poisonTurns: weaponData.poisonTurns || 0,
                 poisonStackable: weaponData.poisonStackable || false,
                 durability: maxDurability,
-                maxDurability: maxDurability
+                maxDurability: maxDurability,
+                gemSlots: CardDataGenerator.gemSlotsForRarity(targetRarity)
             };
         }
-        
+
         // Fallback to generated card
         return generatedCard;
     }
-    
+
     forceArmorTypeAndRarity(generatedCard, originalCard, targetRarity) {
         const armorType = this.getArmorTypeFromCard(originalCard);
         const cardGenerator = this.scene.cardSystem.cardDataGenerator;

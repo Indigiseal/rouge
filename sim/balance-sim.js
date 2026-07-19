@@ -7,7 +7,7 @@
 // station-room economy. Run with:  node sim/balance-sim.js  [runs]
 //
 // NOTE on fidelity:
-//  - Combat resolution (damage, ranged 0.8x, melee frontline gating, weapon
+//  - Combat resolution (damage as printed, melee frontline gating, weapon
 //    durability, enemy attack vs armor) is the REAL game code.
 //  - Floor composition (card counts, enemy/loot mix, roles) is REAL
 //    (spawnFloorCards).
@@ -15,10 +15,12 @@
 //    documented inline — refine these as needed.
 //  - Baseline carries NO meta relics and buys NO amulets.
 
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { MockScene } from './mock.js'; // also installs globalThis.Phaser + localStorage
 import { GameState } from '../gameState.js';
 import { CardSystem } from '../cardSystem.js';
+import { CardDataGenerator } from '../CardDataGenerator.js';
 import { AmuletManager } from '../AmuletManager.js';
 import { MetaProgressionManager } from '../MetaProgressionManager.js';
 import { MapGenerator } from '../utils/MapGenerator.js';
@@ -191,9 +193,18 @@ function restrictMetaPool(meta, poolIds) {
 }
 
 function startingInventory(inv) {
+  // Mirrors InventorySystem.grantStartingCards (pure-runs-v1): dagger + bow.
   const start = [
-    { type: 'weapon', name: 'Common Sword', weaponType: 'sword', damage: 6, rarity: 'common', durability: 6, maxDurability: 6, range: 'melee' },
-    { type: 'weapon', name: 'Uncommon Sword', weaponType: 'sword', damage: 7, rarity: 'uncommon', durability: 8, maxDurability: 8, range: 'melee' },
+    {
+      type: 'weapon', name: 'Common Dagger', weaponType: 'dagger', damage: 3,
+      rarity: 'common', durability: 4, maxDurability: 4, special: 'dualWield',
+      range: 'melee', gemSlots: 1,
+    },
+    {
+      type: 'weapon', name: 'Common Bow', weaponType: 'bow', damage: 4,
+      rarity: 'common', durability: 5, maxDurability: 5, special: 'block',
+      range: 'ranged', gemSlots: 1,
+    },
   ];
   for (let i = 0; i < start.length && i < inv.length; i++) inv[i] = cloneCard(start[i]);
 }
@@ -215,7 +226,11 @@ function syncInventoryState(gs, inv) {
   if (gs.scene?.inventorySystem) gs.scene.inventorySystem.slots = inv;
 }
 
-const armorScore = (a) => (a && a.durability > 0 ? (a.protection || 0) : -1);
+// Leather is dodge-only (protection 0); score expected damage avoided + flat DEF.
+const armorScore = (a) => {
+  if (!a || !(a.durability > 0)) return -1;
+  return (a.protection || 0) + (a.dodgeChance || 0) * 20;
+};
 
 function inventoryCapacity(gs) {
   return 5 + Math.max(0, gs.bonusInventorySlots || 0);
@@ -242,7 +257,11 @@ function cardKeepScore(card, behavior = CURRENT_BEHAVIOR) {
     const daggerPenalty = card.weaponType === 'dagger' ? k.daggerPenalty : 0;
     return k.weaponBase - daggerPenalty + (card.damage || 0) * k.weaponDamageWeight + (card.gemEffect ? k.weaponGemBonus : 0);
   }
-  if (card.type === 'armor') return k.armorBase + (card.protection || 0) * k.armorProtectionWeight;
+  if (card.type === 'armor') {
+    return k.armorBase
+      + (card.protection || 0) * k.armorProtectionWeight
+      + (card.dodgeChance || 0) * 20 * k.armorProtectionWeight;
+  }
   if (card.type === 'thorns') return k.thornsBase + (card.thornDamage || 0) * k.thornsDamageWeight;
   if (card.type === 'potion') return k.potionBase + (card.healAmount || 0) * k.potionHealWeight;
   if (card.type === 'key') return k.key;
@@ -354,25 +373,40 @@ function mergeWeapons(gen, a, b, floor = 0) {
   const r = nextRarity(a.rarity);
   const dmg = gen.weaponUnlocks?.[type]?.[r]?.damage ?? ((a.damage || 1) + 1);
   const dur = WEAPON_DUR[type]?.[r] ?? (a.maxDurability || 6);
+  const slots = CardDataGenerator.gemSlotsForRarity(r);
   const merged = {
     type: 'weapon', name: `${cap(r)} ${cap(type)}`, weaponType: type,
     damage: dmg, rarity: r, durability: dur, maxDurability: dur, range: a.range || 'melee',
+    gemSlots: slots,
   };
-  const g = a.gemEffect ? a : (b.gemEffect ? b : null); // carry sockets
-  if (g) { merged.gemEffect = g.gemEffect; merged.gemCount = g.gemCount; merged.gemName = g.gemName; merged.gemColor = g.gemColor; }
+  if (a.gemEffect && b.gemEffect && a.gemEffect === b.gemEffect) {
+    merged.gemEffect = a.gemEffect;
+    merged.gemName = a.gemName;
+    merged.gemColor = a.gemColor;
+    merged.gemCount = Math.min(slots, (a.gemCount || 1) + (b.gemCount || 1));
+  } else {
+    const g = a.gemEffect ? a : (b.gemEffect ? b : null);
+    if (g) {
+      merged.gemEffect = g.gemEffect;
+      merged.gemCount = Math.min(slots, g.gemCount || 1);
+      merged.gemName = g.gemName;
+      merged.gemColor = g.gemColor;
+    }
+  }
   return merged;
 }
 
 const ARMOR_DUR = { common: 15, uncommon: 20, rare: 25, epic: 28, legendary: 30 };
 function mergeArmor(gen, a, b, floor = 0) {
-  const type = a.armorType;
+  const type = a.armorType || 'leather';
   const r = nextRarity(a.rarity);
-  const prot = gen.armorUnlocks?.[type]?.[r]?.protection ?? ((a.protection || 1) + 1);
+  const data = gen.armorUnlocks?.[type]?.[r];
+  const prot = data?.protection ?? ((a.protection || 1) + 1);
   const dur = ARMOR_DUR[r] ?? (a.maxDurability || 25);
   return {
     type: 'armor', name: `${cap(r)} ${cap(type)} Armor`, armorType: type,
     protection: prot, rarity: r, durability: dur, maxDurability: dur,
-    dodgeChance: a.dodgeChance || 0, reflection: a.reflection || 0,
+    dodgeChance: data?.dodgeChance ?? a.dodgeChance ?? 0, reflection: a.reflection || 0,
   };
 }
 function mergeArmorList(gen, list, echoChance = 0, tracker = null, floor = 0) {
@@ -435,13 +469,24 @@ function mergeWeaponList(gen, list, echoChance = 0, tracker = null, floor = 0) {
   }
 }
 
-// Weapon desirability: prefer raw damage, but strongly avoid daggers — only
-// equip one if nothing else is usable.
+// Weapon desirability: prefer raw damage. Mild dagger bias only — dual-wield
+// pairs are valuable and must stay in the bag.
 function wpnValue(w) {
   if (!w || w.durability <= 0) return -1;
   let v = (w.damage || 0) + (w.gemEffect ? 1 : 0);
-  if (w.weaponType === 'dagger') v -= 100;
+  if (w.weaponType === 'dagger') v -= 1;
   return v;
+}
+
+function findOffhandDagger(primary, gs, inv) {
+  if (!primary || primary.special !== 'dualWield') return null;
+  const pool = [gs.equippedWeapon, ...invItems(inv)];
+  return pool.find((w) => (
+    w
+    && w !== primary
+    && w.special === 'dualWield'
+    && (w.durability || 0) > 0
+  )) || null;
 }
 
 // Thorns merging: two equal-damage thorns → stronger thorns with refreshed
@@ -502,7 +547,7 @@ function regear(gen, gs, inv) {
   }
   gs.equippedWeapon = weapons[pickIdx] || null;
   if (gs._superWeapon) gs.equippedWeapon = gs._superWeapon; // isolation test: never swap it out
-  // Equip the highest-protection armor that still has durability.
+  // Equip the best armor that still has durability (DEF + dodge EV).
   armors.sort((a, b) => armorScore(b) - armorScore(a));
   const usableArmor = armors.findIndex((a) => a.durability > 0);
   gs.equippedArmor = usableArmor >= 0 ? armors.splice(usableArmor, 1)[0] : (armors.shift() || null);
@@ -556,12 +601,14 @@ function useRestorationCard(mock, gs, card, force = false) {
 function gemFitsWeapon(weapon, gem) {
   if (!weapon || weapon.type !== 'weapon' || !gem || gem.type !== 'gem') return false;
   const count = weapon.gemEffect ? (weapon.gemCount || 1) : 0;
-  return count < 3 && (!weapon.gemEffect || weapon.gemEffect === gem.gemEffect);
+  const slots = CardDataGenerator.weaponGemSlots(weapon);
+  return count < slots && (!weapon.gemEffect || weapon.gemEffect === gem.gemEffect);
 }
 
 function socketGemIntoWeapon(weapon, gem) {
   const count = weapon.gemEffect ? (weapon.gemCount || 1) : 0;
-  if (count >= 3) return false;
+  const slots = CardDataGenerator.weaponGemSlots(weapon);
+  if (count >= slots) return false;
   weapon.gemEffect = gem.gemEffect;
   weapon.gemName = gem.name;
   weapon.gemColor = gem.color;
@@ -873,7 +920,7 @@ function maybeRestore(mock, gs, inv) {
 }
 
 // Socket available gems into the equipped weapon (rules mirror
-// inventorySystem.applyGemToWeapon: weapons only, max 3, same type only).
+// inventorySystem.applyGemToWeapon: weapons only, rarity gemSlots, same type only).
 // Strategy: poison for bosses/high-HP, lightning when back-row enemies exist,
 // fire when there's a face-down cluster to burn; otherwise poison.
 function socketGems(gs, inv, ctx) {
@@ -882,6 +929,7 @@ function socketGems(gs, inv, ctx) {
   const gems = invItems(inv).filter((c) => c.type === 'gem');
   if (!gems.length) return;
   const prefBias = CURRENT_BEHAVIOR.gemPreference;
+  const maxSlots = CardDataGenerator.weaponGemSlots(w);
 
   let pref = w.gemEffect || null; // weapon locks to one gem type
   if (!pref) {
@@ -899,7 +947,7 @@ function socketGems(gs, inv, ctx) {
     const g = inv[i];
     if (!g || g.type !== 'gem' || g.gemEffect !== pref) continue;
     const count = w.gemEffect ? (w.gemCount || 1) : 0;
-    if (count >= 3) break;
+    if (count >= maxSlots) break;
     w.gemEffect = g.gemEffect; w.gemName = g.name; w.gemColor = g.color;
     w.gemCount = count + 1;
     inv[i] = null;
@@ -952,14 +1000,14 @@ function computeContext(board, floor) {
 }
 
 function estimateGemSplash(board, targetIndex, weapon, baseDamage) {
-  const stack = Math.max(1, Math.min(3, weapon?.gemCount || 1));
+  const stack = CardDataGenerator.weaponGemStack(weapon);
   const armor = Math.max(0, board[targetIndex]?.data?.armor || 0);
   const directDamage = Math.max(1, baseDamage - armor);
   const affected = new Map([[targetIndex, directDamage]]);
   if (!weapon?.gemEffect) return affected;
 
   if (weapon.gemEffect === 'fire') {
-    const splashDamage = [3, 4, 5][stack - 1];
+    const splashDamage = [3, 4, 5, 6, 7][stack - 1];
     affected.set(targetIndex, (affected.get(targetIndex) || 0) + splashDamage);
     const target = board[targetIndex];
     const radius = 70;
@@ -977,7 +1025,7 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage) {
       }
     }
   } else if (weapon.gemEffect === 'lightning') {
-    const zapDamage = [3, 4, 5][stack - 1];
+    const zapDamage = [3, 4, 5, 6, 7][stack - 1];
     affected.set(targetIndex, (affected.get(targetIndex) || 0) + zapDamage);
     const candidates = board
       .map((card, index) => ({ card, index }))
@@ -1026,6 +1074,14 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
     for (const index of validTargets) {
       const baseDamage = effDmg(weapon);
       const affected = estimateGemSplash(board, index, weapon, baseDamage);
+      const offhand = findOffhandDagger(weapon, gs, inv);
+      if (offhand) {
+        const offDmg = effDmg(offhand);
+        const offAffected = estimateGemSplash(board, index, offhand, offDmg);
+        for (const [hitIndex, damage] of offAffected.entries()) {
+          affected.set(hitIndex, (affected.get(hitIndex) || 0) + damage);
+        }
+      }
       let kills = 0;
       let totalDamage = 0;
       let overkill = 0;
@@ -1136,7 +1192,15 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
       combatDamageDealt += dmg;
       combatDamageWasted += Math.max(0, dmg - targetHP);
       mock.useAction();
-      mock.cardSystem.attackEnemy(attackIdx, dmg, false, gs.equippedWeapon || null);
+      mock.cardSystem.attackEnemy(attackIdx, dmg, false, gs.equippedWeapon || null, false);
+      // Dual wield: second dagger swings for free (skipDurability), matching
+      // inventorySystem.useWeapon — damage + gem from the off-hand.
+      const offhand = findOffhandDagger(weaponBeforeAttack, gs, inv);
+      if (offhand && board[attackIdx]?.data?.health > 0) {
+        const dmg2 = effDmg(offhand);
+        combatDamageDealt += dmg2;
+        mock.cardSystem.attackEnemy(attackIdx, dmg2, false, offhand, true);
+      }
       if (weaponBeforeAttack && !gs.equippedWeapon) mock._weaponBreaks = (mock._weaponBreaks || 0) + 1;
       if (!gs.equippedWeapon || gs.equippedWeapon.durability <= 0) regear(mock.cardSystem.cardDataGenerator, gs, inv);
       mock.resolvePendingEnemyTurn();
@@ -1150,7 +1214,7 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
       if (board[i] && !board[i].revealed) { nextUnrevealed = i; break; }
     }
     if (nextUnrevealed >= 0) {
-      mock.cardSystem.revealCard(nextUnrevealed); // calls useAction internally
+      mock.cardSystem.revealCard(nextUnrevealed); // free AP; schedules enemy turn
       mock.resolvePendingEnemyTurn();
       maybeHeal(gs, inv);
       continue;
@@ -1646,7 +1710,7 @@ function shopPrice(item, floor) {
   const mult = { common: 1, uncommon: 1.5, rare: 2, epic: 2.5, legendary: 3 }[item.rarity] || 1;
   p *= mult;
   if (item.type === 'weapon') p += item.damage || 0;
-  else if (item.type === 'armor') p += (item.protection || 0) * 2;
+  else if (item.type === 'armor') p += armorScore(item) * 2;
   return Math.floor(p);
 }
 
@@ -1657,7 +1721,7 @@ function realRegularShopPrice(item) {
   const floor = item._priceFloor;
   let p = (5 + floor * 2) * ({ common: 1, uncommon: 1.5, rare: 2, epic: 2.5, legendary: 3 }[item.rarity] || 1);
   if (item.type === 'weapon') p += item.damage || 0;
-  else if (item.type === 'armor') p += (item.protection || 0) * 2;
+  else if (item.type === 'armor') p += armorScore(item) * 2;
   else if (item.type === 'thorns') p += (item.thornDamage || 0) * 3;
   else if (item.type === 'magic') p *= 1.2;
   return Math.floor(p);
@@ -1732,7 +1796,7 @@ function runShop(mock, gs, inv, floor) {
       // Armor is THE survival lever and the bot is coin-rich, so buy it
       // aggressively: any upgrade, any merge fodder, when low/broken, OR simply
       // whenever we have coins to spare (build the merge line toward plate).
-      (item.type === 'armor' && ((item.protection || 0) > (gs.equippedArmor?.protection || 0) || armorMerge(item) || armorLow || gs.coins > price * 3)) ||
+      (item.type === 'armor' && (armorScore(item) > armorScore(gs.equippedArmor) || armorMerge(item) || armorLow || gs.coins > price * 3)) ||
       (item.type === 'thorns' && (!gs.activeThorns || thornMatch(item))) ||
       (item.type === 'potion' && gs.playerHealth < gs.maxHealth * 0.7);
     if (!buy) continue;
@@ -1793,7 +1857,7 @@ function wantsShopItem(gs, inv, item, price) {
   const armorLow = !gs.equippedArmor || gs.equippedArmor.durability < (gs.equippedArmor.maxDurability || 1) * 0.5;
   return (
     (item.type === 'weapon' && item.weaponType !== 'dagger' && ((item.damage || 0) > eqDmg || matchesForMerge(item))) ||
-    (item.type === 'armor' && ((item.protection || 0) > (gs.equippedArmor?.protection || 0) || armorMerge(item) || armorLow || gs.coins > price * 3)) ||
+    (item.type === 'armor' && (armorScore(item) > armorScore(gs.equippedArmor) || armorMerge(item) || armorLow || gs.coins > price * 3)) ||
     (item.type === 'thorns' && (!gs.activeThorns || thornMatch(item))) ||
     (item.type === 'potion' && gs.playerHealth < gs.maxHealth * 0.7) ||
     item.type === 'gem' ||
@@ -2596,6 +2660,7 @@ function runLootStats() {
       const outPath = metaMode === 'balance'
         ? 'sim/output/loot-stats-balance.json'
         : 'sim/output/loot-stats.json';
+      mkdirSync(dirname(outPath), { recursive: true });
       writeFileSync(outPath, lootStatsToJson(lootStats));
       console.log(`\nJSON written to ${outPath}`);
     }

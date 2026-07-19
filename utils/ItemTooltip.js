@@ -43,7 +43,13 @@ export function getTooltipLines(scene, data) {
         const def = data.protection ?? 0;
         const dur = data.durability ?? data.maxDurability ?? 0;
         const rarityWord = data.rarity ? translateRarity(scene, data.rarity) : '';
-        body = `${t(scene, 'tooltip.armorBody', { rarity: rarityWord })}\n${t(scene, 'tooltip.defDur', { def, dur })}`;
+        const lines = [t(scene, 'tooltip.armorBody', { rarity: rarityWord })];
+        if (def > 0) lines.push(t(scene, 'tooltip.defDur', { def, dur }));
+        else lines.push(t(scene, 'tooltip.pips', { value: `${dur}/${data.maxDurability ?? dur}` }));
+        if (data.dodgeChance) {
+            lines.push(t(scene, 'tooltip.dodge', { percent: Math.round(data.dodgeChance * 100) }));
+        }
+        body = lines.join('\n');
     } else if (data.type === 'potion') {
         body = t(scene, 'tooltip.heals', { amount: data.healAmount ?? 0 });
     } else if (data.type === 'food') {

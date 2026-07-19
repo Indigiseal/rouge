@@ -4,7 +4,13 @@ import { SoundHelper } from './utils/SoundHelper.js';
 import { CombatSequencer } from './utils/CombatSequencer.js';
 import { showItemTooltip, hideItemTooltip, showBossTooltip } from './utils/ItemTooltip.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
-import { minEnemyRatioForFloor } from './sim/balance-knobs.js';
+
+/** Minimum enemy share of board cards by act (combat density floor). */
+function minEnemyRatioForFloor(floor) {
+  if (floor <= 15) return 0.19;
+  if (floor <= 30) return 0.24;
+  return 0.28;
+}
 
 export class CardSystem {
     constructor(scene) {
@@ -14,7 +20,7 @@ export class CardSystem {
         this.floorBoardPanel = null;
     }
     // ===== Front/back combat config =====
-    static RANGED_MULTIPLIER = 0.8; // ranged deals 80% to compensate for reach
+    // Ranged no longer pays a damage penalty — printed weapon damage is the hit.
     // --- weapon helpers (be liberal: support multiple schemas) ---
     isMeleeWeapon(w) {
       if (!w) return false;
@@ -51,7 +57,7 @@ export class CardSystem {
       }
 
       if (weapon?.gemEffect === 'poison') {
-        const stacks = Math.max(1, Math.min(3, weapon.gemCount || 1));
+        const stacks = CardDataGenerator.weaponGemStack(weapon);
         for (let i = 0; i < stacks; i++) {
           poisonStacks.push({
             damage: 1,
@@ -1904,7 +1910,12 @@ export class CardSystem {
     revealCard(index, freeAction = false) {
         const card = this.boardCards[index];
         if (!card || card.revealed) return;
-        if (!freeAction && !this.scene.useAction()) return;
+        // Reveals do not spend AP. Floor-start free reveals also skip the enemy
+        // response; player-initiated flips still wake enemies (with justRevealed grace).
+        if (!freeAction) {
+            if (this.scene.isEnemyTurn) return;
+            this.scene.scheduleEnemyTurn?.();
+        }
         
         SoundHelper.playSound(this.scene, 'card_flip', 0.7);
         // Flipping a legendary item gets its own reveal fanfare.
@@ -2575,7 +2586,7 @@ export class CardSystem {
             this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Discarded!', 0xff0000);
             this.scene.recordCardDiscarded?.(card.data, card.sprite.x, card.sprite.y);
             this.removeCard(index);
-            this.scene.useAction?.();
+            // Board discard does not spend AP.
             return true;
         }
 
@@ -2588,6 +2599,7 @@ export class CardSystem {
             if (targetCard?.type === 'weapon') {
                 if (inventory.applyGemToWeapon(card.data, i)) {
                     this.removeCard(index);
+                    // Socketing a gem costs AP.
                     this.scene.useAction?.();
                     return true;
                 }
@@ -2595,7 +2607,7 @@ export class CardSystem {
             }
             if (!targetCard && inventory.addCard(card.data, i)) {
                 this.removeCard(index);
-                this.scene.useAction?.();
+                // Picking a gem into an empty slot does not spend AP.
                 return true;
             }
         }
@@ -2716,8 +2728,7 @@ export class CardSystem {
                 if (card.data.type === 'gem') SoundHelper.playSound(this.scene, 'gem_pickup', 0.5);
                 if (this.scene.inventorySystem.addCard(card.data)) {
                     this.removeCard(index);
-                    // Picking an item off the board costs an action point and wakes the enemies.
-                    this.scene.useAction?.();
+                    // Board loot pickup does not spend AP.
                 }
                 break;
 
@@ -2740,8 +2751,7 @@ export class CardSystem {
 
             case 'amulet':
                 this.consumeAmulet(card.data, index);
-                // Equipping an amulet costs an action point and wakes the enemies.
-                this.scene.useAction?.();
+                // Equipping a board amulet does not spend AP.
                 break;
 
             case 'empty':
@@ -2995,9 +3005,8 @@ export class CardSystem {
             const meleeBlockers = this._anyMeleeAlive({ includeHidden: true });
 
             // RANGED weapons (bows) bypass the frontline gate — that's
-            // their whole point. They pay a damage penalty (RANGED_MULTIPLIER)
-            // in exchange for being able to hit back-row archers regardless
-            // of front-row blockers.
+            // their whole point. Printed damage is applied as-is (no ranged
+            // multiplier); see docs/OPEN-QUESTIONS.md for weakened/display.
             if (!isRanged && meleeBlockers && card.data.role !== 'MELEE') {
                 SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
                 this.scene.createFloatingText(
@@ -3011,11 +3020,6 @@ export class CardSystem {
                 this.scene.events.emit('tutorialProgress', 'blocked');
                 this.scene.tutorialManager?._handleProgress?.('blocked');
                 return;
-            }
-
-            // Ranged weapons get a damage penalty
-            if (isRanged) {
-                damage = Math.floor(damage * CardSystem.RANGED_MULTIPLIER);
             }
         }
         
@@ -3159,17 +3163,12 @@ export class CardSystem {
         const target = this.boardCards[targetIndex];
         if (!target?.data) return;
 
-        const stack = Math.max(1, Math.min(3, weapon.gemCount || 1));
+        const stack = CardDataGenerator.weaponGemStack(weapon);
 
         if (weapon.gemEffect === 'fire') {
-            // Fire: FLAT +3 / +4 / +5 fire damage. The MAIN target takes
-            // weapon damage AND the fire damage (so sword 8 + 3-stack fire = 13
-            // on the main enemy). Every other enemy within splash radius also
-            // takes the +3/+4/+5 fire damage. Scales by gem stack with
-            // diminishing returns; weak weapons benefit hugely (gems add
-            // meaningful damage), legendary weapons not much (5 on top of 16
-            // is modest).
-            const splashDamage = [3, 4, 5][stack - 1];
+            // Fire: flat splash by gem stack. Stacks 4–5 are provisional
+            // until gem merge power is decided (docs/OPEN-QUESTIONS.md).
+            const splashDamage = [3, 4, 5, 6, 7][stack - 1];
             // Main target: bonus fire damage on top of the weapon hit.
             this.burnEnemy(targetIndex, splashDamage);
             // Measure to the NEAREST EDGE of each enemy's sprite, not its center.
@@ -3194,14 +3193,10 @@ export class CardSystem {
         }
 
         if (weapon.gemEffect === 'lightning') {
-            // Lightning: FLAT +3 / +4 / +5 lightning damage (scales with stacks).
-            // Always hits 3 enemies total: main target + 2 others, regardless
-            // of how many gems are socketed. Stacks only increase the damage.
-            //   1 gem  → 3 enemies take +3 lightning each
-            //   2 gems → 3 enemies take +4 lightning each
-            //   3 gems → 3 enemies take +5 lightning each
-            // Back-row RANGED enemies prioritized as zap targets.
-            const zapDamage = [3, 4, 5][stack - 1];
+            // Lightning: flat zap by gem stack (stacks 4–5 provisional).
+            // Always hits 3 enemies total: main target + 2 others.
+            // Stacks only increase the damage.
+            const zapDamage = [3, 4, 5, 6, 7][stack - 1];
             const extraZaps = 2; // always 2 additional = 3 total
             // One random zap SFX per lightning-gem swing (not per hop). Sits on
             // the gem beat so the zap answers the sword hit instead of racing it.
