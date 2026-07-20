@@ -48,52 +48,45 @@ export class CardSystem {
       return !!w && ((w.poisonDamage || 0) > 0 || (w.name || '').toLowerCase().includes('venomous dagger'));
     }
     applyWeaponPoison(card, weapon) {
-      if (!card?.data) return;
-      if (!card.data.statusEffects) card.data.statusEffects = [];
-
-      // Per-turn poison damage actually applied by THIS hit (drives the text).
-      let appliedDamage = 0;
-      const pushStack = (damage, turns) => {
-        card.data.statusEffects.push({ type: 'poison', damage, turns, stackable: true });
-        appliedDamage += damage;
-      };
-
-      // Native venomous weapons stack as before.
+      const poisonStacks = [];
       if (this.isVenomousWeapon(weapon)) {
-        pushStack(Math.max(1, weapon.poisonDamage || 1), Math.max(1, weapon.poisonTurns || 3));
+        poisonStacks.push({
+          damage: Math.max(1, weapon.poisonDamage || 1),
+          turns: Math.max(1, weapon.poisonTurns || 3)
+        });
       }
 
-      // Gem poison. BASELINE no longer stacks: a single refreshed stack whose
-      // per-turn damage equals the socketed gem count (re-hitting refreshes it,
-      // never adds). The Poison Rune restores true stacking — one
-      // independent stack per gem, accumulating across hits.
       if (weapon?.gemEffect === 'poison') {
-        const gemStacks = CardDataGenerator.weaponGemStack(weapon);
-        const canStack = this.scene.amuletManager?.isPoisonStackingEnabled?.() === true;
-        if (canStack) {
-          for (let i = 0; i < gemStacks; i++) pushStack(1, 3);
-        } else {
-          const existing = card.data.statusEffects.find(e => e.type === 'poison' && e.gemPoison);
-          if (existing) {
-            existing.turns = Math.max(existing.turns, 3);
-            existing.damage = Math.max(existing.damage, gemStacks);
-          } else {
-            card.data.statusEffects.push({ type: 'poison', damage: gemStacks, turns: 3, stackable: false, gemPoison: true });
-          }
-          appliedDamage += gemStacks;
+        const stacks = CardDataGenerator.weaponGemStack(weapon);
+        for (let i = 0; i < stacks; i++) {
+          poisonStacks.push({
+            damage: 1,
+            turns: 3
+          });
         }
       }
 
-
-      // Relic-granted poison chance stacks as before.
       const relicEffects = this.scene.gameState?.relicEffects || {};
       if (relicEffects.weaponPoisonChance && Math.random() < relicEffects.weaponPoisonChance) {
-        pushStack(Math.max(1, relicEffects.poisonDamage || 1), Math.max(1, relicEffects.poisonTurns || 3));
+        poisonStacks.push({
+          damage: Math.max(1, relicEffects.poisonDamage || 1),
+          turns: Math.max(1, relicEffects.poisonTurns || 3)
+        });
       }
 
-      if (appliedDamage <= 0) return;
+      if (poisonStacks.length === 0) return;
+      if (!card.data.statusEffects) card.data.statusEffects = [];
+      poisonStacks.forEach(stack => {
+        card.data.statusEffects.push({
+          type: 'poison',
+          damage: stack.damage,
+          turns: stack.turns,
+          stackable: true
+        });
+      });
+      const totalDamage = poisonStacks.reduce((sum, stack) => sum + stack.damage, 0);
       this.scene.createFloatingText(card.sprite.x, card.sprite.y - 16, 'Poisoned!', 0x44ff44);
-      this.scene.createFloatingText(card.sprite.x, card.sprite.y - 32, `poison -${appliedDamage}/turn`, 0x88dd88);
+      this.scene.createFloatingText(card.sprite.x, card.sprite.y - 32, `poison -${totalDamage}/turn`, 0x88dd88);
 
       // Show looping poison icon at top-right corner of the enemy card
       if (card.sprite && !card.poisonMarker && this.scene.textures.exists('poisonedStatus')) {
@@ -3391,13 +3384,10 @@ export class CardSystem {
 
         if (weapon.gemEffect === 'lightning') {
             // Lightning: flat zap by gem stack (stacks 4–5 provisional).
-            // Baseline hits 2 enemies total (main + 1 other) — nerfed from 3 to
-            // make lightning gems weaker early. The Lightning Rune
-            // adds +1 extra zap target (back to 3 total). Gem stacks only change
-            // the damage, never the number of targets.
-            // Back-row RANGED enemies prioritized as zap targets.
+            // Always hits 3 enemies total: main target + 2 others.
+            // Stacks only increase the damage.
             const zapDamage = [3, 4, 5, 6, 7][stack - 1];
-            const extraZaps = 1 + (this.scene.amuletManager?.getExtraZapTargets?.() || 0);
+            const extraZaps = 2; // always 2 additional = 3 total
             // One random zap SFX per lightning-gem swing (not per hop). Sits on
             // the gem beat so the zap answers the sword hit instead of racing it.
             CombatSequencer.playVariant(this.scene, 'gem', 'lightning_zap', 0.45);

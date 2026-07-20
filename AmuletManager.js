@@ -503,20 +503,17 @@ export class AmuletManager {
             },
 
             // Gem-synergy stone runes — earned from The Screaming Head, never from
-            // the regular amulet pool. Each restores a little of the power gems
-            // lost in the early-game rebalance.
+            // the regular amulet pool. Gem effects wired up later (OPEN-QUESTIONS).
             poisonRune: {
                 ...getAmuletAtlasPresentation('poisonRune'),
                 description: 'Poison gems stack more poison.',
-                rarity: 'rare',
-                poisonStacking: true
+                rarity: 'rare'
             },
 
             lightningRune: {
                 ...getAmuletAtlasPresentation('lightningRune'),
                 description: 'Zap hits one extra enemy.',
-                rarity: 'rare',
-                extraZapTargets: 1
+                rarity: 'rare'
             }
         };
     }
@@ -561,18 +558,6 @@ export class AmuletManager {
     // Fire Rune — extra pixels added to the fire gem's splash radius.
     getFireSplashRadiusBonus() {
         return this.sumAmuletProperty('fireSplashRadiusBonus');
-    }
-
-    // Lightning Rune — extra enemies the lightning gem's zap chains to.
-    getExtraZapTargets() {
-        return this.sumAmuletProperty('extraZapTargets');
-    }
-
-    // Poison Rune — re-enables true poison stacking for poison gems.
-    isPoisonStackingEnabled() {
-        return this.gameState.activeAmulets.some(amulet => (
-            this.amuletDefinitions[amulet.id]?.poisonStacking
-        ));
     }
 
     // Add an amulet to the player.

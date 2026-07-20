@@ -133,12 +133,9 @@ export class CardDataGenerator {
         );
         // Amulets were flooding the late game (~22% of cards, 4-5 per floor),
         // which trivialized runs once you stacked a dozen+. Cut the weight hard
-        // so floor drops are a rare bonus; amulets should mostly come from
-        // curated events instead. The cap is graduated DOWN through the acts:
-        // late floors draw many cards, so a flat cap still spawned several
-        // amulets per floor in act 2/3 — hence 4 in act 2 and 3 in act 3.
-        const amuletCap = floor >= 31 ? 3 : 4; // act 3 → 3, act 1-2 → 4
-        balanced.amulet = Math.min(amuletCap, Math.max(1, Math.floor((balanced.amulet || 0) * 0.4)));
+        // (~2-3% of cards) so floor drops are a rare bonus; amulets should
+        // mostly come from curated events instead.
+        balanced.amulet = Math.min(floor >= 15 ? 6 : 4, Math.max(1, Math.floor((balanced.amulet || 0) * 0.4)));
         if (areAmuletsDisabled()) balanced.amulet = 0;
 
         balanced.potion = Math.max(8, Math.floor((balanced.potion || 0) * 1.2));
@@ -591,6 +588,7 @@ export class CardDataGenerator {
             { id: 'sirensPendant',    minFloor: 6,  weight: 4,  rarity: 'rare',      group: 'survival' },
 
             { id: 'goldenSeed',       minFloor: 2,  weight: 7,  rarity: 'uncommon',  group: 'survival' },
+            { id: 'fireRuneStone',    minFloor: 10, weight: 5,  rarity: 'uncommon',  group: 'magic' },
             { id: 'prospectorsPick',  minFloor: 3,  weight: 7,  rarity: 'uncommon',  group: 'utility' }
 
         ];
