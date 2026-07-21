@@ -40,6 +40,13 @@ export class StatsDatabase {
     addCol('sim_floor_visits', 'player_max_hp_end', 'INTEGER');
     addCol('sim_floor_visits', 'combat_damage_dealt', 'INTEGER');
     addCol('sim_floor_visits', 'combat_damage_wasted', 'INTEGER');
+    addCol('sim_floor_visits', 'combat_damage_taken', 'INTEGER');
+    addCol('sim_floor_visits', 'combat_damage_blocked_armor', 'INTEGER');
+    addCol('sim_floor_visits', 'combat_damage_dodged', 'INTEGER');
+    addCol('sim_floor_visits', 'combat_specialization_dual_wield', 'INTEGER');
+    addCol('sim_floor_visits', 'combat_specialization_gem', 'INTEGER');
+    addCol('sim_floor_visits', 'ap_spent', 'INTEGER');
+    addCol('sim_floor_visits', 'hungry_actions', 'INTEGER');
   }
 
   _prepareStatements() {
@@ -76,7 +83,14 @@ export class StatsDatabase {
       SET player_hp_end = @player_hp_end,
           player_max_hp_end = @player_max_hp_end,
           combat_damage_dealt = @combat_damage_dealt,
-          combat_damage_wasted = @combat_damage_wasted
+          combat_damage_wasted = @combat_damage_wasted,
+          combat_damage_taken = @combat_damage_taken,
+          combat_damage_blocked_armor = @combat_damage_blocked_armor,
+          combat_damage_dodged = @combat_damage_dodged,
+          combat_specialization_dual_wield = @combat_specialization_dual_wield,
+          combat_specialization_gem = @combat_specialization_gem,
+          ap_spent = @ap_spent,
+          hungry_actions = @hungry_actions
       WHERE id = @id
     `);
     this.stmtInsertWeapon = this.db.prepare(`
@@ -98,6 +112,10 @@ export class StatsDatabase {
         @floor_visit_id, @spawn_order, @name, @enemy_type, @role,
         @health, @max_health, @attack, @is_boss, @is_ranged_type, @board_index
       )
+    `);
+    this.stmtInsertAmuletGain = this.db.prepare(`
+      INSERT INTO sim_amulet_gains (floor_visit_id, amulet_id, rarity)
+      VALUES (@floor_visit_id, @amulet_id, @rarity)
     `);
   }
 
@@ -143,13 +161,20 @@ export class StatsDatabase {
     return info.lastInsertRowid;
   }
 
-  finishFloorVisit(floorVisitId, playerHpEnd, playerMaxHpEnd, combat = {}) {
+  finishFloorVisit(floorVisitId, playerHpEnd, playerMaxHpEnd, combat = {}, extras = {}) {
     this.stmtFinishFloorVisit.run({
       id: floorVisitId,
       player_hp_end: playerHpEnd ?? null,
       player_max_hp_end: playerMaxHpEnd ?? null,
       combat_damage_dealt: combat.damageDealt ?? null,
       combat_damage_wasted: combat.damageWasted ?? null,
+      combat_damage_taken: combat.damageTaken ?? null,
+      combat_damage_blocked_armor: combat.damageBlockedArmor ?? null,
+      combat_damage_dodged: combat.damageDodged ?? null,
+      combat_specialization_dual_wield: combat.specializationDualWield ?? null,
+      combat_specialization_gem: combat.specializationGem ?? null,
+      ap_spent: extras.apSpent ?? null,
+      hungry_actions: extras.hungryActions ?? null,
     });
   }
 
@@ -159,6 +184,14 @@ export class StatsDatabase {
 
   insertEnemySpawn(floorVisitId, enemyRow) {
     this.stmtInsertEnemy.run({ floor_visit_id: floorVisitId, ...enemyRow });
+  }
+
+  insertAmuletGain(floorVisitId, { amuletId, rarity }) {
+    this.stmtInsertAmuletGain.run({
+      floor_visit_id: floorVisitId,
+      amulet_id: amuletId,
+      rarity: rarity || 'unknown',
+    });
   }
 
   /** Wrap a full batch in one transaction (all runs). */

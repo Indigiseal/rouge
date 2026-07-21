@@ -3,6 +3,7 @@ import { SoundHelper } from '../utils/SoundHelper.js';
 import { t, translateItemName } from '../utils/i18n.js';
 import { createTitle } from '../utils/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
+import { openAmuletChoiceOverlay } from '../utils/AmuletChoiceOverlay.js';
 
 export class ShopScene extends StationRoomBase {
     constructor() {
@@ -106,7 +107,7 @@ export class ShopScene extends StationRoomBase {
         }
         
         // Slot 3: Armor (guaranteed) - FIXED to use CardDataGenerator
-        const armorData = cardGenerator.createCardData('armor', floor);
+        const armorData = cardGenerator.createCardData('armor', floor, false, this.gameState);
         if (armorData) {
             const armorPrice = this.calculateItemPrice(armorData);
             this.shopItems.push({ 
@@ -158,15 +159,14 @@ export class ShopScene extends StationRoomBase {
             }
         }
         
-        // Slot 8: Amulet (costs CRYSTALS)
-        const amuletData = cardGenerator.createCardData('amulet', floor, false, this.gameState);
+        // Slot 8: Amulet offer (costs CRYSTALS) — rarity rolled, pick 1 of 3 on buy
+        const amuletData = cardGenerator.createCardData('amulet', floor, false, this.gameState, 'shop');
         if (amuletData) {
-            // Amulets cost crystals, price based on rarity
             const crystalPrice = this.calculateAmuletCrystalPrice(amuletData);
             this.shopItems.push({
                 data: amuletData,
                 price: crystalPrice,
-                currency: 'crystals', // IMPORTANT: Amulets use crystals
+                currency: 'crystals',
                 purchased: false
             });
         }
@@ -507,15 +507,14 @@ export class ShopScene extends StationRoomBase {
             return;
         }
         
-        // Check if it's an amulet - use the new amulet manager system
+        // Check if it's an amulet - rarity offer opens a 3-pick overlay
         if (item.data.type === 'amulet') {
-            // Purchase and consume amulet immediately using AmuletManager
-            if (this.gameScene && this.gameScene.amuletManager && item.data.id) {
-                const success = this.gameScene.amuletManager.addAmulet(item.data.id);
-                if (success) {
-                    SoundHelper.playSound(this, 'shop_buy', 0.5);
-                    
-                    // Deduct crystals for amulets
+            if (this.gameScene && this.gameScene.amuletManager) {
+                const offer = item.data.pendingChoice && item.data.options?.length
+                    ? item.data
+                    : null;
+                if (offer?.options?.length) {
+                    // Charge first, then let the player pick.
                     if (item.currency === 'crystals') {
                         this.gameState.crystals -= item.price;
                         this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
@@ -523,49 +522,38 @@ export class ShopScene extends StationRoomBase {
                         this.gameState.coins -= item.price;
                         this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
                     }
-                    
-                    this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x9932cc);
-                    
                     item.purchased = true;
                     this.markButtonDone(button, t(this, 'ui.shop.sold'));
-                    
-                    // Update GameScene UI
-                    if (this.gameScene.updateUI) {
-                        this.gameScene.updateUI();
+                    SoundHelper.playSound(this, 'shop_buy', 0.5);
+
+                    openAmuletChoiceOverlay(this, {
+                        rarity: offer.rarity,
+                        options: offer.options,
+                        amuletManager: this.gameScene.amuletManager,
+                        title: `Shop — ${offer.rarity} amulet`,
+                        onPicked: () => this.gameScene.updateUI?.(),
+                    });
+                    return;
+                }
+
+                if (item.data.id) {
+                    const success = this.gameScene.amuletManager.addAmulet(item.data.id);
+                    if (success) {
+                        SoundHelper.playSound(this, 'shop_buy', 0.5);
+                        if (item.currency === 'crystals') {
+                            this.gameState.crystals -= item.price;
+                            this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
+                        } else {
+                            this.gameState.coins -= item.price;
+                            this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+                        }
+                        this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x9932cc);
+                        item.purchased = true;
+                        this.markButtonDone(button, t(this, 'ui.shop.sold'));
+                        if (this.gameScene.updateUI) this.gameScene.updateUI();
+                    } else {
+                        this.showFeedback('Already owned!', 0xff0000);
                     }
-                } else {
-                    this.showFeedback('Already owned!', 0xff0000);
-                }
-            } else {
-                // Fallback to old system for legacy amulets
-                SoundHelper.playSound(this, 'shop_buy', 0.5);
-                
-                if (item.currency === 'crystals') {
-                    this.gameState.crystals -= item.price;
-                    this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
-                } else {
-                    this.gameState.coins -= item.price;
-                    this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
-                }
-                
-                if (item.data.effect === 'health') {
-                    this.gameState.maxHealth += item.data.value;
-                    this.gameState.playerHealth += item.data.value;
-                    this.showFeedback(`+${item.data.value} Max HP!`, 0x00ff00);
-                } else if (item.data.effect === 'max_actions') {
-                    this.gameState.maxActions += item.data.value;
-                    this.showFeedback(`+${item.data.value} Max Actions!`, 0x00ff00);
-                } else {
-                    this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x9932cc);
-                }
-                
-                this.gameState.activeAmulets.push(item.data);
-                
-                item.purchased = true;
-                button.setText(t(this, 'ui.shop.sold')).setStyle({ fill: '#888888' }).removeInteractive();
-                
-                if (this.gameScene && this.gameScene.updateUI) {
-                    this.gameScene.updateUI();
                 }
             }
             return;

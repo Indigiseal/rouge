@@ -1,4 +1,5 @@
 import { SoundHelper } from '../utils/SoundHelper.js';
+import { exitToSandboxHub, isSandboxMode } from '../utils/SandboxMode.js';
 export class RestScene extends Phaser.Scene {
     constructor() {
         super({ key: 'RestScene' });
@@ -26,6 +27,10 @@ export class RestScene extends Phaser.Scene {
             .on('pointerdown', () => {
                 // NO nextFloor() here—map already did it
                 this.stopCampfireLoop(450);
+                if (isSandboxMode(this)) {
+                    exitToSandboxHub(this);
+                    return;
+                }
                 this.scene.stop(); // Close rest
                 this.scene.wake('MapViewScene'); // Back to map
                 console.log('Woke MapViewScene after rest');

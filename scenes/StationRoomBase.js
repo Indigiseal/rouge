@@ -8,6 +8,7 @@ import { SoundHelper } from '../utils/SoundHelper.js';
 import { showItemTooltip, hideItemTooltip } from '../utils/ItemTooltip.js';
 import { snapOriginToPixelGrid } from '../utils/PixelSnap.js';
 import { t } from '../utils/i18n.js';
+import { exitToSandboxHub, isSandboxMode } from '../utils/SandboxMode.js';
 
 export class StationRoomBase extends Phaser.Scene {
     // ─── Inventory station mode ──────────────────────────────────────────────
@@ -28,6 +29,10 @@ export class StationRoomBase extends Phaser.Scene {
             this.restoreGameInventoryLayering();
             this.gameScene.inventorySystem.setVisibility(false);
             this.scene.sleep('GameScene');
+        }
+        if (isSandboxMode(this) || isSandboxMode(this.gameScene)) {
+            exitToSandboxHub(this);
+            return;
         }
         this.scene.stop();
         this.scene.wake('MapViewScene');

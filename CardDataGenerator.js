@@ -1,5 +1,6 @@
 import { getAmuletAtlasPresentation } from './utils/RelicsOthersAtlas.js';
 import { areAmuletsDisabled } from './utils/TestOptions.js';
+import { resolveArmorSpawnTypes } from './utils/CharacterClasses.js';
 
 function postBossWeaponFloor(floor) {
   return (floor >= 16 && floor <= 19) || (floor >= 31 && floor <= 34);
@@ -14,6 +15,35 @@ export class CardDataGenerator {
         rare: 3,
         epic: 4,
         legendary: 5
+    };
+
+    // Spawn/merge durability by armor family.
+    static ARMOR_DURABILITY_BY_TYPE = {
+        leather: { common: 15, uncommon: 20, rare: 25, epic: 28, legendary: 30 },
+        chain:   { common: 15, uncommon: 20, rare: 25, epic: 28, legendary: 30 },
+        plate:   { common: 15, uncommon: 20, rare: 25, epic: 28, legendary: 30 },
+    };
+
+    static armorDurability(armorType, rarity) {
+        const byType = CardDataGenerator.ARMOR_DURABILITY_BY_TYPE[armorType]
+            || CardDataGenerator.ARMOR_DURABILITY_BY_TYPE.leather;
+        return byType[rarity] || byType.common || 15;
+    }
+
+    // Amulet rarity is rolled FIRST by source, then the player picks 1 of 3
+    // amulets of that rarity. Weights are relative (need not sum to 100).
+    static AMULET_RARITY_RATES = {
+        floor:     { common: 50, uncommon: 30, rare: 20 },
+        shop:      { common: 50, uncommon: 30, rare: 20 },
+        rare_shop: { uncommon: 25, rare: 60, legendary: 15 },
+        // Boss: rare or legendary (boss ignores minFloor so act-1 boss can roll rare).
+        boss:      { rare: 30, legendary: 70 },
+    };
+
+    // Earliest floor a source may sell/offer amulets (floor/boss have no gate).
+    static AMULET_SOURCE_MIN_FLOOR = {
+        shop: 5,
+        rare_shop: 20,
     };
 
     static gemSlotsForRarity(rarity) {
@@ -205,11 +235,11 @@ export class CardDataGenerator {
                 // up through act 2 before the axe takes over in act 3. Deliberately
                 // NOT available in act 1: act 1 belongs to the dagger+bow loadout,
                 // and the sword is the act-2 power jump.
-                common: { floor: 16, damage: 6, sprite: 'sword_C', special: null },
-                uncommon: { floor: 19, damage: 7, sprite: 'sword_U', special: null },
-                rare: { floor: 22, damage: 8, sprite: 'sword_R', special: null },
-                epic: { floor: 25, damage: 9, sprite: 'sword_E', special: null },
-                legendary: { floor: 28, damage: 10, sprite: 'sword_L', special: null }
+                common: { floor: 16, damage: 5, sprite: 'sword_C', special: null },
+                uncommon: { floor: 19, damage: 6, sprite: 'sword_U', special: null },
+                rare: { floor: 22, damage: 7, sprite: 'sword_R', special: null },
+                epic: { floor: 25, damage: 8, sprite: 'sword_E', special: null },
+                legendary: { floor: 28, damage: 9, sprite: 'sword_L', special: null }
             },
             axe: {
                 // Act 3 only — the endgame weapon. Spread across floors 31-45 so you
@@ -224,10 +254,8 @@ export class CardDataGenerator {
     }
 
     initializeArmorUnlocks() {
-        // REMOVED reflection property from all armor types.
-        // Only leather is in the drop pool for now (createArmorCard filters).
-        // Chain/plate data kept for merge/force helpers + future re-enable —
-        // design notes in docs/OPEN-QUESTIONS.md.
+        // Armor pool is filtered per character in createArmorCard:
+        // rogue → leather only; warrior → chain and/or plate (sim can narrow).
         this.armorUnlocks = {
             leather: {
                 // Dodge-only armor: no protection. Durability ticks on successful dodge.
@@ -238,22 +266,20 @@ export class CardDataGenerator {
                 legendary: { floor: 34, protection: 0, dodgeChance: 0.30, sprite: 'leather_L' }
             },
             chain: {
-                // DISABLED from spawn pool. Planned: no dodge; durability ticks
-                // every 2/3/4/5/6 enemy attacks by rarity.
-                common:    { floor: 16, protection: 2, sprite: 'chain_C' },
-                uncommon:  { floor: 19, protection: 3, sprite: 'chain_U' },
-                rare:      { floor: 22, protection: 4, sprite: 'chain_R' },
-                epic:      { floor: 25, protection: 5, sprite: 'chain_E' },
-                legendary: { floor: 28, protection: 7, sprite: 'chain_L' }
+                // Flat DEF + chance to counter melee for ceil(50% of blocked), no weapon pip.
+                common:    { floor: 1, protection: 1, meleeCounterChance: 0.10, sprite: 'chain_C' },
+                uncommon:  { floor: 1, protection: 2, meleeCounterChance: 0.15, sprite: 'chain_U' },
+                rare:      { floor: 1, protection: 3, meleeCounterChance: 0.20, sprite: 'chain_R' },
+                epic:      { floor: 1, protection: 4, meleeCounterChance: 0.25, sprite: 'chain_E' },
+                legendary: { floor: 1, protection: 4, meleeCounterChance: 0.25, sprite: 'chain_L' }
             },
             plate: {
-                // DISABLED from spawn pool. Planned: no dodge; 1 durability blocks
-                // 1/2/3/4/5 damage from a single enemy hit by rarity.
-                common:    { floor: 31, protection: 3,  sprite: 'plate_C' },
-                uncommon:  { floor: 34, protection: 5,  sprite: 'plate_U' },
-                rare:      { floor: 37, protection: 7,  sprite: 'plate_R' },
-                epic:      { floor: 40, protection: 9,  sprite: 'plate_E' },
-                legendary: { floor: 43, protection: 11, sprite: 'plate_L' }
+                // Flat DEF + chance to fully ignore a ranged hit.
+                common:    { floor: 1, protection: 1, rangedIgnoreChance: 0.50, sprite: 'plate_C' },
+                uncommon:  { floor: 1, protection: 2, rangedIgnoreChance: 0.75, sprite: 'plate_U' },
+                rare:      { floor: 1, protection: 3, rangedIgnoreChance: 1.00, sprite: 'plate_R' },
+                epic:      { floor: 1, protection: 4, rangedIgnoreChance: 1.00, sprite: 'plate_E' },
+                legendary: { floor: 1, protection: 4, rangedIgnoreChance: 1.00, sprite: 'plate_L' }
             }
         };
     }
@@ -547,50 +573,38 @@ export class CardDataGenerator {
         // bottomlessBag, evasionBoots) are trimmed so no single pickup
         // dominates the run.
         const dropData = [
-            // Regular amulets
-            { id: 'regeneration',     minFloor: 1,  weight: 10, rarity: 'uncommon',  group: 'survival' },
-            { id: 'healingRing',      minFloor: 2,  weight: 10, rarity: 'uncommon',  group: 'survival' },
-            { id: 'invulnerability',  minFloor: 15, weight: 2,  rarity: 'legendary', group: 'survival' },
-            { id: 'evasionBoots',     minFloor: 3,  weight: 6,  rarity: 'uncommon',  group: 'survival' },
-            { id: 'dragonClaw',       minFloor: 8,  weight: 3,  rarity: 'rare',      group: 'offense' },
-            { id: 'greedPouch',       minFloor: 1,  weight: 10, rarity: 'uncommon',  group: 'utility' },
-            { id: 'golemHeart',       minFloor: 2,  weight: 8,  rarity: 'uncommon',  group: 'survival' },
-            { id: 'chronosHeart',     minFloor: 5,  weight: 5,  rarity: 'rare',      group: 'magic' },
-            { id: 'speedBoots',       minFloor: 4,  weight: 6,  rarity: 'rare',      group: 'magic' },
-            { id: 'abyssHourglass',   minFloor: 3,  weight: 8,  rarity: 'uncommon',  group: 'magic' },
-            { id: 'temperedSteel',    minFloor: 6,  weight: 6,  rarity: 'rare',      group: 'offense' },
-            { id: 'bottomlessBag',    minFloor: 1,  weight: 5,  rarity: 'common',    group: 'utility' },
-            { id: 'travelKitchen',    minFloor: 2,  weight: 8,  rarity: 'uncommon',  group: 'magic' },
-            { id: 'vampiricRing',     minFloor: 4,  weight: 7,  rarity: 'uncommon',  group: 'survival' },
-            { id: 'soulHarvester',    minFloor: 10, weight: 4,  rarity: 'rare',      group: 'survival' },
+            // Common (from floor 0 / start of run)
+            { id: 'amuletOfEvasion', minFloor: 0, weight: 10, rarity: 'common', group: 'survival' },
+            { id: 'ringOfHealth', minFloor: 0, weight: 10, rarity: 'common', group: 'survival' },
+            { id: 'amuletOfProtection', minFloor: 0, weight: 10, rarity: 'common', group: 'survival' },
+            { id: 'ringOfRegeneration', minFloor: 0, weight: 10, rarity: 'common', group: 'survival' },
+            { id: 'earringOfArmorDurability', minFloor: 0, weight: 8, rarity: 'common', group: 'survival' },
+            { id: 'earringOfWeaponDurability', minFloor: 0, weight: 8, rarity: 'common', group: 'offense' },
 
-            // Carrion Oath (hungryDagger) — reworked into a beneficial poison-cleanse
-            // amulet, so it now sits with the regular rares instead of the cursed pool.
-            { id: 'hungryDagger',     minFloor: 10, weight: 4,  rarity: 'rare',      group: 'survival' },
+            // Uncommon (from floor 10)
+            { id: 'amuletOfGreaterEvasion', minFloor: 10, weight: 7, rarity: 'uncommon', group: 'survival' },
+            { id: 'ringOfGreaterHealth', minFloor: 10, weight: 7, rarity: 'uncommon', group: 'survival' },
+            { id: 'amuletOfGreaterProtection', minFloor: 10, weight: 7, rarity: 'uncommon', group: 'survival' },
+            { id: 'ringOfGreaterRegeneration', minFloor: 10, weight: 7, rarity: 'uncommon', group: 'survival' },
+            { id: 'earringOfGreaterArmorDurability', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'survival' },
+            { id: 'earringOfGreaterWeaponDurability', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'offense' },
+            { id: 'alchemistBag', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'survival' },
+            { id: 'monocle', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'utility' },
+            { id: 'pouchOfGreed', minFloor: 10, weight: 8, rarity: 'uncommon', group: 'utility' },
 
-            // Cursed amulets
-            { id: 'bloodyHarvest',    minFloor: 10, weight: 4,  rarity: 'cursed',    group: 'survival' },
-            { id: 'eternalRage',      minFloor: 8,  weight: 4,  rarity: 'cursed',    group: 'offense' },
-            { id: 'berserkerBelt',    minFloor: 14, weight: 3,  rarity: 'cursed',    group: 'offense' },
+            // Rare (from floor 20; boss can still roll rare earlier — see createAmuletOffer)
+            { id: 'vampireFang', minFloor: 20, weight: 4, rarity: 'rare', group: 'offense' },
+            { id: 'newDragonClaw', minFloor: 20, weight: 4, rarity: 'rare', group: 'offense' },
+            { id: 'runeOfFire', minFloor: 20, weight: 4, rarity: 'rare', group: 'magic' },
+            { id: 'runeOfZap', minFloor: 20, weight: 4, rarity: 'rare', group: 'magic' },
+            { id: 'runeOfPoison', minFloor: 20, weight: 4, rarity: 'rare', group: 'magic' },
+            { id: 'maskOfHollowWhispers', minFloor: 20, weight: 4, rarity: 'rare', group: 'utility' },
 
-            // Exploration and utility amulets
-            { id: 'diviners_spade',   minFloor: 2,  weight: 7,  rarity: 'uncommon',  group: 'magic' },
-            { id: 'wayfinder',        minFloor: 4,  weight: 5,  rarity: 'rare',      group: 'utility' },
-            { id: 'skeletonKey',      minFloor: 3,  weight: 5,  rarity: 'rare',      group: 'utility' },
-            { id: 'greasewingFeast',  minFloor: 5,  weight: 6,  rarity: 'uncommon',  group: 'magic' },
-            { id: 'sunstone',         minFloor: 6,  weight: 5,  rarity: 'rare',      group: 'survival' },
-            { id: 'merchantPact',     minFloor: 3,  weight: 5,  rarity: 'rare',      group: 'utility' },
-            { id: 'watchersLamp',     minFloor: 4,  weight: 5,  rarity: 'rare',      group: 'utility' },
-            { id: 'reapersMask',      minFloor: 5,  weight: 5,  rarity: 'rare',      group: 'utility' },
-            { id: 'travelersJournal', minFloor: 6,  weight: 4,  rarity: 'rare',      group: 'survival' },
-            { id: 'charmingTune',     minFloor: 3,  weight: 6,  rarity: 'uncommon',  group: 'survival' },
-            { id: 'wayfarersMap',     minFloor: 4,  weight: 5,  rarity: 'rare',      group: 'magic' },
-            { id: 'sirensPendant',    minFloor: 6,  weight: 4,  rarity: 'rare',      group: 'survival' },
-
-            { id: 'goldenSeed',       minFloor: 2,  weight: 7,  rarity: 'uncommon',  group: 'survival' },
-            { id: 'fireRuneStone',    minFloor: 10, weight: 5,  rarity: 'uncommon',  group: 'magic' },
-            { id: 'prospectorsPick',  minFloor: 3,  weight: 7,  rarity: 'uncommon',  group: 'utility' }
-
+            // Legendary (shops / boss until boss-only set exists)
+            { id: 'philosophersStone', minFloor: 0, weight: 2, rarity: 'legendary', group: 'survival' },
+            { id: 'legendaryWhetstone', minFloor: 0, weight: 2, rarity: 'legendary', group: 'offense' },
+            { id: 'lostNobleDiadem', minFloor: 0, weight: 2, rarity: 'legendary', group: 'survival' },
+            { id: 'glovesOfHermitWizard', minFloor: 0, weight: 2, rarity: 'legendary', group: 'magic' },
         ];
 
         this.amuletTypes = dropData.map(amulet => ({
@@ -796,10 +810,18 @@ export class CardDataGenerator {
             case 'weapon':
                 return this.createWeaponCard(floor, targetRarity);
             case 'armor':
-                return this.createArmorCard(floor, targetRarity);
+                return this.createArmorCard(floor, targetRarity, gameState);
             case 'amulet':
                 if (areAmuletsDisabled()) return null;
-                return this.createAmuletCard(floor, gameState);
+                // targetRarity here is overloaded as the SOURCE key when it's one of
+                // floor/shop/rare_shop/boss; otherwise treat as a literal rarity filter.
+                if (targetRarity && CardDataGenerator.AMULET_RARITY_RATES[targetRarity]) {
+                    return this.createAmuletOffer(targetRarity, floor, gameState);
+                }
+                if (targetRarity) {
+                    return this.createAmuletOffer(null, floor, gameState, targetRarity);
+                }
+                return this.createAmuletOffer('floor', floor, gameState);
             case 'potion':
                 return this.createPotionCard(floor);
             case 'food':
@@ -1204,7 +1226,7 @@ export class CardDataGenerator {
         };
     }
 
-    createArmorCard(floor, targetRarity = null) {
+    createArmorCard(floor, targetRarity = null, gameState = null) {
         const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
         const resolveRarity = (rarities) => {
             // Same floor-weighted rarity as weapons — see pickFloorRarity().
@@ -1216,12 +1238,12 @@ export class CardDataGenerator {
             return 'common';
         };
 
+        const characterId = gameState?.characterId || 'rogue';
+        const allowedTypes = resolveArmorSpawnTypes(characterId, gameState?.armorPool);
         const availableArmors = [];
 
-        // Spawn pool: leather only until chain/plate are redesigned
-        // (docs/OPEN-QUESTIONS.md).
         Object.entries(this.armorUnlocks).forEach(([armorType, rarities]) => {
-            if (armorType !== 'leather') return;
+            if (!allowedTypes.includes(armorType)) return;
             const rarity = resolveRarity(rarities);
             const data = rarities[rarity];
             if (data && floor >= data.floor) {
@@ -1233,127 +1255,210 @@ export class CardDataGenerator {
             }
         });
 
-        if (availableArmors.length === 0) {
-            return {
-                type: 'armor',
-                name: 'Makeshift Armor',
-                armorType: 'leather',
-                protection: 0,
-                dodgeChance: 0.10,
-                rarity: 'common',
-                sprite: 'leather_C',
-                durability: 10,
-                maxDurability: 10
-            };
-        }
+        // Empty armor slot is valid — never invent a Makeshift fallback.
+        if (availableArmors.length === 0) return null;
 
         const selected = availableArmors[Math.floor(Math.random() * availableArmors.length)];
         const rarityName = selected.rarity.charAt(0).toUpperCase() + selected.rarity.slice(1);
         const armorName = selected.type.charAt(0).toUpperCase() + selected.type.slice(1);
+        const baseDurability = CardDataGenerator.armorDurability(selected.type, selected.rarity);
 
-        const durabilityBonus = {
-            uncommon: 5,
-            rare: 10,
-            epic: 13,
-            legendary: 15
-        };
-
-        const baseDurability = 15 + (durabilityBonus[selected.rarity] || 0);
-        // REMOVED reflection property from armor creation
-        return {
+        const card = {
             type: 'armor',
             name: `${rarityName} ${armorName} Armor`,
             armorType: selected.type,
-            protection: selected.protection,
-            dodgeChance: selected.dodgeChance,
+            protection: selected.protection || 0,
             rarity: selected.rarity,
             sprite: selected.sprite,
-            durability: baseDurability, // Use calculated value
-            maxDurability: baseDurability // Use calculated value
+            durability: baseDurability,
+            maxDurability: baseDurability,
+        };
+        if (selected.type === 'leather' && selected.dodgeChance) {
+            card.dodgeChance = selected.dodgeChance;
+        }
+        if (selected.type === 'chain' && selected.meleeCounterChance) {
+            card.meleeCounterChance = selected.meleeCounterChance;
+        }
+        if (selected.type === 'plate' && selected.rangedIgnoreChance) {
+            card.rangedIgnoreChance = selected.rangedIgnoreChance;
+        }
+        return card;
+    }
+
+    // ── Amulet rarity-first offers ────────────────────────────────────────
+    // Flow: roll rarity by source → sample up to 3 amulets of that rarity →
+    // UI lets the player pick one. Event-only amulets (teaRoomBell, runes, …)
+    // are NOT in amuletTypes and never appear here.
+
+    rollAmuletRarity(source = 'floor') {
+        const rates = CardDataGenerator.AMULET_RARITY_RATES[source]
+            || CardDataGenerator.AMULET_RARITY_RATES.floor;
+        const entries = Object.entries(rates);
+        const total = entries.reduce((sum, [, w]) => sum + w, 0);
+        let roll = Math.random() * total;
+        for (const [rarity, weight] of entries) {
+            roll -= weight;
+            if (roll <= 0) return rarity;
+        }
+        return entries[entries.length - 1][0];
+    }
+
+    // When an upgrade is owned, its weaker forms are excluded from offers.
+    static AMULET_UPGRADE_REPLACES = {
+        amuletOfGreaterEvasion: ['amuletOfEvasion'],
+        ringOfGreaterHealth: ['ringOfHealth'],
+        amuletOfGreaterProtection: ['amuletOfProtection'],
+        ringOfGreaterRegeneration: ['ringOfRegeneration'],
+        earringOfGreaterArmorDurability: ['earringOfArmorDurability'],
+        earringOfGreaterWeaponDurability: ['earringOfWeaponDurability'],
+        philosophersStone: [
+            'ringOfHealth', 'ringOfGreaterHealth',
+            'ringOfRegeneration', 'ringOfGreaterRegeneration',
+        ],
+        legendaryWhetstone: [
+            'earringOfWeaponDurability', 'earringOfGreaterWeaponDurability',
+        ],
+        glovesOfHermitWizard: ['runeOfFire', 'runeOfZap', 'runeOfPoison'],
+    };
+
+    // Amulets of a given rarity the player can still usefully receive.
+    // Boss offers ignore minFloor so act-1 boss can award rare/legendary.
+    getAmuletsOfRarity(rarity, floor, gameState = null, { ignoreMinFloor = false } = {}) {
+        if (rarity === 'old') return [];
+        const ownedIds = new Set(
+            (gameState?.activeAmulets || []).map((a) => a.id).filter(Boolean)
+        );
+        const replacedIds = new Set();
+        for (const id of ownedIds) {
+            const list = CardDataGenerator.AMULET_UPGRADE_REPLACES[id];
+            if (list) list.forEach((r) => replacedIds.add(r));
+        }
+
+        return (this.amuletTypes || []).filter((amulet) =>
+            amulet.rarity === rarity
+            && (ignoreMinFloor || floor >= (amulet.minFloor ?? 0))
+            && !ownedIds.has(amulet.id)
+            && !replacedIds.has(amulet.id)
+        );
+    }
+
+    // Weighted sample without replacement (uses drop weights + light group steer).
+    sampleAmulets(pool, count, gameState = null) {
+        if (!pool.length || count <= 0) return [];
+        const groupOf = (id) => this.amuletTypes.find((a) => a.id === id)?.group;
+        const ownedGroups = (gameState?.activeAmulets || [])
+            .map((a) => groupOf(a.id))
+            .filter((g) => g && g !== 'utility');
+        let steer;
+        if (ownedGroups.length === 0) {
+            steer = (a) => (a.group === 'utility' ? 0.35 : 1.6);
+        } else {
+            const counts = {};
+            ownedGroups.forEach((g) => { counts[g] = (counts[g] || 0) + 1; });
+            const dominant = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+            steer = (a) => (a.group === dominant ? 1.5 : 1);
+        }
+        const weightOf = (a) => Math.max(0.01, (a.weight || 1) * steer(a));
+
+        const remaining = pool.slice();
+        const picked = [];
+        while (picked.length < count && remaining.length) {
+            const total = remaining.reduce((sum, a) => sum + weightOf(a), 0);
+            let roll = Math.random() * total;
+            let idx = 0;
+            for (; idx < remaining.length; idx++) {
+                roll -= weightOf(remaining[idx]);
+                if (roll <= 0) break;
+            }
+            idx = Math.min(idx, remaining.length - 1);
+            const [chosen] = remaining.splice(idx, 1);
+            picked.push(chosen);
+        }
+        return picked;
+    }
+
+    amuletToCardData(amulet) {
+        return {
+            type: 'amulet',
+            id: amulet.id,
+            name: amulet.name,
+            rarity: amulet.rarity,
+            sprite: amulet.sprite,
+            spriteFrame: amulet.spriteFrame,
+            group: amulet.group || null,
         };
     }
 
-    createAmuletCard(floor, gameState = null) {
-        // Build list of amulet IDs the player already owns (from active amulets)
-        const ownedIds = new Set(
-            (gameState?.activeAmulets || []).map(a => a.id).filter(Boolean)
-        );
+    // Up to `count` concrete amulet cards of one rarity.
+    createAmuletChoice(floor, rarity, count = 3, gameState = null, opts = {}) {
+        const pool = this.getAmuletsOfRarity(rarity, floor, gameState, opts);
+        return this.sampleAmulets(pool, count, gameState).map((a) => this.amuletToCardData(a));
+    }
 
-        // Hide already-owned non-stackable amulets from drops/shops/chests so
-        // the player never sees a useless duplicate. The only currently-
-        // stackable amulet is 'regeneration' (multiple stacks → more healing);
-        // everything else does nothing the second time you "equip" it.
-        const stackableIds = new Set(['regeneration']);
-        const availableAmulets = this.amuletTypes.filter(amulet =>
-            floor >= amulet.minFloor &&
-            !(ownedIds.has(amulet.id) && !stackableIds.has(amulet.id))
-        );
-        
-        if (availableAmulets.length === 0) {
-            // Player has every unique amulet already — fall back to the
-            // stackable Regeneration amulet so the slot still gives something
-            // useful (each extra stack = +1 HP regen per floor end).
-            const regen = this.amuletTypes.find(a => a.id === 'regeneration')
-                || this.amuletTypes[0];
-            return {
-                type: 'amulet',
-                id: regen.id,
-                name: regen.name,
-                rarity: regen.rarity,
-                sprite: regen.sprite,
-                spriteFrame: regen.spriteFrame
-            };
-        }
-        
-        // Group steering (docs/BALANCE-AMULETS.md). The FIRST amulet of a run
-        // should nudge the player toward a play style, so while the player owns
-        // no amulets the class groups (offense/survival/magic) are boosted and
-        // utility is muted. Once a build exists, later drops lean softly toward
-        // the player's dominant group — a nudge, not a lock-in.
-        const groupOf = (id) => this.amuletTypes.find(a => a.id === id)?.group;
-        const ownedGroups = (gameState?.activeAmulets || [])
-            .map(a => groupOf(a.id))
-            .filter(g => g && g !== 'utility');
-        let steer;
-        if (ownedGroups.length === 0) {
-            steer = (a) => a.group === 'utility' ? 0.35 : 1.6;
-        } else {
-            const counts = {};
-            ownedGroups.forEach(g => { counts[g] = (counts[g] || 0) + 1; });
-            const dominant = Object.keys(counts)
-                .sort((a, b) => counts[b] - counts[a])[0];
-            steer = (a) => a.group === dominant ? 1.5 : 1;
-        }
-        const effectiveWeight = (a) => a.weight * steer(a);
+    // Mystery offer: rarity already rolled, options ready for the choice UI.
+    // `forcedRarity` skips the source roll (used when caller already decided).
+    createAmuletOffer(source, floor, gameState = null, forcedRarity = null) {
+        if (areAmuletsDisabled()) return null;
 
-        // Weighted random selection
-        const totalWeight = availableAmulets.reduce((sum, a) => sum + effectiveWeight(a), 0);
-        let random = Math.random() * totalWeight;
-        
-        for (let amulet of availableAmulets) {
-            random -= effectiveWeight(amulet);
-            if (random <= 0) {
-                return {
-                    type: 'amulet',
-                    id: amulet.id,
-                    name: amulet.name,
-                    rarity: amulet.rarity,
-                    sprite: amulet.sprite,
-                    spriteFrame: amulet.spriteFrame
-                };
+        const sourceKey = source && CardDataGenerator.AMULET_RARITY_RATES[source] ? source : 'floor';
+        const allowed = Object.keys(
+            CardDataGenerator.AMULET_RARITY_RATES[sourceKey] || CardDataGenerator.AMULET_RARITY_RATES.floor
+        );
+        const poolOpts = { ignoreMinFloor: sourceKey === 'boss' };
+
+        let rarity = forcedRarity;
+        if (!rarity || !allowed.includes(rarity)) {
+            // Prefer a rarity that still has candidates; fall back across the
+            // source table if the first roll lands on an empty pool.
+            const tried = new Set();
+            for (let attempt = 0; attempt < allowed.length; attempt++) {
+                const candidate = this.rollAmuletRarity(sourceKey);
+                if (tried.has(candidate)) continue;
+                tried.add(candidate);
+                if (this.getAmuletsOfRarity(candidate, floor, gameState, poolOpts).length > 0) {
+                    rarity = candidate;
+                    break;
+                }
+            }
+            if (!rarity) {
+                for (const candidate of allowed) {
+                    if (this.getAmuletsOfRarity(candidate, floor, gameState, poolOpts).length > 0) {
+                        rarity = candidate;
+                        break;
+                    }
+                }
             }
         }
-        
-        // Fallback
-        const chosen = availableAmulets[0];
+
+        let options = rarity ? this.createAmuletChoice(floor, rarity, 3, gameState, poolOpts) : [];
+
+        // No candidates for this floor/source.
+        if (!options.length) return null;
+
+        const label = `${rarity.charAt(0).toUpperCase()}${rarity.slice(1)} Amulet`;
+        // Visual: show the first option's art as a stand-in on boards/shops;
+        // the real pick happens in the choice overlay.
+        const face = options[0];
         return {
             type: 'amulet',
-            id: chosen.id,
-            name: chosen.name,
-            rarity: chosen.rarity,
-            sprite: chosen.sprite,
-            spriteFrame: chosen.spriteFrame
+            pendingChoice: true,
+            source: sourceKey,
+            rarity,
+            options,
+            id: null,
+            name: label,
+            sprite: face.sprite,
+            spriteFrame: face.spriteFrame,
         };
+    }
+
+    // Legacy single-roll helper (events / random grants that still want one id).
+    // Now: roll as floor source and return a random option from the choice set.
+    createAmuletCard(floor, gameState = null) {
+        const offer = this.createAmuletOffer('floor', floor, gameState);
+        if (!offer?.options?.length) return null;
+        const pick = offer.options[Math.floor(Math.random() * offer.options.length)];
+        return pick;
     }
 
     createPotionCard(floor) {

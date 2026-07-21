@@ -55,10 +55,11 @@ export class MainMenuScene extends Phaser.Scene {
         // Options moved out to the cog in the corner, so the three that remain
         // re-center on the same spot the old four-button stack occupied (156).
         this.mainMenuButtons = {
-            newRun: this.createSpriteButton(320, 122, t(this, 'ui.menu.newRun'),   () => this.startNewGame()),
-            continue: this.createSpriteButton(320, 157, t(this, 'ui.menu.continue'),  hasSavedRun ? () => this.continueGame() : null),
-            tutorial: this.createSpriteButton(320, 192, 'Tutorial',                 () => this.startTutorial()),
-            testOptions: this.createSpriteButton(320, 227, t(this, 'ui.menu.testOptions'), () => this.showTestOptionsMenu()),
+            newRun: this.createSpriteButton(320, 110, t(this, 'ui.menu.newRun'),   () => this.startNewGame()),
+            continue: this.createSpriteButton(320, 142, t(this, 'ui.menu.continue'),  hasSavedRun ? () => this.continueGame() : null),
+            tutorial: this.createSpriteButton(320, 174, 'Tutorial',                 () => this.startTutorial()),
+            testPolygon: this.createSpriteButton(320, 206, 'Test Polygon',          () => this.startTestPolygon()),
+            testOptions: this.createSpriteButton(320, 238, t(this, 'ui.menu.testOptions'), () => this.showTestOptionsMenu()),
             // Cog tucked into the top-right corner (32x32, 6px margin).
             options: this.createIconButton(618, 22, 'optionsButton', () => this.showOptionsMenu()),
         };
@@ -530,10 +531,10 @@ export class MainMenuScene extends Phaser.Scene {
         this.saveManager.clearCurrentRun();
 
         this.fadeOutMenuMusic();
-        // Start fresh run (meta progression is kept)
+        // Character pick once, then floor 1
         this.cameras.main.fadeOut(500, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
-            this.scene.start('GameScene', { newGame: true });
+            this.scene.start('CharacterSelectScene');
         });
     }
     
@@ -552,6 +553,14 @@ export class MainMenuScene extends Phaser.Scene {
         this.cameras.main.fadeOut(400, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
             this.scene.start('GameScene', { tutorial: true });
+        });
+    }
+
+    startTestPolygon() {
+        this.fadeOutMenuMusic();
+        this.cameras.main.fadeOut(350, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+            this.scene.start('SandboxHubScene');
         });
     }
     

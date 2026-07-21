@@ -360,608 +360,446 @@
       "type": "piechart"
     },
     {
-      "collapsed": true,
+      "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 9
       },
-      "id": 14,
-      "panels": [
+      "id": 11,
+      "panels": [],
+      "title": "1 · Deaths & progression",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sim-sqlite"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "id": 7,
+      "options": {
+        "barRadius": 0.05,
+        "barWidth": 0.85,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "never",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "floor",
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 100
+      },
+      "targets": [
         {
           "datasource": {
             "type": "frser-sqlite-datasource",
             "uid": "sim-sqlite"
           },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                }
-              },
-              "mappings": []
+          "format": "table",
+          "queryText": "WITH floors AS (\n           SELECT DISTINCT floor_number AS floor FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id WHERE r.batch_id = $batch_id\n           UNION SELECT DISTINCT reached_floor AS floor FROM sim_runs WHERE batch_id = $batch_id\n         )\n         SELECT 'F' || f.floor AS floor,\n           (SELECT COUNT(*) FROM sim_runs r WHERE r.batch_id = $batch_id AND r.reached_floor >= f.floor) AS runs_reached\n         FROM floors f ORDER BY f.floor",
+          "rawQueryText": "WITH floors AS (\n           SELECT DISTINCT floor_number AS floor FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id WHERE r.batch_id = $batch_id\n           UNION SELECT DISTINCT reached_floor AS floor FROM sim_runs WHERE batch_id = $batch_id\n         )\n         SELECT 'F' || f.floor AS floor,\n           (SELECT COUNT(*) FROM sim_runs r WHERE r.batch_id = $batch_id AND r.reached_floor >= f.floor) AS runs_reached\n         FROM floors f ORDER BY f.floor",
+          "refId": "A"
+        }
+      ],
+      "title": "Дошли до этажа (накопительно)",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sim-sqlite"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
             },
-            "overrides": [
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
               {
-                "matcher": {
-                  "id": "byName",
-                  "options": "win"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "green",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "id": 8,
+      "options": {
+        "barRadius": 0.05,
+        "barWidth": 0.85,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "never",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "floor",
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 100
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "format": "table",
+          "queryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(COALESCE(fv.ap_spent, 0)), 1) AS ap_spent_avg\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE r.batch_id = $batch_id\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+          "rawQueryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(COALESCE(fv.ap_spent, 0)), 1) AS ap_spent_avg\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE r.batch_id = $batch_id\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+          "refId": "A"
+        }
+      ],
+      "title": "Потрачено AP (среднее по этажу)",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sim-sqlite"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
               {
-                "matcher": {
-                  "id": "byName",
-                  "options": "hp"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "red",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
-              },
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "damage_received"
+            },
+            "properties": [
               {
-                "matcher": {
-                  "id": "byName",
-                  "options": "weapon"
-                },
-                "properties": [
-                  {
-                    "id": "color",
-                    "value": {
-                      "fixedColor": "orange",
-                      "mode": "fixed"
-                    }
-                  }
-                ]
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
               }
             ]
           },
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 0,
-            "y": 1
-          },
-          "id": 7,
-          "options": {
-            "legend": {
-              "displayMode": "table",
-              "placement": "right",
-              "showLegend": true,
-              "values": [
-                "value",
-                "percent"
-              ]
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "damage_blocked_armor"
             },
-            "pieType": "donut",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": true
-            },
-            "tooltip": {
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "frser-sqlite-datasource",
-                "uid": "sim-sqlite"
-              },
-              "format": "table",
-              "queryText": "SELECT end_reason AS label, COUNT(*) AS value FROM sim_runs WHERE batch_id = $batch_id AND end_reason IS NOT NULL GROUP BY end_reason ORDER BY value DESC",
-              "rawQueryText": "SELECT end_reason AS label, COUNT(*) AS value FROM sim_runs WHERE batch_id = $batch_id AND end_reason IS NOT NULL GROUP BY end_reason ORDER BY value DESC",
-              "refId": "A"
-            }
-          ],
-          "title": "Run end reason",
-          "type": "piechart"
-        },
-        {
-          "datasource": {
-            "type": "frser-sqlite-datasource",
-            "uid": "sim-sqlite"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "fillOpacity": 70,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineWidth": 1,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
                 }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
               }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "damage_dodged"
             },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 8,
-            "y": 1
-          },
-          "id": 8,
-          "options": {
-            "barRadius": 0.05,
-            "barWidth": 0.85,
-            "fullHighlight": false,
-            "groupWidth": 0.7,
-            "legend": {
-              "calcs": [
-                "sum"
-              ],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "orientation": "auto",
-            "showValue": "never",
-            "stacking": "none",
-            "tooltip": {
-              "mode": "multi",
-              "sort": "none"
-            },
-            "xField": "floor",
-            "xTickLabelRotation": -45,
-            "xTickLabelSpacing": 100
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "frser-sqlite-datasource",
-                "uid": "sim-sqlite"
-              },
-              "format": "table",
-              "queryText": "SELECT 'F' || reached_floor AS floor, COUNT(*) AS runs FROM sim_runs WHERE batch_id = $batch_id GROUP BY reached_floor ORDER BY reached_floor",
-              "rawQueryText": "SELECT 'F' || reached_floor AS floor, COUNT(*) AS runs FROM sim_runs WHERE batch_id = $batch_id GROUP BY reached_floor ORDER BY reached_floor",
-              "refId": "A"
-            }
-          ],
-          "title": "Last floor reached (distribution)",
-          "type": "barchart"
-        },
-        {
-          "datasource": {
-            "type": "frser-sqlite-datasource",
-            "uid": "sim-sqlite"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "fillOpacity": 70,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineWidth": 1,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
                 }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
               }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 16,
-            "y": 1
-          },
-          "id": 9,
-          "options": {
-            "barRadius": 0.05,
-            "barWidth": 0.85,
-            "fullHighlight": false,
-            "groupWidth": 0.7,
-            "legend": {
-              "calcs": [],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "orientation": "horizontal",
-            "showValue": "never",
-            "stacking": "none",
-            "tooltip": {
-              "mode": "multi",
-              "sort": "none"
-            },
-            "xField": "encounter",
-            "xTickLabelRotation": -45,
-            "xTickLabelSpacing": 100
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "frser-sqlite-datasource",
-                "uid": "sim-sqlite"
-              },
-              "format": "table",
-              "queryText": "SELECT COALESCE(death_encounter_type, 'unknown') AS encounter, COUNT(*) AS deaths FROM sim_runs WHERE batch_id = $batch_id AND died = 1 GROUP BY death_encounter_type ORDER BY deaths DESC",
-              "rawQueryText": "SELECT COALESCE(death_encounter_type, 'unknown') AS encounter, COUNT(*) AS deaths FROM sim_runs WHERE batch_id = $batch_id AND died = 1 GROUP BY death_encounter_type ORDER BY deaths DESC",
-              "refId": "A"
-            }
-          ],
-          "title": "Deaths by room type",
-          "type": "barchart"
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 18
+      },
+      "id": 9,
+      "options": {
+        "barRadius": 0.05,
+        "barWidth": 0.85,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
         },
+        "orientation": "auto",
+        "showValue": "never",
+        "stacking": "normal",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "floor",
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 100
+      },
+      "targets": [
         {
           "datasource": {
             "type": "frser-sqlite-datasource",
             "uid": "sim-sqlite"
           },
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "inspect": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 12,
-            "x": 0,
-            "y": 9
-          },
-          "id": 10,
-          "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
-            },
-            "showHeader": true,
-            "sortBy": []
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "frser-sqlite-datasource",
-                "uid": "sim-sqlite"
-              },
-              "format": "table",
-              "queryText": "SELECT 'F' || reached_floor AS floor, COALESCE(death_encounter_type, 'unknown') AS encounter, COUNT(*) AS deaths,\n          ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM sim_runs WHERE batch_id = $batch_id AND died = 1), 1) AS pct_of_deaths\n         FROM sim_runs WHERE batch_id = $batch_id AND died = 1\n         GROUP BY reached_floor, death_encounter_type ORDER BY reached_floor, deaths DESC",
-              "rawQueryText": "SELECT 'F' || reached_floor AS floor, COALESCE(death_encounter_type, 'unknown') AS encounter, COUNT(*) AS deaths,\n          ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM sim_runs WHERE batch_id = $batch_id AND died = 1), 1) AS pct_of_deaths\n         FROM sim_runs WHERE batch_id = $batch_id AND died = 1\n         GROUP BY reached_floor, death_encounter_type ORDER BY reached_floor, deaths DESC",
-              "refId": "A"
-            }
-          ],
-          "title": "Deaths: floor × room type",
-          "type": "table"
-        },
-        {
-          "datasource": {
-            "type": "frser-sqlite-datasource",
-            "uid": "sim-sqlite"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "fillOpacity": 70,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineWidth": 1,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 9,
-            "w": 12,
-            "x": 12,
-            "y": 9
-          },
-          "id": 11,
-          "options": {
-            "barRadius": 0.05,
-            "barWidth": 0.85,
-            "fullHighlight": false,
-            "groupWidth": 0.7,
-            "legend": {
-              "calcs": [],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "orientation": "auto",
-            "showValue": "never",
-            "stacking": "none",
-            "tooltip": {
-              "mode": "single",
-              "sort": "none"
-            },
-            "xField": "floor",
-            "xTickLabelRotation": -45,
-            "xTickLabelSpacing": 100
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "frser-sqlite-datasource",
-                "uid": "sim-sqlite"
-              },
-              "format": "table",
-              "queryText": "WITH floors AS (\n           SELECT DISTINCT floor_number AS floor FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id WHERE r.batch_id = $batch_id\n           UNION SELECT DISTINCT reached_floor AS floor FROM sim_runs WHERE batch_id = $batch_id\n         )\n         SELECT 'F' || f.floor AS floor,\n           (SELECT COUNT(*) FROM sim_runs r WHERE r.batch_id = $batch_id AND r.reached_floor >= f.floor) AS runs_reached\n         FROM floors f ORDER BY f.floor",
-              "rawQueryText": "WITH floors AS (\n           SELECT DISTINCT floor_number AS floor FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id WHERE r.batch_id = $batch_id\n           UNION SELECT DISTINCT reached_floor AS floor FROM sim_runs WHERE batch_id = $batch_id\n         )\n         SELECT 'F' || f.floor AS floor,\n           (SELECT COUNT(*) FROM sim_runs r WHERE r.batch_id = $batch_id AND r.reached_floor >= f.floor) AS runs_reached\n         FROM floors f ORDER BY f.floor",
-              "refId": "A"
-            }
-          ],
-          "title": "Funnel: runs reaching floor",
-          "type": "barchart"
-        },
-        {
-          "datasource": {
-            "type": "frser-sqlite-datasource",
-            "uid": "sim-sqlite"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "fillOpacity": 70,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineWidth": 1,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 18
-          },
-          "id": 12,
-          "options": {
-            "barRadius": 0.05,
-            "barWidth": 0.85,
-            "fullHighlight": false,
-            "groupWidth": 0.7,
-            "legend": {
-              "calcs": [],
-              "displayMode": "table",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "orientation": "auto",
-            "showValue": "never",
-            "stacking": "none",
-            "tooltip": {
-              "mode": "multi",
-              "sort": "none"
-            },
-            "xField": "floor",
-            "xTickLabelRotation": -45,
-            "xTickLabelSpacing": 100
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "frser-sqlite-datasource",
-                "uid": "sim-sqlite"
-              },
-              "format": "table",
-              "queryText": "SELECT 'F' || fv.floor_number AS floor, ROUND(AVG(MAX(0, fv.player_hp_start - fv.player_hp_end)), 1) AS hp_lost_avg\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE r.batch_id = $batch_id GROUP BY fv.floor_number ORDER BY fv.floor_number",
-              "rawQueryText": "SELECT 'F' || fv.floor_number AS floor, ROUND(AVG(MAX(0, fv.player_hp_start - fv.player_hp_end)), 1) AS hp_lost_avg\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE r.batch_id = $batch_id GROUP BY fv.floor_number ORDER BY fv.floor_number",
-              "refId": "A"
-            }
-          ],
-          "title": "Avg player HP lost per visit",
-          "type": "barchart"
-        },
-        {
-          "datasource": {
-            "type": "frser-sqlite-datasource",
-            "uid": "sim-sqlite"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "inspect": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 18
-          },
-          "id": 13,
-          "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
-            },
-            "showHeader": true,
-            "sortBy": []
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "frser-sqlite-datasource",
-                "uid": "sim-sqlite"
-              },
-              "format": "table",
-              "queryText": "SELECT end_reason, COUNT(*) AS runs, ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM sim_runs WHERE batch_id = $batch_id), 1) AS pct\n         FROM sim_runs WHERE batch_id = $batch_id GROUP BY end_reason ORDER BY runs DESC",
-              "rawQueryText": "SELECT end_reason, COUNT(*) AS runs, ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM sim_runs WHERE batch_id = $batch_id), 1) AS pct\n         FROM sim_runs WHERE batch_id = $batch_id GROUP BY end_reason ORDER BY runs DESC",
-              "refId": "A"
-            }
-          ],
-          "title": "Run outcomes",
-          "type": "table"
+          "format": "table",
+          "queryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(COALESCE(fv.combat_damage_taken, 0)), 1) AS damage_received,\n           ROUND(AVG(COALESCE(fv.combat_damage_blocked_armor, 0)), 1) AS damage_blocked_armor,\n           ROUND(AVG(COALESCE(fv.combat_damage_dodged, 0)), 1) AS damage_dodged\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE r.batch_id = $batch_id\n           AND fv.encounter_type IN ('COMBAT', 'ELITE', 'BOSS')\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+          "rawQueryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(COALESCE(fv.combat_damage_taken, 0)), 1) AS damage_received,\n           ROUND(AVG(COALESCE(fv.combat_damage_blocked_armor, 0)), 1) AS damage_blocked_armor,\n           ROUND(AVG(COALESCE(fv.combat_damage_dodged, 0)), 1) AS damage_dodged\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE r.batch_id = $batch_id\n           AND fv.encounter_type IN ('COMBAT', 'ELITE', 'BOSS')\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+          "refId": "A"
         }
       ],
-      "title": "1 · Deaths & progression",
-      "type": "row"
+      "title": "Урон по игроку: получен / блок бронёй / уворот",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "sim-sqlite"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 70,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "dual_wield_damage"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "gem_damage"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "id": 10,
+      "options": {
+        "barRadius": 0.05,
+        "barWidth": 0.85,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "never",
+        "stacking": "normal",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "floor",
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 100
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "sim-sqlite"
+          },
+          "format": "table",
+          "queryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(COALESCE(fv.combat_specialization_dual_wield, 0)), 1) AS dual_wield_damage,\n           ROUND(AVG(COALESCE(fv.combat_specialization_gem, 0)), 1) AS gem_damage\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE r.batch_id = $batch_id\n           AND fv.encounter_type IN ('COMBAT', 'ELITE', 'BOSS')\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+          "rawQueryText": "SELECT 'F' || fv.floor_number AS floor,\n           ROUND(AVG(COALESCE(fv.combat_specialization_dual_wield, 0)), 1) AS dual_wield_damage,\n           ROUND(AVG(COALESCE(fv.combat_specialization_gem, 0)), 1) AS gem_damage\n         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id\n         WHERE r.batch_id = $batch_id\n           AND fv.encounter_type IN ('COMBAT', 'ELITE', 'BOSS')\n         GROUP BY fv.floor_number ORDER BY fv.floor_number",
+          "refId": "A"
+        }
+      ],
+      "title": "Урон специализации: dual wield (offhand) + gems",
+      "type": "barchart"
     },
     {
       "collapsed": true,
@@ -969,9 +807,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 10
+        "y": 26
       },
-      "id": 21,
+      "id": 18,
       "panels": [
         {
           "datasource": {
@@ -1054,7 +892,7 @@
             "x": 0,
             "y": 1
           },
-          "id": 15,
+          "id": 12,
           "options": {
             "barRadius": 0.05,
             "barWidth": 0.85,
@@ -1142,7 +980,7 @@
             "x": 12,
             "y": 1
           },
-          "id": 16,
+          "id": 13,
           "options": {
             "barRadius": 0.05,
             "barWidth": 0.85,
@@ -1233,7 +1071,7 @@
             "x": 0,
             "y": 10
           },
-          "id": 17,
+          "id": 14,
           "options": {
             "barRadius": 0.05,
             "barWidth": 0.85,
@@ -1352,7 +1190,7 @@
             "x": 8,
             "y": 10
           },
-          "id": 18,
+          "id": 15,
           "options": {
             "barRadius": 0.05,
             "barWidth": 0.85,
@@ -1443,7 +1281,7 @@
             "x": 16,
             "y": 10
           },
-          "id": 19,
+          "id": 16,
           "options": {
             "barRadius": 0.05,
             "barWidth": 0.85,
@@ -1514,7 +1352,7 @@
             "x": 0,
             "y": 18
           },
-          "id": 20,
+          "id": 17,
           "options": {
             "cellHeight": "sm",
             "footer": {
@@ -1553,9 +1391,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 11
+        "y": 27
       },
-      "id": 26,
+      "id": 23,
       "panels": [
         {
           "datasource": {
@@ -1584,7 +1422,7 @@
             "x": 0,
             "y": 1
           },
-          "id": 22,
+          "id": 19,
           "options": {
             "legend": {
               "displayMode": "table",
@@ -1673,7 +1511,7 @@
             "x": 8,
             "y": 1
           },
-          "id": 23,
+          "id": 20,
           "options": {
             "barRadius": 0.05,
             "barWidth": 0.85,
@@ -1744,7 +1582,7 @@
             "x": 0,
             "y": 9
           },
-          "id": 24,
+          "id": 21,
           "options": {
             "cellHeight": "sm",
             "footer": {
@@ -1806,7 +1644,7 @@
             "x": 0,
             "y": 20
           },
-          "id": 25,
+          "id": 22,
           "options": {
             "cellHeight": "sm",
             "footer": {
@@ -1880,6 +1718,6 @@
   "timezone": "browser",
   "title": "Sim Balance",
   "uid": "sim-balance",
-  "version": 9,
+  "version": 12,
   "weekStart": ""
 }

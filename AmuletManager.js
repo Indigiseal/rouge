@@ -516,6 +516,260 @@ export class AmuletManager {
                 rarity: 'rare'
             }
         };
+
+        // Retire the previous catalog from shops/floor/boss offers. Event grants
+        // that still reference these ids keep working; their combat logic stays.
+        for (const def of Object.values(this.amuletDefinitions)) {
+            def.rarity = 'old';
+        }
+
+        Object.assign(this.amuletDefinitions, this.buildNewAmuletDefinitions());
+    }
+
+    buildNewAmuletDefinitions() {
+        const hp = (bonus) => ({
+            maxHealthBonus: bonus,
+            onEquip() {
+                this.gameState.maxHealth += bonus;
+                this.gameState.playerHealth += bonus;
+            },
+            onUnequip() {
+                this.gameState.maxHealth = Math.max(1, this.gameState.maxHealth - bonus);
+                this.gameState.playerHealth = Math.min(
+                    this.gameState.playerHealth,
+                    this.gameState.maxHealth
+                );
+            },
+        });
+
+        return {
+            amuletOfEvasion: {
+                ...getAmuletAtlasPresentation('amuletOfEvasion'),
+                name: 'Amulet of Evasion',
+                description: '10% dodge chance',
+                rarity: 'common',
+                dodgeChance: 0.1,
+            },
+            ringOfHealth: {
+                ...getAmuletAtlasPresentation('ringOfHealth'),
+                name: 'Ring of Health',
+                description: '+15 max HP',
+                rarity: 'common',
+                ...hp(15),
+            },
+            amuletOfProtection: {
+                ...getAmuletAtlasPresentation('amuletOfProtection'),
+                name: 'Amulet of Protection',
+                description: 'Reduce all incoming damage by 20% (rounded up)',
+                rarity: 'common',
+                modifyDamageTaken: (damage) => Math.ceil(damage * 0.8),
+            },
+            ringOfRegeneration: {
+                ...getAmuletAtlasPresentation('ringOfRegeneration'),
+                name: 'Ring of Regeneration',
+                description: '+10 HP at the start of each combat floor',
+                rarity: 'common',
+                floorStartHeal: 10,
+            },
+            earringOfArmorDurability: {
+                ...getAmuletAtlasPresentation('earringOfArmorDurability'),
+                name: 'Earring of Armor Durability',
+                description: '25% chance not to spend armor durability on block/dodge',
+                rarity: 'common',
+                armorDurabilitySaveChance: 0.25,
+            },
+            earringOfWeaponDurability: {
+                ...getAmuletAtlasPresentation('earringOfWeaponDurability'),
+                name: 'Earring of Weapon Durability',
+                description: '30% chance not to spend weapon durability on attack',
+                rarity: 'common',
+                weaponDurabilitySaveChance: 0.3,
+            },
+
+            amuletOfGreaterEvasion: {
+                ...getAmuletAtlasPresentation('amuletOfGreaterEvasion'),
+                name: 'Amulet of Greater Evasion',
+                description: '20% dodge chance. Replaces Amulet of Evasion.',
+                rarity: 'uncommon',
+                dodgeChance: 0.2,
+                replaces: ['amuletOfEvasion'],
+            },
+            ringOfGreaterHealth: {
+                ...getAmuletAtlasPresentation('ringOfGreaterHealth'),
+                name: 'Ring of Greater Health',
+                description: '+20 max HP. Replaces Ring of Health.',
+                rarity: 'uncommon',
+                ...hp(20),
+                replaces: ['ringOfHealth'],
+            },
+            amuletOfGreaterProtection: {
+                ...getAmuletAtlasPresentation('amuletOfGreaterProtection'),
+                name: 'Amulet of Greater Protection',
+                description: 'Reduce all incoming damage by 30% (rounded up). Replaces Amulet of Protection.',
+                rarity: 'uncommon',
+                modifyDamageTaken: (damage) => Math.ceil(damage * 0.7),
+                replaces: ['amuletOfProtection'],
+            },
+            ringOfGreaterRegeneration: {
+                ...getAmuletAtlasPresentation('ringOfGreaterRegeneration'),
+                name: 'Ring of Greater Regeneration',
+                description: '+15 HP at the start of each combat floor. Replaces Ring of Regeneration.',
+                rarity: 'uncommon',
+                floorStartHeal: 15,
+                replaces: ['ringOfRegeneration'],
+            },
+            earringOfGreaterArmorDurability: {
+                ...getAmuletAtlasPresentation('earringOfGreaterArmorDurability'),
+                name: 'Earring of Greater Armor Durability',
+                description: '35% chance not to spend armor durability on block/dodge. Replaces Earring of Armor Durability.',
+                rarity: 'uncommon',
+                armorDurabilitySaveChance: 0.35,
+                replaces: ['earringOfArmorDurability'],
+            },
+            earringOfGreaterWeaponDurability: {
+                ...getAmuletAtlasPresentation('earringOfGreaterWeaponDurability'),
+                name: 'Earring of Greater Weapon Durability',
+                description: '40% chance not to spend weapon durability on attack. Replaces Earring of Weapon Durability.',
+                rarity: 'uncommon',
+                weaponDurabilitySaveChance: 0.4,
+                replaces: ['earringOfWeaponDurability'],
+            },
+            alchemistBag: {
+                ...getAmuletAtlasPresentation('alchemistBag'),
+                name: 'Alchemist Bag',
+                description: 'Potions heal 15% more and cure poison',
+                rarity: 'uncommon',
+                modifyPotionHealing: (amount) => Math.ceil(amount * 1.15),
+                onPotionUse: () => {
+                    const effects = this.gameState.playerEffects || [];
+                    if (!effects.some((e) => e.type === 'poison')) return;
+                    this.gameState.playerEffects = effects.filter((e) => e.type !== 'poison');
+                    this.scene.createFloatingText(
+                        this.scene.playerAvatar.x,
+                        this.scene.playerAvatar.y - 16,
+                        'Poison Cured',
+                        0x66ff66
+                    );
+                },
+            },
+            monocle: {
+                ...getAmuletAtlasPresentation('monocle'),
+                name: 'Monocle',
+                description: '10% chance to find a crystal when killing an enemy',
+                rarity: 'uncommon',
+                crystalOnKillChance: 0.1,
+            },
+            pouchOfGreed: {
+                ...getAmuletAtlasPresentation('pouchOfGreed'),
+                name: 'Pouch of Greed',
+                description: '+20% gold found',
+                rarity: 'uncommon',
+                modifyGoldFound: (amount) => Math.ceil(amount * 1.2),
+            },
+
+            vampireFang: {
+                ...getAmuletAtlasPresentation('vampireFang'),
+                name: 'Vampire Fang',
+                description: 'Heal for 15% of damage dealt (rounded up)',
+                rarity: 'rare',
+                lifestealPercent: 0.15,
+            },
+            newDragonClaw: {
+                ...getAmuletAtlasPresentation('newDragonClaw'),
+                name: 'Dragon Claw',
+                description: '+15% damage dealt (rounded up)',
+                rarity: 'rare',
+                modifyWeaponDamage: (damage) => Math.ceil(damage * 1.15),
+            },
+            runeOfFire: {
+                ...getAmuletAtlasPresentation('runeOfFire'),
+                name: 'Rune of Fire',
+                description: '+20% fire gem damage (rounded up)',
+                rarity: 'rare',
+                fireGemDamageBonus: 0.2,
+            },
+            runeOfZap: {
+                ...getAmuletAtlasPresentation('runeOfZap'),
+                name: 'Rune of Zap',
+                description: '+20% Zap gem damage (rounded up)',
+                rarity: 'rare',
+                zapGemDamageBonus: 0.2,
+            },
+            runeOfPoison: {
+                ...getAmuletAtlasPresentation('runeOfPoison'),
+                name: 'Rune of Poison',
+                description: '+2 poison gem tick damage',
+                rarity: 'rare',
+                poisonGemTickBonus: 2,
+            },
+            maskOfHollowWhispers: {
+                ...getAmuletAtlasPresentation('maskOfHollowWhispers'),
+                name: 'Mask of Hollow Whispers',
+                description: '25% chance a killed enemy leaves a non-trap, non-enemy, non-empty card',
+                rarity: 'rare',
+                deathDropChance: 0.25,
+            },
+
+            philosophersStone: {
+                ...getAmuletAtlasPresentation('philosophersStone'),
+                name: "Philosopher's Stone",
+                description: '+20 max HP and +8 HP at the start of each combat floor. Replaces Health and Regeneration rings.',
+                rarity: 'legendary',
+                ...hp(20),
+                floorStartHeal: 8,
+                replaces: [
+                    'ringOfHealth',
+                    'ringOfGreaterHealth',
+                    'ringOfRegeneration',
+                    'ringOfGreaterRegeneration',
+                ],
+            },
+            legendaryWhetstone: {
+                ...getAmuletAtlasPresentation('legendaryWhetstone'),
+                name: 'Legendary Whetstone',
+                description: '40% chance not to spend weapon durability on attack and +10% weapon damage. Replaces Weapon Durability earrings.',
+                rarity: 'legendary',
+                weaponDurabilitySaveChance: 0.4,
+                modifyWeaponDamage: (damage) => Math.ceil(damage * 1.1),
+                replaces: ['earringOfWeaponDurability', 'earringOfGreaterWeaponDurability'],
+            },
+            lostNobleDiadem: {
+                ...getAmuletAtlasPresentation('lostNobleDiadem'),
+                name: 'Lost Noble Diadem',
+                description: 'Prevents death once per run and heals 50% max HP',
+                rarity: 'legendary',
+                usesPerRun: 1,
+                onLethalDamage: () => {
+                    const data = this.getAmuletData('lostNobleDiadem');
+                    if (data?.usesLeft > 0) {
+                        data.usesLeft--;
+                        const healAmount = Math.ceil(this.gameState.maxHealth * 0.5);
+                        this.gameState.playerHealth = Math.min(
+                            this.gameState.maxHealth,
+                            this.gameState.playerHealth + healAmount
+                        );
+                        if (this.scene?.playerAvatar) {
+                            this.scene.createFloatingText(
+                                this.scene.playerAvatar.x,
+                                this.scene.playerAvatar.y,
+                                'INVULNERABLE!',
+                                0xffd700
+                            );
+                        }
+                        return true;
+                    }
+                    return false;
+                },
+            },
+            glovesOfHermitWizard: {
+                ...getAmuletAtlasPresentation('glovesOfHermitWizard'),
+                name: 'Gloves of the Hermit Wizard',
+                description: '+35% damage from all gems (rounded up). Replaces Fire/Zap/Poison runes.',
+                rarity: 'legendary',
+                allGemDamageBonus: 0.35,
+                replaces: ['runeOfFire', 'runeOfZap', 'runeOfPoison'],
+            },
+        };
     }
     
     // Check if player has a specific amulet
@@ -560,6 +814,29 @@ export class AmuletManager {
         return this.sumAmuletProperty('fireSplashRadiusBonus');
     }
 
+    // Remove an equipped amulet and reverse its onUnequip / max-HP bonus.
+    removeAmulet(amuletId, { silent = false } = {}) {
+        const index = this.gameState.activeAmulets.findIndex((a) => a.id === amuletId);
+        if (index < 0) return false;
+        const definition = this.amuletDefinitions[amuletId];
+        if (definition?.onUnequip) {
+            definition.onUnequip.call(this);
+        }
+        this.gameState.activeAmulets.splice(index, 1);
+        if (!silent) {
+            this.scene.createFloatingText(320, 160, `${definition?.name || amuletId} replaced`, 0xffaa66);
+        }
+        return true;
+    }
+
+    // True if an owned amulet already replaces this id (upgrade present).
+    isReplacedByOwned(amuletId) {
+        return this.gameState.activeAmulets.some((owned) => {
+            const replaces = this.amuletDefinitions[owned.id]?.replaces;
+            return Array.isArray(replaces) && replaces.includes(amuletId);
+        });
+    }
+
     // Add an amulet to the player.
     // force=true bypasses the "amulets disabled" test option — used by the
     // balance sim for controlled solo-amulet sweeps (starting loadout only;
@@ -569,11 +846,24 @@ export class AmuletManager {
 
         const definition = this.amuletDefinitions[amuletId];
         if (!definition) return false;
+
+        // Already have a stronger version that replaces this one.
+        if (this.isReplacedByOwned(amuletId)) {
+            this.scene.createFloatingText(320, 180, 'Already upgraded!', 0xffa500);
+            return false;
+        }
         
         // Check if stackable or already owned
         if (this.hasAmulet(amuletId) && !definition.stackable) {
             this.scene.createFloatingText(320, 180, 'Already owned!', 0xff0000);
             return false;
+        }
+
+        // Upgrade path: strip replaced weaker amulets first (undo their bonuses).
+        if (Array.isArray(definition.replaces)) {
+            for (const oldId of definition.replaces) {
+                if (this.hasAmulet(oldId)) this.removeAmulet(oldId, { silent: true });
+            }
         }
         
         const amuletData = {
@@ -614,6 +904,36 @@ export class AmuletManager {
 
         this.scene.updateUI();
         return true;
+    }
+
+    // Process start-of-floor effects (regen rings, Philosopher's Stone, …)
+    processFloorStart() {
+        let healTotal = 0;
+        this.gameState.activeAmulets.forEach((amulet) => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (!definition) return;
+            if (definition.onFloorStart) {
+                definition.onFloorStart(amulet.level || 1);
+            }
+            if (definition.floorStartHeal) {
+                healTotal += definition.floorStartHeal * (amulet.level || 1);
+            }
+        });
+        if (healTotal <= 0) return;
+        const before = this.gameState.playerHealth;
+        this.gameState.playerHealth = Math.min(
+            this.gameState.maxHealth,
+            this.gameState.playerHealth + healTotal
+        );
+        const gained = this.gameState.playerHealth - before;
+        if (gained > 0 && this.scene.playerAvatar) {
+            this.scene.createFloatingText(
+                this.scene.playerAvatar.x,
+                this.scene.playerAvatar.y,
+                `+${gained} HP (Regen)`,
+                0x00ff00
+            );
+        }
     }
 
     // Process end of floor effects
@@ -742,6 +1062,83 @@ export class AmuletManager {
         });
     }
 
+    // Monocle — chance to find a crystal on kill. Caller grants currency + FX.
+    rollMonocleCrystalReward() {
+        const chance = this.sumAmuletProperty('crystalOnKillChance');
+        if (chance <= 0 || Math.random() >= chance) return null;
+        return { kind: 'crystal', amount: 1 };
+    }
+
+    // Vampire Fang — heal for a % of weapon damage dealt (ceil).
+    processLifesteal(damageDealt) {
+        const percent = this.sumAmuletProperty('lifestealPercent');
+        if (percent <= 0 || damageDealt <= 0) return 0;
+        const heal = Math.ceil(damageDealt * percent);
+        if (heal <= 0) return 0;
+        const before = this.gameState.playerHealth;
+        this.gameState.playerHealth = Math.min(
+            this.gameState.maxHealth,
+            this.gameState.playerHealth + heal
+        );
+        const gained = this.gameState.playerHealth - before;
+        if (gained > 0 && this.scene.playerAvatar) {
+            this.scene.createFloatingText(
+                this.scene.playerAvatar.x,
+                this.scene.playerAvatar.y - 12,
+                `+${gained} HP (Life)`,
+                0xff6688
+            );
+        }
+        return gained;
+    }
+
+    getArmorDurabilitySaveChance() {
+        return Math.min(0.95, this.sumAmuletProperty('armorDurabilitySaveChance'));
+    }
+
+    // Probability of SPENDING 1 weapon durability (1 = always spend).
+    getWeaponDurabilityRate() {
+        let rate = 1;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.weaponDurabilityRate) {
+                rate *= definition.weaponDurabilityRate;
+            }
+        });
+        const save = Math.min(0.95, this.sumAmuletProperty('weaponDurabilitySaveChance'));
+        return Math.max(0, Math.min(1, rate * (1 - save)));
+    }
+
+    // Scale gem hit damage: hermit gloves (+20% all) or typed runes.
+    modifyGemDamage(baseDamage, gemType) {
+        let damage = baseDamage;
+        const allBonus = this.sumAmuletProperty('allGemDamageBonus');
+        if (allBonus > 0) {
+            damage = Math.ceil(damage * (1 + allBonus));
+            return Math.max(1, damage);
+        }
+        let typed = 0;
+        if (gemType === 'fire') typed = this.sumAmuletProperty('fireGemDamageBonus');
+        else if (gemType === 'lightning' || gemType === 'zap') typed = this.sumAmuletProperty('zapGemDamageBonus');
+        if (typed > 0) damage = Math.ceil(damage * (1 + typed));
+        return Math.max(1, damage);
+    }
+
+    getPoisonGemTickBonus() {
+        if (this.sumAmuletProperty('allGemDamageBonus') > 0) {
+            // Hermit gloves replace poison rune; +20% on tick 1 → ceil(1.2)=2 vs +1 flat.
+            // Spec: gloves = +20% all gem damage. Poison ticks are gem damage.
+            return 0; // percent applied in modifyGemDamage for poison stacks below
+        }
+        return this.sumAmuletProperty('poisonGemTickBonus');
+    }
+
+    modifyPoisonGemTickDamage(baseDamage) {
+        const allBonus = this.sumAmuletProperty('allGemDamageBonus');
+        if (allBonus > 0) return Math.max(1, Math.ceil(baseDamage * (1 + allBonus)));
+        return Math.max(1, baseDamage + this.sumAmuletProperty('poisonGemTickBonus'));
+    }
+
     // Prospector's Pick — 10% chance per kill to find 1-2 coins OR a crystal.
     // Returns { kind: 'coin'|'crystal', amount } or null. The caller grants the
     // currency and plays the pickup animation on the enemy's defeat tile.
@@ -771,18 +1168,6 @@ export class AmuletManager {
     // in inventorySystem keep working.
     canCrossTierMerge() {
         return false;
-    }
-    
-    // Get weapon durability rate
-    getWeaponDurabilityRate() {
-        let rate = 1;
-        this.gameState.activeAmulets.forEach(amulet => {
-            const definition = this.amuletDefinitions[amulet.id];
-            if (definition && definition.weaponDurabilityRate) {
-                rate *= definition.weaponDurabilityRate;
-            }
-        });
-        return rate;
     }
     
     // Modify gold found

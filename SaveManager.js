@@ -109,6 +109,7 @@ export class SaveManager {
         bottomlessBagApplied: gameState?.bottomlessBagApplied ?? false,
         discardedCardsThisRun: gameState?.discardedCardsThisRun ?? 0,
         discardCritChance: gameState?.discardCritChance ?? 0,
+        characterId: gameState?.characterId ?? 'rogue',
         // Amulet-tracking fields (Traveler's Journal, Wayfarer's Map)
         journalBonusHP: gameState?.journalBonusHP ?? 0,
         mapBonusAP: gameState?.mapBonusAP ?? 0,
@@ -198,6 +199,7 @@ export class SaveManager {
           bottomlessBagApplied: parsed.player?.bottomlessBagApplied ?? false,
           discardedCardsThisRun: parsed.player?.discardedCardsThisRun ?? 0,
           discardCritChance: parsed.player?.discardCritChance ?? 0,
+          characterId: parsed.player?.characterId ?? 'rogue',
           journalBonusHP: parsed.player?.journalBonusHP ?? 0,
           mapBonusAP: parsed.player?.mapBonusAP ?? 0,
           mapFloorCount: parsed.player?.mapFloorCount ?? 0,

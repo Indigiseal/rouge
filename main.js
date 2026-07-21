@@ -13,6 +13,8 @@ import { RareShopScene } from './scenes/RareShopScene.js';
 import { PauseMenuScene } from './scenes/PauseMenuScene.js';
 import { EventScene } from './scenes/EventScene.js';
 import { TreasureScene } from './scenes/TreasureScene.js';
+import { SandboxHubScene } from './scenes/SandboxHubScene.js';
+import { CharacterSelectScene } from './scenes/CharacterSelectScene.js';
 
 const config = {
     type: Phaser.AUTO,
@@ -41,7 +43,9 @@ const config = {
         RareShopScene,
         PauseMenuScene,
         EventScene,
-        TreasureScene
+        TreasureScene,
+        SandboxHubScene,
+        CharacterSelectScene
     ],
     scale: {
         mode: Phaser.Scale.NONE,

@@ -43,7 +43,13 @@ function previousBatchId(db, batchId) {
 
 function batchSeries(db, batchId) {
   if (!batchId) {
-    return { floorReach: [], pipStart: [], pipEnd: [], enemyHp: [] };
+    return {
+      floorReach: [],
+      apSpent: [],
+      damageTaken: [],
+      specialization: [],
+      amuletGains: [],
+    };
   }
 
   const floorReach = q(db, `
@@ -62,49 +68,66 @@ function batchSeries(db, batchId) {
     ORDER BY f.floor
   `, { batchId });
 
-  const pipStart = q(db, `
+  const apSpent = q(db, `
     SELECT fv.floor_number AS floor,
-           ROUND(AVG(tot.pips), 1) AS avg_pips
-    FROM (
-      SELECT floor_visit_id, SUM(pip_output) AS pips
-      FROM sim_weapon_snapshots WHERE phase = 'start'
-      GROUP BY floor_visit_id
-    ) tot
-    JOIN sim_floor_visits fv ON fv.id = tot.floor_visit_id
+           ROUND(AVG(COALESCE(fv.ap_spent, 0)), 1) AS ap_spent_avg
+    FROM sim_floor_visits fv
+    JOIN sim_runs r ON r.id = fv.run_id
+    WHERE r.batch_id = @batchId
+    GROUP BY fv.floor_number
+    ORDER BY fv.floor_number
+  `, { batchId });
+
+  const damageTaken = q(db, `
+    SELECT fv.floor_number AS floor,
+           ROUND(AVG(COALESCE(fv.combat_damage_taken, 0)), 1) AS damage_received,
+           ROUND(AVG(COALESCE(fv.combat_damage_blocked_armor, 0)), 1) AS damage_blocked_armor,
+           ROUND(AVG(COALESCE(fv.combat_damage_dodged, 0)), 1) AS damage_dodged
+    FROM sim_floor_visits fv
     JOIN sim_runs r ON r.id = fv.run_id
     WHERE r.batch_id = @batchId
       AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')
-    GROUP BY fv.floor_number ORDER BY fv.floor_number
+    GROUP BY fv.floor_number
+    ORDER BY fv.floor_number
   `, { batchId });
 
-  const pipEnd = q(db, `
+  const specialization = q(db, `
     SELECT fv.floor_number AS floor,
-           ROUND(AVG(tot.pips), 1) AS avg_end
-    FROM (
-      SELECT floor_visit_id, SUM(pip_output) AS pips
-      FROM sim_weapon_snapshots WHERE phase = 'end'
-      GROUP BY floor_visit_id
-    ) tot
-    JOIN sim_floor_visits fv ON fv.id = tot.floor_visit_id
+           ROUND(AVG(COALESCE(fv.combat_specialization_dual_wield, 0)), 1) AS dual_wield_damage,
+           ROUND(AVG(COALESCE(fv.combat_specialization_gem, 0)), 1) AS gem_damage
+    FROM sim_floor_visits fv
     JOIN sim_runs r ON r.id = fv.run_id
     WHERE r.batch_id = @batchId
-    GROUP BY fv.floor_number ORDER BY fv.floor_number
+      AND fv.encounter_type IN ('COMBAT','ELITE','BOSS')
+    GROUP BY fv.floor_number
+    ORDER BY fv.floor_number
   `, { batchId });
 
-  const enemyHp = q(db, `
-    SELECT fv.floor_number AS floor,
-           ROUND(AVG(tot.hp), 1) AS avg_hp
-    FROM (
-      SELECT floor_visit_id, SUM(health) AS hp
-      FROM sim_enemy_spawns GROUP BY floor_visit_id
-    ) tot
-    JOIN sim_floor_visits fv ON fv.id = tot.floor_visit_id
-    JOIN sim_runs r ON r.id = fv.run_id
-    WHERE r.batch_id = @batchId
-    GROUP BY fv.floor_number ORDER BY fv.floor_number
-  `, { batchId });
+  // Total amulets gained across all runs on each floor, by rarity.
+  // Table may be missing on very old DBs until schema migrate runs via stats-db.
+  let amuletGains = [];
+  try {
+    amuletGains = q(db, `
+      SELECT fv.floor_number AS floor,
+             SUM(CASE WHEN ag.rarity = 'common' THEN 1 ELSE 0 END) AS common,
+             SUM(CASE WHEN ag.rarity = 'uncommon' THEN 1 ELSE 0 END) AS uncommon,
+             SUM(CASE WHEN ag.rarity = 'rare' THEN 1 ELSE 0 END) AS rare,
+             SUM(CASE WHEN ag.rarity = 'legendary' THEN 1 ELSE 0 END) AS legendary,
+             SUM(CASE WHEN ag.rarity = 'cursed' THEN 1 ELSE 0 END) AS cursed,
+             SUM(CASE WHEN ag.rarity NOT IN ('common','uncommon','rare','legendary','cursed')
+                      THEN 1 ELSE 0 END) AS other
+      FROM sim_amulet_gains ag
+      JOIN sim_floor_visits fv ON fv.id = ag.floor_visit_id
+      JOIN sim_runs r ON r.id = fv.run_id
+      WHERE r.batch_id = @batchId
+      GROUP BY fv.floor_number
+      ORDER BY fv.floor_number
+    `, { batchId });
+  } catch {
+    amuletGains = [];
+  }
 
-  return { floorReach, pipStart, pipEnd, enemyHp };
+  return { floorReach, apSpent, damageTaken, specialization, amuletGains };
 }
 
 function batchMeta(db, batchId) {

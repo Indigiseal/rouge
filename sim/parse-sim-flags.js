@@ -7,13 +7,24 @@
 //   --meta-start id,id                (which relics are unlocked at run start)
 //   --amulet-pool id,id               (which amulets may drop/shop/event)
 //   --amulet-start id,id              (equipped at run start; implies force)
+//   --character rogue|warrior         Playable class for the run
+//   --armor-pool chain|plate|both     Warrior armor spawn filter (default: both)
 
 import {
   setSimTestOptionsOverride,
   TEST_OPTION_IDS,
 } from '../utils/TestOptions.js';
+import { CHARACTER_IDS, normalizeCharacterId } from '../utils/CharacterClasses.js';
 
 export const SIM_META_MODES = new Set(['fresh', 'geared', 'accumulate', 'balance']);
+export const SIM_CHARACTER_IDS = new Set(CHARACTER_IDS);
+export const SIM_ARMOR_POOLS = new Set(['chain', 'plate', 'both']);
+
+function parseArmorPool(val) {
+  if (!val || !SIM_ARMOR_POOLS.has(val)) return null;
+  if (val === 'both') return ['chain', 'plate'];
+  return [val];
+}
 
 const MODE_DEFAULTS = {
   balance: { meta: false, amulets: false },
@@ -48,7 +59,8 @@ export function splitSimArgv(argv) {
       }
       if (
         (a === '--amulet-loadout' || a === '--meta-pool' || a === '--meta-start'
-          || a === '--amulet-pool' || a === '--amulet-start')
+          || a === '--amulet-pool' || a === '--amulet-start' || a === '--character'
+          || a === '--armor-pool')
         && argv[i + 1] && !argv[i + 1].startsWith('--')
       ) {
         flags.push(`${a} ${argv[++i]}`);
@@ -56,7 +68,8 @@ export function splitSimArgv(argv) {
       }
       if (a.startsWith('--meta-pool=') || a.startsWith('--meta-start=')
         || a.startsWith('--amulet-pool=') || a.startsWith('--amulet-start=')
-        || a.startsWith('--amulet-loadout=')) {
+        || a.startsWith('--amulet-loadout=') || a.startsWith('--character=')
+        || a.startsWith('--armor-pool=')) {
         flags.push(a);
         continue;
       }
@@ -76,6 +89,8 @@ export function isSimFlagToken(a) {
     || a.startsWith('--meta-start')
     || a.startsWith('--amulet-pool')
     || a.startsWith('--amulet-start')
+    || a.startsWith('--character')
+    || a.startsWith('--armor-pool')
     || a === '--no-meta'
     || a === '--no-amulets';
 }
@@ -98,6 +113,8 @@ function flagValue(token, prefix) {
  *   metaStart: string[]|null,
  *   amuletPool: string[]|null,
  *   amuletStart: string[]|null,
+ *   characterId: 'rogue'|'warrior',
+ *   armorPool: string[]|null,
  * }}
  */
 export function parseSimFlags(flagTokens, metaMode = 'fresh') {
@@ -109,6 +126,8 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
   let metaStart = null;
   let amuletPool = null;
   let amuletStart = null;
+  let characterId = 'rogue';
+  let armorPool = null;
 
   for (const raw of flagTokens) {
     const token = raw.trim();
@@ -127,6 +146,12 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
       amuletPool = parseIdList(flagValue(token, '--amulet-pool'));
     } else if (token.startsWith('--amulet-start')) {
       amuletStart = parseIdList(flagValue(token, '--amulet-start'));
+    } else if (token.startsWith('--character')) {
+      const val = flagValue(token, '--character');
+      if (val && SIM_CHARACTER_IDS.has(val)) characterId = val;
+      else if (val) characterId = normalizeCharacterId(val);
+    } else if (token.startsWith('--armor-pool')) {
+      armorPool = parseArmorPool(flagValue(token, '--armor-pool'));
     }
   }
 
@@ -148,6 +173,8 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
     metaStart,
     amuletPool,
     amuletStart,
+    characterId: normalizeCharacterId(characterId),
+    armorPool,
   };
 }
 
@@ -182,7 +209,7 @@ export function normalizeSimPools(flags, { allRelics = [], allAmulets = [], meta
     let start = out.amuletStart;
     if (start == null) {
       if (out.amuletLoadout === 'strong') start = []; // filled by caller with STRONG_AMULETS
-      else if (out.amuletLoadout === 'bag') start = ['bottomlessBag'];
+      else if (out.amuletLoadout === 'bag') start = ['ringOfHealth'];
       else start = [];
     } else {
       start = start.slice();
@@ -207,9 +234,11 @@ export function applySimFlags({ enableMeta, enableAmulets }) {
 
 export function formatSimFlagsLabel(flags) {
   const parts = [
+    `character:${flags.characterId || 'rogue'}`,
     flags.enableMeta ? 'meta' : 'no-meta',
     flags.enableAmulets ? 'amulets' : 'no-amulets',
   ];
+  if (flags.armorPool?.length) parts.push(`armor:${flags.armorPool.join('+')}`);
   if (flags.enableMeta) {
     const nPool = flags.metaPool?.length;
     const nStart = flags.metaStart?.length;
@@ -266,6 +295,8 @@ export function buildSimRunExtras(flags, { allRelics = [], strongAmulets = [], a
     forceStartingAmulets,
     amuletPool,
     metaPool: norm.enableMeta ? norm.metaPool.slice() : [],
+    characterId: normalizeCharacterId(flags.characterId || 'rogue'),
+    armorPool: flags.armorPool ? flags.armorPool.slice() : null,
   };
 }
 
@@ -289,7 +320,9 @@ export function simPoolFlagArgs(flags) {
 
 export function simFlagsUsage() {
   return `
-Sim flags (combine with stats-db / loot-stats):
+Sim flags (combine with stats-db / loot-stats / fresh):
+  --character rogue|warrior   Playable class (default: rogue)
+  --armor-pool chain|plate|both   Warrior armor spawn filter (default: both)
   --meta | --no-meta          Enable meta relics for the run
   --amulets | --no-amulets    Floor drops, events, shop amulets
   --amulet-loadout none|bag|strong   Starting amulets shortcut

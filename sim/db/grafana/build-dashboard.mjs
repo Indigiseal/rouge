@@ -156,12 +156,6 @@ function table(title, query, y, x, w, h) {
   };
 }
 
-const endReasonColors = [
-  { matcher: { id: 'byName', options: 'win' }, properties: [{ id: 'color', value: { fixedColor: 'green', mode: 'fixed' } }] },
-  { matcher: { id: 'byName', options: 'hp' }, properties: [{ id: 'color', value: { fixedColor: 'red', mode: 'fixed' } }] },
-  { matcher: { id: 'byName', options: 'weapon' }, properties: [{ id: 'color', value: { fixedColor: 'orange', mode: 'fixed' } }] },
-];
-
 /** Build child panels with y starting at `baseY`. Returns panels and next free y. */
 function buildOverview(baseY) {
   const y = baseY;
@@ -188,25 +182,10 @@ function buildOverview(baseY) {
 function buildDeaths(baseY) {
   const y1 = baseY;
   const y2 = y1 + 8;
-  const y3 = y2 + 9;
   return {
     panels: [
-      pie('Run end reason',
-        `SELECT end_reason AS label, COUNT(*) AS value FROM sim_runs WHERE batch_id = $batch_id AND end_reason IS NOT NULL GROUP BY end_reason ORDER BY value DESC`,
-        y1, 0, 8, 8, endReasonColors),
-      bar('Last floor reached (distribution)',
-        `SELECT 'F' || reached_floor AS floor, COUNT(*) AS runs FROM sim_runs WHERE batch_id = $batch_id GROUP BY reached_floor ORDER BY reached_floor`,
-        y1, 8, 8, 8, { xField: 'floor', legendCalcs: ['sum'] }),
-      bar('Deaths by room type',
-        `SELECT COALESCE(death_encounter_type, 'unknown') AS encounter, COUNT(*) AS deaths FROM sim_runs WHERE batch_id = $batch_id AND died = 1 GROUP BY death_encounter_type ORDER BY deaths DESC`,
-        y1, 16, 8, 8, { xField: 'encounter', orientation: 'horizontal', showLegend: false }),
-      table('Deaths: floor × room type',
-        `SELECT 'F' || reached_floor AS floor, COALESCE(death_encounter_type, 'unknown') AS encounter, COUNT(*) AS deaths,
-          ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM sim_runs WHERE batch_id = $batch_id AND died = 1), 1) AS pct_of_deaths
-         FROM sim_runs WHERE batch_id = $batch_id AND died = 1
-         GROUP BY reached_floor, death_encounter_type ORDER BY reached_floor, deaths DESC`,
-        y2, 0, 12, 9),
-      bar('Funnel: runs reaching floor',
+      // Top-left: cumulative funnel
+      bar('Дошли до этажа (накопительно)',
         `WITH floors AS (
            SELECT DISTINCT floor_number AS floor FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id WHERE r.batch_id = $batch_id
            UNION SELECT DISTINCT reached_floor AS floor FROM sim_runs WHERE batch_id = $batch_id
@@ -214,18 +193,54 @@ function buildDeaths(baseY) {
          SELECT 'F' || f.floor AS floor,
            (SELECT COUNT(*) FROM sim_runs r WHERE r.batch_id = $batch_id AND r.reached_floor >= f.floor) AS runs_reached
          FROM floors f ORDER BY f.floor`,
-        y2, 12, 12, 9, { showLegend: false, tooltipMode: 'single' }),
-      bar('Avg player HP lost per visit',
-        `SELECT 'F' || fv.floor_number AS floor, ROUND(AVG(MAX(0, fv.player_hp_start - fv.player_hp_end)), 1) AS hp_lost_avg
+        y1, 0, 12, 8, { showLegend: true }),
+
+      // Top-right: AP spent
+      bar('Потрачено AP (среднее по этажу)',
+        `SELECT 'F' || fv.floor_number AS floor,
+           ROUND(AVG(COALESCE(fv.ap_spent, 0)), 1) AS ap_spent_avg
          FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id
-         WHERE r.batch_id = $batch_id GROUP BY fv.floor_number ORDER BY fv.floor_number`,
-        y3, 0, 12, 8),
-      table('Run outcomes',
-        `SELECT end_reason, COUNT(*) AS runs, ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM sim_runs WHERE batch_id = $batch_id), 1) AS pct
-         FROM sim_runs WHERE batch_id = $batch_id GROUP BY end_reason ORDER BY runs DESC`,
-        y3, 12, 12, 8),
+         WHERE r.batch_id = $batch_id
+         GROUP BY fv.floor_number ORDER BY fv.floor_number`,
+        y1, 12, 12, 8),
+
+      // Bottom-left: incoming damage decomposition
+      bar('Урон по игроку: получен / блок бронёй / уворот',
+        `SELECT 'F' || fv.floor_number AS floor,
+           ROUND(AVG(COALESCE(fv.combat_damage_taken, 0)), 1) AS damage_received,
+           ROUND(AVG(COALESCE(fv.combat_damage_blocked_armor, 0)), 1) AS damage_blocked_armor,
+           ROUND(AVG(COALESCE(fv.combat_damage_dodged, 0)), 1) AS damage_dodged
+         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id
+         WHERE r.batch_id = $batch_id
+           AND fv.encounter_type IN ('COMBAT', 'ELITE', 'BOSS')
+         GROUP BY fv.floor_number ORDER BY fv.floor_number`,
+        y2, 0, 12, 8, {
+          stacking: 'normal',
+          overrides: [
+            { matcher: { id: 'byName', options: 'damage_received' }, properties: [{ id: 'color', value: { fixedColor: 'red', mode: 'fixed' } }] },
+            { matcher: { id: 'byName', options: 'damage_blocked_armor' }, properties: [{ id: 'color', value: { fixedColor: 'blue', mode: 'fixed' } }] },
+            { matcher: { id: 'byName', options: 'damage_dodged' }, properties: [{ id: 'color', value: { fixedColor: 'green', mode: 'fixed' } }] },
+          ],
+        }),
+
+      // Bottom-right: weapon specialization contribution
+      bar('Урон специализации: dual wield (offhand) + gems',
+        `SELECT 'F' || fv.floor_number AS floor,
+           ROUND(AVG(COALESCE(fv.combat_specialization_dual_wield, 0)), 1) AS dual_wield_damage,
+           ROUND(AVG(COALESCE(fv.combat_specialization_gem, 0)), 1) AS gem_damage
+         FROM sim_floor_visits fv JOIN sim_runs r ON r.id = fv.run_id
+         WHERE r.batch_id = $batch_id
+           AND fv.encounter_type IN ('COMBAT', 'ELITE', 'BOSS')
+         GROUP BY fv.floor_number ORDER BY fv.floor_number`,
+        y2, 12, 12, 8, {
+          stacking: 'normal',
+          overrides: [
+            { matcher: { id: 'byName', options: 'dual_wield_damage' }, properties: [{ id: 'color', value: { fixedColor: 'green', mode: 'fixed' } }] },
+            { matcher: { id: 'byName', options: 'gem_damage' }, properties: [{ id: 'color', value: { fixedColor: 'yellow', mode: 'fixed' } }] },
+          ],
+        }),
     ],
-    nextY: y3 + 8,
+    nextY: y2 + 8,
   };
 }
 
@@ -389,7 +404,7 @@ const panels = [];
 let y = 0;
 
 y = addSection(panels, 'Overview', false, buildOverview, y);
-y = addSection(panels, '1 · Deaths & progression', true, buildDeaths, y);
+y = addSection(panels, '1 · Deaths & progression', false, buildDeaths, y);
 y = addSection(panels, '2 · Weapons & damage', true, buildWeapons, y);
 addSection(panels, '3 · Monsters', true, buildMonsters, y);
 
@@ -430,7 +445,7 @@ const dashboard = {
   timezone: 'browser',
   title: 'Sim Balance',
   uid: 'sim-balance',
-  version: 9,
+  version: 12,
   weekStart: '',
 };
 

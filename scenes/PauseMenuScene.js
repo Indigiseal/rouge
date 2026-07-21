@@ -2,6 +2,7 @@
 import { MusicManager } from '../utils/MusicManager.js';
 import { SoundHelper } from '../utils/SoundHelper.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../utils/VolumeSettings.js';
+import { exitToSandboxHub, isSandboxMode } from '../utils/SandboxMode.js';
 
 export class PauseMenuScene extends Phaser.Scene {
     constructor() {
@@ -168,6 +169,11 @@ export class PauseMenuScene extends Phaser.Scene {
         // side treats a save taken in a shop/rest/etc. as "resume on the map", so
         // quitting from a station room comes back cleanly.
         const gameScene = this.scene.get(this.pausedScene);
+        if (isSandboxMode(gameScene) || isSandboxMode(this)) {
+            exitToSandboxHub(this);
+            return;
+        }
+
         if (gameScene && typeof gameScene.saveCurrentRun === 'function') {
             gameScene.saveCurrentRun();
         }

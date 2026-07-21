@@ -3,6 +3,7 @@ import { SoundHelper } from '../utils/SoundHelper.js';
 import { t, translateItemName } from '../utils/i18n.js';
 import { createTitle } from '../utils/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
+import { openAmuletChoiceOverlay } from '../utils/AmuletChoiceOverlay.js';
 
 export class RareShopScene extends StationRoomBase {
     constructor() {
@@ -34,10 +35,11 @@ export class RareShopScene extends StationRoomBase {
         const floor = this.gameState.currentFloor;
 
         // The rare shop is the premium store — its goods cost a clear premium.
-        // 1. Amulet (costs crystals)
-        const amuletPrice = Math.max(2, Math.floor(floor / 10) + 2);
-        const amuletData = cardGenerator.createCardData('amulet', floor, false, this.gameState);
+        // 1. Amulet offer (costs crystals) — uncommon/rare/legendary by rates
+        const amuletData = cardGenerator.createCardData('amulet', floor, false, this.gameState, 'rare_shop');
         if (amuletData) {
+            const rarityMult = { uncommon: 1.5, rare: 2, legendary: 3 }[amuletData.rarity] || 2;
+            const amuletPrice = Math.max(2, Math.floor((Math.floor(floor / 10) + 2) * rarityMult));
             this.shopItems.push({
                 data: amuletData,
                 price: amuletPrice,
@@ -58,7 +60,7 @@ export class RareShopScene extends StationRoomBase {
         // 3. Uncommon armor — always pair the weapon with a piece of armor so the
         // shop offers a weapon AND armor instead of two of the same weapon type
         // (the uncommon weapon pool can be a single type, e.g. dagger-only).
-        const armorData = cardGenerator.createCardData('armor', floor, false, null,
+        const armorData = cardGenerator.createCardData('armor', floor, false, this.gameState,
             cardGenerator.capRewardRarity('uncommon', floor));
         this.shopItems.push({
             data: armorData || this.createUpgradedWeapon(firstWeapon?.weaponType),
@@ -257,14 +259,37 @@ export class RareShopScene extends StationRoomBase {
             return;
         }
 
-        // Amulets go straight to the amulet manager
+        // Amulets: pay, then pick 1 of 3 of the rolled rarity
         if (item.data.type === 'amulet') {
-            if (this.gameScene?.amuletManager && item.data.id) {
-                if (!this.gameScene.amuletManager.addAmulet(item.data.id)) {
-                    this.showFeedback('Already owned!', 0xff0000, 100);
+            if (this.gameScene?.amuletManager) {
+                const offer = item.data.pendingChoice && item.data.options?.length ? item.data : null;
+                if (offer?.options?.length) {
+                    if (item.currency === 'coins') this.gameState.coins -= item.price;
+                    else this.gameState.crystals -= item.price;
+                    SoundHelper.playSound(this, 'shop_buy', 0.5);
+                    item.purchased = true;
+                    this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+                    this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
+                    this.markButtonDone(button, t(this, 'ui.shop.sold'));
+                    this.refreshStationInventoryDisplay();
+                    openAmuletChoiceOverlay(this, {
+                        rarity: offer.rarity,
+                        options: offer.options,
+                        amuletManager: this.gameScene.amuletManager,
+                        title: `Rare shop — ${offer.rarity} amulet`,
+                        onPicked: () => this.gameScene?.updateUI?.(),
+                    });
                     return;
                 }
-                this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x9932cc, 100);
+                if (item.data.id) {
+                    if (!this.gameScene.amuletManager.addAmulet(item.data.id)) {
+                        this.showFeedback('Already owned!', 0xff0000, 100);
+                        return;
+                    }
+                    this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x9932cc, 100);
+                } else {
+                    this.consumeAmulet(item.data);
+                }
             } else {
                 this.consumeAmulet(item.data);
             }
@@ -286,7 +311,7 @@ export class RareShopScene extends StationRoomBase {
             this.showFeedback('Purchased!', 0x00ff00, 100);
         }
 
-        // Deduct
+        // Deduct (concrete amulet / non-amulet path)
         if (item.currency === 'coins') this.gameState.coins -= item.price;
         else this.gameState.crystals -= item.price;
 

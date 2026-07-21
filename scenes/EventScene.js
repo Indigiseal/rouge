@@ -9,6 +9,7 @@ import { loadHeroMemory, saveHeroMemory, saveStoryProgress } from '../utils/Stor
 import { t, translateDescription, translateItemName } from '../utils/i18n.js';
 import { createTitle } from '../utils/titleText.js';
 import { SoundHelper } from '../utils/SoundHelper.js';
+import { exitToSandboxHub, isSandboxMode } from '../utils/SandboxMode.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
@@ -2353,7 +2354,16 @@ export class EventScene extends Phaser.Scene {
   }
 
   gainRandomCursedAmulet() {
-    return this.gainRandomAmuletFromPool(amulet => amulet.rarity === 'cursed');
+    // Cursed catalog is retired from shops; slimy_prison still pulls from old cursed defs.
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    const mgr = this.gameScene?.amuletManager;
+    if (!mgr?.addAmulet) return false;
+    const owned = new Set((this.gameState?.activeAmulets || []).map(amulet => amulet?.id));
+    const pool = Object.entries(mgr.amuletDefinitions || {})
+      .filter(([id, def]) => def?.cursed && def.rarity === 'old' && !owned.has(id))
+      .map(([id]) => id);
+    if (!pool.length) return false;
+    return this.gainAmulet(pool[Math.floor(Math.random() * pool.length)]);
   }
 
   gainRandomNonCursedAmulet() {
@@ -3091,6 +3101,10 @@ export class EventScene extends Phaser.Scene {
       this.scene.wake('GameScene');
       this.scene.stop();
       this.gameScene?.gameOver?.();
+      return;
+    }
+    if (isSandboxMode(this) || isSandboxMode(this.gameScene)) {
+      exitToSandboxHub(this);
       return;
     }
     // Park GameScene back to sleep (we woke it for the station) and return to map.

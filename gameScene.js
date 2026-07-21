@@ -13,6 +13,12 @@ import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from './utils/Story
 import { isMetaProgressionDisabled } from './utils/TestOptions.js';
 import { loadVolumeSettings, saveVolumeSettings } from './utils/VolumeSettings.js';
 import { CombatSequencer } from './utils/CombatSequencer.js';
+import {
+    applySandboxLoadout,
+    exitToSandboxHub,
+    getSandboxEncounter,
+    isSandboxMode,
+} from './utils/SandboxMode.js';
 
 // Gap between consecutive enemies' attacks. Derived from the sequencer's last
 // beat so it always clears one attacker's full timeline — retuning the beats
@@ -50,6 +56,10 @@ export class GameScene extends Phaser.Scene {
         // is identical every time.
         this.tutorialMode = Boolean(data.tutorial);
         if (this.tutorialMode) this.shouldLoadSave = false;
+        // Test polygon: forced single encounter, then back to the hub.
+        this.sandboxMode = Boolean(data.sandbox);
+        this.sandboxRoom = data.sandboxRoom || null;
+        if (this.sandboxMode) this.shouldLoadSave = false;
         this._transitioning = false;
         this._resultScreenShown = false;
         this._gameOverInProgress = false;
@@ -68,9 +78,10 @@ export class GameScene extends Phaser.Scene {
         } else {
             // New run
             this.gameState = new GameState(this);
+            this.gameState.characterId = data.characterId || 'rogue';
             // Apply relic effects to fresh game state (skip for the tutorial so
             // its rigged board is deterministic).
-            if (!this.tutorialMode && !isMetaProgressionDisabled()) {
+            if (!this.tutorialMode && !this.sandboxMode && !isMetaProgressionDisabled()) {
                 this.metaManager.applyRelicEffects(this.gameState);
             }
             // Cross-run story memory: seed the fresh run from any saved story
@@ -124,7 +135,7 @@ export class GameScene extends Phaser.Scene {
         
         this.skipNextEnemyAttack = false;
         this.killedBy = null;
-        this.roomType = data.roomType || 'COMBAT';
+        this.roomType = data.roomType || (this.sandboxMode && this.sandboxRoom) || 'COMBAT';
         this.clearEnemyTurnTimers();
     }
     
@@ -206,6 +217,11 @@ export class GameScene extends Phaser.Scene {
             this.scene.launch('MapViewScene', { gameState: this.gameState });
             return;
         }
+
+        if (this.sandboxMode && this.sandboxRoom) {
+            this.bootSandboxEncounter();
+            return;
+        }
         
         // Start or restore the room. Boss rewards are already paid before the
         // player can pause; rebuilding them via setupBossRewardRoom() would pay
@@ -226,6 +242,44 @@ export class GameScene extends Phaser.Scene {
             this.tutorialManager = new TutorialManager(this);
             this.tutorialManager.start();
         }
+    }
+
+    bootSandboxEncounter() {
+        this.gameState.sandboxMode = true;
+        const encounter = getSandboxEncounter(this.sandboxRoom);
+        applySandboxLoadout(this, this.sandboxRoom);
+
+        if (this.sandboxRoom === 'BOSS_REWARD') {
+            this.setupBossRewardRoom();
+            this.updateRoomTitle();
+            return;
+        }
+
+        if (encounter?.kind === 'station' && encounter.sceneKey) {
+            const roomType = this.sandboxRoom.startsWith('TREASURE')
+                ? (this.sandboxRoom === 'TREASURE_GOOD' ? 'TREASURE_GOOD' : 'TREASURE')
+                : this.sandboxRoom;
+            this.gameState.roomType = roomType;
+            this.roomType = roomType;
+            this.scene.sleep();
+            const payload = { gameState: this.gameState };
+            if (encounter.rewardMode) payload.rewardMode = encounter.rewardMode;
+            this.scene.launch(encounter.sceneKey, payload);
+            return;
+        }
+
+        this.gameState.roomType = this.sandboxRoom;
+        this.roomType = this.sandboxRoom;
+        this.startNewFloor();
+        this.updateRoomTitle();
+    }
+
+    leaveSandboxOrMenu() {
+        if (this.sandboxMode || isSandboxMode(this)) {
+            exitToSandboxHub(this);
+            return;
+        }
+        this.scene.start('MainMenuScene');
     }
 
     update() {
@@ -614,6 +668,7 @@ export class GameScene extends Phaser.Scene {
             this.cardSystem.spawnFloorCards();
             this.inventorySystem.addStartingCards();
         }
+        this.amuletManager?.processFloorStart?.();
         // DON'T replenish action points here
         this.updateUI();
         this.cardSystem.checkFloorClear();
@@ -1765,9 +1820,9 @@ export class GameScene extends Phaser.Scene {
 
             this.unlockChickForRareShopAfterDeath();
             this.unlockSkeletonForRareShopAfterDeath();
-            this.saveManager?.clearCurrentRun();
+            if (!this.sandboxMode) this.saveManager?.clearCurrentRun();
 
-            if (this.metaManager && !isMetaProgressionDisabled()) {
+            if (!this.sandboxMode && this.metaManager && !isMetaProgressionDisabled()) {
                 this.metaManager.totalRuns++;
                 if (floor > this.metaManager.bestFloor) {
                     this.metaManager.bestFloor = floor;
@@ -1820,7 +1875,7 @@ export class GameScene extends Phaser.Scene {
             padding: { x: 18, y: 10 },
             fontFamily: 'Arial, sans-serif'
         }).setOrigin(0.5).setDepth(depth + 1).setInteractive({ useHandCursor: true })
-            .on('pointerdown', () => this.scene.start('MainMenuScene'));
+            .on('pointerdown', () => this.leaveSandboxOrMenu());
     }
 
     unlockChickForRareShopAfterDeath() {
@@ -1957,7 +2012,7 @@ export class GameScene extends Phaser.Scene {
             }).setOrigin(0.5).setDepth(resultDepth + 2);
         }
 
-        this.addResultButton(320, 336, 'Continue', () => this.scene.start('MainMenuScene'), resultDepth + 4);
+        this.addResultButton(320, 336, 'Continue', () => this.leaveSandboxOrMenu(), resultDepth + 4);
     }
 
     addRelicIcon(relic, x, y, depth) {
@@ -2026,6 +2081,31 @@ export class GameScene extends Phaser.Scene {
             this.amuletManager.processFloorEnd();
         }
         this._floorEndAlreadyProcessed = false;
+
+        // Test polygon: after a fight (or boss reward leave), return to the hub.
+        // Elite still opens its chest first; TreasureScene exits back to the hub.
+        if (this.sandboxMode) {
+            const bossFloors = [15, 30, 45];
+            const completedActBoss =
+                bossFloors.includes(this.gameState.currentFloor) ||
+                this.gameState.roomType === 'BOSS';
+            if (completedActBoss) {
+                this.time.delayedCall(700, () => this.setupBossRewardRoom());
+                return;
+            }
+            this.time.delayedCall(500, () => {
+                this.scene.sleep();
+                if (rewardChestMode) {
+                    this.scene.launch('TreasureScene', {
+                        gameState: this.gameState,
+                        rewardMode: rewardChestMode,
+                    });
+                } else {
+                    exitToSandboxHub(this);
+                }
+            });
+            return;
+        }
 
         // Use the SAME signals the boss-spawn uses, so spawning and completing the
         // boss always agree. Relying on roomType alone was fragile: if it drifted to
@@ -2106,8 +2186,8 @@ export class GameScene extends Phaser.Scene {
         const rawQuality = floor >= 31 ? 'legendary' : floor >= 16 ? 'epic' : 'rare';
         const quality = gen.capRewardRarity(rawQuality, floor);
         const items = [
-            gen.createCardData('amulet', floor, false, this.gameState),
-            gen.createCardData(Math.random() < 0.5 ? 'weapon' : 'armor', floor, false, null, quality),
+            gen.createCardData('amulet', floor, false, this.gameState, 'boss'),
+            gen.createCardData(Math.random() < 0.5 ? 'weapon' : 'armor', floor, false, this.gameState, quality),
             this.makeBossRewardGem()
         ].filter(Boolean);
 
@@ -2209,6 +2289,11 @@ export class GameScene extends Phaser.Scene {
 
         // Clean up the chest visual
         this.cardSystem?.clearBossRewardChest?.();
+
+        if (this.sandboxMode) {
+            this.time.delayedCall(300, () => exitToSandboxHub(this));
+            return;
+        }
 
         // Advance to next act now that the player is done picking
         this.gameState.currentFloor++;
@@ -2371,9 +2456,9 @@ export class GameScene extends Phaser.Scene {
 
         // Victory ends the run: clear the saved run so it can't be "continued",
         // then return to the main menu instead of dropping straight into a new game.
-        this.addResultButton(320, 336, 'Main Menu', () => {
-            this.saveManager?.clearCurrentRun();
-            this.scene.start('MainMenuScene');
+        this.addResultButton(320, 336, this.sandboxMode ? 'Test Polygon' : 'Main Menu', () => {
+            if (!this.sandboxMode) this.saveManager?.clearCurrentRun();
+            this.leaveSandboxOrMenu();
         }, resultDepth + 4);
     }
 
@@ -2570,6 +2655,12 @@ export class GameScene extends Phaser.Scene {
         let lines = `${translateItemName(this, armor)}\n${t(this, 'tooltip.protectionShort', { amount: armor.protection })}`;
         if (armor.dodgeChance) {
             lines += `\n${t(this, 'tooltip.dodge', { percent: Math.round(armor.dodgeChance * 100) })}`;
+        }
+        if (armor.meleeCounterChance) {
+            lines += `\nMelee counter: ${Math.round(armor.meleeCounterChance * 100)}%`;
+        }
+        if (armor.rangedIgnoreChance) {
+            lines += `\nIgnore ranged: ${Math.round(armor.rangedIgnoreChance * 100)}%`;
         }
         if (armor.reflection) {
             lines += `\n${t(this, 'tooltip.reflect', { value: `${armor.reflection}%` })}`;
@@ -2824,6 +2915,7 @@ export class GameScene extends Phaser.Scene {
     
     // Save current run method
     saveCurrentRun() {
+        if (this.sandboxMode) return;
         if (this.saveManager) {
             const saved = this.saveManager.saveCurrentRun(
                 this.gameState,
@@ -2856,6 +2948,7 @@ export class GameScene extends Phaser.Scene {
         this.gameState.bottomlessBagApplied = runData.player.bottomlessBagApplied;
         this.gameState.discardedCardsThisRun = runData.player.discardedCardsThisRun || 0;
         this.gameState.discardCritChance = runData.player.discardCritChance || 0;
+        this.gameState.characterId = runData.player.characterId || 'rogue';
         this.gameState.journalBonusHP = runData.player.journalBonusHP || 0;
         this.gameState.mapBonusAP = runData.player.mapBonusAP || 0;
         this.gameState.mapFloorCount = runData.player.mapFloorCount || 0;

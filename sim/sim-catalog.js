@@ -44,19 +44,28 @@ export function getAmuletCatalog() {
   };
   const defs = new AmuletManager(stub).amuletDefinitions;
   const dropIds = new Set(new CardDataGenerator().amuletTypes.map((a) => a.id));
-  return Object.entries(defs).map(([id, a]) => ({
-    id,
-    name: a.name || id,
-    description: a.description || '',
-    hint: [
-      a.description || id,
-      dropIds.has(id) ? 'Может выпасть в дропе/шопе/сундуке.' : 'Не в обычном дропе — ивент/особая награда.',
-      a.rarity ? `Редкость: ${a.rarity}.` : '',
-    ].filter(Boolean).join(' '),
-    rarity: a.rarity || 'common',
-    droppable: dropIds.has(id),
-    cursed: a.rarity === 'cursed' || !!a.cursed,
-  }));
+  const rarityOrder = { common: 0, uncommon: 1, rare: 2, legendary: 3, cursed: 4 };
+
+  return Object.entries(defs)
+    .filter(([, a]) => a.rarity && a.rarity !== 'old')
+    .map(([id, a]) => ({
+      id,
+      name: a.name || id,
+      description: a.description || '',
+      hint: [
+        a.description || id,
+        dropIds.has(id) ? 'В дропе/магазине (оффер: редкость → выбор из 3).' : 'Не в обычном дропе.',
+        a.rarity ? `Редкость: ${a.rarity}.` : '',
+      ].filter(Boolean).join(' '),
+      rarity: a.rarity || 'common',
+      droppable: dropIds.has(id),
+      cursed: a.rarity === 'cursed' || !!a.cursed,
+    }))
+    .sort((a, b) => {
+      const rd = (rarityOrder[a.rarity] ?? 9) - (rarityOrder[b.rarity] ?? 9);
+      if (rd !== 0) return rd;
+      return a.name.localeCompare(b.name);
+    });
 }
 
 export function getDefaultRelicIds() {

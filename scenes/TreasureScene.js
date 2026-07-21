@@ -2,6 +2,7 @@ import { SoundHelper } from '../utils/SoundHelper.js';
 import { CardDataGenerator } from '../CardDataGenerator.js';
 import { createTitle } from '../utils/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
+import { exitToSandboxHub, isSandboxMode } from '../utils/SandboxMode.js';
 
 export class TreasureScene extends StationRoomBase {
   constructor() {
@@ -226,7 +227,7 @@ export class TreasureScene extends StationRoomBase {
     const gen = new CardDataGenerator();
     const roll = Math.random();
     const type = roll < 0.45 ? 'weapon' : roll < 0.85 ? 'armor' : 'magic';
-    const item = gen.createCardData(type, this.gameState.currentFloor, false, null, rarity);
+    const item = gen.createCardData(type, this.gameState.currentFloor, false, this.gameState, rarity);
     item.rarity = rarity;
     return item;
   }
@@ -448,6 +449,10 @@ export class TreasureScene extends StationRoomBase {
       this.scene.sleep('GameScene');
     }
     this.hideItemTooltip?.();
+    if (isSandboxMode(this) || isSandboxMode(this.gameScene)) {
+      exitToSandboxHub(this);
+      return;
+    }
     this.scene.stop();
     this.scene.stop('MapViewScene');
     this.scene.launch('MapViewScene', { gameState: this.gameState });

@@ -49,6 +49,12 @@ export function getTooltipLines(scene, data) {
         if (data.dodgeChance) {
             lines.push(t(scene, 'tooltip.dodge', { percent: Math.round(data.dodgeChance * 100) }));
         }
+        if (data.meleeCounterChance) {
+            lines.push(`Melee counter: ${Math.round(data.meleeCounterChance * 100)}% (50% blocked)`);
+        }
+        if (data.rangedIgnoreChance) {
+            lines.push(`Ignore ranged: ${Math.round(data.rangedIgnoreChance * 100)}%`);
+        }
         body = lines.join('\n');
     } else if (data.type === 'potion') {
         body = t(scene, 'tooltip.heals', { amount: data.healAmount ?? 0 });

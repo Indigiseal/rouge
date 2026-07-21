@@ -67,6 +67,11 @@ export class StatsRecorder {
     this.runNumber = 0;
     this.combatDamageDealt = null;
     this.combatDamageWasted = null;
+    this.combatDamageTaken = null;
+    this.combatDamageBlockedArmor = null;
+    this.combatDamageDodged = null;
+    this.combatSpecializationDualWield = null;
+    this.combatSpecializationGem = null;
   }
 
   beginBatch({ label, mode, runsPlanned, config }) {
@@ -104,6 +109,11 @@ export class StatsRecorder {
     this.visitOrder += 1;
     this.combatDamageDealt = null;
     this.combatDamageWasted = null;
+    this.combatDamageTaken = null;
+    this.combatDamageBlockedArmor = null;
+    this.combatDamageDodged = null;
+    this.combatSpecializationDualWield = null;
+    this.combatSpecializationGem = null;
     this.floorVisitId = this.db.beginFloorVisit(this.runId, {
       floorNumber,
       visitOrder: this.visitOrder,
@@ -128,21 +138,51 @@ export class StatsRecorder {
     }
   }
 
-  recordCombatStats(damageDealt, damageWasted) {
-    this.combatDamageDealt = damageDealt;
+  /** Mid-run amulet equip (shop/floor/boss/event). Skipped when no active floor visit. */
+  recordAmuletGain(amuletId, rarity = 'unknown') {
+    if (this.floorVisitId == null || !amuletId) return;
+    this.db.insertAmuletGain(this.floorVisitId, { amuletId, rarity });
+  }
+
+  recordCombatStats(statsOrDamageDealt, damageWasted = null) {
+    // Backward-compatible shape:
+    // - recordCombatStats(damageDealt, damageWasted)
+    // - recordCombatStats({ damageDealt, damageWasted, ... })
+    if (typeof statsOrDamageDealt === 'object' && statsOrDamageDealt !== null) {
+      const stats = statsOrDamageDealt;
+      this.combatDamageDealt = stats.damageDealt ?? null;
+      this.combatDamageWasted = stats.damageWasted ?? null;
+      this.combatDamageTaken = stats.damageTaken ?? null;
+      this.combatDamageBlockedArmor = stats.damageBlockedArmor ?? null;
+      this.combatDamageDodged = stats.damageDodged ?? null;
+      this.combatSpecializationDualWield = stats.specializationDualWield ?? null;
+      this.combatSpecializationGem = stats.specializationGem ?? null;
+      return;
+    }
+    this.combatDamageDealt = statsOrDamageDealt;
     this.combatDamageWasted = damageWasted;
   }
 
-  finishFloorVisit(playerHpEnd, playerMaxHpEnd) {
+  finishFloorVisit(playerHpEnd, playerMaxHpEnd, extras = {}) {
     if (this.floorVisitId != null) {
       const combat = {};
       if (this.combatDamageDealt != null) combat.damageDealt = this.combatDamageDealt;
       if (this.combatDamageWasted != null) combat.damageWasted = this.combatDamageWasted;
-      this.db.finishFloorVisit(this.floorVisitId, playerHpEnd, playerMaxHpEnd, combat);
+      if (this.combatDamageTaken != null) combat.damageTaken = this.combatDamageTaken;
+      if (this.combatDamageBlockedArmor != null) combat.damageBlockedArmor = this.combatDamageBlockedArmor;
+      if (this.combatDamageDodged != null) combat.damageDodged = this.combatDamageDodged;
+      if (this.combatSpecializationDualWield != null) combat.specializationDualWield = this.combatSpecializationDualWield;
+      if (this.combatSpecializationGem != null) combat.specializationGem = this.combatSpecializationGem;
+      this.db.finishFloorVisit(this.floorVisitId, playerHpEnd, playerMaxHpEnd, combat, extras);
     }
     this.floorVisitId = null;
     this.combatDamageDealt = null;
     this.combatDamageWasted = null;
+    this.combatDamageTaken = null;
+    this.combatDamageBlockedArmor = null;
+    this.combatDamageDodged = null;
+    this.combatSpecializationDualWield = null;
+    this.combatSpecializationGem = null;
   }
 }
 

@@ -52,12 +52,19 @@ import {
 } from './parse-sim-flags.js';
 import { getDefaultAmuletIds } from './sim-catalog.js';
 import { getBehaviorProfile, getBehaviorPresetNames } from './behavior-knobs.js';
+import {
+  applyClassWeaponDamageBonus,
+  getCharacter,
+  normalizeCharacterId,
+  rollClassWeaponCrit,
+} from '../utils/CharacterClasses.js';
 
 // ── Config ────────────────────────────────────────────────────────────────
 const RUNS = parseInt(process.argv[2], 10) || 2000;
 const MAX_FLOOR = 45;
 const BOSS_FLOORS = new Set([15, 30, 45]);
 const DEFAULT_BEHAVIOR_PRESET = parseBehaviorPresetArg(process.argv);
+const DEFAULT_CHARACTER_ID = parseCharacterArg(process.argv);
 let CURRENT_BEHAVIOR = getBehaviorProfile('balanced');
 
 // Room-type mix for non-boss floors (approximates the map generator's feel).
@@ -82,6 +89,16 @@ function parseBehaviorPresetArg(argv = process.argv) {
   return 'balanced';
 }
 
+function parseCharacterArg(argv = process.argv) {
+  const eq = argv.find((arg) => arg.startsWith('--character='));
+  if (eq) return normalizeCharacterId(eq.split('=')[1] || 'rogue');
+  const idx = argv.indexOf('--character');
+  if (idx >= 0 && argv[idx + 1] && !argv[idx + 1].startsWith('--')) {
+    return normalizeCharacterId(argv[idx + 1]);
+  }
+  return 'rogue';
+}
+
 function stripBehaviorArgs(argv) {
   const out = [];
   for (let i = 0; i < argv.length; i++) {
@@ -94,6 +111,31 @@ function stripBehaviorArgs(argv) {
     out.push(arg);
   }
   return out;
+}
+
+/** Printed hit damage including class passives. Planner uses expected crit EV. */
+function simWeaponHitDamage(gs, weapon, wasExhausted, { expectedCrit = false } = {}) {
+  let dmg = weapon ? (weapon.damage || 1) : 1;
+  if (wasExhausted) dmg = Math.ceil(dmg * 0.8);
+  dmg = applyClassWeaponDamageBonus(gs?.characterId, weapon, dmg);
+
+  const def = getCharacter(gs?.characterId);
+  const canCrit = weapon
+    && (def.critChance || 0) > 0
+    && (def.critWeaponTypes || []).includes(weapon.weaponType);
+  if (!canCrit) return dmg;
+
+  const printed = Math.max(0, Number(weapon.damage) || 0);
+  const tier = ({ common: 1, uncommon: 2, rare: 3, epic: 3, legendary: 4 })[weapon.rarity] || 1;
+  let critDmg = Math.ceil(printed * (1 + 0.05 * tier));
+  if (wasExhausted) critDmg = Math.ceil(critDmg * 0.8);
+
+  if (expectedCrit) {
+    return dmg * (1 - def.critChance) + critDmg * def.critChance;
+  }
+
+  const crit = rollClassWeaponCrit(gs.characterId, weapon, dmg);
+  return crit.crit ? critDmg : dmg;
 }
 
 function cloneCard(card) {
@@ -192,20 +234,9 @@ function restrictMetaPool(meta, poolIds) {
   return meta;
 }
 
-function startingInventory(inv) {
-  // Mirrors InventorySystem.grantStartingCards (pure-runs-v1): dagger + bow.
-  const start = [
-    {
-      type: 'weapon', name: 'Common Dagger', weaponType: 'dagger', damage: 3,
-      rarity: 'common', durability: 4, maxDurability: 4, special: 'dualWield',
-      range: 'melee', gemSlots: 1,
-    },
-    {
-      type: 'weapon', name: 'Common Bow', weaponType: 'bow', damage: 4,
-      rarity: 'common', durability: 5, maxDurability: 5, special: 'block',
-      range: 'ranged', gemSlots: 1,
-    },
-  ];
+function startingInventory(inv, characterId = 'rogue') {
+  // Mirrors InventorySystem.grantStartingCards — class-specific starters.
+  const start = getCharacter(characterId).startingWeapons || [];
   for (let i = 0; i < start.length && i < inv.length; i++) inv[i] = cloneCard(start[i]);
 }
 
@@ -318,6 +349,34 @@ function computeRunEndReason(gs, inv, { won, dead, lastEncounterType, stalemateD
 // Real inventory pressure matters most at events. Keep one empty slot when the
 // story is about to offer an egg, then discard the least valuable carried card
 // only when the incoming event reward is better.
+
+// Rarity-first amulet offer → sim picks one option at random.
+// Tries other options if the first pick is already owned / blocked.
+// Floor/shop never equip cursed; boss may.
+function grantAmuletFromOffer(mock, offer, { allowCursed = false } = {}) {
+  if (!offer || !mock?.amuletManager) return false;
+
+  const tryPick = (pick) => {
+    if (!pick?.id) return false;
+    if (!allowCursed && (pick.rarity === 'cursed' || pick.cursed)) return false;
+    return !!mock.amuletManager.addAmulet(pick.id);
+  };
+
+  if (offer.pendingChoice && offer.options?.length) {
+    const order = offer.options.slice();
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    for (const pick of order) {
+      if (tryPick(pick)) return true;
+    }
+    return false;
+  }
+
+  return tryPick(offer);
+}
+
 function tryCarry(gs, inv, card, { eventReward = false } = {}) {
   if (!card) return false;
   const grantCardRewardBonus = () => {
@@ -371,12 +430,15 @@ const WEAPON_DUR = {
 function mergeWeapons(gen, a, b, floor = 0) {
   const type = a.weaponType;
   const r = nextRarity(a.rarity);
-  const dmg = gen.weaponUnlocks?.[type]?.[r]?.damage ?? ((a.damage || 1) + 1);
+  const unlock = gen.weaponUnlocks?.[type]?.[r];
+  const dmg = unlock?.damage ?? ((a.damage || 1) + 1);
   const dur = WEAPON_DUR[type]?.[r] ?? (a.maxDurability || 6);
   const slots = CardDataGenerator.gemSlotsForRarity(r);
   const merged = {
     type: 'weapon', name: `${cap(r)} ${cap(type)}`, weaponType: type,
-    damage: dmg, rarity: r, durability: dur, maxDurability: dur, range: a.range || 'melee',
+    damage: dmg, rarity: r, durability: dur, maxDurability: dur,
+    range: unlock?.range ?? a.range ?? 'melee',
+    special: unlock?.special ?? a.special ?? b.special ?? null,
     gemSlots: slots,
   };
   if (a.gemEffect && b.gemEffect && a.gemEffect === b.gemEffect) {
@@ -396,18 +458,27 @@ function mergeWeapons(gen, a, b, floor = 0) {
   return merged;
 }
 
-const ARMOR_DUR = { common: 15, uncommon: 20, rare: 25, epic: 28, legendary: 30 };
 function mergeArmor(gen, a, b, floor = 0) {
   const type = a.armorType || 'leather';
   const r = nextRarity(a.rarity);
   const data = gen.armorUnlocks?.[type]?.[r];
   const prot = data?.protection ?? ((a.protection || 1) + 1);
-  const dur = ARMOR_DUR[r] ?? (a.maxDurability || 25);
-  return {
+  const dur = CardDataGenerator.armorDurability(type, r);
+  const merged = {
     type: 'armor', name: `${cap(r)} ${cap(type)} Armor`, armorType: type,
     protection: prot, rarity: r, durability: dur, maxDurability: dur,
-    dodgeChance: data?.dodgeChance ?? a.dodgeChance ?? 0, reflection: a.reflection || 0,
+    reflection: a.reflection || 0,
   };
+  if (type === 'leather') {
+    merged.dodgeChance = data?.dodgeChance ?? a.dodgeChance ?? 0;
+  }
+  if (type === 'chain') {
+    merged.meleeCounterChance = data?.meleeCounterChance ?? a.meleeCounterChance ?? 0;
+  }
+  if (type === 'plate') {
+    merged.rangedIgnoreChance = data?.rangedIgnoreChance ?? a.rangedIgnoreChance ?? 0;
+  }
+  return merged;
 }
 function mergeArmorList(gen, list, echoChance = 0, tracker = null, floor = 0) {
   let changed = true, guard = 0;
@@ -660,8 +731,8 @@ function collectLoot(mock, gs, inv, idx, ctx = null) {
       }
       break; // socket immediately when possible; otherwise keep for later
     case 'thorns': tryCarry(gs, inv, d); break; // always carried + merged
-    case 'amulet': // equip dropped amulets (skip cursed — unbalanced)
-      if (d.id && d.rarity !== 'cursed' && !d.cursed) mock.amuletManager.addAmulet(d.id);
+    case 'amulet': // rarity offer → pick 1 of options (skip cursed on floor)
+      grantAmuletFromOffer(mock, d, { allowCursed: false });
       break;
     case 'magic':
       if (d.magicType === 'restoration' && useRestorationCard(mock, gs, d)) break;
@@ -1060,10 +1131,7 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
   if (!roster.length) roster.push(null);
 
   const anyRevealedMelee = anyMeleeAlive(board, true);
-  const effDmg = (wp) => {
-    const d = wp ? wp.damage : 1;
-    return wasExhausted ? Math.ceil(d * 0.8) : d;
-  };
+  const effDmg = (wp) => simWeaponHitDamage(gs, wp, wasExhausted, { expectedCrit: true });
   const aw = CURRENT_BEHAVIOR.attackWeights;
   let best = null;
   for (const weapon of roster) {
@@ -1095,7 +1163,9 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
       }
       const targetHp = board[index]?.data?.health || 0;
       const targetKill = (affected.get(index) || 0) >= targetHp ? 1 : 0;
-      const gemBonus = weapon?.gemEffect === 'fire' || weapon?.gemEffect === 'lightning' ? aw.elementalBonus : 0;
+      const gemBonus = weapon?.gemEffect
+        ? aw.elementalBonus * Math.max(1, weapon.gemCount || 1)
+        : 0;
       const durabilityConserve = weapon ? Math.max(0, 20 - effDmg(weapon)) * aw.durabilityConserve : 0;
       const score = kills * aw.kills + targetKill * aw.targetKill + totalDamage * aw.totalDamage + gemBonus - overkill * aw.overkillPenalty + durabilityConserve;
       if (!best || score > best.score) best = { index, weapon, score };
@@ -1113,7 +1183,53 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
   mock.dead = false;
   let combatDamageDealt = 0;
   let combatDamageWasted = 0;
+  let combatDamageTaken = 0;
+  let combatDamageBlockedArmor = 0;
+  let combatDamageDodged = 0;
+  let combatSpecializationDualWield = 0;
+  let combatSpecializationGem = 0;
+
+  // Effective weapon-hit HP removed from one target, excluding gem contribution
+  // that already landed in the same swing (gems fire before weapon damage).
+  const measureTargetWeaponHit = (targetIndex, attackFn) => {
+    const target = mock.cardSystem.boardCards[targetIndex];
+    const hpBefore = target?.data?.health || 0;
+    const gemBefore = combatSpecializationGem;
+    attackFn();
+    const hpAfter = target?.data?.health || 0;
+    const gemDelta = Math.max(0, combatSpecializationGem - gemBefore);
+    return Math.max(0, hpBefore - hpAfter - gemDelta);
+  };
+
+  const sumEnemyHp = () => mock.cardSystem.boardCards.reduce((sum, c) => (
+    sum + ((c?.data && (c.data.type === 'enemy' || c.data.type === 'boss') && c.data.health > 0)
+      ? c.data.health
+      : 0)
+  ), 0);
+
+  const originalTakeDamage = gs.takeDamage?.bind(gs);
+  if (originalTakeDamage) {
+    gs.takeDamage = (...args) => {
+      const out = originalTakeDamage(...args);
+      combatDamageTaken += Math.max(0, Number(out?.actualDamage) || 0);
+      combatDamageBlockedArmor += Math.max(0, Number(out?.blockedDamage) || 0);
+      combatDamageDodged += Math.max(0, Number(out?.dodgedDamage) || 0);
+      return out;
+    };
+  }
+
+  const originalDamageGemTarget = mock.cardSystem.damageGemTarget?.bind(mock.cardSystem);
+  if (originalDamageGemTarget) {
+    mock.cardSystem.damageGemTarget = (...args) => {
+      const hpBefore = sumEnemyHp();
+      const out = originalDamageGemTarget(...args);
+      const hpAfter = sumEnemyHp();
+      combatSpecializationGem += Math.max(0, hpBefore - hpAfter);
+      return out;
+    };
+  }
   mock.cardSystem.spawnFloorCards();
+  mock.amuletManager.processFloorStart();
   const bossName = mock.cardSystem.boardCards.find((c) => c?.data?.type === 'boss')?.data?.name || null;
   // The real rollEvade() bails on a scene-less sprite (a destroyed-sprite guard).
   // Mock board sprites have scene=null, so give any evade-carrying card (Lost
@@ -1168,10 +1284,7 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
       if (!gs.equippedWeapon || gs.equippedWeapon.durability <= 0) regear(mock.cardSystem.cardDataGenerator, gs, inv);
       // Exhaustion penalty: attacks while out of AP deal 20% less (real game rule).
       const wasExhausted = gs.actionsLeft <= 0;
-      const effDmg = (wp) => {
-        const d = wp ? wp.damage : 1;
-        return wasExhausted ? Math.ceil(d * 0.8) : d;
-      };
+      const effDmg = (wp) => simWeaponHitDamage(gs, wp, wasExhausted);
 
       // Attack the target/weapon pair chosen by the efficiency planner.
       attackIdx = attackPlan.index;
@@ -1192,14 +1305,17 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
       combatDamageDealt += dmg;
       combatDamageWasted += Math.max(0, dmg - targetHP);
       mock.useAction();
+      // Main hit always lands first.
       mock.cardSystem.attackEnemy(attackIdx, dmg, false, gs.equippedWeapon || null, false);
-      // Dual wield: second dagger swings for free (skipDurability), matching
-      // inventorySystem.useWeapon — damage + gem from the off-hand.
+      // Dual wield = free OFFHAND dagger swing only. Main-hand damage is
+      // baseline weapon damage and must not inflate this specialization bucket.
       const offhand = findOffhandDagger(weaponBeforeAttack, gs, inv);
       if (offhand && board[attackIdx]?.data?.health > 0) {
         const dmg2 = effDmg(offhand);
         combatDamageDealt += dmg2;
-        mock.cardSystem.attackEnemy(attackIdx, dmg2, false, offhand, true);
+        combatSpecializationDualWield += measureTargetWeaponHit(attackIdx, () => {
+          mock.cardSystem.attackEnemy(attackIdx, dmg2, false, offhand, true);
+        });
       }
       if (weaponBeforeAttack && !gs.equippedWeapon) mock._weaponBreaks = (mock._weaponBreaks || 0) + 1;
       if (!gs.equippedWeapon || gs.equippedWeapon.durability <= 0) regear(mock.cardSystem.cardDataGenerator, gs, inv);
@@ -1211,7 +1327,7 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
     // 2) No revealed enemies → flip the next face-down card.
     let nextUnrevealed = -1;
     for (let i = 0; i < board.length; i++) {
-      if (board[i] && !board[i].revealed) { nextUnrevealed = i; break; }
+      if (board[i] && board[i].data && !board[i].revealed) { nextUnrevealed = i; break; }
     }
     if (nextUnrevealed >= 0) {
       mock.cardSystem.revealCard(nextUnrevealed); // free AP; schedules enemy turn
@@ -1227,8 +1343,19 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
   }
 
   if (gs._statsRecorder?.floorVisitId) {
-    gs._statsRecorder.recordCombatStats(combatDamageDealt, combatDamageWasted);
+    gs._statsRecorder.recordCombatStats({
+      damageDealt: combatDamageDealt,
+      damageWasted: combatDamageWasted,
+      damageTaken: combatDamageTaken,
+      damageBlockedArmor: combatDamageBlockedArmor,
+      damageDodged: combatDamageDodged,
+      specializationDualWield: combatSpecializationDualWield,
+      specializationGem: combatSpecializationGem,
+    });
   }
+
+  if (originalTakeDamage) gs.takeDamage = originalTakeDamage;
+  if (originalDamageGemTarget) mock.cardSystem.damageGemTarget = originalDamageGemTarget;
 
   // Floor-clear reward (mirrors GameScene.onEnemiesCleared): coins are paid once
   // per non-boss floor on clear, NOT per enemy kill (that faucet was removed).
@@ -1360,10 +1487,8 @@ function runBossReward(mock, gs, inv, floor) {
   gs.coins += 25 + floor;
   gs.crystals += 4 + Math.floor(floor / 6);
 
-  const amulet = mock.cardSystem.createCardData('amulet', floor, false, gs);
-  if (amulet && amulet.id && amulet.rarity !== 'cursed' && !amulet.cursed) {
-    mock.amuletManager.addAmulet(amulet.id);
-  }
+  const amulet = mock.cardSystem.createCardData('amulet', floor, false, gs, 'boss');
+  grantAmuletFromOffer(mock, amulet, { allowCursed: true });
   const rawQuality = floor >= 31 ? 'legendary' : floor >= 16 ? 'epic' : 'rare';
   const quality = gen.capRewardRarity ? gen.capRewardRarity(rawQuality, floor) : rawQuality;
   const item = mock.cardSystem.createCardData(Math.random() < 0.5 ? 'weapon' : 'armor', floor, false, null, quality);
@@ -1426,10 +1551,7 @@ function runEventLegacy(mock, gs, inv, floor) {
     const id = remaining[Math.floor(Math.random() * remaining.length)];
     st.bonus.push(id);
     const gainAmulet = () => {
-      const amulet = cs.createCardData('amulet', floor, false, gs);
-      if (amulet && amulet.id && amulet.rarity !== 'cursed' && !amulet.cursed) {
-        mock.amuletManager.addAmulet(amulet.id);
-      }
+      grantAmuletFromOffer(mock, cs.createCardData('amulet', floor, false, gs), { allowCursed: false });
     };
     switch (id) {
       case 'fairy_room': // too_nice_room: confront the fairy → random amulet
@@ -1570,8 +1692,11 @@ function runEvent(mock, gs, inv, floor) {
     pendingBrassWizard: false,
   });
   const gainAmulet = (id = null) => {
-    const amulet = id ? { id, rarity: 'uncommon' } : gen.createCardData('amulet', floor, false, gs);
-    if (amulet?.id && amulet.rarity !== 'cursed' && !amulet.cursed) mock.amuletManager.addAmulet(amulet.id);
+    if (id) {
+      mock.amuletManager.addAmulet(id);
+      return;
+    }
+    grantAmuletFromOffer(mock, gen.createCardData('amulet', floor, false, gs), { allowCursed: false });
   };
 
   if (story.stage === 'music_box') {
@@ -1803,15 +1928,14 @@ function runShop(mock, gs, inv, floor) {
     if (tryCarry(gs, inv, item, { eventReward: true })) gs.coins -= price;
   }
 
-  // Always buy an amulet if we can afford one — but NEVER cursed ones
-  // (they're unbalanced; the bot avoids buying/equipping them).
-  const amulet = cs.createCardData('amulet', floor, false, gs);
-  if (amulet && amulet.id && amulet.rarity !== 'cursed' && !amulet.cursed) {
-    // Mirrors ShopScene.calculateAmuletCrystalPrice, including the stacking
-    // surcharge: +1 crystal per 3 amulets already worn.
-    const price = Math.max(1, ({ common: 2, uncommon: 3, rare: 4, epic: 5, legendary: 6 }[amulet.rarity] || 2)
+  // Always buy an amulet offer if we can afford the rolled rarity.
+  const amulet = cs.createCardData('amulet', floor, false, gs, 'shop');
+  if (amulet) {
+    const price = Math.max(1, ({ common: 2, uncommon: 3, rare: 4, legendary: 6 }[amulet.rarity] || 2)
       + Math.floor((gs.activeAmulets?.length || 0) / 3));
-    if (gs.crystals >= price && mock.amuletManager.addAmulet(amulet.id)) gs.crystals -= price;
+    if (gs.crystals >= price && grantAmuletFromOffer(mock, amulet, { allowCursed: false })) {
+      gs.crystals -= price;
+    }
   }
 
   regear(mock.cardSystem.cardDataGenerator, gs, inv);
@@ -1825,10 +1949,15 @@ function alreadyHasCompanion(inv, id) {
 function createRareShopOffers(mock, gs, inv, floor) {
   const cs = mock.cardSystem;
   const gen = cs.cardDataGenerator;
-  const amuletPrice = Math.max(2, Math.floor(floor / 10) + 2);
   const offers = [];
-  const amulet = cs.createCardData('amulet', floor, false, gs);
-  if (amulet) offers.push({ data: amulet, price: amuletPrice, currency: 'crystals' });
+  const amulet = cs.createCardData('amulet', floor, false, gs, 'rare_shop');
+  const baseAmuletPrice = Math.max(2, Math.floor(floor / 10) + 2);
+  let amuletPrice = baseAmuletPrice;
+  if (amulet) {
+    const rarityMult = { uncommon: 1.5, rare: 2, legendary: 3 }[amulet.rarity] || 2;
+    amuletPrice = Math.max(2, Math.floor(baseAmuletPrice * rarityMult));
+    offers.push({ data: amulet, price: amuletPrice, currency: 'crystals' });
+  }
 
   offers.push({ data: cs.createCardData('weapon', floor, false, null, gen.capRewardRarity('uncommon', floor)), price: 20 + floor * 5, currency: 'coins' });
   offers.push({ data: cs.createCardData('armor', floor, false, null, gen.capRewardRarity('uncommon', floor)), price: 25 + floor * 5, currency: 'coins' });
@@ -1879,7 +2008,7 @@ function runRareShop(mock, gs, inv, floor) {
     if (offer.currency === 'crystals') {
       if (gs.crystals < offer.price) continue;
       if (item.type === 'amulet') {
-        if (item.id && item.rarity !== 'cursed' && !item.cursed && mock.amuletManager.addAmulet(item.id)) {
+        if (grantAmuletFromOffer(mock, item, { allowCursed: false })) {
           gs.crystals -= offer.price;
         }
       } else if (item.type === 'companion' && tryCarry(gs, inv, item, { eventReward: true })) {
@@ -2005,6 +2134,10 @@ function runGame(metrics, config = {}) {
   const { mock, gs } = setupRun();
   CURRENT_BEHAVIOR = getBehaviorProfile(config.behaviorPreset || DEFAULT_BEHAVIOR_PRESET || 'balanced');
   gs._behavior = CURRENT_BEHAVIOR;
+  gs.characterId = normalizeCharacterId(config.characterId || DEFAULT_CHARACTER_ID);
+  gs.armorPool = Array.isArray(config.armorPool) && config.armorPool.length
+    ? config.armorPool.slice()
+    : null;
   // Per-run merge tracker: records the FIRST floor we reach each rarity tier,
   // for weapons and armor separately. The mergeWeapon/Armor list functions
   // call recordMerge() whenever a tier-up happens.
@@ -2033,6 +2166,18 @@ function runGame(metrics, config = {}) {
   }
   // Limit mid-run amulet finds before equipping the starting loadout.
   if (config.amuletPool) applyAmuletPool(mock, config.amuletPool);
+  // Record mid-run amulet gains into stats-db (only while a floor visit is open).
+  if (gs._statsRecorder) {
+    const origAddAmulet = mock.amuletManager.addAmulet.bind(mock.amuletManager);
+    mock.amuletManager.addAmulet = (id, opts = {}) => {
+      const ok = origAddAmulet(id, opts);
+      if (ok) {
+        const def = mock.amuletManager.amuletDefinitions[id];
+        gs._statsRecorder.recordAmuletGain(id, def?.rarity || 'unknown');
+      }
+      return ok;
+    };
+  }
   // Equip the requested amulet loadout via the REAL AmuletManager so all
   // passive modifiers (damage, dodge, durability, gold, free-action, max HP/AP,
   // regen, sunstone, lethal-prevention, ...) apply exactly as in-game.
@@ -2042,13 +2187,14 @@ function runGame(metrics, config = {}) {
   // plus bonus slots from effects like Bottomless Bag / engineer reward.
   // forceStartingAmulets: equip config.amulets even when drops are disabled
   // (solo sweep / controlled loadout experiments).
+  // Starting loadout is equipped before any floor visit → not counted as a floor gain.
   const forceStart = !!config.forceStartingAmulets;
   if (!areAmuletsDisabled() || forceStart) {
     const amulets = (config.noBag || forceStart ? [] : ['bottomlessBag']).concat(config.amulets || []);
     for (const id of amulets) mock.amuletManager.addAmulet(id, { force: forceStart });
   }
   const inv = mock.inventorySystem.slots;
-  startingInventory(inv);
+  startingInventory(inv, gs.characterId);
   syncInventoryState(gs, inv);
   mock._simInventory = inv;
   mock._stalemateDeath = false;
@@ -2080,6 +2226,8 @@ function runGame(metrics, config = {}) {
       const roomType = node.type || 'COMBAT';
       gs.roomType = roomType;
       const hpStart = gs.playerHealth;
+      const actionCountBeforeVisit = mock._actionCount || 0;
+      const hungryActionCountBeforeVisit = mock._hungryActions || 0;
 
       regear(mock.cardSystem.cardDataGenerator, gs, inv);
       const floorStartWeaponPips = gs._lootStats ? sumCarriedWeaponPips(gs, inv) : 0;
@@ -2127,7 +2275,10 @@ function runGame(metrics, config = {}) {
       if (gs._lootStats) recordFloorInventoryEnd(gs._lootStats, floor, gs, inv);
       if (gs._statsRecorder) {
         gs._statsRecorder.recordWeapons('end', gs, inv);
-        gs._statsRecorder.finishFloorVisit(gs.playerHealth, gs.maxHealth);
+        gs._statsRecorder.finishFloorVisit(gs.playerHealth, gs.maxHealth, {
+          apSpent: Math.max(0, (mock._actionCount || 0) - actionCountBeforeVisit),
+          hungryActions: Math.max(0, (mock._hungryActions || 0) - hungryActionCountBeforeVisit),
+        });
       }
 
       reached = floor;
@@ -2406,8 +2557,16 @@ function report(metrics) {
 //   node sim/balance-sim.js sweep 100 regeneration,golemHeart   # subset
 function quickStats(amulets, runs) {
   const m = newMetrics();
+  let weaponDeaths = 0;
+  let hpDeaths = 0;
+  let deaths = 0;
   for (let i = 0; i < runs; i++) {
-    runGame(m, { amulets, noBag: true, forceStartingAmulets: true });
+    const result = runGame(m, { amulets, noBag: true, forceStartingAmulets: true });
+    if (result?.died) {
+      deaths++;
+      if (result.endReason === 'weapon') weaponDeaths++;
+      else hpDeaths++;
+    }
   }
   const floors = m.finalFloors;
   const mean = floors.reduce((a, b) => a + b, 0) / floors.length;
@@ -2416,14 +2575,27 @@ function quickStats(amulets, runs) {
   const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
   const reach15 = (100 * floors.filter((f) => f >= 15).length) / runs;
   const reach30 = (100 * floors.filter((f) => f >= 30).length) / runs;
-  return { win: (100 * m.wins) / runs, mean, median, reach15, reach30 };
+  const deathN = Math.max(1, deaths);
+  return {
+    win: (100 * m.wins) / runs,
+    mean,
+    median,
+    reach15,
+    reach30,
+    deaths,
+    weaponDeathPct: (100 * weaponDeaths) / deathN,
+    hpDeathPct: (100 * hpDeaths) / deathN,
+  };
 }
 
 function runSweep() {
   const args = stripBehaviorArgs(process.argv.slice(3));
   const runs = parseInt(args[0], 10) || 100;
   const filterArg = args[1];
-  let ids = Object.keys(setupRun().mock.amuletManager.amuletDefinitions);
+  const behaviorName = DEFAULT_BEHAVIOR_PRESET || 'balanced';
+  const { mock: sweepMock } = setupRun();
+  let ids = Object.keys(sweepMock.amuletManager.amuletDefinitions)
+    .filter((id) => sweepMock.amuletManager.amuletDefinitions[id]?.rarity !== 'old');
   if (filterArg && filterArg !== 'all') {
     const wanted = new Set(filterArg.split(',').map((s) => s.trim()).filter(Boolean));
     ids = ids.filter((id) => wanted.has(id));
@@ -2441,13 +2613,15 @@ function runSweep() {
 
   try {
     console.log(`\n=== Per-Amulet Impact Sweep (clean solo) ===`);
-    console.log(`runs/config=${runs}, amulets=${ids.length}`);
-    console.log(`flags: no-meta, no amulet drops/shops, force starting amulet only\n`);
+    console.log(`runs/config=${runs}, amulets=${ids.length}, behavior=${behaviorName}`);
+    console.log(`flags: no-meta, no amulet drops/shops, force starting amulet only`);
+    console.log(`death reasons: weapon = нет pip/магии против врагов; hp = убило по здоровью\n`);
 
     const base = quickStats([], runs);
     console.log(
       `Baseline (no amulets):  win=${base.win.toFixed(1)}%  meanFloor=${base.mean.toFixed(1)}` +
-      `  median=${base.median.toFixed(0)}  reachF15=${base.reach15.toFixed(0)}%  reachF30=${base.reach30.toFixed(0)}%\n`
+      `  median=${base.median.toFixed(0)}  reachF15=${base.reach15.toFixed(0)}%  reachF30=${base.reach30.toFixed(0)}%` +
+      `  death: weapon=${base.weaponDeathPct.toFixed(0)}% hp=${base.hpDeathPct.toFixed(0)}%\n`
     );
 
     const rows = ids.map((id) => {
@@ -2459,6 +2633,8 @@ function runSweep() {
         median: s.median,
         reach15: s.reach15,
         reach30: s.reach30,
+        weaponDeathPct: s.weaponDeathPct,
+        hpDeathPct: s.hpDeathPct,
         dFloor: s.mean - base.mean,
         dWin: s.win - base.win,
         dReach15: s.reach15 - base.reach15,
@@ -2467,21 +2643,25 @@ function runSweep() {
     rows.sort((a, b) => b.dFloor - a.dFloor);
 
     console.log(
-      `amulet                 win%   mean   med  rF15%  rF30%   Δfloor   Δwin%  ΔrF15`
+      `amulet                 win%   mean   med  rF15%  rF30%  wpn%   hp%   Δfloor   Δwin%  ΔrF15`
     );
     for (const r of rows) {
       console.log(
         `${r.id.padEnd(22)} ${r.win.toFixed(1).padStart(5)} ${r.mean.toFixed(1).padStart(6)}` +
         `${String(Math.round(r.median)).padStart(6)} ${r.reach15.toFixed(0).padStart(6)}` +
         `${r.reach30.toFixed(0).padStart(7)}` +
+        `${r.weaponDeathPct.toFixed(0).padStart(6)}` +
+        `${r.hpDeathPct.toFixed(0).padStart(6)}` +
         `${((r.dFloor >= 0 ? '+' : '') + r.dFloor.toFixed(1)).padStart(9)}` +
         `${((r.dWin >= 0 ? '+' : '') + r.dWin.toFixed(1)).padStart(8)}` +
         `${((r.dReach15 >= 0 ? '+' : '') + r.dReach15.toFixed(0)).padStart(7)}`
       );
     }
     console.log(`\nSorted by Δmean floor vs baseline. Positive = helps go deeper.`);
-    console.log(`Note: gem/active-synergy amulets are understated (bot underuses gems/magic).`);
-    console.log(`Cursed amulets included — negative Δ is expected if downside dominates.`);
+    console.log(`wpn% / hp% — доля смертей среди умерших (weapon = stalemate без оружия/магии).`);
+    if (behaviorName === 'balanced') {
+      console.log(`Note: на balanced гем-амулеты занижены — для них лучше --behavior magicHeavy.`);
+    }
   } finally {
     clearSimTestOptionsOverride();
   }
@@ -2496,7 +2676,7 @@ function runLoadout() {
   let amulets;
   if (arg === 'auto') {
     // A representative "strong defensive + utility" stack.
-    amulets = ['golemHeart', 'chronosHeart', 'regeneration', 'evasionBoots', 'temperedSteel', 'healingRing', 'merchantPact'];
+    amulets = ['ringOfHealth', 'philosophersStone', 'amuletOfEvasion', 'amuletOfProtection', 'legendaryWhetstone', 'alchemistBag', 'pouchOfGreed'];
   } else {
     amulets = arg.split(',').map((s) => s.trim()).filter(Boolean);
   }
@@ -2515,8 +2695,8 @@ const relicSanity = new MetaProgressionManager({}).getRelicDefinitions();
 if (relicSanity.undeadResilience?.effect?.healPerFloor !== 3) {
   throw new Error(`Sim relic mismatch: undeadResilience healPerFloor=${relicSanity.undeadResilience?.effect?.healPerFloor}`);
 }
-const STRONG_AMULETS = ['golemHeart', 'chronosHeart', 'regeneration', 'evasionBoots',
-  'temperedSteel', 'healingRing', 'merchantPact', 'vampiricRing'];
+const STRONG_AMULETS = ['ringOfHealth', 'philosophersStone', 'amuletOfGreaterEvasion', 'amuletOfGreaterProtection',
+  'legendaryWhetstone', 'alchemistBag', 'pouchOfGreed', 'vampireFang'];
 
 function runGeared() {
   const runs = parseInt(process.argv[3], 10) || RUNS;
@@ -2746,6 +2926,8 @@ function runStatsDb() {
         metaMode,
         runLabel: runLabel || null,
         behaviorPreset: DEFAULT_BEHAVIOR_PRESET,
+        characterId: normFlags.characterId || DEFAULT_CHARACTER_ID,
+        armorPool: normFlags.armorPool || null,
         enableMeta: normFlags.enableMeta,
         enableAmulets: normFlags.enableAmulets,
         amuletLoadout: normFlags.amuletLoadout,
@@ -2831,10 +3013,40 @@ function runStatsDb() {
 
 // ── main ──────────────────────────────────────────────────────────────────
 function runFresh() {
-  const runs = parseInt(process.argv[3], 10) || 500;
+  const { positional, flags } = splitSimArgv(stripBehaviorArgs(process.argv.slice(3)));
+  let runs = 500;
+  for (const a of positional) {
+    const n = parseInt(a, 10);
+    if (!Number.isNaN(n) && String(n) === a) {
+      runs = n;
+      break;
+    }
+  }
+  const simFlags = parseSimFlags(flags, 'fresh');
+  const characterId = simFlags.characterId || DEFAULT_CHARACTER_ID;
+  const armorPool = simFlags.armorPool || null;
   const metrics = newMetrics();
-  for (let i = 0; i < runs; i++) runGame(metrics, { relics: [], noBag: true });
+  let weaponDeaths = 0;
+  let hpDeaths = 0;
+  const armorLabel = armorPool ? armorPool.join('+') : 'class-default';
+  console.log(`\nFresh: ${runs} runs, character=${characterId}, armor=${armorLabel}`);
+  // 0 starting amulets; mid-run drops/shops/events use the full (non-old) pool.
+  for (let i = 0; i < runs; i++) {
+    const r = runGame(metrics, { relics: [], noBag: true, amulets: [], characterId, armorPool });
+    if (r.endReason === 'weapon') weaponDeaths++;
+    else if (r.endReason === 'hp') hpDeaths++;
+  }
   report(metrics);
+  const deaths = Math.max(1, weaponDeaths + hpDeaths);
+  const floors = metrics.finalFloors;
+  const reach15 = (100 * floors.filter((f) => f >= 15).length) / floors.length;
+  const reach30 = (100 * floors.filter((f) => f >= 30).length) / floors.length;
+  console.log(`\nReach F15=${reach15.toFixed(0)}%  F30=${reach30.toFixed(0)}%`);
+  console.log(
+    `Death reasons among dead: weapon=${((100 * weaponDeaths) / deaths).toFixed(0)}%` +
+    `  hp=${((100 * hpDeaths) / deaths).toFixed(0)}%` +
+    `  (n=${weaponDeaths + hpDeaths})`
+  );
 }
 const MODE = process.argv[2];
 const t0 = Date.now();

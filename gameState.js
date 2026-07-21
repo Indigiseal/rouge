@@ -24,6 +24,10 @@ export class GameState {
         this.equippedArmor = null;
         this.inventory = new Array(5).fill(null);
         this.startingCardsGranted = false; // Guards the one-time starting swords (prevents resume/restart dupes)
+        this.characterId = 'rogue';
+        // Optional sim/experiment override: ['chain'] | ['plate'] | ['chain','plate'].
+        // null → use character class armorTypes.
+        this.armorPool = null;
         this.discardedCardsThisRun = 0;
         this.discardCritChance = 0;
         this.storyRun = {
@@ -127,10 +131,12 @@ export class GameState {
         }
     }
 
-    // Ironhide Tonic relic: chance to skip the durability loss entirely.
+    // Ironhide Tonic relic + armor-durability earrings: chance to skip the loss.
     tickEquippedArmorDurability() {
         if (!this.equippedArmor) return;
-        const durabilitySave = this.relicEffects?.armorDurabilitySave || 0;
+        const relicSave = this.relicEffects?.armorDurabilitySave || 0;
+        const amuletSave = this.scene?.amuletManager?.getArmorDurabilitySaveChance?.() || 0;
+        const durabilitySave = Math.min(0.95, relicSave + amuletSave);
         if (durabilitySave > 0 && Math.random() < durabilitySave) return;
 
         this.equippedArmor.durability--;
@@ -144,6 +150,14 @@ export class GameState {
         }
     }
 
+    /** Ranged enemy hits (archers). Bosses count as melee, same as thorns. */
+    isEnemyRangedAttack(card) {
+        const data = card?.data;
+        if (!data) return false;
+        if (data.type === 'boss') return false;
+        return data.role === 'RANGED' || data.isRangedType === true;
+    }
+
     takeDamage(amount, enemyIndex = -1, source = 'enemy', armorPierce = 0) {
         if (source === 'poison' && (
             this.relicEffects?.poisonImmunity
@@ -152,19 +166,36 @@ export class GameState {
             if (this.scene?.playerAvatar) {
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poison Immune!', 0x66ff66);
             }
-            return { actualDamage: 0, tookDamage: false };
+            return {
+                actualDamage: 0,
+                tookDamage: false,
+                blockedDamage: 0,
+                dodgedDamage: 0,
+                dodged: false
+            };
         }
 
         // Check for dodge (from amulets)
         if (this.scene.amuletManager && this.scene.amuletManager.checkDodge()) {
+            if (this.equippedArmor) this.tickEquippedArmorDurability();
             this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Dodged!', 0x00ff00);
-            return { actualDamage: 0, tookDamage: false };
+            return {
+                actualDamage: 0,
+                tookDamage: false,
+                blockedDamage: 0,
+                dodgedDamage: Math.max(0, amount || 0),
+                dodged: true
+            };
         }
         
-        // Modify damage taken (cursed amulets)
+        // Modify damage taken (cursed amulets, protection amulets, …)
         if (this.scene.amuletManager) {
             amount = this.scene.amuletManager.modifyDamageTaken(amount);
         }
+
+        const attacker = enemyIndex >= 0 ? this.scene.cardSystem?.boardCards?.[enemyIndex] : null;
+        const attackIsRanged = this.isEnemyRangedAttack(attacker);
+        const attackIsMelee = attacker?.data && !attackIsRanged;
         
         let protection = 0;
         let reflectedDamage = 0;
@@ -174,7 +205,29 @@ export class GameState {
             if (this.equippedArmor.dodgeChance && Math.random() < this.equippedArmor.dodgeChance) {
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Dodge!', 0x00ff00);
                 this.tickEquippedArmorDurability();
-                return { actualDamage: 0, tookDamage: false };
+                return {
+                    actualDamage: 0,
+                    tookDamage: false,
+                    blockedDamage: 0,
+                    dodgedDamage: Math.max(0, amount || 0),
+                    dodged: true
+                };
+            }
+
+            // Plate: chance to fully ignore a ranged attack (costs 1 armor pip).
+            const rangedIgnore = this.equippedArmor.rangedIgnoreChance || 0;
+            if (rangedIgnore > 0 && attackIsRanged && amount > 0 && Math.random() < rangedIgnore) {
+                this.scene.createFloatingText(
+                    this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Deflect!', 0x88ccff
+                );
+                this.tickEquippedArmorDurability();
+                return {
+                    actualDamage: 0,
+                    tookDamage: false,
+                    blockedDamage: 0,
+                    dodgedDamage: Math.max(0, amount || 0),
+                    dodged: true
+                };
             }
             
             // Add protection from equipped armor (leather is dodge-only: protection 0)
@@ -222,12 +275,46 @@ export class GameState {
         // hit lands harder. Never turns armor into a damage bonus — just reduces it.
         const effectiveProtection = Math.max(0, protection - Math.max(0, armorPierce));
         const actualDamage = Math.max(0, amount - effectiveProtection);
+        const blockedDamage = Math.max(0, amount - actualDamage);
+
+        // Chain: chance to counter a melee hit for ceil(50% of blocked), no weapon pip.
+        const counterChance = this.equippedArmor?.meleeCounterChance || 0;
+        if (
+            counterChance > 0
+            && attackIsMelee
+            && blockedDamage > 0
+            && enemyIndex >= 0
+            && Math.random() < counterChance
+        ) {
+            const counterDmg = Math.ceil(blockedDamage * 0.5);
+            if (counterDmg > 0) {
+                const enemySprite = this.scene.cardSystem?.boardCards?.[enemyIndex]?.sprite;
+                this.scene.createFloatingText(
+                    this.scene.playerAvatar?.x || 0,
+                    (this.scene.playerAvatar?.y || 0) - 12,
+                    'Counter!',
+                    0xffaa44
+                );
+                this.scene.cardSystem?.attackEnemy?.(enemyIndex, counterDmg, true);
+                if (enemySprite) {
+                    CombatSequencer.floatingText(this.scene, 'reflect',
+                        enemySprite.x, enemySprite.y - 20, `-${counterDmg} (Counter)`, 0xffaa44);
+                }
+            }
+        }
+
         const wouldKill = this.playerHealth - actualDamage <= 0;
         
         // Check for invulnerability amulet
         if (wouldKill && this.scene.amuletManager && this.scene.amuletManager.checkLethalPrevention()) {
             // Cancel all damage this turn
-            return { actualDamage: 0, tookDamage: false };
+            return {
+                actualDamage: 0,
+                tookDamage: false,
+                blockedDamage: 0,
+                dodgedDamage: Math.max(0, amount || 0),
+                dodged: true
+            };
         }
         
         this.playerHealth = Math.max(0, this.playerHealth - actualDamage);
@@ -247,7 +334,13 @@ export class GameState {
             this.scene.time.delayedCall(100, () => this.scene.gameOver());
         }
         
-        return { actualDamage, tookDamage };
+        return {
+            actualDamage,
+            tookDamage,
+            blockedDamage,
+            dodgedDamage: 0,
+            dodged: false
+        };
     }
 
     addPlayerEffect(effect) {

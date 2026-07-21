@@ -1,6 +1,7 @@
 //AnvilScene.js
 import { SoundHelper } from '../utils/SoundHelper.js';
 import { createTitle } from '../utils/titleText.js';
+import { exitToSandboxHub, isSandboxMode } from '../utils/SandboxMode.js';
 export class AnvilScene extends Phaser.Scene {
     constructor() {
         super({ key: 'AnvilScene' });
@@ -36,6 +37,10 @@ export class AnvilScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => {
             // NO nextFloor() here—map already did it
+            if (isSandboxMode(this)) {
+                exitToSandboxHub(this);
+                return;
+            }
             this.scene.stop(); // Close anvil
             this.scene.wake('MapViewScene'); // Back to map
             console.log('Woke MapViewScene after anvil');

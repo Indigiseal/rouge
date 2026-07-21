@@ -4,6 +4,8 @@ import { SoundHelper } from './utils/SoundHelper.js';
 import { CombatSequencer } from './utils/CombatSequencer.js';
 import { showItemTooltip, hideItemTooltip, showBossTooltip } from './utils/ItemTooltip.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
+import { openAmuletChoiceOverlay } from './utils/AmuletChoiceOverlay.js';
+import { weaponHasClassDamageMark } from './utils/CharacterClasses.js';
 
 /** Minimum enemy share of board cards by act (combat density floor). */
 function minEnemyRatioForFloor(floor) {
@@ -58,9 +60,10 @@ export class CardSystem {
 
       if (weapon?.gemEffect === 'poison') {
         const stacks = CardDataGenerator.weaponGemStack(weapon);
+        const tickDamage = this.scene.amuletManager?.modifyPoisonGemTickDamage?.(1) ?? 1;
         for (let i = 0; i < stacks; i++) {
           poisonStacks.push({
-            damage: 1,
+            damage: tickDamage,
             turns: 3
           });
         }
@@ -860,7 +863,14 @@ export class CardSystem {
         // rows get RANGED (archers). Pass the desired role into creation so the
         // enemy TYPE/sprite is picked to match the position, not just its behavior.
         const desiredRole = r > 0 ? 'MELEE' : 'RANGED';
-        const data = this.createCardData(type, cf, roomType === 'ELITE', null, null, desiredRole);
+        let data = this.createCardData(type, cf, roomType === 'ELITE', this.scene.gameState, null, desiredRole);
+        // Amulet offers can return null (empty pool / floor gate) — never leave a
+        // face-down slot with data=null or revealCard crashes the run/sim.
+        if (!data) {
+          data = this.createCardData('coin', cf) || {
+            type: 'coin', name: 'Coin', value: 1, sprite: 'coin',
+          };
+        }
         if (data?.type === 'trap') trapsPlaced++;
         if (data?.type === 'key') keysPlaced++;
         if (data?.type === 'gem') gemsPlaced++;
@@ -1510,6 +1520,22 @@ export class CardSystem {
         let success = false;
 
         if (data.type === 'amulet') {
+            if (data.pendingChoice || (data.options?.length && !data.id)) {
+                const floor = this.scene.gameState?.currentFloor || 1;
+                const offer = data.options?.length
+                    ? data
+                    : this.cardDataGenerator.createAmuletOffer(data.source || 'boss', floor, this.scene.gameState);
+                if (!offer?.options?.length) return;
+                this.removeCard(index);
+                openAmuletChoiceOverlay(this.scene, {
+                    rarity: offer.rarity,
+                    options: offer.options,
+                    amuletManager: this.scene.amuletManager,
+                    title: `Boss reward — ${offer.rarity} amulet`,
+                    onPicked: () => this.scene.updateUI?.(),
+                });
+                return;
+            }
             if (this.scene.amuletManager && data.id) {
                 success = this.scene.amuletManager.addAmulet(data.id);
                 if (!success) {
@@ -1547,15 +1573,26 @@ export class CardSystem {
         const card = this.boardCards[index];
         if (!card || !card.sprite) return;
 
-        // Random non-enemy pickup type. Anything the player can actually use.
+        // Random non-enemy pickup type. Mask of Hollow Whispers cannot leave
+        // traps, enemies, or empty cards behind.
         const dropTypes = ['coin', 'crystal', 'gem', 'food', 'potion', 'weapon', 'armor', 'magic', 'thorns', 'amulet'];
         const type = dropTypes[Math.floor(Math.random() * dropTypes.length)];
-        const newData = this.cardDataGenerator.createCardData(
+        let newData = this.cardDataGenerator.createCardData(
             type,
             this.scene.gameState.currentFloor,
             false,
             this.scene.gameState
         );
+        // Guard against a generator returning a forbidden type.
+        if (newData && (newData.type === 'trap' || newData.type === 'empty'
+            || newData.type === 'enemy' || newData.type === 'eliteEnemy' || newData.type === 'boss')) {
+            newData = this.cardDataGenerator.createCardData(
+                'coin',
+                this.scene.gameState.currentFloor,
+                false,
+                this.scene.gameState
+            );
+        }
         if (!newData) {
             this.removeCard(index);
             return;
@@ -1753,7 +1790,12 @@ export class CardSystem {
         // Honor the 2-gem-per-floor cap: drop 'gem' from the pool once reached.
         const replacementTypes = gemsOnBoard >= 2 ? baseTypes.filter((t) => t !== 'gem') : baseTypes;
         const replacementType = replacementTypes[Math.floor(Math.random() * replacementTypes.length)];
-        const replacement = this.cardDataGenerator.createCardData(replacementType, floor);
+        const replacement = this.cardDataGenerator.createCardData(
+          replacementType,
+          floor,
+          false,
+          this.scene.gameState
+        );
         if (!replacement) continue;
         replacement.brick = brick;
         card.data = replacement;
@@ -1977,7 +2019,7 @@ export class CardSystem {
 
     revealCard(index, freeAction = false) {
         const card = this.boardCards[index];
-        if (!card || card.revealed) return;
+        if (!card || card.revealed || !card.data) return;
         // Reveals do not spend AP. Floor-start free reveals also skip the enemy
         // response; player-initiated flips still wake enemies (with justRevealed grace).
         if (!freeAction) {
@@ -2371,8 +2413,10 @@ export class CardSystem {
                 
             case 'weapon': {
                 const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-                
-                const damageText = this.scene.add.text(18, 23, `${card.data.damage}`, {
+                const characterId = this.scene.gameState?.characterId;
+                const showBonusMark = weaponHasClassDamageMark(characterId, card.data.weaponType);
+                const damageLabel = showBonusMark ? `${card.data.damage}+*` : `${card.data.damage}`;
+                const damageText = this.scene.add.text(18, 23, damageLabel, {
                     fontSize: '11px',
                     fill: '#ffcf7f',
                     fontFamily: '"HoMM Pixel"'
@@ -2846,7 +2890,28 @@ export class CardSystem {
     }
 
     consumeAmulet(amulet, index) {
-        // Use the new AmuletManager system
+        // Rarity-first offer: open a 3-pick overlay instead of granting a fixed id.
+        if (amulet?.pendingChoice || (amulet?.options?.length && !amulet?.id)) {
+            const floor = this.scene.gameState?.currentFloor || 1;
+            const offer = amulet.pendingChoice && amulet.options?.length
+                ? amulet
+                : this.cardDataGenerator.createAmuletOffer(amulet.source || 'floor', floor, this.scene.gameState);
+            if (!offer?.options?.length) {
+                this.removeCard(index);
+                return;
+            }
+            // Remove the board token first so it can't be double-clicked.
+            if (index != null) this.removeCard(index);
+            openAmuletChoiceOverlay(this.scene, {
+                rarity: offer.rarity,
+                options: offer.options,
+                amuletManager: this.scene.amuletManager,
+                onPicked: () => this.scene.updateUI?.(),
+            });
+            return;
+        }
+
+        // Concrete amulet (events / legacy).
         if (this.scene.amuletManager && amulet.id) {
             const success = this.scene.amuletManager.addAmulet(amulet.id);
             if (success) {
@@ -3132,7 +3197,12 @@ export class CardSystem {
             // Fresh floor-appropriate card (mostly enemies, via pickCardType).
             const desiredRole = cell.r > 0 ? 'MELEE' : 'RANGED';
             const type = this.pickCardType(cf);
-            const data = this.createCardData(type, cf, roomType === 'ELITE', null, null, desiredRole);
+            let data = this.createCardData(type, cf, roomType === 'ELITE', this.scene.gameState, null, desiredRole);
+            if (!data) {
+                data = this.createCardData('coin', cf) || {
+                    type: 'coin', name: 'Coin', value: 1, sprite: 'coin',
+                };
+            }
             if (data) {
                 data.brick = { r: cell.r, c: cell.c };
                 if (this.isEnemyType(data.type)) data.role = desiredRole;
@@ -3282,6 +3352,11 @@ export class CardSystem {
             finalDamage = Math.max(1, finalDamage - enemyArmor);
         }
         card.data.health -= finalDamage;
+
+        // Vampire Fang — heal from damage that actually landed on the enemy.
+        if (!isReflection && weapon && finalDamage > 0) {
+            this.scene.amuletManager?.processLifesteal?.(finalDamage);
+        }
         
         // Reduce weapon durability on attack (only if not reflection damage).
         // Tempered Ingot: halves the rate at which durability is lost.
@@ -3358,7 +3433,8 @@ export class CardSystem {
         if (weapon.gemEffect === 'fire') {
             // Fire: flat splash by gem stack. Stacks 4–5 are provisional
             // until gem merge power is decided (docs/OPEN-QUESTIONS.md).
-            const splashDamage = [3, 4, 5, 6, 7][stack - 1];
+            let splashDamage = [3, 4, 5, 6, 7][stack - 1];
+            splashDamage = this.scene.amuletManager?.modifyGemDamage?.(splashDamage, 'fire') ?? splashDamage;
             // Main target: bonus fire damage on top of the weapon hit.
             this.burnEnemy(targetIndex, splashDamage);
             // Measure to the NEAREST EDGE of each enemy's sprite, not its center.
@@ -3386,7 +3462,8 @@ export class CardSystem {
             // Lightning: flat zap by gem stack (stacks 4–5 provisional).
             // Always hits 3 enemies total: main target + 2 others.
             // Stacks only increase the damage.
-            const zapDamage = [3, 4, 5, 6, 7][stack - 1];
+            let zapDamage = [3, 4, 5, 6, 7][stack - 1];
+            zapDamage = this.scene.amuletManager?.modifyGemDamage?.(zapDamage, 'lightning') ?? zapDamage;
             const extraZaps = 2; // always 2 additional = 3 total
             // One random zap SFX per lightning-gem swing (not per hop). Sits on
             // the gem beat so the zap answers the sword hit instead of racing it.
@@ -3709,6 +3786,10 @@ export class CardSystem {
             const pickReward = this.scene.amuletManager?.rollProspectorPickReward?.();
             if (pickReward) {
                 this.playKillLootPickup(card.sprite?.x ?? 0, card.sprite?.y ?? 0, pickReward);
+            }
+            const monocleReward = this.scene.amuletManager?.rollMonocleCrystalReward?.();
+            if (monocleReward) {
+                this.playKillLootPickup(card.sprite?.x ?? 0, card.sprite?.y ?? 0, monocleReward, 'Monocle');
             }
 
             // NOTE: individual enemy kills no longer pay coins. The per-kill

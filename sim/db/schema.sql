@@ -42,6 +42,13 @@ CREATE TABLE IF NOT EXISTS sim_floor_visits (
   player_max_hp_end   INTEGER,
   combat_damage_dealt  INTEGER,
   combat_damage_wasted INTEGER,
+  combat_damage_taken INTEGER,
+  combat_damage_blocked_armor INTEGER,
+  combat_damage_dodged INTEGER,
+  combat_specialization_dual_wield INTEGER,
+  combat_specialization_gem INTEGER,
+  ap_spent INTEGER,
+  hungry_actions INTEGER,
   UNIQUE (run_id, visit_order)
 );
 
@@ -86,3 +93,14 @@ CREATE TABLE IF NOT EXISTS sim_enemy_spawns (
 );
 
 CREATE INDEX IF NOT EXISTS idx_enemy_spawns_visit ON sim_enemy_spawns(floor_visit_id);
+
+-- Amulet equipped during a floor visit (shop/floor/boss/event — not starting loadout).
+CREATE TABLE IF NOT EXISTS sim_amulet_gains (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  floor_visit_id  INTEGER NOT NULL REFERENCES sim_floor_visits(id) ON DELETE CASCADE,
+  amulet_id       TEXT NOT NULL,
+  rarity          TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_amulet_gains_visit ON sim_amulet_gains(floor_visit_id);
+CREATE INDEX IF NOT EXISTS idx_amulet_gains_rarity ON sim_amulet_gains(rarity);

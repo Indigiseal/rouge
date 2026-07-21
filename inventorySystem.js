@@ -3,6 +3,11 @@ import { CombatSequencer } from './utils/CombatSequencer.js';
 import { snapOriginToPixelGrid } from './utils/PixelSnap.js';
 import { CardDataGenerator } from './CardDataGenerator.js';
 import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from './utils/i18n.js';
+import {
+    applyClassWeaponDamageBonus,
+    getCharacter,
+    rollClassWeaponCrit,
+} from './utils/CharacterClasses.js';
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
         this.scene = scene;
@@ -1143,39 +1148,11 @@ export class InventorySystem {
         if (this.scene.gameState.startingCardsGranted) return;
         if (this.scene.gameState.currentFloor > 1) return;
         this.scene.gameState.startingCardsGranted = true;
-        // Starting loadout (pure-runs-v1): one dagger + one bow. Mirrors the
-        // act-1 drop pool (dagger/bow only) and hands the player both stances
-        // from turn one — melee for the front row, ranged for the back row.
-        // Act 1 is balanced around exactly this budget; matches the common
-        // tiers in CardDataGenerator.weaponUnlocks.
-        const daggerData = {
-            type: 'weapon',
-            name: 'Common Dagger',
-            weaponType: 'dagger',
-            damage: 3,
-            rarity: 'common',
-            sprite: 'dagger_C',
-            durability: 4,
-            maxDurability: 4,
-            special: 'dualWield',
-            range: 'melee',
-            gemSlots: 1
-        };
-        this.addCard(daggerData);
-        const bowData = {
-            type: 'weapon',
-            name: 'Common Bow',
-            weaponType: 'bow',
-            damage: 4,
-            rarity: 'common',
-            sprite: 'bow_c',
-            durability: 5,
-            maxDurability: 5,
-            special: 'block',
-            range: 'ranged',
-            gemSlots: 1
-        };
-        this.addCard(bowData);
+
+        const character = getCharacter(this.scene.gameState.characterId);
+        for (const weapon of character.startingWeapons || []) {
+            this.addCard({ ...weapon });
+        }
 
         // Carry-over egg: a past hero who died still clutching an unhatched egg
         // passes it to this new run. consumePendingEgg() clears the flag so the
@@ -1278,6 +1255,12 @@ export class InventorySystem {
                 lines.push(t(this.scene, 'tooltip.protectionShort', { amount: card.protection || 0 }));
             }
             if (card.dodgeChance) lines.push(t(this.scene, 'tooltip.dodge', { percent: Math.round(card.dodgeChance * 100) }));
+            if (card.meleeCounterChance) {
+                lines.push(`Melee counter: ${Math.round(card.meleeCounterChance * 100)}% (50% blocked)`);
+            }
+            if (card.rangedIgnoreChance) {
+                lines.push(`Ignore ranged: ${Math.round(card.rangedIgnoreChance * 100)}%`);
+            }
             if (card.reflection) lines.push(t(this.scene, 'tooltip.reflect', { value: card.reflection }));
             if (card.thornDamage) lines.push(t(this.scene, 'tooltip.thornDamage', { amount: card.thornDamage }));
             if (card.durability !== undefined) lines.push(t(this.scene, 'tooltip.pips', { value: `${card.durability}/${card.maxDurability || card.durability}` }));
@@ -2544,11 +2527,26 @@ export class InventorySystem {
             const swingKey = this.scene.cardSystem?.isRangedWeapon?.(weapon) ? 'bow_shot' : 'heavy_swing';
             CombatSequencer.playSound(this.scene, 'attack', swingKey, 0.5);
             let attackDamage = weapon.damage;
+            const characterId = this.scene.gameState.characterId;
             
             // Apply weakness penalty when exhausted (out of action points)
             if (wasExhausted) {
                 attackDamage = Math.ceil(attackDamage * 0.8); // 20% weaker
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weakened Attack!', 0xffa500);
+            }
+
+            // Class passive: rogue +10% on dagger/bow (before weapon specials / crit).
+            attackDamage = applyClassWeaponDamageBonus(characterId, weapon, attackDamage);
+
+            // Class passive: warrior crit replaces the hit (sword/axe only).
+            const critRoll = rollClassWeaponCrit(characterId, weapon, attackDamage);
+            let didCrit = false;
+            if (critRoll.crit) {
+                // Crit uses printed weapon damage * (1 + 0.05 * rarityTier), then weakness.
+                attackDamage = critRoll.damage;
+                if (wasExhausted) attackDamage = Math.ceil(attackDamage * 0.8);
+                didCrit = true;
+                this.scene.createFloatingText(cardSprite.x, cardSprite.y - 20, 'Critical!', 0xff4444);
             }
             
             // Handle special abilities
@@ -2577,8 +2575,8 @@ export class InventorySystem {
             }
             // AXE: Heavy Strike — 150% damage for +1 durability, but only fires
             // when it would actually finish the enemy. Keeps axes from burning
-            // their pips on every swing.
-            else if (weapon.special === 'specialAttack') {
+            // their pips on every swing. Skipped on a critical hit.
+            else if (!didCrit && weapon.special === 'specialAttack') {
                 if (weapon.durability >= 2) {
                     const targetCard = this.scene.cardSystem.boardCards[closestEnemy];
                     const targetHP = targetCard?.data?.health ?? 0;
@@ -2615,6 +2613,7 @@ export class InventorySystem {
                     // touch its durability.
                     let secondaryDamage = secondaryDagger.damage || 1;
                     if (wasExhausted) secondaryDamage = Math.ceil(secondaryDamage * 0.8);
+                    secondaryDamage = applyClassWeaponDamageBonus(characterId, secondaryDagger, secondaryDamage);
                     this.scene.cardSystem.attackEnemy(closestEnemy, secondaryDamage, false, secondaryDagger, true);
                     this.scene.updateUI?.();
                 }
@@ -3349,20 +3348,27 @@ export class InventorySystem {
             const rarityName = targetRarity.charAt(0).toUpperCase() + targetRarity.slice(1);
             const armorName = armorType.charAt(0).toUpperCase() + armorType.slice(1);
             
-            const durabilityBonus = { uncommon: 5, rare: 10, epic: 13, legendary: 15 };
-            const maxDurability = 20 + (durabilityBonus[targetRarity] || 0);
-            
-            return {
+            const maxDurability = CardDataGenerator.armorDurability(armorType, targetRarity);
+            const card = {
                 type: 'armor',
                 name: `${rarityName} ${armorName} Armor`,
                 armorType: armorType,
                 protection: armorData.protection,
-                dodgeChance: armorData.dodgeChance,
                 rarity: targetRarity,
                 sprite: armorData.sprite,
                 durability: maxDurability,
                 maxDurability: maxDurability
             };
+            if (armorType === 'leather' && armorData.dodgeChance) {
+                card.dodgeChance = armorData.dodgeChance;
+            }
+            if (armorType === 'chain' && armorData.meleeCounterChance) {
+                card.meleeCounterChance = armorData.meleeCounterChance;
+            }
+            if (armorType === 'plate' && armorData.rangedIgnoreChance) {
+                card.rangedIgnoreChance = armorData.rangedIgnoreChance;
+            }
+            return card;
         }
         
         // Fallback to generated card

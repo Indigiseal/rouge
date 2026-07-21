@@ -115,6 +115,11 @@
       gap: 1rem;
       padding: 0 1.5rem 1rem;
     }
+    @media (min-width: 960px) {
+      .grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -127,9 +132,7 @@
       font-weight: 600;
       color: var(--muted);
     }
-    .card.wide { grid-column: 1 / -1; }
-    .chart-wrap { position: relative; height: 340px; }
-    .chart-wrap.tall { height: 400px; }
+    .chart-wrap { position: relative; height: 320px; }
     .error {
       margin: 2rem;
       padding: 1rem;
@@ -345,8 +348,8 @@
         </label>
         <label class="field" id="subsetWrap" title="Опциональный фильтр id для sweep">
           <span>Sweep subset (comma-separated)</span>
-          <input id="amuletSubset" type="text" placeholder="temperedSteel,regeneration" />
-          <span class="hint">Пусто = все амулеты по одному</span>
+          <input id="amuletSubset" type="text" placeholder="amuletOfEvasion,vampireFang" />
+          <span class="hint">Пусто = все новые амулеты по одному</span>
         </label>
       </div>
 
@@ -383,7 +386,7 @@
             <button type="button" data-act="amulet-none-pool" title="Пустой пул (только стартовые, если отмечены)">Пусто</button>
             <button type="button" data-act="amulet-droppable" title="Только обычный дроп/шоп">Только дроп</button>
             <button type="button" data-act="amulet-strong" title="Стартовый strong loadout">Старт: strong</button>
-            <button type="button" data-act="amulet-bag" title="Только Bottomless Bag на старте">Старт: bag</button>
+            <button type="button" data-act="amulet-bag" title="Только Ring of Health на старте">Старт: health</button>
             <button type="button" data-act="amulet-none-start" title="Без стартовых амулетов">Без старта</button>
           </div>
           <div class="picker-scroll">
@@ -427,15 +430,24 @@
   <script>
     const charts = {};
     const COLORS = {
-      pipStart: '#58a6ff',
-      pipEnd: '#3fb950',
-      enemyHp: '#a371f7',
       reach: '#58a6ff',
+      ap: '#3fb950',
+      received: '#f85149',
+      blocked: '#58a6ff',
+      dodged: '#3fb950',
+      dual: '#3fb950',
+      gem: '#d29922',
+      amuletCommon: '#8b949e',
+      amuletUncommon: '#3fb950',
+      amuletRare: '#58a6ff',
+      amuletLegendary: '#d29922',
+      amuletCursed: '#a371f7',
+      amuletOther: '#6e7681',
     };
     let currentBatchId = null;
     let catalog = { relics: [], amulets: [], hints: {}, behaviors: [] };
-    const STRONG_START = ['golemHeart', 'chronosHeart', 'regeneration', 'evasionBoots',
-      'temperedSteel', 'healingRing', 'merchantPact', 'vampiricRing'];
+    const STRONG_START = ['ringOfHealth', 'philosophersStone', 'amuletOfGreaterEvasion', 'amuletOfGreaterProtection',
+      'legendaryWhetstone', 'alchemistBag', 'pouchOfGreed', 'vampireFang'];
 
     const PRESET_HINTS = {
       balance: 'Без меты и амулетов — чистый баланс.',
@@ -472,10 +484,10 @@
       return [...set].sort((a, b) => a - b);
     }
 
-    function mkCanvas(id, title, { tall = false } = {}) {
+    function mkCanvas(id, title) {
       const card = document.createElement('div');
-      card.className = 'card wide';
-      card.innerHTML = `<h2>${title}</h2><div class="chart-wrap${tall ? ' tall' : ''}"><canvas id="${id}"></canvas></div>`;
+      card.className = 'card';
+      card.innerHTML = `<h2>${title}</h2><div class="chart-wrap"><canvas id="${id}"></canvas></div>`;
       document.getElementById('charts').appendChild(card);
       return document.getElementById(id);
     }
@@ -485,21 +497,38 @@
       for (const k of Object.keys(charts)) delete charts[k];
     }
 
-    function lineChart(id, title, labels, datasets, { tall = false } = {}) {
-      const ctx = mkCanvas(id, title, { tall });
+    function chartDefaults() {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { labels: { color: '#e6edf3' } } },
+        scales: {
+          x: { stacked: false, ticks: { color: '#8b949e', maxRotation: 45, minRotation: 0, autoSkip: true, maxTicksLimit: 45 }, grid: { color: '#30363d' } },
+          y: { stacked: false, ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
+        },
+      };
+    }
+
+    function lineChart(id, title, labels, datasets) {
+      const ctx = mkCanvas(id, title);
+      const opts = chartDefaults();
       charts[id] = new Chart(ctx, {
         type: 'line',
         data: { labels, datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          plugins: { legend: { labels: { color: '#e6edf3' } } },
-          scales: {
-            x: { ticks: { color: '#8b949e', maxRotation: 45, minRotation: 0, autoSkip: true, maxTicksLimit: 45 }, grid: { color: '#30363d' } },
-            y: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
-          },
-        },
+        options: opts,
+      });
+    }
+
+    function stackedBarChart(id, title, labels, datasets) {
+      const ctx = mkCanvas(id, title);
+      const opts = chartDefaults();
+      opts.scales.x.stacked = true;
+      opts.scales.y.stacked = true;
+      charts[id] = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: opts,
       });
     }
 
@@ -521,88 +550,19 @@
       const prevName = batchTitle(data.previousBatch);
       const curName = batchTitle(data.batch);
 
-      const combatFloors = unionFloors(data.pipStart, data.pipEnd, data.enemyHp, prev.pipStart, prev.pipEnd, prev.enemyHp);
-      const pipStartCur = seriesMap(data.pipStart, 'avg_pips');
-      const pipEndCur = seriesMap(data.pipEnd, 'avg_end');
-      const enemyHpCur = seriesMap(data.enemyHp, 'avg_hp');
-      const pipStartPrev = seriesMap(prev.pipStart, 'avg_pips');
-      const pipEndPrev = seriesMap(prev.pipEnd, 'avg_end');
-      const enemyHpPrev = seriesMap(prev.enemyHp, 'avg_hp');
-
-      const combatLabels = combatFloors.map((f) => 'F' + f);
-      const combatDatasets = [
-        {
-          label: `Σ pip старт (${curName})`,
-          data: combatFloors.map((f) => pipStartCur.get(f) ?? null),
-          borderColor: COLORS.pipStart,
-          backgroundColor: pale(COLORS.pipStart, 0.12),
-          tension: 0.25,
-          spanGaps: true,
-        },
-        {
-          label: `Σ pip конец (${curName})`,
-          data: combatFloors.map((f) => pipEndCur.get(f) ?? null),
-          borderColor: COLORS.pipEnd,
-          backgroundColor: pale(COLORS.pipEnd, 0.12),
-          tension: 0.25,
-          spanGaps: true,
-        },
-        {
-          label: `Σ HP врагов (${curName})`,
-          data: combatFloors.map((f) => enemyHpCur.get(f) ?? null),
-          borderColor: COLORS.enemyHp,
-          backgroundColor: pale(COLORS.enemyHp, 0.12),
-          tension: 0.25,
-          spanGaps: true,
-        },
-      ];
-      if (data.previousBatchId) {
-        combatDatasets.push(
-          {
-            label: `Σ pip старт (${prevName})`,
-            data: combatFloors.map((f) => pipStartPrev.get(f) ?? null),
-            borderColor: pale(COLORS.pipStart, 0.4),
-            borderDash: [5, 4],
-            pointRadius: 0,
-            tension: 0.25,
-            spanGaps: true,
-          },
-          {
-            label: `Σ pip конец (${prevName})`,
-            data: combatFloors.map((f) => pipEndPrev.get(f) ?? null),
-            borderColor: pale(COLORS.pipEnd, 0.4),
-            borderDash: [5, 4],
-            pointRadius: 0,
-            tension: 0.25,
-            spanGaps: true,
-          },
-          {
-            label: `Σ HP врагов (${prevName})`,
-            data: combatFloors.map((f) => enemyHpPrev.get(f) ?? null),
-            borderColor: pale(COLORS.enemyHp, 0.4),
-            borderDash: [5, 4],
-            pointRadius: 0,
-            tension: 0.25,
-            spanGaps: true,
-          },
-        );
-      }
-      lineChart('combatPower', 'Pip старт / pip конец / HP врагов (avg Σ)', combatLabels, combatDatasets, { tall: true });
-
+      // Top-left: cumulative floor reach
       const reachFloors = unionFloors(data.floorReach, prev.floorReach);
       const reachCur = seriesMap(data.floorReach, 'runs_reached');
       const reachPrev = seriesMap(prev.floorReach, 'runs_reached');
-      const reachDatasets = [
-        {
-          label: `Дошли (${curName})`,
-          data: reachFloors.map((f) => reachCur.get(f) ?? null),
-          borderColor: COLORS.reach,
-          backgroundColor: pale(COLORS.reach, 0.15),
-          tension: 0.2,
-          fill: false,
-          spanGaps: true,
-        },
-      ];
+      const reachDatasets = [{
+        label: `Дошли (${curName})`,
+        data: reachFloors.map((f) => reachCur.get(f) ?? null),
+        borderColor: COLORS.reach,
+        backgroundColor: pale(COLORS.reach, 0.15),
+        tension: 0.2,
+        fill: false,
+        spanGaps: true,
+      }];
       if (data.previousBatchId) {
         reachDatasets.push({
           label: `Дошли (${prevName})`,
@@ -615,7 +575,122 @@
           spanGaps: true,
         });
       }
-      lineChart('reach', 'Дошли до этажа (накопительно)', reachFloors.map((f) => 'F' + f), reachDatasets, { tall: true });
+      lineChart('reach', 'Дошли до этажа (накопительно)', reachFloors.map((f) => 'F' + f), reachDatasets);
+
+      // Top-right: AP spent
+      const apFloors = unionFloors(data.apSpent, prev.apSpent);
+      const apCur = seriesMap(data.apSpent, 'ap_spent_avg');
+      const apPrev = seriesMap(prev.apSpent, 'ap_spent_avg');
+      const apDatasets = [{
+        label: `AP (${curName})`,
+        data: apFloors.map((f) => apCur.get(f) ?? null),
+        borderColor: COLORS.ap,
+        backgroundColor: pale(COLORS.ap, 0.15),
+        tension: 0.2,
+        fill: false,
+        spanGaps: true,
+      }];
+      if (data.previousBatchId) {
+        apDatasets.push({
+          label: `AP (${prevName})`,
+          data: apFloors.map((f) => apPrev.get(f) ?? null),
+          borderColor: pale(COLORS.ap, 0.4),
+          borderDash: [5, 4],
+          pointRadius: 0,
+          tension: 0.2,
+          fill: false,
+          spanGaps: true,
+        });
+      }
+      lineChart('apSpent', 'Потрачено AP (среднее по этажу)', apFloors.map((f) => 'F' + f), apDatasets);
+
+      // Bottom-left: incoming damage stack
+      const dmgFloors = unionFloors(data.damageTaken);
+      const recv = seriesMap(data.damageTaken, 'damage_received');
+      const blocked = seriesMap(data.damageTaken, 'damage_blocked_armor');
+      const dodged = seriesMap(data.damageTaken, 'damage_dodged');
+      stackedBarChart(
+        'damageTaken',
+        'Урон по игроку: получен / блок бронёй / уворот',
+        dmgFloors.map((f) => 'F' + f),
+        [
+          {
+            label: 'получен',
+            data: dmgFloors.map((f) => recv.get(f) ?? 0),
+            backgroundColor: COLORS.received,
+            stack: 'dmg',
+          },
+          {
+            label: 'блок бронёй',
+            data: dmgFloors.map((f) => blocked.get(f) ?? 0),
+            backgroundColor: COLORS.blocked,
+            stack: 'dmg',
+          },
+          {
+            label: 'уворот',
+            data: dmgFloors.map((f) => dodged.get(f) ?? 0),
+            backgroundColor: COLORS.dodged,
+            stack: 'dmg',
+          },
+        ],
+      );
+
+      // Bottom-right: specialization stack
+      const specFloors = unionFloors(data.specialization);
+      const dual = seriesMap(data.specialization, 'dual_wield_damage');
+      const gem = seriesMap(data.specialization, 'gem_damage');
+      stackedBarChart(
+        'specialization',
+        'Урон специализации: dual wield (offhand) + gems',
+        specFloors.map((f) => 'F' + f),
+        [
+          {
+            label: 'dual wield',
+            data: specFloors.map((f) => dual.get(f) ?? 0),
+            backgroundColor: COLORS.dual,
+            stack: 'spec',
+          },
+          {
+            label: 'gems',
+            data: specFloors.map((f) => gem.get(f) ?? 0),
+            backgroundColor: COLORS.gem,
+            stack: 'spec',
+          },
+        ],
+      );
+
+      // Amulet gains by rarity (sum across all runs on each floor)
+      const amuletFloors = unionFloors(data.amuletGains, data.floorReach);
+      const rarities = [
+        { key: 'common', label: 'common', color: COLORS.amuletCommon },
+        { key: 'uncommon', label: 'uncommon', color: COLORS.amuletUncommon },
+        { key: 'rare', label: 'rare', color: COLORS.amuletRare },
+        { key: 'legendary', label: 'legendary', color: COLORS.amuletLegendary },
+        { key: 'cursed', label: 'cursed', color: COLORS.amuletCursed },
+        { key: 'other', label: 'other', color: COLORS.amuletOther },
+      ];
+      const amuletDatasets = rarities.map((r) => {
+        const m = seriesMap(data.amuletGains, r.key);
+        return {
+          label: r.label,
+          data: amuletFloors.map((f) => m.get(f) ?? 0),
+          backgroundColor: r.color,
+          stack: 'amulets',
+        };
+      }).filter((ds) => ds.data.some((v) => Number(v) > 0));
+      stackedBarChart(
+        'amuletGains',
+        'Получено амулетов (сумма по всем ранам, по редкости)',
+        amuletFloors.map((f) => 'F' + f),
+        amuletDatasets.length
+          ? amuletDatasets
+          : [{
+              label: 'нет данных',
+              data: amuletFloors.map(() => 0),
+              backgroundColor: COLORS.amuletOther,
+              stack: 'amulets',
+            }],
+      );
     }
 
     async function load(batchId) {
@@ -688,7 +763,7 @@
             </label>
           </td>
           <td>
-            <div class="name" title="${escapeAttr(item.id)}">${escapeHtml(item.name)}</div>
+            <div class="name" title="${escapeAttr(item.id)}">${escapeHtml(item.name)}${item.rarity ? ` <span class="hint">(${escapeHtml(item.rarity)})</span>` : ''}</div>
             <p class="desc">${escapeHtml(item.description || '')}</p>
           </td>
         </tr>`).join('');
@@ -782,7 +857,7 @@
         setPicker('amuletList', { poolIds: [...new Set([...drop, ...start])], startIds: start });
       }
       if (act === 'amulet-strong') setPicker('amuletList', { poolAll: true, startIds: STRONG_START });
-      if (act === 'amulet-bag') setPicker('amuletList', { poolAll: true, startIds: ['bottomlessBag'] });
+      if (act === 'amulet-bag') setPicker('amuletList', { poolAll: true, startIds: ['ringOfHealth'] });
       if (act === 'amulet-none-start') {
         const { pool } = readPicker('amuletList');
         setPicker('amuletList', { poolIds: pool, startIds: [] });

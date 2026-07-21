@@ -127,7 +127,34 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     fortuneCard: 'fishbowl',
     luckyClover: 'luckyClover',
     lightningRune: 'lightningRune',
-    poisonRune: 'poisonRune'
+    poisonRune: 'poisonRune',
+
+    // New catalog (reuses existing frames; names overridden in AmuletManager)
+    amuletOfEvasion: 'evasionBoots',
+    ringOfHealth: 'goldenMedallion',
+    amuletOfProtection: 'iceShield',
+    ringOfRegeneration: 'regenerationAmulet',
+    earringOfArmorDurability: 'boneArmor',
+    earringOfWeaponDurability: 'goldBar',
+    amuletOfGreaterEvasion: 'greenHood',
+    ringOfGreaterHealth: 'griffinMedallion',
+    amuletOfGreaterProtection: 'iceShield',
+    ringOfGreaterRegeneration: 'moonPotion',
+    earringOfGreaterArmorDurability: 'shieldPotion',
+    earringOfGreaterWeaponDurability: 'stormShard',
+    alchemistBag: 'basket',
+    monocle: 'magnifyingGlass',
+    pouchOfGreed: 'greedPouch',
+    vampireFang: 'signetRing',
+    newDragonClaw: 'dragonClaw',
+    runeOfFire: 'fireRuneStone',
+    runeOfZap: 'lightningRune',
+    runeOfPoison: 'poisonRune',
+    maskOfHollowWhispers: 'hollowWhispersMask',
+    philosophersStone: 'sunstone',
+    legendaryWhetstone: 'goldBar',
+    lostNobleDiadem: 'diadem',
+    glovesOfHermitWizard: 'fingerlessGloves',
 });
 
 export const RELIC_ATLAS_KEYS = Object.freeze({
@@ -190,21 +217,22 @@ function validateAtlasAssignments() {
         }
     });
 
-    const playableFrames = new Map();
-    [
-        ['amulet', AMULET_ATLAS_KEYS],
-        ['relic', RELIC_ATLAS_KEYS]
-    ].forEach(([kind, mapping]) => {
-        Object.entries(mapping).forEach(([id, atlasKey]) => {
-            const entry = getAtlasEntry(mapping, id, kind);
-            const previous = playableFrames.get(entry.frame);
-            if (previous) {
-                throw new Error(
-                    `relicsOthers frame ${entry.frame} is assigned to both ${previous} and ${kind} "${id}"`
-                );
-            }
-            playableFrames.set(entry.frame, `${kind} "${id}" (${atlasKey})`);
-        });
+    // Relics must stay 1:1 with frames. Amulets may share frames — the new
+    // catalog reuses art from retired (rarity: old) ids.
+    const relicFrames = new Map();
+    Object.entries(RELIC_ATLAS_KEYS).forEach(([id, atlasKey]) => {
+        const entry = getAtlasEntry(RELIC_ATLAS_KEYS, id, 'relic');
+        const previous = relicFrames.get(entry.frame);
+        if (previous) {
+            throw new Error(
+                `relicsOthers frame ${entry.frame} is assigned to both ${previous} and relic "${id}"`
+            );
+        }
+        relicFrames.set(entry.frame, `relic "${id}" (${atlasKey})`);
+    });
+
+    Object.keys(AMULET_ATLAS_KEYS).forEach((id) => {
+        getAtlasEntry(AMULET_ATLAS_KEYS, id, 'amulet');
     });
 }
 
