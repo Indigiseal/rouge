@@ -131,10 +131,9 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   selectCharacter(characterId) {
     if (!CHARACTER_IDS.includes(characterId)) characterId = 'rogue';
-    MusicManager.stopIfPlaying(this, 'menu_music', 300);
     this.cameras.main.fadeOut(350, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('GameScene', { newGame: true, characterId });
+      this.scene.start('TalentTreeScene', { characterId });
     });
   }
 }

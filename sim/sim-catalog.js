@@ -1,36 +1,24 @@
-// Catalog of meta relics and amulets for sim CLI / dashboard pickers.
+// Catalog of meta talents and amulets for sim CLI / dashboard pickers.
 import './mock.js';
-import { MetaProgressionManager } from '../MetaProgressionManager.js';
 import { AmuletManager } from '../AmuletManager.js';
 import { CardDataGenerator } from '../CardDataGenerator.js';
+import { TALENT_NODES } from '../utils/TalentDefinitions.js';
 
-const RELIC_HINTS = {
-  spiderVenom: 'Мета-приз: яд на оружии. Обычно с смерти от паука.',
-  webWeaver: 'Мета-приз: шанс вернуть смерженную карту. Тир 2 паука.',
-  boneArmor: 'Мета-приз: стартовая костяная броня. Скелет.',
-  undeadResilience: 'Мета-приз: +HP в начале каждого этажа. Скелет.',
-  greedyPockets: 'Мета-приз: первая атака этажа x2. Гоблин.',
-  scavenger: 'Мета-приз: +20% монет. Гоблин.',
-  giantStrength: 'Босс-релик: +1 урон оружия (Giant Skeleton).',
-  queenBlessing: 'Босс-релик: иммунитет к яду (Spider Queen).',
-  lichCurse: 'Босс-релик (проклятый): вампиризм с убийств, −max HP (Lich).',
-  veteranExplorer: 'Майлстоун: +1 слот инвентаря (после нескольких смертей).',
-  tent: 'Майлстоун: +max HP за износ durability-карт.',
-  luckyScrap: 'Майлстоун: броня изнашивается вдвое медленнее.',
-  dungeonMaster: 'Майлстоун: +1 открытая карта в начале этажа.',
-};
-
-/** @returns {{ id: string, name: string, description: string, hint: string, boss?: boolean, cursed?: boolean }[]} */
+/** Relic meta retired — kept for dashboard API compatibility. */
 export function getRelicCatalog() {
-  const defs = new MetaProgressionManager({}).getRelicDefinitions();
-  return Object.values(defs).map((r) => ({
-    id: r.id,
-    name: r.name || r.id,
-    description: r.description || '',
-    hint: RELIC_HINTS[r.id] || r.description || r.id,
-    boss: !!r.boss,
-    cursed: !!r.cursed,
-    killedBy: r.killedBy || null,
+  return [];
+}
+
+/** @returns {{ id: string, name: string, description: string, hint: string, characterId: string, branchId: string, wip: boolean }[]} */
+export function getTalentCatalog() {
+  return Object.values(TALENT_NODES).map((n) => ({
+    id: n.id,
+    name: n.name,
+    description: (n.descriptionRanks && n.descriptionRanks[0]) || '',
+    hint: n.wip ? 'WIP branch' : 'Purchasable',
+    characterId: n.characterId,
+    branchId: n.branchId,
+    wip: !!n.wip,
   }));
 }
 

@@ -58,6 +58,7 @@ import {
   normalizeCharacterId,
   rollClassWeaponCrit,
 } from '../utils/CharacterClasses.js';
+import { applyArmorTalentMods, getBranchesForCharacter, getTalentNode } from '../utils/TalentDefinitions.js';
 
 // ── Config ────────────────────────────────────────────────────────────────
 const RUNS = parseInt(process.argv[2], 10) || 2000;
@@ -114,10 +115,22 @@ function stripBehaviorArgs(argv) {
 }
 
 /** Printed hit damage including class passives. Planner uses expected crit EV. */
-function simWeaponHitDamage(gs, weapon, wasExhausted, { expectedCrit = false } = {}) {
+function simWeaponHitDamage(gs, weapon, wasExhausted, { expectedCrit = false, applyFirstBlood = false } = {}) {
   let dmg = weapon ? (weapon.damage || 1) : 1;
   if (wasExhausted) dmg = Math.ceil(dmg * 0.8);
-  dmg = applyClassWeaponDamageBonus(gs?.characterId, weapon, dmg);
+  dmg = applyClassWeaponDamageBonus(gs?.characterId, weapon, dmg, gs?.talentEffects);
+
+  // Twin Fang: full % on daggers, half on bows.
+  const twin = gs?.talentEffects?.twinFangPct || 0;
+  if (twin > 0 && weapon?.weaponType === 'dagger') {
+    dmg = Math.ceil(dmg * (1 + twin));
+  } else if (twin > 0 && weapon?.weaponType === 'bow') {
+    dmg = Math.ceil(dmg * (1 + twin * 0.5));
+  }
+
+  if (applyFirstBlood && gs?.talentEffects?.firstBloodPct > 0 && !gs.firstAttackThisFloorUsed) {
+    dmg = Math.ceil(dmg * (1 + gs.talentEffects.firstBloodPct));
+  }
 
   const def = getCharacter(gs?.characterId);
   const canCrit = weapon
@@ -129,6 +142,14 @@ function simWeaponHitDamage(gs, weapon, wasExhausted, { expectedCrit = false } =
   const tier = ({ common: 1, uncommon: 2, rare: 3, epic: 3, legendary: 4 })[weapon.rarity] || 1;
   let critDmg = Math.ceil(printed * (1 + 0.05 * tier));
   if (wasExhausted) critDmg = Math.ceil(critDmg * 0.8);
+  if (twin > 0 && weapon?.weaponType === 'dagger') {
+    critDmg = Math.ceil(critDmg * (1 + twin));
+  } else if (twin > 0 && weapon?.weaponType === 'bow') {
+    critDmg = Math.ceil(critDmg * (1 + twin * 0.5));
+  }
+  if (applyFirstBlood && gs?.talentEffects?.firstBloodPct > 0 && !gs.firstAttackThisFloorUsed) {
+    critDmg = Math.ceil(critDmg * (1 + gs.talentEffects.firstBloodPct));
+  }
 
   if (expectedCrit) {
     return dmg * (1 - def.critChance) + critDmg * def.critChance;
@@ -136,6 +157,46 @@ function simWeaponHitDamage(gs, weapon, wasExhausted, { expectedCrit = false } =
 
   const crit = rollClassWeaponCrit(gs.characterId, weapon, dmg);
   return crit.crit ? critDmg : dmg;
+}
+
+function simOffhandDamage(gs, offhand, wasExhausted) {
+  // Twin Fang is applied inside simWeaponHitDamage for all dagger hits.
+  return simWeaponHitDamage(gs, offhand, wasExhausted);
+}
+
+function applyAssassinateSim(mock, gs, enemyIndex) {
+  const threshold = gs?.talentEffects?.assassinateThreshold || 0;
+  if (threshold <= 0) return 0;
+  const card = mock.cardSystem.boardCards[enemyIndex];
+  if (!card?.revealed || !card.data) return 0;
+  if (card.data.type !== 'enemy' && card.data.type !== 'boss') return 0;
+  const hp = card.data.health ?? 0;
+  if (hp <= 0 || hp > threshold) return 0;
+  mock.cardSystem.attackEnemy(enemyIndex, hp, false, null, true);
+  return hp;
+}
+
+function applyFrontVolleySim(mock, gs, primaryIndex, bowDamage, weapon) {
+  const pct = gs?.talentEffects?.frontVolleyPct || 0;
+  if (pct <= 0 || !weapon) return 0;
+  if (!mock.cardSystem.isRangedWeapon?.(weapon)) return 0;
+  const board = mock.cardSystem.boardCards || [];
+  const candidates = [];
+  for (let i = 0; i < board.length; i++) {
+    if (i === primaryIndex) continue;
+    const card = board[i];
+    if (!card?.revealed || !card.data) continue;
+    if (card.data.type !== 'enemy' && card.data.type !== 'boss') continue;
+    if ((card.data.health ?? 0) <= 0) continue;
+    if (card.data.role !== 'MELEE') continue;
+    candidates.push(i);
+  }
+  if (!candidates.length) return 0;
+  const target = candidates[Math.floor(Math.random() * candidates.length)];
+  const volleyDmg = Math.max(1, Math.ceil(bowDamage * pct));
+  mock.cardSystem.attackEnemy(target, volleyDmg, false, weapon, true);
+  applyAssassinateSim(mock, gs, target);
+  return volleyDmg;
 }
 
 function cloneCard(card) {
@@ -478,9 +539,15 @@ function mergeArmor(gen, a, b, floor = 0) {
   if (type === 'plate') {
     merged.rangedIgnoreChance = data?.rangedIgnoreChance ?? a.rangedIgnoreChance ?? 0;
   }
+  // Re-apply Iron talents — merge rebuilt from unlock tables and would otherwise
+  // strip Hardened / Counter Drill / Bulwark.
+  applyArmorTalentMods(merged, gsTalentEffectsRef.current);
   return merged;
 }
-function mergeArmorList(gen, list, echoChance = 0, tracker = null, floor = 0) {
+// Mutable ref so mergeArmor (no gs arg historically) still sees run talents.
+const gsTalentEffectsRef = { current: null };
+function mergeArmorList(gen, list, echoChance = 0, tracker = null, floor = 0, talentEffects = null) {
+  gsTalentEffectsRef.current = talentEffects || null;
   let changed = true, guard = 0;
   while (changed && guard++ < 60) {
     changed = false;
@@ -600,7 +667,7 @@ function regear(gen, gs, inv) {
 
   const echoChance = gs.relicEffects?.mergeRespawnChance || 0;
   mergeWeaponList(gen, weapons, echoChance, gs._mergeTracker || null, gs.currentFloor || 0);
-  mergeArmorList(gen, armors, echoChance, gs._mergeTracker || null, gs.currentFloor || 0);
+  mergeArmorList(gen, armors, echoChance, gs._mergeTracker || null, gs.currentFloor || 0, gs.talentEffects);
   mergeThornsList(thorns, gs._mergeTracker || null);
 
   weapons.sort((a, b) => wpnValue(b) - wpnValue(a));
@@ -1144,7 +1211,7 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
       const affected = estimateGemSplash(board, index, weapon, baseDamage);
       const offhand = findOffhandDagger(weapon, gs, inv);
       if (offhand) {
-        const offDmg = effDmg(offhand);
+        const offDmg = simOffhandDamage(gs, offhand, wasExhausted);
         const offAffected = estimateGemSplash(board, index, offhand, offDmg);
         for (const [hitIndex, damage] of offAffected.entries()) {
           affected.set(hitIndex, (affected.get(hitIndex) || 0) + damage);
@@ -1299,7 +1366,10 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
         }
       }
 
-      const dmg = effDmg(gs.equippedWeapon);
+      // First Blood applies to the primary swing only, then marks the floor flag.
+      const useFirstBlood = gs?.talentEffects?.firstBloodPct > 0 && !gs.firstAttackThisFloorUsed;
+      const dmg = simWeaponHitDamage(gs, gs.equippedWeapon, wasExhausted, { applyFirstBlood: useFirstBlood });
+      if (useFirstBlood) gs.firstAttackThisFloorUsed = true;
       const weaponBeforeAttack = gs.equippedWeapon;
       const targetHP = board[attackIdx]?.data?.health || 0;
       combatDamageDealt += dmg;
@@ -1307,15 +1377,21 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
       mock.useAction();
       // Main hit always lands first.
       mock.cardSystem.attackEnemy(attackIdx, dmg, false, gs.equippedWeapon || null, false);
+      combatDamageDealt += applyAssassinateSim(mock, gs, attackIdx);
       // Dual wield = free OFFHAND dagger swing only. Main-hand damage is
       // baseline weapon damage and must not inflate this specialization bucket.
       const offhand = findOffhandDagger(weaponBeforeAttack, gs, inv);
       if (offhand && board[attackIdx]?.data?.health > 0) {
-        const dmg2 = effDmg(offhand);
+        const dmg2 = simOffhandDamage(gs, offhand, wasExhausted);
         combatDamageDealt += dmg2;
         combatSpecializationDualWield += measureTargetWeaponHit(attackIdx, () => {
           mock.cardSystem.attackEnemy(attackIdx, dmg2, false, offhand, true);
         });
+        combatDamageDealt += applyAssassinateSim(mock, gs, attackIdx);
+      }
+      // Front Volley: bow also clips a random front (MELEE) enemy.
+      if (weaponBeforeAttack) {
+        combatDamageDealt += applyFrontVolleySim(mock, gs, attackIdx, dmg, weaponBeforeAttack);
       }
       if (weaponBeforeAttack && !gs.equippedWeapon) mock._weaponBreaks = (mock._weaponBreaks || 0) + 1;
       if (!gs.equippedWeapon || gs.equippedWeapon.durability <= 0) regear(mock.cardSystem.cardDataGenerator, gs, inv);
@@ -2152,17 +2228,26 @@ function runGame(metrics, config = {}) {
   gs._mergeTracker = tracker;
   if (config.lootStats) gs._lootStats = config.lootStats;
   if (config.statsRecorder) gs._statsRecorder = config.statsRecorder;
-  // Apply meta RELICS via the REAL MetaProgressionManager (starting HP/coins/AP/
-  // armor bonuses + runtime relicEffects honored by the real combat code).
-  if (config.relics && config.relics.length && !isMetaProgressionDisabled()) {
+  // Apply character talents (relics-on-death removed). Optional config.talents
+  // injects ranks for experiments; otherwise the run starts with an empty tree.
+  if (!isMetaProgressionDisabled()) {
     const meta = new MetaProgressionManager(mock);
-    if (config.metaPool) restrictMetaPool(meta, config.metaPool);
-    meta.unlockedRelics = config.relics.slice();
-    meta.applyRelicEffects(gs, true);
-  }
-  if (config.veteranHp && !isMetaProgressionDisabled()) {
-    gs.maxHealth += config.veteranHp;
-    gs.playerHealth += config.veteranHp;
+    meta.characters = {
+      rogue: { xp: 0, talents: {}, choices: {} },
+      warrior: { xp: 0, talents: {}, choices: {} },
+    };
+    if (config.talents && typeof config.talents === 'object') {
+      const id = gs.characterId || 'rogue';
+      const ch = meta.ensureCharacter(id);
+      ch.talents = { ...config.talents };
+      if (config.talentChoices) ch.choices = { ...config.talentChoices };
+    }
+    const applyOpts = {};
+    if (config.talentChoices?.armorerArmorType === 'chain'
+      || config.talentChoices?.armorerArmorType === 'plate') {
+      applyOpts.armorerArmorType = config.talentChoices.armorerArmorType;
+    }
+    meta.applyTalentEffects(gs, true, applyOpts);
   }
   // Limit mid-run amulet finds before equipping the starting loadout.
   if (config.amuletPool) applyAmuletPool(mock, config.amuletPool);
@@ -2686,99 +2771,297 @@ function runLoadout() {
   report(metrics);
 }
 
-// ── Geared mode: model a fully-progressed run (all relics + strong amulets) ─
+// ── Geared mode: strong amulet loadout (relic meta retired) ───────────────
 // Usage: node sim/balance-sim.js geared [runs]
-const ALL_RELICS = ['spiderVenom', 'webWeaver', 'boneArmor', 'undeadResilience', 'greedyPockets',
-  'scavenger', 'giantStrength', 'queenBlessing', 'lichCurse', 'veteranExplorer', 'tent',
-  'luckyScrap', 'dungeonMaster'];
-const relicSanity = new MetaProgressionManager({}).getRelicDefinitions();
-if (relicSanity.undeadResilience?.effect?.healPerFloor !== 3) {
-  throw new Error(`Sim relic mismatch: undeadResilience healPerFloor=${relicSanity.undeadResilience?.effect?.healPerFloor}`);
-}
+const ALL_RELICS = [];
+const MAX_SHADOW_TALENTS = {
+  keenEdge: 3, firstBlood: 3, twinFang: 3, frontVolley: 3, assassinate: 3,
+};
+const MAX_IRON_TALENTS = {
+  hardened: 3, reprisal: 3, bulwark: 3, armorerStart: 1, rivets: 3,
+};
 const STRONG_AMULETS = ['ringOfHealth', 'philosophersStone', 'amuletOfGreaterEvasion', 'amuletOfGreaterProtection',
   'legendaryWhetstone', 'alchemistBag', 'pouchOfGreed', 'vampireFang'];
 
 function runGeared() {
   const runs = parseInt(process.argv[3], 10) || RUNS;
-  console.log(`\nGeared run — relics: ${ALL_RELICS.length}, amulets: ${STRONG_AMULETS.length}`);
+  console.log(`\nGeared run — max Shadow talents + strong amulets: ${STRONG_AMULETS.length}`);
   const metrics = newMetrics();
-  for (let i = 0; i < runs; i++) runGame(metrics, { relics: ALL_RELICS, amulets: STRONG_AMULETS });
+  for (let i = 0; i < runs; i++) {
+    runGame(metrics, {
+      characterId: 'rogue',
+      talents: MAX_SHADOW_TALENTS,
+      amulets: STRONG_AMULETS,
+    });
+  }
   report(metrics);
 }
 
-// ── Career mode: model the death-driven meta loop ──────────────────────────
-// Fresh account (no relics, no starting amulets). Play a run; if you die you
-// earn a relic (killer-matched or milestone) and try again, carrying your
-// growing relic collection — until you win. Reports deaths-to-win + relics.
+// ── Career mode: XP accumulates; talents not auto-bought (manual meta) ─────
 // Usage: node sim/balance-sim.js career [careers]
 function runCareer() {
   const careers = parseInt(process.argv[3], 10) || 2000;
   const MAX_ATTEMPTS = 60;
   const throwaway = newMetrics();
-  const deathsToWin = [], relicsAtWin = [];
+  const deathsToWin = [], xpAtWin = [];
   let unwon = 0;
 
   for (let c = 0; c < careers; c++) {
-    const meta = new MetaProgressionManager({}); // persistent across this career
-    meta.unlockedRelics = []; meta.totalDeaths = 0; meta.bestFloor = 1; meta.enemyKillStats = {};
-    meta.veteranHp = 0;
+    const meta = new MetaProgressionManager({});
+    meta.characters = {
+      rogue: { xp: 0, talents: {}, choices: {} },
+      warrior: { xp: 0, talents: {}, choices: {} },
+    };
+    meta.totalDeaths = 0; meta.bestFloor = 1; meta.enemyKillStats = {};
     let deaths = 0, won = false;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      // Fresh-account run: only the relics earned so far, no starting bag.
-      const r = runGame(throwaway, { relics: [...meta.unlockedRelics], noBag: true, veteranHp: meta.veteranHp });
+      const r = runGame(throwaway, {
+        characterId: 'rogue',
+        talents: { ...meta.ensureCharacter('rogue').talents },
+        talentChoices: { ...meta.ensureCharacter('rogue').choices },
+        noBag: true,
+      });
       if (r.won) { won = true; break; }
       deaths++;
-      meta.handlePlayerDeath(r.killer, r.reached); // may grant a relic
+      meta.handlePlayerDeath(r.killer, r.reached, 'rogue');
     }
-    if (won) { deathsToWin.push(deaths); relicsAtWin.push(meta.unlockedRelics.length); }
-    else unwon++;
+    if (won) {
+      deathsToWin.push(deaths);
+      xpAtWin.push(meta.getCharacterXp('rogue'));
+    } else unwon++;
   }
 
   const n = deathsToWin.length;
-  const mean = (a) => (a.reduce((s, x) => s + x, 0) / a.length);
-  const sorted = deathsToWin.slice().sort((a, b) => a - b);
-  const median = sorted[Math.floor(sorted.length / 2)];
-  // Distribution of deaths-to-win
-  const dist = {};
-  for (const d of deathsToWin) dist[d] = (dist[d] || 0) + 1;
-
-  console.log(`\n=== Career sim (death-driven meta) — ${careers} careers ===`);
-  console.log(`Fresh account: no relics, no starting amulets; earn a relic per death; retry until win.\n`);
-  console.log(`Careers that won within ${MAX_ATTEMPTS} attempts: ${pct(n, careers)}%`);
-  console.log(`Deaths before first win: mean=${mean(deathsToWin).toFixed(2)}  median=${median}  min=${sorted[0]}  max=${sorted[sorted.length - 1]}`);
-  console.log(`Relics held when winning:  mean=${mean(relicsAtWin).toFixed(2)}  max=${Math.max(...relicsAtWin)}`);
-  console.log(`\nDeaths-before-win distribution:`);
-  Object.keys(dist).map(Number).sort((a, b) => a - b).forEach((d) =>
-    console.log(`  ${d} death${d === 1 ? ' ' : 's'}: ${pct(dist[d], n)}%`));
+  const mean = (arr) => arr.reduce((a, b) => a + b, 0) / Math.max(1, arr.length);
+  console.log(`\nCareer (XP-only meta, no auto-talents): ${careers} careers`);
+  console.log(`Careers that won within ${MAX_ATTEMPTS} attempts: ${((100 * n) / careers).toFixed(1)}%`);
+  if (n) {
+    console.log(`Mean deaths to win: ${mean(deathsToWin).toFixed(1)}`);
+    console.log(`Mean XP at win: ${mean(xpAtWin).toFixed(1)}`);
+  }
   if (unwon) console.log(`\n(${unwon} careers did not win within ${MAX_ATTEMPTS} attempts.)`);
 }
 
-// ── Relic-compare mode: baseline vs specific relic subsets ────────────────
-// Usage: node sim/balance-sim.js reliccompare [runs]
-function runRelicCompare() {
-  const runs = parseInt(process.argv[3], 10) || 500;
-  const configs = [
-    { label: 'No relics (baseline)       ', relics: [] },
-    { label: 'Ironhide Tonic only        ', relics: ['luckyScrap'] },
-    { label: "Webweaver's Thread only    ", relics: ['webWeaver'] },
-    { label: "Veteran's Carryall only    ", relics: ['veteranExplorer'] },
-    { label: 'All relics MINUS Tonic     ', relics: ALL_RELICS.filter(r => r !== 'luckyScrap') },
-    { label: 'All relics (full account)  ', relics: ALL_RELICS },
+// ── Talent-compare: class MVP trees vs baseline ───────────────────────────
+// Usage:
+//   node sim/balance-sim.js talentcompare [runs] [rogue|warrior]
+//   node sim/balance-sim.js reliccompare [runs] [rogue|warrior]   (alias)
+function runTalentCompare() {
+  const args = stripBehaviorArgs(process.argv.slice(3));
+  let runs = 100;
+  let characterId = 'rogue';
+  for (const a of args) {
+    if (/^\d+$/.test(a)) runs = parseInt(a, 10);
+    else if (a === 'rogue' || a === 'warrior') characterId = a;
+  }
+
+  const rogueConfigs = [
+    { label: 'baseline (no talents)', talents: {} },
+    { label: 'Keen Edge 3', talents: { keenEdge: 3 } },
+    { label: 'First Blood 3', talents: { firstBlood: 3 } },
+    { label: 'Twin Fang 3', talents: { twinFang: 3 } },
+    { label: 'Front Volley 3', talents: { frontVolley: 3 } },
+    { label: 'Assassinate 3', talents: { assassinate: 3 } },
+    { label: 'Full Shadow', talents: { ...MAX_SHADOW_TALENTS } },
   ];
-  console.log(`\n=== Relic Impact Comparison — ${runs} runs each ===\n`);
-  console.log(`config                        meanFloor  median  wins  actStarv%`);
+  const warriorConfigs = [
+    { label: 'baseline (no talents)', talents: {} },
+    { label: "Armorer's Start", talents: { armorerStart: 1 }, randomArmorer: true },
+    { label: 'Rivets 3', talents: { rivets: 3 } },
+    { label: 'Bulwark 3', talents: { bulwark: 3 } },
+    { label: 'Hardened 3', talents: { hardened: 3 } },
+    { label: 'Reprisal 3', talents: { reprisal: 3 } },
+    {
+      label: 'Full Iron',
+      talents: { ...MAX_IRON_TALENTS },
+      randomArmorer: true,
+    },
+  ];
+
+  const configs = characterId === 'warrior' ? warriorConfigs : rogueConfigs;
+  const treeName = characterId === 'warrior' ? 'Iron' : 'Shadow';
+
+  console.log(`\n=== ${characterId} ${treeName} talent compare — ${runs} runs each ===`);
+  console.log(
+    characterId === 'warrior'
+      ? `character=warrior  armorPool=chain+plate  Armorer Start / Full Iron: random chain|plate each run`
+      : `character=rogue  noBag  amulets=on (fresh drops/shops)  meta talents forced via config`
+  );
+  console.log(`noBag  amulets=on (fresh drops/shops)  meta talents forced via config\n`);
+  console.log(
+    'loadout'.padEnd(24)
+    + 'meanF'.padStart(7)
+    + 'medF'.padStart(6)
+    + 'F15%'.padStart(7)
+    + 'F30%'.padStart(7)
+    + 'F45%'.padStart(7)
+    + 'win%'.padStart(7)
+  );
   console.log('─'.repeat(65));
+
+  const rows = [];
   for (const cfg of configs) {
     const m = newMetrics();
-    for (let i = 0; i < runs; i++) runGame(m, { relics: cfg.relics, noBag: true });
+    for (let i = 0; i < runs; i++) {
+      let talentChoices = cfg.talentChoices;
+      if (cfg.randomArmorer) {
+        talentChoices = {
+          armorerArmorType: Math.random() < 0.5 ? 'chain' : 'plate',
+        };
+      }
+      runGame(m, {
+        characterId,
+        talents: cfg.talents || {},
+        talentChoices,
+        noBag: true,
+      });
+    }
     const ff = m.finalFloors.slice().sort((a, b) => a - b);
-    const mean = (ff.reduce((a, b) => a + b, 0) / ff.length).toFixed(1).padStart(9);
-    const med = String(ff[Math.floor(ff.length / 2)]).padStart(6);
-    const wins = String(m.wins).padStart(4);
-    const starv = m.totalActions ? ((100 * m.hungryActions / m.totalActions).toFixed(1) + '%').padStart(9) : '        —';
-    console.log(`${cfg.label}  ${mean}  ${med}  ${wins}  ${starv}`);
+    const n = ff.length || 1;
+    const mean = ff.reduce((a, b) => a + b, 0) / n;
+    const med = ff[Math.floor(ff.length / 2)] || 0;
+    const reach = (floor) => (100 * ff.filter((f) => f >= floor).length) / n;
+    const winPct = (100 * m.wins) / n;
+    const row = {
+      label: cfg.label,
+      mean,
+      med,
+      f15: reach(15),
+      f30: reach(30),
+      f45: reach(45),
+      win: winPct,
+    };
+    rows.push(row);
+    console.log(
+      row.label.padEnd(24)
+      + row.mean.toFixed(1).padStart(7)
+      + String(row.med).padStart(6)
+      + row.f15.toFixed(0).padStart(6) + '%'
+      + row.f30.toFixed(0).padStart(6) + '%'
+      + row.f45.toFixed(0).padStart(6) + '%'
+      + row.win.toFixed(0).padStart(6) + '%'
+    );
   }
-  console.log('\n(noBag=true for clean deltas — no Bottomless Bag on any config)');
+
+  const base = rows[0];
+  console.log('\nDelta vs baseline (pp = percentage points):');
+  for (const row of rows.slice(1)) {
+    console.log(
+      `  ${row.label.padEnd(22)}`
+      + ` meanF ${((row.mean - base.mean) >= 0 ? '+' : '')}${(row.mean - base.mean).toFixed(1)}`
+      + `  F15 ${(row.f15 - base.f15) >= 0 ? '+' : ''}${(row.f15 - base.f15).toFixed(0)}pp`
+      + `  F30 ${(row.f30 - base.f30) >= 0 ? '+' : ''}${(row.f30 - base.f30).toFixed(0)}pp`
+      + `  win ${(row.win - base.win) >= 0 ? '+' : ''}${(row.win - base.win).toFixed(0)}pp`
+    );
+  }
+}
+
+function runRelicCompare() {
+  runTalentCompare();
+}
+
+// ── Talent ladder: cumulative max ranks along the live branch ─────────────
+// Usage: node sim/balance-sim.js talentladder [runs]
+// Builds: baseline → node1 max → node1+2 max → … → full tree for rogue & warrior.
+function buildTalentLadderConfigs(characterId) {
+  const branch = characterId === 'warrior'
+    ? getBranchesForCharacter('warrior').find((b) => b.id === 'iron')
+    : getBranchesForCharacter('rogue').find((b) => b.id === 'shadow');
+  const nodes = branch?.nodes || [];
+  const configs = [{ label: '0 baseline', step: 0, talents: {}, randomArmorer: false }];
+  const talents = {};
+  nodes.forEach((talentId, i) => {
+    const node = getTalentNode(talentId);
+    const maxRank = node?.maxRank || 1;
+    talents[talentId] = maxRank;
+    const needsArmorer = characterId === 'warrior' && Object.prototype.hasOwnProperty.call(talents, 'armorerStart');
+    configs.push({
+      label: `${i + 1} +${node?.name || talentId}`,
+      step: i + 1,
+      talents: { ...talents },
+      randomArmorer: needsArmorer,
+    });
+  });
+  return configs;
+}
+
+function runTalentLadder() {
+  const args = stripBehaviorArgs(process.argv.slice(3));
+  let runs = 1000;
+  for (const a of args) {
+    if (/^\d+$/.test(a)) runs = parseInt(a, 10);
+  }
+
+  const out = { runs, generatedAt: new Date().toISOString(), classes: {} };
+
+  for (const characterId of ['rogue', 'warrior']) {
+    const configs = buildTalentLadderConfigs(characterId);
+    const treeName = characterId === 'warrior' ? 'Iron' : 'Shadow';
+    console.log(`\n=== ${characterId} ${treeName} talent LADDER — ${runs} runs each ===`);
+    console.log(
+      'step'.padEnd(28)
+      + 'meanF'.padStart(7)
+      + 'medF'.padStart(6)
+      + 'F15%'.padStart(7)
+      + 'F30%'.padStart(7)
+      + 'F45%'.padStart(7)
+      + 'win%'.padStart(7)
+    );
+    console.log('─'.repeat(69));
+
+    const rows = [];
+    for (const cfg of configs) {
+      const m = newMetrics();
+      for (let i = 0; i < runs; i++) {
+        let talentChoices = cfg.talentChoices;
+        if (cfg.randomArmorer) {
+          talentChoices = {
+            armorerArmorType: Math.random() < 0.5 ? 'chain' : 'plate',
+          };
+        }
+        runGame(m, {
+          characterId,
+          talents: cfg.talents || {},
+          talentChoices,
+          noBag: true,
+        });
+      }
+      const ff = m.finalFloors.slice().sort((a, b) => a - b);
+      const n = ff.length || 1;
+      const mean = ff.reduce((a, b) => a + b, 0) / n;
+      const med = ff[Math.floor(ff.length / 2)] || 0;
+      const reach = (floor) => (100 * ff.filter((f) => f >= floor).length) / n;
+      const winPct = (100 * m.wins) / n;
+      const row = {
+        label: cfg.label,
+        step: cfg.step,
+        talents: cfg.talents,
+        mean: +mean.toFixed(2),
+        med,
+        f15: +reach(15).toFixed(1),
+        f30: +reach(30).toFixed(1),
+        f45: +reach(45).toFixed(1),
+        win: +winPct.toFixed(1),
+      };
+      rows.push(row);
+      console.log(
+        row.label.padEnd(28)
+        + row.mean.toFixed(1).padStart(7)
+        + String(row.med).padStart(6)
+        + row.f15.toFixed(0).padStart(6) + '%'
+        + row.f30.toFixed(0).padStart(6) + '%'
+        + row.f45.toFixed(0).padStart(6) + '%'
+        + row.win.toFixed(0).padStart(6) + '%'
+      );
+    }
+    out.classes[characterId] = { tree: treeName, rows };
+  }
+
+  const outPath = 'sim/output/talent-ladder.json';
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, JSON.stringify(out, null, 2));
+  console.log(`\nJSON written to ${outPath}`);
+  return out;
 }
 
 // ── Loot-stats playtest: weapon damage + enemy HP curves + run-end bonuses ─
@@ -2822,14 +3105,21 @@ function runLootStats() {
       const extras = buildSimRunExtras(simFlags, {
         allRelics: ALL_RELICS, strongAmulets: STRONG_AMULETS, allAmulets, metaMode,
       });
-      const meta = restrictMetaPool(new MetaProgressionManager({}), extras.metaPool);
-      meta.unlockedRelics = extras.relics.slice();
+      const meta = new MetaProgressionManager({});
+      meta.characters = {
+        rogue: { xp: 0, talents: {}, choices: {} },
+        warrior: { xp: 0, talents: {}, choices: {} },
+      };
       meta.totalDeaths = 0;
       meta.bestFloor = 1;
-      meta.veteranHp = 0;
+      const charId = simFlags.characterId || DEFAULT_CHARACTER_ID;
       for (let i = 0; i < runs; i++) {
-        const r = runOne({ relics: [...meta.unlockedRelics], veteranHp: meta.veteranHp });
-        if (!r.won) meta.handlePlayerDeath(r.killer, r.reached);
+        const r = runOne({
+          characterId: charId,
+          talents: { ...meta.ensureCharacter(charId).talents },
+          talentChoices: { ...meta.ensureCharacter(charId).choices },
+        });
+        if (!r.won) meta.handlePlayerDeath(r.killer, r.reached, charId);
       }
     } else {
       for (let i = 0; i < runs; i++) runOne({});
@@ -2940,17 +3230,21 @@ function runStatsDb() {
 
     db.runInTransaction(() => {
       if (metaMode === 'accumulate' && simFlags.enableMeta) {
-        const extras = buildSimRunExtras(simFlags, {
-          allRelics: ALL_RELICS, strongAmulets: STRONG_AMULETS, allAmulets, metaMode,
-        });
-        const meta = restrictMetaPool(new MetaProgressionManager({}), extras.metaPool);
-        meta.unlockedRelics = extras.relics.slice();
+        const meta = new MetaProgressionManager({});
+        meta.characters = {
+          rogue: { xp: 0, talents: {}, choices: {} },
+          warrior: { xp: 0, talents: {}, choices: {} },
+        };
         meta.totalDeaths = 0;
         meta.bestFloor = 1;
-        meta.veteranHp = 0;
+        const charId = normFlags.characterId || DEFAULT_CHARACTER_ID;
         for (let i = 0; i < runs; i++) {
           recorder.beginRun();
-          const r = runGame(throwaway, buildRunConfig({ relics: [...meta.unlockedRelics], veteranHp: meta.veteranHp }));
+          const r = runGame(throwaway, buildRunConfig({
+            characterId: charId,
+            talents: { ...meta.ensureCharacter(charId).talents },
+            talentChoices: { ...meta.ensureCharacter(charId).choices },
+          }));
           recorder.finishRun({
             won: r.won,
             reachedFloor: r.reached,
@@ -2958,7 +3252,7 @@ function runStatsDb() {
             endReason: r.endReason,
             deathEncounterType: r.deathEncounterType,
           });
-          if (!r.won) meta.handlePlayerDeath(r.killer, r.reached);
+          if (!r.won) meta.handlePlayerDeath(r.killer, r.reached, charId);
         }
       } else {
         for (let i = 0; i < runs; i++) {
@@ -3050,8 +3344,10 @@ function runFresh() {
 }
 const MODE = process.argv[2];
 const t0 = Date.now();
-if (MODE === 'reliccompare') {
-  runRelicCompare();
+if (MODE === 'reliccompare' || MODE === 'talentcompare') {
+  runTalentCompare();
+} else if (MODE === 'talentladder') {
+  runTalentLadder();
 } else if (MODE === 'fresh') {
   runFresh();
 } else if (MODE === 'sweep') {

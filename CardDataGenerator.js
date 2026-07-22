@@ -1,6 +1,7 @@
 import { getAmuletAtlasPresentation } from './utils/RelicsOthersAtlas.js';
 import { areAmuletsDisabled } from './utils/TestOptions.js';
 import { resolveArmorSpawnTypes } from './utils/CharacterClasses.js';
+import { applyArmorTalentMods } from './utils/TalentDefinitions.js';
 
 function postBossWeaponFloor(floor) {
   return (floor >= 16 && floor <= 19) || (floor >= 31 && floor <= 34);
@@ -1281,6 +1282,9 @@ export class CardDataGenerator {
         }
         if (selected.type === 'plate' && selected.rangedIgnoreChance) {
             card.rangedIgnoreChance = selected.rangedIgnoreChance;
+        }
+        if (gameState?.talentEffects) {
+            applyArmorTalentMods(card, gameState.talentEffects);
         }
         return card;
     }

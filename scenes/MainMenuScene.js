@@ -353,7 +353,7 @@ export class MainMenuScene extends Phaser.Scene {
         // Sound Effects Volume
         this.createVolumeControl(t(this, 'ui.options.soundEffects'), 230, 'sfx');
         
-        // Reset Progress button (wipes unlocked relics + saved run)
+        // Reset Progress button (wipes character XP/talents + saved run)
         const resetButton = this.createButton(320, 270, 220, 32, t(this, 'ui.options.resetAll'), 0xff4444, () => {
             this.confirmResetProgress();
         });

@@ -8,6 +8,7 @@ import {
     getCharacter,
     rollClassWeaponCrit,
 } from './utils/CharacterClasses.js';
+import { applyArmorTalentMods } from './utils/TalentDefinitions.js';
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
         this.scene = scene;
@@ -2536,7 +2537,25 @@ export class InventorySystem {
             }
 
             // Class passive: rogue +10% on dagger/bow (before weapon specials / crit).
-            attackDamage = applyClassWeaponDamageBonus(characterId, weapon, attackDamage);
+            // Keen Edge talent stacks on the same types.
+            const talentFx = this.scene.gameState.talentEffects || null;
+            attackDamage = applyClassWeaponDamageBonus(characterId, weapon, attackDamage, talentFx);
+
+            // Twin Fang: full % on daggers, half on bows (off-hand pip still free).
+            if (talentFx?.twinFangPct > 0) {
+                if (weapon.weaponType === 'dagger') {
+                    attackDamage = Math.ceil(attackDamage * (1 + talentFx.twinFangPct));
+                } else if (weapon.weaponType === 'bow') {
+                    attackDamage = Math.ceil(attackDamage * (1 + talentFx.twinFangPct * 0.5));
+                }
+            }
+
+            // First Blood: first attack each floor deals bonus %.
+            if (talentFx?.firstBloodPct > 0 && !this.scene.gameState.firstAttackThisFloorUsed) {
+                attackDamage = Math.ceil(attackDamage * (1 + talentFx.firstBloodPct));
+                this.scene.gameState.firstAttackThisFloorUsed = true;
+                this.scene.createFloatingText(cardSprite.x, cardSprite.y - 36, 'First Blood!', 0xff88aa);
+            }
 
             // Class passive: warrior crit replaces the hit (sword/axe only).
             const critRoll = rollClassWeaponCrit(characterId, weapon, attackDamage);
@@ -2605,6 +2624,7 @@ export class InventorySystem {
                     // First hit: the dragged weapon. skipDurability=false so its
                     // pip is spent normally inside attackEnemy.
                     this.scene.cardSystem.attackEnemy(closestEnemy, attackDamage, false, weapon, false);
+                    this.applyAssassinateTalent(closestEnemy);
                 } else {
                     // Second dual-wield hit: use the OTHER dagger's stats — its
                     // damage AND its gem — but only the dragged dagger spends a
@@ -2613,8 +2633,15 @@ export class InventorySystem {
                     // touch its durability.
                     let secondaryDamage = secondaryDagger.damage || 1;
                     if (wasExhausted) secondaryDamage = Math.ceil(secondaryDamage * 0.8);
-                    secondaryDamage = applyClassWeaponDamageBonus(characterId, secondaryDagger, secondaryDamage);
+                    secondaryDamage = applyClassWeaponDamageBonus(
+                        characterId, secondaryDagger, secondaryDamage, talentFx
+                    );
+                    // Twin Fang: all dagger hits get +% (off-hand pip still free).
+                    if (talentFx?.twinFangPct > 0) {
+                        secondaryDamage = Math.ceil(secondaryDamage * (1 + talentFx.twinFangPct));
+                    }
                     this.scene.cardSystem.attackEnemy(closestEnemy, secondaryDamage, false, secondaryDagger, true);
+                    this.applyAssassinateTalent(closestEnemy);
                     this.scene.updateUI?.();
                 }
                 if (i < attackCount - 1) {
@@ -2627,6 +2654,14 @@ export class InventorySystem {
                     this.playSlotStrikeAnimation(secondaryIndex);
                     CombatSequencer.playSound(this.scene, 'attack', swingKey, 0.4);
                 }
+            }
+
+            // Front Volley: bow also hits a random front (MELEE) enemy.
+            if (
+                talentFx?.frontVolleyPct > 0
+                && this.scene.cardSystem?.isRangedWeapon?.(weapon)
+            ) {
+                this.applyFrontVolleyTalent(closestEnemy, attackDamage, weapon, talentFx.frontVolleyPct);
             }
             
             // Un-equip the weapon after the attack sequence
@@ -2721,6 +2756,43 @@ export class InventorySystem {
     }
 
     // Helper method to handle weapon breaking
+    applyAssassinateTalent(enemyIndex) {
+        const threshold = this.scene.gameState?.talentEffects?.assassinateThreshold || 0;
+        if (threshold <= 0) return;
+        const card = this.scene.cardSystem?.boardCards?.[enemyIndex];
+        if (!card?.revealed || !card.data) return;
+        if (card.data.type !== 'enemy' && card.data.type !== 'boss') return;
+        const hp = card.data.health ?? 0;
+        if (hp <= 0 || hp > threshold) return;
+        this.scene.cardSystem.attackEnemy(enemyIndex, hp, false, null, true);
+        if (card.sprite) {
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 28, 'Assassinate!', 0xaa66ff);
+        }
+    }
+
+    applyFrontVolleyTalent(primaryIndex, bowDamage, weapon, pct) {
+        const boards = this.scene.cardSystem?.boardCards || [];
+        const candidates = [];
+        boards.forEach((card, index) => {
+            if (index === primaryIndex) return;
+            if (!card?.revealed || !card.data) return;
+            if (card.data.type !== 'enemy' && card.data.type !== 'boss') return;
+            if ((card.data.health ?? 0) <= 0) return;
+            // Front row ≈ MELEE role (bow already ignores them for primary shot).
+            if (card.data.role !== 'MELEE') return;
+            candidates.push(index);
+        });
+        if (!candidates.length) return;
+        const target = candidates[Math.floor(Math.random() * candidates.length)];
+        const volleyDmg = Math.max(1, Math.ceil(bowDamage * pct));
+        this.scene.cardSystem.attackEnemy(target, volleyDmg, false, weapon, true);
+        const sprite = boards[target]?.sprite;
+        if (sprite) {
+            this.scene.createFloatingText(sprite.x, sprite.y - 24, 'Volley!', 0x88ccff);
+        }
+        this.applyAssassinateTalent(target);
+    }
+
     handleWeaponBreak(weapon, cardSprite, slotIndex) {
         // Clean up board artifacts before destroying
         this.cleanupBoardArtifacts(cardSprite);
@@ -3368,6 +3440,7 @@ export class InventorySystem {
             if (armorType === 'plate' && armorData.rangedIgnoreChance) {
                 card.rangedIgnoreChance = armorData.rangedIgnoreChance;
             }
+            applyArmorTalentMods(card, this.scene.gameState?.talentEffects);
             return card;
         }
         

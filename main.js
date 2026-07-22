@@ -15,6 +15,8 @@ import { EventScene } from './scenes/EventScene.js';
 import { TreasureScene } from './scenes/TreasureScene.js';
 import { SandboxHubScene } from './scenes/SandboxHubScene.js';
 import { CharacterSelectScene } from './scenes/CharacterSelectScene.js';
+import { TalentTreeScene } from './scenes/TalentTreeScene.js';
+import { ArmorerPickScene } from './scenes/ArmorerPickScene.js';
 
 const config = {
     type: Phaser.AUTO,
@@ -45,7 +47,9 @@ const config = {
         EventScene,
         TreasureScene,
         SandboxHubScene,
-        CharacterSelectScene
+        CharacterSelectScene,
+        TalentTreeScene,
+        ArmorerPickScene
     ],
     scale: {
         mode: Phaser.Scale.NONE,

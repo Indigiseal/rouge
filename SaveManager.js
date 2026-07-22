@@ -34,12 +34,17 @@ export class SaveManager {
 
   saveMetaProgression(metaData) {
     const data = {
-      unlockedRelics: metaData?.unlockedRelics ?? [],
+      characters: metaData?.characters ?? {
+        rogue: { xp: 0, talents: {}, choices: {} },
+        warrior: { xp: 0, talents: {}, choices: {} },
+      },
+      unlockedRelics: [],
       totalDeaths: metaData?.totalDeaths ?? 0,
       bestFloor: metaData?.bestFloor ?? 1,
       enemyKillStats: metaData?.enemyKillStats ?? {},
       totalRuns: metaData?.totalRuns ?? 0,
       totalEnemiesKilled: metaData?.totalEnemiesKilled ?? 0,
+      pendingEgg: metaData?.pendingEgg ?? false,
       saveVersion: this.SAVE_VERSION,
     };
     this.safeSet(this.META_SAVE_KEY, JSON.stringify(data));
@@ -49,12 +54,17 @@ export class SaveManager {
     const saved = this.safeGet(this.META_SAVE_KEY);
     if (!saved) {
       return {
+        characters: {
+          rogue: { xp: 0, talents: {}, choices: {} },
+          warrior: { xp: 0, talents: {}, choices: {} },
+        },
         unlockedRelics: [],
         totalDeaths: 0,
         bestFloor: 1,
         enemyKillStats: {},
         totalRuns: 0,
         totalEnemiesKilled: 0,
+        pendingEgg: false,
         saveVersion: this.SAVE_VERSION,
       };
     }
@@ -63,25 +73,53 @@ export class SaveManager {
       return this.migrateMeta(meta);
     } catch {
       return {
+        characters: {
+          rogue: { xp: 0, talents: {}, choices: {} },
+          warrior: { xp: 0, talents: {}, choices: {} },
+        },
         unlockedRelics: [],
         totalDeaths: 0,
         bestFloor: 1,
         enemyKillStats: {},
         totalRuns: 0,
         totalEnemiesKilled: 0,
+        pendingEgg: false,
         saveVersion: this.SAVE_VERSION,
       };
     }
   }
 
   migrateMeta(meta) {
+    const empty = () => ({ xp: 0, talents: {}, choices: {} });
+    let characters = {
+      rogue: empty(),
+      warrior: empty(),
+    };
+    if (meta.characters && typeof meta.characters === 'object') {
+      for (const id of ['rogue', 'warrior']) {
+        const src = meta.characters[id] || {};
+        characters[id] = {
+          xp: Math.max(0, Number(src.xp) || 0),
+          talents: src.talents && typeof src.talents === 'object' ? { ...src.talents } : {},
+          choices: src.choices && typeof src.choices === 'object' ? { ...src.choices } : {},
+        };
+      }
+    } else {
+      const legacy = Math.max(0, Number(meta.metaPoints) || 0);
+      if (legacy > 0) {
+        characters.rogue.xp = legacy;
+        characters.warrior.xp = legacy;
+      }
+    }
     return {
-      unlockedRelics: Array.isArray(meta.unlockedRelics) ? meta.unlockedRelics : [],
+      characters,
+      unlockedRelics: [],
       totalDeaths: Number.isFinite(meta.totalDeaths) ? meta.totalDeaths : 0,
       bestFloor: Number.isFinite(meta.bestFloor) ? meta.bestFloor : 1,
       enemyKillStats: meta.enemyKillStats && typeof meta.enemyKillStats === 'object' ? meta.enemyKillStats : {},
       totalRuns: Number.isFinite(meta.totalRuns) ? meta.totalRuns : 0,
       totalEnemiesKilled: Number.isFinite(meta.totalEnemiesKilled) ? meta.totalEnemiesKilled : 0,
+      pendingEgg: Boolean(meta.pendingEgg),
       saveVersion: meta.saveVersion ?? this.SAVE_VERSION,
     };
   }

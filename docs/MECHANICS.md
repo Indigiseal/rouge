@@ -15,9 +15,13 @@
   different types at the same rolled rarity band (play-style pick, not power pick)
 - Consumer: boss reward room / weapon drops once a pick-one UI exists
 
-## Meta points
-- Every death grants meta points: 2 + floor(reached_floor / 5) + bosses_killed * 3
-- Stored in `metaProgression.metaPoints`; spending (talent tree) is a future phase
+## Meta progression
+- Every finished run (death or win) grants **character XP**:
+  `2 + floor(reached_floor / 5) + bosses_killed * 3`
+- XP and purchased talents are **per character** and persist across runs
+- After character select, the talent tree opens (Shadow / Iron purchasable;
+  other branches visible as WIP)
+- Death no longer unlocks relics; legacy relic/veteran HP meta is retired
 
 ## Board rules
 - Brick grid, compact cluster centered

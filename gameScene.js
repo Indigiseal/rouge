@@ -79,10 +79,14 @@ export class GameScene extends Phaser.Scene {
             // New run
             this.gameState = new GameState(this);
             this.gameState.characterId = data.characterId || 'rogue';
-            // Apply relic effects to fresh game state (skip for the tutorial so
+            // Apply talent effects to fresh game state (skip for the tutorial so
             // its rigged board is deterministic).
             if (!this.tutorialMode && !this.sandboxMode && !isMetaProgressionDisabled()) {
-                this.metaManager.applyRelicEffects(this.gameState);
+                const opts = {};
+                if (data.armorerArmorType === 'chain' || data.armorerArmorType === 'plate') {
+                    opts.armorerArmorType = data.armorerArmorType;
+                }
+                this.metaManager.applyRelicEffects(this.gameState, true, opts);
             }
             // Cross-run story memory: seed the fresh run from any saved story
             // progress so completed events don't repeat and story chains resume
@@ -1811,7 +1815,7 @@ export class GameScene extends Phaser.Scene {
         const killedBy = this.killedBy || 'Unknown Enemy';
         const floor = this.gameState?.currentFloor ?? 1;
         let deathStats = { killedBy, floor };
-        let newRelic = null;
+        let xpResult = null;
 
         try {
             deathStats = this.gameState.getDeathStats();
@@ -1832,7 +1836,8 @@ export class GameScene extends Phaser.Scene {
                     item => item?.id === 'monsterEgg' || item?.name === 'Egg'
                 );
                 this.metaManager.setPendingEgg(hasEgg);
-                newRelic = this.metaManager.handlePlayerDeath(killedBy, floor);
+                const characterId = this.gameState.characterId || 'rogue';
+                xpResult = this.metaManager.handlePlayerDeath(killedBy, floor, characterId);
             }
         } catch (error) {
             // Death UI is critical. Meta/save failures must never strand the run
@@ -1841,7 +1846,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         try {
-            this.showDefeatResult(deathStats, newRelic);
+            this.showDefeatResult(deathStats, xpResult);
             this._resultScreenShown = true;
         } catch (error) {
             console.error('Failed to render the full defeat screen:', error);
@@ -1937,7 +1942,7 @@ export class GameScene extends Phaser.Scene {
         return button;
     }
 
-    showDefeatResult(deathStats, newRelic) {
+    showDefeatResult(deathStats, xpResult) {
         const resultDepth = 11000;
         // Interactive (even with no handlers) so it swallows clicks and stops them
         // reaching buttons underneath, like a still-visible Next Floor button.
@@ -1977,40 +1982,21 @@ export class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(resultDepth + 2);
 
         this.addResultPanel(320, 262, 304, 78, 1, resultDepth + 1);
-        if (newRelic) {
-            this.add.text(320, 237, 'NEW RELIC UNLOCKED!', {
-                fontSize: '15px',
-                fill: '#fed991',
-                fontFamily: '"HoMM Pixel", Arial, sans-serif'
-            }).setOrigin(0.5).setDepth(resultDepth + 2);
-            this.addRelicIcon(newRelic, 214, 264, resultDepth + 2);
-            this.add.text(336, 256, translateItemName(this, newRelic), {
-                fontSize: '14px',
-                fill: '#ffffff',
-                fontFamily: '"HoMM Pixel", Arial, sans-serif'
-            }).setOrigin(0.5).setDepth(resultDepth + 2);
-            this.add.text(336, 281, translateDescription(this, newRelic.description), {
-                fontSize: '11px',
-                fill: '#d8d1d8',
-                fontFamily: '"HoMM Pixel", Arial, sans-serif',
-                wordWrap: { width: 200 },
-                align: 'center'
-            }).setOrigin(0.5).setDepth(resultDepth + 2);
-            this.createUnlockParticles(resultDepth + 2);
-        } else {
-            this.add.text(320, 253, 'No new relic this time', {
-                fontSize: '15px',
-                fill: '#d8d1d8',
-                fontFamily: '"HoMM Pixel", Arial, sans-serif'
-            }).setOrigin(0.5).setDepth(resultDepth + 2);
-            this.add.text(320, 279, 'Try dying to different enemies to unlock more relics.', {
-                fontSize: '11px',
-                fill: '#b8b0b8',
-                fontFamily: '"HoMM Pixel", Arial, sans-serif',
-                wordWrap: { width: 236 },
-                align: 'center'
-            }).setOrigin(0.5).setDepth(resultDepth + 2);
-        }
+        const gained = xpResult?.xpGained ?? 0;
+        const total = xpResult?.totalXp
+            ?? this.metaManager?.getCharacterXp?.(this.gameState?.characterId) ?? 0;
+        this.add.text(320, 253, gained > 0 ? `+${gained} character XP` : 'No XP this run', {
+            fontSize: '15px',
+            fill: '#fed991',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5).setDepth(resultDepth + 2);
+        this.add.text(320, 279, `Spend it on talents before the next run. Total: ${total}`, {
+            fontSize: '11px',
+            fill: '#b8b0b8',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            wordWrap: { width: 236 },
+            align: 'center'
+        }).setOrigin(0.5).setDepth(resultDepth + 2);
 
         this.addResultButton(320, 336, 'Continue', () => this.leaveSandboxOrMenu(), resultDepth + 4);
     }
@@ -2415,6 +2401,15 @@ export class GameScene extends Phaser.Scene {
         MusicManager.stop(this, 700);
         this.clearEnemyTurnTimers();
 
+        let xpResult = null;
+        if (!this.sandboxMode && this.metaManager && !isMetaProgressionDisabled()) {
+            this.metaManager.totalRuns = (this.metaManager.totalRuns || 0) + 1;
+            const floor = this.gameState?.currentFloor ?? 45;
+            if (floor > this.metaManager.bestFloor) this.metaManager.bestFloor = floor;
+            xpResult = this.metaManager.grantRunXp(this.gameState?.characterId || 'rogue', floor);
+            this.saveManager?.clearCurrentRun?.();
+        }
+
         const resultDepth = 11000;
         // Interactive (even with no handlers) so it swallows clicks and stops them
         // reaching buttons underneath, like a still-visible Next Floor button.
@@ -2441,12 +2436,17 @@ export class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(resultDepth + 2);
 
         this.addResultPanel(320, 262, 304, 78, 3, resultDepth + 1);
-        this.add.text(320, 253, `Stories resolved: ${this.getResolvedStoryCount()}/1`, {
+        const gained = xpResult?.xpGained ?? 0;
+        const total = xpResult?.totalXp
+            ?? this.metaManager?.getCharacterXp?.(this.gameState?.characterId) ?? 0;
+        this.add.text(320, 253, gained > 0 ? `+${gained} character XP` : `Stories: ${this.getResolvedStoryCount()}/1`, {
             fontSize: '15px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5).setDepth(resultDepth + 2);
-        this.add.text(320, 279, 'No relic is granted for victory. Glory will have to do.', {
+        this.add.text(320, 279, gained > 0
+            ? `Talents persist. Total XP: ${total}`
+            : 'Glory will have to do.', {
             fontSize: '11px',
             fill: '#5b3b26',
             fontFamily: '"HoMM Pixel", Arial, sans-serif',

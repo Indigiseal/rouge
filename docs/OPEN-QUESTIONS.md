@@ -52,10 +52,39 @@
 
 ## Мета-прогрессия
 
-- **[ ] На что тратить meta points.** Смерть уже даёт очки
-  (`2 + floor/5 + bosses*3`), но ветки навыков/способностей ещё нет.
-  Нужно спроектировать дерево (какие ноды, стоимость, влияние на pure-runs
-  цели акта 1, не сломать 50/20 gate).
+- **[x] На что тратить meta points.** Per-character XP (формула как раньше:
+  `2 + floor/5 + bosses*3`). После выбора класса — дерево талантов. Купленные
+  таланты постоянны. Реликвий от смерти больше нет.
+
+- **[ ] WIP-ветки.** В игре покупаются только **Shadow** (rogue) и **Iron**
+  (warrior). Ghost / Scoundrel / Edge / Camp видны с заглушкой WIP (просмотр
+  описаний, покупка закрыта).
+
+- **[ ] Замены economy-нод.** Cutpurse / Quick Hands / Cleaving Tempo / War Chest
+  (и возможно Black Market / % repair) отложены — нет уверенности в coin/AP
+  economy. Черновые замены: Poison Tip, Scavenger, Quiet Kill, Blood Price,
+  Muster / Smithy Favor (free repair без скидки цены).
+
+- **[ ] Bloodthirst (Ghost).** Кривая lifesteal на низком HP:
+  ≤50/35/25/10% Max → 10/20/30/40% отхила от урона (высшая ступень). Нужен
+  плейтест и сим перед открытием ветки.
+
+- **[ ] Числа / дерево Shadow.** Порядок: Keen Edge → First Blood → Twin Fang →
+  Front Volley → Assassinate. Twin Fang: +% на все удары кинжалом (полный) и луком
+  (половина). Ретюн под линейную лестницу рядом с Iron: Keen 4/7/11%, First Blood
+  25/40/55%, Twin 8/12/18%, Volley 18/26/34%, Assassinate 2/2/3 HP. Сим n=1000:
+  full Shadow ~33% win / ~31 meanF.
+
+- **[ ] Числа / дерево Iron.** Порядок: Armorer's Start → Rivets → Bulwark →
+  Hardened → Reprisal. Покупка только если в предыдущей ноде ветки есть ≥1 ранг
+  (сим пререквизиты игнорирует). Armorer's Start: uncommon DEF 3 chain/plate на
+  отдельном экране при старте рана. Цель полного дерева ~30% win / ~30 meanF
+  (рядом с полным Shadow). Reprisal: 15/25/35% reflect через `floor` (не `ceil`);
+  Hardened +1 DEF на всех рангах; ранние ноды усилены ради более линейного роста.
+  Сим `talentladder` n=1000 (после ретюна): full Iron ~32% win / ~31 meanF.
+
+- **[ ] Судьба legacy relic saves.** `unlockedRelics` / `veteranHp` больше не
+  применяются; старые `metaPoints` мигрируют в XP обоих персонажей один раз.
 
 ## Амулеты
 

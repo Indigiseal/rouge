@@ -129,11 +129,20 @@ export function weaponHasClassDamageMark(characterId, weaponType) {
 }
 
 /** Apply rogue-style flat weapon-type bonus (ceil). */
-export function applyClassWeaponDamageBonus(characterId, weapon, damage) {
+export function applyClassWeaponDamageBonus(characterId, weapon, damage, talentEffects = null) {
   if (!weapon || damage == null) return damage;
   const def = getCharacter(characterId);
-  if (!(def.weaponDamageBonusTypes || []).includes(weapon.weaponType)) return damage;
-  const bonus = def.weaponDamageBonus || 0;
+  let bonus = 0;
+  if ((def.weaponDamageBonusTypes || []).includes(weapon.weaponType)) {
+    bonus += def.weaponDamageBonus || 0;
+  }
+  // Keen Edge: extra % on the same weapon types as the class mark.
+  if (
+    talentEffects?.keenEdgePct > 0
+    && (def.weaponDamageBonusTypes || []).includes(weapon.weaponType)
+  ) {
+    bonus += talentEffects.keenEdgePct;
+  }
   if (bonus <= 0) return damage;
   return Math.ceil(damage * (1 + bonus));
 }

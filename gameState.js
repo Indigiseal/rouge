@@ -28,6 +28,7 @@ export class GameState {
         // Optional sim/experiment override: ['chain'] | ['plate'] | ['chain','plate'].
         // null → use character class armorTypes.
         this.armorPool = null;
+        this.talentEffects = {};
         this.discardedCardsThisRun = 0;
         this.discardCritChance = 0;
         this.storyRun = {
@@ -131,13 +132,25 @@ export class GameState {
         }
     }
 
-    // Ironhide Tonic relic + armor-durability earrings: chance to skip the loss.
+    // Ironhide Tonic relic + armor-durability earrings + Rivets talent:
+    // chance to skip the loss on any armor durability tick.
     tickEquippedArmorDurability() {
         if (!this.equippedArmor) return;
         const relicSave = this.relicEffects?.armorDurabilitySave || 0;
         const amuletSave = this.scene?.amuletManager?.getArmorDurabilitySaveChance?.() || 0;
-        const durabilitySave = Math.min(0.95, relicSave + amuletSave);
-        if (durabilitySave > 0 && Math.random() < durabilitySave) return;
+        const rivets = this.talentEffects?.rivetsChance || 0;
+        const durabilitySave = Math.min(0.95, relicSave + amuletSave + rivets);
+        if (durabilitySave > 0 && Math.random() < durabilitySave) {
+            if (rivets > 0 && this.scene?.playerAvatar) {
+                this.scene.createFloatingText(
+                    this.scene.playerAvatar.x,
+                    this.scene.playerAvatar.y + 16,
+                    'Rivets!',
+                    0xc0c0c0
+                );
+            }
+            return;
+        }
 
         this.equippedArmor.durability--;
         if (this.equippedArmor.durability <= 0) {
@@ -263,6 +276,7 @@ export class GameState {
             
             // Durability tick when armor's protection actually absorbs a hit.
             // (Dodge-only leather never enters here — it ticks on dodge above.)
+            // Rivets save chance lives inside tickEquippedArmorDurability.
             if (protection > 0 && amount > 0) {
                 this.tickEquippedArmorDurability();
             }
@@ -276,6 +290,32 @@ export class GameState {
         const effectiveProtection = Math.max(0, protection - Math.max(0, armorPierce));
         const actualDamage = Math.max(0, amount - effectiveProtection);
         const blockedDamage = Math.max(0, amount - actualDamage);
+
+        // Reprisal (Iron): always reflect a % of DEF-blocked damage; can kill.
+        const reprisalPct = this.talentEffects?.reprisalReflectPct || 0;
+        if (
+            reprisalPct > 0
+            && blockedDamage > 0
+            && enemyIndex >= 0
+            && this.equippedArmor
+            && (this.equippedArmor.protection || 0) > 0
+        ) {
+            const reprisalDmg = Math.floor(blockedDamage * reprisalPct);
+            if (reprisalDmg > 0) {
+                const enemySprite = this.scene.cardSystem?.boardCards?.[enemyIndex]?.sprite;
+                this.scene.createFloatingText(
+                    this.scene.playerAvatar?.x || 0,
+                    (this.scene.playerAvatar?.y || 0) - 18,
+                    'Reprisal!',
+                    0xaaccff
+                );
+                this.scene.cardSystem?.attackEnemy?.(enemyIndex, reprisalDmg, true);
+                if (enemySprite) {
+                    CombatSequencer.floatingText(this.scene, 'reflect',
+                        enemySprite.x, enemySprite.y - 20, `-${reprisalDmg} (Reprisal)`, 0xaaccff);
+                }
+            }
+        }
 
         // Chain: chance to counter a melee hit for ceil(50% of blocked), no weapon pip.
         const counterChance = this.equippedArmor?.meleeCounterChance || 0;
