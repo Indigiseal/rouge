@@ -1,14 +1,15 @@
 // Talent tree after character select. Shadow/Iron purchasable; other branches WIP.
 // Purchases require at least 1 rank in the previous node of the same branch.
-import { SoundHelper } from '../utils/SoundHelper.js';
-import { MusicManager } from '../utils/MusicManager.js';
-import { MetaProgressionManager } from '../MetaProgressionManager.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { MusicManager } from '../audio/MusicManager.js';
+import { MetaProgressionManager } from '../managers/MetaProgressionManager.js';
 import {
   getBranchesForCharacter,
   getTalentNode,
+  getTalentDisplay,
   costForNextRank,
-} from '../utils/TalentDefinitions.js';
-import { isMetaProgressionDisabled } from '../utils/TestOptions.js';
+} from '../content/talents/index.js';
+import { isMetaProgressionDisabled } from '../config/TestOptions.js';
 
 export class TalentTreeScene extends Phaser.Scene {
   constructor() {
@@ -89,17 +90,21 @@ export class TalentTreeScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       branch.nodes.forEach((talentId, ni) => {
-        const y = 78 + ni * 32;
+        const y = 78 + ni * 34;
         const node = getTalentNode(talentId);
-        const bg = this.add.rectangle(x, y, 176, 26, 0x2c1810, 0.92)
+        const display = getTalentDisplay(talentId) || node;
+        const descriptionRanks = [...(display?.descriptionRanks || [])];
+        const displayName = display?.name || node?.name || talentId;
+        const bg = this.add.rectangle(x, y, 176, 28, 0x2c1810, 0.92)
           .setStrokeStyle(1, branch.wip ? 0x444c56 : 0x8b6914)
           .setInteractive({ useHandCursor: true });
-        const label = this.add.text(x, y, node?.name || talentId, {
+        const label = this.add.text(x, y, displayName, {
           fontSize: '10px',
           fill: branch.wip ? '#8b949e' : '#e6edf3',
           fontFamily: '"HoMM Pixel", Arial, sans-serif',
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
+        const select = () => this.selectTalent(talentId);
         bg.on('pointerover', () => {
           SoundHelper.playVariant(this, 'hover_button', 0.3);
           bg.setStrokeStyle(1, 0xd4a017);
@@ -107,9 +112,18 @@ export class TalentTreeScene extends Phaser.Scene {
         bg.on('pointerout', () => {
           bg.setStrokeStyle(1, this.selectedTalentId === talentId ? 0xd4a017 : (branch.wip ? 0x444c56 : 0x8b6914));
         });
-        bg.on('pointerdown', () => this.selectTalent(talentId));
+        bg.on('pointerdown', select);
+        label.on('pointerdown', select);
 
-        this.ui.push({ talentId, bg, label, wip: Boolean(branch.wip) });
+        this.ui.push({
+          talentId,
+          bg,
+          label,
+          wip: Boolean(branch.wip),
+          name: displayName,
+          maxRank: node?.maxRank || 1,
+          descriptionRanks,
+        });
       });
     });
   }
@@ -159,12 +173,11 @@ export class TalentTreeScene extends Phaser.Scene {
 
     this.ui.forEach((row) => {
       const rank = this.meta.getTalentRank(this.characterId, row.talentId);
-      const node = getTalentNode(row.talentId);
-      const max = node?.maxRank || 1;
+      const max = row.maxRank || 1;
       const check = this.meta.canPurchaseTalent(this.characterId, row.talentId);
       const locked = check.reason === 'prereq';
       row.label.setText(
-        `${locked ? '[ ] ' : ''}${node?.name || row.talentId}  ${rank}/${max}`
+        `${locked ? '[ ] ' : ''}${row.name || row.talentId}  ${rank}/${max}`
       );
       const selected = this.selectedTalentId === row.talentId;
       row.bg.setStrokeStyle(1, selected ? 0xd4a017 : (row.wip || locked ? 0x444c56 : 0x8b6914));
@@ -173,31 +186,34 @@ export class TalentTreeScene extends Phaser.Scene {
       row.label.setColor(locked && !row.wip ? '#6e7681' : (row.wip ? '#8b949e' : '#e6edf3'));
     });
 
-    const node = getTalentNode(this.selectedTalentId);
-    if (!node) {
+    // Always resolve copy fresh by selected id (do not trust row snapshots for body text).
+    const selectedId = this.selectedTalentId;
+    const display = selectedId ? getTalentDisplay(selectedId) : null;
+    const node = selectedId ? getTalentNode(selectedId) : null;
+    if (!selectedId || !display || !node) {
       this.detailTitle.setText('');
       this.detailBody.setText('Select a talent');
       this.buyLabel.setText('Buy');
       return;
     }
 
-    const rank = this.meta.getTalentRank(this.characterId, node.id);
-    const descIdx = Math.min(Math.max(rank, 1), node.descriptionRanks.length) - 1;
-    const nextDesc = node.descriptionRanks[Math.min(rank, node.descriptionRanks.length - 1)];
-    this.detailTitle.setText(node.name + (node.wip ? '  [WIP]' : ''));
-    this.detailBody.setText(rank > 0
-      ? `Owned r${rank}: ${node.descriptionRanks[descIdx]}\nNext: ${rank >= node.maxRank ? 'MAX' : nextDesc}`
-      : nextDesc);
+    const ranks = display.descriptionRanks || node.descriptionRanks || [];
+    const rank = this.meta.getTalentRank(this.characterId, selectedId);
+    const ownedDesc = ranks[Math.max(0, Math.min(rank, ranks.length) - 1)] || '';
+    const nextDesc = ranks[Math.min(rank, Math.max(0, ranks.length - 1))] || '';
+    const title = display.name + (node.wip ? '  [WIP]' : '');
 
-    const check = this.meta.canPurchaseTalent(this.characterId, node.id);
+    const check = this.meta.canPurchaseTalent(this.characterId, selectedId);
+    let body = rank > 0
+      ? `Owned r${rank}: ${ownedDesc}\nNext: ${rank >= (node.maxRank || 1) ? 'MAX' : nextDesc}`
+      : (nextDesc || 'No description.');
+
     if (node.wip || check.reason === 'wip') {
       this.buyLabel.setText('WIP');
     } else if (check.reason === 'prereq') {
-      const prev = getTalentNode(check.prereqId);
+      const prev = getTalentDisplay(check.prereqId) || getTalentNode(check.prereqId);
       this.buyLabel.setText('Locked');
-      this.detailBody.setText(
-        `${nextDesc}\nLocked: buy at least 1 rank in ${prev?.name || check.prereqId} first.`
-      );
+      body = `${nextDesc || 'No description.'}\nLocked: buy at least 1 rank in ${prev?.name || check.prereqId} first.`;
     } else if (check.reason === 'max') {
       this.buyLabel.setText('MAX');
     } else if (check.ok) {
@@ -208,6 +224,9 @@ export class TalentTreeScene extends Phaser.Scene {
     } else {
       this.buyLabel.setText('Buy');
     }
+
+    this.detailTitle.setText(title);
+    this.detailBody.setText(body);
   }
 
   tryBuy() {
@@ -216,7 +235,7 @@ export class TalentTreeScene extends Phaser.Scene {
     if (!node) return;
     if (node.wip) {
       SoundHelper.playVariant(this, 'invalid_action', 0.4);
-      this.detailBody.setText('This branch is WIP — browsing only.');
+      this.detailBody.setText('This branch is WIP - browsing only.');
       return;
     }
 
@@ -224,7 +243,7 @@ export class TalentTreeScene extends Phaser.Scene {
     if (!result.ok) {
       SoundHelper.playVariant(this, 'invalid_action', 0.4);
       if (result.reason === 'xp') this.detailBody.setText('Not enough XP.');
-      else if (result.reason === 'wip') this.detailBody.setText('WIP — cannot buy yet.');
+      else if (result.reason === 'wip') this.detailBody.setText('WIP - cannot buy yet.');
       else if (result.reason === 'prereq') {
         const prev = getTalentNode(result.prereqId);
         this.detailBody.setText(`Need 1 rank in ${prev?.name || result.prereqId} first.`);

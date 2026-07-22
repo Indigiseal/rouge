@@ -1,7 +1,7 @@
 // Encounter sandbox hub — pick any room type, play it, return here.
-import { SoundHelper } from '../utils/SoundHelper.js';
-import { MusicManager } from '../utils/MusicManager.js';
-import { SANDBOX_ENCOUNTERS } from '../utils/SandboxMode.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { MusicManager } from '../audio/MusicManager.js';
+import { SANDBOX_ENCOUNTERS } from '../sandbox/SandboxMode.js';
 
 export class SandboxHubScene extends Phaser.Scene {
   constructor() {

@@ -2,7 +2,7 @@
 // that has access to an AmuletManager (GameScene, ShopScene, …).
 
 import { showItemTooltip, hideItemTooltip } from './ItemTooltip.js';
-import { SoundHelper } from './SoundHelper.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
 
 const RARITY_COLOR = {
   common: 0xb0b0b0,

@@ -1,16 +1,17 @@
 // scenes/MainMenuScene.js
-import { SaveManager } from '../SaveManager.js';
-import { getLanguageName, getLanguageOptions, normalizeLanguageCode, t } from '../utils/i18n.js';
+import { SaveManager } from '../managers/SaveManager.js';
+import { getLanguageName, getLanguageOptions, normalizeLanguageCode, t } from '../i18n/i18n.js';
 import {
     attachTestOptionsToGame,
     invalidateTestOptionsCache,
     isTestOptionEnabled,
     setTestOption,
     TEST_OPTION_DEFS,
-} from '../utils/TestOptions.js';
-import { MusicManager } from '../utils/MusicManager.js';
-import { SoundHelper } from '../utils/SoundHelper.js';
-import { loadVolumeSettings, saveVolumeSettings } from '../utils/VolumeSettings.js';
+} from '../config/TestOptions.js';
+import { MusicManager } from '../audio/MusicManager.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
+import { openConfirmModal } from '../ui/ConfirmModal.js';
 export class MainMenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainMenuScene' });
@@ -565,46 +566,21 @@ export class MainMenuScene extends Phaser.Scene {
     }
     
     confirmResetProgress() {
-        if (this.activeModal) return;
-
-        // The full-screen interactive dimmer consumes input outside the dialog,
-        // preventing clicks from falling through to hidden menu controls.
-        const dimmer = this.add.rectangle(320, 180, 640, 360, 0x000000, 0.75)
-            .setDepth(1000)
-            .setInteractive();
-        const box = this.add.rectangle(320, 180, 380, 170, 0x2c1810)
-            .setStrokeStyle(2, 0xff4444)
-            .setDepth(1001);
-        const title = this.add.text(320, 130, t(this, 'ui.options.resetTitle'), {
-            fontSize: '20px', fill: '#ff8888', fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5).setDepth(1002);
-        const body = this.add.text(320, 170,
-            t(this, 'ui.options.resetBody'), {
-            fontSize: '13px', fill: '#ffffff', fontFamily: '"HoMM Pixel", Arial, sans-serif', align: 'center'
-        }).setOrigin(0.5).setDepth(1002);
-
-        let closed = false;
-        const cleanup = () => {
-            if (closed) return;
-            closed = true;
-            [dimmer, box, title, body, yes.button, yes.text, no.button, no.text]
-                .forEach(o => o?.destroy());
-            this.activeModal = null;
-        };
-
-        const yes = this.createButton(265, 230, 90, 30, t(this, 'ui.options.reset'), 0xff4444, () => {
-            this.saveManager.clearCurrentRun();
-            this.saveManager.safeRemove(this.saveManager.META_SAVE_KEY);
-            this.saveManager.safeRemove('heroMemory');
-            this.saveManager.safeRemove('storyProgress');
-            cleanup();
-            // Restart on the next game tick so the click that confirmed the
-            // reset cannot also activate a button in the rebuilt main menu.
-            this.time.delayedCall(0, () => this.scene.restart());
+        openConfirmModal(this, {
+            title: t(this, 'ui.options.resetTitle'),
+            body: t(this, 'ui.options.resetBody'),
+            confirmLabel: t(this, 'ui.options.reset'),
+            cancelLabel: t(this, 'ui.options.cancel'),
+            onConfirm: () => {
+                this.saveManager.clearCurrentRun();
+                this.saveManager.safeRemove(this.saveManager.META_SAVE_KEY);
+                this.saveManager.safeRemove('heroMemory');
+                this.saveManager.safeRemove('storyProgress');
+                // Restart on the next game tick so the click that confirmed the
+                // reset cannot also activate a button in the rebuilt main menu.
+                this.time.delayedCall(0, () => this.scene.restart());
+            },
         });
-        const no = this.createButton(375, 230, 90, 30, t(this, 'ui.options.cancel'), 0x888888, () => cleanup());
-        [yes.button, yes.text, no.button, no.text].forEach(o => o.setDepth(1002));
-        this.activeModal = { type: 'reset', cleanup };
     }
 
 }

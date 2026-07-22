@@ -1,8 +1,8 @@
 // scenes/PauseMenuScene.js
-import { MusicManager } from '../utils/MusicManager.js';
-import { SoundHelper } from '../utils/SoundHelper.js';
-import { loadVolumeSettings, saveVolumeSettings } from '../utils/VolumeSettings.js';
-import { exitToSandboxHub, isSandboxMode } from '../utils/SandboxMode.js';
+import { MusicManager } from '../audio/MusicManager.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
+import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 
 export class PauseMenuScene extends Phaser.Scene {
     constructor() {

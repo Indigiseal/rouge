@@ -11,7 +11,7 @@
 // transient "your swing was blocked" moment. Interactions themselves run
 // through the real game code untouched; the overlay just gates which object is
 // reachable and points at it.
-import { TutorialOverlay } from './utils/TutorialOverlay.js';
+import { TutorialOverlay } from '../ui/TutorialOverlay.js';
 
 export class TutorialManager {
     constructor(scene) {

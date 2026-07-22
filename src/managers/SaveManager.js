@@ -1,6 +1,7 @@
 // SaveManager.js - Complete fixed version
 
-import { applyAmuletAtlasPresentation } from './utils/RelicsOthersAtlas.js';
+import { applyAmuletAtlasPresentation } from '../content/amulets/RelicsOthersAtlas.js';
+import { PLAYER_START_HP } from '../systems/GameState.js';
 
 export class SaveManager {
   constructor() {
@@ -133,8 +134,8 @@ export class SaveManager {
 
     const runData = {
       player: {
-        health: gameState?.playerHealth ?? 50,
-        maxHealth: gameState?.maxHealth ?? 50,
+        health: gameState?.playerHealth ?? PLAYER_START_HP,
+        maxHealth: gameState?.maxHealth ?? PLAYER_START_HP,
         actionsLeft: gameState?.actionsLeft ?? 15,
         maxActions: gameState?.maxActions ?? 15,
         coins: gameState?.coins ?? 0,
@@ -143,7 +144,7 @@ export class SaveManager {
         // Added missing fields
         bonusInventorySlots: gameState?.bonusInventorySlots ?? 0,
         firstActionUsed: gameState?.firstActionUsed ?? false,
-        baseMaxHealth: gameState?.baseMaxHealth ?? 50,
+        baseMaxHealth: gameState?.baseMaxHealth ?? PLAYER_START_HP,
         bottomlessBagApplied: gameState?.bottomlessBagApplied ?? false,
         discardedCardsThisRun: gameState?.discardedCardsThisRun ?? 0,
         discardCritChance: gameState?.discardCritChance ?? 0,
@@ -222,8 +223,8 @@ export class SaveManager {
 
       const runData = {
         player: {
-          health: parsed.player?.health ?? 50,
-          maxHealth: parsed.player?.maxHealth ?? 50,
+          health: parsed.player?.health ?? PLAYER_START_HP,
+          maxHealth: parsed.player?.maxHealth ?? PLAYER_START_HP,
           actionsLeft: parsed.player?.actionsLeft ?? 15,
           maxActions: parsed.player?.maxActions ?? 15,
           coins: parsed.player?.coins ?? 0,
@@ -233,7 +234,7 @@ export class SaveManager {
             : 1,
           bonusInventorySlots: parsed.player?.bonusInventorySlots ?? 0,
           firstActionUsed: parsed.player?.firstActionUsed ?? false,
-          baseMaxHealth: parsed.player?.baseMaxHealth ?? 50,
+          baseMaxHealth: parsed.player?.baseMaxHealth ?? PLAYER_START_HP,
           bottomlessBagApplied: parsed.player?.bottomlessBagApplied ?? false,
           discardedCardsThisRun: parsed.player?.discardedCardsThisRun ?? 0,
           discardCritChance: parsed.player?.discardCritChance ?? 0,
@@ -315,7 +316,7 @@ export class SaveManager {
       // Add new fields if upgrading from old version
       run.player.bonusInventorySlots = run.player.bonusInventorySlots ?? 0;
       run.player.firstActionUsed = run.player.firstActionUsed ?? false;
-      run.player.baseMaxHealth = run.player.baseMaxHealth ?? 50;
+      run.player.baseMaxHealth = run.player.baseMaxHealth ?? PLAYER_START_HP;
       run.player.bottomlessBagApplied = run.player.bottomlessBagApplied ?? false;
     }
 

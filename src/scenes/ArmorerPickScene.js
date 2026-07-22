@@ -1,6 +1,7 @@
 // Run-start pick: chain vs plate when Armorer's Start is owned.
-import { SoundHelper } from '../utils/SoundHelper.js';
-import { MusicManager } from '../utils/MusicManager.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { MusicManager } from '../audio/MusicManager.js';
+import { createArmorCardData } from '../content/cards/armor.js';
 
 export class ArmorerPickScene extends Phaser.Scene {
   constructor() {
@@ -31,8 +32,17 @@ export class ArmorerPickScene extends Phaser.Scene {
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5);
 
-    this.createArmorCard(170, 200, 'chain', 'Chain', 'Uncommon · DEF 3 + melee counter');
-    this.createArmorCard(470, 200, 'plate', 'Plate', 'Uncommon · DEF 3 + ignore ranged');
+    const chain = createArmorCardData('chain', 'uncommon');
+    const plate = createArmorCardData('plate', 'uncommon');
+    const chainBlurb = chain
+      ? `Uncommon · DEF ${chain.protection} + melee counter`
+      : 'Uncommon chain';
+    const plateBlurb = plate
+      ? `Uncommon · DEF ${plate.protection} + ignore ranged`
+      : 'Uncommon plate';
+
+    this.createArmorCard(170, 200, 'chain', 'Chain', chainBlurb);
+    this.createArmorCard(470, 200, 'plate', 'Plate', plateBlurb);
 
     MusicManager.play(this, 'menu_music', 0.45, 500);
   }

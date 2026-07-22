@@ -13,8 +13,8 @@
 import {
   setSimTestOptionsOverride,
   TEST_OPTION_IDS,
-} from '../utils/TestOptions.js';
-import { CHARACTER_IDS, normalizeCharacterId } from '../utils/CharacterClasses.js';
+} from '../src/config/TestOptions.js';
+import { CHARACTER_IDS, normalizeCharacterId } from '../src/content/characters/CharacterClasses.js';
 
 export const SIM_META_MODES = new Set(['fresh', 'geared', 'accumulate', 'balance']);
 export const SIM_CHARACTER_IDS = new Set(CHARACTER_IDS);

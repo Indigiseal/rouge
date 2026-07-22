@@ -1,7 +1,7 @@
 // MetaProgressionManager.js — per-character XP + permanent talents.
 // Death/win grant character XP only (no relic unlocks).
 
-import { isMetaProgressionDisabled } from './utils/TestOptions.js';
+import { isMetaProgressionDisabled } from '../config/TestOptions.js';
 import {
   TALENT_NODES,
   costForNextRank,
@@ -10,7 +10,11 @@ import {
   isBranchPurchasable,
   resolveTalentEffects,
   createStartingTalentArmor,
-} from './utils/TalentDefinitions.js';
+} from '../content/talents/index.js';
+import {
+  estimateBossesKilled as estimateBossesKilledFormula,
+  xpForRun as xpForRunFormula,
+} from '../content/economy/metaXp.js';
 
 function emptyCharacterProgress() {
   return { xp: 0, talents: {}, choices: {} };
@@ -131,7 +135,7 @@ export class MetaProgressionManager {
 
   /** Same formula as legacy meta points. */
   xpForRun(floor, bossesKilled = 0) {
-    return 2 + Math.floor(floor / 5) + bossesKilled * 3;
+    return xpForRunFormula(floor, bossesKilled);
   }
 
   // Back-compat alias for sim / old callers.
@@ -140,7 +144,7 @@ export class MetaProgressionManager {
   }
 
   estimateBossesKilled(floor) {
-    return floor > 30 ? 2 : floor > 15 ? 1 : 0;
+    return estimateBossesKilledFormula(floor);
   }
 
   /**

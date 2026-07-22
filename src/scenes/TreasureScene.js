@@ -1,8 +1,8 @@
-import { SoundHelper } from '../utils/SoundHelper.js';
-import { CardDataGenerator } from '../CardDataGenerator.js';
-import { createTitle } from '../utils/titleText.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
+import { createTitle } from '../ui/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
-import { exitToSandboxHub, isSandboxMode } from '../utils/SandboxMode.js';
+import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 
 export class TreasureScene extends StationRoomBase {
   constructor() {

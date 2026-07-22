@@ -1,4 +1,4 @@
-import { SoundHelper } from './SoundHelper.js';
+import { SoundHelper } from '../../audio/SoundHelper.js';
 
 // Spreads combat FEEDBACK across a short timeline so a single exchange reads as
 // a sequence of events instead of one frame where four sounds and three

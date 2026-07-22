@@ -2,7 +2,8 @@
 // Shared hover tooltip for items shown anywhere on screen: gaming board,
 // shop rooms, chest rewards, etc.
 
-import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from './i18n.js';
+import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from '../i18n/i18n.js';
+import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
 
 function rarityFill(rarity) {
     switch (rarity) {
@@ -35,7 +36,11 @@ export function getTooltipLines(scene, data) {
         const rarityWord = data.rarity ? translateRarity(scene, data.rarity) : '';
         if (rarityWord) body = `${rarityWord}\n${body}`.trim();
     } else if (data.type === 'weapon') {
-        const dmg = data.damage ?? 0;
+        const dmg = getDisplayedWeaponDamage(
+            scene?.gameState?.characterId,
+            data,
+            scene?.gameState?.talentEffects || null
+        );
         const dur = data.durability ?? data.maxDurability ?? 0;
         const rarityWord = data.rarity ? `${translateRarity(scene, data.rarity)} ` : '';
         body = `${rarityWord}${t(scene, describeWeaponKindKey(data))}\n${t(scene, 'tooltip.dmgDur', { dmg, dur })}`;

@@ -1,8 +1,8 @@
 // Catalog of meta talents and amulets for sim CLI / dashboard pickers.
 import './mock.js';
-import { AmuletManager } from '../AmuletManager.js';
-import { CardDataGenerator } from '../CardDataGenerator.js';
-import { TALENT_NODES } from '../utils/TalentDefinitions.js';
+import { AmuletManager } from '../src/managers/AmuletManager.js';
+import { CardDataGenerator } from '../src/systems/loot/CardDataGenerator.js';
+import { TALENT_NODES } from '../src/content/talents/index.js';
 
 /** Relic meta retired — kept for dashboard API compatibility. */
 export function getRelicCatalog() {

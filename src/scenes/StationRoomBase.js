@@ -3,12 +3,13 @@
 // loot scatter effects so the individual scenes can focus on their unique
 // generation/buy logic.
 
-import { CardSystem } from '../cardSystem.js';
-import { SoundHelper } from '../utils/SoundHelper.js';
-import { showItemTooltip, hideItemTooltip } from '../utils/ItemTooltip.js';
-import { snapOriginToPixelGrid } from '../utils/PixelSnap.js';
-import { t } from '../utils/i18n.js';
-import { exitToSandboxHub, isSandboxMode } from '../utils/SandboxMode.js';
+import { CardSystem } from '../systems/CardSystem.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { showItemTooltip, hideItemTooltip } from '../ui/ItemTooltip.js';
+import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
+import { t } from '../i18n/i18n.js';
+import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
+import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
 
 export class StationRoomBase extends Phaser.Scene {
     // ─── Inventory station mode ──────────────────────────────────────────────
@@ -167,7 +168,11 @@ export class StationRoomBase extends Phaser.Scene {
         let statY = y + 22;
         switch (data.type) {
             case 'weapon':
-                statValue = `${data.damage}`;
+                statValue = `${getDisplayedWeaponDamage(
+                    this.gameState?.characterId,
+                    data,
+                    this.gameState?.talentEffects || null
+                )}`;
                 break;
             case 'armor':
                 statValue = `${data.protection}`;

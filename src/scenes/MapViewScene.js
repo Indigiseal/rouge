@@ -1,10 +1,10 @@
 // scenes/MapViewScene.js
 // Phaser is provided as a UMD global (see index.html) — no import needed.
-import { MapGenerator } from '../utils/MapGenerator.js';
-import { t } from '../utils/i18n.js';
-import { createTitle } from '../utils/titleText.js';
-import { MusicManager } from '../utils/MusicManager.js';
-import { SoundHelper } from '../utils/SoundHelper.js';
+import { MapGenerator } from '../map/MapGenerator.js';
+import { t } from '../i18n/i18n.js';
+import { createTitle } from '../ui/titleText.js';
+import { MusicManager } from '../audio/MusicManager.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
 
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }

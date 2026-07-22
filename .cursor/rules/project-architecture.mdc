@@ -1,0 +1,57 @@
+---
+description: Архитектура rouge — content packs, SoT, combat mods, saves, sim
+alwaysApply: true
+---
+
+# Rouge — правила для агента
+
+Подробности и чеклисты: `docs/AGENT.md`. Механики: `docs/MECHANICS.md`. Куда крутить числа: `docs/BALANCE.md`. Freeze сейвов: `docs/OPEN-QUESTIONS.md`.
+
+## Слои
+
+| Слой | Путь | Что класть |
+|------|------|------------|
+| content | `src/content/` | Данные, каталоги, фабрики, чистые формулы |
+| systems | `src/systems/` | Рантайм: доска, инвентарь, бой, лут |
+| scenes | `src/scenes/` | Phaser UI / флоу комнат |
+| managers | `src/managers/` | Save / meta / amulets / tutorial |
+| ui | `src/ui/` | Оверлеи, тултипы, HUD |
+
+`CardSystem` / `InventorySystem` — тонкие фасады. Новую логику — в `board/`, `inventory/`, не раздувать фасад.
+
+## Single source of truth
+
+- Статы оружия/брони → `content/cards/weapons.js` / `armor.js` (`WEAPONS`, `ARMOR`).
+- Min floor лута → отдельно (`WEAPON_SPAWN_MIN_FLOOR` и т.п.), не смешивать со статами.
+- Runtime-карты → только `createWeaponCardData` / `createArmorCardData`.
+- Стартовый лоадаут → refs `{ weaponType, rarity }` + `buildStartingWeaponCards`, не копии статов.
+- Цены / repair / rest / meta XP → `content/economy/`.
+- Текст талантов в UI → `content/talents/displayCopy.js` (English ASCII). Числа — в `nodes/*.js`, эффекты — `resolveTalentEffects()`.
+
+Не хардкодить damage/цены/XP в scenes.
+
+## Permanent vs situational урон
+
+- Permanent (на карте): `applyPermanentWeaponDamageBonuses` — class % → Twin Fang %.
+- Situational (не на карте): weakness, Keen Edge (раз/этаж), First Blood (раз/этаж), warrior crit.
+- UI: `getDisplayedWeaponDamage` = только permanent.
+- Once-per-floor: отдельный флаг на `gameState`, сброс в `FloorSpawner`.
+- Бой: `InventoryCombatUse.js`; зеркало в `sim/balance-sim.js` (`simWeaponHitDamage`). Не дублировать математику только в sim.
+
+## Контент-паттерн
+
+Новый талант/карта/ивент = файл + регистрация в barrel (`index.js` / `branches.js`).  
+Импорты предпочтительно через barrels: `content/cards`, `content/talents`, `content/characters`.
+
+## Saves (beta freeze)
+
+Не менять ключи localStorage и shape JSON без migrate + bump `SaveManager.SAVE_VERSION`.  
+Ключи: `currentRun`, `metaProgression`, `gameSettings`.
+
+## Стиль правок
+
+- Минимальные патчи; без массовых rewrite «заодно».
+- После combat/loot/talent — сверять sim (`talentcompare` / balance batch).
+- Дизайн-решение → обновить `MECHANICS.md` / `OPEN-QUESTIONS.md`.
+- Не создавать README/тесты, пока не попросили.
+- Ответы пользователю — на русском; идентификаторы кода — English.

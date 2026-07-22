@@ -18,12 +18,12 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { MockScene } from './mock.js'; // also installs globalThis.Phaser + localStorage
-import { GameState } from '../gameState.js';
-import { CardSystem } from '../cardSystem.js';
-import { CardDataGenerator } from '../CardDataGenerator.js';
-import { AmuletManager } from '../AmuletManager.js';
-import { MetaProgressionManager } from '../MetaProgressionManager.js';
-import { MapGenerator } from '../utils/MapGenerator.js';
+import { GameState } from '../src/systems/GameState.js';
+import { CardSystem } from '../src/systems/CardSystem.js';
+import { CardDataGenerator } from '../src/systems/loot/CardDataGenerator.js';
+import { AmuletManager } from '../src/managers/AmuletManager.js';
+import { MetaProgressionManager } from '../src/managers/MetaProgressionManager.js';
+import { MapGenerator } from '../src/map/MapGenerator.js';
 import {
   newLootStats, recordBoard, recordWeapon, recordFloorSnapshot,
   recordFloorInventoryStart, recordFloorInventoryEnd, recordCombatEnemySnapshot,
@@ -39,7 +39,7 @@ import {
   clearSimTestOptionsOverride,
   setSimTestOptionsOverride,
   TEST_OPTION_IDS,
-} from '../utils/TestOptions.js';
+} from '../src/config/TestOptions.js';
 import {
   SIM_META_MODES,
   splitSimArgv,
@@ -53,12 +53,20 @@ import {
 import { getDefaultAmuletIds } from './sim-catalog.js';
 import { getBehaviorProfile, getBehaviorPresetNames } from './behavior-knobs.js';
 import {
-  applyClassWeaponDamageBonus,
+  applyPermanentWeaponDamageBonuses,
+  applyKeenEdgeFirstStrike,
+  buildStartingWeaponCards,
   getCharacter,
   normalizeCharacterId,
   rollClassWeaponCrit,
-} from '../utils/CharacterClasses.js';
-import { applyArmorTalentMods, getBranchesForCharacter, getTalentNode } from '../utils/TalentDefinitions.js';
+} from '../src/content/characters/CharacterClasses.js';
+import { applyArmorTalentMods, getBranchesForCharacter, getTalentNode } from '../src/content/talents/index.js';
+import {
+  createWeaponCardData,
+  createArmorCardData,
+  getMagic,
+  weaponDurability,
+} from '../src/content/cards/index.js';
 
 // ── Config ────────────────────────────────────────────────────────────────
 const RUNS = parseInt(process.argv[2], 10) || 2000;
@@ -115,17 +123,18 @@ function stripBehaviorArgs(argv) {
 }
 
 /** Printed hit damage including class passives. Planner uses expected crit EV. */
-function simWeaponHitDamage(gs, weapon, wasExhausted, { expectedCrit = false, applyFirstBlood = false } = {}) {
+function simWeaponHitDamage(gs, weapon, wasExhausted, {
+  expectedCrit = false,
+  applyFirstBlood = false,
+  applyKeenEdge = false,
+} = {}) {
   let dmg = weapon ? (weapon.damage || 1) : 1;
   if (wasExhausted) dmg = Math.ceil(dmg * 0.8);
-  dmg = applyClassWeaponDamageBonus(gs?.characterId, weapon, dmg, gs?.talentEffects);
+  dmg = applyPermanentWeaponDamageBonuses(gs?.characterId, weapon, dmg, gs?.talentEffects);
 
-  // Twin Fang: full % on daggers, half on bows.
-  const twin = gs?.talentEffects?.twinFangPct || 0;
-  if (twin > 0 && weapon?.weaponType === 'dagger') {
-    dmg = Math.ceil(dmg * (1 + twin));
-  } else if (twin > 0 && weapon?.weaponType === 'bow') {
-    dmg = Math.ceil(dmg * (1 + twin * 0.5));
+  // Keen Edge: first dagger/bow attack each floor (mutates gs when applied).
+  if (applyKeenEdge) {
+    dmg = applyKeenEdgeFirstStrike(gs?.characterId, weapon, dmg, gs?.talentEffects, gs).damage;
   }
 
   if (applyFirstBlood && gs?.talentEffects?.firstBloodPct > 0 && !gs.firstAttackThisFloorUsed) {
@@ -142,14 +151,6 @@ function simWeaponHitDamage(gs, weapon, wasExhausted, { expectedCrit = false, ap
   const tier = ({ common: 1, uncommon: 2, rare: 3, epic: 3, legendary: 4 })[weapon.rarity] || 1;
   let critDmg = Math.ceil(printed * (1 + 0.05 * tier));
   if (wasExhausted) critDmg = Math.ceil(critDmg * 0.8);
-  if (twin > 0 && weapon?.weaponType === 'dagger') {
-    critDmg = Math.ceil(critDmg * (1 + twin));
-  } else if (twin > 0 && weapon?.weaponType === 'bow') {
-    critDmg = Math.ceil(critDmg * (1 + twin * 0.5));
-  }
-  if (applyFirstBlood && gs?.talentEffects?.firstBloodPct > 0 && !gs.firstAttackThisFloorUsed) {
-    critDmg = Math.ceil(critDmg * (1 + gs.talentEffects.firstBloodPct));
-  }
 
   if (expectedCrit) {
     return dmg * (1 - def.critChance) + critDmg * def.critChance;
@@ -296,8 +297,8 @@ function restrictMetaPool(meta, poolIds) {
 }
 
 function startingInventory(inv, characterId = 'rogue') {
-  // Mirrors InventorySystem.grantStartingCards — class-specific starters.
-  const start = getCharacter(characterId).startingWeapons || [];
+  // Mirrors InventorySystem.addStartingCards — class refs → catalog cards.
+  const start = buildStartingWeaponCards(characterId);
   for (let i = 0; i < start.length && i < inv.length; i++) inv[i] = cloneCard(start[i]);
 }
 
@@ -480,28 +481,19 @@ function tryCarry(gs, inv, card, { eventReward = false } = {}) {
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 const nextRarity = (r) => RARITY_ORDER[Math.min(RARITY_ORDER.length - 1, RARITY_ORDER.indexOf(r) + 1)];
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
-// Durability map copied from CardDataGenerator.createWeaponCard.
-const WEAPON_DUR = {
-  dagger: { common: 4, uncommon: 5, rare: 6, epic: 7, legendary: 8 },
-  bow: { common: 5, uncommon: 6, rare: 7, epic: 8, legendary: 9 },
-  sword: { common: 6, uncommon: 8, rare: 10, epic: 11, legendary: 13 },
-  axe: { common: 6, uncommon: 8, rare: 10, epic: 12, legendary: 14 },
-};
 
 function mergeWeapons(gen, a, b, floor = 0) {
   const type = a.weaponType;
   const r = nextRarity(a.rarity);
-  const unlock = gen.weaponUnlocks?.[type]?.[r];
-  const dmg = unlock?.damage ?? ((a.damage || 1) + 1);
-  const dur = WEAPON_DUR[type]?.[r] ?? (a.maxDurability || 6);
-  const slots = CardDataGenerator.gemSlotsForRarity(r);
-  const merged = {
+  const merged = createWeaponCardData(type, r) || {
     type: 'weapon', name: `${cap(r)} ${cap(type)}`, weaponType: type,
-    damage: dmg, rarity: r, durability: dur, maxDurability: dur,
-    range: unlock?.range ?? a.range ?? 'melee',
-    special: unlock?.special ?? a.special ?? b.special ?? null,
-    gemSlots: slots,
+    damage: (a.damage || 1) + 1, rarity: r,
+    durability: weaponDurability(type, r), maxDurability: weaponDurability(type, r),
+    range: a.range ?? 'melee', special: a.special ?? b.special ?? null,
+    gemSlots: CardDataGenerator.gemSlotsForRarity(r),
   };
+  const slots = merged.gemSlots || CardDataGenerator.gemSlotsForRarity(r);
+  merged.gemSlots = slots;
   if (a.gemEffect && b.gemEffect && a.gemEffect === b.gemEffect) {
     merged.gemEffect = a.gemEffect;
     merged.gemName = a.gemName;
@@ -522,24 +514,14 @@ function mergeWeapons(gen, a, b, floor = 0) {
 function mergeArmor(gen, a, b, floor = 0) {
   const type = a.armorType || 'leather';
   const r = nextRarity(a.rarity);
-  const data = gen.armorUnlocks?.[type]?.[r];
-  const prot = data?.protection ?? ((a.protection || 1) + 1);
-  const dur = CardDataGenerator.armorDurability(type, r);
-  const merged = {
+  const merged = createArmorCardData(type, r) || {
     type: 'armor', name: `${cap(r)} ${cap(type)} Armor`, armorType: type,
-    protection: prot, rarity: r, durability: dur, maxDurability: dur,
-    reflection: a.reflection || 0,
+    protection: (a.protection || 1) + 1, rarity: r,
+    durability: CardDataGenerator.armorDurability(type, r),
+    maxDurability: CardDataGenerator.armorDurability(type, r),
   };
-  if (type === 'leather') {
-    merged.dodgeChance = data?.dodgeChance ?? a.dodgeChance ?? 0;
-  }
-  if (type === 'chain') {
-    merged.meleeCounterChance = data?.meleeCounterChance ?? a.meleeCounterChance ?? 0;
-  }
-  if (type === 'plate') {
-    merged.rangedIgnoreChance = data?.rangedIgnoreChance ?? a.rangedIgnoreChance ?? 0;
-  }
-  // Re-apply Iron talents — merge rebuilt from unlock tables and would otherwise
+  merged.reflection = a.reflection || 0;
+  // Re-apply Iron talents — merge rebuilt from catalog and would otherwise
   // strip Hardened / Counter Drill / Bulwark.
   applyArmorTalentMods(merged, gsTalentEffectsRef.current);
   return merged;
@@ -897,7 +879,7 @@ function castMagicCard(mock, gs, inv, slotIndex, board, floor) {
         .sort((a, b) => (b.card.data.attack || 0) - (a.card.data.attack || 0) || (b.card.data.health || 0) - (a.card.data.health || 0))[0];
       if (target) {
         target.card.data.health = 0;
-        let healAmount = 30;
+        let healAmount = getMagic('soulDrain')?.healAmount ?? 30;
         if (mock.amuletManager) healAmount = mock.amuletManager.modifySpellHealing(healAmount);
         gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + healAmount);
         mock.cardSystem.removeDefeatedEnemy(target.index, target.card);
@@ -1366,9 +1348,12 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
         }
       }
 
-      // First Blood applies to the primary swing only, then marks the floor flag.
+      // Keen Edge / First Blood apply to the primary swing only (not off-hand).
       const useFirstBlood = gs?.talentEffects?.firstBloodPct > 0 && !gs.firstAttackThisFloorUsed;
-      const dmg = simWeaponHitDamage(gs, gs.equippedWeapon, wasExhausted, { applyFirstBlood: useFirstBlood });
+      const dmg = simWeaponHitDamage(gs, gs.equippedWeapon, wasExhausted, {
+        applyFirstBlood: useFirstBlood,
+        applyKeenEdge: true,
+      });
       if (useFirstBlood) gs.firstAttackThisFloorUsed = true;
       const weaponBeforeAttack = gs.equippedWeapon;
       const targetHP = board[attackIdx]?.data?.health || 0;
@@ -2857,6 +2842,8 @@ function runTalentCompare() {
 
   const rogueConfigs = [
     { label: 'baseline (no talents)', talents: {} },
+    { label: 'Keen Edge 1', talents: { keenEdge: 1 } },
+    { label: 'Keen Edge 2', talents: { keenEdge: 2 } },
     { label: 'Keen Edge 3', talents: { keenEdge: 3 } },
     { label: 'First Blood 3', talents: { firstBlood: 3 } },
     { label: 'Twin Fang 3', talents: { twinFang: 3 } },

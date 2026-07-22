@@ -1,7 +1,12 @@
 //AnvilScene.js
-import { SoundHelper } from '../utils/SoundHelper.js';
-import { createTitle } from '../utils/titleText.js';
-import { exitToSandboxHub, isSandboxMode } from '../utils/SandboxMode.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { createTitle } from '../ui/titleText.js';
+import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
+import {
+    REPAIR_ARMOR_CHUNK,
+    repairCostPerUnit,
+    totalRepairCost,
+} from '../content/economy/repair.js';
 export class AnvilScene extends Phaser.Scene {
     constructor() {
         super({ key: 'AnvilScene' });
@@ -150,9 +155,7 @@ export class AnvilScene extends Phaser.Scene {
         // Calculate repair cost
         const repairCost = this.calculateRepairCost(item);
         const missingDurability = item.maxDurability - item.durability;
-        const totalCost = item.type === 'armor' 
-            ? Math.ceil(missingDurability / 5) * repairCost 
-            : missingDurability * repairCost;
+        const totalCost = totalRepairCost(item, missingDurability, this.getWeaponType(item.name));
         
         // Cost display
         const costText = this.add.text(0, -5, `Cost: ${totalCost} coins`, { 
@@ -164,7 +167,7 @@ export class AnvilScene extends Phaser.Scene {
         // Repair info
         const repairInfo = this.add.text(0, 10, 
             item.type === 'armor' 
-                ? `(${repairCost} per 5 pts)` 
+                ? `(${repairCost} per ${REPAIR_ARMOR_CHUNK} pts)` 
                 : `(${repairCost} per pt)`, 
             { 
                 fontSize: '9px', 
@@ -191,12 +194,12 @@ export class AnvilScene extends Phaser.Scene {
         }
         
         // Partial repair button (repair 5 points for armor, 1 point for other durable cards)
-        const partialAmount = item.type === 'armor' ? 5 : 1;
+        const partialAmount = item.type === 'armor' ? REPAIR_ARMOR_CHUNK : 1;
         const partialCost = item.type === 'armor' ? repairCost : repairCost;
         const canPartialRepair = partialCost <= this.gameState.coins && missingDurability > 0;
         
         const partialRepairButton = this.add.text(35, buttonY, 
-            item.type === 'armor' ? '+5' : '+1', 
+            item.type === 'armor' ? `+${REPAIR_ARMOR_CHUNK}` : '+1', 
             { 
                 fontSize: '12px', 
                 fill: canPartialRepair ? '#0088ff' : '#666666', 
@@ -223,30 +226,7 @@ export class AnvilScene extends Phaser.Scene {
     }
     
     calculateRepairCost(item) {
-        if (item.type === 'weapon') {
-            // Determine weapon type and tier
-            const weaponType = this.getWeaponType(item.name);
-            const tier = this.getItemTier(item.rarity);
-            
-            // Weapon repair costs per durability point
-            const repairCosts = {
-                'dagger': { 1: 1, 2: 2, 3: 2, 4: 2 },
-                'bow': { 1: 2, 2: 2, 3: 2, 4: 3 },
-                'sword': { 1: 2, 2: 2, 3: 2, 4: 2 },
-                'axe': { 1: 4, 2: 4, 3: 4, 4: 4 }
-            };
-            
-            return repairCosts[weaponType]?.[tier] || 2;
-        } 
-        else if (item.type === 'armor') {
-            // All armor types cost 2 coins per 5 durability points
-            return 2;
-        }
-        else if (item.type === 'thorns') {
-            return 2;
-        }
-        
-        return 2; // Default cost
+        return repairCostPerUnit(item, this.getWeaponType(item.name));
     }
     
     getWeaponType(itemName) {
@@ -258,24 +238,11 @@ export class AnvilScene extends Phaser.Scene {
         return 'sword'; // Default
     }
     
-    getItemTier(rarity) {
-        switch(rarity) {
-            case 'common': return 1;
-            case 'uncommon': return 2;
-            case 'rare': return 3;
-            case 'legendary': return 4;
-            default: return 1;
-        }
-    }
-    
     repairItem(data, repairAmount) {
         const { item, index, isEquipped } = data;
         
         // Calculate actual cost
-        const costPerUnit = this.calculateRepairCost(item);
-        const totalCost = item.type === 'armor' 
-            ? Math.ceil(repairAmount / 5) * costPerUnit 
-            : repairAmount * costPerUnit;
+        const totalCost = totalRepairCost(item, repairAmount, this.getWeaponType(item.name));
         
         if (this.gameState.coins < totalCost) {
             this.showFeedback('Not enough coins!', 0xff0000);

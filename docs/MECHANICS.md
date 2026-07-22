@@ -31,6 +31,9 @@
 - On new floor: at least 1 front enemy + 1 back enemy is revealed
 - If front row is cleared, reveal one enemy behind
 - Ranged: printed weapon damage (no ×0.8 penalty)
+- Rogue: dagger/bow cards show `ceil(base × 1.10)` plus Twin Fang % when owned.
+  Keen Edge is +1/+2/+3 on the first dagger/bow attack each floor (not on the card).
+  Catalog `damage` stays base; First Blood / weakness float separately.
 - Weapon gem slots by rarity: 1 / 2 / 3 / 4 / 5 (common → legendary)
 - Armor spawn pool: leather only (dodge 10–30% by rarity, no protection;
   durability ticks on dodge); chain/plate pending

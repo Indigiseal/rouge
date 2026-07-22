@@ -1,9 +1,16 @@
-import { CardSystem } from '../cardSystem.js';
-import { SoundHelper } from '../utils/SoundHelper.js';
-import { t, translateItemName } from '../utils/i18n.js';
-import { createTitle } from '../utils/titleText.js';
+import { CardSystem } from '../systems/CardSystem.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { t, translateItemName } from '../i18n/i18n.js';
+import { createTitle } from '../ui/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
-import { openAmuletChoiceOverlay } from '../utils/AmuletChoiceOverlay.js';
+import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
+import { potionNameForHealAmount } from '../content/cards/index.js';
+import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
+import {
+    shopAmuletCrystalPrice,
+    shopItemBuyPrice,
+    shopItemSellPrice,
+} from '../content/economy/shop.js';
 
 export class ShopScene extends StationRoomBase {
     constructor() {
@@ -200,67 +207,15 @@ export class ShopScene extends StationRoomBase {
     }
 
     calculateAmuletCrystalPrice(amulet) {
-        // Base crystal price for amulets
-        let basePrice = 2;
-        
-        // Adjust based on rarity
-        const rarityMultiplier = {
-            common: 1,
-            uncommon: 1.5,
-            rare: 2,
-            legendary: 3,
-            cursed: 1.5 // Cursed amulets are slightly cheaper
-        };
-        
-        basePrice = Math.floor(basePrice * (rarityMultiplier[amulet.rarity] || 1));
-
-        // Each 3 amulets already worn make the next one 1 crystal pricier —
-        // crystals were tight in act 1 but piling up unspent by act 3, and a
-        // stacked build should cost more to extend than a fresh one.
-        basePrice += Math.floor((this.gameState.activeAmulets?.length || 0) / 3);
-
-        // Minimum price is 1 crystal
-        return Math.max(1, basePrice);
+        return shopAmuletCrystalPrice(amulet, this.gameState.activeAmulets?.length || 0);
     }
     
     calculateItemPrice(item, isArtifact = false) {
-        const floor = this.gameState.currentFloor;
-        let basePrice = 5 + floor * 2;
-        
-        // Rarity multipliers
-        const rarityMultiplier = {
-            common: 1,
-            uncommon: 1.5,
-            rare: 2,
-            epic: 2.5,
-            legendary: 3
-        };
-        
-        basePrice *= (rarityMultiplier[item.rarity] || 1);
-        
-        // Type adjustments
-        if (item.type === 'weapon') {
-            basePrice += item.damage || 0;
-        } else if (item.type === 'armor') {
-            basePrice += (item.protection || 0) * 2;
-        } else if (item.type === 'thorns') {
-            basePrice += (item.thornDamage || 0) * 3;
-        } else if (item.type === 'magic') {
-            basePrice *= 1.2; // Magic cards are slightly more expensive
-        }
-        
-        // Artifacts are more expensive
-        if (isArtifact) {
-            basePrice *= 2;
-        }
-        
-        return Math.floor(basePrice);
+        return shopItemBuyPrice(item, this.gameState.currentFloor, { isArtifact });
     }
     
     calculateSellPrice(item) {
-        // Sell price is 40% of buy price
-        const buyPrice = this.calculateItemPrice(item);
-        return Math.floor(buyPrice * 0.4);
+        return shopItemSellPrice(item, this.gameState.currentFloor);
     }
 
     getItemDisplayName(item) {
@@ -272,11 +227,7 @@ export class ShopScene extends StationRoomBase {
     }
 
     getPotionDisplayName(item) {
-        const healAmount = item.healAmount || 0;
-        if (healAmount >= 100) return 'Greater Healing Potion';
-        if (healAmount >= 50) return 'Strong Healing Potion';
-        if (healAmount >= 30) return 'Healing Potion';
-        return 'Minor Healing Potion';
+        return potionNameForHealAmount(item.healAmount || 0);
     }
 
     getCurrencyDisplay(currency) {
@@ -401,7 +352,13 @@ export class ShopScene extends StationRoomBase {
                 // Show item stats
                 let statsText = '';
                 if (item.type === 'weapon') {
-                    statsText = t(this, 'tooltip.damageShort', { amount: item.damage });
+                    statsText = t(this, 'tooltip.damageShort', {
+                        amount: getDisplayedWeaponDamage(
+                            this.gameState?.characterId,
+                            item,
+                            this.gameState?.talentEffects || null
+                        )
+                    });
                 } else if (item.type === 'armor') {
                     statsText = t(this, 'tooltip.protectionShort', { amount: item.protection });
                 } else if (item.type === 'potion') {

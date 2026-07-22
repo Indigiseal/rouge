@@ -1,7 +1,7 @@
 // One-shot character pick before a new run starts on floor 1.
-import { SoundHelper } from '../utils/SoundHelper.js';
-import { MusicManager } from '../utils/MusicManager.js';
-import { CHARACTER_CLASSES, CHARACTER_IDS } from '../utils/CharacterClasses.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { MusicManager } from '../audio/MusicManager.js';
+import { CHARACTER_CLASSES, CHARACTER_IDS } from '../content/characters/CharacterClasses.js';
 
 export class CharacterSelectScene extends Phaser.Scene {
   constructor() {
@@ -69,7 +69,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const passive = def.id === 'rogue'
-      ? 'Passive: Dagger & Bow\ndeal +10% damage (+*)'
+      ? 'Passive: Dagger & Bow\ndeal +10% damage'
       : 'Passive: 10% crit sword/axe\nChain: melee counter\nPlate: ignore ranged';
     this.add.text(x, y + 10, passive, {
       fontSize: '11px',

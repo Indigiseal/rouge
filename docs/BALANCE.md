@@ -21,10 +21,11 @@ act1 pass **10.5%**.
 
 1. Враги / боссы — `CardDataGenerator.enemyData` / `bossData`
 2. Веса лута на этаже — `floorWeights` + `balanceCardWeights`
-3. Оружие / броня — `weaponUnlocks` / `armorUnlocks`
-4. Плотность врагов — `minEnemyRatioForFloor` в `cardSystem.js`
-5. Старт — `inventorySystem.grantStartingCards`, HP в `gameState.js` (100;
-   dagger 3/4 + bow 4/5)
+3. Оружие — `src/content/cards/weapons.js` (`WEAPONS` статы, `WEAPON_SPAWN_MIN_FLOOR` лут)
+   Броня — `src/content/cards/armor.js` (`ARMORS` + `ARMOR_SPAWN_MIN_FLOOR`)
+4. Плотность врагов — `minEnemyRatioForFloor` в board systems
+5. Старт — `CharacterClasses.startingWeapons` (только type+rarity), HP `PLAYER_START_HP` в `GameState.js`
+   Карточки стартового оружия собираются через `createWeaponCardData` / `buildStartingWeaponCards`
 
 Множителей-knobs нет.
 

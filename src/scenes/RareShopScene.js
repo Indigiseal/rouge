@@ -1,9 +1,23 @@
-import { CardSystem } from '../cardSystem.js';
-import { SoundHelper } from '../utils/SoundHelper.js';
-import { t, translateItemName } from '../utils/i18n.js';
-import { createTitle } from '../utils/titleText.js';
+import { CardSystem } from '../systems/CardSystem.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { t, translateItemName } from '../i18n/i18n.js';
+import { createTitle } from '../ui/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
-import { openAmuletChoiceOverlay } from '../utils/AmuletChoiceOverlay.js';
+import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
+import {
+    createWeaponCardData,
+    isWeaponSpawnableAtFloor,
+} from '../content/cards/index.js';
+import {
+    RARE_SHOP_COMPANION_CHANCE,
+    RARE_SHOP_COMPANION_CRYSTAL_EXTRA,
+    rareShopAmuletCrystalPrice,
+    rareShopArmorPrice,
+    rareShopBonusItemPrice,
+    rareShopGemPrice,
+    rareShopThornsPrice,
+    rareShopWeaponPrice,
+} from '../content/economy/shop.js';
 
 export class RareShopScene extends StationRoomBase {
     constructor() {
@@ -37,9 +51,9 @@ export class RareShopScene extends StationRoomBase {
         // The rare shop is the premium store — its goods cost a clear premium.
         // 1. Amulet offer (costs crystals) — uncommon/rare/legendary by rates
         const amuletData = cardGenerator.createCardData('amulet', floor, false, this.gameState, 'rare_shop');
+        let amuletPrice = null;
         if (amuletData) {
-            const rarityMult = { uncommon: 1.5, rare: 2, legendary: 3 }[amuletData.rarity] || 2;
-            const amuletPrice = Math.max(2, Math.floor((Math.floor(floor / 10) + 2) * rarityMult));
+            amuletPrice = rareShopAmuletCrystalPrice(amuletData, floor);
             this.shopItems.push({
                 data: amuletData,
                 price: amuletPrice,
@@ -52,7 +66,7 @@ export class RareShopScene extends StationRoomBase {
         const firstWeapon = this.createUpgradedWeapon();
         this.shopItems.push({
             data: firstWeapon,
-            price: 20 + floor * 5,
+            price: rareShopWeaponPrice(floor),
             currency: 'coins',
             purchased: false
         });
@@ -64,7 +78,7 @@ export class RareShopScene extends StationRoomBase {
             cardGenerator.capRewardRarity('uncommon', floor));
         this.shopItems.push({
             data: armorData || this.createUpgradedWeapon(firstWeapon?.weaponType),
-            price: 25 + floor * 5,
+            price: rareShopArmorPrice(floor),
             currency: 'coins',
             purchased: false
         });
@@ -73,7 +87,7 @@ export class RareShopScene extends StationRoomBase {
         // schedule (uncommon in act 1, rare in act 2, etc).
         this.shopItems.push({
             data: cardGenerator.createCardData('thorns', floor, false, null, cardGenerator.capRewardRarity('rare', floor)),
-            price: 15 + floor * 4,
+            price: rareShopThornsPrice(floor),
             currency: 'coins',
             purchased: false
         });
@@ -83,7 +97,7 @@ export class RareShopScene extends StationRoomBase {
         const randomGem = gemEffects[Math.floor(Math.random() * gemEffects.length)];
         this.shopItems.push({
             data: this.createGemCard(randomGem),
-            price: 18 + floor * 4,
+            price: rareShopGemPrice(floor),
             currency: 'coins',
             purchased: false
         });
@@ -94,12 +108,13 @@ export class RareShopScene extends StationRoomBase {
         const alreadyHasChick = liveInventory.some(item => item?.id === 'chickCompanion');
         if (this.gameState.heroMemory?.chickRareShopUnlocked
             && !alreadyHasChick
-            && Math.random() < 0.35) {
+            && amuletPrice != null
+            && Math.random() < RARE_SHOP_COMPANION_CHANCE) {
             this.shopItems.push({
                 data: cardGenerator.cardDataGenerator.createChickCompanionCard(),
                 // Unique companions are priced like an amulet (crystals), a touch
                 // dearer — not like a normal coin-priced card.
-                price: amuletPrice + 1,
+                price: amuletPrice + RARE_SHOP_COMPANION_CRYSTAL_EXTRA,
                 currency: 'crystals',
                 purchased: false
             });
@@ -110,11 +125,12 @@ export class RareShopScene extends StationRoomBase {
         const alreadyHasSkeleton = liveInventory.some(item => item?.id === 'skeletonWarriorCompanion');
         if (this.gameState.heroMemory?.skeletonRareShopUnlocked
             && !alreadyHasSkeleton
-            && Math.random() < 0.35) {
+            && amuletPrice != null
+            && Math.random() < RARE_SHOP_COMPANION_CHANCE) {
             this.shopItems.push({
                 data: cardGenerator.cardDataGenerator.createSkeletonWarriorCompanionCard(),
                 // Priced like an amulet (crystals), a touch dearer.
-                price: amuletPrice + 1,
+                price: amuletPrice + RARE_SHOP_COMPANION_CRYSTAL_EXTRA,
                 currency: 'crystals',
                 purchased: false
             });
@@ -148,7 +164,7 @@ export class RareShopScene extends StationRoomBase {
             item = cardGenerator.createCardData(type, floor, false, null, 'rare');
             if (!item) return null;
         }
-        const price = 30 + floor * 5;
+        const price = rareShopBonusItemPrice(floor);
         return { data: item, price, currency: 'coins', purchased: false };
     }
 
@@ -171,65 +187,25 @@ export class RareShopScene extends StationRoomBase {
     }
 
     createUpgradedWeapon(excludeType = null) {
-        const cardGenerator = new CardSystem(this);
         const floor = this.gameState.currentFloor;
-
         const weaponTypes = ['dagger', 'bow', 'sword', 'axe'];
-        let availableWeapons = [];
-
-        weaponTypes.forEach(weaponType => {
-            const weaponUnlocks = cardGenerator.cardDataGenerator.weaponUnlocks[weaponType];
-            if (weaponUnlocks && weaponUnlocks.uncommon && floor >= weaponUnlocks.uncommon.floor) {
-                availableWeapons.push({ type: weaponType, data: weaponUnlocks.uncommon });
-            }
-        });
+        let availableWeapons = weaponTypes.filter((weaponType) => (
+            isWeaponSpawnableAtFloor(weaponType, 'uncommon', floor)
+        ));
 
         // Prefer a different weapon type than the one already offered — but only
         // if excluding it still leaves at least one option (on early floors the
         // pool can be a single type, e.g. dagger-only before floor 18).
-        if (excludeType && availableWeapons.some(w => w.type !== excludeType)) {
-            availableWeapons = availableWeapons.filter(w => w.type !== excludeType);
+        if (excludeType && availableWeapons.some((t) => t !== excludeType)) {
+            availableWeapons = availableWeapons.filter((t) => t !== excludeType);
         }
 
         if (availableWeapons.length === 0) {
-            return {
-                type: 'weapon',
-                name: 'Uncommon Sword',
-                weaponType: 'sword',
-                damage: 7,
-                rarity: 'uncommon',
-                sprite: 'sword_U',
-                special: null,
-                range: 'melee',
-                durability: 8,
-                maxDurability: 8
-            };
+            return createWeaponCardData('sword', 'uncommon');
         }
 
-        const selected = availableWeapons[Math.floor(Math.random() * availableWeapons.length)];
-        const weaponData = selected.data;
-        const weaponName = selected.type.charAt(0).toUpperCase() + selected.type.slice(1);
-
-        const durabilityMap = {
-            dagger: 5, bow: 6, sword: 8, axe: 8
-        };
-        const maxDurability = durabilityMap[selected.type] ?? 6;
-
-        return {
-            type: 'weapon',
-            name: `Uncommon ${weaponName}`,
-            weaponType: selected.type,
-            damage: weaponData.damage,
-            rarity: 'uncommon',
-            sprite: weaponData.sprite,
-            special: weaponData.special,
-            range: weaponData.range || 'melee',
-            poisonDamage: weaponData.poisonDamage || 0,
-            poisonTurns: weaponData.poisonTurns || 0,
-            poisonStackable: weaponData.poisonStackable || false,
-            durability: maxDurability,
-            maxDurability: maxDurability
-        };
+        const selectedType = availableWeapons[Math.floor(Math.random() * availableWeapons.length)];
+        return createWeaponCardData(selectedType, 'uncommon');
     }
 
     displayShopItems() {
