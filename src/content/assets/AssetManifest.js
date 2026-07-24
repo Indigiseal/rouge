@@ -168,6 +168,11 @@ export const ASSET_MANIFEST = [
     { key: 'spider_c', path: 'assets/art/spider_c.png', type: 'image' },
     { key: 'lostSoul', path: 'assets/art/ghostlyEnemy.png', type: 'image' },
     { key: 'cerberusHead', path: 'assets/art/dogHead.png', type: 'image' },
+    // Elite mini-boss portraits — same 53x70 footprint as the base art they
+    // replace. Only some enemies have one; see ELITE_SPRITE_KEYS below.
+    { key: 'spider_c_elite', path: 'assets/art/spiderElite.png', type: 'image' },
+    { key: 'lostSoul_elite', path: 'assets/art/ghostlyEnemyElite.png', type: 'image' },
+    { key: 'cerberusHead_elite', path: 'assets/art/dogHeadElite.png', type: 'image' },
     { key: 'sword_c_reworked', path: 'assets/art/sword_c_r.png', type: 'image' },
     { key: 'durability_dot', path: 'assets/art/durability_dot.png', type: 'image' },
     { key: 'ten_durability', path: 'assets/art/ten_durability.png', type: 'image' },
@@ -327,6 +332,18 @@ export const ASSET_MANIFEST = [
     { key: 'boss_music', path: 'assets/music/TOE_BattleDrums.mp3', type: 'audio' },
     { key: 'map_music', path: 'assets/music/TOE_Peaceful.mp3', type: 'audio' },
 ];
+
+/**
+ * Base enemy sprite key -> elite portrait key, for enemies that have dedicated
+ * elite art. Enemies missing an entry here fall back to the tint highlight, so
+ * this map can be filled in one enemy at a time as art lands.
+ * @type {Record<string, string>}
+ */
+export const ELITE_SPRITE_KEYS = {
+    spider_c: 'spider_c_elite',
+    lostSoul: 'lostSoul_elite',
+    cerberusHead: 'cerberusHead_elite',
+};
 
 /** Queue every manifest entry onto a Phaser LoaderPlugin (scene.load). */
 export function loadAssetManifest(loader) {

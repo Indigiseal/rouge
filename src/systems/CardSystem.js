@@ -39,6 +39,10 @@ export class CardSystem {
         this.spawner = new FloorSpawner(this);
         this.combat = new BoardCombat(this);
         this.fx = new BoardCardFx(this);
+        // Handed straight to Phaser as a tween onUpdate callback, which invokes
+        // it with the tween as scope — so the facade hop below needs `this`
+        // pinned here or it lands on an object with no .layout.
+        this.snapYOnUpdate = this.snapYOnUpdate.bind(this);
     }
 
     isMeleeWeapon(...args) { return this.combat.isMeleeWeapon(...args); }
@@ -224,6 +228,7 @@ export class CardSystem {
         });
     }
 
+    getEliteSpriteKey(...args) { return this.fx.getEliteSpriteKey(...args); }
     applyEliteMiniBossVisual(...args) { return this.fx.applyEliteMiniBossVisual(...args); }
     handleTrap(card, index) {
         const trapName = card.data.name || 'Trap';

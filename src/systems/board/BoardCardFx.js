@@ -3,6 +3,7 @@ import { SoundHelper } from '../../audio/SoundHelper.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
 import { getMagic } from '../../content/cards/index.js';
+import { ELITE_SPRITE_KEYS } from '../../content/assets/AssetManifest.js';
 
 export class BoardCardFx {
     constructor(cs) {
@@ -13,6 +14,7 @@ export class BoardCardFx {
         this.getGemLabel = getGemLabel.bind(cs);
         this.attachGemShadow = attachGemShadow.bind(cs);
         this.enableGemDrag = enableGemDrag.bind(cs);
+        this.getEliteSpriteKey = getEliteSpriteKey.bind(cs);
         this.applyEliteMiniBossVisual = applyEliteMiniBossVisual.bind(cs);
         this.playEnemyHitEffect = playEnemyHitEffect.bind(cs);
         this.playLightningShine = playLightningShine.bind(cs);
@@ -509,9 +511,31 @@ function enableGemDrag(card, index) {
     });
 }
 
+// Elites read one of two ways. If the enemy has dedicated elite art we swap the
+// portrait outright — that's the stronger read, so no tint on top of it. Enemies
+// whose elite art isn't drawn yet keep the old tint highlight.
+function getEliteSpriteKey(card) {
+    const base = card?.data?.sprite;
+    if (!base) return null;
+    const eliteKey = ELITE_SPRITE_KEYS[base];
+    if (!eliteKey) return null;
+    // Guard the texture actually loaded, so a manifest typo or a missing file
+    // degrades to the tint instead of rendering Phaser's green "?" placeholder.
+    return this.scene?.textures?.exists(eliteKey) ? eliteKey : null;
+}
+
 function applyEliteMiniBossVisual(card) {
-    if (!card?.revealed || !card.data?.isEliteMiniBoss || !card.sprite?.setTint) return;
-    card.sprite.setTint(this.constructor.ELITE_HIGHLIGHT_TINT);
+    if (!card?.revealed || !card.data?.isEliteMiniBoss || !card.sprite) return;
+
+    const eliteKey = this.getEliteSpriteKey(card);
+    if (eliteKey && card.sprite.setTexture) {
+        card.sprite.clearTint?.();
+        card.sprite.setTexture(eliteKey, card.data.spriteFrame);
+        snapOriginToPixelGrid(card.sprite);
+        return;
+    }
+
+    card.sprite.setTint?.(this.constructor.ELITE_HIGHLIGHT_TINT);
 }
 
 function playEnemyHitEffect(card, effect) {
