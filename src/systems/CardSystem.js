@@ -58,7 +58,6 @@ export class CardSystem {
     _anyMeleeAlive(...args) { return this.combat._anyMeleeAlive(...args); }
     currentFrontRowR(...args) { return this.combat.currentFrontRowR(...args); }
     maxHiddenMeleeRowR(...args) { return this.combat.maxHiddenMeleeRowR(...args); }
-    canMeleeHit(...args) { return this.combat.canMeleeHit(...args); }
     _revealOneBehindAfterFrontClears(...args) { return this.combat._revealOneBehindAfterFrontClears(...args); }
     buildBrickGrid(...args) { return this.layout.buildBrickGrid(...args); }
     pickConnectedBrick(...args) { return this.layout.pickConnectedBrick(...args); }

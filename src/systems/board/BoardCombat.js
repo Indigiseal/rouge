@@ -19,7 +19,6 @@ export class BoardCombat {
         this._anyMeleeAlive = _anyMeleeAlive.bind(cs);
         this.currentFrontRowR = currentFrontRowR.bind(cs);
         this.maxHiddenMeleeRowR = maxHiddenMeleeRowR.bind(cs);
-        this.canMeleeHit = canMeleeHit.bind(cs);
         this._revealOneBehindAfterFrontClears = _revealOneBehindAfterFrontClears.bind(cs);
         this.restoreEnemyStatusMarkers = restoreEnemyStatusMarkers.bind(cs);
         this.rollEvade = rollEvade.bind(cs);
@@ -268,18 +267,6 @@ function maxHiddenMeleeRowR() {
     if (typeof br === 'number' && br > best) best = br;
   }
   return best;
-}
-
-function canMeleeHit(targetIndex) {
-  const target = this.boardCards[targetIndex];
-  if (!target) return false;
-  if (!this.isEnemyType(target.data?.type)) return false;
-  
-  if (!this._anyMeleeAlive({ includeHidden: true })) return target.revealed;
-  if (target.data.role !== 'MELEE') {
-    return false;
-  }
-  return target.revealed;
 }
 
 function _revealOneBehindAfterFrontClears(killedIndex) {
