@@ -482,11 +482,20 @@ export class CardSystem {
                 this.removeCard(index);
                 return;
             }
+            // A stale offer can be entirely owned by now — say so instead of
+            // opening a window whose every choice would be refused.
+            const takeable = this.scene.amuletManager?.takeableOptions?.(offer.options)
+                ?? offer.options;
+            if (!takeable.length) {
+                this.removeCard(index);
+                this.scene.createFloatingText?.(320, 180, 'Nothing new to offer', 0xaaaaaa);
+                return;
+            }
             // Remove the board token first so it can't be double-clicked.
             if (index != null) this.removeCard(index);
             openAmuletChoiceOverlay(this.scene, {
                 rarity: offer.rarity,
-                options: offer.options,
+                options: takeable,
                 amuletManager: this.scene.amuletManager,
                 onPicked: () => this.scene.updateUI?.(),
             });

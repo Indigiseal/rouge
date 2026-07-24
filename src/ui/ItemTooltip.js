@@ -5,6 +5,10 @@
 import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from '../i18n/i18n.js';
 import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
 
+// Default tooltip depth — above the board and its card FX, below the modal
+// overlays. Callers that render higher pass their own depth.
+export const TOOLTIP_DEPTH = 2000;
+
 function rarityFill(rarity) {
     switch (rarity) {
         case 'uncommon':  return '#66dd66';
@@ -90,7 +94,7 @@ export function getTooltipLines(scene, data) {
 
 // Builds a tooltip container parented to the given scene. Stored on the
 // scene as `_itemTooltip` so subsequent shows hide the previous one.
-export function showItemTooltip(scene, data, anchorX, anchorY) {
+export function showItemTooltip(scene, data, anchorX, anchorY, depth = TOOLTIP_DEPTH) {
     if (!scene || !scene.add) return;
     hideItemTooltip(scene);
 
@@ -101,7 +105,7 @@ export function showItemTooltip(scene, data, anchorX, anchorY) {
         ? '#ff8888'
         : rarityFill(data.rarity);
 
-    renderTooltipBox(scene, lines.name, lines.body, nameColor, anchorX, anchorY);
+    renderTooltipBox(scene, lines.name, lines.body, nameColor, anchorX, anchorY, depth);
 }
 
 // Describes a boss's abilities as human-readable lines. Reads the same
@@ -175,7 +179,9 @@ export function showBossTooltip(scene, data, anchorX, anchorY) {
 
 // Shared box renderer for item and boss tooltips. Stored on the scene as
 // `_itemTooltip` so any subsequent show (and hideItemTooltip) clears it.
-function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY) {
+// `depth` defaults to board level; modal overlays that sit higher pass their
+// own so the tooltip lands on top of the window it describes.
+function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth = TOOLTIP_DEPTH) {
     if (!name && !body) return;
 
     const padX = 6;
@@ -233,7 +239,7 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY) {
     const children = [bg, nameText];
     if (bodyText) children.push(bodyText);
 
-    scene._itemTooltip = scene.add.container(tipX, tipY, children).setDepth(2000);
+    scene._itemTooltip = scene.add.container(tipX, tipY, children).setDepth(depth);
 }
 
 export function hideItemTooltip(scene) {

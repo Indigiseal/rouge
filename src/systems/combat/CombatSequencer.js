@@ -103,7 +103,16 @@ export class CombatSequencer {
     // Coordinates are captured now, not read at fire time — the sprite they came
     // from is often destroyed by the time a later beat runs.
     static floatingText(scene, beat, x, y, text, color, size, options) {
-        this.schedule(scene, beat, () => scene.createFloatingText?.(x, y, text, color, size, options));
+        // Log now, draw later. createFloatingText writes its own log line when
+        // it runs, which for a delayed beat is up to 245ms after the event
+        // resolved — long enough for a synchronous "All enemies defeated!" to
+        // be written first and leave the killing blow recorded beneath it.
+        const opts = { ...(options || {}) };
+        if (!opts.skipLog) {
+            scene.logCombatEvent?.(text, x, y);
+            opts.skipLog = true;
+        }
+        this.schedule(scene, beat, () => scene.createFloatingText?.(x, y, text, color, size, opts));
     }
 
     static shakeCard(scene, beat, sprite) {

@@ -74,6 +74,25 @@ export class AmuletManager {
         });
     }
 
+    // Would addAmulet() succeed for this id? Offers are built when a card
+    // spawns but redeemed much later, by which point the player may already own
+    // what was rolled — callers use this to drop dead options before showing a
+    // choice, and before charging for one.
+    // Keep the rejection reasons here in step with addAmulet() below.
+    canAddAmulet(amuletId, { force = false } = {}) {
+        if (areAmuletsDisabled() && !force) return false;
+        const definition = this.amuletDefinitions[amuletId];
+        if (!definition) return false;
+        if (this.isReplacedByOwned(amuletId)) return false;
+        if (this.hasAmulet(amuletId) && !definition.stackable) return false;
+        return true;
+    }
+
+    // Every still-takeable option from a (possibly stale) offer list.
+    takeableOptions(options) {
+        return (options || []).filter((o) => o?.id && this.canAddAmulet(o.id));
+    }
+
     // Add an amulet to the player.
     // force=true bypasses the "amulets disabled" test option — used by the
     // balance sim for controlled solo-amulet sweeps (starting loadout only;

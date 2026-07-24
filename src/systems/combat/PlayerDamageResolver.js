@@ -15,6 +15,10 @@ export function isEnemyRangedAttack(card) {
  */
 export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source = 'enemy', armorPierce = 0) {
     const scene = gameState.scene;
+    // Poison is internal — armor plating doesn't stop it and doesn't wear out
+    // blocking it. Dodge still applies (you can shrug off a tick), but it must
+    // not cost durability either, or leather bleeds a pip every poison turn.
+    const isPoison = source === 'poison';
 
     if (source === 'poison' && (
         gameState.relicEffects?.poisonImmunity
@@ -34,7 +38,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
 
     // Check for dodge (from amulets)
     if (scene.amuletManager && scene.amuletManager.checkDodge()) {
-        if (gameState.equippedArmor) gameState.tickEquippedArmorDurability();
+        if (gameState.equippedArmor && !isPoison) gameState.tickEquippedArmorDurability();
         scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodged!', 0x00ff00);
         return {
             actualDamage: 0,
@@ -61,7 +65,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         // Handle Dodge from equipped armor — durability ticks on dodge.
         if (gameState.equippedArmor.dodgeChance && Math.random() < gameState.equippedArmor.dodgeChance) {
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodge!', 0x00ff00);
-            gameState.tickEquippedArmorDurability();
+            if (!isPoison) gameState.tickEquippedArmorDurability();
             return {
                 actualDamage: 0,
                 tookDamage: false,
@@ -121,7 +125,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         // Durability tick when armor's protection actually absorbs a hit.
         // (Dodge-only leather never enters here — it ticks on dodge above.)
         // Rivets save chance lives inside tickEquippedArmorDurability.
-        if (protection > 0 && amount > 0) {
+        if (protection > 0 && amount > 0 && !isPoison) {
             gameState.tickEquippedArmorDurability();
         }
     }
@@ -131,7 +135,10 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
 
     // armor_break (boss ability) pierces some of the player's protection so the
     // hit lands harder. Never turns armor into a damage bonus — just reduces it.
-    const effectiveProtection = Math.max(0, protection - Math.max(0, armorPierce));
+    // Poison bypasses protection outright — plate is no defence against venom.
+    const effectiveProtection = isPoison
+        ? 0
+        : Math.max(0, protection - Math.max(0, armorPierce));
     const actualDamage = Math.max(0, amount - effectiveProtection);
     const blockedDamage = Math.max(0, amount - actualDamage);
 

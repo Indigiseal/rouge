@@ -239,7 +239,15 @@ export class RareShopScene extends StationRoomBase {
         if (item.data.type === 'amulet') {
             if (this.gameScene?.amuletManager) {
                 const offer = item.data.pendingChoice && item.data.options?.length ? item.data : null;
-                if (offer?.options?.length) {
+                // Never charge for a shelf of amulets the player already owns —
+                // the offer was rolled when the shop was built, not now.
+                const takeable = this.gameScene.amuletManager.takeableOptions?.(offer?.options)
+                    ?? offer?.options ?? [];
+                if (offer?.options?.length && !takeable.length) {
+                    this.showFeedback({ key: 'float.alreadyOwned' }, 0xff0000, 100);
+                    return;
+                }
+                if (takeable.length) {
                     if (item.currency === 'coins') this.gameState.coins -= item.price;
                     else this.gameState.crystals -= item.price;
                     SoundHelper.playSound(this, 'shop_buy', 0.5);
@@ -250,7 +258,7 @@ export class RareShopScene extends StationRoomBase {
                     this.refreshStationInventoryDisplay();
                     openAmuletChoiceOverlay(this, {
                         rarity: offer.rarity,
-                        options: offer.options,
+                        options: takeable,
                         amuletManager: this.gameScene.amuletManager,
                         title: `Rare shop — ${offer.rarity} amulet`,
                         onPicked: () => this.gameScene?.updateUI?.(),

@@ -484,9 +484,14 @@ export class CombatTurnController {
 
         if (effectDamage > 0) {
             const playerHealthBeforePoison = scene.gameState.playerHealth;
-            CombatSequencer.playVariant(scene, 'hurt', 'player_hurt', 0.5);
-            const { actualDamage, tookDamage } = scene.gameState.takeDamage(effectDamage, -1, 'poison');
-            CombatSequencer.floatingText(scene, 'hurt', scene.playerAvatar.x, scene.playerAvatar.y, `-${actualDamage} (Poison)`, 0x00ff00);
+            const { actualDamage } = scene.gameState.takeDamage(effectDamage, -1, 'poison');
+            // A dodged or immune tick already announced itself ("Dodge!",
+            // "Poison Immune!") — don't stack a "-0 (Poison)" and a hurt grunt
+            // on top of it.
+            if (actualDamage > 0) {
+                CombatSequencer.playVariant(scene, 'hurt', 'player_hurt', 0.5);
+                CombatSequencer.floatingText(scene, 'hurt', scene.playerAvatar.x, scene.playerAvatar.y, `-${actualDamage} (Poison)`, 0x00ff00);
+            }
 
             // Track poison death
             if (playerHealthBeforePoison > 0 && scene.gameState.playerHealth <= 0) {
@@ -531,11 +536,17 @@ export class CombatTurnController {
         if (candidates.length === 0) return null;
 
         if (companion?.attackStyle === 'melee' || companion?.range === 'melee') {
-            const frontline = candidates.filter(({ card }) => (
-                card.data?.role === 'MELEE' || card.data?.type === 'boss'
-            ));
-            if (frontline.length === 0) return null;
-            return frontline[Math.floor(Math.random() * frontline.length)];
+            // Melee companions obey the same frontline gate the player does
+            // (see attackEnemy in BoardCombat): while any MELEE enemy lives —
+            // including a boss's summons — nothing behind it can be reached.
+            // Once the frontline is gone, everything is fair game, bosses and
+            // archers alike.
+            const blocked = scene.cardSystem?._anyMeleeAlive?.({ includeHidden: true });
+            const reachable = blocked
+                ? candidates.filter(({ card }) => card.data?.role === 'MELEE')
+                : candidates;
+            if (reachable.length === 0) return null;
+            return reachable[Math.floor(Math.random() * reachable.length)];
         }
 
         const archers = candidates.filter(({ card }) => card.data?.isRangedType === true);

@@ -178,31 +178,80 @@ export const CombatHud = {
         // Pixel height available for text before it would spill past the panel
         // bottom. Entries can wrap to 2+ lines, so we cap by height, not count.
         this.combatLog.bodyMaxHeight = (CY + H / 2 - 10) - bodyTop;
-        this.combatLog.objects = [panel, title, rule, body];
+
+        // Scrollbar: shows there IS history above and where you are in it.
+        // Hidden whenever everything already fits (see updateCombatLogScrollbar).
+        const trackX = CX + W / 2 - 7;
+        const track = this.add.rectangle(trackX, bodyTop, 3, this.combatLog.bodyMaxHeight, 0x6f5452, 0.18)
+            .setOrigin(0.5, 0).setDepth(42);
+        const thumb = this.add.rectangle(trackX, bodyTop, 3, 20, 0x6f5452, 0.7)
+            .setOrigin(0.5, 0).setDepth(43);
+        this.combatLog.track = track;
+        this.combatLog.thumb = thumb;
+        this.combatLog.trackX = trackX;
+        this.combatLog.trackTop = bodyTop;
+        this.combatLog.trackHeight = this.combatLog.bodyMaxHeight;
+        this.combatLog.maxScroll = 0;
+
+        this.combatLog.objects = [panel, title, rule, body, track, thumb];
 
         // Wheel over the panel scrolls back through the fight history. A
         // scene-level listener with a manual bounds check is far more reliable
         // than a per-object 'wheel' event (which frequently never fires).
         this.input.on('wheel', (pointer, over, dx, dy) => {
-            if (!this.combatLog?.visible) return;
-            const b = this.combatLog.bounds;
-            if (pointer.x < b.left || pointer.x > b.right
-                || pointer.y < b.top || pointer.y > b.bottom) return;
-            const maxScroll = Math.max(0, this.combatLog.lines.length - 1);
+            if (!this.combatLogHasPointer(pointer)) return;
             // Wheel up (dy < 0) goes back in history; wheel down returns to newest.
-            this.combatLog.scroll = Phaser.Math.Clamp(
-                this.combatLog.scroll + (dy > 0 ? -1 : 1), 0, maxScroll
-            );
-            this.renderCombatLog();
+            this.scrollCombatLog(dy > 0 ? -1 : 1);
+        });
+
+        // Drag the paper to scroll it — the only option on a trackpad or touch
+        // screen, and a more obvious gesture than hunting for the wheel.
+        this.input.on('pointerdown', (pointer) => {
+            if (!this.combatLogHasPointer(pointer)) return;
+            this.combatLog.drag = { y: pointer.y, from: this.combatLog.scroll };
+        });
+        this.input.on('pointermove', (pointer) => {
+            const drag = this.combatLog?.drag;
+            if (!drag || !pointer.isDown) return;
+            // Pull down to reveal older lines, as if sliding the paper.
+            const LINE_PX = 10;
+            const moved = Math.round((pointer.y - drag.y) / LINE_PX);
+            this.setCombatLogScroll(drag.from + moved);
+        });
+        this.input.on('pointerup', () => {
+            if (this.combatLog) this.combatLog.drag = null;
         });
 
         this.setCombatLogVisible(false);
     },
+    // True when the pointer is over the log panel and the log is on screen.
+    combatLogHasPointer(pointer) {
+        if (!this.combatLog?.visible) return false;
+        const b = this.combatLog.bounds;
+        return pointer.x >= b.left && pointer.x <= b.right
+            && pointer.y >= b.top && pointer.y <= b.bottom;
+    },
+
+    // scroll counts lines hidden BELOW the view: 0 is pinned to the newest
+    // entry, higher values walk back through the fight.
+    setCombatLogScroll(value) {
+        if (!this.combatLog) return;
+        const max = this.combatLog.maxScroll || 0;
+        const next = Phaser.Math.Clamp(Math.round(value), 0, max);
+        if (next === this.combatLog.scroll) return;
+        this.combatLog.scroll = next;
+        this.renderCombatLog();
+    },
+
+    scrollCombatLog(delta) {
+        this.setCombatLogScroll((this.combatLog?.scroll || 0) + delta);
+    },
+
     renderCombatLog() {
         if (!this.combatLog?.body) return;
         const { lines, maxVisible, scroll, bodyMaxHeight } = this.combatLog;
         const body = this.combatLog.body;
-        const end = lines.length - scroll;
+        const end = Math.max(0, lines.length - scroll);
         let start = Math.max(0, end - maxVisible);
         body.setText(lines.slice(start, end).join('\n'));
         // Wrapped entries can push the text past the panel bottom — drop the
@@ -211,6 +260,27 @@ export const CombatHud = {
             start++;
             body.setText(lines.slice(start, end).join('\n'));
         }
+        // How far back you can go is set by what actually fits, not by the line
+        // count — otherwise scrolling runs on into blank paper.
+        const shown = Math.max(1, end - start);
+        this.combatLog.maxScroll = Math.max(0, lines.length - shown);
+        this.updateCombatLogScrollbar(shown);
+    },
+
+    updateCombatLogScrollbar(shown) {
+        const log = this.combatLog;
+        if (!log?.track || !log.thumb) return;
+        const total = log.lines.length;
+        const overflows = total > shown;
+        log.track.setVisible(log.visible && overflows);
+        log.thumb.setVisible(log.visible && overflows);
+        if (!overflows) return;
+
+        const thumbH = Math.max(8, Math.round(log.trackHeight * (shown / total)));
+        // scroll 0 (newest) parks the thumb at the bottom, like a chat window.
+        const fromTop = log.maxScroll > 0 ? (log.maxScroll - log.scroll) / log.maxScroll : 1;
+        log.thumb.setSize(3, thumbH);
+        log.thumb.setPosition(log.trackX, log.trackTop + Math.round((log.trackHeight - thumbH) * fromTop));
     },
 
     // Push a fully-formed line into the log (no auto-attribution). Used for
@@ -221,7 +291,11 @@ export const CombatHud = {
         if (!line) return;
         this.combatLog.lines.push(line);
         if (this.combatLog.lines.length > 200) this.combatLog.lines.shift();
-        this.combatLog.scroll = 0; // pin to newest on a fresh event
+        // Follow the newest entry only when already parked at the bottom. If the
+        // player has scrolled back to read something, a fresh hit must not yank
+        // the view out from under them — scroll counts from the end, so holding
+        // position means stepping back one for the line just appended.
+        if (this.combatLog.scroll > 0) this.combatLog.scroll += 1;
         this.renderCombatLog();
     },
     addCombatLog(message, x, y) {
@@ -234,6 +308,13 @@ export const CombatHud = {
         if (label) text = `${label} ${text}`;
         this.pushCombatLog(text);
     },
+    // Record an event in the log at the moment it RESOLVES, for callers whose
+    // floating text is deliberately delayed. The log is a transcript of the
+    // fight in the order it actually happened; the timeline in CombatSequencer
+    // only governs how that fight is narrated on screen.
+    logCombatEvent(text, x, y) {
+        this.addCombatLog(t(this, text), x, y);
+    },
     clearCombatLog() {
         if (!this.combatLog) return;
         this.combatLog.lines = [];
@@ -244,6 +325,10 @@ export const CombatHud = {
         if (!this.combatLog) return;
         this.combatLog.visible = v;
         this.combatLog.objects.forEach(o => o?.setVisible?.(v));
+        if (!v) this.combatLog.drag = null;
+        // The blanket setVisible above would show the scrollbar even with
+        // nothing to scroll — re-render so it re-decides.
+        this.renderCombatLog();
     },
     refreshCombatLogVisibility() {
         this.setCombatLogVisible(['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType));

@@ -18,8 +18,14 @@ const RARITY_COLOR = {
  * @returns {{ close: () => void } | null}
  */
 export function openAmuletChoiceOverlay(scene, cfg) {
-  const options = (cfg?.options || []).filter((o) => o?.id);
-  if (!options.length || !cfg?.amuletManager) return null;
+  if (!cfg?.amuletManager) return null;
+  // Offers are rolled when the card spawns and redeemed whenever the player
+  // gets to it, so anything acquired in between is dead on arrival. Drop it
+  // here rather than rendering a card that can only refuse to be picked.
+  const options = cfg.amuletManager.takeableOptions
+    ? cfg.amuletManager.takeableOptions(cfg.options)
+    : (cfg.options || []).filter((o) => o?.id);
+  if (!options.length) return null;
   if (scene._amuletChoiceOpen) return null;
   scene._amuletChoiceOpen = true;
 
@@ -88,7 +94,9 @@ export function openAmuletChoiceOverlay(scene, cfg) {
 
     sprite.on('pointerover', () => {
       scene.tweens.add({ targets: sprite, y: cardY - 6, duration: 120, ease: 'Power2' });
-      showItemTooltip(scene, item, sprite.x, sprite.y - 10);
+      // +10 keeps the tooltip clear of the overlay's own layers (veil, cards,
+      // labels sit at depth..depth+2) instead of rendering behind them.
+      showItemTooltip(scene, item, sprite.x, sprite.y - 10, depth + 10);
     });
     sprite.on('pointerout', () => {
       scene.tweens.add({ targets: sprite, y: cardY, duration: 120, ease: 'Power2' });
@@ -97,7 +105,12 @@ export function openAmuletChoiceOverlay(scene, cfg) {
     sprite.on('pointerdown', () => {
       const ok = cfg.amuletManager.addAmulet(item.id);
       if (!ok) {
+        // addAmulet already floated its own reason. This overlay has no cancel
+        // button, so leaving it open on a refused pick strands the player with
+        // no way out — close instead of trapping them.
         scene.createFloatingText?.(x, cardY - 36, 'Already owned!', 0xff4444);
+        close();
+        cfg.onCancel?.();
         return;
       }
       SoundHelper.playSound(scene, 'shop_buy', 0.5);

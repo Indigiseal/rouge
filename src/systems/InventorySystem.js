@@ -1,4 +1,5 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { buildStartingWeaponCards } from '../content/characters/CharacterClasses.js';
 import { CardDataGenerator } from './loot/CardDataGenerator.js';
 import { CardMergeRules } from './inventory/CardMergeRules.js';

@@ -799,10 +799,19 @@ function takeRewardCard(index) {
                 ? data
                 : this.cardDataGenerator.createAmuletOffer(data.source || 'boss', floor, this.scene.gameState);
             if (!offer?.options?.length) return;
+            // A stale boss-reward offer can be entirely owned by now; don't
+            // open a window whose every choice would be refused.
+            const takeable = this.scene.amuletManager?.takeableOptions?.(offer.options)
+                ?? offer.options;
+            if (!takeable.length) {
+                this.removeCard(index);
+                this.scene.createFloatingText?.(320, 180, 'Nothing new to offer', 0xaaaaaa);
+                return;
+            }
             this.removeCard(index);
             openAmuletChoiceOverlay(this.scene, {
                 rarity: offer.rarity,
-                options: offer.options,
+                options: takeable,
                 amuletManager: this.scene.amuletManager,
                 title: `Boss reward — ${offer.rarity} amulet`,
                 onPicked: () => this.scene.updateUI?.(),
