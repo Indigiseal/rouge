@@ -3,6 +3,7 @@ import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
+import { humanRunRecorder } from '../systems/HumanRunRecorder.js';
 
 export class PauseMenuScene extends Phaser.Scene {
     constructor() {
@@ -20,56 +21,128 @@ export class PauseMenuScene extends Phaser.Scene {
         this.overlay = this.add.rectangle(320, 180, 640, 360, 0x000000, 0.7);
         
         // Menu container background
-        const menuBg = this.add.rectangle(320, 180, 400, 280, 0x2c1810)
+        const menuBg = this.add.rectangle(320, 180, 440, 338, 0x2c1810)
             .setStrokeStyle(3, 0xffffff);
         
         // Title
-        this.add.text(320, 80, 'PAUSED', {
+        this.add.text(320, 35, 'PAUSED', {
             fontSize: '32px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Sound settings title
-        this.add.text(320, 120, 'Sound Settings', {
+        this.add.text(320, 72, 'Sound Settings', {
             fontSize: '18px',
             fill: '#cccccc',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
-        this.createVolumeSlider('Music', 165, 'music');
-        this.createVolumeSlider('Sound Effects', 215, 'sfx');
+        this.createVolumeSlider('Music', 112, 'music');
+        this.createVolumeSlider('Sound Effects', 152, 'sfx');
         
         // Resume button
-        const resumeButton = this.add.rectangle(230, 280, 120, 35, 0x00ff00, 0.3)
+        const resumeButton = this.add.rectangle(230, 205, 120, 35, 0x00ff00, 0.3)
             .setStrokeStyle(2, 0x00ff00)
             .setInteractive({ useHandCursor: true })
             .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); resumeButton.setFillStyle(0x00ff00, 0.5); })
             .on('pointerout', () => resumeButton.setFillStyle(0x00ff00, 0.3))
             .on('pointerdown', () => this.resumeGame());
         
-        this.add.text(230, 280, 'Resume', {
+        this.add.text(230, 205, 'Resume', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Main Menu button (optional - for future use)
-        const mainMenuButton = this.add.rectangle(410, 280, 120, 35, 0xff6666, 0.3)
+        const mainMenuButton = this.add.rectangle(410, 205, 120, 35, 0xff6666, 0.3)
             .setStrokeStyle(2, 0xff6666)
             .setInteractive({ useHandCursor: true })
             .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); mainMenuButton.setFillStyle(0xff6666, 0.5); })
             .on('pointerout', () => mainMenuButton.setFillStyle(0xff6666, 0.3))
             .on('pointerdown', () => this.quitToMainMenu());
         
-        this.add.text(410, 280, 'Save & Quit', {
+        this.add.text(410, 205, 'Save & Quit', {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
+
+        this.createRecorderControls();
         
         // ESC key to resume
         this.input.keyboard.on('keydown-ESC', () => this.resumeGame());
+    }
+
+    createRecorderControls() {
+        this.recorderStatusText = this.add.text(320, 253, '', {
+            fontSize: '13px',
+            fill: '#d7c9a8',
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5);
+
+        const toggleButton = this.add.rectangle(245, 305, 145, 35, 0x6c63ff, 0.32)
+            .setStrokeStyle(2, 0x8c86ff)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerover', () => toggleButton.setFillStyle(0x6c63ff, 0.52))
+            .on('pointerout', () => toggleButton.setFillStyle(0x6c63ff, 0.32))
+            .on('pointerdown', () => {
+                SoundHelper.playVariant(this, 'hover_button', 0.4);
+                humanRunRecorder.toggle(this.getRecordingScene());
+                this.refreshRecorderControls();
+            });
+
+        this.recorderToggleText = this.add.text(245, 305, '', {
+            fontSize: '14px',
+            fill: '#ffffff',
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5);
+
+        const exportButton = this.add.rectangle(395, 305, 125, 35, 0x4caf50, 0.28)
+            .setStrokeStyle(2, 0x65c66a)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerover', () => exportButton.setFillStyle(0x4caf50, 0.48))
+            .on('pointerout', () => exportButton.setFillStyle(0x4caf50, 0.28))
+            .on('pointerdown', () => {
+                SoundHelper.playVariant(this, 'hover_button', 0.4);
+                const result = humanRunRecorder.download();
+                if (!result.ok && result.reason === 'no_trace') {
+                    this.recorderStatusText.setText('No recorded run to export');
+                } else if (!result.ok) {
+                    this.recorderStatusText.setText('Export is unavailable in this browser');
+                }
+            });
+
+        this.add.text(395, 305, 'Export JSON', {
+            fontSize: '14px',
+            fill: '#ffffff',
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5);
+
+        this.refreshRecorderControls();
+    }
+
+    getRecordingScene() {
+        try {
+            return this.scene.get('GameScene') || this.scene.get(this.pausedScene) || this;
+        } catch {
+            return this;
+        }
+    }
+
+    refreshRecorderControls() {
+        const status = humanRunRecorder.getStatus();
+        this.recorderToggleText?.setText(status.active ? 'Stop Recording' : 'Record My Run');
+        if (status.storageError) {
+            this.recorderStatusText?.setText(`Recorder active in memory (${status.eventCount} events)`);
+        } else if (status.active) {
+            this.recorderStatusText?.setText(`Human play recorder: ON (${status.eventCount} events)`);
+        } else if (status.eventCount > 0) {
+            this.recorderStatusText?.setText(`Recorded run ready (${status.eventCount} events)`);
+        } else {
+            this.recorderStatusText?.setText('Human play recorder: OFF');
+        }
     }
     
     createVolumeSlider(label, y, volumeType) {

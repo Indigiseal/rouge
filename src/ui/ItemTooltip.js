@@ -9,6 +9,18 @@ import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses
 // overlays. Callers that render higher pass their own depth.
 export const TOOLTIP_DEPTH = 2000;
 
+// Vertical distance between the anchor point and the tooltip box. Callers
+// anchor at the card's CENTRE, so this has to clear half a card before it
+// clears anything at all.
+//
+// Shops, chests and the amulet overlay lay their cards out with plenty of
+// room, so the roomy default reads fine there. The combat board packs cards
+// 48–60px apart, where 60px pushes the box a full card-height clear of the
+// one you're pointing at and it stops feeling attached to the cursor — hence
+// the tighter board value, which leaves the box just above the card's top edge.
+export const TOOLTIP_GAP = 60;
+export const BOARD_TOOLTIP_GAP = 32;
+
 function rarityFill(rarity) {
     switch (rarity) {
         case 'uncommon':  return '#66dd66';
@@ -94,7 +106,7 @@ export function getTooltipLines(scene, data) {
 
 // Builds a tooltip container parented to the given scene. Stored on the
 // scene as `_itemTooltip` so subsequent shows hide the previous one.
-export function showItemTooltip(scene, data, anchorX, anchorY, depth = TOOLTIP_DEPTH) {
+export function showItemTooltip(scene, data, anchorX, anchorY, depth = TOOLTIP_DEPTH, gap = TOOLTIP_GAP) {
     if (!scene || !scene.add) return;
     hideItemTooltip(scene);
 
@@ -105,7 +117,7 @@ export function showItemTooltip(scene, data, anchorX, anchorY, depth = TOOLTIP_D
         ? '#ff8888'
         : rarityFill(data.rarity);
 
-    renderTooltipBox(scene, lines.name, lines.body, nameColor, anchorX, anchorY, depth);
+    renderTooltipBox(scene, lines.name, lines.body, nameColor, anchorX, anchorY, depth, gap);
 }
 
 // Describes a boss's abilities as human-readable lines. Reads the same
@@ -161,7 +173,7 @@ function translateEnemyName(scene, enemyType) {
 }
 
 // Boss hover tooltip: name in boss gold, then attack and one line per ability.
-export function showBossTooltip(scene, data, anchorX, anchorY) {
+export function showBossTooltip(scene, data, anchorX, anchorY, gap = TOOLTIP_GAP) {
     if (!scene || !scene.add || !data) return;
     hideItemTooltip(scene);
 
@@ -174,14 +186,14 @@ export function showBossTooltip(scene, data, anchorX, anchorY) {
         bodyParts.push(t(scene, 'boss.noAbilities'));
     }
 
-    renderTooltipBox(scene, name, bodyParts.join('\n'), '#ffcc33', anchorX, anchorY);
+    renderTooltipBox(scene, name, bodyParts.join('\n'), '#ffcc33', anchorX, anchorY, TOOLTIP_DEPTH, gap);
 }
 
 // Shared box renderer for item and boss tooltips. Stored on the scene as
 // `_itemTooltip` so any subsequent show (and hideItemTooltip) clears it.
 // `depth` defaults to board level; modal overlays that sit higher pass their
 // own so the tooltip lands on top of the window it describes.
-function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth = TOOLTIP_DEPTH) {
+function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth = TOOLTIP_DEPTH, gap = TOOLTIP_GAP) {
     if (!name && !body) return;
 
     const padX = 6;
@@ -221,8 +233,8 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth 
         .setStrokeStyle(1, 0xb89968)
         .setOrigin(0, 0);
 
-    let tipY = Math.round(anchorY) - 60 - boxHeight;
-    if (tipY < 4) tipY = Math.round(anchorY) + 60;
+    let tipY = Math.round(anchorY) - gap - boxHeight;
+    if (tipY < 4) tipY = Math.round(anchorY) + gap;
     const cam = scene.cameras?.main;
     const screenW = cam?.width || 640;
     const tipX = Math.round(Phaser.Math.Clamp(

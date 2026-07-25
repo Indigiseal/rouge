@@ -1,6 +1,6 @@
 // FloorSpawner — spawnFloorCards and spawn-related helpers
 import { SoundHelper } from '../../audio/SoundHelper.js';
-import { showItemTooltip, hideItemTooltip } from '../../ui/ItemTooltip.js';
+import { showItemTooltip, hideItemTooltip, TOOLTIP_DEPTH, BOARD_TOOLTIP_GAP } from '../../ui/ItemTooltip.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { openAmuletChoiceOverlay } from '../../ui/AmuletChoiceOverlay.js';
 import { minEnemyRatioForFloor } from '../../content/balance/EnemyDensity.js';
@@ -735,7 +735,7 @@ function spawnBossRewardBoard(items) {
                     onUpdate: this.snapYOnUpdate
                 });
             }
-            showItemTooltip(this.scene, item, cardSprite.x, cardSprite.y);
+            showItemTooltip(this.scene, item, cardSprite.x, cardSprite.y, TOOLTIP_DEPTH, BOARD_TOOLTIP_GAP);
         });
         cardSprite.on('pointerout', () => {
             this.scene.tweens.add({

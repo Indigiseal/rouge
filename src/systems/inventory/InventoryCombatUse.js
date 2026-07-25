@@ -6,6 +6,7 @@ import {
     rollClassWeaponCrit,
 } from '../../content/characters/CharacterClasses.js';
 import { getMagic } from '../../content/cards/index.js';
+import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 
 export const InventoryCombatUse = {
     isEnemyBoardCard(card, includeBoss = true) {
@@ -208,7 +209,7 @@ export const InventoryCombatUse = {
             case 'boneWall':
                 this.scene.gameState.boneWall = 2; // Reflects next 2 attacks
                 SoundHelper.playSound(this.scene, 'boneWall', 0.5);
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Bone Wall Active!', 0xffffff);
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Bone Shield Active!', 0xffffff);
                 used = true;
                 break;
                 
@@ -263,7 +264,13 @@ export const InventoryCombatUse = {
         }
         
         if (used) {
-            if (this.scene.amuletManager?.shouldReturnMagicCard?.()) {
+            const returnedByAmulet = Boolean(this.scene.amuletManager?.shouldReturnMagicCard?.());
+            recordHumanRunEvent(this.scene, 'magic_used', {
+                slot: slotIndex,
+                card: snapshotHumanRunCard(magicCard),
+                returnedByAmulet,
+            });
+            if (returnedByAmulet) {
                 this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Moth-Wing Dust returned it!', 0xd8d8ff);
                 this.returnCardToSlot(slotIndex, cardSprite, () => {
                     this.playMothWingReturnAnimation(slotIndex, cardSprite);
@@ -275,7 +282,7 @@ export const InventoryCombatUse = {
             this.cleanupCardSprites(slotIndex, cardSprite);
             cardSprite.destroy();
             this.removeCard(slotIndex);
-            // Refresh the HUD so any buff the spell just applied (Bone Wall,
+            // Refresh the HUD so any buff the spell just applied (Bone Shield,
             // Shadow Blade, Magic Shield, Mirror Shield, etc.) shows up in the
             // player-effects panel right away instead of only after the next turn.
             this.scene.updateUI();
@@ -319,9 +326,11 @@ export const InventoryCombatUse = {
     useWeapon(slotIndex, cardSprite) {
         const weapon = this.slots[slotIndex];
         if (!weapon) return;
+        const weaponBeforeUse = snapshotHumanRunCard(weapon);
         
-        // Handle BOW BLOCK ability separately (defensive use, doesn't need enemy)
-        if (weapon.special === 'block') {
+        // Generic defensive weapon hook. Bows deliberately cannot use it;
+        // the type guard also protects runs loaded from pre-removal saves.
+        if (weapon.special === 'block' && weapon.weaponType !== 'bow') {
             // Check if dropped on player avatar for blocking
             const playerAvatarBounds = this.scene.playerAvatar.getBounds();
             if (Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), playerAvatarBounds)) {
@@ -330,7 +339,7 @@ export const InventoryCombatUse = {
                     return;
                 }
 
-                // Bow block does not spend AP; it still wakes the enemy response.
+                // Blocking does not spend AP; it still wakes the enemy response.
                 this.scene.gameState.blockNextAttack = true;
                 this.scene.scheduleEnemyTurn?.();
                 SoundHelper.playSound(this.scene, 'armor_equip', 0.5);
@@ -341,11 +350,17 @@ export const InventoryCombatUse = {
                     0x00aaff
                 );
                 
-                // Reduce bow durability for blocking (with amulet modifier)
+                // Reduce weapon durability for blocking (with amulet modifier)
                 const durabilityLoss = this.scene.amuletManager ? 
                     Math.random() < this.scene.amuletManager.getWeaponDurabilityRate() ? 1 : 0 
                     : 1;
                 weapon.durability -= durabilityLoss;
+                recordHumanRunEvent(this.scene, 'weapon_blocked', {
+                    slot: slotIndex,
+                    durabilityLoss,
+                    before: weaponBeforeUse,
+                    after: snapshotHumanRunCard(weapon),
+                });
                 
                 // Check if weapon breaks
                 if (weapon.durability <= 0) {
@@ -478,6 +493,19 @@ export const InventoryCombatUse = {
                     }
                 }
             }
+
+            const targetBefore = this.scene.cardSystem.boardCards[closestEnemy];
+            recordHumanRunEvent(this.scene, 'weapon_attack', {
+                slot: slotIndex,
+                wasExhausted,
+                distance: closestDistance,
+                damage: attackDamage,
+                attackCount,
+                weapon: weaponBeforeUse,
+                offhand: snapshotHumanRunCard(secondaryDagger),
+                targetIndex: closestEnemy,
+                target: snapshotHumanRunCard(targetBefore?.data),
+            });
             
             // Perform attacks
             for (let i = 0; i < attackCount; i++) {
@@ -530,6 +558,13 @@ export const InventoryCombatUse = {
             
             // Un-equip the weapon after the attack sequence
             this.scene.gameState.equippedWeapon = null;
+            recordHumanRunEvent(this.scene, 'weapon_attack_result', {
+                slot: slotIndex,
+                before: weaponBeforeUse,
+                after: snapshotHumanRunCard(weapon),
+                targetIndex: closestEnemy,
+                targetAfter: snapshotHumanRunCard(this.scene.cardSystem.boardCards[closestEnemy]?.data),
+            });
             
             // Durability is now reduced inside attackEnemy, so we don't need to do it here.
             // We just need to check if the weapon broke.
@@ -540,6 +575,13 @@ export const InventoryCombatUse = {
             
             // Update weapon info text
             this.updateWeaponInfoText(cardSprite, weapon);
+        } else {
+            recordHumanRunEvent(this.scene, 'weapon_attack_missed', {
+                slot: slotIndex,
+                wasExhausted,
+                weapon: weaponBeforeUse,
+                nearestEnemyDistance: Number.isFinite(closestDistance) ? closestDistance : null,
+            });
         }
         
         // Return weapon to slot after use
@@ -654,6 +696,10 @@ export const InventoryCombatUse = {
         this.applyAssassinateTalent(target);
     },
     handleWeaponBreak(weapon, cardSprite, slotIndex) {
+        recordHumanRunEvent(this.scene, 'weapon_broke', {
+            slot: slotIndex,
+            weapon: snapshotHumanRunCard(weapon),
+        });
         // Clean up board artifacts before destroying
         this.cleanupBoardArtifacts(cardSprite);
         
@@ -818,6 +864,7 @@ export const InventoryCombatUse = {
         if (!this.stationMode && !this.scene.useAction()) return false;
         const potionData = this.slots[slotIndex];
         if (!potionData) return false;
+        const healthBefore = this.scene.gameState.playerHealth;
 
         // Below both guards above: the gulp should only sound once the hero is
         // actually drinking, not on an attempt that bounced off the action check.
@@ -832,6 +879,13 @@ export const InventoryCombatUse = {
         // Potions are the ONLY heal source subject to amulet caps (e.g. the
         // Berserker's Warbelt's 50% ceiling). Rest/events/spells use heal().
         this.scene.gameState.healCapped(healAmount);
+        recordHumanRunEvent(this.scene, 'potion_used', {
+            slot: slotIndex,
+            card: snapshotHumanRunCard(potionData),
+            healthBefore,
+            healthAfter: this.scene.gameState.playerHealth,
+            healAmount,
+        });
 
         this.scene.createFloatingText(
             this.scene.playerAvatar.x,
@@ -857,6 +911,7 @@ export const InventoryCombatUse = {
     useFood(slotIndex, cardSprite) {
         const foodData = this.slots[slotIndex];
         if (!foodData) return false;
+        const actionsBefore = this.scene.gameState.actionsLeft;
 
         SoundHelper.playVariant(this.scene, 'bread_eaten', 0.5);
 
@@ -870,6 +925,13 @@ export const InventoryCombatUse = {
             this.scene.gameState.maxActions, 
             this.scene.gameState.actionsLeft + actionGain
         );
+        recordHumanRunEvent(this.scene, 'food_used', {
+            slot: slotIndex,
+            card: snapshotHumanRunCard(foodData),
+            actionsBefore,
+            actionsAfter: this.scene.gameState.actionsLeft,
+            actionGain,
+        });
         
         this.scene.createFloatingText(
             this.scene.playerAvatar.x,

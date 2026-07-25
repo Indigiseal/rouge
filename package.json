@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node tools/build-hosted-game.mjs",
     "start": "node tools/server.mjs",
     "sim": "node sim/balance-sim.js",
     "sim:loot-stats": "node sim/balance-sim.js loot-stats 100",
@@ -19,7 +20,8 @@
     "sim:grafana:build": "node sim/db/grafana/build-dashboard.mjs && node sim/db/grafana/build-compare-dashboard.mjs",
     "sim:grafana:down": "docker compose -f sim/db/docker-compose.yml down",
     "sim:grafana:logs": "docker compose -f sim/db/docker-compose.yml logs -f grafana",
-    "sim:dashboard": "node tools/stats-dashboard.mjs"
+    "sim:dashboard": "node tools/stats-dashboard.mjs",
+    "sim:compare-human": "node tools/compare-human-sim.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1"

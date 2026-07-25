@@ -5,6 +5,7 @@ import { t } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
@@ -456,6 +457,19 @@ export class MapViewScene extends Phaser.Scene {
     if (targetFloorIdx !== cur.floor + 1) return;
     const fromNode = this.actMap.floors[cur.floor][cur.node];
     if (!fromNode.connections.includes(targetNodeIdx)) return;
+    const availableNodes = fromNode.connections.map(nodeIndex => {
+      const option = this.actMap.floors[targetFloorIdx]?.[nodeIndex];
+      return {
+        floor: targetFloorIdx,
+        node: nodeIndex,
+        type: option?.type || null,
+      };
+    });
+    recordHumanRunEvent(this, 'route_selected', {
+      from: { act: this.currentAct, floor: cur.floor, node: cur.node, type: fromNode.type || null },
+      chosen: { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx, type: node.type },
+      available: availableNodes,
+    });
     SoundHelper.playVariant(this, 'map_select', 0.5);
     // Mark from and to visited (fixes stuck visuals)
     fromNode.visited = true;

@@ -2,7 +2,6 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
-import { getMagic } from '../../content/cards/index.js';
 import { ELITE_SPRITE_KEYS } from '../../content/assets/AssetManifest.js';
 
 export class BoardCardFx {
@@ -154,37 +153,20 @@ function createCardInfoText(card) {
         }
 
         case 'magic': {
+            // One label only: the spell's name, sitting in the lower text slot
+            // (nudged 2px up from the old description line at y=20). The
+            // "+20% Armor"-style blurb is gone — the hover tooltip already
+            // spells out what each spell does.
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const magicLabel = this.scene.add.text(0, -25, card.data.name, {
+            const magicLabel = this.scene.add.text(0, 18, card.data.name, {
                 fontSize: '11px',
-                fill: '#9932cc',
+                fill: '#a9e5de',
                 fontFamily: '"HoMM Pixel"',
                 wordWrap: { width: 60 },
                 align: 'center'
             }).setOrigin(0.5);
 
-            // Show abbreviated description
-            let shortDesc = '';
-            switch(card.data.magicType) {
-                case 'fireball': shortDesc = `${getMagic('fireball')?.damage ?? 15} DMG`; break;
-                case 'frostRing': shortDesc = 'Freeze 3T'; break;
-                case 'restoration': shortDesc = 'Full HP+AP'; break;
-                case 'soulDrain': shortDesc = `Kill +${getMagic('soulDrain')?.healAmount ?? 30}HP`; break;
-                case 'shadowBlade': shortDesc = '+50% ATK'; break;
-                case 'weakness': shortDesc = '-30% Enemy'; break;
-                case 'boneWall': shortDesc = 'Reflect x2'; break;
-                case 'magicShield': shortDesc = '+20% Armor'; break;
-                case 'mirrorShield': shortDesc = 'Reflect x1'; break;
-                case 'smokeScreen': shortDesc = 'Hide All'; break;
-            }
-
-            const magicDesc = this.scene.add.text(0, 20, shortDesc, {
-                fontSize: '10px',
-                fill: '#cc99ff',
-                fontFamily: '"HoMM Pixel"'
-            }).setOrigin(0.5);
-
-            container.add([magicLabel, magicDesc]);
+            container.add(magicLabel);
             attachInfoText(container);
             return;
         }

@@ -332,8 +332,11 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     if (!card || !card.revealed || !this.isEnemyType(card.data.type)) return;
     
     // === front/back gating ===
-    // Check what weapon is being used
-    const weapon = weaponUsed || this.scene.inventorySystem?.getCurrentWeapon?.() || null;
+    // Weapon attacks pass their weapon explicitly from InventoryCombatUse.
+    // Do not fall back to the equipped weapon here: non-weapon callers such as
+    // Fireball and charmed enemies also use attackEnemy(), and the fallback
+    // incorrectly spent the player's durability and triggered weapon gems.
+    const weapon = weaponUsed || null;
     
     if (!isReflection && weapon) {
         const isRanged = this.isRangedWeapon(weapon);

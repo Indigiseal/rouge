@@ -799,7 +799,7 @@ export const InventoryView = {
         const special = card.special || '';
         if (special === 'dualWield') return translateDescription(this.scene, 'dual wield');
         if (special === 'throwing') return translateDescription(this.scene, 'hits any enemy');
-        if (special === 'block') return translateDescription(this.scene, 'can block');
+        if (special === 'block' && card.weaponType !== 'bow') return translateDescription(this.scene, 'can block');
         if (special === 'specialAttack') return translateDescription(this.scene, 'heavy strike');
         return special;
     },

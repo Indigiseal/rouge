@@ -18,11 +18,11 @@ export const WEAPONS = Object.freeze({
     legendary: Object.freeze({ damage: 7, sprite: 'dagger_L', special: 'dualWield' }),
   }),
   bow: Object.freeze({
-    common: Object.freeze({ damage: 4, sprite: 'bow_c', special: 'block', range: 'ranged' }),
-    uncommon: Object.freeze({ damage: 5, sprite: 'bow_U', special: 'block', range: 'ranged' }),
-    rare: Object.freeze({ damage: 6, sprite: 'bow_R', special: 'block', range: 'ranged' }),
-    epic: Object.freeze({ damage: 7, sprite: 'bow_E', special: 'block', range: 'ranged' }),
-    legendary: Object.freeze({ damage: 9, sprite: 'bow_L', special: 'block', range: 'ranged' }),
+    common: Object.freeze({ damage: 4, sprite: 'bow_c', range: 'ranged' }),
+    uncommon: Object.freeze({ damage: 5, sprite: 'bow_U', range: 'ranged' }),
+    rare: Object.freeze({ damage: 6, sprite: 'bow_R', range: 'ranged' }),
+    epic: Object.freeze({ damage: 7, sprite: 'bow_E', range: 'ranged' }),
+    legendary: Object.freeze({ damage: 9, sprite: 'bow_L', range: 'ranged' }),
   }),
   sword: Object.freeze({
     common: Object.freeze({ damage: 5, sprite: 'sword_C', special: null }),
@@ -117,6 +117,10 @@ export function createWeaponCardData(weaponType, rarity, extras = null) {
     gemSlots: gemSlotsForRarity(rarity),
   };
   if (extras && typeof extras === 'object') Object.assign(card, extras);
+  // Blocking is retained as a generic weapon hook, but it is no longer a bow
+  // ability. Keep the catalog/factory invariant even if a legacy caller passes
+  // the old special through `extras`.
+  if (weaponType === 'bow' && card.special === 'block') card.special = null;
   return card;
 }
 

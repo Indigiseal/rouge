@@ -1,13 +1,14 @@
 // CardSystem — board orchestration; layout/spawn/combat/fx live in ./board/
 import { CardDataGenerator } from './loot/CardDataGenerator.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { showItemTooltip, hideItemTooltip, showBossTooltip } from '../ui/ItemTooltip.js';
+import { showItemTooltip, hideItemTooltip, showBossTooltip, TOOLTIP_DEPTH, BOARD_TOOLTIP_GAP } from '../ui/ItemTooltip.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
 import { BoardLayout } from './board/BoardLayout.js';
 import { FloorSpawner } from './board/FloorSpawner.js';
 import { BoardCombat } from './board/BoardCombat.js';
 import { BoardCardFx } from './board/BoardCardFx.js';
+import { recordHumanRunEvent, snapshotHumanRunCard } from './HumanRunRecorder.js';
 
 export class CardSystem {
 
@@ -336,7 +337,7 @@ export class CardSystem {
 
         sprite.on('pointerover', () => {
             // Re-derive position each time — gems/animations can shift y.
-            showItemTooltip(scene, data, sprite.x, sprite.y);
+            showItemTooltip(scene, data, sprite.x, sprite.y, TOOLTIP_DEPTH, BOARD_TOOLTIP_GAP);
         });
         sprite.on('pointerout', () => {
             hideItemTooltip(scene);
@@ -353,7 +354,7 @@ export class CardSystem {
         const scene = this.scene;
 
         sprite.on('pointerover', () => {
-            showBossTooltip(scene, data, sprite.x, sprite.y);
+            showBossTooltip(scene, data, sprite.x, sprite.y, BOARD_TOOLTIP_GAP);
         });
         sprite.on('pointerout', () => hideItemTooltip(scene));
         sprite.once('destroy', () => hideItemTooltip(scene));
@@ -426,6 +427,10 @@ export class CardSystem {
             case 'gem':
                 if (card.data.type === 'gem') SoundHelper.playSound(this.scene, 'gem_pickup', 0.5);
                 if (this.scene.inventorySystem.addCard(card.data)) {
+                    recordHumanRunEvent(this.scene, 'board_loot_collected', {
+                        boardIndex: index,
+                        card: snapshotHumanRunCard(card.data),
+                    });
                     this.removeCard(index);
                     // Board loot pickup does not spend AP.
                 }

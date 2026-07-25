@@ -9,12 +9,14 @@
 //   --amulet-start id,id              (equipped at run start; implies force)
 //   --character rogue|warrior         Playable class for the run
 //   --armor-pool chain|plate|both     Warrior armor spawn filter (default: both)
+//   --talents none|max                Character's live talent branch loadout
 
 import {
   setSimTestOptionsOverride,
   TEST_OPTION_IDS,
 } from '../src/config/TestOptions.js';
 import { CHARACTER_IDS, normalizeCharacterId } from '../src/content/characters/CharacterClasses.js';
+import { getBranchesForCharacter, getTalentNode } from '../src/content/talents/index.js';
 
 export const SIM_META_MODES = new Set(['fresh', 'geared', 'accumulate', 'balance']);
 export const SIM_CHARACTER_IDS = new Set(CHARACTER_IDS);
@@ -34,6 +36,24 @@ const MODE_DEFAULTS = {
 };
 
 const LOADOUTS = new Set(['none', 'bag', 'strong']);
+const TALENT_LOADOUTS = new Set(['none', 'max']);
+
+function buildMaxTalentLoadout(characterId, armorPool = null) {
+  const talents = {};
+  for (const branch of getBranchesForCharacter(characterId)) {
+    if (!branch?.purchasable || branch.wip) continue;
+    for (const talentId of branch.nodes || []) {
+      const node = getTalentNode(talentId);
+      if (!node || node.wip) continue;
+      talents[talentId] = node.maxRank || 1;
+    }
+  }
+  const choices = {};
+  if (characterId === 'warrior' && talents.armorerStart > 0) {
+    choices.armorerArmorType = armorPool?.length === 1 ? armorPool[0] : 'plate';
+  }
+  return { talents, talentChoices: choices };
+}
 
 function parseIdList(raw) {
   if (raw == null) return null;
@@ -60,7 +80,7 @@ export function splitSimArgv(argv) {
       if (
         (a === '--amulet-loadout' || a === '--meta-pool' || a === '--meta-start'
           || a === '--amulet-pool' || a === '--amulet-start' || a === '--character'
-          || a === '--armor-pool')
+          || a === '--armor-pool' || a === '--talents')
         && argv[i + 1] && !argv[i + 1].startsWith('--')
       ) {
         flags.push(`${a} ${argv[++i]}`);
@@ -69,7 +89,7 @@ export function splitSimArgv(argv) {
       if (a.startsWith('--meta-pool=') || a.startsWith('--meta-start=')
         || a.startsWith('--amulet-pool=') || a.startsWith('--amulet-start=')
         || a.startsWith('--amulet-loadout=') || a.startsWith('--character=')
-        || a.startsWith('--armor-pool=')) {
+        || a.startsWith('--armor-pool=') || a.startsWith('--talents=')) {
         flags.push(a);
         continue;
       }
@@ -91,6 +111,7 @@ export function isSimFlagToken(a) {
     || a.startsWith('--amulet-start')
     || a.startsWith('--character')
     || a.startsWith('--armor-pool')
+    || a.startsWith('--talents')
     || a === '--no-meta'
     || a === '--no-amulets';
 }
@@ -115,6 +136,7 @@ function flagValue(token, prefix) {
  *   amuletStart: string[]|null,
  *   characterId: 'rogue'|'warrior',
  *   armorPool: string[]|null,
+ *   talentLoadout: 'none'|'max',
  * }}
  */
 export function parseSimFlags(flagTokens, metaMode = 'fresh') {
@@ -128,6 +150,7 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
   let amuletStart = null;
   let characterId = 'rogue';
   let armorPool = null;
+  let talentLoadout = 'none';
 
   for (const raw of flagTokens) {
     const token = raw.trim();
@@ -152,6 +175,10 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
       else if (val) characterId = normalizeCharacterId(val);
     } else if (token.startsWith('--armor-pool')) {
       armorPool = parseArmorPool(flagValue(token, '--armor-pool'));
+    } else if (token.startsWith('--talents')) {
+      const val = flagValue(token, '--talents');
+      if (TALENT_LOADOUTS.has(val)) talentLoadout = val;
+      if (val === 'max') enableMeta = true;
     }
   }
 
@@ -163,6 +190,7 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
   if (!enableMeta) {
     metaPool = [];
     metaStart = [];
+    talentLoadout = 'none';
   }
 
   return {
@@ -175,6 +203,7 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
     amuletStart,
     characterId: normalizeCharacterId(characterId),
     armorPool,
+    talentLoadout,
   };
 }
 
@@ -239,6 +268,7 @@ export function formatSimFlagsLabel(flags) {
     flags.enableAmulets ? 'amulets' : 'no-amulets',
   ];
   if (flags.armorPool?.length) parts.push(`armor:${flags.armorPool.join('+')}`);
+  parts.push(`talents:${flags.talentLoadout || 'none'}`);
   if (flags.enableMeta) {
     const nPool = flags.metaPool?.length;
     const nStart = flags.metaStart?.length;
@@ -265,6 +295,9 @@ export function buildSimRunExtras(flags, { allRelics = [], strongAmulets = [], a
   let noBag = true;
   let forceStartingAmulets = false;
   let amuletPool = null;
+  const talentConfig = norm.talentLoadout === 'max'
+    ? buildMaxTalentLoadout(norm.characterId, norm.armorPool)
+    : { talents: {}, talentChoices: {} };
 
   if (norm.enableAmulets) {
     amuletPool = norm.amuletPool.slice();
@@ -297,6 +330,8 @@ export function buildSimRunExtras(flags, { allRelics = [], strongAmulets = [], a
     metaPool: norm.enableMeta ? norm.metaPool.slice() : [],
     characterId: normalizeCharacterId(flags.characterId || 'rogue'),
     armorPool: flags.armorPool ? flags.armorPool.slice() : null,
+    talents: talentConfig.talents,
+    talentChoices: talentConfig.talentChoices,
   };
 }
 
@@ -323,6 +358,7 @@ export function simFlagsUsage() {
 Sim flags (combine with stats-db / loot-stats / fresh):
   --character rogue|warrior   Playable class (default: rogue)
   --armor-pool chain|plate|both   Warrior armor spawn filter (default: both)
+  --talents none|max          Use no talents or max ranks in the live class branch
   --meta | --no-meta          Enable meta relics for the run
   --amulets | --no-amulets    Floor drops, events, shop amulets
   --amulet-loadout none|bag|strong   Starting amulets shortcut

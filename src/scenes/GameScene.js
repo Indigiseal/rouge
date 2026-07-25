@@ -34,6 +34,7 @@ import {
     getSandboxEncounter,
     isSandboxMode,
 } from '../sandbox/SandboxMode.js';
+import { humanRunRecorder, recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -412,6 +413,10 @@ export class GameScene extends Phaser.Scene {
             this.inventorySystem.addStartingCards();
         }
         this.amuletManager?.processFloorStart?.();
+        recordHumanRunEvent(this, 'floor_started', {
+            floor: this.gameState.currentFloor,
+            roomType: this.roomType,
+        });
         // DON'T replenish action points here
         this.updateUI();
         this.cardSystem.checkFloorClear();
@@ -802,6 +807,8 @@ export class GameScene extends Phaser.Scene {
 
         const killedBy = this.killedBy || 'Unknown Enemy';
         const floor = this.gameState?.currentFloor ?? 1;
+        recordHumanRunEvent(this, 'run_ended', { outcome: 'defeat', killedBy, floor });
+        humanRunRecorder.stop(this, 'defeat');
         let deathStats = { killedBy, floor };
         let xpResult = null;
 
@@ -1094,6 +1101,10 @@ export class GameScene extends Phaser.Scene {
         this.finalizeCompanionCombatHistory();
         this.enemiesCleared = true;
         const floor = this.gameState.currentFloor;
+        recordHumanRunEvent(this, 'floor_cleared', {
+            floor,
+            roomType: this.roomType || this.gameState.roomType,
+        });
         const isBossFloor = [15, 30, 45].includes(floor);
         if (this.roomType === 'BOSS' || this.gameState.roomType === 'BOSS' || isBossFloor) {
             this.stopBossMusic();
@@ -1152,6 +1163,11 @@ export class GameScene extends Phaser.Scene {
     }
     
     gameWon() {
+        recordHumanRunEvent(this, 'run_ended', {
+            outcome: 'victory',
+            floor: this.gameState?.currentFloor ?? null,
+        });
+        humanRunRecorder.stop(this, 'victory');
         return showVictoryResult(this);
     }
 

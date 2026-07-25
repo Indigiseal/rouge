@@ -7,6 +7,7 @@ import {
     repairCostPerUnit,
     totalRepairCost,
 } from '../content/economy/repair.js';
+import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 export class AnvilScene extends Phaser.Scene {
     constructor() {
         super({ key: 'AnvilScene' });
@@ -240,6 +241,7 @@ export class AnvilScene extends Phaser.Scene {
     
     repairItem(data, repairAmount) {
         const { item, index, isEquipped } = data;
+        const before = snapshotHumanRunCard(item);
         
         // Calculate actual cost
         const totalCost = totalRepairCost(item, repairAmount, this.getWeaponType(item.name));
@@ -252,6 +254,14 @@ export class AnvilScene extends Phaser.Scene {
         // Deduct coins and repair item
         this.gameState.coins -= totalCost;
         item.durability = Math.min(item.maxDurability, item.durability + repairAmount);
+        recordHumanRunEvent(this, 'anvil_repair', {
+            inventoryIndex: index,
+            isEquipped: Boolean(isEquipped),
+            cost: totalCost,
+            requestedRepair: repairAmount,
+            before,
+            after: snapshotHumanRunCard(item),
+        });
         
         // Play repair sound
         SoundHelper.playSound(this, 'anvil_upgrade', 0.6);

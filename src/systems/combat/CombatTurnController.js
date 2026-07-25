@@ -143,7 +143,7 @@ export class CombatTurnController {
             });
         });
 
-        // Check if player is blocking with bow
+        // Check the generic weapon-block effect (bows no longer provide it).
         if (scene.gameState.blockNextAttack) {
             scene.gameState.blockNextAttack = false; // Reset block
             SoundHelper.playSound(scene, 'armor_equip', 0.5);
@@ -176,8 +176,8 @@ export class CombatTurnController {
                 const reflectedDamage = firstAttacker.card.data.attack;
                 scene.cardSystem.attackEnemy(firstAttacker.index, reflectedDamage, true);
                 scene.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Reflected)`, 0xffffff);
-                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Bone Wall!', 0xffffff);
-                scene.updateUI(); // Refresh so the remaining Bone Wall charges update
+                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Bone Shield!', 0xffffff);
+                scene.updateUI(); // Refresh so the remaining Bone Shield charges update
                 this.finishEnemyTurnWithCompanion();
                 return; // Bone wall blocks all attacks this action
             }

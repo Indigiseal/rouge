@@ -8,7 +8,7 @@ export class SaveManager {
     this.META_SAVE_KEY = 'metaProgression';
     this.RUN_SAVE_KEY = 'currentRun';
     this.SETTINGS_SAVE_KEY = 'gameSettings';
-    this.SAVE_VERSION = '1.0.3'; // Combat board layout/state added to run saves
+    this.SAVE_VERSION = '1.0.4'; // Removed the legacy bow block ability
   }
 
   // ============ Internal helpers ============
@@ -326,6 +326,12 @@ export class SaveManager {
       );
     }
 
+    // Bow blocking was removed in 1.0.4. Clear a block already armed in an
+    // older save, while preserving the generic state for future non-bow cards.
+    if (run.effects && (!run.saveVersion || run.saveVersion < '1.0.4')) {
+      run.effects.blockNextAttack = false;
+    }
+
     run.navigation = run.navigation && typeof run.navigation === 'object'
       ? run.navigation
       : { roomType: 'COMBAT', mapCursor: null, dungeonMap: null, pendingActShop: null };
@@ -344,9 +350,12 @@ export class SaveManager {
 
     if (Array.isArray(run.equipment?.inventory)) {
       run.equipment.inventory = run.equipment.inventory.map(item =>
-        item?.type === 'amulet' ? applyAmuletAtlasPresentation(item) : item
+        item?.type === 'amulet'
+          ? applyAmuletAtlasPresentation(item)
+          : this.removeLegacyBowBlock(item)
       );
     }
+    run.equipment.equippedWeapon = this.removeLegacyBowBlock(run.equipment?.equippedWeapon);
 
     run.board = run.board && typeof run.board === 'object'
       ? run.board
@@ -361,7 +370,7 @@ export class SaveManager {
         if (!c) return null;
         const data = c.data?.type === 'amulet'
           ? applyAmuletAtlasPresentation(c.data)
-          : (c.data ?? null);
+          : this.removeLegacyBowBlock(c.data ?? null);
         return {
           revealed: !!c.revealed,
           justRevealed: !!c.justRevealed,
@@ -379,6 +388,13 @@ export class SaveManager {
       run.board.enemiesCleared
     );
     return run;
+  }
+
+  removeLegacyBowBlock(card) {
+    if (card?.type !== 'weapon' || card.weaponType !== 'bow' || card.special !== 'block') {
+      return card;
+    }
+    return { ...card, special: null };
   }
 
   clearCurrentRun() { 

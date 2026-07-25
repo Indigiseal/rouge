@@ -51,7 +51,7 @@ export const MAGIC = [
   },
   {
     magicType: 'boneWall',
-    name: 'Bone Wall',
+    name: 'Bone Shield',
     description: 'Reflects the next 2 enemy attacks',
     minFloor: 6,
     rarity: 'rare',

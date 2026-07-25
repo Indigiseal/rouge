@@ -196,6 +196,11 @@ export class MockScene {
     return true;
   }
 
+  // Reveals and board-food pickups schedule a response without spending AP.
+  scheduleEnemyTurn() {
+    this._enemyTurnPending = true;
+  }
+
   // ── Enemy turn (faithful subset of revealedEnemiesAttack) ─────────────
   // No shields/bonewall/mirror in baseline (no amulets). Each revealed,
   // alive, non-frozen enemy deals its attack to the player via the REAL
@@ -207,20 +212,18 @@ export class MockScene {
     // enemy sits out the action that revealed it, then joins the fight on the next
     // action. Snapshot who's eligible now, then clear the flag. This is per-enemy —
     // revealing a new enemy no longer cancels attacks from enemies already revealed.
-    const eligible = new Set();
+    const eligible = [];
     for (let i = 0; i < board.length; i++) {
       const c = board[i];
-      if (c && c.revealed && this.isEnemyCard(c) && !c.justRevealed) eligible.add(i);
+      if (c && c.revealed && this.isEnemyCard(c) && !c.justRevealed) eligible.push(i);
     }
     for (const c of board) { if (c && c.justRevealed) c.justRevealed = false; }
-    for (let i = 0; i < board.length; i++) {
-      if (!eligible.has(i)) continue;
-      const card = board[i];
-      if (!card || !card.revealed || !this.isEnemyCard(card)) continue;
-      if (card.data.health <= 0) continue;
 
-      // Boss summoning is independent of its attack, so freezing a boss does
-      // not suppress its scheduled minion command (matches GameScene).
+    // Boss summoning happens before any full-phase defense and still fires
+    // while the boss is frozen.
+    for (const i of eligible) {
+      const card = board[i];
+      if (!card || card.data.health <= 0) continue;
       if (card.data.type === 'boss' && card.data.abilities) {
         for (const ab of card.data.abilities) {
           if (ab.type === 'summon' && Math.random() < ab.chance) {
@@ -229,8 +232,95 @@ export class MockScene {
           }
         }
       }
+    }
 
-      if (card.data.frozen && card.data.frozen > 0) continue;
+    const firstAttacker = eligible
+      .map((i) => ({ i, card: board[i] }))
+      .find(({ card }) => (
+        card
+        && card.revealed
+        && this.isEnemyCard(card)
+        && card.data.health > 0
+        && !(card.data.frozen > 0)
+      ));
+
+    // These effects stop the whole attack phase in the real controller. Its
+    // short-circuit path runs companions but does not tick poison/timed buffs.
+    if (this.gameState.blockNextAttack) {
+      this.gameState.blockNextAttack = false;
+      this._runCompanionTurns();
+      return;
+    }
+    if ((this.gameState.boneWall || 0) > 0 && firstAttacker) {
+      this.gameState.boneWall--;
+      this.cardSystem.attackEnemy(firstAttacker.i, firstAttacker.card.data.attack, true);
+      this._runCompanionTurns();
+      return;
+    }
+    if (this.gameState.mirrorShield && firstAttacker) {
+      this.gameState.mirrorShield = false;
+      this.cardSystem.attackEnemy(firstAttacker.i, firstAttacker.card.data.attack, true);
+      this._runCompanionTurns();
+      return;
+    }
+
+    if (eligible.length === 0) {
+      this._finishEnemyTurnEffects({ runCompanions: false });
+      return;
+    }
+
+    for (const i of eligible) {
+      const card = board[i];
+      if (!card || !card.revealed || !this.isEnemyCard(card)) continue;
+      if (card.data.health <= 0) continue;
+
+      // Frozen enemies thaw one step per eligible turn. Previously the mock
+      // skipped forever, making a single Frost Ring permanent.
+      if (card.data.frozen && card.data.frozen > 0) {
+        card.data.frozen--;
+        if ((card.data.shockedTurns || 0) > 0) {
+          card.data.shockedTurns--;
+          if (card.data.frozen <= 0) card.data.shockedTurns = 0;
+        }
+        continue;
+      }
+
+      if (card.data.isMimic) {
+        if (card.data.escapeTurnsLeft === undefined) {
+          card.data.escapeTurnsLeft = card.data.escapeTurns || 3;
+        }
+        card.data.escapeTurnsLeft--;
+        if (card.data.escapeTurnsLeft <= 0) {
+          this.cardSystem.mimicEscape?.(i);
+          continue;
+        }
+      }
+
+      if (
+        this.amuletManager?.hasCharmingTune?.()
+        && !this.gameState.charmingTuneUsed
+        && card.data.role === 'MELEE'
+      ) {
+        this.gameState.charmingTuneUsed = true;
+        continue;
+      }
+
+      const charmChance = this.amuletManager?.getCharmChance?.() || 0;
+      if (charmChance > 0 && Math.random() < charmChance) {
+        const others = board
+          .map((target, index) => ({ target, index }))
+          .filter(({ target, index }) => (
+            index !== i
+            && target?.revealed
+            && this.isEnemyCard(target)
+            && target.data.health > 0
+          ));
+        if (others.length > 0) {
+          const target = others[Math.floor(Math.random() * others.length)];
+          this.cardSystem.attackEnemy(target.index, card.data.attack, true);
+          continue;
+        }
+      }
 
       let damageDealt = card.data.attack;
       const rage = card.data.abilities?.find((a) => a.type === 'rage');
@@ -254,21 +344,28 @@ export class MockScene {
       });
 
       const armorBeforeHit = this.gameState.equippedArmor;
-      const { actualDamage } = this.gameState.takeDamage(damageDealt, i, 'enemy', armorPierce);
+      const { actualDamage, tookDamage } = this.gameState.takeDamage(damageDealt, i, 'enemy', armorPierce);
       if (armorBeforeHit && !this.gameState.equippedArmor) {
         this._armorBreaks = (this._armorBreaks || 0) + 1;
       }
       if (this.gameState.playerHealth <= 0) { this._lastKiller = card.data.name || 'enemy'; return; }
-      // Thorns: reflect to MELEE attackers (mirrors GameScene.applyThornsDamage),
-      // consuming 1 durability per reflect; the bot's strongest thorns is active.
+
+      // Card thorns retaliate against melee even on a dodge; armor Briar
+      // damage only applies when damage actually landed.
       const t = this.gameState.activeThorns;
       const isMeleeAttacker = card.data.type === 'boss' || (card.data.role === 'MELEE' && !card.data.isRangedType);
-      if (isMeleeAttacker && t && t.durability > 0 && card.data.health > 0) {
-        this.cardSystem.attackEnemy(i, t.thornDamage || 2, true);
-        t.durability -= 1;
-        if (t.durability <= 0) {
-          this.gameState.activeThorns = null;
-          this._thornBreaks = (this._thornBreaks || 0) + 1;
+      if (isMeleeAttacker && card.data.health > 0) {
+        const thornDamage = t && t.durability > 0 ? (t.thornDamage || 2) : 0;
+        const armorThorns = tookDamage ? (this.gameState.equippedArmor?.thornDamage || 0) : 0;
+        if (thornDamage + armorThorns > 0) {
+          this.cardSystem.attackEnemy(i, thornDamage + armorThorns, true);
+        }
+        if (thornDamage > 0) {
+          t.durability--;
+          if (t.durability <= 0) {
+            this.gameState.activeThorns = null;
+            this._thornBreaks = (this._thornBreaks || 0) + 1;
+          }
         }
       }
       // Boss abilities: leech (heal from damage ACTUALLY landed, after armor —
@@ -283,6 +380,12 @@ export class MockScene {
         }
       }
     }
+    this._finishEnemyTurnEffects();
+  }
+
+  _runCompanionTurns() {
+    if (this.gameState.playerHealth <= 0) return;
+    const board = this.cardSystem.boardCards;
     // Companions strike after the enemy phase in the live game. The simulator
     // keeps its inventory on the mock scene, so event-earned companions now
     // contribute their real card attack instead of being dead weight.
@@ -307,6 +410,18 @@ export class MockScene {
         this.cardSystem.applyShockStatus?.(shockedTarget, 1);
       }
     }
+  }
+
+  _finishEnemyTurnEffects({ runCompanions = true } = {}) {
+    if (this.gameState.shadowBlade) {
+      this.gameState.shadowBlade.turns--;
+      if (this.gameState.shadowBlade.turns <= 0) this.gameState.shadowBlade = null;
+    }
+    if (this.gameState.magicShield) {
+      this.gameState.magicShield.turns--;
+      if (this.gameState.magicShield.turns <= 0) this.gameState.magicShield = null;
+    }
+
     // End-of-enemy-turn effects: poison damage-over-time ticks on enemies
     // (mirrors GameScene.finishEnemyTurnEffects → processEnemyPoisonEffects).
     this.cardSystem.processEnemyPoisonEffects?.();
@@ -325,6 +440,7 @@ export class MockScene {
       this.gameState.takeDamage(effectDamage, -1, 'poison');
       if (this.gameState.playerHealth <= 0) this._lastKiller = poisonKilledBy || 'Poison';
     }
+    if (runCompanions && this.gameState.playerHealth > 0) this._runCompanionTurns();
   }
 
   // Inject a summoned minion (revealed enemy) onto the board — boss summon.

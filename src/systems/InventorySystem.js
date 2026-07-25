@@ -6,6 +6,7 @@ import { CardMergeRules } from './inventory/CardMergeRules.js';
 import { InventoryCombatUse } from './inventory/InventoryCombatUse.js';
 import { InventoryView } from './inventory/InventoryView.js';
 import { InventorySlotRenderer } from './inventory/InventorySlotRenderer.js';
+import { recordHumanRunEvent, snapshotHumanRunCard } from './HumanRunRecorder.js';
 
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
@@ -105,6 +106,11 @@ export class InventorySystem {
         weapon.gemName = gem.name;
         weapon.gemColor = gem.color;
         weapon.gemCount = currentCount + 1;
+        recordHumanRunEvent(this.scene, 'gem_socketed', {
+            weaponSlot: weaponSlotIndex,
+            gem: snapshotHumanRunCard(gem),
+            weapon: snapshotHumanRunCard(weapon),
+        });
         this.syncGameStateInventory();
         if (rebuild) this.rebuildInventorySprites();
         const stackLabel = weapon.gemCount > 1 ? ` (x${weapon.gemCount})` : '';
@@ -259,6 +265,10 @@ export class InventorySystem {
         // Check for drop on discard area FIRST to prevent conflicts with other drop zones
         // (allowed inside shop stations too, so players can free inventory space)
         if (this.discardArea && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.discardArea.getBounds())) {
+            recordHumanRunEvent(this.scene, 'inventory_card_discarded', {
+                slot: slotIndex,
+                card: snapshotHumanRunCard(cardData),
+            });
             SoundHelper.playSound(this.scene, 'item_discard', 0.7);
             this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Discarded!', 0xff0000);
             this.scene.recordCardDiscarded?.(cardData, cardSprite.x, cardSprite.y);
@@ -800,6 +810,10 @@ export class InventorySystem {
 
         // Create upgraded card using CardDataGenerator and handle durability combining
         const upgradedCard = this.createMergedCard(baseCard, secondCard);
+        const mergeSources = [
+            { slot: indexA, card: snapshotHumanRunCard(cardA) },
+            { slot: indexB, card: snapshotHumanRunCard(cardB) },
+        ];
         
         // Clean up dragged sprite and its info text
         if (draggedSprite) {
@@ -817,6 +831,12 @@ export class InventorySystem {
         // up front so we can play the merge flicker on top of it afterward.
         const mergedSlot = this.slots.findIndex(slot => slot === null);
         this.addCard(upgradedCard, mergedSlot);
+        recordHumanRunEvent(this.scene, 'cards_merged', {
+            sources: mergeSources,
+            crossTier: Boolean(canCrossTier && indexA_tier !== indexB_tier),
+            resultSlot: mergedSlot,
+            result: snapshotHumanRunCard(upgradedCard),
+        });
         const mergedWeaponType = this.getWeaponTypeFromCard(upgradedCard);
         if (upgradedCard?.type === 'weapon' && mergedWeaponType) {
             this.scene.events.emit('tutorialProgress', `merged:${mergedWeaponType}`);
