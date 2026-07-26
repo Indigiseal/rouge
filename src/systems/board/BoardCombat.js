@@ -3,6 +3,21 @@ import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { CombatSequencer } from '../combat/CombatSequencer.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
+import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
+import {
+    ENCHANT_FIRE_SPLASH_FRACTION,
+    ENCHANT_FIRE_SPLASH_MINIMUM,
+    ENCHANT_FIRE_SPLASH_RADIUS,
+    ENCHANT_FREEZE_TURNS,
+    ENCHANT_HEAL_AMOUNT,
+    ENCHANT_SHADOW_MULTIPLIER,
+    ENCHANT_SHIELD_MULTIPLIER,
+    ENCHANT_SHIELD_TURNS,
+    ENCHANT_WEAKNESS_MULTIPLIER,
+    getEnchantChance,
+    getWeaponEnchant,
+} from '../../content/balance/WeaponEnchants.js';
+import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 
 export class BoardCombat {
     constructor(cs) {
@@ -33,6 +48,10 @@ export class BoardCombat {
         this.burnEnemy = burnEnemy.bind(cs);
         this.damageGemTarget = damageGemTarget.bind(cs);
         this.applyRelicSlow = applyRelicSlow.bind(cs);
+        this.rollWeaponEnchant = rollWeaponEnchant.bind(cs);
+        this.applyWeaponEnchantOnHit = applyWeaponEnchantOnHit.bind(cs);
+        this.applyWeaponEnchantOnKill = applyWeaponEnchantOnKill.bind(cs);
+        this.hideEnemyCard = hideEnemyCard.bind(cs);
         this.removeDefeatedEnemy = removeDefeatedEnemy.bind(cs);
         this.checkFloorClear = checkFloorClear.bind(cs);
         this.tryApplyBoardGem = tryApplyBoardGem.bind(cs);
@@ -404,7 +423,20 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'WAR HORN!', 0xffaa00);
         this.scene.createFloatingText(card.sprite.x, card.sprite.y - 54, 'Double Damage!', 0xff8800);
     }
-    
+
+    // Reliquary enchant: ONE roll per swing. `preDamage` procs change the blow
+    // itself, so they resolve here next to CRIT and the War Horn; everything
+    // else fires once the swing is committed (further down).
+    const enchantProc = (!isReflection && weapon) ? this.rollWeaponEnchant(weapon) : null;
+    let enchantInstantKill = false;
+    if (enchantProc === 'shadowBlade') {
+        finalDamage = Math.floor(finalDamage * ENCHANT_SHADOW_MULTIPLIER);
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'Shadowed!', 0x9a6cff);
+    } else if (enchantProc === 'soulDrain' && card.data.type !== 'boss') {
+        enchantInstantKill = true;
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'Devoured!', 0x9932cc);
+    }
+
     if (!isReflection) {
         const sx = card.sprite.x;
         const sy = card.sprite.y;
@@ -427,12 +459,21 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         this.applyWeaponGemEffect(index, weapon, finalDamage);
     }
 
+    // Enchant procs land here for the same reason gems do: a killing weapon hit
+    // removes the card, which would silently swallow the effect and its text.
+    if (enchantProc && !enchantInstantKill) {
+        this.applyWeaponEnchantOnHit(index, enchantProc, finalDamage);
+    }
+
     // Apply damage. (Carrion Oath / hungryDagger no longer alters combat — it was
     // reworked into a potion-based poison cleanse, handled in AmuletManager.)
     const enemyArmor = Math.max(0, card.data.armor || 0);
     if (enemyArmor > 0) {
         finalDamage = Math.max(1, finalDamage - enemyArmor);
     }
+    // Devouring bites through whatever is left. Armour is already resolved
+    // above, so a high-armour target cannot shrug the kill off.
+    if (enchantInstantKill) finalDamage = Math.max(finalDamage, card.data.health);
     card.data.health -= finalDamage;
 
     // Vampire Fang — heal from damage that actually landed on the enemy.
@@ -492,6 +533,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
 
     if (card.data.health <= 0) {
         this.removeDefeatedEnemy(index, card);
+        if (enchantProc) this.applyWeaponEnchantOnKill(enchantProc);
     }
 }
 
@@ -696,6 +738,162 @@ function applyRelicSlow(card) {
     }
 }
 
+// ─── Reliquary weapon enchants ───────────────────────────────────────────────
+
+function rollWeaponEnchant(weapon) {
+    if (!weapon?.enchant || !getWeaponEnchant(weapon.enchant)) return null;
+    const chance = Number.isFinite(weapon.enchantChance)
+        ? weapon.enchantChance
+        : getEnchantChance(weapon.enchant);
+    return Math.random() < chance ? weapon.enchant : null;
+}
+
+function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
+    if (getWeaponEnchant(enchantId)?.timing !== 'onHit') return;
+    const gs = this.scene.gameState;
+    if (!gs) return;
+    const card = this.boardCards[index];
+    const px = this.scene.playerAvatar?.x ?? 320;
+    const py = this.scene.playerAvatar?.y ?? 300;
+
+    switch (enchantId) {
+        case 'fireball': {
+            // Reaches much further than a fire gem's 65px splash, and scales
+            // off the swing so it keeps pace with the weapon instead of going
+            // stale. Stacks with a fire gem — the gem already resolved above.
+            const splash = Math.max(
+                ENCHANT_FIRE_SPLASH_MINIMUM,
+                Math.floor(swingDamage * ENCHANT_FIRE_SPLASH_FRACTION)
+            );
+            const tx = card?.sprite?.x;
+            const ty = card?.sprite?.y;
+            if (tx == null || ty == null) break;
+            // Measure to the nearest EDGE of each sprite, matching the gem
+            // splash: a boss's centre is far away but its body is not.
+            this.boardCards.forEach((other, i) => {
+                if (i === index || !other?.sprite) return;
+                const b = other.sprite.getBounds();
+                const nx = Phaser.Math.Clamp(tx, b.left, b.right);
+                const ny = Phaser.Math.Clamp(ty, b.top, b.bottom);
+                const dx = nx - tx;
+                const dy = ny - ty;
+                if (dx * dx + dy * dy <= ENCHANT_FIRE_SPLASH_RADIUS * ENCHANT_FIRE_SPLASH_RADIUS) {
+                    this.burnEnemy(i, splash);
+                }
+            });
+            break;
+        }
+
+        case 'frostRing': {
+            if (!this.isAnyEnemyCard(card)) break;
+            card.data.frozen = Math.max(card.data.frozen || 0, ENCHANT_FREEZE_TURNS);
+            if (card.sprite) {
+                this.attachFrozenFrame(card);
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Frozen!', 0x66ddff);
+            }
+            break;
+        }
+
+        case 'weakness': {
+            if (!this.isAnyEnemyCard(card)) break;
+            const before = card.data.attack || 0;
+            card.data.attack = Math.ceil(before * ENCHANT_WEAKNESS_MULTIPLIER);
+            if (card.sprite && card.data.attack < before) {
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Weakened!', 0x9932cc);
+            }
+            this.updateEnemyInfoText(card);
+            break;
+        }
+
+        case 'restoration': {
+            const before = gs.playerHealth || 0;
+            gs.playerHealth = Math.min(gs.maxHealth || 0, before + ENCHANT_HEAL_AMOUNT);
+            const healed = gs.playerHealth - before;
+            if (healed > 0) {
+                this.scene.createFloatingText(px, py, `+${healed} HP`, 0x00ff66);
+                this.scene.updateUI?.();
+            }
+            break;
+        }
+
+        case 'magicShield': {
+            const base = gs.equippedArmor?.protection || 0;
+            gs.magicShield = { turns: ENCHANT_SHIELD_TURNS, multiplier: ENCHANT_SHIELD_MULTIPLIER };
+            // Name the actual number rather than a vague "Warded!" — the armor
+            // card is about to show this value, so the float explains the change.
+            const boosted = effectiveArmorProtection(gs, gs.equippedArmor);
+            this.scene.createFloatingText(
+                px, py,
+                base > 0 ? `Armor ${base} → ${boosted}` : 'Warded!',
+                0x88ddff
+            );
+            // Redraw the worn-armor card so its number updates immediately.
+            this.scene.updateEquippedArmorPanel?.();
+            this.scene.updateUI?.();
+            break;
+        }
+
+        case 'mirrorShield': {
+            gs.mirrorShield = true;
+            this.scene.createFloatingText(px, py, 'Mirror Shield!', 0xc0c0c0);
+            this.scene.updateUI?.();
+            break;
+        }
+
+        case 'boneWall': {
+            // The spell reflects two attacks; the proc reflects one.
+            gs.boneWall = Math.max(gs.boneWall || 0, 1);
+            this.scene.createFloatingText(px, py, 'Bulwark!', 0xffffff);
+            this.scene.updateUI?.();
+            break;
+        }
+    }
+}
+
+function applyWeaponEnchantOnKill(enchantId) {
+    if (getWeaponEnchant(enchantId)?.timing !== 'onKill' || enchantId !== 'smokeScreen') return;
+    // Hide one enemy still standing. A face-down card is never picked as an
+    // attacker, so this buys a turn exactly like the Smoke Screen card does.
+    const candidates = this.boardCards
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => this.isOpenEnemyCard(card) && card.data?.type !== 'boss');
+    if (candidates.length === 0) return;
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    if (this.hideEnemyCard(pick.index)) {
+        SoundHelper.playSound(this.scene, 'smoke_bomb', 0.4);
+        this.scene.createFloatingText(
+            this.scene.playerAvatar?.x ?? 320,
+            this.scene.playerAvatar?.y ?? 300,
+            'Shrouded!',
+            0xbbbbbb
+        );
+    }
+}
+
+// Flip a revealed enemy back to its card back. Mirrors the Smoke Screen card's
+// own teardown (InventoryCombatUse) — markers are destroyed here and rebuilt on
+// re-reveal, and the click handler is rebound so the card can be turned again.
+function hideEnemyCard(index) {
+    const card = this.boardCards[index];
+    if (!this.isOpenEnemyCard(card)) return false;
+
+    card.revealed = false;
+    card.sprite.setTexture('cardBack');
+    card.sprite.off('pointerdown');
+    card.sprite.on('pointerdown', () => this.revealCard(index));
+
+    if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
+    if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
+    if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
+    if (card.frozenFrame) { card.frozenFrame.destroy(); card.frozenFrame = null; }
+    if (card.infoText) {
+        if (card.infoText.list) card.infoText.destroy(true);
+        else card.infoText.destroy();
+        card.infoText = null;
+    }
+    return true;
+}
+
 function removeDefeatedEnemy(index, card) {
         // Note: defeating the Angry Nestmother does NOT end the grudge — she
         // keeps turning up "once in a while" for the rest of the run you
@@ -870,10 +1068,15 @@ function tryApplyBoardGem(card, index) {
     if (!inventory || !card?.sprite) return false;
 
     if (inventory.discardArea && Phaser.Geom.Intersects.RectangleToRectangle(card.sprite.getBounds(), inventory.discardArea.getBounds())) {
+        const discarded = snapshotHumanRunCard(card.data);
         SoundHelper.playSound(this.scene, 'item_discard', 0.7);
         this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Discarded!', 0xff0000);
         this.scene.recordCardDiscarded?.(card.data, card.sprite.x, card.sprite.y);
         this.removeCard(index);
+        recordHumanRunEvent(this.scene, 'board_card_discarded', {
+            sourceBoardIndex: index,
+            card: discarded,
+        });
         // Board discard does not spend AP.
         return true;
     }
@@ -885,8 +1088,15 @@ function tryApplyBoardGem(card, index) {
 
         const targetCard = inventory.slots[i];
         if (targetCard?.type === 'weapon') {
+            const gem = snapshotHumanRunCard(card.data);
             if (inventory.applyGemToWeapon(card.data, i)) {
                 this.removeCard(index);
+                recordHumanRunEvent(this.scene, 'board_gem_socketed', {
+                    sourceBoardIndex: index,
+                    destinationWeaponSlot: i,
+                    gem,
+                    weapon: snapshotHumanRunCard(targetCard),
+                });
                 // Socketing a gem costs AP.
                 this.scene.useAction?.();
                 return true;
@@ -895,6 +1105,11 @@ function tryApplyBoardGem(card, index) {
         }
         if (!targetCard && inventory.addCard(card.data, i)) {
             this.removeCard(index);
+            recordHumanRunEvent(this.scene, 'board_loot_collected', {
+                sourceBoardIndex: index,
+                destinationSlot: inventory.lastAddedSlot,
+                card: snapshotHumanRunCard(card.data),
+            });
             // Picking a gem into an empty slot does not spend AP.
             return true;
         }

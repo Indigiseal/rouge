@@ -403,6 +403,11 @@ export class CardSystem {
                 this.scene.gameState.coins += coinAmount;
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${coinAmount}`, 0xffd700);
                 this.removeCard(index);
+                recordHumanRunEvent(this.scene, 'board_resource_collected', {
+                    sourceBoardIndex: index,
+                    resource: 'coin',
+                    amount: coinAmount,
+                });
                 break;
                 
             case 'crystal': {
@@ -413,6 +418,11 @@ export class CardSystem {
                 this.scene.gameState.crystals += crystalAmount;
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${crystalAmount}`, 0x00ffff);
                 this.removeCard(index);
+                recordHumanRunEvent(this.scene, 'board_resource_collected', {
+                    sourceBoardIndex: index,
+                    resource: 'crystal',
+                    amount: crystalAmount,
+                });
                 break;
             }
                 
@@ -427,12 +437,20 @@ export class CardSystem {
             case 'gem':
                 if (card.data.type === 'gem') SoundHelper.playSound(this.scene, 'gem_pickup', 0.5);
                 if (this.scene.inventorySystem.addCard(card.data)) {
+                    const destinationSlot = this.scene.inventorySystem.lastAddedSlot;
+                    this.removeCard(index);
                     recordHumanRunEvent(this.scene, 'board_loot_collected', {
-                        boardIndex: index,
+                        sourceBoardIndex: index,
+                        destinationSlot,
                         card: snapshotHumanRunCard(card.data),
                     });
-                    this.removeCard(index);
                     // Board loot pickup does not spend AP.
+                } else {
+                    recordHumanRunEvent(this.scene, 'board_loot_pickup_blocked', {
+                        sourceBoardIndex: index,
+                        reason: 'inventory_full',
+                        card: snapshotHumanRunCard(card.data),
+                    });
                 }
                 break;
 
@@ -449,6 +467,11 @@ export class CardSystem {
                 );
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${modifiedAP} AP`, 0x00ff00);
                 this.removeCard(index);
+                recordHumanRunEvent(this.scene, 'board_food_consumed', {
+                    sourceBoardIndex: index,
+                    card: snapshotHumanRunCard(card.data),
+                    actionGain: modifiedAP,
+                });
                 this.scene.scheduleEnemyTurn?.();
                 break;
             }
@@ -557,6 +580,10 @@ export class CardSystem {
     playLightningArc(...args) { return this.fx.playLightningArc(...args); }
     damageGemTarget(...args) { return this.combat.damageGemTarget(...args); }
     applyRelicSlow(...args) { return this.combat.applyRelicSlow(...args); }
+    rollWeaponEnchant(...args) { return this.combat.rollWeaponEnchant(...args); }
+    applyWeaponEnchantOnHit(...args) { return this.combat.applyWeaponEnchantOnHit(...args); }
+    applyWeaponEnchantOnKill(...args) { return this.combat.applyWeaponEnchantOnKill(...args); }
+    hideEnemyCard(...args) { return this.combat.hideEnemyCard(...args); }
     removeDefeatedEnemy(...args) { return this.combat.removeDefeatedEnemy(...args); }
     checkFloorClear(...args) { return this.combat.checkFloorClear(...args); }
     updateEnemyInfoText(...args) { return this.fx.updateEnemyInfoText(...args); }

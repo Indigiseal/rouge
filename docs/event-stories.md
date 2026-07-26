@@ -4,593 +4,447 @@ Narrative-only extraction for writing/editing. Gameplay effects, rewards, condit
 
 ## 1. The Broken Music Box
 
-A tiny black music box lies half-buried under broken stones. Its lid is cracked. One little brass leg twitches under it.
+A small black music box lies under the rubble — lid cracked, one brass leg twitching.
 
-It plays three tired notes, then clicks shut like it is embarrassed.
+As you lean in, it plays three notes and snaps shut.
 
 ### Choice: Force it open
 
-You force the lid open. The music box plays one brave little note, then explodes in silver smoke. A crushed flute sound squeals through the rubble. Somehow, you are still standing.
+You pry at the lid. The music box plays one warning note, then explodes.
+
+When the smoke clears you are still standing, and the floor around you is scattered with coins.
 
 Alternate fatal version:
 
-You force the lid open. The music box explodes with a sound like a flute being stepped on by fate.
+You pry at the lid. The box explodes.
 
 ### Choice: Open it carefully
 
-The lock gives a tiny click. The lid opens just enough to show a missing brass cog inside. The box clicks at you, grows two little legs, and climbs after you.
+The lock gives. Inside, where the cylinder should turn, a cog is missing.
+
+The box looks at you — somehow — then grows two more legs and falls in behind you.
 
 ### Choice: Leave it alone
 
-You walk away. After three steps, you hear tiny metal feet behind you. The music box is following you, playing louder whenever you pretend not to notice.
+You step over it and keep walking.
+
+Ten steps later: small metal feet on the stones behind you.
 
 ## 2. Monster Bird Nest
 
-You find a huge nest tucked between cracked stones. Inside are speckled eggs, old buttons, bent keys, shiny junk, and one tiny brass cog.
+A nest sits wedged between two fallen pillars — speckled eggs, bent keys, old buttons, and one small brass cog.
 
-The music box in your backpack starts clicking like crazy. Click-click-click-click. It jumps against your bag and plays a tiny warning tune: Dun. Dun.
+In your pack, the music box starts clicking.
 
-A giant shadow slides over the nest. Mama bird is coming back.
+A shadow crosses the nest. Then again, lower.
 
 ### Choice: Grab just the cog
 
-You grab only the brass cog and run. The music box clicks so hard it almost sounds proud.
+You take the cog and nothing else, and you run.
+
+The box rides quietly the rest of the way.
 
 ### Choice: Grab the egg and the cog
 
-You grab the cog and one warm egg. Mama bird slashes across your armor as you escape. The music box rattles in your bag like it is both grateful and judging you.
+You take the cog and one warm egg. The mother catches you at the edge of the nest — her talons open your armor before you pull free.
+
+In your pack, the box rattles. Grateful, or judging. Hard to say.
 
 ### Choice: Leave the nest alone
 
-You leave the nest untouched. The music box gives one small click from your bag, then goes quiet.
+You leave it. The box clicks once, then stops.
 
 ## 3. Goblin Engineer
 
-A goblin engineer pops out from behind a broken machine and points at the music box.
+A goblin steps out from behind a broken machine and points at the music box.
 
-"Oh. Sleepy Snatch Box. Old robber model. Plays song, puffs smoke, hero sleeps, pockets empty. Very illegal. Very profitable."
+"Sleepy Snatch Box. Old robber model. Plays a song, puffs smoke, hero sleeps, pockets empty. Very illegal. Very profitable."
 
-The music box hides behind your boot. The goblin squints. "Yours is broken. Also emotionally confused."
+The box hides behind your boot.
 
 If the player has the cog:
 
-"Ah! You found its heart cog. I can prepare the casing. Maybe it becomes useful. Maybe it becomes smoke."
+"You found its heart cog. Give it here — I can seat it properly. Or improperly. Depends on payment."
 
 If the player does not have the cog:
 
-"No cog? Bad. I can still fake the repair. Goblin confidence: fifty percent."
+"No cog? Then I'm guessing at the insides. Goblin confidence: fifty percent."
 
 ### Choice: Refuse to pay
 
-You refuse to pay. The goblin shrugs. "Free repair is still repair. Just shorter."
-
-Success:
-
-The music box snatches the cog, clicks once, then unfolds a hidden drawer from a place where no drawer should fit. Then another drawer opens. Then a third. It climbs into your pack like it has always belonged there.
-
-Failure:
-
-The music box swallows the cog. It clicks. It coughs. A puff of sleepy smoke leaks out, followed by three embarrassed notes. Then it spits out a few valuables and refuses to discuss what happened.
+"Free repair is still repair," the goblin says. "Just shorter."
 
 ### Choice: Give him an unwanted card for spare parts
 
-The goblin chews thoughtfully on your spare card, then bolts part of it into the music box. "Good enough for machines with low standards."
-
-Success:
-
-The music box snatches the cog, clicks once, then unfolds a hidden drawer from a place where no drawer should fit. Then another drawer opens. Then a third. It climbs into your pack like it has always belonged there.
-
-Failure:
-
-The music box swallows the cog. It clicks. It coughs. A puff of sleepy smoke leaks out, followed by three embarrassed notes. Then it spits out a few valuables and refuses to discuss what happened.
+He chews the card thoughtfully, then bolts half of it into the casing. "Good enough for a machine with low standards."
 
 ### Choice: Pay 30 coins for full repair
 
-You pay the goblin. He suddenly becomes professional, which is alarming. He opens the casing and prepares the perfect place for the cog.
+He counts the coins twice. Then he becomes suddenly, completely professional, which is somehow worse.
 
-Success:
+### Shared result — Success
 
-The music box snatches the cog, clicks once, then unfolds a hidden drawer from a place where no drawer should fit. Then another drawer opens. Then a third. It climbs into your pack like it has always belonged there.
+The box takes the cog, clicks once, and unfolds a drawer from somewhere no drawer should fit. Then a second. Then a third.
 
-Failure:
+It climbs into your pack and settles in like it has always been there.
 
-The music box swallows the cog. It clicks. It coughs. A puff of sleepy smoke leaks out, followed by three embarrassed notes. Then it spits out a few valuables and refuses to discuss what happened.
+### Shared result — Failure
+
+The box swallows the cog. It clicks. It coughs smoke.
+
+Then it plays three flat notes, spits a handful of valuables at your feet, and refuses to look at you.
 
 ## 4. The Egg Hatches
 
-The warm egg in your inventory begins knocking against its card. Tap. Tap. CRACK.
+The egg starts knocking against the inside of its card. Tap. Tap. Crack.
 
-The battered music box scuttles underneath and catches the egg in its open lid.
+The music box scuttles underneath and catches the shell in its open lid.
 
 ### Choice: See what hatches
 
-A furious little chick kicks free of the shell, looks around, and fires a yellow spark into the wall. Satisfied, it climbs back into the same inventory slot.
+A chick kicks free, glares at the room, and test-fires a yellow spark into the wall.
+
+Satisfied, it climbs into your bag and claims a slot.
 
 Alternate version:
 
-The shell gives one final tap, then goes still. Whatever was inside has already escaped.
+The shell taps once more, then goes still. Whatever was inside is already somewhere else.
 
 ## 5. The Too-Nice Room
 
-You find a beautiful little room tucked inside the dungeon wall.
+Halfway down the corridor there is a room that should not be here.
 
-It is sweet-scented and filled with flowers. A tiny table waits with a cup of tea, and on the bed lies a huge comforting blanket you could sink into completely.
+Flowers. A made bed. Tea, still steaming.
 
-The safest-looking place you have seen all day. That is suspicious.
+Nothing in this dungeon has been kind to you yet.
 
 ### Choice: Rest in the bed
 
-You sink into the soft bed and fall asleep almost instantly.
+You sleep better than you have in years.
 
-When you wake up, your wounds are gone. So is one of your cards.
-
-Somewhere inside the wall, you hear tiny annoying laughter.
+You wake healed — and one card lighter. From somewhere inside the wall, very quiet laughter.
 
 ### Choice: Leave the room
 
-You back out of the room carefully. The pillow sighs in disappointment.
+You back out. The pillow sighs.
 
 ### Choice: Inspect the room
 
-You look closer. The flowers are fake. The tea is cold. And behind the pillow, a tiny fairy is holding one of your cards and trying very hard not to giggle.
+The flowers are cloth. The tea went cold an hour ago at most.
+
+And behind the pillow, a fairy is sitting on one of your cards, trying very hard not to giggle.
 
 #### Choice: Confront the fairy
 
-You lunge across the bed and grab the fairy by her wings. She freezes, then you pluck your stolen card back from her tiny arms.
+You grab her before she can fly. She shrieks, kicks, and finally throws an amulet at your chest. "TAKE IT AND LET GO."
 
-She kicks and squeaks and throws a random amulet at your chest. "FINE! TAKE ONE! JUST LET GO!"
-
-The instant you release her, the bed, tea, flowers and fairy are sucked into the wall like a stage prop.
+The moment you do, the room folds into the wall — bed, tea, fairy, and all.
 
 #### Choice: Fight the fairy
 
-You swing your weapon. The fairy darts aside and snaps her fingers - a spell cracks through the room, your chest tightens and your action points drain.
+She is faster than you, and her spell hits like a door slamming — but you catch her with the tea table on her second pass.
 
-You grab the tea table and smash it against the wall. The fairy tumbles down, defeated. "Fine. Take my shiniest one. I hope it rings forever."
-
-She throws you a tiny golden bell, then the whole room folds into the wall and vanishes.
+She surrenders an amulet, spits on your boot, and vanishes with the room.
 
 ## 6. The Book Worm
 
-You step into a quiet underground library.
+An underground library. The shelves go up past the lantern light.
 
-Tall shelves vanish into the darkness above. Small lanterns drift between them.
+At the reading desk, a dark elf woman sits over an open book. She doesn't look up — not at your footsteps, not at your cough.
 
-At a reading desk, a dark elf woman is reading a huge book. She does not look up. You stand beside her awkwardly. She does not notice you.
+Then you see the worm. Pale, slow, chewing a path through the ink. You lift it off the page.
 
-Then you see a pale book worm crawling across the open page. It drags itself slowly over the letters, eating a thin path through the ink.
+Now she looks up.
 
-You gently lift it from the book. The librarian finally looks at you.
-
-"Book worms," she says. "They ruin old spells if you let them feed too long."
+"Book worms," she says. "They ruin old spells if they feed too long."
 
 ### Choice: Feed it a magic card
 
-You hold out one of your magic cards.
+You hold out a magic card. The worm devours half of it like it has been starving, curls tight — and unfolds into a small gray moth.
 
-The book worm sways toward it, then devours half the card quickly, as if it has been starving. Its pale body curls tight.
+It circles your hand once, shedding silver dust. You catch what you can in a vial.
 
-Then it unfolds into a small library moth.
-
-The moth circles once above your hand, shaking silver dust from its wings. You collect the dust in a small vial.
-
-The librarian watches the moth disappear into the shelves.
-
-"Moths are better," she says. "They leave the books alone."
+"Moths are better," the librarian says. "They leave the books alone."
 
 ### Choice: Squish the book worm
 
-You close your fingers around the book worm.
+You close your fist. The worm leaves a smear of bitter green venom across your palm.
 
-It leaves a smear of bitter green venom on your palm.
+The librarian studies it, scrapes it into a small glass charm, and hands the charm to you.
 
-The librarian looks at it, then reaches for a tiny glass charm. She scrapes the venom inside and seals it.
-
-"Useful," she says, and gives it to you.
+"Useful," she says.
 
 ### Choice: Put it back on the book
 
-You put the book worm back on the page.
+You set the worm back on the page. It resumes eating mid-sentence.
 
-It immediately starts eating the next line.
+The librarian stares at you. Then she says a very quiet "ugh," gathers her things, and disappears into the shelves.
 
-The librarian stares at you. Then she says a quiet "Ugh," just loud enough for you to hear, gathers her things, and retreats deeper into the library.
-
-On the desk, she leaves behind a black ink pen. You steal it.
+She leaves her ink pen on the desk. You take it.
 
 ## 7. The Briar Room
 
-You enter a narrow room covered in thorn vines.
+The room is walled in briars — floor to ceiling, grown through a litter of old weapons and armor scraps.
 
-They crawl over the walls, across the ceiling, and down between the stones.
-
-The floor is littered with old broken weapons and scraps of armor caught in the brambles.
-
-As you step inside, the vines slowly turn toward your inventory.
+When you step in, the vines turn toward your bag.
 
 ### Choice: Offer a weapon or armor card
 
-Choose a weapon or armor card from your inventory and drag it onto the briars.
+Choose a weapon or armor card and drag it onto the briars.
 
 #### Choice: Leave without offering a card
 
-You back away before the vines reach your boots.
-
-The brambles slowly turn back toward the walls.
+You back off before the vines reach your boots. Slowly, they settle against the walls.
 
 #### Drag Outcome: Offer card
 
-You hold one of your cards toward the vines.
+You hold the card out to the vines.
 
-The brambles wrap around it carefully, almost gently.
+They wrap it carefully — almost gently — and sink a few black thorns into its edge.
 
-Tiny black thorns sink into the card's edge.
-
-When the vines pull away, the card is changed.
+When they let go, the card is not the same.
 
 ### Choice: Slash through the vines
 
-You draw your weapon and cut into the wall of thorns.
+You cut through. The thorns score your hands and wrap the blade all the way down.
 
-The vines twist around the blade, scraping against the metal as you hack your way through.
-
-By the time the path opens, your hands are scratched and the floor is covered in broken briars.
-
-Something sharp is still tangled around your weapon.
+When you reach the far door, some are still knotted around it.
 
 ### Choice: Burn the vines
 
-The vines twist and shrivel, filling the room with smoke and falling ash.
+One fireball. The vines shrivel and drop, and the room fills with drifting ash.
 
-When the fire dies, something small shines among the blackened roots.
+Under the blackened roots, something small catches the light.
 
 ### Choice: Leave
 
-You back away before the vines reach your boots.
-
-The brambles slowly turn back toward the walls.
+You keep to the corridor. The vines settle back against the walls.
 
 ## 8. The Old Drill Room
 
-You enter an old training room buried deep in the dungeon.
+An old training room. Broken shields on the walls, wooden targets in the corners — claw marks, sword cuts, small burned holes.
 
-Broken shields hang from the walls. Wooden targets lean in the corners, covered in claw marks, sword cuts, and small burned holes.
-
-The floor is scratched with old practice circles.
+Practice circles are scratched into the floor.
 
 Something in the room reacts to your companion cards.
 
 ### Choice: Search the room
 
-You search the broken training room and find a few coins under an old shield.
+You go through the room properly — behind the targets, under the shields.
+
+A few coins somebody never came back for.
 
 ### Choice: Train Storm Chick
 
-You place the Storm Chick card near the old lightning rods.
+You set the Storm Chick card down by the old lightning rods.
 
-The rods begin to hum.
+The rods start to hum. A bolt jumps between them and hits the card square on.
 
-A small bolt jumps between them and strikes the card.
-
-Inside the picture, the chick puffs up, feathers crackling with blue sparks.
+In the picture, the chick puffs up, feathers crackling.
 
 ### Choice: Train Skeleton Warrior
 
-You place the Skeleton Warrior card beside the broken shields.
+You set the Skeleton Warrior card down beside the broken shields.
 
-The shield scraps rattle across the floor and stack themselves over the card.
+The scraps rattle across the floor and stack themselves over it.
 
-Inside the picture, the skeleton lowers its cracked sword and raises a battered shield.
+In the picture, the skeleton lowers its cracked sword and raises a battered shield.
 
 ### Choice: Train Other Companion
 
-You place the companion card in the center of the drill room.
+You set the card down in the middle of the drill room.
 
-The old training marks on the floor glow faintly.
+The old practice circles glow, faintly and briefly.
 
-For a moment, something inside the card moves faster, sharper, more awake.
+In the picture, something moves sharper than it did a minute ago.
 
 ## 9. Something Wicked
 
-In the dark of the dungeon, you hear voices.
+You hear the carnival before you see it — crowd noise, and a happy tune played slightly wrong.
 
-Crowd chatter. Laughter. A thin happy tune played slightly out of tune.
+The corridor opens into a chamber strung with lanterns. Monsters crowd the prize booths. Everyone is smiling. No one looks at you.
 
-At first, you think it is a hallucination.
+Then a hand closes on your shoulder. An old woman, a tray of trinkets pressed against your chest.
 
-Then the corridor opens into a vast carnival chamber.
+"One coin. Wonderful things. Very cheap."
 
-Colored lanterns swing from the ceiling. Balloons drift between stone pillars. Monsters crowd around prize booths, puppet stages, crooked games, and painted doors.
-
-Everyone is smiling.
-
-No one looks at you.
-
-You walk through the crowd in a daze, trying to understand what feels wrong.
-
-Then a hand grabs your shoulder from behind.
-
-You turn around, ready to strike.
-
-An old woman stands too close, holding a tray of dusty trinkets against your chest. Her fingers are thin, but her grip is surprisingly strong.
-
-"One coin," she says. "Wonderful things. Very cheap."
-
-You try to step away.
-
-Her hand does not move.
-
-On the tray, you see four objects:
-
-a dusty pipe
-
-a rubber duck
-
-a broken ring with a cracked gem
-
-a four-leaf clover pressed under glass
+Her grip does not loosen.
 
 ### Choice: Buy the dusty pipe
 
-You press one coin into the old woman's hand.
+You pay. Her fingers open.
 
-Her fingers finally release your shoulder.
-
-The pipe remains in your palm. It smells like cold ash.
-
-When you look up, the old woman has vanished into the crowd.
+The pipe smells of cold ash. When you look for her again, she is gone.
 
 ### Choice: Buy the rubber duck
 
-You press one coin into the old woman's hand.
+You pay. Her fingers open.
 
-Her fingers finally release your shoulder.
-
-The rubber duck remains in your palm. Its painted eyes are almost worn away.
-
-When you look up, the old woman has vanished into the crowd.
+The duck's painted eyes are nearly worn away. It still looks amused. When you look for her again, she is gone.
 
 ### Choice: Buy the broken ring
 
-You press one coin into the old woman's hand.
+You pay. Her fingers open.
 
-Her fingers finally release your shoulder.
-
-The broken ring remains in your palm. The cracked gem catches no light.
-
-When you look up, the old woman has vanished into the crowd.
+The cracked gem catches no light at all. When you look for her again, she is gone.
 
 ### Choice: Buy the four-leaf clover
 
-You press one coin into the old woman's hand.
+You pay. Her fingers open.
 
-Her fingers finally release your shoulder.
-
-The clover remains in your palm, sealed under cloudy glass.
-
-For one second, it glitters green.
-
-When you look up, the old woman has vanished into the crowd.
+Under the cloudy glass, the clover glitters green — once. When you look for her again, she is gone.
 
 ### Choice: Refuse
 
-You twist away from the old woman's grip.
-
-Her nails scrape your shoulder.
-
-She watches you disappear into the carnival crowd without blinking.
+You twist free. Her nails catch your shoulder on the way out — three thin lines that sting longer than they should.
 
 ## 10. The Brass Wizard
 
-The carnival music leads you to a narrow booth with cracked blue curtains.
+The carnival music thins out near a booth with cracked blue curtains.
 
-Behind the glass sits an old fortune-telling machine.
+Behind the glass sits a fortune-telling machine: a brass wizard in a faded robe, painted stars mostly peeled away. Its mouth hangs open. Its pale eyes point at nothing.
 
-It is shaped like a brass wizard in a faded blue robe. Old stars are painted across the robe, but most of the color has peeled away.
-
-The wizard's pale eyes stare forward. They may have been blue once.
-
-Its puppet-like mouth hangs slightly open.
-
-A coin slot waits beneath the glass.
+The coin slot below the glass is polished bright from use.
 
 ### Choice: Insert 1 coin
 
 #### Random Outcome: Jammed Machine
 
-The brass wizard's hand jerks toward the deck inside its chest.
+The brass hand jerks toward the deck — and stops.
 
-Then it stops.
+Then the mouth starts clicking. Slow at first. Then faster, louder, echoing in the booth like it is counting down to something.
 
-Its painted mouth snaps open.
-
-Click.
-
-Click-click.
-
-Click-click-click.
-
-The sound grows louder, sharp and metallic, echoing from inside the booth.
-
-The wizard's pale eyes stare past you while its puppet mouth keeps clacking faster and faster.
-
-For a moment, you are sure you broke something.
-
-Or woke something.
-
-You step back, then turn and push your way into the carnival crowd, just to get away from that awful clicking.
+You do not wait to find out what.
 
 #### Random Outcome: Ordinary Fortune
 
-The brass wizard's hand moves stiffly behind the glass.
+The hand drags across the deck inside its chest. One card drops through the slot.
 
-Its fingers scrape across the deck inside its chest.
-
-After a long pause, one card slides out through the slot.
-
-The card is warm, as if the machine had been holding it for years.
+It is warm, as if the machine had been holding it for years.
 
 #### Random Outcome: The Tray Opens
 
-The brass wizard's hand lifts behind the glass.
+A wooden tray snaps out of the booth — exactly the size of a card.
 
-It cannot reach you.
-
-Instead, a narrow tray snaps out from the booth with a hard wooden clack.
-
-The tray is exactly the size of a card.
-
-The wizard's pale eyes lower toward your inventory.
-
-Its puppet mouth clicks once.
-
-Then it waits.
+The wizard's eyes tilt down toward your bag. It waits.
 
 ##### Choice: Place a carnival junk card on the tray
 
-You place the useless carnival trinket on the tray.
+You put the trinket on the tray. It snaps back into the booth.
 
-The tray snaps back into the booth.
+The glass goes dark. Then a rainbow sheen spreads across it from the inside — thin and oily, like light on spilled ink.
 
-Behind the glass, the brass wizard lowers one hand over it.
-
-The booth goes dark.
-
-Then a rainbow sheen spreads across the glass from the inside, thin and oily, like light on spilled ink.
-
-A card slides out.
-
-It is too bright for the old machine that made it.
-
-For a moment, every painted star on the wizard's robe seems to look at you.
+A card slides out. It is far too bright for the machine that made it.
 
 ##### Choice: Place a real card on the tray
 
-You place one of your cards on the tray.
+You put one of your cards on the tray. It snaps back before you can change your mind.
 
-The tray snaps back before you can change your mind.
-
-Behind the glass, the brass wizard stares down at the card for a long time.
-
-Then its metal fingers tap the glass.
-
-Once.
-
-Twice.
+Behind the glass, the wizard looks at the card for a long time. Then it taps the glass twice.
 
 A different card slides out.
 
 ##### Choice: Pull your hand back
 
-You step away from the waiting tray.
-
-The brass wizard does not move.
-
-After a few seconds, the tray slides back into the booth by itself.
+You step back. After a few seconds, the tray slides in by itself.
 
 #### Random Outcome: The Wizard Wakes
 
-The brass wizard's pale eyes roll upward.
+The eyes roll white. When they settle, they are a color no machine should have.
 
-For a moment, they are blank.
+Human eyes. They hold on you a moment too long.
 
-Then they settle into a color they should not have.
-
-Human eyes.
-
-The machine goes still.
-
-It looks at you for a little too long.
-
-No music reaches this booth now.
-
-The puppet mouth opens.
-
-Click.
-
-Click.
-
-Its brass hand opens slowly behind the glass.
-
-A single fortune card slides out.
+Then the hand opens, and a single fortune card slides out.
 
 ### Choice: Leave the booth
 
-You leave the coin slot empty.
+You leave the slot empty.
 
-The brass wizard watches you through the dusty glass.
-
-Its mouth hangs open, waiting for a fortune it does not get to speak.
+The wizard watches you go, mouth open, holding a fortune it doesn't get to tell.
 
 ## 11. The Well of Almost-You
 
-A stone well stands in the middle of the room, filled almost to the top with thick black water - more tar than water.
+A stone well, filled nearly to the lip with black water — more tar than water.
 
-You lean over and see your reflection. But it is wrong: frizzled hair, cracked armor, and one card in its hand you have never seen.
+Your reflection is wrong. Frizzled hair. Cracked armor. And in its hand, a card you have never owned.
 
-(Drag a weapon, armor or thorns card onto the well. It sinks - and a different item of the same rarity rises back in its place.)
+(Drag a weapon, armor or thorns card into the well — it sinks, and something else of the same rarity comes up.)
 
 ### Choice: Reach into the well
 
-You push your hand into the black water. It is cold - then it grabs back. For a moment your arm is somewhere else: another room, another run, another ending. You pull free with something clenched in your fist. Your reflection is smiling now.
+The water is cold. Then it grabs back.
+
+For a second your arm is somewhere else — another room, another run. You pull free with something in your fist.
+
+Your reflection is smiling now.
 
 ### Choice: Drop a crystal into the well
 
-You drop one crystal into the black water. It falls upward. Your reflection catches it, studies it, and drops something back. Four crystals rise from the well and clatter onto the stone.
+You drop a crystal in. It falls upward.
+
+Your reflection catches it, studies it, pockets it — and sends four back down.
 
 ### Choice: Walk away
 
-You step back from the well. Your reflection stays where it is. Then, one second too late, it also steps back.
+You step back from the edge.
+
+Your reflection stays a second longer than it should. Then it steps back too.
 
 ### Drag Outcome: Trade
 
-You hold one card over the well. Your reflection lifts the wrong hand. The card sinks into the black water without a sound, and a different one rises back - cold and dripping with tar. For one second, you feel like you just made a deal with yourself.
+You hold the card out over the water. Your reflection lifts the wrong hand.
+
+The card sinks without a sound. A different one comes up, cold and dripping tar.
+
+For a second it feels like you made a deal with yourself.
 
 ## 12. The Copying Mirror
 
-A tall silver mirror leans against the dungeon wall, humming faintly.
+A tall silver mirror leans against the wall, humming to itself.
 
-Drag a card from your bag onto the mirror and it will conjure a perfect copy - then merge the pair right here if you like. Or simply walk on.
+(Drag a card from your bag onto it and it will conjure a perfect copy — merge the pair here if you like. Or walk on.)
 
 ### Choice: Leave the mirror
 
-You step away. The mirror keeps humming to its own reflection.
+You walk on. Behind you, the mirror keeps humming to its own reflection.
 
 ## 13. The Slimy Prison
 
-A gelatinous cube blocks the hallway.
+A gelatinous cube fills the corridor. Inside it, a skeleton in torn mage robes, drifting.
 
-At first, you think there is just an old skeleton floating inside it. Then the skeleton moves. Torn mage robes drift around him like weeds in water. A green glow crawls over his ribs, rebuilding the bones as fast as the cube eats them away.
+Then it moves. Green light crawls along its ribs, rebuilding bone as fast as the cube dissolves it.
 
-The skeleton mage turns his skull toward you and opens his jaw. Green light burns in his empty eye sockets.
+The skull turns toward you.
 
 ### Choice: Pull him free
 
-You drag the skeleton mage out of the cube.
+The cube fights you for him, and takes some skin.
 
-Slime drips from his torn robes as he places a slimy card in your hand. A Skeleton Warrior is painted on it, holding a cracked sword.
+On the far side he stands, drips, and presses a card into your hand: a skeleton warrior with a cracked sword.
 
-The mage nods once. A dark portal opens behind him, and he vanishes.
+A portal opens behind him. He is gone before you can ask anything.
 
 ### Choice: End his suffering
 
-You raise your weapon and strike through the cube.
+You drive your weapon through the cube. The green light gutters and goes out.
 
-The green spell inside the mage's ribs cracks. For the first time, the bones stop healing. The skeleton mage sinks slowly into the slime.
+For the first time, the bones are allowed to stop. He sinks slowly through the slime.
 
-A dark amulet rises from what is left of him.
+What is left of the spell condenses into a dark amulet.
 
 ### Choice: Grab the floating amulet
 
-There is an amulet floating near the mage's ribs.
+There is an amulet drifting near his ribs.
 
-You ignore his reaching hand and shove your arm into the cube. The slime burns your skin as you pull the amulet free.
+You push your arm in past his reaching hand and take it. The slime burns the whole way.
 
-The skeleton mage watches you through the black-green glass. He remains trapped.
+He watches you leave through the green glass. Still trapped.
 
 ## 14. Quiet Crossroads
 
-For once, the road is only strange in the normal dungeon way.
+For one floor, nothing is haunted, cursed, or pretending to be a chest.
+
+There is a small dry alcove, a few coins someone dropped, and quiet.
 
 ### Choice: Gain 10 coins
 
@@ -598,8 +452,62 @@ You pocket the coins and move on.
 
 ### Choice: Heal 5 HP
 
-You rest briefly and feel a little better.
+You sit down for a few minutes. Nothing attacks you. It helps more than it should.
 
 ### Choice: Leave
 
-You decide not to linger.
+You don't trust it. You keep moving.
+
+## 15. The Screaming Head
+
+A stone head, half-buried in the floor, big as a cart. The rest of the statue is not in the room.
+
+The face is frozen mid-scream — broken teeth, empty eye sockets. Dust trickles from the mouth when you step closer.
+
+Deep inside the mouth, something shifts.
+
+### Choice: Place a card in its mouth
+
+Choose a card and drag it into the statue's mouth.
+
+#### Choice: Pull your hand back
+
+You pull the card away. The teeth stay open. Waiting.
+
+#### Drag Outcome: Offering
+
+You slide the card between the stone teeth.
+
+The mouth closes. Stone grinds on stone, and for a few seconds the head chews.
+
+Then the jaw cracks open. A different card is lying on the tongue, damp with gray dust.
+
+### Choice: Reach into the mouth
+
+Cold stone. Dust. Then the jaw snaps shut.
+
+The teeth catch your arm on the way out — and so does something small and hard, clenched in your fist.
+
+### Choice: Place a Fire Gem in the eye socket
+
+The gem fits the socket exactly.
+
+Red light spreads through the cracks in the face. The head exhales one slow cloud of dust — and when it clears, a Fire Rune is resting on the stone tongue.
+
+### Choice: Place a Lightning Gem in the eye socket
+
+The gem clicks into place.
+
+A thin bolt skips across the cracked forehead, and the teeth chatter once. The head exhales dust — and a Lightning Rune flickers between its teeth.
+
+### Choice: Place a Poison Gem in the eye socket
+
+Green light seeps through the cracks, and the mouth curls — almost like remembering pain.
+
+The head exhales a bitter cloud. Behind it, a dark green rune rests on the stone tongue.
+
+### Choice: Leave
+
+You leave it screaming at the ceiling.
+
+A little more dust falls from its teeth as you pass.

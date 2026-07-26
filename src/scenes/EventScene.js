@@ -11,7 +11,15 @@ import { createTitle } from '../ui/titleText.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { EVENTS, getEvent } from '../content/events/index.js';
+import { getMagic } from '../content/cards/magic.js';
+import {
+  applyEnchantToWeapon,
+  describeWeaponEnchant,
+  getGlowCardFrame,
+  rollEnchantOffer,
+} from '../content/balance/WeaponEnchants.js';
 import { EventRunHelpers } from '../systems/events/EventRunHelpers.js';
+import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
@@ -28,7 +36,10 @@ const EVENT_ILLUSTRATION_FRAMES = {
   old_drill_room: 26,
   something_wicked: 7,
   brass_wizard: 28,
-  screaming_head: 26
+  screaming_head: 26,
+  // TODO: swap to the Reliquary's own frame once its art lands. Frame 11
+  // (the Copying Mirror's glassy panel) is the closest stand-in for now.
+  reliquary: 11
 };
 
 export class EventScene extends Phaser.Scene {
@@ -77,6 +88,9 @@ export class EventScene extends Phaser.Scene {
     if (!story.slimyPrisonSeen) bonusFillers.push('slimy_prison');
     if (!story.bookWormSeen) bonusFillers.push('book_worm');
     if (!story.briarRoomSeen) bonusFillers.push('briar_room');
+    // The Reliquary supplies the magic card itself, so it only needs the
+    // player to be carrying something worth enchanting.
+    if (!story.reliquarySeen && this.hasEnchantableWeapon()) bonusFillers.push('reliquary');
     if ((this.gameState.currentFloor || 1) >= 31 && !story.screamingHeadSeen
       && (!this.hasAmulet('fireRuneStone') || !this.hasAmulet('lightningRune') || !this.hasAmulet('poisonRune'))) {
       bonusFillers.push('screaming_head');
@@ -101,7 +115,7 @@ export class EventScene extends Phaser.Scene {
       const requestedId = new URLSearchParams(window.location.search).get('event');
       if (!requestedId) return null;
       const resolvedId = requestedId === 'singing_box' ? 'broken_music_box' : requestedId;
-      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'old_drill_room', 'something_wicked', 'brass_wizard']);
+      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'old_drill_room', 'something_wicked', 'brass_wizard']);
       return forceable.has(resolvedId) ? resolvedId : null;
     } catch {
       return null;
@@ -143,6 +157,7 @@ export class EventScene extends Phaser.Scene {
       slimyPrisonSeen: false,
       bookWormSeen: false,
       briarRoomSeen: false,
+      reliquarySeen: false,
       screamingHeadSeen: false,
       carnivalVisited: false,
       carnivalHagMet: false,
@@ -222,6 +237,7 @@ export class EventScene extends Phaser.Scene {
       slimyPrisonSeen: Boolean(existingStoryRun.slimyPrisonSeen),
       bookWormSeen: Boolean(existingStoryRun.bookWormSeen),
       briarRoomSeen: Boolean(existingStoryRun.briarRoomSeen),
+      reliquarySeen: Boolean(existingStoryRun.reliquarySeen),
       screamingHeadSeen: Boolean(existingStoryRun.screamingHeadSeen),
       carnivalVisited: Boolean(existingStoryRun.carnivalVisited),
       carnivalHagMet: Boolean(existingStoryRun.carnivalHagMet),
@@ -478,6 +494,9 @@ export class EventScene extends Phaser.Scene {
 
   _createEventIllustrationBoard(frame) {
     if (!this.textures.exists('gamingBoardSideSmall')) return;
+    // The Reliquary draws its three lit cases inline under the story text
+    // instead — three 70x108 cases will not fit the side panel.
+    if (this.event?.id === 'reliquary') return;
 
     const targetX = 486;
     const slideDistance = 56;
@@ -763,8 +782,19 @@ export class EventScene extends Phaser.Scene {
 
     // Choice buttons
     this._choiceBtns = [];
+    // Two-across keeps the Reliquary's buttons to a single row, and pushing the
+    // row down to the inventory strip frees the panel's middle band for the
+    // 108px display cases — without it the cases ride up and squeeze the story
+    // text down to a single scrolling line.
+    if (this.event?.id === 'reliquary') {
+      this._choiceColumns = 2;
+      this._choiceTopY = 196;
+    }
     this._buildChoices();
     this._fitDescriptionAboveChoices();
+
+    // Built after the choices so the cases can be seated directly above them.
+    if (this.event?.id === 'reliquary') this._setupReliquaryCases();
 
     // The carnival hag presents her wares as a physical tray of trinkets the
     // player drags into their bag, instead of a stack of text buttons.
@@ -858,7 +888,9 @@ export class EventScene extends Phaser.Scene {
     // (>5 choices) still split into two columns; the gap compresses to fit
     // when there are enough rows to need it.
     const INV_TOP = 246;
-    const columns = n > 5 ? 2 : 1;
+    // `_choiceColumns` lets an event force a side-by-side stack even with few
+    // choices — the Reliquary does this to free vertical room for its cases.
+    const columns = this._choiceColumns || (n > 5 ? 2 : 1);
     const rows = Math.max(1, Math.ceil(n / columns));
     const lastCenterY = INV_TOP - 19;                  // bottom-most row center (nudged up 3px)
     const topLimit = (this._choiceTopY ?? 146) + 20;   // stay >=20px below the story text
@@ -908,12 +940,25 @@ export class EventScene extends Phaser.Scene {
   _resolve(choice, choiceIdx, opts = {}) {
     if (this.resolved) return;
     this.resolved = true;
+    const availableChoices = (this._visibleChoices || this._getVisibleChoices()).map((option, index) => ({
+      index,
+      id: option.id || null,
+      text: option.text || null,
+    }));
 
     // Effect helpers push concrete "gained/lost" lines (and amulet icons) here
     // during the action. (The well trade fills these before calling _resolve,
     // so keepRewards.)
     if (!opts.keepRewards) { this._rewardLines = []; this._rewardIcons = []; }
     choice.action?.(this.gameState, this);
+    recordHumanRunEvent(this, 'event_choice_selected', {
+      eventId: this.event?.id || null,
+      eventTitle: this.event?.title || null,
+      choiceIndex: choiceIdx,
+      choiceId: choice.id || null,
+      choiceText: choice.text || null,
+      availableChoices,
+    });
 
     if (this.event?.id === 'brass_wizard' && this._brassWizardTrayOpen) {
       this._brassWizardTrayOpen = false;
@@ -948,6 +993,9 @@ export class EventScene extends Phaser.Scene {
     // flows downward with room to spare above the inventory strip.
     this.descText?.setVisible(false);
     this.dividerRect?.setVisible(false);
+    // The Reliquary's cases are inline art, so they must clear out of the way
+    // of the outcome panel just like the story text does.
+    this._hideReliquaryCases?.();
     this._choiceBtns.forEach(({ bg, label }) => {
       bg.removeInteractive();
       bg.setAlpha(0);
@@ -1307,19 +1355,19 @@ export class EventScene extends Phaser.Scene {
       companion.shockChance = 0.20;
       companion.upgradedForm = 'stormHatchling';
       companion.sprite = 'chickCompanionUP'; // upgraded art: crackling storm chick
-      this.companionTrainingOutcome = 'You place the Storm Chick card near the old lightning rods.\n\nThe rods begin to hum.\n\nA small bolt jumps between them and strikes the card.\n\nInside the picture, the chick puffs up, feathers crackling with blue sparks.';
+      this.companionTrainingOutcome = 'You set the Storm Chick card down by the old lightning rods.\n\nThe rods start to hum. A bolt jumps between them and hits the card square on.\n\nIn the picture, the chick puffs up, feathers crackling.';
       this._reward('Storm Hatchling: 20% chance to Shock for 1 turn');
     } else if (companion.id === 'skeletonWarriorCompanion') {
       companion.name = 'Slimebone Guard';
       companion.guardProtection = Math.max(1, Number(companion.guardProtection) || 0);
       companion.upgradedForm = 'slimeboneGuard';
       companion.sprite = 'skeletonCompanionUP'; // upgraded art: skeleton with a raised shield
-      this.companionTrainingOutcome = 'You place the Skeleton Warrior card beside the broken shields.\n\nThe shield scraps rattle across the floor and stack themselves over the card.\n\nInside the picture, the skeleton lowers its cracked sword and raises a battered shield.';
+      this.companionTrainingOutcome = 'You set the Skeleton Warrior card down beside the broken shields.\n\nThe scraps rattle across the floor and stack themselves over it.\n\nIn the picture, the skeleton lowers its cracked sword and raises a battered shield.';
       this._reward('Slimebone Guard: +1 protection while carried');
     } else {
       companion.attack = Math.max(0, Number(companion.attack) || 0) + 1;
       companion.upgradedForm = 'trained';
-      this.companionTrainingOutcome = 'You place the companion card in the center of the drill room.\n\nThe old training marks on the floor glow faintly.\n\nFor a moment, something inside the card moves faster, sharper, more awake.';
+      this.companionTrainingOutcome = 'You set the card down in the middle of the drill room.\n\nThe old practice circles glow, faintly and briefly.\n\nIn the picture, something moves sharper than it did a minute ago.';
       this._reward(`${companion.name || 'Companion'}: +1 damage`);
     }
 
@@ -1490,7 +1538,7 @@ export class EventScene extends Phaser.Scene {
     this._resolve({
       text: 'Offer card',
       action: () => {},
-      outcome: 'You slide one of your cards between the stone teeth.\n\nThe statue\'s mouth closes slowly.\n\nStone grinds against stone.\n\nFor a few seconds, the head chews in silence.\n\nThen its jaw cracks open again.\n\nA different card lies on its tongue, damp with gray dust.'
+      outcome: 'You slide the card between the stone teeth.\n\nThe mouth closes. Stone grinds on stone, and for a few seconds the head chews.\n\nThen the jaw cracks open. A different card is lying on the tongue, damp with gray dust.'
     }, -1, { keepRewards: true });
     return true;
   }
@@ -1541,9 +1589,200 @@ export class EventScene extends Phaser.Scene {
     this._resolve({
       text: 'Offer card',
       action: () => {},
-      outcome: 'You hold one of your cards toward the vines.\n\nThe brambles wrap around it carefully, almost gently.\n\nTiny black thorns sink into the card’s edge.\n\nWhen the vines pull away, the card is changed.'
+      outcome: 'You hold the card out to the vines.\n\nThey wrap it carefully — almost gently — and sink a few black thorns into its edge.\n\nWhen they let go, the card is not the same.'
     }, -1, { keepRewards: true });
     return true;
+  }
+
+  // ─── The Reliquary (the wall supplies the spell, the player supplies iron) ─
+
+  // Rolled once per visit and cached. _getVisibleChoices() re-runs on every
+  // render, so rolling inline would reshuffle the wall under the player's hand.
+  getReliquaryOffer() {
+    if (!Array.isArray(this._reliquaryOffer) || this._reliquaryOffer.length === 0) {
+      this._reliquaryOffer = rollEnchantOffer(this.gameState?.currentFloor || 1, 3);
+    }
+    return this._reliquaryOffer;
+  }
+
+  _isEnchantableWeapon(item) {
+    return Boolean(item && item.type === 'weapon' && !item.enchant);
+  }
+
+  hasEnchantableWeapon() {
+    return this.getInventorySlots().some(item => this._isEnchantableWeapon(item));
+  }
+
+  // Each case is its own drop target: the player drags a weapon straight onto
+  // the card they want, so no "choose the spell first" button is needed.
+  //
+  // Layout: the row is seated just above the choice buttons and the story text
+  // takes whatever room is left above it, so the band adapts to however many
+  // choices are showing.
+  _setupReliquaryCases() {
+    const inv = this.gameScene?.inventorySystem;
+    const offer = this.getReliquaryOffer();
+    if (!offer.length) return;
+    if (!this.textures.exists('glassCase') || !this.textures.exists('glowingMagicCards')) return;
+
+    const CASE_W = 70;
+    const CASE_H = 108;
+    const CARD_H = 70;
+    const CARD_LIFT = 20; // the card's bottom edge floats this far above the case's
+    const GAP = 10;
+
+    const choiceBounds = this._getChoiceBounds();
+    const rowBottom = (choiceBounds ? choiceBounds.top : 200) - 6;
+    const centerY = Math.round(rowBottom - CASE_H / 2);
+    const caseBottom = centerY + CASE_H / 2;
+    const cardCenterY = Math.round(caseBottom - CARD_LIFT - CARD_H / 2);
+
+    const totalW = offer.length * CASE_W + (offer.length - 1) * GAP;
+    const startX = Math.round(this.eventLayout.centerX - totalW / 2 + CASE_W / 2);
+
+    this._reliquaryCaseObjects = [];
+    this._reliquaryGlass = [];
+    inv?.clearDropZones();
+
+    offer.forEach((magicType, i) => {
+      const x = startX + i * (CASE_W + GAP);
+      const frame = getGlowCardFrame(magicType);
+
+      // Card first (behind), then the glass over it.
+      if (frame !== null) {
+        this._reliquaryCaseObjects.push(
+          this.add.image(x, cardCenterY, 'glowingMagicCards', frame).setDepth(2)
+        );
+      }
+      const glass = this.add.image(x, centerY, 'glassCase').setDepth(3);
+      this._reliquaryCaseObjects.push(glass);
+      this._reliquaryGlass.push(glass);
+
+      // NOTE: deliberately NOT setInteractive(). EventScene renders above
+      // GameScene, and Phaser's InputManager is globalTopOnly — an interactive
+      // object here swallows the pointer before GameScene sees it, so the
+      // dragged card never receives 'dragend' and sticks to the cursor. The
+      // mirror and well drop targets are plain images for the same reason.
+      // Hover feedback is done by polling the pointer in update() instead.
+      inv?.addDropZone(glass, (slotIndex, cardData, cardSprite) => (
+        this._handleReliquaryOffering(slotIndex, cardData, cardSprite, magicType)
+      ));
+    });
+
+    // The story text now has to clear the cases, not just the buttons.
+    if (this.descText?.scene) {
+      const top = 42;
+      const textBottom = Math.max(top + 24, Math.round(centerY - CASE_H / 2 - 6));
+      this._descriptionViewportBottom = textBottom;
+      this._setReadingScroll(
+        [this.descText], top, textBottom, this.descText.y + this.descText.height
+      );
+    }
+  }
+
+  _hideReliquaryCases() {
+    this._reliquaryCaseObjects?.forEach(obj => obj?.destroy?.());
+    this._reliquaryCaseObjects = null;
+    this._reliquaryGlass = null;
+  }
+
+  // Hover highlight without input capture: poll the pointer instead of making
+  // the cases interactive (see the note in _setupReliquaryCases).
+  _updateReliquaryHover() {
+    const glass = this._reliquaryGlass;
+    if (!glass?.length) return;
+    const pointer = this.input?.activePointer;
+    if (!pointer) return;
+    glass.forEach((obj) => {
+      if (!obj?.scene) return;
+      const b = obj.getBounds();
+      const over = pointer.isDown
+        && pointer.x >= b.left && pointer.x <= b.right
+        && pointer.y >= b.top && pointer.y <= b.bottom;
+      if (over) obj.setTint(0xffe9a8);
+      else obj.clearTint();
+    });
+  }
+
+  _handleReliquaryOffering(slotIndex, cardData, cardSprite, magicType) {
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv || !cardData || !magicType || this.resolved) return false;
+    if (cardData.type !== 'weapon') {
+      this._mirrorFloat('The case only opens for a weapon', 0xff6666, cardSprite);
+      return false;
+    }
+    if (cardData.enchant) {
+      this._mirrorFloat('That weapon already holds a spell', 0xff6666, cardSprite);
+      return false;
+    }
+
+    const magicName = getMagic(magicType)?.name || 'the card';
+    if (!applyEnchantToWeapon(cardData, magicType)) {
+      this._mirrorFloat('The glass does not open', 0xff6666, cardSprite);
+      return false;
+    }
+
+    // The weapon goes back to the player, changed — same shape as the briars.
+    inv.returnCardToSlot(slotIndex, cardSprite);
+    inv.clearDropZones();
+    inv.rebuildInventorySprites?.();
+    this._hideReliquaryCases();
+    this.gameScene?.updateUI?.();
+
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    this._reward(describeWeaponEnchant(cardData) || `${cardData.name}: enchanted`);
+    this._resolve({
+      text: 'Offer weapon',
+      action: () => {},
+      outcome: `You press the weapon flat against the glass.\n\nThe case opens from the inside. The ${magicName} settles against the metal and sinks in, and the glass closes over nothing.\n\nThe other cases go dark.\n\nWhat you are holding is called ${cardData.name} now.`
+    }, -1, { keepRewards: true });
+    return true;
+  }
+
+  // Greedy path: take a card raw instead of fusing it. Worth allowing — magic
+  // cards are rare enough that wanting the spell itself is a real preference.
+  breakReliquaryGlass() {
+    this.ensureStoryState();
+    this.gameState.storyRun.reliquarySeen = true;
+    this.gameScene?.inventorySystem?.clearDropZones?.();
+    this._hideReliquaryCases();
+
+    // You grab the best one you can see, not a random one.
+    const byValue = ['legendary', 'rare', 'uncommon', 'common'];
+    const magicType = [...this.getReliquaryOffer()].sort((a, b) => (
+      byValue.indexOf(getMagic(a)?.rarity) - byValue.indexOf(getMagic(b)?.rarity)
+    ))[0];
+    const magic = magicType ? getMagic(magicType) : null;
+
+    this.loseHealthCapped(8);
+
+    if (!magic) {
+      this.reliquaryBreakOutcome = 'You put your elbow through the nearest case.\n\nThe glass opens your arm. Whatever was inside is already gone.';
+      return false;
+    }
+
+    this._deliverCardReward({
+      type: 'magic',
+      magicType: magic.magicType,
+      name: magic.name,
+      description: magic.description,
+      rarity: magic.rarity,
+      sprite: magic.sprite,
+      damage: magic.damage,
+      healAmount: magic.healAmount,
+    }, magic.name, `Gained card: ${magic.name}`);
+
+    this.reliquaryBreakOutcome = `You put your elbow through the case holding the ${magic.name}.\n\nThe ward goes off late and shallow, opening a line across your forearm — but the card is in your fist and it stays there.\n\nThe other two cases go dark before the glass finishes falling.`;
+    return true;
+  }
+
+  searchReliquary() {
+    this.ensureStoryState();
+    this.gameState.storyRun.reliquarySeen = true;
+    this.gameScene?.inventorySystem?.clearDropZones?.();
+    this._hideReliquaryCases();
+    this.gainCrystals(2);
   }
 
   // ─── Well of Almost-You (drag a gear card in to trade it up a tier) ───────
@@ -1595,7 +1834,7 @@ export class EventScene extends Phaser.Scene {
     this._resolve({
       text: 'Trade',
       action: () => {},
-      outcome: 'You hold one card over the well. Your reflection lifts the wrong hand. The card sinks into the black water without a sound, and a different one rises back — cold and dripping with tar. For one second, you feel like you just made a deal with yourself.'
+      outcome: 'You hold the card out over the water. Your reflection lifts the wrong hand.\n\nThe card sinks without a sound. A different one comes up, cold and dripping tar.\n\nFor a second it feels like you made a deal with yourself.'
     }, -1, { keepRewards: true });
     return true;
   }
@@ -1867,7 +2106,7 @@ export class EventScene extends Phaser.Scene {
       this._resolve({
         text: 'Trade junk',
         action: () => {},
-        outcome: 'You place the useless carnival trinket on the tray.\n\nThe tray snaps back into the booth. The booth goes dark, then a rainbow sheen spreads across the glass from the inside — thin and oily, like light on spilled ink.\n\nA card slides out. It is too bright for the old machine that made it.'
+        outcome: 'You put the trinket on the tray. It snaps back into the booth.\n\nThe glass goes dark. Then a rainbow sheen spreads across it from the inside — thin and oily, like light on spilled ink.\n\nA card slides out. It is far too bright for the machine that made it.'
       }, -1, { keepRewards: true });
       return true;
     }
@@ -1891,7 +2130,7 @@ export class EventScene extends Phaser.Scene {
       this._resolve({
         text: 'Reroll',
         action: () => {},
-        outcome: 'You place one of your cards on the tray.\n\nThe tray snaps back before you can change your mind. Behind the glass, the brass wizard stares down at it for a long time, then taps the glass twice.\n\nA different card slides out.'
+        outcome: 'You put one of your cards on the tray. It snaps back before you can change your mind.\n\nBehind the glass, the wizard looks at the card for a long time. Then it taps the glass twice.\n\nA different card slides out.'
       }, -1, { keepRewards: true });
       return true;
     }
@@ -1923,6 +2162,7 @@ export class EventScene extends Phaser.Scene {
       book_worm: 'bookWormSeen',
       briar_room: 'briarRoomSeen',
       screaming_head: 'screamingHeadSeen',
+      reliquary: 'reliquarySeen',
       something_wicked: 'carnivalVisited',
       brass_wizard: 'brassWizardSeen'
     };
@@ -1937,6 +2177,8 @@ export class EventScene extends Phaser.Scene {
   // the inventory when a slot is actually open, so it never spams "Inventory
   // Full!" while the player is still deciding.
   update() {
+    this._updateReliquaryHover();
+
     const pending = this._pendingCardRewards;
     if (!pending || pending.length === 0) return;
 

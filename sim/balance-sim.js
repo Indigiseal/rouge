@@ -55,6 +55,12 @@ import {
 import { getDefaultAmuletIds } from './sim-catalog.js';
 import { getBehaviorProfile, getBehaviorPresetNames } from './behavior-knobs.js';
 import {
+  chooseWeaponPreservingAttack,
+  effectiveExpendableWeaponPips,
+  weaponMergeCapitalUnits,
+} from './weapon-preservation.js';
+import { killEfficiencyAdjustment } from './attack-priority.js';
+import {
   applyPermanentWeaponDamageBonuses,
   applyKeenEdgeFirstStrike,
   buildStartingWeaponCards,
@@ -69,6 +75,10 @@ import {
   getMagic,
   weaponDurability,
 } from '../src/content/cards/index.js';
+import {
+  shopItemBuyPrice,
+  shopItemSellPrice,
+} from '../src/content/economy/shop.js';
 
 // ── Config ────────────────────────────────────────────────────────────────
 const RUNS = parseInt(process.argv[2], 10) || 2000;
@@ -80,6 +90,7 @@ const BOSS_PREP_MAGIC_TYPES = new Set(['frostRing', 'boneWall', 'restoration']);
 const DEFAULT_BEHAVIOR_PRESET = parseBehaviorPresetArg(process.argv);
 const DEFAULT_CHARACTER_ID = parseCharacterArg(process.argv);
 const SURVIVAL_LOOKAHEAD_ENABLED = !process.argv.includes('--no-lookahead');
+const MERGE_FIRST_PLANNER_ENABLED = !process.argv.includes('--no-merge-first');
 const SUMMARY_JSON_PATH = (() => {
   const token = process.argv.find((arg) => arg.startsWith('--summary-json='));
   return token ? token.slice('--summary-json='.length) : null;
@@ -426,22 +437,7 @@ function hasDaggerPartner(weapon, gs, inv) {
 }
 
 function effectiveWeaponPipsForList(weapons) {
-  let effective = weapons.reduce(
-    (sum, weapon) => sum + Math.max(0, weapon.durability || 0),
-    0,
-  );
-  const daggers = weapons
-    .filter((weapon) => weapon.weaponType === 'dagger')
-    .sort((a, b) => (b.durability || 0) - (a.durability || 0))
-    .slice(0, 2);
-  if (daggers.length === 2) {
-    // Every pip but the last produces an additional free off-hand hit.
-    effective += Math.max(
-      0,
-      daggers.reduce((sum, dagger) => sum + Math.max(0, dagger.durability || 0), 0) - 1,
-    );
-  }
-  return effective;
+  return effectiveExpendableWeaponPips(weapons);
 }
 
 function effectiveWeaponReservePips(gs, inv, { exclude = null, include = null } = {}) {
@@ -603,9 +599,90 @@ function cardKeepScore(card, behavior = CURRENT_BEHAVIOR, gs = null) {
   return k.default;
 }
 
-function strategicInventoryScore(card, gs, inv, { incoming = false } = {}) {
+function mergeFamilyKey(card) {
+  if (!card) return null;
+  if (card.type === 'weapon') return `weapon:${card.weaponType || card.name || 'unknown'}`;
+  if (card.type === 'armor') return `armor:${card.armorType || card.name || 'unknown'}`;
+  if (card.type === 'thorns') return 'thorns';
+  if (card.type === 'potion') return 'potion:healing';
+  return null;
+}
+
+function mergeProjection(cards, familyKey) {
+  const counts = new Array(RARITY_ORDER.length).fill(0);
+  for (const card of cards || []) {
+    if (mergeFamilyKey(card) !== familyKey) continue;
+    const tier = RARITY_ORDER.indexOf(card.rarity || 'common');
+    if (tier >= 0) counts[tier]++;
+  }
+  let merges = 0;
+  for (let tier = 0; tier < counts.length - 1; tier++) {
+    const pairs = Math.floor(counts[tier] / 2);
+    counts[tier] %= 2;
+    counts[tier + 1] += pairs;
+    merges += pairs;
+  }
+  let highestTier = -1;
+  for (let tier = counts.length - 1; tier >= 0; tier--) {
+    if (counts[tier] > 0) {
+      highestTier = tier;
+      break;
+    }
+  }
+  return {
+    counts,
+    highestTier,
+    merges,
+    finalCards: counts.reduce((sum, count) => sum + count, 0),
+  };
+}
+
+function revealedMergeMaterials(board, familyKey) {
+  return (board || [])
+    .filter((entry) => (
+      entry?.revealed
+      && entry.data
+      && entry.data.type !== 'enemy'
+      && entry.data.type !== 'boss'
+      && mergeFamilyKey(entry.data) === familyKey
+    ))
+    .map((entry) => entry.data);
+}
+
+function mergeOpportunity(card, gs, inv, visibleBoard = null) {
+  if (!MERGE_FIRST_PLANNER_ENABLED) return { bonus: 0, tierGain: 0, extraMerges: 0 };
+  const familyKey = mergeFamilyKey(card);
+  if (!familyKey) return { bonus: 0, tierGain: 0, extraMerges: 0 };
+
+  const held = invItems(inv);
+  if (gs?.equippedArmor && !held.includes(gs.equippedArmor)) held.push(gs.equippedArmor);
+  if (gs?.equippedWeapon && !held.includes(gs.equippedWeapon)) held.push(gs.equippedWeapon);
+
+  const visible = revealedMergeMaterials(visibleBoard, familyKey);
+  if (!held.includes(card) && !visible.includes(card)) visible.push(card);
+
+  const before = mergeProjection(held, familyKey);
+  const after = mergeProjection([...held, ...visible], familyKey);
+  const tierGain = Math.max(0, after.highestTier - before.highestTier);
+  const extraMerges = Math.max(0, after.merges - before.merges);
+  if (extraMerges <= 0) return { bonus: 0, tierGain: 0, extraMerges: 0 };
+
+  // Tier advancement is the main objective. Extra merges still matter because
+  // they refresh pips and compress the inventory even when a higher tier is
+  // already carried in the same family.
+  return {
+    bonus: tierGain * 760 + extraMerges * 190,
+    tierGain,
+    extraMerges,
+  };
+}
+
+function strategicInventoryScore(card, gs, inv, { incoming = false, visibleBoard = null } = {}) {
   let score = cardKeepScore(card, CURRENT_BEHAVIOR, gs);
-  if (card?.type !== 'weapon' || !gs) return score;
+  if (!gs) return score;
+
+  score += mergeOpportunity(card, gs, inv, visibleBoard).bonus;
+  if (card?.type !== 'weapon') return score;
   if (card.weaponType === 'dagger') {
     const daggers = usableDaggers(gs, inv);
     const partners = daggers.filter((dagger) => dagger !== card);
@@ -622,7 +699,23 @@ function strategicInventoryScore(card, gs, inv, { incoming = false } = {}) {
   const pipsAfterChoice = effectiveWeaponReservePips(gs, inv, incoming
     ? { include: card }
     : { exclude: card });
-  if (pipsAfterChoice < reserve) score += 10000;
+  if (pipsAfterChoice < reserve) {
+    score += MERGE_FIRST_PLANNER_ENABLED
+      ? (reserve - pipsAfterChoice) * 260
+      : 10000;
+  }
+  if (MERGE_FIRST_PLANNER_ENABLED && !incoming) {
+    const remainingWeapons = uniqueUsableWeapons(gs, inv).filter((weapon) => weapon !== card);
+    // Merge-first is aggressive, but never trade down to a single weapon or
+    // throw away the only bow that can shoot through a boss's summons.
+    if (remainingWeapons.length < 2) score += 3200;
+    if (
+      card.weaponType === 'bow'
+      && !remainingWeapons.some((weapon) => weapon.weaponType === 'bow')
+    ) {
+      score += 2600;
+    }
+  }
   return score;
 }
 
@@ -789,12 +882,14 @@ function grantAmuletFromOffer(mock, offer, { allowCursed = false } = {}) {
   return tryPick(offer);
 }
 
-function tryCarry(gs, inv, card, { eventReward = false } = {}) {
+function tryCarry(gs, inv, card, { eventReward = false, visibleBoard = null } = {}) {
   if (!card) return false;
+  const plannedMerge = mergeOpportunity(card, gs, inv, visibleBoard);
   if (
     card.type === 'weapon'
     && card.weaponType === 'dagger'
     && !isUsefulDaggerPickup(gs, inv, card)
+    && plannedMerge.bonus <= 0
   ) {
     return false;
   }
@@ -867,11 +962,17 @@ function tryCarry(gs, inv, card, { eventReward = false } = {}) {
   let lowestScore = Infinity;
   for (let i = 0; i < inv.length; i++) {
     if (!inv[i]) continue;
-    const score = strategicInventoryScore(inv[i], gs, inv);
+    const score = strategicInventoryScore(inv[i], gs, inv, { visibleBoard });
     if (score < lowestScore) { lowestScore = score; lowestIndex = i; }
   }
-  if (lowestIndex >= 0 && strategicInventoryScore(card, gs, inv, { incoming: true }) > lowestScore) {
+  if (
+    lowestIndex >= 0
+    && strategicInventoryScore(card, gs, inv, { incoming: true, visibleBoard }) > lowestScore
+  ) {
     inv[lowestIndex] = card;
+    if (plannedMerge.bonus > 0 && gs._simMetrics?.mergeFirst) {
+      gs._simMetrics.mergeFirst.cascadeReplacements++;
+    }
     syncInventoryState(gs, inv);
     grantCardRewardBonus();
     return true;
@@ -963,7 +1064,7 @@ function mergeArmorList(gen, list, echoChance = 0, tracker = null, floor = 0, ta
 
 // Greedily merge every same-type/same-rarity weapon pair (cascades upward).
 // echoChance: Webweaver's Thread relic — 10% chance one source card respawns after merge.
-function mergeWeaponList(gen, list, echoChance = 0, tracker = null, floor = 0) {
+function mergeWeaponList(gen, list, echoChance = 0, tracker = null, floor = 0, gs = null) {
   let changed = true, guard = 0;
   while (changed && guard++ < 60) {
     changed = false;
@@ -982,10 +1083,20 @@ function mergeWeaponList(gen, list, echoChance = 0, tracker = null, floor = 0) {
           const refreshingLastLowPair = a.weaponType === 'dagger'
             && usableDaggerCards.length === 2
             && usableDaggerCards.every((dagger) => (dagger.durability || 0) <= 2);
+          const visibleReplacementDagger = (gs?.scene?.cardSystem?.boardCards || []).some((entry) => (
+            entry?.revealed
+            && entry.data?.type === 'weapon'
+            && entry.data.weaponType === 'dagger'
+            && (entry.data.durability || 0) > 0
+          ));
+          const aggressivelyAdvanceDagger = MERGE_FIRST_PLANNER_ENABLED
+            && usableDaggerCards.length === 2
+            && visibleReplacementDagger;
           if (
             a.weaponType === 'dagger'
             && usableDaggerCards.length <= 2
             && !refreshingLastLowPair
+            && !aggressivelyAdvanceDagger
           ) {
             continue;
           }
@@ -995,6 +1106,13 @@ function mergeWeaponList(gen, list, echoChance = 0, tracker = null, floor = 0) {
             tracker.recordMerge('weapon', merged.rarity, floor);
             tracker.mergeCounts.weapon++;
             if (refreshingLastLowPair) tracker.mergeCounts.daggerRefresh++;
+          }
+          if (
+            aggressivelyAdvanceDagger
+            && !refreshingLastLowPair
+            && gs?._simMetrics?.mergeFirst
+          ) {
+            gs._simMetrics.mergeFirst.healthyDaggerPairMerges++;
           }
           // Webweaver's Thread: 10% chance one source card respawns (refreshed at its original rarity)
           if (echoChance > 0 && Math.random() < echoChance) {
@@ -1107,7 +1225,14 @@ function regear(gen, gs, inv) {
   if (gs.equippedArmor) armors.push(gs.equippedArmor);
 
   const echoChance = gs.relicEffects?.mergeRespawnChance || 0;
-  mergeWeaponList(gen, weapons, echoChance, gs._mergeTracker || null, gs.currentFloor || 0);
+  mergeWeaponList(
+    gen,
+    weapons,
+    echoChance,
+    gs._mergeTracker || null,
+    gs.currentFloor || 0,
+    gs,
+  );
   mergeArmorList(gen, armors, echoChance, gs._mergeTracker || null, gs.currentFloor || 0, gs.talentEffects);
   mergeThornsList(thorns, gs._mergeTracker || null);
   mergePotionList(gen, potions, gs._mergeTracker || null);
@@ -1278,30 +1403,35 @@ function collectLoot(mock, gs, inv, idx, ctx = null) {
       break;
     }
     case 'potion':
-      tryCarry(gs, inv, d);
+      tryCarry(gs, inv, d, { visibleBoard: mock.cardSystem.boardCards });
       break; // Board pickup is free; drinking it later is a separate action.
     case 'trap':
       gs.takeDamage(d.damage || d.attack || 5, -1, 'trap');
       if (gs.playerHealth <= 0) mock._lastKiller = 'trap';
       break;
     case 'weapon':
-      tryCarry(gs, inv, d);
+      tryCarry(gs, inv, d, { visibleBoard: mock.cardSystem.boardCards });
       break;
-    case 'armor': tryCarry(gs, inv, d); break;
-    case 'key': tryCarry(gs, inv, d); break;
+    case 'armor': tryCarry(gs, inv, d, { visibleBoard: mock.cardSystem.boardCards }); break;
+    case 'key': tryCarry(gs, inv, d, { visibleBoard: mock.cardSystem.boardCards }); break;
     case 'gem':
-      if (trySocketGemNow(gs, inv, d) || tryCarry(gs, inv, d)) {
+      if (
+        trySocketGemNow(gs, inv, d)
+        || tryCarry(gs, inv, d, { visibleBoard: mock.cardSystem.boardCards })
+      ) {
         mock._gemsSeen = (mock._gemsSeen || 0) + 1;
         (mock._gemFloors || (mock._gemFloors = [])).push(gs.currentFloor);
         socketGems(gs, inv, ctx || computeContext(mock.cardSystem.boardCards || [], gs.currentFloor || 1));
       }
       break; // socket immediately when possible; otherwise keep for later
-    case 'thorns': tryCarry(gs, inv, d); break; // always carried + merged
+    case 'thorns':
+      tryCarry(gs, inv, d, { visibleBoard: mock.cardSystem.boardCards });
+      break; // always carried + merged
     case 'amulet': // rarity offer → pick 1 of options (skip cursed on floor)
       grantAmuletFromOffer(mock, d, { allowCursed: false });
       break;
     case 'magic':
-      tryCarry(gs, inv, d);
+      tryCarry(gs, inv, d, { visibleBoard: mock.cardSystem.boardCards });
       break;
     default: break; // empty/key — nothing
   }
@@ -1317,19 +1447,22 @@ function visibleLootPriority(card, gs) {
   return CURRENT_BEHAVIOR.visibleLootPriority[type] ?? CURRENT_BEHAVIOR.visibleLootPriority.default;
 }
 
-function wouldCarryVisibleCard(gs, inv, data) {
+function wouldCarryVisibleCard(gs, inv, data, visibleBoard = null) {
   if (!data) return false;
   const reserve = reservedEventSlots(gs);
   if (carriedCount(gs, inv) < inventoryCapacity(gs) - reserve) return true;
-  const incoming = strategicInventoryScore(data, gs, inv, { incoming: true });
+  const incoming = strategicInventoryScore(data, gs, inv, { incoming: true, visibleBoard });
   const lowest = invItems(inv).reduce(
-    (score, item) => Math.min(score, strategicInventoryScore(item, gs, inv)),
+    (score, item) => Math.min(
+      score,
+      strategicInventoryScore(item, gs, inv, { visibleBoard }),
+    ),
     Infinity,
   );
   return incoming > lowest;
 }
 
-function shouldTakeVisibleLootNow(gs, inv, card, mode) {
+function shouldTakeVisibleLootNow(gs, inv, card, mode, visibleBoard = null) {
   const data = card?.data;
   if (!data || data.type === 'trap') return false;
   if (mode === 'all') return data.type !== 'empty' && data.type !== 'key';
@@ -1348,11 +1481,75 @@ function shouldTakeVisibleLootNow(gs, inv, card, mode) {
   }
   if (data.type === 'amulet' || data.type === 'amuletPickup') return true;
   if (data.type === 'gem') return Boolean(bestGemTarget(gs, inv, data) || firstEmptySlot(inv) >= 0);
-  if (data.type === 'potion' || data.type === 'magic') return wouldCarryVisibleCard(gs, inv, data);
+  if (data.type === 'potion' || data.type === 'magic') {
+    return wouldCarryVisibleCard(gs, inv, data, visibleBoard);
+  }
   if (data.type === 'weapon' || data.type === 'armor' || data.type === 'thorns') {
-    return wouldCarryVisibleCard(gs, inv, data);
+    return wouldCarryVisibleCard(gs, inv, data, visibleBoard);
   }
   return false;
+}
+
+function maybeConsumePotionForMergeSpace(mock, gs, inv, board, mode) {
+  if (!MERGE_FIRST_PLANNER_ENABLED || mode === 'prep') return false;
+  if (carriedCount(gs, inv) < inventoryCapacity(gs) - reservedEventSlots(gs)) return false;
+  if (gs.playerHealth >= gs.maxHealth) return false;
+  if ((board || []).some((entry) => (
+    entry?.data
+    && (entry.data.type === 'enemy' || entry.data.type === 'boss')
+    && (entry.data.health || 0) > 0
+  ))) {
+    return false;
+  }
+
+  const candidates = (board || [])
+    .filter((entry) => (
+      entry?.revealed
+      && entry.data
+      && entry.data.type !== 'enemy'
+      && entry.data.type !== 'boss'
+    ))
+    .map((entry) => ({
+      card: entry.data,
+      opportunity: mergeOpportunity(entry.data, gs, inv, board),
+    }))
+    .filter(({ opportunity }) => (
+      opportunity.tierGain > 0 || opportunity.extraMerges >= 2
+    ))
+    .sort((a, b) => b.opportunity.bonus - a.opportunity.bonus);
+  if (!candidates.length) return false;
+
+  const potionEntries = inv
+    .map((card, index) => ({ card, index }))
+    .filter(({ card }) => card?.type === 'potion')
+    .sort((a, b) => (a.card.healAmount || 0) - (b.card.healAmount || 0));
+  if (!potionEntries.length) return false;
+
+  const hpPct = gs.maxHealth > 0 ? gs.playerHealth / gs.maxHealth : 1;
+  if (
+    isBossPrepObjectiveActive(gs)
+    && bossPrepItems(inv).length <= 1
+    && hpPct > CURRENT_BEHAVIOR.thresholds.bossPrepReserveEmergencyHpPct
+  ) {
+    return false;
+  }
+
+  const pick = potionEntries[0];
+  const hpBefore = gs.playerHealth;
+  mock.useAction();
+  if (!usePotionCard(mock, gs, pick.card, true)) {
+    mock.resolvePendingEnemyTurn();
+    return false;
+  }
+  removeInventoryCard(gs, inv, pick.index);
+  if (gs._simMetrics?.mergeFirst) gs._simMetrics.mergeFirst.spacePotions++;
+  traceCombat(
+    gs,
+    `drink ${pick.card.name || 'potion'} for merge space; `
+      + `HP ${Math.ceil(hpBefore)}→${Math.ceil(gs.playerHealth)}, AP ${gs.actionsLeft}`,
+  );
+  mock.resolvePendingEnemyTurn();
+  return true;
 }
 
 function traceCombat(gs, message) {
@@ -1366,15 +1563,34 @@ function collectVisibleLootSmart(mock, gs, inv, floor, mode = 'all') {
   let collected = false;
   let guard = 0;
   while (guard++ < 40) {
+    if (maybeConsumePotionForMergeSpace(mock, gs, inv, board, mode)) {
+      collected = true;
+      continue;
+    }
     const ctx = computeContext(board, floor);
     const visible = board
       .map((card, index) => ({ card, index }))
       .filter(({ card }) => card?.revealed && card.data?.type !== 'enemy' && card.data?.type !== 'boss')
-      .filter(({ card }) => shouldTakeVisibleLootNow(gs, inv, card, mode))
-      .sort((a, b) => visibleLootPriority(a.card, gs) - visibleLootPriority(b.card, gs));
+      .filter(({ card }) => shouldTakeVisibleLootNow(gs, inv, card, mode, board))
+      .map((entry) => ({
+        ...entry,
+        mergePlan: mergeOpportunity(entry.card.data, gs, inv, board),
+      }))
+      .sort((a, b) => {
+        const aPrep = isBossPrepObjectiveActive(gs) && isBossPrepCard(a.card.data);
+        const bPrep = isBossPrepObjectiveActive(gs) && isBossPrepCard(b.card.data);
+        if (aPrep !== bPrep) return aPrep ? -1 : 1;
+        if (a.mergePlan.bonus !== b.mergePlan.bonus) {
+          return b.mergePlan.bonus - a.mergePlan.bonus;
+        }
+        return visibleLootPriority(a.card, gs) - visibleLootPriority(b.card, gs);
+      });
     if (!visible.length) break;
     const collectedType = visible[0].card.data?.type || 'unknown';
     const collectedName = visible[0].card.data?.name || collectedType;
+    if (visible[0].mergePlan.bonus > 0 && gs._simMetrics?.mergeFirst) {
+      gs._simMetrics.mergeFirst.plannedPickups++;
+    }
     collectLoot(mock, gs, inv, visible[0].index, ctx);
     traceCombat(
       gs,
@@ -2231,7 +2447,7 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
   }
 
   const aw = CURRENT_BEHAVIOR.attackWeights;
-  let best = null;
+  const attackCandidates = [];
   let greedyBest = null;
   for (const weapon of roster) {
     const validTargets = revealed.filter((index) => {
@@ -2264,6 +2480,13 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
         }
       }
       const targetKill = (affected.get(index) || 0) >= targetHp ? 1 : 0;
+      const killEfficiency = killEfficiencyAdjustment({
+        targetHp,
+        targetDamage: affected.get(index) || 0,
+        targetKill: targetKill === 1,
+        weakTargetWeight: aw.weakKillTarget || 0,
+        finisherWastePenalty: aw.finisherWastePenalty || 0,
+      });
       const gemBonus = weapon?.gemEffect
         ? aw.elementalBonus * Math.max(1, weapon.gemCount || 1)
         : 0;
@@ -2301,7 +2524,7 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
       const baseScore = kills * aw.kills + targetKill * aw.targetKill
         + totalDamage * aw.totalDamage + gemBonus + rangedBossBypass
         - overkill * aw.overkillPenalty + durabilityConserve - bossBowReserve
-        + daggerPrimaryValue;
+        + daggerPrimaryValue + killEfficiency;
       const survival = projectSurvivalToTargetKill(board, gs, index, affected);
       // Preserve the requested bow-through-summons boss plan unless the next
       // enemy response itself is lethal. Longer-horizon fear should not make
@@ -2326,13 +2549,26 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
         survival,
         unsafe,
         bossBowFocus,
+        spendsLastPip: (weapon?.durability || 0) === 1,
+        endsBossFight: board[index]?.data?.type === 'boss' && targetKill === 1,
       };
       if (!greedyBest || baseScore > greedyBest.baseScore) greedyBest = candidate;
-      if (!best || score > best.score) best = candidate;
+      attackCandidates.push(candidate);
     }
   }
 
   const metrics = gs._simMetrics?.lookahead;
+  const preservation = chooseWeaponPreservingAttack(attackCandidates);
+  const best = preservation.candidate;
+  if (best) best.preservationReason = preservation.reason;
+  if (metrics && preservation.avoidedLastPip) metrics.lastPipPreservations++;
+  if (
+    metrics
+    && best?.spendsLastPip
+    && (preservation.reason === 'survival_emergency' || preservation.reason === 'boss_finisher')
+  ) {
+    metrics.lastPipEmergencyUses++;
+  }
   if (SURVIVAL_LOOKAHEAD_ENABLED && metrics && best && greedyBest) {
     metrics.evaluations++;
     if (best.index !== greedyBest.index || best.weapon !== greedyBest.weapon) {
@@ -2590,6 +2826,20 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
       const weaponBeforeAttack = gs.equippedWeapon;
       if ((weaponBeforeAttack?.durability || 0) === 1) {
         mock._lastPipWeaponAttacks = (mock._lastPipWeaponAttacks || 0) + 1;
+        const preservationReason = attackPlan.preservationReason || 'unknown';
+        const reasonCounts = gs._simMetrics?.lookahead?.lastPipAttackReasons;
+        if (reasonCounts) {
+          reasonCounts[preservationReason] = (reasonCounts[preservationReason] || 0) + 1;
+        }
+        if (preservationReason === 'forced_last_pip' && gs._simMetrics?.lookahead) {
+          const lookahead = gs._simMetrics.lookahead;
+          const floorKey = String(gs.currentFloor || floor || 1);
+          const roomKey = gs.roomType || 'UNKNOWN';
+          lookahead.forcedLastPipByFloor[floorKey] =
+            (lookahead.forcedLastPipByFloor[floorKey] || 0) + 1;
+          lookahead.forcedLastPipByRoom[roomKey] =
+            (lookahead.forcedLastPipByRoom[roomKey] || 0) + 1;
+        }
         if (weaponBeforeAttack.rarity && weaponBeforeAttack.rarity !== 'common') {
           mock._mergedLastPipWeaponAttacks = (mock._mergedLastPipWeaponAttacks || 0) + 1;
         }
@@ -2613,6 +2863,9 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
         gs,
         `attack ${targetName} ${Math.ceil(targetHP)}HP with ${weaponBeforeAttack?.name || 'unarmed'}`
           + ` for ${Math.ceil(dmg)}; AP ${gs.actionsLeft}, weapon ${weaponBeforeAttack?.durability ?? 0} pips`
+          + `${attackPlan.preservationReason && attackPlan.preservationReason !== 'ordinary'
+            ? `, ${attackPlan.preservationReason.replaceAll('_', ' ')}`
+            : ''}`
           + `${attackPlan.unsafe ? ', projected unsafe' : ''}`,
       );
       combatDamageDealt += dmg;
@@ -3160,14 +3413,7 @@ function runEvent(mock, gs, inv, floor) {
 }
 
 function shopPrice(item, floor) {
-  let p = 5 + floor * 2;
-  const mult = { common: 1, uncommon: 1.5, rare: 2, epic: 2.5, legendary: 3 }[item.rarity] || 1;
-  p *= mult;
-  if (item.type === 'weapon') p += item.damage || 0;
-  else if (item.type === 'armor') p += (item.protection || 0) * 2;
-  else if (item.type === 'thorns') p += (item.thornDamage || 0) * 3;
-  else if (item.type === 'magic') p *= 1.2;
-  return Math.floor(p);
+  return shopItemBuyPrice(item, floor);
 }
 
 // ShopScene.calculateItemPrice mirror used by the affordability probe.
@@ -3212,10 +3458,303 @@ function probeShopAffordability(mock, gs, floor, roomType, metrics) {
   bucket.byAct[act].affordable += affordable;
 }
 
+function totalRecordedMerges(gs) {
+  const counts = gs._mergeTracker?.mergeCounts;
+  if (!counts) return 0;
+  return Object.values(counts).reduce((sum, count) => sum + (Number(count) || 0), 0);
+}
+
+function shopPlanningMetrics(gs) {
+  return gs._simMetrics?.shopPlanning || null;
+}
+
+// A live shop is a safe inventory station. Players can drink/eat, socket gems,
+// and merge repeatedly without spending an action or waking enemies. Do those
+// space-making operations before evaluating shelves, and again after each buy.
+function prepareShopInventory(mock, gs, inv, { mergeFirst = false } = {}) {
+  const metrics = shopPlanningMetrics(gs);
+  const occupiedBefore = countInventoryItems(inv);
+  const mergesBefore = totalRecordedMerges(gs);
+  const gen = mock.cardSystem.cardDataGenerator;
+
+  if (metrics) metrics.prepPasses++;
+  if (mergeFirst) regear(gen, gs, inv);
+
+  while (gs.playerHealth < gs.maxHealth) {
+    const potions = inv
+      .map((card, index) => ({ card, index }))
+      .filter(({ card }) => card?.type === 'potion');
+    if (!potions.length) break;
+
+    const hpPct = gs.maxHealth > 0 ? gs.playerHealth / gs.maxHealth : 1;
+    const preserveLastPrep = isBossPrepObjectiveActive(gs)
+      && bossPrepItems(inv).length <= 1
+      && hpPct > CURRENT_BEHAVIOR.thresholds.bossPrepReserveEmergencyHpPct;
+    if (preserveLastPrep) break;
+
+    const missing = gs.maxHealth - gs.playerHealth;
+    potions.sort((a, b) => (a.card.healAmount || 0) - (b.card.healAmount || 0));
+    const pick = potions.find(({ card }) => (card.healAmount || 0) >= missing)
+      || potions[potions.length - 1];
+    if (!usePotionCard(mock, gs, pick.card, true)) break;
+    removeInventoryCard(gs, inv, pick.index);
+    if (metrics) metrics.potionsUsed++;
+  }
+
+  while (gs.actionsLeft < gs.maxActions) {
+    const foods = inv
+      .map((card, index) => ({ card, index }))
+      .filter(({ card }) => card?.type === 'food' && card.id !== 'monsterEgg');
+    if (!foods.length) break;
+    const missing = gs.maxActions - gs.actionsLeft;
+    const modifiedGain = ({ card }) => (
+      mock.amuletManager?.modifyFoodAP?.(card.actionAmount || 0) ?? (card.actionAmount || 0)
+    );
+    foods.sort((a, b) => modifiedGain(a) - modifiedGain(b));
+    const pick = foods.find((entry) => modifiedGain(entry) >= missing)
+      || foods[foods.length - 1];
+    gs.actionsLeft = Math.min(gs.maxActions, gs.actionsLeft + modifiedGain(pick));
+    removeInventoryCard(gs, inv, pick.index);
+    if (metrics) metrics.foodUsed++;
+  }
+
+  const gemsBefore = invItems(inv).filter((card) => card.type === 'gem').length;
+  socketGems(gs, inv, {
+    boss: isBossPrepObjectiveActive(gs),
+    ranged: false,
+    hiddenCluster: false,
+  });
+  const gemsAfter = invItems(inv).filter((card) => card.type === 'gem').length;
+  if (metrics) metrics.gemsSocketed += Math.max(0, gemsBefore - gemsAfter);
+
+  regear(gen, gs, inv);
+  const mergesAfter = totalRecordedMerges(gs);
+  const occupiedAfter = countInventoryItems(inv);
+  if (metrics) {
+    metrics.prepMerges += Math.max(0, mergesAfter - mergesBefore);
+    metrics.slotsFreed += Math.max(0, occupiedBefore - occupiedAfter);
+  }
+}
+
+function shopOfferBoard(offers) {
+  return offers
+    .filter((offer) => !offer.purchased && offer.data)
+    .map((offer) => ({ revealed: true, data: offer.data }));
+}
+
+function shopOfferIntent(gs, inv, offer, offers) {
+  const item = offer.data;
+  const board = shopOfferBoard(offers);
+  const mergePlan = mergeOpportunity(item, gs, inv, board);
+  const value = strategicInventoryScore(item, gs, inv, {
+    incoming: true,
+    visibleBoard: board,
+  });
+  const prepActive = isBossPrepObjectiveActive(gs);
+  const matchingHeld = invItems(inv).some((card) => (
+    mergeFamilyKey(card)
+    && mergeFamilyKey(card) === mergeFamilyKey(item)
+    && card.rarity === item.rarity
+  ));
+  const armorLow = !gs.equippedArmor
+    || gs.equippedArmor.durability < (gs.equippedArmor.maxDurability || 1) * 0.5;
+  let wanted = mergePlan.bonus > 0;
+
+  if (item.type === 'weapon') {
+    wanted ||= (
+      (item.weaponType !== 'dagger' || isUsefulDaggerPickup(gs, inv, item))
+      && (
+        matchingHeld
+        || (item.damage || 0) > (gs.equippedWeapon?.damage || 0)
+        || isUsefulBowUpgrade(gs, inv, item)
+        || effectiveWeaponReservePips(gs, inv) < weaponPipReserveTarget(gs.currentFloor || 1)
+      )
+    );
+  } else if (item.type === 'armor') {
+    wanted ||= matchingHeld
+      || armorScore(item) > armorScore(gs.equippedArmor)
+      || armorLow
+      || gs.coins > offer.price * 3;
+  } else if (item.type === 'thorns') {
+    wanted ||= matchingHeld || !gs.activeThorns;
+  } else if (item.type === 'potion') {
+    wanted ||= gs.playerHealth < gs.maxHealth || prepActive;
+  } else if (item.type === 'food') {
+    wanted ||= gs.actionsLeft < gs.maxActions;
+  } else if (item.type === 'magic') {
+    // Outside boss preparation, useful combat spells are valid purchases when
+    // there is natural room. Other magic stays intentionally low priority.
+    wanted ||= (prepActive && isBossPrepCard(item))
+      || (
+        firstEmptySlot(inv) >= 0
+        && ['restoration', 'soulDrain', 'frostRing', 'fireball'].includes(item.magicType)
+      );
+  } else if (item.type === 'gem' || item.type === 'companion') {
+    wanted = true;
+  }
+
+  if (prepActive && isBossPrepCard(item)) {
+    const alreadyPrepared = bossPrepItems(inv).some((card) => (
+      (item.type === 'potion' && card.type === 'potion')
+      || (item.type === 'magic' && card.magicType === item.magicType)
+    ));
+    if (!alreadyPrepared || matchingHeld) wanted = true;
+  }
+
+  return { wanted, value, mergePlan };
+}
+
+function shopSaleCandidate(gs, inv, incoming, offers) {
+  const board = shopOfferBoard(offers);
+  const incomingFamily = mergeFamilyKey(incoming);
+  const candidates = [];
+  for (let index = 0; index < inv.length; index++) {
+    const card = inv[index];
+    if (!card || card.type === 'companion' || card.id === 'monsterEgg') continue;
+    if (
+      incomingFamily
+      && mergeFamilyKey(card) === incomingFamily
+      && card.rarity === incoming.rarity
+    ) {
+      continue;
+    }
+    if (
+      isBossPrepObjectiveActive(gs)
+      && isBossPrepCard(card)
+      && bossPrepItems(inv).length <= 1
+    ) {
+      continue;
+    }
+    if (card.type === 'weapon') {
+      const remaining = uniqueUsableWeapons(gs, inv).filter((weapon) => weapon !== card);
+      if (!remaining.length) continue;
+      if (
+        card.weaponType === 'bow'
+        && !remaining.some((weapon) => weapon.weaponType === 'bow')
+      ) {
+        continue;
+      }
+      if (
+        incoming.type !== 'weapon'
+        && effectiveWeaponPipsForList(remaining) < weaponPipReserveTarget(gs.currentFloor || 1)
+      ) {
+        continue;
+      }
+    }
+    candidates.push({
+      card,
+      index,
+      score: strategicInventoryScore(card, gs, inv, { visibleBoard: board }),
+    });
+  }
+  candidates.sort((a, b) => a.score - b.score);
+  return candidates[0] || null;
+}
+
+function sellShopCard(gs, inv, candidate, floor) {
+  if (!candidate) return 0;
+  const value = shopItemSellPrice(candidate.card, floor);
+  if (gs.equippedWeapon === candidate.card) gs.equippedWeapon = null;
+  if (gs.equippedArmor === candidate.card) gs.equippedArmor = null;
+  if (gs.activeThorns === candidate.card) gs.activeThorns = null;
+  inv[candidate.index] = null;
+  gs.coins += value;
+  syncInventoryState(gs, inv);
+  const metrics = shopPlanningMetrics(gs);
+  if (metrics) {
+    metrics.sales++;
+    metrics.saleCoins += value;
+  }
+  return value;
+}
+
+function isMaterialShopReplacement(gs, inv, item, mergePlan) {
+  if (mergePlan.tierGain > 0 || mergePlan.extraMerges > 1) return true;
+  if (item.type === 'companion') return true;
+  if (item.type === 'weapon') {
+    if (isUsefulBowUpgrade(gs, inv, item) && !hasUsableBow(gs, inv)) return true;
+    return (item.damage || 0) >= (gs.equippedWeapon?.damage || 0) + 2;
+  }
+  if (item.type === 'armor') {
+    return armorScore(item) >= armorScore(gs.equippedArmor) + 2;
+  }
+  if (isBossPrepObjectiveActive(gs) && isBossPrepCard(item)) {
+    return !bossPrepItems(inv).some((card) => (
+      (item.type === 'potion' && card.type === 'potion')
+      || (item.type === 'magic' && card.magicType === item.magicType)
+    ));
+  }
+  if (item.type === 'potion') return gs.playerHealth < gs.maxHealth * 0.5;
+  if (item.type === 'food') return gs.actionsLeft <= 0;
+  return false;
+}
+
+function runCoinShopPlanner(mock, gs, inv, floor, offers, { allowSelling = false } = {}) {
+  prepareShopInventory(mock, gs, inv);
+  let guard = 0;
+  while (guard++ < offers.length + 2) {
+    const remaining = offers.filter((offer) => !offer.purchased && offer.currency === 'coins');
+    if (!remaining.length) break;
+
+    const ranked = remaining
+      .map((offer) => ({ offer, ...shopOfferIntent(gs, inv, offer, remaining) }))
+      .filter((entry) => entry.wanted)
+      .sort((a, b) => (
+        b.mergePlan.tierGain - a.mergePlan.tierGain
+        || b.mergePlan.extraMerges - a.mergePlan.extraMerges
+        || b.value - a.value
+        || a.offer.price - b.offer.price
+      ));
+    let acted = false;
+
+    for (const entry of ranked) {
+      const { offer, value, mergePlan } = entry;
+      let sale = null;
+      if (firstEmptySlot(inv) < 0 || gs.coins < offer.price) {
+        if (!allowSelling) continue;
+        sale = shopSaleCandidate(gs, inv, offer.data, remaining);
+        if (!sale || gs.coins + shopItemSellPrice(sale.card, floor) < offer.price) continue;
+        const clearUpgrade = value >= sale.score + 180
+          || mergePlan.tierGain > 0
+          || mergePlan.extraMerges > 1;
+        if (!clearUpgrade || !isMaterialShopReplacement(gs, inv, offer.data, mergePlan)) {
+          continue;
+        }
+      }
+
+      if (sale) sellShopCard(gs, inv, sale, floor);
+      const slot = firstEmptySlot(inv);
+      if (slot < 0 || gs.coins < offer.price) continue;
+
+      const mergesBefore = totalRecordedMerges(gs);
+      inv[slot] = offer.data;
+      syncInventoryState(gs, inv);
+      mock.amuletManager?.processCardReward?.(offer.data);
+      gs.coins -= offer.price;
+      offer.purchased = true;
+      const metrics = shopPlanningMetrics(gs);
+      if (metrics) {
+        metrics.purchases++;
+        metrics.purchasesByType[offer.data.type] =
+          (metrics.purchasesByType[offer.data.type] || 0) + 1;
+      }
+
+      // A bought card is first merged into the current line, then any resulting
+      // potion/food/gem can be consumed/socketed to free the slot for another buy.
+      prepareShopInventory(mock, gs, inv, { mergeFirst: true });
+      if (metrics && totalRecordedMerges(gs) > mergesBefore) metrics.cascadePurchases++;
+      acted = true;
+      break;
+    }
+    if (!acted) break;
+  }
+}
+
 function runShop(mock, gs, inv, floor) {
   const cs = mock.cardSystem;
-  // Match ShopScene's six coin-priced shelves. The inventory mix is kept in
-  // sync with the real scene; only the bot's purchase policy is simulated.
+  const metrics = shopPlanningMetrics(gs);
+  if (metrics) metrics.regularVisits++;
+  // Match ShopScene's six coin-priced shelves.
   const duplicateTypes = ['weapon', 'weapon', 'weapon', 'magic', 'potion', 'thorns', 'armor', 'food'];
   const duplicateType = duplicateTypes[Math.floor(Math.random() * duplicateTypes.length)];
   const offers = [
@@ -3225,63 +3764,45 @@ function runShop(mock, gs, inv, floor) {
     cs.createCardData('thorns', floor),
     cs.createCardData('magic', floor),
     cs.createCardData(duplicateType, floor),
-  ].filter(Boolean);
+  ].filter(Boolean).map((data) => ({
+    data,
+    price: shopPrice(data, floor),
+    currency: 'coins',
+    purchased: false,
+  }));
+  // Generate these in the same order as ShopScene: the amulet shelf is rolled
+  // before Merchant's Seal adds its upgraded weapon/armor shelves.
+  const amulet = cs.createCardData('amulet', floor, false, gs, 'shop');
+  const bonusSlots = mock.amuletManager?.getBonusShopSlots?.() || 0;
+  for (let i = 0; i < bonusSlots; i++) {
+    const quality = floor >= 15 ? 'rare' : 'uncommon';
+    const type = Math.random() < 0.5 ? 'weapon' : 'armor';
+    let data = cs.createCardData(type, floor, false, null, quality);
+    if (
+      data
+      && (data.weaponType === 'axe' || data.armorType === 'plate')
+      && (data.rarity === 'epic' || data.rarity === 'legendary')
+    ) {
+      data = cs.createCardData(type, floor, false, null, 'rare');
+    }
+    if (data) {
+      offers.push({
+        data,
+        price: shopPrice(data, floor),
+        currency: 'coins',
+        purchased: false,
+      });
+    }
+  }
   if (gs._lootStats) {
-    for (const item of offers) {
+    for (const { data: item } of offers) {
       if (item?.type === 'weapon') recordWeapon(gs._lootStats, floor, item, 'shop');
     }
   }
-  const eqDmg = gs.equippedWeapon?.damage || 0;
-  const matchesForMerge = (w) => [...inv, gs.equippedWeapon].some(
-    (c) => c && c.type === 'weapon' && c.weaponType === w.weaponType && c.rarity === w.rarity);
-  const armorMerge = (a) => [...inv, gs.equippedArmor].some(
-    (c) => c && c.type === 'armor' && c.armorType === a.armorType && c.rarity === a.rarity);
-  const thornMatch = (t) => [...inv, gs.activeThorns].some((c) => c && c.type === 'thorns' && (c.thornDamage || 0) === (t.thornDamage || 0));
-  const armorLow = !gs.equippedArmor || gs.equippedArmor.durability < (gs.equippedArmor.maxDurability || 1) * 0.5;
-  const prepOrder = (item) => {
-    if (!isBossPrepCard(item)) return 0;
-    return item.type === 'magic' ? 2 : 1;
-  };
-  offers.sort((a, b) => prepOrder(b) - prepOrder(a));
-  for (const item of offers) {
-    const price = shopPrice(item, floor);
-    if (gs.coins < price) continue;
-    const prepActive = isBossPrepObjectiveActive(gs);
-    const needsPrep = prepActive && isBossPrepCard(item) && !inv.some((card) => (
-      isBossPrepCard(card)
-      && (
-        (item.type === 'potion' && card.type === 'potion')
-        || (item.type === 'magic' && card.magicType === item.magicType)
-      )
-    ));
-    const potionMerge = prepActive && item.type === 'potion' && inv.some((card) => (
-      card?.type === 'potion'
-      && card.rarity === item.rarity
-      && (card.healAmount || 0) === (item.healAmount || 0)
-    ));
-    const buy =
-      (item.type === 'weapon'
-        && (item.weaponType !== 'dagger' || isUsefulDaggerPickup(gs, inv, item))
-        && (
-          (item.damage || 0) > eqDmg
-          || matchesForMerge(item)
-          || isUsefulBowUpgrade(gs, inv, item)
-          || effectiveWeaponReservePips(gs, inv) < weaponPipReserveTarget(floor)
-        )) ||
-      // Armor is THE survival lever and the bot is coin-rich, so buy it
-      // aggressively: any upgrade, any merge fodder, when low/broken, OR simply
-      // whenever we have coins to spare (build the merge line toward plate).
-      (item.type === 'armor' && (armorScore(item) > armorScore(gs.equippedArmor) || armorMerge(item) || armorLow || gs.coins > price * 3)) ||
-      (item.type === 'thorns' && (!gs.activeThorns || thornMatch(item))) ||
-      (isBossPrepCard(item) && needsPrep) ||
-      potionMerge ||
-      (item.type === 'potion' && gs.playerHealth < gs.maxHealth * 0.7);
-    if (!buy) continue;
-    if (tryCarry(gs, inv, item, { eventReward: true })) gs.coins -= price;
-  }
+
+  runCoinShopPlanner(mock, gs, inv, floor, offers, { allowSelling: true });
 
   // Always buy an amulet offer if we can afford the rolled rarity.
-  const amulet = cs.createCardData('amulet', floor, false, gs, 'shop');
   if (amulet) {
     const price = Math.max(1, ({ common: 2, uncommon: 3, rare: 4, legendary: 6 }[amulet.rarity] || 2)
       + Math.floor((gs.activeAmulets?.length || 0) / 3));
@@ -3291,7 +3812,6 @@ function runShop(mock, gs, inv, floor) {
   }
 
   regear(mock.cardSystem.cardDataGenerator, gs, inv);
-  maybeHeal(mock, gs, inv);
 }
 
 function alreadyHasCompanion(inv, id) {
@@ -3325,32 +3845,6 @@ function createRareShopOffers(mock, gs, inv, floor) {
   }
 
   return offers.filter((offer) => offer.data);
-}
-
-function wantsShopItem(gs, inv, item, price) {
-  if (!item) return false;
-  const eqDmg = gs.equippedWeapon?.damage || 0;
-  const matchesForMerge = (w) => [...inv, gs.equippedWeapon].some(
-    (c) => c && c.type === 'weapon' && c.weaponType === w.weaponType && c.rarity === w.rarity);
-  const armorMerge = (a) => [...inv, gs.equippedArmor].some(
-    (c) => c && c.type === 'armor' && c.armorType === a.armorType && c.rarity === a.rarity);
-  const thornMatch = (t) => [...inv, gs.activeThorns].some((c) => c && c.type === 'thorns' && (c.thornDamage || 0) === (t.thornDamage || 0));
-  const armorLow = !gs.equippedArmor || gs.equippedArmor.durability < (gs.equippedArmor.maxDurability || 1) * 0.5;
-  return (
-    (item.type === 'weapon'
-      && (item.weaponType !== 'dagger' || isUsefulDaggerPickup(gs, inv, item))
-      && (
-        (item.damage || 0) > eqDmg
-        || matchesForMerge(item)
-        || isUsefulBowUpgrade(gs, inv, item)
-        || effectiveWeaponReservePips(gs, inv) < weaponPipReserveTarget(gs.currentFloor || 1)
-      )) ||
-    (item.type === 'armor' && (armorScore(item) > armorScore(gs.equippedArmor) || armorMerge(item) || armorLow || gs.coins > price * 3)) ||
-    (item.type === 'thorns' && (!gs.activeThorns || thornMatch(item))) ||
-    (item.type === 'potion' && gs.playerHealth < gs.maxHealth * 0.7) ||
-    item.type === 'gem' ||
-    item.type === 'companion'
-  );
 }
 
 function runPostActShop(mock, gs, inv, floor, metrics) {
@@ -3393,26 +3887,36 @@ function runPostActShop(mock, gs, inv, floor, metrics) {
 
 function runRareShop(mock, gs, inv, floor) {
   const offers = createRareShopOffers(mock, gs, inv, floor);
-  for (const offer of offers) {
+  const metrics = shopPlanningMetrics(gs);
+  if (metrics) metrics.rareVisits++;
+
+  // RareShopScene has the same safe station inventory, but unlike ShopScene it
+  // does not expose the sell-items mode.
+  runCoinShopPlanner(mock, gs, inv, floor, offers, { allowSelling: false });
+
+  for (const offer of offers.filter((entry) => entry.currency === 'crystals')) {
     const item = offer.data;
-    if (offer.currency === 'crystals') {
-      if (gs.crystals < offer.price) continue;
-      if (item.type === 'amulet') {
-        if (grantAmuletFromOffer(mock, item, { allowCursed: false })) {
-          gs.crystals -= offer.price;
-        }
-      } else if (item.type === 'companion' && tryCarry(gs, inv, item, { eventReward: true })) {
+    if (gs.crystals < offer.price) continue;
+    if (item.type === 'amulet') {
+      if (grantAmuletFromOffer(mock, item, { allowCursed: false })) {
         gs.crystals -= offer.price;
       }
-      continue;
+    } else if (item.type === 'companion') {
+      prepareShopInventory(mock, gs, inv);
+      const slot = firstEmptySlot(inv);
+      if (slot < 0) continue;
+      inv[slot] = item;
+      syncInventoryState(gs, inv);
+      mock.amuletManager?.processCardReward?.(item);
+      gs.crystals -= offer.price;
+      if (metrics) {
+        metrics.purchases++;
+        metrics.purchasesByType.companion =
+          (metrics.purchasesByType.companion || 0) + 1;
+      }
     }
-
-    if (gs.coins < offer.price) continue;
-    if (!wantsShopItem(gs, inv, item, offer.price)) continue;
-    if (tryCarry(gs, inv, item, { eventReward: true })) gs.coins -= offer.price;
   }
   regear(mock.cardSystem.cardDataGenerator, gs, inv);
-  maybeHeal(mock, gs, inv);
 }
 
 function runTreasure(mock, gs, inv, floor, good) {
@@ -3447,8 +3951,15 @@ function runAnvil(gs, inv, metrics) {
   };
   // Round-robin every damaged item so one expensive card cannot consume the
   // entire purse before the rest of the inventory receives repairs.
+  const repairWeapons = uniqueUsableWeapons(gs, inv)
+    .sort((a, b) => (
+      Number((b.durability || 0) === 1) - Number((a.durability || 0) === 1)
+      || weaponMergeCapitalUnits(b) - weaponMergeCapitalUnits(a)
+      || ((b.maxDurability || 0) - (b.durability || 0))
+        - ((a.maxDurability || 0) - (a.durability || 0))
+    ));
   const repairables = [
-    ...uniqueUsableWeapons(gs, inv),
+    ...repairWeapons,
     ...invItems(inv).filter((item) => item?.type === 'armor' || item?.type === 'thorns'),
     gs.equippedArmor,
     gs.activeThorns,
@@ -3673,6 +4184,7 @@ function runGame(metrics, config = {}) {
     const roomType = 'COMBAT';
     gs.currentFloor = floor;
     gs.roomType = roomType;
+    metrics.roomVisits[roomType] = (metrics.roomVisits[roomType] || 0) + 1;
     const hpStart = gs.playerHealth;
     const actionCountBeforeVisit = mock._actionCount || 0;
     const hungryActionCountBeforeVisit = mock._hungryActions || 0;
@@ -3739,6 +4251,7 @@ function runGame(metrics, config = {}) {
       gs.currentFloor = floor;
       const roomType = node.type || 'COMBAT';
       gs.roomType = roomType;
+      metrics.roomVisits[roomType] = (metrics.roomVisits[roomType] || 0) + 1;
       const hpStart = gs.playerHealth;
       const actionCountBeforeVisit = mock._actionCount || 0;
       const hungryActionCountBeforeVisit = mock._hungryActions || 0;
@@ -3910,6 +4423,7 @@ function newMetrics() {
     runs: 0, wins: 0, deaths: {}, deathInfo: [], finalFloors: [], finalAmulets: [],
     finalCompanions: [], finalCompanionAttack: [], finalTrainedCompanions: [],
     finalGuardCompanions: [], finalShockCompanions: [],
+    roomVisits: {},
     totalActions: 0, hungryActions: 0, restorationUses: 0, gemsSeen: [], gemsByFloor: {}, floors,
     weaponBreaks: 0, armorBreaks: 0, thornBreaks: 0,
     lastPipWeaponAttacks: 0, mergedLastPipWeaponAttacks: 0, avoidableLastPipWeaponAttacks: 0,
@@ -3918,7 +4432,38 @@ function newMetrics() {
     amuletOffers: 0, amuletPicks: 0, amuletPicksById: {},
     weaponMerges: 0, daggerRefreshMerges: 0, armorMerges: 0, thornMerges: 0, potionMerges: 0,
     combatLoot: { pickups: 0, byType: {} },
-    lookahead: { evaluations: 0, overrides: 0, lethalPlansAvoided: 0, noSafePlan: 0 },
+    lookahead: {
+      evaluations: 0,
+      overrides: 0,
+      lethalPlansAvoided: 0,
+      noSafePlan: 0,
+      lastPipPreservations: 0,
+      lastPipEmergencyUses: 0,
+      lastPipAttackReasons: {},
+      forcedLastPipByFloor: {},
+      forcedLastPipByRoom: {},
+    },
+    mergeFirst: {
+      plannedPickups: 0,
+      cascadeReplacements: 0,
+      spacePotions: 0,
+      healthyDaggerPairMerges: 0,
+    },
+    shopPlanning: {
+      regularVisits: 0,
+      rareVisits: 0,
+      prepPasses: 0,
+      purchases: 0,
+      purchasesByType: {},
+      cascadePurchases: 0,
+      prepMerges: 0,
+      potionsUsed: 0,
+      foodUsed: 0,
+      gemsSocketed: 0,
+      slotsFreed: 0,
+      sales: 0,
+      saleCoins: 0,
+    },
     bossTactics: {
       encounters: 0,
       frostOpeners: 0,
@@ -3982,8 +4527,20 @@ function report(metrics) {
       `seed=${SIM_SEED}  survival-lookahead=${SURVIVAL_LOOKAHEAD_ENABLED ? 'on' : 'off'}\n`
     );
   }
+  console.log(`merge-first planner=${MERGE_FIRST_PLANNER_ENABLED ? 'on' : 'off'}`);
   console.log(`Win rate (cleared floor ${MAX_FLOOR}): ${pct(metrics.wins, N)}%`);
   console.log(`Final floor: mean=${mean.toFixed(1)}  median=${median}  min=${ff[0]}  max=${ff[ff.length - 1]}`);
+  const totalRoomVisits = Object.values(metrics.roomVisits || {})
+    .reduce((sum, count) => sum + count, 0);
+  const optionalFightVisits = (metrics.roomVisits?.COMBAT || 0) + (metrics.roomVisits?.ELITE || 0);
+  if (totalRoomVisits) {
+    console.log(
+      `Route rooms: optional fights ${(optionalFightVisits / N).toFixed(1)}/run` +
+      ` (${pct(optionalFightVisits, totalRoomVisits)}% of visited rooms),` +
+      ` combat ${((metrics.roomVisits?.COMBAT || 0) / N).toFixed(1)},` +
+      ` elite ${((metrics.roomVisits?.ELITE || 0) / N).toFixed(1)}`
+    );
+  }
   const fa = metrics.finalAmulets;
   if (fa.length) {
     const am = fa.reduce((a, b) => a + b, 0) / fa.length;
@@ -4024,12 +4581,40 @@ function report(metrics) {
       `${byType ? ` (${byType})` : ''}`
     );
   }
+  if (MERGE_FIRST_PLANNER_ENABLED && metrics.mergeFirst) {
+    console.log(
+      `Merge-first planning: ${(metrics.mergeFirst.plannedPickups / N).toFixed(2)} planned pickups/run,`
+      + ` ${(metrics.mergeFirst.cascadeReplacements / N).toFixed(2)} cascade replacements/run,`
+      + ` ${(metrics.mergeFirst.spacePotions / N).toFixed(2)} space-making potions/run,`
+      + ` ${(metrics.mergeFirst.healthyDaggerPairMerges / N).toFixed(2)} healthy final-pair dagger merges/run`,
+    );
+  }
   if (metrics.lookahead?.evaluations) {
     console.log(
       `Survival lookahead: ${metrics.lookahead.overrides} attack choices changed,` +
       ` ${metrics.lookahead.lethalPlansAvoided} lethal plans avoided,` +
       ` ${metrics.lookahead.noSafePlan} turns had no projected safe kill plan`
     );
+    console.log(
+      `  Last-pip preservation: ${metrics.lookahead.lastPipPreservations} protected choices,` +
+      ` ${metrics.lookahead.lastPipEmergencyUses} emergency/boss-finisher uses`
+    );
+    const lastPipReasons = Object.entries(metrics.lookahead.lastPipAttackReasons || {})
+      .sort((a, b) => b[1] - a[1])
+      .map(([reason, count]) => `${reason}=${count}`)
+      .join(', ');
+    if (lastPipReasons) console.log(`  Actual last-pip attacks by reason: ${lastPipReasons}`);
+    const forcedRooms = Object.entries(metrics.lookahead.forcedLastPipByRoom || {})
+      .sort((a, b) => b[1] - a[1])
+      .map(([room, count]) => `${room}=${count}`)
+      .join(', ');
+    const forcedFloors = Object.entries(metrics.lookahead.forcedLastPipByFloor || {})
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([floor, count]) => `F${floor}=${count}`)
+      .join(', ');
+    if (forcedRooms) console.log(`  Forced last-pip rooms: ${forcedRooms}`);
+    if (forcedFloors) console.log(`  Most forced last-pip floors: ${forcedFloors}`);
   }
 
   console.log(`\nDurability per run:`);
@@ -4069,6 +4654,29 @@ function report(metrics) {
   console.log(`\nShop affordability (real pricing, cheapest-first, per visit):`);
   reportShopAfford('  Regular shop', metrics.shopAfford, 6);
   reportShopAfford('  Rare shop   ', metrics.rareShopAfford, 4);
+  const shop = metrics.shopPlanning;
+  const shopVisits = (shop?.regularVisits || 0) + (shop?.rareVisits || 0);
+  if (shopVisits) {
+    const purchaseTypes = Object.entries(shop.purchasesByType || {})
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, count]) => `${type}=${count}`)
+      .join(', ');
+    console.log(`Shop inventory planning:`);
+    console.log(
+      `  visits=${shopVisits} (regular ${shop.regularVisits}, rare ${shop.rareVisits}),` +
+      ` purchases ${(shop.purchases / N).toFixed(2)}/run,` +
+      ` merge-producing purchases ${(shop.cascadePurchases / N).toFixed(2)}/run`
+    );
+    console.log(
+      `  safe station use/run: potions ${(shop.potionsUsed / N).toFixed(2)},` +
+      ` food ${(shop.foodUsed / N).toFixed(2)}, gems ${(shop.gemsSocketed / N).toFixed(2)};` +
+      ` slots freed ${(shop.slotsFreed / N).toFixed(2)}`
+    );
+    console.log(
+      `  selling: ${(shop.sales / N).toFixed(2)}/run for ${(shop.saleCoins / N).toFixed(1)} coins/run`
+    );
+    if (purchaseTypes) console.log(`  purchases by type: ${purchaseTypes}`);
+  }
 
   // Gem economy: how many socket gems the player encounters across a run.
   if (metrics.gemsSeen && metrics.gemsSeen.length) {
@@ -4993,6 +5601,11 @@ function writeSimulatorSummary(metrics, outputPath) {
       lastPipWeaponAttacksPerRun: metrics.lastPipWeaponAttacks / runs,
       mergedLastPipWeaponAttacksPerRun: metrics.mergedLastPipWeaponAttacks / runs,
       avoidableLastPipWeaponAttacksPerRun: metrics.avoidableLastPipWeaponAttacks / runs,
+      lastPipPreservationsPerRun: (metrics.lookahead?.lastPipPreservations || 0) / runs,
+      lastPipEmergencyUsesPerRun: (metrics.lookahead?.lastPipEmergencyUses || 0) / runs,
+      lastPipAttackReasons: { ...(metrics.lookahead?.lastPipAttackReasons || {}) },
+      forcedLastPipByFloor: { ...(metrics.lookahead?.forcedLastPipByFloor || {}) },
+      forcedLastPipByRoom: { ...(metrics.lookahead?.forcedLastPipByRoom || {}) },
       weaponMergesPerRun: metrics.weaponMerges / runs,
       daggerRefreshMergesPerRun: metrics.daggerRefreshMerges / runs,
       anvilRepairsPerRun: metrics.repairActions / runs,
@@ -5003,6 +5616,39 @@ function writeSimulatorSummary(metrics, outputPath) {
       usefulVisibleLootPerRun: (metrics.combatLoot?.pickups || 0) / runs,
       gemsSeenPerRun: metrics.gemsSeen.length
         ? metrics.gemsSeen.reduce((sum, count) => sum + count, 0) / metrics.gemsSeen.length
+        : 0,
+    },
+    mergeFirst: {
+      enabled: MERGE_FIRST_PLANNER_ENABLED,
+      plannedPickupsPerRun: (metrics.mergeFirst?.plannedPickups || 0) / runs,
+      cascadeReplacementsPerRun: (metrics.mergeFirst?.cascadeReplacements || 0) / runs,
+      spacePotionsPerRun: (metrics.mergeFirst?.spacePotions || 0) / runs,
+      healthyDaggerPairMergesPerRun:
+        (metrics.mergeFirst?.healthyDaggerPairMerges || 0) / runs,
+    },
+    shopPlanning: {
+      regularVisitsPerRun: (metrics.shopPlanning?.regularVisits || 0) / runs,
+      rareVisitsPerRun: (metrics.shopPlanning?.rareVisits || 0) / runs,
+      purchasesPerRun: (metrics.shopPlanning?.purchases || 0) / runs,
+      cascadePurchasesPerRun: (metrics.shopPlanning?.cascadePurchases || 0) / runs,
+      potionsUsedPerRun: (metrics.shopPlanning?.potionsUsed || 0) / runs,
+      foodUsedPerRun: (metrics.shopPlanning?.foodUsed || 0) / runs,
+      gemsSocketedPerRun: (metrics.shopPlanning?.gemsSocketed || 0) / runs,
+      slotsFreedPerRun: (metrics.shopPlanning?.slotsFreed || 0) / runs,
+      salesPerRun: (metrics.shopPlanning?.sales || 0) / runs,
+      saleCoinsPerRun: (metrics.shopPlanning?.saleCoins || 0) / runs,
+      purchasesByType: { ...(metrics.shopPlanning?.purchasesByType || {}) },
+    },
+    routing: {
+      roomVisits: { ...(metrics.roomVisits || {}) },
+      optionalFightVisitsPerRun:
+        ((metrics.roomVisits?.COMBAT || 0) + (metrics.roomVisits?.ELITE || 0)) / runs,
+      optionalFightShare: Object.values(metrics.roomVisits || {}).reduce(
+        (sum, count) => sum + count,
+        0,
+      )
+        ? ((metrics.roomVisits?.COMBAT || 0) + (metrics.roomVisits?.ELITE || 0))
+          / Object.values(metrics.roomVisits || {}).reduce((sum, count) => sum + count, 0)
         : 0,
     },
   };

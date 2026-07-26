@@ -32,6 +32,7 @@ export const DEFAULT_STORY_RUN = Object.freeze({
   slimyPrisonSeen: false,
   bookWormSeen: false,
   briarRoomSeen: false,
+  reliquarySeen: false,
   pendingEvents: Object.freeze([]),
 });
 

@@ -3,6 +3,7 @@ import { SoundHelper } from '../../audio/SoundHelper.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
 import { ELITE_SPRITE_KEYS } from '../../content/assets/AssetManifest.js';
+import { effectiveArmorProtection, isArmorWarded } from '../combat/ArmorMath.js';
 
 export class BoardCardFx {
     constructor(cs) {
@@ -255,9 +256,18 @@ function createCardInfoText(card) {
         
         case 'armor': {
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const protectionText = this.scene.add.text(19, 26, `${card.data.protection}`, {
+            // While Magic Shield / Warding is up, the worn armor shows the boosted
+            // number it is actually protecting for (5 -> 6), tinted blue so the
+            // player can see it is temporary. Bag armor is never boosted.
+            const gs = this.scene.gameState;
+            const isWorn = Boolean(gs?.equippedArmor) && card.data === gs.equippedArmor;
+            const warded = isWorn && isArmorWarded(gs, card.data);
+            const shownProtection = warded
+                ? effectiveArmorProtection(gs, card.data)
+                : card.data.protection;
+            const protectionText = this.scene.add.text(19, 26, `${shownProtection}`, {
                 fontSize: '12px',
-                fill: '#ffcf7f',
+                fill: warded ? '#88ddff' : '#ffcf7f',
                 fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             container.add(protectionText);

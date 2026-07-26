@@ -49,6 +49,10 @@ export class HumanRunRecorder {
             const stored = JSON.parse(storage.getItem(STORAGE_KEY) || 'null');
             if (stored?.schemaVersion === TRACE_VERSION && Array.isArray(stored.events)) {
                 this.trace = stored;
+                const ids = JSON.stringify(stored).matchAll(/"traceId":"c(\d+)"/g);
+                let highestId = 0;
+                for (const match of ids) highestId = Math.max(highestId, Number(match[1]) || 0);
+                this.nextCardId = highestId + 1;
             }
         } catch (error) {
             this.storageError = String(error?.message || error);
@@ -106,6 +110,13 @@ export class HumanRunRecorder {
         return this.getStatus();
     }
 
+    finishAndDownload(scene, outcome, details = {}) {
+        if (!this.isRecording()) return { ok: false, reason: 'not_recording' };
+        this.record(scene, 'run_ended', { outcome, ...details });
+        this.stop(scene, outcome);
+        return this.download();
+    }
+
     toggle(scene) {
         return this.isRecording() ? this.stop(scene) : this.start(scene);
     }
@@ -153,7 +164,8 @@ export class HumanRunRecorder {
                 range: numberOrNull(card.range),
                 special: card.special || null,
                 gemEffect: card.gemEffect || card.gem?.effect || null,
-                gemCount: Array.isArray(card.gems) ? card.gems.length : (card.gem ? 1 : 0),
+                gemCount: numberOrNull(card.gemCount)
+                    ?? (Array.isArray(card.gems) ? card.gems.length : ((card.gem || card.gemEffect) ? 1 : 0)),
             });
         }
 
@@ -191,6 +203,23 @@ export class HumanRunRecorder {
         const slots = gameScene?.inventorySystem?.slots || gameState?.inventory || [];
         const boardCards = gameScene?.cardSystem?.boardCards || [];
         const mapCursor = gameState?.mapCursor || null;
+        const inventoryEntries = Array.isArray(slots)
+            ? slots.map((card, slot) => card ? { slot, card: this.snapshotCard(card) } : null).filter(Boolean)
+            : [];
+        const emptyInventorySlots = Array.isArray(slots)
+            ? slots.map((card, slot) => card ? null : slot).filter((slot) => slot != null)
+            : [];
+        const boardEntries = Array.isArray(boardCards)
+            ? boardCards.map((entry, index) => {
+                const card = entry?.data || entry?.card || entry;
+                if (!card) return null;
+                return {
+                    index,
+                    revealed: entry?.isRevealed ?? entry?.revealed ?? true,
+                    card: this.snapshotCard(card),
+                };
+            }).filter(Boolean)
+            : [];
 
         return {
             scene: scene?.scene?.key || scene?.sys?.settings?.key || null,
@@ -221,20 +250,21 @@ export class HumanRunRecorder {
                     || gameState?.equippedArmor
                 ),
             },
-            inventory: Array.isArray(slots)
-                ? slots.map((card, slot) => card ? { slot, card: this.snapshotCard(card) } : null).filter(Boolean)
-                : [],
-            board: Array.isArray(boardCards)
-                ? boardCards.map((entry, index) => {
-                    const card = entry?.data || entry?.card || entry;
-                    if (!card) return null;
-                    return {
-                        index,
-                        revealed: entry?.isRevealed ?? entry?.revealed ?? true,
-                        card: this.snapshotCard(card),
-                    };
-                }).filter(Boolean)
-                : [],
+            inventoryState: {
+                capacity: Array.isArray(slots) ? slots.length : null,
+                occupiedSlots: inventoryEntries.length,
+                emptySlots: emptyInventorySlots.length,
+                emptySlotIndices: emptyInventorySlots,
+            },
+            inventory: inventoryEntries,
+            boardState: {
+                capacity: Array.isArray(boardCards) ? boardCards.length : null,
+                occupiedSlots: boardEntries.length,
+                emptySlots: Array.isArray(boardCards) ? boardCards.length - boardEntries.length : null,
+                revealedCards: boardEntries.filter((entry) => entry.revealed).length,
+                hiddenCards: boardEntries.filter((entry) => !entry.revealed).length,
+            },
+            board: boardEntries,
         };
     }
 

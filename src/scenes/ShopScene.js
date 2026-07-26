@@ -11,6 +11,7 @@ import {
     shopItemBuyPrice,
     shopItemSellPrice,
 } from '../content/economy/shop.js';
+import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 
 export class ShopScene extends StationRoomBase {
     constructor() {
@@ -429,7 +430,7 @@ export class ShopScene extends StationRoomBase {
         this.gameState.coins += sellPrice;
         
         if (this.gameScene && this.gameScene.inventorySystem) {
-            this.gameScene.inventorySystem.removeCard(index);
+            this.gameScene.inventorySystem.removeCard(index, true, 'sold');
         } else {
             // Fallback for old system
             this.gameState.inventory[index] = null;
@@ -449,6 +450,12 @@ export class ShopScene extends StationRoomBase {
         if (this.gameScene && this.gameScene.updateUI) {
             this.gameScene.updateUI();
         }
+        recordHumanRunEvent(this, 'shop_item_sold', {
+            sourceSlot: index,
+            item: snapshotHumanRunCard(item),
+            price: sellPrice,
+            currency: 'coins',
+        });
     }
     
     buyItem(item, button) {
@@ -525,11 +532,13 @@ export class ShopScene extends StationRoomBase {
         }
         
         // For non-amulet items, add to inventory system
+        let destinationSlot = null;
         if (this.gameScene && this.gameScene.inventorySystem) {
             if (!this.gameScene.inventorySystem.addCard(item.data)) {
                 this.showFeedback('Inventory Full!', 0xff0000);
                 return;
             }
+            destinationSlot = this.gameScene.inventorySystem.lastAddedSlot;
         } else {
             // Fallback for old system
             const emptySlot = this.gameState.inventory.findIndex(slot => slot === null);
@@ -538,6 +547,7 @@ export class ShopScene extends StationRoomBase {
                 return;
             }
             this.gameState.inventory[emptySlot] = item.data;
+            destinationSlot = emptySlot;
         }
         
         SoundHelper.playSound(this, 'shop_buy', 0.5);
@@ -552,6 +562,13 @@ export class ShopScene extends StationRoomBase {
         }
         
         item.purchased = true;
+        recordHumanRunEvent(this, 'shop_item_bought', {
+            shop: 'regular',
+            destinationSlot,
+            item: snapshotHumanRunCard(item.data),
+            price: item.price,
+            currency: item.currency,
+        });
         this.markButtonDone(button, t(this, 'ui.shop.sold'));
         this.showFeedback('Purchased!', 0x00ff00);
         this.refreshStationInventoryDisplay();

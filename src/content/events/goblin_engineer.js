@@ -2,10 +2,10 @@ export default {
     id: 'goblin_engineer',
     title: 'Goblin Engineer',
     description: (gs) => {
-      const intro = 'A goblin engineer pops out from behind a broken machine and points at the music box.\n\n"Oh. Sleepy Snatch Box. Old robber model. Plays song, puffs smoke, hero sleeps, pockets empty. Very illegal. Very profitable."\n\nThe music box hides behind your boot. The goblin squints. "Yours is broken. Also emotionally confused."';
+      const intro = 'A goblin steps out from behind a broken machine and points at the music box.\n\n"Sleepy Snatch Box. Old robber model. Plays a song, puffs smoke, hero sleeps, pockets empty. Very illegal. Very profitable."\n\nThe box hides behind your boot.';
       const cogLine = gs?.storyRun?.boxHasCog
-        ? '"Ah! You found its heart cog. I can prepare the casing. Maybe it becomes useful. Maybe it becomes smoke."'
-        : '"No cog? Bad. I can still fake the repair. Goblin confidence: fifty percent."';
+        ? '"You found its heart cog. Give it here — I can seat it properly. Or improperly. Depends on payment."'
+        : '"No cog? Then I\'m guessing at the insides. Goblin confidence: fifty percent."';
       return `${intro}\n\n${cogLine}`;
     },
     choices: [
@@ -16,7 +16,7 @@ export default {
           gs.storyRun.boxPrep = 'none';
           gs.storyRun.boxRepairChance = 50;
           scene.markHeroMemory('learnedEngineerCanRepairBox');
-          scene.resolveBoxRepair('You refuse to pay. The goblin shrugs. "Free repair is still repair. Just shorter."');
+          scene.resolveBoxRepair('"Free repair is still repair," the goblin says. "Just shorter."');
         },
         outcome: (gs, scene) => scene.boxRepairOutcome
       },
@@ -29,7 +29,7 @@ export default {
           gs.storyRun.boxPrep = 'cheap';
           gs.storyRun.boxRepairChance = 80;
           scene.markHeroMemory('learnedEngineerCanRepairBox');
-          scene.resolveBoxRepair('The goblin chews thoughtfully on your spare card, then bolts part of it into the music box. "Good enough for machines with low standards."');
+          scene.resolveBoxRepair('He chews the card thoughtfully, then bolts half of it into the casing. "Good enough for a machine with low standards."');
         },
         outcome: (gs, scene) => scene.boxRepairOutcome
       },
@@ -42,7 +42,7 @@ export default {
           gs.storyRun.boxPrep = 'full';
           gs.storyRun.boxRepairChance = 100;
           scene.markHeroMemory('learnedEngineerCanRepairBox');
-          scene.resolveBoxRepair('You pay the goblin. He suddenly becomes professional, which is alarming. He opens the casing and prepares the perfect place for the cog.');
+          scene.resolveBoxRepair('He counts the coins twice. Then he becomes suddenly, completely professional, which is somehow worse.');
         },
         outcome: (gs, scene) => scene.boxRepairOutcome
       }

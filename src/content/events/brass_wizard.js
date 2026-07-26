@@ -1,7 +1,7 @@
 export default {
     id: 'brass_wizard',
     title: 'The Brass Wizard',
-    description: 'The carnival music leads you to a narrow booth with cracked blue curtains.\n\nBehind the glass sits an old fortune-telling machine.\n\nIt is shaped like a brass wizard in a faded blue robe. Old stars are painted across the robe, but most of the color has peeled away.\n\nThe wizard\'s pale eyes stare forward. They may have been blue once.\n\nIts puppet-like mouth hangs slightly open.\n\nA coin slot waits beneath the glass.',
+    description: 'The carnival music thins out near a booth with cracked blue curtains.\n\nBehind the glass sits a fortune-telling machine: a brass wizard in a faded robe, painted stars mostly peeled away. Its mouth hangs open. Its pale eyes point at nothing.\n\nThe coin slot below the glass is polished bright from use.',
     choices: [
       {
         text: 'Insert 1 coin',
@@ -16,7 +16,7 @@ export default {
           gs.storyRun.brassWizardSeen = true;
           scene.clearPendingEvent('brass_wizard');
         },
-        outcome: 'You leave the coin slot empty.\n\nThe brass wizard watches you through the dusty glass.\n\nIts mouth hangs open, waiting for a fortune it does not get to speak.'
+        outcome: 'You leave the slot empty.\n\nThe wizard watches you go, mouth open, holding a fortune it doesn\'t get to tell.'
       }
     ]
   };

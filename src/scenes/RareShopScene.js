@@ -18,6 +18,7 @@ import {
     rareShopThornsPrice,
     rareShopWeaponPrice,
 } from '../content/economy/shop.js';
+import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 
 export class RareShopScene extends StationRoomBase {
     constructor() {
@@ -225,6 +226,7 @@ export class RareShopScene extends StationRoomBase {
 
     buyItem(item, button) {
         if (item.purchased) return;
+        let destinationSlot = null;
 
         const hasEnoughCurrency = item.currency === 'coins'
             ? this.gameState.coins >= item.price
@@ -284,6 +286,7 @@ export class RareShopScene extends StationRoomBase {
                     this.showFeedback('Inventory Full!', 0xff0000, 100);
                     return;
                 }
+                destinationSlot = this.gameScene.inventorySystem.lastAddedSlot;
             } else {
                 const emptySlot = this.gameState.inventory.findIndex(slot => slot === null);
                 if (emptySlot === -1) {
@@ -291,6 +294,7 @@ export class RareShopScene extends StationRoomBase {
                     return;
                 }
                 this.gameState.inventory[emptySlot] = item.data;
+                destinationSlot = emptySlot;
             }
             this.showFeedback('Purchased!', 0x00ff00, 100);
         }
@@ -301,6 +305,13 @@ export class RareShopScene extends StationRoomBase {
 
         SoundHelper.playSound(this, 'shop_buy', 0.5);
         item.purchased = true;
+        recordHumanRunEvent(this, 'shop_item_bought', {
+            shop: 'rare',
+            destinationSlot,
+            item: snapshotHumanRunCard(item.data),
+            price: item.price,
+            currency: item.currency,
+        });
 
         this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
         this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));

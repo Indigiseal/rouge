@@ -216,7 +216,7 @@ export const EventRunHelpers = {
       story.latchboxRewardClaimed = true;
       story.boxFollowing = false;
       this.expandInventorySlots(1);
-      this.boxRepairOutcome = `${prelude}\n\nThe music box snatches the cog, clicks once, then unfolds a hidden drawer from a place where no drawer should fit. Then another drawer opens. Then a third. It climbs into your pack like it has always belonged there.\n\nLoyal Latchbox: +1 inventory slot`;
+      this.boxRepairOutcome = `${prelude}\n\nThe box takes the cog, clicks once, and unfolds a drawer from somewhere no drawer should fit. Then a second. Then a third.\n\nIt climbs into your pack and settles in like it has always been there.\n\nLoyal Latchbox: +1 inventory slot`;
       this.queueEggHatchingEvent();
       return true;
     }
@@ -226,7 +226,7 @@ export const EventRunHelpers = {
     story.boxFollowing = false;
     this.gainCoins(12);
     this.gainCrystals(1);
-    this.boxRepairOutcome = `${prelude}\n\nThe music box swallows the cog. It clicks. It coughs. A puff of sleepy smoke leaks out, followed by three embarrassed notes. Then it spits out a few valuables and refuses to discuss what happened.`;
+    this.boxRepairOutcome = `${prelude}\n\nThe box swallows the cog. It clicks. It coughs smoke.\n\nThen it plays three flat notes, spits a handful of valuables at your feet, and refuses to look at you.`;
     this.queueEggHatchingEvent();
     return false;
   },
@@ -372,7 +372,7 @@ export const EventRunHelpers = {
 
     const roll = Math.random();
     if (roll < 0.25) {
-      this.brassWizardOutcome = 'The brass wizard\'s hand jerks toward the deck inside its chest.\n\nThen it stops.\n\nIts painted mouth snaps open.\n\nClick.\n\nClick-click.\n\nClick-click-click.\n\nThe sound grows louder, sharp and metallic, echoing from inside the booth.\n\nThe wizard\'s pale eyes stare past you while its puppet mouth keeps clacking faster and faster.\n\nFor a moment, you are sure you broke something.\n\nOr woke something.\n\nYou step back, then turn and push your way into the carnival crowd, just to get away from that awful clicking.';
+      this.brassWizardOutcome = 'The brass hand jerks toward the deck — and stops.\n\nThen the mouth starts clicking. Slow at first. Then faster, louder, echoing in the booth like it is counting down to something.\n\nYou do not wait to find out what.';
       this._reward('No reward');
       return true;
     }
@@ -380,18 +380,18 @@ export const EventRunHelpers = {
     if (roll < 0.55) {
       const card = this.createRespectableCarnivalCard();
       this._deliverCardReward(card, card?.name || 'fortune card', `Gained card: ${card?.name || 'Fortune Card'}`);
-      this.brassWizardOutcome = 'The brass wizard\'s hand moves stiffly behind the glass.\n\nIts fingers scrape across the deck inside its chest.\n\nAfter a long pause, one card slides out through the slot.\n\nThe card is warm, as if the machine had been holding it for years.';
+      this.brassWizardOutcome = 'The hand drags across the deck inside its chest. One card drops through the slot.\n\nIt is warm, as if the machine had been holding it for years.';
       return true;
     }
 
     if (roll < 0.80) {
-      this.brassWizardOutcome = 'The brass wizard\'s hand lifts behind the glass.\n\nIt cannot reach you.\n\nInstead, a narrow tray snaps out from the booth with a hard wooden clack.\n\nThe tray is exactly the size of a card.\n\nThe wizard\'s pale eyes lower toward your inventory.\n\nIts puppet mouth clicks once.\n\nThen it waits.';
+      this.brassWizardOutcome = 'A wooden tray snaps out of the booth — exactly the size of a card.\n\nThe wizard\'s eyes tilt down toward your bag. It waits.';
       this._brassWizardTrayOpen = true;
       return true;
     }
 
     this.gainAmulet('fortuneCard');
-    this.brassWizardOutcome = 'The brass wizard\'s pale eyes roll upward.\n\nFor a moment, they are blank.\n\nThen they settle into a color they should not have.\n\nHuman eyes.\n\nThe machine goes still.\n\nIt looks at you for a little too long.\n\nNo music reaches this booth now.\n\nThe puppet mouth opens.\n\nClick.\n\nClick.\n\nIts brass hand opens slowly behind the glass.\n\nA single fortune card slides out.';
+    this.brassWizardOutcome = 'The eyes roll white. When they settle, they are a color no machine should have.\n\nHuman eyes. They hold on you a moment too long.\n\nThen the hand opens, and a single fortune card slides out.';
     return true;
   },
 
@@ -400,7 +400,7 @@ export const EventRunHelpers = {
       text: 'Pull your hand back',
       trayDecline: true,
       action: () => {},
-      outcome: 'You step away from the waiting tray.\n\nThe brass wizard does not move.\n\nAfter a few seconds, the tray slides back into the booth by itself.'
+      outcome: 'You step back. After a few seconds, the tray slides in by itself.'
     }];
   },
 

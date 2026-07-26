@@ -468,12 +468,10 @@ export class CombatTurnController {
 
         // Process player poison effects
         let effectDamage = 0;
-        let poisonKilledBy = null;
         for (let i = scene.gameState.playerEffects.length - 1; i >= 0; i--) {
             const effect = scene.gameState.playerEffects[i];
             if (effect.type === 'poison') {
                 effectDamage += effect.damage;
-                poisonKilledBy = effect.killedBy || poisonKilledBy;
             }
             effect.turns--;
             if (effect.turns <= 0) {
@@ -495,7 +493,7 @@ export class CombatTurnController {
 
             // Track poison death
             if (playerHealthBeforePoison > 0 && scene.gameState.playerHealth <= 0) {
-                scene.killedBy = poisonKilledBy || 'Poison';
+                scene.killedBy = 'Poison';
             }
 
             // Lethal poison: gameState.takeDamage() already scheduled

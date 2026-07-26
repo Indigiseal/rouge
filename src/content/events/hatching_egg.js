@@ -1,7 +1,7 @@
 export default {
     id: 'hatching_egg',
     title: 'The Egg Hatches',
-    description: 'The warm egg in your inventory begins knocking against its card. Tap. Tap. CRACK.\n\nThe battered music box scuttles underneath and catches the egg in its open lid.',
+    description: 'The egg starts knocking against the inside of its card. Tap. Tap. Crack.\n\nThe music box scuttles underneath and catches the shell in its open lid.',
     choices: [
       {
         text: 'See what hatches',
@@ -11,8 +11,8 @@ export default {
           scene.hatchEggIntoCompanion();
         },
         outcome: (gs) => gs?.storyRun?.chickHatched
-          ? 'A furious little chick kicks free of the shell, looks around, and fires a yellow spark into the wall. Satisfied, it climbs back into the same inventory slot.\n\nChick Companion: 2 lightning damage after enemy turns.'
-          : 'The shell gives one final tap, then goes still. Whatever was inside has already escaped.'
+          ? 'A chick kicks free, glares at the room, and test-fires a yellow spark into the wall.\n\nSatisfied, it climbs into your bag and claims a slot.\n\nChick Companion: 2 lightning damage after enemy turns.'
+          : 'The shell taps once more, then goes still. Whatever was inside is already somewhere else.'
       }
     ]
   };

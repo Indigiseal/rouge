@@ -1,4 +1,5 @@
 import { CombatSequencer } from './CombatSequencer.js';
+import { effectiveArmorProtection } from './ArmorMath.js';
 
 /** Ranged enemy hits (archers). Bosses count as melee, same as thorns. */
 export function isEnemyRangedAttack(card) {
@@ -91,15 +92,10 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
             };
         }
 
-        // Add protection from equipped armor (leather is dodge-only: protection 0)
-        let baseProtection = gameState.equippedArmor.protection || 0;
-
-        // Apply magic shield bonus (20% increase)
-        if (gameState.magicShield && gameState.magicShield.turns > 0 && baseProtection > 0) {
-            baseProtection = Math.floor(baseProtection * gameState.magicShield.multiplier);
-        }
-
-        protection += baseProtection;
+        // Add protection from equipped armor (leather is dodge-only: protection 0),
+        // including any Magic Shield / Warding boost. Shared with the armor card's
+        // displayed number so the two can never disagree.
+        protection += effectiveArmorProtection(gameState, gameState.equippedArmor);
 
         // Handle reflection
         if (gameState.equippedArmor.reflection > 0 && enemyIndex !== -1) {

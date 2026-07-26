@@ -3,8 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node tools/build-hosted-game.mjs",
     "start": "node tools/server.mjs",
+    "test:inventory-transactions": "node tools/test-inventory-transactions.mjs",
+    "test:sim-weapon-preservation": "node tools/test-sim-weapon-preservation.mjs",
+    "test:sim-attack-priority": "node tools/test-sim-attack-priority.mjs",
     "sim": "node sim/balance-sim.js",
     "sim:loot-stats": "node sim/balance-sim.js loot-stats 100",
     "sim:loot-stats-balance": "node sim/balance-sim.js loot-stats 100 balance --json",

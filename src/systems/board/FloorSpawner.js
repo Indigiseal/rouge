@@ -4,6 +4,7 @@ import { showItemTooltip, hideItemTooltip, TOOLTIP_DEPTH, BOARD_TOOLTIP_GAP } fr
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { openAmuletChoiceOverlay } from '../../ui/AmuletChoiceOverlay.js';
 import { minEnemyRatioForFloor } from '../../content/balance/EnemyDensity.js';
+import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 
 export class FloorSpawner {
     constructor(cs) {
@@ -835,8 +836,17 @@ function takeRewardCard(index) {
     }
 
     if (success) {
+        const destinationSlot = this.scene.inventorySystem?.lastAddedSlot ?? null;
         SoundHelper.playSound(this.scene, 'shop_buy', 0.5);
         this.removeCard(index);
+        if (data.type !== 'amulet') {
+            recordHumanRunEvent(this.scene, 'board_loot_collected', {
+                sourceBoardIndex: index,
+                destinationSlot,
+                source: 'boss_reward',
+                card: snapshotHumanRunCard(data),
+            });
+        }
         this.scene.updateUI();
     }
 }

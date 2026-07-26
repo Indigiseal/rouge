@@ -805,10 +805,12 @@ export class GameScene extends Phaser.Scene {
         this.clearEnemyTurnTimers();
         this.nextFloorButton?.disableInteractive();
 
-        const killedBy = this.killedBy || 'Unknown Enemy';
+        const trackedDeathCause = this.gameState?.getDeathStats?.()?.cause;
+        const killedBy = trackedDeathCause === 'poison'
+            ? 'Poison'
+            : (this.killedBy || 'Unknown Enemy');
         const floor = this.gameState?.currentFloor ?? 1;
-        recordHumanRunEvent(this, 'run_ended', { outcome: 'defeat', killedBy, floor });
-        humanRunRecorder.stop(this, 'defeat');
+        humanRunRecorder.finishAndDownload(this, 'defeat', { killedBy, floor });
         let deathStats = { killedBy, floor };
         let xpResult = null;
 
@@ -910,6 +912,10 @@ export class GameScene extends Phaser.Scene {
         // Player already dead (e.g. a mutual kill via Thorns/reflect) — don't let a
         // stray click on the Next Floor button revive them via setupBossRewardRoom().
         if (this.gameState.playerHealth <= 0) return;
+        recordHumanRunEvent(this, 'floor_departed', {
+            floor: this.gameState.currentFloor,
+            roomType: this.gameState.roomType,
+        });
 
         // Leaving any floor ends the boss track (harmless no-op off boss floors).
         this.stopBossMusic();
@@ -1163,11 +1169,9 @@ export class GameScene extends Phaser.Scene {
     }
     
     gameWon() {
-        recordHumanRunEvent(this, 'run_ended', {
-            outcome: 'victory',
+        humanRunRecorder.finishAndDownload(this, 'victory', {
             floor: this.gameState?.currentFloor ?? null,
         });
-        humanRunRecorder.stop(this, 'victory');
         return showVictoryResult(this);
     }
 

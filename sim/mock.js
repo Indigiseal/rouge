@@ -426,19 +426,17 @@ export class MockScene {
     // (mirrors GameScene.finishEnemyTurnEffects → processEnemyPoisonEffects).
     this.cardSystem.processEnemyPoisonEffects?.();
     let effectDamage = 0;
-    let poisonKilledBy = null;
     for (let i = this.gameState.playerEffects.length - 1; i >= 0; i--) {
       const effect = this.gameState.playerEffects[i];
       if (effect.type === 'poison') {
         effectDamage += effect.damage || 0;
-        poisonKilledBy = effect.killedBy || poisonKilledBy;
       }
       effect.turns--;
       if (effect.turns <= 0) this.gameState.playerEffects.splice(i, 1);
     }
     if (effectDamage > 0) {
       this.gameState.takeDamage(effectDamage, -1, 'poison');
-      if (this.gameState.playerHealth <= 0) this._lastKiller = poisonKilledBy || 'Poison';
+      if (this.gameState.playerHealth <= 0) this._lastKiller = 'Poison';
     }
     if (runCompanions && this.gameState.playerHealth > 0) this._runCompanionTurns();
   }

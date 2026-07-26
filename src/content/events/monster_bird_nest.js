@@ -1,7 +1,7 @@
 export default {
     id: 'monster_bird_nest',
     title: 'Monster Bird Nest',
-    description: 'You find a huge nest tucked between cracked stones. Inside are speckled eggs, old buttons, bent keys, shiny junk, and one tiny brass cog.\n\nThe music box in your backpack starts clicking like crazy. Click-click-click-click. It jumps against your bag and plays a tiny warning tune: Dun. Dun.\n\nA giant shadow slides over the nest. Mama bird is coming back.',
+    description: 'A nest sits wedged between two fallen pillars — speckled eggs, bent keys, old buttons, and one small brass cog.\n\nIn your pack, the music box starts clicking.\n\nA shadow crosses the nest. Then again, lower.',
     choices: [
       {
         text: 'Grab just the cog',
@@ -14,7 +14,7 @@ export default {
           scene.markHeroMemory('learnedBirdNestHasCog');
           scene.addPendingEvent('goblin_engineer');
         },
-        outcome: 'You grab only the brass cog and run. The music box clicks so hard it almost sounds proud.'
+        outcome: 'You take the cog and nothing else, and you run.\n\nThe box rides quietly the rest of the way.'
       },
       {
         text: 'Grab the egg and the cog',
@@ -32,7 +32,7 @@ export default {
           scene.damageEquippedArmor(1);
           scene.addPendingEvent('goblin_engineer');
         },
-        outcome: 'You grab the cog and one warm egg. Mama bird slashes across your armor as you escape. The music box rattles in your bag like it is both grateful and judging you.'
+        outcome: 'You take the cog and one warm egg. The mother catches you at the edge of the nest — her talons open your armor before you pull free.\n\nIn your pack, the box rattles. Grateful, or judging. Hard to say.'
       },
       {
         text: 'Leave the nest alone',
@@ -43,7 +43,7 @@ export default {
           scene.markHeroMemory('learnedBirdNestHasCog');
           scene.addPendingEvent('goblin_engineer');
         },
-        outcome: 'You leave the nest untouched. The music box gives one small click from your bag, then goes quiet.'
+        outcome: 'You leave it. The box clicks once, then stops.'
       }
     ]
   };

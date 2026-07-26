@@ -146,7 +146,7 @@ export class InventorySystem {
         this.scene.createFloatingText(cardSprite.x, cardSprite.y - 8, `${def?.name || 'Amulet'} equipped!`, 0x88ff88);
         SoundHelper.playSound(this.scene, 'crystal_collect', 0.5);
         this.cleanupCardSprites(slotIndex, cardSprite);
-        this.removeCard(slotIndex, false);
+        this.removeCard(slotIndex, false, 'amulet_equipped');
         cardSprite.destroy();
         this.scene.updateUI?.();
         return true;
@@ -240,6 +240,7 @@ export class InventorySystem {
 
     // Modified addCard to use addCardDirect when appropriate
     addCard(cardData, preferredSlot = -1) {
+        this.lastAddedSlot = -1;
         let emptySlot = preferredSlot !== -1 && this.slots[preferredSlot] === null 
             ? preferredSlot 
             : this.slots.findIndex(slot => slot === null);
@@ -249,6 +250,11 @@ export class InventorySystem {
         }
 
         this.addCardDirect(cardData, emptySlot);
+        this.lastAddedSlot = emptySlot;
+        recordHumanRunEvent(this.scene, 'inventory_slot_filled', {
+            destinationSlot: emptySlot,
+            card: snapshotHumanRunCard(this.slots[emptySlot] || cardData),
+        });
         this.scene.amuletManager?.processCardReward?.(cardData);
         if (cardData?.tutorialTag) {
             this.scene.events.emit('tutorialProgress', `inventory:${cardData.tutorialTag}`);
@@ -275,7 +281,7 @@ export class InventorySystem {
 
             // Properly clean up ALL sprites and effects
             this.cleanupCardSprites(slotIndex, cardSprite);
-            this.removeCard(slotIndex, false); // Don't destroy the sprite in removeCard
+            this.removeCard(slotIndex, false, 'discard'); // Don't destroy the sprite in removeCard
             cardSprite.destroy(); // Destroy the dragged sprite here
             // Inventory discard does not spend AP.
             return;
@@ -298,7 +304,7 @@ export class InventorySystem {
                 if (cardData.type === 'gem' && targetCardData.type === 'weapon') {
                     if (this.applyGemToWeapon(cardData, i, false)) {
                         this.cleanupCardSprites(slotIndex, cardSprite);
-                        this.removeCard(slotIndex, false);
+                        this.removeCard(slotIndex, false, 'gem_socketed');
                         cardSprite.destroy();
                         this.rebuildInventorySprites();
                         // Socketing a gem costs an action point and wakes the enemies.
@@ -665,6 +671,10 @@ export class InventorySystem {
             secondCard = cardData;
         }
         const upgradedArmor = this.createMergedCard(baseCard, secondCard);
+        const mergeSources = [
+            { slot: slotIndex, card: snapshotHumanRunCard(cardData) },
+            { slot: 'equippedArmor', card: snapshotHumanRunCard(worn) },
+        ];
 
         // Consume the dragged inventory card and swap the worn armor for the
         // upgrade (it stays equipped — no free inventory slot required).
@@ -672,8 +682,14 @@ export class InventorySystem {
             this.cleanupCardSprites(slotIndex, draggedSprite);
             draggedSprite.destroy();
         }
-        this.removeCard(slotIndex, true);
+        this.removeCard(slotIndex, true, 'merge_source');
         this.scene.gameState.equippedArmor = upgradedArmor;
+        recordHumanRunEvent(this.scene, 'cards_merged', {
+            sources: mergeSources,
+            crossTier: Boolean(canCrossTier && cardData.rarity !== worn.rarity),
+            resultSlot: 'equippedArmor',
+            result: snapshotHumanRunCard(upgradedArmor),
+        });
 
         SoundHelper.playSound(this.scene, 'armor_equip', 0.6);
         this.scene.createFloatingText(
@@ -712,6 +728,7 @@ export class InventorySystem {
 
         const armorData = this.slots[slotIndex];
         if (!armorData) return false;
+        const previouslyEquipped = this.scene.gameState.equippedArmor;
         
         // Clean up the dragged sprite and ALL its associated sprites immediately
         if (draggedSprite) {
@@ -727,11 +744,16 @@ export class InventorySystem {
             this.scene.gameState.equippedArmor = null;
             this.rebuildInventorySprites();
         } else {
-            this.removeCard(slotIndex);
+            this.removeCard(slotIndex, true, 'armor_equipped');
         }
         
         // Equip the new armor
         this.scene.gameState.equippedArmor = armorData;
+        recordHumanRunEvent(this.scene, 'armor_equipped', {
+            sourceSlot: slotIndex,
+            armor: snapshotHumanRunCard(armorData),
+            swappedToInventory: snapshotHumanRunCard(previouslyEquipped),
+        });
         SoundHelper.playSound(this.scene, 'armor_equip', 0.6);
         
         this.scene.createFloatingText(
@@ -761,6 +783,10 @@ export class InventorySystem {
         this.addCardDirect(armor, emptySlot);
         this.updateTwinkleEffects();
         this.syncGameStateInventory();
+        recordHumanRunEvent(this.scene, 'armor_unequipped', {
+            destinationSlot: emptySlot,
+            armor: snapshotHumanRunCard(armor),
+        });
 
         SoundHelper.playSound(this.scene, 'armor_equip', 0.5);
         this.scene.createFloatingText(
@@ -824,8 +850,8 @@ export class InventorySystem {
         // Remove cards (higher index first to avoid index shifting)
         const firstIndex = Math.max(indexA, indexB);
         const secondIndex = Math.min(indexA, indexB);
-        this.removeCard(firstIndex, true);
-        this.removeCard(secondIndex, true);
+        this.removeCard(firstIndex, true, 'merge_source');
+        this.removeCard(secondIndex, true, 'merge_source');
         
         // Add upgraded card. Target the slot it will land in (first free one)
         // up front so we can play the merge flicker on top of it afterward.
@@ -867,7 +893,7 @@ export class InventorySystem {
         }
     }
 
-    removeCard(slotIndex, destroySprite = true) {
+    removeCard(slotIndex, destroySprite = true, traceReason = null) {
         this.hideCardTooltip();
         const removedCard = this.slots?.[slotIndex];
         if (removedCard?.tutorialTag) {
@@ -916,10 +942,17 @@ export class InventorySystem {
             
             slotSprite.card = null;
         }
-        
+
         this.slots[slotIndex] = null;
         this.syncGameStateInventory();
         this.updateTwinkleEffects();
+        if (removedCard) {
+            recordHumanRunEvent(this.scene, 'inventory_slot_emptied', {
+                sourceSlot: slotIndex,
+                reason: traceReason || 'unspecified',
+                card: snapshotHumanRunCard(removedCard),
+            });
+        }
     }
 }
 

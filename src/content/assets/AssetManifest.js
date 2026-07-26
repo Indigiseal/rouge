@@ -199,6 +199,11 @@ export const ASSET_MANIFEST = [
     { key: 'macigShield', path: 'assets/art/macicShield.png', type: 'image' },
     { key: 'mirrorShield', path: 'assets/art/mirrorShield.png', type: 'image' },
     { key: 'smokeBomb', path: 'assets/art/smokeBomb.png', type: 'image' },
+    // The Reliquary's lit display cases. The glow sheet is one row of 52x70
+    // card faces (same footprint as a normal card); frame order is mapped in
+    // content/balance/WeaponEnchants.js — GLOW_CARD_FRAMES.
+    { key: 'glowingMagicCards', path: 'assets/art/glowingMagicCardsSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
+    { key: 'glassCase', path: 'assets/art/glassCase.png', type: 'image' },
     { key: 'magic_cast', path: 'assets/music/fast-woosh-230497.mp3', type: 'audio' },
     { key: 'recovery', path: 'assets/music/recovery.mp3', type: 'audio' },
     { key: 'boneWall', path: 'assets/music/Bone_Wall_01.wav', type: 'audio' },

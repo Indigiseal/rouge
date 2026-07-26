@@ -1,7 +1,7 @@
 export default {
     id: 'slimy_prison',
     title: 'The Slimy Prison',
-    description: 'A gelatinous cube blocks the hallway.\n\nAt first, you think there is just an old skeleton floating inside it. Then the skeleton moves. Torn mage robes drift around him like weeds in water. A green glow crawls over his ribs, rebuilding the bones as fast as the cube eats them away.\n\nThe skeleton mage turns his skull toward you and opens his jaw. Green light burns in his empty eye sockets.',
+    description: 'A gelatinous cube fills the corridor. Inside it, a skeleton in torn mage robes, drifting.\n\nThen it moves. Green light crawls along its ribs, rebuilding bone as fast as the cube dissolves it.\n\nThe skull turns toward you.',
     choices: [
       {
         text: 'Pull him free',
@@ -10,13 +10,13 @@ export default {
           scene.damagePlayer(10, 'gelatinous_cube', 'The Slimy Prison');
           scene.gainSkeletonWarriorCompanion();
         },
-        outcome: 'You drag the skeleton mage out of the cube.\n\nSlime drips from his torn robes as he places a slimy card in your hand. A Skeleton Warrior is painted on it, holding a cracked sword.\n\nThe mage nods once. A dark portal opens behind him, and he vanishes.'
+        outcome: 'The cube fights you for him, and takes some skin.\n\nOn the far side he stands, drips, and presses a card into your hand: a skeleton warrior with a cracked sword.\n\nA portal opens behind him. He is gone before you can ask anything.'
       },
       {
         text: 'End his suffering',
         outcomeFrame: 18,
         action: (gs, scene) => scene.gainRandomCursedAmulet(),
-        outcome: 'You raise your weapon and strike through the cube.\n\nThe green spell inside the mage’s ribs cracks. For the first time, the bones stop healing. The skeleton mage sinks slowly into the slime.\n\nA dark amulet rises from what is left of him.'
+        outcome: 'You drive your weapon through the cube. The green light gutters and goes out.\n\nFor the first time, the bones are allowed to stop. He sinks slowly through the slime.\n\nWhat is left of the spell condenses into a dark amulet.'
       },
       {
         text: 'Grab the floating amulet',
@@ -25,7 +25,7 @@ export default {
           scene.damagePlayer(8, 'gelatinous_cube', 'The Slimy Prison');
           scene.gainRandomNonCursedAmulet();
         },
-        outcome: 'There is an amulet floating near the mage’s ribs.\n\nYou ignore his reaching hand and shove your arm into the cube. The slime burns your skin as you pull the amulet free.\n\nThe skeleton mage watches you through the black-green glass. He remains trapped.'
+        outcome: 'There is an amulet drifting near his ribs.\n\nYou push your arm in past his reaching hand and take it. The slime burns the whole way.\n\nHe watches you leave through the green glass. Still trapped.'
       }
     ]
   };

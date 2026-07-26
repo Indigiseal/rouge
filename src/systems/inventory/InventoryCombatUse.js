@@ -281,7 +281,7 @@ export const InventoryCombatUse = {
             // Clean up ALL sprites properly
             this.cleanupCardSprites(slotIndex, cardSprite);
             cardSprite.destroy();
-            this.removeCard(slotIndex);
+            this.removeCard(slotIndex, true, 'magic_used');
             // Refresh the HUD so any buff the spell just applied (Bone Shield,
             // Shadow Blade, Magic Shield, Mirror Shield, etc.) shows up in the
             // player-effects panel right away instead of only after the next turn.
@@ -713,7 +713,7 @@ export const InventoryCombatUse = {
         // Clean up ALL sprites properly
         this.cleanupCardSprites(slotIndex, cardSprite);
         cardSprite.destroy();
-        this.removeCard(slotIndex);
+        this.removeCard(slotIndex, true, 'weapon_broke');
     },
     // Helper method to update weapon info text
     updateWeaponInfoText(cardSprite, weapon) {
@@ -903,7 +903,7 @@ export const InventoryCombatUse = {
             cardSprite.destroy();
         }
         
-        this.removeCard(slotIndex);
+        this.removeCard(slotIndex, true, 'potion_used');
         this.scene.updateUI();
         
     return true;
@@ -946,7 +946,7 @@ export const InventoryCombatUse = {
             cardSprite.destroy();
         }
         
-        this.removeCard(slotIndex);
+        this.removeCard(slotIndex, true, 'food_used');
         this.scene.updateUI();
         return true;
     },

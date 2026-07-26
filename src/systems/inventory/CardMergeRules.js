@@ -6,6 +6,7 @@ import {
     potionNameForHealAmount,
     foodNameForActionAmount,
 } from '../../content/cards/index.js';
+import { carryEnchantToWeapon } from '../../content/balance/WeaponEnchants.js';
 
 export const CardMergeRules = {
     canCardsMerge(cardA, cardB, canCrossTier = false) {
@@ -266,7 +267,16 @@ export const CardMergeRules = {
                 }
             }
         }
-        
+
+        // A Reliquary enchant belongs to the weapon the player has been
+        // nursing, not to its rarity — carry it through the merge like the
+        // briar bonus above. Only one can survive: the base card's wins, since
+        // that is the weapon the player dragged onto.
+        if (baseCard.type === 'weapon') {
+            const enchant = baseCard.enchant || secondCard.enchant;
+            if (enchant) carryEnchantToWeapon(upgradedCard, enchant);
+        }
+
         return upgradedCard;
     },
     getPotionNameForHealAmount(healAmount = 0) {

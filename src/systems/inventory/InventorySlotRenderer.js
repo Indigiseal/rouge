@@ -34,6 +34,16 @@ export const InventorySlotRenderer = {
         
         this.uiGroup.add(cardSprite);
         cardSprite.setScale(1);
+
+        // A Reliquary-enchanted weapon renders brighter than an ordinary card.
+        // This rides on the sprite itself rather than being a separate overlay
+        // (like briarFrame), so it follows the card through drags, hovers and
+        // rebuilds for free — and unlike a tint it survives the clearTint()
+        // that the drag handler runs on dragend. WebGL-only; on the Canvas
+        // renderer the optional chaining just leaves the card as it was.
+        if (cardData.enchant) {
+            cardSprite.preFX?.addColorMatrix()?.brightness(1.35);
+        }
         cardSprite.setDepth(12);
 
         // Use the gameplay property as the single source of truth: saved and

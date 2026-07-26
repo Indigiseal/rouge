@@ -1,7 +1,7 @@
 export default {
     id: 'broken_music_box',
     title: 'The Broken Music Box',
-    description: 'A tiny black music box lies half-buried under broken stones. Its lid is cracked. One little brass leg twitches under it.\n\nIt plays three tired notes, then clicks shut like it is embarrassed.',
+    description: 'A small black music box lies under the rubble — lid cracked, one brass leg twitching.\n\nAs you lean in, it plays three notes and snaps shut.',
     choices: [
       {
         text: 'Force it open',
@@ -19,8 +19,8 @@ export default {
           }
         },
         outcome: (gs) => (gs?.playerHealth || 0) > 0
-          ? 'You force the lid open. The music box plays one brave little note, then explodes in silver smoke. A crushed flute sound squeals through the rubble. Somehow, you are still standing.'
-          : 'You force the lid open. The music box explodes with a sound like a flute being stepped on by fate.'
+          ? 'You pry at the lid. The music box plays one warning note, then explodes.\n\nWhen the smoke clears you are still standing, and the floor around you is scattered with coins.'
+          : 'You pry at the lid. The box explodes.'
       },
       {
         text: 'Open it carefully',
@@ -36,7 +36,7 @@ export default {
           scene.gainCrystals(1);
           scene.addPendingEvent('monster_bird_nest');
         },
-        outcome: 'The lock gives a tiny click. The lid opens just enough to show a missing brass cog inside. The box clicks at you, grows two little legs, and climbs after you.'
+        outcome: 'The lock gives. Inside, where the cylinder should turn, a cog is missing.\n\nThe box looks at you — somehow — then grows two more legs and falls in behind you.'
       },
       {
         text: 'Leave it alone',
@@ -48,7 +48,7 @@ export default {
           scene.heal(5);
           scene.addPendingEvent('monster_bird_nest');
         },
-        outcome: 'You walk away. After three steps, you hear tiny metal feet behind you. The music box is following you, playing louder whenever you pretend not to notice.'
+        outcome: 'You step over it and keep walking.\n\nTen steps later: small metal feet on the stones behind you.'
       }
     ]
   };

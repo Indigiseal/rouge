@@ -1,18 +1,18 @@
 export default {
     id: 'briar_room',
     title: 'The Briar Room',
-    description: 'You enter a narrow room covered in thorn vines.\n\nThey crawl over the walls, across the ceiling, and down between the stones.\n\nThe floor is littered with old broken weapons and scraps of armor caught in the brambles.\n\nAs you step inside, the vines slowly turn toward your inventory.',
+    description: 'The room is walled in briars — floor to ceiling, grown through a litter of old weapons and armor scraps.\n\nWhen you step in, the vines turn toward your bag.',
     choices: [
       {
         text: 'Offer a weapon or armor card',
         action: (gs, scene) => scene.beginBriarOffering(),
-        outcome: 'Choose a weapon or armor card from your inventory and drag it onto the briars.',
+        outcome: 'Choose a weapon or armor card and drag it onto the briars.',
         next: {
           choices: [
             {
               text: 'Leave without offering a card',
               action: (gs, scene) => scene.cancelBriarOffering(),
-              outcome: 'You back away before the vines reach your boots.\n\nThe brambles slowly turn back toward the walls.'
+              outcome: 'You back off before the vines reach your boots. Slowly, they settle against the walls.'
             }
           ]
         }
@@ -24,7 +24,7 @@ export default {
           scene.gainRareThornsCard();
         },
         outcomeFrame: 24,
-        outcome: 'You draw your weapon and cut into the wall of thorns.\n\nThe vines twist around the blade, scraping against the metal as you hack your way through.\n\nBy the time the path opens, your hands are scratched and the floor is covered in broken briars.\n\nSomething sharp is still tangled around your weapon.'
+        outcome: 'You cut through. The thorns score your hands and wrap the blade all the way down.\n\nWhen you reach the far door, some are still knotted around it.'
       },
       {
         text: 'Burn the vines',
@@ -34,12 +34,12 @@ export default {
           scene.gainRandomAmulet();
         },
         outcomeFrame: 25,
-        outcome: 'The vines twist and shrivel, filling the room with smoke and falling ash.\n\nWhen the fire dies, something small shines among the blackened roots.'
+        outcome: 'One fireball. The vines shrivel and drop, and the room fills with drifting ash.\n\nUnder the blackened roots, something small catches the light.'
       },
       {
         text: 'Leave',
         action: () => {},
-        outcome: 'You back away before the vines reach your boots.\n\nThe brambles slowly turn back toward the walls.'
+        outcome: 'You keep to the corridor. The vines settle back against the walls.'
       }
     ]
   };

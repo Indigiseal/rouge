@@ -3,6 +3,7 @@
 
 import { showItemTooltip, hideItemTooltip } from './ItemTooltip.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 
 const RARITY_COLOR = {
   common: 0xb0b0b0,
@@ -119,6 +120,12 @@ export function openAmuletChoiceOverlay(scene, cfg) {
       } else if (typeof scene.showFeedback === 'function') {
         scene.showFeedback({ key: 'float.equippedItem', vars: { name: item.name } }, 0x9932cc);
       }
+      recordHumanRunEvent(scene, 'amulet_chosen', {
+        title: titleText,
+        rarity,
+        options: options.map((option) => snapshotHumanRunCard(option)),
+        chosen: snapshotHumanRunCard(item),
+      });
       close();
       cfg.onPicked?.(item.id, item);
     });

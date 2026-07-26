@@ -1,7 +1,9 @@
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
-import { t, translateDescription, translateGemEffect, translateItemName, translateRarity } from '../../i18n/i18n.js';
+import { t, translateDescription, translateGemEffect, translateItemName } from '../../i18n/i18n.js';
+import { describeWeaponEnchant } from '../../content/balance/WeaponEnchants.js';
+import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 
 export const InventoryView = {
     setVisibility(isVisible) {
@@ -587,17 +589,29 @@ export const InventoryView = {
         this.hideCardTooltip();
         if (!cardData) return;
 
-        const lines = this.getCardTooltipLines(cardData, slotIndex);
-        const tooltipText = this.scene.add.text(0, 0, lines.join('\n'), {
+        const allLines = this.getCardTooltipLines(cardData, slotIndex);
+        // The enchant gets its own text object so it can be bright blue — a
+        // single Text can only carry one colour, and this line is the reason
+        // the player is hovering an enchanted weapon in the first place.
+        const enchantLine = describeWeaponEnchant(cardData);
+        const lines = enchantLine ? allLines.filter(line => line !== enchantLine) : allLines;
+
+        const textStyle = {
             fontSize: '8px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             lineSpacing: 1,
             wordWrap: { width: 138 }
-        }).setOrigin(0, 0);
+        };
+        const tooltipText = this.scene.add.text(0, 0, lines.join('\n'), textStyle).setOrigin(0, 0);
+        const enchantText = enchantLine
+            ? this.scene.add.text(0, 0, enchantLine, { ...textStyle, fill: '#66ccff' }).setOrigin(0, 0)
+            : null;
 
-        const width = Math.ceil(Math.min(154, Math.max(92, tooltipText.width + 10)));
-        const height = Math.ceil(tooltipText.height + 10);
+        const contentWidth = Math.max(tooltipText.width, enchantText?.width || 0);
+        const contentHeight = tooltipText.height + (enchantText ? enchantText.height + 2 : 0);
+        const width = Math.ceil(Math.min(154, Math.max(92, contentWidth + 10)));
+        const height = Math.ceil(contentHeight + 10);
         const bg = this.scene.add.rectangle(0, 0, width, height, 0x111122, 0.94)
             .setOrigin(0, 0)
             .setStrokeStyle(1, 0xf2d3aa);
@@ -610,8 +624,10 @@ export const InventoryView = {
         const clampedX = Math.round(Phaser.Math.Clamp(targetX, 6, 640 - width - 6));
         const clampedY = Math.round(Phaser.Math.Clamp(targetY, 6, 360 - height - 6));
         tooltipText.setPosition(5, 5);
+        enchantText?.setPosition(5, 5 + tooltipText.height + 2);
 
-        this.cardTooltip = this.scene.add.container(clampedX, clampedY, [bg, tooltipText]);
+        const parts = enchantText ? [bg, tooltipText, enchantText] : [bg, tooltipText];
+        this.cardTooltip = this.scene.add.container(clampedX, clampedY, parts);
         this.cardTooltip.setDepth(3000);
         this.uiGroup.add(this.cardTooltip);
     },
@@ -625,16 +641,14 @@ export const InventoryView = {
         card = this.normalizeCardIdentity(card);
         if (slotIndex >= 0 && this.slots[slotIndex] === card) this.syncGameStateInventory();
 
-        const rarity = card.rarity ? translateRarity(this.scene, card.rarity) : t(this.scene, 'tooltip.noRarity');
         const type = this.getDisplayCardType(card);
         const lines = [
-            translateItemName(this.scene, card) || type,
-            `${type} - ${rarity}`
+            translateItemName(this.scene, card) || type
         ];
 
         if (card.type === 'weapon') {
-            const weaponType = translateItemName(this.scene, { type: 'weapon', weaponType: this.getWeaponTypeFromCard(card) }).replace(translateRarity(this.scene, undefined), '').trim();
-            lines.push(t(this.scene, 'tooltip.family', { value: weaponType }));
+            // No "Family:" line — the card name already says what kind of
+            // weapon it is, so it was pure duplication.
             const characterId = this.scene?.gameState?.characterId;
             const talentFx = this.scene?.gameState?.talentEffects || null;
             const shownDmg = getDisplayedWeaponDamage(characterId, card, talentFx);
@@ -667,6 +681,8 @@ export const InventoryView = {
                     lines.push(t(this.scene, 'tooltip.poisonStacks', { stack, plural: stack > 1 ? 's' : '' }));
                 }
             }
+            const enchantLine = describeWeaponEnchant(card);
+            if (enchantLine) lines.push(enchantLine);
             if (card.special) lines.push(t(this.scene, 'tooltip.special', { value: this.describeWeaponSpecial(card) }));
             if (card.poisonDamage) lines.push(t(this.scene, 'tooltip.poisonTurns', { amount: card.poisonDamage, turns: card.poisonTurns || 0 }));
             if (card.durability !== undefined) lines.push(t(this.scene, 'tooltip.pips', { value: `${card.durability}/${card.maxDurability || card.durability}` }));
@@ -675,7 +691,14 @@ export const InventoryView = {
             const armorType = translateItemName(this.scene, { type: 'armor', armorType: this.getArmorTypeFromCard(card) });
             lines.push(t(this.scene, 'tooltip.family', { value: armorType }));
             if ((card.protection || 0) > 0) {
-                lines.push(t(this.scene, 'tooltip.protectionShort', { amount: card.protection || 0 }));
+                // The worn armor reports its boosted value while Magic Shield /
+                // Warding is up, matching the number drawn on the card itself.
+                const gs = this.scene?.gameState;
+                const isWorn = Boolean(gs?.equippedArmor) && card === gs.equippedArmor;
+                const shown = isWorn
+                    ? effectiveArmorProtection(gs, card)
+                    : (card.protection || 0);
+                lines.push(t(this.scene, 'tooltip.protectionShort', { amount: shown }));
             }
             if (card.dodgeChance) lines.push(t(this.scene, 'tooltip.dodge', { percent: Math.round(card.dodgeChance * 100) }));
             if (card.meleeCounterChance) {

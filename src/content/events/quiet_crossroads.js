@@ -1,7 +1,7 @@
 export default {
     id: 'quiet_crossroads',
     title: 'Quiet Crossroads',
-    description: 'For once, the road is only strange in the normal dungeon way.',
+    description: 'For one floor, nothing is haunted, cursed, or pretending to be a chest.\n\nThere is a small dry alcove, a few coins someone dropped, and quiet.',
     choices: [
       {
         text: 'Gain 10 coins',
@@ -11,12 +11,12 @@ export default {
       {
         text: 'Heal 5 HP',
         action: (gs, scene) => scene.heal(5),
-        outcome: 'You rest briefly and feel a little better.'
+        outcome: 'You sit down for a few minutes. Nothing attacks you. It helps more than it should.'
       },
       {
         text: 'Leave',
         action: () => {},
-        outcome: 'You decide not to linger.'
+        outcome: 'You don\'t trust it. You keep moving.'
       }
     ]
   };

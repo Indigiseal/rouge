@@ -10,6 +10,7 @@ import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { t } from '../i18n/i18n.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
+import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 
 export class StationRoomBase extends Phaser.Scene {
     // ─── Inventory station mode ──────────────────────────────────────────────
@@ -23,6 +24,19 @@ export class StationRoomBase extends Phaser.Scene {
     }
 
     closeStation() {
+        recordHumanRunEvent(this, 'station_departed', {
+            station: this.scene?.key || this.sys?.settings?.key || null,
+            offers: Array.isArray(this.shopItems)
+                ? this.shopItems.map((offer, index) => ({
+                    index,
+                    item: snapshotHumanRunCard(offer?.data),
+                    price: offer?.price ?? null,
+                    currency: offer?.currency || null,
+                    purchased: Boolean(offer?.purchased),
+                }))
+                : [],
+            unclaimedTreasure: snapshotHumanRunCard(this.pendingLoot),
+        });
         this.clearShopBoard();
         this.stationInventoryLayerActive = false;
         if (this.gameScene?.inventorySystem) {

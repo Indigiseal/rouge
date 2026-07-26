@@ -3,6 +3,7 @@ import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
 import { createTitle } from '../ui/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
+import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 
 export class TreasureScene extends StationRoomBase {
   constructor() {
@@ -251,17 +252,27 @@ export class TreasureScene extends StationRoomBase {
   takeLoot() {
     if (this.lootTaken || !this.pendingLoot) return;
     const item = this.pendingLoot;
+    let destinationSlot = null;
 
     const added = this.gameScene?.inventorySystem
-      ? this.gameScene.inventorySystem.addCard(item)
+      ? (() => {
+          const success = this.gameScene.inventorySystem.addCard(item);
+          if (success) destinationSlot = this.gameScene.inventorySystem.lastAddedSlot;
+          return success;
+        })()
       : (() => {
           const slot = this.gameState.inventory.findIndex(s => s === null);
           if (slot === -1) return false;
           this.setInventorySlot(slot, item);
+          destinationSlot = slot;
           return true;
         })();
 
     if (!added) {
+      recordHumanRunEvent(this, 'treasure_pickup_blocked', {
+        reason: 'inventory_full',
+        item: snapshotHumanRunCard(item),
+      });
       this.showFeedback('Inventory full — free a slot first', 0xff4444, 250);
       return;
     }
@@ -284,6 +295,11 @@ export class TreasureScene extends StationRoomBase {
     this.hideItemTooltip();
     this.refreshStationInventoryDisplay();
     this.gameScene?.updateUI?.();
+    recordHumanRunEvent(this, 'treasure_collected', {
+      source: this.rewardMode,
+      destinationSlot,
+      item: snapshotHumanRunCard(item),
+    });
   }
 
   getRewardStats(item) {

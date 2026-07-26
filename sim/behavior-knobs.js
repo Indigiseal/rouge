@@ -33,7 +33,7 @@ export const BEHAVIOR_PRESETS = {
       thornsDamageWeight: 10,
       potionBase: 70,
       potionHealWeight: 1,
-      bossPrepTargetBonus: 260,
+      bossPrepTargetBonus: 400,
       bossPrepOtherMagicScore: 40,
       key: 35,
       default: 10,
@@ -92,10 +92,12 @@ export const BEHAVIOR_PRESETS = {
       elementalBonus: 3,
       rangedBossBypass: 1100,
       overkillPenalty: 0.4,
+      weakKillTarget: 12,
+      finisherWastePenalty: 3,
       durabilityConserve: 0.02,
-      survivalMargin: 0,
-      projectedDamage: 0,
-      turnsToKill: 0,
+      survivalMargin: 1,
+      projectedDamage: 4,
+      turnsToKill: 20,
       lethalPlanPenalty: 5000,
     },
     routeValue: {
@@ -152,6 +154,15 @@ export const BEHAVIOR_PRESETS = {
       totalDamage: 9,
       elementalBonus: 5,
       durabilityConserve: 0.015,
+    },
+  },
+  lowCombatRoute: {
+    // Routing-only ablation: keep combat, loot, healing, and shop decisions
+    // identical to balanced, but strongly minimize fights among branches that
+    // still preserve the closest-to-boss anvil target.
+    routeValue: {
+      COMBAT: -220,
+      ELITE: -380,
     },
   },
   magicHeavy: {

@@ -58,6 +58,48 @@ export function analyzeHumanTrace(trace) {
     (event.details?.sources || []).every((source) => source?.card?.weaponType === 'dagger')
   ));
   const repairs = events.filter((event) => event.type === 'anvil_repair');
+  const consumablesUsed = events.filter((event) => (
+    event.type === 'potion_used' || event.type === 'food_used' || event.type === 'magic_used'
+  ));
+  const spaceMakingConsumables = consumablesUsed.filter((event) => {
+    const inventoryWasFull = event.state?.inventoryState
+      ? event.state.inventoryState.emptySlots === 0
+      : (event.state?.inventory || []).length >= 5;
+    const usefulBoardCardVisible = (event.state?.board || []).some((entry) => (
+      entry?.revealed && entry.card?.type !== 'enemy' && entry.card?.type !== 'boss'
+    ));
+    return inventoryWasFull && usefulBoardCardVisible;
+  });
+  const floorDepartures = events.filter((event) => event.type === 'floor_departed');
+  const floorStarts = events.filter((event) => event.type === 'floor_started');
+  const availableWeaponCount = (event, weaponType) => {
+    const inventoryWeapons = (event.state?.inventory || []).filter((entry) => (
+      entry.card?.type === 'weapon' && entry.card?.weaponType === weaponType
+    )).length;
+    const visibleBoardWeapons = (event.state?.board || []).filter((entry) => (
+      entry.revealed
+      && entry.card?.type === 'weapon'
+      && entry.card?.weaponType === weaponType
+    )).length;
+    return inventoryWeapons + visibleBoardWeapons;
+  };
+  const mergeDepthByCard = new Map();
+  let mergeCascadeSteps = 0;
+  let maxMergeCascadeDepth = 0;
+  for (const event of merges) {
+    const sourceIds = (event.details?.sources || [])
+      .map((source) => source?.card?.traceId)
+      .filter(Boolean);
+    const sourceDepth = sourceIds.reduce(
+      (deepest, id) => Math.max(deepest, mergeDepthByCard.get(id) || 0),
+      0
+    );
+    if (sourceDepth > 0) mergeCascadeSteps++;
+    const resultId = event.details?.result?.traceId;
+    const resultDepth = sourceDepth + 1;
+    if (resultId) mergeDepthByCard.set(resultId, resultDepth);
+    maxMergeCascadeDepth = Math.max(maxMergeCascadeDepth, resultDepth);
+  }
   const started = events.find((event) => event.type === 'recording_started');
   const runEnd = [...events].reverse().find((event) => event.type === 'run_ended');
   const floorNumbers = events
@@ -93,6 +135,44 @@ export function analyzeHumanTrace(trace) {
       restorationUsed: events.filter((event) => (
         event.type === 'magic_used' && event.details?.card?.effect === 'restoration'
       )).length,
+      inventoryDiscards: events.filter((event) => event.type === 'inventory_card_discarded').length,
+      spaceMakingConsumables: spaceMakingConsumables.length,
+      boardLootCollected: events.filter((event) => event.type === 'board_loot_collected').length,
+      boardItemsLeftBehind: sum(floorDepartures, (event) => (
+        (event.state?.board || []).filter((entry) => (
+          entry.card?.type !== 'enemy' && entry.card?.type !== 'boss'
+        )).length
+      )),
+      inventorySlotFills: events.filter((event) => event.type === 'inventory_slot_filled').length,
+      inventorySlotEmpties: events.filter((event) => event.type === 'inventory_slot_emptied').length,
+      blockedBoardPickups: events.filter((event) => event.type === 'board_loot_pickup_blocked').length,
+      weaponBoardPickups: events.filter((event) => (
+        event.type === 'board_loot_collected' && event.details?.card?.type === 'weapon'
+      )).length,
+      potionBoardPickups: events.filter((event) => (
+        event.type === 'board_loot_collected' && event.details?.card?.type === 'potion'
+      )).length,
+      mergeCascadeSteps,
+      maxMergeCascadeDepth,
+      weaponMaterialsLeftBehind: sum(floorDepartures, (event) => (
+        (event.state?.board || []).filter((entry) => entry.card?.type === 'weapon').length
+      )),
+      nonBossDeparturesWithPotion: floorDepartures.filter((event) => (
+        event.details?.roomType !== 'BOSS'
+        && (event.state?.inventory || []).some((entry) => entry.card?.type === 'potion')
+      )).length,
+      bossEntriesWithPotion: floorStarts.filter((event) => (
+        event.details?.roomType === 'BOSS'
+        && (event.state?.inventory || []).some((entry) => entry.card?.type === 'potion')
+      )).length,
+      maxAvailableBows: events.reduce(
+        (largest, event) => Math.max(largest, availableWeaponCount(event, 'bow')),
+        0
+      ),
+      maxAvailableDaggers: events.reduce(
+        (largest, event) => Math.max(largest, availableWeaponCount(event, 'dagger')),
+        0
+      ),
     },
   };
 }
@@ -128,6 +208,24 @@ function printReport(analyses, sim) {
       + `${analysis.partialRun ? ' (partial run)' : ''}`
     );
   }
+  console.log(
+    `Inventory decisions per trace: ${fixed(averageHuman(analyses, 'inventoryDiscards'))} discards,`
+    + ` ${fixed(averageHuman(analyses, 'spaceMakingConsumables'))} consumables used while full with visible loot,`
+    + ` ${fixed(averageHuman(analyses, 'boardLootCollected'))} board pickups,`
+    + ` ${fixed(averageHuman(analyses, 'boardItemsLeftBehind'))} items deliberately left at departure`
+  );
+  console.log(
+    `Merge flow per trace: ${fixed(averageHuman(analyses, 'weaponBoardPickups'))} weapon pickups,`
+    + ` ${fixed(averageHuman(analyses, 'blockedBoardPickups'))} blocked pickup attempts,`
+    + ` ${fixed(averageHuman(analyses, 'mergeCascadeSteps'))} merges that reused a prior merge result,`
+    + ` depth ${fixed(averageHuman(analyses, 'maxMergeCascadeDepth'))}`
+  );
+  console.log(
+    `Carry policy per trace: potion held on ${fixed(averageHuman(analyses, 'nonBossDeparturesWithPotion'))}`
+    + ` non-boss departures and ${fixed(averageHuman(analyses, 'bossEntriesWithPotion'))} boss entries;`
+    + ` peak available bows ${fixed(averageHuman(analyses, 'maxAvailableBows'))},`
+    + ` daggers ${fixed(averageHuman(analyses, 'maxAvailableDaggers'))}`
+  );
 
   if (sim) {
     console.log(`Simulator: ${sim.runs} runs, ${(100 * (sim.outcome?.winRate || 0)).toFixed(1)}% wins`);
