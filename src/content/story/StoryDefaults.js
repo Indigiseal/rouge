@@ -33,6 +33,15 @@ export const DEFAULT_STORY_RUN = Object.freeze({
   bookWormSeen: false,
   briarRoomSeen: false,
   reliquarySeen: false,
+  // Toll Collectors — the Goblin King's tax men. These outlive the event: the
+  // boss fight reads tollFought, and the act's shop reads merchantRobbed.
+  tollCollectorsSeen: false,
+  paidTheToll: false,
+  tollIntimidated: false,
+  tollFought: false,
+  tollKiller: false,
+  tollEscapeNoticeShown: false,
+  merchantRobbed: false,
   pendingEvents: Object.freeze([]),
 });
 

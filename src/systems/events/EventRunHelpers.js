@@ -567,19 +567,23 @@ export const EventRunHelpers = {
       item
       && item.type !== 'companion'
       && item.id !== 'monsterEgg'
+      && !item.enchant // a Reliquary weapon is never "an unwanted spare card"
       && !this._isKeyCard(item)
       && !this._isPotionCard(item)
     );
   },
 
   _isScreamingHeadOfferCard(item) {
-    // Keys, companions, and one-off story items are protected. Everything else
-    // in the inventory is a fair offering, including potions and gems.
+    // Keys, companions, one-off story items and Reliquary-enchanted weapons are
+    // protected. Everything else in the bag is a fair offering, potions and gems
+    // included. (Enchanted weapons are checked by `enchant` rather than by the
+    // `unique` flag, because `unique` also blocks the Copying Mirror.)
     return Boolean(
       item
       && item.type !== 'companion'
       && item.id !== 'monsterEgg'
       && !item.unique
+      && !item.enchant
       && !this._isKeyCard(item)
     );
   },

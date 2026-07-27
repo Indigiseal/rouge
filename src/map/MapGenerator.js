@@ -1,4 +1,28 @@
 // utils/MapGenerator.js
+import { BOSS_TIERS } from '../content/cards/bosses.js';
+
+// Bumped whenever the map's SHAPE changes, so an in-progress run regenerates
+// instead of running on a stale layout. MapViewScene imports this rather than
+// keeping its own copy — the two used to be separate constants that had to be
+// kept in sync by hand.
+// v8: each act now records the boss it is building toward (bossId).
+export const MAP_VERSION = 8;
+
+/** Act (1..3) that a global floor number belongs to. */
+export function actForFloor(floor) {
+  const f = Math.max(1, Number(floor) || 1);
+  return Math.min(3, Math.max(1, Math.floor((f - 1) / 15) + 1));
+}
+
+/**
+ * Which boss this act is building toward, decided at map generation so events
+ * can foreshadow it long before floor 15. Null on maps generated before v8.
+ */
+export function getPlannedActBoss(gameState, floor = gameState?.currentFloor) {
+  const act = actForFloor(floor);
+  return gameState?.dungeonMap?.[`act${act}`]?.bossId || null;
+}
+
 export class MapGenerator {
   constructor({
     LANES = 7,
@@ -13,19 +37,27 @@ export class MapGenerator {
     this.LANE_GAP = LANE_GAP;
     this.eliteMult = eliteMult;
 
+    // Boss names used to be hardcoded here and were stale — the real boss was
+    // rolled at floor 15. Each act now rolls its boss up front (see generateAct)
+    // so the whole act can be built around who is waiting at the end.
     this.acts = [
-      { start: 1, end: 15, boss: 'Spider Queen' },
-      { start: 16, end: 30, boss: 'Cerberus' },
-      { start: 31, end: 45, boss: 'Ancient Cerberus' }
+      { start: 1, end: 15 },
+      { start: 16, end: 30 },
+      { start: 31, end: 45 }
     ];
   }
 
   generateFullMap() {
-    // Must match MapViewScene's MAP_VERSION. Otherwise the version-check there
-    // fails on every load and the map regenerates after every floor.
-    const full = { _version: 7 };
+    const full = { _version: MAP_VERSION };
     for (let act = 1; act <= 3; act++) full[`act${act}`] = this.generateAct(act);
     return full;
+  }
+
+  /** Roll which boss this act is building toward. */
+  _rollActBoss(actNumber) {
+    const pool = BOSS_TIERS[actNumber] || BOSS_TIERS[1] || [];
+    if (!pool.length) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
   }
 
   generateAct(actNumber) {
@@ -58,6 +90,9 @@ export class MapGenerator {
         return {
           actNumber,
           floors,
+          // Decided now, not at floor 15, so events during the act can react to
+          // (and foreshadow) whoever is waiting at the end of it.
+          bossId: this._rollActBoss(actNumber),
           startFloor: this.acts[actNumber - 1].start,
           endFloor: this.acts[actNumber - 1].end
         };

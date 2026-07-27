@@ -98,6 +98,9 @@ export class CardSystem {
     assignEliteMiniBoss(...args) { return this.spawner.assignEliteMiniBoss(...args); }
     assignEliteHighlightCards(...args) { return this.spawner.assignEliteHighlightCards(...args); }
     injectAngryNestmother(...args) { return this.spawner.injectAngryNestmother(...args); }
+    enforceForcedEnemyTypes(...args) { return this.spawner.enforceForcedEnemyTypes(...args); }
+    spawnAmbushBoard(...args) { return this.spawner.spawnAmbushBoard(...args); }
+    injectTollGuards(...args) { return this.spawner.injectTollGuards(...args); }
     spawnBoss(...args) { return this.spawner.spawnBoss(...args); }
     playBossEntrance(...args) { return this.fx.playBossEntrance(...args); }
     pickCardType(...args) { return this.spawner.pickCardType(...args); }

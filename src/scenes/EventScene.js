@@ -12,6 +12,7 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { EVENTS, getEvent } from '../content/events/index.js';
 import { getMagic } from '../content/cards/magic.js';
+import { getPlannedActBoss } from '../map/MapGenerator.js';
 import {
   applyEnchantToWeapon,
   describeWeaponEnchant,
@@ -36,6 +37,7 @@ const EVENT_ILLUSTRATION_FRAMES = {
   old_drill_room: 26,
   something_wicked: 7,
   brass_wizard: 28,
+  toll_collectors: 29,
   screaming_head: 26,
   // TODO: swap to the Reliquary's own frame once its art lands. Frame 11
   // (the Copying Mirror's glassy panel) is the closest stand-in for now.
@@ -88,6 +90,11 @@ export class EventScene extends Phaser.Scene {
     if (!story.slimyPrisonSeen) bonusFillers.push('slimy_prison');
     if (!story.bookWormSeen) bonusFillers.push('book_worm');
     if (!story.briarRoomSeen) bonusFillers.push('briar_room');
+    // Boss-gated: the collectors only exist on runs where their King is the one
+    // waiting at the end of the act, so what you do here reaches floor 15.
+    if (!story.tollCollectorsSeen && getPlannedActBoss(this.gameState) === 'goblinKing') {
+      bonusFillers.push('toll_collectors');
+    }
     // The Reliquary supplies the magic card itself, so it only needs the
     // player to be carrying something worth enchanting.
     if (!story.reliquarySeen && this.hasEnchantableWeapon()) bonusFillers.push('reliquary');
@@ -115,7 +122,7 @@ export class EventScene extends Phaser.Scene {
       const requestedId = new URLSearchParams(window.location.search).get('event');
       if (!requestedId) return null;
       const resolvedId = requestedId === 'singing_box' ? 'broken_music_box' : requestedId;
-      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'old_drill_room', 'something_wicked', 'brass_wizard']);
+      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'toll_collectors', 'old_drill_room', 'something_wicked', 'brass_wizard']);
       return forceable.has(resolvedId) ? resolvedId : null;
     } catch {
       return null;
@@ -158,6 +165,13 @@ export class EventScene extends Phaser.Scene {
       bookWormSeen: false,
       briarRoomSeen: false,
       reliquarySeen: false,
+      tollCollectorsSeen: false,
+      paidTheToll: false,
+      tollIntimidated: false,
+      tollFought: false,
+      tollKiller: false,
+      tollEscapeNoticeShown: false,
+      merchantRobbed: false,
       screamingHeadSeen: false,
       carnivalVisited: false,
       carnivalHagMet: false,
@@ -238,6 +252,13 @@ export class EventScene extends Phaser.Scene {
       bookWormSeen: Boolean(existingStoryRun.bookWormSeen),
       briarRoomSeen: Boolean(existingStoryRun.briarRoomSeen),
       reliquarySeen: Boolean(existingStoryRun.reliquarySeen),
+      tollCollectorsSeen: Boolean(existingStoryRun.tollCollectorsSeen),
+      paidTheToll: Boolean(existingStoryRun.paidTheToll),
+      tollIntimidated: Boolean(existingStoryRun.tollIntimidated),
+      tollFought: Boolean(existingStoryRun.tollFought),
+      tollKiller: Boolean(existingStoryRun.tollKiller),
+      tollEscapeNoticeShown: Boolean(existingStoryRun.tollEscapeNoticeShown),
+      merchantRobbed: Boolean(existingStoryRun.merchantRobbed),
       screamingHeadSeen: Boolean(existingStoryRun.screamingHeadSeen),
       carnivalVisited: Boolean(existingStoryRun.carnivalVisited),
       carnivalHagMet: Boolean(existingStoryRun.carnivalHagMet),
@@ -1594,6 +1615,78 @@ export class EventScene extends Phaser.Scene {
     return true;
   }
 
+  // ─── Toll Collectors (the Goblin King's tax men) ─────────────────────────
+
+  /** Goblin stats for this depth, mirroring the goblin tiers in enemies.js. */
+  _tollGuardTier() {
+    const floor = this.gameState?.currentFloor || 1;
+    if (floor >= 11) return { attack: 8, health: 11 };
+    return { attack: 5, health: 9 };
+  }
+
+  /** Three clerks with knives. Tagged so the boss fight can recognise them. */
+  buildTollGuards() {
+    const tier = this._tollGuardTier();
+    return [0, 1, 2].map(() => ({
+      type: 'enemy',
+      name: 'Toll Collector',
+      sprite: 'goblin_c',
+      role: 'MELEE',
+      health: tier.health,
+      maxHealth: tier.health,
+      attack: tier.attack,
+      armor: 0,
+      tollGuard: true,
+      abilities: [{ type: 'coin_steal', chance: 0.5, amount: 1 }],
+    }));
+  }
+
+  /** Goblins respect steel they can price. Rare or better does the job. */
+  hasIntimidatingWeapon() {
+    const ranks = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const scary = (item) => (
+      item?.type === 'weapon' && ranks.indexOf(item.rarity) >= ranks.indexOf('rare')
+    );
+    return scary(this.gameState?.equippedWeapon)
+      || this.getInventorySlots().some(scary);
+  }
+
+  payTheToll(amount) {
+    this.ensureStoryState();
+    this.spendCoins(amount);
+    this.gameState.storyRun.paidTheToll = true;
+  }
+
+  intimidateTollCollectors() {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    story.tollIntimidated = true;
+    // They sulk aside from the strongbox rather than hand it over, so you take
+    // the shiny things they never understood the value of.
+    const crystals = 2 + Math.floor((this.gameState.currentFloor || 1) / 6);
+    this.gainCrystals(crystals);
+    this.tollIntimidateOutcome = 'You do not say anything. You draw the weapon and rest it against the doors, in the light, where all three of them can see it properly.\n\nThe one with the tally board stops writing. The one with the shield finds something interesting on the floor.\n\nNobody stops you lifting the lid of the strongbox at the foot of the door, and nobody looks at you either. The bar is already off by the time you straighten up.';
+  }
+
+  attackTollCollectors() {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    story.tollFought = true;
+    story.tollKiller = true; // they will absolutely mention this to the King
+    // Handed to FloorSpawner on the way out — see continueAdventure().
+    this.gameState.pendingAmbush = {
+      id: 'toll_collectors',
+      normalCombatBoard: true,
+      enemyTypes: ['goblin', 'goblin_archer'],
+    };
+  }
+
+  waitAtTheToll() {
+    this.ensureStoryState();
+    // The merchant never reaches this act's shop.
+    this.gameState.storyRun.merchantRobbed = true;
+  }
+
   // ─── The Reliquary (the wall supplies the spell, the player supplies iron) ─
 
   // Rolled once per visit and cached. _getVisibleChoices() re-runs on every
@@ -2163,6 +2256,7 @@ export class EventScene extends Phaser.Scene {
       briar_room: 'briarRoomSeen',
       screaming_head: 'screamingHeadSeen',
       reliquary: 'reliquarySeen',
+      toll_collectors: 'tollCollectorsSeen',
       something_wicked: 'carnivalVisited',
       brass_wizard: 'brassWizardSeen'
     };
@@ -2218,6 +2312,17 @@ export class EventScene extends Phaser.Scene {
     }
     if (isSandboxMode(this) || isSandboxMode(this.gameScene)) {
       exitToSandboxHub(this);
+      return;
+    }
+    // An event can end in a real fight. Route to GameScene as a combat room
+    // instead of back to the map — the same handoff MapViewScene makes for a
+    // COMBAT node, so the board, music and floor bookkeeping all behave
+    // normally. FloorSpawner reads gameState.pendingAmbush to build the board.
+    if (this.gameState?.pendingAmbush) {
+      this.gameState.roomType = 'COMBAT';
+      this.scene.stop('MapViewScene');
+      this.scene.wake('GameScene', { roomType: 'COMBAT', isNewRoom: true });
+      this.scene.stop();
       return;
     }
     // Park GameScene back to sleep (we woke it for the station) and return to map.
