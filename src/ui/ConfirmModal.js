@@ -87,3 +87,44 @@ export function openConfirmModal(scene, {
     scene.activeModal = modal;
     return modal;
 }
+
+// One-button story notice. Kept alongside confirmations so both use the same
+// modal depth and input blocker, without implying that the player has a choice.
+export function openNoticeModal(scene, {
+    title,
+    body,
+    confirmLabel = 'Continue',
+    onConfirm,
+} = {}) {
+    if (scene.activeModal) return null;
+
+    const dimmer = scene.add.rectangle(320, 180, 640, 360, 0x000000, 0.75)
+        .setDepth(1000)
+        .setInteractive();
+    const box = scene.add.rectangle(320, 180, 420, 180, 0x2c1810)
+        .setStrokeStyle(2, 0xffaa44)
+        .setDepth(1001);
+    const titleText = scene.add.text(320, 125, title, {
+        fontSize: '20px', fill: '#ffcc88', fontFamily: '"HoMM Pixel", Arial, sans-serif'
+    }).setOrigin(0.5).setDepth(1002);
+    const bodyText = scene.add.text(320, 170, body, {
+        fontSize: '13px', fill: '#ffffff', fontFamily: '"HoMM Pixel", Arial, sans-serif', align: 'center',
+        wordWrap: { width: 360, useAdvancedWrap: true }
+    }).setOrigin(0.5).setDepth(1002);
+
+    let closed = false;
+    const cleanup = () => {
+        if (closed) return;
+        closed = true;
+        [dimmer, box, titleText, bodyText, button.button, button.text].forEach(o => o?.destroy());
+        scene.activeModal = null;
+    };
+    const button = createModalButton(scene, 320, 245, 110, 30, confirmLabel, 0xffaa44, () => {
+        cleanup();
+        onConfirm?.();
+    });
+
+    const modal = { type: 'notice', cleanup };
+    scene.activeModal = modal;
+    return modal;
+}

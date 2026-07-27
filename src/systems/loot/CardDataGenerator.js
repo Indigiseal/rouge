@@ -103,7 +103,7 @@ export class CardDataGenerator {
     createCardData(type, floor, isElite = false, gameState = null, targetRarity = null, preferredRole = null) {
         switch (type) {
             case 'boss':
-                return this.createBossCard(floor);
+                return this.createBossCard(floor, gameState);
             case 'enemy':
                 return this.createEnemyCard(floor, isElite, preferredRole);
             case 'mimic':
@@ -154,11 +154,17 @@ export class CardDataGenerator {
         return { type: 'empty', name: 'Nothing', sprite: null };
     }
 
-    createBossCard(floor) {
-        // The act determines the tier; roll one boss at random from that tier's pool.
+    createBossCard(floor, gameState = null) {
+        // The act determines the tier. Which boss inside that tier was decided
+        // back at map generation (map v8+), so the act's events could build
+        // toward it — honour that choice here. Maps from older saves have no
+        // bossId, so those still roll at the door as they always did.
         const act = Math.max(1, Math.min(3, Math.floor((floor - 1) / 15) + 1));
         const pool = this.bossTiers[act] || this.bossTiers[1];
-        const id = pool[Math.floor(Math.random() * pool.length)];
+        const planned = gameState?.dungeonMap?.[`act${act}`]?.bossId;
+        const id = pool.includes(planned)
+            ? planned
+            : pool[Math.floor(Math.random() * pool.length)];
         // Deep-copy so per-fight mutations (health dropping, rage flag) never corrupt
         // the shared template for the next spawn/run.
         // Boss stats are used verbatim from bossData (pure-runs-v1: no knob

@@ -185,6 +185,32 @@ export class ShopScene extends StationRoomBase {
             const bonusItem = this.createMerchantBonusItem(cardGenerator, floor);
             if (bonusItem) this.shopItems.push(bonusItem);
         }
+
+        // A merchant robbed at the toll chain never made it here. Two of the
+        // ordinary coin-priced slots are simply missing for the rest of the run
+        // — the amulet slot is left alone so the crystal economy is untouched.
+        if (this.gameState?.storyRun?.merchantRobbed) {
+            this.shopItems = this.thinRobbedShopStock(this.shopItems, 2);
+        }
+    }
+
+    /**
+     * Removes up to `count` coin-priced, unpurchased items. Leaves crystal
+     * (amulet) slots and anything already bought alone, and never empties the
+     * shop completely — a stall with nothing in it reads as a bug, not a story.
+     */
+    thinRobbedShopStock(items, count = 2) {
+        const removable = items
+            .map((item, index) => ({ item, index }))
+            .filter(({ item }) => item && !item.purchased && item.currency !== 'crystals');
+        const keepAtLeast = 2;
+        const canRemove = Math.max(0, Math.min(count, removable.length - keepAtLeast));
+        if (canRemove <= 0) return items;
+
+        const doomed = new Set(
+            Phaser.Utils.Array.Shuffle(removable.slice()).slice(0, canRemove).map(entry => entry.index)
+        );
+        return items.filter((_, index) => !doomed.has(index));
     }
 
     // Creates a higher-rarity weapon or armor that appears as the Merchant's Seal

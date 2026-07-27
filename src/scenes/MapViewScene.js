@@ -1,6 +1,6 @@
 // scenes/MapViewScene.js
 // Phaser is provided as a UMD global (see index.html) — no import needed.
-import { MapGenerator } from '../map/MapGenerator.js';
+import { MapGenerator, MAP_VERSION } from '../map/MapGenerator.js';
 import { t } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { MusicManager } from '../audio/MusicManager.js';
@@ -23,7 +23,7 @@ export class MapViewScene extends Phaser.Scene {
     this.currentAct = Math.min(3, Math.max(1, Math.floor((cf - 1) / 15) + 1));
 
     // Build/keep full map. Regenerate when shape changes or when new node types were added.
-    const MAP_VERSION = 7; // v7 adds two guaranteed elite nodes per act
+    // MAP_VERSION is imported from MapGenerator so the two can never drift.
     const hasCurrentMapShape =
       this.gameState.dungeonMap?.act1?.floors?.length === 15 &&
       this.gameState.dungeonMap?._version === MAP_VERSION;
