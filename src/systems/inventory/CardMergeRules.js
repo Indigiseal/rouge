@@ -7,6 +7,7 @@ import {
     foodNameForActionAmount,
 } from '../../content/cards/index.js';
 import { carryEnchantToWeapon } from '../../content/balance/WeaponEnchants.js';
+import { createGauntletCard, isGauntlet, nextGauntletRarity } from '../../content/balance/Gauntlet.js';
 
 export const CardMergeRules = {
     canCardsMerge(cardA, cardB, canCrossTier = false) {
@@ -179,7 +180,17 @@ export const CardMergeRules = {
         
         // Use CardDataGenerator to create the proper upgraded card
         let upgradedCard;
-        
+
+        // The Ogre's Gauntlet is not a spawnable weapon type, so the generic
+        // weapon path would rebuild it into an ordinary sword and lose it.
+        // Rebuild from its own per-rarity table instead — same treatment thorns
+        // already get below. This is what lets a mirror-duplicated pair climb.
+        if (isGauntlet(baseCard) && isGauntlet(secondCard)) {
+            const upgraded = createGauntletCard(nextGauntletRarity(baseCard.rarity) || 'legendary');
+            this.scene.createFloatingText(512, 380, `Refreshed: ${upgraded.maxDurability} pips`, 0x00ff00);
+            return upgraded;
+        }
+
         if (baseCard.type === 'weapon') {
             upgradedCard = this.scene.cardSystem.createCardData('weapon', this.scene.gameState.currentFloor);
             // Override with specific weapon type and rarity

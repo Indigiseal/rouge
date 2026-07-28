@@ -143,6 +143,14 @@ export class GameScene extends Phaser.Scene {
                 this.gameState.storyRun.tollKiller = false;
                 this.gameState.storyRun.merchantRobbed = false;
                 this.gameState.storyRun.tollEscapeNoticeShown = false;
+                // Arm wrestling is a per-run encounter too: without this, one
+                // win would queue the ogre's rematch in every future run, and
+                // one loss would lock the gauntlet away forever.
+                this.gameState.storyRun.armWrestlingSeen = false;
+                this.gameState.storyRun.armWrestleWon = false;
+                this.gameState.storyRun.armWrestleLost = false;
+                this.gameState.storyRun.armWrestleRematchDone = false;
+                this.gameState.storyRun.gauntletWon = false;
             }
         }
 

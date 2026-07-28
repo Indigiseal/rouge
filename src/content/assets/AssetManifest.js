@@ -203,6 +203,9 @@ export const ASSET_MANIFEST = [
     // Smoke burst — 11 frames, played by the Smoke Screen spell and by the toll
     // goblins escaping. See PreloadScene's 'smoke_bomb_anim'.
     { key: 'smokeBombAnim', path: 'assets/art/smokeBombAnim82x82.png', type: 'spritesheet', frameWidth: 82, frameHeight: 82 },
+    // Ogre's Gauntlet — one row of 52x70 card faces, common..legendary.
+    // Frame per rarity is mapped in content/balance/Gauntlet.js.
+    { key: 'gauntletCards', path: 'assets/art/gauntletSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
     // The Reliquary's lit display cases. The glow sheet is one row of 52x70
     // card faces (same footprint as a normal card); frame order is mapped in
     // content/balance/WeaponEnchants.js â€” GLOW_CARD_FRAMES.

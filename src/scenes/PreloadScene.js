@@ -29,84 +29,59 @@ export class PreloadScene extends Phaser.Scene {
         loadAssetManifest(this.load);
     }
 
-    // Loading screen. Deliberately built from rectangles and canvas text only:
-    // this runs before a single asset exists, so it cannot use the game's
-    // sprites, and before installCrispTextFactory(), so it cannot use the
-    // bitmap fonts either.
+    // Loading screen. There is deliberately NO canvas loading UI: the overlay
+    // in index.html (#boot-loader) is already on screen before Phaser exists,
+    // so this just takes it over and drives it to 100%.
+    //
+    // Drawing a second bar in the canvas and handing over to it looked broken:
+    // the canvas runs at zoom 2, so the same numbers came out twice the size,
+    // and canvas text upscaled 2x is blurry next to browser-rendered text. The
+    // player saw the bar jump and the font go soft. One screen, one renderer.
     createLoadingUI() {
-        const cx = 320;
-        const cy = 180;
-        const barWidth = 260;
-        const barHeight = 12;
-        const font = '"HoMM Pixel", Arial, sans-serif';
+        const el = (sel) => (typeof document !== 'undefined' ? document.querySelector(sel) : null);
+        const track = el('#boot-loader .boot-track');
+        const fill = el('#boot-loader .boot-fill');
+        const status = el('#boot-loader .boot-status');
+        const errors = el('#boot-loader .boot-errors');
+        // Headless (sim/tests) or the overlay already removed: nothing to drive.
+        if (!track && !status) return;
 
-        this.add.text(cx, cy - 44, 'Dungeon Card Crawler', {
-            fontSize: '18px',
-            fill: '#e6edf3',
-            fontFamily: font,
-        }).setOrigin(0.5);
-
-        this.add.rectangle(cx, cy, barWidth + 4, barHeight + 4, 0x000000, 0.45)
-            .setStrokeStyle(1, 0x8b6914);
-
-        // Grown from the left edge rather than scaled, so it stays pixel-crisp.
-        const fill = this.add
-            .rectangle(cx - barWidth / 2, cy, 1, barHeight, 0xd4a017)
-            .setOrigin(0, 0.5);
-
-        const percentText = this.add.text(cx, cy + 20, '0%', {
-            fontSize: '12px',
-            fill: '#d4a017',
-            fontFamily: font,
-        }).setOrigin(0.5);
-
-        const statusText = this.add.text(cx, cy + 38, 'Loading...', {
-            fontSize: '10px',
-            fill: '#8b949e',
-            fontFamily: font,
-        }).setOrigin(0.5);
-
-        // A percentage that sits still on one slow file looks identical to a
-        // freeze. This pulse is driven by the render loop, so as long as it is
-        // breathing the game is alive and only the download is slow.
-        this.tweens.add({
-            targets: statusText,
-            alpha: 0.3,
-            duration: 650,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut',
-        });
-
-        let failed = 0;
-        const failureText = this.add.text(cx, cy + 54, '', {
-            fontSize: '9px',
-            fill: '#d98c8c',
-            fontFamily: font,
-        }).setOrigin(0.5);
+        // Swap the indeterminate sweep for a real bar now that we can measure.
+        track?.classList.add('is-determinate');
 
         this.load.on('progress', (value) => {
-            fill.width = Math.max(1, Math.round(barWidth * value));
-            percentText.setText(`${Math.round(value * 100)}%`);
+            const pct = Math.round(value * 100);
+            if (fill) fill.style.width = `${pct}%`;
+            if (status) status.textContent = `Loading... ${pct}%`;
         });
 
         // itch.io has served 403s for individual files before (see the note in
         // index.html). Phaser carries on regardless, which turns a broken asset
         // into a mystery crash later — so say so here, while it is still cheap
         // to notice.
+        let failed = 0;
         this.load.on('loaderror', () => {
             failed += 1;
-            failureText.setText(`${failed} file${failed === 1 ? '' : 's'} failed to load`);
+            if (errors) errors.textContent = `${failed} file${failed === 1 ? '' : 's'} failed to load`;
         });
 
         this.load.on('complete', () => {
-            fill.width = barWidth;
-            percentText.setText('100%');
-            statusText.setText('Ready');
+            if (fill) fill.style.width = '100%';
+            if (status) status.textContent = 'Ready';
         });
     }
 
+    // Pulled down once the assets are in, so the game is never revealed behind
+    // a still-visible loading overlay. main.js keeps a long safety net in case
+    // this scene never gets here.
+    removeBootLoader() {
+        if (typeof document === 'undefined') return;
+        document.getElementById('boot-loader')?.remove();
+    }
+
     create() {
+        // Assets are in — take the loading overlay down before anything draws.
+        this.removeBootLoader();
         this.installCrispTextFactory();
 
         this.anims.create({

@@ -2,6 +2,7 @@
 // Methods are assigned onto EventScene.prototype and keep `this` as the scene.
 
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
+import { isGauntlet } from '../../content/balance/Gauntlet.js';
 
 // The card types a reroll (Screaming Head, brass wizard tray) can hand back.
 const REROLL_CARD_TYPES = ['weapon', 'armor', 'thorns', 'potion', 'food', 'magic'];
@@ -600,6 +601,7 @@ export const EventRunHelpers = {
       && item.type !== 'companion'
       && item.id !== 'monsterEgg'
       && !item.enchant // a Reliquary weapon is never "an unwanted spare card"
+      && !isGauntlet(item) // nor is the thing you beat an ogre twice for
       && !this._isKeyCard(item)
       && !this._isPotionCard(item)
     );
@@ -616,6 +618,7 @@ export const EventRunHelpers = {
       && item.id !== 'monsterEgg'
       && !item.unique
       && !item.enchant
+      && !isGauntlet(item)
       && !this._isKeyCard(item)
     );
   },

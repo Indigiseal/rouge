@@ -13,6 +13,7 @@ import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { EVENTS, getEvent } from '../content/events/index.js';
 import { getMagic } from '../content/cards/magic.js';
 import { getPlannedActBoss } from '../map/MapGenerator.js';
+import { createGauntletCard } from '../content/balance/Gauntlet.js';
 import {
   applyEnchantToWeapon,
   describeWeaponEnchant,
@@ -38,6 +39,7 @@ const EVENT_ILLUSTRATION_FRAMES = {
   something_wicked: 7,
   brass_wizard: 28,
   toll_collectors: 29,
+  arm_wrestling: 30,
   screaming_head: 26,
   // TODO: swap to the Reliquary's own frame once its art lands. Frame 11
   // (the Copying Mirror's glassy panel) is the closest stand-in for now.
@@ -87,6 +89,11 @@ export class EventScene extends Phaser.Scene {
       story.pendingEvents = story.pendingEvents.filter(id => id !== 'hatching_egg');
     }
     if (story.pendingEvents.includes('brass_wizard')) return this.getEventById('brass_wizard');
+    // The ogre wants his money back. Queued only by winning the first match, so
+    // this is the rematch — and the only time the gauntlet is on the table.
+    if (story.pendingEvents.includes('arm_wrestling') && !story.armWrestleRematchDone) {
+      return this.getEventById('arm_wrestling');
+    }
     // The music box is the sole story opener. (The donkey caravan + hermit
     // thread was removed and no longer appears at all.)
     if (story.boxState === 'unknown') return this.getEventById('broken_music_box');
@@ -108,6 +115,10 @@ export class EventScene extends Phaser.Scene {
     // The Reliquary supplies the magic card itself, so it only needs the
     // player to be carrying something worth enchanting.
     if (!story.reliquarySeen && this.hasEnchantableWeapon()) bonusFillers.push('reliquary');
+    // Only worth offering if the player can actually put something up.
+    if (!story.armWrestlingSeen && ((this.gameState.coins || 0) >= this.getArmWrestleCoinStake() || this.hasArmWrestleCard())) {
+      bonusFillers.push('arm_wrestling');
+    }
     if ((this.gameState.currentFloor || 1) >= 31 && !story.screamingHeadSeen
       && (!this.hasAmulet('fireRuneStone') || !this.hasAmulet('lightningRune') || !this.hasAmulet('poisonRune'))) {
       bonusFillers.push('screaming_head');
@@ -132,7 +143,7 @@ export class EventScene extends Phaser.Scene {
       const requestedId = new URLSearchParams(window.location.search).get('event');
       if (!requestedId) return null;
       const resolvedId = requestedId === 'singing_box' ? 'broken_music_box' : requestedId;
-      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'toll_collectors', 'old_drill_room', 'something_wicked', 'brass_wizard']);
+      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'toll_collectors', 'arm_wrestling', 'old_drill_room', 'something_wicked', 'brass_wizard']);
       return forceable.has(resolvedId) ? resolvedId : null;
     } catch {
       return null;
@@ -176,6 +187,11 @@ export class EventScene extends Phaser.Scene {
       briarRoomSeen: false,
       reliquarySeen: false,
       tollCollectorsSeen: false,
+      armWrestlingSeen: false,
+      armWrestleWon: false,
+      armWrestleLost: false,
+      armWrestleRematchDone: false,
+      gauntletWon: false,
       paidTheToll: false,
       tollIntimidated: false,
       tollFought: false,
@@ -263,6 +279,11 @@ export class EventScene extends Phaser.Scene {
       briarRoomSeen: Boolean(existingStoryRun.briarRoomSeen),
       reliquarySeen: Boolean(existingStoryRun.reliquarySeen),
       tollCollectorsSeen: Boolean(existingStoryRun.tollCollectorsSeen),
+      armWrestlingSeen: Boolean(existingStoryRun.armWrestlingSeen),
+      armWrestleWon: Boolean(existingStoryRun.armWrestleWon),
+      armWrestleLost: Boolean(existingStoryRun.armWrestleLost),
+      armWrestleRematchDone: Boolean(existingStoryRun.armWrestleRematchDone),
+      gauntletWon: Boolean(existingStoryRun.gauntletWon),
       paidTheToll: Boolean(existingStoryRun.paidTheToll),
       tollIntimidated: Boolean(existingStoryRun.tollIntimidated),
       tollFought: Boolean(existingStoryRun.tollFought),
@@ -1630,6 +1651,203 @@ export class EventScene extends Phaser.Scene {
     return true;
   }
 
+  // ─── Arm Wrestling (the ogre, and his gauntlet) ──────────────────────────
+
+  isArmWrestleRematch() {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    return Boolean(story.armWrestleWon && !story.armWrestleRematchDone);
+  }
+
+  getArmWrestleCoinStake() {
+    return 10;
+  }
+
+  getArmWrestlePot() {
+    return 25;
+  }
+
+  /**
+   * Hidden odds. NEVER shown as a number — the crowd's reaction is the only
+   * tell the player gets. Weighted rather than deterministic on purpose: if a
+   * good weapon always won, the correct play would just be "bet when geared,
+   * decline when not", and there would be no decision left.
+   *
+   * It is not really about the weapon — it is about the arm. The ogre sizes you
+   * up by what he sees you are used to swinging.
+   */
+  armWrestleChance() {
+    const ranks = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const weapon = this.gameState?.equippedWeapon
+      || this.getInventorySlots().find(item => item?.type === 'weapon')
+      || null;
+
+    let base = 0.10; // empty hands: he is delighted
+    if (weapon) {
+      const name = `${weapon.name || ''} ${weapon.weaponType || ''}`.toLowerCase();
+      if (/axe|chain|hammer|maul/.test(name)) base = 0.70;
+      else if (/sword|mace|blade/.test(name)) base = 0.50;
+      else base = 0.35; // daggers, bows, anything light
+      const rarityStep = Math.max(0, ranks.indexOf(weapon.rarity));
+      base += rarityStep * 0.05;
+    }
+    // The rematch is harder: he stopped underestimating you the moment he lost.
+    if (this.isArmWrestleRematch()) base -= 0.15;
+    return Math.max(0.05, Math.min(0.90, base));
+  }
+
+  /** The odds display, in monsters rather than numbers. */
+  getArmWrestleCrowdLine() {
+    const chance = this.armWrestleChance();
+    if (chance >= 0.60) {
+      return 'A few of them stop chewing when they see what you are carrying. One goblin quietly moves round to your side of the table.';
+    }
+    if (chance >= 0.40) {
+      return 'Nobody moves. The thing with too many legs watches both of you and does not pick a side.';
+    }
+    return 'The whole room is already laughing. Someone starts collecting bets before you have sat down.';
+  }
+
+  _armWrestleRoll() {
+    return Math.random() < this.armWrestleChance();
+  }
+
+  _isArmWrestleStakeCard(item) {
+    const ranks = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    return Boolean(
+      item
+      && item.type !== 'companion'
+      && item.id !== 'monsterEgg'
+      && !this._isKeyCard(item)
+      && ranks.indexOf(item.rarity) >= 1 // he inspects it: uncommon or better
+    );
+  }
+
+  hasArmWrestleCard() {
+    return this.getInventorySlots().some(item => this._isArmWrestleStakeCard(item));
+  }
+
+  /** Shared consequence of losing: the stake is gone and your arm hits the slab. */
+  _loseArmWrestle() {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    story.armWrestleLost = true;
+    if (this.damageEquippedArmor(1)) this._reward('Armor -1 pip');
+    // No rematch after a loss — he has your money and his point.
+    this.clearPendingEvent('arm_wrestling');
+  }
+
+  _winArmWrestleMatchOne() {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    story.armWrestleWon = true;
+    // He wants it back. This is the only route to the gauntlet.
+    this.addPendingEvent('arm_wrestling');
+  }
+
+  betCoinsOnArmWrestle() {
+    this.ensureStoryState();
+    const stake = this.getArmWrestleCoinStake();
+    if (!this.spendCoins(stake)) return false;
+
+    if (this._armWrestleRoll()) {
+      this.gainCoins(this.getArmWrestlePot());
+      this._winArmWrestleMatchOne();
+      this.armWrestleOutcome = 'He is stronger than you and both of you know it, so you do not try to out-pull him. You wait until he leans, and then you stop being where he is pushing.\n\nHis own weight takes his hand down onto the slab.\n\nThe room goes very quiet. The ogre looks at his hand for a while, then at you, and pushes the whole stack of coins across the table without a word.';
+      return true;
+    }
+
+    this._loseArmWrestle();
+    this.armWrestleOutcome = 'You get about two seconds of holding him.\n\nThen your arm goes through the table\'s own shadow and your knuckles find the stone, and something in your armour gives with a noise you feel more than hear.\n\nHe takes the coins back without gloating, which is somehow worse. Someone in the crowd is paid out.';
+    return true;
+  }
+
+  // ─── the card bet (drag a card onto the table) ────────────────────────────
+
+  beginArmWrestleCardBet() {
+    const inv = this.gameScene?.inventorySystem;
+    const target = this.eventIllustrationImage;
+    if (!inv || !target?.getBounds) return false;
+    this.armWrestleBetActive = true;
+    inv.clearDropZones();
+    inv.addDropZone(target, (slotIndex, cardData, cardSprite) => (
+      this._handleArmWrestleCardBet(slotIndex, cardData, cardSprite)
+    ));
+    return true;
+  }
+
+  cancelArmWrestleCardBet() {
+    this.armWrestleBetActive = false;
+    this.gameScene?.inventorySystem?.clearDropZones?.();
+  }
+
+  _handleArmWrestleCardBet(slotIndex, cardData, cardSprite) {
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv || !cardData || !this.armWrestleBetActive || this.resolved) return false;
+    if (!this._isArmWrestleStakeCard(cardData)) {
+      this._mirrorFloat('He turns it over once and hands it back', 0xff6666, cardSprite);
+      return false;
+    }
+
+    const rematch = this.isArmWrestleRematch();
+    const won = this._armWrestleRoll();
+    const stakeName = cardData.name || 'your card';
+
+    this.ensureStoryState();
+    this._rewardLines = [];
+    this._rewardIcons = [];
+
+    if (won) {
+      // The card comes home either way you win; the rematch adds the guard.
+      inv.returnCardToSlot(slotIndex, cardSprite);
+      inv.clearDropZones();
+      inv.rebuildInventorySprites?.();
+      this._reward(`Kept: ${stakeName}`);
+
+      if (rematch) {
+        this.gameState.storyRun.armWrestleRematchDone = true;
+        this.gameState.storyRun.gauntletWon = true;
+        this.clearPendingEvent('arm_wrestling');
+        this._deliverCardReward(createGauntletCard(), "Ogre's Gauntlet", "Gained card: Ogre's Gauntlet");
+        this.armWrestleOutcome = `He goes at it properly this time, and it takes everything you have.\n\nWhen his hand finally goes down the crowd does not cheer. They just look at the ogre.\n\nHe unhooks the stone guard and pushes it across to you, then sits back with his arms folded and watches you take it, ${stakeName} and all.`;
+      } else {
+        this.gainCoins(this.getArmWrestlePot());
+        this._winArmWrestleMatchOne();
+        this.armWrestleOutcome = `He looks at ${stakeName} for a long moment, decides it is worth his time, and plants his elbow.\n\nYou win by not fighting him where he is strongest.\n\nHe pushes his coins over, keeps looking at his own hand, and says something short in Ogrish. The crowd stops laughing. You get the distinct impression this is not finished.`;
+      }
+    } else {
+      inv.cleanupCardSprites?.(slotIndex, cardSprite);
+      inv.cleanupBoardArtifacts?.(cardSprite);
+      inv.removeCard(slotIndex, false);
+      cardSprite.destroy();
+      inv.clearDropZones();
+      this._reward(`Lost: ${stakeName}`);
+      if (rematch) this.gameState.storyRun.armWrestleRematchDone = true;
+      this._loseArmWrestle();
+      this.armWrestleOutcome = rematch
+        ? `He does not make the same mistake twice.\n\nYour hand is on the slab before you have finished bracing, and ${stakeName} goes into the pile beside his elbow.\n\nHe buckles the stone guard back onto his forearm and turns away from the table.`
+        : `He takes ${stakeName} off the table before your hand has finished going down.\n\nSomething in your armour gives. The crowd is delighted, briefly, and then bored.`;
+    }
+
+    this.armWrestleBetActive = false;
+    this.gameScene?.updateUI?.();
+    this._resolve({
+      text: 'Wrestle',
+      action: () => {},
+      outcome: (state, s) => s.armWrestleOutcome
+    }, -1, { keepRewards: true });
+    return true;
+  }
+
+  declineArmWrestle() {
+    this.ensureStoryState();
+    // Walking away from the rematch ends it — he does not offer a third time.
+    if (this.isArmWrestleRematch()) {
+      this.gameState.storyRun.armWrestleRematchDone = true;
+    }
+    this.clearPendingEvent('arm_wrestling');
+  }
+
   // ─── Toll Collectors (the Goblin King's tax men) ─────────────────────────
 
   /** Goblin stats for this depth, mirroring the goblin tiers in enemies.js. */
@@ -2272,6 +2490,7 @@ export class EventScene extends Phaser.Scene {
       screaming_head: 'screamingHeadSeen',
       reliquary: 'reliquarySeen',
       toll_collectors: 'tollCollectorsSeen',
+      arm_wrestling: 'armWrestlingSeen',
       something_wicked: 'carnivalVisited',
       brass_wizard: 'brassWizardSeen'
     };
