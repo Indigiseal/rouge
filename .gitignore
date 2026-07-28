@@ -4,3 +4,16 @@ node_modules/
 sim/db/*.sqlite
 sim/db/*.sqlite-*
 sim/output/
+
+# Sim run results (regenerate by re-running the sim)
+/sim/*-600.json
+/sim/*-600.md
+!/sim/human-compare-baseline-600.json
+
+# Build output and packaging
+dist/
+dungeon-card-crawler-itch-*.zip
+make_itch_zip.py
+
+# Uncompressed audio masters — kept locally, game loads assets/music/*.mp3
+assets/_masters/
