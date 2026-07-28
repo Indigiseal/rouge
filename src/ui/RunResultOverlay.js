@@ -208,7 +208,7 @@ export function gameWon(scene) {
 
     // Victory ends the run: clear the saved run so it can't be "continued",
     // then return to the main menu instead of dropping straight into a new game.
-    addResultButton(scene, 320, 336, scene.sandboxMode ? 'Test Polygon' : 'Main Menu', () => {
+    addResultButton(scene, 320, 336, scene.sandboxMode ? 'Test Site' : 'Main Menu', () => {
         if (!scene.sandboxMode) scene.saveManager?.clearCurrentRun();
         scene.leaveSandboxOrMenu();
     }, resultDepth + 4);
