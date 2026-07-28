@@ -1,6 +1,9 @@
-// Test-polygon helpers: pick any encounter from a hub, then return there when done.
+// Test Site helpers: pick any encounter from a hub, then return there when done.
+
+import { EVENTS } from '../content/events/index.js';
 
 export const SANDBOX_HUB_KEY = 'SandboxHubScene';
+export const SANDBOX_STORY_KEY = 'SandboxStoryScene';
 
 export const SANDBOX_ENCOUNTERS = [
   { id: 'COMBAT', label: 'Combat', kind: 'combat' },
@@ -11,7 +14,7 @@ export const SANDBOX_ENCOUNTERS = [
   { id: 'RARE_SHOP', label: 'Rare Shop', kind: 'station', sceneKey: 'RareShopScene' },
   { id: 'REST', label: 'Rest', kind: 'station', sceneKey: 'RestScene' },
   { id: 'ANVIL', label: 'Anvil', kind: 'station', sceneKey: 'AnvilScene' },
-  { id: 'EVENT', label: 'Event', kind: 'station', sceneKey: 'EventScene' },
+  { id: 'EVENT', label: 'Event (random)', kind: 'station', sceneKey: 'EventScene' },
   { id: 'TREASURE', label: 'Treasure', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'treasure' },
   { id: 'TREASURE_GOOD', label: 'Treasure (Good)', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'good' },
   { id: 'TREASURE_ELITE', label: 'Elite Chest', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'elite' },
@@ -43,6 +46,7 @@ const SCENE_KEYS_TO_STOP = [
   'EventScene',
   'PauseMenuScene',
   SANDBOX_HUB_KEY,
+  SANDBOX_STORY_KEY,
 ];
 
 export function isSandboxMode(ref) {
@@ -55,6 +59,89 @@ export function isSandboxMode(ref) {
 
 export function getSandboxEncounter(id) {
   return SANDBOX_ENCOUNTERS.find((entry) => entry.id === id) || null;
+}
+
+// Every story, straight from the content pack, so a newly written event shows
+// up in the Test Site without anyone remembering to register it twice.
+export function getSandboxStories() {
+  return EVENTS.map((event) => ({
+    id: event.id,
+    label: event.title || event.id,
+  }));
+}
+
+// The Test Site forces a story regardless of what has been seen, but forcing
+// alone is not always enough: several events only have anything to show once
+// their prerequisites exist. Without this, opening the Goblin Engineer from the
+// menu would render a room where every choice is hidden by its condition.
+//
+// `story` is merged into storyRun; `grant` names inventory the event looks for.
+// Anything not listed here needs no setup — the sandbox loadout already hands
+// out unenchanted rare weapons and 999 coins, which is all most events check.
+const SANDBOX_STORY_SETUP = {
+  // Needs the cog recovered from the bird nest, or both repair choices hide.
+  goblin_engineer: {
+    story: { boxState: 'has_cog', boxHasCog: true, boxFollowing: true },
+  },
+  // Only fires with the engineer behind you and an egg still uneaten.
+  hatching_egg: {
+    story: { goblinEngineerResolved: true, chickHatched: false },
+    grant: ['egg'],
+  },
+  // The wizard is the carnival's follow-up, so the carnival must have happened.
+  brass_wizard: {
+    story: { carnivalVisited: true, carnivalHagMet: true },
+  },
+  // Offers to promote a companion that has fought beside you a while.
+  old_drill_room: {
+    grant: ['veteranCompanion'],
+  },
+};
+
+// Give the story a clean slate: nothing seen, nothing pending. This is what
+// makes a story testable more than once — the live run never consults saved
+// progress in the Test Site, so a story you finished months ago still opens.
+export function applySandboxStorySetup(gameScene, eventId) {
+  const gs = gameScene?.gameState;
+  if (!gs?.storyRun) return;
+
+  gs.sandboxEventId = eventId;
+
+  const setup = SANDBOX_STORY_SETUP[eventId];
+  if (!setup) return;
+
+  if (setup.story) Object.assign(gs.storyRun, setup.story);
+  for (const grant of setup.grant || []) {
+    grantSandboxStoryItem(gameScene, grant);
+  }
+
+  gameScene.inventorySystem?.rebuildInventorySprites?.();
+  gameScene.updateUI?.();
+}
+
+function grantSandboxStoryItem(gameScene, grant) {
+  const gs = gameScene.gameState;
+  const inv = gameScene.inventorySystem;
+  const gen = gameScene.cardSystem?.cardDataGenerator;
+  if (!inv || !gen) return;
+
+  if (grant === 'egg') {
+    const egg = gen.createEggCard?.();
+    if (egg) inv.addCard(egg);
+    return;
+  }
+
+  if (grant === 'veteranCompanion') {
+    const companion = gen.createChickCompanionCard?.();
+    if (!companion) return;
+    inv.addCard(companion);
+    // The drill room only offers companions with real service behind them:
+    // three rooms fought and not already upgraded.
+    if (!gs.companionHistory || typeof gs.companionHistory !== 'object') {
+      gs.companionHistory = {};
+    }
+    gs.companionHistory[companion.id] = { roomsFought: 3, upgraded: false };
+  }
 }
 
 export function applySandboxLoadout(gameScene, roomId) {
@@ -106,10 +193,22 @@ export function applySandboxLoadout(gameScene, roomId) {
 export function exitToSandboxHub(fromScene) {
   if (!fromScene?.scene) return;
   const manager = fromScene.scene;
+
+  // Read this before the teardown below drops the scenes holding it: a story
+  // launched from the picker returns to the picker, so testing the same story
+  // twice in a row is two clicks instead of four.
+  const gameScene = typeof manager.get === 'function' ? manager.get('GameScene') : null;
+  const storyId = fromScene.gameState?.sandboxEventId || gameScene?.gameState?.sandboxEventId || null;
+
   for (const key of SCENE_KEYS_TO_STOP) {
     try {
       if (manager.get(key)) manager.stop(key);
     } catch (_) { /* scene may already be gone */ }
+  }
+
+  if (storyId) {
+    manager.start(SANDBOX_STORY_KEY);
+    return;
   }
   manager.start(SANDBOX_HUB_KEY);
 }

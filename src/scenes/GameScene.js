@@ -30,6 +30,7 @@ import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.
 import { CombatTurnController } from '../systems/combat/CombatTurnController.js';
 import {
     applySandboxLoadout,
+    applySandboxStorySetup,
     exitToSandboxHub,
     getSandboxEncounter,
     isSandboxMode,
@@ -66,9 +67,12 @@ export class GameScene extends Phaser.Scene {
         // is identical every time.
         this.tutorialMode = Boolean(data.tutorial);
         if (this.tutorialMode) this.shouldLoadSave = false;
-        // Test polygon: forced single encounter, then back to the hub.
+        // Test Site: forced single encounter, then back to the hub.
         this.sandboxMode = Boolean(data.sandbox);
         this.sandboxRoom = data.sandboxRoom || null;
+        // A specific story picked from the Test Site, rather than whichever one
+        // the story rules would have served next.
+        this.sandboxEventId = data.sandboxEventId || null;
         if (this.sandboxMode) this.shouldLoadSave = false;
         this._transitioning = false;
         this._resultScreenShown = false;
@@ -102,7 +106,12 @@ export class GameScene extends Phaser.Scene {
             // progress so completed events don't repeat and story chains resume
             // where a past life left off. (Continues restore storyRun from the
             // run save instead, so we only seed brand-new runs.)
-            const storedStory = loadStoryProgress();
+            //
+            // The Test Site deliberately skips this. Seeding it there is exactly
+            // what made a finished story untestable: once the music box was
+            // resolved, boxState was never 'unknown' again and the event could
+            // not be reached without wiping the profile.
+            const storedStory = this.sandboxMode ? null : loadStoryProgress();
             if (storedStory) {
                 Object.assign(this.gameState.storyRun, storedStory);
                 // birdAngry / angryNestmotherRollFloor are per-run combat
@@ -291,6 +300,12 @@ export class GameScene extends Phaser.Scene {
             this.scene.sleep();
             const payload = { gameState: this.gameState };
             if (encounter.rewardMode) payload.rewardMode = encounter.rewardMode;
+            if (this.sandboxEventId) {
+                // Seed whatever this story needs before it opens — a recovered
+                // cog, an egg, a companion with service behind it.
+                applySandboxStorySetup(this, this.sandboxEventId);
+                payload.forcedEventId = this.sandboxEventId;
+            }
             this.scene.launch(encounter.sceneKey, payload);
             return;
         }
@@ -962,7 +977,7 @@ export class GameScene extends Phaser.Scene {
         }
         this._floorEndAlreadyProcessed = false;
 
-        // Test polygon: after a fight (or boss reward leave), return to the hub.
+        // Test Site: after a fight (or boss reward leave), return to the hub.
         // Elite still opens its chest first; TreasureScene exits back to the hub.
         if (this.sandboxMode) {
             const bossFloors = [15, 30, 45];
