@@ -28,6 +28,9 @@ export class FloorSpawner {
         this.assignEliteMiniBoss = assignEliteMiniBoss.bind(cs);
         this.assignEliteHighlightCards = assignEliteHighlightCards.bind(cs);
         this.injectAngryNestmother = injectAngryNestmother.bind(cs);
+        this.enforceForcedEnemyTypes = enforceForcedEnemyTypes.bind(cs);
+        this.spawnAmbushBoard = spawnAmbushBoard.bind(cs);
+        this.injectTollGuards = injectTollGuards.bind(cs);
         this.spawnBoss = spawnBoss.bind(cs);
         this.pickCardType = pickCardType.bind(cs);
         this.generateRandomCard = generateRandomCard.bind(cs);
@@ -77,6 +80,15 @@ function spawnFloorCards() {
   // (The old inline loop only destroyed sprite/shadow/infoText, leaving
   // gemShadow sprites behind on the next combat floor.)
   this.clearBoard();
+  // === ambush shortcut ===
+  // An event can hand a constrained combat floor over on pendingAmbush. Most
+  // ambushes use a bespoke board, but the toll collectors deliberately reuse
+  // the normal combat generator so its loot and face-down cards feel like a
+  // real room rather than a three-card duel.
+  if (this.scene.gameState?.pendingAmbush) {
+    this.spawnAmbushBoard(this.scene.gameState.pendingAmbush);
+    return;
+  }
   // === boss shortcut ===
   // Spawn the act boss when ANY of these say "this is the boss room":
   //   1. the floor number lines up with a boss floor (15/30/45),
@@ -179,7 +191,15 @@ function spawnFloorCards() {
     // rows get RANGED (archers). Pass the desired role into creation so the
     // enemy TYPE/sprite is picked to match the position, not just its behavior.
     const desiredRole = r > 0 ? 'MELEE' : 'RANGED';
-    let data = this.createCardData(type, cf, roomType === 'ELITE', this.scene.gameState, null, desiredRole);
+    let data = (type === 'enemy' && this._forcedEnemyTypes?.length)
+      ? this.cardDataGenerator.createTieredEnemy(
+        this._forcedEnemyTypes.includes('goblin_archer') && desiredRole === 'RANGED'
+          ? 'goblin_archer'
+          : 'goblin',
+        cf,
+        roomType === 'ELITE'
+      )
+      : this.createCardData(type, cf, roomType === 'ELITE', this.scene.gameState, null, desiredRole);
     // Amulet offers can return null (empty pool / floor gate) — never leave a
     // face-down slot with data=null or revealCard crashes the run/sim.
     if (!data) {
@@ -209,7 +229,8 @@ function spawnFloorCards() {
   this.ensureWeaponSupply(cf, roomType);
   this.limitEnemyDensity(cf, roomType);
   this.ensureEnemyMinimum(cf, roomType);
-  this.injectAngryNestmother(cf, roomType);
+  this.enforceForcedEnemyTypes(cf);
+  if (!this._forcedEnemyTypes?.length) this.injectAngryNestmother(cf, roomType);
   this.assignEliteMiniBoss(roomType);
   this.assignEliteHighlightCards(roomType, cf);
   // 4) second-pass: safe neighbor build (using brick offsets)
@@ -1209,8 +1230,88 @@ function injectAngryNestmother(floor, roomType) {
   return true;
 }
 
+// Board for an event-triggered fight. Bespoke ambushes start with their named
+// enemies revealed; constrained ambushes can instead enter through the normal
+// face-down combat-board generator below.
+function spawnAmbushBoard(ambush) {
+  // Toll Collectors are a normal combat room with a themed enemy pool. Let
+  // spawnFloorCards retain its established item weights, card caps, layout,
+  // opening reveals, and weapon supply rather than recreating those rules.
+  if (ambush?.normalCombatBoard) {
+    this.scene.gameState.pendingAmbush = null;
+    this.scene.gameState.ambushId = ambush.id || null;
+    this._forcedEnemyTypes = Array.isArray(ambush.enemyTypes) ? ambush.enemyTypes : ['goblin'];
+    try {
+      this.spawnFloorCards();
+    } finally {
+      this._forcedEnemyTypes = null;
+    }
+    return;
+  }
+
+  const specs = (Array.isArray(ambush?.enemies) ? ambush.enemies : []).filter(Boolean);
+  // Consume it up front so a malformed spec can never re-trigger every floor.
+  this.scene.gameState.pendingAmbush = null;
+  if (!specs.length) return;
+
+  this.scene.gameState.ambushId = ambush.id || null;
+
+  const cells = this.buildCompactBrickCluster(specs.length);
+  const place = this.computePlacement(cells);
+  this.createFloorBoardPanel(cells, place, true);
+  this._boardCells = cells;
+  this._boardPlace = place;
+  this._waveState = null;
+  this.boardCards = new Array(specs.length).fill(null);
+
+  specs.forEach((spec, i) => {
+    const { r, c } = cells[i];
+    const { x, y } = this.brickToPixel(r, c, place);
+    const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
+    shadow.setAlpha(0);
+
+    const data = { ...spec, brick: { r, c } };
+    data.maxHealth = data.maxHealth || data.health;
+
+    const sprite = snapOriginToPixelGrid(
+      this.scene.add.sprite(x, y, this.scene.textures.exists(data.sprite) ? data.sprite : 'cardBack')
+    );
+    sprite.setScale(place.cardScale || 1);
+    sprite.setInteractive();
+    sprite.on('pointerdown', () => this.interactWithCard(i));
+
+    const card = { sprite, shadow, revealed: true, data };
+    this.boardCards[i] = card;
+    this.createCardInfoText(card);
+    this._attachBoardItemTooltip?.(card);
+  });
+
+  this.scene.time.delayedCall(650, () => this.applyHolographicOmenStartEffect());
+}
+
+// A constrained encounter still uses normal room safety passes. If one of
+// those passes adds/replaces an enemy, convert it back to the encounter's pool
+// so the board never slips in a skeleton, spider, or story monster.
+function enforceForcedEnemyTypes(floor) {
+  if (!this._forcedEnemyTypes?.length) return;
+  this.boardCards.forEach((card) => {
+    if (!card || !this.isEnemyType(card.data?.type)) return;
+    const role = card.data.role || 'MELEE';
+    const enemyType = this._forcedEnemyTypes.includes('goblin_archer') && role === 'RANGED'
+      ? 'goblin_archer'
+      : 'goblin';
+    const replacement = this.cardDataGenerator.createTieredEnemy(enemyType, floor);
+    replacement.brick = card.data.brick;
+    replacement.brickNeighbors = card.data.brickNeighbors;
+    replacement.role = role;
+    card.data = replacement;
+  });
+}
+
 function spawnBoss() {
-    const bossData = this.cardDataGenerator.createCardData('boss', this.scene.gameState.currentFloor);
+    const bossData = this.cardDataGenerator.createCardData(
+        'boss', this.scene.gameState.currentFloor, false, this.scene.gameState
+    );
     bossData.maxHealth = bossData.maxHealth || bossData.health;
     const cam = this.scene.cameras.main;
     const x = cam.width / 2 - 20; // match the 20px-left board shift
@@ -1230,7 +1331,51 @@ function spawnBoss() {
     card.sprite.setInteractive();
     // Hover the boss to read its attack and abilities.
     this._attachBossTooltip(card);
+    this.injectTollGuards(x, y);
     this.scene.time.delayedCall(650, () => this.applyHolographicOmenStartEffect());
+}
+
+// The collectors you rushed the doors at got away, reported you, and are
+// standing behind their King when you finally reach him — still carrying what
+// you did to them, at half health.
+function injectTollGuards(bossX, bossY) {
+    const gs = this.scene.gameState;
+    const story = gs?.storyRun;
+    if (!story?.tollFought) return false;
+    if (this.boardCards[4]?.data?.name !== 'Goblin King') return false;
+
+    const tier = (gs.currentFloor || 15) >= 11 ? { attack: 8, health: 11 } : { attack: 5, health: 9 };
+    const half = Math.max(1, Math.floor(tier.health / 2));
+    // Softened attack beside the boss. At their floor-15 tier (8 each) three
+    // guards added ~24 damage a turn on top of the Goblin King, which turned
+    // "you picked a fight with his clerks" into the hardest fight in the act.
+    // They arrive beaten and half-hearted: still a real cost, not a wall.
+    const GUARD_ATTACK_AT_BOSS = 5;
+    const spriteKey = this.scene.textures.exists('goblin_c') ? 'goblin_c' : 'cardBack';
+    const places = [{ dx: -112, dy: 66 }, { dx: 112, dy: 66 }, { dx: 0, dy: 112 }];
+
+    places.forEach(({ dx, dy }) => {
+        const data = {
+            type: 'enemy',
+            name: 'Toll Collector',
+            sprite: 'goblin_c',
+            role: 'MELEE',
+            health: half,
+            maxHealth: half,
+            attack: GUARD_ATTACK_AT_BOSS,
+            armor: 0,
+            tollGuard: true,
+            abilities: [{ type: 'coin_steal', chance: 0.5, amount: 1 }],
+        };
+        const sprite = snapOriginToPixelGrid(this.scene.add.sprite(bossX + dx, bossY + dy, spriteKey));
+        sprite.setInteractive();
+        const index = this.boardCards.length;
+        sprite.on('pointerdown', () => this.interactWithCard(index));
+        const card = { sprite, revealed: true, data };
+        this.boardCards.push(card);
+        this.createCardInfoText(card);
+    });
+    return true;
 }
 
 function pickCardType(currentFloor, excludedTypes = []) {
