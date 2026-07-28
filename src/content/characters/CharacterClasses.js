@@ -10,6 +10,8 @@ export const CHARACTER_CLASSES = Object.freeze({
     id: 'rogue',
     name: 'Rogue',
     nameRu: 'Разбойник',
+    // Frame in the 'characterPortraits' sheet (assets/art/portraits.png).
+    portraitFrame: 0,
     blurb: 'Leather only. Starts with dagger and bow. Dagger and bow deal +10% damage (shown on the card).',
     blurbRu: 'Только кожаная броня. Старт: кинжал и лук. Кинжал и лук наносят +10% урона (цифра на карте уже с бонусом).',
     armorTypes: ['leather'],
@@ -28,6 +30,7 @@ export const CHARACTER_CLASSES = Object.freeze({
     id: 'warrior',
     name: 'Warrior',
     nameRu: 'Воин',
+    portraitFrame: 1,
     blurb: 'No leather. Starts with two swords. Chain counters melee; plate ignores ranged. 10% crit on swords/axes.',
     blurbRu: 'Без кожи. Старт: два меча. Chain — контратака в ближнем; plate — ignore дальних. 10% крит мечи/топоры.',
     armorTypes: ['chain', 'plate'],

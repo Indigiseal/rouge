@@ -1047,9 +1047,12 @@ export class GameScene extends Phaser.Scene {
         this.updateRoomTitle();
 
         const cards = this._loadedBoardCards || [];
-        const restored = this.cardSystem.restoreSavedBoard(cards, this._loadedBoardLayout);
+        const restored = this.cardSystem.restoreSavedBoard(
+            cards, this._loadedBoardLayout, this._loadedWaveState
+        );
         this._loadedBoardCards = null;
         this._loadedBoardLayout = null;
+        this._loadedWaveState = null;
         this._loadedBoardAvailable = false;
         this.enemiesCleared = !!this._loadedEnemiesCleared;
         this._loadedEnemiesCleared = false;
@@ -1353,6 +1356,7 @@ export class GameScene extends Phaser.Scene {
             ? runData.board.cards
             : [];
         this._loadedBoardLayout = runData.board?.layout || null;
+        this._loadedWaveState = runData.board?.waves || null;
         this._loadedEnemiesCleared = !!runData.board?.enemiesCleared;
         this._loadedBoardAvailable = this._loadedBoardCards.some(Boolean)
             || this._loadedEnemiesCleared;

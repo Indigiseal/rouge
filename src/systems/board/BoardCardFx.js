@@ -5,6 +5,12 @@ import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClas
 import { ELITE_SPRITE_KEYS } from '../../content/assets/AssetManifest.js';
 import { effectiveArmorProtection, isArmorWarded } from '../combat/ArmorMath.js';
 
+// The one value slot painted into the bottom-right of every card that shows a
+// single number — weapon damage, armor protection, thorn damage, trap damage.
+// These used to be four separate hand-typed offsets that had drifted apart
+// (18,23 / 19,26 / 17,22 / 17,22); they are one constant now so they can't.
+export const CARD_VALUE_SLOT = { x: 18, y: 24 };
+
 export class BoardCardFx {
     constructor(cs) {
         this.playBossEntrance = playBossEntrance.bind(cs);
@@ -117,7 +123,7 @@ function createCardInfoText(card) {
 
             if (trapDamage != null) {
                 const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-                const damageText = this.scene.add.text(17, 22, `${trapDamage}`, {
+                const damageText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${trapDamage}`, {
                     fontSize: '11px',
                     fill: '#ffcf7f',
                     fontFamily: '"HoMM Pixel"'
@@ -174,7 +180,7 @@ function createCardInfoText(card) {
 
         case 'thorns': {
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const damageText = this.scene.add.text(17, 22, `${card.data.thornDamage}`, {
+            const damageText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.thornDamage}`, {
                 fontSize: '11px',
                 fill: '#9dff7a',
                 fontFamily: '"HoMM Pixel"'
@@ -219,7 +225,7 @@ function createCardInfoText(card) {
             const characterId = this.scene.gameState?.characterId;
             const talentFx = this.scene.gameState?.talentEffects || null;
             const damageLabel = `${getDisplayedWeaponDamage(characterId, card.data, talentFx)}`;
-            const damageText = this.scene.add.text(18, 23, damageLabel, {
+            const damageText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, damageLabel, {
                 fontSize: '11px',
                 fill: '#ffcf7f',
                 fontFamily: '"HoMM Pixel"'
@@ -265,8 +271,9 @@ function createCardInfoText(card) {
             const shownProtection = warded
                 ? effectiveArmorProtection(gs, card.data)
                 : card.data.protection;
-            const protectionText = this.scene.add.text(19, 26, `${shownProtection}`, {
-                fontSize: '12px',
+            const protectionText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${shownProtection}`, {
+                // 11px to match weapon/thorns/trap — armor was the odd one out.
+                fontSize: '11px',
                 fill: warded ? '#88ddff' : '#ffcf7f',
                 fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
@@ -359,6 +366,9 @@ function _buildEnemyCornerStats(card) {
 
     const container = this.scene.add.container(card.sprite.x, card.sprite.y, [hpText, atkText]);
     container.setDepth((card.sprite.depth || 1) + 2);
+    // Follow the card's scale, or the digits drift out of the stat plates
+    // painted on the art whenever a crowded board shrinks the cards.
+    container.setScale(card.sprite.scaleX || 1);
 
     // Tag the child texts so updateEnemyInfoText can refresh in place
     // without rebuilding the whole container.

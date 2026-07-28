@@ -3,6 +3,12 @@
 
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 
+// The card types a reroll (Screaming Head, brass wizard tray) can hand back.
+const REROLL_CARD_TYPES = ['weapon', 'armor', 'thorns', 'potion', 'food', 'magic'];
+
+// Types that carry a rarity of their own, so a reroll can match the offering.
+const RARITY_TYPES = ['weapon', 'armor', 'thorns'];
+
 export const EventRunHelpers = {
   hasGem(effect) {
     return this._findInventoryIndex(item => (
@@ -343,13 +349,13 @@ export const EventRunHelpers = {
   createRespectableCarnivalCard() {
     const generator = new CardDataGenerator();
     const floor = this.gameState?.currentFloor || 1;
-    const types = ['weapon', 'armor', 'thorns', 'potion', 'food', 'magic'];
+    const types = REROLL_CARD_TYPES;
     let type = types[Math.floor(Math.random() * types.length)];
     const rarityRoll = Math.random();
     const rarity = rarityRoll < 0.12 ? 'rare' : rarityRoll < 0.42 ? 'uncommon' : 'common';
 
     for (let tries = 0; tries < 8; tries++) {
-      const targetRarity = ['weapon', 'armor', 'thorns'].includes(type) ? rarity : null;
+      const targetRarity = RARITY_TYPES.includes(type) ? rarity : null;
       const card = generator.createCardData(type, floor, false, this.gameState, targetRarity);
       if (card) {
         card.carnivalTouched = true;
@@ -433,13 +439,39 @@ export const EventRunHelpers = {
     const floor = this.gameState?.currentFloor || 1;
     const rarity = oldCard?.rarity || 'common';
     const type = oldCard?.type;
-    const targetRarity = ['weapon', 'armor', 'thorns'].includes(type) ? rarity : null;
+
+    // Thorns have no variants — every thorns card is the same "Thorns Card" and
+    // only the rarity moves — so a same-type reroll can only hand back what was
+    // offered. Reroll the type instead and keep the rarity.
+    if (type === 'thorns') return this.createOtherTypeRerollCard(oldCard);
+
+    const targetRarity = RARITY_TYPES.includes(type) ? rarity : null;
 
     for (let tries = 0; tries < 12; tries++) {
       const card = generator.createCardData(type, floor, false, this.gameState, targetRarity);
       if (!card) continue;
       if (oldCard?.rarity && card.rarity && card.rarity !== oldCard.rarity) continue;
       if ((card.name || card.id) === (oldCard.name || oldCard.id) && tries < 8) continue;
+      card.carnivalTouched = true;
+      return card;
+    }
+    return this.createRespectableCarnivalCard();
+  },
+
+  // Reroll into a card of a *different* type, keeping the offering's rarity
+  // where the target type has one. Used for types that can't reroll into a
+  // meaningfully different card of their own kind.
+  createOtherTypeRerollCard(oldCard) {
+    const generator = new CardDataGenerator();
+    const floor = this.gameState?.currentFloor || 1;
+    const rarity = oldCard?.rarity || 'common';
+    const types = REROLL_CARD_TYPES.filter(type => type !== oldCard?.type);
+
+    for (let tries = 0; tries < 12; tries++) {
+      const type = types[Math.floor(Math.random() * types.length)];
+      const targetRarity = RARITY_TYPES.includes(type) ? rarity : null;
+      const card = generator.createCardData(type, floor, false, this.gameState, targetRarity);
+      if (!card) continue;
       card.carnivalTouched = true;
       return card;
     }

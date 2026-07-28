@@ -5,6 +5,7 @@ import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { openAmuletChoiceOverlay } from '../../ui/AmuletChoiceOverlay.js';
 import { minEnemyRatioForFloor } from '../../content/balance/EnemyDensity.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
+import { reinforcementStateFor, reinforcementStateFromSave } from '../../content/balance/Reinforcements.js';
 
 export class FloorSpawner {
     constructor(cs) {
@@ -107,41 +108,33 @@ function spawnFloorCards() {
   const cf = this.scene.gameState?.currentFloor || 1;
   const roomType = this.scene.gameState?.roomType || this.scene.roomType || 'COMBAT';
   const cardCount = this._effectiveCardCount ? this._effectiveCardCount(roomType, cf) : Math.min(6 + Math.floor((cf - 1) * (20 / 44)), 26);
+  // Hold overflow for reinforcements before laying out native-size pixel art.
+  this._waveState = reinforcementStateFor(cf, roomType, cardCount);
+  const initialCardCount = this._waveState?.initialCards ?? cardCount;
   // Build the standard compact brick cluster used by every combat floor.
-  const cells = this.buildCompactBrickCluster(cardCount);
-  // 2) compute steps & centering. Crowded boards request a widened area
-  // and a larger per-cell step so cards actually use the wing panel.
-  // Wing earlier so mid-size 4-row boards get horizontal room (and better VSTEP via area).
-  const wantsWing = cardCount > 12;
-  const place = wantsWing
-    ? this.computePlacement(cells, { extraRightWidth: 100, maxHStep: 78 })
-    : this.computePlacement(cells);
+  const cells = this.buildCompactBrickCluster(initialCardCount);
+  const place = this.computePlacement(cells);
   this.createFloorBoardPanel(cells, place, true);
-  if (wantsWing) this.createSideExtraPanel('right', { delayMs: 260 });
   // Cache layout so mid-floor respawns (Webweaver's Thread relic) can reuse positions.
   this._boardCells = cells;
   this._boardPlace = place;
-  // TEMP (prototype): "falling waves" test. On the wave-test floor the room
-  // refills in waves that drop from the top once the board is nearly empty,
-  // instead of one crowded board. Reset every floor so it never leaks.
-  this._waveState = null;
-  const WAVE_TEST_FLOOR = 5;
-  if (cf === WAVE_TEST_FLOOR && roomType === 'COMBAT') {
-    this._waveState = { wavesLeft: 2, threshold: 3, dropping: false };
-  }
+  // Reinforcements: some rooms hold enemies back and drop them in once the
+  // board thins out. Which rooms, how many waves and how empty the board has to
+  // get are all data — see content/balance/Reinforcements.js. Assigned fresh
+  // every floor so state never leaks from the previous room.
   // 3) create the cards at proper pixels
-  this.boardCards = new Array(cardCount).fill(null);
+  this.boardCards = new Array(initialCardCount).fill(null);
   let trapsPlaced = 0;
   let keysPlaced = 0;
   let gemsPlaced = 0;
   let emptyPlaced = 0;
-  for (let i = 0; i < cardCount; i++) {
+  for (let i = 0; i < initialCardCount; i++) {
     const { r, c } = cells[i];
     const { x, y } = this.brickToPixel(r, c, place);
     const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
     shadow.setAlpha(0);
     const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, 'cardBack'));
-    cardSprite.setScale(place.cardScale || 1);          // shrink on crowded 4-row boards
+    cardSprite.setScale(1);
     cardSprite.setInteractive();
     cardSprite.on('pointerdown', () => this.revealCard(i));
     cardSprite.on('pointerover', () => {
@@ -220,7 +213,10 @@ function spawnFloorCards() {
     if (data?.type === 'empty') emptyPlaced++;
     // Keep role in sync with the row (the type now matches, but a back-row
     // fallback melee — if no archer is unlocked yet — still reads as RANGED here).
-    if (data && this.isEnemyType(data.type)) {
+    // Mimics are exempt: they are always a melee bite regardless of row, and
+    // overwriting a back-row mimic's role to RANGED silently made it invisible
+    // to melee weapons and melee companions (frontline gating filters on role).
+    if (data && this.isEnemyType(data.type) && !data.isMimic) {
         data.role = desiredRole;
     }
     
@@ -524,8 +520,13 @@ function findTutorialCard(tag) {
   return index >= 0 ? { index, card: this.boardCards[index] } : null;
 }
 
-function restoreSavedBoard(savedCards, savedLayout = null) {
+function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
   if (!Array.isArray(savedCards)) return false;
+
+  // Pending reinforcements are part of the room, not the layout: without this
+  // a save taken mid-fight came back with no waves left, so the room cleared
+  // as soon as the visible enemies died and the player skipped the rest.
+  this._waveState = reinforcementStateFromSave(savedWaves);
 
   this.clearBoard();
   const hasBoss = savedCards.some(saved => saved?.data?.type === 'boss');
@@ -540,14 +541,8 @@ function restoreSavedBoard(savedCards, savedLayout = null) {
   if (hasBoss) {
     this.createBossBoardPanel();
   } else if (validCells.length > 0) {
-    if (!place) {
-      const wantsWing = layoutCells.length > 12;
-      place = wantsWing
-        ? this.computePlacement(validCells, { extraRightWidth: 100, maxHStep: 78 })
-        : this.computePlacement(validCells);
-    }
+    if (!place) place = this.computePlacement(validCells);
     this.createFloorBoardPanel(validCells, place, false);
-    if (layoutCells.length > 12) this.createSideExtraPanel('right', { animate: false });
   }
 
   this._boardCells = layoutCells;
@@ -1590,7 +1585,10 @@ function dropWaveCards() {
     for (let i = 0; i < this.boardCards.length; i++) {
         if (!this.boardCards[i] && this._boardCells[i]) emptySlots.push(i);
     }
-    if (!emptySlots.length) { if (this._waveState) this._waveState.dropping = false; return false; }
+    if (!emptySlots.length || !(this._waveState?.cardsPending > 0)) {
+        if (this._waveState) this._waveState.dropping = false;
+        return false;
+    }
 
     if (this._waveState) this._waveState.dropping = true;
     const cf = this.scene.gameState?.currentFloor || 1;
@@ -1602,14 +1600,23 @@ function dropWaveCards() {
         return (ca.r - cb.r) || (ca.c - cb.c);
     });
 
+    // A wave is a bounded refill, not every empty board cell. This is what
+    // keeps a 26-card floor readable at native pixel size.
+    const waveSlots = emptySlots.slice(0, Math.min(
+        emptySlots.length,
+        this._waveState.cardsPending,
+        this._waveState.waveSize,
+    ));
+    this._waveState.cardsPending -= waveSlots.length;
+
     const STAGGER = 90, FALL_MS = 430, DROP_HEIGHT = 280;
-    emptySlots.forEach((slot, order) => {
+    waveSlots.forEach((slot, order) => {
         const cell = this._boardCells[slot];
         const { x, y } = this.brickToPixel(cell.r, cell.c, this._boardPlace);
 
         const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6).setAlpha(0);
         const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y - DROP_HEIGHT, 'cardBack'));
-        cardSprite.setScale(this._boardPlace?.cardScale || 1).setInteractive();
+        cardSprite.setScale(1).setInteractive();
         cardSprite.on('pointerdown', () => this.revealCard(slot));
         cardSprite.on('pointerover', () => {
             const c = this.boardCards[slot];
@@ -1643,7 +1650,9 @@ function dropWaveCards() {
         }
         if (data) {
             data.brick = { r: cell.r, c: cell.c };
-            if (this.isEnemyType(data.type)) data.role = desiredRole;
+            // See spawnFloorCards for why mimics are exempt from the row-based
+            // role reassignment.
+            if (this.isEnemyType(data.type) && !data.isMimic) data.role = desiredRole;
         }
         this.boardCards[slot] = { sprite: cardSprite, shadow, revealed: false, data };
 
@@ -1661,7 +1670,7 @@ function dropWaveCards() {
 
     // After the last card lands, refresh adjacency/bands, release the lock,
     // and re-check clear (in case the wave was all loot and is already thin).
-    const settleMs = (emptySlots.length - 1) * STAGGER + FALL_MS + 60;
+    const settleMs = (waveSlots.length - 1) * STAGGER + FALL_MS + 60;
     this.scene.time.delayedCall(settleMs, () => {
         this._rebuildBrickNeighbors();
         if (this._boardPlace?.VSTEP) this.computeRowBands(this.boardCards, this._boardPlace.VSTEP);

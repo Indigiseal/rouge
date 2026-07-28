@@ -90,8 +90,11 @@ function pickConnectedBrick(n) {
 }
 
 function buildCompactBrickCluster(n) {
-  // choose a near-square row count
+  // Choose a near-square row count, then cap it: the play area is much wider
+  // than it is tall, so a 16-card board reads far better as 3 rows of 5-6 than
+  // as 4 rows of 4 squeezed into the same height.
   let rows = Math.max(2, Math.round(Math.sqrt(n)));
+  rows = Math.min(rows, this.constructor.MAX_CLUSTER_ROWS);
   // distribute columns across rows as evenly as possible
   const base = Math.floor(n / rows);
   const rem  = n % rows;
@@ -130,7 +133,16 @@ function computePlacement(cells, opts = {}) {
   }
   const cam = this.scene.cameras.main;
   let areaLeft, areaRight, areaTop, areaBottom;
-  if (this.constructor.USE_FIXED_PANEL) {
+  // Callers on other screens (the shop board) own a different play area and
+  // have their own hand-tuned offsets. They pass an explicit rect so the combat
+  // board's rect can change without dragging their layout along with it.
+  if (opts.area) {
+    const sx = cam.width / 640, sy = cam.height / 360;
+    areaLeft   = opts.area.left   * sx;
+    areaRight  = opts.area.right  * sx;
+    areaTop    = opts.area.top    * sy;
+    areaBottom = opts.area.bottom * sy;
+  } else if (this.constructor.USE_FIXED_PANEL) {
     // Scale the 640x360 design rect to the current camera
     const sx = cam.width  / 640;
     const sy = cam.height / 360;
@@ -169,29 +181,28 @@ function computePlacement(cells, opts = {}) {
   const areaH = Math.max(10, areaBottom - areaTop);
   const widthUnits  = (maxXp - minXp) + 1;
   const heightUnits = (maxR  - minR ) + 1;
-  // a little breathing room
-  const padX = 24, padY = 16;
-  // Cap on per-cell horizontal step. Default 65 keeps small clusters
-  // from spreading out absurdly; callers extending the area can raise
-  // it so cards actually use the new room.
-  const maxHStep = opts.maxHStep ?? 65;
+  // The combat rect is the real safe area, so its steps use all of it. Legacy
+  // callers keep their old inset via opts.
+  const padX = opts.padX ?? 0;
+  const padY = opts.padY ?? 0;
+  const VSTEP = Math.min((areaH - padY) / Math.max(1, heightUnits), 75);
+  // Keep ordinary fights compact.  Extra width is reserved for a crowded board
+  // only, so a 6-card fight does not inherit the large-board spacing.
+  const maxHStep = opts.maxHStep ?? this.constructor.COMPACT_HSTEP;
   const HSTEP = Math.min((areaW - padX) / Math.max(1, widthUnits), maxHStep);
-  // Card art is ~70px tall at scale 1; keep a floor so 4-row boards do not overlap.
-  const MIN_VSTEP = 70;
-  const rawV = (areaH - padY) / Math.max(1, heightUnits);
-  const VSTEP = Math.min(rawV, 75);
-  // If the panel is too short for comfortable spacing, shrink sprites instead of stacking.
-  const cardScale = VSTEP < MIN_VSTEP ? Math.max(0.72, VSTEP / MIN_VSTEP) : 1;
+  // Pixel-art cards stay at native size. Reinforcement waves prevent dense
+  // rooms from ever requiring a scaled-down board.
+  const cardScale = 1;
   // Centre on the BASE play area, excluding any wing extension. Adding extra
   // width for crowded floors used to drag the whole board to the right
   // (cx shifted by extraRight/2); centring on the base keeps the board in the
   // same spot regardless of card count, while the extra width still feeds
   // HSTEP so the cards spread out instead of overlapping.
   const baseAreaW = areaW - extraRight - extraLeft;
-  // +20 (was +40) nudges the cluster right of centre; trimmed by 20px to
-  // make room for the combat-log panel on the right without overlap.
-  const cx = areaLeft + extraLeft + baseAreaW / 2 + 20;
-  const cy = areaTop  + areaH / 2 - 27;
+  // Keep the combat cluster clear of the hero column while retaining the new,
+  // shallow safe rect above the inventory panel.
+  const cx = areaLeft + extraLeft + baseAreaW / 2 + (opts.nudgeX ?? 20);
+  const cy = areaTop  + areaH / 2 + (opts.nudgeY ?? 0);
   const midXp = (minXp + maxXp) / 2;
   const midR  = (minR  + maxR ) / 2;
   // // debug: uncomment to see the panel box
@@ -211,13 +222,15 @@ function brickToPixel(r, c, place) {
 }
 
 function clearFloorBoardPanel() {
-  // Tear down the side-extra panel first; it sits behind the main board
-  // and shares its lifecycle.
-  if (this.sideExtraPanel) {
-    this.scene.tweens.killTweensOf(this.sideExtraPanel);
-    this.sideExtraPanel.destroy();
-    this.sideExtraPanel = null;
-  }
+  // Tear down the side-extra panels first; they sit behind the main board
+  // and share its lifecycle.
+  (this.sideExtraPanels || []).forEach(panel => {
+    if (!panel) return;
+    this.scene.tweens.killTweensOf(panel);
+    panel.destroy();
+  });
+  this.sideExtraPanels = [];
+  this.sideExtraPanel = null;
   if (!this.floorBoardPanel) return;
   this.scene.tweens.killTweensOf(this.floorBoardPanel);
   this.floorBoardPanel.destroy();
@@ -227,12 +240,15 @@ function clearFloorBoardPanel() {
 function createSideExtraPanel(side = 'right', { animate = true, delayMs = 200 } = {}) {
   if (!this.floorBoardPanel) return;
   if (!this.scene.textures.exists('gamingBoardSideExtra')) return;
-  // Replace any existing side panel so re-spawns don't stack.
-  if (this.sideExtraPanel) {
-    this.scene.tweens.killTweensOf(this.sideExtraPanel);
-    this.sideExtraPanel.destroy();
-    this.sideExtraPanel = null;
-  }
+  if (!Array.isArray(this.sideExtraPanels)) this.sideExtraPanels = [];
+  // Replace an existing panel on THIS side so re-spawns don't stack, while
+  // leaving the opposite side alone — wide boards wear both wings.
+  this.sideExtraPanels = this.sideExtraPanels.filter(panel => {
+    if (!panel || panel.getData('side') !== side) return Boolean(panel);
+    this.scene.tweens.killTweensOf(panel);
+    panel.destroy();
+    return false;
+  });
 
   const main = this.floorBoardPanel;
   const dir = side === 'left' ? -1 : 1;
@@ -248,6 +264,8 @@ function createSideExtraPanel(side = 'right', { animate = true, delayMs = 200 } 
   panel.setDepth(main.depth - 1); // sit BEHIND the main board
   if (side === 'left') panel.setFlipX(true);
   panel.setAlpha(animate ? 0 : 1);
+  panel.setData('side', side);
+  this.sideExtraPanels.push(panel);
   this.sideExtraPanel = panel;
 
   if (!animate) {

@@ -198,6 +198,9 @@ export class SaveManager {
         cards: serializedBoard,
         enemiesCleared,
         layout: cardSystem?.getSerializableBoardLayout?.() ?? null,
+        // Reinforcement waves the room still owes the player. Without this a
+        // reload drops them and the floor clears early.
+        waves: cardSystem?.getSerializableWaveState?.() ?? null,
       },
       savedAt: Date.now(),
       saveVersion: this.SAVE_VERSION,
@@ -297,6 +300,9 @@ export class SaveManager {
           layout: parsed.board?.layout && typeof parsed.board.layout === 'object'
             ? parsed.board.layout
             : null,
+          waves: parsed.board?.waves && typeof parsed.board.waves === 'object'
+            ? parsed.board.waves
+            : null,
         },
         savedAt,
         saveVersion: parsed.saveVersion ?? this.SAVE_VERSION,
@@ -359,9 +365,14 @@ export class SaveManager {
 
     run.board = run.board && typeof run.board === 'object'
       ? run.board
-      : { cards: [], enemiesCleared: false, layout: null };
+      : { cards: [], enemiesCleared: false, layout: null, waves: null };
     run.board.layout = run.board.layout && typeof run.board.layout === 'object'
       ? run.board.layout
+      : null;
+    // Saves written before reinforcements existed have no waves field; null
+    // simply means "this room owes nothing", which is the old behaviour.
+    run.board.waves = run.board.waves && typeof run.board.waves === 'object'
+      ? run.board.waves
       : null;
 
     // Ensure board cards are properly structured and refresh saved amulet art.
