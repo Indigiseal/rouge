@@ -6,6 +6,11 @@ export class PreloadScene extends Phaser.Scene {
     }
 
     preload() {
+        // Draw this before queueing anything: the manifest is ~19MB, most of it
+        // audio, and on a cold itch.io load that is several seconds of blank
+        // brown canvas that players read as a hang.
+        this.createLoadingUI();
+
         // Append a timestamp to every asset URL so Phaser never serves a
         // stale texture from its internal cache during development.
         // Remove queryURL before shipping (or it bloats itch.io logs).
@@ -22,6 +27,83 @@ export class PreloadScene extends Phaser.Scene {
         this.load.bitmapFont = (key, textureURL, xmlURL, ...rest) => _origBitmap(key, textureURL + v, xmlURL + v, ...rest);
 
         loadAssetManifest(this.load);
+    }
+
+    // Loading screen. Deliberately built from rectangles and canvas text only:
+    // this runs before a single asset exists, so it cannot use the game's
+    // sprites, and before installCrispTextFactory(), so it cannot use the
+    // bitmap fonts either.
+    createLoadingUI() {
+        const cx = 320;
+        const cy = 180;
+        const barWidth = 260;
+        const barHeight = 12;
+        const font = '"HoMM Pixel", Arial, sans-serif';
+
+        this.add.text(cx, cy - 44, 'Dungeon Card Crawler', {
+            fontSize: '18px',
+            fill: '#e6edf3',
+            fontFamily: font,
+        }).setOrigin(0.5);
+
+        this.add.rectangle(cx, cy, barWidth + 4, barHeight + 4, 0x000000, 0.45)
+            .setStrokeStyle(1, 0x8b6914);
+
+        // Grown from the left edge rather than scaled, so it stays pixel-crisp.
+        const fill = this.add
+            .rectangle(cx - barWidth / 2, cy, 1, barHeight, 0xd4a017)
+            .setOrigin(0, 0.5);
+
+        const percentText = this.add.text(cx, cy + 20, '0%', {
+            fontSize: '12px',
+            fill: '#d4a017',
+            fontFamily: font,
+        }).setOrigin(0.5);
+
+        const statusText = this.add.text(cx, cy + 38, 'Loading...', {
+            fontSize: '10px',
+            fill: '#8b949e',
+            fontFamily: font,
+        }).setOrigin(0.5);
+
+        // A percentage that sits still on one slow file looks identical to a
+        // freeze. This pulse is driven by the render loop, so as long as it is
+        // breathing the game is alive and only the download is slow.
+        this.tweens.add({
+            targets: statusText,
+            alpha: 0.3,
+            duration: 650,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut',
+        });
+
+        let failed = 0;
+        const failureText = this.add.text(cx, cy + 54, '', {
+            fontSize: '9px',
+            fill: '#d98c8c',
+            fontFamily: font,
+        }).setOrigin(0.5);
+
+        this.load.on('progress', (value) => {
+            fill.width = Math.max(1, Math.round(barWidth * value));
+            percentText.setText(`${Math.round(value * 100)}%`);
+        });
+
+        // itch.io has served 403s for individual files before (see the note in
+        // index.html). Phaser carries on regardless, which turns a broken asset
+        // into a mystery crash later — so say so here, while it is still cheap
+        // to notice.
+        this.load.on('loaderror', () => {
+            failed += 1;
+            failureText.setText(`${failed} file${failed === 1 ? '' : 's'} failed to load`);
+        });
+
+        this.load.on('complete', () => {
+            fill.width = barWidth;
+            percentText.setText('100%');
+            statusText.setText('Ready');
+        });
     }
 
     create() {
