@@ -36,6 +36,13 @@ export const DEFAULT_STORY_RUN = Object.freeze({
   // Toll Collectors — the Goblin King's tax men. These outlive the event: the
   // boss fight reads tollFought, and the act's shop reads merchantRobbed.
   tollCollectorsSeen: false,
+  // Arm Wrestling. armWrestleWon queues the rematch (the only route to the
+  // gauntlet); losing either match sets armWrestleRematchDone and ends it.
+  armWrestlingSeen: false,
+  armWrestleWon: false,
+  armWrestleLost: false,
+  armWrestleRematchDone: false,
+  gauntletWon: false,
   paidTheToll: false,
   tollIntimidated: false,
   tollFought: false,

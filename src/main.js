@@ -20,15 +20,16 @@ try {
 
 window.__game = new Phaser.Game(config);
 
-// Hand over to PreloadScene's own progress bar. Waiting for 'ready' rather than
-// removing it immediately avoids a flash of bare page between the two loading
-// screens.
+// The overlay is NOT removed on 'ready'. 'ready' fires when the engine has
+// booted, which is long before the ~19MB of assets have downloaded — removing
+// it there is what forced PreloadScene to draw a second loading screen and
+// hand over to it, and that handover visibly jumped. PreloadScene now drives
+// this same overlay and takes it down itself in create().
+//
+// This is only a safety net: if PreloadScene never gets there (a hard load
+// failure), an opaque div must not sit on top of the game forever. Generous,
+// because a slow cold load on itch.io legitimately takes a while.
 const bootLoader = document.getElementById('boot-loader');
 if (bootLoader) {
-  const removeBootLoader = () => bootLoader.remove();
-  window.__game.events.once('ready', removeBootLoader);
-  // Never let this overlay outlive the boot: if 'ready' already fired before
-  // the listener attached, or does not fire at all, the alternative is an
-  // opaque div sitting on top of a perfectly working game forever.
-  setTimeout(removeBootLoader, 5000);
+  setTimeout(() => bootLoader.remove(), 120000);
 }

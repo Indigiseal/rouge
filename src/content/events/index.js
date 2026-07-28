@@ -16,6 +16,7 @@ import quietCrossroads from './quiet_crossroads.js';
 import screamingHead from './screaming_head.js';
 import reliquary from './reliquary.js';
 import tollCollectors from './toll_collectors.js';
+import armWrestling from './arm_wrestling.js';
 
 export const EVENTS = [
   brokenMusicBox,
@@ -35,6 +36,7 @@ export const EVENTS = [
   screamingHead,
   reliquary,
   tollCollectors,
+  armWrestling,
 ];
 
 export function getEvent(id) {
