@@ -82,6 +82,16 @@ export class PreloadScene extends Phaser.Scene {
             repeat: 0 // Play once
         });
 
+        // Smoke burst — the Smoke Screen spell, and the toll goblins vanishing.
+        if (this.textures.exists('smokeBombAnim')) {
+            this.anims.create({
+                key: 'smoke_bomb_anim',
+                frames: this.anims.generateFrameNumbers('smokeBombAnim', { start: 0, end: 10 }),
+                frameRate: 16,
+                repeat: 0
+            });
+        }
+
         // Board defeat-loot pickups (Prospector's Pick). Play on the tile where
         // an enemy died, like the mimic's treasure scatter.
         this.anims.create({

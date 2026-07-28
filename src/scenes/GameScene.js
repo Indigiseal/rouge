@@ -35,6 +35,8 @@ import {
     isSandboxMode,
 } from '../sandbox/SandboxMode.js';
 import { humanRunRecorder, recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
+import { openNoticeModal } from '../ui/ConfirmModal.js';
+import { playSmokeBurst, SMOKE_BURST_MS } from '../ui/SmokeBurst.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -119,6 +121,19 @@ export class GameScene extends Phaser.Scene {
                 this.gameState.storyRun.bookWormSeen = false;
                 this.gameState.storyRun.briarRoomSeen = false;
                 this.gameState.storyRun.slimyPrisonSeen = false;
+                this.gameState.storyRun.reliquarySeen = false;
+                this.gameState.storyRun.tollCollectorsSeen = false;
+                // Toll Collectors consequences are per-RUN, exactly like
+                // birdAngry above. Without this, attacking the collectors once
+                // left tollFought saved forever, and their wounded guards then
+                // turned up beside the Goblin King in every later run — even
+                // runs where the player never met them.
+                this.gameState.storyRun.paidTheToll = false;
+                this.gameState.storyRun.tollIntimidated = false;
+                this.gameState.storyRun.tollFought = false;
+                this.gameState.storyRun.tollKiller = false;
+                this.gameState.storyRun.merchantRobbed = false;
+                this.gameState.storyRun.tollEscapeNoticeShown = false;
             }
         }
 
@@ -1138,6 +1153,19 @@ export class GameScene extends Phaser.Scene {
             this.gameState.coins += reward;
             this.createFloatingText(320, 140, `+${reward} coins`, 0xffd700);
             this.updateUI?.();
+        }
+        const story = this.gameState?.storyRun;
+        if (this.gameState?.ambushId === 'toll_collectors' && !story?.tollEscapeNoticeShown) {
+            story.tollEscapeNoticeShown = true;
+            // Show the smoke before the words: the bomb goes off, and only once
+            // the haze is up does the notice explain where they went.
+            playSmokeBurst(this, { x: 320, y: 170 });
+            this.time.delayedCall(SMOKE_BURST_MS, () => {
+                openNoticeModal(this, {
+                    title: 'Smoke Bomb!',
+                    body: 'The goblins throw a smoke bomb at your feet and escape into the haze.\n\nThey will return beside the Goblin King, battered from this fight.',
+                });
+            });
         }
         // Null-guard: if the button hasn't been (re)created yet, do NOT throw
         // — that would leave enemiesCleared=true with a still-hidden button,

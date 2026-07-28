@@ -200,7 +200,8 @@ export const ASSET_MANIFEST = [
     { key: 'boneWall', path: 'assets/art/boneWall.png', type: 'image' },
     { key: 'macigShield', path: 'assets/art/macicShield.png', type: 'image' },
     { key: 'smokeBomb', path: 'assets/art/smokeBomb.png', type: 'image' },
-    // Smoke burst, used by the Smoke Screen spell and Toll Collectors escape.
+    // Smoke burst — 11 frames, played by the Smoke Screen spell and by the toll
+    // goblins escaping. See PreloadScene's 'smoke_bomb_anim'.
     { key: 'smokeBombAnim', path: 'assets/art/smokeBombAnim82x82.png', type: 'spritesheet', frameWidth: 82, frameHeight: 82 },
     // The Reliquary's lit display cases. The glow sheet is one row of 52x70
     // card faces (same footprint as a normal card); frame order is mapped in

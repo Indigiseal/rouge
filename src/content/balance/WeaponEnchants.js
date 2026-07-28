@@ -137,9 +137,12 @@ export function applyEnchantToWeapon(weapon, magicType) {
   // instead of stacking prefixes into "Frostbound Frostbound Axe".
   weapon.enchantBaseName = weapon.enchantBaseName || weapon.name || 'Weapon';
   weapon.name = `${enchant.title} ${weapon.enchantBaseName}`;
-  // Marks it as a story item: protects it from the Screaming Head's maw and
-  // from being picked as a throwaway sacrifice card.
-  weapon.unique = true;
+  // NOTE: deliberately does NOT set `unique`. That flag is what the Copying
+  // Mirror checks (_isMirrorCopyable), so marking an enchanted weapon unique
+  // made the mirror refuse it — you could not duplicate the best weapon in your
+  // bag, which is precisely what players try to do with it. Protection from the
+  // Screaming Head and the sacrifice picker is done by checking `enchant`
+  // directly in EventRunHelpers instead.
   return true;
 }
 

@@ -18,6 +18,7 @@ import {
     getWeaponEnchant,
 } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
+import { playSmokePuff } from '../../ui/SmokeBurst.js';
 
 export class BoardCombat {
     constructor(cs) {
@@ -852,7 +853,12 @@ function applyWeaponEnchantOnKill(enchantId) {
         .filter(({ card }) => this.isOpenEnemyCard(card) && card.data?.type !== 'boss');
     if (candidates.length === 0) return;
     const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    const hiddenX = pick.card?.sprite?.x ?? 320;
+    const hiddenY = pick.card?.sprite?.y ?? 180;
     if (this.hideEnemyCard(pick.index)) {
+        // A single puff over the card that just vanished — the spell's full
+        // room-filling burst would be far too much for one enemy.
+        playSmokePuff(this.scene, hiddenX, hiddenY, { scale: 1.3 });
         SoundHelper.playSound(this.scene, 'smoke_bomb', 0.4);
         this.scene.createFloatingText(
             this.scene.playerAvatar?.x ?? 320,

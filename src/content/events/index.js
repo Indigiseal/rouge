@@ -15,6 +15,7 @@ import slimyPrison from './slimy_prison.js';
 import quietCrossroads from './quiet_crossroads.js';
 import screamingHead from './screaming_head.js';
 import reliquary from './reliquary.js';
+import tollCollectors from './toll_collectors.js';
 
 export const EVENTS = [
   brokenMusicBox,
@@ -33,6 +34,7 @@ export const EVENTS = [
   quietCrossroads,
   screamingHead,
   reliquary,
+  tollCollectors,
 ];
 
 export function getEvent(id) {

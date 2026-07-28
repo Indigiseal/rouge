@@ -7,6 +7,7 @@ import {
 } from '../../content/characters/CharacterClasses.js';
 import { getMagic } from '../../content/cards/index.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
+import { playSmokeBurst } from '../../ui/SmokeBurst.js';
 
 export const InventoryCombatUse = {
     isEnemyBoardCard(card, includeBoss = true) {
@@ -307,7 +308,11 @@ export const InventoryCombatUse = {
         });
     },
     createSmokeEffect() {
-        const smoke = this.scene.add.rectangle(320, 180, 640, 360, 0x666666, 0.8);
+        // Animated burst on top of the old grey wash. The wash alone read as a
+        // screen fade rather than a thrown bomb; it stays (thinner) so the board
+        // still dims while the enemies are flipping back down.
+        playSmokeBurst(this.scene, { x: 320, y: 180, sound: false });
+        const smoke = this.scene.add.rectangle(320, 180, 640, 360, 0x666666, 0.55);
         this.scene.tweens.add({
             targets: smoke,
             alpha: 0,
