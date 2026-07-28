@@ -19,3 +19,16 @@ try {
 }
 
 window.__game = new Phaser.Game(config);
+
+// Hand over to PreloadScene's own progress bar. Waiting for 'ready' rather than
+// removing it immediately avoids a flash of bare page between the two loading
+// screens.
+const bootLoader = document.getElementById('boot-loader');
+if (bootLoader) {
+  const removeBootLoader = () => bootLoader.remove();
+  window.__game.events.once('ready', removeBootLoader);
+  // Never let this overlay outlive the boot: if 'ready' already fired before
+  // the listener attached, or does not fire at all, the alternative is an
+  // opaque div sitting on top of a perfectly working game forever.
+  setTimeout(removeBootLoader, 5000);
+}
