@@ -834,13 +834,6 @@ function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
             break;
         }
 
-        case 'mirrorShield': {
-            gs.mirrorShield = true;
-            this.scene.createFloatingText(px, py, 'Mirror Shield!', 0xc0c0c0);
-            this.scene.updateUI?.();
-            break;
-        }
-
         case 'boneWall': {
             // The spell reflects two attacks; the proc reflects one.
             gs.boneWall = Math.max(gs.boneWall || 0, 1);

@@ -199,7 +199,6 @@ export const ASSET_MANIFEST = [
     { key: 'weakening', path: 'assets/art/weakening.png', type: 'image' },
     { key: 'boneWall', path: 'assets/art/boneWall.png', type: 'image' },
     { key: 'macigShield', path: 'assets/art/macicShield.png', type: 'image' },
-    { key: 'mirrorShield', path: 'assets/art/mirrorShield.png', type: 'image' },
     { key: 'smokeBomb', path: 'assets/art/smokeBomb.png', type: 'image' },
     // Smoke burst — 11 frames, played by the Smoke Screen spell and by the toll
     // goblins escaping. See PreloadScene's 'smoke_bomb_anim'.
@@ -212,7 +211,6 @@ export const ASSET_MANIFEST = [
     { key: 'magic_cast', path: 'assets/music/fast-woosh-230497.mp3', type: 'audio' },
     { key: 'recovery', path: 'assets/music/recovery.mp3', type: 'audio' },
     { key: 'boneWall', path: 'assets/music/Bone_Wall_01.mp3', type: 'audio' },
-    { key: 'mirrorShield', path: 'assets/music/Mirror_Shield_01.mp3', type: 'audio' },
     { key: 'fireball_whoosh', path: 'assets/music/fireball-whoosh-1-179125.mp3', type: 'audio' },
     { key: 'smoke_bomb', path: 'assets/music/Smoke_Screen_02.mp3', type: 'audio' },
     { key: 'frozenRing', path: 'assets/music/Ice_Cast_01.mp3', type: 'audio' },

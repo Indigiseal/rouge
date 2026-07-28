@@ -257,13 +257,6 @@ export class MockScene {
       this._runCompanionTurns();
       return;
     }
-    if (this.gameState.mirrorShield && firstAttacker) {
-      this.gameState.mirrorShield = false;
-      this.cardSystem.attackEnemy(firstAttacker.i, firstAttacker.card.data.attack, true);
-      this._runCompanionTurns();
-      return;
-    }
-
     if (eligible.length === 0) {
       this._finishEnemyTurnEffects({ runCompanions: false });
       return;

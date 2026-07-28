@@ -835,7 +835,6 @@ export const InventoryView = {
         if (card.magicType === 'weakness') return translateDescription(this.scene, 'Weakens enemies.');
         if (card.magicType === 'boneWall') return translateDescription(this.scene, 'Reflects the next attacks.');
         if (card.magicType === 'magicShield') return translateDescription(this.scene, 'Boosts armor.');
-        if (card.magicType === 'mirrorShield') return translateDescription(this.scene, 'Reflects one attack.');
         if (card.magicType === 'smokeScreen') return translateDescription(this.scene, 'Hides revealed enemies.');
         return translateDescription(this.scene, 'Single-use magic.');
     },

@@ -1705,13 +1705,6 @@ function castMagicCard(mock, gs, inv, slotIndex, board, floor) {
         used = true;
       }
       break;
-    case 'mirrorShield':
-      if (!gs.mirrorShield) {
-        gs.mirrorShield = true;
-        mock.useAction();
-        used = true;
-      }
-      break;
     case 'smokeScreen': {
       // Headless: flip face-up non-boss enemies face-down. No pointer rebinding —
       // mock sprites aren't Phaser Input objects, and runCombat re-reveals via
@@ -1811,9 +1804,6 @@ function scoreMagicUse(mock, gs, inv, board, slotIndex, floor) {
     case 'magicShield':
       if (revealedEnemies.length === 0 || (gs.magicShield?.turns || 0) > 0) return -Infinity;
       return base + ((gs.equippedArmor?.protection || 0) * 10) + (hpPct < t.defensiveMagicHpPct ? 40 : 0);
-    case 'mirrorShield':
-      if (revealedEnemies.length === 0 || gs.mirrorShield) return -Infinity;
-      return base + (hpPct < t.defensiveMagicHpPct ? 55 : 10);
     case 'smokeScreen':
       return nonBossEnemies.length >= 2 ? base + nonBossEnemies.length * 14 : -Infinity;
     default:
@@ -2131,7 +2121,6 @@ function createProjectedDefense(gs) {
   return {
     blockNextAttack: Boolean(gs.blockNextAttack),
     boneWall: Math.max(0, gs.boneWall || 0),
-    mirrorShield: Boolean(gs.mirrorShield),
     armor: gs.equippedArmor ? { ...gs.equippedArmor } : null,
     armorDurabilitySaveChance: Math.min(
       0.95,
@@ -2327,13 +2316,6 @@ function simulateExpectedEnemyPhase(state, gs, defense) {
     applyProjectedCompanionTurns(state, gs);
     return 0;
   }
-  if (defense.mirrorShield && firstAttacker) {
-    defense.mirrorShield = false;
-    firstAttacker.data.health -= firstAttacker.data.attack || 0;
-    applyProjectedCompanionTurns(state, gs);
-    return 0;
-  }
-
   let incoming = 0;
   for (const card of eligible) {
     const enemy = card.data;

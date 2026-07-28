@@ -66,14 +66,6 @@ export const MAGIC = [
     sprite: 'macigShield',
   },
   {
-    magicType: 'mirrorShield',
-    name: 'Mirror Shield',
-    description: 'Reflects the next enemy attack',
-    minFloor: 2,
-    rarity: 'common',
-    sprite: 'mirrorShield',
-  },
-  {
     magicType: 'smokeScreen',
     name: 'Smoke Screen',
     description: 'Flips all face-up enemy cards back down',

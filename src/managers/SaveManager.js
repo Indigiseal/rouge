@@ -168,7 +168,6 @@ export class SaveManager {
         shadowBlade: gameState?.shadowBlade || null,
         magicShield: gameState?.magicShield || null,
         boneWall: gameState?.boneWall ?? 0,
-        mirrorShield: gameState?.mirrorShield ?? false,
         blockNextAttack: gameState?.blockNextAttack ?? false,
       },
       // Add damage tracking for death stats
@@ -257,7 +256,6 @@ export class SaveManager {
           shadowBlade: parsed.effects?.shadowBlade || null,
           magicShield: parsed.effects?.magicShield || null,
           boneWall: parsed.effects?.boneWall ?? 0,
-          mirrorShield: parsed.effects?.mirrorShield ?? false,
           blockNextAttack: parsed.effects?.blockNextAttack ?? false,
         },
         damageTracking: parsed.damageTracking ?? {
