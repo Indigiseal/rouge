@@ -4,6 +4,7 @@ import { createTitle } from '../ui/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
+import { CARD_VALUE_SLOT } from '../systems/board/BoardCardFx.js';
 
 export class TreasureScene extends StationRoomBase {
   constructor() {
@@ -398,11 +399,11 @@ export class TreasureScene extends StationRoomBase {
       const TRAP_DAMAGE = 5;
 
       // Wrap the trap art and its damage value in one container so the value
-      // reads like a real trap card (board traps show their damage at the same
-      // 17,22 value-slot offset) AND stays pinned to the card — it fades and is
-      // destroyed together with the art instead of floating loose.
+      // reads like a real trap card (shared CARD_VALUE_SLOT offset, same as the
+      // board) AND stays pinned to the card — it fades and is destroyed together
+      // with the art instead of floating loose.
       const trapSprite = this.add.image(0, 0, 'trap');
-      const trapValue = this.add.text(17, 22, `${TRAP_DAMAGE}`, {
+      const trapValue = this.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${TRAP_DAMAGE}`, {
         fontSize: '11px',
         fill: '#ffcf7f',
         fontFamily: '"HoMM Pixel"'

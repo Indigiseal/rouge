@@ -9,14 +9,35 @@ import { FloorSpawner } from './board/FloorSpawner.js';
 import { BoardCombat } from './board/BoardCombat.js';
 import { BoardCardFx } from './board/BoardCardFx.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from './HumanRunRecorder.js';
+import { serializeReinforcementState } from '../content/balance/Reinforcements.js';
 
 export class CardSystem {
 
     static BOARD_SAFE_FRAC = { left: 0.6, right: 0.05, top: 0.15, bottom: 0.15 };
     static BOARD_SAFE_PX = { left: 16, right: 16, top: 16, bottom: 16 };
     static USE_FIXED_PANEL = true;
-    // Taller panel so 4-row boards keep VSTEP >= ~card height (~70) and do not stack.
-    static FIXED_PANEL_640x360 = { left: 184, top: 40, width: 272, height: 292 };
+    // The play area, in 640x360 design pixels. These are hard edges of things the
+    // board must not slide under, not taste:
+    //   left  122  — the health orb is the widest thing in the hero column (x 56-118)
+    //   right 505  — the combat log panel starts at x 511
+    //   top    34  — the amulet strip along the top ends at y 29
+    //   bottom 256 — the inventory panel starts at y 258
+    // The old rect ran to y 332, which is 74px INSIDE the inventory panel: every
+    // board of 7+ cards put its bottom row (and its HP/ATK numbers) under the bag.
+    // Wide and shallow beats deep — see MAX_CLUSTER_ROWS.
+    static FIXED_PANEL_640x360 = { left: 122, top: 34, width: 383, height: 222 };
+    // Card art is 53x70. Rows are spaced so a whole card plus this gap fits, so
+    // cards never touch — health/attack digits sit near the bottom edge and get
+    // unreadable the moment the next row overlaps them.
+    static CARD_ART = { width: 53, height: 70 };
+    // Keep ordinary encounters compact.  A card is 53px wide, so this leaves
+    // a readable 12px gutter without making a 6-card fight look sparse.
+    static COMPACT_HSTEP = 65;
+    // Large boards borrow the visible width of the two side wings.  The artwork
+    // only extends about 60 design pixels past each edge of the main board.
+    // Three rows is what the play area holds at readable size. Past that the
+    // cluster grows sideways into the room the wing panels cover.
+    static MAX_CLUSTER_ROWS = 3;
     static ELITE_HIGHLIGHT_TINT = 0xeef2fa;
     static OFFS_EVEN = [
       [+1,  0], [ 0, +1], [-1, +1],
@@ -84,6 +105,8 @@ export class CardSystem {
     revealTutorialLightningTargets(...args) { return this.spawner.revealTutorialLightningTargets(...args); }
     findTutorialCard(...args) { return this.spawner.findTutorialCard(...args); }
     getSerializableBoardLayout(...args) { return this.layout.getSerializableBoardLayout(...args); }
+    /** Pending reinforcement waves in save-safe form, or null if the room has none. */
+    getSerializableWaveState() { return serializeReinforcementState(this._waveState); }
     restoreSavedBoard(...args) { return this.spawner.restoreSavedBoard(...args); }
     restoreEnemyStatusMarkers(...args) { return this.combat.restoreEnemyStatusMarkers(...args); }
     convertCardToFood(...args) { return this.spawner.convertCardToFood(...args); }

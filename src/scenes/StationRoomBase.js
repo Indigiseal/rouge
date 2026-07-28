@@ -96,8 +96,14 @@ export class StationRoomBase extends Phaser.Scene {
         const SHOP_BOARD_BOTTOM = 336;
         const SHOP_BOARD_Y_OFFSET = -20;
         const cells = boardHelper.buildCompactBrickCluster(n);
+        // The shop owns its own play area and its own tuning. These values are
+        // the combat board's former defaults, pinned here so the shop layout
+        // stays exactly as drawn while the combat rect moves independently.
         const place = boardHelper.computePlacement(cells, {
+            area: { left: 184, top: 40, right: 456, bottom: 332 },
             areaBottom: SHOP_BOARD_BOTTOM,
+            padX: 24, padY: 16, gap: 0, maxHStep: 65,
+            nudgeX: 20, nudgeY: -27,
         });
         place.cx -= 46;
         place.cy += SHOP_BOARD_Y_OFFSET;

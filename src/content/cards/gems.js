@@ -1,5 +1,5 @@
-// Gem socket capacity by weapon rarity. Overflow on merge / mixed gems:
-// see docs/OPEN-QUESTIONS.md.
+// Weapon socket capacity by rarity. Merges (including mirror copies) can grow
+// a same-type gem stack up to the resulting weapon's rarity limit.
 export const GEM_SLOTS_BY_RARITY = {
   common: 1,
   uncommon: 2,

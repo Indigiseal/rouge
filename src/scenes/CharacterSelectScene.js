@@ -32,7 +32,10 @@ export class CharacterSelectScene extends Phaser.Scene {
       { id: 'rogue', x: 170 },
       { id: 'warrior', x: 470 },
     ];
-    slots.forEach((slot) => this.createCharacterCard(slot.x, 200, CHARACTER_CLASSES[slot.id]));
+    // Cards sit 5px higher than before and are 8px taller: the portrait needs
+    // 64px at the top that the old layout did not have. Bottom edge still
+    // clears the Back button at y 335.
+    slots.forEach((slot) => this.createCharacterCard(slot.x, 195, CHARACTER_CLASSES[slot.id]));
 
     this.createBackButton();
 
@@ -40,11 +43,17 @@ export class CharacterSelectScene extends Phaser.Scene {
   }
 
   createCharacterCard(x, y, def) {
-    const panel = this.add.rectangle(x, y, 260, 240, 0x2c1810, 0.94)
+    const panel = this.add.rectangle(x, y, 260, 248, 0x2c1810, 0.94)
       .setStrokeStyle(2, 0x8b6914)
       .setInteractive({ useHandCursor: true });
 
-    this.add.text(x, y - 95, def.name, {
+    // Portrait sits at the top of the card, above the name. 64x64 frame from
+    // the shared sheet — frame index comes from the class definition.
+    if (this.textures.exists('characterPortraits')) {
+      this.add.image(x, y - 85, 'characterPortraits', def.portraitFrame ?? 0);
+    }
+
+    this.add.text(x, y - 37, def.name, {
       fontSize: '18px',
       fill: '#f0d78c',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -53,7 +62,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     const startLine = def.id === 'rogue'
       ? 'Start: Dagger + Bow'
       : 'Start: 2x Sword';
-    this.add.text(x, y - 68, startLine, {
+    this.add.text(x, y - 15, startLine, {
       fontSize: '12px',
       fill: '#c9d1d9',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -62,7 +71,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     const armorLine = def.id === 'rogue'
       ? 'Armor: Leather only'
       : 'Armor: Chain & Plate';
-    this.add.text(x, y - 48, armorLine, {
+    this.add.text(x, y + 3, armorLine, {
       fontSize: '12px',
       fill: '#c9d1d9',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -71,7 +80,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     const passive = def.id === 'rogue'
       ? 'Passive: Dagger & Bow\ndeal +10% damage'
       : 'Passive: 10% crit sword/axe\nChain: melee counter\nPlate: ignore ranged';
-    this.add.text(x, y + 10, passive, {
+    this.add.text(x, y + 37, passive, {
       fontSize: '11px',
       fill: '#8b949e',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',

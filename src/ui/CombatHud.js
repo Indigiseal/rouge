@@ -4,16 +4,40 @@
 import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
+import { CHARACTER_CLASSES } from '../content/characters/CharacterClasses.js';
+
+// The amulet strip owns the top-left corner, so the hero column starts below
+// it. Everything from the avatar down to the crystal counter is offset by this
+// much; change it here rather than re-typing every y.
+const HUD_COLUMN_SHIFT = 30;
+// The avatar frame shrank from 84x86 to 80x80, so everything below it — armor
+// slot, AP diamonds, coins, crystals — closes the 7px gap the old art left.
+const HUD_LOWER_SHIFT = HUD_COLUMN_SHIFT - 7;
 
 export const CombatHud = {
     createUI() {
-        // Player avatar
-        this.playerAvatar = this.add.image(41, 44, 'MainPlayerAvatar');
+        // Player avatar — now just the frame the hero portrait sits in.
+        this.playerAvatar = this.add.image(41, 44 + HUD_COLUMN_SHIFT, 'MainPlayerAvatar');
         this.playerAvatar.setScale(1);
-        // Health orb under avatar
-        this.healthOrbEmpty = this.add.image(87, 102, 'healthOrb', 1).setOrigin(0.5, 1);
-        this.healthOrbFull = this.add.image(87, 102, 'healthOrb', 0).setOrigin(0.5, 1);
-        this.healthText = this.add.text(87, 105, '50/50', {
+        this.playerAvatar.setDepth(2);
+        // Chosen hero's face, centred on the avatar frame. Same sheet the
+        // character select uses, so the two screens can never disagree.
+        const heroDef = CHARACTER_CLASSES[this.gameState?.characterId] || CHARACTER_CLASSES.rogue;
+        if (this.textures.exists('characterPortraits')) {
+            this.playerPortrait = this.add.image(
+                this.playerAvatar.x, this.playerAvatar.y,
+                'characterPortraits', heroDef?.portraitFrame ?? 0
+            );
+            this.playerPortrait.setDepth(3);
+        }
+        // Health orb, overlapping the lower-right of the avatar frame. Depth 4/5
+        // puts it above both the frame (2) and the portrait (3) — on default
+        // depth it was drawing behind the portrait art.
+        this.healthOrbEmpty = this.add.image(87, 102 + HUD_COLUMN_SHIFT, 'healthOrb', 1)
+            .setOrigin(0.5, 1).setDepth(4);
+        this.healthOrbFull = this.add.image(87, 102 + HUD_COLUMN_SHIFT, 'healthOrb', 0)
+            .setOrigin(0.5, 1).setDepth(5);
+        this.healthText = this.add.text(87, 105 + HUD_COLUMN_SHIFT, '50/50', {
             fontSize: '10px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -23,7 +47,7 @@ export const CombatHud = {
         this.healthText.setDepth(30);
 
         // Armor equip panel under hero portrait
-        this.armorPanel = snapOriginToPixelGrid(this.add.image(40, 138, 'panelArmor'));
+        this.armorPanel = snapOriginToPixelGrid(this.add.image(40, 138 + HUD_LOWER_SHIFT, 'panelArmor'));
         this.armorPanel.setInteractive();
         this.armorPanel.setDepth(5);
         this.armorPanelEquippedSprite = null;
@@ -36,15 +60,17 @@ export const CombatHud = {
         this.createActionPointUI();
         
         // Coin and Crystal UI under armor panel with animations
-        this.coinSprite = this.add.sprite(26, 210, 'coinUI').setScale(1);
-        this.coinsText = this.add.text(26, 227, '0', {
+        // (live positions come from updateCurrencyUILayout, which applies the
+        // same column shift plus any extra AP row)
+        this.coinSprite = this.add.sprite(26, 210 + HUD_LOWER_SHIFT, 'coinUI').setScale(1);
+        this.coinsText = this.add.text(26, 227 + HUD_LOWER_SHIFT, '0', {
             fontSize: '12px',
             fill: '#cf8834',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
 
-        this.crystalSprite = this.add.sprite(54, 211, 'CrystalUI').setScale(1);
-        this.crystalsText = this.add.text(54, 228, '0', {
+        this.crystalSprite = this.add.sprite(54, 211 + HUD_LOWER_SHIFT, 'CrystalUI').setScale(1);
+        this.crystalsText = this.add.text(54, 228 + HUD_LOWER_SHIFT, '0', {
             fontSize: '12px',
             fill: '#a83c69',
             fontFamily: '"HoMM Pixel"'
@@ -416,7 +442,7 @@ export const CombatHud = {
         const spacing = 16; // = diamond width, so nodes butt together into one strip
         const rowGap = 18; // vertical gap between the two rows of nodes
         const centerX = 41;
-        const baseY = 189;
+        const baseY = 189 + HUD_LOWER_SHIFT;
 
         for (let i = 0; i < nodeCount; i++) {
             const row = Math.floor(i / perRow);
@@ -445,10 +471,10 @@ export const CombatHud = {
         const hasExtraActionRow = nodeCount > 5;
         const yOffset = hasExtraActionRow ? 24 : 0;
 
-        this.coinSprite.setPosition(26, 210 + yOffset);
-        this.coinsText.setPosition(26, 227 + yOffset);
-        this.crystalSprite.setPosition(54, 211 + yOffset);
-        this.crystalsText.setPosition(54, 228 + yOffset);
+        this.coinSprite.setPosition(26, 210 + HUD_LOWER_SHIFT + yOffset);
+        this.coinsText.setPosition(26, 227 + HUD_LOWER_SHIFT + yOffset);
+        this.crystalSprite.setPosition(54, 211 + HUD_LOWER_SHIFT + yOffset);
+        this.crystalsText.setPosition(54, 228 + HUD_LOWER_SHIFT + yOffset);
     },
     updateActionPointUI() {
         const maxActions = Math.max(1, this.gameState.maxActions || 1);
@@ -561,8 +587,12 @@ export const CombatHud = {
         // Atlas icons are 32px frames with transparent padding around the art.
         // A 29px step overlaps frames by 3px without crowding the visible item.
         const SPACING = 29;
-        const ROW_X = 125;
-        const ROW_Y = 42;
+        // The strip owns the top-left corner now: the hero column below it was
+        // shifted down by HUD_COLUMN_SHIFT to clear this row. x 28 (nudged 6px
+        // left of the original 34) still leaves room for the left scroll arrow
+        // at x 12 once the bag holds more than 10.
+        const ROW_X = 28;
+        const ROW_Y = 13;
 
         // Keep the offset in bounds (e.g. if amulets were removed since last scroll)
         const maxOffset = Math.max(0, amulets.length - MAX_VISIBLE);

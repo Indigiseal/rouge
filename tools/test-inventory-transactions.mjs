@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { humanRunRecorder } from '../src/systems/HumanRunRecorder.js';
 import { InventorySystem } from '../src/systems/InventorySystem.js';
 import { CombatTurnController } from '../src/systems/combat/CombatTurnController.js';
+import { CardMergeRules } from '../src/systems/inventory/CardMergeRules.js';
 
 function makeHarness(cards) {
     const gameState = {
@@ -77,6 +78,32 @@ function eventTypes() {
 
     assert.equal(humanRunRecorder.snapshotCard(stackedGemWeapon).gemCount, 2);
     assert.equal(humanRunRecorder.snapshotCard(legacyGemWeapon).gemCount, 1);
+}
+
+{
+    const scene = {
+        cardSystem: { createCardData: () => null },
+        createFloatingText: () => {},
+        gameState: { currentFloor: 20 },
+    };
+    const rules = Object.create(CardMergeRules);
+    rules.scene = scene;
+    const mirrorWeapon = {
+        type: 'weapon',
+        name: 'Rare Dagger',
+        rarity: 'rare',
+        weaponType: 'dagger',
+        gemEffect: 'fire',
+        gemName: 'Fire Gem',
+        gemColor: 0xff7040,
+        gemCount: 2,
+    };
+
+    // A mirror duplicates this exact card; merging the pair creates an Epic.
+    // Its four combined gems fit the Epic weapon's four sockets.
+    const merged = rules.createMergedCard(mirrorWeapon, { ...mirrorWeapon });
+    assert.equal(merged.rarity, 'epic');
+    assert.equal(merged.gemCount, 4);
 }
 
 {

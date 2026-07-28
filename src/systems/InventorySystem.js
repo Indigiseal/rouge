@@ -295,12 +295,25 @@ export class InventorySystem {
             return;
         }
 
-        // Check for drop on another inventory item for merging
+        // Check for drop on another inventory item for merging.
+        //
+        // Anchored on the dragged card's CENTRE rather than on rectangle overlap.
+        // Cards are 54x70 and the slot backgrounds span y 274-344, while a drop
+        // counts as "on the board" at y < 280 (see `onBoard` below). An overlap
+        // test therefore matched a slot for any card centred as high as y 239 —
+        // and since this loop runs before the board/weapon check, those drops
+        // merged instead of attacking. On 4-row floors the bottom card row sits
+        // at y ~262, squarely inside that band, so swinging a weapon at the
+        // front rank consumed it in a merge. The centre point is also what the
+        // player is aiming with, so it matches intent for genuine merges.
+        const dropBounds = cardSprite.getBounds();
         for (let i = 0; i < this.slotSprites.length; i++) {
             if (i === slotIndex) continue;
             const targetSlotSprite = this.slotSprites[i];
             const targetCardData = this.slots[i];
-            if (targetCardData && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), targetSlotSprite.background.getBounds())) {
+            if (targetCardData && Phaser.Geom.Rectangle.Contains(
+                targetSlotSprite.background.getBounds(), dropBounds.centerX, dropBounds.centerY
+            )) {
                 if (cardData.type === 'gem' && targetCardData.type === 'weapon') {
                     if (this.applyGemToWeapon(cardData, i, false)) {
                         this.cleanupCardSprites(slotIndex, cardSprite);

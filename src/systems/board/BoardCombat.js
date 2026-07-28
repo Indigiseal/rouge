@@ -1006,10 +1006,11 @@ function checkFloorClear() {
     // that gameState.takeDamage() already scheduled.
     if (this.scene.gameState.playerHealth <= 0) return;
 
-    // Wave-refill prototype: while this floor still has waves left, don't let
-    // it clear. Once the board is nearly empty — or the fight is fully won —
-    // drop the next wave from the top instead. A wave is only spent if cards
-    // actually dropped. When the waves run out, normal clear resumes below.
+    // Reinforcements: while this room still owes waves, don't let it clear.
+    // Once the board is nearly empty — or the fight is fully won — drop the next
+    // wave from the top instead. A wave is only spent if cards actually dropped.
+    // When the waves run out, normal clear resumes below. Which rooms get waves
+    // is data: content/balance/Reinforcements.js.
     if (this._waveState && this._waveState.wavesLeft > 0) {
         if (this._waveState.dropping) return;            // a wave is mid-fall
         const liveCount = this.boardCards.filter(Boolean).length;
