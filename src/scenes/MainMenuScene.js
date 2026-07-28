@@ -59,7 +59,7 @@ export class MainMenuScene extends Phaser.Scene {
             newRun: this.createSpriteButton(320, 110, t(this, 'ui.menu.newRun'),   () => this.startNewGame()),
             continue: this.createSpriteButton(320, 142, t(this, 'ui.menu.continue'),  hasSavedRun ? () => this.continueGame() : null),
             tutorial: this.createSpriteButton(320, 174, 'Tutorial',                 () => this.startTutorial()),
-            testPolygon: this.createSpriteButton(320, 206, 'Test Polygon',          () => this.startTestPolygon()),
+            testSite: this.createSpriteButton(320, 206, 'Test Site',                () => this.startTestSite()),
             testOptions: this.createSpriteButton(320, 238, t(this, 'ui.menu.testOptions'), () => this.showTestOptionsMenu()),
             // Cog tucked into the top-right corner (32x32, 6px margin).
             options: this.createIconButton(618, 22, 'optionsButton', () => this.showOptionsMenu()),
@@ -557,7 +557,7 @@ export class MainMenuScene extends Phaser.Scene {
         });
     }
 
-    startTestPolygon() {
+    startTestSite() {
         this.fadeOutMenuMusic();
         this.cameras.main.fadeOut(350, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {

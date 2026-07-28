@@ -52,6 +52,8 @@ export class EventScene extends Phaser.Scene {
   init(data = {}) {
     this.gameState = data.gameState || {};
     this.gameScene = this.scene?.get?.('GameScene');
+    // Test Site: play exactly this story, whatever the story rules would say.
+    this.forcedEventId = data.forcedEventId || null;
     this.ensureStoryState();
     this.event = this._pickEvent();
     this.resolved = false;
@@ -60,6 +62,14 @@ export class EventScene extends Phaser.Scene {
   _pickEvent() {
     this.ensureStoryState();
     const story = this.gameState.storyRun;
+
+    // A story chosen in the Test Site opens no matter what — including ones the
+    // ?event= allow-list below never covered, and ones already played. Falling
+    // through to the normal rules would silently hand back a different story
+    // than the one that was clicked, which is worse than a thin version of it.
+    if (this.forcedEventId && getEvent(this.forcedEventId)) {
+      return this.getEventById(this.forcedEventId);
+    }
 
     const forcedId = this._getForcedEventId();
     if (forcedId && (forcedId !== 'hatching_egg' || this.canShowEggHatchingEvent())) {
@@ -559,10 +569,15 @@ export class EventScene extends Phaser.Scene {
   }
 
   _saveStoredHeroMemory() {
+    // Testing a story must not count as having lived it. Without this, opening
+    // the music box in the Test Site would mark it resolved forever and take it
+    // out of real runs — the same trap that made it untestable to begin with.
+    if (isSandboxMode(this)) return;
     saveHeroMemory(this.gameState.heroMemory);
   }
 
   _saveStoredStoryRun() {
+    if (isSandboxMode(this)) return;
     this.ensureStoryState();
     saveStoryProgress(this.gameState.storyRun);
   }
