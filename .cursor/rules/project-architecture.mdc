@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Rouge — правила для агента
 
-Подробности и чеклисты: `docs/AGENT.md`. Механики: `docs/MECHANICS.md`. Куда крутить числа: `docs/BALANCE.md`. Freeze сейвов: `docs/OPEN-QUESTIONS.md`.
+Подробности и чеклисты: `docs/AGENT.md`. Механики: `docs/MECHANICS.md`. Куда крутить числа: `docs/BALANCE.md`. Freeze сейвов: `docs/OPEN-QUESTIONS.md`. Макро-лор: `docs/LORE.md` / `docs/narrative/` (Obsidian vault symlink → эта папка).
 
 ## Слои
 
