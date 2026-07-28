@@ -21,7 +21,9 @@
         body {
             margin: 0;
             padding: 0;
-            background: #1a1a1a;
+            /* Matches the Phaser canvas colour so handing over to the game's
+               own loading bar is not a visible flash of a different screen. */
+            background: #2c1810;
             font-family: "HoMM Pixel", Arial, Helvetica, sans-serif;
             overflow: hidden;
         }
@@ -37,10 +39,78 @@
             image-rendering: pixelated;
             image-rendering: crisp-edges;
         }
+
+        /* Covers the stretch before Phaser exists: ~1.2MB of engine, the module
+           graph, and main.js's font wait. Phaser cannot draw during any of it,
+           so without this the player stares at an empty brown page and cannot
+           tell a slow download from a hang. */
+        #boot-loader {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            background: #2c1810;
+            color: #e6edf3;
+            z-index: 10;
+        }
+        #boot-loader .boot-title {
+            font-size: 20px;
+            letter-spacing: 1px;
+        }
+        #boot-loader .boot-track {
+            width: 264px;
+            height: 16px;
+            border: 1px solid #8b6914;
+            background: rgba(0, 0, 0, 0.45);
+            overflow: hidden;
+        }
+        /* Indeterminate on purpose: nothing here knows the real download size,
+           and a fake percentage that jumps to 100% and waits is worse than an
+           honest "something is still happening". */
+        #boot-loader .boot-track::after {
+            content: "";
+            display: block;
+            width: 40%;
+            height: 100%;
+            background: #d4a017;
+            animation: boot-sweep 1.1s ease-in-out infinite;
+        }
+        #boot-loader .boot-status {
+            font-size: 11px;
+            color: #8b949e;
+        }
+        @keyframes boot-sweep {
+            0%   { transform: translateX(-100%); }
+            100% { transform: translateX(250%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #boot-loader .boot-track::after { animation-duration: 3s; }
+        }
     </style>
 </head>
 <body>
+    <div id="boot-loader">
+        <div class="boot-title">Dungeon Card Crawler</div>
+        <div class="boot-track"></div>
+        <div class="boot-status">Starting up...</div>
+    </div>
     <div id="phaser-game-container"></div>
-    <script type="module" src="src/main.js?v=20260722-talents4"></script>
+    <script>
+        // If the engine or the module graph never arrives, main.js never runs
+        // and nothing below ever updates this screen. Say something after a
+        // while rather than sweeping a bar forever with no explanation.
+        setTimeout(function () {
+            var status = document.querySelector('#boot-loader .boot-status');
+            if (status) status.textContent = 'Still loading - large download, please wait...';
+        }, 8000);
+        setTimeout(function () {
+            var status = document.querySelector('#boot-loader .boot-status');
+            if (status) status.textContent = 'Still loading - try refreshing if this does not finish.';
+        }, 30000);
+    </script>
+    <script type="module" src="src/main.js?v=20260728-loading"></script>
 </body>
 </html>
