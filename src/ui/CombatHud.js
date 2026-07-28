@@ -849,9 +849,6 @@ export const CombatHud = {
         if (gs.boneWall && gs.boneWall > 0) {
             entries.push({ text: `Bone Shield (${gs.boneWall} ${gs.boneWall === 1 ? 'charge' : 'charges'})`, color: '#ffffff' });
         }
-        if (gs.mirrorShield) {
-            entries.push({ text: 'Mirror Shield', color: '#c0c0c0' });
-        }
         if (gs.blockNextAttack) {
             entries.push({ text: 'Block Next Attack', color: '#88ccff' });
         }

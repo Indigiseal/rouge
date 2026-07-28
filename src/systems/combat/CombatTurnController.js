@@ -183,26 +183,6 @@ export class CombatTurnController {
             }
         }
 
-        // Check for mirror shield (one-time full reflection)
-        if (scene.gameState.mirrorShield) {
-            // Find the first eligible (non-frozen) attacking enemy
-            const firstAttacker = eligible.find(({ card }) => !(card.data.frozen && card.data.frozen > 0)) || null;
-
-            if (firstAttacker) {
-                scene.gameState.mirrorShield = false;
-                SoundHelper.playSound(scene, 'armor_equip', 0.5);
-
-                // Reflect full damage back
-                const reflectedDamage = firstAttacker.card.data.attack;
-                scene.cardSystem.attackEnemy(firstAttacker.index, reflectedDamage, true);
-                scene.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Mirrored)`, 0xc0c0c0);
-                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Mirror Shield!', 0xc0c0c0);
-                scene.updateUI(); // Refresh so Mirror Shield drops off the effects panel
-                this.finishEnemyTurnWithCompanion();
-                return; // Mirror shield blocks all attacks this action
-            }
-        }
-
         const attackers = eligible;
         const enemyAttackGap = this.getEnemyAttackGap(attackers);
 

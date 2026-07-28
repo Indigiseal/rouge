@@ -49,8 +49,7 @@ export class GameState {
         this.shadowBlade = null;
         this.magicShield = null;
         this.boneWall = 0;
-        this.mirrorShield = false;
-        
+
         // Amulet-related properties
         this.firstActionUsed = false; // For Quickhand Gloves
         this.bonusInventorySlots = 0; // For Bottomless Bag / Diviner's Spade

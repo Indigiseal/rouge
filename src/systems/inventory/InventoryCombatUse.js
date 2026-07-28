@@ -48,7 +48,6 @@ export const InventoryCombatUse = {
             case 'restoration':
             case 'shadowBlade':
             case 'magicShield':
-            case 'mirrorShield':
             case 'boneWall':
                 return true;
             default:
@@ -220,13 +219,6 @@ export const InventoryCombatUse = {
                 used = true;
                 break;
                 
-            case 'mirrorShield':
-                this.scene.gameState.mirrorShield = true;
-                SoundHelper.playSound(this.scene, 'mirrorShield', 0.5);
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Mirror Shield Active!', 0xc0c0c0);
-                used = true;
-                break;
-                
             case 'smokeScreen':
                 // Flip all face-up non-boss enemy cards back down.
                 // Boss is intentionally excluded — it cannot be hidden.
@@ -283,7 +275,7 @@ export const InventoryCombatUse = {
             cardSprite.destroy();
             this.removeCard(slotIndex, true, 'magic_used');
             // Refresh the HUD so any buff the spell just applied (Bone Shield,
-            // Shadow Blade, Magic Shield, Mirror Shield, etc.) shows up in the
+            // Shadow Blade, Magic Shield, etc.) shows up in the
             // player-effects panel right away instead of only after the next turn.
             this.scene.updateUI();
         } else {

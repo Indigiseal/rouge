@@ -374,7 +374,7 @@ export class InventorySystem {
                 } else if (cardData.type === 'food') {
                     if (this.useFood(slotIndex, cardSprite)) return;
                 } else if (cardData.type === 'magic') {
-                    const selfTarget = ['restoration', 'shadowBlade', 'magicShield', 'boneWall', 'mirrorShield'];
+                    const selfTarget = ['restoration', 'shadowBlade', 'magicShield', 'boneWall'];
                     if (selfTarget.includes(cardData.magicType)) {
                         this.useMagicCard(slotIndex, cardSprite);
                         return;
@@ -430,9 +430,8 @@ export class InventorySystem {
                 if (this.useFood(slotIndex, cardSprite)) return; // Success
             } else if (cardData.type === 'magic') {
                 // Some magic cards can be used on player
-                if (cardData.magicType === 'restoration' || cardData.magicType === 'shadowBlade' || 
-                    cardData.magicType === 'magicShield' || cardData.magicType === 'boneWall' || 
-                    cardData.magicType === 'mirrorShield') {
+                if (cardData.magicType === 'restoration' || cardData.magicType === 'shadowBlade' ||
+                    cardData.magicType === 'magicShield' || cardData.magicType === 'boneWall') {
                     this.useMagicCard(slotIndex, cardSprite);
                     return;
                 }

@@ -59,7 +59,6 @@ export const WEAPON_ENCHANTS = Object.freeze({
   weakness: { title: 'Sapping', summary: 'the enemy deals 30% less damage', timing: 'onHit' },
   boneWall: { title: 'Bulwark', summary: 'reflect the next attack', timing: 'onHit' },
   magicShield: { title: 'Warding', summary: '+20% armor for 1 turn', timing: 'onHit' },
-  mirrorShield: { title: 'Mirrored', summary: 'reflect the next attack', timing: 'onHit' },
   smokeScreen: { title: 'Shrouding', summary: 'hide an enemy on a kill', timing: 'onKill' },
 });
 
@@ -69,7 +68,6 @@ export const WEAPON_ENCHANTS = Object.freeze({
 export const GLOW_CARD_FRAMES = Object.freeze({
   boneWall: 0,
   frostRing: 1,
-  mirrorShield: 2,
   fireball: 3,
   soulDrain: 4,
   magicShield: 5,

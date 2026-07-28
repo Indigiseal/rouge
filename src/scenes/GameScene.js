@@ -1292,7 +1292,6 @@ export class GameScene extends Phaser.Scene {
         this.gameState.shadowBlade = runData.effects.shadowBlade;
         this.gameState.magicShield = runData.effects.magicShield;
         this.gameState.boneWall = runData.effects.boneWall;
-        this.gameState.mirrorShield = runData.effects.mirrorShield;
         this.gameState.blockNextAttack = runData.effects.blockNextAttack;
         // Damage tracking
         this.gameState.damageTracking = runData.damageTracking;
