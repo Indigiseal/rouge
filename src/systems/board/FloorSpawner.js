@@ -1470,8 +1470,13 @@ function summonEnemy(enemyType, bossCard) {
     
     const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, summonedEnemy.sprite));
     cardSprite.setAlpha(0);
+    cardSprite.setDepth(2);
     cardSprite.setInteractive();
-    
+    // Without this the minion is unclickable: it attacks every turn and can
+    // never be attacked back, so a summoning boss becomes unwinnable. Every
+    // other board-card spawner wires the same handler.
+    cardSprite.on('pointerdown', () => this.interactWithCard(emptySlot));
+
     // Animate the summon
     this.scene.tweens.add({
         targets: cardSprite,
