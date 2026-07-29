@@ -80,7 +80,12 @@ export const RELICS_OTHERS_ATLAS = Object.freeze({
     mothWingDust:         { frame: 68, name: 'Moth-Wing Dust' },
     luckyClover:          { frame: 69, name: 'Lucky Clover' },
     lightningRune:        { frame: 70, name: 'Lightning Rune' },
-    poisonRune:           { frame: 71, name: 'Poison Rune' }
+    poisonRune:           { frame: 71, name: 'Poison Rune' },
+
+    bloodFang:            { frame: 72, name: 'Vampire Fang' },
+    monocleLens:          { frame: 78, name: 'Monocle' },
+    alchemistSatchel:     { frame: 80, name: 'Alchemist Bag' },
+    violetGauntlet:       { frame: 81, name: 'Gloves of the Hermit Wizard' }
 });
 
 // Gameplay IDs stay stable for saves and balance code. These maps are the
@@ -142,10 +147,10 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     ringOfGreaterRegeneration: 'moonPotion',
     earringOfGreaterArmorDurability: 'shieldPotion',
     earringOfGreaterWeaponDurability: 'stormShard',
-    alchemistBag: 'basket',
-    monocle: 'magnifyingGlass',
+    alchemistBag: 'alchemistSatchel',
+    monocle: 'monocleLens',
     pouchOfGreed: 'greedPouch',
-    vampireFang: 'signetRing',
+    vampireFang: 'bloodFang',
     newDragonClaw: 'dragonClaw',
     runeOfFire: 'fireRuneStone',
     runeOfZap: 'lightningRune',
@@ -154,7 +159,7 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     philosophersStone: 'sunstone',
     legendaryWhetstone: 'goldBar',
     lostNobleDiadem: 'diadem',
-    glovesOfHermitWizard: 'fingerlessGloves',
+    glovesOfHermitWizard: 'violetGauntlet',
 });
 
 export const RELIC_ATLAS_KEYS = Object.freeze({
