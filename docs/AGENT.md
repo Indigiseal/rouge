@@ -5,7 +5,7 @@ Cursor подхватывает краткую версию из `.cursor/rules/
 Смежные docs:
 
 - `docs/MECHANICS.md` — source of truth механик
-- `docs/BALANCE.md` — цели баланса и куда крутить числа
+- `docs/BALANCE.md` — цели баланса и куда крутить числа (в т.ч. enemy bands + archetypes)
 - `docs/OPEN-QUESTIONS.md` — открытые дизайны + freeze save-контракта
 - `docs/LORE.md` — макро-лор (`docs/narrative/`, editable via Obsidian symlink)
 - `docs/event-stories.md` — narrative copy ивентов в билде

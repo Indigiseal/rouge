@@ -9,32 +9,36 @@ tags:
 
 # Replayability
 
-Replayability in Evershift is built not on branching choices, but on **month change**.
+Replayability comes from the **sliding three-month window**, not from branching.
 
 ## Principle
 
-- the Path is always the same;
-- the goal is always the same;
-- what changes is not the quest, but the **face of the world** the hero must cross.
+- the Path / goal stay the same;
+- branching is shelved;
+- what changes is which **three faces** of the Second Moon the hero walks through this run.
 
-This preserves a strong story spine while still offering different starting tones, biomes, enemy mixes, and atmosphere.
+Early playthroughs should feel like discovering something new each time: new month openers, new threat accents, new event weights.
 
-## What changes month to month
+Later playthroughs remix familiar months into unfamiliar triples (e.g. 11→12→1 feels different from 1→2→3 even if month 1 repeats).
 
-- leading threat theme;
-- visual backdrop and biome;
-- villain and monster types;
-- event accents and roadside strangeness;
+## What changes between runs
+
+- starting month on the circle;
+- the act 1 / 2 / 3 triple;
+- leading biomes and enemy accents;
+- which events are more likely to appear;
 - emotional color of the expedition.
 
 ## What stays the same
 
 - the Waystar;
 - the Far Place;
-- the hero's task;
-- the meaning of the long road.
+- the task: follow the Path and end the Second Moon's harm;
+- no requirement that roadside encounters interconnect into one novel.
 
 ## Related
 
+- [[Run Structure]]
 - [[The Calendar]]
 - [[Months Index]]
+- [[Encounter Philosophy]]

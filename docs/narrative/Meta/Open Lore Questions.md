@@ -18,10 +18,12 @@ A living list of what is not yet locked in the lore.
 - [ ] Why does the [[The Waystar|Waystar]] choose / hold this particular hero?
 - [ ] Does the [[The City|City]] sense the hero's returns between months?
 - [ ] Does the Second Moon have a master, a cult, or keepers?
+- [x] Year completion is not a special narrative beat (Spherefall ≠ finale). See [[Design Decisions]].
 
 ## Calendar and run
 
-- [ ] In one winning run, does the hero pass through three consecutive months, or does the whole run keep the starting month's aesthetic?
+- [x] Winning run = three **consecutive** months on the circle (`N`, `N+1`, `N+2`, wrap). See [[Run Structure]].
+- [ ] On death, does the calendar advance from the **run's starting month** or from the **month where the hero died**?
 - [ ] How should Day / Month / Act appear in the UI?
 - [ ] Do different months need distinct defeat epilogues?
 
@@ -33,4 +35,6 @@ A living list of what is not yet locked in the lore.
 
 ## Events
 
-- [ ] How do the music box, carnival, and mirrors fit as strangeness of specific months rather than a separate macro-plot?
+- [x] Encounters do not need one shared plot; month weights are enough. See [[Encounter Philosophy]].
+- [x] Path branching shelved. See [[Design Decisions]].
+- [ ] How strongly should the music-box lane ignore month gates so it never soft-locks?

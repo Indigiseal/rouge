@@ -21,7 +21,9 @@ The most useful reckoning is:
 
 - **1 month = 15 days**
 - **1 day on the road = 1 floor**
-- **3 months in a row = one successful expedition**
+- **3 consecutive months on the circle = one successful expedition**
+  (windows: 1→2→3, 2→3→4, …, 11→12→1, 12→1→2)
+
 
 This keeps lore aligned with game structure:
 
@@ -47,7 +49,7 @@ People await a month-change the way they once awaited a storm.
 This calendar:
 
 - naturally explains 12 setting faces;
-- supports replayability without branching;
+- supports replayability via sliding month windows (no branching);
 - makes death part of time, not only defeat;
 - enables strong title cards at the start of each act.
 

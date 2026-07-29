@@ -31,13 +31,20 @@ This note is the **map of content** for the lore database.
 
 ## Months
 
-> [!abstract] Example set
-> The twelve names below are **working examples** for discussion. They can be renamed, merged, or replaced without breaking the rest of the canon.
+> [!abstract] Primary breakdown
+> Narrative content is organized **by month folder**: features, events, gaps. Names are still working examples.
 
 - [[Months Index]]
-- [[01 Thornwake|Thornwake]] · [[02 Silkdeep|Silkdeep]] · [[03 Tollroad|Tollroad]] · [[04 Boneflood|Boneflood]]
-- [[05 Mireturn|Mireturn]] · [[06 Veilbleed|Veilbleed]] · [[07 Ashhowl|Ashhowl]] · [[08 Brassfair|Brassfair]]
-- [[09 Frosthollow|Frosthollow]] · [[10 Stormhatch|Stormhatch]] · [[11 Mirrorwane|Mirrorwane]] · [[12 Spherefall|Spherefall]]
+- [[01 Thornwake/Thornwake|Thornwake]] · [[02 Silkdeep/Silkdeep|Silkdeep]] · [[03 Tollroad/Tollroad|Tollroad]] · [[04 Boneflood/Boneflood|Boneflood]]
+- [[05 Mireturn/Mireturn|Mireturn]] · [[06 Veilbleed/Veilbleed|Veilbleed]] · [[07 Ashhowl/Ashhowl|Ashhowl]] · [[08 Brassfair/Brassfair|Brassfair]]
+- [[09 Frosthollow/Frosthollow|Frosthollow]] · [[10 Stormhatch/Stormhatch|Stormhatch]] · [[11 Mirrorwane/Mirrorwane|Mirrorwane]] · [[12 Spherefall/Spherefall|Spherefall]]
+- Shared: [[_Shared/Music Box Chain|Music Box Chain]] · [[_Shared/Any-Month Events|Any-Month Events]]
+
+## Enemies & bosses
+
+- [[Enemies Index]]
+- [[Bosses Index]]
+- [[Enemy Power]]
 
 ## Concepts
 
@@ -45,9 +52,12 @@ This note is the **map of content** for the lore database.
 - [[Run Structure]]
 - [[Tone and Fantasy]]
 - [[Replayability]]
+- [[Encounter Philosophy]]
+- [[Enemy Power]]
 
 ## Meta
 
+- [[Design Decisions]]
 - [[Open Lore Questions]]
 - [[Lore Glossary]]
 

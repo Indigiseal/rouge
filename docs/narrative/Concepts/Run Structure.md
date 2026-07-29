@@ -9,42 +9,54 @@ tags:
 
 # Run Structure
 
-## Core rhythm
+## Locked rule
 
-One full successful expedition is **three months in a row**.
+One successful run is **three consecutive months** on the calendar circle.
 
-### Act 1
-- days 1–15
-- first month
-- the world is only entering a new face of threat
+Examples:
 
-### Act 2
-- days 16–30
-- second month
-- pressure rises; the road grows harsher
+- start month 1 → months **1 → 2 → 3**
+- start month 2 → months **2 → 3 → 4**
+- start month 11 → months **11 → 12 → 1**
+- start month 12 → months **12 → 1 → 2**
 
-### Act 3
-- days 31–45
-- third month
-- the Path nears its answer; threats gather around the finale
+There are **12 possible starting months**, so 12 distinct three-month windows.
+
+## Acts inside a run
+
+| Act | Days / floors | Calendar |
+|---|---|---|
+| Act 1 | 1–15 | starting month `N` |
+| Act 2 | 16–30 | month `N+1` (wrap after 12) |
+| Act 3 | 31–45 | month `N+2` (wrap after 12) |
+
+Each act changes the world's face: biome pressure, enemy accent, and which events are weighted.
 
 ## After death
 
 If the hero dies:
 
 - the Path breaks;
-- the Waystar returns them;
-- the next run begins in a **new month**.
+- the [[The Waystar|Waystar]] returns them;
+- the next run opens on the **next starting month** of the circle, so the three-month window slides forward.
 
-That means the starting setting changes naturally, without a path choice and without branching.
+Exact advance rule (from run start vs from death month) is still listed in [[Open Lore Questions]]. Intent: early playthroughs keep showing **new month combinations**.
+
+
+## What we are not doing (for now)
+
+- No path branching at the city gates.
+- No separate story forks per route.
+- Encounters do **not** need to form one connected plot across months.
 
 ## Why this works
 
-- 12 months give 12 lore faces of the world;
-- the same global story supports many runs;
-- acts do not need to be justified as "new dungeons" — the calendar justifies them.
+- first runs feel fresh (new windows on the circle);
+- later runs remix known faces in new triples;
+- acts are justified by the calendar, not by "deeper dungeon."
 
 ## Related
 
 - [[Replayability]]
 - [[Months Index]]
+- [[Encounter Philosophy]]

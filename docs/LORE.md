@@ -15,11 +15,19 @@ Obsidian редактирует ту же папку через symlink в vault
 
 ```text
 docs/narrative/
-  Narrative.md          # map of content
-  Lore/                 # Second Moon, Waystar, Calendar, City, ...
-  Months/               # 12 example months + index
-  Concepts/             # Day/Floor, Run Structure, Tone, Replayability
-  Meta/                 # Glossary, open questions
+  Narrative.md              # map of content
+  Lore/                     # Second Moon, Waystar, Calendar, City, ...
+  Months/                   # PRIMARY breakdown
+  Enemies/                  # one page per enemy
+  Bosses/                   # one page per month boss
+    Months Index.md
+    _Shared/                # chains, any-month notes
+    01 Thornwake/
+      Thornwake.md          # features, event list, gaps
+      Events/               # brief event cards
+    ...
+  Concepts/                 # Day/Floor, Run Structure, Enemy Power, …
+  Meta/                     # Glossary, open questions
 ```
 
 ## Obsidian
@@ -38,8 +46,8 @@ Edit notes in Obsidian under **Narrative/** — files land in the repo.
 
 | Layer | Where | Contents |
 |---|---|---|
-| Macro lore / setting | `docs/narrative/` | Second Moon, Waystar, months, run fantasy |
-| In-game event copy | `docs/event-stories.md` + `src/content/events/` | Build vignette text |
+| Macro lore / setting | `docs/narrative/` | Second Moon, Waystar, months, events-by-month |
+| In-game event copy | `docs/event-stories.md` + `src/content/events/` | Full vignette text / code |
 | Mechanics / balance | `docs/MECHANICS.md`, `docs/BALANCE.md` | Not lore |
 
 **Do not** duplicate long canon outside `docs/narrative/`. Point here instead.

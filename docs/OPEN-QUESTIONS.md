@@ -116,6 +116,12 @@
       book_worm trio, `luckyClover`, `fortuneCard`, screaming-head runes,
       slimy_prison cursed) на новые event-only.
 
+## Враги / скейл
+
+- **[ ] Имплементировать power bands + archetypes.** Дизайн зафиксирован в
+  `docs/BALANCE.md` (Enemy power) и `docs/narrative/Concepts/Enemy Power.md`.
+  Сейчас в коде ещё пер-тип `tiers[]` в `enemies.js`.
+
 ## Акт 3 / спаун
 
 - **[ ] Веса карт акта 3 — явная таблица, как у актов 1–2.** Сейчас
