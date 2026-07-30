@@ -15,11 +15,11 @@ Ordinary enemies use **band(floor) × archetype**. Full band table: `docs/BALANC
 
 ### [[01 Thornwake/Thornwake|Thornwake]] — The Briar March
 - Boss: [[The Green Warden]]
-- [[Wolf]] (`melee`, `skirmisher`, proposed) — +1 ATK per other revealed living Wolf on the board.
-- [[Briar Beast]] (`melee`, `bruiser`, proposed)
-- [[Thorn Sprite]] (`melee`, `swarm`, proposed)
-- [[Spore Archer]] (`ranged`, `artillery`, proposed)
-- [[Briar Slinger]] (`ranged`, `artillery`, proposed)
+- [[Wolf]] (`melee`, `skirmisher`, in-game) — thorn-wounded pack; `wolf_pack`.
+- [[Thorn Ent]] (`melee`, `bruiser`, in-game) — fairy-tale ent; `thorns_reflect`.
+- [[Thorn Sprite]] (`melee`, `swarm`, in-game) — living vine hydra; `ranged_immune`.
+- [[Spore Archer]] (`ranged`, `artillery`, in-game) — glowing sporeling; `spore_on_hit`.
+- [[Thorn Fairy]] (`ranged`, `artillery`, in-game) — vine-bound fae; `veil_flip`.
 
 ### [[02 Silkdeep/Silkdeep|Silkdeep]] — The Silkdeep Caves
 - Boss: [[Spider Queen]]
@@ -126,7 +126,6 @@ Ordinary enemies use **band(floor) × archetype**. Full band table: `docs/BALANC
 - [[Wolf]]
 
 ### `bruiser` (HP ×1.25 · ATK ×0.95)
-- [[Briar Beast]]
 - [[Cinder Brute]]
 - [[Clockwork Barker]]
 - [[Crypt Warden]]
@@ -134,6 +133,7 @@ Ordinary enemies use **band(floor) × archetype**. Full band table: `docs/BALANC
 - [[Mire Brute]]
 - [[Shard Brute]]
 - [[Star-Iron Brute]]
+- [[Thorn Ent]]
 - [[Thunder Beetle]]
 - [[Toll Brute]]
 - [[Veil Ripper]]
@@ -155,7 +155,6 @@ Ordinary enemies use **band(floor) × archetype**. Full band table: `docs/BALANC
 
 ### `artillery` (HP ×0.7 · ATK ×1.15)
 - [[Ash Archer]]
-- [[Briar Slinger]]
 - [[Egg Sniper]]
 - [[Fen Spitter]]
 - [[Fortune Lobber]]
@@ -177,6 +176,7 @@ Ordinary enemies use **band(floor) × archetype**. Full band table: `docs/BALANC
 - [[Spitting Spider]]
 - [[Spore Archer]]
 - [[Storm Screecher]]
+- [[Thorn Fairy]]
 - [[Well Spitter]]
 
 ## Related

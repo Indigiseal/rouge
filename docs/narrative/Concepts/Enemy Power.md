@@ -53,10 +53,17 @@ Each enemy has a note under `Enemies/`; bosses under `Bosses/`. Month cast table
 
 Write monster features as rules without passport damage numbers. Power comes from band + archetype.
 
-**Locked early exception — Wolf (Thornwake, skirmisher):**
-+1 ATK for each other **revealed, living** Wolf on the board.
+**Thornwake (locked in code under `src/content/months/thornwake/`):**
 
-Other monster features: TBD.
+| Enemy | Feature | Rule |
+|---|---|---|
+| [[Wolf]] | `wolf_pack` | +1 ATK per other revealed living Wolf on the board |
+| [[Thorn Ent]] | `thorns_reflect` | On a connecting player weapon hit, deals 1 true damage through armor |
+| [[Thorn Sprite]] | `ranged_immune` | Immune to ranged weapons (melee / spells still work) |
+| [[Spore Archer]] | `spore_on_hit` | Applies Spored; next player weapon attack has 15% miss, then clears |
+| [[Thorn Fairy]] | `veil_flip` | Each of her turns flips face-up (no strike) or strikes then flips face-down |
+
+Other months: features TBD per cast note.
 
 
 ## Related

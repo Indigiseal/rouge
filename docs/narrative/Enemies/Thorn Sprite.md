@@ -5,6 +5,7 @@ status: proposed
 role: melee
 archetype: swarm
 primary_month: Thornwake
+game_id: thornSprite
 tags:
   - evershift
   - enemy
@@ -13,7 +14,9 @@ tags:
 
 # Thorn Sprite
 
-Small fae that drives brush into the fight.
+Not a winged sprite of hearth-tales — a knot of awakened briar that has learned to hunt. Vines writhe like snakes and braid themselves into several snapping heads, a hydra shaped from thorn and leaf. There is little solid flesh to aim at; arrows pass through the tangle as if the thing were only gaps and spite. It comes in swarms of motion more than in single bodies, and the Path feels smaller wherever it coils.
+
+(The vine-bound fairy of the same month is [[Thorn Fairy]].)
 
 ## Combat sheet
 
@@ -21,20 +24,22 @@ Small fae that drives brush into the fight.
 |---|---|
 | Role | melee |
 | Archetype | `swarm` (HP ×0.75 · ATK ×0.9) |
+| Game id | `thornSprite` |
 | Status | proposed |
-| Primary month | [[01 Thornwake/Thornwake|Thornwake]] |
-| Location | [[01 Thornwake/Thornwake#The Briar March|The Briar March]] |
+| Primary month | [[Thornwake]] |
+| Location | [[Thornwake#The Briar March]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 ## Feature
 
-_TBD_
+`ranged_immune` — immune to ranged weapons. Melee and non-weapon damage still land.
 
 ## Related
 
 - [[Enemies Index]]
-- [[01 Thornwake/Thornwake|Thornwake]]
-- Location: [[01 Thornwake/Thornwake#The Briar March|The Briar March]]
+- [[Thornwake]]
+- Location: [[Thornwake#The Briar March]]
 - [[Enemy Power]]
 - [[Months Index]]
+- [[Thorn Fairy]]
