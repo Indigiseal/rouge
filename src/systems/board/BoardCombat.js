@@ -491,10 +491,31 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         this.applyWeaponGemEffect(index, weapon, finalDamage);
     }
 
+    // Gem/enchant splash can already defeat (and replace) this slot — do not
+    // keep mutating a death-drop loot card or a removed stub as if it were
+    // still the enemy (that left "Cave Crawler -7" glued onto Crystals).
+    if (this.boardCards[index] !== card || !card.sprite?.scene || !this.isEnemyType(card.data?.type)) {
+        return;
+    }
+    if ((card.data.health ?? 0) <= 0) {
+        this.removeDefeatedEnemy(index, card);
+        if (enchantProc) this.applyWeaponEnchantOnKill(enchantProc);
+        return;
+    }
+
     // Enchant procs land here for the same reason gems do: a killing weapon hit
     // removes the card, which would silently swallow the effect and its text.
     if (enchantProc && !enchantInstantKill) {
         this.applyWeaponEnchantOnHit(index, enchantProc, finalDamage);
+    }
+
+    if (this.boardCards[index] !== card || !card.sprite?.scene || !this.isEnemyType(card.data?.type)) {
+        return;
+    }
+    if ((card.data.health ?? 0) <= 0) {
+        this.removeDefeatedEnemy(index, card);
+        if (enchantProc) this.applyWeaponEnchantOnKill(enchantProc);
+        return;
     }
 
     // Apply damage. (Carrion Oath / hungryDagger no longer alters combat — it was
@@ -781,6 +802,10 @@ function damageGemTarget(index, amount, label, color, effect = null, beat = 'gem
     const card = this.boardCards[index];
     if (!this.isOpenEnemyCard(card)) return;
     if (isTauntBlockingTarget.call(this, card)) return;
+    if ((card.data.health ?? 0) <= 0) {
+        this.removeDefeatedEnemy(index, card);
+        return;
+    }
     if (effect) CombatSequencer.schedule(this.scene, beat, () => {
         if (card.sprite?.scene) this.playEnemyHitEffect(card, effect);
     });

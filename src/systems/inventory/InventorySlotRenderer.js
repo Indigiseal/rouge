@@ -357,6 +357,12 @@ export const InventorySlotRenderer = {
         // Add drag events with proper position tracking
         cardSprite.on('dragstart', () => {
             if (!cardSprite.scene) return;
+            // Silkslinger web: card cannot be dragged while locked.
+            if (cardSprite.getData('webbedLocked') || (this.slots[slotIndex]?.webbedTurns > 0)) {
+                this.scene.input?.setDraggable?.(cardSprite, false);
+                this.scene.createFloatingText?.(cardSprite.x, cardSprite.y - 18, 'Webbed!', 0xddeeff);
+                return;
+            }
             this.hideCardTooltip();
             SoundHelper.playVariant(this.scene, 'card_place', 0.4);
 

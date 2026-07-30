@@ -747,6 +747,8 @@ function _infoTextAlive(go) {
 
 function updateEnemyInfoText(card) {
     if (!card?.data || !card.sprite) return;
+    const t = card.data.type;
+    if (t !== 'enemy' && t !== 'eliteEnemy' && t !== 'boss') return;
 
     // Fast path: the corner-stat container we built in createCardInfoText
     // exposes _hpText / _atkText. Refresh those in place when they're

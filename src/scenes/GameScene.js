@@ -1156,6 +1156,7 @@ export class GameScene extends Phaser.Scene {
         this.clearEnemyTurnTimers();
         this.finalizeCompanionCombatHistory();
         this.enemiesCleared = true;
+        this.inventorySystem?.clearAllHandWebs?.();
         const floor = this.gameState.currentFloor;
         recordHumanRunEvent(this, 'floor_cleared', {
             floor,

@@ -95,21 +95,23 @@ export const InventoryView = {
             slot.webOverlay.y = cardSprite.y;
             slot.webOverlay.setVisible(true);
             slot.webOverlay.setDepth(this.getInventoryDepths().webOverlay);
-            return;
+        } else {
+            const overlay = snapOriginToPixelGrid(
+                this.scene.add.image(cardSprite.x, cardSprite.y, 'webCardOverlay')
+            );
+            overlay.setDisplaySize(cardSprite.displayWidth || 54, cardSprite.displayHeight || 70);
+            overlay.setDepth(this.getInventoryDepths().webOverlay);
+            this.uiGroup?.add?.(overlay);
+            slot.webOverlay = overlay;
+            cardSprite.setData('webOverlay', overlay);
+            cardSprite.once('destroy', () => {
+                overlay.destroy();
+                if (slot.webOverlay === overlay) slot.webOverlay = null;
+            });
         }
 
-        const overlay = snapOriginToPixelGrid(
-            this.scene.add.image(cardSprite.x, cardSprite.y, 'webCardOverlay')
-        );
-        overlay.setDisplaySize(cardSprite.displayWidth || 54, cardSprite.displayHeight || 70);
-        overlay.setDepth(this.getInventoryDepths().webOverlay);
-        this.uiGroup?.add?.(overlay);
-        slot.webOverlay = overlay;
-        cardSprite.setData('webOverlay', overlay);
-        cardSprite.once('destroy', () => {
-            overlay.destroy();
-            if (slot.webOverlay === overlay) slot.webOverlay = null;
-        });
+        // Webbed cards stay put — no drag (avoids orphaning the silk mask).
+        this.setCardWebbedInteractive(slotIndex, true);
     },
     clearWebOverlay(slotIndex) {
         const slot = this.slotSprites?.[slotIndex];
@@ -117,6 +119,18 @@ export const InventoryView = {
         slot.webOverlay.destroy();
         slot.webOverlay = null;
         slot.card?.setData?.('webOverlay', null);
+        this.setCardWebbedInteractive(slotIndex, false);
+    },
+    setCardWebbedInteractive(slotIndex, webbed) {
+        const cardSprite = this.slotSprites?.[slotIndex]?.card;
+        if (!cardSprite?.scene || !cardSprite.input) return;
+        if (webbed) {
+            this.scene.input.setDraggable(cardSprite, false);
+            cardSprite.setData('webbedLocked', true);
+        } else {
+            cardSprite.setData('webbedLocked', false);
+            if (cardSprite.input) this.scene.input.setDraggable(cardSprite, true);
+        }
     },
     clearAllHandWebs() {
         const slots = this.slots || [];
