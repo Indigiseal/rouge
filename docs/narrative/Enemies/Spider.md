@@ -1,10 +1,11 @@
 ---
 type: enemy
 project: Evershift
-status: in-game
+status: proposed
 role: melee
 archetype: skirmisher
 primary_month: Silkdeep
+game_id: spider
 tags:
   - evershift
   - enemy
@@ -13,7 +14,7 @@ tags:
 
 # Spider
 
-Primary Silkdeep cave predator.
+Primary predator of the Silkdeep Caves — a cave spider that lives by bite and venom. Every successful strike leaves poison in the wound; the Path learns quickly not to let them pile up.
 
 ## Combat sheet
 
@@ -21,22 +22,21 @@ Primary Silkdeep cave predator.
 |---|---|
 | Role | melee |
 | Archetype | `skirmisher` (HP ×1.0 · ATK ×1.0) |
+| Game id | `spider` |
 | Status | in-game |
-| Primary month | [[02 Silkdeep/Silkdeep|Silkdeep]] |
-| Location | [[02 Silkdeep/Silkdeep#The Silkdeep Caves|The Silkdeep Caves]] |
+| Primary month | [[Silkdeep]] |
+| Location | [[Silkdeep#The Silkdeep Caves]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 ## Feature
 
-_TBD_
+Poison on hit — stacks venom damage over turns (existing combat poison).
 
 ## Related
 
 - [[Enemies Index]]
-- [[02 Silkdeep/Silkdeep|Silkdeep]]
-- Location: [[02 Silkdeep/Silkdeep#The Silkdeep Caves|The Silkdeep Caves]]
+- [[Silkdeep]]
+- Location: [[Silkdeep#The Silkdeep Caves]]
 - [[Enemy Power]]
 - [[Months Index]]
-
-In-game id: `spider` (`src/content/cards/enemies.js`).

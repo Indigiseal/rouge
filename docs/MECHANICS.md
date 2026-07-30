@@ -34,6 +34,13 @@
 - **Spore Archer** (artillery): `spore_on_hit` — applies Spored; next player weapon attack has 15% miss, then clears
 - **Thorn Fairy** (artillery): `veil_flip` — each of her turns flips face-up (no strike) or strikes then flips face-down; face-down cannot be attacked and does not strike
 
+## Silkdeep enemy identities
+- **Spider** (skirmisher): poison — stacking poison on hit
+- **Cave Crawler** (swarm): `gnaw` — 50% chance +1 equipped armor durability loss on hit (extra vs block wear)
+- **Silk Husk** (bruiser): `taunt` — while revealed and alive, player may only attack taunting enemies (melee, ranged, magic)
+- **Stinger Scorpion** (artillery): `poison_amp` — on hit, +1 to active poison tick damage (no effect if not poisoned)
+- **Silkslinger** (artillery): `web_hand` — webs one random hand card for 1 turn (visual overlay; unusable). If the only usable weapon is webbed, treat as no weapon (stalemate enemy turns)
+
 ## Acceptance examples
 - On new floor: at least 1 front enemy + 1 back enemy is revealed
 - If front row is cleared, reveal one enemy behind

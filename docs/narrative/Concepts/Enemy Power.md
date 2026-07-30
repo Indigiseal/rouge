@@ -63,6 +63,16 @@ Write monster features as rules without passport damage numbers. Power comes fro
 | [[Spore Archer]] | `spore_on_hit` | Applies Spored; next player weapon attack has 15% miss, then clears |
 | [[Thorn Fairy]] | `veil_flip` | Each of her turns flips face-up (no strike) or strikes then flips face-down |
 
+**Silkdeep (locked in narrative; code under `src/content/months/silkdeep/`):**
+
+| Enemy | Feature | Rule |
+|---|---|---|
+| [[Spider]] | poison | Stacking poison on hit |
+| [[Cave Crawler]] | `gnaw` | 50% chance +1 equipped armor durability loss on hit (extra vs block wear) |
+| [[Silk Husk]] | `taunt` | While revealed and alive, player may attack only taunting enemies |
+| [[Stinger Scorpion]] | `poison_amp` | On hit, +1 to active poison tick damage (requires existing poison) |
+| [[Silkslinger]] | `web_hand` | Webs one random hand card for 1 turn; only-weapon webbed ⇒ skip attack like no weapon |
+
 Other months: features TBD per cast note.
 
 
