@@ -1,7 +1,7 @@
 import spider from './spider.js';
 import caveCrawler from './caveCrawler.js';
-import webBoundSkeleton from './webBoundSkeleton.js';
-import spittingSpider from './spittingSpider.js';
+import silkHusk from './silkHusk.js';
+import stingerScorpion from './stingerScorpion.js';
 import silkslinger from './silkslinger.js';
 
 function asDef({ id: _id, ...rest }) {
@@ -11,12 +11,12 @@ function asDef({ id: _id, ...rest }) {
 export const SILKDEEP_ENEMY_DEFS = Object.freeze({
   spider: asDef(spider),
   caveCrawler: asDef(caveCrawler),
-  webBoundSkeleton: asDef(webBoundSkeleton),
-  spittingSpider: asDef(spittingSpider),
+  silkHusk: asDef(silkHusk),
+  stingerScorpion: asDef(stingerScorpion),
   silkslinger: asDef(silkslinger),
 });
 
 export const SILKDEEP_ROSTER = Object.freeze({
-  MELEE: Object.freeze(['spider', 'caveCrawler', 'webBoundSkeleton']),
-  RANGED: Object.freeze(['spittingSpider', 'silkslinger']),
+  MELEE: Object.freeze(['spider', 'caveCrawler', 'silkHusk']),
+  RANGED: Object.freeze(['stingerScorpion', 'silkslinger']),
 });

@@ -6,4 +6,5 @@ export default {
   role: 'MELEE',
   minFloor: 1,
   archetype: 'swarm',
+  features: ['gnaw'],
 };

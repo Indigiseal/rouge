@@ -64,11 +64,13 @@ export class CombatTurnController {
         if (board.some(card => card && !scene.isEnemyCard(card))) return false;
 
         const inventory = scene.inventorySystem?.slots || scene.gameState?.inventory || [];
-        const hasUsableWeapon = inventory.some(card => (
-            card?.type === 'weapon' && (card.durability ?? 1) > 0
-        )) || (
-            scene.gameState?.equippedWeapon?.type === 'weapon'
-            && (scene.gameState.equippedWeapon.durability ?? 1) > 0
+        const isUsableWeapon = (card) => (
+            card?.type === 'weapon'
+            && (card.durability ?? 1) > 0
+            && !(card.webbedTurns > 0)
+        );
+        const hasUsableWeapon = inventory.some(isUsableWeapon) || (
+            isUsableWeapon(scene.gameState?.equippedWeapon)
         );
         if (hasUsableWeapon) return false;
 
@@ -112,6 +114,9 @@ export class CombatTurnController {
     revealedEnemiesAttack() {
         const scene = this.scene;
         if (scene.gameState.playerHealth <= 0) return; // Don't attack a dead player.
+
+        // Silkslinger webs expire at the start of the next enemy turn.
+        this.tickHandWebs();
 
         // Snapshot which enemies are eligible to act this action. A freshly revealed
         // enemy sits out the action that revealed it (a one-action grace so flipping
@@ -357,7 +362,7 @@ export class CombatTurnController {
         });
 
         const playerHealthBeforeDamage = scene.gameState.playerHealth;
-        const { actualDamage, tookDamage } = scene.gameState.takeDamage(damageDealt, index, 'enemy', armorPierce);
+        const { actualDamage, tookDamage, dodged } = scene.gameState.takeDamage(damageDealt, index, 'enemy', armorPierce);
 
         if (tookDamage) {
             CombatSequencer.playVariant(scene, 'hurt', 'player_hurt', 0.5);
@@ -368,8 +373,39 @@ export class CombatTurnController {
             }
         }
 
+        const features = Array.isArray(card.data?.features) ? card.data.features : [];
+
+        // Cave Crawler — extra armor chew on a connecting hit (on top of block wear).
+        if (!dodged && features.includes('gnaw') && scene.gameState.equippedArmor && Math.random() < 0.5) {
+            scene.gameState.tickEquippedArmorDurability();
+            if (scene.gameState.equippedArmor) {
+                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 28, 'Gnaw!', 0xc4a484);
+                scene.updateUI?.();
+            }
+        }
+
+        // Stinger Scorpion — each connecting hit pumps +1 into active poison tick damage.
+        if (!dodged && features.includes('poison_amp')) {
+            const poison = scene.gameState.playerEffects?.find((e) => e.type === 'poison');
+            if (poison) {
+                poison.damage = (poison.damage || 0) + 1;
+                scene.createFloatingText(
+                    scene.playerAvatar.x,
+                    scene.playerAvatar.y - 18,
+                    `Venom +1! (${poison.damage}/tick)`,
+                    0x88ff66
+                );
+                scene.updateUI?.();
+            }
+        }
+
+        // Silkslinger — web a random hand card for one enemy turn.
+        if (features.includes('web_hand')) {
+            this.applyWebHand();
+        }
+
         // Spore Archer — spores cling even if armor/dodge softened the hit.
-        if (Array.isArray(card.data?.features) && card.data.features.includes('spore_on_hit')) {
+        if (features.includes('spore_on_hit')) {
             scene.gameState.playerSpored = true;
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18, 'Spored!', 0xb8e986);
         }
@@ -536,7 +572,7 @@ export class CombatTurnController {
 
     selectCompanionTarget(companion) {
         const scene = this.scene;
-        const candidates = (scene.cardSystem?.boardCards || [])
+        let candidates = (scene.cardSystem?.boardCards || [])
             .map((card, index) => ({ card, index }))
             .filter(({ card }) => (
                 card?.revealed
@@ -545,6 +581,12 @@ export class CombatTurnController {
                 && (card.data?.health || 0) > 0
             ));
         if (candidates.length === 0) return null;
+
+        // Silk Husk taunt: companions may only strike taunting enemies.
+        const taunters = candidates.filter(({ card }) => (
+            Array.isArray(card.data?.features) && card.data.features.includes('taunt')
+        ));
+        if (taunters.length > 0) candidates = taunters;
 
         if (companion?.attackStyle === 'melee' || companion?.range === 'melee') {
             // Melee companions obey the same frontline gate the player does
@@ -643,5 +685,43 @@ export class CombatTurnController {
         });
         this.enemyTurnTimers.push(attackTimer);
         return true;
+    }
+
+    tickHandWebs() {
+        const scene = this.scene;
+        const slots = scene.inventorySystem?.slots || scene.gameState?.inventory || [];
+        let cleared = false;
+        for (let i = 0; i < slots.length; i++) {
+            const item = slots[i];
+            if (!item || !(item.webbedTurns > 0)) continue;
+            item.webbedTurns -= 1;
+            if (item.webbedTurns <= 0) {
+                delete item.webbedTurns;
+                scene.inventorySystem?.clearWebOverlay?.(i);
+                cleared = true;
+            }
+        }
+        if (cleared) this.queueStalemateEnemyTurn();
+    }
+
+    applyWebHand() {
+        const scene = this.scene;
+        const slots = scene.inventorySystem?.slots || scene.gameState?.inventory || [];
+        const candidates = [];
+        for (let i = 0; i < slots.length; i++) {
+            if (slots[i]) candidates.push(i);
+        }
+        if (candidates.length === 0) return;
+
+        const slotIndex = candidates[Math.floor(Math.random() * candidates.length)];
+        const item = slots[slotIndex];
+        item.webbedTurns = 1;
+        scene.inventorySystem?.applyWebOverlay?.(slotIndex);
+
+        const slotSprite = scene.inventorySystem?.slotSprites?.[slotIndex];
+        const x = slotSprite?.card?.x ?? scene.playerAvatar?.x ?? 320;
+        const y = slotSprite?.card?.y ?? scene.playerAvatar?.y ?? 300;
+        scene.createFloatingText(x, y - 18, 'Webbed!', 0xddeeff);
+        this.queueStalemateEnemyTurn();
     }
 }

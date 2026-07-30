@@ -207,6 +207,18 @@ function getEnemyFeatureLines(scene, data) {
     if (features.includes('ranged_immune')) {
         lines.push(t(scene, 'tooltip.rangedImmune'));
     }
+    if (features.includes('gnaw')) {
+        lines.push(t(scene, 'tooltip.gnaw'));
+    }
+    if (features.includes('taunt')) {
+        lines.push(t(scene, 'tooltip.taunt'));
+    }
+    if (features.includes('poison_amp')) {
+        lines.push(t(scene, 'tooltip.poisonAmp'));
+    }
+    if (features.includes('web_hand')) {
+        lines.push(t(scene, 'tooltip.webHand'));
+    }
     if (data?.isEliteMiniBoss) {
         lines.push(t(scene, 'tooltip.eliteMiniBoss'));
     }

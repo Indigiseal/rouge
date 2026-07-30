@@ -357,10 +357,23 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // Fireball and charmed enemies also use attackEnemy(), and the fallback
     // incorrectly spent the player's durability and triggered weapon gems.
     const weapon = weaponUsed || null;
+    const features = Array.isArray(card.data.features) ? card.data.features : [];
+
+    // Silk Husk — while any revealed taunter lives, player damage may only hit taunters.
+    // Reflection / thorns still connect (isReflection); player weapon/magic does not.
+    if (!isReflection && isTauntBlockingTarget.call(this, card)) {
+        SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
+        this.scene.createFloatingText(
+            this.scene.playerAvatar.x,
+            this.scene.playerAvatar.y,
+            'Provoked!',
+            0x88aaff
+        );
+        return;
+    }
     
     if (!isReflection && weapon) {
         const isRanged = this.isRangedWeapon(weapon);
-        const features = Array.isArray(card.data.features) ? card.data.features : [];
 
         // Thorn Sprite — bark shrugs off bows; melee still connects.
         if (isRanged && features.includes('ranged_immune')) {
@@ -734,9 +747,22 @@ function isAnyEnemyCard(card) {
     return !!card && this.isEnemyType(card.data?.type) && card.data.health > 0;
 }
 
+function isTauntBlockingTarget(card) {
+    const tauntActive = this.boardCards.some((c) => (
+        c?.revealed
+        && this.isEnemyType(c.data?.type)
+        && (c.data?.health ?? 0) > 0
+        && Array.isArray(c.data?.features)
+        && c.data.features.includes('taunt')
+    ));
+    if (!tauntActive) return false;
+    return !(Array.isArray(card?.data?.features) && card.data.features.includes('taunt'));
+}
+
 function burnEnemy(index, amount) {
     const card = this.boardCards[index];
     if (!this.isAnyEnemyCard(card)) return;
+    if (isTauntBlockingTarget.call(this, card)) return;
     card.data.health -= amount;
     if (card.revealed && card.sprite?.scene) {
         CombatSequencer.schedule(this.scene, 'gem', () => {
@@ -754,6 +780,7 @@ function burnEnemy(index, amount) {
 function damageGemTarget(index, amount, label, color, effect = null, beat = 'gem') {
     const card = this.boardCards[index];
     if (!this.isOpenEnemyCard(card)) return;
+    if (isTauntBlockingTarget.call(this, card)) return;
     if (effect) CombatSequencer.schedule(this.scene, beat, () => {
         if (card.sprite?.scene) this.playEnemyHitEffect(card, effect);
     });

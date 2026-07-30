@@ -48,7 +48,7 @@ export const InventorySlotRenderer = {
 
         // Use the gameplay property as the single source of truth: saved and
         // merged Briar Room cards automatically regain their authored border.
-        if ((cardData.briarDamageBonus || 0) > 0 && this.scene.textures.exists('thornFrame')) {
+            if ((cardData.briarDamageBonus || 0) > 0 && this.scene.textures.exists('thornFrame')) {
             const briarFrame = snapOriginToPixelGrid(this.scene.add.image(x, y, 'thornFrame'));
             briarFrame.setDisplaySize(cardSprite.displayWidth || 54, cardSprite.displayHeight || 70);
             briarFrame.setDepth(16);
@@ -216,6 +216,15 @@ export const InventorySlotRenderer = {
                 });
             }
 
+            if (currentSlot.webOverlay?.scene) {
+                this.scene.tweens.add({
+                    targets: currentSlot.webOverlay,
+                    y: currentSlot.originalY - 5,
+                    duration: 150,
+                    ease: 'Power2'
+                });
+            }
+
             // Move info text if it exists. Round y each frame so the pip
             // container never sits on a fractional pixel during the lift —
             // otherwise the pips visibly jitter as it animates.
@@ -278,6 +287,15 @@ export const InventorySlotRenderer = {
             if (currentSlot.briarFrame?.scene) {
                 this.scene.tweens.add({
                     targets: currentSlot.briarFrame,
+                    y: currentSlot.originalY,
+                    duration: 150,
+                    ease: 'Power2'
+                });
+            }
+
+            if (currentSlot.webOverlay?.scene) {
+                this.scene.tweens.add({
+                    targets: currentSlot.webOverlay,
                     y: currentSlot.originalY,
                     duration: 150,
                     ease: 'Power2'
@@ -387,6 +405,9 @@ export const InventorySlotRenderer = {
             if (currentSlot.briarFrame?.scene) {
                 currentSlot.briarFrame.setVisible(true).setDepth(dragBaseDepth + 3);
             }
+            if (currentSlot.webOverlay?.scene) {
+                currentSlot.webOverlay.setVisible(true).setDepth(dragBaseDepth + 4);
+            }
 
             // Keep shadow visible while dragging
             if (currentSlot.shadow) {
@@ -450,6 +471,10 @@ export const InventorySlotRenderer = {
                 currentSlot.briarFrame.x = cardSprite.x;
                 currentSlot.briarFrame.y = cardSprite.y;
             }
+            if (currentSlot.webOverlay?.scene) {
+                currentSlot.webOverlay.x = cardSprite.x;
+                currentSlot.webOverlay.y = cardSprite.y;
+            }
 
 
             this.updateDragOverlay(cardSprite);
@@ -495,5 +520,8 @@ export const InventorySlotRenderer = {
             cardSprite.setData('infoText', cardWithSprite.infoText);
         }
         this.applySlotVisualDepths(slotIndex);
+        if ((cardData.webbedTurns || 0) > 0) {
+            this.applyWebOverlay(slotIndex);
+        }
     },
 };

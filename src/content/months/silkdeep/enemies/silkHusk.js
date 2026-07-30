@@ -1,9 +1,10 @@
 export default {
-  id: 'webBoundSkeleton',
-  name: 'Web-Bound Skeleton',
+  id: 'silkHusk',
+  name: 'Silk Husk',
   sprite: 'enemyPlaceholder',
   placeholderArt: true,
   role: 'MELEE',
   minFloor: 1,
   archetype: 'bruiser',
+  features: ['taunt'],
 };

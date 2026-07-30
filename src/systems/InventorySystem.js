@@ -267,6 +267,19 @@ export class InventorySystem {
     handleCardDrop(slotIndex, cardSprite) {
         const cardData = this.slots[slotIndex];
         if (!cardData) return;
+
+        // Silkslinger web: card is unusable until the next enemy turn clears it.
+        if (cardData.webbedTurns > 0) {
+            SoundHelper.playVariant(this.scene, 'invalid_action', 0.45);
+            this.scene.createFloatingText(
+                cardSprite.x,
+                cardSprite.y - 18,
+                'Webbed!',
+                0xddeeff
+            );
+            this.returnCardToSlot(slotIndex, cardSprite);
+            return;
+        }
         
         // Check for drop on discard area FIRST to prevent conflicts with other drop zones
         // (allowed inside shop stations too, so players can free inventory space)
@@ -482,6 +495,16 @@ export class InventorySystem {
             if (slot.shadow) {
                 slot.shadow.destroy();
                 slot.shadow = null;
+            }
+
+            if (slot.webOverlay) {
+                slot.webOverlay.destroy();
+                slot.webOverlay = null;
+            }
+
+            if (slot.briarFrame) {
+                slot.briarFrame.destroy();
+                slot.briarFrame = null;
             }
         }
     }
