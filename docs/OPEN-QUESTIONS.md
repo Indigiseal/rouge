@@ -118,9 +118,14 @@
 
 ## Враги / скейл
 
-- **[ ] Имплементировать power bands + archetypes.** Дизайн зафиксирован в
-  `docs/BALANCE.md` (Enemy power) и `docs/narrative/Concepts/Enemy Power.md`.
-  Сейчас в коде ещё пер-тип `tiers[]` в `enemies.js`.
+- **[x] Имплементировать power bands + archetypes (Thornwake).** Дизайн в
+  `docs/BALANCE.md` / `docs/narrative/Concepts/Enemy Power.md`. Код:
+  `EnemyPower.js`, month packs, spawn через month pool. Silkdeep тоже на bands;
+  ротация ран/актов по `MONTH_ROTATION_LENGTH` (сейчас 2).
+
+- **[x] Смена месяцев.** Поражение/победа рана → следующий New Run на следующем
+  месяце ротации (`metaProgression.nextCalendarMonthIndex`). Победа акта →
+  следующий акт = следующий месяц (`getMonthIndexForFloor`). Пока 2 месяца.
 
 ## Акт 3 / спаун
 

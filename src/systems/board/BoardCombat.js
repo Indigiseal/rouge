@@ -360,6 +360,14 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     
     if (!isReflection && weapon) {
         const isRanged = this.isRangedWeapon(weapon);
+        const features = Array.isArray(card.data.features) ? card.data.features : [];
+
+        // Thorn Sprite — bark shrugs off bows; melee still connects.
+        if (isRanged && features.includes('ranged_immune')) {
+            SoundHelper.playVariant(this.scene, 'dodge_miss', 0.5);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Immune!', 0x88ff88);
+            return;
+        }
 
         // Check if there are any melee enemies alive (revealed or hidden)
         const meleeBlockers = this._anyMeleeAlive({ includeHidden: true });
@@ -401,6 +409,16 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // once-per-floor War Horn charge. A missed attack must not announce a
     // CRIT or spend a one-shot bonus that never dealt damage.
     if (!isReflection && this.rollEvade(card)) return;
+
+    // Spore Archer Spores: 15% miss on the next weapon swing, then clear.
+    if (!isReflection && weapon && this.scene.gameState?.playerSpored) {
+        this.scene.gameState.playerSpored = false;
+        if (Math.random() < 0.15) {
+            SoundHelper.playVariant(this.scene, 'dodge_miss', 0.5);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Miss!', 0xb8e986);
+            return;
+        }
+    }
 
     const critChance = (this.scene.gameState?.discardCritChance || 0)
         + (this.scene.amuletManager?.getCriticalChanceBonus?.() || 0);
@@ -531,6 +549,26 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         ? ` (${weapon.weaponType.charAt(0).toUpperCase()}${weapon.weaponType.slice(1)})`
         : (isReflection ? ' (Reflected)' : '');
     this.scene.pushCombatLog?.(`${targetName} -${finalDamage}${weaponLabel}`);
+
+    // Thorn Ent — retaliates 1 true damage through armor on a connecting swing.
+    if (
+        !isReflection
+        && weapon
+        && finalDamage > 0
+        && Array.isArray(card.data.features)
+        && card.data.features.includes('thorns_reflect')
+        && this.scene.gameState
+    ) {
+        const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(1, index, 'enemy', 999);
+        if (tookDamage && actualDamage > 0) {
+            this.scene.createFloatingText(
+                this.scene.playerAvatar.x,
+                this.scene.playerAvatar.y - 14,
+                `-${actualDamage} Thorns!`,
+                0x88cc66
+            );
+        }
+    }
 
     if (card.data.health <= 0) {
         this.removeDefeatedEnemy(index, card);
@@ -885,11 +923,7 @@ function hideEnemyCard(index) {
     if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
     if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
     if (card.frozenFrame) { card.frozenFrame.destroy(); card.frozenFrame = null; }
-    if (card.infoText) {
-        if (card.infoText.list) card.infoText.destroy(true);
-        else card.infoText.destroy();
-        card.infoText = null;
-    }
+    this.destroyCardInfoText?.(card);
     return true;
 }
 
@@ -994,6 +1028,8 @@ function removeDefeatedEnemy(index, card) {
         if (this.boardCards[index] && !this.boardCards[index].sprite) {
           this.boardCards[index] = null;
         }
+        // Wolf pack ATK is situational — refresh corner ATK on remaining wolves.
+        this.refreshEnemyAttackLabels?.();
         this.checkFloorClear();
 }
 

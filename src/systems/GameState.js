@@ -22,6 +22,9 @@ export class GameState {
         this.actionsLeft = 15;
         this.maxActions = 15;
         this.currentFloor = 1;
+        // Calendar month at run start (0 = Thornwake). Act 2/3 walk the next
+        // months on the circle. See src/content/months/calendar.js.
+        this.calendarMonthIndex = 0;
         this.roomType = 'COMBAT';
         this.mapCursor = null;
         this.companionHistory = {};
@@ -44,6 +47,8 @@ export class GameState {
         
         
         this.blockNextAttack = false;
+        // Spore Archer: next player weapon attack has 15% miss, then clears.
+        this.playerSpored = false;
         
         // Magic card effects
         this.shadowBlade = null;

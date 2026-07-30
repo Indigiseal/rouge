@@ -28,6 +28,7 @@ import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from '../content/st
 import { isMetaProgressionDisabled } from '../config/TestOptions.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { CombatTurnController } from '../systems/combat/CombatTurnController.js';
+import { getMonthIndexForFloor } from '../content/months/index.js';
 import {
     applySandboxLoadout,
     applySandboxStorySetup,
@@ -93,6 +94,11 @@ export class GameScene extends Phaser.Scene {
             // New run
             this.gameState = new GameState(this);
             this.gameState.characterId = data.characterId || 'rogue';
+            // Next run opens on the month queued after the last defeat/victory
+            // (Thornwake ↔ Silkdeep). Tutorial/sandbox always start Thornwake.
+            this.gameState.calendarMonthIndex = (this.tutorialMode || this.sandboxMode || !this.metaManager)
+              ? 0
+              : this.metaManager.getNextCalendarMonthIndex();
             // Apply talent effects to fresh game state (skip for the tutorial so
             // its rigged board is deterministic).
             if (!this.tutorialMode && !this.sandboxMode && !isMetaProgressionDisabled()) {
@@ -402,6 +408,8 @@ export class GameScene extends Phaser.Scene {
         const background = this.add.image(320, 180, 'stoneFloor');
         background.setDisplaySize(640, 360);
         background.setOrigin(0.5, 0.5);
+        // Under the board frame and top HUD (month / floor / pause).
+        background.setDepth(-10);
     }
 
     startNewFloor() {
@@ -871,6 +879,7 @@ export class GameScene extends Phaser.Scene {
                     item => item?.id === 'monsterEgg' || item?.name === 'Egg'
                 );
                 this.metaManager.setPendingEgg(hasEgg);
+                this.queueNextRunMonth();
                 const characterId = this.gameState.characterId || 'rogue';
                 xpResult = this.metaManager.handlePlayerDeath(killedBy, floor, characterId);
             }
@@ -1226,7 +1235,19 @@ export class GameScene extends Phaser.Scene {
         humanRunRecorder.finishAndDownload(this, 'victory', {
             floor: this.gameState?.currentFloor ?? null,
         });
+        if (!this.sandboxMode && !this.tutorialMode && this.metaManager && !isMetaProgressionDisabled()) {
+            this.queueNextRunMonth();
+        }
         return showVictoryResult(this);
+    }
+
+    /** After defeat/victory, next New Run opens on the following calendar month. */
+    queueNextRunMonth() {
+        if (this.sandboxMode || this.tutorialMode || !this.metaManager) return;
+        const start = this.gameState?.calendarMonthIndex ?? 0;
+        const floor = this.gameState?.currentFloor ?? 1;
+        const currentMonth = getMonthIndexForFloor(start, floor);
+        this.metaManager.advanceCalendarMonthAfterRun(currentMonth);
     }
 
     grantCardSpentRelicBonus(card, x = this.playerAvatar.x, y = this.playerAvatar.y) {
@@ -1324,6 +1345,7 @@ export class GameScene extends Phaser.Scene {
         this.gameState.coins = runData.player.coins;
         this.gameState.crystals = runData.player.crystals;
         this.gameState.currentFloor = runData.player.currentFloor;
+        this.gameState.calendarMonthIndex = runData.player.calendarMonthIndex ?? 0;
         this.gameState.bonusInventorySlots = runData.player.bonusInventorySlots;
         this.gameState.firstActionUsed = runData.player.firstActionUsed;
         this.gameState.baseMaxHealth = runData.player.baseMaxHealth;

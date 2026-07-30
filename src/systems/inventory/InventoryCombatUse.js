@@ -237,14 +237,7 @@ export const InventoryCombatUse = {
                         if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
                         if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
                         if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
-                        if (card.infoText) {
-                            if (card.infoText.list) {
-                                card.infoText.destroy(true);
-                            } else {
-                                card.infoText.destroy();
-                            }
-                            card.infoText = null;
-                        }
+                        this.scene.cardSystem.destroyCardInfoText?.(card);
                         flippedAny = true;
                     }
                 });

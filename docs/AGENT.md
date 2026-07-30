@@ -43,6 +43,8 @@ Don't: хардкодить статы/цены/XP в scenes; пихать би�
 - Каталоги: `content/cards/{weapons,armor,enemies,bosses,...}.js`
 - Barrel: `content/cards/index.js`
 - Фабрики — единственный способ собрать runtime-карту: `createWeaponCardData`, `createArmorCardData`
+- Месячные враги (band×archetype): `content/months/<id>/enemies/*.js` + `assets/`;
+  `cards/enemies.js` мержит month defs + legacy `tiers[]`
 
 Оружие (`weapons.js`):
 

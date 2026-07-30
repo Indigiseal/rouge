@@ -56,9 +56,12 @@ for (const f of [15, 30, 45]) {
 
 ## Enemy power: bands + archetypes (design SoT)
 
-Целевая модель статов обычных врагов. **Пока в коде** ещё пер-тип `tiers[]` в
-`src/content/cards/enemies.js` — при рефакторе спауна сверять с этой таблицей.
-Narrative / месяцы: `docs/narrative/Concepts/Enemy Power.md`.
+Целевая модель статов обычных врагов.
+
+**Статус кода:** bands + archetypes; ростеры **Thornwake** и **Silkdeep**
+(`src/content/months/<id>/enemies/`). Ротация ран/актов: первые
+`MONTH_ROTATION_LENGTH` месяцев (`calendar.js`). Остальные месяцы в календаре
+пока без ростера → legacy `tiers[]` если когда-то выпадут.
 
 ### Принцип
 

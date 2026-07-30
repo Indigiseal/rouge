@@ -1,5 +1,6 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { CombatSequencer } from './CombatSequencer.js';
+import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
 
 // Gap between consecutive enemies' attacks. Derived from the sequencer's last
 // beat so it always clears one attacker's full timeline — retuning the beats
@@ -119,7 +120,13 @@ export class CombatTurnController {
         // attacks from enemies already on the board.
         const eligible = scene.cardSystem.boardCards
             .map((card, index) => ({ card, index }))
-            .filter(({ card }) => card && card.revealed && scene.isEnemyCard(card) && !card.justRevealed);
+            .filter(({ card }) => {
+                if (!card || !scene.isEnemyCard(card) || card.justRevealed) return false;
+                if ((card.data?.health ?? 0) <= 0) return false;
+                if (card.revealed) return true;
+                // Thorn Fairy keeps acting while face-down so she can flip back up.
+                return Array.isArray(card.data?.features) && card.data.features.includes('veil_flip');
+            });
         // Clear the grace flag now that we've snapshotted — they act next turn.
         scene.cardSystem.boardCards.forEach(card => {
             if (card && card.justRevealed) card.justRevealed = false;
@@ -173,7 +180,7 @@ export class CombatTurnController {
                 SoundHelper.playSound(scene, 'armor_equip', 0.5);
 
                 // Reflect damage back to enemy
-                const reflectedDamage = firstAttacker.card.data.attack;
+                const reflectedDamage = getEnemyHitAttack(firstAttacker.card, scene.cardSystem?.boardCards);
                 scene.cardSystem.attackEnemy(firstAttacker.index, reflectedDamage, true);
                 scene.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Reflected)`, 0xffffff);
                 scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Bone Shield!', 0xffffff);
@@ -195,7 +202,11 @@ export class CombatTurnController {
 
             const { index } = attackers[attackerIndex++];
             const card = scene.cardSystem.boardCards[index];
-            if (card && card.revealed && scene.isEnemyCard(card)) {
+            const veilFaceDown = card
+                && !card.revealed
+                && Array.isArray(card.data?.features)
+                && card.data.features.includes('veil_flip');
+            if (card && scene.isEnemyCard(card) && (card.revealed || veilFaceDown)) {
                 this.processEnemyAttack(card, index);
                 scene.updateUI();
             }
@@ -234,6 +245,12 @@ export class CombatTurnController {
 
     processEnemyAttack(card, index) {
         const scene = this.scene;
+        // Thorn Fairy veil: face-down → flip up and skip the strike this turn.
+        if (Array.isArray(card.data?.features) && card.data.features.includes('veil_flip') && !card.revealed) {
+            scene.cardSystem.revealCard(index, true);
+            return;
+        }
+
         // Process frozen duration BEFORE checking if enemy can attack
         if (card.data.frozen && card.data.frozen > 0) {
             const wasShocked = (card.data.shockedTurns || 0) > 0;
@@ -291,12 +308,12 @@ export class CombatTurnController {
             if (others.length > 0) {
                 const target = others[Math.floor(Math.random() * others.length)];
                 scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xff66ff);
-                scene.cardSystem.attackEnemy(target.index, card.data.attack, false);
+                scene.cardSystem.attackEnemy(target.index, getEnemyHitAttack(card, scene.cardSystem.boardCards), false);
                 return; // skip player damage
             }
         }
 
-        let damageDealt = card.data.attack;
+        let damageDealt = getEnemyHitAttack(card, scene.cardSystem?.boardCards);
 
         // RAGE — when the boss drops below its HP threshold it hits harder. Shows
         // an "ENRAGED!" cue the first time it kicks in so the spike is legible.
@@ -349,6 +366,22 @@ export class CombatTurnController {
             if (playerHealthBeforeDamage > 0 && scene.gameState.playerHealth <= 0) {
                 scene.killedBy = card.data.name || card.data.type || 'Enemy';
             }
+        }
+
+        // Spore Archer — spores cling even if armor/dodge softened the hit.
+        if (Array.isArray(card.data?.features) && card.data.features.includes('spore_on_hit')) {
+            scene.gameState.playerSpored = true;
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18, 'Spored!', 0xb8e986);
+        }
+
+        // Thorn Fairy — strike, then flip face-down (if she survived).
+        if (
+            Array.isArray(card.data?.features)
+            && card.data.features.includes('veil_flip')
+            && card.revealed
+            && (card.data.health ?? 0) > 0
+        ) {
+            scene.cardSystem.hideEnemyCard?.(index);
         }
 
         // Boss LIFESTEAL — the leech heals from the damage it ACTUALLY landed on

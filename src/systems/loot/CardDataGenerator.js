@@ -38,7 +38,9 @@ import {
     createArmorCardData,
     getThornStats as getThornStatsFn,
     THORNS_SPRITE_BY_RARITY,
+    buildEnemyCardFromDef,
 } from '../../content/cards/index.js';
+import { getMonthDefForFloor } from '../../content/months/index.js';
 
 export class CardDataGenerator {
     // Re-export content tables as statics for existing callers.
@@ -105,7 +107,7 @@ export class CardDataGenerator {
             case 'boss':
                 return this.createBossCard(floor, gameState);
             case 'enemy':
-                return this.createEnemyCard(floor, isElite, preferredRole);
+                return this.createEnemyCard(floor, isElite, preferredRole, gameState);
             case 'mimic':
                 return this.createMimicCard(floor);
             case 'coin':
@@ -173,57 +175,63 @@ export class CardDataGenerator {
         return boss;
     }
 
-    createEnemyCard(floor, isElite = false, preferredRole = null) {
-        // Fallback in case no enemies are available
-        let availableEnemies = Object.keys(this.enemyData).filter(key =>
-            floor >= this.enemyData[key].minFloor
-            && !CardDataGenerator.SUMMON_ONLY_ENEMY_TYPES.has(key)
-        );
+    createEnemyCard(floor, isElite = false, preferredRole = null, gameState = null) {
+        const monthPool = this.getMonthEnemyPool(floor, preferredRole, gameState);
+        let availableEnemies = monthPool;
+
+        if (!availableEnemies.length) {
+            // Legacy global pool when the current month has no roster yet.
+            availableEnemies = Object.keys(this.enemyData).filter(key =>
+                floor >= this.enemyData[key].minFloor
+                && !CardDataGenerator.SUMMON_ONLY_ENEMY_TYPES.has(key)
+            );
+            if (preferredRole) {
+                const byRole = availableEnemies.filter(
+                    key => (this.enemyData[key].role || 'MELEE') === preferredRole
+                );
+                if (byRole.length > 0) availableEnemies = byRole;
+            }
+        }
+
         if (availableEnemies.length === 0) {
             return this.createFallbackEnemy(floor);
-        }
-        // Position-based typing: front rows draw only MELEE-type enemies, back rows
-        // only RANGED (archers), so the sprite always matches where it sits. Fall
-        // back to the full pool if no enemy of the requested role is unlocked yet.
-        if (preferredRole) {
-            const byRole = availableEnemies.filter(key => (this.enemyData[key].role || 'MELEE') === preferredRole);
-            if (byRole.length > 0) availableEnemies = byRole;
         }
         const enemyType = availableEnemies[Math.floor(Math.random() * availableEnemies.length)];
         return this.createTieredEnemy(enemyType, floor, isElite);
     }
 
+    getMonthEnemyPool(floor, preferredRole = null, gameState = null) {
+        const startMonth = gameState?.calendarMonthIndex ?? 0;
+        const month = getMonthDefForFloor(startMonth, floor);
+        const roster = month?.enemies;
+        if (!roster) return [];
+
+        const roleKey = preferredRole === 'RANGED' ? 'RANGED' : preferredRole === 'MELEE' ? 'MELEE' : null;
+        let pool = roleKey
+            ? [...(roster[roleKey] || [])]
+            : [...(roster.MELEE || []), ...(roster.RANGED || [])];
+
+        pool = pool.filter((key) => {
+            const def = this.enemyData[key];
+            return def && floor >= (def.minFloor || 1)
+                && !CardDataGenerator.SUMMON_ONLY_ENEMY_TYPES.has(key);
+        });
+
+        // If the role slice is empty (shouldn't happen for Thornwake), fall back
+        // to the full month roster before leaving month mode.
+        if (!pool.length && roleKey) {
+            pool = [...(roster.MELEE || []), ...(roster.RANGED || [])].filter((key) => {
+                const def = this.enemyData[key];
+                return def && floor >= (def.minFloor || 1)
+                    && !CardDataGenerator.SUMMON_ONLY_ENEMY_TYPES.has(key);
+            });
+        }
+        return pool;
+    }
+
     createTieredEnemy(enemyType, floor, isElite = false) {
-        const enemy = this.enemyData[enemyType];
-        if (!enemy) return this.createFallbackEnemy(floor);
-
-        // Find appropriate tier
-        let selectedTier = enemy.tiers[0];
-        for (let i = enemy.tiers.length - 1; i >= 0; i--) {
-            if (floor >= enemy.tiers[i].minFloor) {
-                selectedTier = enemy.tiers[i];
-                break;
-            }
-        }
-
-        // Tier stats are used verbatim (pure-runs-v1: no knob multipliers) —
-        // difficulty is tuned directly in the enemyData tier tables above.
-        const enemyCard = {
-            type: 'enemy',
-            name: enemy.name,
-            health: selectedTier.health,
-            attack: selectedTier.damage,
-            sprite: enemy.sprite,
-            role: enemy.role || 'MELEE', // Default to MELEE if role is missing
-            // Intrinsic ranged flag from the enemy TYPE (archers). The board later
-            // overrides `role` by row position, but this flag is preserved so
-            // thorns/melee-only effects can tell a real archer from a front-row melee.
-            isRangedType: enemy.role === 'RANGED'
-        };
-
-        if (enemy.abilities) {
-            enemyCard.abilities = [...enemy.abilities];
-        }
+        const enemyCard = buildEnemyCardFromDef(enemyType, floor, isElite);
+        if (!enemyCard) return this.createFallbackEnemy(floor);
         return enemyCard;
     }
 

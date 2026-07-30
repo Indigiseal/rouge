@@ -1,7 +1,7 @@
 // CardSystem — board orchestration; layout/spawn/combat/fx live in ./board/
 import { CardDataGenerator } from './loot/CardDataGenerator.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { showItemTooltip, hideItemTooltip, showBossTooltip, TOOLTIP_DEPTH, BOARD_TOOLTIP_GAP } from '../ui/ItemTooltip.js';
+import { showItemTooltip, hideItemTooltip, showBossTooltip, showEnemyTooltip, TOOLTIP_DEPTH, BOARD_TOOLTIP_GAP } from '../ui/ItemTooltip.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
 import { BoardLayout } from './board/BoardLayout.js';
@@ -179,6 +179,19 @@ export class CardSystem {
 
         card.sprite.off('pointerover');
         card.sprite.off('pointerout');
+        // Face-down hover lifts the card (y - 5). Clicking to reveal strips
+        // those handlers mid-lift, so snap back to the slot or the card stays
+        // permanently "jumped".
+        this.scene.tweens.killTweensOf(card.sprite);
+        if (Number.isFinite(card.restY)) {
+            card.sprite.y = card.restY;
+            if (Number.isFinite(card.restX)) card.sprite.x = card.restX;
+            snapOriginToPixelGrid(card.sprite);
+            if (card.shadow?.scene) {
+                card.shadow.x = card.sprite.x;
+                card.shadow.y = card.restY + 28;
+            }
+        }
         card.sprite.play('card_flip_anim');
         
         card.sprite.once('animationcomplete', () => {
@@ -186,6 +199,12 @@ export class CardSystem {
                 // Set sprite based on type
                 let spriteKey = card.data.sprite || 'default_enemy';
                 if (card.data.name === 'Mimic') spriteKey = 'mimic';
+                // Placeholder month enemies: fall back if the key isn't loaded yet.
+                if (card.data.placeholderArt && this.scene.textures && !this.scene.textures.exists(spriteKey)) {
+                    spriteKey = this.scene.textures.exists('enemyPlaceholder')
+                        ? 'enemyPlaceholder'
+                        : 'lostSoul';
+                }
                 card.sprite.setTexture(spriteKey, card.data.spriteFrame);
                 snapOriginToPixelGrid(card.sprite);
             } else if (card.data.type === 'empty') {
@@ -224,14 +243,16 @@ export class CardSystem {
             this.applyEliteMiniBossVisual(card);
             
             this.createCardInfoText(card);
+            if (card.data?.type === 'enemy' || card.data?.type === 'boss') {
+                this.refreshEnemyAttackLabels();
+            }
             card.sprite.setInteractive();
             card.sprite.on('pointerdown', () => this.interactWithCard(index));
             // Hover tooltip for board items — same renderer the shop / chest
-            // rooms use. Skipped for things that already self-describe (enemies
-            // show HP/ATK text; coins/crystals are obvious) or have nothing
-            // useful to read (traps shouldn't be spoiled, empty cards are
-            // literally nothing).
+            // rooms use. Enemies/bosses get a lift + passport tooltip instead
+            // (see _attachEnemyBoardHover). Traps aren't spoiled; empty is empty.
             this._attachBoardItemTooltip(card);
+            this._attachEnemyBoardHover(card);
             if (card.data.type === 'gem') {
                 this.attachGemShadow(card);
                 this.enableGemDrag(card, index);
@@ -342,6 +363,7 @@ export class CardSystem {
     }
 
     createCardInfoText(...args) { return this.fx.createCardInfoText(...args); }
+    destroyCardInfoText(...args) { return this.fx.destroyCardInfoText(...args); }
     _buildEnemyCornerStats(...args) { return this.fx._buildEnemyCornerStats(...args); }
     _buildBossStats(...args) { return this.fx._buildBossStats(...args); }
     getGemLabel(...args) { return this.fx.getGemLabel(...args); }
@@ -373,17 +395,104 @@ export class CardSystem {
         sprite.once('destroy', () => hideItemTooltip(scene));
     }
 
-    _attachBossTooltip(card) {
-        if (!card?.sprite || card.data?.type !== 'boss') return;
+    /**
+     * Revealed enemies/bosses: passport tooltip + the same lift as face-down
+     * card backs (y - 5). Followers (HP digits, shadow, status icons) track
+     * the sprite so they don't lag behind.
+     */
+    _attachEnemyBoardHover(card) {
+        if (!card?.sprite || !card.data) return;
+        const kind = card.data.type;
+        if (kind !== 'enemy' && kind !== 'boss') return;
+
         const sprite = card.sprite;
-        const data = card.data;
         const scene = this.scene;
+        let lifted = false;
+
+        const syncFollowers = () => {
+            if (!card.sprite?.scene) return;
+            const s = card.sprite;
+            const x = Math.round(s.x);
+            const y = Math.round(s.y);
+            if (card.shadow?.scene) {
+                card.shadow.x = x;
+                card.shadow.y = y + 28;
+            }
+            if (card.infoText?.scene) {
+                card.infoText.x = x;
+                card.infoText.y = y + (card._infoOffsetY || 0);
+            }
+            if (card.frozenFrame?.scene) {
+                card.frozenFrame.x = x;
+                card.frozenFrame.y = y;
+            }
+            const halfW = (s.displayWidth || 52) / 2;
+            const halfH = (s.displayHeight || 70) / 2;
+            const bodyOffsetY = card.data?.name === 'Spider Queen' ? 60 : 0;
+            const mx = Math.round(x + halfW - 2);
+            const my = Math.round(y - halfH + 2 + bodyOffsetY);
+            if (card.poisonMarker?.scene) {
+                card.poisonMarker.x = mx;
+                card.poisonMarker.y = my;
+            }
+            if (card.shockMarker?.scene) {
+                card.shockMarker.x = mx;
+                card.shockMarker.y = my;
+            }
+        };
+
+        const liftTo = (targetY) => {
+            scene.tweens.killTweensOf(sprite);
+            scene.tweens.add({
+                targets: sprite,
+                y: targetY,
+                duration: 150,
+                onUpdate: () => {
+                    snapOriginToPixelGrid(sprite);
+                    syncFollowers();
+                },
+                onComplete: () => {
+                    snapOriginToPixelGrid(sprite);
+                    syncFollowers();
+                },
+            });
+        };
 
         sprite.on('pointerover', () => {
-            showBossTooltip(scene, data, sprite.x, sprite.y, BOARD_TOOLTIP_GAP);
+            if (!card.revealed || !card.sprite?.scene) return;
+            if (!lifted) {
+                lifted = true;
+                // Prefer the slot restY so a stuck mid-lift reveal can't become
+                // the new "home" and float the card forever.
+                card._hoverHomeY = Number.isFinite(card.restY)
+                    ? card.restY
+                    : Math.round(sprite.y);
+                card._infoOffsetY = (card.infoText?.y ?? sprite.y) - sprite.y;
+                if (card.shadow) card.shadow.setAlpha(1);
+                liftTo(card._hoverHomeY - 5);
+            }
+            if (kind === 'boss') {
+                showBossTooltip(scene, card.data, sprite.x, sprite.y, BOARD_TOOLTIP_GAP);
+            } else {
+                showEnemyTooltip(scene, card, BOARD_TOOLTIP_GAP);
+            }
         });
-        sprite.on('pointerout', () => hideItemTooltip(scene));
+        sprite.on('pointerout', () => {
+            hideItemTooltip(scene);
+            if (!lifted) return;
+            lifted = false;
+            const home = Number.isFinite(card.restY)
+                ? card.restY
+                : (card._hoverHomeY ?? Math.round(sprite.y + 5));
+            liftTo(home);
+        });
         sprite.once('destroy', () => hideItemTooltip(scene));
+    }
+
+    _attachBossTooltip(card) {
+        // Prefer the shared enemy hover (lift + tooltip). Kept as a thin
+        // alias so older spawn paths that only call this still get both.
+        this._attachEnemyBoardHover(card);
     }
 
     removeCard(index) {
@@ -403,13 +512,7 @@ export class CardSystem {
             if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
             if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
             if (card.frozenFrame) { card.frozenFrame.destroy(); card.frozenFrame = null; }
-            if (card.infoText) {
-                if (card.infoText.list) {
-                    card.infoText.destroy(true);
-                } else {
-                    card.infoText.destroy();
-                }
-            }
+            this.destroyCardInfoText(card);
             this.boardCards[index] = null;
         }
     }
@@ -613,6 +716,7 @@ export class CardSystem {
     removeDefeatedEnemy(...args) { return this.combat.removeDefeatedEnemy(...args); }
     checkFloorClear(...args) { return this.combat.checkFloorClear(...args); }
     updateEnemyInfoText(...args) { return this.fx.updateEnemyInfoText(...args); }
+    refreshEnemyAttackLabels(...args) { return this.fx.refreshEnemyAttackLabels(...args); }
     updateBossInfoText(...args) { return this.fx.updateBossInfoText(...args); }
     createCardData(...args) { return this.spawner.createCardData(...args); }
     capRewardRarity(...args) { return this.spawner.capRewardRarity(...args); }

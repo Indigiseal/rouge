@@ -27,6 +27,13 @@
 - Brick grid, compact cluster centered
 - Splash reveals closed cards it would damage
 
+## Thornwake enemy identities
+- **Wolf** (skirmisher): `wolf_pack` — +1 ATK per other living revealed Wolf
+- **Thorn Ent** (bruiser): `thorns_reflect` — on a connecting player weapon hit, deals 1 true damage through armor
+- **Thorn Sprite** (swarm): `ranged_immune` — immune to ranged weapons (melee and spells still work)
+- **Spore Archer** (artillery): `spore_on_hit` — applies Spored; next player weapon attack has 15% miss, then clears
+- **Thorn Fairy** (artillery): `veil_flip` — each of her turns flips face-up (no strike) or strikes then flips face-down; face-down cannot be attacked and does not strike
+
 ## Acceptance examples
 - On new floor: at least 1 front enemy + 1 back enemy is revealed
 - If front row is cleared, reveal one enemy behind
