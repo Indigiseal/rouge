@@ -30,7 +30,7 @@ Depth and silk — what lived in cracks climbs toward the light
 
 **The Silkdeep Caves** is the signature place of this month.
 
-Roster encountered here: [[Spider]], [[Cave Crawler]], [[Web-Bound Skeleton]], [[Spitting Spider]], [[Silkslinger]].  
+Roster encountered here: [[Spider]], [[Cave Crawler]], [[Silk Husk]], [[Stinger Scorpion]], [[Silkslinger]].  
 Boss: [[Spider Queen]].
 
 ## Cast
@@ -39,18 +39,18 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 
 ### Melee (3)
 
-| Enemy                  | Role  | Archetype    | Status   | Note                                 |
-| ---------------------- | ----- | ------------ | -------- | ------------------------------------ |
-| [[Spider]]             | melee | `skirmisher` | in-game  | Primary Silkdeep cave predator.      |
-| [[Cave Crawler]]       | melee | `swarm`      | proposed | Blind many-legged scavenger.         |
-| [[Web-Bound Skeleton]] | melee | `bruiser`    | proposed | Bones wrapped and stiffened in silk. |
+| Enemy | Role | Archetype | Status | Note |
+| --- | --- | --- | --- | --- |
+| [[Spider]] | melee | `skirmisher` | in-game | Cave spider; poison on hit. |
+| [[Cave Crawler]] | melee | `swarm` | proposed | Giant centipede; `gnaw` (+1 armor durability 50%). |
+| [[Silk Husk]] | melee | `bruiser` | proposed | Walking cocoon; `taunt` (Provocation). |
 
 ### Ranged (2)
 
 | Enemy | Role | Archetype | Status | Note |
-|---|---|---|---|---|
-| [[Spitting Spider]] | ranged | `artillery` | proposed | Venom spit from walls and ceiling. |
-| [[Silkslinger]] | ranged | `artillery` | proposed | Fires sticky strands from the dark. |
+| --- | --- | --- | --- | --- |
+| [[Stinger Scorpion]] | ranged | `artillery` | proposed | Shoots regenerating stinger; `poison_amp` (+1 poison tick on hit). |
+| [[Silkslinger]] | ranged | `artillery` | proposed | Small webber; `web_hand` (locks a hand card 1 turn). |
 
 ### Boss (1)
 
@@ -74,7 +74,7 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 
 ## Gaps
 
-Needs more cave/spider-flavored encounters.
+Needs more cave-flavored encounters beyond the Slimy Prison.
 
 ## Opening text (draft)
 

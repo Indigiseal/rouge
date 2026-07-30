@@ -23,11 +23,11 @@ Ordinary enemies use **band(floor) × archetype**. Full band table: `docs/BALANC
 
 ### [[02 Silkdeep/Silkdeep|Silkdeep]] — The Silkdeep Caves
 - Boss: [[Spider Queen]]
-- [[Spider]] (`melee`, `skirmisher`, in-game)
-- [[Cave Crawler]] (`melee`, `swarm`, proposed)
-- [[Web-Bound Skeleton]] (`melee`, `bruiser`, proposed)
-- [[Spitting Spider]] (`ranged`, `artillery`, proposed)
-- [[Silkslinger]] (`ranged`, `artillery`, proposed)
+- [[Spider]] (`melee`, `skirmisher`, in-game) — poison on hit.
+- [[Cave Crawler]] (`melee`, `swarm`, proposed) — `gnaw`: 50% +1 armor durability on hit.
+- [[Silk Husk]] (`melee`, `bruiser`, proposed) — `taunt`: must attack only the Husk while it lives.
+- [[Stinger Scorpion]] (`ranged`, `artillery`, proposed) — `poison_amp`: +1 poison tick damage on hit.
+- [[Silkslinger]] (`ranged`, `artillery`, proposed) — `web_hand`: webs a random hand card for 1 turn.
 
 ### [[03 Tollroad/Tollroad|Tollroad]] — The Tollroad
 - Boss: [[Goblin King]]
@@ -132,12 +132,12 @@ Ordinary enemies use **band(floor) × archetype**. Full band table: `docs/BALANC
 - [[Ice Wight]]
 - [[Mire Brute]]
 - [[Shard Brute]]
+- [[Silk Husk]]
 - [[Star-Iron Brute]]
 - [[Thorn Ent]]
 - [[Thunder Beetle]]
 - [[Toll Brute]]
 - [[Veil Ripper]]
-- [[Web-Bound Skeleton]]
 
 ### `swarm` (HP ×0.75 · ATK ×0.9)
 - [[Bog Leech]]
@@ -173,8 +173,8 @@ Ordinary enemies use **band(floor) × archetype**. Full band table: `docs/BALANC
 - [[Skeleton Archer]]
 - [[Skull Lobber]]
 - [[Slag Spitter]]
-- [[Spitting Spider]]
 - [[Spore Archer]]
+- [[Stinger Scorpion]]
 - [[Storm Screecher]]
 - [[Thorn Fairy]]
 - [[Well Spitter]]

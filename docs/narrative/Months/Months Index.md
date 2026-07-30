@@ -51,8 +51,8 @@ tags:
 
 ### [[02 Silkdeep/Silkdeep|Silkdeep]]
 - **Location:** The Silkdeep Caves
-- **Melee:** [[Spider]] (`skirmisher`), [[Cave Crawler]] (`swarm`), [[Web-Bound Skeleton]] (`bruiser`)
-- **Ranged:** [[Spitting Spider]] (`artillery`), [[Silkslinger]] (`artillery`)
+- **Melee:** [[Spider]] (`skirmisher`), [[Cave Crawler]] (`swarm`), [[Silk Husk]] (`bruiser`)
+- **Ranged:** [[Stinger Scorpion]] (`artillery`), [[Silkslinger]] (`artillery`)
 - **Boss:** [[Spider Queen]]
 
 ### [[03 Tollroad/Tollroad|Tollroad]]
