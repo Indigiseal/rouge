@@ -11,7 +11,8 @@ tags:
 # Months Index
 
 > [!info]
-> **Wolf:** [[Wolf]] has +1 ATK per other revealed living Wolf on the board.  
+> **Wolf:** [[Wolf]] has +1 ATK per other revealed living Wolf (`wolf_pack`).  
+> **Thornwake cast:** [[Thorn Ent]], [[Thorn Sprite]], [[Spore Archer]], [[Thorn Fairy]] — see each note for identity features.  
 > Each month: theme, location, **3 melee + 2 ranged + 1 boss** with archetypes.  
 > Year loop is ordinary — [[Spherefall]] is not a finale beat.
 
@@ -44,8 +45,8 @@ tags:
 
 ### [[01 Thornwake/Thornwake|Thornwake]]
 - **Location:** The Briar March
-- **Melee:** [[Wolf]] (`skirmisher`), [[Briar Beast]] (`bruiser`), [[Thorn Sprite]] (`swarm`)
-- **Ranged:** [[Spore Archer]] (`artillery`), [[Briar Slinger]] (`artillery`)
+- **Melee:** [[Wolf]] (`skirmisher`), [[Thorn Ent]] (`bruiser`), [[Thorn Sprite]] (`swarm`)
+- **Ranged:** [[Spore Archer]] (`artillery`), [[Thorn Fairy]] (`artillery`)
 - **Boss:** [[The Green Warden]]
 
 ### [[02 Silkdeep/Silkdeep|Silkdeep]]

@@ -39,11 +39,11 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 
 ### Melee (3)
 
-| Enemy | Role | Archetype | Status | Note |
-|---|---|---|---|---|
-| [[Spider]] | melee | `skirmisher` | in-game | Primary Silkdeep cave predator. |
-| [[Cave Crawler]] | melee | `swarm` | proposed | Blind many-legged scavenger. |
-| [[Web-Bound Skeleton]] | melee | `bruiser` | proposed | Bones wrapped and stiffened in silk. |
+| Enemy                  | Role  | Archetype    | Status   | Note                                 |
+| ---------------------- | ----- | ------------ | -------- | ------------------------------------ |
+| [[Spider]]             | melee | `skirmisher` | in-game  | Primary Silkdeep cave predator.      |
+| [[Cave Crawler]]       | melee | `swarm`      | proposed | Blind many-legged scavenger.         |
+| [[Web-Bound Skeleton]] | melee | `bruiser`    | proposed | Bones wrapped and stiffened in silk. |
 
 ### Ranged (2)
 

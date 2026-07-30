@@ -18,7 +18,7 @@ tags:
 
 # Thornwake
 
-The month of thorns, beasts, and restless woods. In this turn the world feels too alive: roots push into stone, brush crawls toward roads, and animals no longer fear fire.
+The month of thorns, beasts, and restless woods. The forest is wrapped in living spikes: roots push into stone, brush crawls toward roads, and animals no longer fear fire.
 
 ## Theme
 
@@ -30,7 +30,7 @@ Living wilds — growth that refuses to stay outside the walls
 
 **The Briar March** is the signature place of this month.
 
-Roster encountered here: [[Wolf]], [[Briar Beast]], [[Thorn Sprite]], [[Spore Archer]], [[Briar Slinger]].  
+Roster encountered here: [[Wolf]], [[Thorn Ent]], [[Thorn Sprite]], [[Spore Archer]], [[Thorn Fairy]].  
 Boss: [[The Green Warden]].
 
 ## Cast
@@ -39,24 +39,24 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 
 ### Melee (3)
 
-| Enemy | Role | Archetype | Status | Note |
-|---|---|---|---|---|
-| [[Wolf]] | melee | `skirmisher` | proposed | +1 ATK per other revealed living Wolf on the board. |
-| [[Briar Beast]] | melee | `bruiser` | proposed | Animal fused with living thorns — the month's heavy. |
-| [[Thorn Sprite]] | melee | `swarm` | proposed | Small fae that drives brush into the fight. |
+| Enemy            | Role  | Archetype    | Status  | Note                                                              |
+| ---------------- | ----- | ------------ | ------- | ----------------------------------------------------------------- |
+| [[Wolf]]         | melee | `skirmisher` | in-game | Thorn-wounded pack wolf; `wolf_pack`.                             |
+| [[Thorn Ent]]    | melee | `bruiser`    | in-game | Small fairy-tale ent in thorn-vine; `thorns_reflect`.             |
+| [[Thorn Sprite]] | melee | `swarm`      | in-game | Hydra-like living vines; arrows pass through; `ranged_immune`.    |
 
 ### Ranged (2)
 
-| Enemy | Role | Archetype | Status | Note |
-|---|---|---|---|---|
-| [[Spore Archer]] | ranged | `artillery` | proposed | Fires toxic seed-darts from cover. |
-| [[Briar Slinger]] | ranged | `artillery` | proposed | Hurls thorn-knots from the treeline. |
+| Enemy            | Role   | Archetype   | Status  | Note                                                              |
+| ---------------- | ------ | ----------- | ------- | ----------------------------------------------------------------- |
+| [[Spore Archer]] | ranged | `artillery` | in-game | Glowing green sporeling; lobbs spore orbs; `spore_on_hit`.        |
+| [[Thorn Fairy]]  | ranged | `artillery` | in-game | Vine-bound angry fae; thorns from a branch wand; `veil_flip`.     |
 
 ### Boss (1)
 
-| Boss | Status | Note |
-|---|---|---|
-| [[The Green Warden]] | proposed | Ent-like keeper of the Briar March. |
+| Boss                 | Status  | Note                                |
+| -------------------- | ------- | ----------------------------------- |
+| [[The Green Warden]] | in-game | Ent-like keeper of the Briar March. |
 
 > [!note] Links
 > Enemy and boss names link to [[Enemies Index]] / [[Bosses Index]] pages.
