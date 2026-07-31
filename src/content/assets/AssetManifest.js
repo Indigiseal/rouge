@@ -24,6 +24,8 @@ export const ASSET_MANIFEST = [
     { key: 'eventPaper9Slice', path: 'assets/art/paper9Slice.png', type: 'image' },
     { key: 'scrollHandle', path: 'assets/art/scroll.png', type: 'image' },
     { key: 'eventsShops', path: 'assets/art/eventsShops80x80.png', type: 'spritesheet', frameWidth: 80, frameHeight: 80 },
+    // Arm Wrestling minigame art (human vs ogre locked hands).
+    { key: 'armWrestlingHands', path: 'assets/art/armWrestlingHands.png', type: 'image' },
     { key: 'statueHead', path: 'assets/art/statueHead.png', type: 'image' },
     { key: 'panelArmor', path: 'assets/art/panelArmor.png', type: 'image' },
     // Little banner behind each shop item's price (30x14)

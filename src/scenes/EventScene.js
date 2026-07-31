@@ -22,6 +22,7 @@ import {
 } from '../content/balance/WeaponEnchants.js';
 import { EventRunHelpers } from '../systems/events/EventRunHelpers.js';
 import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
+import { openArmWrestlingMinigame } from '../ui/ArmWrestlingMinigame.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
@@ -1022,6 +1023,24 @@ export class EventScene extends Phaser.Scene {
       choice.next = { choices: this.getBrassWizardTrayChoices(), wizardTray: true };
     }
 
+    // Coin bet opens the click minigame and must not terminal-resolve yet.
+    if (this._armWrestleAwaitingMatch) {
+      this._armWrestleAwaitingMatch = false;
+      const revealText = this._getChoiceOutcome(choice) || '';
+      if (this.descText) {
+        this.descText.setVisible(true).setAlpha(1).setText(revealText);
+        this.descText.setY(42);
+        this._centerTextOnPixel(this.descText, this.eventLayout.centerX);
+      }
+      (this._choiceBtns || []).forEach(({ bg, label }) => {
+        bg.removeInteractive();
+        bg.setAlpha(0);
+        label.setAlpha(0);
+      });
+      this.resolved = false;
+      return;
+    }
+
     // A choice with `next` isn't terminal — it reveals more choices in place
     // (e.g. Inspect → Confront/Fight) instead of ending the event.
     if (choice.next && Array.isArray(choice.next.choices)) {
@@ -1668,10 +1687,10 @@ export class EventScene extends Phaser.Scene {
   }
 
   /**
-   * Hidden odds. NEVER shown as a number — the crowd's reaction is the only
-   * tell the player gets. Weighted rather than deterministic on purpose: if a
-   * good weapon always won, the correct play would just be "bet when geared,
-   * decline when not", and there would be no decision left.
+   * Hidden difficulty signal. NEVER shown as a number — the crowd's reaction is
+   * the only tell the player gets. Feeds minigame tuning (ogre push / click
+   * power) rather than a win/lose roll: a good weapon makes the click race
+   * fairer, but the player still has to win the match.
    *
    * It is not really about the weapon — it is about the arm. The ogre sizes you
    * up by what he sees you are used to swinging.
@@ -1708,10 +1727,6 @@ export class EventScene extends Phaser.Scene {
     return 'The whole room is already laughing. Someone starts collecting bets before you have sat down.';
   }
 
-  _armWrestleRoll() {
-    return Math.random() < this.armWrestleChance();
-  }
-
   _isArmWrestleStakeCard(item) {
     const ranks = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
     return Boolean(
@@ -1727,13 +1742,11 @@ export class EventScene extends Phaser.Scene {
     return this.getInventorySlots().some(item => this._isArmWrestleStakeCard(item));
   }
 
-  /** Shared consequence of losing: the stake is gone and your arm hits the slab. */
+  /** Shared consequence of losing: the stake is gone. No rematch after a loss. */
   _loseArmWrestle() {
     this.ensureStoryState();
     const story = this.gameState.storyRun;
     story.armWrestleLost = true;
-    if (this.damageEquippedArmor(1)) this._reward('Armor -1 pip');
-    // No rematch after a loss — he has your money and his point.
     this.clearPendingEvent('arm_wrestling');
   }
 
@@ -1745,20 +1758,31 @@ export class EventScene extends Phaser.Scene {
     this.addPendingEvent('arm_wrestling');
   }
 
-  betCoinsOnArmWrestle() {
+  /**
+   * Map hidden weapon odds into minigame feel. High chance = weaker ogre.
+   * Click power is sized so 2 clicks ≈ 1.5s of *base* ogre drift; the live
+   * ogre push is then ×3.75, so the player must click faster than that baseline
+   * to pull ahead.
+   */
+  getArmWrestleMinigameTuning() {
+    const chance = this.armWrestleChance();
+    const t = Phaser.Math.Clamp(chance, 0.05, 0.90);
+    // Click power stays sized for the base drift; ogre push is then sped up.
+    const ogrePushBase = Phaser.Math.Linear(0.1, 0.06, (t - 0.05) / 0.85);
+    const clickPower = (ogrePushBase / 2) * 1.5;
+    const ogrePush = ogrePushBase * 3.75;
+    return { ogrePush, clickPower };
+  }
+
+  beginArmWrestleCoinBet() {
     this.ensureStoryState();
     const stake = this.getArmWrestleCoinStake();
     if (!this.spendCoins(stake)) return false;
-
-    if (this._armWrestleRoll()) {
-      this.gainCoins(this.getArmWrestlePot());
-      this._winArmWrestleMatchOne();
-      this.armWrestleOutcome = 'He is stronger than you and both of you know it, so you do not try to out-pull him. You wait until he leans, and then you stop being where he is pushing.\n\nHis own weight takes his hand down onto the slab.\n\nThe room goes very quiet. The ogre looks at his hand for a while, then at you, and pushes the whole stack of coins across the table without a word.';
-      return true;
-    }
-
-    this._loseArmWrestle();
-    this.armWrestleOutcome = 'You get about two seconds of holding him.\n\nThen your arm goes through the table\'s own shadow and your knuckles find the stone, and something in your armour gives with a noise you feel more than hear.\n\nHe takes the coins back without gloating, which is somehow worse. Someone in the crowd is paid out.';
+    this._armWrestlePending = { kind: 'coins', rematch: false };
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    this._armWrestleAwaitingMatch = true;
+    this._openArmWrestleMinigame();
     return true;
   }
 
@@ -1789,54 +1813,110 @@ export class EventScene extends Phaser.Scene {
       return false;
     }
 
-    const rematch = this.isArmWrestleRematch();
-    const won = this._armWrestleRoll();
-    const stakeName = cardData.name || 'your card';
+    // Park the stake card while the match runs; win keeps it, loss takes it.
+    inv.returnCardToSlot(slotIndex, cardSprite);
+    inv.clearDropZones();
+    inv.rebuildInventorySprites?.();
+    this.armWrestleBetActive = false;
 
     this.ensureStoryState();
     this._rewardLines = [];
     this._rewardIcons = [];
+    this._armWrestlePending = {
+      kind: 'card',
+      rematch: this.isArmWrestleRematch(),
+      slotIndex,
+      cardData,
+    };
+    this._openArmWrestleMinigame();
+    return true;
+  }
 
-    if (won) {
-      // The card comes home either way you win; the rematch adds the guard.
-      inv.returnCardToSlot(slotIndex, cardSprite);
-      inv.clearDropZones();
-      inv.rebuildInventorySprites?.();
-      this._reward(`Kept: ${stakeName}`);
+  _openArmWrestleMinigame() {
+    if (this._armWrestleMinigameHandle) {
+      this._armWrestleMinigameHandle.close?.();
+      this._armWrestleMinigameHandle = null;
+    }
+    // Hide any leftover choice buttons (card-bet cancel) under the overlay.
+    (this._choiceBtns || []).forEach(({ bg, label }) => {
+      bg?.removeInteractive?.();
+      bg?.setAlpha?.(0);
+      label?.setAlpha?.(0);
+    });
+    const tuning = this.getArmWrestleMinigameTuning();
+    this._armWrestleMinigameHandle = openArmWrestlingMinigame(this, {
+      ogrePush: tuning.ogrePush,
+      clickPower: tuning.clickPower,
+      onDone: (won) => {
+        this._armWrestleMinigameHandle = null;
+        this._finishArmWrestleMatch(won);
+      },
+    });
+  }
 
-      if (rematch) {
-        this.gameState.storyRun.armWrestleRematchDone = true;
-        this.gameState.storyRun.gauntletWon = true;
-        this.clearPendingEvent('arm_wrestling');
-        this._deliverCardReward(createGauntletCard(), "Ogre's Gauntlet", "Gained card: Ogre's Gauntlet");
-        this.armWrestleOutcome = `He goes at it properly this time, and it takes everything you have.\n\nWhen his hand finally goes down the crowd does not cheer. They just look at the ogre.\n\nHe unhooks the stone guard and pushes it across to you, then sits back with his arms folded and watches you take it, ${stakeName} and all.`;
-      } else {
+  _finishArmWrestleMatch(won) {
+    const pending = this._armWrestlePending;
+    this._armWrestlePending = null;
+    if (!pending) return;
+
+    this.ensureStoryState();
+    // Only the stake is at risk — never armor. Start clean so no stale
+    // "Armor -1 pip" line can linger from an older build/path.
+    this._rewardLines = [];
+    this._rewardIcons = [];
+
+    if (pending.kind === 'coins') {
+      if (won) {
         this.gainCoins(this.getArmWrestlePot());
         this._winArmWrestleMatchOne();
-        this.armWrestleOutcome = `He looks at ${stakeName} for a long moment, decides it is worth his time, and plants his elbow.\n\nYou win by not fighting him where he is strongest.\n\nHe pushes his coins over, keeps looking at his own hand, and says something short in Ogrish. The crowd stops laughing. You get the distinct impression this is not finished.`;
+        this.armWrestleOutcome = 'He is stronger than you and both of you know it, so you do not try to out-pull him. You wait until he leans, and then you stop being where he is pushing.\n\nHis own weight takes his hand down onto the slab.\n\nThe room goes very quiet. The ogre looks at his hand for a while, then at you, and pushes the whole stack of coins across the table without a word.';
+      } else {
+        this._loseArmWrestle();
+        this._reward(`Lost stake: ${this.getArmWrestleCoinStake()} coins`);
+        this.armWrestleOutcome = 'You get about two seconds of holding him.\n\nThen your knuckles find the stone.\n\nHe takes the coins. That is all he takes.';
       }
-    } else {
-      inv.cleanupCardSprites?.(slotIndex, cardSprite);
-      inv.cleanupBoardArtifacts?.(cardSprite);
-      inv.removeCard(slotIndex, false);
-      cardSprite.destroy();
-      inv.clearDropZones();
-      this._reward(`Lost: ${stakeName}`);
-      if (rematch) this.gameState.storyRun.armWrestleRematchDone = true;
-      this._loseArmWrestle();
-      this.armWrestleOutcome = rematch
-        ? `He does not make the same mistake twice.\n\nYour hand is on the slab before you have finished bracing, and ${stakeName} goes into the pile beside his elbow.\n\nHe buckles the stone guard back onto his forearm and turns away from the table.`
-        : `He takes ${stakeName} off the table before your hand has finished going down.\n\nSomething in your armour gives. The crowd is delighted, briefly, and then bored.`;
+    } else if (pending.kind === 'card') {
+      const stakeName = pending.cardData?.name || 'your card';
+      const rematch = pending.rematch;
+
+      if (won) {
+        this._reward(`Kept: ${stakeName}`);
+        if (rematch) {
+          this.gameState.storyRun.armWrestleRematchDone = true;
+          this.gameState.storyRun.gauntletWon = true;
+          this.clearPendingEvent('arm_wrestling');
+          this._deliverCardReward(createGauntletCard(), "Ogre's Gauntlet", "Gained card: Ogre's Gauntlet");
+          this.armWrestleOutcome = `He goes at it properly this time, and it takes everything you have.\n\nWhen his hand finally goes down the crowd does not cheer. They just look at the ogre.\n\nHe unhooks the stone guard and pushes it across to you, then sits back with his arms folded and watches you take it, ${stakeName} and all.`;
+        } else {
+          this.gainCoins(this.getArmWrestlePot());
+          this._winArmWrestleMatchOne();
+          this.armWrestleOutcome = `He looks at ${stakeName} for a long moment, decides it is worth his time, and plants his elbow.\n\nYou win by not fighting him where he is strongest.\n\nHe pushes his coins over, keeps looking at his own hand, and says something short in Ogrish. The crowd stops laughing. You get the distinct impression this is not finished.`;
+        }
+      } else {
+        const inv = this.gameScene?.inventorySystem;
+        const slots = this.getInventorySlots() || [];
+        let idx = pending.slotIndex;
+        if (slots[idx] !== pending.cardData) {
+          idx = slots.findIndex((c) => c === pending.cardData);
+        }
+        if (inv && idx >= 0) {
+          inv.removeCard(idx, true);
+        }
+        this._reward(`Lost stake: ${stakeName}`);
+        if (rematch) this.gameState.storyRun.armWrestleRematchDone = true;
+        this._loseArmWrestle();
+        this.armWrestleOutcome = rematch
+          ? `He does not make the same mistake twice.\n\nYour hand is on the slab before you have finished bracing, and ${stakeName} goes into the pile beside his elbow.\n\nHe buckles the stone guard back onto his forearm and turns away from the table.`
+          : `He takes ${stakeName} off the table before your hand has finished going down.\n\nThe crowd is delighted, briefly, and then bored.`;
+      }
     }
 
-    this.armWrestleBetActive = false;
     this.gameScene?.updateUI?.();
     this._resolve({
       text: 'Wrestle',
       action: () => {},
       outcome: (state, s) => s.armWrestleOutcome
     }, -1, { keepRewards: true });
-    return true;
   }
 
   declineArmWrestle() {

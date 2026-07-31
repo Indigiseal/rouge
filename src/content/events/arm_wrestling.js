@@ -1,8 +1,10 @@
 // Arm Wrestling. Two matches, and only winning earns the second one.
 //
-// The odds are hidden — never a percentage on screen. What the player reads is
-// the CROWD: the more of them who fancy the ogre, the worse the player's arm
-// looks. See EventScene.armWrestleChance / getArmWrestleCrowdLine.
+// The match itself is a click minigame (see ArmWrestlingMinigame). Weapon-based
+// "odds" still exist — never shown as a percentage — and feed ogre push /
+// click power. What the player reads is the CROWD: the more of them who fancy
+// the ogre, the worse the player's arm looks. See EventScene.armWrestleChance /
+// getArmWrestleCrowdLine / getArmWrestleMinigameTuning.
 //
 // Match one is for coins or a card. Win, and he wants his money back — a
 // rematch queues up, and that is the only time he stakes the gauntlet. Lose
@@ -56,8 +58,10 @@ export default {
           id: 'arm_bet_coins',
           text: `Bet ${stake} coins`,
           condition: () => (gs?.coins || 0) >= stake,
-          action: (state, s) => s.betCoinsOnArmWrestle(),
-          outcome: (state, s) => s.armWrestleOutcome
+          action: (state, s) => s.beginArmWrestleCoinBet(),
+          // Soft-paused while the click minigame runs; terminal copy is set on
+          // armWrestleOutcome when the match finishes.
+          outcome: 'You plant your elbow on the slab. The room goes quiet.'
         },
         cardBet,
         decline,
