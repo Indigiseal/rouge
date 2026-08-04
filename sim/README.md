@@ -114,7 +114,7 @@ node sim/balance-sim.js stats-db 1000 balance behavior-run --behavior magicHeavy
 | `--character rogue\|warrior` | Класс персонажа (default: rogue) |
 | `--armor-pool chain\|plate\|both` | Фильтр спавна брони воина |
 | `--talents none\|max\|id:rank,...` | Пустое дерево / max live-ветки / кастомные ранги (включает meta) |
-| `--month thornwake\|silkdeep\|0\|1` | Пин ростера месяца (без ротации по актам) |
+| `--month thornwake\|silkdeep\|tollroad\|0\|1\|2` | Пин ростера месяца (без ротации по актам) |
 | `--act 1\|2\|3` | Только этот акт (F1–15 / 16–30 / 31–45). Стартеры: common / uncommon / rare. Act 2/3 сидят 3/6 random амулетов |
 | `--meta` / `--no-meta` | Вкл/выкл meta (таланты); preset `geared` ещё тянет relic-пул (сейчас пустой) |
 | `--amulets` / `--no-amulets` | Дроп/ивенты/шоп амулетов |

@@ -41,6 +41,13 @@
 - **Stinger Scorpion** (artillery): `poison_amp` — on hit, +1 to active poison tick damage (no effect if not poisoned)
 - **Silkslinger** (artillery): `web_hand` — webs one random hand card for 1 turn (visual overlay; unusable). If the only usable weapon is webbed, treat as no weapon (stalemate enemy turns)
 
+## Tollroad enemy identities
+- **Goblin** (skirmisher): `club_stun` — on hit, 5% stun (player skips next action; enemies still respond)
+- **Highway Cutpurse** (swarm): `coin_steal` — each attack steals 10 coins
+- **Toll Brute** (bruiser): `goblin_rally` — on attack, 15% other living goblin allies each make an extra attack
+- **Goblin Archer** (artillery): `ignore_armor` — after hit/miss resolved, if the shot lands, 10% ignore DEF and skip armor durability loss
+- **Road Sniper** (artillery): `heavy_shot` — 20% deal 150% damage instead of 100%
+
 ## Acceptance examples
 - On new floor: at least 1 front enemy + 1 back enemy is revealed
 - If front row is cleared, reveal one enemy behind

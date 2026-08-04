@@ -2855,7 +2855,13 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
       );
       combatDamageDealt += dmg;
       combatDamageWasted += Math.max(0, dmg - targetHP);
-      mock.useAction();
+      if (!mock.useAction()) {
+        // Stunned (or blocked): action cancelled, enemy turn still pending.
+        mock.resolvePendingEnemyTurn();
+        maybeHeal(mock, gs, inv);
+        bossMustAttackNext = false;
+        continue;
+      }
       // Main hit always lands first.
       mock.cardSystem.attackEnemy(attackIdx, dmg, false, gs.equippedWeapon || null, false);
       combatDamageDealt += applyAssassinateSim(mock, gs, attackIdx);

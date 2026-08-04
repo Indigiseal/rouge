@@ -219,6 +219,21 @@ function getEnemyFeatureLines(scene, data) {
     if (features.includes('web_hand')) {
         lines.push(t(scene, 'tooltip.webHand'));
     }
+    if (features.includes('club_stun')) {
+        lines.push(t(scene, 'tooltip.clubStun'));
+    }
+    if (features.includes('coin_steal')) {
+        lines.push(t(scene, 'tooltip.coinSteal'));
+    }
+    if (features.includes('goblin_rally')) {
+        lines.push(t(scene, 'tooltip.goblinRally'));
+    }
+    if (features.includes('ignore_armor')) {
+        lines.push(t(scene, 'tooltip.ignoreArmor'));
+    }
+    if (features.includes('heavy_shot')) {
+        lines.push(t(scene, 'tooltip.heavyShot'));
+    }
     if (data?.isEliteMiniBoss) {
         lines.push(t(scene, 'tooltip.eliteMiniBoss'));
     }

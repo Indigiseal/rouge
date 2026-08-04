@@ -73,6 +73,7 @@ function spawnFloorCards() {
     this.scene.gameState.firstAttackThisFloorUsed = false;
     this.scene.gameState.keenEdgeUsedThisFloor = false;
     this.scene.gameState.playerSpored = false;
+    this.scene.gameState.playerStunnedTurns = 0;
     this.scene.inventorySystem?.clearAllHandWebs?.();
   }
 

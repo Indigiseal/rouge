@@ -73,7 +73,7 @@ Write monster features as rules without passport damage numbers. Power comes fro
 | [[Stinger Scorpion]] | `poison_amp` | On hit, +1 to active poison tick damage (requires existing poison) |
 | [[Silkslinger]] | `web_hand` | Webs one random hand card for 1 turn; only-weapon webbed ⇒ skip attack like no weapon |
 
-**Tollroad (locked in narrative; code under `src/content/months/tollroad/` TBD):**
+**Tollroad (locked in code under `src/content/months/tollroad/`):**
 
 | Enemy | Feature | Rule |
 |---|---|---|

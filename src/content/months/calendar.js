@@ -8,11 +8,12 @@
 
 import { THORNWAKE_MONTH } from './thornwake/index.js';
 import { SILKDEEP_MONTH } from './silkdeep/index.js';
+import { TOLLROAD_MONTH } from './tollroad/index.js';
 
 export const MONTHS = Object.freeze([
   THORNWAKE_MONTH,
   SILKDEEP_MONTH,
-  Object.freeze({ id: 'tollroad', name: 'Tollroad', enemies: null }),
+  TOLLROAD_MONTH,
   Object.freeze({ id: 'boneflood', name: 'Boneflood', enemies: null }),
   Object.freeze({ id: 'mireturn', name: 'Mireturn', enemies: null }),
   Object.freeze({ id: 'veilbleed', name: 'Veilbleed', enemies: null }),
@@ -26,8 +27,8 @@ export const MONTHS = Object.freeze([
 
 export const MONTH_COUNT = MONTHS.length;
 
-/** How many leading months participate in run/act rotation (Thornwake + Silkdeep). */
-export const MONTH_ROTATION_LENGTH = 2;
+/** How many leading months participate in run/act rotation. */
+export const MONTH_ROTATION_LENGTH = 3;
 
 export function normalizeMonthIndex(index) {
   const n = Math.floor(Number(index) || 0);
@@ -37,7 +38,7 @@ export function normalizeMonthIndex(index) {
 
 /**
  * Resolve CLI / config month token to a rotation index.
- * Accepts numeric index ("0", 0) or month id ("thornwake", "silkdeep").
+ * Accepts numeric index ("0", 0) or month id ("thornwake", "silkdeep", "tollroad").
  * Unknown tokens fall back to 0 (Thornwake).
  */
 export function resolveMonthIndex(token) {

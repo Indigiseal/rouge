@@ -10,7 +10,7 @@
 //   --character rogue|warrior         Playable class for the run
 //   --armor-pool chain|plate|both     Warrior armor spawn filter (default: both)
 //   --talents none|max|id:rank,...    Character talent loadout
-//   --month thornwake|silkdeep|0|1    Pin / start calendar month
+//   --month thornwake|silkdeep|tollroad|0|1|2    Pin / start calendar month
 //   --act 1|2|3                       Run only that act (mid-act start kit)
 
 import {
@@ -528,7 +528,7 @@ Sim flags (combine with stats-db / loot-stats / fresh):
   --character rogue|warrior   Playable class (default: rogue)
   --armor-pool chain|plate|both   Warrior armor spawn filter (default: both)
   --talents none|max|id:rank,...  No talents, max live branch, or custom ranks
-  --month thornwake|silkdeep|0|1  Pin calendar month roster (no act rotation)
+  --month thornwake|silkdeep|tollroad|0|1|2  Pin calendar month roster (no act rotation)
   --act 1|2|3                 Run only that act; starters: common/uncommon/rare
                               Act 2/3 also seed 3/6 random starting amulets
   --meta | --no-meta          Enable meta (talents) for the run

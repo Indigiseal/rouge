@@ -498,6 +498,15 @@ export class GameScene extends Phaser.Scene {
     useAction() {
         if (this.isEnemyTurn) return false;
 
+        // Goblin club_stun: skip this action, then enemies still respond.
+        if ((this.gameState.playerStunnedTurns || 0) > 0) {
+            this.gameState.playerStunnedTurns--;
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Stunned!', 0xffcc66);
+            this.updateUI();
+            this.scheduleEnemyTurn();
+            return false;
+        }
+
         // Check if player is already exhausted BEFORE consuming the action
         const wasExhausted = this.gameState.actionsLeft <= 0;
         
