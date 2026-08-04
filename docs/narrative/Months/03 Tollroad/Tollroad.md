@@ -81,7 +81,7 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 ## Gaps
 
 - Optional vignettes: Weighing Shed / Counterfeit Pass (not drafted).
-- Identity features are locked in narrative ([[Enemy Power]]); code under `src/content/months/tollroad/` still TBD.
+- Identity features locked in code under `src/content/months/tollroad/`.
 
 ## Opening text (draft)
 
