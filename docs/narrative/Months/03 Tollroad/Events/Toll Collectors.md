@@ -11,7 +11,7 @@ tags:
 
 # Toll Collectors
 
-The Goblin King's tax men block the road. Pay, intimidate, fight, or wait — choices spill into the boss fight and shops.
+The Goblin King's tax men block the King's Mile — collectors of a false kingdom. Pay, intimidate, fight, or wait — choices spill into the boss fight and shops.
 
 ## Placement
 

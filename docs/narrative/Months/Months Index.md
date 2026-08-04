@@ -13,6 +13,7 @@ tags:
 > [!info]
 > **Wolf:** [[Wolf]] has +1 ATK per other revealed living Wolf (`wolf_pack`).  
 > **Thornwake cast:** [[Thorn Ent]], [[Thorn Sprite]], [[Spore Archer]], [[Thorn Fairy]] — see each note for identity features.  
+> **Tollroad:** false goblin kingdom on [[03 Tollroad/Tollroad#The King's Mile|The King's Mile]]; cast briefs use clear archetypes (thug, thief, club guard, archer, king).  
 > Each month: theme, location, **3 melee + 2 ranged + 1 boss** with archetypes.  
 > Year loop is ordinary — [[Spherefall]] is not a finale beat.
 
@@ -30,7 +31,7 @@ tags:
 |---|---|---|---|---|
 | 01 | [[01 Thornwake/Thornwake|Thornwake]] | The Briar March | [[The Green Warden]] | proposed |
 | 02 | [[02 Silkdeep/Silkdeep|Silkdeep]] | The Silkdeep Caves | [[Spider Queen]] | in-game |
-| 03 | [[03 Tollroad/Tollroad|Tollroad]] | The Tollroad | [[Goblin King]] | in-game |
+| 03 | [[03 Tollroad/Tollroad|Tollroad]] | The King's Mile | [[Goblin King]] | in-game |
 | 04 | [[04 Boneflood/Boneflood|Boneflood]] | The Ossuary Fields | [[Giant Skeleton]] | in-game |
 | 05 | [[05 Mireturn/Mireturn|Mireturn]] | The Mireturn Fens | [[The Mire Bride]] | proposed |
 | 06 | [[06 Veilbleed/Veilbleed|Veilbleed]] | The Bleeding Veil | [[Soul Eater]] | in-game |
@@ -56,7 +57,8 @@ tags:
 - **Boss:** [[Spider Queen]]
 
 ### [[03 Tollroad/Tollroad|Tollroad]]
-- **Location:** The Tollroad
+- **Location:** The King's Mile
+- **Theme:** False kingdom (greedy Goblin King stamps a toll-state on the road)
 - **Melee:** [[Goblin]] (`skirmisher`), [[Highway Cutpurse]] (`swarm`), [[Toll Brute]] (`bruiser`)
 - **Ranged:** [[Goblin Archer]] (`artillery`), [[Road Sniper]] (`artillery`)
 - **Boss:** [[Goblin King]]

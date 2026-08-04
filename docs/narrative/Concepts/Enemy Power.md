@@ -73,6 +73,16 @@ Write monster features as rules without passport damage numbers. Power comes fro
 | [[Stinger Scorpion]] | `poison_amp` | On hit, +1 to active poison tick damage (requires existing poison) |
 | [[Silkslinger]] | `web_hand` | Webs one random hand card for 1 turn; only-weapon webbed ⇒ skip attack like no weapon |
 
+**Tollroad (locked in narrative; code under `src/content/months/tollroad/` TBD):**
+
+| Enemy | Feature | Rule |
+|---|---|---|
+| [[Goblin]] | `club_stun` | On hit, 5% stun: player skips their next turn |
+| [[Highway Cutpurse]] | `coin_steal` | On each attack, steals 10 coins (or all remaining if fewer) |
+| [[Toll Brute]] | `goblin_rally` | On attack, 15% chance other living goblins on the board each make an extra attack |
+| [[Goblin Archer]] | `ignore_armor` | After hit/miss resolved: if the shot lands, 10% ignore DEF and do not spend armor durability on that hit (inverse timing family of plate `rangedIgnoreChance`) |
+| [[Road Sniper]] | `heavy_shot` | On each attack, 20% deal 150% damage instead of 100% |
+
 Other months: features TBD per cast note.
 
 

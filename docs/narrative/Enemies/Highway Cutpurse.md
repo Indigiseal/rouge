@@ -13,7 +13,9 @@ tags:
 
 # Highway Cutpurse
 
-Fast, fragile raider of the open road.
+A classic **cutpurse / thief** — fast, fragile, hands first. On the King's Mile he works the false tax office from the pocket side: if the booth did not take it, he does.
+
+Name keeps "Highway" as setting; the readable type is **thief**.
 
 ## Combat sheet
 
@@ -22,19 +24,24 @@ Fast, fragile raider of the open road.
 | Role | melee |
 | Archetype | `swarm` (HP ×0.75 · ATK ×0.9) |
 | Status | proposed |
-| Primary month | [[03 Tollroad/Tollroad|Tollroad]] |
-| Location | [[03 Tollroad/Tollroad#The Tollroad|The Tollroad]] |
+| Primary month | [[Tollroad]] |
+| Location | [[Tollroad#The King's Mile]] |
+| Readable type | Cutpurse / thief |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 ## Feature
 
-_TBD_
+`coin_steal` — on each attack, steals **10 coins** from the player (steal what they have if fewer than 10; 0 if empty).
+
+## Art note
+
+Silhouette should read **thief**, not tank. May be goblin or other smallfolk — species open. Hood optional.
 
 ## Related
 
 - [[Enemies Index]]
-- [[03 Tollroad/Tollroad|Tollroad]]
-- Location: [[03 Tollroad/Tollroad#The Tollroad|The Tollroad]]
+- [[Tollroad]]
+- Location: [[Tollroad#The King's Mile]]
 - [[Enemy Power]]
 - [[Months Index]]
