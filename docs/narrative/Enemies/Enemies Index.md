@@ -29,13 +29,13 @@ Ordinary enemies use **band(floor) × archetype**. Full band table: `docs/BALANC
 - [[Stinger Scorpion]] (`ranged`, `artillery`, proposed) — `poison_amp`: +1 poison tick damage on hit.
 - [[Silkslinger]] (`ranged`, `artillery`, proposed) — `web_hand`: webs a random hand card for 1 turn.
 
-### [[03 Tollroad/Tollroad|Tollroad]] — The Tollroad
+### [[03 Tollroad/Tollroad|Tollroad]] — The King's Mile
 - Boss: [[Goblin King]]
-- [[Goblin]] (`melee`, `skirmisher`, in-game)
-- [[Highway Cutpurse]] (`melee`, `swarm`, proposed)
-- [[Toll Brute]] (`melee`, `bruiser`, proposed)
-- [[Goblin Archer]] (`ranged`, `artillery`, in-game)
-- [[Road Sniper]] (`ranged`, `artillery`, proposed)
+- [[Goblin]] (`melee`, `skirmisher`, in-game) — `club_stun`: 5% on hit to stun (player skips next turn).
+- [[Highway Cutpurse]] (`melee`, `swarm`, proposed) — `coin_steal`: each attack steals 10 coins.
+- [[Toll Brute]] (`melee`, `bruiser`, proposed) — `goblin_rally`: 15% trigger extra attacks from other goblins.
+- [[Goblin Archer]] (`ranged`, `artillery`, in-game) — `ignore_armor`: after hit lands, 10% ignore DEF (no armor pip).
+- [[Road Sniper]] (`ranged`, `artillery`, proposed) — `heavy_shot`: 20% deal 150% damage.
 
 ### [[04 Boneflood/Boneflood|Boneflood]] — The Ossuary Fields
 - Boss: [[Giant Skeleton]]

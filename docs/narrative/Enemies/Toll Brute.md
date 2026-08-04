@@ -13,7 +13,7 @@ tags:
 
 # Toll Brute
 
-Heavy clubber who blocks the lane.
+A classic **club brute / gate guard** — big body, heavy swing, planted in the lane. On the King's Mile he is the living barrier who can bark the rest of the "guard" into a free swing.
 
 ## Combat sheet
 
@@ -22,19 +22,24 @@ Heavy clubber who blocks the lane.
 | Role | melee |
 | Archetype | `bruiser` (HP ×1.25 · ATK ×0.95) |
 | Status | proposed |
-| Primary month | [[03 Tollroad/Tollroad|Tollroad]] |
-| Location | [[03 Tollroad/Tollroad#The Tollroad|The Tollroad]] |
+| Primary month | [[Tollroad]] |
+| Location | [[Tollroad#The King's Mile]] |
+| Readable type | Club brute / gate guard |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 ## Feature
 
-_TBD_
+`goblin_rally` — on his attack, **15%** chance to trigger an **extra attack** from other living **goblins** on the board (e.g. [[Goblin]], [[Goblin Archer]] — any enemy typed as goblin). Those swings resolve as their normal attacks (with their own features).
+
+## Art note
+
+Readable as **big guy with a club** (or similar blunt kit). Shield optional. Species open (oversized goblin, orc-ish, etc.).
 
 ## Related
 
 - [[Enemies Index]]
-- [[03 Tollroad/Tollroad|Tollroad]]
-- Location: [[03 Tollroad/Tollroad#The Tollroad|The Tollroad]]
+- [[Tollroad]]
+- Location: [[Tollroad#The King's Mile]]
 - [[Enemy Power]]
 - [[Months Index]]
