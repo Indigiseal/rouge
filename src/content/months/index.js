@@ -3,6 +3,7 @@ export {
   MONTH_COUNT,
   MONTH_ROTATION_LENGTH,
   normalizeMonthIndex,
+  resolveMonthIndex,
   nextMonthIndex,
   actOffsetForFloor,
   getMonthIndexForFloor,

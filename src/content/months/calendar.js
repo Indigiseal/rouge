@@ -35,6 +35,26 @@ export function normalizeMonthIndex(index) {
   return ((n % len) + len) % len;
 }
 
+/**
+ * Resolve CLI / config month token to a rotation index.
+ * Accepts numeric index ("0", 0) or month id ("thornwake", "silkdeep").
+ * Unknown tokens fall back to 0 (Thornwake).
+ */
+export function resolveMonthIndex(token) {
+  if (token == null || token === '') return 0;
+  if (typeof token === 'number' && Number.isFinite(token)) {
+    return normalizeMonthIndex(token);
+  }
+  const raw = String(token).trim().toLowerCase();
+  if (/^\d+$/.test(raw)) return normalizeMonthIndex(Number(raw));
+  const byId = MONTHS.findIndex((m) => m?.id === raw);
+  if (byId >= 0 && byId < MONTH_ROTATION_LENGTH) return byId;
+  // Allow looking up ids that exist in the full calendar but outside rotation
+  // by mapping to their position only when within rotation length.
+  if (byId >= 0) return normalizeMonthIndex(byId);
+  return 0;
+}
+
 export function nextMonthIndex(index) {
   return normalizeMonthIndex(normalizeMonthIndex(index) + 1);
 }

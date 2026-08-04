@@ -25,6 +25,9 @@ export class GameState {
         // Calendar month at run start (0 = Thornwake). Act 2/3 walk the next
         // months on the circle. See src/content/months/calendar.js.
         this.calendarMonthIndex = 0;
+        // When true, every floor uses calendarMonthIndex (no act rotation).
+        // Sim-only override; not part of the save contract.
+        this.pinCalendarMonth = false;
         this.roomType = 'COMBAT';
         this.mapCursor = null;
         this.companionHistory = {};

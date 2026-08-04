@@ -51,6 +51,9 @@ import {
   buildSimRunExtras,
   normalizeSimPools,
   simFlagsUsage,
+  actStartWeaponRarity,
+  actStartAmuletCount,
+  sampleAmuletIds,
 } from './parse-sim-flags.js';
 import { getDefaultAmuletIds } from './sim-catalog.js';
 import { getBehaviorProfile, getBehaviorPresetNames } from './behavior-knobs.js';
@@ -334,9 +337,9 @@ function restrictMetaPool(meta, poolIds) {
   return meta;
 }
 
-function startingInventory(inv, characterId = 'rogue') {
+function startingInventory(inv, characterId = 'rogue', { rarity } = {}) {
   // Mirrors InventorySystem.addStartingCards — class refs → catalog cards.
-  const start = buildStartingWeaponCards(characterId);
+  const start = buildStartingWeaponCards(characterId, { rarity });
   for (let i = 0; i < start.length && i < inv.length; i++) inv[i] = cloneCard(start[i]);
 }
 
@@ -4074,6 +4077,16 @@ function runGame(metrics, config = {}) {
   gs.armorPool = Array.isArray(config.armorPool) && config.armorPool.length
     ? config.armorPool.slice()
     : null;
+  if (Number.isFinite(config.calendarMonthIndex)) {
+    gs.calendarMonthIndex = config.calendarMonthIndex;
+  }
+  gs.pinCalendarMonth = Boolean(config.pinCalendarMonth);
+
+  const startAct = (config.act === 1 || config.act === 2 || config.act === 3) ? config.act : 1;
+  const endAct = (config.act === 1 || config.act === 2 || config.act === 3) ? config.act : 3;
+  const winFloor = endAct * 15;
+  const starterRarity = config.startingWeaponRarity || actStartWeaponRarity(startAct);
+
   // Per-run merge tracker: records the FIRST floor we reach each rarity tier,
   // for weapons and armor separately. The mergeWeapon/Armor list functions
   // call recordMerge() whenever a tier-up happens.
@@ -4139,7 +4152,7 @@ function runGame(metrics, config = {}) {
     for (const id of amulets) mock.amuletManager.addAmulet(id, { force: forceStart });
   }
   const inv = mock.inventorySystem.slots;
-  startingInventory(inv, gs.characterId);
+  startingInventory(inv, gs.characterId, { rarity: starterRarity });
   syncInventoryState(gs, inv);
   mock._simInventory = inv;
   mock._stalemateDeath = false;
@@ -4152,17 +4165,12 @@ function runGame(metrics, config = {}) {
     gs._superWeapon = gs.equippedWeapon;
   }
 
-  // Walk the REAL generated map (3 acts × 15 floors). Each act: start at the
-  // floor-0 node and follow a random connection per floor to the floor-14 boss.
-  // Room types come straight from the generator (≈37% combat, 22% event, etc.).
+  // Walk the REAL generated map. Optional --act N runs only that act's floors
+  // (mid-act start with act-scaled starters).
   const map = new MapGenerator().generateFullMap();
   let reached = 0, dead = false;
 
-  // Floor 1 is played before MapViewScene opens. Map row 0 is only the visited
-  // anchor after that fight, so simulating from row 1 without this visit skips a
-  // real combat and shifts every pre-boss floor down by one.
-  {
-    const floor = 1;
+  const playOpeningCombat = (floor) => {
     const roomType = 'COMBAT';
     gs.currentFloor = floor;
     gs.roomType = roomType;
@@ -4219,8 +4227,13 @@ function runGame(metrics, config = {}) {
       });
       dead = true;
     }
-  }
-  for (let act = 1; act <= 3 && !dead; act++) {
+  };
+
+  // Opening combat of the selected first act (floor 1 / 16 / 31). Map row 0 is
+  // only the visited anchor after that fight.
+  playOpeningCombat((startAct - 1) * 15 + 1);
+
+  for (let act = startAct; act <= endAct && !dead; act++) {
     const floors = map['act' + act].floors;
     const memo = new Map();
     let cur = 0;
@@ -4261,8 +4274,8 @@ function runGame(metrics, config = {}) {
         }
         if (gs.playerHealth > 0) {
           mock.amuletManager.processFloorEnd();
-          // Act-boss victory → the reward room (floor 45 is the win, no room).
-          if ((floor === 15 || floor === 30) && BOSS_FLOORS.has(floor)) {
+          // Act-boss victory → reward room when another act follows in this run.
+          if ((floor === 15 || floor === 30) && BOSS_FLOORS.has(floor) && act < endAct) {
             runBossReward(mock, gs, inv, floor);
             upgradeCompanionsForNextAct(inv, Math.floor(floor / 15) + 1);
           }
@@ -4332,13 +4345,13 @@ function runGame(metrics, config = {}) {
         dead = true; break;
       }
     }
-    if (!dead && act < 3 && reached === act * 15) {
+    if (!dead && act < endAct && reached === act * 15) {
       reached++;
       runPostActShop(mock, gs, inv, reached, metrics);
     }
   }
 
-  if (!dead && reached >= MAX_FLOOR) metrics.wins++;
+  if (!dead && reached >= winFloor) metrics.wins++;
   const finalCompanions = companionsIn(inv);
   metrics.finalFloors.push(reached);
   metrics.finalAmulets.push((gs.activeAmulets || []).length);
@@ -4376,7 +4389,7 @@ function runGame(metrics, config = {}) {
   metrics.runs++;
   const runResult = {
     reached,
-    won: !dead && reached >= MAX_FLOOR,
+    won: !dead && reached >= winFloor,
     died: dead,
     killer: mock._lastKiller || 'enemy',
     endReason: computeRunEndReason(gs, inv, {
@@ -5639,12 +5652,143 @@ function writeSimulatorSummary(metrics, outputPath) {
   console.log(`Simulator summary written to ${outputPath}`);
 }
 
+// ── Act × character × meta ladder matrix ───────────────────────────────────
+// Usage: node sim/balance-sim.js actmatrix [runs]
+// Pins Thornwake roster; --act slice; mid-act weapon rarity + random amulets.
+// Win = cleared that act's boss floor. Writes sim/output/act-meta-matrix.json
+function runActMetaMatrix() {
+  const args = stripBehaviorArgs(process.argv.slice(3));
+  let runs = 10000;
+  for (const a of args) {
+    if (/^\d+$/.test(a)) runs = parseInt(a, 10);
+  }
+
+  const allAmulets = getDefaultAmuletIds();
+  const metaSteps = []; // shared column ids: none, step1..stepN, full
+  const rogueConfigs = buildTalentLadderConfigs('rogue');
+  const warriorConfigs = buildTalentLadderConfigs('warrior');
+  const stepCount = Math.max(rogueConfigs.length, warriorConfigs.length);
+  for (let s = 0; s < stepCount; s++) {
+    const id = s === 0 ? 'none' : (s === stepCount - 1 ? 'full' : `step${s}`);
+    metaSteps.push({
+      id,
+      index: s,
+      rogueLabel: rogueConfigs[s]?.label || `step${s}`,
+      warriorLabel: warriorConfigs[s]?.label || `step${s}`,
+    });
+  }
+
+  const results = [];
+  const characters = ['rogue', 'warrior'];
+  const acts = [1, 2, 3];
+  const totalCombos = characters.length * acts.length * stepCount;
+  let done = 0;
+  const tMatrix = Date.now();
+
+  console.log(`\n=== Act × meta matrix — ${runs} runs × ${totalCombos} combos ===`);
+  console.log('month=thornwake (pinned)  mid-act starters + amulet seed  noBag  amulet drops off\n');
+
+  for (const characterId of characters) {
+    const configs = characterId === 'rogue' ? rogueConfigs : warriorConfigs;
+    for (const act of acts) {
+      const rowWins = {};
+      for (let s = 0; s < stepCount; s++) {
+        const cfg = configs[s] || configs[configs.length - 1];
+        const stepMeta = metaSteps[s];
+        const hasTalents = cfg.talents && Object.keys(cfg.talents).length > 0;
+        setSimTestOptionsOverride({
+          [TEST_OPTION_IDS.disableMetaProgression]: !hasTalents,
+          [TEST_OPTION_IDS.disableAmulets]: true,
+        });
+
+        const seedN = actStartAmuletCount(act);
+        const amulets = seedN > 0 ? sampleAmuletIds(allAmulets, seedN) : [];
+        // Re-sample amulets each run inside the loop for independence.
+        const m = newMetrics();
+        for (let i = 0; i < runs; i++) {
+          let talentChoices = cfg.talentChoices;
+          if (cfg.randomArmorer) {
+            talentChoices = {
+              armorerArmorType: Math.random() < 0.5 ? 'chain' : 'plate',
+            };
+          }
+          const runAmulets = seedN > 0 ? sampleAmuletIds(allAmulets, seedN) : [];
+          runGame(m, {
+            characterId,
+            act,
+            calendarMonthIndex: 0,
+            pinCalendarMonth: true,
+            startingWeaponRarity: actStartWeaponRarity(act),
+            talents: hasTalents ? { ...cfg.talents } : {},
+            talentChoices,
+            amulets: runAmulets,
+            forceStartingAmulets: runAmulets.length > 0,
+            noBag: true,
+            amuletPool: [],
+          });
+        }
+        clearSimTestOptionsOverride();
+
+        const winPct = (100 * m.wins) / runs;
+        rowWins[stepMeta.id] = {
+          winPct,
+          wins: m.wins,
+          meanFloor: m.finalFloors.reduce((a, b) => a + b, 0) / Math.max(1, m.finalFloors.length),
+          label: characterId === 'rogue' ? stepMeta.rogueLabel : stepMeta.warriorLabel,
+        };
+        done++;
+        const elapsed = ((Date.now() - tMatrix) / 1000).toFixed(1);
+        console.log(
+          `[${done}/${totalCombos}] ${characterId} act${act} ${stepMeta.id.padEnd(6)}`
+          + ` win=${winPct.toFixed(2)}%  (${elapsed}s)`
+        );
+      }
+      results.push({
+        characterId,
+        act,
+        rowKey: `Act ${act} / ${characterId}`,
+        winsByMeta: rowWins,
+      });
+    }
+  }
+
+  const out = {
+    runs,
+    generatedAt: new Date().toISOString(),
+    month: 'thornwake',
+    pinCalendarMonth: true,
+    winDefinition: 'cleared act boss floor (act*15)',
+    metaSteps,
+    results,
+    elapsedSec: (Date.now() - tMatrix) / 1000,
+  };
+
+  const outputPath = 'sim/output/act-meta-matrix.json';
+  mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(outputPath, JSON.stringify(out, null, 2));
+  console.log(`\nWrote ${outputPath}`);
+
+  // Console table: rows = Act/Character, columns = meta step ids
+  const colIds = metaSteps.map((s) => s.id);
+  console.log('\nWin% (act boss):');
+  console.log('row'.padEnd(22) + colIds.map((id) => id.padStart(8)).join(''));
+  for (const row of results) {
+    const cells = colIds.map((id) => {
+      const v = row.winsByMeta[id]?.winPct;
+      return (v == null ? '—' : v.toFixed(1)).padStart(8);
+    });
+    console.log(row.rowKey.padEnd(22) + cells.join(''));
+  }
+}
+
 const MODE = process.argv[2];
 const t0 = Date.now();
 if (MODE === 'reliccompare' || MODE === 'talentcompare') {
   runTalentCompare();
 } else if (MODE === 'talentladder') {
   runTalentLadder();
+} else if (MODE === 'actmatrix') {
+  runActMetaMatrix();
 } else if (MODE === 'fresh') {
   runFresh();
 } else if (MODE === 'sweep') {

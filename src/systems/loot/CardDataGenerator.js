@@ -40,7 +40,7 @@ import {
     THORNS_SPRITE_BY_RARITY,
     buildEnemyCardFromDef,
 } from '../../content/cards/index.js';
-import { getMonthDefForFloor } from '../../content/months/index.js';
+import { getMonthDef, getMonthDefForFloor } from '../../content/months/index.js';
 
 export class CardDataGenerator {
     // Re-export content tables as statics for existing callers.
@@ -202,7 +202,9 @@ export class CardDataGenerator {
 
     getMonthEnemyPool(floor, preferredRole = null, gameState = null) {
         const startMonth = gameState?.calendarMonthIndex ?? 0;
-        const month = getMonthDefForFloor(startMonth, floor);
+        const month = gameState?.pinCalendarMonth
+            ? getMonthDef(startMonth)
+            : getMonthDefForFloor(startMonth, floor);
         const roster = month?.enemies;
         if (!roster) return [];
 

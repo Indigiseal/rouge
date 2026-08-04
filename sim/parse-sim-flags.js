@@ -9,23 +9,42 @@
 //   --amulet-start id,id              (equipped at run start; implies force)
 //   --character rogue|warrior         Playable class for the run
 //   --armor-pool chain|plate|both     Warrior armor spawn filter (default: both)
-//   --talents none|max                Character's live talent branch loadout
+//   --talents none|max|id:rank,...    Character talent loadout
+//   --month thornwake|silkdeep|0|1    Pin / start calendar month
+//   --act 1|2|3                       Run only that act (mid-act start kit)
 
 import {
   setSimTestOptionsOverride,
   TEST_OPTION_IDS,
 } from '../src/config/TestOptions.js';
 import { CHARACTER_IDS, normalizeCharacterId } from '../src/content/characters/CharacterClasses.js';
+import { resolveMonthIndex } from '../src/content/months/index.js';
 import { getBranchesForCharacter, getTalentNode } from '../src/content/talents/index.js';
 
 export const SIM_META_MODES = new Set(['fresh', 'geared', 'accumulate', 'balance']);
 export const SIM_CHARACTER_IDS = new Set(CHARACTER_IDS);
 export const SIM_ARMOR_POOLS = new Set(['chain', 'plate', 'both']);
+export const ACT_START_WEAPON_RARITY = Object.freeze({
+  1: 'common',
+  2: 'uncommon',
+  3: 'rare',
+});
+export const ACT_START_AMULET_COUNT = Object.freeze({
+  1: 0,
+  2: 3,
+  3: 6,
+});
 
 function parseArmorPool(val) {
   if (!val || !SIM_ARMOR_POOLS.has(val)) return null;
   if (val === 'both') return ['chain', 'plate'];
   return [val];
+}
+
+function parseAct(val) {
+  const n = Number(val);
+  if (n === 1 || n === 2 || n === 3) return n;
+  return null;
 }
 
 const MODE_DEFAULTS = {
@@ -36,7 +55,13 @@ const MODE_DEFAULTS = {
 };
 
 const LOADOUTS = new Set(['none', 'bag', 'strong']);
-const TALENT_LOADOUTS = new Set(['none', 'max']);
+const TALENT_PRESETS = new Set(['none', 'max']);
+
+const VALUE_FLAGS = new Set([
+  '--amulet-loadout', '--meta-pool', '--meta-start',
+  '--amulet-pool', '--amulet-start', '--character',
+  '--armor-pool', '--talents', '--month', '--act',
+]);
 
 function buildMaxTalentLoadout(characterId, armorPool = null) {
   const talents = {};
@@ -55,11 +80,71 @@ function buildMaxTalentLoadout(characterId, armorPool = null) {
   return { talents, talentChoices: choices };
 }
 
+/**
+ * Parse --talents none|max|id:rank,id:rank
+ * @returns {{ preset: 'none'|'max'|'custom', talents: object, talentChoices: object }}
+ */
+export function parseTalentSpec(val, characterId = 'rogue', armorPool = null) {
+  const raw = String(val || '').trim();
+  if (!raw || raw === 'none') {
+    return { preset: 'none', talents: {}, talentChoices: {} };
+  }
+  if (raw === 'max') {
+    const built = buildMaxTalentLoadout(characterId, armorPool);
+    return { preset: 'max', ...built };
+  }
+
+  const talents = {};
+  for (const part of raw.split(',')) {
+    const token = part.trim();
+    if (!token) continue;
+    const colon = token.indexOf(':');
+    const id = colon >= 0 ? token.slice(0, colon).trim() : token;
+    const rankRaw = colon >= 0 ? token.slice(colon + 1).trim() : '1';
+    const node = getTalentNode(id);
+    if (!node || node.wip) {
+      console.warn(`[sim] unknown/wip talent id ignored: ${id}`);
+      continue;
+    }
+    const maxRank = node.maxRank || 1;
+    let rank = Number(rankRaw);
+    if (!Number.isFinite(rank) || rank <= 0) rank = 1;
+    talents[id] = Math.min(maxRank, Math.max(1, Math.floor(rank)));
+  }
+  const choices = {};
+  if (characterId === 'warrior' && (talents.armorerStart || 0) > 0) {
+    choices.armorerArmorType = armorPool?.length === 1 ? armorPool[0] : 'plate';
+  }
+  return { preset: 'custom', talents, talentChoices: choices };
+}
+
 function parseIdList(raw) {
   if (raw == null) return null;
   const s = String(raw).trim();
   if (!s) return [];
   return [...new Set(s.split(',').map((x) => x.trim()).filter(Boolean))];
+}
+
+/** Fisher–Yates sample of up to `count` unique ids from pool. */
+export function sampleAmuletIds(pool, count, rng = Math.random) {
+  const src = Array.isArray(pool) ? pool.filter(Boolean) : [];
+  if (!src.length || count <= 0) return [];
+  const bag = src.slice();
+  for (let i = bag.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = bag[i];
+    bag[i] = bag[j];
+    bag[j] = tmp;
+  }
+  return bag.slice(0, Math.min(count, bag.length));
+}
+
+export function actStartWeaponRarity(act) {
+  return ACT_START_WEAPON_RARITY[act] || 'common';
+}
+
+export function actStartAmuletCount(act) {
+  return ACT_START_AMULET_COUNT[act] || 0;
 }
 
 /** Split argv into positional tokens and sim flags (supports --meta on). */
@@ -77,19 +162,11 @@ export function splitSimArgv(argv) {
         flags.push(`${a} ${argv[++i]}`);
         continue;
       }
-      if (
-        (a === '--amulet-loadout' || a === '--meta-pool' || a === '--meta-start'
-          || a === '--amulet-pool' || a === '--amulet-start' || a === '--character'
-          || a === '--armor-pool' || a === '--talents')
-        && argv[i + 1] && !argv[i + 1].startsWith('--')
-      ) {
+      if (VALUE_FLAGS.has(a) && argv[i + 1] && !argv[i + 1].startsWith('--')) {
         flags.push(`${a} ${argv[++i]}`);
         continue;
       }
-      if (a.startsWith('--meta-pool=') || a.startsWith('--meta-start=')
-        || a.startsWith('--amulet-pool=') || a.startsWith('--amulet-start=')
-        || a.startsWith('--amulet-loadout=') || a.startsWith('--character=')
-        || a.startsWith('--armor-pool=') || a.startsWith('--talents=')) {
+      if ([...VALUE_FLAGS].some((p) => a.startsWith(`${p}=`))) {
         flags.push(a);
         continue;
       }
@@ -112,6 +189,8 @@ export function isSimFlagToken(a) {
     || a.startsWith('--character')
     || a.startsWith('--armor-pool')
     || a.startsWith('--talents')
+    || a.startsWith('--month')
+    || a.startsWith('--act')
     || a === '--no-meta'
     || a === '--no-amulets';
 }
@@ -126,18 +205,6 @@ function flagValue(token, prefix) {
 /**
  * @param {string[]} flagTokens
  * @param {string} metaMode
- * @returns {{
- *   enableMeta: boolean,
- *   enableAmulets: boolean,
- *   amuletLoadout: 'none'|'bag'|'strong',
- *   metaPool: string[]|null,
- *   metaStart: string[]|null,
- *   amuletPool: string[]|null,
- *   amuletStart: string[]|null,
- *   characterId: 'rogue'|'warrior',
- *   armorPool: string[]|null,
- *   talentLoadout: 'none'|'max',
- * }}
  */
 export function parseSimFlags(flagTokens, metaMode = 'fresh') {
   const base = MODE_DEFAULTS[metaMode] || MODE_DEFAULTS.fresh;
@@ -150,7 +217,11 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
   let amuletStart = null;
   let characterId = 'rogue';
   let armorPool = null;
-  let talentLoadout = 'none';
+  let talentSpec = 'none';
+  let monthToken = null;
+  let act = null;
+  let explicitAmuletStart = false;
+  let explicitAmuletLoadout = false;
 
   for (const raw of flagTokens) {
     const token = raw.trim();
@@ -160,7 +231,10 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
     else if (token === '--no-amulets' || token === '--amulets off') enableAmulets = false;
     else if (token.startsWith('--amulet-loadout')) {
       const val = flagValue(token, '--amulet-loadout');
-      if (LOADOUTS.has(val)) amuletLoadout = val;
+      if (LOADOUTS.has(val)) {
+        amuletLoadout = val;
+        explicitAmuletLoadout = true;
+      }
     } else if (token.startsWith('--meta-pool')) {
       metaPool = parseIdList(flagValue(token, '--meta-pool'));
     } else if (token.startsWith('--meta-start')) {
@@ -169,6 +243,7 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
       amuletPool = parseIdList(flagValue(token, '--amulet-pool'));
     } else if (token.startsWith('--amulet-start')) {
       amuletStart = parseIdList(flagValue(token, '--amulet-start'));
+      explicitAmuletStart = true;
     } else if (token.startsWith('--character')) {
       const val = flagValue(token, '--character');
       if (val && SIM_CHARACTER_IDS.has(val)) characterId = val;
@@ -177,21 +252,36 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
       armorPool = parseArmorPool(flagValue(token, '--armor-pool'));
     } else if (token.startsWith('--talents')) {
       const val = flagValue(token, '--talents');
-      if (TALENT_LOADOUTS.has(val)) talentLoadout = val;
-      if (val === 'max') enableMeta = true;
+      if (val != null && val !== '') talentSpec = val;
+      if (val && val !== 'none') enableMeta = true;
+    } else if (token.startsWith('--month')) {
+      const val = flagValue(token, '--month');
+      if (val != null && val !== '') monthToken = val;
+    } else if (token.startsWith('--act')) {
+      const parsed = parseAct(flagValue(token, '--act'));
+      if (parsed != null) act = parsed;
     }
   }
 
   if (!enableAmulets) {
-    amuletLoadout = 'none';
-    amuletPool = [];
-    amuletStart = [];
+    // Mid-act random seed still applies later via forceStartingAmulets; only
+    // clear drop/shop loadouts here. Leave amuletPool null → full catalog for seeds.
+    if (!explicitAmuletStart && !(explicitAmuletLoadout && amuletLoadout !== 'none')) {
+      amuletLoadout = 'none';
+      amuletStart = [];
+    }
   }
   if (!enableMeta) {
     metaPool = [];
     metaStart = [];
-    talentLoadout = 'none';
+    talentSpec = 'none';
   }
+
+  const calendarMonthIndex = monthToken != null ? resolveMonthIndex(monthToken) : 0;
+  // Pin when month was explicitly set (full run or with --act).
+  const pinCalendarMonth = monthToken != null;
+  const talentParsed = parseTalentSpec(talentSpec, normalizeCharacterId(characterId), armorPool);
+  const talentLoadout = talentParsed.preset === 'custom' ? 'custom' : talentParsed.preset;
 
   return {
     enableMeta,
@@ -204,6 +294,15 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
     characterId: normalizeCharacterId(characterId),
     armorPool,
     talentLoadout,
+    talentSpec,
+    talents: talentParsed.talents,
+    talentChoices: talentParsed.talentChoices,
+    monthToken,
+    calendarMonthIndex,
+    pinCalendarMonth,
+    act,
+    explicitAmuletStart,
+    explicitAmuletLoadout,
   };
 }
 
@@ -218,7 +317,6 @@ export function normalizeSimPools(flags, { allRelics = [], allAmulets = [], meta
     if (out.metaStart != null) {
       start = out.metaStart.slice();
     } else if (metaMode === 'accumulate') {
-      // Career loop: earn relics on death; start empty unless --meta-start given.
       start = [];
     } else {
       start = pool.slice();
@@ -237,7 +335,7 @@ export function normalizeSimPools(flags, { allRelics = [], allAmulets = [], meta
     const poolSet = new Set(pool);
     let start = out.amuletStart;
     if (start == null) {
-      if (out.amuletLoadout === 'strong') start = []; // filled by caller with STRONG_AMULETS
+      if (out.amuletLoadout === 'strong') start = [];
       else if (out.amuletLoadout === 'bag') start = ['ringOfHealth'];
       else start = [];
     } else {
@@ -247,8 +345,9 @@ export function normalizeSimPools(flags, { allRelics = [], allAmulets = [], meta
     out.amuletPool = [...poolSet];
     out.amuletStart = start;
   } else {
-    out.amuletPool = [];
-    out.amuletStart = [];
+    // Keep an explicit pool for mid-act random seeds even when drops are off.
+    out.amuletPool = out.amuletPool == null ? allAmulets.slice() : out.amuletPool.slice();
+    out.amuletStart = out.amuletStart == null ? [] : out.amuletStart.slice();
   }
 
   return out;
@@ -268,7 +367,27 @@ export function formatSimFlagsLabel(flags) {
     flags.enableAmulets ? 'amulets' : 'no-amulets',
   ];
   if (flags.armorPool?.length) parts.push(`armor:${flags.armorPool.join('+')}`);
-  parts.push(`talents:${flags.talentLoadout || 'none'}`);
+  if (flags.talentLoadout === 'custom') {
+    const n = Object.keys(flags.talents || {}).length;
+    parts.push(`talents:custom(${n})`);
+  } else {
+    parts.push(`talents:${flags.talentLoadout || 'none'}`);
+  }
+  if (flags.monthToken != null || flags.pinCalendarMonth) {
+    parts.push(`month:${flags.monthToken ?? flags.calendarMonthIndex ?? 0}`);
+  }
+  if (flags.act) parts.push(`act:${flags.act}`);
+  const seedN = flags.act ? (ACT_START_AMULET_COUNT[flags.act] || 0) : 0;
+  const hasExplicitKit = Boolean(
+    flags.explicitAmuletStart
+    || (flags.explicitAmuletLoadout && flags.amuletLoadout !== 'none')
+  );
+  if (seedN > 0 && !hasExplicitKit) parts.push(`amulets:${seedN}rand`);
+  else if (hasExplicitKit && flags.amuletLoadout && flags.amuletLoadout !== 'none') {
+    parts.push(`loadout:${flags.amuletLoadout}`);
+  } else if (hasExplicitKit && flags.explicitAmuletStart) {
+    parts.push(`amulet-start:${(flags.amuletStart || []).length}`);
+  }
   if (flags.enableMeta) {
     const nPool = flags.metaPool?.length;
     const nStart = flags.metaStart?.length;
@@ -280,7 +399,7 @@ export function formatSimFlagsLabel(flags) {
     }
     const nPool = flags.amuletPool?.length;
     const nStart = flags.amuletStart?.length;
-    if (nPool != null) parts.push(`amulets:${nStart ?? '?'}/${nPool}`);
+    if (nPool != null && !(seedN > 0 && !hasExplicitKit)) parts.push(`amulets:${nStart ?? '?'}/${nPool}`);
   }
   return parts.join(', ');
 }
@@ -294,30 +413,73 @@ export function buildSimRunExtras(flags, { allRelics = [], strongAmulets = [], a
   let amulets = [];
   let noBag = true;
   let forceStartingAmulets = false;
-  let amuletPool = null;
-  const talentConfig = norm.talentLoadout === 'max'
-    ? buildMaxTalentLoadout(norm.characterId, norm.armorPool)
-    : { talents: {}, talentChoices: {} };
+  let amuletPool = (norm.amuletPool && norm.amuletPool.length)
+    ? norm.amuletPool.slice()
+    : allAmulets.slice();
+  let actAmuletSeed = 0;
 
+  const talentConfig = {
+    talents: { ...(flags.talents || {}) },
+    talentChoices: { ...(flags.talentChoices || {}) },
+  };
+  if (flags.talentLoadout === 'max' && !Object.keys(talentConfig.talents).length) {
+    const built = buildMaxTalentLoadout(norm.characterId, norm.armorPool);
+    talentConfig.talents = built.talents;
+    talentConfig.talentChoices = built.talentChoices;
+  }
+
+  const hasExplicitAmuletKit = Boolean(
+    flags.explicitAmuletStart
+    || (flags.explicitAmuletLoadout && flags.amuletLoadout !== 'none')
+  );
+
+  // Mid-run drop/shop pool only when amulets are enabled.
   if (norm.enableAmulets) {
     amuletPool = norm.amuletPool.slice();
-    if (flags.amuletStart != null || flags.amuletLoadout === 'bag') {
-      amulets = norm.amuletStart.slice();
-      forceStartingAmulets = true;
-      noBag = true;
-    } else if (flags.amuletLoadout === 'strong') {
-      amulets = strongAmulets.slice();
-      for (const id of amulets) {
-        if (!amuletPool.includes(id)) amuletPool.push(id);
-      }
-      forceStartingAmulets = true;
-      noBag = true;
-    } else {
-      // Fresh-style: no starting amulets; pool controls mid-run finds.
-      amulets = [];
-      noBag = true;
-      forceStartingAmulets = false;
+  }
+
+  // Explicit start kits apply even under --no-amulets (forced loadout).
+  if (flags.explicitAmuletStart && Array.isArray(flags.amuletStart)) {
+    amulets = flags.amuletStart.slice();
+    forceStartingAmulets = true;
+    noBag = true;
+  } else if (flags.explicitAmuletLoadout && flags.amuletLoadout === 'bag') {
+    amulets = ['ringOfHealth'];
+    forceStartingAmulets = true;
+    noBag = true;
+  } else if (flags.explicitAmuletLoadout && flags.amuletLoadout === 'strong') {
+    amulets = strongAmulets.slice();
+    for (const id of amulets) {
+      if (!amuletPool.includes(id)) amuletPool.push(id);
     }
+    forceStartingAmulets = true;
+    noBag = true;
+  } else if (norm.enableAmulets && flags.amuletLoadout === 'bag') {
+    amulets = norm.amuletStart.slice();
+    forceStartingAmulets = true;
+    noBag = true;
+  } else if (norm.enableAmulets && flags.amuletLoadout === 'strong') {
+    amulets = strongAmulets.slice();
+    for (const id of amulets) {
+      if (!amuletPool.includes(id)) amuletPool.push(id);
+    }
+    forceStartingAmulets = true;
+    noBag = true;
+  } else if (norm.enableAmulets && flags.amuletStart != null) {
+    amulets = norm.amuletStart.slice();
+    forceStartingAmulets = true;
+    noBag = true;
+  }
+
+  // Mid-act kit: random amulets unless caller already chose a start loadout.
+  const act = flags.act;
+  const seedCount = actStartAmuletCount(act);
+  if (seedCount > 0 && !hasExplicitAmuletKit) {
+    const poolForSeed = amuletPool.length ? amuletPool : allAmulets.slice();
+    amulets = sampleAmuletIds(poolForSeed, seedCount);
+    forceStartingAmulets = true;
+    noBag = true;
+    actAmuletSeed = amulets.length;
   }
 
   return {
@@ -326,12 +488,17 @@ export function buildSimRunExtras(flags, { allRelics = [], strongAmulets = [], a
     amulets,
     noBag,
     forceStartingAmulets,
-    amuletPool,
+    amuletPool: norm.enableAmulets ? amuletPool : (forceStartingAmulets ? amuletPool : []),
     metaPool: norm.enableMeta ? norm.metaPool.slice() : [],
     characterId: normalizeCharacterId(flags.characterId || 'rogue'),
     armorPool: flags.armorPool ? flags.armorPool.slice() : null,
     talents: talentConfig.talents,
     talentChoices: talentConfig.talentChoices,
+    calendarMonthIndex: flags.calendarMonthIndex ?? 0,
+    pinCalendarMonth: Boolean(flags.pinCalendarMonth),
+    act: act || null,
+    startingWeaponRarity: actStartWeaponRarity(act || 1),
+    actAmuletSeed,
   };
 }
 
@@ -350,6 +517,8 @@ export function simPoolFlagArgs(flags) {
       args.push('--amulet-loadout', flags.amuletLoadout);
     }
   }
+  if (flags.monthToken != null) args.push('--month', String(flags.monthToken));
+  if (flags.act) args.push('--act', String(flags.act));
   return args;
 }
 
@@ -358,14 +527,17 @@ export function simFlagsUsage() {
 Sim flags (combine with stats-db / loot-stats / fresh):
   --character rogue|warrior   Playable class (default: rogue)
   --armor-pool chain|plate|both   Warrior armor spawn filter (default: both)
-  --talents none|max          Use no talents or max ranks in the live class branch
-  --meta | --no-meta          Enable meta relics for the run
+  --talents none|max|id:rank,...  No talents, max live branch, or custom ranks
+  --month thornwake|silkdeep|0|1  Pin calendar month roster (no act rotation)
+  --act 1|2|3                 Run only that act; starters: common/uncommon/rare
+                              Act 2/3 also seed 3/6 random starting amulets
+  --meta | --no-meta          Enable meta (talents) for the run
   --amulets | --no-amulets    Floor drops, events, shop amulets
-  --amulet-loadout none|bag|strong   Starting amulets shortcut
+  --amulet-loadout none|bag|strong   Starting amulets shortcut (overrides act seed)
   --meta-pool id,id           Relics allowed in this experiment
   --meta-start id,id          Relics unlocked at run start (subset of pool)
   --amulet-pool id,id         Amulets allowed in drops/shops/events
-  --amulet-start id,id        Amulets equipped at run start
+  --amulet-start id,id        Amulets equipped at run start (overrides act seed)
 
 Presets:
   balance          no meta, no amulets

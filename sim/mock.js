@@ -45,12 +45,15 @@ globalThis.localStorage = globalThis.localStorage || {
 // Any method call returns the stub itself (chainable). `once`/`on` store
 // callbacks; `play` fires the stored animationcomplete handler immediately so
 // CardSystem.revealCard finishes its flip synchronously.
-function makeGameObject() {
+//
+// `scene` must be set: BoardCombat.attackEnemy early-returns when
+// `!card.sprite?.scene` (guards death-drop loot stubs in the real game).
+function makeGameObject(scene = null) {
   let proxy;
   const t = {
     x: 0, y: 0, width: 10, height: 10, displayWidth: 10, displayHeight: 10,
     alpha: 1, scaleX: 1, scaleY: 1, depth: 0, active: true, visible: true,
-    scene: null, _once: {}, _data: {},
+    scene, _once: {}, _data: {},
     getBounds() { return { x: t.x, y: t.y, width: t.width, height: t.height }; },
     getData(k) { return t._data[k]; },
     setData(k, v) { t._data[k] = v; return proxy; },
@@ -76,20 +79,21 @@ function makeGameObject() {
   return proxy;
 }
 
-// add.* factory — every creator returns a fresh chainable GameObject.
-function makeAddFactory() {
+// add.* factory — every creator returns a fresh chainable GameObject owned by
+// the scene (so sprite.scene is truthy for combat guards).
+function makeAddFactory(scene) {
   return new Proxy({}, {
-    get() { return (...args) => makeGameObject(); },
+    get() { return (...args) => makeGameObject(scene); },
   });
 }
 
 export class MockScene {
   constructor() {
-    this.add = makeAddFactory();
+    this.add = makeAddFactory(this);
     this.tweens = {
-      add: (cfg) => { if (cfg && typeof cfg.onComplete === 'function') cfg.onComplete(); return makeGameObject(); },
+      add: (cfg) => { if (cfg && typeof cfg.onComplete === 'function') cfg.onComplete(); return makeGameObject(this); },
       killTweensOf: () => {},
-      chain: () => makeGameObject(),
+      chain: () => makeGameObject(this),
     };
     this.time = {
       // Run callbacks immediately; return a removable handle.
@@ -106,9 +110,18 @@ export class MockScene {
       })
     };
     this.anims = { exists: () => false, create: () => {} };
-    this.sound = { play: () => {}, add: () => makeGameObject(), get: () => null, stopByKey: () => {} };
+    this.sound = { play: () => {}, add: () => makeGameObject(this), get: () => null, stopByKey: () => {} };
     this.cache = { audio: { exists: () => false } };
     this.input = { keyboard: { on() {}, off() {} }, on() {}, off() {} };
+    // BoardCardFx boss bars use scene.make.image({ add: false }).
+    this.make = {
+      image: () => makeGameObject(this),
+      sprite: () => makeGameObject(this),
+      graphics: () => makeGameObject(this),
+      container: () => makeGameObject(this),
+      text: () => makeGameObject(this),
+      bitmapText: () => makeGameObject(this),
+    };
     this.events = (() => {
       const m = new Map();
       return {
@@ -124,7 +137,7 @@ export class MockScene {
       isSleeping: () => false,
     };
     this.game = { globalVolume: { master: 1, sfx: 1, music: 1 } };
-    this.playerAvatar = makeGameObject();
+    this.playerAvatar = makeGameObject(this);
 
     // Combat / turn state mirrored from GameScene
     this.isEnemyTurn = false;
@@ -454,7 +467,7 @@ export class MockScene {
     e.role = Math.random() < 0.5 ? 'MELEE' : 'RANGED';
     // Use the full GameObject stub (has off/on/play/once) so later
     // revealCard / smokeScreen paths don't crash on missing Phaser APIs.
-    const sprite = makeGameObject();
+    const sprite = makeGameObject(this);
     sprite.scene = this;
     this.cardSystem.boardCards.push({ data: e, revealed: true, sprite });
   }
