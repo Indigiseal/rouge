@@ -37,7 +37,7 @@
 ## Silkdeep enemy identities
 - **Spider** (skirmisher): poison — stacking poison on hit
 - **Cave Crawler** (swarm): `gnaw` — 50% chance +1 equipped armor durability loss on hit (extra vs block wear)
-- **Silk Husk** (bruiser): `taunt` — while revealed and alive, player may only attack taunting enemies (melee, ranged, magic)
+- **Silk Husk** (bruiser): `taunt` — while revealed (face-up art, not card back) and alive, player may only attack taunting enemies (melee, ranged, magic). Face-down / mid-flip husks do not provoke.
 - **Stinger Scorpion** (artillery): `poison_amp` — on hit, +1 to active poison tick damage (no effect if not poisoned)
 - **Silkslinger** (artillery): `web_hand` — webs one random hand card for 1 turn (visual overlay; unusable). If the only usable weapon is webbed, treat as no weapon (stalemate enemy turns)
 
@@ -47,6 +47,15 @@
 - **Toll Brute** (bruiser): `goblin_rally` — on attack, 15% other living goblin allies each make an extra attack
 - **Goblin Archer** (artillery): `ignore_armor` — after hit/miss resolved, if the shot lands, 10% ignore DEF and skip armor durability loss
 - **Road Sniper** (artillery): `heavy_shot` — 20% deal 150% damage instead of 100%
+
+## Silkdeep event — The Silk Cache
+- Event id `silk_cocoon_cache` (month folder `src/content/months/silkdeep/events/`); once per run while the act month is Silkdeep.
+- Choices: leave / search cocoons / burn them all (requires Fireball scroll, consumes it).
+- Search → combat board of 8 revealed cocoon shells (1 HP). Clicking does not flip; any 1 damage cracks a shell.
+  Three shells hide loot (1 amulet + 2 weapon/armor for the floor); five hide a random Silkdeep enemy (**not** Silkslinger).
+- Burn → combat board with no enemies; three loot cards already revealed (same loot table).
+- Leave combat anytime while no hatched (non-cocoon) enemies remain.
+- If the only usable weapon is webbed/unavailable and no damaging magic can open shells, the player turn auto-skips (stalemate enemy turns), same idea as Silkslinger softlock in normal combat.
 
 ## Acceptance examples
 - On new floor: at least 1 front enemy + 1 back enemy is revealed

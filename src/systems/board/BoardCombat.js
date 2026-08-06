@@ -768,15 +768,25 @@ function isAnyEnemyCard(card) {
     return !!card && this.isEnemyType(card.data?.type) && card.data.health > 0;
 }
 
+/** Silk Husk Provocation — only while the taunter is face-up and alive. */
+function isActiveBoardTaunter(card) {
+    if (!card?.revealed || !card.sprite?.scene) return false;
+    if (!this.isEnemyType(card.data?.type)) return false;
+    if ((card.data?.health ?? 0) <= 0) return false;
+    if (card.data?.isCocoon) return false;
+    if (Array.isArray(card.data?.features) && card.data.features.includes('cocoon_shell')) return false;
+    // Face-down / mid-flip art must not provoke even if `revealed` desynced.
+    const tex = card.sprite.texture?.key;
+    if (!tex || tex === 'cardBack' || String(tex).startsWith('cardFlip')) return false;
+    return Array.isArray(card.data?.features) && card.data.features.includes('taunt');
+}
+
 function isTauntBlockingTarget(card) {
-    const tauntActive = this.boardCards.some((c) => (
-        c?.revealed
-        && this.isEnemyType(c.data?.type)
-        && (c.data?.health ?? 0) > 0
-        && Array.isArray(c.data?.features)
-        && c.data.features.includes('taunt')
-    ));
+    const tauntActive = this.boardCards.some((c) => isActiveBoardTaunter.call(this, c));
     if (!tauntActive) return false;
+    // Any taunter card is a legal target; non-taunters are blocked while a
+    // face-up husk lives. (Target need not pass the "active" visual check —
+    // mid-flip husk art is still the provoked enemy.)
     return !(Array.isArray(card?.data?.features) && card.data.features.includes('taunt'));
 }
 
@@ -980,6 +990,12 @@ function hideEnemyCard(index) {
 }
 
 function removeDefeatedEnemy(index, card) {
+        // Silk cocoons crack open into loot or a month enemy — not a kill.
+        if (card?.data?.isCocoon || (Array.isArray(card?.data?.features) && card.data.features.includes('cocoon_shell'))) {
+            this.openSilkCocoon?.(index, card);
+            return;
+        }
+
         // Note: defeating the Angry Nestmother does NOT end the grudge — she
         // keeps turning up "once in a while" for the rest of the run you
         // stole her egg (birdAngry stays set until the next run reseeds).
@@ -1056,6 +1072,7 @@ function removeDefeatedEnemy(index, card) {
             // still run the clear check before bailing, or the Next button
             // never appears.
             this.checkFloorClear();
+            this.scene.refreshSilkCocoonLeaveButton?.();
             return; // skip the normal removal; new card stands in its place
         }
 
@@ -1083,6 +1100,7 @@ function removeDefeatedEnemy(index, card) {
         // Wolf pack ATK is situational — refresh corner ATK on remaining wolves.
         this.refreshEnemyAttackLabels?.();
         this.checkFloorClear();
+        this.scene.refreshSilkCocoonLeaveButton?.();
 }
 
 function checkFloorClear() {

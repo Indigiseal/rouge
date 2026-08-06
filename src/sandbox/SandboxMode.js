@@ -1,6 +1,8 @@
 // Test Site helpers: pick any encounter from a hub, then return there when done.
 
 import { EVENTS } from '../content/events/index.js';
+import { getMagic } from '../content/cards/magic.js';
+import { resolveMonthIndex } from '../content/months/calendar.js';
 
 export const SANDBOX_HUB_KEY = 'SandboxHubScene';
 export const SANDBOX_STORY_KEY = 'SandboxStoryScene';
@@ -96,6 +98,11 @@ const SANDBOX_STORY_SETUP = {
   old_drill_room: {
     grant: ['veteranCompanion'],
   },
+  // Burn choice needs a Fireball scroll; pin Silkdeep so hatched enemies match.
+  silk_cocoon_cache: {
+    grant: ['fireball'],
+    monthId: 'silkdeep',
+  },
 };
 
 // Give the story a clean slate: nothing seen, nothing pending. This is what
@@ -111,6 +118,10 @@ export function applySandboxStorySetup(gameScene, eventId) {
   if (!setup) return;
 
   if (setup.story) Object.assign(gs.storyRun, setup.story);
+  if (setup.monthId) {
+    gs.calendarMonthIndex = resolveMonthIndex(setup.monthId);
+    gs.pinCalendarMonth = true;
+  }
   for (const grant of setup.grant || []) {
     grantSandboxStoryItem(gameScene, grant);
   }
@@ -128,6 +139,20 @@ function grantSandboxStoryItem(gameScene, grant) {
   if (grant === 'egg') {
     const egg = gen.createEggCard?.();
     if (egg) inv.addCard(egg);
+    return;
+  }
+
+  if (grant === 'fireball') {
+    const def = getMagic('fireball');
+    inv.addCard({
+      type: 'magic',
+      magicType: 'fireball',
+      name: def?.name || 'Fireball',
+      description: def?.description || 'Deals 15 damage to a single enemy',
+      rarity: def?.rarity || 'uncommon',
+      sprite: def?.sprite || 'fireBall',
+      damage: def?.damage ?? 15,
+    });
     return;
   }
 

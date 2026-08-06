@@ -23,6 +23,7 @@ import {
 import { EventRunHelpers } from '../systems/events/EventRunHelpers.js';
 import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 import { openArmWrestlingMinigame } from '../ui/ArmWrestlingMinigame.js';
+import { getMonthDefForFloor } from '../content/months/calendar.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
@@ -44,7 +45,9 @@ const EVENT_ILLUSTRATION_FRAMES = {
   screaming_head: 26,
   // TODO: swap to the Reliquary's own frame once its art lands. Frame 11
   // (the Copying Mirror's glassy panel) is the closest stand-in for now.
-  reliquary: 11
+  reliquary: 11,
+  // Silk cave stand-in until dedicated cocoon art lands (same sheet as Slimy Prison).
+  silk_cocoon_cache: 16
 };
 
 export class EventScene extends Phaser.Scene {
@@ -108,6 +111,14 @@ export class EventScene extends Phaser.Scene {
     if (!story.slimyPrisonSeen) bonusFillers.push('slimy_prison');
     if (!story.bookWormSeen) bonusFillers.push('book_worm');
     if (!story.briarRoomSeen) bonusFillers.push('briar_room');
+    // Silkdeep-only: cocoon chamber. Soft-gated by the current act's month.
+    if (!story.silkCocoonCacheSeen) {
+      const monthId = getMonthDefForFloor(
+        this.gameState?.calendarMonthIndex ?? 0,
+        this.gameState?.currentFloor || 1
+      )?.id;
+      if (monthId === 'silkdeep') bonusFillers.push('silk_cocoon_cache');
+    }
     // Boss-gated: the collectors only exist on runs where their King is the one
     // waiting at the end of the act, so what you do here reaches floor 15.
     if (!story.tollCollectorsSeen && getPlannedActBoss(this.gameState) === 'goblinKing') {
@@ -144,7 +155,7 @@ export class EventScene extends Phaser.Scene {
       const requestedId = new URLSearchParams(window.location.search).get('event');
       if (!requestedId) return null;
       const resolvedId = requestedId === 'singing_box' ? 'broken_music_box' : requestedId;
-      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'toll_collectors', 'arm_wrestling', 'old_drill_room', 'something_wicked', 'brass_wizard']);
+      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'toll_collectors', 'arm_wrestling', 'old_drill_room', 'something_wicked', 'brass_wizard', 'silk_cocoon_cache']);
       return forceable.has(resolvedId) ? resolvedId : null;
     } catch {
       return null;
@@ -186,6 +197,7 @@ export class EventScene extends Phaser.Scene {
       slimyPrisonSeen: false,
       bookWormSeen: false,
       briarRoomSeen: false,
+      silkCocoonCacheSeen: false,
       reliquarySeen: false,
       tollCollectorsSeen: false,
       armWrestlingSeen: false,
@@ -278,6 +290,7 @@ export class EventScene extends Phaser.Scene {
       slimyPrisonSeen: Boolean(existingStoryRun.slimyPrisonSeen),
       bookWormSeen: Boolean(existingStoryRun.bookWormSeen),
       briarRoomSeen: Boolean(existingStoryRun.briarRoomSeen),
+      silkCocoonCacheSeen: Boolean(existingStoryRun.silkCocoonCacheSeen),
       reliquarySeen: Boolean(existingStoryRun.reliquarySeen),
       tollCollectorsSeen: Boolean(existingStoryRun.tollCollectorsSeen),
       armWrestlingSeen: Boolean(existingStoryRun.armWrestlingSeen),
@@ -1994,6 +2007,16 @@ export class EventScene extends Phaser.Scene {
     };
   }
 
+  // Silkdeep cocoon chamber → custom combat board (inspect shells / burn loot).
+  beginSilkCocoonCache(mode = 'inspect') {
+    this.ensureStoryState();
+    this.gameState.pendingAmbush = {
+      id: 'silk_cocoon_cache',
+      kind: 'silk_cocoons',
+      mode: mode === 'burn' ? 'burn' : 'inspect',
+    };
+  }
+
   waitAtTheToll() {
     this.ensureStoryState();
     // The merchant never reaches this act's shop.
@@ -2567,6 +2590,7 @@ export class EventScene extends Phaser.Scene {
       slimy_prison: 'slimyPrisonSeen',
       book_worm: 'bookWormSeen',
       briar_room: 'briarRoomSeen',
+      silk_cocoon_cache: 'silkCocoonCacheSeen',
       screaming_head: 'screamingHeadSeen',
       reliquary: 'reliquarySeen',
       toll_collectors: 'tollCollectorsSeen',
@@ -2624,19 +2648,17 @@ export class EventScene extends Phaser.Scene {
       this.gameScene?.gameOver?.();
       return;
     }
-    if (isSandboxMode(this) || isSandboxMode(this.gameScene)) {
-      exitToSandboxHub(this);
-      return;
-    }
-    // An event can end in a real fight. Route to GameScene as a combat room
-    // instead of back to the map — the same handoff MapViewScene makes for a
-    // COMBAT node, so the board, music and floor bookkeeping all behave
-    // normally. FloorSpawner reads gameState.pendingAmbush to build the board.
+    // Ambush handoff before the sandbox hub exit — otherwise Test Site stories
+    // that open into a fight (Silk Cache, Toll Collectors) never reach the board.
     if (this.gameState?.pendingAmbush) {
       this.gameState.roomType = 'COMBAT';
       this.scene.stop('MapViewScene');
       this.scene.wake('GameScene', { roomType: 'COMBAT', isNewRoom: true });
       this.scene.stop();
+      return;
+    }
+    if (isSandboxMode(this) || isSandboxMode(this.gameScene)) {
+      exitToSandboxHub(this);
       return;
     }
     // Park GameScene back to sleep (we woke it for the station) and return to map.

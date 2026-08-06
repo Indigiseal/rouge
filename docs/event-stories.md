@@ -511,3 +511,29 @@ The head exhales a bitter cloud. Behind it, a dark green rune rests on the stone
 You leave it screaming at the ceiling.
 
 A little more dust falls from its teeth as you pass.
+
+## The Silk Cache
+
+The passage widens into a low chamber. Silk hangs in sheets from the ceiling, and beneath it the floor is crowded with pale cocoons — some the size of a fist, some large enough to hold a man.
+
+Scattered between them: a buckled breastplate, a snapped spear, a glove still shaped around an empty hand. Someone fought here. Someone lost.
+
+The cocoons twitch when you breathe too loud.
+
+### Choice: Leave quietly
+
+You ease back into the corridor without touching a strand.
+
+Behind you the silk settles, and the twitching stops.
+
+### Choice: Search the cocoons
+
+You draw a blade and step into the silk.
+
+The nearest cocoon does not open when you cut it — it resists, tough as wet leather. You will have to break them properly.
+
+### Choice: Burn them all!
+
+The fireball takes the chamber in one breath.
+
+Silk blackens. Cocoons split and collapse. When the smoke thins, three scorched prizes lie open on the stone — and nothing moves to claim them.

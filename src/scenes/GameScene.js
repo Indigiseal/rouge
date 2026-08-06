@@ -38,6 +38,7 @@ import {
 } from '../sandbox/SandboxMode.js';
 import { humanRunRecorder, recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 import { openNoticeModal } from '../ui/ConfirmModal.js';
+import { isSilkCocoonCacheRoom, boardHasOpenCocoonEnemies } from '../systems/board/CocoonCacheBoard.js';
 import { playSmokeBurst, SMOKE_BURST_MS } from '../ui/SmokeBurst.js';
 
 export class GameScene extends Phaser.Scene {
@@ -489,6 +490,37 @@ export class GameScene extends Phaser.Scene {
         if (this.nextFloorButtonText) {
             this.nextFloorButtonText.setVisible(true).setDepth(5001);
         }
+    }
+
+    /**
+     * Silk Cache ambush: leave anytime no hatched enemies remain (cocoons alone
+     * are optional). Reuses the Next control with a Leave label until a real
+     * enemy hatches or the room fully clears.
+     */
+    refreshSilkCocoonLeaveButton() {
+        if (this.tutorialMode || this._transitioning || this.gameState?.playerHealth <= 0) return;
+        if (!isSilkCocoonCacheRoom(this.gameState)) return;
+
+        if (this.enemiesCleared) {
+            this._silkCocoonLeaveOffer = false;
+            this.nextFloorButtonText?.setText('Next');
+            return;
+        }
+
+        if (boardHasOpenCocoonEnemies(this.cardSystem?.boardCards)) {
+            if (this._silkCocoonLeaveOffer) {
+                this._silkCocoonLeaveOffer = false;
+                this.nextFloorButton?.disableInteractive();
+                this.nextFloorButton?.setVisible(false);
+                this.nextFloorButtonText?.setVisible(false);
+                this.nextFloorButtonText?.setText('Next');
+            }
+            return;
+        }
+
+        this._silkCocoonLeaveOffer = true;
+        this.nextFloorButtonText?.setText('Leave');
+        this.showNextFloorButton();
     }
 
     bindEnemyTurnHandler() {
@@ -968,6 +1000,17 @@ export class GameScene extends Phaser.Scene {
         // Player already dead (e.g. a mutual kill via Thorns/reflect) — don't let a
         // stray click on the Next Floor button revive them via setupBossRewardRoom().
         if (this.gameState.playerHealth <= 0) return;
+
+        // Silk Cache Leave: walk away while only cocoons/loot remain — no clear payout.
+        if (this._silkCocoonLeaveOffer && !this.enemiesCleared) {
+            this.clearEnemyTurnTimers();
+            this.enemiesCleared = true;
+            this.inventorySystem?.clearAllHandWebs?.();
+            this._silkCocoonLeaveOffer = false;
+            this.nextFloorButtonText?.setText('Next');
+            this.gameState.ambushId = null;
+        }
+
         recordHumanRunEvent(this, 'floor_departed', {
             floor: this.gameState.currentFloor,
             roomType: this.gameState.roomType,
@@ -1212,6 +1255,8 @@ export class GameScene extends Phaser.Scene {
         // Null-guard: if the button hasn't been (re)created yet, do NOT throw
         // — that would leave enemiesCleared=true with a still-hidden button,
         // and the next checkFloorClear would short-circuit on !enemiesCleared.
+        this._silkCocoonLeaveOffer = false;
+        this.nextFloorButtonText?.setText('Next');
         this.showNextFloorButton();
         this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
         this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);

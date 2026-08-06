@@ -671,6 +671,9 @@ export const InventoryCombatUse = {
             && (card.data?.health ?? 0) > 0
             && Array.isArray(card.data?.features)
             && card.data.features.includes('taunt')
+            && card.sprite?.texture?.key
+            && card.sprite.texture.key !== 'cardBack'
+            && !String(card.sprite.texture.key).startsWith('cardFlip')
         ));
         const candidates = [];
         boards.forEach((card, index) => {

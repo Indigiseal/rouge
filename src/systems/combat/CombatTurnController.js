@@ -1,6 +1,7 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { CombatSequencer } from './CombatSequencer.js';
 import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
+import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
 import { getEnemy } from '../../content/cards/enemies.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/months/tollroad/index.js';
 
@@ -64,7 +65,15 @@ export class CombatTurnController {
         if (!enemiesRemain) return false;
 
         // A remaining board card can still reveal or provide a way forward.
+        // Cocoon shells are already face-up enemies — loot pickups still count.
         if (board.some(card => card && !scene.isEnemyCard(card))) return false;
+
+        // Normal rooms: face-down cards can be flipped without a weapon.
+        // Cocoon cache has no flips — only damage opens shells.
+        const cocoonCache = isSilkCocoonCacheRoom(scene.gameState);
+        if (!cocoonCache && board.some(card => card && !card.revealed && scene.isEnemyCard(card))) {
+            return false;
+        }
 
         const inventory = scene.inventorySystem?.slots || scene.gameState?.inventory || [];
         const isUsableWeapon = (card) => (
@@ -76,6 +85,16 @@ export class CombatTurnController {
             isUsableWeapon(scene.gameState?.equippedWeapon)
         );
         if (hasUsableWeapon) return false;
+
+        // Cocoon shells only open to damage. Buff/heal magic does not help —
+        // only weapon-like spells that hit a board enemy count as a way out.
+        if (cocoonCache) {
+            const canCrackCocoon = (card) => (
+                card?.type === 'magic'
+                && (card.magicType === 'fireball' || card.magicType === 'soulDrain')
+            );
+            return !inventory.some(canCrackCocoon);
+        }
 
         // Magic can still change or resolve a fight without a weapon.
         return !inventory.some(card => card?.type === 'magic');
@@ -131,6 +150,10 @@ export class CombatTurnController {
             .filter(({ card }) => {
                 if (!card || !scene.isEnemyCard(card) || card.justRevealed) return false;
                 if ((card.data?.health ?? 0) <= 0) return false;
+                // Cocoon shells do not attack — they only crack when damaged.
+                if (card.data?.isCocoon || (Array.isArray(card.data?.features) && card.data.features.includes('cocoon_shell'))) {
+                    return false;
+                }
                 if (card.revealed) return true;
                 // Thorn Fairy keeps acting while face-down so she can flip back up.
                 return Array.isArray(card.data?.features) && card.data.features.includes('veil_flip');
@@ -253,6 +276,9 @@ export class CombatTurnController {
 
     processEnemyAttack(card, index, { fromRally = false } = {}) {
         const scene = this.scene;
+        if (card?.data?.isCocoon || (Array.isArray(card?.data?.features) && card.data.features.includes('cocoon_shell'))) {
+            return;
+        }
         // Thorn Fairy veil: face-down → flip up and skip the strike this turn.
         if (Array.isArray(card.data?.features) && card.data.features.includes('veil_flip') && !card.revealed) {
             scene.cardSystem.revealCard(index, true);
@@ -658,10 +684,13 @@ export class CombatTurnController {
             ));
         if (candidates.length === 0) return null;
 
-        // Silk Husk taunt: companions may only strike taunting enemies.
-        const taunters = candidates.filter(({ card }) => (
-            Array.isArray(card.data?.features) && card.data.features.includes('taunt')
-        ));
+        // Silk Husk taunt: companions may only strike face-up taunting enemies.
+        const taunters = candidates.filter(({ card }) => {
+            if (!card?.revealed || (card.data?.health ?? 0) <= 0) return false;
+            const tex = card.sprite?.texture?.key;
+            if (!tex || tex === 'cardBack' || String(tex).startsWith('cardFlip')) return false;
+            return Array.isArray(card.data?.features) && card.data.features.includes('taunt');
+        });
         if (taunters.length > 0) candidates = taunters;
 
         if (companion?.attackStyle === 'melee' || companion?.range === 'melee') {

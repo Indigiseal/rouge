@@ -22,6 +22,7 @@ export {
   SILKDEEP_MONTH,
   SILKDEEP_ENEMY_DEFS,
   SILKDEEP_ROSTER,
+  SILKDEEP_EVENTS,
 } from './silkdeep/index.js';
 
 export {

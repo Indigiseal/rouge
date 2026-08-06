@@ -234,6 +234,9 @@ function getEnemyFeatureLines(scene, data) {
     if (features.includes('heavy_shot')) {
         lines.push(t(scene, 'tooltip.heavyShot'));
     }
+    if (features.includes('cocoon_shell')) {
+        lines.push(t(scene, 'tooltip.cocoonShell'));
+    }
     if (data?.isEliteMiniBoss) {
         lines.push(t(scene, 'tooltip.eliteMiniBoss'));
     }
