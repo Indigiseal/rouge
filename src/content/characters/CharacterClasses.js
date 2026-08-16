@@ -48,10 +48,10 @@ export const CHARACTER_CLASSES = Object.freeze({
 });
 
 /** Build starter weapon cards from the weapon catalog (ignores spawn floors). */
-export function buildStartingWeaponCards(characterId) {
+export function buildStartingWeaponCards(characterId, { rarity } = {}) {
   const refs = getCharacter(characterId).startingWeapons || [];
   return refs
-    .map((ref) => createWeaponCardData(ref.weaponType, ref.rarity))
+    .map((ref) => createWeaponCardData(ref.weaponType, rarity || ref.rarity))
     .filter(Boolean)
     .map((card) => ({ ...card }));
 }

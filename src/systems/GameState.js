@@ -22,6 +22,12 @@ export class GameState {
         this.actionsLeft = 15;
         this.maxActions = 15;
         this.currentFloor = 1;
+        // Calendar month at run start (0 = Thornwake). Act 2/3 walk the next
+        // months on the circle. See src/content/months/calendar.js.
+        this.calendarMonthIndex = 0;
+        // When true, every floor uses calendarMonthIndex (no act rotation).
+        // Sim-only override; not part of the save contract.
+        this.pinCalendarMonth = false;
         this.roomType = 'COMBAT';
         this.mapCursor = null;
         this.companionHistory = {};
@@ -44,6 +50,10 @@ export class GameState {
         
         
         this.blockNextAttack = false;
+        // Spore Archer: next player weapon attack has 15% miss, then clears.
+        this.playerSpored = false;
+        // Goblin club_stun: number of player actions to skip (usually 1).
+        this.playerStunnedTurns = 0;
         
         // Magic card effects
         this.shadowBlade = null;
@@ -91,6 +101,7 @@ export class GameState {
         
         this.blockNextAttack = false;
         this.firstActionUsed = false;
+        this.playerStunnedTurns = 0;
         
         if (this.scene.amuletManager) {
             this.scene.amuletManager.processFloorEnd();
@@ -133,8 +144,8 @@ export class GameState {
         return isEnemyRangedAttackResolved(card);
     }
 
-    takeDamage(amount, enemyIndex = -1, source = 'enemy', armorPierce = 0) {
-        return resolvePlayerDamage(this, amount, enemyIndex, source, armorPierce);
+    takeDamage(amount, enemyIndex = -1, source = 'enemy', armorPierce = 0, options = {}) {
+        return resolvePlayerDamage(this, amount, enemyIndex, source, armorPierce, options);
     }
 
     addPlayerEffect(effect) {

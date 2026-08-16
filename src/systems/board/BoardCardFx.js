@@ -4,6 +4,7 @@ import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
 import { ELITE_SPRITE_KEYS } from '../../content/assets/AssetManifest.js';
 import { effectiveArmorProtection, isArmorWarded } from '../combat/ArmorMath.js';
+import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
 
 // The one value slot painted into the bottom-right of every card that shows a
 // single number — weapon damage, armor protection, thorn damage, trap damage.
@@ -15,6 +16,7 @@ export class BoardCardFx {
     constructor(cs) {
         this.playBossEntrance = playBossEntrance.bind(cs);
         this.createCardInfoText = createCardInfoText.bind(cs);
+        this.destroyCardInfoText = destroyCardInfoText.bind(cs);
         this._buildEnemyCornerStats = _buildEnemyCornerStats.bind(cs);
         this._buildBossStats = _buildBossStats.bind(cs);
         this.getGemLabel = getGemLabel.bind(cs);
@@ -26,6 +28,7 @@ export class BoardCardFx {
         this.playLightningShine = playLightningShine.bind(cs);
         this.playLightningArc = playLightningArc.bind(cs);
         this.updateEnemyInfoText = updateEnemyInfoText.bind(cs);
+        this.refreshEnemyAttackLabels = refreshEnemyAttackLabels.bind(cs);
         this.updateBossInfoText = updateBossInfoText.bind(cs);
         this.playKillLootPickup = playKillLootPickup.bind(cs);
         this.playBossDeathEffect = playBossDeathEffect.bind(cs);
@@ -57,6 +60,62 @@ function playBossEntrance(cardSprite, bossData) {
             });
         }
     });
+}
+
+// Phaser can re-parent container children onto the scene display list while
+// destroying the container, which leaves HP/ATK labels stuck on screen after
+// death and makes setText() on stale refs a silent no-op. Tear children down
+// explicitly before the container itself.
+function destroyCardInfoText(card) {
+    const info = card?.infoText;
+    if (!info) {
+        card?.sprite?.setData?.('infoText', null);
+        return;
+    }
+
+    // Snapshot tagged refs before removeAll clears list.
+    const tagged = [
+        info._hpText,
+        info._atkText,
+        info._nameText,
+        info._bossHpFill,
+        info._bossHpText,
+        info._bossAtkText,
+        info._bossEmptyBar,
+    ].filter(Boolean);
+
+    try {
+        if (typeof info.removeAll === 'function') {
+            info.removeAll(true);
+        }
+    } catch (_) { /* already gone */ }
+
+    // Belt-and-braces: any tagged child that survived removeAll.
+    for (const child of tagged) {
+        try { if (child.scene || child.active) child.destroy?.(); } catch (_) { /* already gone */ }
+    }
+
+    info._hpText = null;
+    info._atkText = null;
+    info._nameText = null;
+    info._bossHpFill = null;
+    info._bossHpText = null;
+    info._bossAtkText = null;
+    info._bossEmptyBar = null;
+
+    try { info.destroy?.(false); } catch (_) { /* already gone */ }
+
+    if (card) card.infoText = null;
+    card?.sprite?.setData?.('infoText', null);
+}
+
+function _makeCornerText(scene, x, y, value, style) {
+    // Must go through scene.add.text — PreloadScene patches that factory to
+    // crisp BitmapText. scene.make.text bypasses the patch and falls back to
+    // soft canvas text (exactly the muddy HP/ATK digits we were seeing).
+    const text = scene.add.text(Math.round(x), Math.round(y), String(value), style);
+    text.setOrigin(0.5);
+    return text;
 }
 
 function createCardInfoText(card) {
@@ -343,6 +402,10 @@ function _buildEnemyCornerStats(card) {
         return;
     }
 
+    // Drop any previous overlay first — reveal/refresh can rebuild, and
+    // leftover labels are what stick after damage/death.
+    this.destroyCardInfoText(card);
+
     // Corner inset (px from the card centre). Tuned to drop into the
     // little stat-plate slots painted onto the new card art — HP to the
     // bottom-left, ATK to the bottom-right.
@@ -351,20 +414,39 @@ function _buildEnemyCornerStats(card) {
 
     // Warm parchment cream, shared by both stats.
     const STAT_FILL = '#fef0cf';
-    const style = () => ({
+    const style = {
         fontSize: '11px',
         fill: STAT_FILL,
         fontFamily: '"HoMM Pixel"',
-    });
+    };
 
-    const hpText = this.scene.add.text(
-        -dx, dy, `${card.data.health ?? 0}`, style()
-    ).setOrigin(0.5);
-    const atkText = this.scene.add.text(
-        dx, dy, `${card.data.attack ?? 0}`, style()
-    ).setOrigin(0.5);
+    const hpText = _makeCornerText(this.scene, -dx, dy, card.data.health ?? 0, style);
+    const atkText = _makeCornerText(
+        this.scene, dx, dy, getEnemyHitAttack(card, this.boardCards), style
+    );
 
-    const container = this.scene.add.container(card.sprite.x, card.sprite.y, [hpText, atkText]);
+    const children = [hpText, atkText];
+    let nameText = null;
+    // Placeholder art: stamp the enemy name on the silhouette until real cards exist.
+    if (card.data.placeholderArt) {
+        const label = String(card.data.name || card.data.enemyType || 'Enemy');
+        nameText = _makeCornerText(this.scene, 0, -6, label, {
+            fontSize: label.length > 12 ? '8px' : '9px',
+            fill: '#fef0cf',
+            fontFamily: '"HoMM Pixel"',
+            align: 'center',
+            wordWrap: { width: 44 },
+            stroke: '#1a1210',
+            strokeThickness: 3,
+        });
+        children.push(nameText);
+    }
+
+    const container = this.scene.add.container(
+        Math.round(card.sprite.x),
+        Math.round(card.sprite.y),
+        children
+    );
     container.setDepth((card.sprite.depth || 1) + 2);
     // Follow the card's scale, or the digits drift out of the stat plates
     // painted on the art whenever a crowded board shrinks the cards.
@@ -374,6 +456,7 @@ function _buildEnemyCornerStats(card) {
     // without rebuilding the whole container.
     container._hpText = hpText;
     container._atkText = atkText;
+    container._nameText = nameText;
 
     card.infoText = container;
     card.sprite?.setData?.('infoText', container);
@@ -381,6 +464,8 @@ function _buildEnemyCornerStats(card) {
 
 function _buildBossStats(card) {
     if (!card?.sprite || !card.data) return;
+
+    this.destroyCardInfoText(card);
 
     const maxHealth = Math.max(1, card.data.maxHealth || card.data.health || 1);
     card.data.maxHealth = maxHealth;
@@ -390,25 +475,26 @@ function _buildBossStats(card) {
     const bossBottom = (card.sprite.displayHeight || card.sprite.height || 100) / 2;
     const y = card.sprite.y + bossBottom + 18;
 
-    const emptyBar = this.scene.add.image(0, 0, 'healthBarEmpty').setOrigin(0.5);
-    const fillBar = this.scene.add.image(-barWidth / 2, 0, 'healthBar').setOrigin(0, 0.5);
-    const hpText = this.scene.add.text(0, -1, '', {
+    const emptyBar = this.scene.make.image({ x: 0, y: 0, key: 'healthBarEmpty', add: false }).setOrigin(0.5);
+    const fillBar = this.scene.make.image({ x: -barWidth / 2, y: 0, key: 'healthBar', add: false }).setOrigin(0, 0.5);
+    const hpText = _makeCornerText(this.scene, 0, -1, '', {
         fontSize: '9px',
         fill: '#ffffff',
         fontFamily: '"HoMM Pixel"',
         stroke: '#230000',
         strokeThickness: 2
-    }).setOrigin(0.5);
-    const atkText = this.scene.add.text(0, 14, '', {
+    });
+    const atkText = _makeCornerText(this.scene, 0, 14, '', {
         fontSize: '10px',
         fill: '#ffcf7f',
         fontFamily: '"HoMM Pixel"',
         stroke: '#2b1600',
         strokeThickness: 2
-    }).setOrigin(0.5);
+    });
 
     const container = this.scene.add.container(card.sprite.x, y, [emptyBar, fillBar, hpText, atkText]);
     container.setDepth((card.sprite.depth || 1) + 8);
+    container._bossEmptyBar = emptyBar;
     container._bossHpFill = fillBar;
     container._bossHpText = hpText;
     container._bossAtkText = atkText;
@@ -655,35 +741,47 @@ function playLightningArc(fromX, fromY, toX, toY) {
     });
 }
 
+function _infoTextAlive(go) {
+    return !!(go && go.scene && go.active !== false && typeof go.setText === 'function');
+}
+
 function updateEnemyInfoText(card) {
     if (!card?.data || !card.sprite) return;
+    const t = card.data.type;
+    if (t !== 'enemy' && t !== 'eliteEnemy' && t !== 'boss') return;
 
     // Fast path: the corner-stat container we built in createCardInfoText
     // exposes _hpText / _atkText. Refresh those in place when they're
-    // still valid Phaser objects.
+    // still valid Phaser objects (active + still in a scene).
     const container = card.infoText;
-    if (card.data.type === 'boss' && container?._bossHpFill) {
+    if (card.data.type === 'boss' && container?._bossHpFill?.scene) {
         this.updateBossInfoText(card);
         return;
     }
 
     const hpText = container?._hpText;
     const atkText = container?._atkText;
-    if (hpText && atkText
-        && typeof hpText.setText === 'function'
-        && typeof atkText.setText === 'function') {
+    if (_infoTextAlive(hpText) && _infoTextAlive(atkText)) {
         try {
-            hpText.setText(`${card.data.health ?? 0}`);
-            atkText.setText(`${card.data.attack ?? 0}`);
+            hpText.setText(String(card.data.health ?? 0));
+            atkText.setText(String(getEnemyHitAttack(card, this.boardCards)));
             return;
         } catch (_) { /* fall through to rebuild */ }
     }
 
     // Stale or wrong-shaped container — drop and rebuild via the standard
     // reveal path so styling stays consistent.
-    try { if (container && typeof container.destroy === 'function') container.destroy(true); } catch (_) {}
-    card.infoText = null;
     this._buildEnemyCornerStats(card);
+}
+
+function refreshEnemyAttackLabels() {
+    if (!Array.isArray(this.boardCards)) return;
+    for (const card of this.boardCards) {
+        if (!card?.revealed || !card.data) continue;
+        if (card.data.type !== 'enemy' && card.data.type !== 'boss') continue;
+        if ((card.data.health ?? 0) <= 0) continue;
+        this.updateEnemyInfoText(card);
+    }
 }
 
 function updateBossInfoText(card) {

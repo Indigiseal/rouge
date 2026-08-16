@@ -70,11 +70,12 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 ## Events
 
 - [[02 Silkdeep/Events/The Slimy Prison|The Slimy Prison]] — A gelatinous cube holds a regenerating skeleton mage. Free him as companion, end him for an amulet, or steal the charm and leave him trapped.
+- [[02 Silkdeep/Events/The Silk Cache|The Silk Cache]] — A chamber of cocoons and abandoned arms. Leave, crack them open in a fight, or burn the nest with Fireball.
 
 
 ## Gaps
 
-Needs more cave-flavored encounters beyond the Slimy Prison.
+Needs more cave-flavored encounters beyond Slimy Prison / Silk Cache.
 
 ## Opening text (draft)
 

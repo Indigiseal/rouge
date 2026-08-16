@@ -17,6 +17,7 @@ import screamingHead from './screaming_head.js';
 import reliquary from './reliquary.js';
 import tollCollectors from './toll_collectors.js';
 import armWrestling from './arm_wrestling.js';
+import { SILKDEEP_EVENTS } from '../months/silkdeep/events/index.js';
 
 export const EVENTS = [
   brokenMusicBox,
@@ -37,6 +38,7 @@ export const EVENTS = [
   reliquary,
   tollCollectors,
   armWrestling,
+  ...SILKDEEP_EVENTS,
 ];
 
 export function getEvent(id) {

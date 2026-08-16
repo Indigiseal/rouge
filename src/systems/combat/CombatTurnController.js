@@ -1,6 +1,11 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { CombatSequencer } from './CombatSequencer.js';
+import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
+import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
+import { getEnemy } from '../../content/cards/enemies.js';
+import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/months/tollroad/index.js';
 
+const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
 // Gap between consecutive enemies' attacks. Derived from the sequencer's last
 // beat so it always clears one attacker's full timeline — retuning the beats
 // retunes this with them.
@@ -60,16 +65,36 @@ export class CombatTurnController {
         if (!enemiesRemain) return false;
 
         // A remaining board card can still reveal or provide a way forward.
+        // Cocoon shells are already face-up enemies — loot pickups still count.
         if (board.some(card => card && !scene.isEnemyCard(card))) return false;
 
+        // Normal rooms: face-down cards can be flipped without a weapon.
+        // Cocoon cache has no flips — only damage opens shells.
+        const cocoonCache = isSilkCocoonCacheRoom(scene.gameState);
+        if (!cocoonCache && board.some(card => card && !card.revealed && scene.isEnemyCard(card))) {
+            return false;
+        }
+
         const inventory = scene.inventorySystem?.slots || scene.gameState?.inventory || [];
-        const hasUsableWeapon = inventory.some(card => (
-            card?.type === 'weapon' && (card.durability ?? 1) > 0
-        )) || (
-            scene.gameState?.equippedWeapon?.type === 'weapon'
-            && (scene.gameState.equippedWeapon.durability ?? 1) > 0
+        const isUsableWeapon = (card) => (
+            card?.type === 'weapon'
+            && (card.durability ?? 1) > 0
+            && !(card.webbedTurns > 0)
+        );
+        const hasUsableWeapon = inventory.some(isUsableWeapon) || (
+            isUsableWeapon(scene.gameState?.equippedWeapon)
         );
         if (hasUsableWeapon) return false;
+
+        // Cocoon shells only open to damage. Buff/heal magic does not help —
+        // only weapon-like spells that hit a board enemy count as a way out.
+        if (cocoonCache) {
+            const canCrackCocoon = (card) => (
+                card?.type === 'magic'
+                && (card.magicType === 'fireball' || card.magicType === 'soulDrain')
+            );
+            return !inventory.some(canCrackCocoon);
+        }
 
         // Magic can still change or resolve a fight without a weapon.
         return !inventory.some(card => card?.type === 'magic');
@@ -112,6 +137,9 @@ export class CombatTurnController {
         const scene = this.scene;
         if (scene.gameState.playerHealth <= 0) return; // Don't attack a dead player.
 
+        // Silkslinger webs expire at the start of the next enemy turn.
+        this.tickHandWebs();
+
         // Snapshot which enemies are eligible to act this action. A freshly revealed
         // enemy sits out the action that revealed it (a one-action grace so flipping
         // into an enemy doesn't zap you on the same click), then joins the fight on
@@ -119,7 +147,17 @@ export class CombatTurnController {
         // attacks from enemies already on the board.
         const eligible = scene.cardSystem.boardCards
             .map((card, index) => ({ card, index }))
-            .filter(({ card }) => card && card.revealed && scene.isEnemyCard(card) && !card.justRevealed);
+            .filter(({ card }) => {
+                if (!card || !scene.isEnemyCard(card) || card.justRevealed) return false;
+                if ((card.data?.health ?? 0) <= 0) return false;
+                // Cocoon shells do not attack — they only crack when damaged.
+                if (card.data?.isCocoon || (Array.isArray(card.data?.features) && card.data.features.includes('cocoon_shell'))) {
+                    return false;
+                }
+                if (card.revealed) return true;
+                // Thorn Fairy keeps acting while face-down so she can flip back up.
+                return Array.isArray(card.data?.features) && card.data.features.includes('veil_flip');
+            });
         // Clear the grace flag now that we've snapshotted — they act next turn.
         scene.cardSystem.boardCards.forEach(card => {
             if (card && card.justRevealed) card.justRevealed = false;
@@ -173,7 +211,7 @@ export class CombatTurnController {
                 SoundHelper.playSound(scene, 'armor_equip', 0.5);
 
                 // Reflect damage back to enemy
-                const reflectedDamage = firstAttacker.card.data.attack;
+                const reflectedDamage = getEnemyHitAttack(firstAttacker.card, scene.cardSystem?.boardCards);
                 scene.cardSystem.attackEnemy(firstAttacker.index, reflectedDamage, true);
                 scene.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Reflected)`, 0xffffff);
                 scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Bone Shield!', 0xffffff);
@@ -195,7 +233,11 @@ export class CombatTurnController {
 
             const { index } = attackers[attackerIndex++];
             const card = scene.cardSystem.boardCards[index];
-            if (card && card.revealed && scene.isEnemyCard(card)) {
+            const veilFaceDown = card
+                && !card.revealed
+                && Array.isArray(card.data?.features)
+                && card.data.features.includes('veil_flip');
+            if (card && scene.isEnemyCard(card) && (card.revealed || veilFaceDown)) {
                 this.processEnemyAttack(card, index);
                 scene.updateUI();
             }
@@ -232,8 +274,17 @@ export class CombatTurnController {
         this.isEnemyTurn = false;
     }
 
-    processEnemyAttack(card, index) {
+    processEnemyAttack(card, index, { fromRally = false } = {}) {
         const scene = this.scene;
+        if (card?.data?.isCocoon || (Array.isArray(card?.data?.features) && card.data.features.includes('cocoon_shell'))) {
+            return;
+        }
+        // Thorn Fairy veil: face-down → flip up and skip the strike this turn.
+        if (Array.isArray(card.data?.features) && card.data.features.includes('veil_flip') && !card.revealed) {
+            scene.cardSystem.revealCard(index, true);
+            return;
+        }
+
         // Process frozen duration BEFORE checking if enemy can attack
         if (card.data.frozen && card.data.frozen > 0) {
             const wasShocked = (card.data.shockedTurns || 0) > 0;
@@ -291,12 +342,21 @@ export class CombatTurnController {
             if (others.length > 0) {
                 const target = others[Math.floor(Math.random() * others.length)];
                 scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xff66ff);
-                scene.cardSystem.attackEnemy(target.index, card.data.attack, false);
+                scene.cardSystem.attackEnemy(target.index, getEnemyHitAttack(card, scene.cardSystem.boardCards), false);
                 return; // skip player damage
             }
         }
 
-        let damageDealt = card.data.attack;
+        const features = Array.isArray(card.data?.features) ? card.data.features : [];
+        let damageDealt = getEnemyHitAttack(card, scene.cardSystem?.boardCards);
+
+        // Road Sniper — occasional heavy bolt.
+        if (features.includes('heavy_shot') && Math.random() < 0.2) {
+            damageDealt = Math.ceil(damageDealt * 1.5);
+            if (card.sprite) {
+                scene.createFloatingText(card.sprite.x, card.sprite.y - 24, 'Heavy shot!', 0xff8866);
+            }
+        }
 
         // RAGE — when the boss drops below its HP threshold it hits harder. Shows
         // an "ENRAGED!" cue the first time it kicks in so the spike is legible.
@@ -329,7 +389,7 @@ export class CombatTurnController {
                     scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Poisoned!', 0x00ff00);
                 }
             } else if (ability.type === 'coin_steal') {
-                // Goblin coin stealing ability
+                // Legacy goblin ability (chance + amount on the ability object).
                 if (Math.random() < ability.chance && scene.gameState.coins > 0) {
                     const stolenAmount = Math.min(ability.amount, scene.gameState.coins);
                     scene.gameState.coins -= stolenAmount;
@@ -339,8 +399,29 @@ export class CombatTurnController {
             }
         });
 
+        // Highway Cutpurse — always lifts a flat purse cut on the swing.
+        if (features.includes('coin_steal')) {
+            const stolenAmount = Math.min(10, Math.max(0, scene.gameState.coins || 0));
+            if (stolenAmount > 0) {
+                scene.gameState.coins -= stolenAmount;
+                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, `-${stolenAmount} coins stolen!`, 0xffd700);
+                if (card.sprite) {
+                    scene.createFloatingText(card.sprite.x, card.sprite.y, `+${stolenAmount}`, 0xffd700);
+                }
+            }
+        }
+
+        const damageOptions = features.includes('ignore_armor')
+            ? { ignoreArmorChance: 0.1 }
+            : {};
         const playerHealthBeforeDamage = scene.gameState.playerHealth;
-        const { actualDamage, tookDamage } = scene.gameState.takeDamage(damageDealt, index, 'enemy', armorPierce);
+        const { actualDamage, tookDamage, dodged } = scene.gameState.takeDamage(
+            damageDealt,
+            index,
+            'enemy',
+            armorPierce,
+            damageOptions,
+        );
 
         if (tookDamage) {
             CombatSequencer.playVariant(scene, 'hurt', 'player_hurt', 0.5);
@@ -349,6 +430,65 @@ export class CombatTurnController {
             if (playerHealthBeforeDamage > 0 && scene.gameState.playerHealth <= 0) {
                 scene.killedBy = card.data.name || card.data.type || 'Enemy';
             }
+        }
+
+        // Goblin — club stun on a connecting hit.
+        if (!dodged && features.includes('club_stun') && Math.random() < 0.05) {
+            scene.gameState.playerStunnedTurns = Math.max(
+                scene.gameState.playerStunnedTurns || 0,
+                1,
+            );
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 22, 'Stunned!', 0xffcc66);
+        }
+
+        // Cave Crawler — extra armor chew on a connecting hit (on top of block wear).
+        if (!dodged && features.includes('gnaw') && scene.gameState.equippedArmor && Math.random() < 0.5) {
+            scene.gameState.tickEquippedArmorDurability();
+            if (scene.gameState.equippedArmor) {
+                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 28, 'Gnaw!', 0xc4a484);
+                scene.updateUI?.();
+            }
+        }
+
+        // Stinger Scorpion — each connecting hit pumps +1 into active poison tick damage.
+        if (!dodged && features.includes('poison_amp')) {
+            const poison = scene.gameState.playerEffects?.find((e) => e.type === 'poison');
+            if (poison) {
+                poison.damage = (poison.damage || 0) + 1;
+                scene.createFloatingText(
+                    scene.playerAvatar.x,
+                    scene.playerAvatar.y - 18,
+                    `Venom +1! (${poison.damage}/tick)`,
+                    0x88ff66
+                );
+                scene.updateUI?.();
+            }
+        }
+
+        // Silkslinger — web a random hand card for one enemy turn.
+        if (features.includes('web_hand')) {
+            this.applyWebHand();
+        }
+
+        // Spore Archer — spores cling even if armor/dodge softened the hit.
+        if (features.includes('spore_on_hit')) {
+            scene.gameState.playerSpored = true;
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18, 'Spored!', 0xb8e986);
+        }
+
+        // Toll Brute — chance to bark other goblins into an extra swing.
+        if (!fromRally && features.includes('goblin_rally') && Math.random() < 0.15) {
+            this.triggerGoblinRally(index);
+        }
+
+        // Thorn Fairy — strike, then flip face-down (if she survived).
+        if (
+            Array.isArray(card.data?.features)
+            && card.data.features.includes('veil_flip')
+            && card.revealed
+            && (card.data.health ?? 0) > 0
+        ) {
+            scene.cardSystem.hideEnemyCard?.(index);
         }
 
         // Boss LIFESTEAL — the leech heals from the damage it ACTUALLY landed on
@@ -366,6 +506,37 @@ export class CombatTurnController {
         }
 
         this.applyThornsDamage(card, index, tookDamage);
+    }
+
+    triggerGoblinRally(sourceIndex) {
+        const scene = this.scene;
+        const board = scene.cardSystem?.boardCards || [];
+        const allies = board
+            .map((c, i) => ({ card: c, index: i }))
+            .filter(({ card, index }) => (
+                index !== sourceIndex
+                && card?.revealed
+                && scene.isEnemyCard(card)
+                && (card.data?.health || 0) > 0
+                && !(card.data?.frozen > 0)
+                && (
+                    GOBLIN_ALLY_TYPE_SET.has(card.data?.enemyType)
+                    || getEnemy(card.data?.enemyType)?.goblinAlly
+                )
+            ));
+        if (!allies.length) return;
+        if (board[sourceIndex]?.sprite) {
+            scene.createFloatingText(
+                board[sourceIndex].sprite.x,
+                board[sourceIndex].sprite.y - 28,
+                'Rally!',
+                0xffdd66
+            );
+        }
+        for (const { card, index } of allies) {
+            if (scene.gameState.playerHealth <= 0) break;
+            this.processEnemyAttack(card, index, { fromRally: true });
+        }
     }
 
     getActiveThornsCard() {
@@ -503,7 +674,7 @@ export class CombatTurnController {
 
     selectCompanionTarget(companion) {
         const scene = this.scene;
-        const candidates = (scene.cardSystem?.boardCards || [])
+        let candidates = (scene.cardSystem?.boardCards || [])
             .map((card, index) => ({ card, index }))
             .filter(({ card }) => (
                 card?.revealed
@@ -512,6 +683,15 @@ export class CombatTurnController {
                 && (card.data?.health || 0) > 0
             ));
         if (candidates.length === 0) return null;
+
+        // Silk Husk taunt: companions may only strike face-up taunting enemies.
+        const taunters = candidates.filter(({ card }) => {
+            if (!card?.revealed || (card.data?.health ?? 0) <= 0) return false;
+            const tex = card.sprite?.texture?.key;
+            if (!tex || tex === 'cardBack' || String(tex).startsWith('cardFlip')) return false;
+            return Array.isArray(card.data?.features) && card.data.features.includes('taunt');
+        });
+        if (taunters.length > 0) candidates = taunters;
 
         if (companion?.attackStyle === 'melee' || companion?.range === 'melee') {
             // Melee companions obey the same frontline gate the player does
@@ -610,5 +790,43 @@ export class CombatTurnController {
         });
         this.enemyTurnTimers.push(attackTimer);
         return true;
+    }
+
+    tickHandWebs() {
+        const scene = this.scene;
+        const slots = scene.inventorySystem?.slots || scene.gameState?.inventory || [];
+        let cleared = false;
+        for (let i = 0; i < slots.length; i++) {
+            const item = slots[i];
+            if (!item || !(item.webbedTurns > 0)) continue;
+            item.webbedTurns -= 1;
+            if (item.webbedTurns <= 0) {
+                delete item.webbedTurns;
+                scene.inventorySystem?.clearWebOverlay?.(i);
+                cleared = true;
+            }
+        }
+        if (cleared) this.queueStalemateEnemyTurn();
+    }
+
+    applyWebHand() {
+        const scene = this.scene;
+        const slots = scene.inventorySystem?.slots || scene.gameState?.inventory || [];
+        const candidates = [];
+        for (let i = 0; i < slots.length; i++) {
+            if (slots[i]) candidates.push(i);
+        }
+        if (candidates.length === 0) return;
+
+        const slotIndex = candidates[Math.floor(Math.random() * candidates.length)];
+        const item = slots[slotIndex];
+        item.webbedTurns = 1;
+        scene.inventorySystem?.applyWebOverlay?.(slotIndex);
+
+        const slotSprite = scene.inventorySystem?.slotSprites?.[slotIndex];
+        const x = slotSprite?.card?.x ?? scene.playerAvatar?.x ?? 320;
+        const y = slotSprite?.card?.y ?? scene.playerAvatar?.y ?? 300;
+        scene.createFloatingText(x, y - 18, 'Webbed!', 0xddeeff);
+        this.queueStalemateEnemyTurn();
     }
 }

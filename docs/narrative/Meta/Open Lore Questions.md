@@ -37,4 +37,4 @@ A living list of what is not yet locked in the lore.
 
 - [x] Encounters do not need one shared plot; month weights are enough. See [[Encounter Philosophy]].
 - [x] Path branching shelved. See [[Design Decisions]].
-- [ ] How strongly should the music-box lane ignore month gates so it never soft-locks?
+- [x] Music-box lane is an any-month [[_Shared/Event Sequences|Event Sequence]]; it is not month-gated.

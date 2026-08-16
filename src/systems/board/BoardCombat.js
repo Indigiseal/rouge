@@ -357,9 +357,30 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // Fireball and charmed enemies also use attackEnemy(), and the fallback
     // incorrectly spent the player's durability and triggered weapon gems.
     const weapon = weaponUsed || null;
+    const features = Array.isArray(card.data.features) ? card.data.features : [];
+
+    // Silk Husk — while any revealed taunter lives, player damage may only hit taunters.
+    // Reflection / thorns still connect (isReflection); player weapon/magic does not.
+    if (!isReflection && isTauntBlockingTarget.call(this, card)) {
+        SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
+        this.scene.createFloatingText(
+            this.scene.playerAvatar.x,
+            this.scene.playerAvatar.y,
+            'Provoked!',
+            0x88aaff
+        );
+        return;
+    }
     
     if (!isReflection && weapon) {
         const isRanged = this.isRangedWeapon(weapon);
+
+        // Thorn Sprite — bark shrugs off bows; melee still connects.
+        if (isRanged && features.includes('ranged_immune')) {
+            SoundHelper.playVariant(this.scene, 'dodge_miss', 0.5);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Immune!', 0x88ff88);
+            return;
+        }
 
         // Check if there are any melee enemies alive (revealed or hidden)
         const meleeBlockers = this._anyMeleeAlive({ includeHidden: true });
@@ -401,6 +422,16 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // once-per-floor War Horn charge. A missed attack must not announce a
     // CRIT or spend a one-shot bonus that never dealt damage.
     if (!isReflection && this.rollEvade(card)) return;
+
+    // Spore Archer Spores: 15% miss on the next weapon swing, then clear.
+    if (!isReflection && weapon && this.scene.gameState?.playerSpored) {
+        this.scene.gameState.playerSpored = false;
+        if (Math.random() < 0.15) {
+            SoundHelper.playVariant(this.scene, 'dodge_miss', 0.5);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Miss!', 0xb8e986);
+            return;
+        }
+    }
 
     const critChance = (this.scene.gameState?.discardCritChance || 0)
         + (this.scene.amuletManager?.getCriticalChanceBonus?.() || 0);
@@ -460,10 +491,31 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         this.applyWeaponGemEffect(index, weapon, finalDamage);
     }
 
+    // Gem/enchant splash can already defeat (and replace) this slot — do not
+    // keep mutating a death-drop loot card or a removed stub as if it were
+    // still the enemy (that left "Cave Crawler -7" glued onto Crystals).
+    if (this.boardCards[index] !== card || !card.sprite?.scene || !this.isEnemyType(card.data?.type)) {
+        return;
+    }
+    if ((card.data.health ?? 0) <= 0) {
+        this.removeDefeatedEnemy(index, card);
+        if (enchantProc) this.applyWeaponEnchantOnKill(enchantProc);
+        return;
+    }
+
     // Enchant procs land here for the same reason gems do: a killing weapon hit
     // removes the card, which would silently swallow the effect and its text.
     if (enchantProc && !enchantInstantKill) {
         this.applyWeaponEnchantOnHit(index, enchantProc, finalDamage);
+    }
+
+    if (this.boardCards[index] !== card || !card.sprite?.scene || !this.isEnemyType(card.data?.type)) {
+        return;
+    }
+    if ((card.data.health ?? 0) <= 0) {
+        this.removeDefeatedEnemy(index, card);
+        if (enchantProc) this.applyWeaponEnchantOnKill(enchantProc);
+        return;
     }
 
     // Apply damage. (Carrion Oath / hungryDagger no longer alters combat — it was
@@ -531,6 +583,26 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         ? ` (${weapon.weaponType.charAt(0).toUpperCase()}${weapon.weaponType.slice(1)})`
         : (isReflection ? ' (Reflected)' : '');
     this.scene.pushCombatLog?.(`${targetName} -${finalDamage}${weaponLabel}`);
+
+    // Thorn Ent — retaliates 1 true damage through armor on a connecting swing.
+    if (
+        !isReflection
+        && weapon
+        && finalDamage > 0
+        && Array.isArray(card.data.features)
+        && card.data.features.includes('thorns_reflect')
+        && this.scene.gameState
+    ) {
+        const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(1, index, 'enemy', 999);
+        if (tookDamage && actualDamage > 0) {
+            this.scene.createFloatingText(
+                this.scene.playerAvatar.x,
+                this.scene.playerAvatar.y - 14,
+                `-${actualDamage} Thorns!`,
+                0x88cc66
+            );
+        }
+    }
 
     if (card.data.health <= 0) {
         this.removeDefeatedEnemy(index, card);
@@ -696,9 +768,32 @@ function isAnyEnemyCard(card) {
     return !!card && this.isEnemyType(card.data?.type) && card.data.health > 0;
 }
 
+/** Silk Husk Provocation — only while the taunter is face-up and alive. */
+function isActiveBoardTaunter(card) {
+    if (!card?.revealed || !card.sprite?.scene) return false;
+    if (!this.isEnemyType(card.data?.type)) return false;
+    if ((card.data?.health ?? 0) <= 0) return false;
+    if (card.data?.isCocoon) return false;
+    if (Array.isArray(card.data?.features) && card.data.features.includes('cocoon_shell')) return false;
+    // Face-down / mid-flip art must not provoke even if `revealed` desynced.
+    const tex = card.sprite.texture?.key;
+    if (!tex || tex === 'cardBack' || String(tex).startsWith('cardFlip')) return false;
+    return Array.isArray(card.data?.features) && card.data.features.includes('taunt');
+}
+
+function isTauntBlockingTarget(card) {
+    const tauntActive = this.boardCards.some((c) => isActiveBoardTaunter.call(this, c));
+    if (!tauntActive) return false;
+    // Any taunter card is a legal target; non-taunters are blocked while a
+    // face-up husk lives. (Target need not pass the "active" visual check —
+    // mid-flip husk art is still the provoked enemy.)
+    return !(Array.isArray(card?.data?.features) && card.data.features.includes('taunt'));
+}
+
 function burnEnemy(index, amount) {
     const card = this.boardCards[index];
     if (!this.isAnyEnemyCard(card)) return;
+    if (isTauntBlockingTarget.call(this, card)) return;
     card.data.health -= amount;
     if (card.revealed && card.sprite?.scene) {
         CombatSequencer.schedule(this.scene, 'gem', () => {
@@ -716,6 +811,11 @@ function burnEnemy(index, amount) {
 function damageGemTarget(index, amount, label, color, effect = null, beat = 'gem') {
     const card = this.boardCards[index];
     if (!this.isOpenEnemyCard(card)) return;
+    if (isTauntBlockingTarget.call(this, card)) return;
+    if ((card.data.health ?? 0) <= 0) {
+        this.removeDefeatedEnemy(index, card);
+        return;
+    }
     if (effect) CombatSequencer.schedule(this.scene, beat, () => {
         if (card.sprite?.scene) this.playEnemyHitEffect(card, effect);
     });
@@ -885,15 +985,17 @@ function hideEnemyCard(index) {
     if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
     if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
     if (card.frozenFrame) { card.frozenFrame.destroy(); card.frozenFrame = null; }
-    if (card.infoText) {
-        if (card.infoText.list) card.infoText.destroy(true);
-        else card.infoText.destroy();
-        card.infoText = null;
-    }
+    this.destroyCardInfoText?.(card);
     return true;
 }
 
 function removeDefeatedEnemy(index, card) {
+        // Silk cocoons crack open into loot or a month enemy — not a kill.
+        if (card?.data?.isCocoon || (Array.isArray(card?.data?.features) && card.data.features.includes('cocoon_shell'))) {
+            this.openSilkCocoon?.(index, card);
+            return;
+        }
+
         // Note: defeating the Angry Nestmother does NOT end the grudge — she
         // keeps turning up "once in a while" for the rest of the run you
         // stole her egg (birdAngry stays set until the next run reseeds).
@@ -970,6 +1072,7 @@ function removeDefeatedEnemy(index, card) {
             // still run the clear check before bailing, or the Next button
             // never appears.
             this.checkFloorClear();
+            this.scene.refreshSilkCocoonLeaveButton?.();
             return; // skip the normal removal; new card stands in its place
         }
 
@@ -994,7 +1097,10 @@ function removeDefeatedEnemy(index, card) {
         if (this.boardCards[index] && !this.boardCards[index].sprite) {
           this.boardCards[index] = null;
         }
+        // Wolf pack ATK is situational — refresh corner ATK on remaining wolves.
+        this.refreshEnemyAttackLabels?.();
         this.checkFloorClear();
+        this.scene.refreshSilkCocoonLeaveButton?.();
 }
 
 function checkFloorClear() {

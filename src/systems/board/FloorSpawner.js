@@ -6,6 +6,7 @@ import { openAmuletChoiceOverlay } from '../../ui/AmuletChoiceOverlay.js';
 import { minEnemyRatioForFloor } from '../../content/balance/EnemyDensity.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { reinforcementStateFor, reinforcementStateFromSave } from '../../content/balance/Reinforcements.js';
+import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js';
 
 export class FloorSpawner {
     constructor(cs) {
@@ -30,6 +31,7 @@ export class FloorSpawner {
         this.injectAngryNestmother = injectAngryNestmother.bind(cs);
         this.enforceForcedEnemyTypes = enforceForcedEnemyTypes.bind(cs);
         this.spawnAmbushBoard = spawnAmbushBoard.bind(cs);
+        this.openSilkCocoon = (index, card) => openSilkCocoon(cs, index, card);
         this.injectTollGuards = injectTollGuards.bind(cs);
         this.spawnBoss = spawnBoss.bind(cs);
         this.pickCardType = pickCardType.bind(cs);
@@ -72,6 +74,9 @@ function spawnFloorCards() {
   if (this.scene.gameState) {
     this.scene.gameState.firstAttackThisFloorUsed = false;
     this.scene.gameState.keenEdgeUsedThisFloor = false;
+    this.scene.gameState.playerSpored = false;
+    this.scene.gameState.playerStunnedTurns = 0;
+    this.scene.inventorySystem?.clearAllHandWebs?.();
   }
 
   // === clear previous ===
@@ -224,7 +229,7 @@ function spawnFloorCards() {
     if (data) {
       data.brick = { r, c };
     }
-    this.boardCards[i] = { sprite: cardSprite, shadow, revealed: false, data };
+    this.boardCards[i] = { sprite: cardSprite, shadow, revealed: false, data, restX: x, restY: y };
   }
   this.ensureWeaponSupply(cf, roomType);
   this.limitEnemyDensity(cf, roomType);
@@ -472,7 +477,7 @@ function spawnTutorialCards() {
     });
     const data = deck[i];
     if (data) data.brick = { r, c };
-    this.boardCards[i] = { sprite: cardSprite, shadow, revealed: false, data };
+    this.boardCards[i] = { sprite: cardSprite, shadow, revealed: false, data, restX: x, restY: y };
   }
 
   // Neighbor links (used by "reveal one behind" after a front clears).
@@ -588,7 +593,9 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
       shadow,
       revealed,
       justRevealed: !!saved.justRevealed,
-      data
+      data,
+      restX: x,
+      restY: y,
     };
     this.boardCards[index] = card;
     // Restore the elite "mystery" gold back on still-hidden highlight cards.
@@ -622,7 +629,7 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
     card.infoText?.setDepth?.(3);
     cardSprite.on('pointerdown', () => this.interactWithCard(index));
     this._attachBoardItemTooltip(card);
-    if (data.type === 'boss') this._attachBossTooltip(card);
+    this._attachEnemyBoardHover(card);
     if (data.type === 'gem') {
       this.attachGemShadow(card);
       this.enableGemDrag(card, index);
@@ -671,10 +678,7 @@ function spawnBossRewardBoard(items) {
         card.shadow?.destroy();
         card.hoverSprite?.destroy();
         card.frozenFrame?.destroy();
-        if (card.infoText) {
-            if (card.infoText.list) card.infoText.destroy(true);
-            else card.infoText.destroy();
-        }
+        this.destroyCardInfoText?.(card);
     });
     this.boardCards = [];
     this.clearBossRewardChest();
@@ -911,9 +915,7 @@ function spawnDeathDrop(index, originalCard) {
     const x = card.sprite.x;
     const y = card.sprite.y;
     if (card.infoText) {
-        if (card.infoText.list) card.infoText.destroy(true);
-        else card.infoText.destroy();
-        card.infoText = null;
+        this.destroyCardInfoText?.(card);
     }
     // The dying card may have carried enemy-only overlays (poison status icon,
     // role badge). Destroy them or they linger on top of the new loot card.
@@ -938,6 +940,7 @@ function spawnDeathDrop(index, originalCard) {
     this.createCardInfoText(card);
     // Same hover tooltip the normal reveal path attaches.
     this._attachBoardItemTooltip(card);
+    this._attachEnemyBoardHover?.(card);
     // Gems and relics/amulets aren't cards — hide the inherited rectangular shadow
     if (newData.type === 'gem' || newData.type === 'amulet' || newData.type === 'relic') {
         if (card.shadow) card.shadow.setAlpha(0);
@@ -1019,11 +1022,7 @@ function previewTrapAt(index) {
                 if (!card.sprite || !card.sprite.scene) return;
                 card.sprite.setTexture('cardBack');
                 snapOriginToPixelGrid(card.sprite);
-                if (card.infoText) {
-                    if (card.infoText.list) card.infoText.destroy(true);
-                    else card.infoText.destroy();
-                    card.infoText = null;
-                }
+                this.destroyCardInfoText?.(card);
                 card.revealed = false;
                 this.scene.tweens.add({
                     targets: card.sprite,
@@ -1126,9 +1125,22 @@ function ensureEnemyMinimum(floor, roomType) {
     if (count >= minEnemies) break;
     const card = this.boardCards[index];
     const brick = card.data.brick;
-    const enemyData = this.cardDataGenerator.createCardData('enemy', floor, roomType === 'ELITE');
+    // Must pass gameState — without it createEnemyCard defaults to Thornwake
+    // (calendarMonthIndex 0) and mixes months into a Silkdeep (etc.) board.
+    const desiredRole = brick?.r > 0 ? 'MELEE' : 'RANGED';
+    const enemyData = this.cardDataGenerator.createCardData(
+      'enemy',
+      floor,
+      roomType === 'ELITE',
+      this.scene.gameState,
+      null,
+      desiredRole
+    );
     if (!enemyData) continue;
-    if (brick) { enemyData.brick = brick; enemyData.role = brick.r > 0 ? 'MELEE' : 'RANGED'; }
+    if (brick) enemyData.brick = brick;
+    if (this.isEnemyType(enemyData.type) && !enemyData.isMimic) {
+      enemyData.role = desiredRole;
+    }
     card.data = enemyData;
     count++;
   }
@@ -1249,6 +1261,12 @@ function spawnAmbushBoard(ambush) {
     return;
   }
 
+  // Silkdeep cocoon cache — custom board (inspect shells / burn loot-only).
+  if (ambush?.kind === 'silk_cocoons' || ambush?.id === 'silk_cocoon_cache') {
+    spawnSilkCocoonCacheBoard(this, ambush);
+    return;
+  }
+
   const specs = (Array.isArray(ambush?.enemies) ? ambush.enemies : []).filter(Boolean);
   // Consume it up front so a malformed spec can never re-trigger every floor.
   this.scene.gameState.pendingAmbush = null;
@@ -1280,10 +1298,11 @@ function spawnAmbushBoard(ambush) {
     sprite.setInteractive();
     sprite.on('pointerdown', () => this.interactWithCard(i));
 
-    const card = { sprite, shadow, revealed: true, data };
+    const card = { sprite, shadow, revealed: true, data, restX: x, restY: y };
     this.boardCards[i] = card;
     this.createCardInfoText(card);
     this._attachBoardItemTooltip?.(card);
+    this._attachEnemyBoardHover?.(card);
   });
 
   this.scene.time.delayedCall(650, () => this.applyHolographicOmenStartEffect());
@@ -1323,7 +1342,9 @@ function spawnBoss() {
     const card = {
         sprite: cardSprite,
         revealed: true,
-        data: bossData
+        data: bossData,
+        restX: x,
+        restY: y,
     };
     this.boardCards[4] = card;
     this.createCardInfoText(card);
@@ -1371,9 +1392,10 @@ function injectTollGuards(bossX, bossY) {
         sprite.setInteractive();
         const index = this.boardCards.length;
         sprite.on('pointerdown', () => this.interactWithCard(index));
-        const card = { sprite, revealed: true, data };
+        const card = { sprite, revealed: true, data, restX: bossX + dx, restY: bossY + dy };
         this.boardCards.push(card);
         this.createCardInfoText(card);
+        this._attachEnemyBoardHover?.(card);
     });
     return true;
 }
@@ -1500,10 +1522,13 @@ function summonEnemy(enemyType, bossCard) {
         sprite: cardSprite,
         shadow: shadow,
         revealed: true,
-        data: summonedEnemy
+        data: summonedEnemy,
+        restX: x,
+        restY: y,
     };
     
     this.createCardInfoText(this.boardCards[emptySlot]);
+    this._attachEnemyBoardHover?.(this.boardCards[emptySlot]);
     
     // Visual feedback
     this.scene.createFloatingText(bossCard.sprite.x, bossCard.sprite.y, 'Summoning!', 0x9932cc);
@@ -1577,7 +1602,9 @@ function respawnCardOnBoard(cardData, options = {}) {
         sprite: cardSprite,
         shadow,
         revealed: false,
-        data: respawnedData
+        data: respawnedData,
+        restX: x,
+        restY: y,
     };
     return true;
 }
@@ -1659,7 +1686,7 @@ function dropWaveCards() {
             // role reassignment.
             if (this.isEnemyType(data.type) && !data.isMimic) data.role = desiredRole;
         }
-        this.boardCards[slot] = { sprite: cardSprite, shadow, revealed: false, data };
+        this.boardCards[slot] = { sprite: cardSprite, shadow, revealed: false, data, restX: x, restY: y };
 
         this.scene.tweens.add({
             targets: cardSprite,

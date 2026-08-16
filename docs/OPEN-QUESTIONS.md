@@ -118,9 +118,26 @@
 
 ## Враги / скейл
 
-- **[ ] Имплементировать power bands + archetypes.** Дизайн зафиксирован в
-  `docs/BALANCE.md` (Enemy power) и `docs/narrative/Concepts/Enemy Power.md`.
-  Сейчас в коде ещё пер-тип `tiers[]` в `enemies.js`.
+- **[x] Имплементировать power bands + archetypes (Thornwake).** Дизайн в
+  `docs/BALANCE.md` / `docs/narrative/Concepts/Enemy Power.md`. Код:
+  `EnemyPower.js`, month packs, spawn через month pool. Silkdeep тоже на bands;
+  ротация ран/актов по `MONTH_ROTATION_LENGTH` (сейчас 2).
+
+- **[x] Смена месяцев.** Поражение/победа рана → следующий New Run на следующем
+  месяце ротации (`metaProgression.nextCalendarMonthIndex`). Победа акта →
+  следующий акт = следующий месяц (`getMonthIndexForFloor`). Пока 2 месяца.
+
+## Ивенты
+
+- **[x] The Broken Music Box — силовое вскрытие.** Overlay `MusicBoxLockMinigame`:
+  краткий брифинг с картинками, затем 10 шайб (4 пары + детонаторы). Провал =
+  нарратив взрыва и **-35 HP**. Успех = `opened` / +1 кристалл / коробка
+  следует. После каждой попытки три закрытые шайбы меняются местами.
+
+- **[ ] Monster Bird Nest — наказание за тайм-аут рейда.** Overlay
+  `BirdNestMinigame` уже есть (20 с, −5 с за поимку тенью, лут не выдаётся).
+  Флаг `nestRaidTimedOut` / `birdAngry` пишется; конкретный штраф (бой с
+  матерью, HP, преследование) ещё не выбран.
 
 ## Акт 3 / спаун
 

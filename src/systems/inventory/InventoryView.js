@@ -30,6 +30,7 @@ export const InventoryView = {
                 gemEffect: 206,
                 gemIndicator: 207,
                 briarFrame: 208,
+                webOverlay: 209,
                 twinkle: 208
             }
             : {
@@ -42,6 +43,7 @@ export const InventoryView = {
                 gemEffect: 14,
                 gemIndicator: 15,
                 briarFrame: 16,
+                webOverlay: 17,
                 twinkle: 100
             };
     },
@@ -66,7 +68,78 @@ export const InventoryView = {
         slot.gemEffectSprite?.setDepth?.(depths.gemEffect);
         slot.gemIndicator?.setDepth?.(depths.gemIndicator);
         slot.briarFrame?.setDepth?.(depths.briarFrame);
+        slot.webOverlay?.setDepth?.(depths.webOverlay);
         slot.twinkleSprite?.setDepth?.(depths.twinkle);
+    },
+    ensureWebOverlayTexture() {
+        if (this.scene.textures.exists('webCardOverlay')) return;
+        const g = this.scene.make.graphics({ x: 0, y: 0, add: false });
+        g.fillStyle(0xc8d8e8, 0.4);
+        g.fillRect(0, 0, 54, 70);
+        g.lineStyle(1, 0xffffff, 0.75);
+        for (let i = -70; i < 54; i += 7) {
+            g.lineBetween(i, 0, i + 70, 70);
+        }
+        g.generateTexture('webCardOverlay', 54, 70);
+        g.destroy();
+    },
+    applyWebOverlay(slotIndex) {
+        const slot = this.slotSprites?.[slotIndex];
+        const cardSprite = slot?.card;
+        const cardData = this.slots?.[slotIndex];
+        if (!slot || !cardSprite?.scene || !(cardData?.webbedTurns > 0)) return;
+
+        this.ensureWebOverlayTexture();
+        if (slot.webOverlay?.scene) {
+            slot.webOverlay.x = cardSprite.x;
+            slot.webOverlay.y = cardSprite.y;
+            slot.webOverlay.setVisible(true);
+            slot.webOverlay.setDepth(this.getInventoryDepths().webOverlay);
+        } else {
+            const overlay = snapOriginToPixelGrid(
+                this.scene.add.image(cardSprite.x, cardSprite.y, 'webCardOverlay')
+            );
+            overlay.setDisplaySize(cardSprite.displayWidth || 54, cardSprite.displayHeight || 70);
+            overlay.setDepth(this.getInventoryDepths().webOverlay);
+            this.uiGroup?.add?.(overlay);
+            slot.webOverlay = overlay;
+            cardSprite.setData('webOverlay', overlay);
+            cardSprite.once('destroy', () => {
+                overlay.destroy();
+                if (slot.webOverlay === overlay) slot.webOverlay = null;
+            });
+        }
+
+        // Webbed cards stay put — no drag (avoids orphaning the silk mask).
+        this.setCardWebbedInteractive(slotIndex, true);
+    },
+    clearWebOverlay(slotIndex) {
+        const slot = this.slotSprites?.[slotIndex];
+        if (!slot?.webOverlay) return;
+        slot.webOverlay.destroy();
+        slot.webOverlay = null;
+        slot.card?.setData?.('webOverlay', null);
+        this.setCardWebbedInteractive(slotIndex, false);
+    },
+    setCardWebbedInteractive(slotIndex, webbed) {
+        const cardSprite = this.slotSprites?.[slotIndex]?.card;
+        if (!cardSprite?.scene || !cardSprite.input) return;
+        if (webbed) {
+            this.scene.input.setDraggable(cardSprite, false);
+            cardSprite.setData('webbedLocked', true);
+        } else {
+            cardSprite.setData('webbedLocked', false);
+            if (cardSprite.input) this.scene.input.setDraggable(cardSprite, true);
+        }
+    },
+    clearAllHandWebs() {
+        const slots = this.slots || [];
+        for (let i = 0; i < slots.length; i++) {
+            const item = slots[i];
+            if (!item || !(item.webbedTurns > 0)) continue;
+            delete item.webbedTurns;
+            this.clearWebOverlay(i);
+        }
     },
     setDiscardArea(discardArea) {
         this.discardArea = discardArea;
@@ -139,6 +212,7 @@ export const InventoryView = {
         cloneImage(slot?.gemIndicator?.shadow, 10001);
         cloneImage(slot?.gemIndicator, 10002);
         cloneImage(slot?.briarFrame, 10003);
+        cloneImage(slot?.webOverlay, 10004);
         cloneImage(slot?.twinkleSprite, 10003);
 
         this.dragOverlay = { cardSprite, parts };
@@ -245,6 +319,16 @@ export const InventoryView = {
                 slot.gemIndicator.destroy();
                 slot.gemIndicator = null;
             }
+
+            if (slot.briarFrame) {
+                slot.briarFrame.destroy();
+                slot.briarFrame = null;
+            }
+
+            if (slot.webOverlay) {
+                slot.webOverlay.destroy();
+                slot.webOverlay = null;
+            }
             
             // Clean up twinkle sprite
             if (slot.twinkleSprite) {
@@ -325,6 +409,7 @@ export const InventoryView = {
                 gemEffectSprite: null,
                 gemIndicator: null,
                 briarFrame: null,
+                webOverlay: null,
                 originalY: y
             };
         }

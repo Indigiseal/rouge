@@ -19,6 +19,7 @@ tags:
 
 ## Shared
 
+- [[_Shared/Event Sequences|Event Sequences]]
 - [[_Shared/Music Box Chain|Music Box Chain]]
 - [[_Shared/Any-Month Events|Any-Month Events]]
 - [[Enemies Index]]

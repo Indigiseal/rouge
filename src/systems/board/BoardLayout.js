@@ -306,8 +306,7 @@ function clearBoard() {
     card.shockMarker?.destroy();
     card.frozenFrame?.destroy();
     if (card.infoText) {
-      if (card.infoText.list) card.infoText.destroy(true);
-      else card.infoText.destroy();
+      this.destroyCardInfoText?.(card);
     }
     // Null references so any lingering closures see a falsy sprite.
     card.sprite = null;

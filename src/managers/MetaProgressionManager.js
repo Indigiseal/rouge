@@ -15,6 +15,7 @@ import {
   estimateBossesKilled as estimateBossesKilledFormula,
   xpForRun as xpForRunFormula,
 } from '../content/economy/metaXp.js';
+import { normalizeMonthIndex, nextMonthIndex } from '../content/months/index.js';
 
 function emptyCharacterProgress() {
   return { xp: 0, talents: {}, choices: {} };
@@ -36,6 +37,9 @@ export class MetaProgressionManager {
         this.bestFloor = data.bestFloor || 1;
         this.enemyKillStats = data.enemyKillStats || {};
         this.pendingEgg = data.pendingEgg || false;
+        this.nextCalendarMonthIndex = normalizeMonthIndex(
+          data.nextCalendarMonthIndex ?? 0
+        );
         this.characters = this.migrateCharacters(data);
         // Legacy fields kept empty so old UI paths don't crash.
         this.unlockedRelics = [];
@@ -55,6 +59,7 @@ export class MetaProgressionManager {
     this.bestFloor = 1;
     this.enemyKillStats = {};
     this.pendingEgg = false;
+    this.nextCalendarMonthIndex = 0;
     this.unlockedRelics = [];
     this.veteranHp = 0;
     this.metaPoints = 0;
@@ -93,6 +98,7 @@ export class MetaProgressionManager {
       bestFloor: this.bestFloor,
       enemyKillStats: this.enemyKillStats,
       pendingEgg: this.pendingEgg,
+      nextCalendarMonthIndex: normalizeMonthIndex(this.nextCalendarMonthIndex ?? 0),
       // Cleared legacy keys so old readers don't assume active relics.
       unlockedRelics: [],
       veteranHp: 0,
@@ -104,6 +110,21 @@ export class MetaProgressionManager {
   setPendingEgg(hasEgg) {
     this.pendingEgg = Boolean(hasEgg);
     this.saveMetaProgression();
+  }
+
+  /** Month index the next new run should open on (rotation of active months). */
+  getNextCalendarMonthIndex() {
+    return normalizeMonthIndex(this.nextCalendarMonthIndex ?? 0);
+  }
+
+  setNextCalendarMonthIndex(index) {
+    this.nextCalendarMonthIndex = normalizeMonthIndex(index);
+    this.saveMetaProgression();
+  }
+
+  /** After a run ends in `monthIndex`, queue the following month for the next run. */
+  advanceCalendarMonthAfterRun(monthIndex) {
+    this.setNextCalendarMonthIndex(nextMonthIndex(monthIndex));
   }
 
   consumePendingEgg() {

@@ -38,7 +38,7 @@ This note is the **map of content** for the lore database.
 - [[01 Thornwake/Thornwake|Thornwake]] · [[02 Silkdeep/Silkdeep|Silkdeep]] · [[03 Tollroad/Tollroad|Tollroad]] · [[04 Boneflood/Boneflood|Boneflood]]
 - [[05 Mireturn/Mireturn|Mireturn]] · [[06 Veilbleed/Veilbleed|Veilbleed]] · [[07 Ashhowl/Ashhowl|Ashhowl]] · [[08 Brassfair/Brassfair|Brassfair]]
 - [[09 Frosthollow/Frosthollow|Frosthollow]] · [[10 Stormhatch/Stormhatch|Stormhatch]] · [[11 Mirrorwane/Mirrorwane|Mirrorwane]] · [[12 Spherefall/Spherefall|Spherefall]]
-- Shared: [[_Shared/Music Box Chain|Music Box Chain]] · [[_Shared/Any-Month Events|Any-Month Events]]
+- Shared: [[_Shared/Event Sequences|Event Sequences]] · [[_Shared/Music Box Chain|Music Box Chain]] · [[_Shared/Any-Month Events|Any-Month Events]]
 
 ## Enemies & bosses
 

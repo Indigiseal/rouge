@@ -35,6 +35,88 @@ export const EventRunHelpers = {
     return this._removeInventoryCard(index);
   },
 
+  isMusicBoxExploded() {
+    this.ensureStoryState();
+    return this.gameState.storyRun.boxState === 'exploded';
+  },
+
+  resolveMusicBoxOpened(source = 'key') {
+    this.ensureStoryState();
+    this.clearPendingEvent('broken_music_box');
+    if (source === 'key') {
+      const usesSkeletonKey = this.hasAmulet('skeletonKey');
+      this.logStoryKeyChoice(usesSkeletonKey ? 'skeletonKey_broken_music_box' : 'key_card_broken_music_box');
+      if (!usesSkeletonKey) this.consumeKeyCard();
+    }
+    const story = this.gameState.storyRun;
+    story.boxState = 'opened';
+    story.boxFollowing = true;
+    this.gainCrystals(1);
+    this.addPendingEvent('monster_bird_nest');
+  },
+
+  resolveMusicBoxLeft() {
+    this.ensureStoryState();
+    this.clearPendingEvent('broken_music_box');
+    const story = this.gameState.storyRun;
+    story.boxState = 'following';
+    story.boxFollowing = true;
+    this.addPendingEvent('monster_bird_nest');
+  },
+
+  resolveMusicBoxExploded() {
+    this.ensureStoryState();
+    this.clearPendingEvent('broken_music_box');
+    const story = this.gameState.storyRun;
+    story.boxState = 'exploded';
+    story.boxFollowing = false;
+    this.markHeroMemory('learnedMusicBoxExplodes');
+    const before = Number.isFinite(this.gameState.playerHealth) ? this.gameState.playerHealth : 0;
+    this.damagePlayer(35, 'music_box_explosion', 'Exploding Music Box');
+    const lost = before - (Number.isFinite(this.gameState.playerHealth) ? this.gameState.playerHealth : 0);
+    if (lost > 0) this._reward(`-${lost} HP`);
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.updateUI?.();
+    this.addPendingEvent('monster_bird_nest');
+  },
+
+  beginMusicBoxForceOpen() {
+    this._musicBoxForceAwaiting = true;
+    this._openMusicBoxLockMinigame();
+  },
+
+  beginBirdNestSearch() {
+    this._birdNestAwaiting = true;
+    this._openBirdNestMinigame();
+  },
+
+  resolveBirdNestRaid(result = {}) {
+    this.ensureStoryState();
+    this.clearPendingEvent('monster_bird_nest');
+    const story = this.gameState.storyRun;
+    const timedOut = Boolean(result.timedOut);
+    story.nestRaidTimedOut = timedOut;
+    this.markHeroMemory('learnedBirdNestHasCog');
+
+    const canTakeCog = story.boxState !== 'exploded' && Boolean(result.tookCog) && !timedOut;
+    const canTakeEgg = Boolean(result.tookEgg) && !timedOut;
+
+    if (story.boxState !== 'exploded') {
+      story.boxHasCog = canTakeCog;
+      if (canTakeCog) story.boxState = 'has_cog';
+    }
+
+    if (timedOut) story.birdAngry = true;
+
+    if (canTakeEgg) {
+      story.stoleBirdEgg = true;
+      story.birdAngry = true;
+      this.addEggOrFallback();
+    }
+    if (canTakeCog) this._reward('Brass cog');
+    this.addPendingEvent('goblin_engineer');
+  },
+
   hasPotion() {
     return this._findInventoryIndex(item => this._isPotionCard(item)) >= 0;
   },

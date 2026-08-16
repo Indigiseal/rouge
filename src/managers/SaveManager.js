@@ -2,13 +2,17 @@
 
 import { applyAmuletAtlasPresentation } from '../content/amulets/RelicsOthersAtlas.js';
 import { PLAYER_START_HP } from '../systems/GameState.js';
+import { normalizeMonthIndex } from '../content/months/index.js';
 
 export class SaveManager {
   constructor() {
     this.META_SAVE_KEY = 'metaProgression';
     this.RUN_SAVE_KEY = 'currentRun';
     this.SETTINGS_SAVE_KEY = 'gameSettings';
-    this.SAVE_VERSION = '1.0.4'; // Removed the legacy bow block ability
+    this.SAVE_VERSION = '1.0.6'; // Month faces live — wipe unfinished pre-month runs
+    // Any currentRun with saveVersion < this is discarded so players start a
+    // fresh Thornwake run instead of Continue into a skeleton board.
+    this.RUN_MIN_COMPATIBLE_VERSION = '1.0.6';
   }
 
   // ============ Internal helpers ============
@@ -141,6 +145,7 @@ export class SaveManager {
         coins: gameState?.coins ?? 0,
         crystals: gameState?.crystals ?? 0,
         currentFloor: gameState?.currentFloor ?? 1,
+        calendarMonthIndex: gameState?.calendarMonthIndex ?? 0,
         // Added missing fields
         bonusInventorySlots: gameState?.bonusInventorySlots ?? 0,
         firstActionUsed: gameState?.firstActionUsed ?? false,
@@ -208,12 +213,31 @@ export class SaveManager {
     return this.safeSet(this.RUN_SAVE_KEY, JSON.stringify(runData));
   }
 
+  // Semver-ish string compare for our 1.0.x save versions.
+  isRunVersionCompatible(saveVersion) {
+    const min = this.RUN_MIN_COMPATIBLE_VERSION;
+    if (!saveVersion || typeof saveVersion !== 'string') return false;
+    return saveVersion >= min;
+  }
+
+  discardIncompatibleCurrentRun(reason = 'incompatible save version') {
+    console.log(`Discarding unfinished run (${reason}); start a new run from Thornwake.`);
+    this.clearCurrentRun();
+  }
+
   loadCurrentRun() {
     const saved = this.safeGet(this.RUN_SAVE_KEY);
     if (!saved) return null;
 
     try {
       const parsed = JSON.parse(saved);
+
+      if (!this.isRunVersionCompatible(parsed.saveVersion)) {
+        this.discardIncompatibleCurrentRun(
+          `saveVersion ${parsed.saveVersion ?? 'missing'} < ${this.RUN_MIN_COMPATIBLE_VERSION}`
+        );
+        return null;
+      }
 
       const savedAt = typeof parsed.savedAt === 'number' ? parsed.savedAt : Date.now();
       const daysSinceSave = (Date.now() - savedAt) / (1000 * 60 * 60 * 24);
@@ -234,6 +258,7 @@ export class SaveManager {
           currentFloor: Number.isFinite(parsed.player?.currentFloor)
             ? Math.max(1, Math.min(45, Math.floor(parsed.player.currentFloor)))
             : 1,
+          calendarMonthIndex: normalizeMonthIndex(parsed.player?.calendarMonthIndex ?? 0),
           bonusInventorySlots: parsed.player?.bonusInventorySlots ?? 0,
           firstActionUsed: parsed.player?.firstActionUsed ?? false,
           baseMaxHealth: parsed.player?.baseMaxHealth ?? PLAYER_START_HP,
@@ -336,6 +361,11 @@ export class SaveManager {
       run.effects.blockNextAttack = false;
     }
 
+    if (!run.saveVersion || run.saveVersion < '1.0.5') {
+      run.player = run.player && typeof run.player === 'object' ? run.player : {};
+      run.player.calendarMonthIndex = normalizeMonthIndex(run.player.calendarMonthIndex ?? 0);
+    }
+
     run.navigation = run.navigation && typeof run.navigation === 'object'
       ? run.navigation
       : { roomType: 'COMBAT', mapCursor: null, dungeonMap: null, pendingActShop: null };
@@ -413,13 +443,19 @@ export class SaveManager {
   hasCurrentRun() {
     const s = this.safeGet(this.RUN_SAVE_KEY);
     if (!s) return false;
-    try { 
-      JSON.parse(s); 
-      return true; 
+    try {
+      const parsed = JSON.parse(s);
+      if (!this.isRunVersionCompatible(parsed.saveVersion)) {
+        this.discardIncompatibleCurrentRun(
+          `saveVersion ${parsed.saveVersion ?? 'missing'} < ${this.RUN_MIN_COMPATIBLE_VERSION}`
+        );
+        return false;
+      }
+      return true;
     }
-    catch { 
-      this.clearCurrentRun(); 
-      return false; 
+    catch {
+      this.clearCurrentRun();
+      return false;
     }
   }
 

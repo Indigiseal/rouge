@@ -1,4 +1,10 @@
-export { ENEMIES, SUMMON_ONLY_ENEMY_TYPES, getEnemy } from './enemies.js';
+export {
+  ENEMIES,
+  SUMMON_ONLY_ENEMY_TYPES,
+  getEnemy,
+  usesBandStats,
+  buildEnemyCardFromDef,
+} from './enemies.js';
 export { BOSSES, BOSS_TIERS, getBoss } from './bosses.js';
 export {
   WEAPONS,

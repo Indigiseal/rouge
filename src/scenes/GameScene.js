@@ -28,6 +28,7 @@ import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from '../content/st
 import { isMetaProgressionDisabled } from '../config/TestOptions.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { CombatTurnController } from '../systems/combat/CombatTurnController.js';
+import { getMonthIndexForFloor } from '../content/months/index.js';
 import {
     applySandboxLoadout,
     applySandboxStorySetup,
@@ -37,6 +38,7 @@ import {
 } from '../sandbox/SandboxMode.js';
 import { humanRunRecorder, recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 import { openNoticeModal } from '../ui/ConfirmModal.js';
+import { isSilkCocoonCacheRoom, boardHasOpenCocoonEnemies } from '../systems/board/CocoonCacheBoard.js';
 import { playSmokeBurst, SMOKE_BURST_MS } from '../ui/SmokeBurst.js';
 
 export class GameScene extends Phaser.Scene {
@@ -93,6 +95,11 @@ export class GameScene extends Phaser.Scene {
             // New run
             this.gameState = new GameState(this);
             this.gameState.characterId = data.characterId || 'rogue';
+            // Next run opens on the month queued after the last defeat/victory
+            // (Thornwake ↔ Silkdeep). Tutorial/sandbox always start Thornwake.
+            this.gameState.calendarMonthIndex = (this.tutorialMode || this.sandboxMode || !this.metaManager)
+              ? 0
+              : this.metaManager.getNextCalendarMonthIndex();
             // Apply talent effects to fresh game state (skip for the tutorial so
             // its rigged board is deterministic).
             if (!this.tutorialMode && !this.sandboxMode && !isMetaProgressionDisabled()) {
@@ -402,6 +409,8 @@ export class GameScene extends Phaser.Scene {
         const background = this.add.image(320, 180, 'stoneFloor');
         background.setDisplaySize(640, 360);
         background.setOrigin(0.5, 0.5);
+        // Under the board frame and top HUD (month / floor / pause).
+        background.setDepth(-10);
     }
 
     startNewFloor() {
@@ -483,12 +492,52 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
+    /**
+     * Silk Cache ambush: leave anytime no hatched enemies remain (cocoons alone
+     * are optional). Reuses the Next control with a Leave label until a real
+     * enemy hatches or the room fully clears.
+     */
+    refreshSilkCocoonLeaveButton() {
+        if (this.tutorialMode || this._transitioning || this.gameState?.playerHealth <= 0) return;
+        if (!isSilkCocoonCacheRoom(this.gameState)) return;
+
+        if (this.enemiesCleared) {
+            this._silkCocoonLeaveOffer = false;
+            this.nextFloorButtonText?.setText('Next');
+            return;
+        }
+
+        if (boardHasOpenCocoonEnemies(this.cardSystem?.boardCards)) {
+            if (this._silkCocoonLeaveOffer) {
+                this._silkCocoonLeaveOffer = false;
+                this.nextFloorButton?.disableInteractive();
+                this.nextFloorButton?.setVisible(false);
+                this.nextFloorButtonText?.setVisible(false);
+                this.nextFloorButtonText?.setText('Next');
+            }
+            return;
+        }
+
+        this._silkCocoonLeaveOffer = true;
+        this.nextFloorButtonText?.setText('Leave');
+        this.showNextFloorButton();
+    }
+
     bindEnemyTurnHandler() {
         this.combatTurns.bindEnemyTurnHandler();
     }
 
     useAction() {
         if (this.isEnemyTurn) return false;
+
+        // Goblin club_stun: skip this action, then enemies still respond.
+        if ((this.gameState.playerStunnedTurns || 0) > 0) {
+            this.gameState.playerStunnedTurns--;
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Stunned!', 0xffcc66);
+            this.updateUI();
+            this.scheduleEnemyTurn();
+            return false;
+        }
 
         // Check if player is already exhausted BEFORE consuming the action
         const wasExhausted = this.gameState.actionsLeft <= 0;
@@ -871,6 +920,7 @@ export class GameScene extends Phaser.Scene {
                     item => item?.id === 'monsterEgg' || item?.name === 'Egg'
                 );
                 this.metaManager.setPendingEgg(hasEgg);
+                this.queueNextRunMonth();
                 const characterId = this.gameState.characterId || 'rogue';
                 xpResult = this.metaManager.handlePlayerDeath(killedBy, floor, characterId);
             }
@@ -950,6 +1000,17 @@ export class GameScene extends Phaser.Scene {
         // Player already dead (e.g. a mutual kill via Thorns/reflect) — don't let a
         // stray click on the Next Floor button revive them via setupBossRewardRoom().
         if (this.gameState.playerHealth <= 0) return;
+
+        // Silk Cache Leave: walk away while only cocoons/loot remain — no clear payout.
+        if (this._silkCocoonLeaveOffer && !this.enemiesCleared) {
+            this.clearEnemyTurnTimers();
+            this.enemiesCleared = true;
+            this.inventorySystem?.clearAllHandWebs?.();
+            this._silkCocoonLeaveOffer = false;
+            this.nextFloorButtonText?.setText('Next');
+            this.gameState.ambushId = null;
+        }
+
         recordHumanRunEvent(this, 'floor_departed', {
             floor: this.gameState.currentFloor,
             roomType: this.gameState.roomType,
@@ -1147,6 +1208,7 @@ export class GameScene extends Phaser.Scene {
         this.clearEnemyTurnTimers();
         this.finalizeCompanionCombatHistory();
         this.enemiesCleared = true;
+        this.inventorySystem?.clearAllHandWebs?.();
         const floor = this.gameState.currentFloor;
         recordHumanRunEvent(this, 'floor_cleared', {
             floor,
@@ -1193,6 +1255,8 @@ export class GameScene extends Phaser.Scene {
         // Null-guard: if the button hasn't been (re)created yet, do NOT throw
         // — that would leave enemiesCleared=true with a still-hidden button,
         // and the next checkFloorClear would short-circuit on !enemiesCleared.
+        this._silkCocoonLeaveOffer = false;
+        this.nextFloorButtonText?.setText('Next');
         this.showNextFloorButton();
         this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
         this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
@@ -1208,6 +1272,8 @@ export class GameScene extends Phaser.Scene {
             } else {
                 lines.push('The broken trap box coughed up its valuables and retired in disgrace.');
             }
+        } else if (story.boxState === 'exploded') {
+            lines.push('A music box ended as slag on a ruined floor.');
         } else if (story.boxState && story.boxState !== 'unknown') {
             lines.push('A tiny robber box is still loose somewhere in the dungeon.');
         }
@@ -1226,7 +1292,19 @@ export class GameScene extends Phaser.Scene {
         humanRunRecorder.finishAndDownload(this, 'victory', {
             floor: this.gameState?.currentFloor ?? null,
         });
+        if (!this.sandboxMode && !this.tutorialMode && this.metaManager && !isMetaProgressionDisabled()) {
+            this.queueNextRunMonth();
+        }
         return showVictoryResult(this);
+    }
+
+    /** After defeat/victory, next New Run opens on the following calendar month. */
+    queueNextRunMonth() {
+        if (this.sandboxMode || this.tutorialMode || !this.metaManager) return;
+        const start = this.gameState?.calendarMonthIndex ?? 0;
+        const floor = this.gameState?.currentFloor ?? 1;
+        const currentMonth = getMonthIndexForFloor(start, floor);
+        this.metaManager.advanceCalendarMonthAfterRun(currentMonth);
     }
 
     grantCardSpentRelicBonus(card, x = this.playerAvatar.x, y = this.playerAvatar.y) {
@@ -1324,6 +1402,7 @@ export class GameScene extends Phaser.Scene {
         this.gameState.coins = runData.player.coins;
         this.gameState.crystals = runData.player.crystals;
         this.gameState.currentFloor = runData.player.currentFloor;
+        this.gameState.calendarMonthIndex = runData.player.calendarMonthIndex ?? 0;
         this.gameState.bonusInventorySlots = runData.player.bonusInventorySlots;
         this.gameState.firstActionUsed = runData.player.firstActionUsed;
         this.gameState.baseMaxHealth = runData.player.baseMaxHealth;

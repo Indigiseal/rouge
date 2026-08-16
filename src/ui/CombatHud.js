@@ -5,6 +5,7 @@ import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
 import { CHARACTER_CLASSES } from '../content/characters/CharacterClasses.js';
+import { getMonthDisplayName } from '../content/months/index.js';
 
 // The amulet strip owns the top-left corner, so the hero column starts below
 // it. Everything from the avatar down to the crystal counter is offset by this
@@ -91,15 +92,21 @@ export const CombatHud = {
         this.relicUIGroup = this.add.group();
         this.amuletScrollOffset = 0; // which amulet is the first one shown
         this.armorTooltip = null; // tooltip shown on hover over equipped armor
-        this.floorText = this.add.text(520, 15, 'Floor: 1', {
-            fontSize: '12px',
-            fill: '#a78f70',
+        // Above the floor board frame (depth 0) and stone BG — otherwise the
+        // gamingBoard lip covers month/act/floor in the top-right.
+        const TOP_HUD_DEPTH = 40;
+        // Month first (bright), then Act/Floor (muted) — easy to spot which calendar month you're in.
+        this.floorText = this.add.text(455, 15, 'Thornwake  ·  Act 1 · Floor 1', {
+            fontSize: '13px',
+            fill: '#f5e6c8',
             fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH);
+        this.monthText = null;
         
         // Pause button - positioned in top right corner
         const pauseButton = this.add.rectangle(600, 15, 46, 18, 0x6f5452, 0.18)
             .setStrokeStyle(1, 0x6f5452)
+            .setDepth(TOP_HUD_DEPTH)
             .setInteractive({ useHandCursor: true })
             .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); pauseButton.setFillStyle(0x6f5452, 0.32); })
             .on('pointerout', () => pauseButton.setFillStyle(0x6f5452, 0.18))
@@ -109,7 +116,7 @@ export const CombatHud = {
             fontSize: '9px',
             fill: '#6f5452',
             fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH);
         
         // Also add ESC key binding for pause
         this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
@@ -404,7 +411,11 @@ export const CombatHud = {
         this.updateActionPointUI();
         this.updateCurrencyUILayout();
         const _act = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
-        this.floorText.setText(`Act ${_act}  Floor: ${this.gameState.currentFloor}`);
+        const monthName = getMonthDisplayName(
+            this.gameState.calendarMonthIndex ?? 0,
+            this.gameState.currentFloor || 1
+        );
+        this.floorText.setText(`${monthName}  ·  Act ${_act} · Floor ${this.gameState.currentFloor}`);
         this.updateEquippedArmorPanel();
         
         // Update health orb

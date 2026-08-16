@@ -189,6 +189,91 @@ export function showBossTooltip(scene, data, anchorX, anchorY, gap = TOOLTIP_GAP
     renderTooltipBox(scene, name, bodyParts.join('\n'), '#ffcc33', anchorX, anchorY, TOOLTIP_DEPTH, gap);
 }
 
+function getEnemyFeatureLines(scene, data) {
+    const lines = [];
+    const features = Array.isArray(data?.features) ? data.features : [];
+    if (features.includes('wolf_pack')) {
+        lines.push(t(scene, 'tooltip.wolfPack'));
+    }
+    if (features.includes('spore_on_hit')) {
+        lines.push(t(scene, 'tooltip.sporeOnHit'));
+    }
+    if (features.includes('thorns_reflect')) {
+        lines.push(t(scene, 'tooltip.thornsReflect'));
+    }
+    if (features.includes('veil_flip')) {
+        lines.push(t(scene, 'tooltip.veilFlip'));
+    }
+    if (features.includes('ranged_immune')) {
+        lines.push(t(scene, 'tooltip.rangedImmune'));
+    }
+    if (features.includes('gnaw')) {
+        lines.push(t(scene, 'tooltip.gnaw'));
+    }
+    if (features.includes('taunt')) {
+        lines.push(t(scene, 'tooltip.taunt'));
+    }
+    if (features.includes('poison_amp')) {
+        lines.push(t(scene, 'tooltip.poisonAmp'));
+    }
+    if (features.includes('web_hand')) {
+        lines.push(t(scene, 'tooltip.webHand'));
+    }
+    if (features.includes('club_stun')) {
+        lines.push(t(scene, 'tooltip.clubStun'));
+    }
+    if (features.includes('coin_steal')) {
+        lines.push(t(scene, 'tooltip.coinSteal'));
+    }
+    if (features.includes('goblin_rally')) {
+        lines.push(t(scene, 'tooltip.goblinRally'));
+    }
+    if (features.includes('ignore_armor')) {
+        lines.push(t(scene, 'tooltip.ignoreArmor'));
+    }
+    if (features.includes('heavy_shot')) {
+        lines.push(t(scene, 'tooltip.heavyShot'));
+    }
+    if (features.includes('cocoon_shell')) {
+        lines.push(t(scene, 'tooltip.cocoonShell'));
+    }
+    if (data?.isEliteMiniBoss) {
+        lines.push(t(scene, 'tooltip.eliteMiniBoss'));
+    }
+    if (data?.isMimic) {
+        lines.push(t(scene, 'tooltip.mimicEscape', { turns: data.escapeTurnsLeft ?? data.escapeTurns ?? 3 }));
+    }
+    return lines;
+}
+
+/** Revealed-enemy tooltip — name + role; abilities as "Poison: …" lines. */
+export function showEnemyTooltip(scene, card, gap = BOARD_TOOLTIP_GAP) {
+    if (!scene || !scene.add || !card?.data) return;
+    hideItemTooltip(scene);
+
+    const data = card.data;
+    const baseName = translateItemName(scene, data) || data.name || t(scene, 'tooltip.card');
+    const roleKey = (data.role === 'RANGED' || data.isRangedType) ? 'tooltip.ranged' : 'tooltip.melee';
+    const title = `${baseName}  ·  ${t(scene, roleKey)}`;
+    // HP/ATK live on the card corners — don't duplicate them here.
+    const bodyParts = [
+        ...getEnemyFeatureLines(scene, data),
+        ...getBossAbilityLines(scene, data),
+    ];
+
+    const nameColor = data.isEliteMiniBoss ? '#ffcc33' : '#f5e6c8';
+    renderTooltipBox(
+        scene,
+        title,
+        bodyParts.join('\n'),
+        nameColor,
+        card.sprite?.x ?? 0,
+        card.sprite?.y ?? 0,
+        TOOLTIP_DEPTH,
+        gap
+    );
+}
+
 // Shared box renderer for item and boss tooltips. Stored on the scene as
 // `_itemTooltip` so any subsequent show (and hideItemTooltip) clears it.
 // `depth` defaults to board level; modal overlays that sit higher pass their

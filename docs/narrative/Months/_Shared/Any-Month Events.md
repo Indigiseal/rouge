@@ -15,6 +15,6 @@ Encounters that are not owned by a single month face.
 |---|---|
 | [[09 Frosthollow/Events/Quiet Crossroads|Quiet Crossroads]] | Fallback filler when nothing else is eligible |
 | [[04 Boneflood/Events/The Old Drill Room|The Old Drill Room]] | Companion-gated upgrade room |
-| [[_Shared/Music Box Chain|Music Box Chain]] | Cross-month story lane |
+| [[_Shared/Event Sequences|Event Sequences]] | Cross-month story lanes (see [[_Shared/Music Box Chain|Music Box]]) |
 
 Month folders still list soft links where tone overlaps.

@@ -13,8 +13,12 @@ export function isEnemyRangedAttack(card) {
  * Resolve damage dealt to the player (dodge, armor, reflection, lethal prevention).
  * Mutates gameState; VFX goes through scene callbacks already on GameState.scene.
  * Does not change save-field shapes.
+ *
+ * @param {object} [options]
+ * @param {boolean} [options.ignoreArmor] Force-skip equipped armor DEF + durability.
+ * @param {number} [options.ignoreArmorChance] After hit/miss resolved, chance to ignore armor.
  */
-export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source = 'enemy', armorPierce = 0) {
+export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source = 'enemy', armorPierce = 0, options = {}) {
     const scene = gameState.scene;
     // Poison is internal — armor plating doesn't stop it and doesn't wear out
     // blocking it. Dodge still applies (you can shrug off a tick), but it must
@@ -61,6 +65,8 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
 
     let protection = 0;
     let reflectedDamage = 0;
+    let ignoreArmor = Boolean(options?.ignoreArmor);
+    const ignoreArmorChance = Math.max(0, Number(options?.ignoreArmorChance) || 0);
 
     if (gameState.equippedArmor) {
         // Handle Dodge from equipped armor — durability ticks on dodge.
@@ -91,7 +97,29 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
                 dodged: true
             };
         }
+    }
 
+    // Hit confirmed (dodge / plate miss already resolved). Optional armor ignore
+    // (Goblin Archer): DEF does not apply and durability does not tick.
+    if (
+        !ignoreArmor
+        && !isPoison
+        && ignoreArmorChance > 0
+        && amount > 0
+        && Math.random() < ignoreArmorChance
+    ) {
+        ignoreArmor = true;
+        if (scene?.playerAvatar) {
+            scene.createFloatingText(
+                scene.playerAvatar.x,
+                scene.playerAvatar.y - 16,
+                'Armor ignored!',
+                0xffaa66
+            );
+        }
+    }
+
+    if (gameState.equippedArmor && !ignoreArmor) {
         // Add protection from equipped armor (leather is dodge-only: protection 0),
         // including any Magic Shield / Warding boost. Shared with the armor card's
         // displayed number so the two can never disagree.

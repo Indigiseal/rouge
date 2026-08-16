@@ -237,14 +237,7 @@ export const InventoryCombatUse = {
                         if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
                         if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
                         if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
-                        if (card.infoText) {
-                            if (card.infoText.list) {
-                                card.infoText.destroy(true);
-                            } else {
-                                card.infoText.destroy();
-                            }
-                            card.infoText = null;
-                        }
+                        this.scene.cardSystem.destroyCardInfoText?.(card);
                         flippedAny = true;
                     }
                 });
@@ -631,6 +624,7 @@ export const InventoryCombatUse = {
         lift(cardSprite.getData?.('infoText'), restY, true);
         if (slot.gemEffectSprite?.visible) lift(slot.gemEffectSprite, restY);
         lift(slot.briarFrame, restY);
+        lift(slot.webOverlay, restY);
         lift(slot.twinkleSprite, restY);
         if (slot.gemIndicator) lift(slot.gemIndicator, slot.gemIndicator.restY ?? restY);
 
@@ -672,6 +666,15 @@ export const InventoryCombatUse = {
     },
     applyFrontVolleyTalent(primaryIndex, bowDamage, weapon, pct) {
         const boards = this.scene.cardSystem?.boardCards || [];
+        const tauntActive = boards.some((card) => (
+            card?.revealed
+            && (card.data?.health ?? 0) > 0
+            && Array.isArray(card.data?.features)
+            && card.data.features.includes('taunt')
+            && card.sprite?.texture?.key
+            && card.sprite.texture.key !== 'cardBack'
+            && !String(card.sprite.texture.key).startsWith('cardFlip')
+        ));
         const candidates = [];
         boards.forEach((card, index) => {
             if (index === primaryIndex) return;
@@ -680,6 +683,9 @@ export const InventoryCombatUse = {
             if ((card.data.health ?? 0) <= 0) return;
             // Front row ≈ MELEE role (bow already ignores them for primary shot).
             if (card.data.role !== 'MELEE') return;
+            if (tauntActive && !(Array.isArray(card.data.features) && card.data.features.includes('taunt'))) {
+                return;
+            }
             candidates.push(index);
         });
         if (!candidates.length) return;
@@ -777,6 +783,12 @@ export const InventoryCombatUse = {
                 slotSprite.briarFrame.setVisible(true);
                 slotSprite.briarFrame.setDepth(this.getInventoryDepths().briarFrame);
             }
+            if (slotSprite.webOverlay && slotSprite.webOverlay.scene) {
+                slotSprite.webOverlay.x = cardSprite.x;
+                slotSprite.webOverlay.y = cardSprite.y;
+                slotSprite.webOverlay.setVisible(true);
+                slotSprite.webOverlay.setDepth(this.getInventoryDepths().webOverlay);
+            }
             // Move twinkle sprite back too
             if (slotSprite.twinkleSprite && slotSprite.twinkleSprite.scene) {
                 slotSprite.twinkleSprite.x = cardSprite.x;
@@ -845,6 +857,12 @@ export const InventoryCombatUse = {
                     originalSlot.briarFrame.y = cardSprite.y;
                     originalSlot.briarFrame.setVisible(true);
                     originalSlot.briarFrame.setDepth(this.getInventoryDepths().briarFrame);
+                }
+                if (originalSlot.webOverlay && originalSlot.webOverlay.scene) {
+                    originalSlot.webOverlay.x = cardSprite.x;
+                    originalSlot.webOverlay.y = cardSprite.y;
+                    originalSlot.webOverlay.setVisible(true);
+                    originalSlot.webOverlay.setDepth(this.getInventoryDepths().webOverlay);
                 }
 
                 // The merge twinkle followed the weapon onto the board, where

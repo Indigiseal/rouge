@@ -43,6 +43,8 @@ Don't: хардкодить статы/цены/XP в scenes; пихать би�
 - Каталоги: `content/cards/{weapons,armor,enemies,bosses,...}.js`
 - Barrel: `content/cards/index.js`
 - Фабрики — единственный способ собрать runtime-карту: `createWeaponCardData`, `createArmorCardData`
+- Месячные враги (band×archetype): `content/months/<id>/enemies/*.js` + `assets/`;
+  `cards/enemies.js` мержит month defs + legacy `tiers[]`
 
 Оружие (`weapons.js`):
 
@@ -73,6 +75,7 @@ createWeaponCardData    → runtime card
 - Economy: `content/economy/{shop,repair,rest,metaXp}.js`
 - Balance knobs: `content/balance/` + `docs/BALANCE.md`
 - Events: один файл = один default-export → `events/index.js`
+- Event Sequences (any-month, e.g. Music Box) живут в `content/events/`, не в `content/months/<id>/events/`. Месячный пак — только для эвентов, привязанных к лицу месяца.
 
 ---
 

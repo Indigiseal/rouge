@@ -24,6 +24,9 @@ export const ASSET_MANIFEST = [
     { key: 'eventPaper9Slice', path: 'assets/art/paper9Slice.png', type: 'image' },
     { key: 'scrollHandle', path: 'assets/art/scroll.png', type: 'image' },
     { key: 'eventsShops', path: 'assets/art/eventsShops80x80.png', type: 'spritesheet', frameWidth: 80, frameHeight: 80 },
+    // Arm Wrestling minigame art (human vs ogre locked hands).
+    { key: 'armWrestlingHands', path: 'assets/art/armWrestlingHands.png', type: 'image' },
+    { key: 'musicBoxLockWafers', path: 'assets/art/musicBoxLockWafers.png', type: 'spritesheet', frameWidth: 58, frameHeight: 72 },
     { key: 'statueHead', path: 'assets/art/statueHead.png', type: 'image' },
     { key: 'panelArmor', path: 'assets/art/panelArmor.png', type: 'image' },
     // Little banner behind each shop item's price (30x14)
@@ -169,6 +172,11 @@ export const ASSET_MANIFEST = [
     { key: 'skeleton_c', path: 'assets/art/skeleton_c.png', type: 'image' },
     { key: 'spider_c', path: 'assets/art/spider_c.png', type: 'image' },
     { key: 'lostSoul', path: 'assets/art/ghostlyEnemy.png', type: 'image' },
+    // Temporary face for month enemies without dedicated card art (53×70).
+    { key: 'enemyPlaceholder', path: 'assets/art/ghostlyEnemy.png', type: 'image' },
+    // Thornwake roster — 5 card faces, L→R: wolf, thornEnt, thornSprite,
+    // sporeArcher, thornFairy. Mapped in months/thornwake/assets/enemyAtlas.js.
+    { key: 'thornwakeEnemies', path: 'assets/art/thornwakeSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
     { key: 'cerberusHead', path: 'assets/art/dogHead.png', type: 'image' },
     // Elite mini-boss portraits â€” same 53x70 footprint as the base art they
     // replace. Only some enemies have one; see ELITE_SPRITE_KEYS below.
