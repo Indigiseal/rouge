@@ -1272,6 +1272,8 @@ export class GameScene extends Phaser.Scene {
             } else {
                 lines.push('The broken trap box coughed up its valuables and retired in disgrace.');
             }
+        } else if (story.boxState === 'exploded') {
+            lines.push('A music box ended as slag on a ruined floor.');
         } else if (story.boxState && story.boxState !== 'unknown') {
             lines.push('A tiny robber box is still loose somewhere in the dungeon.');
         }

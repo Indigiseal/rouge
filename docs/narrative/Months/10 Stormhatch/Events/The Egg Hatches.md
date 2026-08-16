@@ -3,10 +3,12 @@ type: event
 project: Evershift
 status: in-game
 event_id: hatching_egg
-primary_month: Stormhatch
+primary_month: any
+event_sequence: music_box
 tags:
   - evershift
   - event
+  - sequence
 ---
 
 # The Egg Hatches
@@ -18,12 +20,12 @@ The stolen egg cracks. A storm chick may hatch into a companion — or fail and 
 | Field | Value |
 |---|---|
 | Event id | `hatching_egg` |
-| Primary month | [[Stormhatch]] |
-| Also fits | _none_ |
+| Placement | Any-month [[_Shared/Event Sequences|Event Sequence]] follow-up |
+| Tone home | [[10 Stormhatch/Stormhatch|Stormhatch]] |
 
 ## Notes
 
-Follow-up to Monster Bird Nest. Stormhatch.
+Follow-up to Monster Bird Nest (and the engineer, if the box survived). Not month-gated.
 
 ## Full copy
 

@@ -76,7 +76,10 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 ## Events
 
 - [[03 Tollroad/Events/Toll Collectors|Toll Collectors]] — The Goblin King's tax men block the road. Pay, intimidate, fight, or wait — choices spill into the boss fight and shops.
-- [[03 Tollroad/Events/Goblin Engineer|Goblin Engineer]] — A goblin offers to repair the Latchbox — properly for coin or card parts, or poorly for free. Success unlocks the box's drawers.
+
+## Soft fits
+
+- [[03 Tollroad/Events/Goblin Engineer|Goblin Engineer]] _(sequence)_ — Any-month [[_Shared/Event Sequences|Event Sequence]] beat. A goblin offers to repair the Latchbox.
 
 ## Gaps
 
@@ -97,4 +100,5 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 - [[Months Index]]
 - [[The Calendar]]
 - [[_Shared/Music Box Chain|Music Box Chain]]
+- [[_Shared/Event Sequences|Event Sequences]]
 - [[_Shared/Any-Month Events|Any-Month Events]]

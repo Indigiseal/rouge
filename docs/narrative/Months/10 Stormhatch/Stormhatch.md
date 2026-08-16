@@ -68,8 +68,12 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 
 ## Events
 
-- [[10 Stormhatch/Events/Monster Bird Nest|Monster Bird Nest]] — A nest of eggs, scrap, and one brass cog. Stealing from it feeds the music-box lane and may anger the mother bird.
-- [[10 Stormhatch/Events/The Egg Hatches|The Egg Hatches]] — The stolen egg cracks. A storm chick may hatch into a companion — or fail and leave only a wrong silence.
+_(none owned — nest and egg hatch belong to the any-month [[_Shared/Music Box Chain|Music Box]] sequence)_
+
+## Soft fits
+
+- [[10 Stormhatch/Events/Monster Bird Nest|Monster Bird Nest]] _(sequence)_ — A nest of junk, a warm egg, and a brass cog; the mother still circles.
+- [[10 Stormhatch/Events/The Egg Hatches|The Egg Hatches]] _(sequence)_ — The stolen egg cracks. A storm chick may hatch into a companion.
 
 
 ## Opening text (draft)
@@ -86,6 +90,7 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 - [[Months Index]]
 - [[The Calendar]]
 - [[_Shared/Music Box Chain|Music Box Chain]]
+- [[_Shared/Event Sequences|Event Sequences]]
 - [[_Shared/Any-Month Events|Any-Month Events]]
 
 

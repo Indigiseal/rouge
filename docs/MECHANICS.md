@@ -48,6 +48,15 @@
 - **Goblin Archer** (artillery): `ignore_armor` — after hit/miss resolved, if the shot lands, 10% ignore DEF and skip armor durability loss
 - **Road Sniper** (artillery): `heavy_shot` — 20% deal 150% damage instead of 100%
 
+## Event Sequences (any-month)
+- Optional lanes that are **not owned by a month**. Code lives in `src/content/events/`; the calendar must never soft-lock them.
+- **Music Box** (`broken_music_box` → `monster_bird_nest` → `goblin_engineer` → optional `hatching_egg`):
+  - Opener while `boxState === 'unknown'` (first event of a run that has not met the box).
+  - **Force it open** → lock-wafer overlay (`MusicBoxLockMinigame`): brief with example wafers, then 10 wafers (4 complementary pairs + 1 detonator pair). Seat all 4 safe pairs to succeed (`opened`, +1 crystal, box follows). Matching the detonators detonates (`boxState: exploded`, **35 HP**). After each attempt, three face-down wafers rotate. Nest then hides the cog prize (egg still available); engineer hides all repair (walk away).
+  - **Open it carefully** (key card or Skeleton Key) → extract the charge, crystal cog crumbles (+1 crystal), missing repair cog, legs unfold, box follows.
+  - **Leave it alone** → no reward; lock stays shut; legs unfold; box follows.
+  - **Monster Bird Nest** → overlay (`BirdNestMinigame`): drag stacked junk off the egg and/or brass cog. A bird-shadow sweeps from random sides; holding junk under it costs **−5s** immediately and drains the 20s bar faster. Timeout = fail (no loot; `nestRaidTimedOut`; punishment TBD). Run keeps whatever was already taken. No HP/armor tax on the egg. Then `goblin_engineer`.
+
 ## Silkdeep event — The Silk Cache
 - Event id `silk_cocoon_cache` (month folder `src/content/months/silkdeep/events/`); once per run while the act month is Silkdeep.
 - Choices: leave / search cocoons / burn them all (requires Fireball scroll, consumes it).

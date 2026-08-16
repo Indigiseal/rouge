@@ -19,7 +19,7 @@ Team lock (working):
 
 - Month folders own **tone and weights**, not a mandatory questline.
 - Most events are roadside strangeness of the current month face.
-- A few lanes may still sequence (e.g. music box), but that is optional content — not the spine of the macro-lore.
+- A few lanes may still sequence as [[_Shared/Event Sequences|Event Sequences]] (e.g. [[_Shared/Music Box Chain|Music Box]]), but that is optional content — not the spine of the macro-lore.
 - Soft fits across months are allowed; hard branching between paths is not required.
 
 ## How months use events
@@ -32,6 +32,7 @@ Team lock (working):
 ## Related
 
 - [[Months Index]]
+- [[_Shared/Event Sequences|Event Sequences]]
 - [[_Shared/Music Box Chain|Music Box Chain]]
 - [[_Shared/Any-Month Events|Any-Month Events]]
 - [[Run Structure]]

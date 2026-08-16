@@ -3100,6 +3100,8 @@ function runEventLegacy(mock, gs, inv, floor) {
   if (st.story === 0) { st.story++; gs.coins += 18; gs.crystals += 1; return; }
   if (st.story === 1) {
     st.story++;
+    // Bird nest raid: sim keeps a small heal stand-in (live game is a timed
+    // overlay; timeout punishment is still TBD).
     gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 8);
     return;
   }
@@ -3273,8 +3275,8 @@ function runEvent(mock, gs, inv, floor) {
   };
 
   if (story.stage === 'music_box') {
-    // Leaving is the best safe opening: it preserves HP and starts the cog path.
-    gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 5);
+    // Leaving is still the safe opener: no HP, no crystal, the box follows.
+    // Force-open is a lock-wafer minigame (charge pair detonates).
     story.stage = 'bird_nest';
     story.reserveRewardSlot = true;
     return;

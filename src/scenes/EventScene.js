@@ -23,6 +23,19 @@ import {
 import { EventRunHelpers } from '../systems/events/EventRunHelpers.js';
 import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 import { openArmWrestlingMinigame } from '../ui/ArmWrestlingMinigame.js';
+import { openMusicBoxLockMinigame } from '../ui/MusicBoxLockMinigame.js';
+import { openBirdNestMinigame } from '../ui/BirdNestMinigame.js';
+import {
+  MUSIC_BOX_EXPLODED,
+  MUSIC_BOX_OPENED_BY_FORCE,
+} from '../content/events/broken_music_box.js';
+import {
+  NEST_TIMEOUT,
+  NEST_TOOK_BOTH,
+  NEST_TOOK_COG,
+  NEST_TOOK_EGG,
+  NEST_LEFT,
+} from '../content/events/monster_bird_nest.js';
 import { getMonthDefForFloor } from '../content/months/calendar.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
@@ -98,8 +111,9 @@ export class EventScene extends Phaser.Scene {
     if (story.pendingEvents.includes('arm_wrestling') && !story.armWrestleRematchDone) {
       return this.getEventById('arm_wrestling');
     }
-    // The music box is the sole story opener. (The donkey caravan + hermit
-    // thread was removed and no longer appears at all.)
+    // Music Box Event Sequence opener. Not month-gated: any-month, then nest
+    // and engineer via pendingEvents. (The donkey caravan + hermit thread was
+    // removed and no longer appears at all.)
     if (story.boxState === 'unknown') return this.getEventById('broken_music_box');
     // Once the main story beats are past, offer a special bonus room (copying
     // mirror / too-nice room) once each per run, chosen at random, before
@@ -186,6 +200,7 @@ export class EventScene extends Phaser.Scene {
       boxRepairChance: 50,
       birdAngry: false,
       stoleBirdEgg: false,
+      nestRaidTimedOut: false,
       latchboxRewardClaimed: false,
       goblinEngineerResolved: false,
       chickHatched: false,
@@ -275,6 +290,7 @@ export class EventScene extends Phaser.Scene {
         : defaultStoryRun.boxRepairChance,
       birdAngry: Boolean(existingStoryRun.birdAngry),
       stoleBirdEgg: Boolean(existingStoryRun.stoleBirdEgg),
+      nestRaidTimedOut: Boolean(existingStoryRun.nestRaidTimedOut),
       latchboxRewardClaimed: Boolean(existingStoryRun.latchboxRewardClaimed),
       goblinEngineerResolved: typeof existingStoryRun.goblinEngineerResolved === 'boolean'
         ? existingStoryRun.goblinEngineerResolved
@@ -1036,9 +1052,12 @@ export class EventScene extends Phaser.Scene {
       choice.next = { choices: this.getBrassWizardTrayChoices(), wizardTray: true };
     }
 
-    // Coin bet opens the click minigame and must not terminal-resolve yet.
-    if (this._armWrestleAwaitingMatch) {
+    // Coin bet / lock wafers / nest raid open an overlay minigame and must not
+    // terminal-resolve yet.
+    if (this._armWrestleAwaitingMatch || this._musicBoxForceAwaiting || this._birdNestAwaiting) {
       this._armWrestleAwaitingMatch = false;
+      this._musicBoxForceAwaiting = false;
+      this._birdNestAwaiting = false;
       const revealText = this._getChoiceOutcome(choice) || '';
       if (this.descText) {
         this.descText.setVisible(true).setAlpha(1).setText(revealText);
@@ -1929,6 +1948,92 @@ export class EventScene extends Phaser.Scene {
       text: 'Wrestle',
       action: () => {},
       outcome: (state, s) => s.armWrestleOutcome
+    }, -1, { keepRewards: true });
+  }
+
+  _openMusicBoxLockMinigame() {
+    if (this._musicBoxLockHandle) {
+      this._musicBoxLockHandle.close?.();
+      this._musicBoxLockHandle = null;
+    }
+    (this._choiceBtns || []).forEach(({ bg, label }) => {
+      bg?.removeInteractive?.();
+      bg?.setAlpha?.(0);
+      label?.setAlpha?.(0);
+    });
+    this._musicBoxLockHandle = openMusicBoxLockMinigame(this, {
+      onDone: (won) => {
+        this._musicBoxLockHandle = null;
+        this._finishMusicBoxForceOpen(won);
+      },
+    });
+    if (!this._musicBoxLockHandle) {
+      this.time?.delayedCall?.(0, () => this._finishMusicBoxForceOpen(false));
+    }
+  }
+
+  _finishMusicBoxForceOpen(won) {
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    if (won) {
+      this.resolveMusicBoxOpened('force');
+      this.musicBoxForceOutcome = MUSIC_BOX_OPENED_BY_FORCE;
+    } else {
+      this.resolveMusicBoxExploded();
+      this.musicBoxForceOutcome = MUSIC_BOX_EXPLODED;
+    }
+    this.gameScene?.updateUI?.();
+    this._resolve({
+      id: 'music_box_force',
+      text: 'Force it open',
+      action: () => {},
+      outcome: (state, s) => s.musicBoxForceOutcome,
+    }, -1, { keepRewards: true });
+  }
+
+  _openBirdNestMinigame() {
+    if (this._birdNestHandle) {
+      this._birdNestHandle.close?.();
+      this._birdNestHandle = null;
+    }
+    (this._choiceBtns || []).forEach(({ bg, label }) => {
+      bg?.removeInteractive?.();
+      bg?.setAlpha?.(0);
+      label?.setAlpha?.(0);
+    });
+    const includeCog = this.gameState?.storyRun?.boxState !== 'exploded';
+    this._birdNestHandle = openBirdNestMinigame(this, {
+      includeCog,
+      onDone: (result) => {
+        this._birdNestHandle = null;
+        this._finishBirdNestSearch(result || {});
+      },
+    });
+    if (!this._birdNestHandle) {
+      this.time?.delayedCall?.(0, () => this._finishBirdNestSearch({
+        tookCog: false,
+        tookEgg: false,
+        timedOut: false,
+      }));
+    }
+  }
+
+  _finishBirdNestSearch(result = {}) {
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    this.resolveBirdNestRaid(result);
+    let outcome = NEST_LEFT;
+    if (result.timedOut) outcome = NEST_TIMEOUT;
+    else if (result.tookCog && result.tookEgg) outcome = NEST_TOOK_BOTH;
+    else if (result.tookCog) outcome = NEST_TOOK_COG;
+    else if (result.tookEgg) outcome = NEST_TOOK_EGG;
+    this.birdNestOutcome = outcome;
+    this.gameScene?.updateUI?.();
+    this._resolve({
+      id: 'nest_search',
+      text: 'Search the nest',
+      action: () => {},
+      outcome: (state, s) => s.birdNestOutcome,
     }, -1, { keepRewards: true });
   }
 

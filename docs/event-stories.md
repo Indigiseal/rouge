@@ -4,55 +4,101 @@ Narrative-only extraction for writing/editing. Gameplay effects, rewards, condit
 
 ## 1. The Broken Music Box
 
-A small black music box lies under the rubble — lid cracked, one brass leg twitching.
+The chamber is a ruin. Columns that once held the ceiling lie in heaps, split the way old stone splits when something vast has finished fighting here.
 
-As you lean in, it plays three notes and snaps shut.
+A short phrase of music threads the dust. You follow it through the rubble and find the source: a small music box, badly damaged, half-buried under a fallen capital.
+
+The moment you look at it, the last note cuts off. Snap.
+
+You lift it free. The works are a wreck, but the lock is shut tight. Around your feet, the floor is littered with other wind-up heads — boxes gone, casings crushed, some of them melted into slag.
 
 ### Choice: Force it open
 
-You pry at the lid. The music box plays one warning note, then explodes.
+You brace the lid. Behind the cracked plate, brass wafers sit in two rows — pins, wards, and something darker that does not belong in a lock.
 
-When the smoke clears you are still standing, and the floor around you is scattered with coins.
+Successful force-open:
 
-Alternate fatal version:
+The lock does not want to give. You force it anyway.
 
-You pry at the lid. The box explodes.
+Inside, a crude charge sits against the cylinder — easy to pinch out now that the lid is open. You set the powder aside.
+
+A larger cog, cut from resonating crystal, is already failing. It powderizes in your fingers. One shard remains.
+
+Where the cylinder should turn, a second cog is missing. Without it the melody cannot finish.
+
+Hidden panels click. Brass legs unfold. The box falls in behind you.
+
+Failed force-open:
+
+You brace the lid and pull.
+
+The lock holds. The charge does not.
+
+When the smoke clears, the music box is a scatter of blackened brass. The melted heads on the floor suddenly make sense.
 
 ### Choice: Open it carefully
 
-The lock gives. Inside, where the cylinder should turn, a cog is missing.
+The lock gives without a fight.
 
-The box looks at you — somehow — then grows two more legs and falls in behind you.
+Inside, a crude charge sits against the cylinder — easy to pinch out now that the lid is open. You set the powder aside.
+
+A larger cog, cut from resonating crystal, is already failing. It powderizes in your fingers. One shard remains.
+
+Where the cylinder should turn, a second cog is missing. Without it the melody cannot finish.
+
+Hidden panels click. Brass legs unfold. The box falls in behind you.
 
 ### Choice: Leave it alone
 
-You step over it and keep walking.
+You set it down and walk on.
 
-Ten steps later: small metal feet on the stones behind you.
+Ten steps later: small metal feet on the stones behind you. The lock is still shut.
 
 ## 2. Monster Bird Nest
 
-A nest sits wedged between two fallen pillars — speckled eggs, bent keys, old buttons, and one small brass cog.
+The pillars here are split the same way as the chamber of the box — something vast fought, then left. A nest is jammed in the wreckage: twigs, bent keys, old buttons, a warm egg, and one small brass cog that does not belong to any bird.
 
-In your pack, the music box starts clicking.
+In your pack, the music box starts clicking. It knows its missing heart.
 
-A shadow crosses the nest. Then again, lower.
+A shadow crosses the nest. Then again, lower. The mother is still circling.
 
-### Choice: Grab just the cog
+If the box already exploded:
 
-You take the cog and nothing else, and you run.
+The cog would have mattered, if you still had a box to put it in.
 
-The box rides quietly the rest of the way.
+### Choice: Search the nest
 
-### Choice: Grab the egg and the cog
+Minigame: drag junk aside to free the egg and/or the brass cog. A bird-shadow sweeps the nest. Holding junk under it costs time. 20 seconds.
 
-You take the cog and one warm egg. The mother catches you at the edge of the nest — her talons open your armor before you pull free.
+If you take only the cog:
 
-In your pack, the box rattles. Grateful, or judging. Hard to say.
+You free the brass cog and nothing else, and you run.
 
-### Choice: Leave the nest alone
+In your pack the box goes quiet, as if a missing tooth had been promised back.
 
-You leave it. The box clicks once, then stops.
+If you take only the egg:
+
+You free one warm egg and run.
+
+The shadow drops behind you. The mother will not forget.
+
+If you take both:
+
+You free the cog and one warm egg. The box clicks once in your pack — grateful, or judging.
+
+The shadow drops behind you. The mother will not forget.
+
+If the timer runs out:
+
+The shadow drops onto the nest. You leave what you came for and run.
+
+Whatever you meant to take stays behind.
+
+### Choice: Leave it alone
+
+You step back from the nest.
+
+Ten steps later the shadow crosses the stones where you were standing.
 
 ## 3. Goblin Engineer
 
@@ -69,6 +115,20 @@ If the player has the cog:
 If the player does not have the cog:
 
 "No cog? Then I'm guessing at the insides. Goblin confidence: fifty percent."
+
+If the box already exploded:
+
+A goblin steps out from behind a broken machine, sniffs the air, and coughs.
+
+"Snatch Box. Charge went first. I can smell the powder from here. Nothing left to seat a cog in."
+
+He looks at your boots as if a box might still be hiding there. It is not.
+
+### Choice: Walk away (box exploded)
+
+He shrugs. "Ash is ash. I don't do funerals."
+
+He is already back behind the machine before you turn away.
 
 ### Choice: Refuse to pay
 
