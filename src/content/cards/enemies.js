@@ -1,12 +1,13 @@
 import { resolveEnemyStats } from '../balance/EnemyPower.js';
 import { THORNWAKE_ENEMY_DEFS } from '../months/thornwake/index.js';
 import { SILKDEEP_ENEMY_DEFS } from '../months/silkdeep/index.js';
+import { TOLLROAD_ENEMY_DEFS } from '../months/tollroad/index.js';
 
 // Enemy catalog.
 // - Month packs (band + archetype): content/months/<id>/enemies/
 // - Legacy types keep per-type `tiers[]` (fallback when month has no roster).
 // - HP/ATK for band types: resolveEnemyStats(floor, archetype). See docs/BALANCE.md.
-// Month defs win over legacy on the same id (e.g. Silkdeep spider).
+// Month defs win over legacy on the same id (e.g. Silkdeep spider / Tollroad goblin).
 
 /** Legacy global pool — used when the active month has enemies: null. */
 export const LEGACY_ENEMIES = {
@@ -96,6 +97,7 @@ export const ENEMIES = {
   ...LEGACY_ENEMIES,
   ...THORNWAKE_ENEMY_DEFS,
   ...SILKDEEP_ENEMY_DEFS,
+  ...TOLLROAD_ENEMY_DEFS,
 };
 
 export const SUMMON_ONLY_ENEMY_TYPES = new Set(['cerberusHead']);

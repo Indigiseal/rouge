@@ -8,11 +8,12 @@
 
 import { THORNWAKE_MONTH } from './thornwake/index.js';
 import { SILKDEEP_MONTH } from './silkdeep/index.js';
+import { TOLLROAD_MONTH } from './tollroad/index.js';
 
 export const MONTHS = Object.freeze([
   THORNWAKE_MONTH,
   SILKDEEP_MONTH,
-  Object.freeze({ id: 'tollroad', name: 'Tollroad', enemies: null }),
+  TOLLROAD_MONTH,
   Object.freeze({ id: 'boneflood', name: 'Boneflood', enemies: null }),
   Object.freeze({ id: 'mireturn', name: 'Mireturn', enemies: null }),
   Object.freeze({ id: 'veilbleed', name: 'Veilbleed', enemies: null }),
@@ -26,13 +27,33 @@ export const MONTHS = Object.freeze([
 
 export const MONTH_COUNT = MONTHS.length;
 
-/** How many leading months participate in run/act rotation (Thornwake + Silkdeep). */
-export const MONTH_ROTATION_LENGTH = 2;
+/** How many leading months participate in run/act rotation. */
+export const MONTH_ROTATION_LENGTH = 3;
 
 export function normalizeMonthIndex(index) {
   const n = Math.floor(Number(index) || 0);
   const len = MONTH_ROTATION_LENGTH;
   return ((n % len) + len) % len;
+}
+
+/**
+ * Resolve CLI / config month token to a rotation index.
+ * Accepts numeric index ("0", 0) or month id ("thornwake", "silkdeep", "tollroad").
+ * Unknown tokens fall back to 0 (Thornwake).
+ */
+export function resolveMonthIndex(token) {
+  if (token == null || token === '') return 0;
+  if (typeof token === 'number' && Number.isFinite(token)) {
+    return normalizeMonthIndex(token);
+  }
+  const raw = String(token).trim().toLowerCase();
+  if (/^\d+$/.test(raw)) return normalizeMonthIndex(Number(raw));
+  const byId = MONTHS.findIndex((m) => m?.id === raw);
+  if (byId >= 0 && byId < MONTH_ROTATION_LENGTH) return byId;
+  // Allow looking up ids that exist in the full calendar but outside rotation
+  // by mapping to their position only when within rotation length.
+  if (byId >= 0) return normalizeMonthIndex(byId);
+  return 0;
 }
 
 export function nextMonthIndex(index) {

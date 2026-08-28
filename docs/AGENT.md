@@ -75,6 +75,7 @@ createWeaponCardData    → runtime card
 - Economy: `content/economy/{shop,repair,rest,metaXp}.js`
 - Balance knobs: `content/balance/` + `docs/BALANCE.md`
 - Events: один файл = один default-export → `events/index.js`
+- Event Sequences (any-month, e.g. Music Box) живут в `content/events/`, не в `content/months/<id>/events/`. Месячный пак — только для эвентов, привязанных к лицу месяца.
 
 ---
 

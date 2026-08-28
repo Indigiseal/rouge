@@ -37,9 +37,34 @@
 ## Silkdeep enemy identities
 - **Spider** (skirmisher): poison — stacking poison on hit
 - **Cave Crawler** (swarm): `gnaw` — 50% chance +1 equipped armor durability loss on hit (extra vs block wear)
-- **Silk Husk** (bruiser): `taunt` — while revealed and alive, player may only attack taunting enemies (melee, ranged, magic)
+- **Silk Husk** (bruiser): `taunt` — while revealed (face-up art, not card back) and alive, player may only attack taunting enemies (melee, ranged, magic). Face-down / mid-flip husks do not provoke.
 - **Stinger Scorpion** (artillery): `poison_amp` — on hit, +1 to active poison tick damage (no effect if not poisoned)
 - **Silkslinger** (artillery): `web_hand` — webs one random hand card for 1 turn (visual overlay; unusable). If the only usable weapon is webbed, treat as no weapon (stalemate enemy turns)
+
+## Tollroad enemy identities
+- **Goblin** (skirmisher): `club_stun` — on hit, 5% stun (player skips next action; enemies still respond)
+- **Highway Cutpurse** (swarm): `coin_steal` — each attack steals 10 coins
+- **Toll Brute** (bruiser): `goblin_rally` — on attack, 15% other living goblin allies each make an extra attack
+- **Goblin Archer** (artillery): `ignore_armor` — after hit/miss resolved, if the shot lands, 10% ignore DEF and skip armor durability loss
+- **Road Sniper** (artillery): `heavy_shot` — 20% deal 150% damage instead of 100%
+
+## Event Sequences (any-month)
+- Optional lanes that are **not owned by a month**. Code lives in `src/content/events/`; the calendar must never soft-lock them.
+- **Music Box** (`broken_music_box` → `monster_bird_nest` → `goblin_engineer` → optional `hatching_egg`):
+  - Opener while `boxState === 'unknown'` (first event of a run that has not met the box).
+  - **Force it open** → lock-wafer overlay (`MusicBoxLockMinigame`): brief with example wafers, then 10 wafers (4 complementary pairs + 1 detonator pair). Seat all 4 safe pairs to succeed (`opened`, +1 crystal, box follows). Matching the detonators detonates (`boxState: exploded`, **35 HP**). After each attempt, three face-down wafers rotate. Nest then hides the cog prize (egg still available); engineer hides all repair (walk away).
+  - **Open it carefully** (key card or Skeleton Key) → extract the charge, crystal cog crumbles (+1 crystal), missing repair cog, legs unfold, box follows.
+  - **Leave it alone** → no reward; lock stays shut; legs unfold; box follows.
+  - **Monster Bird Nest** → overlay (`BirdNestMinigame`): drag stacked junk off the egg and/or brass cog. A bird-shadow sweeps from random sides; holding junk under it costs **−5s** immediately and drains the 20s bar faster. Timeout = fail (no loot; `nestRaidTimedOut`; punishment TBD). Run keeps whatever was already taken. No HP/armor tax on the egg. Then `goblin_engineer`.
+
+## Silkdeep event — The Silk Cache
+- Event id `silk_cocoon_cache` (month folder `src/content/months/silkdeep/events/`); once per run while the act month is Silkdeep.
+- Choices: leave / search cocoons / burn them all (requires Fireball scroll, consumes it).
+- Search → combat board of 8 revealed cocoon shells (1 HP). Clicking does not flip; any 1 damage cracks a shell.
+  Three shells hide loot (1 amulet + 2 weapon/armor for the floor); five hide a random Silkdeep enemy (**not** Silkslinger).
+- Burn → combat board with no enemies; three loot cards already revealed (same loot table).
+- Leave combat anytime while no hatched (non-cocoon) enemies remain.
+- If the only usable weapon is webbed/unavailable and no damaging magic can open shells, the player turn auto-skips (stalemate enemy turns), same idea as Silkslinger softlock in normal combat.
 
 ## Acceptance examples
 - On new floor: at least 1 front enemy + 1 back enemy is revealed

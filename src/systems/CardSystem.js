@@ -123,6 +123,7 @@ export class CardSystem {
     injectAngryNestmother(...args) { return this.spawner.injectAngryNestmother(...args); }
     enforceForcedEnemyTypes(...args) { return this.spawner.enforceForcedEnemyTypes(...args); }
     spawnAmbushBoard(...args) { return this.spawner.spawnAmbushBoard(...args); }
+    openSilkCocoon(...args) { return this.spawner.openSilkCocoon(...args); }
     injectTollGuards(...args) { return this.spawner.injectTollGuards(...args); }
     spawnBoss(...args) { return this.spawner.spawnBoss(...args); }
     playBossEntrance(...args) { return this.fx.playBossEntrance(...args); }
@@ -615,6 +616,13 @@ export class CardSystem {
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Nothing...', 0x999999);
                 this.removeCard(index);
                 break;
+
+            case 'enemy':
+            case 'eliteEnemy':
+                if (card.data?.isCocoon || (Array.isArray(card.data?.features) && card.data.features.includes('cocoon_shell'))) {
+                    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, 'Deal 1 damage to open', 0xc8b890);
+                }
+                break;
         }
 
         this.scene.updateUI();
@@ -625,6 +633,7 @@ export class CardSystem {
         // "still in combat" state if the board is actually clear.
         this.checkFloorClear();
         this.scene.queueStalemateEnemyTurn?.();
+        this.scene.refreshSilkCocoonLeaveButton?.();
     }
 
     consumeAmulet(amulet, index) {

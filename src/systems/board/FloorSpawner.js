@@ -6,6 +6,7 @@ import { openAmuletChoiceOverlay } from '../../ui/AmuletChoiceOverlay.js';
 import { minEnemyRatioForFloor } from '../../content/balance/EnemyDensity.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { reinforcementStateFor, reinforcementStateFromSave } from '../../content/balance/Reinforcements.js';
+import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js';
 
 export class FloorSpawner {
     constructor(cs) {
@@ -30,6 +31,7 @@ export class FloorSpawner {
         this.injectAngryNestmother = injectAngryNestmother.bind(cs);
         this.enforceForcedEnemyTypes = enforceForcedEnemyTypes.bind(cs);
         this.spawnAmbushBoard = spawnAmbushBoard.bind(cs);
+        this.openSilkCocoon = (index, card) => openSilkCocoon(cs, index, card);
         this.injectTollGuards = injectTollGuards.bind(cs);
         this.spawnBoss = spawnBoss.bind(cs);
         this.pickCardType = pickCardType.bind(cs);
@@ -73,6 +75,7 @@ function spawnFloorCards() {
     this.scene.gameState.firstAttackThisFloorUsed = false;
     this.scene.gameState.keenEdgeUsedThisFloor = false;
     this.scene.gameState.playerSpored = false;
+    this.scene.gameState.playerStunnedTurns = 0;
     this.scene.inventorySystem?.clearAllHandWebs?.();
   }
 
@@ -1255,6 +1258,12 @@ function spawnAmbushBoard(ambush) {
     } finally {
       this._forcedEnemyTypes = null;
     }
+    return;
+  }
+
+  // Silkdeep cocoon cache — custom board (inspect shells / burn loot-only).
+  if (ambush?.kind === 'silk_cocoons' || ambush?.id === 'silk_cocoon_cache') {
+    spawnSilkCocoonCacheBoard(this, ambush);
     return;
   }
 

@@ -8,6 +8,11 @@
 //   2. A MockScene that stubs every scene method the logic touches and runs
 //      tweens / timers synchronously so combat resolves in one call.
 
+import { getEnemyHitAttack } from '../src/content/combat/enemyAttack.js';
+import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../src/content/months/tollroad/index.js';
+
+const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
+
 // ── 1. Global Phaser shim ────────────────────────────────────────────────
 const rngInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 globalThis.Phaser = {
@@ -45,12 +50,15 @@ globalThis.localStorage = globalThis.localStorage || {
 // Any method call returns the stub itself (chainable). `once`/`on` store
 // callbacks; `play` fires the stored animationcomplete handler immediately so
 // CardSystem.revealCard finishes its flip synchronously.
-function makeGameObject() {
+//
+// `scene` must be set: BoardCombat.attackEnemy early-returns when
+// `!card.sprite?.scene` (guards death-drop loot stubs in the real game).
+function makeGameObject(scene = null) {
   let proxy;
   const t = {
     x: 0, y: 0, width: 10, height: 10, displayWidth: 10, displayHeight: 10,
     alpha: 1, scaleX: 1, scaleY: 1, depth: 0, active: true, visible: true,
-    scene: null, _once: {}, _data: {},
+    scene, _once: {}, _data: {},
     getBounds() { return { x: t.x, y: t.y, width: t.width, height: t.height }; },
     getData(k) { return t._data[k]; },
     setData(k, v) { t._data[k] = v; return proxy; },
@@ -76,20 +84,21 @@ function makeGameObject() {
   return proxy;
 }
 
-// add.* factory — every creator returns a fresh chainable GameObject.
-function makeAddFactory() {
+// add.* factory — every creator returns a fresh chainable GameObject owned by
+// the scene (so sprite.scene is truthy for combat guards).
+function makeAddFactory(scene) {
   return new Proxy({}, {
-    get() { return (...args) => makeGameObject(); },
+    get() { return (...args) => makeGameObject(scene); },
   });
 }
 
 export class MockScene {
   constructor() {
-    this.add = makeAddFactory();
+    this.add = makeAddFactory(this);
     this.tweens = {
-      add: (cfg) => { if (cfg && typeof cfg.onComplete === 'function') cfg.onComplete(); return makeGameObject(); },
+      add: (cfg) => { if (cfg && typeof cfg.onComplete === 'function') cfg.onComplete(); return makeGameObject(this); },
       killTweensOf: () => {},
-      chain: () => makeGameObject(),
+      chain: () => makeGameObject(this),
     };
     this.time = {
       // Run callbacks immediately; return a removable handle.
@@ -106,9 +115,18 @@ export class MockScene {
       })
     };
     this.anims = { exists: () => false, create: () => {} };
-    this.sound = { play: () => {}, add: () => makeGameObject(), get: () => null, stopByKey: () => {} };
+    this.sound = { play: () => {}, add: () => makeGameObject(this), get: () => null, stopByKey: () => {} };
     this.cache = { audio: { exists: () => false } };
     this.input = { keyboard: { on() {}, off() {} }, on() {}, off() {} };
+    // BoardCardFx boss bars use scene.make.image({ add: false }).
+    this.make = {
+      image: () => makeGameObject(this),
+      sprite: () => makeGameObject(this),
+      graphics: () => makeGameObject(this),
+      container: () => makeGameObject(this),
+      text: () => makeGameObject(this),
+      bitmapText: () => makeGameObject(this),
+    };
     this.events = (() => {
       const m = new Map();
       return {
@@ -124,7 +142,7 @@ export class MockScene {
       isSleeping: () => false,
     };
     this.game = { globalVolume: { master: 1, sfx: 1, music: 1 } };
-    this.playerAvatar = makeGameObject();
+    this.playerAvatar = makeGameObject(this);
 
     // Combat / turn state mirrored from GameScene
     this.isEnemyTurn = false;
@@ -179,6 +197,11 @@ export class MockScene {
   // current action resolves (the engine drains the queue each step).
   useAction() {
     if (this.isEnemyTurn) return false;
+    if ((this.gameState.playerStunnedTurns || 0) > 0) {
+      this.gameState.playerStunnedTurns--;
+      this._enemyTurnPending = true;
+      return false;
+    }
     // Track AP starvation: actions taken while "hungry" (out of AP).
     this._actionCount = (this._actionCount || 0) + 1;
     if ((this.gameState.actionsLeft || 0) <= 0) this._hungryActions = (this._hungryActions || 0) + 1;
@@ -315,7 +338,11 @@ export class MockScene {
         }
       }
 
-      let damageDealt = card.data.attack;
+      let damageDealt = getEnemyHitAttack(card, board);
+      const features = Array.isArray(card.data?.features) ? card.data.features : [];
+      if (features.includes('heavy_shot') && Math.random() < 0.2) {
+        damageDealt = Math.ceil(damageDealt * 1.5);
+      }
       const rage = card.data.abilities?.find((a) => a.type === 'rage');
       if (rage) {
         const maxHp = card.data.maxHealth || card.data.health;
@@ -336,12 +363,62 @@ export class MockScene {
         }
       });
 
+      if (features.includes('coin_steal')) {
+        const stolen = Math.min(10, Math.max(0, this.gameState.coins || 0));
+        if (stolen > 0) this.gameState.coins -= stolen;
+      }
+
       const armorBeforeHit = this.gameState.equippedArmor;
-      const { actualDamage, tookDamage } = this.gameState.takeDamage(damageDealt, i, 'enemy', armorPierce);
+      const damageOptions = features.includes('ignore_armor') ? { ignoreArmorChance: 0.1 } : {};
+      const { actualDamage, tookDamage, dodged } = this.gameState.takeDamage(
+        damageDealt,
+        i,
+        'enemy',
+        armorPierce,
+        damageOptions,
+      );
       if (armorBeforeHit && !this.gameState.equippedArmor) {
         this._armorBreaks = (this._armorBreaks || 0) + 1;
       }
       if (this.gameState.playerHealth <= 0) { this._lastKiller = card.data.name || 'enemy'; return; }
+
+      if (!dodged && features.includes('club_stun') && Math.random() < 0.05) {
+        this.gameState.playerStunnedTurns = Math.max(this.gameState.playerStunnedTurns || 0, 1);
+      }
+
+      if (features.includes('goblin_rally') && Math.random() < 0.15) {
+        for (let j = 0; j < board.length; j++) {
+          if (j === i || this.gameState.playerHealth <= 0) continue;
+          const ally = board[j];
+          if (
+            ally?.revealed
+            && this.isEnemyCard(ally)
+            && (ally.data?.health || 0) > 0
+            && !(ally.data?.frozen > 0)
+            && GOBLIN_ALLY_TYPE_SET.has(ally.data?.enemyType)
+          ) {
+            // Inline one extra ally swing (no nested rally).
+            const allyFeatures = Array.isArray(ally.data?.features) ? ally.data.features : [];
+            let allyDmg = getEnemyHitAttack(ally, board);
+            if (allyFeatures.includes('heavy_shot') && Math.random() < 0.2) {
+              allyDmg = Math.ceil(allyDmg * 1.5);
+            }
+            if (allyFeatures.includes('coin_steal')) {
+              const stolen = Math.min(10, Math.max(0, this.gameState.coins || 0));
+              if (stolen > 0) this.gameState.coins -= stolen;
+            }
+            const allyOpts = allyFeatures.includes('ignore_armor') ? { ignoreArmorChance: 0.1 } : {};
+            const allyResult = this.gameState.takeDamage(allyDmg, j, 'enemy', 0, allyOpts);
+            if (!allyResult.dodged && allyFeatures.includes('club_stun') && Math.random() < 0.05) {
+              this.gameState.playerStunnedTurns = Math.max(this.gameState.playerStunnedTurns || 0, 1);
+            }
+            if (this.gameState.playerHealth <= 0) {
+              this._lastKiller = ally.data.name || 'enemy';
+              return;
+            }
+          }
+        }
+      }
 
       // Card thorns retaliate against melee even on a dodge; armor Briar
       // damage only applies when damage actually landed.
@@ -454,7 +531,7 @@ export class MockScene {
     e.role = Math.random() < 0.5 ? 'MELEE' : 'RANGED';
     // Use the full GameObject stub (has off/on/play/once) so later
     // revealCard / smokeScreen paths don't crash on missing Phaser APIs.
-    const sprite = makeGameObject();
+    const sprite = makeGameObject(this);
     sprite.scene = this;
     this.cardSystem.boardCards.push({ data: e, revealed: true, sprite });
   }

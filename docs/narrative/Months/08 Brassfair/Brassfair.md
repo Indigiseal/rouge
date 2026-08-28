@@ -71,10 +71,10 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 
 - [[08 Brassfair/Events/Something Wicked|Something Wicked]] — A wrong carnival under lanterns. An old woman sells cursed-cheap trinkets and will not easily let go.
 - [[08 Brassfair/Events/The Brass Wizard|The Brass Wizard]] — A coin-slot fortune machine behind carnival curtains. Fortunes, card swaps, jams, or a machine that wakes with human eyes.
-- [[08 Brassfair/Events/The Broken Music Box|The Broken Music Box]] — A cracked brass music box under rubble. It may explode, follow you, or start a whole companion lane once its missing cog is found.
 
 ## Soft fits
 
+- [[08 Brassfair/Events/The Broken Music Box|The Broken Music Box]] _(sequence)_ — Any-month [[_Shared/Event Sequences|Event Sequence]] opener. Tone fits Brassfair.
 - [[03 Tollroad/Events/Goblin Engineer|Goblin Engineer]] _(soft)_ — A goblin offers to repair the Latchbox — properly for coin or card parts, or poorly for free. Success unlocks the box's drawers.
 
 ## Opening text (draft)
@@ -91,6 +91,7 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 - [[Months Index]]
 - [[The Calendar]]
 - [[_Shared/Music Box Chain|Music Box Chain]]
+- [[_Shared/Event Sequences|Event Sequences]]
 - [[_Shared/Any-Month Events|Any-Month Events]]
 
 

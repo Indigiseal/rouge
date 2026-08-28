@@ -3,27 +3,29 @@ type: event
 project: Evershift
 status: in-game
 event_id: broken_music_box
-primary_month: Brassfair
+primary_month: any
+event_sequence: music_box
 tags:
   - evershift
   - event
+  - sequence
 ---
 
 # The Broken Music Box
 
-A cracked brass music box under rubble. It may explode, follow you, or start a whole companion lane once its missing cog is found.
+A ruined chamber of fallen columns. A damaged music box under rubble, lock still shut, melted wind-up heads on the floor. Force it open seats complementary lock wafers — matching the scorched charge pair detonates.
 
 ## Placement
 
 | Field | Value |
 |---|---|
 | Event id | `broken_music_box` |
-| Primary month | [[Brassfair]] |
-| Also fits | _none_ |
+| Placement | Any-month [[_Shared/Event Sequences|Event Sequence]] opener |
+| Tone home | [[08 Brassfair/Brassfair|Brassfair]] |
 
 ## Notes
 
-Story opener while boxState is unknown. Tone fits Brassfair; progress should not be blocked by month change.
+Opener of the [[_Shared/Music Box Chain|Music Box]] sequence while `boxState` is unknown. Not month-gated.
 
 ## Full copy
 

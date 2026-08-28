@@ -1,7 +1,11 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { CombatSequencer } from './CombatSequencer.js';
 import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
+import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
+import { getEnemy } from '../../content/cards/enemies.js';
+import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/months/tollroad/index.js';
 
+const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
 // Gap between consecutive enemies' attacks. Derived from the sequencer's last
 // beat so it always clears one attacker's full timeline — retuning the beats
 // retunes this with them.
@@ -61,7 +65,15 @@ export class CombatTurnController {
         if (!enemiesRemain) return false;
 
         // A remaining board card can still reveal or provide a way forward.
+        // Cocoon shells are already face-up enemies — loot pickups still count.
         if (board.some(card => card && !scene.isEnemyCard(card))) return false;
+
+        // Normal rooms: face-down cards can be flipped without a weapon.
+        // Cocoon cache has no flips — only damage opens shells.
+        const cocoonCache = isSilkCocoonCacheRoom(scene.gameState);
+        if (!cocoonCache && board.some(card => card && !card.revealed && scene.isEnemyCard(card))) {
+            return false;
+        }
 
         const inventory = scene.inventorySystem?.slots || scene.gameState?.inventory || [];
         const isUsableWeapon = (card) => (
@@ -73,6 +85,16 @@ export class CombatTurnController {
             isUsableWeapon(scene.gameState?.equippedWeapon)
         );
         if (hasUsableWeapon) return false;
+
+        // Cocoon shells only open to damage. Buff/heal magic does not help —
+        // only weapon-like spells that hit a board enemy count as a way out.
+        if (cocoonCache) {
+            const canCrackCocoon = (card) => (
+                card?.type === 'magic'
+                && (card.magicType === 'fireball' || card.magicType === 'soulDrain')
+            );
+            return !inventory.some(canCrackCocoon);
+        }
 
         // Magic can still change or resolve a fight without a weapon.
         return !inventory.some(card => card?.type === 'magic');
@@ -128,6 +150,10 @@ export class CombatTurnController {
             .filter(({ card }) => {
                 if (!card || !scene.isEnemyCard(card) || card.justRevealed) return false;
                 if ((card.data?.health ?? 0) <= 0) return false;
+                // Cocoon shells do not attack — they only crack when damaged.
+                if (card.data?.isCocoon || (Array.isArray(card.data?.features) && card.data.features.includes('cocoon_shell'))) {
+                    return false;
+                }
                 if (card.revealed) return true;
                 // Thorn Fairy keeps acting while face-down so she can flip back up.
                 return Array.isArray(card.data?.features) && card.data.features.includes('veil_flip');
@@ -248,8 +274,11 @@ export class CombatTurnController {
         this.isEnemyTurn = false;
     }
 
-    processEnemyAttack(card, index) {
+    processEnemyAttack(card, index, { fromRally = false } = {}) {
         const scene = this.scene;
+        if (card?.data?.isCocoon || (Array.isArray(card?.data?.features) && card.data.features.includes('cocoon_shell'))) {
+            return;
+        }
         // Thorn Fairy veil: face-down → flip up and skip the strike this turn.
         if (Array.isArray(card.data?.features) && card.data.features.includes('veil_flip') && !card.revealed) {
             scene.cardSystem.revealCard(index, true);
@@ -318,7 +347,16 @@ export class CombatTurnController {
             }
         }
 
+        const features = Array.isArray(card.data?.features) ? card.data.features : [];
         let damageDealt = getEnemyHitAttack(card, scene.cardSystem?.boardCards);
+
+        // Road Sniper — occasional heavy bolt.
+        if (features.includes('heavy_shot') && Math.random() < 0.2) {
+            damageDealt = Math.ceil(damageDealt * 1.5);
+            if (card.sprite) {
+                scene.createFloatingText(card.sprite.x, card.sprite.y - 24, 'Heavy shot!', 0xff8866);
+            }
+        }
 
         // RAGE — when the boss drops below its HP threshold it hits harder. Shows
         // an "ENRAGED!" cue the first time it kicks in so the spike is legible.
@@ -351,7 +389,7 @@ export class CombatTurnController {
                     scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Poisoned!', 0x00ff00);
                 }
             } else if (ability.type === 'coin_steal') {
-                // Goblin coin stealing ability
+                // Legacy goblin ability (chance + amount on the ability object).
                 if (Math.random() < ability.chance && scene.gameState.coins > 0) {
                     const stolenAmount = Math.min(ability.amount, scene.gameState.coins);
                     scene.gameState.coins -= stolenAmount;
@@ -361,8 +399,29 @@ export class CombatTurnController {
             }
         });
 
+        // Highway Cutpurse — always lifts a flat purse cut on the swing.
+        if (features.includes('coin_steal')) {
+            const stolenAmount = Math.min(10, Math.max(0, scene.gameState.coins || 0));
+            if (stolenAmount > 0) {
+                scene.gameState.coins -= stolenAmount;
+                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, `-${stolenAmount} coins stolen!`, 0xffd700);
+                if (card.sprite) {
+                    scene.createFloatingText(card.sprite.x, card.sprite.y, `+${stolenAmount}`, 0xffd700);
+                }
+            }
+        }
+
+        const damageOptions = features.includes('ignore_armor')
+            ? { ignoreArmorChance: 0.1 }
+            : {};
         const playerHealthBeforeDamage = scene.gameState.playerHealth;
-        const { actualDamage, tookDamage, dodged } = scene.gameState.takeDamage(damageDealt, index, 'enemy', armorPierce);
+        const { actualDamage, tookDamage, dodged } = scene.gameState.takeDamage(
+            damageDealt,
+            index,
+            'enemy',
+            armorPierce,
+            damageOptions,
+        );
 
         if (tookDamage) {
             CombatSequencer.playVariant(scene, 'hurt', 'player_hurt', 0.5);
@@ -373,7 +432,14 @@ export class CombatTurnController {
             }
         }
 
-        const features = Array.isArray(card.data?.features) ? card.data.features : [];
+        // Goblin — club stun on a connecting hit.
+        if (!dodged && features.includes('club_stun') && Math.random() < 0.05) {
+            scene.gameState.playerStunnedTurns = Math.max(
+                scene.gameState.playerStunnedTurns || 0,
+                1,
+            );
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 22, 'Stunned!', 0xffcc66);
+        }
 
         // Cave Crawler — extra armor chew on a connecting hit (on top of block wear).
         if (!dodged && features.includes('gnaw') && scene.gameState.equippedArmor && Math.random() < 0.5) {
@@ -410,6 +476,11 @@ export class CombatTurnController {
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18, 'Spored!', 0xb8e986);
         }
 
+        // Toll Brute — chance to bark other goblins into an extra swing.
+        if (!fromRally && features.includes('goblin_rally') && Math.random() < 0.15) {
+            this.triggerGoblinRally(index);
+        }
+
         // Thorn Fairy — strike, then flip face-down (if she survived).
         if (
             Array.isArray(card.data?.features)
@@ -435,6 +506,37 @@ export class CombatTurnController {
         }
 
         this.applyThornsDamage(card, index, tookDamage);
+    }
+
+    triggerGoblinRally(sourceIndex) {
+        const scene = this.scene;
+        const board = scene.cardSystem?.boardCards || [];
+        const allies = board
+            .map((c, i) => ({ card: c, index: i }))
+            .filter(({ card, index }) => (
+                index !== sourceIndex
+                && card?.revealed
+                && scene.isEnemyCard(card)
+                && (card.data?.health || 0) > 0
+                && !(card.data?.frozen > 0)
+                && (
+                    GOBLIN_ALLY_TYPE_SET.has(card.data?.enemyType)
+                    || getEnemy(card.data?.enemyType)?.goblinAlly
+                )
+            ));
+        if (!allies.length) return;
+        if (board[sourceIndex]?.sprite) {
+            scene.createFloatingText(
+                board[sourceIndex].sprite.x,
+                board[sourceIndex].sprite.y - 28,
+                'Rally!',
+                0xffdd66
+            );
+        }
+        for (const { card, index } of allies) {
+            if (scene.gameState.playerHealth <= 0) break;
+            this.processEnemyAttack(card, index, { fromRally: true });
+        }
     }
 
     getActiveThornsCard() {
@@ -582,10 +684,13 @@ export class CombatTurnController {
             ));
         if (candidates.length === 0) return null;
 
-        // Silk Husk taunt: companions may only strike taunting enemies.
-        const taunters = candidates.filter(({ card }) => (
-            Array.isArray(card.data?.features) && card.data.features.includes('taunt')
-        ));
+        // Silk Husk taunt: companions may only strike face-up taunting enemies.
+        const taunters = candidates.filter(({ card }) => {
+            if (!card?.revealed || (card.data?.health ?? 0) <= 0) return false;
+            const tex = card.sprite?.texture?.key;
+            if (!tex || tex === 'cardBack' || String(tex).startsWith('cardFlip')) return false;
+            return Array.isArray(card.data?.features) && card.data.features.includes('taunt');
+        });
         if (taunters.length > 0) candidates = taunters;
 
         if (companion?.attackStyle === 'melee' || companion?.range === 'melee') {

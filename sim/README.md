@@ -105,18 +105,26 @@ node sim/balance-sim.js stats-db 1000 balance behavior-run --behavior magicHeavy
 
 ---
 
-## Флаги meta / amulets
+## Флаги meta / amulets / month / act
 
-Работают с **`stats-db`** и **`loot-stats`**. Перебивают preset.
+Работают с **`stats-db`**, **`loot-stats`** и **`fresh`**. Перебивают preset.
 
 | Флаг | Эффект |
 |------|--------|
-| `--meta` / `--no-meta` | Все релики (`ALL_RELICS`) на старт каждого run |
+| `--character rogue\|warrior` | Класс персонажа (default: rogue) |
+| `--armor-pool chain\|plate\|both` | Фильтр спавна брони воина |
+| `--talents none\|max\|id:rank,...` | Пустое дерево / max live-ветки / кастомные ранги (включает meta) |
+| `--month thornwake\|silkdeep\|tollroad\|0\|1\|2` | Пин ростера месяца (без ротации по актам) |
+| `--act 1\|2\|3` | Только этот акт (F1–15 / 16–30 / 31–45). Стартеры: common / uncommon / rare. Act 2/3 сидят 3/6 random амулетов |
+| `--meta` / `--no-meta` | Вкл/выкл meta (таланты); preset `geared` ещё тянет relic-пул (сейчас пустой) |
 | `--amulets` / `--no-amulets` | Дроп/ивенты/шоп амулетов |
-| `--amulet-loadout none` | Старт без амулетов (дефолт) |
-| `--amulet-loadout bag` | Bottomless Bag с F1 |
-| `--amulet-loadout strong` | 8 сильных амулетов с F1 |
+| `--amulet-loadout none` | Старт без амулетов (дефолт; перебивает act-seed) |
+| `--amulet-loadout bag` | Bottomless Bag с старта (перебивает act-seed) |
+| `--amulet-loadout strong` | 8 сильных амулетов с старта (перебивает act-seed) |
+| `--amulet-start id,id` | Явный стартовый набор (перебивает act-seed) |
 | `--behavior <preset>` | Preset поведения бота (`balanced`, `safe`, `combat`, `magicHeavy`) |
+
+Mid-act kit (`--act 2\|3`): оружие повышенной редкости + random амулеты — это **стартовый loadout**, не дроп; сид работает даже с `--no-amulets`.
 
 ### Готовые npm-скрипты (4 квадранта)
 
@@ -136,15 +144,25 @@ node sim/balance-sim.js stats-db 1000 fresh meta-run --meta --no-amulets
 # Амулеты + сумка, без меты
 node sim/balance-sim.js stats-db 1000 fresh bag-run --amulets --no-meta --amulet-loadout bag
 
-# Настоящая мета-прогрессия (релик за смерть между runs)
+# Silkdeep, только act 2 (bands D/E), uncommon starters + 3 random amulets
+node sim/balance-sim.js stats-db 200 balance silk-a2 \
+  --month silkdeep --act 2 --character rogue --talents max
+
+# Thornwake act 3, rare starters + 6 random amulets, точечные таланты
+node sim/balance-sim.js loot-stats 100 balance \
+  --month thornwake --act 3 --character warrior \
+  --talents armorerStart:1,rivets:2 --armor-pool plate
+
+# Настоящая мета-прогрессия (XP за смерть между runs)
 node sim/balance-sim.js stats-db 500 accumulate career --meta
 ```
 
 **Важно:**
 
-- `--meta` ≠ accumulate. Это **мгновенно все релики** на каждый run.
-- `accumulate` — единственный режим, где релики **растут от run к run** через `handlePlayerDeath`.
-- `amulets-only` (`fresh --amulets --no-meta`) — **без стартовых** амулетов; набор только с пола/шопа.
+- `--meta` включает применение талантов; relic-пул в симе сейчас пустой (relics retired).
+- `accumulate` — единственный режим, где прогрессия **растёт от run к run** через `handlePlayerDeath` (XP; таланты не автопокупаются).
+- `amulets-only` (`fresh --amulets --no-meta`) — **без стартовых** амулетов на act 1; набор только с пола/шопа.
+- `--act 2\|3` без явного `--amulet-loadout` / `--amulet-start` всегда сидит 3/6 random амулетов.
 
 ---
 
