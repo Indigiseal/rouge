@@ -22,8 +22,8 @@ export const ASSET_MANIFEST = [
     { key: 'resultBanners', path: 'assets/art/bannerLostWin.png', type: 'spritesheet', frameWidth: 160, frameHeight: 32 },
     { key: 'eventPaper', path: 'assets/art/paper.png', type: 'image' },
     { key: 'eventPaper9Slice', path: 'assets/art/paper9Slice.png', type: 'image' },
-    // Hover-tooltip frame. 32x32 with a 4px border on three sides and a taller
-    // decorative bottom edge — see TOOLTIP_PANEL_SLICE in ui/NineSlicePanel.js.
+    // Hover-tooltip frame. 48x48 with a 5px border on three sides and a taller
+    // 7px decorative bottom edge — see TOOLTIP_PANEL_SLICE in ui/NineSlicePanel.js.
     { key: 'panelText9Slice', path: 'assets/art/panelText9Slice.png', type: 'image' },
     // Top-left selection bracket; mirrored on both axes to make all 4 corners.
     { key: 'cornerSelect', path: 'assets/art/cornerSelect.png', type: 'image' },
