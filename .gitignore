@@ -23,3 +23,7 @@ sim/*.md
 # Uncompressed audio masters, ~57MB of WAV. Kept locally and backed up outside
 # git; the game loads the exported assets/music/*.mp3, which stay tracked.
 assets/_masters/
+
+# Taya's personal art scratch folder. Sources, layer dumps, half-finished
+# sprites — never meant to ship or be reviewed.
+assets/art/wip/
