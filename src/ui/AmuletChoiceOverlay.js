@@ -1,7 +1,7 @@
 // Full-screen "pick 1 of up to 3 amulets" overlay. Works on any Phaser scene
 // that has access to an AmuletManager (GameScene, ShopScene, …).
 
-import { showItemTooltip, hideItemTooltip } from './ItemTooltip.js';
+import { showItemTooltip, hideItemTooltip, BOARD_TOOLTIP_GAP } from './ItemTooltip.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 
@@ -97,7 +97,10 @@ export function openAmuletChoiceOverlay(scene, cfg) {
       scene.tweens.add({ targets: sprite, y: cardY - 6, duration: 120, ease: 'Power2' });
       // +10 keeps the tooltip clear of the overlay's own layers (veil, cards,
       // labels sit at depth..depth+2) instead of rendering behind them.
-      showItemTooltip(scene, item, sprite.x, sprite.y - 10, depth + 10);
+      //
+      // Same 52x70 cards at scale 1 as the combat board, so it anchors on the
+      // card centre with the board's gap and sits at the same distance there.
+      showItemTooltip(scene, item, sprite.x, sprite.y, depth + 10, BOARD_TOOLTIP_GAP);
     });
     sprite.on('pointerout', () => {
       scene.tweens.add({ targets: sprite, y: cardY, duration: 120, ease: 'Power2' });

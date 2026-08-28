@@ -22,13 +22,18 @@ export const ASSET_MANIFEST = [
     { key: 'resultBanners', path: 'assets/art/bannerLostWin.png', type: 'spritesheet', frameWidth: 160, frameHeight: 32 },
     { key: 'eventPaper', path: 'assets/art/paper.png', type: 'image' },
     { key: 'eventPaper9Slice', path: 'assets/art/paper9Slice.png', type: 'image' },
+    // Hover-tooltip frame. 32x32 with a 4px border on three sides and a taller
+    // decorative bottom edge — see TOOLTIP_PANEL_SLICE in ui/NineSlicePanel.js.
+    { key: 'panelText9Slice', path: 'assets/art/panelText9Slice.png', type: 'image' },
+    // Top-left selection bracket; mirrored on both axes to make all 4 corners.
+    { key: 'cornerSelect', path: 'assets/art/cornerSelect.png', type: 'image' },
     { key: 'scrollHandle', path: 'assets/art/scroll.png', type: 'image' },
     { key: 'eventsShops', path: 'assets/art/eventsShops80x80.png', type: 'spritesheet', frameWidth: 80, frameHeight: 80 },
     // Arm Wrestling minigame art (human vs ogre locked hands).
     { key: 'armWrestlingHands', path: 'assets/art/armWrestlingHands.png', type: 'image' },
     { key: 'statueHead', path: 'assets/art/statueHead.png', type: 'image' },
     { key: 'panelArmor', path: 'assets/art/panelArmor.png', type: 'image' },
-    // Little banner behind each shop item's price (30x14)
+    // Little banner behind each shop item's price (32x18)
     { key: 'priceTag', path: 'assets/art/priceTag.png', type: 'image' },
     { key: 'pixel-font', path: 'assets/fonts/minogram_6x10.png', xmlPath: 'assets/fonts/minogram_6x10.xml', type: 'bitmapFont' },
     { key: 'cyrillic-ui-font', path: 'assets/fonts/probly12NEW_crisp.png', xmlPath: 'assets/fonts/probly12NEW_crisp.xml', type: 'bitmapFont' },
