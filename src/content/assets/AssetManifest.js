@@ -85,6 +85,10 @@ export const ASSET_MANIFEST = [
     { key: 'plate_L', path: 'assets/art/plate_L.png', type: 'image' },
     { key: 'potionCardCommon', path: 'assets/art/potionCardCommon.png', type: 'image' },
     { key: 'potionCardUncommon', path: 'assets/art/potionCardUncommon.png', type: 'image' },
+    { key: 'potionCardRare', path: 'assets/art/potionCardRare.png', type: 'image' },
+    // Enemy trait icons, 176x32 laid out as a 16x16 grid: 11 columns, 2 rows.
+    // The three tall icons in the first columns are drawn across both rows.
+    { key: 'enemyIcons', path: 'assets/art/enemyIcons.png', type: 'spritesheet', frameWidth: 16, frameHeight: 16 },
     { key: 'trap', path: 'assets/art/trap.png', type: 'image' },
     { key: 'trap2', path: 'assets/art/trap2.png', type: 'image' },
     { key: 'coin', path: 'assets/art/coin.png', type: 'image' },

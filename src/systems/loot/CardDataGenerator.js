@@ -720,7 +720,10 @@ export class CardDataGenerator {
             type: 'potion',
             name: next.name,
             healAmount: next.healAmount,
-            sprite: next.healAmount > this.potionTiers[0].healAmount ? 'potionCardUncommon' : next.sprite,
+            // Each tier names its own card art, so take it as given. The old
+            // override forced every upgrade to the uncommon card, which would
+            // now hide the rare art on a merged Greater Healing Potion.
+            sprite: next.sprite,
             rarity: next.rarity,
         };
     }

@@ -29,8 +29,8 @@ export const POTIONS = [
     name: 'Greater Healing Potion',
     healAmount: 200,
     minFloor: 15,
-    sprite: 'potionCardUncommon',
-    rarity: 'uncommon'
+    sprite: 'potionCardRare',
+    rarity: 'rare'
   }
 ];
 
