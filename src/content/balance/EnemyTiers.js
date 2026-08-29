@@ -11,7 +11,8 @@
 //   veteran  a tougher-than-usual specimen; several can share a board
 //   elite    the mini-boss, exactly one per elite room
 //
-// Boss enemies are outside this ladder entirely and are never promoted.
+// Boss enemies are outside this ladder entirely and are never promoted, and
+// boss ROOMS are left alone as well — see veteranChanceFor.
 
 export const ENEMY_TIERS = Object.freeze({
     normal: Object.freeze({ health: 1.0, attack: 1.0 }),
@@ -53,8 +54,13 @@ export function veteranChanceForFloor(floor) {
     return chance;
 }
 
-/** Veteran spawn chance for `floor`, including the elite-room bonus. */
+/**
+ * Veteran spawn chance for `floor`, including the elite-room bonus.
+ * Boss rooms always return 0: those fights are hand-balanced set pieces, so
+ * the minions standing with the boss stay at their written strength.
+ */
 export function veteranChanceFor(floor, roomType) {
+    if (roomType === 'BOSS') return 0;
     const base = veteranChanceForFloor(floor);
     if (base <= 0) return 0;
     const withBonus = roomType === 'ELITE' ? base + ELITE_ROOM_VETERAN_BONUS : base;
