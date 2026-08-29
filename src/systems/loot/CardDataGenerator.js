@@ -707,9 +707,9 @@ export class CardDataGenerator {
     }
     
     // Next canonical potion tier up from `baseHealAmount`. Merging two identical
-    // potions climbs this ladder (35 -> 70 -> 110 -> 200) so a merged potion is
-    // always a real shop-tier potion, never an off-ladder heal value. Tops out
-    // at the strongest tier.
+    // potions climbs this ladder (35 -> 70 -> 200) so a merged potion is always
+    // a real shop-tier potion, never an off-ladder heal value. Tops out at the
+    // strongest tier.
     getUpgradedPotion(baseHealAmount) {
         const idx = this.potionTiers.findIndex(p => p.healAmount === baseHealAmount);
         const next = idx === -1
