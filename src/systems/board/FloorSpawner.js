@@ -6,6 +6,7 @@ import { openAmuletChoiceOverlay } from '../../ui/AmuletChoiceOverlay.js';
 import { minEnemyRatioForFloor } from '../../content/balance/EnemyDensity.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { reinforcementStateFor, reinforcementStateFromSave } from '../../content/balance/Reinforcements.js';
+import { applyEnemyTier, canTierEnemy, veteranChanceFor } from '../../content/balance/EnemyTiers.js';
 import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js';
 
 export class FloorSpawner {
@@ -26,6 +27,7 @@ export class FloorSpawner {
         this.ensureWeaponSupply = ensureWeaponSupply.bind(cs);
         this.limitEnemyDensity = limitEnemyDensity.bind(cs);
         this.ensureEnemyMinimum = ensureEnemyMinimum.bind(cs);
+        this.assignVeterans = assignVeterans.bind(cs);
         this.assignEliteMiniBoss = assignEliteMiniBoss.bind(cs);
         this.assignEliteHighlightCards = assignEliteHighlightCards.bind(cs);
         this.injectAngryNestmother = injectAngryNestmother.bind(cs);
@@ -236,6 +238,7 @@ function spawnFloorCards() {
   this.ensureEnemyMinimum(cf, roomType);
   this.enforceForcedEnemyTypes(cf);
   if (!this._forcedEnemyTypes?.length) this.injectAngryNestmother(cf, roomType);
+  this.assignVeterans(roomType, cf);
   this.assignEliteMiniBoss(roomType);
   this.assignEliteHighlightCards(roomType, cf);
   // 4) second-pass: safe neighbor build (using brick offsets)
@@ -1146,6 +1149,23 @@ function ensureEnemyMinimum(floor, roomType) {
   }
 }
 
+// Every eligible enemy rolls independently for veteran, so a board can hold
+// none, one or several. Runs before assignEliteMiniBoss, which may then promote
+// one of them the rest of the way up — applyEnemyTier recomputes from the
+// untiered stats, so that costs 1.3x total rather than compounding.
+function assignVeterans(roomType, floor) {
+  if (!this.boardCards?.length) return;
+  const chance = veteranChanceFor(floor, roomType);
+  if (chance <= 0) return;
+
+  for (const card of this.boardCards) {
+    const data = card?.data;
+    if (!data || !this.isEnemyType(data.type) || !canTierEnemy(data)) continue;
+    if (data.enemyTier && data.enemyTier !== 'normal') continue;
+    if (Math.random() < chance) applyEnemyTier(data, 'veteran');
+  }
+}
+
 function assignEliteMiniBoss(roomType) {
   if (roomType !== 'ELITE' || !this.boardCards?.length) return;
   const enemies = this.boardCards
@@ -1153,8 +1173,7 @@ function assignEliteMiniBoss(roomType) {
     .filter(({ card }) => (
       card?.data
       && this.isEnemyType(card.data.type)
-      && card.data.type !== 'boss'
-      && card.data.name !== 'Angry Nestmother'
+      && canTierEnemy(card.data)
     ));
   if (enemies.length === 0) return;
   if (enemies.some(({ card }) => card.data.isEliteMiniBoss)) return;
@@ -1162,10 +1181,7 @@ function assignEliteMiniBoss(roomType) {
   const selected = Phaser.Utils.Array.GetRandom(enemies);
   if (!selected?.card?.data) return;
 
-  const data = selected.card.data;
-  data.isEliteMiniBoss = true;
-  data.health = Math.max(1, Math.ceil((data.health || 1) * 1.3));
-  data.attack = Math.max(1, Math.ceil((data.attack || 1) * 1.3));
+  applyEnemyTier(selected.card.data, 'elite');
 }
 
 function assignEliteHighlightCards(roomType, floor) {
