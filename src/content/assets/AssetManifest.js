@@ -22,6 +22,11 @@ export const ASSET_MANIFEST = [
     { key: 'resultBanners', path: 'assets/art/bannerLostWin.png', type: 'spritesheet', frameWidth: 160, frameHeight: 32 },
     { key: 'eventPaper', path: 'assets/art/paper.png', type: 'image' },
     { key: 'eventPaper9Slice', path: 'assets/art/paper9Slice.png', type: 'image' },
+    // Hover-tooltip frame. 48x48 with a 5px border on three sides and a taller
+    // 7px decorative bottom edge — see TOOLTIP_PANEL_SLICE in ui/NineSlicePanel.js.
+    { key: 'panelText9Slice', path: 'assets/art/panelText9Slice.png', type: 'image' },
+    // Top-left selection bracket; mirrored on both axes to make all 4 corners.
+    { key: 'cornerSelect', path: 'assets/art/cornerSelect.png', type: 'image' },
     { key: 'scrollHandle', path: 'assets/art/scroll.png', type: 'image' },
     { key: 'eventsShops', path: 'assets/art/eventsShops80x80.png', type: 'spritesheet', frameWidth: 80, frameHeight: 80 },
     // Arm Wrestling minigame art (human vs ogre locked hands).
@@ -29,7 +34,7 @@ export const ASSET_MANIFEST = [
     { key: 'musicBoxLockWafers', path: 'assets/art/musicBoxLockWafers.png', type: 'spritesheet', frameWidth: 58, frameHeight: 72 },
     { key: 'statueHead', path: 'assets/art/statueHead.png', type: 'image' },
     { key: 'panelArmor', path: 'assets/art/panelArmor.png', type: 'image' },
-    // Little banner behind each shop item's price (30x14)
+    // Little banner behind each shop item's price (32x18)
     { key: 'priceTag', path: 'assets/art/priceTag.png', type: 'image' },
     { key: 'pixel-font', path: 'assets/fonts/minogram_6x10.png', xmlPath: 'assets/fonts/minogram_6x10.xml', type: 'bitmapFont' },
     { key: 'cyrillic-ui-font', path: 'assets/fonts/probly12NEW_crisp.png', xmlPath: 'assets/fonts/probly12NEW_crisp.xml', type: 'bitmapFont' },
@@ -80,6 +85,10 @@ export const ASSET_MANIFEST = [
     { key: 'plate_L', path: 'assets/art/plate_L.png', type: 'image' },
     { key: 'potionCardCommon', path: 'assets/art/potionCardCommon.png', type: 'image' },
     { key: 'potionCardUncommon', path: 'assets/art/potionCardUncommon.png', type: 'image' },
+    { key: 'potionCardRare', path: 'assets/art/potionCardRare.png', type: 'image' },
+    // Enemy trait icons, 176x32 laid out as a 16x16 grid: 11 columns, 2 rows.
+    // The three tall icons in the first columns are drawn across both rows.
+    { key: 'enemyIcons', path: 'assets/art/enemyIcons.png', type: 'spritesheet', frameWidth: 16, frameHeight: 16 },
     { key: 'trap', path: 'assets/art/trap.png', type: 'image' },
     { key: 'trap2', path: 'assets/art/trap2.png', type: 'image' },
     { key: 'coin', path: 'assets/art/coin.png', type: 'image' },

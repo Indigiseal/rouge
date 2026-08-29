@@ -208,7 +208,7 @@ export const CardMergeRules = {
                 'thorns', this.scene.gameState.currentFloor, false, null, newRarity
             );
         } else if (baseCard.type === 'potion') {
-            // Climb the canonical potion ladder (35 -> 70 -> 110 -> 200) instead
+            // Climb the canonical potion ladder (35 -> 70 -> 200) instead
             // of multiplying into off-ladder heal values that got mislabeled
             // (e.g. a 63-heal potion named "Strong"). A merged potion is now
             // always a real shop-tier potion.

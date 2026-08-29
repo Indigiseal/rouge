@@ -5,7 +5,7 @@
 
 import { CardSystem } from '../systems/CardSystem.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { showItemTooltip, hideItemTooltip } from '../ui/ItemTooltip.js';
+import { showItemTooltip, hideItemTooltip, TOOLTIP_DEPTH, STATION_TOOLTIP_GAP } from '../ui/ItemTooltip.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { t } from '../i18n/i18n.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
@@ -240,7 +240,9 @@ export class StationRoomBase extends Phaser.Scene {
             this.shopBoardObjects.push(tag);
         }
 
-        const priceText = renderScene.add.text(x, y + 31, item.purchased ? t(this, 'ui.shop.sold') : `${item.price}${glyph}`, {
+        // Tag sits at y+31; the number rides 3px higher so it sits on the tag's
+        // face rather than its bottom edge.
+        const priceText = renderScene.add.text(x, y + 28, item.purchased ? t(this, 'ui.shop.sold') : `${item.price}${glyph}`, {
             fontSize: '11px',
             fill: item.purchased ? '#888888' : (item.currency === 'crystals' ? '#a83c69' : '#cf8834'),
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
@@ -273,7 +275,9 @@ export class StationRoomBase extends Phaser.Scene {
             hoverSprite.setVisible(false);
             hoverSprite.setAlpha(0);
             hoverSprite.setBlendMode(Phaser.BlendModes.SCREEN);
-            hoverSprite.setDepth(10);
+            // Above the card (9) but under the price tag (9.5): the shine is a
+            // highlight on the card art, not something that washes over the tag.
+            hoverSprite.setDepth(9.2);
             this.shopBoardObjects.push(hoverSprite);
         }
 
@@ -500,7 +504,7 @@ export class StationRoomBase extends Phaser.Scene {
         if (!this.amuletManager && this.gameScene?.amuletManager) {
             this.amuletManager = this.gameScene.amuletManager;
         }
-        showItemTooltip(this, data, cardX, cardY);
+        showItemTooltip(this, data, cardX, cardY, TOOLTIP_DEPTH, STATION_TOOLTIP_GAP);
     }
 
     hideItemTooltip() {

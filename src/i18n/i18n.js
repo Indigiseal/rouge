@@ -687,7 +687,6 @@ const EXACT_NAME_TRANSLATIONS = {
         'Thorns Card': 'Карта шипов',
         'Minor Healing Potion': 'Малое зелье лечения',
         'Healing Potion': 'Зелье лечения',
-        'Strong Healing Potion': 'Сильное зелье лечения',
         'Greater Healing Potion': 'Большое зелье лечения',
         'Bread': 'Хлеб',
         'Rations': 'Паек',

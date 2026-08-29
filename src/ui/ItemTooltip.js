@@ -4,6 +4,7 @@
 
 import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from '../i18n/i18n.js';
 import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
+import { createTooltipPanel, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
 
 // Default tooltip depth — above the board and its card FX, below the modal
 // overlays. Callers that render higher pass their own depth.
@@ -21,6 +22,12 @@ export const TOOLTIP_DEPTH = 2000;
 export const TOOLTIP_GAP = 60;
 export const BOARD_TOOLTIP_GAP = 32;
 
+// Shop, rare shop, blacksmith and treasure lay items out on 52x70 cards, so the
+// anchor sits 35px below the card's top edge and the card lifts 5px on hover.
+// 44 clears both and leaves the box a few pixels clear of the raised card —
+// close enough to read as attached to what the cursor is pointing at.
+export const STATION_TOOLTIP_GAP = 44;
+
 function rarityFill(rarity) {
     switch (rarity) {
         case 'uncommon':  return '#66dd66';
@@ -28,7 +35,8 @@ function rarityFill(rarity) {
         case 'epic':      return '#cc88ff';
         case 'legendary': return '#ffcc33';
         case 'cursed':    return '#ff6666';
-        default:          return '#ffffff';
+        // Commons have no rarity hue to carry, so they take the body ink.
+        default:          return TOOLTIP_TEXT_COLOR;
     }
 }
 
@@ -261,7 +269,7 @@ export function showEnemyTooltip(scene, card, gap = BOARD_TOOLTIP_GAP) {
         ...getBossAbilityLines(scene, data),
     ];
 
-    const nameColor = data.isEliteMiniBoss ? '#ffcc33' : '#f5e6c8';
+    const nameColor = data.isEliteMiniBoss ? '#ffcc33' : TOOLTIP_TEXT_COLOR;
     renderTooltipBox(
         scene,
         title,
@@ -281,8 +289,11 @@ export function showEnemyTooltip(scene, card, gap = BOARD_TOOLTIP_GAP) {
 function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth = TOOLTIP_DEPTH, gap = TOOLTIP_GAP) {
     if (!name && !body) return;
 
-    const padX = 6;
-    const padY = 5;
+    // Padding clears the drawn frame rather than the old 1px stroke: the art's
+    // bottom edge is taller than its top, so the two differ.
+    const padX = 8;
+    const padTop = 7;
+    const padBottom = 9;
     const maxWidth = 200;
 
     const nameText = scene.add.text(0, 0, name, {
@@ -296,7 +307,7 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth 
     const bodyText = body
         ? scene.add.text(0, Math.ceil(nameText.height) + 3, body, {
             fontSize: '10px',
-            fill: '#dddddd',
+            fill: TOOLTIP_TEXT_COLOR,
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             wordWrap: { width: maxWidth },
             align: 'center',
@@ -312,11 +323,9 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth 
     const contentWidth = Math.max(nameWidth, bodyWidth);
     const contentHeight = nameHeight + (bodyText ? bodyHeight + 3 : 0);
     const boxWidth = Math.ceil(Math.min(maxWidth, contentWidth) + padX * 2);
-    const boxHeight = Math.ceil(contentHeight + padY * 2);
+    const boxHeight = Math.ceil(contentHeight + padTop + padBottom);
 
-    const bg = scene.add.rectangle(0, 0, boxWidth, boxHeight, 0x1a120a, 0.95)
-        .setStrokeStyle(1, 0xb89968)
-        .setOrigin(0, 0);
+    const bg = createTooltipPanel(scene, boxWidth, boxHeight);
 
     let tipY = Math.round(anchorY) - gap - boxHeight;
     if (tipY < 4) tipY = Math.round(anchorY) + gap;
@@ -328,9 +337,9 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth 
         screenW - boxWidth - 4
     ));
 
-    nameText.setPosition(Math.round((boxWidth - nameWidth) / 2), padY);
+    nameText.setPosition(Math.round((boxWidth - nameWidth) / 2), padTop);
     if (bodyText) {
-        bodyText.setPosition(Math.round((boxWidth - bodyWidth) / 2), padY + nameHeight + 3);
+        bodyText.setPosition(Math.round((boxWidth - bodyWidth) / 2), padTop + nameHeight + 3);
     }
 
     const children = [bg, nameText];

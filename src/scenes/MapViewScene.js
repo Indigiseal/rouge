@@ -6,6 +6,7 @@ import { createTitle } from '../ui/titleText.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
+import { createSelectionCorners, createTooltipPanel, TOOLTIP_TEXT_COLOR } from '../ui/NineSlicePanel.js';
 
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
@@ -360,6 +361,8 @@ export class MapViewScene extends Phaser.Scene {
     const tint = (state === 'available' || state === 'current') ? AVAILABLE_TINT : 0xffffff;
 
     // Quiet "you are here" ring behind the current node (added before it).
+    // The selection brackets are a hover affordance now, so the ring stays as
+    // the only marker for where the player actually stands.
     if (state === 'current') this._addCurrentRing(node);
 
     // Node sprite
@@ -389,11 +392,13 @@ export class MapViewScene extends Phaser.Scene {
         // Rise one pixel and lighten while hovered.
         nodeSprite.y = node.__y - 1;
         if (nodeSprite.setTint) nodeSprite.setTint(0xffffff);
+        this.showHoverCorners(node);
         this.showTooltip(t(this, this.getNodeTooltipKey(node.type)), node.__x, node.__y - 30);
       });
       nodeSprite.on('pointerout', () => {
         nodeSprite.y = node.__y;
         if (nodeSprite.setTint) nodeSprite.setTint(AVAILABLE_TINT);
+        this.hideHoverCorners();
         this.hideTooltip();
       });
       nodeSprite.on('pointerdown', () => {
@@ -418,6 +423,27 @@ export class MapViewScene extends Phaser.Scene {
     });
   }
 
+  // Selection brackets that frame the node under the cursor, marking the choice
+  // the player is about to make.
+  //
+  // Nodes are 42x42, so their edge is 21px out. The drawn elbow sits ~6px in
+  // from the sprite's centre, which puts it just clear of the node art and
+  // leaves each arm pointing back along the node's edge. The 1px lift matches
+  // the hovered node's own rise so the brackets stay attached to it.
+  showHoverCorners(node) {
+    this.hideHoverCorners();
+    const CORNER_OFFSET = 16;
+    this.hoverCorners = createSelectionCorners(this, node.__x, node.__y - 1, CORNER_OFFSET);
+    if (this.hoverCorners.length) this.mapContainer.add(this.hoverCorners);
+  }
+
+  hideHoverCorners() {
+    if (this.hoverCorners) {
+      this.hoverCorners.forEach(c => c.destroy());
+      this.hoverCorners = null;
+    }
+  }
+
   getNodeTooltipKey(type) {
     const keyByType = {
       COMBAT: 'map.tooltip.combat',
@@ -438,13 +464,26 @@ export class MapViewScene extends Phaser.Scene {
     this.hideTooltip();
     const label = this.add.text(0, 0, text, {
       fontSize: '12px',
-      fill: '#f2d3aa',
+      fill: TOOLTIP_TEXT_COLOR,
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
       align: 'center'
     }).setOrigin(0.5);
-    const bg = this.add.rectangle(0, 0, Math.ceil(label.width) + 12, Math.ceil(label.height) + 8, 0x2c1810, 0.95)
-      .setStrokeStyle(1, 0x3f2f28)
-      .setOrigin(0.5);
+
+    // Asymmetric padding: the panel art's bottom edge is thicker than its top.
+    const padX = 8;
+    const padTop = 7;
+    const padBottom = 9;
+    const labelW = Math.ceil(label.width);
+    const labelH = Math.ceil(label.height);
+    const boxW = labelW + padX * 2;
+    const boxH = labelH + padTop + padBottom;
+
+    // The panel anchors top-left, so shift it to sit centred on the container
+    // and drop the label into the frame's inner area rather than the box centre.
+    const bg = createTooltipPanel(this, boxW, boxH, { fillColor: 0x2c1810, strokeColor: 0x3f2f28 })
+      .setPosition(Math.round(-boxW / 2), Math.round(-boxH / 2));
+    label.setPosition(0, Math.round(-boxH / 2 + padTop + labelH / 2));
+
     this.tooltip = this.add.container(Math.round(x), Math.round(y), [bg, label]);
     this.mapContainer.add(this.tooltip);
   }
@@ -457,6 +496,10 @@ export class MapViewScene extends Phaser.Scene {
     if (targetFloorIdx !== cur.floor + 1) return;
     const fromNode = this.actMap.floors[cur.floor][cur.node];
     if (!fromNode.connections.includes(targetNodeIdx)) return;
+    // The click is going through — drop the hover decoration so it can't linger
+    // over the exit fade.
+    this.hideHoverCorners();
+    this.hideTooltip();
     const availableNodes = fromNode.connections.map(nodeIndex => {
       const option = this.actMap.floors[targetFloorIdx]?.[nodeIndex];
       return {
