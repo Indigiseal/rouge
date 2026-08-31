@@ -7,6 +7,7 @@ import { minEnemyRatioForFloor } from '../../content/balance/EnemyDensity.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { reinforcementStateFor, reinforcementStateFromSave } from '../../content/balance/Reinforcements.js';
 import { applyEnemyTier, canTierEnemy, veteranChanceFor } from '../../content/balance/EnemyTiers.js';
+import { boardVariantFromAmbush } from './BoardVariant.js';
 import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js';
 
 export class FloorSpawner {
@@ -96,6 +97,7 @@ function spawnFloorCards() {
     this.spawnAmbushBoard(this.scene.gameState.pendingAmbush);
     return;
   }
+  if (!this._spawningAmbush) this._boardVariant = null;
   // === boss shortcut ===
   // Spawn the act boss when ANY of these say "this is the boss room":
   //   1. the floor number lines up with a boss floor (15/30/45),
@@ -140,7 +142,7 @@ function spawnFloorCards() {
     const { x, y } = this.brickToPixel(r, c, place);
     const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
     shadow.setAlpha(0);
-    const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, 'cardBack'));
+    const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, this._cardBackKey()));
     cardSprite.setScale(1);
     cardSprite.setInteractive();
     cardSprite.on('pointerdown', () => this.revealCard(i));
@@ -149,7 +151,7 @@ function spawnFloorCards() {
       if (card && !card.revealed) {
         shadow.setAlpha(1);
         this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
-        cardSprite.setTexture('cardBack');
+        cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
         cardSprite.play('card_hover_anim');
       }
@@ -160,7 +162,7 @@ function spawnFloorCards() {
         shadow.setAlpha(0);
         this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
         cardSprite.stop();
-        cardSprite.setTexture('cardBack');
+        cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
       }
     });
@@ -454,7 +456,7 @@ function spawnTutorialCards() {
     const { x, y } = this.brickToPixel(r, c, place);
     const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
     shadow.setAlpha(0);
-    const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, 'cardBack'));
+    const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, this._cardBackKey()));
     cardSprite.setScale(this._boardPlace?.cardScale || 1);
     cardSprite.setInteractive();
     cardSprite.on('pointerdown', () => this.revealCard(i));
@@ -463,7 +465,7 @@ function spawnTutorialCards() {
       if (card && !card.revealed) {
         shadow.setAlpha(1);
         this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
-        cardSprite.setTexture('cardBack');
+        cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
         cardSprite.play('card_hover_anim');
       }
@@ -474,7 +476,7 @@ function spawnTutorialCards() {
         shadow.setAlpha(0);
         this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
         cardSprite.stop();
-        cardSprite.setTexture('cardBack');
+        cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
       }
     });
@@ -570,7 +572,7 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
 
     let cardSprite;
     if (!revealed) {
-      cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, 'cardBack'));
+      cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, this._cardBackKey()));
     } else if (data.type === 'empty') {
       cardSprite = this.scene.add.rectangle(x, y, 70, 90, 0x000000, 0);
     } else if (data.sprite || data.name === 'Mimic') {
@@ -612,7 +614,7 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
         if (!current || current.revealed) return;
         shadow?.setAlpha(1);
         this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
-        cardSprite.setTexture('cardBack');
+        cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
         if (this.scene.anims.exists('card_hover_anim')) cardSprite.play('card_hover_anim');
       });
@@ -622,7 +624,7 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
         shadow?.setAlpha(0);
         this.scene.tweens.add({ targets: cardSprite, y, duration: 150 });
         cardSprite.stop?.();
-        cardSprite.setTexture('cardBack');
+        cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
       });
       return;
@@ -1023,7 +1025,7 @@ function previewTrapAt(index) {
             ease: 'Quad.In',
             onComplete: () => {
                 if (!card.sprite || !card.sprite.scene) return;
-                card.sprite.setTexture('cardBack');
+                card.sprite.setTexture(this._cardBackKey());
                 snapOriginToPixelGrid(card.sprite);
                 this.destroyCardInfoText?.(card);
                 card.revealed = false;
@@ -1262,6 +1264,11 @@ function injectAngryNestmother(floor, roomType) {
 // enemies revealed; constrained ambushes can instead enter through the normal
 // face-down combat-board generator below.
 function spawnAmbushBoard(ambush) {
+  // Every ambush starts from the standard room; the branch that wants a
+  // variant sets one below. Without this reset a bespoke or cocoon board could
+  // inherit the previous ambush's card back.
+  this._boardVariant = null;
+
   // Toll Collectors are a normal combat room with a themed enemy pool. Let
   // spawnFloorCards retain its established item weights, card caps, layout,
   // opening reveals, and weapon supply rather than recreating those rules.
@@ -1269,10 +1276,15 @@ function spawnAmbushBoard(ambush) {
     this.scene.gameState.pendingAmbush = null;
     this.scene.gameState.ambushId = ambush.id || null;
     this._forcedEnemyTypes = Array.isArray(ambush.enemyTypes) ? ambush.enemyTypes : ['goblin'];
+    // A variant only changes how the room looks and opens; the generator below
+    // still decides layout, loot and enemy counts.
+    this._boardVariant = boardVariantFromAmbush(ambush);
+    this._spawningAmbush = true;
     try {
       this.spawnFloorCards();
     } finally {
       this._forcedEnemyTypes = null;
+      this._spawningAmbush = false;
     }
     return;
   }
@@ -1567,7 +1579,7 @@ function respawnCardOnBoard(cardData, options = {}) {
 
     const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
     shadow.setAlpha(0);
-    const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, 'cardBack'));
+    const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, this._cardBackKey()));
     cardSprite.setScale(this._boardPlace?.cardScale || 1);
     cardSprite.setInteractive();
     cardSprite.on('pointerdown', () => this.revealCard(slot));
@@ -1576,7 +1588,7 @@ function respawnCardOnBoard(cardData, options = {}) {
         if (c && !c.revealed) {
             shadow.setAlpha(1);
             this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
-            cardSprite.setTexture('cardBack');
+            cardSprite.setTexture(this._cardBackKey());
             snapOriginToPixelGrid(cardSprite);
             if (this.scene.anims.exists('card_hover_anim')) cardSprite.play('card_hover_anim');
         }
@@ -1587,7 +1599,7 @@ function respawnCardOnBoard(cardData, options = {}) {
             shadow.setAlpha(0);
             this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
             cardSprite.stop();
-            cardSprite.setTexture('cardBack');
+            cardSprite.setTexture(this._cardBackKey());
             snapOriginToPixelGrid(cardSprite);
         }
     });
@@ -1663,7 +1675,7 @@ function dropWaveCards() {
         const { x, y } = this.brickToPixel(cell.r, cell.c, this._boardPlace);
 
         const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6).setAlpha(0);
-        const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y - DROP_HEIGHT, 'cardBack'));
+        const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y - DROP_HEIGHT, this._cardBackKey()));
         cardSprite.setScale(1).setInteractive();
         cardSprite.on('pointerdown', () => this.revealCard(slot));
         cardSprite.on('pointerover', () => {
@@ -1671,7 +1683,7 @@ function dropWaveCards() {
             if (c && !c.revealed) {
                 shadow.setAlpha(1);
                 this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
-                cardSprite.setTexture('cardBack');
+                cardSprite.setTexture(this._cardBackKey());
                 snapOriginToPixelGrid(cardSprite);
                 if (this.scene.anims.exists('card_hover_anim')) cardSprite.play('card_hover_anim');
             }
@@ -1682,7 +1694,7 @@ function dropWaveCards() {
                 shadow.setAlpha(0);
                 this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
                 cardSprite.stop();
-                cardSprite.setTexture('cardBack');
+                cardSprite.setTexture(this._cardBackKey());
                 snapOriginToPixelGrid(cardSprite);
             }
         });

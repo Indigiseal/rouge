@@ -783,7 +783,7 @@ function isActiveBoardTaunter(card) {
     if (Array.isArray(card.data?.features) && card.data.features.includes('cocoon_shell')) return false;
     // Face-down / mid-flip art must not provoke even if `revealed` desynced.
     const tex = card.sprite.texture?.key;
-    if (!tex || tex === 'cardBack' || String(tex).startsWith('cardFlip')) return false;
+    if (this._isCardBackTexture(tex)) return false;
     return Array.isArray(card.data?.features) && card.data.features.includes('taunt');
 }
 
@@ -983,7 +983,7 @@ function hideEnemyCard(index) {
     if (!this.isOpenEnemyCard(card)) return false;
 
     card.revealed = false;
-    card.sprite.setTexture('cardBack');
+    card.sprite.setTexture(this._cardBackKey());
     card.sprite.off('pointerdown');
     card.sprite.on('pointerdown', () => this.revealCard(index));
 
