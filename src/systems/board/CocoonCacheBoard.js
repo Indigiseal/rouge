@@ -44,6 +44,9 @@ function rollCocoonEnemy(generator, floor, gameState) {
     || generator.createEnemyCard(floor, false, null, gameState);
 }
 
+// Fallback only. The manifest loads assets/art/cocoon.png under 'silkCocoon',
+// so this draws nothing in a normal run — it exists so the board still renders
+// if that file ever fails to load.
 export function ensureSilkCocoonTexture(scene) {
   if (!scene?.textures || scene.textures.exists('silkCocoon')) return;
   const g = scene.make.graphics({ x: 0, y: 0, add: false });
@@ -67,6 +70,64 @@ export function ensureSilkCocoonTexture(scene) {
   g.strokeEllipse(27, 36, 30, 50);
   g.generateTexture('silkCocoon', 54, 70);
   g.destroy();
+}
+
+export const COCOON_OPEN_ANIM_KEY = 'cocoonOpen';
+const COCOON_OPEN_FRAME_RATE = 14;
+
+/** Registers the crack-open animation once. No-op without the sheet. */
+export function ensureCocoonOpenAnim(scene) {
+  if (!scene?.anims || scene.anims.exists(COCOON_OPEN_ANIM_KEY)) return;
+  if (!scene.textures?.exists('cocoonAnim')) return;
+  scene.anims.create({
+    key: COCOON_OPEN_ANIM_KEY,
+    frames: scene.anims.generateFrameNumbers('cocoonAnim', { start: 0, end: 6 }),
+    frameRate: COCOON_OPEN_FRAME_RATE,
+    repeat: 0,
+  });
+}
+
+/**
+ * Plays the cocoon bursting at (x, y), keeping `hidden` out of sight until it
+ * finishes, then runs `onDone`.
+ *
+ * The card's data has already been swapped by the time this runs — only the
+ * visuals wait. If the sheet is missing the animation is skipped entirely and
+ * onDone fires immediately, so the board never stalls on absent art.
+ */
+function playCocoonOpen(scene, x, y, scale, depth, hidden, onDone) {
+  ensureCocoonOpenAnim(scene);
+  // Guarded because both the animation ending and the scene shutting down can
+  // reach here; without it a cocoon opened on the last swing of a floor would
+  // show its "Opened!" text twice.
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    scene.events?.off?.('shutdown', onShutdown);
+    for (const obj of hidden) obj?.setAlpha?.(1);
+    onDone?.();
+  };
+  const onShutdown = () => finish();
+
+  if (!scene?.anims?.exists(COCOON_OPEN_ANIM_KEY)) {
+    finish();
+    return null;
+  }
+
+  for (const obj of hidden) obj?.setAlpha?.(0);
+
+  const burst = snapOriginToPixelGrid(scene.add.sprite(x, y, 'cocoonAnim', 0));
+  burst.setScale(scale);
+  burst.setDepth(depth);
+  burst.once('animationcomplete', () => {
+    burst.destroy();
+    finish();
+  });
+  // A scene torn down mid-animation would otherwise strand the card invisible.
+  scene.events?.once?.('shutdown', onShutdown);
+  burst.play(COCOON_OPEN_ANIM_KEY);
+  return burst;
 }
 
 function rollCocoonLootSet(generator, floor, gameState) {
@@ -298,10 +359,32 @@ export function openSilkCocoon(cs, index, cocoonCard) {
     cs.enableGemDrag?.(boardCard, index);
   }
 
-  const label = hatchedEnemy
-    ? (newData.name || 'Enemy!')
-    : (newData.name || 'Loot!');
-  cs.scene.createFloatingText?.(x, y - 24, hatchedEnemy ? `${label}!` : 'Opened!', hatchedEnemy ? 0xff6666 : 0x66ff66);
+  // The shell bursts before what was inside is visible. Everything above has
+  // already run, so the board state is correct throughout — only the new card
+  // and its HP/ATK text wait for the animation, and the card ignores clicks
+  // while it is still hidden.
+  newSprite.disableInteractive();
+  playCocoonOpen(
+    cs.scene,
+    x,
+    y,
+    cs._boardPlace?.cardScale || 1,
+    (newSprite.depth || 0) + 1,
+    [newSprite, boardCard.infoText],
+    () => {
+      if (!newSprite.scene) return;
+      newSprite.setInteractive();
+      const label = hatchedEnemy
+        ? (newData.name || 'Enemy!')
+        : (newData.name || 'Loot!');
+      cs.scene.createFloatingText?.(
+        x,
+        y - 24,
+        hatchedEnemy ? `${label}!` : 'Opened!',
+        hatchedEnemy ? 0xff6666 : 0x66ff66
+      );
+    }
+  );
 
   cs.checkFloorClear?.();
   cs.scene.refreshSilkCocoonLeaveButton?.();

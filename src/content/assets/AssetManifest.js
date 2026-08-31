@@ -86,6 +86,12 @@ export const ASSET_MANIFEST = [
     { key: 'potionCardCommon', path: 'assets/art/potionCardCommon.png', type: 'image' },
     { key: 'potionCardUncommon', path: 'assets/art/potionCardUncommon.png', type: 'image' },
     { key: 'potionCardRare', path: 'assets/art/potionCardRare.png', type: 'image' },
+    // Silk Cache cocoon shell. Loading this under the key ensureSilkCocoonTexture
+    // uses means the drawn-in-code placeholder in CocoonCacheBoard.js never runs.
+    { key: 'silkCocoon', path: 'assets/art/cocoon.png', type: 'image' },
+    // Cocoon cracking open: 7 frames, played once between the damaging hit and
+    // whatever was inside appearing. Slightly taller than a card on purpose.
+    { key: 'cocoonAnim', path: 'assets/art/cocoonAnim.png', type: 'spritesheet', frameWidth: 54, frameHeight: 78 },
     // Enemy trait icons, 176x32 laid out as a 16x16 grid: 11 columns, 2 rows.
     // The three tall icons in the first columns are drawn across both rows.
     { key: 'enemyIcons', path: 'assets/art/enemyIcons.png', type: 'spritesheet', frameWidth: 16, frameHeight: 16 },
@@ -181,6 +187,10 @@ export const ASSET_MANIFEST = [
     { key: 'skeleton_c', path: 'assets/art/skeleton_c.png', type: 'image' },
     { key: 'spider_c', path: 'assets/art/spider_c.png', type: 'image' },
     { key: 'lostSoul', path: 'assets/art/ghostlyEnemy.png', type: 'image' },
+    // Silkdeep roster. Silkslinger is still on the placeholder face.
+    { key: 'scorpion', path: 'assets/art/scorpion.png', type: 'image' },
+    { key: 'caveCrawler', path: 'assets/art/caveCrawler.png', type: 'image' },
+    { key: 'silkHusk', path: 'assets/art/silkHusk.png', type: 'image' },
     // Temporary face for month enemies without dedicated card art (53×70).
     { key: 'enemyPlaceholder', path: 'assets/art/ghostlyEnemy.png', type: 'image' },
     // Thornwake roster — 5 card faces, L→R: wolf, thornEnt, thornSprite,

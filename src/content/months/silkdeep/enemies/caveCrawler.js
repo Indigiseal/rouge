@@ -1,8 +1,7 @@
 export default {
   id: 'caveCrawler',
   name: 'Cave Crawler',
-  sprite: 'enemyPlaceholder',
-  placeholderArt: true,
+  sprite: 'caveCrawler',
   role: 'MELEE',
   minFloor: 1,
   archetype: 'swarm',

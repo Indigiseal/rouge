@@ -1,8 +1,7 @@
 export default {
   id: 'stingerScorpion',
   name: 'Stinger Scorpion',
-  sprite: 'enemyPlaceholder',
-  placeholderArt: true,
+  sprite: 'scorpion',
   role: 'RANGED',
   minFloor: 1,
   archetype: 'artillery',

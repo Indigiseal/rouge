@@ -10,6 +10,7 @@ import { BoardCombat } from './board/BoardCombat.js';
 import { BoardCardFx } from './board/BoardCardFx.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from './HumanRunRecorder.js';
 import { serializeReinforcementState } from '../content/balance/Reinforcements.js';
+import { cardBackKey, isCardBackTexture, opensByDamage, revealAnimKey } from './board/BoardVariant.js';
 
 export class CardSystem {
 
@@ -57,6 +58,10 @@ export class CardSystem {
         this.boardCards = new Array(8).fill(null);
         this.cardDataGenerator = new CardDataGenerator();
         this.floorBoardPanel = null;
+        // How this room differs from the standard fight room (face-down art,
+        // reveal animation, how a card opens). Null means the standard room;
+        // set by spawnAmbushBoard for the floor an event hands over.
+        this._boardVariant = null;
         this.layout = new BoardLayout(this);
         this.spawner = new FloorSpawner(this);
         this.combat = new BoardCombat(this);
@@ -66,6 +71,15 @@ export class CardSystem {
         // pinned here or it lands on an object with no .layout.
         this.snapYOnUpdate = this.snapYOnUpdate.bind(this);
     }
+
+    /** Face-down art for the current room. */
+    _cardBackKey() { return cardBackKey(this._boardVariant); }
+    /** Reveal animation for the current room. */
+    _revealAnimKey() { return revealAnimKey(this._boardVariant); }
+    /** True when this room's face-down cards must be damaged, not clicked. */
+    _opensByDamage() { return opensByDamage(this._boardVariant); }
+    /** True when `textureKey` is face-down or mid-flip art in this room. */
+    _isCardBackTexture(textureKey) { return isCardBackTexture(textureKey, this._boardVariant); }
 
     isMeleeWeapon(...args) { return this.combat.isMeleeWeapon(...args); }
     isRangedWeapon(...args) { return this.combat.isRangedWeapon(...args); }
@@ -118,6 +132,7 @@ export class CardSystem {
     ensureWeaponSupply(...args) { return this.spawner.ensureWeaponSupply(...args); }
     limitEnemyDensity(...args) { return this.spawner.limitEnemyDensity(...args); }
     ensureEnemyMinimum(...args) { return this.spawner.ensureEnemyMinimum(...args); }
+    assignVeterans(...args) { return this.spawner.assignVeterans(...args); }
     assignEliteMiniBoss(...args) { return this.spawner.assignEliteMiniBoss(...args); }
     assignEliteHighlightCards(...args) { return this.spawner.assignEliteHighlightCards(...args); }
     injectAngryNestmother(...args) { return this.spawner.injectAngryNestmother(...args); }
@@ -193,7 +208,10 @@ export class CardSystem {
                 card.shadow.y = card.restY + 28;
             }
         }
-        card.sprite.play('card_flip_anim');
+        const revealAnim = this.scene.anims?.exists?.(this._revealAnimKey())
+            ? this._revealAnimKey()
+            : 'card_flip_anim';
+        card.sprite.play(revealAnim);
         
         card.sprite.once('animationcomplete', () => {
             if (card.data.sprite) {

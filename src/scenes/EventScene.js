@@ -59,8 +59,7 @@ const EVENT_ILLUSTRATION_FRAMES = {
   // TODO: swap to the Reliquary's own frame once its art lands. Frame 11
   // (the Copying Mirror's glassy panel) is the closest stand-in for now.
   reliquary: 11,
-  // Silk cave stand-in until dedicated cocoon art lands (same sheet as Slimy Prison).
-  silk_cocoon_cache: 16
+  silk_cocoon_cache: 31
 };
 
 export class EventScene extends Phaser.Scene {

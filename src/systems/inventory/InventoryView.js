@@ -5,6 +5,12 @@ import { t, translateDescription, translateGemEffect, translateItemName } from '
 import { describeWeaponEnchant } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 
+// Bag slot styling. The near-black ink is used for both the fill and the
+// hairline frame; writing the alpha as a fraction of 255 keeps it legible
+// against the value picked in the art tool.
+const SLOT_INK = 0x0e0b10;
+const SLOT_FILL_ALPHA = 136 / 255;
+
 export const InventoryView = {
     setVisibility(isVisible) {
         if (this.uiGroup) {
@@ -386,15 +392,20 @@ export const InventoryView = {
         for (let i = 0; i < slotCount; i++) {
             const x = startX + i * (slotWidth + spacing);
             
-            // Slot background
-            const slotBg = this.scene.add.rectangle(x, y, slotWidth, slotHeight, 0x333333, 0.12);
+            // Slot background — near-black wash at 136/255 alpha, framed by a
+            // single pixel of the same colour so the slot reads as a recess in
+            // the board rather than a grey box drawn on top of it.
+            const slotBg = this.scene.add.rectangle(
+                x, y, slotWidth, slotHeight, SLOT_INK, SLOT_FILL_ALPHA
+            );
             slotBg.setDepth(11);
             
-            // Bonus slots have different color (yellow border for slots 5+)
+            // Bonus slots keep their gold edge — it is the only thing marking
+            // slots 5+ as earned — but thinned to match the others.
             if (i >= 5) {
-                slotBg.setStrokeStyle(2, 0xffd700); // Gold border for bonus slots
+                slotBg.setStrokeStyle(1, 0xffd700);
             } else {
-                slotBg.setStrokeStyle(2, 0x666666); // Normal border
+                slotBg.setStrokeStyle(1, SLOT_INK);
             }
             
             this.uiGroup.add(slotBg);

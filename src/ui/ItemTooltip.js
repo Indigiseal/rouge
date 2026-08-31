@@ -245,6 +245,9 @@ function getEnemyFeatureLines(scene, data) {
     if (features.includes('cocoon_shell')) {
         lines.push(t(scene, 'tooltip.cocoonShell'));
     }
+    if (data?.enemyTier === 'veteran') {
+        lines.push(t(scene, 'tooltip.veteran'));
+    }
     if (data?.isEliteMiniBoss) {
         lines.push(t(scene, 'tooltip.eliteMiniBoss'));
     }
@@ -269,7 +272,9 @@ export function showEnemyTooltip(scene, card, gap = BOARD_TOOLTIP_GAP) {
         ...getBossAbilityLines(scene, data),
     ];
 
-    const nameColor = data.isEliteMiniBoss ? '#ffcc33' : TOOLTIP_TEXT_COLOR;
+    const nameColor = data.isEliteMiniBoss ? '#ffcc33'
+        : data.enemyTier === 'veteran' ? '#cc7722'
+        : TOOLTIP_TEXT_COLOR;
     renderTooltipBox(
         scene,
         title,
