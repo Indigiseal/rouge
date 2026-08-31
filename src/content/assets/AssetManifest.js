@@ -89,6 +89,9 @@ export const ASSET_MANIFEST = [
     // Silk Cache cocoon shell. Loading this under the key ensureSilkCocoonTexture
     // uses means the drawn-in-code placeholder in CocoonCacheBoard.js never runs.
     { key: 'silkCocoon', path: 'assets/art/cocoon.png', type: 'image' },
+    // Cocoon cracking open: 7 frames, played once between the damaging hit and
+    // whatever was inside appearing. Slightly taller than a card on purpose.
+    { key: 'cocoonAnim', path: 'assets/art/cocoonAnim.png', type: 'spritesheet', frameWidth: 54, frameHeight: 78 },
     // Enemy trait icons, 176x32 laid out as a 16x16 grid: 11 columns, 2 rows.
     // The three tall icons in the first columns are drawn across both rows.
     { key: 'enemyIcons', path: 'assets/art/enemyIcons.png', type: 'spritesheet', frameWidth: 16, frameHeight: 16 },
