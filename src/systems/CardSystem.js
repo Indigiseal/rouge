@@ -118,6 +118,7 @@ export class CardSystem {
     ensureWeaponSupply(...args) { return this.spawner.ensureWeaponSupply(...args); }
     limitEnemyDensity(...args) { return this.spawner.limitEnemyDensity(...args); }
     ensureEnemyMinimum(...args) { return this.spawner.ensureEnemyMinimum(...args); }
+    assignVeterans(...args) { return this.spawner.assignVeterans(...args); }
     assignEliteMiniBoss(...args) { return this.spawner.assignEliteMiniBoss(...args); }
     assignEliteHighlightCards(...args) { return this.spawner.assignEliteHighlightCards(...args); }
     injectAngryNestmother(...args) { return this.spawner.injectAngryNestmother(...args); }
