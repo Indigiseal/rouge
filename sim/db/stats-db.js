@@ -47,6 +47,7 @@ export class StatsDatabase {
     addCol('sim_floor_visits', 'combat_specialization_gem', 'INTEGER');
     addCol('sim_floor_visits', 'ap_spent', 'INTEGER');
     addCol('sim_floor_visits', 'hungry_actions', 'INTEGER');
+    addCol('sim_enemy_spawns', 'enemy_tier', "TEXT NOT NULL DEFAULT 'normal'");
   }
 
   _prepareStatements() {
@@ -107,10 +108,12 @@ export class StatsDatabase {
     this.stmtInsertEnemy = this.db.prepare(`
       INSERT INTO sim_enemy_spawns (
         floor_visit_id, spawn_order, name, enemy_type, role,
-        health, max_health, attack, is_boss, is_ranged_type, board_index
+        health, max_health, attack, is_boss, is_ranged_type, board_index,
+        enemy_tier
       ) VALUES (
         @floor_visit_id, @spawn_order, @name, @enemy_type, @role,
-        @health, @max_health, @attack, @is_boss, @is_ranged_type, @board_index
+        @health, @max_health, @attack, @is_boss, @is_ranged_type, @board_index,
+        @enemy_tier
       )
     `);
     this.stmtInsertAmuletGain = this.db.prepare(`

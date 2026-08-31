@@ -52,6 +52,9 @@ function collectEnemyRows(board) {
       is_boss: data.type === 'boss' ? 1 : 0,
       is_ranged_type: data.isRangedType ? 1 : 0,
       board_index: i,
+      // Stamped by FloorSpawner's tier pass; absent on bosses and on saves
+      // written before tiers existed.
+      enemy_tier: data.enemyTier || 'normal',
     });
   }
   return rows;

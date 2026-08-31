@@ -2636,6 +2636,16 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
     };
   }
   mock.cardSystem.spawnFloorCards();
+  // Tiers are applied by the real FloorSpawner, so the sim sees veterans and
+  // elite mini-bosses for free — this only tallies what it produced.
+  if (gs._simMetrics?.enemyTiers) {
+    for (const c of mock.cardSystem.boardCards) {
+      const d = c?.data;
+      if (!d || d.type === 'boss' || (d.type !== 'enemy' && d.type !== 'eliteEnemy')) continue;
+      const tier = d.enemyTier || 'normal';
+      if (gs._simMetrics.enemyTiers[tier] !== undefined) gs._simMetrics.enemyTiers[tier]++;
+    }
+  }
   mock.amuletManager.processFloorStart();
   const bossCard = mock.cardSystem.boardCards.find((c) => c?.data?.type === 'boss') || null;
   const bossName = bossCard?.data?.name || null;
@@ -4427,6 +4437,8 @@ function newMetrics() {
     finalCompanions: [], finalCompanionAttack: [], finalTrainedCompanions: [],
     finalGuardCompanions: [], finalShockCompanions: [],
     roomVisits: {},
+    // Enemies spawned per tier (bosses excluded — they are never promoted).
+    enemyTiers: { normal: 0, veteran: 0, elite: 0 },
     totalActions: 0, hungryActions: 0, restorationUses: 0, gemsSeen: [], gemsByFloor: {}, floors,
     weaponBreaks: 0, armorBreaks: 0, thornBreaks: 0,
     lastPipWeaponAttacks: 0, mergedLastPipWeaponAttacks: 0, avoidableLastPipWeaponAttacks: 0,
@@ -4542,6 +4554,17 @@ function report(metrics) {
       ` (${pct(optionalFightVisits, totalRoomVisits)}% of visited rooms),` +
       ` combat ${((metrics.roomVisits?.COMBAT || 0) / N).toFixed(1)},` +
       ` elite ${((metrics.roomVisits?.ELITE || 0) / N).toFixed(1)}`
+    );
+  }
+  const tiers = metrics.enemyTiers || {};
+  const tieredTotal = (tiers.normal || 0) + (tiers.veteran || 0) + (tiers.elite || 0);
+  if (tieredTotal) {
+    console.log(
+      `Enemy tiers: ${(tieredTotal / N).toFixed(1)} spawned/run —` +
+      ` normal ${pct(tiers.normal || 0, tieredTotal)}%,` +
+      ` veteran ${pct(tiers.veteran || 0, tieredTotal)}%,` +
+      ` elite ${pct(tiers.elite || 0, tieredTotal)}%` +
+      `  (${((tiers.veteran || 0) / N).toFixed(1)} veterans/run)`
     );
   }
   const fa = metrics.finalAmulets;
