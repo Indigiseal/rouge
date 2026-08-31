@@ -184,6 +184,10 @@ export const ASSET_MANIFEST = [
     { key: 'skeleton_c', path: 'assets/art/skeleton_c.png', type: 'image' },
     { key: 'spider_c', path: 'assets/art/spider_c.png', type: 'image' },
     { key: 'lostSoul', path: 'assets/art/ghostlyEnemy.png', type: 'image' },
+    // Silkdeep roster. Silkslinger is still on the placeholder face.
+    { key: 'scorpion', path: 'assets/art/scorpion.png', type: 'image' },
+    { key: 'caveCrawler', path: 'assets/art/caveCrawler.png', type: 'image' },
+    { key: 'silkHusk', path: 'assets/art/silkHusk.png', type: 'image' },
     // Temporary face for month enemies without dedicated card art (53×70).
     { key: 'enemyPlaceholder', path: 'assets/art/ghostlyEnemy.png', type: 'image' },
     // Thornwake roster — 5 card faces, L→R: wolf, thornEnt, thornSprite,

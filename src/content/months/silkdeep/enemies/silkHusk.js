@@ -1,8 +1,7 @@
 export default {
   id: 'silkHusk',
   name: 'Silk Husk',
-  sprite: 'enemyPlaceholder',
-  placeholderArt: true,
+  sprite: 'silkHusk',
   role: 'MELEE',
   minFloor: 1,
   archetype: 'bruiser',
