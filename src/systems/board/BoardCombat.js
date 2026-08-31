@@ -4,6 +4,7 @@ import { SoundHelper } from '../../audio/SoundHelper.js';
 import { CombatSequencer } from '../combat/CombatSequencer.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
+import { isSilkCocoonCard } from './CocoonCacheBoard.js';
 import {
     ENCHANT_FIRE_SPLASH_FRACTION,
     ENCHANT_FIRE_SPLASH_MINIMUM,
@@ -261,6 +262,11 @@ function _anyMeleeAlive({ includeHidden = true } = {}) {
     if (!c) continue;
     if (c.data?.tutorialDormant) continue;
     if (!this.isEnemyType(c.data?.type)) continue;
+    // Cocoon shells are built as MELEE enemies so they can be attacked, but
+    // they are containers, not fighters. Counting them as a frontline meant a
+    // hatched archer could not be meleed until every other cocoon was opened —
+    // while it shot you the whole time.
+    if (isSilkCocoonCard(c.data)) continue;
     if (!includeHidden && !c.revealed) continue;
     if (c.data.role === 'MELEE') return true;
   }
@@ -991,7 +997,7 @@ function hideEnemyCard(index) {
 
 function removeDefeatedEnemy(index, card) {
         // Silk cocoons crack open into loot or a month enemy — not a kill.
-        if (card?.data?.isCocoon || (Array.isArray(card?.data?.features) && card.data.features.includes('cocoon_shell'))) {
+        if (isSilkCocoonCard(card?.data)) {
             this.openSilkCocoon?.(index, card);
             return;
         }
