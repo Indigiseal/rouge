@@ -86,6 +86,9 @@ export const ASSET_MANIFEST = [
     { key: 'potionCardCommon', path: 'assets/art/potionCardCommon.png', type: 'image' },
     { key: 'potionCardUncommon', path: 'assets/art/potionCardUncommon.png', type: 'image' },
     { key: 'potionCardRare', path: 'assets/art/potionCardRare.png', type: 'image' },
+    // Silk Cache cocoon shell. Loading this under the key ensureSilkCocoonTexture
+    // uses means the drawn-in-code placeholder in CocoonCacheBoard.js never runs.
+    { key: 'silkCocoon', path: 'assets/art/cocoon.png', type: 'image' },
     // Enemy trait icons, 176x32 laid out as a 16x16 grid: 11 columns, 2 rows.
     // The three tall icons in the first columns are drawn across both rows.
     { key: 'enemyIcons', path: 'assets/art/enemyIcons.png', type: 'spritesheet', frameWidth: 16, frameHeight: 16 },

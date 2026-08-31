@@ -44,6 +44,9 @@ function rollCocoonEnemy(generator, floor, gameState) {
     || generator.createEnemyCard(floor, false, null, gameState);
 }
 
+// Fallback only. The manifest loads assets/art/cocoon.png under 'silkCocoon',
+// so this draws nothing in a normal run — it exists so the board still renders
+// if that file ever fails to load.
 export function ensureSilkCocoonTexture(scene) {
   if (!scene?.textures || scene.textures.exists('silkCocoon')) return;
   const g = scene.make.graphics({ x: 0, y: 0, add: false });
