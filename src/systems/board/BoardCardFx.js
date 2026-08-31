@@ -5,6 +5,7 @@ import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClas
 import { ELITE_SPRITE_KEYS } from '../../content/assets/AssetManifest.js';
 import { effectiveArmorProtection, isArmorWarded } from '../combat/ArmorMath.js';
 import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
+import { isSilkCocoonCard } from './CocoonCacheBoard.js';
 
 // The one value slot painted into the bottom-right of every card that shows a
 // single number — weapon damage, armor protection, thorn damage, trap damage.
@@ -421,11 +422,14 @@ function _buildEnemyCornerStats(card) {
     };
 
     const hpText = _makeCornerText(this.scene, -dx, dy, card.data.health ?? 0, style);
-    const atkText = _makeCornerText(
-        this.scene, dx, dy, getEnemyHitAttack(card, this.boardCards), style
-    );
+    // A cocoon is a container, not a fighter: it has no attack, so it shows no
+    // attack number rather than a meaningless 0. Real enemies still print a 0
+    // if something has weakened them that far — that is worth knowing.
+    const atkText = isSilkCocoonCard(card.data)
+        ? null
+        : _makeCornerText(this.scene, dx, dy, getEnemyHitAttack(card, this.boardCards), style);
 
-    const children = [hpText, atkText];
+    const children = atkText ? [hpText, atkText] : [hpText];
     let nameText = null;
     // Placeholder art: stamp the enemy name on the silhouette until real cards exist.
     if (card.data.placeholderArt) {
@@ -761,10 +765,15 @@ function updateEnemyInfoText(card) {
 
     const hpText = container?._hpText;
     const atkText = container?._atkText;
-    if (_infoTextAlive(hpText) && _infoTextAlive(atkText)) {
+    // Cocoons are built without an attack label, so their container is complete
+    // with HP alone — requiring both here would rebuild it on every refresh.
+    const wantsAttack = !isSilkCocoonCard(card.data);
+    if (_infoTextAlive(hpText) && (!wantsAttack || _infoTextAlive(atkText))) {
         try {
             hpText.setText(String(card.data.health ?? 0));
-            atkText.setText(String(getEnemyHitAttack(card, this.boardCards)));
+            if (wantsAttack) {
+                atkText.setText(String(getEnemyHitAttack(card, this.boardCards)));
+            }
             return;
         } catch (_) { /* fall through to rebuild */ }
     }
