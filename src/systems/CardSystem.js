@@ -416,8 +416,9 @@ export class CardSystem {
 
     /**
      * Revealed enemies/bosses: passport tooltip + the same lift as face-down
-     * card backs (y - 5). Followers (HP digits, shadow, status icons) track
-     * the sprite so they don't lag behind.
+     * card backs (y - 5). The HP digits and status icons track the sprite so
+     * they don't lag behind, but the shadow stays on the floor — the gap that
+     * opens under a lifted card is the point of it.
      */
     _attachEnemyBoardHover(card) {
         if (!card?.sprite || !card.data) return;
@@ -435,7 +436,15 @@ export class CardSystem {
             const y = Math.round(s.y);
             if (card.shadow?.scene) {
                 card.shadow.x = x;
-                card.shadow.y = y + 28;
+                // The shadow stays on the floor while the card lifts — that
+                // gap IS the hover effect. It sits behind the card at rest, so
+                // dragging it up with the sprite kept it hidden and no revealed
+                // card ever appeared to have one. Face-down cards get this
+                // right by simply never moving their shadow.
+                const groundY = Number.isFinite(card._hoverHomeY) ? card._hoverHomeY
+                    : Number.isFinite(card.restY) ? card.restY
+                    : y;
+                card.shadow.y = groundY + 28;
             }
             if (card.infoText?.scene) {
                 card.infoText.x = x;
