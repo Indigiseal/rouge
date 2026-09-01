@@ -10,7 +10,7 @@ export const FOOD = [
   {
     tier: 1,
     name: 'Bread',
-    actionAmount: 25,
+    actionAmount: 10,
     minFloor: 1,
     sprite: resourceCardKey('food', 'common'),
     rarity: 'common'
@@ -18,7 +18,7 @@ export const FOOD = [
   {
     tier: 2,
     name: 'Rations',
-    actionAmount: 30,
+    actionAmount: 15,
     minFloor: 3,
     sprite: resourceCardKey('food', 'uncommon'),
     rarity: 'uncommon'
@@ -26,7 +26,7 @@ export const FOOD = [
   {
     tier: 3,
     name: 'Feast',
-    actionAmount: 40,
+    actionAmount: 25,
     minFloor: 8,
     sprite: resourceCardKey('food', 'rare'),
     rarity: 'rare'

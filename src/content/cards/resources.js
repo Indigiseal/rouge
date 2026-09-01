@@ -62,8 +62,8 @@ export function coinAmountFor(floor, rarity) {
  */
 export const CRYSTAL_AMOUNT_BY_RARITY = Object.freeze({
     common: 1,
-    uncommon: 2,
-    rare: 3,
+    uncommon: 3,
+    rare: 4,
 });
 
 /** Crystal payout at a given size. */

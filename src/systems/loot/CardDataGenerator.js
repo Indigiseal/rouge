@@ -749,7 +749,7 @@ export class CardDataGenerator {
             return {
                 type: 'food',
                 name: 'Bread',
-                actionAmount: 25,
+                actionAmount: 10,
                 sprite: resourceCardKey('food', 'common'),
                 rarity: 'common',
             };
