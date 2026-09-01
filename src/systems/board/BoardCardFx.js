@@ -228,6 +228,24 @@ function createCardInfoText(card) {
             return;
         }
 
+        case 'potion': {
+            // Potions had no board label at all — no name, no number — while
+            // every other resource carried both. Same shape as the rest: the
+            // category name low, the heal in the shared value slot.
+            const container = this.scene.add.container(card.sprite.x, card.sprite.y);
+            const potionLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, 'Potion', {
+                fontSize: '12px', fill: '#a8e870', fontFamily: '"HoMM Pixel"'
+            }).setOrigin(0.5);
+            const potionAmount = this.scene.add.text(
+                CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.healAmount ?? 0}`, {
+                    fontSize: '12px', fill: '#a8e870', fontFamily: '"HoMM Pixel"'
+                }
+            ).setOrigin(0.5);
+            container.add([potionLabel, potionAmount]);
+            attachInfoText(container);
+            return;
+        }
+
         case 'key': {
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
             const keyLabel = this.scene.add.text(0, 18, 'Key', {
