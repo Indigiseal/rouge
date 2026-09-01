@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: melee
 archetype: bruiser
-primary_month: Frosthollow
+primary_location: Frosthollow
 tags:
   - evershift
   - enemy
@@ -22,8 +22,8 @@ Slow armored cold dead.
 | Role | melee |
 | Archetype | `bruiser` (HP ×1.25 · ATK ×0.95) |
 | Status | proposed |
-| Primary month | [[09 Frosthollow/Frosthollow|Frosthollow]] |
-| Location | [[09 Frosthollow/Frosthollow#Frosthollow|Frosthollow]] |
+| Primary location | [[Frosthollow]] |
+| Place | [[Frosthollow#Frosthollow\|Frosthollow]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -34,7 +34,7 @@ _TBD_
 ## Related
 
 - [[Enemies Index]]
-- [[09 Frosthollow/Frosthollow|Frosthollow]]
-- Location: [[09 Frosthollow/Frosthollow#Frosthollow|Frosthollow]]
+- [[Frosthollow]]
+- Place: [[Frosthollow#Frosthollow|Frosthollow]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

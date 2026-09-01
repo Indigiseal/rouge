@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: melee
 archetype: bruiser
-primary_month: Thornwake
+primary_location: Thornwake
 game_id: thornEnt
 tags:
   - evershift
@@ -26,8 +26,8 @@ Formerly drafted as "Briar Beast."
 | Archetype | `bruiser` (HP ×1.25 · ATK ×0.95) |
 | Game id | `thornEnt` |
 | Status | proposed |
-| Primary month | [[Thornwake]] |
-| Location | [[Thornwake#The Briar March]] |
+| Primary location | [[Thornwake]] |
+| Place | [[Thornwake#The Briar March]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -39,6 +39,6 @@ Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 - [[Enemies Index]]
 - [[Thornwake]]
-- Location: [[Thornwake#The Briar March]]
+- Place: [[Thornwake#The Briar March]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: ranged
 archetype: artillery
-primary_month: Silkdeep
+primary_location: Silkdeep
 game_id: silkslinger
 tags:
   - evershift
@@ -24,8 +24,8 @@ A small, quick cave spider that fights with strand, not fang. From the dark it s
 | Archetype | `artillery` (HP ×0.7 · ATK ×1.15) |
 | Game id | `silkslinger` |
 | Status | proposed |
-| Primary month | [[Silkdeep]] |
-| Location | [[Silkdeep#The Silkdeep Caves]] |
+| Primary location | [[Silkdeep]] |
+| Place | [[Silkdeep#The Silkdeep Caves]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -37,6 +37,6 @@ Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 - [[Enemies Index]]
 - [[Silkdeep]]
-- Location: [[Silkdeep#The Silkdeep Caves]]
+- Place: [[Silkdeep#The Silkdeep Caves]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

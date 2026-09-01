@@ -11,28 +11,30 @@ tags:
 
 Team lock (working):
 
-> Not all encounters need to be connected.  
-> We do not need to bind them into one chain.  
-> Branching is set aside for now.
+> Not all encounters need to be connected.
+> We do not need to bind them into one chain.
+> Story-forks are set aside. Location pick is not a novel with three plots.
 
 ## What this means
 
-- Month folders own **tone and weights**, not a mandatory questline.
-- Most events are roadside strangeness of the current month face.
-- A few lanes may still sequence as [[_Shared/Event Sequences|Event Sequences]] (e.g. [[_Shared/Music Box Chain|Music Box]]), but that is optional content — not the spine of the macro-lore.
-- Soft fits across months are allowed; hard branching between paths is not required.
+- Location notes own **tone and weights**, not a mandatory questline.
+- Most events are roadside strangeness of the current country.
+- **Boss speeches on the true road** are the exception: Goblin King → Ringmaster → Magus. See [[The True Path]].
+- A few lanes may still sequence as [[Event Sequences]] (e.g. [[Music Box Chain|Music Box]]), but that is optional content — not the spine of the macro-lore.
+- Soft fits across locations are allowed; hard branching between paths is not required.
 
-## How months use events
+## How locations use events
 
-1. Primary events define the month's signature meetings.
+1. Primary events define the location's signature meetings.
 2. Soft fits may appear with lower weight.
-3. Any-month fallbacks fill gaps.
+3. Any-location fallbacks fill gaps.
 4. No design debt to "finish the novel" across every vignette.
 
 ## Related
 
-- [[Months Index]]
-- [[_Shared/Event Sequences|Event Sequences]]
-- [[_Shared/Music Box Chain|Music Box Chain]]
-- [[_Shared/Any-Month Events|Any-Month Events]]
+- [[The True Path]]
+- [[Locations Index]]
 - [[Run Structure]]
+- [[Event Sequences]]
+- [[Music Box Chain]]
+- [[Any-Location Events]]

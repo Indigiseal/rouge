@@ -4,7 +4,7 @@ project: Evershift
 status: in-game
 role: melee
 archetype: skirmisher
-primary_month: Tollroad
+primary_location: Tollroad
 game_id: goblin
 tags:
   - evershift
@@ -24,8 +24,8 @@ A classic **goblin** — preferably with a **club**. On the King's Mile he is th
 | Archetype | `skirmisher` (HP ×1.0 · ATK ×1.0) |
 | Game id | `goblin` |
 | Status | in-game |
-| Primary month | [[Tollroad]] |
-| Location | [[Tollroad#The King's Mile]] |
+| Primary location | [[Tollroad]] |
+| Place | [[Tollroad#The King's Mile]] |
 | Readable type | Classic goblin (club preferred) |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
@@ -42,8 +42,8 @@ Readable as a **classic goblin**. Prefer a club over a blade. Toll badge optiona
 
 - [[Enemies Index]]
 - [[Tollroad]]
-- Location: [[Tollroad#The King's Mile]]
+- Place: [[Tollroad#The King's Mile]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]
 
 In-game id: `goblin` (`src/content/cards/enemies.js`).

@@ -17,14 +17,11 @@ No one knows whether it appeared suddenly, or whether the world simply finally n
 
 ## What it changed
 
-The sphere does not merely hang in the sky. It **rewrites the world's rhythm**:
+The sphere does not merely hang in the sky. It **rewrites the world's rhythm**. Its law does not stamp a new costume over the whole land every fortnight. It **pools** — thickest in nine countries of the [[The Path|Path]].
 
-- a new month lasts 15 days;
-- the start of each month brings its own wave of calamity;
-- those calamities have repeating character and recognizable themes;
-- the old calendar still exists in speech, but no longer helps anyone survive.
+People still count a crossing in fifteen days. They no longer ask what day of summer it is. They ask **which country the road has entered**, and whether anyone who went that way came back.
 
-People no longer ask what day of summer or winter it is. They ask **which month of the sphere** has begun, and whether they will live to see the next.
+[[Starfold]] is the extreme: the sphere as a place you can walk. The Magus who keeps that working is not written yet.
 
 ## What people believe
 
@@ -34,21 +31,24 @@ Different lands offer different explanations:
 - a machine of the ancient world;
 - an egg that has not yet opened;
 - a seal holding back something worse;
-- a key, with the ordinary moon as its lock.
+- a key, with the ordinary moon as its lock;
+- a magician's working, hung where a moon should be.
 
-None of these versions is final. For most people, origin matters less than a simpler truth: when a new turn begins, the world grows dangerous again.
+None of these versions is final. For most people, origin matters less than a simpler truth: the Path has countries now, and some of them should not exist.
 
 ## Narrative function
 
 The Second Moon serves as:
 
-- the source of the calendar;
-- the justification for shifting settings;
-- the reason threat cycles repeat;
-- the great unanswered question that drives the hero forward.
+- the broken sky over every expedition;
+- the reason the nine locations feel like one world, not nine unrelated biomes;
+- the question that makes [[Starfold]] possible;
+- the great unanswered thing that drives the hero toward [[The Far Place]].
 
 ## Related
 
 - [[The Calendar]]
 - [[The Waystar]]
-- [[Months Index]]
+- [[Locations Index]]
+- [[Starfold]]
+- [[The Magus]]

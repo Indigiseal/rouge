@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: melee
 archetype: skirmisher
-primary_month: Spherefall
+primary_location: Spherefall
 tags:
   - evershift
   - enemy
@@ -22,8 +22,8 @@ Scavenger of impact pits.
 | Role | melee |
 | Archetype | `skirmisher` (HP ×1.0 · ATK ×1.0) |
 | Status | proposed |
-| Primary month | [[12 Spherefall/Spherefall|Spherefall]] |
-| Location | [[12 Spherefall/Spherefall#The Spherefall Fields|The Spherefall Fields]] |
+| Primary location | [[Spherefall]] |
+| Place | [[Spherefall#The Glass Craters\|The Glass Craters]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -34,7 +34,7 @@ _TBD_
 ## Related
 
 - [[Enemies Index]]
-- [[12 Spherefall/Spherefall|Spherefall]]
-- Location: [[12 Spherefall/Spherefall#The Spherefall Fields|The Spherefall Fields]]
+- [[Spherefall]]
+- Place: [[Spherefall#The Glass Craters|The Glass Craters]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

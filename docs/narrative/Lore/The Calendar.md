@@ -9,52 +9,50 @@ tags:
 
 # The Calendar
 
-## The new month
+## Folk time, not the spine of the run
 
-After the Second Moon appeared, the word "month" stopped meaning what it once did. Now a month is **one full orbit of the sphere around the ordinary moon**, and it lasts **15 days**.
+After the Second Moon appeared, old season names survived in speech and lost practical power. People still say **a turn of fifteen days** — the time it takes to cross one country of the Path.
 
-Old season names still survive in speech, but they have lost practical power. People no longer prepare for autumn or spring. They prepare for the next turn.
+That is not twelve rotating "months" that dress the whole world. The expedition is **locations**, chosen. See [[Locations Index]] and [[Run Structure]].
 
-## How people count time
+## How people count a crossing
 
-The most useful reckoning is:
+The useful reckoning is:
 
-- **1 month = 15 days**
 - **1 day on the road = 1 floor**
-- **3 consecutive months on the circle = one successful expedition**
-  (windows: 1→2→3, 2→3→4, …, 11→12→1, 12→1→2)
-
+- **15 days = one location, one act**
+- **45 days = one successful expedition** (three locations)
 
 This keeps lore aligned with game structure:
 
 - days read as physical progress;
-- months read as changes in the world's face;
+- locations read as changes in the world's face;
 - the expedition reads as a long road toward one goal.
 
-## What the start of a month means
+## What a new location means
 
-The beginning of a month is not only a date. It is a **change in the world's pressure**.
+Entering a new country is not only travel. It is a **change in the world's pressure**.
 
-In a new month:
+In a new location:
 
 - the leading threat theme shifts;
 - different monsters come forward;
-- familiar roads feel newly foreign;
+- familiar tools feel newly foreign;
 - old omens stop working again.
 
-People await a month-change the way they once awaited a storm.
+People await a departure the way they once awaited a storm. The City watches which of the three Near Roads someone takes, and whether they return from the farther three.
 
 ## Narrative value
 
-This calendar:
+This counting:
 
-- naturally explains 12 setting faces;
-- supports replayability via sliding month windows (no branching);
-- makes death part of time, not only defeat;
+- explains 15 / 45 without a twelve-month wheel;
+- supports replayability via location pick (27 combinations);
+- makes death a return to the City, not a skipped month;
 - enables strong title cards at the start of each act.
 
 ## Related
 
 - [[Day and Floor]]
 - [[Run Structure]]
-- [[Months Index]]
+- [[Locations Index]]

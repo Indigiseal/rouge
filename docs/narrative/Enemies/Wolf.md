@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: melee
 archetype: skirmisher
-primary_month: Thornwake
+primary_location: Thornwake
 game_id: wolf
 tags:
   - evershift
@@ -14,7 +14,7 @@ tags:
 
 # Wolf
 
-Pack hunters of the Briar March — ordinary wolves driven past hunger into fury. Their coats are torn and studded with living thorns: spines the woods have driven into them and left there, as if the month itself keeps wounding what still runs its roads. They come in numbers, lean and snarling, and every other wolf on the path makes the pack meaner.
+Pack hunters of the Briar March — ordinary wolves driven past hunger into fury. Their coats are torn and studded with living thorns: spines the woods have driven into them and left there, as if the March itself keeps wounding what still runs its roads. They come in numbers, lean and snarling, and every other wolf on the path makes the pack meaner.
 
 ## Combat sheet
 
@@ -24,8 +24,8 @@ Pack hunters of the Briar March — ordinary wolves driven past hunger into fury
 | Archetype | `skirmisher` (HP ×1.0 · ATK ×1.0) |
 | Game id | `wolf` |
 | Status | proposed |
-| Primary month | [[Thornwake]] |
-| Location | [[Thornwake#The Briar March]] |
+| Primary location | [[Thornwake]] |
+| Place | [[Thornwake#The Briar March]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -37,6 +37,6 @@ Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 - [[Enemies Index]]
 - [[Thornwake]]
-- Location: [[Thornwake#The Briar March]]
+- Place: [[Thornwake#The Briar March]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

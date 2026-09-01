@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: melee
 archetype: bruiser
-primary_month: Mireturn
+primary_location: Mireturn
 tags:
   - evershift
   - enemy
@@ -22,8 +22,8 @@ Mud-heavy slam attacker.
 | Role | melee |
 | Archetype | `bruiser` (HP ×1.25 · ATK ×0.95) |
 | Status | proposed |
-| Primary month | [[05 Mireturn/Mireturn|Mireturn]] |
-| Location | [[05 Mireturn/Mireturn#The Mireturn Fens|The Mireturn Fens]] |
+| Primary location | [[Mireturn]] |
+| Place | [[Mireturn#The Mireturn Fens\|The Mireturn Fens]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -34,7 +34,7 @@ _TBD_
 ## Related
 
 - [[Enemies Index]]
-- [[05 Mireturn/Mireturn|Mireturn]]
-- Location: [[05 Mireturn/Mireturn#The Mireturn Fens|The Mireturn Fens]]
+- [[Mireturn]]
+- Place: [[Mireturn#The Mireturn Fens|The Mireturn Fens]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

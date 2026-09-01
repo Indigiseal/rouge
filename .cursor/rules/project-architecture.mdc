@@ -7,6 +7,8 @@ alwaysApply: true
 
 Подробности и чеклисты: `docs/AGENT.md`. Механики: `docs/MECHANICS.md`. Куда крутить числа: `docs/BALANCE.md`. Freeze сейвов: `docs/OPEN-QUESTIONS.md`. Макро-лор: `docs/LORE.md` / `docs/narrative/` (Obsidian vault symlink → эта папка).
 
+Структура рана (дизайн): 3 акта × 15 этажей, по локации на акт, выбор из трёх, всего 9; true path Tollroad → Brassfair → Starfold. В коде пока старая ротация месяцев (`src/content/months/`, `calendar.js`) — локации не реализованы.
+
 ## Слои
 
 | Слой | Путь | Что класть |

@@ -9,36 +9,41 @@ tags:
 
 # Replayability
 
-Replayability comes from the **sliding three-month window**, not from branching.
+Replay is **which roads you pick**, plus whether you follow the **true chain**.
 
 ## Principle
 
-- the Path / goal stay the same;
-- branching is shelved;
-- what changes is which **three faces** of the Second Moon the hero walks through this run.
+- 27 combinations (3 × 3 × 3).
+- One true road per act. Following all three is a discovery, not a requirement.
+- Wrong countries are real places with real bosses. The card after the boss is the only penalty: you learn it was not the Waystar's road.
 
-Early playthroughs should feel like discovering something new each time: new month openers, new threat accents, new event weights.
+Early runs: learn the map (forest, caves, mile, graves, carnival, castle, glass, craters, sky).
 
-Later playthroughs remix familiar months into unfamiliar triples (e.g. 11→12→1 feels different from 1→2→3 even if month 1 repeats).
+Later runs: hunt the chain (goblin god → night fair → Magus) or remix on purpose.
+
+## What the road pick does not carry
+
+The pick is the **in-run** lever, and it has a horizon: once the player knows the chain, six of the nine roads are knowingly the wrong answer. That is expected, not a flaw to patch by hiding the chain.
+
+Long-tail replay is carried by systems outside the map — character meta and the planned village layer, with seasonal act modifiers as a candidate on top. Design lives in `docs/OPEN-QUESTIONS.md`; do not solve it by gating locations.
+
+The game also **does not track discovery**. There is no codex, no journal, no mark on the choice screen. Knowing the true road is the player's own knowledge, carried between runs in their head. See [[Design Decisions]].
 
 ## What changes between runs
 
-- starting month on the circle;
-- the act 1 / 2 / 3 triple;
-- leading biomes and enemy accents;
-- which events are more likely to appear;
-- emotional color of the expedition.
+- which three countries you walk;
+- whether the true-path speeches fire in full;
+- event weights;
+- which Act 3 answer you get.
 
 ## What stays the same
 
-- the Waystar;
-- the Far Place;
-- the task: follow the Path and end the Second Moon's harm;
-- no requirement that roadside encounters interconnect into one novel.
+- Waystar, Far Place, nine roads;
+- roadside events need not form a novel.
 
 ## Related
 
+- [[The True Path]]
 - [[Run Structure]]
-- [[The Calendar]]
-- [[Months Index]]
+- [[Locations Index]]
 - [[Encounter Philosophy]]

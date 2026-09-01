@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: melee
 archetype: bruiser
-primary_month: Stormhatch
+primary_location: Stormhatch
 tags:
   - evershift
   - enemy
@@ -22,8 +22,8 @@ Shocking armored crawler.
 | Role | melee |
 | Archetype | `bruiser` (HP ×1.25 · ATK ×0.95) |
 | Status | proposed |
-| Primary month | [[10 Stormhatch/Stormhatch|Stormhatch]] |
-| Location | [[10 Stormhatch/Stormhatch#The Hatchspires|The Hatchspires]] |
+| Primary location | [[Stormhatch]] |
+| Place | [[Stormhatch#The Hatchspires\|The Hatchspires]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -34,7 +34,7 @@ _TBD_
 ## Related
 
 - [[Enemies Index]]
-- [[10 Stormhatch/Stormhatch|Stormhatch]]
-- Location: [[10 Stormhatch/Stormhatch#The Hatchspires|The Hatchspires]]
+- [[Stormhatch]]
+- Place: [[Stormhatch#The Hatchspires|The Hatchspires]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

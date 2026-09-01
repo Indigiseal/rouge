@@ -4,7 +4,7 @@ project: Evershift
 status: in-game
 role: melee
 archetype: skirmisher
-primary_month: Boneflood
+primary_location: Boneflood
 tags:
   - evershift
   - enemy
@@ -22,8 +22,8 @@ Baseline ossuary dead.
 | Role | melee |
 | Archetype | `skirmisher` (HP ×1.0 · ATK ×1.0) |
 | Status | in-game |
-| Primary month | [[04 Boneflood/Boneflood|Boneflood]] |
-| Location | [[04 Boneflood/Boneflood#The Ossuary Fields|The Ossuary Fields]] |
+| Primary location | [[Boneflood]] |
+| Place | [[Boneflood#The Ossuary Fields\|The Ossuary Fields]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -34,9 +34,9 @@ _TBD_
 ## Related
 
 - [[Enemies Index]]
-- [[04 Boneflood/Boneflood|Boneflood]]
-- Location: [[04 Boneflood/Boneflood#The Ossuary Fields|The Ossuary Fields]]
+- [[Boneflood]]
+- Place: [[Boneflood#The Ossuary Fields|The Ossuary Fields]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]
 
 In-game id: `skeleton` (`src/content/cards/enemies.js`).

@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: melee
 archetype: swarm
-primary_month: Thornwake
+primary_location: Thornwake
 game_id: thornSprite
 tags:
   - evershift
@@ -16,7 +16,7 @@ tags:
 
 Not a winged sprite of hearth-tales — a knot of awakened briar that has learned to hunt. Vines writhe like snakes and braid themselves into several snapping heads, a hydra shaped from thorn and leaf. There is little solid flesh to aim at; arrows pass through the tangle as if the thing were only gaps and spite. It comes in swarms of motion more than in single bodies, and the Path feels smaller wherever it coils.
 
-(The vine-bound fairy of the same month is [[Thorn Fairy]].)
+(The vine-bound fairy of the same location is [[Thorn Fairy]].)
 
 ## Combat sheet
 
@@ -26,8 +26,8 @@ Not a winged sprite of hearth-tales — a knot of awakened briar that has learne
 | Archetype | `swarm` (HP ×0.75 · ATK ×0.9) |
 | Game id | `thornSprite` |
 | Status | proposed |
-| Primary month | [[Thornwake]] |
-| Location | [[Thornwake#The Briar March]] |
+| Primary location | [[Thornwake]] |
+| Place | [[Thornwake#The Briar March]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -39,7 +39,7 @@ Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 - [[Enemies Index]]
 - [[Thornwake]]
-- Location: [[Thornwake#The Briar March]]
+- Place: [[Thornwake#The Briar March]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]
 - [[Thorn Fairy]]

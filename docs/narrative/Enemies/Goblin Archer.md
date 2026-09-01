@@ -4,7 +4,7 @@ project: Evershift
 status: in-game
 role: ranged
 archetype: artillery
-primary_month: Tollroad
+primary_location: Tollroad
 game_id: goblin_archer
 tags:
   - evershift
@@ -24,8 +24,8 @@ A classic **goblin archer** — roadside ambush, not a parade soldier. On the Ki
 | Archetype | `artillery` (HP ×0.7 · ATK ×1.15) |
 | Game id | `goblin_archer` |
 | Status | in-game |
-| Primary month | [[Tollroad]] |
-| Location | [[Tollroad#The King's Mile]] |
+| Primary location | [[Tollroad]] |
+| Place | [[Tollroad#The King's Mile]] |
 | Readable type | Goblin archer |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
@@ -42,8 +42,8 @@ Readable as a **goblin with a bow** (or short / scrap bow). Pose and kit open.
 
 - [[Enemies Index]]
 - [[Tollroad]]
-- Location: [[Tollroad#The King's Mile]]
+- Place: [[Tollroad#The King's Mile]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]
 
 In-game id: `goblin_archer` (`src/content/cards/enemies.js`).

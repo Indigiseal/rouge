@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: ranged
 archetype: artillery
-primary_month: Brassfair
+primary_location: Brassfair
 tags:
   - evershift
   - enemy
@@ -22,8 +22,8 @@ Carnival gunner.
 | Role | ranged |
 | Archetype | `artillery` (HP ×0.7 · ATK ×1.15) |
 | Status | proposed |
-| Primary month | [[08 Brassfair/Brassfair|Brassfair]] |
-| Location | [[08 Brassfair/Brassfair#The Brassfair Grounds|The Brassfair Grounds]] |
+| Primary location | [[Brassfair]] |
+| Place | [[Brassfair#The Night Fair\|The Night Fair]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -34,7 +34,7 @@ _TBD_
 ## Related
 
 - [[Enemies Index]]
-- [[08 Brassfair/Brassfair|Brassfair]]
-- Location: [[08 Brassfair/Brassfair#The Brassfair Grounds|The Brassfair Grounds]]
+- [[Brassfair]]
+- Place: [[Brassfair#The Night Fair|The Night Fair]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

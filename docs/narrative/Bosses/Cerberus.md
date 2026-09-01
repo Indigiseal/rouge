@@ -2,7 +2,7 @@
 type: boss
 project: Evershift
 status: in-game
-primary_month: Ashhowl
+primary_location: Ashhowl
 tags:
   - evershift
   - boss
@@ -17,15 +17,15 @@ In-game Ashhowl finale.
 | Field | Value |
 |---|---|
 | Status | in-game |
-| Primary month | [[07 Ashhowl/Ashhowl|Ashhowl]] |
-| Location | [[07 Ashhowl/Ashhowl#The Ashhowl Wastes|The Ashhowl Wastes]] |
+| Primary location | [[Ashhowl]] |
+| Place | [[Ashhowl#The Ashhowl Wastes\|The Ashhowl Wastes]] |
 
 Boss power uses **act boss-bands**, not ordinary enemy bands. See [[Enemy Power]] and `docs/BALANCE.md`.
 
 ## Related
 
 - [[Bosses Index]]
-- [[07 Ashhowl/Ashhowl|Ashhowl]]
-- Location: [[07 Ashhowl/Ashhowl#The Ashhowl Wastes|The Ashhowl Wastes]]
+- [[Ashhowl]]
+- Place: [[Ashhowl#The Ashhowl Wastes|The Ashhowl Wastes]]
 - [[Enemies Index]]
-- [[Months Index]]
+- [[Locations Index]]

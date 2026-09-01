@@ -11,52 +11,39 @@ tags:
 
 ## Locked rule
 
-One successful run is **three consecutive months** on the calendar circle.
+Each act the player **picks one of three roads**. Completing that location (boss down) **always** opens the next act. One pick per act is the **true road**. Wrong pick still counts; a card says it was not the Waystar's road. See [[The True Path]].
 
-Examples:
-
-- start month 1 → months **1 → 2 → 3**
-- start month 2 → months **2 → 3 → 4**
-- start month 11 → months **11 → 12 → 1**
-- start month 12 → months **12 → 1 → 2**
-
-There are **12 possible starting months**, so 12 distinct three-month windows.
-
-## Acts inside a run
-
-| Act | Days / floors | Calendar |
+| Act | Days / floors | Roads (true in bold) |
 |---|---|---|
-| Act 1 | 1–15 | starting month `N` |
-| Act 2 | 16–30 | month `N+1` (wrap after 12) |
-| Act 3 | 31–45 | month `N+2` (wrap after 12) |
+| Act 1 | 1–15 | Thornwake · Silkdeep · **Tollroad** |
+| Act 2 | 16–30 | Boneflood · **Brassfair** · Duskhold |
+| Act 3 | 31–45 | Mirrorwane · Spherefall · **Starfold** |
 
-Each act changes the world's face: biome pressure, enemy accent, and which events are weighted.
+27 expeditions. Picks are independent: a wrong Act 1 does not hide Brassfair.
+
+True chain (narrative only, not a gate): Tollroad → Brassfair → Starfold.
+
+Settings and enemy sheets: [[Locations Index]].
+
+## What an act is
+
+Fifteen days in **one named country**. Forest, cave, goblin mile; then graves, night-fair, or vampire keep; then glass palace, craters, or the Magus's house.
 
 ## After death
 
-If the hero dies:
-
-- the Path breaks;
-- the [[The Waystar|Waystar]] returns them;
-- the next run opens on the **next starting month** of the circle, so the three-month window slides forward.
-
-Exact advance rule (from run start vs from death month) is still listed in [[Open Lore Questions]]. Intent: early playthroughs keep showing **new month combinations**.
-
+The Waystar returns the hero to the [[The City|City]]. Act 1's three roads are open again.
 
 ## What we are not doing (for now)
 
-- No path branching at the city gates.
-- No separate story forks per route.
-- Encounters do **not** need to form one connected plot across months.
-
-## Why this works
-
-- first runs feel fresh (new windows on the circle);
-- later runs remix known faces in new triples;
-- acts are justified by the calendar, not by "deeper dungeon."
+- No fail state for a wrong country.
+- No lock that hides later true roads.
+- Roadside events still need not form a novel. The **boss speeches** carry the true-path chain.
 
 ## Related
 
+- [[The True Path]]
+- [[Locations Index]]
 - [[Replayability]]
-- [[Months Index]]
-- [[Encounter Philosophy]]
+- [[Day and Floor]]
+- [[Death and Return]]
+- [[The Path]]

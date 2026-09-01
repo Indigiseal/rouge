@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: melee
 archetype: bruiser
-primary_month: Boneflood
+primary_location: Boneflood
 tags:
   - evershift
   - enemy
@@ -22,8 +22,8 @@ Armored guard of the crypts.
 | Role | melee |
 | Archetype | `bruiser` (HP ×1.25 · ATK ×0.95) |
 | Status | proposed |
-| Primary month | [[04 Boneflood/Boneflood|Boneflood]] |
-| Location | [[04 Boneflood/Boneflood#The Ossuary Fields|The Ossuary Fields]] |
+| Primary location | [[Boneflood]] |
+| Place | [[Boneflood#The Ossuary Fields\|The Ossuary Fields]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -34,7 +34,7 @@ _TBD_
 ## Related
 
 - [[Enemies Index]]
-- [[04 Boneflood/Boneflood|Boneflood]]
-- Location: [[04 Boneflood/Boneflood#The Ossuary Fields|The Ossuary Fields]]
+- [[Boneflood]]
+- Place: [[Boneflood#The Ossuary Fields|The Ossuary Fields]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

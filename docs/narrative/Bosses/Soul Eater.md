@@ -2,7 +2,7 @@
 type: boss
 project: Evershift
 status: in-game
-primary_month: Veilbleed
+primary_location: Veilbleed
 tags:
   - evershift
   - boss
@@ -17,15 +17,15 @@ In-game Veilbleed finale.
 | Field | Value |
 |---|---|
 | Status | in-game |
-| Primary month | [[06 Veilbleed/Veilbleed|Veilbleed]] |
-| Location | [[06 Veilbleed/Veilbleed#The Bleeding Veil|The Bleeding Veil]] |
+| Primary location | [[Veilbleed]] |
+| Place | [[Veilbleed#The Bleeding Veil\|The Bleeding Veil]] |
 
 Boss power uses **act boss-bands**, not ordinary enemy bands. See [[Enemy Power]] and `docs/BALANCE.md`.
 
 ## Related
 
 - [[Bosses Index]]
-- [[06 Veilbleed/Veilbleed|Veilbleed]]
-- Location: [[06 Veilbleed/Veilbleed#The Bleeding Veil|The Bleeding Veil]]
+- [[Veilbleed]]
+- Place: [[Veilbleed#The Bleeding Veil|The Bleeding Veil]]
 - [[Enemies Index]]
-- [[Months Index]]
+- [[Locations Index]]

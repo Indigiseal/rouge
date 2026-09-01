@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: melee
 archetype: swarm
-primary_month: Silkdeep
+primary_location: Silkdeep
 game_id: caveCrawler
 tags:
   - evershift
@@ -24,8 +24,8 @@ A giant cave centipede of the Silkdeep — too many legs, no eyes worth trusting
 | Archetype | `swarm` (HP ×0.75 · ATK ×0.9) |
 | Game id | `caveCrawler` |
 | Status | proposed |
-| Primary month | [[Silkdeep]] |
-| Location | [[Silkdeep#The Silkdeep Caves]] |
+| Primary location | [[Silkdeep]] |
+| Place | [[Silkdeep#The Silkdeep Caves]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -37,6 +37,6 @@ Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 - [[Enemies Index]]
 - [[Silkdeep]]
-- Location: [[Silkdeep#The Silkdeep Caves]]
+- Place: [[Silkdeep#The Silkdeep Caves]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

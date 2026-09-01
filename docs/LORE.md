@@ -17,16 +17,21 @@ Obsidian редактирует ту же папку через symlink в vault
 docs/narrative/
   Narrative.md              # map of content
   Lore/                     # Second Moon, Waystar, Calendar, City, ...
-  Months/                   # PRIMARY breakdown
-  Enemies/                  # one page per enemy
-  Bosses/                   # one page per month boss
-    Months Index.md
-    _Shared/                # chains, any-month notes
-    01 Thornwake/
-      Thornwake.md          # features, event list, gaps
-      Events/               # brief event cards
+  Locations/                # PRIMARY
+    Locations Index.md      # nine roads, three per act, true path marked
+    Thornwake/              # one folder per road
+      Thornwake.md
+      Events/               # events owned by this road
     ...
-  Concepts/                 # Day/Floor, Run Structure, Enemy Power, …
+    _Shared/                # not owned by any road
+      Any-Location Events.md
+      Event Sequences.md
+      Music Box Chain.md
+      Events/
+    _Shelved/               # five retired month faces, kept for salvage
+  Enemies/                  # one page per enemy
+  Bosses/                   # one page per location boss
+  Concepts/                 # Day/Floor, Run Structure, True Path, Enemy Power, …
   Meta/                     # Glossary, open questions
 ```
 
@@ -46,7 +51,7 @@ Edit notes in Obsidian under **Narrative/** — files land in the repo.
 
 | Layer | Where | Contents |
 |---|---|---|
-| Macro lore / setting | `docs/narrative/` | Second Moon, Waystar, months, events-by-month |
+| Macro lore / setting | `docs/narrative/` | Second Moon, Waystar, nine locations, events-by-location |
 | In-game event copy | `docs/event-stories.md` + `src/content/events/` | Full vignette text / code |
 | Mechanics / balance | `docs/MECHANICS.md`, `docs/BALANCE.md` | Not lore |
 

@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: melee
 archetype: swarm
-primary_month: Tollroad
+primary_location: Tollroad
 tags:
   - evershift
   - enemy
@@ -24,8 +24,8 @@ Name keeps "Highway" as setting; the readable type is **thief**.
 | Role | melee |
 | Archetype | `swarm` (HP ×0.75 · ATK ×0.9) |
 | Status | proposed |
-| Primary month | [[Tollroad]] |
-| Location | [[Tollroad#The King's Mile]] |
+| Primary location | [[Tollroad]] |
+| Place | [[Tollroad#The King's Mile]] |
 | Readable type | Cutpurse / thief |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
@@ -42,6 +42,6 @@ Silhouette should read **thief**, not tank. May be goblin or other smallfolk —
 
 - [[Enemies Index]]
 - [[Tollroad]]
-- Location: [[Tollroad#The King's Mile]]
+- Place: [[Tollroad#The King's Mile]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

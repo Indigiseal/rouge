@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: ranged
 archetype: artillery
-primary_month: Tollroad
+primary_location: Tollroad
 tags:
   - evershift
   - enemy
@@ -24,8 +24,8 @@ Name keeps "Road" as setting; the readable type is **long-range archer / crossbo
 | Role | ranged |
 | Archetype | `artillery` (HP ×0.7 · ATK ×1.15) |
 | Status | proposed |
-| Primary month | [[Tollroad]] |
-| Location | [[Tollroad#The King's Mile]] |
+| Primary location | [[Tollroad]] |
+| Place | [[Tollroad#The King's Mile]] |
 | Readable type | Long-shot archer / crossbowman |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
@@ -42,6 +42,6 @@ Readable as a **dedicated ranged shooter** with fantasy kit. Scope/rifle fantasy
 
 - [[Enemies Index]]
 - [[Tollroad]]
-- Location: [[Tollroad#The King's Mile]]
+- Place: [[Tollroad#The King's Mile]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

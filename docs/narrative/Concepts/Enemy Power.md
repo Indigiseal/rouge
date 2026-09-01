@@ -10,11 +10,11 @@ tags:
 
 # Enemy Power
 
-How month faces stay readable while difficulty follows the calendar day (floor).
+How locations stay readable while difficulty follows the calendar day (floor).
 
 ## Split
 
-- **Month** → who appears (3 melee + 2 ranged + boss), tone, feature text
+- **Location** → who appears (3 melee + 2 ranged + boss), tone, feature text
 - **Floor / day** → which **power band** supplies base HP / ATK
 - **Archetype** → shape multipliers on that band
 
@@ -47,7 +47,7 @@ Skirmisher uses the band verbatim. Other archetypes multiply HP/ATK.
 
 ## Pages
 
-Each enemy has a note under `Enemies/`; bosses under `Bosses/`. Month cast tables link to those notes.
+Each enemy has a note under `Enemies/`; bosses under `Bosses/`. Location cast tables link to those notes.
 
 ## Features
 
@@ -83,8 +83,7 @@ Write monster features as rules without passport damage numbers. Power comes fro
 | [[Goblin Archer]] | `ignore_armor` | After hit/miss resolved: if the shot lands, 10% ignore DEF and do not spend armor durability on that hit (inverse timing family of plate `rangedIgnoreChance`) |
 | [[Road Sniper]] | `heavy_shot` | On each attack, 20% deal 150% damage instead of 100% |
 
-Other months: features TBD per cast note.
-
+Other locations: features TBD per cast note.
 
 ## Related
 
@@ -92,5 +91,5 @@ Other months: features TBD per cast note.
 - [[Bosses Index]]
 - [[Run Structure]]
 - [[Day and Floor]]
-- [[Months Index]]
+- [[Locations Index]]
 - [[Design Decisions]]

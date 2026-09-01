@@ -10,9 +10,9 @@ tags:
 
 # Evershift — Narrative
 
-> A second moon rose in the sky. The world now counts its days by that orbit.  
-> A stone fell from the heavens, and it still remembers the road.  
-> The hero follows that road — month after month, day after day — until they reach the place where the sky can be asked why it broke.
+> A second moon rose in the sky. The world now counts its days by crossings of fifteen.
+> A stone fell from the heavens, and it still remembers the road.
+> The hero follows that road — country after country, day after day — until they reach the place where the sky can be asked why it broke.
 
 This note is the **map of content** for the lore database.
 
@@ -29,16 +29,17 @@ This note is the **map of content** for the lore database.
 - [[The Far Place]]
 - [[Death and Return]]
 
-## Months
+## Locations
 
 > [!abstract] Primary breakdown
-> Narrative content is organized **by month folder**: features, events, gaps. Names are still working examples.
+> Nine roads, three per act. True chain: Tollroad → Brassfair → Starfold. See [[The True Path]], [[Locations Index]].
 
-- [[Months Index]]
-- [[01 Thornwake/Thornwake|Thornwake]] · [[02 Silkdeep/Silkdeep|Silkdeep]] · [[03 Tollroad/Tollroad|Tollroad]] · [[04 Boneflood/Boneflood|Boneflood]]
-- [[05 Mireturn/Mireturn|Mireturn]] · [[06 Veilbleed/Veilbleed|Veilbleed]] · [[07 Ashhowl/Ashhowl|Ashhowl]] · [[08 Brassfair/Brassfair|Brassfair]]
-- [[09 Frosthollow/Frosthollow|Frosthollow]] · [[10 Stormhatch/Stormhatch|Stormhatch]] · [[11 Mirrorwane/Mirrorwane|Mirrorwane]] · [[12 Spherefall/Spherefall|Spherefall]]
-- Shared: [[_Shared/Event Sequences|Event Sequences]] · [[_Shared/Music Box Chain|Music Box Chain]] · [[_Shared/Any-Month Events|Any-Month Events]]
+- [[Locations Index]] · [[The True Path]]
+- Act 1: [[Thornwake]] · [[Silkdeep]] · [[Tollroad]] (true)
+- Act 2: [[Boneflood]] · [[Brassfair]] (true) · [[Duskhold]]
+- Act 3: [[Mirrorwane]] · [[Spherefall]] · [[Starfold]] (true)
+- Shared: [[Event Sequences]] · [[Music Box Chain]] · [[Any-Location Events]]
+- Shelved faces: [[Mireturn]] · [[Veilbleed]] · [[Ashhowl]] · [[Frosthollow]] · [[Stormhatch]]
 
 ## Enemies & bosses
 
@@ -50,10 +51,10 @@ This note is the **map of content** for the lore database.
 
 - [[Day and Floor]]
 - [[Run Structure]]
+- [[The True Path]]
 - [[Tone and Fantasy]]
 - [[Replayability]]
 - [[Encounter Philosophy]]
-- [[Enemy Power]]
 
 ## Meta
 
@@ -65,7 +66,7 @@ This note is the **map of content** for the lore database.
 
 ## One sentence
 
-**Evershift** is a journey measured in the days of a new calendar: the hero follows the [[The Waystar|Waystar]] through the twelve faces of the [[The Second Moon|Second Moon]] to reach [[The Far Place]] and end its influence on the world — or at least learn why the sky chose a different orbit.
+**Evershift** is a journey measured in days on named roads: the hero follows the [[The Waystar|Waystar]], picks a country each act, and may follow the true chain — goblin tax-god, night fair, [[The Magus]] — to [[The Far Place]].
 
 ---
 

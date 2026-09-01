@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: ranged
 archetype: artillery
-primary_month: Mirrorwane
+primary_location: Mirrorwane
 tags:
   - evershift
   - enemy
@@ -22,8 +22,8 @@ Ranged copy / returned-shot pressure.
 | Role | ranged |
 | Archetype | `artillery` (HP ×0.7 · ATK ×1.15) |
 | Status | proposed |
-| Primary month | [[11 Mirrorwane/Mirrorwane|Mirrorwane]] |
-| Location | [[11 Mirrorwane/Mirrorwane#The Mirrorwane Halls|The Mirrorwane Halls]] |
+| Primary location | [[Mirrorwane]] |
+| Place | [[Mirrorwane#The Mirror Palace\|The Mirror Palace]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -34,7 +34,7 @@ _TBD_
 ## Related
 
 - [[Enemies Index]]
-- [[11 Mirrorwane/Mirrorwane|Mirrorwane]]
-- Location: [[11 Mirrorwane/Mirrorwane#The Mirrorwane Halls|The Mirrorwane Halls]]
+- [[Mirrorwane]]
+- Place: [[Mirrorwane#The Mirror Palace|The Mirror Palace]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

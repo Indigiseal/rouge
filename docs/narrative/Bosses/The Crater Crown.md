@@ -2,7 +2,7 @@
 type: boss
 project: Evershift
 status: proposed
-primary_month: Spherefall
+primary_location: Spherefall
 tags:
   - evershift
   - boss
@@ -10,22 +10,22 @@ tags:
 
 # The Crater Crown
 
-Sovereign of the impact fields — ordinary month face, not year-end.
+Sovereign of the impact fields — Act 3 country, the wound from outside, not a year-end.
 
 ## Combat sheet
 
 | Field | Value |
 |---|---|
 | Status | proposed |
-| Primary month | [[12 Spherefall/Spherefall|Spherefall]] |
-| Location | [[12 Spherefall/Spherefall#The Spherefall Fields|The Spherefall Fields]] |
+| Primary location | [[Spherefall]] |
+| Place | [[Spherefall#The Glass Craters\|The Glass Craters]] |
 
 Boss power uses **act boss-bands**, not ordinary enemy bands. See [[Enemy Power]] and `docs/BALANCE.md`.
 
 ## Related
 
 - [[Bosses Index]]
-- [[12 Spherefall/Spherefall|Spherefall]]
-- Location: [[12 Spherefall/Spherefall#The Spherefall Fields|The Spherefall Fields]]
+- [[Spherefall]]
+- Place: [[Spherefall#The Glass Craters|The Glass Craters]]
 - [[Enemies Index]]
-- [[Months Index]]
+- [[Locations Index]]

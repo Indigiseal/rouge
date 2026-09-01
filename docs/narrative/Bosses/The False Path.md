@@ -2,7 +2,7 @@
 type: boss
 project: Evershift
 status: proposed
-primary_month: Mirrorwane
+primary_location: Mirrorwane
 tags:
   - evershift
   - boss
@@ -17,15 +17,15 @@ Corrupted guide / hero-echo that leads the wrong way.
 | Field | Value |
 |---|---|
 | Status | proposed |
-| Primary month | [[11 Mirrorwane/Mirrorwane|Mirrorwane]] |
-| Location | [[11 Mirrorwane/Mirrorwane#The Mirrorwane Halls|The Mirrorwane Halls]] |
+| Primary location | [[Mirrorwane]] |
+| Place | [[Mirrorwane#The Mirror Palace\|The Mirror Palace]] |
 
 Boss power uses **act boss-bands**, not ordinary enemy bands. See [[Enemy Power]] and `docs/BALANCE.md`.
 
 ## Related
 
 - [[Bosses Index]]
-- [[11 Mirrorwane/Mirrorwane|Mirrorwane]]
-- Location: [[11 Mirrorwane/Mirrorwane#The Mirrorwane Halls|The Mirrorwane Halls]]
+- [[Mirrorwane]]
+- Place: [[Mirrorwane#The Mirror Palace|The Mirror Palace]]
 - [[Enemies Index]]
-- [[Months Index]]
+- [[Locations Index]]

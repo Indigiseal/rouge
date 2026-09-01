@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: melee
 archetype: bruiser
-primary_month: Tollroad
+primary_location: Tollroad
 tags:
   - evershift
   - enemy
@@ -22,8 +22,8 @@ A classic **club brute / gate guard** — big body, heavy swing, planted in the 
 | Role | melee |
 | Archetype | `bruiser` (HP ×1.25 · ATK ×0.95) |
 | Status | proposed |
-| Primary month | [[Tollroad]] |
-| Location | [[Tollroad#The King's Mile]] |
+| Primary location | [[Tollroad]] |
+| Place | [[Tollroad#The King's Mile]] |
 | Readable type | Club brute / gate guard |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
@@ -40,6 +40,6 @@ Readable as **big guy with a club** (or similar blunt kit). Shield optional. Spe
 
 - [[Enemies Index]]
 - [[Tollroad]]
-- Location: [[Tollroad#The King's Mile]]
+- Place: [[Tollroad#The King's Mile]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

@@ -2,7 +2,7 @@
 type: boss
 project: Evershift
 status: proposed
-primary_month: Mireturn
+primary_location: Mireturn
 tags:
   - evershift
   - boss
@@ -17,15 +17,15 @@ Bog sovereign who pulls travelers under.
 | Field | Value |
 |---|---|
 | Status | proposed |
-| Primary month | [[05 Mireturn/Mireturn|Mireturn]] |
-| Location | [[05 Mireturn/Mireturn#The Mireturn Fens|The Mireturn Fens]] |
+| Primary location | [[Mireturn]] |
+| Place | [[Mireturn#The Mireturn Fens\|The Mireturn Fens]] |
 
 Boss power uses **act boss-bands**, not ordinary enemy bands. See [[Enemy Power]] and `docs/BALANCE.md`.
 
 ## Related
 
 - [[Bosses Index]]
-- [[05 Mireturn/Mireturn|Mireturn]]
-- Location: [[05 Mireturn/Mireturn#The Mireturn Fens|The Mireturn Fens]]
+- [[Mireturn]]
+- Place: [[Mireturn#The Mireturn Fens|The Mireturn Fens]]
 - [[Enemies Index]]
-- [[Months Index]]
+- [[Locations Index]]

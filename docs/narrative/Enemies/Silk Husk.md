@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: melee
 archetype: bruiser
-primary_month: Silkdeep
+primary_location: Silkdeep
 game_id: silkHusk
 tags:
   - evershift
@@ -26,8 +26,8 @@ Replaces the old draft "Web-Bound Skeleton."
 | Archetype | `bruiser` (HP ×1.25 · ATK ×0.95) |
 | Game id | `silkHusk` |
 | Status | proposed |
-| Primary month | [[Silkdeep]] |
-| Location | [[Silkdeep#The Silkdeep Caves]] |
+| Primary location | [[Silkdeep]] |
+| Place | [[Silkdeep#The Silkdeep Caves]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -39,6 +39,6 @@ Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 - [[Enemies Index]]
 - [[Silkdeep]]
-- Location: [[Silkdeep#The Silkdeep Caves]]
+- Place: [[Silkdeep#The Silkdeep Caves]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

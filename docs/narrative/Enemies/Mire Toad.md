@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: ranged
 archetype: artillery
-primary_month: Mireturn
+primary_location: Mireturn
 tags:
   - evershift
   - enemy
@@ -22,8 +22,8 @@ Venom and tongue pressure at range.
 | Role | ranged |
 | Archetype | `artillery` (HP ×0.7 · ATK ×1.15) |
 | Status | proposed |
-| Primary month | [[05 Mireturn/Mireturn|Mireturn]] |
-| Location | [[05 Mireturn/Mireturn#The Mireturn Fens|The Mireturn Fens]] |
+| Primary location | [[Mireturn]] |
+| Place | [[Mireturn#The Mireturn Fens\|The Mireturn Fens]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -34,7 +34,7 @@ _TBD_
 ## Related
 
 - [[Enemies Index]]
-- [[05 Mireturn/Mireturn|Mireturn]]
-- Location: [[05 Mireturn/Mireturn#The Mireturn Fens|The Mireturn Fens]]
+- [[Mireturn]]
+- Place: [[Mireturn#The Mireturn Fens|The Mireturn Fens]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]

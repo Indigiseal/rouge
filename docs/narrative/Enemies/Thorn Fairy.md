@@ -4,7 +4,7 @@ project: Evershift
 status: proposed
 role: ranged
 archetype: artillery
-primary_month: Thornwake
+primary_location: Thornwake
 game_id: thornFairy
 tags:
   - evershift
@@ -26,8 +26,8 @@ Formerly drafted as "Briar Slinger."
 | Archetype | `artillery` (HP ×0.7 · ATK ×1.15) |
 | Game id | `thornFairy` |
 | Status | proposed |
-| Primary month | [[Thornwake]] |
-| Location | [[Thornwake#The Briar March]] |
+| Primary location | [[Thornwake]] |
+| Place | [[Thornwake#The Briar March]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -39,6 +39,6 @@ Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 - [[Enemies Index]]
 - [[Thornwake]]
-- Location: [[Thornwake#The Briar March]]
+- Place: [[Thornwake#The Briar March]]
 - [[Enemy Power]]
-- [[Months Index]]
+- [[Locations Index]]
