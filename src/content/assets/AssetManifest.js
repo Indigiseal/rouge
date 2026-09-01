@@ -83,9 +83,6 @@ export const ASSET_MANIFEST = [
     { key: 'plate_R', path: 'assets/art/plate_R.png', type: 'image' },
     { key: 'plate_E', path: 'assets/art/plate_E.png', type: 'image' },
     { key: 'plate_L', path: 'assets/art/plate_L.png', type: 'image' },
-    { key: 'potionCardCommon', path: 'assets/art/potionCardCommon.png', type: 'image' },
-    { key: 'potionCardUncommon', path: 'assets/art/potionCardUncommon.png', type: 'image' },
-    { key: 'potionCardRare', path: 'assets/art/potionCardRare.png', type: 'image' },
     // Silk Cache cocoon shell. Loading this under the key ensureSilkCocoonTexture
     // uses means the drawn-in-code placeholder in CocoonCacheBoard.js never runs.
     { key: 'silkCocoon', path: 'assets/art/cocoon.png', type: 'image' },
@@ -97,12 +94,13 @@ export const ASSET_MANIFEST = [
     { key: 'enemyIcons', path: 'assets/art/enemyIcons.png', type: 'spritesheet', frameWidth: 16, frameHeight: 16 },
     { key: 'trap', path: 'assets/art/trap.png', type: 'image' },
     { key: 'trap2', path: 'assets/art/trap2.png', type: 'image' },
-    { key: 'coin', path: 'assets/art/coin.png', type: 'image' },
     // Coins, potions, food, key and crystals in three rarities, plus the card
     // face they sit on. Composited into per-card textures at boot — see
     // content/assets/resourceCards.js.
     { key: 'resourceCards', path: 'assets/art/resourcesSpriteSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
-    { key: 'crystalCard', path: 'assets/art/crystalCard.png', type: 'image' },
+    // One row per month: five enemies then three card faces (normal, veteran,
+    // elite). Composited with the icon strip at boot — see assets/enemyCards.js.
+    { key: 'enemyCards', path: 'assets/art/enemiesSpriteSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
     { key: 'keyCard', path: 'assets/art/keyCard.png', type: 'image' },
     { key: 'trapTriggers', path: 'assets/art/trapTriggers.png', type: 'image' },
     { key: 'thornsCard', path: 'assets/art/thornsCard.png', type: 'image' },
@@ -133,8 +131,6 @@ export const ASSET_MANIFEST = [
     // Main menu
     { key: 'mainBG', path: 'assets/art/mainBG.png', type: 'image' },
     // Food
-    { key: 'berries', path: 'assets/art/foodCommon4AP.png', type: 'image' },
-    { key: 'bread', path: 'assets/art/bread.png', type: 'image' },
     { key: 'egg', path: 'assets/art/egg.png', type: 'image' },
     { key: 'chickCompanion', path: 'assets/art/chickCompanion.png', type: 'image' },
     { key: 'chickCompanionUP', path: 'assets/art/chickCompanionUP.png', type: 'image' },
@@ -197,9 +193,6 @@ export const ASSET_MANIFEST = [
     { key: 'silkHusk', path: 'assets/art/silkHusk.png', type: 'image' },
     // Temporary face for month enemies without dedicated card art (53×70).
     { key: 'enemyPlaceholder', path: 'assets/art/ghostlyEnemy.png', type: 'image' },
-    // Thornwake roster — 5 card faces, L→R: wolf, thornEnt, thornSprite,
-    // sporeArcher, thornFairy. Mapped in months/thornwake/assets/enemyAtlas.js.
-    { key: 'thornwakeEnemies', path: 'assets/art/thornwakeSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
     { key: 'cerberusHead', path: 'assets/art/dogHead.png', type: 'image' },
     // Elite mini-boss portraits â€” same 53x70 footprint as the base art they
     // replace. Only some enemies have one; see ELITE_SPRITE_KEYS below.
