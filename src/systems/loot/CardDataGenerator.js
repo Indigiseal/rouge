@@ -740,6 +740,26 @@ export class CardDataGenerator {
         };
     }
 
+    // Next canonical food tier up from `baseActionAmount`. Merging two identical
+    // foods climbs this ladder (10 -> 15 -> 25) so a merged food is always a
+    // real catalog item, never an off-ladder amount wearing a tier's name — the
+    // multiplier this replaced turned two Bread into 18 actions labelled
+    // "Rations", which are 15. Tops out at the strongest tier.
+    getUpgradedFood(baseActionAmount) {
+        const idx = this.foodTiers.findIndex(f => f.actionAmount === baseActionAmount);
+        const next = idx === -1
+            ? (this.foodTiers.find(f => f.actionAmount > baseActionAmount)
+                || this.foodTiers[this.foodTiers.length - 1])
+            : (this.foodTiers[idx + 1] || this.foodTiers[idx]);
+        return {
+            type: 'food',
+            name: next.name,
+            actionAmount: next.actionAmount,
+            sprite: next.sprite,
+            rarity: next.rarity,
+        };
+    }
+
     createFoodCard(floor) {
         // Generated food stays at base tier. Merging is what creates stronger versions.
         const selectedFood = this.foodTiers[0];

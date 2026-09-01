@@ -214,8 +214,15 @@ export const CardMergeRules = {
             // (e.g. a 63-heal potion named "Strong"). A merged potion is now
             // always a real shop-tier potion.
             upgradedCard = this.scene.cardSystem.cardDataGenerator.getUpgradedPotion(baseCard.healAmount || 0);
+        } else if (baseCard.type === 'food' && !baseCard.id) {
+            // Climb the canonical food ladder, the same way potions do. Only
+            // catalog food: the Egg carries its own id, amount and art, and a
+            // ladder lookup would merge two of them DOWN into a Feast.
+            upgradedCard = this.scene.cardSystem.cardDataGenerator.getUpgradedFood(
+                baseCard.actionAmount || 0
+            );
         } else {
-            // Food (and any other simple item): keep the multiplier upgrade.
+            // The Egg (and any other simple item): keep the multiplier upgrade.
             const multiplier = newRarity === 'uncommon' ? 1.8 : newRarity === 'rare' ? 2.5 : 3;
             const actionAmount = baseCard.actionAmount ? Math.floor(baseCard.actionAmount * multiplier) : undefined;
             upgradedCard = {
