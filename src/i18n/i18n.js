@@ -11,6 +11,7 @@ const LANGUAGE_OPTIONS = [
 const STRINGS = {
     en: {
         'ui.menu.newRun': 'New Run',
+        'ui.menu.clickToPlay': 'Click to play',
         'ui.menu.continue': 'Continue',
         'ui.menu.options': 'Options',
         'ui.menu.testOptions': 'Test Options',
@@ -255,6 +256,7 @@ const STRINGS = {
     },
     es: {
         'ui.menu.newRun': 'Nueva partida',
+        'ui.menu.clickToPlay': 'Haz clic para jugar',
         'ui.menu.continue': 'Continuar',
         'ui.menu.options': 'Opciones',
         'ui.menu.exit': 'Salir',
@@ -271,6 +273,7 @@ const STRINGS = {
     },
     fr: {
         'ui.menu.newRun': 'Nouvelle partie',
+        'ui.menu.clickToPlay': 'Cliquez pour jouer',
         'ui.menu.continue': 'Continuer',
         'ui.menu.options': 'Options',
         'ui.menu.exit': 'Quitter',
@@ -287,6 +290,7 @@ const STRINGS = {
     },
     de: {
         'ui.menu.newRun': 'Neuer Lauf',
+        'ui.menu.clickToPlay': 'Zum Spielen klicken',
         'ui.menu.continue': 'Weiter',
         'ui.menu.options': 'Optionen',
         'ui.menu.exit': 'Beenden',
@@ -303,6 +307,7 @@ const STRINGS = {
     },
     ja: {
         'ui.menu.newRun': '\u65b0\u898f\u30e9\u30f3',
+        'ui.menu.clickToPlay': 'クリックして開始',
         'ui.menu.continue': '\u7d9a\u304d\u304b\u3089',
         'ui.menu.options': '\u8a2d\u5b9a',
         'ui.menu.exit': '\u7d42\u4e86',
@@ -319,6 +324,7 @@ const STRINGS = {
     },
     zh: {
         'ui.menu.newRun': '\u65b0\u6e38\u620f',
+        'ui.menu.clickToPlay': '点击开始',
         'ui.menu.continue': '\u7ee7\u7eed',
         'ui.menu.options': '\u9009\u9879',
         'ui.menu.exit': '\u9000\u51fa',
@@ -335,6 +341,7 @@ const STRINGS = {
     },
     ru: {
         'ui.menu.newRun': 'Новый забег',
+        'ui.menu.clickToPlay': 'Нажмите, чтобы играть',
         'ui.menu.continue': 'Продолжить',
         'ui.menu.options': 'Настройки',
         'ui.menu.testOptions': 'Test Options',
