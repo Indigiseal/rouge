@@ -7,6 +7,7 @@ import {
     foodNameForActionAmount,
 } from '../../content/cards/index.js';
 import { carryEnchantToWeapon } from '../../content/balance/WeaponEnchants.js';
+import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { createGauntletCard, isGauntlet, nextGauntletRarity } from '../../content/balance/Gauntlet.js';
 
 export const CardMergeRules = {
@@ -31,7 +32,13 @@ export const CardMergeRules = {
         if (card.type === 'armor') return `armor:${this.getArmorTypeFromCard(card)}`;
         if (card.type === 'thorns') return 'thorns';
         if (card.type === 'potion') return `potion:${card.healAmount ? 'healing' : card.name || card.sprite}`;
-        if (card.type === 'food') return `food:${card.actionAmount ? 'action' : card.name || card.sprite}`;
+        // Keyed by id first so a one-off food is its own family: the Egg and a
+        // Bread both have an actionAmount, and without this they shared the key
+        // `food:action` — which the cross-tier merge amulet would happily use to
+        // merge an Egg into a Feast.
+        if (card.type === 'food') {
+            return `food:${card.id || (card.actionAmount ? 'action' : card.name || card.sprite)}`;
+        }
         return `${card.type}:${card.id || card.sprite || card.name}`;
     },
     getMergeStatsKey(card) {
@@ -213,8 +220,15 @@ export const CardMergeRules = {
             // (e.g. a 63-heal potion named "Strong"). A merged potion is now
             // always a real shop-tier potion.
             upgradedCard = this.scene.cardSystem.cardDataGenerator.getUpgradedPotion(baseCard.healAmount || 0);
+        } else if (baseCard.type === 'food' && !baseCard.id) {
+            // Climb the canonical food ladder, the same way potions do. Only
+            // catalog food: the Egg carries its own id, amount and art, and a
+            // ladder lookup would merge two of them DOWN into a Feast.
+            upgradedCard = this.scene.cardSystem.cardDataGenerator.getUpgradedFood(
+                baseCard.actionAmount || 0
+            );
         } else {
-            // Food (and any other simple item): keep the multiplier upgrade.
+            // The Egg (and any other simple item): keep the multiplier upgrade.
             const multiplier = newRarity === 'uncommon' ? 1.8 : newRarity === 'rare' ? 2.5 : 3;
             const actionAmount = baseCard.actionAmount ? Math.floor(baseCard.actionAmount * multiplier) : undefined;
             upgradedCard = {
@@ -224,7 +238,12 @@ export const CardMergeRules = {
                     : baseCard.name?.replace(/Common|Uncommon|Rare/, newRarity.charAt(0).toUpperCase() + newRarity.slice(1)),
                 rarity: newRarity,
                 actionAmount,
-                sprite: baseCard.sprite
+                // Catalog food has a card face per rarity, so a merged Feast
+                // must stop wearing the common bread art. A one-off food like
+                // the Egg keeps its own picture — it is not on that ladder.
+                sprite: (baseCard.type === 'food' && !baseCard.id)
+                    ? resourceCardKey('food', newRarity)
+                    : baseCard.sprite
             };
         }
         

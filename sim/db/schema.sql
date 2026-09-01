@@ -89,7 +89,9 @@ CREATE TABLE IF NOT EXISTS sim_enemy_spawns (
   attack          INTEGER NOT NULL DEFAULT 0,
   is_boss         INTEGER NOT NULL DEFAULT 0,
   is_ranged_type  INTEGER NOT NULL DEFAULT 0,
-  board_index     INTEGER
+  board_index     INTEGER,
+  -- normal | veteran | elite. See content/balance/EnemyTiers.js.
+  enemy_tier      TEXT NOT NULL DEFAULT 'normal'
 );
 
 CREATE INDEX IF NOT EXISTS idx_enemy_spawns_visit ON sim_enemy_spawns(floor_visit_id);

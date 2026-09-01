@@ -3,6 +3,7 @@
 
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { isGauntlet } from '../../content/balance/Gauntlet.js';
+import { resourceCardKey } from '../../content/assets/resourceCards.js';
 
 // The card types a reroll (Screaming Head, brass wizard tray) can hand back.
 const REROLL_CARD_TYPES = ['weapon', 'armor', 'thorns', 'potion', 'food', 'magic'];
@@ -670,7 +671,7 @@ export const EventRunHelpers = {
       || item.cardType === 'key'
       || item.id === 'key'
       || item.keyType === 'key'
-      || item.sprite === 'keyCard';
+      || item.sprite === resourceCardKey('key', 'rare');
   },
 
   _isPotionCard(item) {

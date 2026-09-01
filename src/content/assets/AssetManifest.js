@@ -98,6 +98,10 @@ export const ASSET_MANIFEST = [
     { key: 'trap', path: 'assets/art/trap.png', type: 'image' },
     { key: 'trap2', path: 'assets/art/trap2.png', type: 'image' },
     { key: 'coin', path: 'assets/art/coin.png', type: 'image' },
+    // Coins, potions, food, key and crystals in three rarities, plus the card
+    // face they sit on. Composited into per-card textures at boot — see
+    // content/assets/resourceCards.js.
+    { key: 'resourceCards', path: 'assets/art/resourcesSpriteSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
     { key: 'crystalCard', path: 'assets/art/crystalCard.png', type: 'image' },
     { key: 'keyCard', path: 'assets/art/keyCard.png', type: 'image' },
     { key: 'trapTriggers', path: 'assets/art/trapTriggers.png', type: 'image' },

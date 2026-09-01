@@ -8,6 +8,7 @@ import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.j
 import { reinforcementStateFor, reinforcementStateFromSave } from '../../content/balance/Reinforcements.js';
 import { applyEnemyTier, canTierEnemy, veteranChanceFor } from '../../content/balance/EnemyTiers.js';
 import { boardVariantFromAmbush } from './BoardVariant.js';
+import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js';
 
 export class FloorSpawner {
@@ -213,7 +214,8 @@ function spawnFloorCards() {
     // face-down slot with data=null or revealCard crashes the run/sim.
     if (!data) {
       data = this.createCardData('coin', cf) || {
-        type: 'coin', name: 'Coin', value: 1, sprite: 'coin',
+        type: 'coin', name: 'Coin', value: 1, rarity: 'common',
+                sprite: resourceCardKey('coin', 'common'),
       };
     }
     if (data?.type === 'trap') trapsPlaced++;
@@ -1705,7 +1707,8 @@ function dropWaveCards() {
         let data = this.createCardData(type, cf, roomType === 'ELITE', this.scene.gameState, null, desiredRole);
         if (!data) {
             data = this.createCardData('coin', cf) || {
-                type: 'coin', name: 'Coin', value: 1, sprite: 'coin',
+                type: 'coin', name: 'Coin', value: 1, rarity: 'common',
+                sprite: resourceCardKey('coin', 'common'),
             };
         }
         if (data) {

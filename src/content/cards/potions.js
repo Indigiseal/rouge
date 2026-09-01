@@ -1,3 +1,5 @@
+import { resourceCardKey } from '../assets/resourceCards.js';
+
 // Healing Potions. Shop price lives in content/economy/shop.js — not here.
 //
 // Exactly three tiers, one per card png, climbed by merging: two commons make
@@ -10,7 +12,7 @@ export const POTIONS = [
     name: 'Minor Healing Potion',
     healAmount: 35,
     minFloor: 1,
-    sprite: 'potionCardCommon',
+    sprite: resourceCardKey('potion', 'common'),
     rarity: 'common'
   },
   {
@@ -18,7 +20,7 @@ export const POTIONS = [
     name: 'Healing Potion',
     healAmount: 70,
     minFloor: 5,
-    sprite: 'potionCardUncommon',
+    sprite: resourceCardKey('potion', 'uncommon'),
     rarity: 'uncommon'
   },
   {
@@ -26,7 +28,7 @@ export const POTIONS = [
     name: 'Greater Healing Potion',
     healAmount: 200,
     minFloor: 15,
-    sprite: 'potionCardRare',
+    sprite: resourceCardKey('potion', 'rare'),
     rarity: 'rare'
   }
 ];

@@ -1,4 +1,6 @@
 import { areAmuletsDisabled } from '../../config/TestOptions.js';
+import { coinAmountFor, crystalAmountFor, rollResourceRarity } from '../../content/cards/resources.js';
+import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { resolveArmorSpawnTypes } from '../../content/characters/CharacterClasses.js';
 import { applyArmorTalentMods } from '../../content/talents/index.js';
 import {
@@ -292,21 +294,31 @@ export class CardDataGenerator {
     */
 
     createCoinCard(floor) {
+        // The size band picks the art and scales the payout together, so a fat
+        // purse reads as one before the player picks it up.
+        const rarity = rollResourceRarity();
         return {
             type: 'coin',
             // Coin cards remain meaningful as store prices rise.
-            amount: 3 + Math.floor(floor / 8) + Math.floor(Math.random() * 4),
+            amount: coinAmountFor(floor, rarity),
             name: 'Coins',
-            sprite: 'coin'
+            rarity,
+            sprite: resourceCardKey('coin', rarity)
         };
     }
 
     createCrystalCard(floor) {
+        // Flat per band — crystals buy meta upgrades, not floor goods, so depth
+        // should not inflate them. One is still the common case; the old flat 1
+        // existed because crystals were piling up unspent.
+        const rarity = rollResourceRarity();
+        const amount = crystalAmountFor(rarity);
         return {
             type: 'crystal',
-            amount: 1, // flat 1 (was 1-2) — crystals were piling up unspent
-            name: 'Crystal',
-            sprite: 'crystalCard'
+            amount,
+            name: amount > 1 ? 'Crystals' : 'Crystal',
+            rarity,
+            sprite: resourceCardKey('crystal', rarity)
         };
     }
 
@@ -693,7 +705,7 @@ export class CardDataGenerator {
                 type: 'potion',
                 name: 'Minor Healing Potion',
                 healAmount: 35,
-                sprite: 'potionCardCommon',
+                sprite: resourceCardKey('potion', 'common'),
                 rarity: 'common',
             };
         }
@@ -728,6 +740,26 @@ export class CardDataGenerator {
         };
     }
 
+    // Next canonical food tier up from `baseActionAmount`. Merging two identical
+    // foods climbs this ladder (10 -> 15 -> 25) so a merged food is always a
+    // real catalog item, never an off-ladder amount wearing a tier's name — the
+    // multiplier this replaced turned two Bread into 18 actions labelled
+    // "Rations", which are 15. Tops out at the strongest tier.
+    getUpgradedFood(baseActionAmount) {
+        const idx = this.foodTiers.findIndex(f => f.actionAmount === baseActionAmount);
+        const next = idx === -1
+            ? (this.foodTiers.find(f => f.actionAmount > baseActionAmount)
+                || this.foodTiers[this.foodTiers.length - 1])
+            : (this.foodTiers[idx + 1] || this.foodTiers[idx]);
+        return {
+            type: 'food',
+            name: next.name,
+            actionAmount: next.actionAmount,
+            sprite: next.sprite,
+            rarity: next.rarity,
+        };
+    }
+
     createFoodCard(floor) {
         // Generated food stays at base tier. Merging is what creates stronger versions.
         const selectedFood = this.foodTiers[0];
@@ -737,8 +769,8 @@ export class CardDataGenerator {
             return {
                 type: 'food',
                 name: 'Bread',
-                actionAmount: 25,
-                sprite: 'bread',
+                actionAmount: 10,
+                sprite: resourceCardKey('food', 'common'),
                 rarity: 'common',
             };
         }
@@ -836,7 +868,8 @@ export class CardDataGenerator {
         return {
             type: 'key',
             name: 'Mysterious Key',
-            sprite: 'keyCard',
+            // One key face on the sheet; it takes the rare backing.
+            sprite: resourceCardKey('key', 'rare'),
             rarity: 'rare'
         };
     }
