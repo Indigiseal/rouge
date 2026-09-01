@@ -32,7 +32,13 @@ export const CardMergeRules = {
         if (card.type === 'armor') return `armor:${this.getArmorTypeFromCard(card)}`;
         if (card.type === 'thorns') return 'thorns';
         if (card.type === 'potion') return `potion:${card.healAmount ? 'healing' : card.name || card.sprite}`;
-        if (card.type === 'food') return `food:${card.actionAmount ? 'action' : card.name || card.sprite}`;
+        // Keyed by id first so a one-off food is its own family: the Egg and a
+        // Bread both have an actionAmount, and without this they shared the key
+        // `food:action` — which the cross-tier merge amulet would happily use to
+        // merge an Egg into a Feast.
+        if (card.type === 'food') {
+            return `food:${card.id || (card.actionAmount ? 'action' : card.name || card.sprite)}`;
+        }
         return `${card.type}:${card.id || card.sprite || card.name}`;
     },
     getMergeStatsKey(card) {
@@ -232,10 +238,10 @@ export const CardMergeRules = {
                     : baseCard.name?.replace(/Common|Uncommon|Rare/, newRarity.charAt(0).toUpperCase() + newRarity.slice(1)),
                 rarity: newRarity,
                 actionAmount,
-                // Food now has a card face per rarity, so a merged Feast must
-                // stop wearing the common bread art. Anything else keeps the
-                // sprite it came in with.
-                sprite: baseCard.type === 'food'
+                // Catalog food has a card face per rarity, so a merged Feast
+                // must stop wearing the common bread art. A one-off food like
+                // the Egg keeps its own picture — it is not on that ladder.
+                sprite: (baseCard.type === 'food' && !baseCard.id)
                     ? resourceCardKey('food', newRarity)
                     : baseCard.sprite
             };
