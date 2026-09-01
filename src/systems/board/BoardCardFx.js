@@ -656,6 +656,14 @@ function getEliteSpriteKey(card) {
 function applyEliteMiniBossVisual(card) {
     if (!card?.revealed || !card.data?.isEliteMiniBoss || !card.sprite) return;
 
+    // Month-sheet enemies already wear their elite card face — applyEnemyTier
+    // swapped the sprite when it promoted them. Tinting on top would wash out
+    // art that is already saying "elite".
+    if (card.data.monthId && Number.isInteger(card.data.sheetColumn)) {
+        card.sprite.clearTint?.();
+        return;
+    }
+
     const eliteKey = this.getEliteSpriteKey(card);
     if (eliteKey && card.sprite.setTexture) {
         card.sprite.clearTint?.();

@@ -98,6 +98,9 @@ export const ASSET_MANIFEST = [
     // face they sit on. Composited into per-card textures at boot — see
     // content/assets/resourceCards.js.
     { key: 'resourceCards', path: 'assets/art/resourcesSpriteSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
+    // One row per month: five enemies then three card faces (normal, veteran,
+    // elite). Composited with the icon strip at boot — see assets/enemyCards.js.
+    { key: 'enemyCards', path: 'assets/art/enemiesSpriteSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
     { key: 'keyCard', path: 'assets/art/keyCard.png', type: 'image' },
     { key: 'trapTriggers', path: 'assets/art/trapTriggers.png', type: 'image' },
     { key: 'thornsCard', path: 'assets/art/thornsCard.png', type: 'image' },
@@ -190,9 +193,6 @@ export const ASSET_MANIFEST = [
     { key: 'silkHusk', path: 'assets/art/silkHusk.png', type: 'image' },
     // Temporary face for month enemies without dedicated card art (53×70).
     { key: 'enemyPlaceholder', path: 'assets/art/ghostlyEnemy.png', type: 'image' },
-    // Thornwake roster — 5 card faces, L→R: wolf, thornEnt, thornSprite,
-    // sporeArcher, thornFairy. Mapped in months/thornwake/assets/enemyAtlas.js.
-    { key: 'thornwakeEnemies', path: 'assets/art/thornwakeSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
     { key: 'cerberusHead', path: 'assets/art/dogHead.png', type: 'image' },
     // Elite mini-boss portraits â€” same 53x70 footprint as the base art they
     // replace. Only some enemies have one; see ELITE_SPRITE_KEYS below.

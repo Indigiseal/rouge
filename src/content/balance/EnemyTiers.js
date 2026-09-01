@@ -1,3 +1,5 @@
+import { enemyCardKey } from '../assets/enemyCards.js';
+
 // Enemy tiers — the danger step above a plain enemy, below a boss.
 // Design SoT: docs/BALANCE.md (Enemy power: bands + archetypes).
 //
@@ -94,6 +96,12 @@ export function applyEnemyTier(data, tier) {
     const attack = Math.max(1, Math.ceil(data.tierBaseAttack * mult.attack));
 
     data.enemyTier = tier;
+    // Month-sheet enemies have a card face per tier; swap to it so a veteran
+    // reads as one at a glance. Enemies on their own art keep their sprite and
+    // fall back to the tint highlight as before.
+    if (data.monthId && Number.isInteger(data.sheetColumn)) {
+        data.sprite = enemyCardKey(data.monthId, data.sheetColumn, tier);
+    }
     data.health = health;
     // maxHealth has to move with health or the card spawns "damaged" — its bar
     // would read over 100% and heals would clamp it back down to the base.

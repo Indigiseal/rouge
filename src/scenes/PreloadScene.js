@@ -1,5 +1,7 @@
 import { loadAssetManifest } from '../content/assets/AssetManifest.js';
 import { buildResourceCardTextures } from '../content/assets/resourceCards.js';
+import { buildEnemyCardTextures } from '../content/assets/enemyCards.js';
+import { MONTHS } from '../content/months/calendar.js';
 
 export class PreloadScene extends Phaser.Scene {
     constructor() {
@@ -231,6 +233,7 @@ export class PreloadScene extends Phaser.Scene {
         // Resource cards are the sheet's icon and backing drawn together, so
         // the rest of the game keeps handling them as ordinary one-sprite cards.
         buildResourceCardTextures(this);
+        buildEnemyCardTextures(this, MONTHS);
 
         this.scene.start('MainMenuScene');
     }

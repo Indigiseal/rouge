@@ -150,6 +150,10 @@ export function buildEnemyCardFromDef(enemyType, floor, isElite = false) {
     archetype: enemy.archetype || null,
     bandId,
     placeholderArt: !!enemy.placeholderArt,
+    // Sheet identity, so a tier promotion can swap to the matching card face
+    // without a lookup table. Absent on enemies not drawn on a month sheet.
+    monthId: enemy.monthId || null,
+    sheetColumn: Number.isInteger(enemy.sheetColumn) ? enemy.sheetColumn : null,
     features: enemy.features ? [...enemy.features] : undefined,
   };
 
