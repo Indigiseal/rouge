@@ -208,7 +208,9 @@ export class StationRoomBase extends Phaser.Scene {
                 statColor = '#a8e870';
                 break;
             case 'food':
-                statValue = `+${data.actionAmount} AP`;
+                // Bare number, matching the potion above it — 'AP' is gone
+                // from the food cards on the board too.
+                statValue = `+${data.actionAmount}`;
                 statX = x; statY = y + 19;
                 statColor = '#a55119';
                 break;

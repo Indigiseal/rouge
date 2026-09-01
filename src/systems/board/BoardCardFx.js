@@ -13,6 +13,12 @@ import { isSilkCocoonCard } from './CocoonCacheBoard.js';
 // (18,23 / 19,26 / 17,22 / 17,22); they are one constant now so they can't.
 export const CARD_VALUE_SLOT = { x: 18, y: 24 };
 
+// Where a resource card's name sits. Coins and crystals used to print it at
+// y=7 with the amount under it; the amount now lives in CARD_VALUE_SLOT like
+// every other card's single number, so the name drops into the lower band and
+// all of them line up.
+const RESOURCE_LABEL_Y = 19;
+
 export class BoardCardFx {
     constructor(cs) {
         this.playBossEntrance = playBossEntrance.bind(cs);
@@ -146,12 +152,14 @@ function createCardInfoText(card) {
             // matching the weapon pips. Absolute children get flung off-card
             // when the inventory sets infoText.x/y = cardSprite.x/y.
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const coinLabel = this.scene.add.text(0, 7, 'Coins', {
+            const coinLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, 'Coins', {
                 fontSize: '11px', fill: '#f8ab2e', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
-            const coinAmount = this.scene.add.text(0, 20, `${card.data.amount}`, {
-                fontSize: '12px', fill: '#ffcf7f', fontFamily: '"HoMM Pixel"'
-            }).setOrigin(0.5);
+            const coinAmount = this.scene.add.text(
+                CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.amount}`, {
+                    fontSize: '12px', fill: '#ffcf7f', fontFamily: '"HoMM Pixel"'
+                }
+            ).setOrigin(0.5);
             container.add([coinLabel, coinAmount]);
             attachInfoText(container);
             return;
@@ -159,12 +167,14 @@ function createCardInfoText(card) {
 
         case 'crystal': {
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const crystalLabel = this.scene.add.text(0, 7, 'Crystals', {
+            const crystalLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, 'Crystals', {
                 fontSize: '11px', fill: '#4e1e45', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
-            const crystalAmount = this.scene.add.text(0, 20, `${card.data.amount}`, {
-                fontSize: '12px', fill: '#a83c69', fontFamily: '"HoMM Pixel"'
-            }).setOrigin(0.5);
+            const crystalAmount = this.scene.add.text(
+                CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.amount}`, {
+                    fontSize: '12px', fill: '#a83c69', fontFamily: '"HoMM Pixel"'
+                }
+            ).setOrigin(0.5);
             container.add([crystalLabel, crystalAmount]);
             attachInfoText(container);
             return;
@@ -201,10 +211,19 @@ function createCardInfoText(card) {
             // The carry-over egg is a food card under the hood, but it reads as
             // an "Egg" to the player rather than a +30 AP snack — label it so.
             const isEgg = card.data.id === 'monsterEgg' || card.data.name === 'Egg';
-            const foodLabel = this.scene.add.text(0, 19, isEgg ? 'Egg' : `+${card.data.actionAmount} AP`, {
+            const foodLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, isEgg ? 'Egg' : 'Food', {
                 fontSize: '12px', fill: '#a55119', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             container.add(foodLabel);
+            // The Egg is a story item, not a snack — it deliberately shows no
+            // action count, the way it never showed "+30 AP".
+            if (!isEgg) {
+                container.add(this.scene.add.text(
+                    CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.actionAmount}`, {
+                        fontSize: '12px', fill: '#a55119', fontFamily: '"HoMM Pixel"'
+                    }
+                ).setOrigin(0.5));
+            }
             attachInfoText(container);
             return;
         }
