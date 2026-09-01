@@ -1,11 +1,18 @@
 // Food (Energy = Actions). Shop price lives in content/economy/shop.js — not here.
+//
+// Three tiers, one per card face on the resource sheet, climbed by merging —
+// the same shape as the potion ladder. There used to be a fourth (Hearty Meal)
+// and all four drew the same 'bread' art, so merging produced a card identical
+// to its inputs.
+import { resourceCardKey } from '../assets/resourceCards.js';
+
 export const FOOD = [
   {
     tier: 1,
     name: 'Bread',
     actionAmount: 25,
     minFloor: 1,
-    sprite: 'bread',
+    sprite: resourceCardKey('food', 'common'),
     rarity: 'common'
   },
   {
@@ -13,23 +20,15 @@ export const FOOD = [
     name: 'Rations',
     actionAmount: 30,
     minFloor: 3,
-    sprite: 'bread',
-    rarity: 'common'
-  },
-  {
-    tier: 3,
-    name: 'Hearty Meal',
-    actionAmount: 35,
-    minFloor: 6,
-    sprite: 'bread',
+    sprite: resourceCardKey('food', 'uncommon'),
     rarity: 'uncommon'
   },
   {
-    tier: 4,
+    tier: 3,
     name: 'Feast',
     actionAmount: 40,
     minFloor: 8,
-    sprite: 'bread',
+    sprite: resourceCardKey('food', 'rare'),
     rarity: 'rare'
   }
 ];

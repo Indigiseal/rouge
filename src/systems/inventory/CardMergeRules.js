@@ -7,6 +7,7 @@ import {
     foodNameForActionAmount,
 } from '../../content/cards/index.js';
 import { carryEnchantToWeapon } from '../../content/balance/WeaponEnchants.js';
+import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { createGauntletCard, isGauntlet, nextGauntletRarity } from '../../content/balance/Gauntlet.js';
 
 export const CardMergeRules = {
@@ -224,7 +225,12 @@ export const CardMergeRules = {
                     : baseCard.name?.replace(/Common|Uncommon|Rare/, newRarity.charAt(0).toUpperCase() + newRarity.slice(1)),
                 rarity: newRarity,
                 actionAmount,
-                sprite: baseCard.sprite
+                // Food now has a card face per rarity, so a merged Feast must
+                // stop wearing the common bread art. Anything else keeps the
+                // sprite it came in with.
+                sprite: baseCard.type === 'food'
+                    ? resourceCardKey('food', newRarity)
+                    : baseCard.sprite
             };
         }
         
