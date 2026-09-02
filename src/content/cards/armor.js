@@ -46,10 +46,21 @@ export const ARMOR_SPAWN_MIN_FLOOR = Object.freeze({
   }),
 });
 
+// Leather and the DEF armours spend durability under DIFFERENT rules, so equal
+// numbers here were not equal armour. Leather ticks only on a successful dodge
+// (10-30% of hits), while chain/plate tick on every hit their protection
+// absorbs. At 15 durability that is a ~150-hit lifetime against a 15-hit one,
+// and ~60 damage prevented against ~15 — leather was roughly 4x the armour at
+// every tier, and the warrior wore the worse half.
+//
+// Doubling the DEF armours closes it: warrior reach F15 43.3% -> 52.6%, level
+// with the rogue's 52.9%. The effect saturates there (x3/x4/x5 measured no
+// better), which is what says durability was the binding constraint rather than
+// a general power shortfall.
 export const ARMOR_DURABILITY_BY_TYPE = Object.freeze({
   leather: Object.freeze({ common: 15, uncommon: 20, rare: 25, epic: 28, legendary: 30 }),
-  chain: Object.freeze({ common: 15, uncommon: 20, rare: 25, epic: 28, legendary: 30 }),
-  plate: Object.freeze({ common: 15, uncommon: 20, rare: 25, epic: 28, legendary: 30 }),
+  chain: Object.freeze({ common: 30, uncommon: 40, rare: 50, epic: 56, legendary: 60 }),
+  plate: Object.freeze({ common: 30, uncommon: 40, rare: 50, epic: 56, legendary: 60 }),
 });
 
 export function armorDurability(armorType, rarity) {

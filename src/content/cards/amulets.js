@@ -30,13 +30,13 @@ export const AMULET_DROP_DATA = [
   { id: 'monocle', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'utility' },
   { id: 'pouchOfGreed', minFloor: 10, weight: 8, rarity: 'uncommon', group: 'utility' },
 
-  // Rare (from floor 20; boss can still roll rare earlier — see createAmuletOffer)
-  { id: 'vampireFang', minFloor: 20, weight: 4, rarity: 'rare', group: 'offense' },
-  { id: 'newDragonClaw', minFloor: 20, weight: 4, rarity: 'rare', group: 'offense' },
-  { id: 'runeOfFire', minFloor: 20, weight: 4, rarity: 'rare', group: 'magic' },
-  { id: 'runeOfZap', minFloor: 20, weight: 4, rarity: 'rare', group: 'magic' },
-  { id: 'runeOfPoison', minFloor: 20, weight: 4, rarity: 'rare', group: 'magic' },
-  { id: 'maskOfHollowWhispers', minFloor: 20, weight: 4, rarity: 'rare', group: 'utility' },
+  // Rare (from floor 16 = act 2 start; boss can still roll rare earlier — see createAmuletOffer)
+  { id: 'vampireFang', minFloor: 16, weight: 4, rarity: 'rare', group: 'offense' },
+  { id: 'newDragonClaw', minFloor: 16, weight: 4, rarity: 'rare', group: 'offense' },
+  { id: 'runeOfFire', minFloor: 16, weight: 4, rarity: 'rare', group: 'magic' },
+  { id: 'runeOfZap', minFloor: 16, weight: 4, rarity: 'rare', group: 'magic' },
+  { id: 'runeOfPoison', minFloor: 16, weight: 4, rarity: 'rare', group: 'magic' },
+  { id: 'maskOfHollowWhispers', minFloor: 16, weight: 4, rarity: 'rare', group: 'utility' },
 
   // Legendary (shops / boss until boss-only set exists)
   { id: 'philosophersStone', minFloor: 0, weight: 2, rarity: 'legendary', group: 'survival' },

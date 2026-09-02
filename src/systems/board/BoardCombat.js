@@ -1,5 +1,7 @@
 // BoardCombat — attackEnemy, gem effects, poison/shock, remove defeated, floor clear
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
+import { gemStackDamage } from '../../content/cards/gems.js';
+import { weaponIgnoresFrontline } from '../../content/cards/weapons.js';
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { CombatSequencer } from '../combat/CombatSequencer.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
@@ -73,7 +75,7 @@ function isMeleeWeapon(w) {
   );
 }
 
-function isRangedWeapon(w) {
+export function isRangedWeapon(w) {
   if (!w) return false;
   const n = (w.name || w.id || '').toLowerCase();
   return (
@@ -82,6 +84,46 @@ function isRangedWeapon(w) {
     w.subType === 'bow' ||
     n.includes('bow') || n.includes('crossbow')
   );
+}
+
+/**
+ * Can this weapon land damage on this enemy at all?
+ *
+ * attackEnemy rejects such a swing outright, so the stalemate detector has to
+ * consult the same rule — holding a weapon is not the same as having a way out,
+ * and a quiver full of bows is no answer to a Thorn Sprite. Keeping both callers
+ * on one predicate is the point: when they disagreed, the detector saw "player
+ * has a weapon", never fired, and the floor froze with no way to clear it.
+ *
+ * Rules that only redirect a hit (frontline gate, taunt) are deliberately NOT
+ * here — they always leave some other enemy that can be hit, so they can never
+ * produce a dead position.
+ */
+export function weaponCanDamageEnemy(weapon, card) {
+  if (!weapon || !card?.data) return true;
+  const features = Array.isArray(card.data.features) ? card.data.features : [];
+  // Thorn Sprite: bark shrugs off bows; melee and spells still connect.
+  if (features.includes('ranged_immune') && isRangedWeapon(weapon)) return false;
+  return true;
+}
+
+/** A socketed gem that deals damage of its own. */
+export function weaponGemIsDamaging(weapon) {
+  const effect = weapon?.gemEffect;
+  return effect === 'fire' || effect === 'lightning' || effect === 'poison';
+}
+
+/**
+ * Can this swing hurt the target by ANY means — the weapon itself, or the gem
+ * riding on it?
+ *
+ * A gem discharges as magic, so bark that shrugs off an arrow does not stop the
+ * lightning the arrow was carrying. The two questions are kept apart because
+ * they have different answers: the weapon's own damage is still refused, and
+ * the player still sees "Immune!" for it.
+ */
+export function canHurtEnemyAtAll(weapon, card) {
+  return weaponCanDamageEnemy(weapon, card) || weaponGemIsDamaging(weapon);
 }
 
 function isVenomousWeapon(w) {
@@ -363,7 +405,6 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // Fireball and charmed enemies also use attackEnemy(), and the fallback
     // incorrectly spent the player's durability and triggered weapon gems.
     const weapon = weaponUsed || null;
-    const features = Array.isArray(card.data.features) ? card.data.features : [];
 
     // Silk Husk — while any revealed taunter lives, player damage may only hit taunters.
     // Reflection / thorns still connect (isReflection); player weapon/magic does not.
@@ -381,20 +422,28 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     if (!isReflection && weapon) {
         const isRanged = this.isRangedWeapon(weapon);
 
-        // Thorn Sprite — bark shrugs off bows; melee still connects.
-        if (isRanged && features.includes('ranged_immune')) {
+        // Immunity check lives in weaponCanDamageEnemy so the stalemate
+        // detector rejects the same swings this does.
+        if (!weaponCanDamageEnemy(weapon, card)) {
             SoundHelper.playVariant(this.scene, 'dodge_miss', 0.5);
             this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Immune!', 0x88ff88);
+            // The weapon is refused, the gem is not: it discharges as magic.
+            // Costs the pip all the same — the swing was taken.
+            if (weaponGemIsDamaging(weapon)) {
+                this.applyWeaponGemEffect(index, weapon, 0);
+                if (!skipDurability) spendWeaponDurability.call(this);
+            }
             return;
         }
 
         // Check if there are any melee enemies alive (revealed or hidden)
         const meleeBlockers = this._anyMeleeAlive({ includeHidden: true });
 
-        // RANGED weapons (bows) bypass the frontline gate — that's
-        // their whole point. Printed damage is applied as-is (no ranged
-        // multiplier); see docs/OPEN-QUESTIONS.md for weakened/display.
-        if (!isRanged && meleeBlockers && card.data.role !== 'MELEE') {
+        // Bows bypass the frontline gate because reach is their whole point;
+        // the spear bypasses it while staying melee, which is the whole point of
+        // the spear. Printed damage is applied as-is (no ranged multiplier);
+        // see docs/OPEN-QUESTIONS.md for weakened/display.
+        if (!weaponIgnoresFrontline(weapon) && meleeBlockers && card.data.role !== 'MELEE') {
             SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
             this.scene.createFloatingText(
                 this.scene.playerAvatar.x,
@@ -543,17 +592,8 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // Reduce weapon durability on attack (only if not reflection damage).
     // Tempered Ingot: halves the rate at which durability is lost.
     // skipDurability=true for the second hit of a dual-wield so it costs only 1 pip total.
-    if (!isReflection && !skipDurability && this.scene.gameState.equippedWeapon) {
-        const durabilityLoss = this.scene.amuletManager
-            ? (Math.random() < this.scene.amuletManager.getWeaponDurabilityRate() ? 1 : 0)
-            : 1;
-        this.scene.gameState.equippedWeapon.durability -= durabilityLoss;
-        if (this.scene.gameState.equippedWeapon.durability <= 0) {
-            this.scene.gameState.equippedWeapon = null;
-            CombatSequencer.floatingText(this.scene, 'break',
-                this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weapon Broke!', 0xff0000);
-        }
-        this.scene.updateUI();
+    if (!isReflection && !skipDurability) {
+        spendWeaponDurability.call(this);
     }
     
     // Elemental hit animation on the struck enemy (fire / poison / lightning)
@@ -631,7 +671,7 @@ function applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
     if (weapon.gemEffect === 'fire') {
         // Fire: flat splash by gem stack. Stacks 4–5 are provisional
         // until gem merge power is decided (docs/OPEN-QUESTIONS.md).
-        let splashDamage = [3, 4, 5, 6, 7][stack - 1];
+        let splashDamage = gemStackDamage(stack, this.scene.gameState?.currentFloor);
         splashDamage = this.scene.amuletManager?.modifyGemDamage?.(splashDamage, 'fire') ?? splashDamage;
         // Main target: bonus fire damage on top of the weapon hit.
         this.burnEnemy(targetIndex, splashDamage);
@@ -660,7 +700,7 @@ function applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
         // Lightning: flat zap by gem stack (stacks 4–5 provisional).
         // Always hits 3 enemies total: main target + 2 others.
         // Stacks only increase the damage.
-        let zapDamage = [3, 4, 5, 6, 7][stack - 1];
+        let zapDamage = gemStackDamage(stack, this.scene.gameState?.currentFloor);
         zapDamage = this.scene.amuletManager?.modifyGemDamage?.(zapDamage, 'lightning') ?? zapDamage;
         const extraZaps = 2; // always 2 additional = 3 total
         // One random zap SFX per lightning-gem swing (not per hop). Sits on
@@ -812,6 +852,24 @@ function burnEnemy(index, amount) {
     // Face-down (unrevealed) enemies still take the damage above, but show no
     // floating text — we don't want to hint that a hidden card is being hit.
     if (card.data.health <= 0) this.removeDefeatedEnemy(index, card);
+}
+
+// One pip off the equipped weapon, respecting the durability-save sources.
+// Extracted so the immunity branch can charge for a swing that only the gem
+// connected on — the arrow was still loosed.
+function spendWeaponDurability() {
+    const gs = this.scene.gameState;
+    if (!gs.equippedWeapon) return;
+    const durabilityLoss = this.scene.amuletManager
+        ? (Math.random() < this.scene.amuletManager.getWeaponDurabilityRate() ? 1 : 0)
+        : 1;
+    gs.equippedWeapon.durability -= durabilityLoss;
+    if (gs.equippedWeapon.durability <= 0) {
+        gs.equippedWeapon = null;
+        CombatSequencer.floatingText(this.scene, 'break',
+            this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weapon Broke!', 0xff0000);
+    }
+    this.scene.updateUI();
 }
 
 function damageGemTarget(index, amount, label, color, effect = null, beat = 'gem') {

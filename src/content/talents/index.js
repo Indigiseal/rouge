@@ -1,11 +1,16 @@
 // Talent content pack registry.
 
 import { TALENT_BRANCHES, TALENT_RANK_COSTS } from './branches.js';
+import { tuned } from '../balance/Tuning.js';
 import { getTalentDisplay } from './displayCopy.js';
 import { createArmorCardData } from '../cards/armor.js';
 import keenEdge from './nodes/keenEdge.js';
 import firstBlood from './nodes/firstBlood.js';
 import twinFang from './nodes/twinFang.js';
+import prospector from './nodes/prospector.js';
+import momentum from './nodes/momentum.js';
+import shadowStep from './nodes/shadowStep.js';
+import scarTissue from './nodes/scarTissue.js';
 import frontVolley from './nodes/frontVolley.js';
 import assassinate from './nodes/assassinate.js';
 import softSteps from './nodes/softSteps.js';
@@ -19,6 +24,11 @@ import poisonTip from './nodes/poisonTip.js';
 import scavengerKit from './nodes/scavengerKit.js';
 import quietKill from './nodes/quietKill.js';
 import hardened from './nodes/hardened.js';
+import lastStand from './nodes/lastStand.js';
+import executioner from './nodes/executioner.js';
+import heavyEdge from './nodes/heavyEdge.js';
+import grindstone from './nodes/grindstone.js';
+import ironHide from './nodes/ironHide.js';
 import reprisal from './nodes/reprisal.js';
 import counterDrill from './nodes/counterDrill.js';
 import bulwark from './nodes/bulwark.js';
@@ -44,7 +54,12 @@ function freezeTalentNode(node) {
   return Object.freeze({
     ...node,
     name: copy?.name ?? node.name,
-    descriptionRanks: Object.freeze([...(copy?.descriptionRanks || node.descriptionRanks || [])]),
+    // The node file wins. Descriptions are written FROM the values, so keeping a
+    // second authored copy guarantees they drift apart the moment the numbers
+    // change — and they did: displayCopy went on showing Twin Fang as a
+    // percentage bonus for a build where it had already become flat damage.
+    // displayCopy still supplies names (ASCII-safe for the pixel font).
+    descriptionRanks: Object.freeze([...(node.descriptionRanks || copy?.descriptionRanks || [])]),
     values: Object.freeze([...(node.values || [])]),
   });
 }
@@ -54,6 +69,10 @@ export const TALENT_NODES = Object.freeze({
   keenEdge: freezeTalentNode(keenEdge),
   firstBlood: freezeTalentNode(firstBlood),
   twinFang: freezeTalentNode(twinFang),
+  prospector: freezeTalentNode(prospector),
+  momentum: freezeTalentNode(momentum),
+  shadowStep: freezeTalentNode(shadowStep),
+  scarTissue: freezeTalentNode(scarTissue),
   frontVolley: freezeTalentNode(frontVolley),
   assassinate: freezeTalentNode(assassinate),
   softSteps: freezeTalentNode(softSteps),
@@ -67,6 +86,11 @@ export const TALENT_NODES = Object.freeze({
   scavengerKit: freezeTalentNode(scavengerKit),
   quietKill: freezeTalentNode(quietKill),
   hardened: freezeTalentNode(hardened),
+  lastStand: freezeTalentNode(lastStand),
+  executioner: freezeTalentNode(executioner),
+  heavyEdge: freezeTalentNode(heavyEdge),
+  grindstone: freezeTalentNode(grindstone),
+  ironHide: freezeTalentNode(ironHide),
   reprisal: freezeTalentNode(reprisal),
   counterDrill: freezeTalentNode(counterDrill),
   bulwark: freezeTalentNode(bulwark),
@@ -83,6 +107,18 @@ export const TALENT_NODES = Object.freeze({
   smithyFavor: freezeTalentNode(smithyFavor),
   secondWind: freezeTalentNode(secondWind),
 });
+
+/**
+ * Rank value for a talent, through the sim's tuning overlay.
+ * Sweeps replace 'talent.<id>.values' instead of rewriting this file.
+ */
+export function talentValue(talentId, rank, fallback = 0) {
+  const node = TALENT_NODES[talentId];
+  if (!node || rank <= 0) return fallback;
+  const values = tuned(`talent.${talentId}.values`, node.values);
+  const value = Array.isArray(values) ? values[rank - 1] : undefined;
+  return value === undefined ? fallback : value;
+}
 
 export function getTalentNode(talentId) {
   return TALENT_NODES[talentId] || null;
@@ -129,12 +165,67 @@ export function totalCostForRanks(fromRank, toRank) {
  * Only live (non-WIP / purchasable branch) effects are applied, even if
  * save data somehow contains WIP ranks.
  */
-export function resolveTalentEffects(characterId, talents = {}, choices = {}) {
+/**
+ * Value of a rank that is a depth accumulator rather than a constant.
+ *
+ * A flat rank spends all of its worth in the first floors and has nothing left
+ * deep in a run — measured, the whole tree bought 3.6x more chance of passing
+ * the act-1 gate than of progressing past it. A rank here buys a RATE and a CAP
+ * instead: rank 1 reaches a low ceiling almost immediately (so it still feels
+ * like something early), high ranks keep climbing far deeper. The gap between
+ * ranks therefore widens with depth on its own, with no notion of "act" in the
+ * arithmetic.
+ */
+/**
+ * Integer accumulator: +1 every `perFloors` floors cleared, never past `cap`.
+ *
+ * This game is played in whole numbers — enemies have 8 to 22 HP, weapons deal
+ * 3 to 16. A percentage bonus on those does not survive contact with the
+ * rounding: `ceil(5 * 1.03)` and `ceil(5 * 1.12)` are both 6, so a node whose
+ * ranks read 3/5/7/9/12% produced the exact same damage at every rank, and four
+ * of the five purchases changed nothing at all. Anything that lands on damage,
+ * HP or AP is counted in whole points here.
+ *
+ * Percentages are still the right shape for things that are ROLLED rather than
+ * rounded — dodge, crit chance, proc chance — because there the fraction is the
+ * probability itself and nothing truncates it.
+ */
+export function accumulateSteps(spec, floorsCleared) {
+  if (typeof spec === 'number') return spec;
+  // `base` pays from the first floor, the rest accrues. A node that is meant to
+  // feel like something at rank 1 needs a base; a node that is meant to be a
+  // deep-run reward should not have one. Keen Edge at a flat +5 was the whole
+  // reason a maxed tree walked through act 1 — five extra damage against a
+  // starting weapon that deals three.
+  const base = Number(spec?.base) || 0;
+  const perFloors = Math.max(1, Number(spec?.perFloors) || 1);
+  const cap = Number(spec?.cap);
+  const steps = Math.floor(Math.max(0, Math.floor(floorsCleared) || 0) / perFloors);
+  const grown = Number.isFinite(cap) ? Math.min(cap, steps) : steps;
+  return base + grown;
+}
+
+export function accumulate(spec, floorsCleared) {
+  if (typeof spec === 'number') return spec;
+  const perFloor = Number(spec?.perFloor) || 0;
+  const cap = Number(spec?.cap);
+  const raw = perFloor * Math.max(0, Math.floor(floorsCleared) || 0);
+  return Number.isFinite(cap) ? Math.min(cap, raw) : raw;
+}
+
+export function resolveTalentEffects(characterId, talents = {}, choices = {}, context = {}) {
+  const floorsCleared = Math.max(0, Number(context.floorsCleared) || 0);
   const effects = {
     keenEdgeBonus: 0,
-    firstBloodPct: 0,
-    twinFangPct: 0,
-    frontVolleyPct: 0,
+    firstBloodFlat: 0,
+    twinFangFlat: 0,
+    scarTissueHp: 0,
+    shadowStepDodge: 0,
+    weaponDurabilitySave: 0,
+    prospectorCrystals: 0,
+    secondWindCharges: 0,
+    secondWindHealPct: 0,
+    frontVolleyFlat: 0,
     assassinateThreshold: 0,
     hardenedMaxDur: 0,
     hardenedDef: 0,
@@ -142,60 +233,112 @@ export function resolveTalentEffects(characterId, talents = {}, choices = {}) {
     counterDrillBonus: 0,
     bulwarkBonus: 0,
     rivetsChance: 0,
-    reprisalReflectPct: 0,
+    reprisalFlat: 0,
+    heavyEdgeFlat: 0,
     armorerArmorType: null,
+    armorerArmorRarity: null,
   };
 
   const rankOf = (id) => Math.max(0, Number(talents[id]) || 0);
 
   const keen = rankOf('keenEdge');
   if (keen > 0 && characterId === 'rogue') {
-    effects.keenEdgeBonus = TALENT_NODES.keenEdge.values[keen - 1] || 0;
+    effects.keenEdgeBonus = accumulateSteps(talentValue('keenEdge', keen, 0), floorsCleared);
   }
   const fb = rankOf('firstBlood');
   if (fb > 0 && characterId === 'rogue') {
-    effects.firstBloodPct = TALENT_NODES.firstBlood.values[fb - 1] || 0;
+    effects.firstBloodFlat = accumulateSteps(talentValue('firstBlood', fb, 0), floorsCleared);
   }
   const twin = rankOf('twinFang');
   if (twin > 0 && characterId === 'rogue') {
-    effects.twinFangPct = TALENT_NODES.twinFang.values[twin - 1] || 0;
+    effects.twinFangFlat = accumulateSteps(talentValue('twinFang', twin, 0), floorsCleared);
   }
   const volley = rankOf('frontVolley');
   if (volley > 0 && characterId === 'rogue') {
-    effects.frontVolleyPct = TALENT_NODES.frontVolley.values[volley - 1] || 0;
+    effects.frontVolleyFlat = accumulateSteps(talentValue('frontVolley', volley, 0), floorsCleared);
+  }
+  const scar = rankOf('scarTissue');
+  if (scar > 0) {
+    effects.scarTissueHp = accumulateSteps(talentValue('scarTissue', scar, 0), floorsCleared);
+  }
+  const step = rankOf('shadowStep');
+  if (step > 0) {
+    effects.shadowStepDodge = accumulate(talentValue('shadowStep', step, 0), floorsCleared);
+  }
+  const mom = rankOf('momentum');
+  if (mom > 0) {
+    effects.weaponDurabilitySave = accumulate(talentValue('momentum', mom, 0), floorsCleared);
+  }
+  const pros = rankOf('prospector');
+  if (pros > 0) {
+    effects.prospectorCrystals = accumulateSteps(talentValue('prospector', pros, 0), floorsCleared);
+  }
+  const wind = rankOf('secondWind');
+  if (wind > 0) {
+    const spec = talentValue('secondWind', wind, null);
+    effects.secondWindCharges = spec?.charges || 0;
+    effects.secondWindHealPct = spec?.heal || 0;
   }
   const ash = rankOf('assassinate');
   if (ash > 0 && characterId === 'rogue') {
-    effects.assassinateThreshold = TALENT_NODES.assassinate.values[ash - 1] || 0;
+    effects.assassinateThreshold = talentValue('assassinate', ash, 0);
   }
 
   const hard = rankOf('hardened');
   if (hard > 0 && characterId === 'warrior') {
     effects.hardenedMaxDur = 1;
-    effects.hardenedDef = TALENT_NODES.hardened.values[hard - 1] || hard;
-    if (hard >= 3) effects.hardenedProcBonus = 0.05;
+    effects.hardenedDef = accumulateSteps(talentValue('hardened', hard, 0), floorsCleared);
+    if (hard >= 4) effects.hardenedProcBonus = 0.05;
+  }
+  // Warrior nodes that reuse a mechanic the rogue branch already wires. Same
+  // effect keys, different node ids, so nothing downstream needs to know which
+  // class bought them.
+  const hide = rankOf('ironHide');
+  if (hide > 0 && characterId === 'warrior') {
+    effects.scarTissueHp = accumulateSteps(talentValue('ironHide', hide, 0), floorsCleared);
+  }
+  const grind = rankOf('grindstone');
+  if (grind > 0 && characterId === 'warrior') {
+    effects.weaponDurabilitySave = accumulate(talentValue('grindstone', grind, 0), floorsCleared);
+  }
+  const exec = rankOf('executioner');
+  if (exec > 0 && characterId === 'warrior') {
+    effects.assassinateThreshold = talentValue('executioner', exec, 0);
+  }
+  const stand = rankOf('lastStand');
+  if (stand > 0 && characterId === 'warrior') {
+    const spec = talentValue('lastStand', stand, null);
+    effects.secondWindCharges = spec?.charges || 0;
+    effects.secondWindHealPct = spec?.heal || 0;
+  }
+  const heavy = rankOf('heavyEdge');
+  if (heavy > 0 && characterId === 'warrior') {
+    effects.heavyEdgeFlat = accumulateSteps(talentValue('heavyEdge', heavy, 0), floorsCleared);
   }
   const cd = rankOf('counterDrill');
   if (cd > 0 && characterId === 'warrior' && !TALENT_NODES.counterDrill.wip) {
-    effects.counterDrillBonus = TALENT_NODES.counterDrill.values[cd - 1] || 0;
+    effects.counterDrillBonus = talentValue('counterDrill', cd, 0);
   }
   const rep = rankOf('reprisal');
   if (rep > 0 && characterId === 'warrior') {
-    effects.reprisalReflectPct = TALENT_NODES.reprisal.values[rep - 1] || 0;
+    // Whole points. As a fraction of blocked damage this rounded to 0 or 1 on
+    // any realistic DEF value, which is the same trap Twin Fang fell into.
+    effects.reprisalFlat = accumulateSteps(talentValue('reprisal', rep, 0), floorsCleared);
   }
   const bw = rankOf('bulwark');
   if (bw > 0 && characterId === 'warrior') {
-    effects.bulwarkBonus = TALENT_NODES.bulwark.values[bw - 1] || 0;
+    effects.bulwarkBonus = talentValue('bulwark', bw, 0);
   }
   const riv = rankOf('rivets');
   if (riv > 0 && characterId === 'warrior') {
-    effects.rivetsChance = TALENT_NODES.rivets.values[riv - 1] || 0;
+    effects.rivetsChance = talentValue('rivets', riv, 0);
   }
   if (rankOf('armorerStart') > 0 && characterId === 'warrior') {
     // Armor type is chosen on the run-start pick screen (or sim override),
     // not stored as a permanent purchase choice.
     const pick = choices.runArmorerArmorType || choices.armorerArmorType;
     if (pick === 'chain' || pick === 'plate') effects.armorerArmorType = pick;
+    effects.armorerArmorRarity = talentValue('armorerStart', rankOf('armorerStart'), 'uncommon');
   }
 
   return effects;
@@ -236,8 +379,10 @@ export function applyArmorTalentMods(armor, talentEffects) {
 
 export function createStartingTalentArmor(armorType, talentEffects) {
   if (armorType !== 'chain' && armorType !== 'plate') return null;
-  // Uncommon from the armor catalog — spawn floor ignored for talent starters.
-  const card = createArmorCardData(armorType, 'uncommon');
+  // Rarity comes from the node's rank — that IS what the later ranks buy.
+  // Spawn floor is ignored for talent starters.
+  const rarity = talentEffects?.armorerArmorRarity || 'uncommon';
+  const card = createArmorCardData(armorType, rarity);
   if (!card) return null;
   return applyArmorTalentMods(card, talentEffects);
 }

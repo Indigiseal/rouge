@@ -2,10 +2,35 @@
 // right now". The damage maths and the number drawn on the armor card both read
 // from here, so what the player sees is always what actually gets subtracted.
 
-/** True while a Magic Shield / Warding buff is boosting the worn armor. */
-export function isArmorWarded(gameState, armor) {
+// Magic Shield multiplies DEF, which is worth exactly nothing on leather —
+// leather has no DEF at all, it dodges. The spell was therefore dead for the
+// rogue, the only class that wears it. Dodge armour gets a flat dodge bonus
+// instead, so the same card is worth casting whoever picked it up.
+export const MAGIC_SHIELD_DODGE_BONUS = 0.30;
+
+/** True while a Magic Shield / Warding buff is running at all. */
+export function isShieldActive(gameState) {
     const shield = gameState?.magicShield;
-    return Boolean(shield && shield.turns > 0 && (armor?.protection || 0) > 0);
+    return Boolean(shield && shield.turns > 0);
+}
+
+/** True while the buff is boosting DEF specifically (armour that has DEF). */
+export function isArmorWarded(gameState, armor) {
+    return isShieldActive(gameState) && (armor?.protection || 0) > 0;
+}
+
+/** True while the buff is boosting dodge instead (armour that has no DEF). */
+export function isDodgeWarded(gameState, armor) {
+    return isShieldActive(gameState)
+        && (armor?.protection || 0) <= 0
+        && (armor?.dodgeChance || 0) > 0;
+}
+
+/** Dodge the worn armour actually provides, including any Magic Shield boost. */
+export function effectiveArmorDodge(gameState, armor) {
+    const base = armor?.dodgeChance || 0;
+    if (!isDodgeWarded(gameState, armor)) return base;
+    return Math.min(0.95, Math.round((base + MAGIC_SHIELD_DODGE_BONUS) * 100) / 100);
 }
 
 /**

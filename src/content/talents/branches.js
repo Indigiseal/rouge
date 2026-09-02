@@ -1,6 +1,10 @@
 // Talent branch layout and rank costs.
 
-export const TALENT_RANK_COSTS = Object.freeze([3, 6, 10]); // XP for ranks 1 / 2 / 3
+// Five ranks, rising cost: 30 XP for a full node, 300 for the branch. At the
+// measured earn rate (~7 XP/run once rolling) that is roughly 40 runs of growth
+// against the 13 the three-rank tree gave — the whole point of the rework was
+// that the ladder ran out long before the player did.
+export const TALENT_RANK_COSTS = Object.freeze([2, 3, 5, 8, 12]);
 
 export const TALENT_BRANCHES = Object.freeze({
   rogue: [
@@ -9,7 +13,12 @@ export const TALENT_BRANCHES = Object.freeze({
       name: 'Shadow',
       nameRu: 'Тень',
       purchasable: true,
-      nodes: ['keenEdge', 'firstBlood', 'twinFang', 'frontVolley', 'assassinate'],
+      // Deliberately alternating offence / survival / economy so consecutive
+      // purchases never feel like the same purchase twice.
+      nodes: [
+        'keenEdge', 'scarTissue', 'twinFang', 'shadowStep', 'firstBlood',
+        'momentum', 'frontVolley', 'prospector', 'assassinate', 'secondWind',
+      ],
     },
     {
       id: 'ghost',
@@ -34,7 +43,12 @@ export const TALENT_BRANCHES = Object.freeze({
       name: 'Iron',
       nameRu: 'Железо',
       purchasable: true,
-      nodes: ['armorerStart', 'rivets', 'bulwark', 'hardened', 'reprisal'],
+      // Same alternation as Shadow: armour, offence, economy, so no two
+      // consecutive purchases feel like the same purchase.
+      nodes: [
+        'armorerStart', 'hardened', 'rivets', 'ironHide', 'bulwark',
+        'grindstone', 'heavyEdge', 'reprisal', 'executioner', 'lastStand',
+      ],
     },
     {
       id: 'edge',

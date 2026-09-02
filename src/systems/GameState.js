@@ -1,4 +1,6 @@
 import { CombatSequencer } from './combat/CombatSequencer.js';
+import { resolveTalentEffects } from '../content/talents/index.js';
+import { DEFAULT_WARRIOR_STANCE } from '../content/characters/CharacterClasses.js';
 import {
     isEnemyRangedAttack as isEnemyRangedAttackResolved,
     resolvePlayerDamage,
@@ -21,7 +23,10 @@ export class GameState {
         this.playerEffects = [];
         this.actionsLeft = 15;
         this.maxActions = 15;
-        this.currentFloor = 1;
+        this._currentFloor = 1;
+        // Warrior stance: 'sweep' (swords cleave) or 'focus' (25% crit x2).
+        // Rogue ignores it. Saved runs from before stances load as the default.
+        this.warriorStance = DEFAULT_WARRIOR_STANCE;
         // Calendar month at run start (0 = Thornwake). Act 2/3 walk the next
         // months on the circle. See src/content/months/calendar.js.
         this.calendarMonthIndex = 0;
@@ -88,6 +93,52 @@ export class GameState {
                 crystalsEarned: 0
             }
         };
+    }
+
+    /**
+     * Depth-accumulating talents are rebuilt whenever the floor changes.
+     *
+     * This hangs off the property rather than off nextFloor() because the
+     * balance sim advances floors by assigning `gs.currentFloor = floor`
+     * directly — a refresh wired into nextFloor() alone would silently never
+     * fire there, and every measurement of an accumulator would read as zero.
+     */
+    get currentFloor() {
+        return this._currentFloor;
+    }
+
+    set currentFloor(value) {
+        this._currentFloor = value;
+        this.refreshDepthTalents();
+    }
+
+    refreshDepthTalents() {
+        const source = this.talentSource;
+        if (!source) return;
+        const next = resolveTalentEffects(
+            source.characterId,
+            source.talents,
+            source.choices,
+            { floorsCleared: Math.max(0, (this._currentFloor || 1) - 1) },
+        );
+
+        // Accumulators that raise a POOL are applied as a delta rather than
+        // recomputed: maxHealth and maxActions are also moved by amulets and by
+        // events, so writing an absolute value here would silently erase those.
+        const hpDelta = (next.scarTissueHp || 0) - (this._depthTalentHp || 0);
+        if (hpDelta) {
+            this.maxHealth = Math.max(1, this.maxHealth + hpDelta);
+            if (hpDelta > 0) this.playerHealth += hpDelta;
+            else this.playerHealth = Math.min(this.playerHealth, this.maxHealth);
+            this._depthTalentHp = next.scarTissueHp || 0;
+        }
+        const crystalDelta = (next.prospectorCrystals || 0) - (this._depthTalentCrystals || 0);
+        if (crystalDelta > 0) {
+            this.crystals = (this.crystals || 0) + crystalDelta;
+            this._depthTalentCrystals = next.prospectorCrystals || 0;
+        }
+
+        this.talentEffects = next;
     }
 
     nextFloor() {

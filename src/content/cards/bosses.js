@@ -1,7 +1,16 @@
+import { tuned } from '../balance/Tuning.js';
+
 // Bosses trimmed -1 to -3 attack and ~10% HP across the board so the
 // act gates feel hard but beatable. Cerberus took the biggest dmg cut
 // (20→17) because its 20-attack spike was the single deadliest moment
 // in the sim, far above the Lich at floor 25.
+// Act gates. Each tier is tuned so the finale is the real wall of its act:
+// with a full meta + amulet kit the gates kill roughly 39% / 28% / 22% of the
+// players who reach them (F15 / F30 / F45). Tier 1 was raised x1.35 HP / +1 ATK
+// when act-1 bands were recalibrated down; tiers 2-3 followed when depth-scaled
+// gems and regen landed (see docs/BALANCE.md). Ancient Cerberus needed the most:
+// at 136 HP it killed 1.2% of the players who reached it, making the finale the
+// softest moment in the game.
 // Bosses are keyed by id and grouped into three tiers. Each act rolls ONE
 // boss at random from its tier pool (tier 1 -> act 1 @ floor 15, tier 2 ->
 // act 2 @ floor 30, tier 3 -> act 3 @ floor 45), so every run's finales vary.
@@ -12,8 +21,8 @@ export const BOSSES = {
   giantSkeleton: {
     type: 'boss', tier: 1,
     name: 'Giant Skeleton',
-    health: 66,
-    attack: 10,
+    health: 89,
+    attack: 11,
     armor: 2,
     sprite: 'giantSkeleton',
     abilities: [
@@ -23,8 +32,8 @@ export const BOSSES = {
   goblinKing: {
     type: 'boss', tier: 1,
     name: 'Goblin King',
-    health: 62,
-    attack: 11,
+    health: 84,
+    attack: 12,
     sprite: 'GoblinKingSprite',
     abilities: [
       { type: 'coin_steal', chance: 0.5, amount: 3 },
@@ -34,8 +43,8 @@ export const BOSSES = {
   spiderQueen: {
     type: 'boss', tier: 1,
     name: 'Spider Queen',
-    health: 60,
-    attack: 10,
+    health: 81,
+    attack: 11,
     sprite: 'SpiderQween',
     abilities: [
       // Poison 3 -> 2 dmg: power-budget put her fight cost 43%
@@ -50,8 +59,8 @@ export const BOSSES = {
   soulEater: {
     type: 'boss', tier: 2,
     name: 'Soul Eater',
-    health: 120,
-    attack: 15,
+    health: 162,
+    attack: 17,
     sprite: 'SoulEater',
     // A slippery bruiser, NOT a healer (that's the Lich's profile).
     // Like the Lost Souls it commands, attacks have a 15% chance to
@@ -68,8 +77,8 @@ export const BOSSES = {
     type: 'boss', tier: 2,
     name: 'Lich',
     // +20% HP vs prior 110 (act-2 boss HP pass).
-    health: 132,
-    attack: 15,
+    health: 178,
+    attack: 17,
     sprite: 'Lich',
     abilities: [
       { type: 'lifesteal', percentage: 0.55 },
@@ -80,8 +89,8 @@ export const BOSSES = {
     type: 'boss', tier: 2,
     name: 'Cerberus',
     // +20% HP vs prior 105 (act-2 boss HP pass).
-    health: 126,
-    attack: 15,
+    health: 170,
+    attack: 17,
     sprite: 'Cerberus',
     abilities: [
       { type: 'rage', threshold: 0.4, damageBoost: 1.5 },
@@ -94,8 +103,8 @@ export const BOSSES = {
   ancientCerberus: {
     type: 'boss', tier: 3,
     name: 'Ancient Cerberus',
-    health: 136,
-    attack: 22,
+    health: 272,
+    attack: 28,
     sprite: 'AncientCerberus',
     abilities: [
       { type: 'rage', threshold: 0.3, damageBoost: 2 },
@@ -113,5 +122,12 @@ export const BOSS_TIERS = {
 };
 
 export function getBoss(id) {
-  return BOSSES[id] || null;
+  const boss = BOSSES[id];
+  if (!boss) return boss;
+  // Sweeps replace 'boss.<id>.health' / '.attack' instead of editing the table.
+  const health = tuned(`boss.${id}.health`, boss.health);
+  const attack = tuned(`boss.${id}.attack`, boss.attack);
+  if (health === boss.health && attack === boss.attack) return boss;
+  return { ...boss, health, attack };
 }
+

@@ -2,7 +2,13 @@
 import { buildLegacyAmuletDefinitions } from './legacyCatalog.js';
 import { buildCurrentAmuletDefinitions } from './currentCatalog.js';
 
-export { AMULET_RARITY_RATES, AMULET_SOURCE_MIN_FLOOR, AMULET_UPGRADE_REPLACES } from './rarityRates.js';
+export {
+    AMULET_RARITY_RATES,
+    AMULET_RARITY_DEPTH_TIERS,
+    AMULET_SOURCE_MIN_FLOOR,
+    AMULET_UPGRADE_REPLACES,
+    amuletRarityRates,
+} from './rarityRates.js';
 export { getAmuletAtlasPresentation } from './RelicsOthersAtlas.js';
 export { buildLegacyAmuletDefinitions } from './legacyCatalog.js';
 export { buildCurrentAmuletDefinitions } from './currentCatalog.js';

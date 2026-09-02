@@ -45,9 +45,11 @@ export function buildCurrentAmuletDefinitions(mgr) {
             ringOfRegeneration: {
                 ...getAmuletAtlasPresentation('ringOfRegeneration'),
                 name: 'Ring of Regeneration',
-                description: '+10 HP at the start of each combat floor',
+                description: '+8 HP at the start of each combat floor, +1 more every 3 floors',
                 rarity: 'common',
-                floorStartHeal: 10,
+                // Depth-scaled: 8 HP on F1 -> ~21 on F45. A flat 10 was worth
+                // nothing by act 2 (0% of its act-1 value in sim).
+                floorStartHeal: { base: 8, perFloor: 0.3 },
             },
             earringOfArmorDurability: {
                 ...getAmuletAtlasPresentation('earringOfArmorDurability'),
@@ -91,9 +93,9 @@ export function buildCurrentAmuletDefinitions(mgr) {
             ringOfGreaterRegeneration: {
                 ...getAmuletAtlasPresentation('ringOfGreaterRegeneration'),
                 name: 'Ring of Greater Regeneration',
-                description: '+15 HP at the start of each combat floor. Replaces Ring of Regeneration.',
+                description: '+12 HP at the start of each combat floor, +1 more every 2 floors. Replaces Ring of Regeneration.',
                 rarity: 'uncommon',
-                floorStartHeal: 15,
+                floorStartHeal: { base: 12, perFloor: 0.45 },
                 replaces: ['ringOfRegeneration'],
             },
             earringOfGreaterArmorDurability: {
@@ -191,10 +193,10 @@ export function buildCurrentAmuletDefinitions(mgr) {
             philosophersStone: {
                 ...getAmuletAtlasPresentation('philosophersStone'),
                 name: "Philosopher's Stone",
-                description: '+20 max HP and +8 HP at the start of each combat floor. Replaces Health and Regeneration rings.',
+                description: '+20 max HP and +6 HP at the start of each combat floor, +1 more every 4 floors. Replaces Health and Regeneration rings.',
                 rarity: 'legendary',
                 ...hp(20),
-                floorStartHeal: 8,
+                floorStartHeal: { base: 6, perFloor: 0.25 },
                 replaces: [
                     'ringOfHealth',
                     'ringOfGreaterHealth',

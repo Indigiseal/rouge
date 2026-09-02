@@ -13,6 +13,7 @@ import {
     AMULET_RARITY_RATES,
     AMULET_SOURCE_MIN_FLOOR,
     AMULET_UPGRADE_REPLACES,
+    amuletRarityRates,
 } from '../../content/amulets/rarityRates.js';
 import {
     ENEMIES,
@@ -51,6 +52,7 @@ export class CardDataGenerator {
     static AMULET_RARITY_RATES = AMULET_RARITY_RATES;
     static AMULET_SOURCE_MIN_FLOOR = AMULET_SOURCE_MIN_FLOOR;
     static AMULET_UPGRADE_REPLACES = AMULET_UPGRADE_REPLACES;
+    static amuletRarityRates = amuletRarityRates;
     static SUMMON_ONLY_ENEMY_TYPES = SUMMON_ONLY_ENEMY_TYPES;
 
     static armorDurability(armorType, rarity) {
@@ -119,7 +121,7 @@ export class CardDataGenerator {
             case 'trap':
                 return this.createTrapCard(floor);
             case 'weapon':
-                return this.createWeaponCard(floor, targetRarity);
+                return this.createWeaponCard(floor, targetRarity, gameState);
             case 'armor':
                 return this.createArmorCard(floor, targetRarity, gameState);
             case 'amulet':
@@ -399,7 +401,8 @@ export class CardDataGenerator {
         return 'common';
     }
 
-    createWeaponCard(floor, targetRarity = null) {
+    createWeaponCard(floor, targetRarity = null, gameState = null) {
+        const characterId = gameState?.characterId || null;
         const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
         // Determine which rarity tier to use, falling back to the best available
         const resolveRarity = (weaponType) => {
@@ -408,7 +411,7 @@ export class CardDataGenerator {
             const requested = targetRarity || this.pickFloorRarity(floor);
             const candidates = [requested, ...rarityOrder.slice(rarityOrder.indexOf(requested) + 1)];
             for (const r of candidates) {
-                if (this.weapons[weaponType]?.[r] && floor >= weaponSpawnMinFloor(weaponType, r)) {
+                if (this.weapons[weaponType]?.[r] && floor >= weaponSpawnMinFloor(weaponType, r, characterId)) {
                     return r;
                 }
             }
@@ -420,10 +423,10 @@ export class CardDataGenerator {
         Object.keys(this.weapons).forEach((weaponType) => {
             const rarity = resolveRarity(weaponType);
             const data = this.weapons[weaponType]?.[rarity];
-            if (data && floor >= weaponSpawnMinFloor(weaponType, rarity)) {
+            if (data && floor >= weaponSpawnMinFloor(weaponType, rarity, characterId)) {
                 // Weapons fade out as the player out-levels them.
                 // Each floor past their unlock costs 0.07 weight; common-tier fades a bit faster.
-                const floorsPast = floor - weaponSpawnMinFloor(weaponType, rarity);
+                const floorsPast = floor - weaponSpawnMinFloor(weaponType, rarity, characterId);
                 const decay = rarity === 'common' ? 0.09 : 0.06;
                 const weight = Math.max(0.08, 1 - floorsPast * decay);
                 availableWeapons.push({
@@ -460,16 +463,16 @@ export class CardDataGenerator {
     // reward room now, regular weapon drops once the pick-one UI exists.
     // Falls back to a single createWeaponCard when the floor only has one
     // weapon type unlocked.
-    createWeaponChoice(floor, count = 3) {
+    createWeaponChoice(floor, count = 3, gameState = null) {
         const rarity = this.pickFloorRarity(floor);
         const types = Object.keys(this.weapons);
         const options = [];
         for (const type of types) {
-            const card = this.createWeaponCardOfType(type, floor, rarity);
+            const card = this.createWeaponCardOfType(type, floor, rarity, gameState);
             if (card) options.push(card);
         }
         if (options.length <= 1) {
-            return [this.createWeaponCard(floor, rarity)];
+            return [this.createWeaponCard(floor, rarity, gameState)];
         }
         // Shuffle so the order carries no signal, then cap at `count`.
         for (let i = options.length - 1; i > 0; i--) {
@@ -482,13 +485,14 @@ export class CardDataGenerator {
     // Build a weapon card of a specific type at the requested rarity,
     // falling down to lower rarities the floor has unlocked. Returns null
     // if the type has no tier available at this floor.
-    createWeaponCardOfType(weaponType, floor, targetRarity) {
+    createWeaponCardOfType(weaponType, floor, targetRarity, gameState = null) {
         if (!this.weapons[weaponType]) return null;
+        const characterId = gameState?.characterId || null;
         const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
         const start = Math.max(0, rarityOrder.indexOf(targetRarity));
         let picked = null;
         for (const r of rarityOrder.slice(start)) {
-            if (this.weapons[weaponType][r] && floor >= weaponSpawnMinFloor(weaponType, r)) {
+            if (this.weapons[weaponType][r] && floor >= weaponSpawnMinFloor(weaponType, r, characterId)) {
                 picked = r;
                 break;
             }
@@ -542,10 +546,8 @@ export class CardDataGenerator {
     // UI lets the player pick one. Event-only amulets (teaRoomBell, runes, …)
     // are NOT in amuletTypes and never appear here.
 
-    rollAmuletRarity(source = 'floor') {
-        const rates = CardDataGenerator.AMULET_RARITY_RATES[source]
-            || CardDataGenerator.AMULET_RARITY_RATES.floor;
-        const entries = Object.entries(rates);
+    rollAmuletRarity(source = 'floor', floor = 1) {
+        const entries = Object.entries(CardDataGenerator.amuletRarityRates(source, floor));
         const total = entries.reduce((sum, [, w]) => sum + w, 0);
         let roll = Math.random() * total;
         for (const [rarity, weight] of entries) {
@@ -635,33 +637,38 @@ export class CardDataGenerator {
         if (areAmuletsDisabled()) return null;
 
         const sourceKey = source && CardDataGenerator.AMULET_RARITY_RATES[source] ? source : 'floor';
-        const allowed = Object.keys(
-            CardDataGenerator.AMULET_RARITY_RATES[sourceKey] || CardDataGenerator.AMULET_RARITY_RATES.floor
-        );
+        const allowed = Object.keys(CardDataGenerator.amuletRarityRates(sourceKey, floor));
         const poolOpts = { ignoreMinFloor: sourceKey === 'boss' };
 
         let rarity = forcedRarity;
         if (!rarity || !allowed.includes(rarity)) {
-            // Prefer a rarity that still has candidates; fall back across the
-            // source table if the first roll lands on an empty pool.
+            // Prefer a rarity that can still fill a real choice. A one-option
+            // "pick 1 of 3" is what a late-run common roll degrades into once
+            // the six commons are owned, so a rarity with 2+ candidates wins
+            // over one with a single leftover; a lone option only wins over
+            // nothing at all.
+            const poolSize = (candidate) => (
+                this.getAmuletsOfRarity(candidate, floor, gameState, poolOpts).length
+            );
             const tried = new Set();
+            let lastResort = null;
             for (let attempt = 0; attempt < allowed.length; attempt++) {
-                const candidate = this.rollAmuletRarity(sourceKey);
+                const candidate = this.rollAmuletRarity(sourceKey, floor);
                 if (tried.has(candidate)) continue;
                 tried.add(candidate);
-                if (this.getAmuletsOfRarity(candidate, floor, gameState, poolOpts).length > 0) {
-                    rarity = candidate;
-                    break;
-                }
+                const size = poolSize(candidate);
+                if (size >= 2) { rarity = candidate; break; }
+                if (size > 0 && !lastResort) lastResort = candidate;
             }
             if (!rarity) {
                 for (const candidate of allowed) {
-                    if (this.getAmuletsOfRarity(candidate, floor, gameState, poolOpts).length > 0) {
-                        rarity = candidate;
-                        break;
-                    }
+                    if (tried.has(candidate)) continue;
+                    const size = poolSize(candidate);
+                    if (size >= 2) { rarity = candidate; break; }
+                    if (size > 0 && !lastResort) lastResort = candidate;
                 }
             }
+            if (!rarity) rarity = lastResort;
         }
 
         let options = rarity ? this.createAmuletChoice(floor, rarity, 3, gameState, poolOpts) : [];

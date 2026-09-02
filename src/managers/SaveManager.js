@@ -1,6 +1,7 @@
 // SaveManager.js - Complete fixed version
 
 import { applyAmuletAtlasPresentation } from '../content/amulets/RelicsOthersAtlas.js';
+import { DEFAULT_WARRIOR_STANCE, WARRIOR_STANCES } from '../content/characters/CharacterClasses.js';
 import { PLAYER_START_HP } from '../systems/GameState.js';
 import { normalizeMonthIndex } from '../content/months/index.js';
 
@@ -146,6 +147,7 @@ export class SaveManager {
         crystals: gameState?.crystals ?? 0,
         currentFloor: gameState?.currentFloor ?? 1,
         calendarMonthIndex: gameState?.calendarMonthIndex ?? 0,
+        warriorStance: gameState?.warriorStance ?? DEFAULT_WARRIOR_STANCE,
         // Added missing fields
         bonusInventorySlots: gameState?.bonusInventorySlots ?? 0,
         firstActionUsed: gameState?.firstActionUsed ?? false,
@@ -259,6 +261,10 @@ export class SaveManager {
             ? Math.max(1, Math.min(45, Math.floor(parsed.player.currentFloor)))
             : 1,
           calendarMonthIndex: normalizeMonthIndex(parsed.player?.calendarMonthIndex ?? 0),
+          // Runs saved before stances existed have no field — default it.
+          warriorStance: WARRIOR_STANCES[parsed.player?.warriorStance]
+            ? parsed.player.warriorStance
+            : DEFAULT_WARRIOR_STANCE,
           bonusInventorySlots: parsed.player?.bonusInventorySlots ?? 0,
           firstActionUsed: parsed.player?.firstActionUsed ?? false,
           baseMaxHealth: parsed.player?.baseMaxHealth ?? PLAYER_START_HP,

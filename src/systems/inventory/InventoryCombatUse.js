@@ -6,6 +6,8 @@ import {
     rollClassWeaponCrit,
 } from '../../content/characters/CharacterClasses.js';
 import { getMagic } from '../../content/cards/index.js';
+import { SWORD_CLEAVE_FRACTION } from '../../content/cards/weapons.js';
+import { stanceCleaves } from '../../content/characters/CharacterClasses.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { playSmokeBurst } from '../../ui/SmokeBurst.js';
 
@@ -424,14 +426,16 @@ export const InventoryCombatUse = {
             }
 
             // First Blood: first attack each floor deals bonus %.
-            if (talentFx?.firstBloodPct > 0 && !this.scene.gameState.firstAttackThisFloorUsed) {
-                attackDamage = Math.ceil(attackDamage * (1 + talentFx.firstBloodPct));
+            if (talentFx?.firstBloodFlat > 0 && !this.scene.gameState.firstAttackThisFloorUsed) {
+                attackDamage += talentFx.firstBloodFlat;
                 this.scene.gameState.firstAttackThisFloorUsed = true;
                 this.scene.createFloatingText(cardSprite.x, cardSprite.y - 48, 'First Blood!', 0xff88aa);
             }
 
             // Class passive: warrior crit replaces the hit (sword/axe only).
-            const critRoll = rollClassWeaponCrit(characterId, weapon, attackDamage);
+            const critRoll = rollClassWeaponCrit(
+                characterId, weapon, attackDamage, this.scene.gameState?.warriorStance
+            );
             let didCrit = false;
             if (critRoll.crit) {
                 // Crit uses printed weapon damage * (1 + 0.05 * rarityTier), then weakness.
@@ -538,12 +542,20 @@ export const InventoryCombatUse = {
                 }
             }
 
+            // SWORD: Cleave — the blow carries into one other front enemy for
+            // SWORD_CLEAVE_FRACTION of the damage. No extra pip, no extra AP:
+            // the sword's whole identity is that one swing answers a crowd.
+            if (weapon.special === 'cleave'
+                && stanceCleaves(characterId, this.scene.gameState?.warriorStance)) {
+                this.applySwordCleave(closestEnemy, attackDamage, weapon);
+            }
+
             // Front Volley: bow also hits a random front (MELEE) enemy.
             if (
-                talentFx?.frontVolleyPct > 0
+                talentFx?.frontVolleyFlat > 0
                 && this.scene.cardSystem?.isRangedWeapon?.(weapon)
             ) {
-                this.applyFrontVolleyTalent(closestEnemy, attackDamage, weapon, talentFx.frontVolleyPct);
+                this.applyFrontVolleyTalent(closestEnemy, weapon, talentFx.frontVolleyFlat);
             }
             
             // Un-equip the weapon after the attack sequence
@@ -657,14 +669,55 @@ export const InventoryCombatUse = {
         const card = this.scene.cardSystem?.boardCards?.[enemyIndex];
         if (!card?.revealed || !card.data) return;
         if (card.data.type !== 'enemy' && card.data.type !== 'boss') return;
+        // Threshold is a share of the target's own max HP, not a flat number:
+        // a flat "3 HP or less" was 37% of a floor-1 enemy and 13% of a
+        // floor-45 one, so the node quietly faded out exactly where it was
+        // needed. A share tracks the power bands on its own.
         const hp = card.data.health ?? 0;
-        if (hp <= 0 || hp > threshold) return;
+        const maxHp = card.data.maxHealth || card.data.health || 1;
+        if (hp <= 0 || hp > maxHp * threshold) return;
         this.scene.cardSystem.attackEnemy(enemyIndex, hp, false, null, true);
         if (card.sprite) {
             this.scene.createFloatingText(card.sprite.x, card.sprite.y - 28, 'Assassinate!', 0xaa66ff);
         }
     },
-    applyFrontVolleyTalent(primaryIndex, bowDamage, weapon, pct) {
+    // Same target rule as Front Volley: one random other front enemy, taunt
+    // respected. Bosses count as front — a blade sweeping off a minion into the
+    // boss beside it is the point of the ability.
+    applySwordCleave(primaryIndex, swordDamage, weapon) {
+        const boards = this.scene.cardSystem?.boardCards || [];
+        const tauntActive = boards.some((card) => (
+            card?.revealed
+            && (card.data?.health ?? 0) > 0
+            && Array.isArray(card.data?.features)
+            && card.data.features.includes('taunt')
+            && card.sprite?.texture?.key
+            && card.sprite.texture.key !== 'cardBack'
+            && !String(card.sprite.texture.key).startsWith('cardFlip')
+        ));
+        const candidates = [];
+        boards.forEach((card, index) => {
+            if (index === primaryIndex) return;
+            if (!card?.revealed || !card.data) return;
+            if (card.data.type !== 'enemy' && card.data.type !== 'boss') return;
+            if ((card.data.health ?? 0) <= 0) return;
+            if (card.data.role !== 'MELEE' && card.data.type !== 'boss') return;
+            if (tauntActive && !(Array.isArray(card.data.features) && card.data.features.includes('taunt'))) {
+                return;
+            }
+            candidates.push(index);
+        });
+        if (!candidates.length) return;
+        const target = candidates[Math.floor(Math.random() * candidates.length)];
+        const cleaveDmg = Math.max(1, Math.ceil(swordDamage * SWORD_CLEAVE_FRACTION));
+        this.scene.cardSystem.attackEnemy(target, cleaveDmg, false, weapon, true);
+        const sprite = boards[target]?.sprite;
+        if (sprite) {
+            this.scene.createFloatingText(sprite.x, sprite.y - 24, 'Cleave!', 0xffcc66);
+        }
+        this.applyAssassinateTalent(target);
+    },
+    applyFrontVolleyTalent(primaryIndex, weapon, flatDamage) {
         const boards = this.scene.cardSystem?.boardCards || [];
         const tauntActive = boards.some((card) => (
             card?.revealed
@@ -690,7 +743,7 @@ export const InventoryCombatUse = {
         });
         if (!candidates.length) return;
         const target = candidates[Math.floor(Math.random() * candidates.length)];
-        const volleyDmg = Math.max(1, Math.ceil(bowDamage * pct));
+        const volleyDmg = Math.max(1, Math.floor(flatDamage));
         this.scene.cardSystem.attackEnemy(target, volleyDmg, false, weapon, true);
         const sprite = boards[target]?.sprite;
         if (sprite) {

@@ -1,4 +1,5 @@
 import { createAmuletDefinitions } from '../content/amulets/index.js';
+import { depthScaled } from '../content/balance/DepthScaling.js';
 import { areAmuletsDisabled } from '../config/TestOptions.js';
 
 export class AmuletManager {
@@ -172,7 +173,9 @@ export class AmuletManager {
                 definition.onFloorStart(amulet.level || 1);
             }
             if (definition.floorStartHeal) {
-                healTotal += definition.floorStartHeal * (amulet.level || 1);
+                // Regen may be flat (number) or depth-scaled ({base, perFloor}).
+                healTotal += depthScaled(definition.floorStartHeal, this.gameState.currentFloor)
+                    * (amulet.level || 1);
             }
         });
         if (healTotal <= 0) return;
@@ -361,7 +364,11 @@ export class AmuletManager {
                 rate *= definition.weaponDurabilityRate;
             }
         });
-        const save = Math.min(0.95, this.sumAmuletProperty('weaponDurabilitySaveChance'));
+        // Whetstone (talent) shares the amulets' save pool: weapons breaking is a
+        // real way runs end (3-6% of them), while max AP measurably is not —
+        // +25 AP moved the average run by half a floor.
+        const talentSave = this.gameState?.talentEffects?.weaponDurabilitySave || 0;
+        const save = Math.min(0.95, this.sumAmuletProperty('weaponDurabilitySaveChance') + talentSave);
         return Math.max(0, Math.min(1, rate * (1 - save)));
     }
 

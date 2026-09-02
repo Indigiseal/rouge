@@ -58,6 +58,11 @@ export const ASSET_MANIFEST = [
     { key: 'dagger_C', path: 'assets/art/dagger_c.png', type: 'image' },
     { key: 'axe_C', path: 'assets/art/axe_C.png', type: 'image' },
     { key: 'bow_c', path: 'assets/art/bow_c.png', type: 'image' },
+    { key: 'spear_C', path: 'assets/art/spear_c.png', type: 'image' },
+    { key: 'spear_U', path: 'assets/art/spear_u.png', type: 'image' },
+    { key: 'spear_R', path: 'assets/art/spear_R.png', type: 'image' },
+    { key: 'spear_E', path: 'assets/art/spear_E.png', type: 'image' },
+    { key: 'spear_L', path: 'assets/art/spear_L.png', type: 'image' },
     // Load Uncommon / Rare / Epic / Legendary item sprites
     { key: 'axe_U', path: 'assets/art/axe_U.png', type: 'image' },
     { key: 'axe_R', path: 'assets/art/axe_R.png', type: 'image' },

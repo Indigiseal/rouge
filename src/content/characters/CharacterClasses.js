@@ -31,8 +31,8 @@ export const CHARACTER_CLASSES = Object.freeze({
     name: 'Warrior',
     nameRu: 'Воин',
     portraitFrame: 1,
-    blurb: 'No leather. Starts with two swords. Chain counters melee; plate ignores ranged. 10% crit on swords/axes.',
-    blurbRu: 'Без кожи. Старт: два меча. Chain — контратака в ближнем; plate — ignore дальних. 10% крит мечи/топоры.',
+    blurb: 'No leather. Starts with two swords. Two stances: Sweep (swords cleave) and Focus (20% crit for double damage, any weapon). Chain counters melee; plate ignores ranged.',
+    blurbRu: 'Без кожи. Старт: два меча. Две стойки: Размах (меч рубит соседа) и Сосредоточение (20% крит в двойной урон, любым оружием). Chain — контратака в ближнем; plate — ignore дальних.',
     armorTypes: ['chain', 'plate'],
     startingWeapons: Object.freeze([
       Object.freeze({ weaponType: 'sword', rarity: 'common' }),
@@ -43,7 +43,7 @@ export const CHARACTER_CLASSES = Object.freeze({
     // Crit replaces the normal hit: damage = weapon * (1 + 0.05 * rarityTier).
     // rarityTier: common 1 / uncommon 2 / rare 3 / legendary 4 (epic counts as 3).
     critChance: 0.1,
-    critWeaponTypes: ['sword', 'axe'],
+    critWeaponTypes: ['sword', 'spear', 'axe', 'bow', 'dagger'],
   },
 });
 
@@ -115,13 +115,23 @@ export function applyPermanentWeaponDamageBonuses(characterId, weapon, damage, t
   const classPct = getClassWeaponDamageBonusPct(characterId, weapon, talentEffects);
   if (classPct > 0) result = Math.ceil(result * (1 + classPct));
 
-  const twin = talentEffects?.twinFangPct || 0;
+  // Whole points, added. As a percentage this was invisible: ceil(5 * 1.03)
+  // and ceil(5 * 1.12) are both 6, so every rank of the node produced exactly
+  // the same damage on every weapon in the game.
+  const twin = talentEffects?.twinFangFlat || 0;
   if (twin > 0) {
     if (weapon.weaponType === 'dagger') {
-      result = Math.ceil(result * (1 + twin));
+      result += twin;
     } else if (weapon.weaponType === 'bow') {
-      result = Math.ceil(result * (1 + twin * 0.5));
+      result += Math.floor(twin / 2);
     }
+  }
+
+  // Heavy Edge is the warrior's mirror of Twin Fang, over his own weapons.
+  const heavy = talentEffects?.heavyEdgeFlat || 0;
+  if (heavy > 0 && (weapon.weaponType === 'sword'
+    || weapon.weaponType === 'spear' || weapon.weaponType === 'axe')) {
+    result += heavy;
   }
   return result;
 }
@@ -165,19 +175,91 @@ export function getDisplayedWeaponDamage(characterId, weapon, talentEffects = nu
  * Warrior crit roll. Returns { crit, damage } where damage is the hit to use
  * (crit multiplies printed weapon damage by 1 + 0.05 * rarityTier).
  */
-export function rollClassWeaponCrit(characterId, weapon, baseDamage) {
+/**
+ * Warrior stances.
+ *
+ * The warrior had no in-combat decision, and his two abilities each sat idle
+ * half the time. Cleave is worth nothing against a lone boss — measured clear
+ * F15 of 9.9% against the rogue's 21.2%, unmoved by armour or damage — while
+ * the crit it displaced was worth about +2% expected damage against the rogue's
+ * +29% class passive. Making them one switch turns two dead halves into a
+ * choice: sweep a crowd, or focus the one thing in front of you.
+ *
+ * Switching costs AP, so the stance is a read of the board rather than a
+ * free toggle flipped every swing.
+ */
+// The warrior's crit covers EVERY weapon type, not just sword/spear/axe.
+// Measured cause: the frontline gate plus boss summons push both classes onto a
+// bow for every act finale — the warrior entered the F15 boss with a bow 72% of
+// the time. The rogue's passive covers bows, so his identity followed him there
+// and the warrior's did not: 59.3 damage against 73.1 on the same AP, and clear
+// F15 of 9.7% against 21.2%. Six fixes aimed at his weapons (cleave, stances,
+// crit size, spear, early swords, armour type) all measured neutral, because
+// they hung off weapons he was not holding when it mattered. Widening the crit
+// closed it: 71.9 damage, 21.1% clear.
+//
+// His identity now lives in the STANCE rather than the weapon type, which is
+// what stances were for.
+export const WARRIOR_STANCES = Object.freeze({
+  sweep: Object.freeze({
+    id: 'sweep',
+    name: 'Sweep',
+    nameRu: 'Размах',
+    cleave: true,
+    critChance: 0,
+    critMultiplier: 1,
+  }),
+  focus: Object.freeze({
+    id: 'focus',
+    name: 'Focus',
+    nameRu: 'Сосредоточение',
+    cleave: false,
+    critChance: 0.2,
+    critMultiplier: 2,
+  }),
+});
+
+export const DEFAULT_WARRIOR_STANCE = 'sweep';
+export const WARRIOR_STANCE_AP_COST = 1;
+
+export function getWarriorStance(stanceId) {
+  return WARRIOR_STANCES[stanceId] || WARRIOR_STANCES[DEFAULT_WARRIOR_STANCE];
+}
+
+/** Does this character/stance combination cleave with swords right now? */
+export function stanceCleaves(characterId, stanceId) {
+  if (characterId !== 'warrior') return false;
+  return Boolean(getWarriorStance(stanceId).cleave);
+}
+
+export function rollClassWeaponCrit(characterId, weapon, baseDamage, stanceId = null) {
   const def = getCharacter(characterId);
-  if (!weapon || !(def.critChance > 0)) {
-    return { crit: false, damage: baseDamage };
-  }
+  if (!weapon) return { crit: false, damage: baseDamage };
   if (!(def.critWeaponTypes || []).includes(weapon.weaponType)) {
     return { crit: false, damage: baseDamage };
   }
-  if (Math.random() >= def.critChance) {
+  const { chance, multiplier } = classCritProfile(characterId, weapon, stanceId);
+  if (!(chance > 0)) return { crit: false, damage: baseDamage };
+  if (Math.random() >= chance) {
     return { crit: false, damage: baseDamage };
   }
-  const tier = RARITY_CRIT_TIER[weapon.rarity] || 1;
   const printed = Math.max(0, Number(weapon.damage) || 0);
-  const critDamage = Math.ceil(printed * (1 + 0.05 * tier));
-  return { crit: true, damage: critDamage };
+  return { crit: true, damage: Math.ceil(printed * multiplier) };
+}
+
+/**
+ * Crit chance and multiplier in one place so the combat roll and the bot's
+ * expected-damage estimate cannot drift apart.
+ */
+export function classCritProfile(characterId, weapon, stanceId = null) {
+  const def = getCharacter(characterId);
+  if (!weapon || !(def.critWeaponTypes || []).includes(weapon.weaponType)) {
+    return { chance: 0, multiplier: 1 };
+  }
+  if (characterId === 'warrior') {
+    const stance = getWarriorStance(stanceId);
+    return { chance: stance.critChance || 0, multiplier: stance.critMultiplier || 1 };
+  }
+  const tier = RARITY_CRIT_TIER[weapon.rarity] || 1;
+  return { chance: def.critChance || 0, multiplier: 1 + 0.05 * tier };
 }

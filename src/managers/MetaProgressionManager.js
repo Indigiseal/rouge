@@ -155,6 +155,14 @@ export class MetaProgressionManager {
   }
 
   /** Same formula as legacy meta points. */
+  /** Test build only: hand a character XP from the talent screen. */
+  grantDebugXp(characterId, amount = 25) {
+    const ch = this.ensureCharacter(characterId);
+    ch.xp = Math.max(0, (ch.xp || 0) + amount);
+    this.saveMetaProgression();
+    return ch.xp;
+  }
+
   xpForRun(floor, bossesKilled = 0) {
     return xpForRunFormula(floor, bossesKilled);
   }
@@ -208,8 +216,12 @@ export class MetaProgressionManager {
     const ch = this.ensureCharacter(characterId);
     const prevId = getPreviousTalentId(characterId, talentId);
     if (prevId) {
+      // Two ranks, not one: with five ranks per node a single-rank gate would
+      // let the player walk the whole branch buying only rank 1s, which is the
+      // cheapest path and also the least interesting one. Two makes every
+      // purchase a real choice between deepening and broadening.
       const prevRank = Math.max(0, Number(ch.talents[prevId]) || 0);
-      if (prevRank < 1) return { ok: false, reason: 'prereq', prereqId: prevId };
+      if (prevRank < 2) return { ok: false, reason: 'prereq', prereqId: prevId };
     }
     const rank = Math.max(0, Number(ch.talents[talentId]) || 0);
     if (rank >= (node.maxRank || 1)) return { ok: false, reason: 'max' };
@@ -247,7 +259,12 @@ export class MetaProgressionManager {
     if (opts.armorerArmorType === 'chain' || opts.armorerArmorType === 'plate') {
       runChoices.runArmorerArmorType = opts.armorerArmorType;
     }
-    const effects = resolveTalentEffects(characterId, ch.talents, runChoices);
+    // Depth accumulators have to be rebuilt as the run goes deeper, so keep the
+    // inputs on the run state — GameState refreshes from them on floor change.
+    gameState.talentSource = { characterId, talents: { ...ch.talents }, choices: runChoices };
+    const effects = resolveTalentEffects(characterId, ch.talents, runChoices, {
+      floorsCleared: Math.max(0, (gameState.currentFloor || 1) - 1),
+    });
     gameState.talentEffects = effects;
 
     if (applyStartingBonuses && effects.armorerArmorType && !gameState.equippedArmor) {

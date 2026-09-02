@@ -2,6 +2,7 @@ import { SoundHelper } from '../../audio/SoundHelper.js';
 import { CombatSequencer } from './CombatSequencer.js';
 import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
 import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
+import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
 import { getEnemy } from '../../content/cards/enemies.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/months/tollroad/index.js';
 
@@ -81,10 +82,23 @@ export class CombatTurnController {
             && (card.durability ?? 1) > 0
             && !(card.webbedTurns > 0)
         );
-        const hasUsableWeapon = inventory.some(isUsableWeapon) || (
-            isUsableWeapon(scene.gameState?.equippedWeapon)
-        );
-        if (hasUsableWeapon) return false;
+        // Carrying a weapon is not the same as having a way out: every revealed
+        // enemy can be immune to the only kind of weapon in the pack — a quiver
+        // of bows against a Thorn Sprite. attackEnemy rejects those swings
+        // without spending AP or handing the enemies a turn, so a detector that
+        // only asked "is there a weapon" left the board frozen with no way to
+        // clear the floor and no Next button. Same predicate as the swing.
+        const usableWeapons = [scene.gameState?.equippedWeapon, ...inventory]
+            .filter(isUsableWeapon);
+        const revealedEnemies = board.filter((card) => (
+            card?.revealed
+            && scene.isEnemyCard(card)
+            && (card.data?.health ?? 1) > 0
+        ));
+        const canDamageSomething = usableWeapons.some((weapon) => (
+            revealedEnemies.some((card) => canHurtEnemyAtAll(weapon, card))
+        ));
+        if (canDamageSomething) return false;
 
         // Cocoon shells only open to damage. Buff/heal magic does not help —
         // only weapon-like spells that hit a board enemy count as a way out.

@@ -60,7 +60,7 @@ export const MAGIC = [
   {
     magicType: 'magicShield',
     name: 'Magic Shield',
-    description: 'Increases armor by 20% for 10 turns',
+    description: 'For 10 turns: +20% armor DEF, or +30% dodge if your armor has no DEF',
     minFloor: 3,
     rarity: 'uncommon',
     sprite: 'macigShield',

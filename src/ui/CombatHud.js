@@ -4,8 +4,14 @@
 import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
-import { CHARACTER_CLASSES } from '../content/characters/CharacterClasses.js';
+import {
+    CHARACTER_CLASSES,
+    getWarriorStance,
+    WARRIOR_STANCES,
+    WARRIOR_STANCE_AP_COST,
+} from '../content/characters/CharacterClasses.js';
 import { getMonthDisplayName } from '../content/months/index.js';
+import { MAGIC_SHIELD_DODGE_BONUS } from '../systems/combat/ArmorMath.js';
 
 // The amulet strip owns the top-left corner, so the hero column starts below
 // it. Everything from the avatar down to the crystal counter is offset by this
@@ -14,6 +20,14 @@ const HUD_COLUMN_SHIFT = 30;
 // The avatar frame shrank from 84x86 to 80x80, so everything below it — armor
 // slot, AP diamonds, coins, crystals — closes the 7px gap the old art left.
 const HUD_LOWER_SHIFT = HUD_COLUMN_SHIFT - 7;
+
+// Stance plate colours. Sweep wears the HUD's own brown/tan so it reads as part
+// of the hero column; Focus goes warm so an active crit stance is obvious at a
+// glance without needing an icon.
+const STANCE_COLORS = Object.freeze({
+    sweep: Object.freeze({ fill: 0x2b2118, hover: 0x3a2d20, border: 0x8a6a3f, text: '#e5bca4' }),
+    focus: Object.freeze({ fill: 0x4a2418, hover: 0x5c2e1f, border: 0xcf8834, text: '#ffcc66' }),
+});
 
 export const CombatHud = {
     createUI() {
@@ -54,6 +68,10 @@ export const CombatHud = {
         this.armorPanelEquippedSprite = null;
         this.armorPanelBriarFrame = null;
         this.armorPanelInfoText = null;
+
+        // Warrior stance toggle, under the hero portrait. The rogue has no
+        // stances, so nothing is created for them.
+        this.createStanceButton();
 
         // Action points: each diamond is four AP, with spent quadrants darkened.
         this.actionPointSprites = [];
@@ -854,7 +872,12 @@ export const CombatHud = {
             entries.push({ text: `Shadow Blade ${mult} (${gs.shadowBlade.turns} turns)`, color: '#b266ff' });
         }
         if (gs.magicShield && gs.magicShield.turns > 0) {
-            const mult = gs.magicShield.multiplier ? `+${Math.round((gs.magicShield.multiplier - 1) * 100)}% DEF` : '';
+            // Leather has no DEF to multiply, so the buff reads as dodge there.
+            const dodgeArmor = (gs.equippedArmor?.protection || 0) <= 0
+                && (gs.equippedArmor?.dodgeChance || 0) > 0;
+            const mult = dodgeArmor
+                ? `+${Math.round(MAGIC_SHIELD_DODGE_BONUS * 100)}% dodge`
+                : (gs.magicShield.multiplier ? `+${Math.round((gs.magicShield.multiplier - 1) * 100)}% DEF` : '');
             entries.push({ text: `Magic Shield ${mult} (${gs.magicShield.turns} turns)`, color: '#33aaff' });
         }
         if (gs.boneWall && gs.boneWall > 0) {
@@ -894,6 +917,80 @@ export const CombatHud = {
         });
 
         this.updatePlayerPoisonMarker();
+    },
+
+    // ── Warrior stance ────────────────────────────────────────────────────
+    // The warrior's identity lives in the stance rather than in his weapon
+    // type: Sweep makes swords cleave, Focus buys crit on whatever he is
+    // holding. Switching costs AP so the stance is a read of the board, not a
+    // free toggle flipped before every swing.
+    createStanceButton() {
+        if (this.gameState?.characterId !== 'warrior') return;
+        // Tucked into the hero column rather than floating beside the board:
+        // the niche right of the armour panel (ends x 74) and under the health
+        // orb (ends y 132) is the only free space that still reads as part of
+        // the hero's own kit.
+        const x = 97;
+        const y = 148;
+        this.stanceButton = snapOriginToPixelGrid(
+            this.add.rectangle(x, y, 40, 18, STANCE_COLORS.sweep.fill)
+        )
+            .setStrokeStyle(1, STANCE_COLORS.sweep.border)
+            .setDepth(30)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerover', () => {
+                SoundHelper.playVariant(this, 'hover_button', 0.4);
+                this.stanceButton.setFillStyle(this._stancePalette().hover);
+            })
+            .on('pointerout', () => this.stanceButton.setFillStyle(this._stancePalette().fill))
+            .on('pointerdown', () => this.toggleWarriorStance());
+        this.stanceButtonText = this.add.text(x, y, '', {
+            fontSize: '10px',
+            fontFamily: '"HoMM Pixel"',
+        }).setOrigin(0.5).setDepth(31);
+        this.updateStanceButton();
+    },
+
+    _stancePalette() {
+        const id = getWarriorStance(this.gameState?.warriorStance).id;
+        return STANCE_COLORS[id] || STANCE_COLORS.sweep;
+    },
+
+    updateStanceButton() {
+        if (!this.stanceButtonText) return;
+        const stance = getWarriorStance(this.gameState?.warriorStance);
+        const palette = this._stancePalette();
+        this.stanceButtonText.setText(t(this, `stance.${stance.id}`));
+        this.stanceButtonText.setColor(palette.text);
+        this.stanceButton?.setFillStyle(palette.fill);
+        this.stanceButton?.setStrokeStyle(1, palette.border);
+    },
+
+    toggleWarriorStance() {
+        if (this.gameState?.characterId !== 'warrior') return;
+        if (this._transitioning || this.gameState.playerHealth <= 0) return;
+        const ids = Object.keys(WARRIOR_STANCES);
+        const current = getWarriorStance(this.gameState.warriorStance).id;
+        const next = ids[(ids.indexOf(current) + 1) % ids.length];
+        if (this.gameState.actionsLeft < WARRIOR_STANCE_AP_COST) {
+            SoundHelper.playVariant(this, 'invalid_action', 0.5);
+            this.createFloatingText(
+                this.playerAvatar.x, this.playerAvatar.y, t(this, 'stance.noAp'), 0xff6666
+            );
+            return;
+        }
+        // Costs AP but does not hand the enemies a turn: changing your grip is
+        // not an attack. The sim's stance policy spends it the same way, so bot
+        // and player pay the same price.
+        this.gameState.actionsLeft -= WARRIOR_STANCE_AP_COST;
+        this.gameState.warriorStance = next;
+        SoundHelper.playVariant(this, 'button_click', 0.5);
+        this.createFloatingText(
+            this.playerAvatar.x, this.playerAvatar.y - 12,
+            t(this, `stance.${next}`), 0xffcc66
+        );
+        this.updateStanceButton();
+        this.updateUI?.();
     },
 
     // Animated poison icon pinned to the top-right corner of the hero portrait.

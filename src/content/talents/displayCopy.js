@@ -1,25 +1,41 @@
 // Authoritative talent display strings (ASCII-only for pixel font safety).
 
 export const TALENT_DISPLAY = Object.freeze({
+  "prospector": Object.freeze({
+    name: "Prospector",
+    descriptionRanks: Object.freeze(["Crystals: +1 per 12 floors cleared, up to +1 per run.","Crystals: +1 per 8 floors cleared, up to +2 per run.","Crystals: +1 per 7 floors cleared, up to +3 per run.","Crystals: +1 per 6 floors cleared, up to +4 per run.","Crystals: +1 per 6 floors cleared, up to +5 per run."]),
+  }),
+  "momentum": Object.freeze({
+    name: "Whetstone",
+    descriptionRanks: Object.freeze(["Max action points: +1 per 12 floors cleared, up to +1.","Max action points: +1 per 16 floors cleared, up to +1.","Max action points: +1 per 10 floors cleared, up to +2.","Max action points: +1 per 13 floors cleared, up to +2.","Max action points: +1 per 11 floors cleared, up to +3."]),
+  }),
+  "shadowStep": Object.freeze({
+    name: "Shadow Step",
+    descriptionRanks: Object.freeze(["Dodge: +0.2% per floor cleared, up to +2%.","Dodge: +0.2% per floor cleared, up to +3%.","Dodge: +0.2% per floor cleared, up to +4%.","Dodge: +0.2% per floor cleared, up to +6%.","Dodge: +0.2% per floor cleared, up to +8%."]),
+  }),
+  "scarTissue": Object.freeze({
+    name: "Scar Tissue",
+    descriptionRanks: Object.freeze(["Max HP: +1 per 3 floors cleared, up to +4 HP.","Max HP: +1 per 2 floors cleared, up to +7 HP.","Max HP: +1 per 2 floors cleared, up to +10 HP.","Max HP: +1 per 2 floors cleared, up to +14 HP.","Max HP: +1 per 2 floors cleared, up to +20 HP."]),
+  }),
   "keenEdge": Object.freeze({
     name: "Keen Edge",
-    descriptionRanks: Object.freeze(["First dagger or bow attack each floor deals +1 damage.","First dagger or bow attack each floor deals +2 damage.","First dagger or bow attack each floor deals +3 damage."]),
+    descriptionRanks: Object.freeze(["First dagger or bow attack each floor deals +1 damage.","First dagger or bow attack each floor deals +1 damage.","First dagger or bow attack each floor deals +1 damage.","First dagger or bow attack each floor deals +2 damage.","First dagger or bow attack each floor deals +2 damage."]),
   }),
   "firstBlood": Object.freeze({
     name: "First Blood",
-    descriptionRanks: Object.freeze(["First attack each floor deals +25% damage.","First attack each floor deals +40% damage.","First attack each floor deals +55% damage."]),
+    descriptionRanks: Object.freeze(["First attack each floor: +0.5% per floor cleared, up to +6%.","First attack each floor: +0.6% per floor cleared, up to +9%.","First attack each floor: +0.6% per floor cleared, up to +12%.","First attack each floor: +0.6% per floor cleared, up to +16%.","First attack each floor: +0.6% per floor cleared, up to +20%."]),
   }),
   "twinFang": Object.freeze({
     name: "Twin Fang",
-    descriptionRanks: Object.freeze(["Dagger hits +8% damage, bows +4% (off-hand pip still free).","Dagger hits +12% damage, bows +6% (off-hand pip still free).","Dagger hits +18% damage, bows +9% (off-hand pip still free)."]),
+    descriptionRanks: Object.freeze(["Dagger damage (bows half): +0.2% per floor cleared, up to +3%.","Dagger damage (bows half): +0.3% per floor cleared, up to +5%.","Dagger damage (bows half): +0.4% per floor cleared, up to +7%.","Dagger damage (bows half): +0.4% per floor cleared, up to +9%.","Dagger damage (bows half): +0.4% per floor cleared, up to +12%."]),
   }),
   "frontVolley": Object.freeze({
     name: "Front Volley",
-    descriptionRanks: Object.freeze(["Bow attacks also hit a random front enemy for 18% bow damage (no extra pip).","Bow attacks also hit a random front enemy for 26% bow damage (no extra pip).","Bow attacks also hit a random front enemy for 34% bow damage (no extra pip)."]),
+    descriptionRanks: Object.freeze(["Bow attacks clip a front enemy for +0.3% per floor cleared, up to +4%.","Bow attacks clip a front enemy for +0.4% per floor cleared, up to +6%.","Bow attacks clip a front enemy for +0.4% per floor cleared, up to +8%.","Bow attacks clip a front enemy for +0.4% per floor cleared, up to +10%.","Bow attacks clip a front enemy for +0.4% per floor cleared, up to +13%."]),
   }),
   "assassinate": Object.freeze({
     name: "Assassinate",
-    descriptionRanks: Object.freeze(["If an enemy has 2 HP or less after your hit, finish them (no extra pip).","If an enemy has 2 HP or less after your hit, finish them (no extra pip).","If an enemy has 3 HP or less after your hit, finish them (no extra pip)."]),
+    descriptionRanks: Object.freeze(["Finish an enemy left below 2% of its max HP (no extra pip).","Finish an enemy left below 3% of its max HP (no extra pip).","Finish an enemy left below 4% of its max HP (no extra pip).","Finish an enemy left below 5% of its max HP (no extra pip).","Finish an enemy left below 6% of its max HP (no extra pip)."]),
   }),
   "softSteps": Object.freeze({
     name: "Soft Steps",
@@ -63,7 +79,7 @@ export const TALENT_DISPLAY = Object.freeze({
   }),
   "hardened": Object.freeze({
     name: "Hardened",
-    descriptionRanks: Object.freeze(["Chain and plate: +1 DEF and +1 max durability.","Chain and plate: +1 DEF and +1 max durability.","Chain and plate: +1 DEF, +1 max durability, and +5% to armor procs."]),
+    descriptionRanks: Object.freeze(["Chain and plate: +1 DEF and +1 max durability.","Chain and plate: +2 DEF and +1 max durability.","Chain and plate: +2 DEF, +1 max durability, and +5% to armor procs."]),
   }),
   "reprisal": Object.freeze({
     name: "Reprisal",
@@ -75,7 +91,7 @@ export const TALENT_DISPLAY = Object.freeze({
   }),
   "bulwark": Object.freeze({
     name: "Bulwark",
-    descriptionRanks: Object.freeze(["Chain and plate: +12% to armor special procs (counter / ranged ignore).","Chain and plate: +24% to armor special procs (counter / ranged ignore).","Chain and plate: +36% to armor special procs (counter / ranged ignore)."]),
+    descriptionRanks: Object.freeze(["Chain and plate: +20% to armor special procs (counter / ranged ignore).","Chain and plate: +35% to armor special procs (counter / ranged ignore).","Chain and plate: +50% to armor special procs (counter / ranged ignore)."]),
   }),
   "armorerStart": Object.freeze({
     name: "Armorer's Start",
@@ -83,7 +99,7 @@ export const TALENT_DISPLAY = Object.freeze({
   }),
   "rivets": Object.freeze({
     name: "Rivets",
-    descriptionRanks: Object.freeze(["25% chance to skip any armor durability loss (DEF, ignore, dodge).","35% chance to skip any armor durability loss (DEF, ignore, dodge).","45% chance to skip any armor durability loss (DEF, ignore, dodge)."]),
+    descriptionRanks: Object.freeze(["35% chance to skip any armor durability loss (DEF, ignore, dodge).","45% chance to skip any armor durability loss (DEF, ignore, dodge).","55% chance to skip any armor durability loss (DEF, ignore, dodge)."]),
   }),
   "veteranGrip": Object.freeze({
     name: "Veteran Grip",
@@ -123,7 +139,7 @@ export const TALENT_DISPLAY = Object.freeze({
   }),
   "secondWind": Object.freeze({
     name: "Second Wind",
-    descriptionRanks: Object.freeze(["Once per act: at <=25% HP, restore 10% Max HP.","Once per act: at <=25% HP, restore 15% Max HP.","Once per act: at <=25% HP, restore 20% Max HP."]),
+    descriptionRanks: Object.freeze(["Survive a lethal hit at 15% max HP, once per run.","Survive a lethal hit at 18% max HP, once per run.","Survive a lethal hit at 20% max HP, once per run.","Survive a lethal hit at 22% max HP, once per run.","Survive a lethal hit at 25% max HP, once per run."]),
   }),
 });
 

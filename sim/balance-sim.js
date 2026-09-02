@@ -17,12 +17,19 @@
 //  - Use --seed=N for reproducible batches; --no-lookahead is an ablation
 //    switch for measuring the survival planner against the same configuration.
 
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { MockScene } from './mock.js'; // also installs globalThis.Phaser + localStorage
 import { GameState } from '../src/systems/GameState.js';
 import { CardSystem } from '../src/systems/CardSystem.js';
 import { CardDataGenerator } from '../src/systems/loot/CardDataGenerator.js';
+import { installSeededRandom, beginSeededRun, parseSeedArg, isSeeded } from './rng.js';
+import { setTuningOverrides } from '../src/content/balance/Tuning.js';
+import { gemStackDamage } from '../src/content/cards/gems.js';
+import { xpForRun, estimateBossesKilled } from '../src/content/economy/metaXp.js';
+import { weaponCanDamageEnemy, canHurtEnemyAtAll } from '../src/systems/board/BoardCombat.js';
+import { effectiveArmorDodge } from '../src/systems/combat/ArmorMath.js';
+import { SWORD_CLEAVE_FRACTION, weaponIgnoresFrontline } from '../src/content/cards/weapons.js';
 import { AmuletManager } from '../src/managers/AmuletManager.js';
 import { MetaProgressionManager } from '../src/managers/MetaProgressionManager.js';
 import { MapGenerator } from '../src/map/MapGenerator.js';
@@ -70,8 +77,16 @@ import {
   getCharacter,
   normalizeCharacterId,
   rollClassWeaponCrit,
+  classCritProfile,
+  stanceCleaves,
+  WARRIOR_STANCE_AP_COST,
 } from '../src/content/characters/CharacterClasses.js';
-import { applyArmorTalentMods, getBranchesForCharacter, getTalentNode } from '../src/content/talents/index.js';
+import {
+  applyArmorTalentMods,
+  getBranchesForCharacter,
+  getTalentNode,
+  costForNextRank,
+} from '../src/content/talents/index.js';
 import {
   createWeaponCardData,
   createArmorCardData,
@@ -99,23 +114,33 @@ const SUMMARY_JSON_PATH = (() => {
   return token ? token.slice('--summary-json='.length) : null;
 })();
 let LAST_REPORTED_METRICS = null;
-const SIM_SEED = (() => {
-  const token = process.argv.find((arg) => arg.startsWith('--seed='));
-  const value = token ? Number.parseInt(token.slice('--seed='.length), 10) : NaN;
-  return Number.isFinite(value) ? value >>> 0 : null;
-})();
-let CURRENT_BEHAVIOR = getBehaviorProfile('balanced');
+// Opt-in on purpose. Absolute KPI checks (reach/clear/pass against the targets
+// in docs/BALANCE.md) want fresh randomness so the numbers are not tuned to one
+// particular sample of dungeons; comparative sweeps want a fixed seed so two
+// configurations meet the same ones. Sweeps pass --seed, KPI runs do not.
+const SIM_SEED = parseSeedArg(process.argv, null);
+installSeededRandom(SIM_SEED);
 
-if (SIM_SEED !== null) {
-  let seedState = SIM_SEED;
-  Math.random = () => {
-    seedState = (seedState + 0x6D2B79F5) >>> 0;
-    let t = seedState;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+// --tune <file.json> or --tune '{"path": value}' — balance overrides for the
+// length of this batch. Sweeps use this instead of rewriting content source.
+const SIM_TUNING = (() => {
+  const argv = process.argv;
+  let raw = null;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--tune') raw = argv[i + 1];
+    else if (argv[i].startsWith('--tune=')) raw = argv[i].slice('--tune='.length);
+  }
+  if (!raw) return null;
+  const text = raw.trim().startsWith('{') ? raw : readFileSync(raw, 'utf8');
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    console.error(`--tune: could not parse overrides (${err.message})`);
+    process.exit(1);
+  }
+})();
+if (SIM_TUNING) setTuningOverrides(SIM_TUNING);
+let CURRENT_BEHAVIOR = getBehaviorProfile('balanced');
 
 // Room-type mix for non-boss floors (approximates the map generator's feel).
 function roomTypeForFloor(floor) {
@@ -178,26 +203,24 @@ function simWeaponHitDamage(gs, weapon, wasExhausted, {
     dmg = applyKeenEdgeFirstStrike(gs?.characterId, weapon, dmg, gs?.talentEffects, gs).damage;
   }
 
-  if (applyFirstBlood && gs?.talentEffects?.firstBloodPct > 0 && !gs.firstAttackThisFloorUsed) {
-    dmg = Math.ceil(dmg * (1 + gs.talentEffects.firstBloodPct));
+  if (applyFirstBlood && gs?.talentEffects?.firstBloodFlat > 0 && !gs.firstAttackThisFloorUsed) {
+    dmg += gs.talentEffects.firstBloodFlat;
   }
 
-  const def = getCharacter(gs?.characterId);
-  const canCrit = weapon
-    && (def.critChance || 0) > 0
-    && (def.critWeaponTypes || []).includes(weapon.weaponType);
-  if (!canCrit) return dmg;
+  // Chance and multiplier come from the shared profile so the estimate below
+  // and the real roll cannot disagree about what a crit is worth.
+  const { chance, multiplier } = classCritProfile(gs?.characterId, weapon, gs?.warriorStance);
+  if (!(chance > 0)) return dmg;
 
   const printed = Math.max(0, Number(weapon.damage) || 0);
-  const tier = ({ common: 1, uncommon: 2, rare: 3, epic: 3, legendary: 4 })[weapon.rarity] || 1;
-  let critDmg = Math.ceil(printed * (1 + 0.05 * tier));
+  let critDmg = Math.ceil(printed * multiplier);
   if (wasExhausted) critDmg = Math.ceil(critDmg * 0.8);
 
   if (expectedCrit) {
-    return dmg * (1 - def.critChance) + critDmg * def.critChance;
+    return dmg * (1 - chance) + critDmg * chance;
   }
 
-  const crit = rollClassWeaponCrit(gs.characterId, weapon, dmg);
+  const crit = rollClassWeaponCrit(gs.characterId, weapon, dmg, gs?.warriorStance);
   return crit.crit ? critDmg : dmg;
 }
 
@@ -213,14 +236,69 @@ function applyAssassinateSim(mock, gs, enemyIndex) {
   if (!card?.revealed || !card.data) return 0;
   if (card.data.type !== 'enemy' && card.data.type !== 'boss') return 0;
   const hp = card.data.health ?? 0;
-  if (hp <= 0 || hp > threshold) return 0;
+  const maxHp = card.data.maxHealth || card.data.health || 1;
+  if (hp <= 0 || hp > maxHp * threshold) return 0;
   mock.cardSystem.attackEnemy(enemyIndex, hp, false, null, true);
   return hp;
 }
 
+// Mirrors InventoryCombatUse.applySwordCleave: one random other front enemy
+// (bosses count as front) takes SWORD_CLEAVE_FRACTION of the swing, free.
+// Stance policy. Sweep only pays when the blade has a neighbour to carry into,
+// so the bot focuses up for lone targets and bosses and sweeps a crowd. The AP
+// cost is what stops it flipping every single swing.
+// STANCE_SWITCH_AP is a tuning knob, not a rule: 0 measures the ceiling of the
+// mechanic, the real cost measures what a player would actually pay.
+const STANCE_SWITCH_AP = Number(process.env.SIM_STANCE_AP ?? WARRIOR_STANCE_AP_COST);
+const STANCE_POLICY = process.env.SIM_STANCE_POLICY || 'adaptive';
+
+function maybeSwitchWarriorStance(gs, board) {
+  if (gs.characterId !== 'warrior' || STANCE_POLICY === 'off') return false;
+  let front = 0;
+  for (const card of board) {
+    if (!card?.revealed || !card.data) continue;
+    if (card.data.type !== 'enemy' && card.data.type !== 'boss') continue;
+    if ((card.data.health ?? 0) <= 0) continue;
+    if (card.data.role !== 'MELEE' && card.data.type !== 'boss') continue;
+    front += 1;
+  }
+  // A boss floor is a single-target problem even when minions are on the board:
+  // cleave spends half the swing on a summon that will be replaced anyway,
+  // while the boss is the only thing whose death ends the fight.
+  const bossPresent = board.some((c) => (
+    c?.revealed && c.data?.type === 'boss' && (c.data?.health ?? 0) > 0
+  ));
+  const want = (!bossPresent && front >= 2) ? 'sweep' : 'focus';
+  if (want === gs.warriorStance) return false;
+  if (gs.actionsLeft < STANCE_SWITCH_AP) return false;
+  gs.actionsLeft -= STANCE_SWITCH_AP;
+  gs.warriorStance = want;
+  return true;
+}
+
+function applySwordCleaveSim(mock, gs, primaryIndex, swordDamage, weapon) {
+  if (weapon?.special !== 'cleave') return 0;
+  if (!stanceCleaves(gs?.characterId, gs?.warriorStance)) return 0;
+  const board = mock.cardSystem.boardCards || [];
+  const candidates = [];
+  board.forEach((card, index) => {
+    if (index === primaryIndex) return;
+    if (!card?.revealed || !card.data) return;
+    if (card.data.type !== 'enemy' && card.data.type !== 'boss') return;
+    if ((card.data.health ?? 0) <= 0) return;
+    if (card.data.role !== 'MELEE' && card.data.type !== 'boss') return;
+    candidates.push(index);
+  });
+  if (!candidates.length) return 0;
+  const target = candidates[Math.floor(Math.random() * candidates.length)];
+  const dmg = Math.max(1, Math.ceil(swordDamage * SWORD_CLEAVE_FRACTION));
+  mock.cardSystem.attackEnemy(target, dmg, false, weapon, true);
+  return dmg + applyAssassinateSim(mock, gs, target);
+}
+
 function applyFrontVolleySim(mock, gs, primaryIndex, bowDamage, weapon) {
-  const pct = gs?.talentEffects?.frontVolleyPct || 0;
-  if (pct <= 0 || !weapon) return 0;
+  const flat = gs?.talentEffects?.frontVolleyFlat || 0;
+  if (flat <= 0 || !weapon) return 0;
   if (!mock.cardSystem.isRangedWeapon?.(weapon)) return 0;
   const board = mock.cardSystem.boardCards || [];
   const candidates = [];
@@ -235,7 +313,7 @@ function applyFrontVolleySim(mock, gs, primaryIndex, bowDamage, weapon) {
   }
   if (!candidates.length) return 0;
   const target = candidates[Math.floor(Math.random() * candidates.length)];
-  const volleyDmg = Math.max(1, Math.ceil(bowDamage * pct));
+  const volleyDmg = Math.max(1, Math.floor(flat));
   mock.cardSystem.attackEnemy(target, volleyDmg, false, weapon, true);
   applyAssassinateSim(mock, gs, target);
   return volleyDmg;
@@ -504,7 +582,7 @@ function expectedGemBossDamagePerHit(gs, weapon) {
     return stack * tick * 3;
   }
   if (weapon.gemEffect === 'fire' || weapon.gemEffect === 'lightning') {
-    let damage = [3, 4, 5, 6, 7][stack - 1] || 3;
+    let damage = gemStackDamage(stack, gs.currentFloor);
     damage = gs.scene?.amuletManager?.modifyGemDamage?.(damage, weapon.gemEffect) ?? damage;
     return damage;
   }
@@ -752,10 +830,14 @@ function bestEventWeapon(gs, inv) {
     })[0] || null;
 }
 
-function hasUsableWeaponDurability(gs, inv) {
-  return [gs.equippedWeapon, ...inv].some((item) => (
+function usableWeapons(gs, inv) {
+  return [gs.equippedWeapon, ...inv].filter((item) => (
     item?.type === 'weapon' && (item.durability ?? 0) > 0
   ));
+}
+
+function hasUsableWeaponDurability(gs, inv) {
+  return usableWeapons(gs, inv).length > 0;
 }
 
 function hasCombatStalemate(board, gs, inv) {
@@ -768,7 +850,16 @@ function hasCombatStalemate(board, gs, inv) {
   if ((board || []).some((card) => card && card.data?.type !== 'enemy' && card.data?.type !== 'boss')) {
     return false;
   }
-  if (hasUsableWeaponDurability(gs, inv)) return false;
+  // A full quiver is no way out when every revealed enemy is immune to it.
+  const revealedEnemies = (board || []).filter((card) => (
+    card?.revealed
+    && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+    && (card.data?.health ?? 0) > 0
+  ));
+  const canHurtSomething = usableWeapons(gs, inv).some((weapon) => (
+    revealedEnemies.some((card) => canHurtEnemyAtAll(weapon, card))
+  ));
+  if (canHurtSomething) return false;
   return !inv.some((card) => card?.type === 'magic');
 }
 
@@ -1367,8 +1458,7 @@ function bestGemTarget(gs, inv, gem) {
   weapons.sort((a, b) => {
     const score = (weapon) => {
       const emptySocket = weapon.gemEffect ? 0 : 2;
-      const bow = weapon.weaponType === 'bow';
-      const bossPrepBow = bow && (
+      const bossPrepBow = weaponIgnoresFrontline(weapon) && (
         isBossPrepObjectiveActive(gs) || BOSS_FLOORS.has(gs.currentFloor)
       ) ? 100 : 0;
       const dualWieldValue = hasDaggerPartner(weapon, gs, inv) ? 55 : 0;
@@ -2059,15 +2149,30 @@ function computeContext(board, floor) {
   return { boss, ranged, hiddenCluster: hidden >= 4 };
 }
 
-function estimateGemSplash(board, targetIndex, weapon, baseDamage) {
+function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs = null) {
   const stack = CardDataGenerator.weaponGemStack(weapon);
   const armor = Math.max(0, board[targetIndex]?.data?.armor || 0);
   const directDamage = Math.max(1, baseDamage - armor);
   const affected = new Map([[targetIndex, directDamage]]);
   if (!weapon?.gemEffect) return affected;
 
+  // A cleaving sword lands on a neighbour too — the planner has to see that or
+  // it keeps valuing swords as single-target sticks.
+  if (weapon?.special === 'cleave' && stanceCleaves(gs?.characterId, gs?.warriorStance)) {
+    const cleaveDamage = Math.max(1, Math.ceil(baseDamage * SWORD_CLEAVE_FRACTION));
+    for (let i = 0; i < board.length; i++) {
+      if (i === targetIndex) continue;
+      const card = board[i];
+      if (!card?.revealed || !(card.data?.type === 'enemy' || card.data?.type === 'boss')) continue;
+      if (card.data.health <= 0) continue;
+      if (card.data.role !== 'MELEE' && card.data.type !== 'boss') continue;
+      affected.set(i, (affected.get(i) || 0) + cleaveDamage);
+      break;
+    }
+  }
+
   if (weapon.gemEffect === 'fire') {
-    const splashDamage = [3, 4, 5, 6, 7][stack - 1];
+    const splashDamage = gemStackDamage(stack, floor);
     affected.set(targetIndex, (affected.get(targetIndex) || 0) + splashDamage);
     const target = board[targetIndex];
     const radius = 70;
@@ -2085,7 +2190,7 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage) {
       }
     }
   } else if (weapon.gemEffect === 'lightning') {
-    const zapDamage = [3, 4, 5, 6, 7][stack - 1];
+    const zapDamage = gemStackDamage(stack, floor);
     affected.set(targetIndex, (affected.get(targetIndex) || 0) + zapDamage);
     const candidates = board
       .map((card, index) => ({ card, index }))
@@ -2112,9 +2217,13 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage) {
 }
 
 function expectedAmuletDodgeChance(gs) {
+  // Includes Shadow Step: the planner's survival estimate has to see the same
+  // dodge the damage resolver rolls, or the bot mis-reads how much punishment
+  // it can take on deep floors.
+  const talentDodge = gs?.talentEffects?.shadowStepDodge || 0;
   const manager = gs.scene?.amuletManager;
-  if (!manager) return 0;
-  return Math.min(1, (gs.activeAmulets || []).reduce((sum, amulet) => {
+  if (!manager) return Math.min(1, talentDodge);
+  return Math.min(1, talentDodge + (gs.activeAmulets || []).reduce((sum, amulet) => {
     const definition = manager.amuletDefinitions?.[amulet.id];
     return sum + (definition?.dodgeChance || 0);
   }, 0));
@@ -2175,7 +2284,9 @@ function expectedEnemyHitOutcome(gs, enemy, defense) {
   const blockedDamage = Math.max(0, amount - landedDamage);
 
   const amuletDodge = expectedAmuletDodgeChance(gs);
-  const armorDodge = Math.max(0, Math.min(1, armor?.dodgeChance || 0));
+  // Through effectiveArmorDodge so the planner sees the Magic Shield dodge
+  // boost on leather, the same one the damage resolver rolls.
+  const armorDodge = Math.max(0, Math.min(1, effectiveArmorDodge(gs, armor)));
   const isRanged = enemy.type !== 'boss' && (enemy.role === 'RANGED' || enemy.isRangedType === true);
   const isMelee = enemy.type === 'boss' || (enemy.role === 'MELEE' && !enemy.isRangedType);
   const rangedIgnore = isRanged
@@ -2206,9 +2317,9 @@ function expectedEnemyHitOutcome(gs, enemy, defense) {
   // Reprisal and chain counter are checked after the armor durability tick, so
   // the breaking hit does not receive either bonus in the live resolver.
   if (defense.armor && hitChance > 0 && blockedDamage > 0) {
-    const reprisalPct = gs.talentEffects?.reprisalReflectPct || 0;
-    if ((defense.armor.protection || 0) > 0 && reprisalPct > 0) {
-      retaliation += Math.floor(blockedDamage * reprisalPct) * hitChance;
+    const reprisalFlat = gs.talentEffects?.reprisalFlat || 0;
+    if ((defense.armor.protection || 0) > 0 && reprisalFlat > 0) {
+      retaliation += Math.min(reprisalFlat, Math.max(1, blockedDamage)) * hitChance;
     }
     if (isMelee && (defense.armor.meleeCounterChance || 0) > 0) {
       retaliation += Math.ceil(blockedDamage * 0.5)
@@ -2417,14 +2528,18 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
   const hasBossSummons = bossIndex !== undefined && board.some((card) => (
     card?.data?.type === 'enemy' && card.data.health > 0
   ));
+  // What matters against a boss hiding behind its summons is reaching past the
+  // frontline gate, not being a bow specifically. Asking for a bow by name sent
+  // the warrior into every act finale with a weapon his class carries no bonus
+  // on — 72% of his boss fights, with his crit switched off.
   if (!SURVIVAL_LOOKAHEAD_ENABLED && hasBossSummons) {
-    const bestBow = roster
-      .filter((weapon) => weapon?.weaponType === 'bow')
+    const bestReach = roster
+      .filter((weapon) => weaponIgnoresFrontline(weapon))
       .sort((a, b) => effDmg(b) - effDmg(a) || (b.durability || 0) - (a.durability || 0))[0];
-    if (bestBow) {
+    if (bestReach) {
       return {
         index: bossIndex,
-        weapon: bestBow,
+        weapon: bestReach,
         score: Number.MAX_SAFE_INTEGER,
         bossBowFocus: true,
       };
@@ -2437,18 +2552,22 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
   for (const weapon of roster) {
     const validTargets = revealed.filter((index) => {
       const target = board[index];
-      return !anyRevealedMelee || !isMelee(weapon) || target.data.role === 'MELEE';
+      if (!weaponCanDamageEnemy(weapon, target)) return false;
+      // Spears reach past the frontline gate the same way bows do.
+      return !anyRevealedMelee
+        || weaponIgnoresFrontline(weapon)
+        || target.data.role === 'MELEE';
     });
     for (const index of validTargets) {
       const baseDamage = effDmg(weapon);
       const targetHp = board[index]?.data?.health || 0;
-      const affected = estimateGemSplash(board, index, weapon, baseDamage);
+      const affected = estimateGemSplash(board, index, weapon, baseDamage, gs.currentFloor, gs);
       const offhand = findOffhandDagger(weapon, gs, inv);
       // The real second dagger only swings if the primary weapon (including
       // its gem) did not already remove the selected target.
       if (offhand && (affected.get(index) || 0) < targetHp) {
         const offDmg = simOffhandDamage(gs, offhand, wasExhausted);
-        const offAffected = estimateGemSplash(board, index, offhand, offDmg);
+        const offAffected = estimateGemSplash(board, index, offhand, offDmg, gs.currentFloor, gs);
         for (const [hitIndex, damage] of offAffected.entries()) {
           affected.set(hitIndex, (affected.get(hitIndex) || 0) + damage);
         }
@@ -2476,19 +2595,18 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
         ? aw.elementalBonus * Math.max(1, weapon.gemCount || 1)
         : 0;
       const bossBowFocus = hasBossSummons
-        && weapon?.weaponType === 'bow'
-        && board[index]?.data?.type === 'boss'
-        && !isMelee(weapon);
+        && weaponIgnoresFrontline(weapon)
+        && board[index]?.data?.type === 'boss';
       const rangedBossBypass = bossBowFocus ? (aw.rangedBossBypass || 0) : 0;
       const durabilityConserve = weapon ? Math.max(0, 20 - effDmg(weapon)) * aw.durabilityConserve : 0;
       // Do not spend a boss bow to secure a routine kill that a melee backup
       // can finish in the same action. This preserves ranged/gem triggers
       // without accepting an extra enemy response merely to save durability.
-      const equivalentMeleeFinisher = weapon?.weaponType === 'bow'
+      const equivalentMeleeFinisher = weaponIgnoresFrontline(weapon)
         && !BOSS_FLOORS.has(gs.currentFloor)
         && roster.some((other) => (
           other !== weapon
-          && other.weaponType !== 'bow'
+          && !weaponIgnoresFrontline(other)
           && (!anyRevealedMelee || board[index]?.data?.role === 'MELEE')
           && effDmg(other) >= targetHp
         ));
@@ -2790,6 +2908,8 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
       traceCombat(gs, 'weapon stalemate: no usable weapon or combat magic remains');
       break;
     }
+    maybeSwitchWarriorStance(gs, board);
+
     let attackIdx = -1;
     const attackPlan = chooseEfficientAttack(board, gs, inv, gs.actionsLeft <= 0);
     if (attackPlan) {
@@ -2812,7 +2932,7 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
       }
 
       // Keen Edge / First Blood apply to the primary swing only (not off-hand).
-      const useFirstBlood = gs?.talentEffects?.firstBloodPct > 0 && !gs.firstAttackThisFloorUsed;
+      const useFirstBlood = gs?.talentEffects?.firstBloodFlat > 0 && !gs.firstAttackThisFloorUsed;
       const dmg = simWeaponHitDamage(gs, gs.equippedWeapon, wasExhausted, {
         applyFirstBlood: useFirstBlood,
         applyKeenEdge: true,
@@ -2885,6 +3005,10 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
           mock.cardSystem.attackEnemy(attackIdx, dmg2, false, offhand, true);
         });
         combatDamageDealt += applyAssassinateSim(mock, gs, attackIdx);
+      }
+      // Sword cleave: the swing carries into one other front enemy.
+      if (weaponBeforeAttack) {
+        combatDamageDealt += applySwordCleaveSim(mock, gs, attackIdx, dmg, weaponBeforeAttack);
       }
       // Front Volley: bow also clips a random front (MELEE) enemy.
       if (weaponBeforeAttack) {
@@ -4087,6 +4211,10 @@ function chooseNextNode(floors, f, cur, memo, gs, inv, absoluteFloor) {
 
 // ── Run one full game, recording per-floor metrics ────────────────────────
 function runGame(metrics, config = {}) {
+  // Fresh stream per run: without this a config that consumes more randomness
+  // early would shift every later run out of alignment and the pairing between
+  // batches would be lost after the first few runs.
+  beginSeededRun();
   const { mock, gs } = setupRun();
   gs._simMetrics = metrics;
   CURRENT_BEHAVIOR = getBehaviorProfile(config.behaviorPreset || DEFAULT_BEHAVIOR_PRESET || 'balanced');
@@ -5225,6 +5353,213 @@ function buildTalentLadderConfigs(characterId) {
   return configs;
 }
 
+// Usage: node sim/balance-sim.js metaladder [runs] [--seed=N] [--no-amulets]
+//
+// The object the meta rework is actually designing: the survival curve at each
+// level of meta investment. `talentladder` walks one branch at max ranks and
+// prints four summary numbers; this prints the whole curve for a series of XP
+// budgets, because the question is not "is max meta stronger" (it is) but
+// "where along the run does each rank pay".
+//
+// Today the answer is: entirely before F16. The goal shape is a fan — curves
+// close together early, spreading with depth. See docs/META-PLAN.md.
+const META_LADDER_FLOORS = [5, 10, 15, 16, 20, 25, 30, 35, 40, 45];
+
+/**
+ * Cheapest-first talent purchases within an XP budget, walking the branch in
+ * order so prerequisites hold. Mirrors what a player actually buys.
+ */
+function buildBudgetLoadout(characterId, budget) {
+  const branch = getBranchesForCharacter(characterId).find((b) => b.purchasable);
+  const talents = {};
+  let spent = 0;
+  if (!branch) return { talents, spent };
+  for (const talentId of branch.nodes) {
+    const node = getTalentNode(talentId);
+    const maxRank = node?.maxRank || 1;
+    for (let rank = 1; rank <= maxRank; rank++) {
+      const cost = costForNextRank(rank - 1);
+      if (spent + cost > budget) return { talents, spent };
+      spent += cost;
+      talents[talentId] = rank;
+    }
+  }
+  return { talents, spent };
+}
+
+function fullTreeCost(characterId) {
+  const branch = getBranchesForCharacter(characterId).find((b) => b.purchasable);
+  if (!branch) return 0;
+  let total = 0;
+  for (const talentId of branch.nodes) {
+    const maxRank = getTalentNode(talentId)?.maxRank || 1;
+    for (let rank = 1; rank <= maxRank; rank++) total += costForNextRank(rank - 1);
+  }
+  return total;
+}
+
+function runMetaLadder() {
+  const args = stripBehaviorArgs(process.argv.slice(3));
+  let runs = 800;
+  for (const a of args) if (/^\d+$/.test(a)) runs = parseInt(a, 10);
+  const withAmulets = !process.argv.includes('--no-amulets');
+  const characterId = DEFAULT_CHARACTER_ID;
+
+  const maxCost = fullTreeCost(characterId);
+  // Evenly spaced across the branch's actual cost. Fixed budgets were fine for
+  // a 95 XP tree, but on a 300 XP one they crowded into the first quarter and
+  // squashed everything above into a single step — which then read as a
+  // smoothness problem that was really a sampling problem.
+  const STEPS = 10;
+  const budgets = [];
+  for (let i = 0; i <= STEPS; i++) {
+    const b = Math.round((maxCost * i) / STEPS);
+    if (!budgets.includes(b)) budgets.push(b);
+  }
+
+  const out = {
+    runs, characterId, withAmulets, seed: SIM_SEED,
+    floors: META_LADDER_FLOORS, maxCost, rows: [],
+  };
+
+  console.log(`\n=== META LADDER — ${characterId}, ${runs} runs per rank ===`);
+  console.log(`amulets=${withAmulets ? 'on' : 'off'}  seed=${SIM_SEED ?? 'random'}  full tree=${maxCost} XP\n`);
+  console.log('XP'.padStart(4) + 'nodes'.padStart(7)
+    + META_LADDER_FLOORS.map((f) => `F${f}`.padStart(6)).join('')
+    + 'gate%'.padStart(8) + 'meanF'.padStart(7) + 'fin%'.padStart(7) + 'xp/run'.padStart(8));
+  console.log('─'.repeat(26 + META_LADDER_FLOORS.length * 6));
+
+  for (const budget of budgets) {
+    const { talents } = buildBudgetLoadout(characterId, budget);
+    const nodeCount = Object.values(talents).reduce((a, b) => a + b, 0);
+    const m = newMetrics();
+    for (let i = 0; i < runs; i++) {
+      runGame(m, {
+        characterId,
+        talents,
+        talentChoices: characterId === 'warrior' && talents.armorerStart
+          ? { armorerArmorType: Math.random() < 0.5 ? 'chain' : 'plate' }
+          : {},
+        amuletPool: withAmulets ? undefined : [],
+        noBag: true,
+      });
+    }
+    const ff = m.finalFloors;
+    const n = ff.length || 1;
+    const reach = (floor) => (100 * ff.filter((f) => f >= floor).length) / n;
+    // Two separate questions, because a single "expected floors" number hides
+    // the one that matters. `gate` is how often the rank gets you through the
+    // act-1 boss at all; `after` is how far you go once through — measured only
+    // over the runs that made it, so it is free of the gate's influence.
+    //
+    // (An earlier version split expected floors at F15. That saturates: rank 0
+    // already averages 13.1 of a possible 15, so the "early" half had almost no
+    // headroom and every rank looked like it paid deep. Conditioning removes
+    // the ceiling.)
+    const passed = ff.filter((f) => f >= 16);
+    const gate = (100 * passed.length) / n;
+    const after = passed.length
+      ? passed.reduce((sum, f) => sum + (f - 15), 0) / passed.length
+      : 0;
+    // `after` is a distance and it saturates: its base is already 15.5 of a
+    // possible 30, so a full tree sits at 82% of the ceiling and can never show
+    // a large multiplier no matter how strong meta gets. `finish` is the same
+    // question as a probability — of the runs that got through the gate, how
+    // many go all the way — so it is directly comparable with `gate`.
+    const finished = passed.filter((f) => f >= 45).length;
+    const finish = passed.length ? (100 * finished) / passed.length : 0;
+    // XP this rank earns per run. The career integration below needs the rate
+    // at each rung, because the rate rises as the player progresses — the ladder
+    // accelerates, so "runs to full tree" is not budget / rate.
+    const xpPerRun = ff.reduce(
+      (sum, f) => sum + xpForRun(f, estimateBossesKilled(f)), 0
+    ) / n;
+    const row = {
+      budget, nodeRanks: nodeCount, talents,
+      reach: META_LADDER_FLOORS.map((f) => +reach(f).toFixed(1)),
+      gate: +gate.toFixed(1),
+      after: +after.toFixed(2),
+      finish: +finish.toFixed(1),
+      // Smoothness is judged on this, not on reach at F45: once the deep bands
+      // are tuned so a mid-rank player does not finish at all, F45 reach sits
+      // near zero for half the ladder and every step there looks flat whatever
+      // the rank actually bought. Mean floor has resolution at every rank.
+      meanFloor: +(ff.reduce((a, b) => a + b, 0) / n).toFixed(2),
+      xpPerRun: +xpPerRun.toFixed(2),
+    };
+    out.rows.push(row);
+    console.log(
+      String(budget).padStart(4) + String(nodeCount).padStart(7)
+      + row.reach.map((v) => `${v.toFixed(0)}%`.padStart(6)).join('')
+      + row.gate.toFixed(0).padStart(8) + row.meanFloor.toFixed(1).padStart(7)
+      + row.finish.toFixed(0).padStart(7) + row.xpPerRun.toFixed(1).padStart(8)
+    );
+  }
+
+  // The design target lives in this line: how far apart rank 0 and full tree
+  // are at each depth. Today it peaks early and collapses; it should rise.
+  const base = out.rows[0];
+  const top = out.rows[out.rows.length - 1];
+  console.log('─'.repeat(26 + META_LADDER_FLOORS.length * 6));
+  console.log('spread'.padStart(11)
+    + base.reach.map((v, i) => `${(top.reach[i] - v).toFixed(0)}`.padStart(6)).join('')
+    + (top.gate - base.gate).toFixed(0).padStart(8)
+    + (top.meanFloor - base.meanFloor).toFixed(1).padStart(7)
+    + (top.finish - base.finish).toFixed(0).padStart(7));
+
+  const gateMul = base.gate > 0 ? top.gate / base.gate : Infinity;
+  const afterMul = base.after > 0 ? top.after / base.after : Infinity;
+  out.payoff = {
+    gateFrom: base.gate, gateTo: top.gate, gateMul: +gateMul.toFixed(2),
+    afterFrom: base.after, afterTo: top.after, afterMul: +afterMul.toFixed(2),
+  };
+  console.log('\nspread = разрыв (pp) между нулевым рангом и полным деревом.');
+  console.log('gate%  = доля ранов, прошедших босса F15.');
+  console.log('after  = сколько этажей пройдено ПОСЛЕ F15, только среди прошедших.');
+  console.log(`\nПолное дерево против нулевого ранга:`);
+  console.log(`  ворота F15  ${base.gate.toFixed(0)}% -> ${top.gate.toFixed(0)}%  (x${gateMul.toFixed(2)})`);
+  console.log(`  после ворот ${base.after.toFixed(1)} -> ${top.after.toFixed(1)} этажей  (x${afterMul.toFixed(2)}, метрика с потолком)`);
+  const finMul = base.finish > 0 ? top.finish / base.finish : Infinity;
+  out.payoff.finishFrom = base.finish;
+  out.payoff.finishTo = top.finish;
+  out.payoff.finishMul = +finMul.toFixed(2);
+  console.log(`  дошли до конца среди прошедших ${base.finish.toFixed(0)}% -> ${top.finish.toFixed(0)}%  (x${finMul.toFixed(2)})`);
+  console.log(`\n  Сравнивать надо ворота с ПОСЛЕДНЕЙ строкой — обе вероятности.`);
+  console.log('\nЕсли gate растёт сильно, а after почти не растёт — мета покупает');
+  console.log('только вход в акт 2, а не способность его проходить. Это и есть цель.');
+
+  // Career: how many runs it actually takes to reach each rung. The XP rate
+  // rises as the tree fills, so this is an integration, not budget / rate —
+  // dividing by a single rate is the mistake that produced the nonsense line
+  // "a fully progressed player takes 10 runs to reach the full tree".
+  const rateAt = (spent) => {
+    let best = out.rows[0];
+    for (const r of out.rows) if (r.budget <= spent) best = r;
+    return Math.max(0.1, best.xpPerRun);
+  };
+  let spent = 0;
+  let runs2 = 0;
+  const career = [];
+  for (const r of out.rows) {
+    while (spent < r.budget && runs2 < 500) {
+      spent += rateAt(spent);
+      runs2 += 1;
+    }
+    career.push({ budget: r.budget, runs: runs2 });
+  }
+  out.career = career;
+  console.log('\n=== ПУТЬ: сколько ранов до каждой ступени ===');
+  console.log('  XP'.padStart(6) + 'ранов'.padStart(8) + '  (темп растёт по мере прокачки)');
+  for (const c of career) {
+    console.log(String(c.budget).padStart(6) + String(c.runs).padStart(8));
+  }
+
+  const path = 'sim/output/meta-ladder.json';
+  mkdirSync('sim/output', { recursive: true });
+  writeFileSync(path, JSON.stringify(out, null, 2));
+  console.log(`\nJSON: ${path}`);
+}
+
 function runTalentLadder() {
   const args = stripBehaviorArgs(process.argv.slice(3));
   let runs = 1000;
@@ -5818,6 +6153,8 @@ if (MODE === 'reliccompare' || MODE === 'talentcompare') {
   runTalentCompare();
 } else if (MODE === 'talentladder') {
   runTalentLadder();
+} else if (MODE === 'metaladder') {
+  runMetaLadder();
 } else if (MODE === 'actmatrix') {
   runActMetaMatrix();
 } else if (MODE === 'fresh') {

@@ -1,5 +1,5 @@
 import { CombatSequencer } from './CombatSequencer.js';
-import { effectiveArmorProtection } from './ArmorMath.js';
+import { effectiveArmorDodge, effectiveArmorProtection } from './ArmorMath.js';
 
 /** Ranged enemy hits (archers). Bosses count as melee, same as thorns. */
 export function isEnemyRangedAttack(card) {
@@ -41,6 +41,19 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         };
     }
 
+    // Shadow Step: a depth accumulator, so it is small early and real deep.
+    // Rolled alongside the amulet dodge rather than folded into it so the
+    // floating text can tell the player which one saved them.
+    const talentDodge = gameState.talentEffects?.shadowStepDodge || 0;
+    if (!isPoison && talentDodge > 0 && Math.random() < talentDodge) {
+        if (gameState.equippedArmor) gameState.tickEquippedArmorDurability();
+        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Shadow Step!', 0x88ffcc);
+        return {
+            actualDamage: 0, tookDamage: false, blockedDamage: 0,
+            dodgedDamage: Math.max(0, amount || 0), dodged: true,
+        };
+    }
+
     // Check for dodge (from amulets)
     if (scene.amuletManager && scene.amuletManager.checkDodge()) {
         if (gameState.equippedArmor && !isPoison) gameState.tickEquippedArmorDurability();
@@ -70,7 +83,8 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
 
     if (gameState.equippedArmor) {
         // Handle Dodge from equipped armor — durability ticks on dodge.
-        if (gameState.equippedArmor.dodgeChance && Math.random() < gameState.equippedArmor.dodgeChance) {
+        const armorDodge = effectiveArmorDodge(gameState, gameState.equippedArmor);
+        if (armorDodge > 0 && Math.random() < armorDodge) {
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodge!', 0x00ff00);
             if (!isPoison) gameState.tickEquippedArmorDurability();
             return {
@@ -167,15 +181,15 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     const blockedDamage = Math.max(0, amount - actualDamage);
 
     // Reprisal (Iron): always reflect a % of DEF-blocked damage; can kill.
-    const reprisalPct = gameState.talentEffects?.reprisalReflectPct || 0;
+    const reprisalFlat = gameState.talentEffects?.reprisalFlat || 0;
     if (
-        reprisalPct > 0
+        reprisalFlat > 0
         && blockedDamage > 0
         && enemyIndex >= 0
         && gameState.equippedArmor
         && (gameState.equippedArmor.protection || 0) > 0
     ) {
-        const reprisalDmg = Math.floor(blockedDamage * reprisalPct);
+        const reprisalDmg = Math.min(reprisalFlat, Math.max(1, blockedDamage));
         if (reprisalDmg > 0) {
             const enemySprite = scene.cardSystem?.boardCards?.[enemyIndex]?.sprite;
             scene.createFloatingText(
@@ -245,8 +259,23 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     // (EventScene damage bypasses takeDamage and invokes gameOver()
     // directly on wake — see EventScene.continueAdventure.)
     if (gameState.playerHealth <= 0) {
-        gameState.setDeathCause(source, enemyIndex);
-        scene.time.delayedCall(100, () => scene.gameOver());
+        // Second Wind: failure currency. Deliberately NOT an accumulator — the
+        // worth of not dying does not decay with depth the way a stat bonus
+        // does, which is exactly why the branch ends on it.
+        const charges = gameState.talentEffects?.secondWindCharges || 0;
+        const used = gameState.secondWindUsed || 0;
+        if (charges > used) {
+            gameState.secondWindUsed = used + 1;
+            const healPct = gameState.talentEffects?.secondWindHealPct || 0.25;
+            gameState.playerHealth = Math.max(1, Math.ceil(gameState.maxHealth * healPct));
+            scene.createFloatingText?.(
+                scene.playerAvatar?.x ?? 0, scene.playerAvatar?.y ?? 0,
+                'Second Wind!', 0xffdd55
+            );
+        } else {
+            gameState.setDeathCause(source, enemyIndex);
+            scene.time.delayedCall(100, () => scene.gameOver());
+        }
     }
 
     return {

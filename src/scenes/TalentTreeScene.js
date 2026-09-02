@@ -1,5 +1,12 @@
-// Talent tree after character select. Shadow/Iron purchasable; other branches WIP.
-// Purchases require at least 1 rank in the previous node of the same branch.
+// Talent tree after character select.
+//
+// Only the purchasable branch is drawn. The WIP branches used to take two of
+// the three columns to show nothing buyable, which was affordable at five nodes
+// per branch and stopped being affordable at ten — the real branch ran off the
+// bottom of the screen. The freed width now carries a second node column and a
+// permanent detail panel, so nothing overlaps and nothing scrolls.
+//
+// Purchases require at least 2 ranks in the previous node of the same branch.
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { MetaProgressionManager } from '../managers/MetaProgressionManager.js';
@@ -45,24 +52,28 @@ export class TalentTreeScene extends Phaser.Scene {
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5);
 
-    this.detailBg = this.add.rectangle(320, 292, 520, 72, 0x2c1810, 0.95)
+    // Detail panel owns the right half — a fixed home means the description can
+    // never land on top of the nodes the way the old floating one did.
+    this.detailBg = this.add.rectangle(466, 176, 332, 232, 0x2c1810, 0.95)
       .setStrokeStyle(1, 0x8b6914);
-    this.detailTitle = this.add.text(80, 262, '', {
+    this.detailTitle = this.add.text(312, 70, '', {
       fontSize: '12px',
       fill: '#f0d78c',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
+      wordWrap: { width: 308 },
     });
-    this.detailBody = this.add.text(80, 280, 'Select a talent', {
+    this.detailBody = this.add.text(312, 92, 'Select a talent', {
       fontSize: '10px',
       fill: '#c9d1d9',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
-      wordWrap: { width: 360 },
+      lineSpacing: 3,
+      wordWrap: { width: 308 },
     });
 
-    this.buyBtn = this.add.rectangle(500, 292, 100, 28, 0x3d2418, 0.95)
+    this.buyBtn = this.add.rectangle(466, 262, 120, 26, 0x3d2418, 0.95)
       .setStrokeStyle(1, 0xd4a017)
       .setInteractive({ useHandCursor: true });
-    this.buyLabel = this.add.text(500, 292, 'Buy', {
+    this.buyLabel = this.add.text(466, 262, 'Buy', {
       fontSize: '12px',
       fill: '#e6edf3',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -77,89 +88,108 @@ export class TalentTreeScene extends Phaser.Scene {
   }
 
   createBranchColumns() {
-    const branches = getBranchesForCharacter(this.characterId);
-    const colW = 190;
-    const startX = 320 - ((branches.length - 1) * colW) / 2;
+    const branch = getBranchesForCharacter(this.characterId).find((b) => b.purchasable)
+      || getBranchesForCharacter(this.characterId)[0];
+    if (!branch) return;
 
-    branches.forEach((branch, bi) => {
-      const x = startX + bi * colW;
-      this.add.text(x, 52, branch.wip ? `${branch.name} (WIP)` : branch.name, {
-        fontSize: '12px',
-        fill: branch.wip ? '#6e7681' : '#f0d78c',
+    this.add.text(150, 50, branch.name, {
+      fontSize: '12px',
+      fill: '#f0d78c',
+      fontFamily: '"HoMM Pixel", Arial, sans-serif',
+    }).setOrigin(0.5);
+
+    // Two columns of five: read down the left, then down the right. A single
+    // column of ten does not fit between the header and the footer.
+    const PER_COL = 5;
+    const COL_X = [78, 212];
+    const ROW_Y = 74;
+    const ROW_H = 30;
+
+    branch.nodes.forEach((talentId, ni) => {
+      const x = COL_X[Math.floor(ni / PER_COL)] ?? COL_X[COL_X.length - 1];
+      const y = ROW_Y + (ni % PER_COL) * ROW_H;
+      const node = getTalentNode(talentId);
+      const display = getTalentDisplay(talentId) || node;
+      const descriptionRanks = [...(display?.descriptionRanks || [])];
+      const displayName = display?.name || node?.name || talentId;
+
+      const bg = this.add.rectangle(x, y, 128, 26, 0x2c1810, 0.92)
+        .setStrokeStyle(1, 0x8b6914)
+        .setInteractive({ useHandCursor: true });
+      // Order number doubles as the prerequisite hint: the chain is walked in
+      // this order, so "3" reads as "third purchase along the branch".
+      const index = this.add.text(x - 58, y, String(ni + 1), {
+        fontSize: '9px',
+        fill: '#8b6914',
         fontFamily: '"HoMM Pixel", Arial, sans-serif',
-      }).setOrigin(0.5);
+      }).setOrigin(0, 0.5);
+      const label = this.add.text(x - 44, y, displayName, {
+        fontSize: '9px',
+        fill: '#e6edf3',
+        fontFamily: '"HoMM Pixel", Arial, sans-serif',
+      }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
+      const rankText = this.add.text(x + 58, y, '', {
+        fontSize: '9px',
+        fill: '#c9d1d9',
+        fontFamily: '"HoMM Pixel", Arial, sans-serif',
+      }).setOrigin(1, 0.5);
 
-      branch.nodes.forEach((talentId, ni) => {
-        const y = 78 + ni * 34;
-        const node = getTalentNode(talentId);
-        const display = getTalentDisplay(talentId) || node;
-        const descriptionRanks = [...(display?.descriptionRanks || [])];
-        const displayName = display?.name || node?.name || talentId;
-        const bg = this.add.rectangle(x, y, 176, 28, 0x2c1810, 0.92)
-          .setStrokeStyle(1, branch.wip ? 0x444c56 : 0x8b6914)
-          .setInteractive({ useHandCursor: true });
-        const label = this.add.text(x, y, displayName, {
-          fontSize: '10px',
-          fill: branch.wip ? '#8b949e' : '#e6edf3',
-          fontFamily: '"HoMM Pixel", Arial, sans-serif',
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      const select = () => this.selectTalent(talentId);
+      bg.on('pointerover', () => {
+        SoundHelper.playVariant(this, 'hover_button', 0.3);
+        bg.setStrokeStyle(1, 0xd4a017);
+      });
+      bg.on('pointerout', () => {
+        bg.setStrokeStyle(1, this.selectedTalentId === talentId ? 0xd4a017 : 0x8b6914);
+      });
+      bg.on('pointerdown', select);
+      label.on('pointerdown', select);
 
-        const select = () => this.selectTalent(talentId);
-        bg.on('pointerover', () => {
-          SoundHelper.playVariant(this, 'hover_button', 0.3);
-          bg.setStrokeStyle(1, 0xd4a017);
-        });
-        bg.on('pointerout', () => {
-          bg.setStrokeStyle(1, this.selectedTalentId === talentId ? 0xd4a017 : (branch.wip ? 0x444c56 : 0x8b6914));
-        });
-        bg.on('pointerdown', select);
-        label.on('pointerdown', select);
-
-        this.ui.push({
-          talentId,
-          bg,
-          label,
-          wip: Boolean(branch.wip),
-          name: displayName,
-          maxRank: node?.maxRank || 1,
-          descriptionRanks,
-        });
+      this.ui.push({
+        talentId, bg, label, index, rankText,
+        wip: false,
+        name: displayName,
+        maxRank: node?.maxRank || 1,
+        descriptionRanks,
       });
     });
   }
 
   createFooter() {
-    const back = this.add.rectangle(160, 340, 120, 24, 0x2c1810, 0.92)
-      .setStrokeStyle(1, 0x8b6914)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(160, 340, 'Back', {
-      fontSize: '11px',
-      fill: '#e6edf3',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
-    back.on('pointerover', () => back.setStrokeStyle(1, 0xd4a017));
-    back.on('pointerout', () => back.setStrokeStyle(1, 0x8b6914));
-    back.on('pointerdown', () => {
+    const mkButton = (x, w, label, fill, stroke, onClick) => {
+      const btn = this.add.rectangle(x, 340, w, 24, fill, 0.95)
+        .setStrokeStyle(1, stroke)
+        .setInteractive({ useHandCursor: true });
+      const text = this.add.text(x, 340, label, {
+        fontSize: '11px',
+        fill: '#e6edf3',
+        fontFamily: '"HoMM Pixel", Arial, sans-serif',
+      }).setOrigin(0.5);
+      btn.on('pointerover', () => {
+        SoundHelper.playVariant(this, 'hover_button', 0.35);
+        btn.setStrokeStyle(1, 0xd4a017);
+      });
+      btn.on('pointerout', () => btn.setStrokeStyle(1, stroke));
+      btn.on('pointerdown', onClick);
+      return { btn, text };
+    };
+
+    mkButton(70, 110, 'Back', 0x2c1810, 0x8b6914, () => {
       this.cameras.main.fadeOut(250, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('CharacterSelectScene');
       });
     });
 
-    const start = this.add.rectangle(480, 340, 140, 24, 0x3d2418, 0.95)
-      .setStrokeStyle(1, 0xd4a017)
-      .setInteractive({ useHandCursor: true });
-    this.add.text(480, 340, 'Start run', {
-      fontSize: '11px',
-      fill: '#e6edf3',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
-    start.on('pointerover', () => {
-      SoundHelper.playVariant(this, 'hover_button', 0.35);
-      start.setFillStyle(0x5a3820, 0.98);
+    mkButton(200, 130, 'Start run', 0x3d2418, 0xd4a017, () => this.startRun());
+
+    // Test build only: the meta ladder is 300 XP long and earning it honestly
+    // takes ~40 runs, which is not a way to check the screen or tune numbers.
+    // Distinct colour so it is obvious this is not shipping UI.
+    mkButton(560, 120, '+25 XP  (debug)', 0x1f3d2b, 0x4a9e6a, () => {
+      this.meta.grantDebugXp(this.characterId, 25);
+      this.refresh();
     });
-    start.on('pointerout', () => start.setFillStyle(0x3d2418, 0.95));
-    start.on('pointerdown', () => this.startRun());
   }
 
   selectTalent(talentId) {
@@ -176,14 +206,17 @@ export class TalentTreeScene extends Phaser.Scene {
       const max = row.maxRank || 1;
       const check = this.meta.canPurchaseTalent(this.characterId, row.talentId);
       const locked = check.reason === 'prereq';
-      row.label.setText(
-        `${locked ? '[ ] ' : ''}${row.name || row.talentId}  ${rank}/${max}`
-      );
+      const maxed = rank >= max;
+      // Name and rank are separate objects pinned to opposite edges, so a long
+      // name can never push the counter out of the plate.
+      row.label.setText(row.name || row.talentId);
+      row.rankText.setText(`${rank}/${max}`);
       const selected = this.selectedTalentId === row.talentId;
-      row.bg.setStrokeStyle(1, selected ? 0xd4a017 : (row.wip || locked ? 0x444c56 : 0x8b6914));
-      if (rank > 0) row.bg.setFillStyle(0x3d2a18, 0.95);
-      else row.bg.setFillStyle(0x2c1810, 0.92);
-      row.label.setColor(locked && !row.wip ? '#6e7681' : (row.wip ? '#8b949e' : '#e6edf3'));
+      row.bg.setStrokeStyle(1, selected ? 0xd4a017 : (locked ? 0x444c56 : 0x8b6914));
+      row.bg.setFillStyle(rank > 0 ? 0x3d2a18 : 0x2c1810, rank > 0 ? 0.95 : 0.92);
+      row.label.setColor(locked ? '#6e7681' : '#e6edf3');
+      row.rankText.setColor(maxed ? '#7bc47f' : (locked ? '#6e7681' : '#c9d1d9'));
+      row.index.setColor(locked ? '#4a3a12' : '#8b6914');
     });
 
     // Always resolve copy fresh by selected id (do not trust row snapshots for body text).
@@ -213,7 +246,7 @@ export class TalentTreeScene extends Phaser.Scene {
     } else if (check.reason === 'prereq') {
       const prev = getTalentDisplay(check.prereqId) || getTalentNode(check.prereqId);
       this.buyLabel.setText('Locked');
-      body = `${nextDesc || 'No description.'}\nLocked: buy at least 1 rank in ${prev?.name || check.prereqId} first.`;
+      body = `${nextDesc || 'No description.'}\nLocked: buy 2 ranks in ${prev?.name || check.prereqId} first.`;
     } else if (check.reason === 'max') {
       this.buyLabel.setText('MAX');
     } else if (check.ok) {
@@ -246,7 +279,7 @@ export class TalentTreeScene extends Phaser.Scene {
       else if (result.reason === 'wip') this.detailBody.setText('WIP - cannot buy yet.');
       else if (result.reason === 'prereq') {
         const prev = getTalentNode(result.prereqId);
-        this.detailBody.setText(`Need 1 rank in ${prev?.name || result.prereqId} first.`);
+        this.detailBody.setText(`Need 2 ranks in ${prev?.name || result.prereqId} first.`);
       } else this.detailBody.setText('Cannot buy.');
       this.refresh();
       return;
