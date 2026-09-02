@@ -8,6 +8,7 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { SANDBOX_HUB_KEY, getSandboxStories } from '../sandbox/SandboxMode.js';
+import { t } from '../i18n/i18n.js';
 
 export class SandboxStoryScene extends Phaser.Scene {
   constructor() {
@@ -23,13 +24,13 @@ export class SandboxStoryScene extends Phaser.Scene {
 
     this.add.rectangle(320, 180, 640, 360, 0x000000, 0.45);
 
-    this.add.text(320, 18, 'Test Site — Stories', {
+    this.add.text(320, 18, t(this, 'ui.sandbox.storiesTitle'), {
       fontSize: '20px',
       fill: '#e6edf3',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5);
 
-    this.add.text(320, 38, 'Any story, already played or not. Progress is not saved.', {
+    this.add.text(320, 38, t(this, 'ui.sandbox.storiesSubtitle'), {
       fontSize: '10px',
       fill: '#8b949e',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -56,7 +57,7 @@ export class SandboxStoryScene extends Phaser.Scene {
       );
     });
 
-    this.createStoryButton(320, 338, 'Back to Test Site', () => {
+    this.createStoryButton(320, 338, t(this, 'ui.sandbox.backToSite'), () => {
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start(SANDBOX_HUB_KEY);

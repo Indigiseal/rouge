@@ -10,6 +10,7 @@ import { applyEnemyTier, canTierEnemy, veteranChanceFor } from '../../content/ba
 import { boardVariantFromAmbush } from './BoardVariant.js';
 import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js';
+import { cameraWorldSize } from '../../config/renderScale.js';
 
 export class FloorSpawner {
     constructor(cs) {
@@ -386,7 +387,11 @@ function spawnTutorialCards() {
   const mkSword = (tag) => {
     const card = this.cardDataGenerator.createWeaponCardOfType('sword', 99, 'common')
       || this.cardDataGenerator.createWeaponCard(99, 'common');
-    return { ...card, tutorialTag: tag };
+    // The scripted skeleton, guard, and archer each need two 5-damage sword
+    // hits. A normal common sword has 6 pips, which made it break immediately
+    // before the tutorial's required sword merge. Leave one worn pip so the
+    // merge can visibly demonstrate the full durability refresh.
+    return { ...card, durability: 7, maxDurability: 7, tutorialTag: tag };
   };
   const mkMelee = (tag) => {
     const e = this.cardDataGenerator.createTieredEnemy('skeleton', cf);
@@ -1363,9 +1368,11 @@ function spawnBoss() {
     );
     bossData.maxHealth = bossData.maxHealth || bossData.health;
     const cam = this.scene.cameras.main;
-    const x = cam.width / 2 - 20; // match the 20px-left board shift
+    // Viewport in world units, not device pixels — see cameraWorldSize.
+    const { width: camW, height: camH } = cameraWorldSize(cam);
+    const x = camW / 2 - 20; // match the 20px-left board shift
     const bossOffsetY = bossData.name === 'Spider Queen' ? -100 : 0;
-    const y = cam.height / 2 + bossOffsetY;
+    const y = camH / 2 + bossOffsetY;
     this.createBossBoardPanel();
     const cardSprite = snapOriginToPixelGrid(this.scene.add.image(x, y, bossData.sprite));
     
@@ -1761,4 +1768,3 @@ function createCardData(type, floor, isElite = false, gameState = null, targetRa
 function capRewardRarity(rarity, floor) {
     return this.cardDataGenerator.capRewardRarity(rarity, floor);
 }
-

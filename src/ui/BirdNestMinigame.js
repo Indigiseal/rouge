@@ -3,7 +3,9 @@
 // holding junk under it costs time. 20 seconds, -5s per catch.
 
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { t } from '../i18n/i18n.js';
 import { snapOriginToPixelGrid } from './PixelSnap.js';
+import { cameraWorldSize } from '../config/renderScale.js';
 
 const DEPTH = 3500;
 const TIME_LIMIT = 20;
@@ -204,8 +206,8 @@ export function openBirdNestMinigame(scene, cfg) {
   const pieces = [];
 
   const cam = scene.cameras?.main;
-  const w = cam?.width || 640;
-  const h = cam?.height || 360;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: w, height: h } = cameraWorldSize(cam);
   const cx = w / 2;
   const cy = h / 2 - 6;
 
@@ -251,15 +253,15 @@ export function openBirdNestMinigame(scene, cfg) {
   const panel = push(scene.add.rectangle(cx, cy, panelW, panelH, 0x1a1420, 0.96));
   panel.setStrokeStyle(2, 0xc9a227).setDepth(DEPTH + 1);
 
-  push(scene.add.text(cx, cy - panelH / 2 + 14, 'The Nest', {
+  push(scene.add.text(cx, cy - panelH / 2 + 14, t(scene, 'ui.birdNest.title'), {
     fontSize: '16px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#f0e6d2',
   }).setOrigin(0.5).setDepth(DEPTH + 2));
 
   push(scene.add.text(cx, cy - panelH / 2 + 32, includeCog
-    ? 'Clear the junk. Take the cog and the egg if you can. Watch the shadow.'
-    : 'Clear the junk. Take the egg if you can. Watch the shadow.', {
+    ? t(scene, 'ui.birdNest.instructionsCog')
+    : t(scene, 'ui.birdNest.instructionsEgg'), {
     fontSize: '10px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#c9b48a',
@@ -285,7 +287,7 @@ export function openBirdNestMinigame(scene, cfg) {
   nest.setDepth(DEPTH + 5);
   snapOriginToPixelGrid(nest);
 
-  const statusText = push(scene.add.text(cx, cy + panelH / 2 - 36, 'Drag junk aside. Click a free prize to take it.', {
+  const statusText = push(scene.add.text(cx, cy + panelH / 2 - 36, t(scene, 'ui.birdNest.status'), {
     fontSize: '10px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#ffe8b0',
@@ -296,7 +298,7 @@ export function openBirdNestMinigame(scene, cfg) {
   const runBg = push(scene.add.rectangle(cx, cy + panelH / 2 - 16, 88, 20, 0x2a2030, 1));
   runBg.setStrokeStyle(1, 0xc9a227).setDepth(DEPTH + 20);
   runBg.setInteractive({ useHandCursor: true });
-  const runLabel = push(scene.add.text(cx, cy + panelH / 2 - 16, 'Run', {
+  const runLabel = push(scene.add.text(cx, cy + panelH / 2 - 16, t(scene, 'ui.birdNest.run'), {
     fontSize: '11px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#f0e6d2',
@@ -394,7 +396,7 @@ export function openBirdNestMinigame(scene, cfg) {
   const tryTake = (prize) => {
     if (phase !== 'play' || prize.taken || prize.draggable) return;
     if (prizeCovered(prize)) {
-      statusText.setText('Still buried. Move the junk first.');
+      statusText.setText(t(scene, 'ui.birdNest.buried'));
       SoundHelper.playVariant(scene, 'invalid_action', 0.4);
       return;
     }
@@ -408,8 +410,8 @@ export function openBirdNestMinigame(scene, cfg) {
       y: prize.image.y - 16,
       duration: 180,
     });
-    if (prize.kind === 'cog') statusText.setText('The brass cog is yours.');
-    else statusText.setText('The egg is warm in your hand.');
+    if (prize.kind === 'cog') statusText.setText(t(scene, 'ui.birdNest.cogTaken'));
+    else statusText.setText(t(scene, 'ui.birdNest.eggTaken'));
     refreshPrizes();
     const egg = pieces.find((p) => p.kind === 'egg');
     const cog = pieces.find((p) => p.kind === 'cog');
@@ -461,7 +463,7 @@ export function openBirdNestMinigame(scene, cfg) {
     caughtThisPass = true;
     remaining = Math.max(0, remaining - CATCH_PENALTY);
     SoundHelper.playVariant(scene, 'player_hurt', 0.55);
-    statusText.setText('The shadow found you.');
+    statusText.setText(t(scene, 'ui.birdNest.caught'));
     statusText.setColor('#ff7b72');
     barFill.setFillStyle(0xff7b72, 1);
     scene.tweens?.add?.({

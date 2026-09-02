@@ -4,6 +4,7 @@
 
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { snapOriginToPixelGrid } from './PixelSnap.js';
+import { cameraWorldSize } from '../config/renderScale.js';
 
 const DEPTH = 3500;
 const COLS = 5;
@@ -72,8 +73,8 @@ export function openMusicBoxLockMinigame(scene, cfg) {
   const useSheet = hasSheet(scene);
 
   const cam = scene.cameras?.main;
-  const w = cam?.width || 640;
-  const h = cam?.height || 360;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: w, height: h } = cameraWorldSize(cam);
   const cx = w / 2;
   const cy = h / 2;
 

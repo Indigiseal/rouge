@@ -10,6 +10,7 @@ import {
   costForNextRank,
 } from '../content/talents/index.js';
 import { isMetaProgressionDisabled } from '../config/TestOptions.js';
+import { getGameLanguage, t } from '../i18n/i18n.js';
 
 export class TalentTreeScene extends Phaser.Scene {
   constructor() {
@@ -32,7 +33,7 @@ export class TalentTreeScene extends Phaser.Scene {
     }
     this.add.rectangle(320, 180, 640, 360, 0x000000, 0.62);
 
-    const title = this.characterId === 'warrior' ? 'Warrior talents' : 'Rogue talents';
+    const title = t(this, this.characterId === 'warrior' ? 'ui.talents.warriorTitle' : 'ui.talents.rogueTitle');
     this.add.text(320, 16, title, {
       fontSize: '18px',
       fill: '#e6edf3',
@@ -52,7 +53,7 @@ export class TalentTreeScene extends Phaser.Scene {
       fill: '#f0d78c',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     });
-    this.detailBody = this.add.text(80, 280, 'Select a talent', {
+    this.detailBody = this.add.text(80, 280, t(this, 'ui.talents.selectTalent'), {
       fontSize: '10px',
       fill: '#c9d1d9',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -62,7 +63,7 @@ export class TalentTreeScene extends Phaser.Scene {
     this.buyBtn = this.add.rectangle(500, 292, 100, 28, 0x3d2418, 0.95)
       .setStrokeStyle(1, 0xd4a017)
       .setInteractive({ useHandCursor: true });
-    this.buyLabel = this.add.text(500, 292, 'Buy', {
+    this.buyLabel = this.add.text(500, 292, t(this, 'ui.talents.buy'), {
       fontSize: '12px',
       fill: '#e6edf3',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -83,7 +84,8 @@ export class TalentTreeScene extends Phaser.Scene {
 
     branches.forEach((branch, bi) => {
       const x = startX + bi * colW;
-      this.add.text(x, 52, branch.wip ? `${branch.name} (WIP)` : branch.name, {
+      const branchName = t(this, `ui.talents.branch.${branch.id}`);
+      this.add.text(x, 52, branch.wip ? `${branchName} (${t(this, 'ui.talents.wip')})` : branchName, {
         fontSize: '12px',
         fill: branch.wip ? '#6e7681' : '#f0d78c',
         fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -92,7 +94,7 @@ export class TalentTreeScene extends Phaser.Scene {
       branch.nodes.forEach((talentId, ni) => {
         const y = 78 + ni * 34;
         const node = getTalentNode(talentId);
-        const display = getTalentDisplay(talentId) || node;
+        const display = getTalentDisplay(talentId, getGameLanguage(this)) || node;
         const descriptionRanks = [...(display?.descriptionRanks || [])];
         const displayName = display?.name || node?.name || talentId;
         const bg = this.add.rectangle(x, y, 176, 28, 0x2c1810, 0.92)
@@ -132,7 +134,7 @@ export class TalentTreeScene extends Phaser.Scene {
     const back = this.add.rectangle(160, 340, 120, 24, 0x2c1810, 0.92)
       .setStrokeStyle(1, 0x8b6914)
       .setInteractive({ useHandCursor: true });
-    this.add.text(160, 340, 'Back', {
+    this.add.text(160, 340, t(this, 'ui.common.back'), {
       fontSize: '11px',
       fill: '#e6edf3',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -149,7 +151,7 @@ export class TalentTreeScene extends Phaser.Scene {
     const start = this.add.rectangle(480, 340, 140, 24, 0x3d2418, 0.95)
       .setStrokeStyle(1, 0xd4a017)
       .setInteractive({ useHandCursor: true });
-    this.add.text(480, 340, 'Start run', {
+    this.add.text(480, 340, t(this, 'ui.talents.startRun'), {
       fontSize: '11px',
       fill: '#e6edf3',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -169,7 +171,7 @@ export class TalentTreeScene extends Phaser.Scene {
 
   refresh() {
     const xp = this.meta.getCharacterXp(this.characterId);
-    this.xpText.setText(isMetaProgressionDisabled() ? 'Meta disabled' : `XP: ${xp}`);
+    this.xpText.setText(isMetaProgressionDisabled() ? t(this, 'ui.talents.metaDisabled') : t(this, 'ui.talents.xp', { amount: xp }));
 
     this.ui.forEach((row) => {
       const rank = this.meta.getTalentRank(this.characterId, row.talentId);
@@ -188,12 +190,12 @@ export class TalentTreeScene extends Phaser.Scene {
 
     // Always resolve copy fresh by selected id (do not trust row snapshots for body text).
     const selectedId = this.selectedTalentId;
-    const display = selectedId ? getTalentDisplay(selectedId) : null;
+    const display = selectedId ? getTalentDisplay(selectedId, getGameLanguage(this)) : null;
     const node = selectedId ? getTalentNode(selectedId) : null;
     if (!selectedId || !display || !node) {
       this.detailTitle.setText('');
-      this.detailBody.setText('Select a talent');
-      this.buyLabel.setText('Buy');
+      this.detailBody.setText(t(this, 'ui.talents.selectTalent'));
+      this.buyLabel.setText(t(this, 'ui.talents.buy'));
       return;
     }
 
@@ -205,24 +207,24 @@ export class TalentTreeScene extends Phaser.Scene {
 
     const check = this.meta.canPurchaseTalent(this.characterId, selectedId);
     let body = rank > 0
-      ? `Owned r${rank}: ${ownedDesc}\nNext: ${rank >= (node.maxRank || 1) ? 'MAX' : nextDesc}`
-      : (nextDesc || 'No description.');
+      ? t(this, 'ui.talents.ownedNext', { rank, owned: ownedDesc, next: rank >= (node.maxRank || 1) ? 'MAX' : nextDesc })
+      : (nextDesc || t(this, 'ui.talents.noDescription'));
 
     if (node.wip || check.reason === 'wip') {
-      this.buyLabel.setText('WIP');
+      this.buyLabel.setText(t(this, 'ui.talents.wip'));
     } else if (check.reason === 'prereq') {
-      const prev = getTalentDisplay(check.prereqId) || getTalentNode(check.prereqId);
-      this.buyLabel.setText('Locked');
-      body = `${nextDesc || 'No description.'}\nLocked: buy at least 1 rank in ${prev?.name || check.prereqId} first.`;
+      const prev = getTalentDisplay(check.prereqId, getGameLanguage(this)) || getTalentNode(check.prereqId);
+      this.buyLabel.setText(t(this, 'ui.talents.locked'));
+      body = t(this, 'ui.talents.lockedHint', { description: nextDesc || t(this, 'ui.talents.noDescription'), name: prev?.name || check.prereqId });
     } else if (check.reason === 'max') {
       this.buyLabel.setText('MAX');
     } else if (check.ok) {
-      this.buyLabel.setText(`Buy ${check.cost}`);
+      this.buyLabel.setText(t(this, 'ui.talents.buyCost', { amount: check.cost }));
     } else if (check.reason === 'xp') {
       const cost = costForNextRank(rank);
       this.buyLabel.setText(`${cost}?`);
     } else {
-      this.buyLabel.setText('Buy');
+      this.buyLabel.setText(t(this, 'ui.talents.buy'));
     }
 
     this.detailTitle.setText(title);
@@ -235,19 +237,19 @@ export class TalentTreeScene extends Phaser.Scene {
     if (!node) return;
     if (node.wip) {
       SoundHelper.playVariant(this, 'invalid_action', 0.4);
-      this.detailBody.setText('This branch is WIP - browsing only.');
+      this.detailBody.setText(t(this, 'ui.talents.wipBranch'));
       return;
     }
 
     const result = this.meta.purchaseTalent(this.characterId, this.selectedTalentId);
     if (!result.ok) {
       SoundHelper.playVariant(this, 'invalid_action', 0.4);
-      if (result.reason === 'xp') this.detailBody.setText('Not enough XP.');
-      else if (result.reason === 'wip') this.detailBody.setText('WIP - cannot buy yet.');
+      if (result.reason === 'xp') this.detailBody.setText(t(this, 'ui.talents.notEnoughXp'));
+      else if (result.reason === 'wip') this.detailBody.setText(t(this, 'ui.talents.wipCannotBuy'));
       else if (result.reason === 'prereq') {
         const prev = getTalentNode(result.prereqId);
-        this.detailBody.setText(`Need 1 rank in ${prev?.name || result.prereqId} first.`);
-      } else this.detailBody.setText('Cannot buy.');
+        this.detailBody.setText(t(this, 'ui.talents.needRank', { name: prev?.name || result.prereqId }));
+      } else this.detailBody.setText(t(this, 'ui.talents.cannotBuy'));
       this.refresh();
       return;
     }

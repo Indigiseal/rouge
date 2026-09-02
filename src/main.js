@@ -7,10 +7,17 @@ const config = createGameConfig(Phaser);
 // starting if the font fetch hangs or 403s. Race with a short timeout
 // and swallow errors — the CSS @font-face still picks the font up
 // once it eventually arrives.
+//
+// Both faces have to be waited on. Phaser rasterizes a canvas Text object once,
+// when it is created, and never repaints it — so a screen built before its font
+// arrives is stuck in the fallback for as long as it stays open.
 try {
   if (document.fonts?.load) {
     await Promise.race([
-      document.fonts.load('12px "HoMM Pixel"'),
+      Promise.all([
+        document.fonts.load('12px "HoMM Pixel"'),
+        document.fonts.load('16px "Garamond UI"'),
+      ]),
       new Promise((resolve) => setTimeout(resolve, 1500)),
     ]);
   }

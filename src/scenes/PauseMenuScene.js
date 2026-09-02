@@ -4,6 +4,7 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { humanRunRecorder } from '../systems/HumanRunRecorder.js';
+import { t } from '../i18n/i18n.js';
 
 export class PauseMenuScene extends Phaser.Scene {
     constructor() {
@@ -25,21 +26,21 @@ export class PauseMenuScene extends Phaser.Scene {
             .setStrokeStyle(3, 0xffffff);
         
         // Title
-        this.add.text(320, 35, 'PAUSED', {
+        this.add.text(320, 35, t(this, 'ui.pause.title'), {
             fontSize: '32px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
         // Sound settings title
-        this.add.text(320, 72, 'Sound Settings', {
+        this.add.text(320, 72, t(this, 'ui.pause.soundSettings'), {
             fontSize: '18px',
             fill: '#cccccc',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
         
-        this.createVolumeSlider('Music', 112, 'music');
-        this.createVolumeSlider('Sound Effects', 152, 'sfx');
+        this.createVolumeSlider(t(this, 'ui.options.musicVolume'), 112, 'music');
+        this.createVolumeSlider(t(this, 'ui.options.soundEffects'), 152, 'sfx');
         
         // Resume button
         const resumeButton = this.add.rectangle(230, 205, 120, 35, 0x00ff00, 0.3)
@@ -49,7 +50,7 @@ export class PauseMenuScene extends Phaser.Scene {
             .on('pointerout', () => resumeButton.setFillStyle(0x00ff00, 0.3))
             .on('pointerdown', () => this.resumeGame());
         
-        this.add.text(230, 205, 'Resume', {
+        this.add.text(230, 205, t(this, 'ui.pause.resume'), {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel"'
@@ -63,7 +64,7 @@ export class PauseMenuScene extends Phaser.Scene {
             .on('pointerout', () => mainMenuButton.setFillStyle(0xff6666, 0.3))
             .on('pointerdown', () => this.quitToMainMenu());
         
-        this.add.text(410, 205, 'Save & Quit', {
+        this.add.text(410, 205, t(this, 'ui.pause.saveQuit'), {
             fontSize: '16px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel"'
@@ -108,13 +109,13 @@ export class PauseMenuScene extends Phaser.Scene {
                 SoundHelper.playVariant(this, 'hover_button', 0.4);
                 const result = humanRunRecorder.download();
                 if (!result.ok && result.reason === 'no_trace') {
-                    this.recorderStatusText.setText('No recorded run to export');
+                    this.recorderStatusText.setText(t(this, 'ui.pause.noRecordedRun'));
                 } else if (!result.ok) {
-                    this.recorderStatusText.setText('Export is unavailable in this browser');
+                    this.recorderStatusText.setText(t(this, 'ui.pause.exportUnavailable'));
                 }
             });
 
-        this.add.text(395, 305, 'Export JSON', {
+        this.add.text(395, 305, t(this, 'ui.pause.exportJson'), {
             fontSize: '14px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel"'
@@ -133,15 +134,15 @@ export class PauseMenuScene extends Phaser.Scene {
 
     refreshRecorderControls() {
         const status = humanRunRecorder.getStatus();
-        this.recorderToggleText?.setText(status.active ? 'Stop Recording' : 'Record My Run');
+        this.recorderToggleText?.setText(status.active ? t(this, 'ui.pause.stopRecording') : t(this, 'ui.pause.record'));
         if (status.storageError) {
-            this.recorderStatusText?.setText(`Recorder active in memory (${status.eventCount} events)`);
+            this.recorderStatusText?.setText(t(this, 'ui.pause.recorderMemory', { amount: status.eventCount }));
         } else if (status.active) {
-            this.recorderStatusText?.setText(`Human play recorder: ON (${status.eventCount} events)`);
+            this.recorderStatusText?.setText(t(this, 'ui.pause.recorderOn', { amount: status.eventCount }));
         } else if (status.eventCount > 0) {
-            this.recorderStatusText?.setText(`Recorded run ready (${status.eventCount} events)`);
+            this.recorderStatusText?.setText(t(this, 'ui.pause.recorderReady', { amount: status.eventCount }));
         } else {
-            this.recorderStatusText?.setText('Human play recorder: OFF');
+            this.recorderStatusText?.setText(t(this, 'ui.pause.recorderOff'));
         }
     }
     
@@ -183,7 +184,7 @@ export class PauseMenuScene extends Phaser.Scene {
         const sliderZone = this.add.zone(320, y, 200, 30)
             .setInteractive({ useHandCursor: true })
             .on('pointerdown', (pointer) => {
-                const localX = pointer.x - 220;
+                const localX = pointer.worldX - 220;
                 const newVolume = Phaser.Math.Clamp(localX / 200, 0, 1);
                 this.updateVolume(volumeType, newVolume, handle, sliderFill, volumeText);
             });

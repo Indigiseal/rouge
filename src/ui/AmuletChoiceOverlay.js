@@ -4,6 +4,7 @@
 import { showItemTooltip, hideItemTooltip, BOARD_TOOLTIP_GAP } from './ItemTooltip.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
+import { cameraWorldSize } from '../config/renderScale.js';
 
 const RARITY_COLOR = {
   common: 0xb0b0b0,
@@ -43,8 +44,8 @@ export function openAmuletChoiceOverlay(scene, cfg) {
   };
 
   const cam = scene.cameras?.main;
-  const w = cam?.width || 640;
-  const h = cam?.height || 360;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: w, height: h } = cameraWorldSize(cam);
 
   // Dim the board so the choice reads as a modal event.
   const veil = push(scene.add.rectangle(w / 2, h / 2, w + 4, h + 4, 0x000000, 0.72));

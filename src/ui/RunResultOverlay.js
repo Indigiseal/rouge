@@ -1,24 +1,25 @@
 // Defeat / victory result overlays for GameScene.
 import { MusicManager } from '../audio/MusicManager.js';
 import { isMetaProgressionDisabled } from '../config/TestOptions.js';
+import { t } from '../i18n/i18n.js';
 
 export function showDefeatFallback(scene, deathStats) {
     const depth = 12000;
     scene.add.rectangle(320, 180, 640, 360, 0x000000, 0.9)
         .setDepth(depth)
         .setInteractive();
-    scene.add.text(320, 99, 'DEFEAT', {
+    scene.add.text(320, 99, t(scene, 'ui.result.defeat'), {
         fontSize: '28px',
         fill: '#ffffff',
         fontFamily: 'Arial, sans-serif'
     }).setOrigin(0.5).setDepth(depth + 1);
-    scene.add.text(320, 160, `Killed by ${deathStats.killedBy}\nReached Floor ${deathStats.floor}`, {
+    scene.add.text(320, 160, `${t(scene, 'ui.result.killedBy', { enemy: deathStats.killedBy })}\n${t(scene, 'ui.result.reachedFloor', { floor: deathStats.floor })}`, {
         fontSize: '16px',
         fill: '#d8d1d8',
         fontFamily: 'Arial, sans-serif',
         align: 'center'
     }).setOrigin(0.5).setDepth(depth + 1);
-    scene.add.text(320, 245, 'Continue', {
+    scene.add.text(320, 245, t(scene, 'ui.common.continue'), {
         fontSize: '18px',
         fill: '#ffffff',
         backgroundColor: '#513c2c',
@@ -64,34 +65,34 @@ export function showDefeatResult(scene, deathStats, xpResult) {
     // reaching buttons underneath, like a still-visible Next Floor button.
     scene.add.rectangle(320, 180, 640, 360, 0x000000, 0.78).setOrigin(0.5).setDepth(resultDepth).setInteractive();
     scene.add.image(320, 36, 'resultBanners', 0).setOrigin(0.5).setDepth(resultDepth + 2);
-    scene.add.text(320, 31, 'DEFEAT', {
+    scene.add.text(320, 31, t(scene, 'ui.result.defeat'), {
         fontSize: '24px',
         fill: '#948b9b',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 3).setScale(1, 0.75);
 
     addResultPanel(scene, 320, 154, 304, 188, 0, resultDepth + 1);
-    scene.add.text(320, 86, 'YOU HAVE FALLEN', {
+    scene.add.text(320, 86, t(scene, 'ui.death.fallen'), {
         fontSize: '20px',
         fill: '#ffffff',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
-    scene.add.text(320, 116, `Killed by ${deathStats.killedBy}`, {
+    scene.add.text(320, 116, t(scene, 'ui.result.killedBy', { enemy: deathStats.killedBy }), {
         fontSize: '14px',
         fill: '#d8d1d8',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
-    scene.add.text(320, 142, `Reached Floor ${deathStats.floor}`, {
+    scene.add.text(320, 142, t(scene, 'ui.result.reachedFloor', { floor: deathStats.floor }), {
         fontSize: '14px',
         fill: '#d8d1d8',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
-    scene.add.text(320, 177, `Total Deaths: ${scene.metaManager?.totalDeaths ?? 0}`, {
+    scene.add.text(320, 177, t(scene, 'ui.death.totalDeaths', { amount: scene.metaManager?.totalDeaths ?? 0 }), {
         fontSize: '13px',
         fill: '#b8b0b8',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
-    scene.add.text(320, 199, `Best Floor: ${scene.metaManager?.bestFloor ?? deathStats.floor}`, {
+    scene.add.text(320, 199, t(scene, 'ui.death.bestFloor', { floor: scene.metaManager?.bestFloor ?? deathStats.floor }), {
         fontSize: '13px',
         fill: '#b8b0b8',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
@@ -101,12 +102,12 @@ export function showDefeatResult(scene, deathStats, xpResult) {
     const gained = xpResult?.xpGained ?? 0;
     const total = xpResult?.totalXp
         ?? scene.metaManager?.getCharacterXp?.(scene.gameState?.characterId) ?? 0;
-    scene.add.text(320, 253, gained > 0 ? `+${gained} character XP` : 'No XP this run', {
+    scene.add.text(320, 253, gained > 0 ? t(scene, 'ui.result.characterXp', { amount: gained }) : t(scene, 'ui.result.noXp'), {
         fontSize: '15px',
         fill: '#fed991',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
-    scene.add.text(320, 279, `Spend it on talents before the next run. Total: ${total}`, {
+    scene.add.text(320, 279, t(scene, 'ui.result.spendXp', { amount: total }), {
         fontSize: '11px',
         fill: '#b8b0b8',
         fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -114,7 +115,7 @@ export function showDefeatResult(scene, deathStats, xpResult) {
         align: 'center'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
 
-    addResultButton(scene, 320, 336, 'Continue', () => scene.leaveSandboxOrMenu(), resultDepth + 4);
+    addResultButton(scene, 320, 336, t(scene, 'ui.common.continue'), () => scene.leaveSandboxOrMenu(), resultDepth + 4);
 }
 
 export function addRelicIcon(scene, relic, x, y, depth) {
@@ -167,14 +168,14 @@ export function gameWon(scene) {
     // reaching buttons underneath, like a still-visible Next Floor button.
     scene.add.rectangle(320, 180, 640, 360, 0x000000, 0.78).setOrigin(0.5).setDepth(resultDepth).setInteractive();
     scene.add.image(320, 36, 'resultBanners', 1).setOrigin(0.5).setDepth(resultDepth + 2);
-    scene.add.text(320, 32, 'VICTORY!', {
+    scene.add.text(320, 32, t(scene, 'ui.result.victory'), {
         fontSize: '24px',
         fill: '#fed991',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 3).setScale(1, 0.75);
 
     addResultPanel(scene, 320, 160, 304, 200, 2, resultDepth + 1);
-    scene.add.text(320, 110, 'The dungeon is conquered.', {
+    scene.add.text(320, 110, t(scene, 'ui.result.dungeonConquered'), {
         fontSize: '20px',
         fill: '#ffffff',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
@@ -191,14 +192,14 @@ export function gameWon(scene) {
     const gained = xpResult?.xpGained ?? 0;
     const total = xpResult?.totalXp
         ?? scene.metaManager?.getCharacterXp?.(scene.gameState?.characterId) ?? 0;
-    scene.add.text(320, 253, gained > 0 ? `+${gained} character XP` : `Stories: ${scene.getResolvedStoryCount()}/1`, {
+    scene.add.text(320, 253, gained > 0 ? t(scene, 'ui.result.characterXp', { amount: gained }) : t(scene, 'ui.result.stories', { amount: scene.getResolvedStoryCount() }), {
         fontSize: '15px',
         fill: '#ffffff',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
     scene.add.text(320, 279, gained > 0
-        ? `Talents persist. Total XP: ${total}`
-        : 'Glory will have to do.', {
+        ? t(scene, 'ui.result.talentsPersist', { amount: total })
+        : t(scene, 'ui.result.glory'), {
         fontSize: '11px',
         fill: '#5b3b26',
         fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -208,7 +209,7 @@ export function gameWon(scene) {
 
     // Victory ends the run: clear the saved run so it can't be "continued",
     // then return to the main menu instead of dropping straight into a new game.
-    addResultButton(scene, 320, 336, scene.sandboxMode ? 'Test Site' : 'Main Menu', () => {
+    addResultButton(scene, 320, 336, scene.sandboxMode ? t(scene, 'ui.menu.testSite') : t(scene, 'ui.result.mainMenu'), () => {
         if (!scene.sandboxMode) scene.saveManager?.clearCurrentRun();
         scene.leaveSandboxOrMenu();
     }, resultDepth + 4);

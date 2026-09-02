@@ -719,7 +719,7 @@ export class EventScene extends Phaser.Scene {
     });
     scroll.track.on('pointerdown', (pointer) => {
       const frac = scroll.thumbTravel > 0
-        ? Phaser.Math.Clamp((pointer.y - scroll.thumbMinY) / scroll.thumbTravel, 0, 1)
+        ? Phaser.Math.Clamp((pointer.worldY - scroll.thumbMinY) / scroll.thumbTravel, 0, 1)
         : 0;
       this._setScrollOffset(Math.round(frac * scroll.maxOffset));
     });
@@ -751,7 +751,7 @@ export class EventScene extends Phaser.Scene {
   _enableReadingWheel() {
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
       const scroll = this._readingScroll;
-      if (!scroll?.maxOffset || !Phaser.Geom.Rectangle.Contains(scroll.bounds, pointer.x, pointer.y)) return;
+      if (!scroll?.maxOffset || !Phaser.Geom.Rectangle.Contains(scroll.bounds, pointer.worldX, pointer.worldY)) return;
       this._scrollReading(deltaY > 0 ? 24 : -24);
     });
   }
@@ -2230,8 +2230,8 @@ export class EventScene extends Phaser.Scene {
       if (!obj?.scene) return;
       const b = obj.getBounds();
       const over = pointer.isDown
-        && pointer.x >= b.left && pointer.x <= b.right
-        && pointer.y >= b.top && pointer.y <= b.bottom;
+        && pointer.worldX >= b.left && pointer.worldX <= b.right
+        && pointer.worldY >= b.top && pointer.worldY <= b.bottom;
       if (over) obj.setTint(0xffe9a8);
       else obj.clearTint();
     });
@@ -2505,13 +2505,13 @@ export class EventScene extends Phaser.Scene {
 
     if (!target.over) { this._returnCarnivalCard(card); return; }
     if ((this.gameState?.coins || 0) < 1) {
-      this.gameScene?.createFloatingText?.(pointer.x, pointer.y, 'You need a coin', 0xff6666);
+      this.gameScene?.createFloatingText?.(pointer.worldX, pointer.worldY, 'You need a coin', 0xff6666);
       this._returnCarnivalCard(card);
       return;
     }
     // Junk trinkets need an open slot; the clover becomes an amulet and doesn't.
     if (!isAmulet && target.emptySlot < 0) {
-      this.gameScene?.createFloatingText?.(pointer.x, pointer.y, 'Your bag is full', 0xff6666);
+      this.gameScene?.createFloatingText?.(pointer.worldX, pointer.worldY, 'Your bag is full', 0xff6666);
       this._returnCarnivalCard(card);
       return;
     }
@@ -2541,15 +2541,15 @@ export class EventScene extends Phaser.Scene {
     if (minX === Infinity) return { over: false, emptySlot: -1 };
 
     const pad = 14;
-    const over = pointer.x >= minX - pad && pointer.x <= maxX + pad
-      && pointer.y >= midY - halfH - pad && pointer.y <= midY + halfH + pad;
+    const over = pointer.worldX >= minX - pad && pointer.worldX <= maxX + pad
+      && pointer.worldY >= midY - halfH - pad && pointer.worldY <= midY + halfH + pad;
     if (!over) return { over: false, emptySlot: -1 };
 
     let emptySlot = -1;
     slots.forEach((slot, i) => {
       const bg = slot?.background;
       if (!bg || inv.slots[i] != null || emptySlot >= 0) return;
-      if (Math.abs(pointer.x - bg.x) <= (bg.width || 50) / 2 + pad) emptySlot = i;
+      if (Math.abs(pointer.worldX - bg.x) <= (bg.width || 50) / 2 + pad) emptySlot = i;
     });
     if (emptySlot < 0) emptySlot = inv.slots.findIndex(item => item == null);
     return { over: true, emptySlot };

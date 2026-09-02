@@ -5,6 +5,7 @@ import { StationRoomBase } from './StationRoomBase.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 import { CARD_VALUE_SLOT } from '../systems/board/BoardCardFx.js';
+import { t } from '../i18n/i18n.js';
 
 export class TreasureScene extends StationRoomBase {
   constructor() {
@@ -37,15 +38,15 @@ export class TreasureScene extends StationRoomBase {
   createChestRoom() {
     // NOTE: no full-screen background here — that would cover the GameScene
     // inventory station underneath. The dungeon backdrop shows through instead.
-    const title = this.rewardMode === 'elite' ? 'ELITE CHEST' : 'TREASURE CHEST';
+    const title = this.rewardMode === 'elite' ? t(this, 'ui.treasure.eliteTitle') : t(this, 'ui.treasure.title');
     createTitle(this, 320, 20, title, {
       color: '#ffd700',
       fallbackSize: '24px'
     });
 
     const instruction = this.requiresKey ?
-      'Use a key to open safely, or click the chest to force it open.' :
-      'Open your reward chest.';
+      t(this, 'ui.treasure.forceHint') :
+      t(this, 'ui.treasure.hint');
     this.instructionText = this.add.text(320, 46, instruction, {
       fontSize: '14px',
       fill: '#ffffff',
@@ -79,7 +80,7 @@ export class TreasureScene extends StationRoomBase {
     this.refreshKeyButton();
 
     // Leave button, top-right — matches the shops' Next button.
-    this.createStationContinueButton(595, 50, 'Leave', () => this.returnToMap());
+    this.createStationContinueButton(595, 50, t(this, 'ui.hud.leave'), () => this.returnToMap());
   }
 
   // Re-evaluates the key button against the LIVE inventory each time it matters,
@@ -92,7 +93,7 @@ export class TreasureScene extends StationRoomBase {
     this.keyButton.setFillStyle(enabled ? 0x5f4420 : 0x333333);
     this.keyButton.setStrokeStyle(2, enabled ? 0xffd700 : 0x777777);
     this.keyButtonText
-      .setText(!this.requiresKey ? 'Open' : keyIndex === -1 ? 'No Key' : 'Use Key')
+      .setText(!this.requiresKey ? t(this, 'ui.treasure.open') : keyIndex === -1 ? t(this, 'ui.treasure.noKey') : t(this, 'ui.treasure.useKey'))
       .setColor(enabled ? '#ffd700' : '#888888');
 
     this.keyButton.removeInteractive();
@@ -137,7 +138,7 @@ export class TreasureScene extends StationRoomBase {
   setKeyButtonOpened() {
     this.keyButton?.removeInteractive();
     this.keyButton?.setFillStyle(0x333333).setStrokeStyle(2, 0x777777);
-    this.keyButtonText?.setText('Opened').setColor('#888888');
+    this.keyButtonText?.setText(t(this, 'ui.treasure.opened')).setColor('#888888');
   }
 
   playChestOpen(chest, onComplete) {
@@ -161,7 +162,7 @@ export class TreasureScene extends StationRoomBase {
     const item = this.createRewardItem(reward.rarity);
     this.playLootScatter(chest.x, chest.y, reward.coins, reward.crystals);
 
-    this.add.text(320, 235, `+${reward.coins} Coins +${reward.crystals} Crystals`, {
+    this.add.text(320, 235, t(this, 'ui.treasure.reward', reward), {
       fontSize: '14px',
       fill: '#00ff00',
       fontFamily: '"HoMM Pixel"'

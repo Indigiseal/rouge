@@ -112,7 +112,7 @@ export const CombatHud = {
             .on('pointerout', () => pauseButton.setFillStyle(0x6f5452, 0.18))
             .on('pointerdown', () => { SoundHelper.playVariant(this, 'button_click', 0.5); this.pauseGame(); });
         
-        this.add.text(600, 15, 'PAUSE', {
+        this.add.text(600, 15, t(this, 'ui.hud.pause'), {
             fontSize: '9px',
             fill: '#6f5452',
             fontFamily: '"HoMM Pixel"'
@@ -122,11 +122,11 @@ export const CombatHud = {
         this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
         // Discard area
         this.discardArea = snapOriginToPixelGrid(this.add.image(601, 305, 'discardSprite'));
-        this.add.text(601, 305, 'Discard', { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+        this.add.text(601, 305, t(this, 'ui.hud.discard'), { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
         // Rest button removed - players must manage action points carefully
         // Amulet UI
         // Player effects label
-        this.add.text(45, 292, 'Effects', {
+        this.add.text(45, 292, t(this, 'ui.hud.effects'), {
             fontSize: '14px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel"'
@@ -154,7 +154,7 @@ export const CombatHud = {
                 this.nextFloorButton.y = 50;
                 if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
             });
-        this.nextFloorButtonText = this.add.text(595, 50, 'Next', {
+        this.nextFloorButtonText = this.add.text(595, 50, t(this, 'ui.hud.next'), {
             fontSize: '12px',
             fill: '#e5bca4',
             fontFamily: '"HoMM Pixel"'
@@ -195,7 +195,7 @@ export const CombatHud = {
         panel.setDepth(40);
 
         const top = CY - H / 2;
-        const title = this.add.text(CX, top + 8, 'Combat Log', {
+        const title = this.add.text(CX, top + 8, t(this, 'ui.hud.combatLog'), {
             fontSize: '10px', fill: BROWN, fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5, 0).setDepth(42);
         const rule = this.add.rectangle(CX, top + 22, W - 18, 1, 0x6f5452, 0.4).setDepth(42);
@@ -241,14 +241,14 @@ export const CombatHud = {
         // screen, and a more obvious gesture than hunting for the wheel.
         this.input.on('pointerdown', (pointer) => {
             if (!this.combatLogHasPointer(pointer)) return;
-            this.combatLog.drag = { y: pointer.y, from: this.combatLog.scroll };
+            this.combatLog.drag = { y: pointer.worldY, from: this.combatLog.scroll };
         });
         this.input.on('pointermove', (pointer) => {
             const drag = this.combatLog?.drag;
             if (!drag || !pointer.isDown) return;
             // Pull down to reveal older lines, as if sliding the paper.
             const LINE_PX = 10;
-            const moved = Math.round((pointer.y - drag.y) / LINE_PX);
+            const moved = Math.round((pointer.worldY - drag.y) / LINE_PX);
             this.setCombatLogScroll(drag.from + moved);
         });
         this.input.on('pointerup', () => {
@@ -261,8 +261,8 @@ export const CombatHud = {
     combatLogHasPointer(pointer) {
         if (!this.combatLog?.visible) return false;
         const b = this.combatLog.bounds;
-        return pointer.x >= b.left && pointer.x <= b.right
-            && pointer.y >= b.top && pointer.y <= b.bottom;
+        return pointer.worldX >= b.left && pointer.worldX <= b.right
+            && pointer.worldY >= b.top && pointer.worldY <= b.bottom;
     },
 
     // scroll counts lines hidden BELOW the view: 0 is pinned to the newest

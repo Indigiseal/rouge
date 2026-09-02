@@ -18,6 +18,21 @@
             font-display: block;
         }
 
+        /* Options-screen serif. EB Garamond (SIL Open Font License — see
+           assets/fonts/EB_Garamond/OFL.txt), subset to the Latin and Cyrillic
+           the game can display: 33 KB instead of the 6 MB the full download is.
+           Rebuild with tools/subset-font.py.
+
+           To try SemiBold instead, swap "Medium" for "SemiBold" on both lines
+           below — the subset script builds them both, and only the weight named
+           here is ever downloaded. */
+        @font-face {
+            font-family: "Garamond UI";
+            src: url("assets/fonts/EBGaramond-Medium-subset.woff2") format("woff2"),
+                 url("assets/fonts/EBGaramond-Medium-subset.ttf") format("truetype");
+            font-display: block;
+        }
+
         body {
             margin: 0;
             padding: 0;
