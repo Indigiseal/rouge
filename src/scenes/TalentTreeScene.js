@@ -11,6 +11,7 @@ import {
 } from '../content/talents/index.js';
 import { isMetaProgressionDisabled } from '../config/TestOptions.js';
 import { getGameLanguage, t } from '../i18n/i18n.js';
+import { FONT_SIZE, serifStyle } from '../ui/uiFont.js';
 
 export class TalentTreeScene extends Phaser.Scene {
   constructor() {
@@ -34,40 +35,22 @@ export class TalentTreeScene extends Phaser.Scene {
     this.add.rectangle(320, 180, 640, 360, 0x000000, 0.62);
 
     const title = t(this, this.characterId === 'warrior' ? 'ui.talents.warriorTitle' : 'ui.talents.rogueTitle');
-    this.add.text(320, 16, title, {
-      fontSize: '18px',
-      fill: '#e6edf3',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
+    this.add.text(320, 16, title, serifStyle(FONT_SIZE.heading, '#e6edf3')).setOrigin(0.5);
 
-    this.xpText = this.add.text(320, 34, '', {
-      fontSize: '11px',
-      fill: '#f0d78c',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
+    this.xpText = this.add.text(320, 34, '', serifStyle('14px', '#f0d78c')).setOrigin(0.5);
 
     this.detailBg = this.add.rectangle(320, 292, 520, 72, 0x2c1810, 0.95)
       .setStrokeStyle(1, 0x8b6914);
-    this.detailTitle = this.add.text(80, 262, '', {
-      fontSize: '12px',
-      fill: '#f0d78c',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    });
+    this.detailTitle = this.add.text(80, 262, '', serifStyle(FONT_SIZE.body, '#f0d78c'));
     this.detailBody = this.add.text(80, 280, t(this, 'ui.talents.selectTalent'), {
-      fontSize: '10px',
-      fill: '#c9d1d9',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
+      ...serifStyle('13px', '#c9d1d9'),
       wordWrap: { width: 360 },
     });
 
     this.buyBtn = this.add.rectangle(500, 292, 100, 28, 0x3d2418, 0.95)
       .setStrokeStyle(1, 0xd4a017)
       .setInteractive({ useHandCursor: true });
-    this.buyLabel = this.add.text(500, 292, t(this, 'ui.talents.buy'), {
-      fontSize: '12px',
-      fill: '#e6edf3',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
+    this.buyLabel = this.add.text(500, 292, t(this, 'ui.talents.buy'), serifStyle('14px', '#e6edf3')).setOrigin(0.5);
     this.buyBtn.on('pointerdown', () => this.tryBuy());
 
     this.createBranchColumns();
@@ -85,11 +68,8 @@ export class TalentTreeScene extends Phaser.Scene {
     branches.forEach((branch, bi) => {
       const x = startX + bi * colW;
       const branchName = t(this, `ui.talents.branch.${branch.id}`);
-      this.add.text(x, 52, branch.wip ? `${branchName} (${t(this, 'ui.talents.wip')})` : branchName, {
-        fontSize: '12px',
-        fill: branch.wip ? '#6e7681' : '#f0d78c',
-        fontFamily: '"HoMM Pixel", Arial, sans-serif',
-      }).setOrigin(0.5);
+      this.add.text(x, 52, branch.wip ? `${branchName} (${t(this, 'ui.talents.wip')})` : branchName,
+        serifStyle('14px', branch.wip ? '#6e7681' : '#f0d78c')).setOrigin(0.5);
 
       branch.nodes.forEach((talentId, ni) => {
         const y = 78 + ni * 34;
@@ -100,11 +80,9 @@ export class TalentTreeScene extends Phaser.Scene {
         const bg = this.add.rectangle(x, y, 176, 28, 0x2c1810, 0.92)
           .setStrokeStyle(1, branch.wip ? 0x444c56 : 0x8b6914)
           .setInteractive({ useHandCursor: true });
-        const label = this.add.text(x, y, displayName, {
-          fontSize: '10px',
-          fill: branch.wip ? '#8b949e' : '#e6edf3',
-          fontFamily: '"HoMM Pixel", Arial, sans-serif',
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        const label = this.add.text(x, y, displayName,
+          serifStyle('13px', branch.wip ? '#8b949e' : '#e6edf3'))
+          .setOrigin(0.5).setInteractive({ useHandCursor: true });
 
         const select = () => this.selectTalent(talentId);
         bg.on('pointerover', () => {
@@ -134,11 +112,7 @@ export class TalentTreeScene extends Phaser.Scene {
     const back = this.add.rectangle(160, 340, 120, 24, 0x2c1810, 0.92)
       .setStrokeStyle(1, 0x8b6914)
       .setInteractive({ useHandCursor: true });
-    this.add.text(160, 340, t(this, 'ui.common.back'), {
-      fontSize: '11px',
-      fill: '#e6edf3',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
+    this.add.text(160, 340, t(this, 'ui.common.back'), serifStyle('14px', '#e6edf3')).setOrigin(0.5);
     back.on('pointerover', () => back.setStrokeStyle(1, 0xd4a017));
     back.on('pointerout', () => back.setStrokeStyle(1, 0x8b6914));
     back.on('pointerdown', () => {
@@ -151,11 +125,7 @@ export class TalentTreeScene extends Phaser.Scene {
     const start = this.add.rectangle(480, 340, 140, 24, 0x3d2418, 0.95)
       .setStrokeStyle(1, 0xd4a017)
       .setInteractive({ useHandCursor: true });
-    this.add.text(480, 340, t(this, 'ui.talents.startRun'), {
-      fontSize: '11px',
-      fill: '#e6edf3',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
+    this.add.text(480, 340, t(this, 'ui.talents.startRun'), serifStyle('14px', '#e6edf3')).setOrigin(0.5);
     start.on('pointerover', () => {
       SoundHelper.playVariant(this, 'hover_button', 0.35);
       start.setFillStyle(0x5a3820, 0.98);

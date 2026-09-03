@@ -37,6 +37,7 @@ import {
   NEST_LEFT,
 } from '../content/events/monster_bird_nest.js';
 import { getMonthDefForFloor } from '../content/months/calendar.js';
+import { serifStyle } from '../ui/uiFont.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
@@ -852,7 +853,7 @@ export class EventScene extends Phaser.Scene {
     // grows downward instead of overlapping the title.
     const eventDescription = this._getEventDescription();
     this.descText = this.add.text(this.eventLayout.centerX, 42, eventDescription, {
-      fontSize: '12px', fill: INK, fontFamily: '"HoMM Pixel"',
+      ...serifStyle('13px', INK),
       align: 'center', wordWrap: { width: 328 }
     }).setDepth(2);
     this._centerTextOnPixel(this.descText, this.eventLayout.centerX);
@@ -889,9 +890,7 @@ export class EventScene extends Phaser.Scene {
     // Outcome text (hidden until a choice is made). Positioned on resolve so it
     // stays within the panel, above the inventory strip.
     this.outcomeText = this.add.text(this.eventLayout.centerX, 150, '', {
-      fontSize: '11px',
-      fill: '#fff2d0',
-      fontFamily: '"HoMM Pixel"',
+      ...serifStyle('13px', '#fff2d0'),
       align: 'center',
       wordWrap: { width: 330 }
     }).setOrigin(0.5).setAlpha(0);
@@ -907,9 +906,7 @@ export class EventScene extends Phaser.Scene {
     // gained/lost" list shown under the outcome, so amulets/HP/crystals that
     // otherwise land silently in the corners are actually announced.
     this.rewardText = this.add.text(this.eventLayout.centerX, 200, '', {
-      fontSize: '12px',
-      fill: '#ffe066',
-      fontFamily: '"HoMM Pixel"',
+      ...serifStyle('13px', '#ffe066'),
       align: 'center',
       stroke: '#000000',
       strokeThickness: 3,
@@ -1148,7 +1145,7 @@ export class EventScene extends Phaser.Scene {
 
     // Never shrink narrative copy below the normal UI reading size. Overflow
     // is handled by the scroll window below.
-    const storyFont = story.length > 150 ? 11 : 12;
+    const storyFont = story.length > 150 ? 12 : 13;
     const rewardFont = 10;
 
     // Recreate the narration object instead of resizing the hidden placeholder.
@@ -1156,9 +1153,7 @@ export class EventScene extends Phaser.Scene {
     // Inspect -> Fight path, even though the outcome string is still present.
     this.outcomeText?.destroy?.();
     this.outcomeText = this.add.text(this.eventLayout.centerX, top, story, {
-      fontSize: `${storyFont}px`,
-      fill: '#fff2d0',
-      fontFamily: '"HoMM Pixel"',
+      ...serifStyle(`${storyFont}px`, '#fff2d0'),
       align: 'center',
       wordWrap: { width: 330 }
     }).setOrigin(0.5, 0).setAlpha(story ? 1 : 0).setDepth(4);
