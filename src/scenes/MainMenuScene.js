@@ -74,6 +74,38 @@ export class MainMenuScene extends Phaser.Scene {
         });
 
         MusicManager.play(this, 'menu_music', 0.6, 900);
+        this.showClickToPlayIfMuted();
+    }
+
+    // Browsers refuse to start audio until the player has interacted with the
+    // page, so on a first visit the menu theme is queued rather than played.
+    // This gives that interaction somewhere obvious to happen.
+    //
+    // It only appears when audio is ACTUALLY blocked. Once a browser trusts the
+    // origin — which it does after a session or two — audioNeedsGesture is
+    // false, nothing is drawn, and the menu opens straight into music.
+    showClickToPlayIfMuted() {
+        if (!SoundHelper.audioNeedsGesture(this)) return;
+
+        const veil = this.add.rectangle(320, 180, 640, 360, 0x0e0b10, 0.82)
+            .setDepth(9000)
+            .setInteractive({ useHandCursor: true });
+        const label = this.add.text(320, 180, t(this, 'ui.menu.clickToPlay'), {
+            fontSize: '20px',
+            fill: '#f5e6c8',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+        }).setOrigin(0.5).setDepth(9001);
+
+        const dismiss = () => {
+            veil.destroy();
+            label.destroy();
+            // The queued menu theme flushes itself once the context resumes.
+            SoundHelper.resumeAudio(this);
+        };
+        veil.once('pointerdown', dismiss);
+        // A keypress counts as interaction too, so honour it rather than
+        // stranding a keyboard player behind a veil they cannot click away.
+        this.input.keyboard?.once('keydown', dismiss);
     }
 
     // Fade the menu theme out over the same span as the camera fade before we
