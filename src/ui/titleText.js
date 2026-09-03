@@ -11,7 +11,7 @@
 // dropped Cyrillic headings onto a different face mid-screen, this draws every
 // language the game ships.
 
-import { FONT_SIZE, serifStyle } from './uiFont.js';
+import { FONT_SIZE, serifStyle, UI_SERIF_FAMILY } from './uiFont.js';
 
 // Matches the bitmap it replaces closely enough that no screen's layout moved:
 // the widest existing heading grew from 167px to 206px, against ~360px of room.
@@ -31,7 +31,7 @@ function parseColor(color) {
 
 function fontReady() {
   try {
-    return document?.fonts?.check?.(`${TITLE_SIZE} "Garamond UI"`) ?? false;
+    return document?.fonts?.check?.(`${TITLE_SIZE} "${UI_SERIF_FAMILY}"`) ?? false;
   } catch {
     return false;
   }

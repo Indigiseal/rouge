@@ -10,7 +10,19 @@
 
 import { PIXEL_SCALE } from '../config/renderScale.js';
 
-export const UI_SERIF = '"Garamond UI", Georgia, serif';
+/**
+ * The UI typeface, named for its ROLE rather than the face currently filling it.
+ *
+ * To swap the typeface: drop the new .ttf into assets/fonts/EB_Garamond/static/,
+ * point tools/subset-font.py at it, and change the two `src:` lines in the
+ * @font-face block in index.html. Nothing in the JavaScript changes — which is
+ * the reason this is not called "Garamond".
+ *
+ * To swap only the weight, EBGaramond-SemiBold-subset is already built; change
+ * "Medium" to "SemiBold" on those same two lines.
+ */
+export const UI_SERIF_FAMILY = 'UI Serif';
+export const UI_SERIF = `"${UI_SERIF_FAMILY}", Georgia, serif`;
 
 export const FONT_SIZE = {
     /** Screen and panel headings: "Options", "Rare Goods", event titles. */

@@ -23,11 +23,16 @@
            the game can display: 33 KB instead of the 6 MB the full download is.
            Rebuild with tools/subset-font.py.
 
-           To try SemiBold instead, swap "Medium" for "SemiBold" on both lines
-           below — the subset script builds them both, and only the weight named
-           here is ever downloaded. */
+           TO CHANGE THE TYPEFACE, these two src lines are the only edit. The
+           family is called "UI Serif" rather than "Garamond" precisely so that
+           swapping the face does not leave a lying name behind in the code.
+
+           For a different weight of the same face, swap "Medium" for "SemiBold";
+           the subset script builds both and only the one named here downloads.
+           For a different face entirely, put its .ttf in EB_Garamond/static/,
+           add it to WEIGHTS in tools/subset-font.py, run it, and point here. */
         @font-face {
-            font-family: "Garamond UI";
+            font-family: "UI Serif";
             src: url("assets/fonts/EBGaramond-Medium-subset.woff2") format("woff2"),
                  url("assets/fonts/EBGaramond-Medium-subset.ttf") format("truetype");
             font-display: block;

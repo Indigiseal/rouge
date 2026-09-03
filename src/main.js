@@ -1,5 +1,6 @@
 // Phaser is loaded as a UMD script in index.html and lives on window.Phaser.
 import { createGameConfig } from './config/gameConfig.js';
+import { UI_SERIF_FAMILY } from './ui/uiFont.js';
 
 const config = createGameConfig(Phaser);
 
@@ -16,7 +17,7 @@ try {
     await Promise.race([
       Promise.all([
         document.fonts.load('12px "HoMM Pixel"'),
-        document.fonts.load('16px "Garamond UI"'),
+        document.fonts.load(`16px "${UI_SERIF_FAMILY}"`),
       ]),
       new Promise((resolve) => setTimeout(resolve, 1500)),
     ]);
