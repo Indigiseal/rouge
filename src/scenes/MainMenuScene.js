@@ -96,13 +96,28 @@ export class MainMenuScene extends Phaser.Scene {
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
         }).setOrigin(0.5).setDepth(9001);
 
+        let dismissed = false;
         const dismiss = () => {
-            veil.destroy();
-            label.destroy();
+            if (dismissed) return;
+            dismissed = true;
+            // Stop taking input at once, but keep the veil in the display list
+            // until the next tick.
+            //
+            // The menu buttons fire their callback on POINTERUP. Tearing the
+            // veil down inside a pointerdown handler removed the topmost
+            // interactive object mid-gesture, so the release landed on whatever
+            // button was underneath and started a run. Dismissing on pointerup
+            // and outliving the event by a tick means the veil absorbs the
+            // whole click.
+            veil.disableInteractive();
+            this.time.delayedCall(0, () => {
+                veil.destroy();
+                label.destroy();
+            });
             // The queued menu theme flushes itself once the context resumes.
             SoundHelper.resumeAudio(this);
         };
-        veil.once('pointerdown', dismiss);
+        veil.once('pointerup', dismiss);
         // A keypress counts as interaction too, so honour it rather than
         // stranding a keyboard player behind a veil they cannot click away.
         this.input.keyboard?.once('keydown', dismiss);
