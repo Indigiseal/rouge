@@ -12,7 +12,7 @@ import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { openConfirmModal } from '../ui/ConfirmModal.js';
-import { FONT_SIZE, serifStyle } from '../ui/uiFont.js';
+import { FONT_SIZE, fitLabel, serifStyle } from '../ui/uiFont.js';
 
 // --- Options screen skin -----------------------------------------------------
 // uiButtons.png stacks one 128x32 button per row.
@@ -35,6 +35,9 @@ const RESET_LABEL_OFFSET_X = 14;
 // The language plate is drawn in the top 26px of its 32px cell, so its label
 // needs lifting to sit on the plate rather than on the cell's centre line.
 const LANGUAGE_LABEL_OFFSET_Y = -3;
+// Main-menu plates are 90x30 with ~82px of usable label room.
+const MENU_LABEL_PX = '14px';
+const MENU_PLATE_LABEL_W = 82;
 
 // Options-screen type sizes come from the shared scale in ui/uiFont.js so the
 // heading here and the headings on every other screen cannot drift apart.
@@ -97,6 +100,10 @@ export class MainMenuScene extends Phaser.Scene {
 
     refreshMainMenuText() {
         if (!this.mainMenuButtons) return;
+        // setText does not re-fit, so a longer translation would overflow the
+        // plate it was measured against.
+        const refit = (entry) => entry && fitLabel(
+            entry.text.setFontSize(MENU_LABEL_PX), MENU_PLATE_LABEL_W, MENU_LABEL_PX);
         this.mainMenuButtons.newRun.text.setText(t(this, 'ui.menu.newRun'));
         this.mainMenuButtons.continue.text.setText(t(this, 'ui.menu.continue'));
         this.mainMenuButtons.tutorial.text.setText(t(this, 'ui.menu.tutorial'));
@@ -105,6 +112,7 @@ export class MainMenuScene extends Phaser.Scene {
         if (this.mainMenuButtons.testOptions) {
             this.mainMenuButtons.testOptions.text.setText(t(this, 'ui.menu.testOptions'));
         }
+        Object.values(this.mainMenuButtons).forEach(refit);
     }
 
     // Sprite-based button using nextTurnUp (normal) / nextTurnDown (pressed).
@@ -133,11 +141,12 @@ export class MainMenuScene extends Phaser.Scene {
                 .setStrokeStyle(1, 0xffffff);
         }
 
-        const txt = this.add.text(x, y, label, {
-            fontSize: '14px',
-            fill: disabled ? '#888888' : '#ffffff',
-            fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5);
+        const txt = this.add
+            .text(x, y, label, serifStyle(MENU_LABEL_PX, disabled ? '#888888' : '#ffffff'))
+            .setOrigin(0.5);
+        // The plate is 90px, drawn when these labels were in the much narrower
+        // pixel font. Translated labels are wider, so let them shrink to fit.
+        fitLabel(txt, MENU_PLATE_LABEL_W, MENU_LABEL_PX);
 
         if (!disabled) {
             btn.setInteractive({ useHandCursor: true })
@@ -432,11 +441,10 @@ export class MainMenuScene extends Phaser.Scene {
             UI_BUTTON.reset, t(this, 'ui.options.resetAll'), {
                 color: OPTIONS_RESET_INK,
                 labelOffsetX: RESET_LABEL_OFFSET_X,
-                // Smaller than everything else, because its plate cannot hold
-                // body size: ~90px of room against 129px for the Russian label.
-                // Legible at 11px only because the canvas renders at 2x now.
-                // Widen the plate to ~160px and this can use FONT_SIZE.body.
-                labelSize: FONT_SIZE.small,
+                // The warning badge eats the left ~27px of a 128px plate, so
+                // this label has far less room than the others and shrinks
+                // itself to suit. Widen the plate and it grows back on its own.
+                labelWidth: UI_BUTTON_W - 38,
                 callback: () => this.confirmResetProgress(),
             });
         keep(resetButton.shadow, resetButton.button, resetButton.text);
@@ -467,7 +475,8 @@ export class MainMenuScene extends Phaser.Scene {
     // createSpriteButton — shadow, hover lighten, 1px press nudge. The sheet has
     // no pressed art yet, so the press darkens the plate instead of swapping a
     // frame; point this at a down frame if one arrives.
-    createUiButton(x, y, frame, label, { color = '#ffffff', labelOffsetX = 0, labelOffsetY = 0, labelSize = SERIF_BODY_PX, callback } = {}) {
+    createUiButton(x, y, frame, label, { color = '#ffffff', labelOffsetX = 0, labelOffsetY = 0,
+        labelSize = SERIF_BODY_PX, labelWidth = UI_BUTTON_W - 12, callback } = {}) {
         const hasSprite = this.textures.exists('uiButtons');
         const labelY = y + labelOffsetY;
 
@@ -482,6 +491,7 @@ export class MainMenuScene extends Phaser.Scene {
         const txt = this.add
             .text(x + labelOffsetX, labelY, label, serifStyle(labelSize, color))
             .setOrigin(0.5);
+        fitLabel(txt, labelWidth, labelSize);
 
         btn.setInteractive({ useHandCursor: true })
             .on('pointerover', () => {

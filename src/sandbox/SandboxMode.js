@@ -7,19 +7,21 @@ import { resolveMonthIndex } from '../content/months/calendar.js';
 export const SANDBOX_HUB_KEY = 'SandboxHubScene';
 export const SANDBOX_STORY_KEY = 'SandboxStoryScene';
 
+// `label` is the English source and the fallback; `labelKey` is what the hub
+// actually renders, so the Test Site translates like the rest of the game.
 export const SANDBOX_ENCOUNTERS = [
-  { id: 'COMBAT', label: 'Combat', kind: 'combat' },
-  { id: 'ELITE', label: 'Elite Combat', kind: 'combat' },
-  { id: 'BOSS', label: 'Boss', kind: 'combat' },
-  { id: 'BOSS_REWARD', label: 'Boss Reward', kind: 'combat' },
-  { id: 'SHOP', label: 'Shop', kind: 'station', sceneKey: 'ShopScene' },
-  { id: 'RARE_SHOP', label: 'Rare Shop', kind: 'station', sceneKey: 'RareShopScene' },
-  { id: 'REST', label: 'Rest', kind: 'station', sceneKey: 'RestScene' },
-  { id: 'ANVIL', label: 'Anvil', kind: 'station', sceneKey: 'AnvilScene' },
-  { id: 'EVENT', label: 'Event (random)', kind: 'station', sceneKey: 'EventScene' },
-  { id: 'TREASURE', label: 'Treasure', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'treasure' },
-  { id: 'TREASURE_GOOD', label: 'Treasure (Good)', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'good' },
-  { id: 'TREASURE_ELITE', label: 'Elite Chest', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'elite' },
+  { id: 'COMBAT', label: 'Combat', labelKey: 'ui.sandbox.encounter.combat', kind: 'combat' },
+  { id: 'ELITE', label: 'Elite Combat', labelKey: 'ui.sandbox.encounter.elite', kind: 'combat' },
+  { id: 'BOSS', label: 'Boss', labelKey: 'ui.sandbox.encounter.boss', kind: 'combat' },
+  { id: 'BOSS_REWARD', label: 'Boss Reward', labelKey: 'ui.sandbox.encounter.bossReward', kind: 'combat' },
+  { id: 'SHOP', label: 'Shop', labelKey: 'ui.sandbox.encounter.shop', kind: 'station', sceneKey: 'ShopScene' },
+  { id: 'RARE_SHOP', label: 'Rare Shop', labelKey: 'ui.sandbox.encounter.rareShop', kind: 'station', sceneKey: 'RareShopScene' },
+  { id: 'REST', label: 'Rest', labelKey: 'ui.sandbox.encounter.rest', kind: 'station', sceneKey: 'RestScene' },
+  { id: 'ANVIL', label: 'Anvil', labelKey: 'ui.sandbox.encounter.anvil', kind: 'station', sceneKey: 'AnvilScene' },
+  { id: 'EVENT', label: 'Event (random)', labelKey: 'ui.sandbox.encounter.event', kind: 'station', sceneKey: 'EventScene' },
+  { id: 'TREASURE', label: 'Treasure', labelKey: 'ui.sandbox.encounter.treasure', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'treasure' },
+  { id: 'TREASURE_GOOD', label: 'Treasure (Good)', labelKey: 'ui.sandbox.encounter.treasureGood', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'good' },
+  { id: 'TREASURE_ELITE', label: 'Elite Chest', labelKey: 'ui.sandbox.encounter.eliteChest', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'elite' },
 ];
 
 const SANDBOX_FLOORS = {

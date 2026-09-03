@@ -1,7 +1,7 @@
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
-import { t, translateDescription, translateGemEffect, translateItemName } from '../../i18n/i18n.js';
+import { t, translateDescription, translateGemEffect, translateItemName, tCount } from '../../i18n/i18n.js';
 import { describeWeaponEnchant } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 
@@ -774,7 +774,7 @@ export const InventoryView = {
                     const zapDmg = Math.max(1, Math.floor(shownDmg * zapPct / 100));
                     lines.push(t(this.scene, 'tooltip.lightningZap', { amount: zapDmg }));
                 } else if (card.gemEffect === 'poison') {
-                    lines.push(t(this.scene, 'tooltip.poisonStacks', { stack, plural: stack > 1 ? 's' : '' }));
+                    lines.push(tCount(this.scene, 'tooltip.poisonStacks', stack));
                 }
             }
             const enchantLine = describeWeaponEnchant(card);

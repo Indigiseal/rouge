@@ -12,6 +12,7 @@
 // through the real game code untouched; the overlay just gates which object is
 // reachable and points at it.
 import { TutorialOverlay } from '../ui/TutorialOverlay.js';
+import { t } from '../i18n/i18n.js';
 
 export class TutorialManager {
     constructor(scene) {
@@ -141,7 +142,8 @@ export class TutorialManager {
             this._enteredStep = this.stepIndex;
             step.enter?.();
         }
-        this.overlay.setSkipLabel?.(this.stepIndex === this.steps.length - 1 ? 'Finish' : 'Skip');
+        this.overlay.setSkipLabel?.(t(this.scene,
+            this.stepIndex === this.steps.length - 1 ? 'ui.tutorial.finish' : 'ui.tutorial.skip'));
         this._refresh(step);
     }
 
@@ -247,7 +249,7 @@ export class TutorialManager {
         if (!target && !step.noHole) {
             // Target not ready yet (e.g. inventory sprite still rebuilding) —
             // dim fully and wait; the bubble still guides.
-            this.overlay.show({ target: null, interactive: null, text: step.text, noHole: true });
+            this.overlay.show({ target: null, interactive: null, text: t(this.scene, step.textKey), noHole: true });
             return;
         }
         const holeTargets = targetBounds
@@ -256,7 +258,7 @@ export class TutorialManager {
         this.overlay.show({
             target,
             interactive: interactiveTarget,
-            text: step.text,
+            text: t(this.scene, step.textKey),
             noHole: step.noHole || false,
             pointerOffset: step.pointerOffset,
             hintTarget,
@@ -279,21 +281,21 @@ export class TutorialManager {
         return [
             // 1 — flip the sword
             {
-                text: 'Tap a card to flip it.',
+                textKey: 'ui.tutorial.flipCard',
                 target: () => this.boardSprite('sword1'),
                 eventKey: 'revealed:sword1',
                 done: () => this.boardRevealed('sword1'),
             },
             // 2 — collect the sword (tap = an action = wakes the skeleton)
             {
-                text: 'Tap the sword to stash it in your inventory.',
+                textKey: 'ui.tutorial.stashSword',
                 target: () => this.boardSprite('sword1'),
                 eventKey: 'inventory:sword1',
                 done: () => this.invSlot('sword1') >= 0,
             },
             // 3 — attack the skeleton (drag from bag onto the enemy)
             {
-                text: 'Drag your sword onto the skeleton to strike it.',
+                textKey: 'ui.tutorial.strikeSkeleton',
                 target: () => this.invSprite('sword1'),
                 hintTarget: () => this.boardSprite('skeleton'),
                 eventKey: 'removed:skeleton',
@@ -301,14 +303,14 @@ export class TutorialManager {
             },
             // 4 — flip the food
             {
-                text: 'Flip another card.',
+                textKey: 'ui.tutorial.flipAnother',
                 target: () => this.boardSprite('food'),
                 eventKey: 'revealed:food',
                 done: () => this.boardRevealed('food'),
             },
             // 5 — explain hunger/AP, then eat the food
             {
-                text: "These diamonds are Action Points. At 0 AP, you are hungry: weapon damage is reduced by 20%. Tap food to refill AP.",
+                textKey: 'ui.tutorial.actionPoints',
                 target: () => this.actionPointArea(),
                 hintTarget: () => this.boardSprite('food'),
                 interactiveTarget: () => this.boardSprite('food'),
@@ -317,7 +319,7 @@ export class TutorialManager {
             },
             // 6 — attack the archer; it's blocked by the hidden guard
             {
-                text: 'An archer slips in behind. Attack it with your sword.',
+                textKey: 'ui.tutorial.archerBehind',
                 enter: () => {
                     const a = this.boardCard('archer');
                     if (a && !a.card.revealed) this.cs.revealCard(a.index, true);
@@ -329,14 +331,14 @@ export class TutorialManager {
             },
             // 7 — reveal the hidden melee guard
             {
-                text: 'Nothing landed — a hidden enemy guards the back row. Flip cards to find it.',
+                textKey: 'ui.tutorial.hiddenEnemy',
                 target: () => this.boardSprite('guard'),
                 eventKey: 'revealed:guard',
                 done: () => this.boardRevealed('guard'),
             },
             // 8 — kill the guard first
             {
-                text: "There it is. Kill the front melee before you can reach past it.",
+                textKey: 'ui.tutorial.killFrontMelee',
                 target: () => this.invSprite('sword1'),
                 hintTarget: () => this.boardSprite('guard'),
                 eventKey: 'removed:guard',
@@ -344,7 +346,7 @@ export class TutorialManager {
             },
             // 9 — now the archer is reachable
             {
-                text: 'Front cleared — now your sword reaches the archer. Finish it.',
+                textKey: 'ui.tutorial.finishArcher',
                 target: () => this.invSprite('sword1'),
                 hintTarget: () => this.boardSprite('archer'),
                 eventKey: 'removed:archer',
@@ -352,28 +354,28 @@ export class TutorialManager {
             },
             // 10 — flip the second sword
             {
-                text: 'Another sword — flip it.',
+                textKey: 'ui.tutorial.anotherSword',
                 target: () => this.boardSprite('sword2'),
                 eventKey: 'revealed:sword2',
                 done: () => this.boardRevealed('sword2'),
             },
             // 11 — collect the second sword
             {
-                text: 'Tap to add it to your bag.',
+                textKey: 'ui.tutorial.addToBag',
                 target: () => this.boardSprite('sword2'),
                 eventKey: 'inventory:sword2',
                 done: () => this.invSlot('sword2') >= 0,
             },
             // 12 — merge the two swords
             {
-                text: 'Drag one sword onto the other to merge them into a stronger weapon.',
+                textKey: 'ui.tutorial.mergeSwords',
                 target: () => this.invSprite('sword2'),
                 hintTarget: () => this.invSprite('sword1'),
                 eventKey: 'merged:sword',
                 done: () => this.hasUncommonSword(),
             },
             {
-                text: 'The pips on a weapon are durability. Each attack spends one pip; at zero, the weapon breaks forever. Merging matching cards restores every pip.',
+                textKey: 'ui.tutorial.durability',
                 target: () => this.tutorialSwordSprite(),
                 targetBounds: () => this.tutorialSwordPipArea(),
                 enter: () => {
@@ -385,25 +387,25 @@ export class TutorialManager {
                 done: () => false,
             },
             {
-                text: 'A Lightning Gem is on the board. Flip it over.',
+                textKey: 'ui.tutorial.flipGem',
                 target: () => this.boardSprite('lightningGem'),
                 eventKey: 'revealed:lightningGem',
                 done: () => this.boardRevealed('lightningGem'),
             },
             {
-                text: 'Tap the Lightning Gem to add it to your inventory.',
+                textKey: 'ui.tutorial.takeGem',
                 target: () => this.boardSprite('lightningGem'),
                 eventKey: 'inventory:lightningGem',
                 done: () => this.invSlot('lightningGem') >= 0,
             },
             {
-                text: 'Drag the Lightning Gem from your inventory onto your sword to socket it. It zaps the struck enemy and up to two other open enemies.',
+                textKey: 'ui.tutorial.socketGem',
                 target: () => this.invSprite('lightningGem'),
                 hintTarget: () => this.tutorialSwordSprite(),
                 done: () => this.hasLightningGemSocketed(),
             },
             {
-                text: 'Three enemies are open. Strike one with your socketed sword and watch lightning jump to all three.',
+                textKey: 'ui.tutorial.strikeWithGem',
                 enter: () => this.cs.revealTutorialLightningTargets(),
                 target: () => this.tutorialSwordSprite(),
                 hintTarget: () => this.boardSprite('lightningTarget1'),
@@ -411,7 +413,7 @@ export class TutorialManager {
                 done: () => false,
             },
             {
-                text: 'Lightning damages the target plus two other open enemies. It is especially useful for reaching enemies behind the front line.',
+                textKey: 'ui.tutorial.lightningExplained',
                 target: () => this.tutorialSwordSprite(),
                 enter: () => {
                     this.scene.time.delayedCall(900, () => {
@@ -423,41 +425,41 @@ export class TutorialManager {
             },
             // 13 — flip the potion
             {
-                text: 'One more card — a healing potion.',
+                textKey: 'ui.tutorial.potionCard',
                 target: () => this.boardSprite('potion'),
                 eventKey: 'revealed:potion',
                 done: () => this.boardRevealed('potion'),
             },
             // 14 — collect the potion
             {
-                text: 'Tap to pick up the potion.',
+                textKey: 'ui.tutorial.takePotion',
                 target: () => this.boardSprite('potion'),
                 eventKey: 'inventory:potion',
                 done: () => this.invSlot('potion') >= 0,
             },
             // 15 — drink it on the portrait
             {
-                text: 'Drag the potion onto your portrait to drink it.',
+                textKey: 'ui.tutorial.drinkPotion',
                 target: () => this.invSprite('potion'),
                 hintTarget: () => avatar(),
                 eventKey: 'inventoryRemoved:potion',
                 done: () => this.invSlot('potion') < 0,
             },
             {
-                text: 'Coins buy cards in shops. Flip the coin card.',
+                textKey: 'ui.tutorial.flipCoin',
                 target: () => this.boardSprite('coin'),
                 eventKey: 'revealed:coin',
                 done: () => this.boardRevealed('coin'),
             },
             {
-                text: 'Tap coins to collect them.',
+                textKey: 'ui.tutorial.takeCoins',
                 target: () => this.boardSprite('coin'),
                 eventKey: 'removed:coin',
                 done: () => !this.boardCard('coin'),
             },
             // 16 — done
             {
-                text: "That's the whole loop: flip, fight, collect, and grow stronger. Press Finish when you're ready.",
+                textKey: 'ui.tutorial.wrapUp',
                 target: () => null,
                 noHole: true,
                 done: () => false, // ends only via the Finish (skip) button

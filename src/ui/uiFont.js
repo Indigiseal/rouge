@@ -18,10 +18,8 @@ export const FONT_SIZE = {
     /** Everything else — field labels, button labels, readouts. */
     body: '16px',
     /**
-     * Only for labels their art is too small to hold at body size. Right now
-     * that is the reset plate alone: it is 128px wide and its warning badge
-     * takes 27 of them, leaving ~90px, while "Сбросить прогресс" needs 129px at
-     * body size. Widen that plate to ~160px and this size can retire.
+     * Floor for labels that had to shrink. Nothing sets this directly — see
+     * fitLabel, which steps a label down until it fits the art it sits on.
      */
     small: '11px',
 };
@@ -44,4 +42,32 @@ export function serifStyle(size, color) {
         resolution: PIXEL_SCALE,
         useCanvasText: true,
     };
+}
+
+/** Sizes a label may shrink through, largest first. */
+const FIT_STEPS = ['16px', '15px', '14px', '13px', '12px', '11px', '10px'];
+
+/**
+ * Shrink a label until it fits the width available, and report the size used.
+ *
+ * The button plates were drawn for the old pixel font, which is much narrower
+ * than a serif — "Sitio de pruebas" needs 85px on a 90px plate where "Test
+ * Site" needed 47. Rather than shorten copy to suit the art, or leave one
+ * language overflowing, a label that will not fit steps down a size at a time.
+ *
+ * Only shrinks. A label that already fits is left alone, so nothing that looks
+ * right today changes.
+ *
+ * @param {Phaser.GameObjects.Text} text
+ * @param {number} maxWidth  room available, in world units
+ * @param {string} [startSize]  size it was created at
+ */
+export function fitLabel(text, maxWidth, startSize = FONT_SIZE.body) {
+    if (!text?.setFontSize || text.width <= maxWidth) return startSize;
+    const from = FIT_STEPS.indexOf(startSize);
+    for (const size of FIT_STEPS.slice(from < 0 ? 0 : from + 1)) {
+        text.setFontSize(size);
+        if (text.width <= maxWidth) return size;
+    }
+    return FIT_STEPS[FIT_STEPS.length - 1];
 }

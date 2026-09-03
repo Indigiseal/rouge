@@ -2,6 +2,7 @@
 // device viewport (twice as large since the canvas went full resolution), so
 // reading those put every highlight in the wrong place.
 import { WORLD_WIDTH, WORLD_HEIGHT } from '../config/renderScale.js';
+import { t } from '../i18n/i18n.js';
 // TutorialOverlay — the coach-mark layer used by the guided tutorial.
 //
 // Input model (the "hard lock"):
@@ -110,7 +111,7 @@ export class TutorialOverlay {
             .setDepth(this.ART_DEPTH)
             .setStrokeStyle(1, 0x888888)
             .setInteractive({ useHandCursor: true });
-        this.skipText = this.scene.add.text(W - 33, 14, 'Skip', {
+        this.skipText = this.scene.add.text(W - 33, 14, t(this.scene, 'ui.tutorial.skip'), {
             fontSize: '9px', fill: '#dddddd', fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(this.ART_DEPTH + 1);
         this.skipBg.on('pointerdown', (p, x, y, event) => {

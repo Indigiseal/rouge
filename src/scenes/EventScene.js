@@ -930,7 +930,7 @@ export class EventScene extends Phaser.Scene {
         .setAlpha(0)
         .setDepth(2);
     }
-    this.continueBtnText = this.add.text(continueX, continueY, 'Continue', {
+    this.continueBtnText = this.add.text(continueX, continueY, t(this, 'ui.common.continue'), {
       fontSize: '12px', fill: WHITE, fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5).setAlpha(0).setDepth(3);
 
@@ -1006,8 +1006,9 @@ export class EventScene extends Phaser.Scene {
       const bg = this.add.rectangle(x, y, buttonWidth, buttonHeight, 0x050505, 0.58)
         .setDepth(2);
 
-      const label = this.add.text(x, y, choice.text, {
-        fontSize: smallFont ? '10px' : (choice.text.length > 44 ? '11px' : '13px'),
+      const choiceLabel = this._choiceLabel(choice);
+      const label = this.add.text(x, y, choiceLabel, {
+        fontSize: smallFont ? '10px' : (choiceLabel.length > 44 ? '11px' : '13px'),
         fill: '#ffffff',
         fontFamily: '"HoMM Pixel"',
         align: 'center',
@@ -1021,6 +1022,13 @@ export class EventScene extends Phaser.Scene {
 
       this._choiceBtns.push({ bg, label });
     });
+  }
+
+  // A choice's on-screen label. `text` stays English — the human-run recorder
+  // and the balance sim both key off it — so translated copy rides alongside in
+  // `textKey`, and anything without one still renders its English text.
+  _choiceLabel(choice) {
+    return choice?.textKey ? t(this, choice.textKey) : (choice?.text ?? '');
   }
 
   _resolve(choice, choiceIdx, opts = {}) {
@@ -1644,6 +1652,7 @@ export class EventScene extends Phaser.Scene {
     this._reward(`Received: ${rerolledCard.name || 'a different card'}`);
     this._resolve({
       text: 'Offer card',
+      textKey: 'ui.event.choice.offerCard',
       action: () => {},
       outcome: 'You slide the card between the stone teeth.\n\nThe mouth closes. Stone grinds on stone, and for a few seconds the head chews.\n\nThen the jaw cracks open. A different card is lying on the tongue, damp with gray dust.'
     }, -1, { keepRewards: true });
@@ -1695,6 +1704,7 @@ export class EventScene extends Phaser.Scene {
       : `${cardData.name || 'Armor'}: +1 thorn damage`);
     this._resolve({
       text: 'Offer card',
+      textKey: 'ui.event.choice.offerCard',
       action: () => {},
       outcome: 'You hold the card out to the vines.\n\nThey wrap it carefully — almost gently — and sink a few black thorns into its edge.\n\nWhen they let go, the card is not the same.'
     }, -1, { keepRewards: true });
@@ -1945,6 +1955,7 @@ export class EventScene extends Phaser.Scene {
     this.gameScene?.updateUI?.();
     this._resolve({
       text: 'Wrestle',
+      textKey: 'ui.event.choice.wrestle',
       action: () => {},
       outcome: (state, s) => s.armWrestleOutcome
     }, -1, { keepRewards: true });
@@ -1985,6 +1996,7 @@ export class EventScene extends Phaser.Scene {
     this._resolve({
       id: 'music_box_force',
       text: 'Force it open',
+      textKey: 'ui.event.choice.forceOpen',
       action: () => {},
       outcome: (state, s) => s.musicBoxForceOutcome,
     }, -1, { keepRewards: true });
@@ -2031,6 +2043,7 @@ export class EventScene extends Phaser.Scene {
     this._resolve({
       id: 'nest_search',
       text: 'Search the nest',
+      textKey: 'ui.event.choice.searchNest',
       action: () => {},
       outcome: (state, s) => s.birdNestOutcome,
     }, -1, { keepRewards: true });
@@ -2267,6 +2280,7 @@ export class EventScene extends Phaser.Scene {
     this._reward(describeWeaponEnchant(cardData) || `${cardData.name}: enchanted`);
     this._resolve({
       text: 'Offer weapon',
+      textKey: 'ui.event.choice.offerWeapon',
       action: () => {},
       outcome: `You press the weapon flat against the glass.\n\nThe case opens from the inside. The ${magicName} settles against the metal and sinks in, and the glass closes over nothing.\n\nThe other cases go dark.\n\nWhat you are holding is called ${cardData.name} now.`
     }, -1, { keepRewards: true });
@@ -2366,6 +2380,7 @@ export class EventScene extends Phaser.Scene {
     this._reward(`Traded: ${oldName} → ${newCard.name || 'upgraded card'}`);
     this._resolve({
       text: 'Trade',
+      textKey: 'ui.event.choice.trade',
       action: () => {},
       outcome: 'You hold the card out over the water. Your reflection lifts the wrong hand.\n\nThe card sinks without a sound. A different one comes up, cold and dripping tar.\n\nFor a second it feels like you made a deal with yourself.'
     }, -1, { keepRewards: true });
@@ -2485,7 +2500,7 @@ export class EventScene extends Phaser.Scene {
       const bg = this.add.rectangle(centerX, y, 130, 15, 0x050505, 0.58)
         .setDepth(5)
         .setInteractive({ useHandCursor: true });
-      const label = this.add.text(centerX, y, refuseChoice.text, {
+      const label = this.add.text(centerX, y, this._choiceLabel(refuseChoice), {
         fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
       }).setOrigin(0.5).setDepth(6);
       bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
@@ -2595,7 +2610,7 @@ export class EventScene extends Phaser.Scene {
     // Shorten the wizard's narration window so it clears the tray.
     this._setReadingScroll([this.descText], 42, 120, this.descText.y + this.descText.height);
 
-    this._wizardHint = this.add.text(centerX, 128, 'Drag a card onto the tray', {
+    this._wizardHint = this.add.text(centerX, 128, t(this, 'ui.event.dragCardHint'), {
       fontSize: '11px', fill: '#ffe8b0', fontFamily: '"HoMM Pixel"', align: 'center'
     }).setOrigin(0.5).setDepth(5);
 
@@ -2613,7 +2628,7 @@ export class EventScene extends Phaser.Scene {
       const y = 244;
       const bg = this.add.rectangle(centerX, y, 150, 15, 0x050505, 0.58)
         .setDepth(5).setInteractive({ useHandCursor: true });
-      const label = this.add.text(centerX, y, declineChoice.text, {
+      const label = this.add.text(centerX, y, this._choiceLabel(declineChoice), {
         fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
       }).setOrigin(0.5).setDepth(6);
       bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
@@ -2638,6 +2653,7 @@ export class EventScene extends Phaser.Scene {
       this._deliverCardReward(this.createHolographicOmenCard(), 'Holographic Omen', 'Gained passive card: Holographic Omen');
       this._resolve({
         text: 'Trade junk',
+        textKey: 'ui.event.choice.tradeJunk',
         action: () => {},
         outcome: 'You put the trinket on the tray. It snaps back into the booth.\n\nThe glass goes dark. Then a rainbow sheen spreads across it from the inside — thin and oily, like light on spilled ink.\n\nA card slides out. It is far too bright for the machine that made it.'
       }, -1, { keepRewards: true });
@@ -2662,6 +2678,7 @@ export class EventScene extends Phaser.Scene {
       this._reward(`Traded: ${oldName} → ${newCard.name || 'a new card'}`);
       this._resolve({
         text: 'Reroll',
+        textKey: 'ui.event.choice.reroll',
         action: () => {},
         outcome: 'You put one of your cards on the tray. It snaps back before you can change your mind.\n\nBehind the glass, the wizard looks at the card for a long time. Then it taps the glass twice.\n\nA different card slides out.'
       }, -1, { keepRewards: true });

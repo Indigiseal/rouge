@@ -41,7 +41,7 @@ export class SandboxHubScene extends Phaser.Scene {
       const row = Math.floor(i / cols);
       const x = startX + col * gapX;
       const y = startY + row * gapY;
-      this.createEncounterButton(x, y, entry.label, () => this.launchEncounter(entry.id));
+      this.createEncounterButton(x, y, t(this, entry.labelKey ?? entry.label), () => this.launchEncounter(entry.id));
     });
 
     // "Event" above rolls whatever the story rules would serve next. This picks

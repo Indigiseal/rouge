@@ -3,7 +3,7 @@
 
 import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
+import { t, tCount, translateDescription, translateItemName } from '../i18n/i18n.js';
 import { CHARACTER_CLASSES } from '../content/characters/CharacterClasses.js';
 import { getMonthDisplayName } from '../content/months/index.js';
 
@@ -96,7 +96,9 @@ export const CombatHud = {
         // gamingBoard lip covers month/act/floor in the top-right.
         const TOP_HUD_DEPTH = 40;
         // Month first (bright), then Act/Floor (muted) — easy to spot which calendar month you're in.
-        this.floorText = this.add.text(455, 15, 'Thornwake  ·  Act 1 · Floor 1', {
+        this.floorText = this.add.text(455, 15, t(this.scene, 'ui.hud.floorBanner', {
+            month: 'Thornwake', act: 1, floor: 1,
+        }), {
             fontSize: '13px',
             fill: '#f5e6c8',
             fontFamily: '"HoMM Pixel"'
@@ -415,7 +417,9 @@ export const CombatHud = {
             this.gameState.calendarMonthIndex ?? 0,
             this.gameState.currentFloor || 1
         );
-        this.floorText.setText(`${monthName}  ·  Act ${_act} · Floor ${this.gameState.currentFloor}`);
+        this.floorText.setText(t(this.scene, 'ui.hud.floorBanner', {
+            month: monthName, act: _act, floor: this.gameState.currentFloor,
+        }));
         this.updateEquippedArmorPanel();
         
         // Update health orb
@@ -823,24 +827,32 @@ export const CombatHud = {
         const entries = [];
 
         // --- Debuffs / status effects from playerEffects array ---
+        // "3 turns" is not one word in every language — Russian wants ход /
+        // хода / ходов depending on the number — so the unit comes from tCount
+        // and the sentence order from a template.
+        const turns = (count) => tCount(this.scene, 'ui.hud.turnUnit', count);
+        const withTurns = (name, count) =>
+            t(this.scene, 'ui.hud.effectTurns', { name, count, unit: turns(count) });
+
         this.gameState.playerEffects.forEach((effect) => {
             switch (effect.type) {
                 case 'poison':
-                    entries.push({ text: `Poison ${effect.turns}`, color: '#66ff66' });
+                    entries.push({ text: t(this.scene, 'ui.hud.poison', { count: effect.turns }), color: '#66ff66' });
                     break;
                 case 'burn':
-                    entries.push({ text: `Burn (${effect.turns} turns)`, color: '#ff7040' });
+                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.burn'), effect.turns), color: '#ff7040' });
                     break;
                 case 'stun':
-                    entries.push({ text: `Stunned (${effect.turns} turns)`, color: '#ffd700' });
+                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.stun'), effect.turns), color: '#ffd700' });
                     break;
                 case 'weakness':
-                    entries.push({ text: `Weakened (${effect.turns} turns)`, color: '#aa66ff' });
+                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.weakness'), effect.turns), color: '#aa66ff' });
                     break;
                 default:
+                    // An effect with no key of its own still shows, in English.
                     entries.push({
                         text: effect.turns != null
-                            ? `${this.capitalizeEffect(effect.type)} (${effect.turns} turns)`
+                            ? withTurns(this.capitalizeEffect(effect.type), effect.turns)
                             : this.capitalizeEffect(effect.type),
                         color: '#cccccc'
                     });
@@ -849,25 +861,39 @@ export const CombatHud = {
 
         // --- Buffs from magic spells ---
         const gs = this.gameState;
+        const buffTurns = (nameKey, bonus, count) => t(this.scene, 'ui.hud.buffTurns', {
+            name: t(this.scene, nameKey), bonus, count, unit: turns(count),
+        });
         if (gs.shadowBlade && gs.shadowBlade.turns > 0) {
-            const mult = gs.shadowBlade.multiplier ? `+${Math.round((gs.shadowBlade.multiplier - 1) * 100)}% DMG` : '';
-            entries.push({ text: `Shadow Blade ${mult} (${gs.shadowBlade.turns} turns)`, color: '#b266ff' });
+            const mult = gs.shadowBlade.multiplier
+                ? t(this.scene, 'ui.hud.dmgBonus', { percent: Math.round((gs.shadowBlade.multiplier - 1) * 100) })
+                : '';
+            entries.push({ text: buffTurns('ui.hud.shadowBlade', mult, gs.shadowBlade.turns), color: '#b266ff' });
         }
         if (gs.magicShield && gs.magicShield.turns > 0) {
-            const mult = gs.magicShield.multiplier ? `+${Math.round((gs.magicShield.multiplier - 1) * 100)}% DEF` : '';
-            entries.push({ text: `Magic Shield ${mult} (${gs.magicShield.turns} turns)`, color: '#33aaff' });
+            const mult = gs.magicShield.multiplier
+                ? t(this.scene, 'ui.hud.defBonus', { percent: Math.round((gs.magicShield.multiplier - 1) * 100) })
+                : '';
+            entries.push({ text: buffTurns('ui.hud.magicShield', mult, gs.magicShield.turns), color: '#33aaff' });
         }
         if (gs.boneWall && gs.boneWall > 0) {
-            entries.push({ text: `Bone Shield (${gs.boneWall} ${gs.boneWall === 1 ? 'charge' : 'charges'})`, color: '#ffffff' });
+            entries.push({
+                text: t(this.scene, 'ui.hud.shieldCharges', {
+                    name: t(this.scene, 'ui.hud.boneShield'),
+                    count: gs.boneWall,
+                    unit: tCount(this.scene, 'ui.hud.chargeUnit', gs.boneWall),
+                }),
+                color: '#ffffff'
+            });
         }
         if (gs.blockNextAttack) {
-            entries.push({ text: 'Block Next Attack', color: '#88ccff' });
+            entries.push({ text: t(this.scene, 'ui.hud.blockNextAttack'), color: '#88ccff' });
         }
 
         // --- Relic-driven counters ---
         if ((gs.discardCritChance || 0) > 0) {
             const percent = Math.round(gs.discardCritChance * 100);
-            entries.push({ text: `Discard Crit +${percent}%`, color: '#ffd700' });
+            entries.push({ text: t(this.scene, 'ui.hud.discardCrit', { percent }), color: '#ffd700' });
         } else {
             // Show progress toward first crit step if the relic is equipped but not yet earned
             const relic = gs.relicEffects || {};
@@ -876,7 +902,10 @@ export const CombatHud = {
                 const next = relic.discardCritPerCards - (discarded % relic.discardCritPerCards);
                 if (discarded > 0 || relic.discardCritPerCards <= 10) {
                     entries.push({
-                        text: `Discard Crit (${next} to +${Math.round(relic.discardCritPerStep * 100)}%)`,
+                        text: t(this.scene, 'ui.hud.discardCritProgress', {
+                            cards: next,
+                            percent: Math.round(relic.discardCritPerStep * 100),
+                        }),
                         color: '#ddaa66'
                     });
                 }
