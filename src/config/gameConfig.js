@@ -2,6 +2,7 @@ import { PreloadScene } from '../scenes/PreloadScene.js';
 import { MainMenuScene } from '../scenes/MainMenuScene.js';
 import { GameScene } from '../scenes/GameScene.js';
 import { MapViewScene } from '../scenes/MapViewScene.js';
+import { LocationPickScene } from '../scenes/LocationPickScene.js';
 import { RestScene } from '../scenes/RestScene.js';
 import { AnvilScene } from '../scenes/AnvilScene.js';
 import { ShopScene } from '../scenes/ShopScene.js';
@@ -12,6 +13,7 @@ import { TreasureScene } from '../scenes/TreasureScene.js';
 import { SandboxHubScene } from '../scenes/SandboxHubScene.js';
 import { SandboxStoryScene } from '../scenes/SandboxStoryScene.js';
 import { CharacterSelectScene } from '../scenes/CharacterSelectScene.js';
+import { VillageScene } from '../scenes/VillageScene.js';
 import { TalentTreeScene } from '../scenes/TalentTreeScene.js';
 import { ArmorerPickScene } from '../scenes/ArmorerPickScene.js';
 
@@ -48,8 +50,10 @@ export function createGameConfig(Phaser) {
       SandboxHubScene,
       SandboxStoryScene,
       CharacterSelectScene,
+      VillageScene,
       TalentTreeScene,
       ArmorerPickScene,
+      LocationPickScene,
     ],
     scale: {
       mode: Phaser.Scale.NONE,

@@ -1,10 +1,7 @@
-// 12-month calendar circle (lore). Gameplay rotates through the first
-// MONTH_ROTATION_LENGTH entries until more months ship with rosters.
-//
-// A run walks three consecutive months in that rotation:
-// start N → floors 1–15, N+1 → 16–30, N+2 → 31–45 (wrap).
-//
-// Month packs: content/months/<id>/{enemies,assets}/
+// 12-month calendar circle (lore archive). Gameplay no longer rotates through
+// MONTH_ROTATION_LENGTH: the player picks a Path location per act
+// (`src/content/locations/`). This file still owns month packs and is the
+// fallback for legacy saves (`legacyFill`) and the sandbox pin.
 
 import { THORNWAKE_MONTH } from './thornwake/index.js';
 import { SILKDEEP_MONTH } from './silkdeep/index.js';

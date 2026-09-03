@@ -37,6 +37,7 @@ export function openAmuletChoiceOverlay(scene, cfg) {
   const close = () => {
     hideItemTooltip(scene);
     for (const n of nodes) {
+      try { n.disableInteractive?.(); } catch (_) { /* already gone */ }
       try { n.destroy?.(); } catch (_) { /* already gone */ }
     }
     scene._amuletChoiceOpen = false;
@@ -106,7 +107,7 @@ export function openAmuletChoiceOverlay(scene, cfg) {
       scene.tweens.add({ targets: sprite, y: cardY, duration: 120, ease: 'Power2' });
       hideItemTooltip(scene);
     });
-    sprite.on('pointerdown', () => {
+    sprite.on('pointerup', () => {
       const ok = cfg.amuletManager.addAmulet(item.id);
       if (!ok) {
         // addAmulet already floated its own reason. This overlay has no cancel

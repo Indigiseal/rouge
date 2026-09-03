@@ -32,7 +32,14 @@ export { TRAPS } from './traps.js';
 export { POTIONS, potionNameForHealAmount } from './potions.js';
 export { FOOD, foodNameForActionAmount } from './food.js';
 export { MAGIC, getMagic } from './magic.js';
-export { GEMS, GEM_SLOTS_BY_RARITY, gemSlotsForRarity } from './gems.js';
+export {
+  GEMS,
+  GEM_SLOTS_BY_RARITY,
+  FIRE_GEM_SPLASH_RADIUS,
+  gemSlotsForRarity,
+  gemStackDamage,
+  resolveFireGemSplashRadius,
+} from './gems.js';
 export { AMULETS, AMULET_DROP_DATA, getAmulet } from './amulets.js';
 export { THORN_STATS_BY_RARITY, THORNS_SPRITE_BY_RARITY, getThornStats } from './thorns.js';
 

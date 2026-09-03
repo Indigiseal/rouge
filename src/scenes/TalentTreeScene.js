@@ -298,7 +298,11 @@ export class TalentTreeScene extends Phaser.Scene {
       if (needsArmorPick) {
         this.scene.start('ArmorerPickScene', { characterId: this.characterId });
       } else {
-        this.scene.start('GameScene', { newGame: true, characterId: this.characterId });
+        this.scene.start('LocationPickScene', {
+          mode: 'newRun',
+          act: 1,
+          characterId: this.characterId,
+        });
       }
     });
   }

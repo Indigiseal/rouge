@@ -54,18 +54,17 @@ export const AMULET_SOURCE_MIN_FLOOR = {
 
 // When an upgrade is owned, its weaker forms are excluded from offers.
 export const AMULET_UPGRADE_REPLACES = {
-  amuletOfGreaterEvasion: ['amuletOfEvasion'],
-  ringOfGreaterHealth: ['ringOfHealth'],
-  amuletOfGreaterProtection: ['amuletOfProtection'],
   ringOfGreaterRegeneration: ['ringOfRegeneration'],
   earringOfGreaterArmorDurability: ['earringOfArmorDurability'],
   earringOfGreaterWeaponDurability: ['earringOfWeaponDurability'],
-  philosophersStone: [
-    'ringOfHealth', 'ringOfGreaterHealth',
-    'ringOfRegeneration', 'ringOfGreaterRegeneration',
-  ],
   legendaryWhetstone: [
     'earringOfWeaponDurability', 'earringOfGreaterWeaponDurability',
   ],
-  glovesOfHermitWizard: ['runeOfFire', 'runeOfZap', 'runeOfPoison'],
+  glovesOfHermitWizard: [
+    'runeOfFire', 'runeOfZap', 'runeOfPoison',
+    'greaterRuneOfFire', 'greaterRuneOfZap', 'greaterRuneOfPoison',
+  ],
+  markOfTreachery: ['markOfHesitation'],
+  twinMarks: ['markOfHesitation', 'markOfTreachery'],
+  collarOfBinding: ['markOfHesitation', 'markOfTreachery', 'twinMarks'],
 };

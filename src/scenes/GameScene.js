@@ -25,10 +25,12 @@ import {
 } from '../ui/BossRewardRoom.js';
 import { t } from '../i18n/i18n.js';
 import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from '../content/story/StoryProgress.js';
-import { isMetaProgressionDisabled } from '../config/TestOptions.js';
+import { areAmuletsDisabled } from '../config/TestOptions.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { CombatTurnController } from '../systems/combat/CombatTurnController.js';
-import { getMonthIndexForFloor } from '../content/months/index.js';
+import { applyLocationChoice, emptyActLocationIds, normalizeActLocationIds } from '../content/locations/index.js';
+import { healerRarityForRank } from '../content/village/index.js';
+import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
 import {
     applySandboxLoadout,
     applySandboxStorySetup,
@@ -95,14 +97,15 @@ export class GameScene extends Phaser.Scene {
             // New run
             this.gameState = new GameState(this);
             this.gameState.characterId = data.characterId || 'rogue';
-            // Next run opens on the month queued after the last defeat/victory
-            // (Thornwake ↔ Silkdeep). Tutorial/sandbox always start Thornwake.
-            this.gameState.calendarMonthIndex = (this.tutorialMode || this.sandboxMode || !this.metaManager)
-              ? 0
-              : this.metaManager.getNextCalendarMonthIndex();
-            // Apply talent effects to fresh game state (skip for the tutorial so
-            // its rigged board is deterministic).
-            if (!this.tutorialMode && !this.sandboxMode && !isMetaProgressionDisabled()) {
+            this.gameState.actLocationIds = emptyActLocationIds();
+            this.gameState.calendarMonthIndex = 0;
+            if (this.tutorialMode || this.sandboxMode) {
+              applyLocationChoice(this.gameState, 'thornwake');
+            } else if (data.locationId) {
+              applyLocationChoice(this.gameState, data.locationId);
+            }
+            // Village buildings always apply. Talent tree is live-off (flag).
+            if (!this.tutorialMode && !this.sandboxMode) {
                 const opts = {};
                 if (data.armorerArmorType === 'chain' || data.armorerArmorType === 'plate') {
                     opts.armorerArmorType = data.armorerArmorType;
@@ -192,6 +195,11 @@ export class GameScene extends Phaser.Scene {
     
     create() {
         this.events.once('shutdown', this.shutdown, this);
+        // LocationPick / Village sit after GameScene in the scene list.
+        // Phaser InputManager is globalTopOnly: if those scenes are still
+        // running, their cards swallow pointerup and the weapon never gets
+        // dragend (same bug as the EventScene glass cases).
+        this.stopScenesAboveCombat({ keepMap: true });
         // Load saved volume settings. Master volume is kept internally at 1;
         // players adjust Music and Sound Effects directly.
         this.game.globalVolume = loadVolumeSettings();
@@ -222,6 +230,9 @@ export class GameScene extends Phaser.Scene {
         // Load saved run if continuing
         if (this.shouldLoadSave) {
             this.loadCurrentRun();
+        } else if (!this.tutorialMode && !this.sandboxMode && this.metaManager
+            && !this.gameState.villageEffects) {
+            this.metaManager.applyVillageEffects(this.gameState, false);
         }
         
         // Create UI
@@ -269,6 +280,8 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        this.stopScenesAboveCombat({ keepMap: false });
+
         if (this.sandboxMode && this.sandboxRoom) {
             this.bootSandboxEncounter();
             return;
@@ -283,6 +296,7 @@ export class GameScene extends Phaser.Scene {
             this.restoreSavedCombatRoom();
         } else {
             this.startNewFloor();
+            this.offerHealerAmuletIfNeeded();
         }
         
         // Update room title after loading
@@ -413,6 +427,45 @@ export class GameScene extends Phaser.Scene {
         background.setDepth(-10);
     }
 
+    stopScenesAboveCombat({ keepMap = false } = {}) {
+        const keep = new Set(['GameScene', 'PreloadScene']);
+        if (keepMap) keep.add('MapViewScene');
+        this.game.scene.getScenes(false).forEach((scene) => {
+            const key = scene.sys.settings.key;
+            if (keep.has(key)) return;
+            // INIT scenes still canInput() in Phaser 3.70. A leftover
+            // LocationPick card list would swallow pointerup over the board.
+            if (scene.input) scene.input.enabled = false;
+            if (scene.sys.isActive() || scene.sys.isSleeping()) {
+                this.scene.stop(key);
+            }
+        });
+    }
+
+    offerHealerAmuletIfNeeded() {
+        if (this.shouldLoadSave || this.tutorialMode || this.sandboxMode) return;
+        if (areAmuletsDisabled()) return;
+        const rank = this.gameState?.talentEffects?.healerRank || 0;
+        const rarity = healerRarityForRank(rank);
+        if (!rarity) return;
+        const options = this.cardSystem?.cardDataGenerator?.createAmuletChoice(
+            this.gameState.currentFloor || 1,
+            rarity,
+            3,
+            this.gameState,
+            { ignoreMinFloor: true },
+        ) || [];
+        if (!options.length) return;
+        this.time.delayedCall(350, () => {
+            openAmuletChoiceOverlay(this, {
+                rarity,
+                options,
+                amuletManager: this.amuletManager,
+                title: t(this, 'ui.village.healerTitle'),
+            });
+        });
+    }
+
     startNewFloor() {
         this.clearEnemyTurnTimers();
         this.clearFloatingTexts();
@@ -451,6 +504,8 @@ export class GameScene extends Phaser.Scene {
         if (this.roomType === 'BOSS') this.startBossMusic(); else this.stopBossMusic();
         // Reset per-floor amulet flags
         this.gameState.charmingTuneUsed = false;
+        this.gameState.strategyMarchUsed = false;
+        this.gameState.strategyClusterUsed = false;
         if (this.tutorialMode) {
             // Rigged lesson board. No starter swords — the tutorial hands them
             // out on the board so the player learns to pick them up.
@@ -910,7 +965,7 @@ export class GameScene extends Phaser.Scene {
             this.unlockSkeletonForRareShopAfterDeath();
             if (!this.sandboxMode) this.saveManager?.clearCurrentRun();
 
-            if (!this.sandboxMode && this.metaManager && !isMetaProgressionDisabled()) {
+            if (!this.sandboxMode && this.metaManager) {
                 this.metaManager.totalRuns++;
                 if (floor > this.metaManager.bestFloor) {
                     this.metaManager.bestFloor = floor;
@@ -1292,19 +1347,15 @@ export class GameScene extends Phaser.Scene {
         humanRunRecorder.finishAndDownload(this, 'victory', {
             floor: this.gameState?.currentFloor ?? null,
         });
-        if (!this.sandboxMode && !this.tutorialMode && this.metaManager && !isMetaProgressionDisabled()) {
+        if (!this.sandboxMode && !this.tutorialMode && this.metaManager) {
             this.queueNextRunMonth();
         }
         return showVictoryResult(this);
     }
 
-    /** After defeat/victory, next New Run opens on the following calendar month. */
+    /** Location pick replaced calendar rotation; next New Run always chooses. */
     queueNextRunMonth() {
-        if (this.sandboxMode || this.tutorialMode || !this.metaManager) return;
-        const start = this.gameState?.calendarMonthIndex ?? 0;
-        const floor = this.gameState?.currentFloor ?? 1;
-        const currentMonth = getMonthIndexForFloor(start, floor);
-        this.metaManager.advanceCalendarMonthAfterRun(currentMonth);
+        return;
     }
 
     grantCardSpentRelicBonus(card, x = this.playerAvatar.x, y = this.playerAvatar.y) {
@@ -1368,9 +1419,9 @@ export class GameScene extends Phaser.Scene {
         
         // Pause the current scene
         this.scene.pause();
-        
-        // Launch the pause menu scene
         this.scene.launch('PauseMenuScene', { pausedScene: 'GameScene' });
+        const pause = this.scene.get('PauseMenuScene');
+        if (pause?.input) pause.input.enabled = true;
     }
     
     // Save current run method
@@ -1403,6 +1454,10 @@ export class GameScene extends Phaser.Scene {
         this.gameState.crystals = runData.player.crystals;
         this.gameState.currentFloor = runData.player.currentFloor;
         this.gameState.calendarMonthIndex = runData.player.calendarMonthIndex ?? 0;
+        this.gameState.actLocationIds = normalizeActLocationIds(
+            runData.player.actLocationIds,
+            runData.player.calendarMonthIndex ?? 0
+        );
         this.gameState.bonusInventorySlots = runData.player.bonusInventorySlots;
         this.gameState.firstActionUsed = runData.player.firstActionUsed;
         this.gameState.baseMaxHealth = runData.player.baseMaxHealth;
@@ -1413,6 +1468,8 @@ export class GameScene extends Phaser.Scene {
         this.gameState.journalBonusHP = runData.player.journalBonusHP || 0;
         this.gameState.mapBonusAP = runData.player.mapBonusAP || 0;
         this.gameState.mapFloorCount = runData.player.mapFloorCount || 0;
+        this.gameState.secondWindUsed = runData.player.secondWindUsed || 0;
+        this.gameState.strategyDetourUsedAct = runData.player.strategyDetourUsedAct || 0;
         // Equipment
         this.gameState.equippedWeapon = runData.equipment.equippedWeapon;
         this.gameState.equippedArmor = runData.equipment.equippedArmor;
@@ -1471,8 +1528,8 @@ export class GameScene extends Phaser.Scene {
         // A loaded run already contains its starter swords in the saved
         // inventory — never re-grant them on Continue/resume/restart.
         this.gameState.startingCardsGranted = true;
-        // Re-apply relic effects on top of loaded state
-        if (this.metaManager && !isMetaProgressionDisabled()) {
+        // Re-apply village (and talents if the flag is on) on top of loaded state
+        if (this.metaManager) {
             this.metaManager.applyRelicEffects(this.gameState, false);
         }
         return true;
@@ -1537,6 +1594,7 @@ export class GameScene extends Phaser.Scene {
         this.inventorySystem?.setDragOverlayScene?.(null);
         this.inventorySystem?.clearDropZones?.();
         this.inventorySystem?.setStationMode(false);
+        this.stopScenesAboveCombat({ keepMap: true });
 
         // Restore current room type from gameState
         this.roomType = this.gameState.roomType || 'COMBAT';

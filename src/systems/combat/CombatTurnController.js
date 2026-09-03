@@ -1,6 +1,7 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { CombatSequencer } from './CombatSequencer.js';
 import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
+import { CONTROL_HESITATION_CHANCE, pickControlTreacheryTarget } from '../../content/amulets/control.js';
 import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
 import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
 import { getEnemy } from '../../content/cards/enemies.js';
@@ -254,6 +255,10 @@ export class CombatTurnController {
             if (card && scene.isEnemyCard(card) && (card.revealed || veilFaceDown)) {
                 this.processEnemyAttack(card, index);
                 scene.updateUI();
+                if (scene.gameState.revivedThisHit) {
+                    this.finishEnemyTurnEffects({ skipPlayerPoison: true });
+                    return;
+                }
             }
 
             // Long enough for one attacker's whole timeline (hit → thorns →
@@ -343,6 +348,28 @@ export class CombatTurnController {
             scene.gameState.charmingTuneUsed = true;
             scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed (Lute)', 0xff66ff);
             return;
+        }
+
+        if (card.data?.controlHesitation && Math.random() < CONTROL_HESITATION_CHANCE) {
+            scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Hesitates!', 0x44c8ff);
+            return;
+        }
+
+        if (card.data?.controlTreachery) {
+            const target = pickControlTreacheryTarget(
+                scene.cardSystem.boardCards,
+                index,
+                (other) => scene.isEnemyCard(other)
+            );
+            if (target) {
+                scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Betrayal!', 0xff66aa);
+                scene.cardSystem.attackEnemy(
+                    target.index,
+                    getEnemyHitAttack(card, scene.cardSystem.boardCards),
+                    false
+                );
+                return;
+            }
         }
 
         // Siren's Perfume — chance to redirect attack onto another enemy
@@ -550,6 +577,7 @@ export class CombatTurnController {
         for (const { card, index } of allies) {
             if (scene.gameState.playerHealth <= 0) break;
             this.processEnemyAttack(card, index, { fromRally: true });
+            if (scene.gameState.revivedThisHit) break;
         }
     }
 
@@ -610,7 +638,7 @@ export class CombatTurnController {
         }
     }
 
-    finishEnemyTurnEffects({ runCompanions = true } = {}) {
+    finishEnemyTurnEffects({ runCompanions = true, skipPlayerPoison = false } = {}) {
         const scene = this.scene;
         // Process magic buff durations AFTER enemy attacks
         if (scene.gameState.shadowBlade) {
@@ -631,8 +659,10 @@ export class CombatTurnController {
 
         scene.cardSystem.processEnemyPoisonEffects();
 
-        // Process player poison effects
+        // Process player poison effects. Skip after a temple/Second Wind rise
+        // so the rest of this enemy phase cannot immediately drop them again.
         let effectDamage = 0;
+        if (!skipPlayerPoison) {
         for (let i = scene.gameState.playerEffects.length - 1; i >= 0; i--) {
             const effect = scene.gameState.playerEffects[i];
             if (effect.type === 'poison') {
@@ -668,6 +698,7 @@ export class CombatTurnController {
                 this.isEnemyTurn = false;
                 return;
             }
+        }
         }
 
         scene.updateUI();

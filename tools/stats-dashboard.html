@@ -348,7 +348,7 @@
         </label>
         <label class="field" id="subsetWrap" title="Опциональный фильтр id для sweep">
           <span>Sweep subset (comma-separated)</span>
-          <input id="amuletSubset" type="text" placeholder="amuletOfEvasion,vampireFang" />
+          <input id="amuletSubset" type="text" placeholder="vampireFang,ringOfRegeneration" />
           <span class="hint">Пусто = все новые амулеты по одному</span>
         </label>
       </div>
@@ -386,7 +386,7 @@
             <button type="button" data-act="amulet-none-pool" title="Пустой пул (только стартовые, если отмечены)">Пусто</button>
             <button type="button" data-act="amulet-droppable" title="Только обычный дроп/шоп">Только дроп</button>
             <button type="button" data-act="amulet-strong" title="Стартовый strong loadout">Старт: strong</button>
-            <button type="button" data-act="amulet-bag" title="Только Ring of Health на старте">Старт: health</button>
+            <button type="button" data-act="amulet-bag" title="Только Ring of Regeneration на старте">Старт: regen</button>
             <button type="button" data-act="amulet-none-start" title="Без стартовых амулетов">Без старта</button>
           </div>
           <div class="picker-scroll">
@@ -446,8 +446,8 @@
     };
     let currentBatchId = null;
     let catalog = { relics: [], amulets: [], hints: {}, behaviors: [] };
-    const STRONG_START = ['ringOfHealth', 'philosophersStone', 'amuletOfGreaterEvasion', 'amuletOfGreaterProtection',
-      'legendaryWhetstone', 'alchemistBag', 'pouchOfGreed', 'vampireFang'];
+    const STRONG_START = ['ringOfGreaterRegeneration', 'legendaryWhetstone', 'alchemistBag', 'pouchOfGreed',
+      'vampireFang', 'newDragonClaw', 'glovesOfHermitWizard'];
 
     const PRESET_HINTS = {
       balance: 'Без меты и амулетов — чистый баланс.',
@@ -857,7 +857,7 @@
         setPicker('amuletList', { poolIds: [...new Set([...drop, ...start])], startIds: start });
       }
       if (act === 'amulet-strong') setPicker('amuletList', { poolAll: true, startIds: STRONG_START });
-      if (act === 'amulet-bag') setPicker('amuletList', { poolAll: true, startIds: ['ringOfHealth'] });
+      if (act === 'amulet-bag') setPicker('amuletList', { poolAll: true, startIds: ['ringOfRegeneration'] });
       if (act === 'amulet-none-start') {
         const { pool } = readPicker('amuletList');
         setPicker('amuletList', { poolIds: pool, startIds: [] });

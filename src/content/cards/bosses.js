@@ -40,6 +40,16 @@ export const BOSSES = {
       { type: 'summon', enemyType: 'goblin', chance: 0.35, count: 1 }
     ]
   },
+  greenWarden: {
+    type: 'boss', tier: 1,
+    name: 'The Green Warden',
+    health: 86,
+    attack: 11,
+    sprite: 'greenWarden',
+    abilities: [
+      { type: 'summon', enemyType: 'wolf', chance: 0.35, count: 1 }
+    ]
+  },
   spiderQueen: {
     type: 'boss', tier: 1,
     name: 'Spider Queen',
@@ -116,7 +126,7 @@ export const BOSSES = {
 
 // Which bosses can appear as each act's finale.
 export const BOSS_TIERS = {
-  1: ['giantSkeleton', 'goblinKing', 'spiderQueen'],
+  1: ['giantSkeleton', 'goblinKing', 'spiderQueen', 'greenWarden'],
   2: ['soulEater', 'lich', 'cerberus'],
   3: ['ancientCerberus']
 };

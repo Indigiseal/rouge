@@ -1,6 +1,39 @@
 import { CombatSequencer } from './CombatSequencer.js';
 import { effectiveArmorDodge, effectiveArmorProtection } from './ArmorMath.js';
 
+/**
+ * Rise after a killing blow (temple / Second Wind). Reads villageEffects as
+ * well as talentEffects so a wiped talent bag cannot silently drop the temple.
+ * @returns {boolean} true if the player is standing again
+ */
+export function tryLethalRevive(gameState, scene) {
+    if (!gameState || (gameState.playerHealth || 0) > 0) return false;
+    const village = gameState.villageEffects || {};
+    const talents = gameState.talentEffects || {};
+    const fromTemple = Boolean(village.templeRevive || talents.templeRevive);
+    const charges = Math.max(
+        Number(talents.secondWindCharges) || 0,
+        fromTemple ? 1 : 0,
+    );
+    const used = Number(gameState.secondWindUsed) || 0;
+    if (charges <= used) return false;
+
+    gameState.secondWindUsed = used + 1;
+    const healPct = fromTemple
+        ? Math.max(Number(talents.secondWindHealPct) || 0, Number(village.secondWindHealPct) || 0, 0.5)
+        : (Number(talents.secondWindHealPct) || 0.25);
+    gameState.playerHealth = Math.max(1, Math.ceil((gameState.maxHealth || 1) * healPct));
+    gameState.revivedThisHit = true;
+    scene?.createFloatingText?.(
+        scene.playerAvatar?.x ?? 0,
+        scene.playerAvatar?.y ?? 0,
+        fromTemple ? 'Temple!' : 'Second Wind!',
+        0xffdd55
+    );
+    scene?.updateUI?.();
+    return true;
+}
+
 /** Ranged enemy hits (archers). Bosses count as melee, same as thorns. */
 export function isEnemyRangedAttack(card) {
     const data = card?.data;
@@ -20,6 +53,7 @@ export function isEnemyRangedAttack(card) {
  */
 export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source = 'enemy', armorPierce = 0, options = {}) {
     const scene = gameState.scene;
+    gameState.revivedThisHit = false;
     // Poison is internal — armor plating doesn't stop it and doesn't wear out
     // blocking it. Dodge still applies (you can shrug off a tick), but it must
     // not cost durability either, or leather bleeds a pip every poison turn.
@@ -48,6 +82,16 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     if (!isPoison && talentDodge > 0 && Math.random() < talentDodge) {
         if (gameState.equippedArmor) gameState.tickEquippedArmorDurability();
         scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Shadow Step!', 0x88ffcc);
+        return {
+            actualDamage: 0, tookDamage: false, blockedDamage: 0,
+            dodgedDamage: Math.max(0, amount || 0), dodged: true,
+        };
+    }
+
+    const villageDodge = gameState.talentEffects?.villageDodge || 0;
+    if (!isPoison && villageDodge > 0 && Math.random() < villageDodge) {
+        if (gameState.equippedArmor) gameState.tickEquippedArmorDurability();
+        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Armory!', 0x88c0ff);
         return {
             actualDamage: 0, tookDamage: false, blockedDamage: 0,
             dodgedDamage: Math.max(0, amount || 0), dodged: true,
@@ -259,20 +303,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     // (EventScene damage bypasses takeDamage and invokes gameOver()
     // directly on wake — see EventScene.continueAdventure.)
     if (gameState.playerHealth <= 0) {
-        // Second Wind: failure currency. Deliberately NOT an accumulator — the
-        // worth of not dying does not decay with depth the way a stat bonus
-        // does, which is exactly why the branch ends on it.
-        const charges = gameState.talentEffects?.secondWindCharges || 0;
-        const used = gameState.secondWindUsed || 0;
-        if (charges > used) {
-            gameState.secondWindUsed = used + 1;
-            const healPct = gameState.talentEffects?.secondWindHealPct || 0.25;
-            gameState.playerHealth = Math.max(1, Math.ceil(gameState.maxHealth * healPct));
-            scene.createFloatingText?.(
-                scene.playerAvatar?.x ?? 0, scene.playerAvatar?.y ?? 0,
-                'Second Wind!', 0xffdd55
-            );
-        } else {
+        if (!tryLethalRevive(gameState, scene)) {
             gameState.setDeathCause(source, enemyIndex);
             scene.time.delayedCall(100, () => scene.gameOver());
         }
@@ -283,6 +314,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         tookDamage,
         blockedDamage,
         dodgedDamage: 0,
-        dodged: false
+        dodged: false,
+        revived: Boolean(gameState.revivedThisHit),
     };
 }

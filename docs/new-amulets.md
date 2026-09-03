@@ -29,35 +29,38 @@ rare shop `uncommon 25 / rare 60 / legendary 15`; босс `rare 30 / legendary 
 
 Магазины: обычный shop продаёт амулеты с **F5**, rare shop — с **F20**.
 
-Всего в новом каталоге: **25**.
+Всего в новом каталоге: **24**.
+
+Уклонение, запас жизней, снижение входящего урона и второй ревайв убраны:
+это уже делают оружейная, хижина лекаря и храм. Камень философа убран вместе
+с кольцами здоровья.
 
 | # | Название | id | Редкость | Описание | Заменяет | group |
 |---|---|---|---|---|---|---|
-| 1 | Amulet of Evasion | `amuletOfEvasion` | common | 10% dodge | | survival |
-| 2 | Ring of Health | `ringOfHealth` | common | +15 max HP | | survival |
-| 3 | Amulet of Protection | `amuletOfProtection` | common | −20% входящего урона (ceil) | | survival |
-| 4 | Ring of Regeneration | `ringOfRegeneration` | common | +8 HP в начале боевого этажа, +1 каждые 3 этажа (8 → 21) | | survival |
-| 5 | Earring of Armor Durability | `earringOfArmorDurability` | common | 25% не тратить прочность брони при блоке/увороте | | survival |
-| 6 | Earring of Weapon Durability | `earringOfWeaponDurability` | common | 30% не тратить прочность оружия при атаке | | offense |
-| 7 | Amulet of Greater Evasion | `amuletOfGreaterEvasion` | uncommon | 20% dodge | `amuletOfEvasion` | survival |
-| 8 | Ring of Greater Health | `ringOfGreaterHealth` | uncommon | +20 max HP | `ringOfHealth` | survival |
-| 9 | Amulet of Greater Protection | `amuletOfGreaterProtection` | uncommon | −30% входящего урона (ceil) | `amuletOfProtection` | survival |
-| 10 | Ring of Greater Regeneration | `ringOfGreaterRegeneration` | uncommon | +12 HP в начале боевого этажа, +1 каждые 2 этажа (12 → 32) | `ringOfRegeneration` | survival |
-| 11 | Earring of Greater Armor Durability | `earringOfGreaterArmorDurability` | uncommon | 35% не тратить прочность брони | `earringOfArmorDurability` | survival |
-| 12 | Earring of Greater Weapon Durability | `earringOfGreaterWeaponDurability` | uncommon | 40% не тратить прочность оружия | `earringOfWeaponDurability` | offense |
-| 13 | Alchemist Bag | `alchemistBag` | uncommon | Зелья +15% хила и снимают яд | | survival |
-| 14 | Monocle | `monocle` | uncommon | 10% кристалл при убийстве | | utility |
-| 15 | Pouch of Greed | `pouchOfGreed` | uncommon | +20% золота | | utility |
-| 16 | Vampire Fang | `vampireFang` | rare | 15% нанесённого урона в хил (ceil) | | offense |
-| 17 | Dragon Claw | `newDragonClaw` | rare | +15% урона (ceil) | | offense |
-| 18 | Rune of Fire | `runeOfFire` | rare | +20% урона огненных камней (ceil) | | magic |
-| 19 | Rune of Zap | `runeOfZap` | rare | +20% урона Zap камней (ceil) | | magic |
-| 20 | Rune of Poison | `runeOfPoison` | rare | +2 урон тика poison камней | | magic |
-| 21 | Mask of Hollow Whispers | `maskOfHollowWhispers` | rare | 25% карта после убийства (не ловушка/враг/empty) | | utility |
-| 22 | Philosopher's Stone | `philosophersStone` | legendary | +20 max HP, +6 HP в начале боевого этажа, +1 каждые 4 этажа (6 → 17) | Health + Regen rings (все тиры) | survival |
-| 23 | Legendary Whetstone | `legendaryWhetstone` | legendary | 40% не тратить прочность оружия, +10% урона оружия | Weapon Durability earrings | offense |
-| 24 | Lost Noble Diadem | `lostNobleDiadem` | legendary | Prevents death once per run + хил 50% max HP | | survival |
-| 25 | Gloves of the Hermit Wizard | `glovesOfHermitWizard` | legendary | +35% урона всех камней (ceil) | Fire/Zap/Poison runes | magic |
+| 1 | Ring of Regeneration | `ringOfRegeneration` | common | +8 HP в начале боевого этажа, +1 каждые 3 этажа (8 → 21) | | survival |
+| 2 | Earring of Armor Durability | `earringOfArmorDurability` | common | 25% не тратить прочность брони при блоке/увороте | | survival |
+| 3 | Earring of Weapon Durability | `earringOfWeaponDurability` | common | 30% не тратить прочность оружия при атаке | | offense |
+| 4 | Tactician's Pin | `tacticiansPin` | common | В начале боя булавка на одной закрытой карте врага | | strategy |
+| 5 | Ring of Greater Regeneration | `ringOfGreaterRegeneration` | uncommon | +12 HP в начале боевого этажа, +1 каждые 2 этажа (12 → 32) | `ringOfRegeneration` | survival |
+| 6 | Earring of Greater Armor Durability | `earringOfGreaterArmorDurability` | uncommon | 35% не тратить прочность брони | `earringOfArmorDurability` | survival |
+| 7 | Earring of Greater Weapon Durability | `earringOfGreaterWeaponDurability` | uncommon | 40% не тратить прочность оружия | `earringOfWeaponDurability` | offense |
+| 8 | Alchemist Bag | `alchemistBag` | uncommon | Зелья +15% хила и снимают яд | | survival |
+| 9 | Monocle | `monocle` | uncommon | 10% кристалл при убийстве | | utility |
+| 10 | Pouch of Greed | `pouchOfGreed` | uncommon | +20% золота | | utility |
+| 11 | Forced March | `forcedMarch` | uncommon | Первый открытый враг дальнего боя не на переднем ряде меняется со случайной картой переднего ряда | | strategy |
+| 12 | Rune of Fire | `runeOfFire` | uncommon | Радиус сплэша огненного камня ×1.5 | | magic |
+| 13 | Rune of Zap | `runeOfZap` | uncommon | Молния отскакивает ещё на 1 цель | | magic |
+| 14 | Rune of Poison | `runeOfPoison` | uncommon | Яд камня ещё на 1 соседа в радиусе обычного огненного камня | | magic |
+| 15 | Vampire Fang | `vampireFang` | rare | 15% нанесённого урона в хил (ceil) | | offense |
+| 16 | Dragon Claw | `newDragonClaw` | rare | +15% урона (ceil) | | offense |
+| 17 | Greater Rune of Fire | `greaterRuneOfFire` | rare | +20% урона огненных камней (ceil) | | magic |
+| 18 | Greater Rune of Zap | `greaterRuneOfZap` | rare | +20% урона Zap камней (ceil) | | magic |
+| 19 | Greater Rune of Poison | `greaterRuneOfPoison` | rare | +2 урон тика poison камней | | magic |
+| 20 | Mask of Hollow Whispers | `maskOfHollowWhispers` | rare | 25% карта после убийства (не ловушка/враг/empty) | | utility |
+| 21 | Close Order | `vacancyStep` | rare | Когда впервые открыты двое+ врагов, они встают рядом (свап с рубашками по ряду или столбцу) | | strategy |
+| 22 | Legendary Whetstone | `legendaryWhetstone` | legendary | 40% не тратить прочность оружия, +10% урона оружия | Weapon Durability earrings | offense |
+| 23 | Gloves of the Hermit Wizard | `glovesOfHermitWizard` | legendary | +35% урона всех камней (ceil) | Fire/Zap/Poison runes (включая Greater) | magic |
+| 24 | General's Table | `generalsTable` | legendary | Раз за акт на карте можно выбрать любой узел следующей линии, не только по веткам | | strategy |
 
 ## Старые амулеты, привязанные к ивентам / боссу
 

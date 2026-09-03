@@ -25,7 +25,7 @@ Later runs: hunt the chain (goblin god → night fair → Magus) or remix on pur
 
 The pick is the **in-run** lever, and it has a horizon: once the player knows the chain, six of the nine roads are knowingly the wrong answer. That is expected, not a flaw to patch by hiding the chain.
 
-Long-tail replay is carried by systems outside the map — character meta and the planned village layer, with seasonal act modifiers as a candidate on top. Design lives in `docs/OPEN-QUESTIONS.md`; do not solve it by gating locations.
+Long-tail replay is carried by systems outside the map — **the village** ([[Villager Support]]: buildings built and upgraded between expeditions), with seasonal act modifiers as a candidate on top. Design lives in `docs/OPEN-QUESTIONS.md`; do not solve it by gating locations.
 
 The game also **does not track discovery**. There is no codex, no journal, no mark on the choice screen. Knowing the true road is the player's own knowledge, carried between runs in their head. See [[Design Decisions]].
 
@@ -47,3 +47,5 @@ The game also **does not track discovery**. There is no codex, no journal, no ma
 - [[Run Structure]]
 - [[Locations Index]]
 - [[Encounter Philosophy]]
+- [[The Village]]
+- [[Villager Support]]

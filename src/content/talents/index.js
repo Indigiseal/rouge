@@ -347,6 +347,9 @@ export function resolveTalentEffects(characterId, talents = {}, choices = {}, co
 /** Mutate an armor card in place with Hardened / Counter Drill / Bulwark. */
 export function applyArmorTalentMods(armor, talentEffects) {
   if (!armor || !talentEffects) return armor;
+  if (talentEffects.villageArmoryDef > 0) {
+    armor.protection = (armor.protection || 0) + talentEffects.villageArmoryDef;
+  }
   const type = armor.armorType;
   if (type !== 'chain' && type !== 'plate') return armor;
 

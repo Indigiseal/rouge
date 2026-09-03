@@ -11,9 +11,9 @@ tags:
 
 ## Fantasy
 
-**I walk a road pointed out by a fallen star, through nine countries under a broken sky.**
+**A villager walks a road pointed out by a fallen star, through nine countries under a broken sky.**
 
-The hero is not merely surviving. They keep moving toward a place no one else can reach with confidence. At each stretch they **choose** which country to enter.
+They are not merely surviving. They keep moving toward a place no one else can reach with confidence. At each stretch they **choose** which country to enter. Home is the [[The Village|Village]]; what the neighbours give them between expeditions is [[Villager Support]].
 
 ## Tone
 
@@ -21,11 +21,11 @@ The world's tone rests on three pillars:
 
 1. **Foreboding** — the sky has already changed, and everyone lives after that.
 2. **Strangeness** — each location makes the world a little more wrong than the last act.
-3. **Stubbornness** — the hero walks anyway.
+3. **Stubbornness** — the villager walks anyway.
 
 Act 1 should still feel like a country. Act 2 should feel like the country wanting you. Act 3 should feel like the sky answering.
 
-This is not an epic about a chosen one, and not grimdark about the end of everything. It is a story about a world forced to live by an alien law, and about a person who decides to walk all the way to the source of that law.
+This is not an epic about a chosen one, and not grimdark about the end of everything. It is a story about a world forced to live by an alien law, and about an ordinary neighbour who decides to walk all the way to the source of that law.
 
 ## Escalation by act
 
@@ -44,3 +44,5 @@ Do not move a road between acts to fix difficulty. Difficulty is bands and floor
 - [[Canon Overview]]
 - [[The Path]]
 - [[Locations Index]]
+- [[The Village]]
+- [[Villager Support]]

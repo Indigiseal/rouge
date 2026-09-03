@@ -9,6 +9,7 @@
 //      tweens / timers synchronously so combat resolves in one call.
 
 import { getEnemyHitAttack } from '../src/content/combat/enemyAttack.js';
+import { CONTROL_HESITATION_CHANCE } from '../src/content/amulets/control.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../src/content/months/tollroad/index.js';
 
 const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
@@ -186,7 +187,7 @@ export class MockScene {
   }
   saveCurrentRun() {}
   setupBossRewardRoom() {}
-  isEnemyCard(card) { return !!card && (card.data?.type === 'enemy' || card.data?.type === 'boss'); }
+  isEnemyCard(card) { return !!card && (card.data?.type === 'enemy' || card.data?.type === 'eliteEnemy' || card.data?.type === 'boss'); }
 
   gameOver() { this.dead = true; }
   gameWon() { this.won = true; }
@@ -321,6 +322,30 @@ export class MockScene {
         continue;
       }
 
+      if (card.data?.controlHesitation && Math.random() < CONTROL_HESITATION_CHANCE) {
+        continue;
+      }
+
+      if (card.data?.controlTreachery) {
+        const others = board
+          .map((target, index) => ({ target, index }))
+          .filter(({ target, index }) => (
+            index !== i
+            && target?.revealed
+            && this.isEnemyCard(target)
+            && target.data.health > 0
+          ));
+        if (others.length > 0) {
+          const target = others[Math.floor(Math.random() * others.length)];
+          this.cardSystem.attackEnemy(
+            target.index,
+            getEnemyHitAttack(card, board),
+            true
+          );
+          continue;
+        }
+      }
+
       const charmChance = this.amuletManager?.getCharmChance?.() || 0;
       if (charmChance > 0 && Math.random() < charmChance) {
         const others = board
@@ -370,7 +395,7 @@ export class MockScene {
 
       const armorBeforeHit = this.gameState.equippedArmor;
       const damageOptions = features.includes('ignore_armor') ? { ignoreArmorChance: 0.1 } : {};
-      const { actualDamage, tookDamage, dodged } = this.gameState.takeDamage(
+      const { actualDamage, tookDamage, dodged, revived } = this.gameState.takeDamage(
         damageDealt,
         i,
         'enemy',
@@ -381,6 +406,7 @@ export class MockScene {
         this._armorBreaks = (this._armorBreaks || 0) + 1;
       }
       if (this.gameState.playerHealth <= 0) { this._lastKiller = card.data.name || 'enemy'; return; }
+      if (revived) { this._finishEnemyTurnEffects({ runCompanions: true, skipPlayerPoison: true }); return; }
 
       if (!dodged && features.includes('club_stun') && Math.random() < 0.05) {
         this.gameState.playerStunnedTurns = Math.max(this.gameState.playerStunnedTurns || 0, 1);
@@ -482,7 +508,7 @@ export class MockScene {
     }
   }
 
-  _finishEnemyTurnEffects({ runCompanions = true } = {}) {
+  _finishEnemyTurnEffects({ runCompanions = true, skipPlayerPoison = false } = {}) {
     if (this.gameState.shadowBlade) {
       this.gameState.shadowBlade.turns--;
       if (this.gameState.shadowBlade.turns <= 0) this.gameState.shadowBlade = null;
@@ -495,6 +521,7 @@ export class MockScene {
     // End-of-enemy-turn effects: poison damage-over-time ticks on enemies
     // (mirrors GameScene.finishEnemyTurnEffects → processEnemyPoisonEffects).
     this.cardSystem.processEnemyPoisonEffects?.();
+    if (!skipPlayerPoison) {
     let effectDamage = 0;
     for (let i = this.gameState.playerEffects.length - 1; i >= 0; i--) {
       const effect = this.gameState.playerEffects[i];
@@ -507,6 +534,7 @@ export class MockScene {
     if (effectDamage > 0) {
       this.gameState.takeDamage(effectDamage, -1, 'poison');
       if (this.gameState.playerHealth <= 0) this._lastKiller = 'Poison';
+    }
     }
     if (runCompanions && this.gameState.playerHealth > 0) this._runCompanionTurns();
   }

@@ -22,17 +22,21 @@
 - Lore SoT: `docs/narrative/Locations/Locations Index.md` and
   `docs/narrative/Concepts/The True Path.md`.
 
-**Code reality:** the build still runs the old 12-month calendar — rotation
-(`calendar.js`, `MONTH_ROTATION_LENGTH`), not player choice, and packs live under
-`src/content/months/<id>/`. Locations, the choice screen, and the after-boss card
-are not implemented yet. Tracked in `docs/OPEN-QUESTIONS.md`.
+**Code reality:** `LocationPickScene` deals three cards per act; the **back**
+is the location portrait (`locBack_<id>`), with name / place / pitch shown as
+soon as the card opens. A click walks that road. Packs still live under
+`src/content/months/<id>/`. Act 2–3 rosters and named bosses are incomplete
+(Duskhold / Brassfair / Starfold packs not shipped). The after-boss true/wrong
+card is not in yet. Tracked in `docs/OPEN-QUESTIONS.md`.
+`MapViewScene` has a debug **Choose manually** button to jump to any room in
+the current act; after that room the run continues from that floor.
 
 ## Core loop
 - Player reveals 2–3 enemies (front/back rows)
 - Melee can only hit front row; ranged can hit revealed back (no damage penalty)
 
 ## Amulet groups
-- Every droppable amulet belongs to a group: offense / survival / magic / utility
+- Every droppable amulet belongs to a group: offense / survival / magic / utility / strategy
 - First amulet of a run is biased toward a class group (utility muted x0.35, class groups x1.6)
 - Later amulet drops lean x1.5 toward the player's dominant group (soft steering, no lock-in)
 - Event-only amulets are outside the pool and outside steering
@@ -50,12 +54,26 @@ are not implemented yet. Tracked in `docs/OPEN-QUESTIONS.md`.
 - Consumer: boss reward room / weapon drops once a pick-one UI exists
 
 ## Meta progression
-- Every finished run (death or win) grants **character XP**:
-  `2 + floor(reached_floor / 5) + bosses_killed * 3`
-- XP and purchased talents are **per character** and persist across runs
-- After character select, the talent tree opens (Shadow / Iron purchasable;
-  other branches visible as WIP)
-- Death no longer unlocks relics; legacy relic/veteran HP meta is retired
+- Player-facing currency: **Villager Support** (RU: *Поддержка селян*). Lore:
+  `docs/narrative/Concepts/Villager Support.md`. Code still stores `xp`.
+- Every finished run (death or win) grants Support:
+  `2 + floor(reached_floor / 5) + bosses_killed * 3` — **numbers unchanged**.
+- Support is a **shared pool** (any hero earns it, any hero spends it) and persists
+  in `metaProgression.xp`.
+- Spend: **buildings** instead of talents — build for an advantage, upgrade for
+  more of the same. Live: `VillageScene` after character pick; catalog in
+  `src/content/village/`. Buildings are shared.
+  - **Forge** (5): +1/2/3/4/5 damage on any weapon (printed).
+  - **Temple** (1): one revive per run after a killing blow (50% HP). Remaining
+    enemy swings and poison this phase stop so the rise is visible.
+  - **Armory** (5): warrior +1..5 DEF on armor; rogue +10/20/30/40/50% dodge.
+  - **Healer's House** (4): at run start, pick 1 of 3 amulets; rank sets rarity
+    common / uncommon / rare / legendary.
+  - **Healer's Hut** (`cottage`, 4): +15 / +30 / +45 / +60 max HP at run start.
+    One empty lot remains on the village map.
+  Old tree still lives in `TalentTreeScene` / `content/talents/` for the
+  talentcompare / talentladder simulator modes. Live meta in the simulator is
+  `--buildings` (and `--meta` alone means all buildings at max rank).
 
 ## Board rules
 - Brick grid, compact cluster centered
@@ -72,7 +90,7 @@ are not implemented yet. Tracked in `docs/OPEN-QUESTIONS.md`.
 ## Silkdeep enemy identities
 - **Spider** (skirmisher): poison — stacking poison on hit
 - **Cave Crawler** (swarm): `gnaw` — 50% chance +1 equipped armor durability loss on hit (extra vs block wear)
-- **Silk Husk** (bruiser): `taunt` — while revealed (face-up art, not card back) and alive, player may only attack taunting enemies (melee, ranged, magic). Face-down / mid-flip husks do not provoke.
+- **Silk Husk** (bruiser): `taunt` — while revealed (face-up art, not card back) and alive, player may only **attack** taunting enemies (melee, ranged, magic). Fire gem splash (and other fire splash) still hits neighbours. Face-down / mid-flip husks do not provoke.
 - **Stinger Scorpion** (artillery): `poison_amp` — on hit, +1 to active poison tick damage (no effect if not poisoned)
 - **Silkslinger** (artillery): `web_hand` — webs one random hand card for 1 turn (visual overlay; unusable). If the only usable weapon is webbed, treat as no weapon (stalemate enemy turns)
 
@@ -134,6 +152,13 @@ can never make a position dead.
   Keen Edge is +1/+2/+3 on the first dagger/bow attack each floor (not on the card).
   Catalog `damage` stays base; First Blood / weakness float separately.
 - Weapon gem slots by rarity: 1 / 2 / 3 / 4 / 5 (common → legendary)
+- Gems never enter inventory. Socket from the board or shop by dragging onto a weapon.
+  Shop drag pays the price and sockets in one drop. Clicking a gem does nothing but hint.
+- Fire gem splash ignores taunt (the swing itself still must hit a taunter).
+- Rune of Fire (uncommon): splash radius ×1.5. Greater Rune of Fire (rare): +20% fire gem damage.
+- Rune of Zap (uncommon): +1 lightning bounce. Greater Rune of Zap (rare): +20% zap damage.
+- Rune of Poison (uncommon): poison gem also poisons 1 neighbour in base fire-gem radius.
+  Greater Rune of Poison (rare): +2 poison gem tick. Gloves of the Hermit Wizard replace all six.
 - Armor spawn pool: leather only (dodge 10–30% by rarity, no protection;
   durability ticks on dodge); chain/plate pending
 - AP spent on: weapon merge, attack, armor equip, potions, magic, gem socket.

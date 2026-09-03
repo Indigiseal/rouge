@@ -19,7 +19,15 @@ import {
 } from '../src/config/TestOptions.js';
 import { CHARACTER_IDS, normalizeCharacterId } from '../src/content/characters/CharacterClasses.js';
 import { resolveMonthIndex } from '../src/content/months/index.js';
+import { MONTHS } from '../src/content/months/calendar.js';
+import { PATH_LOCATIONS } from '../src/content/locations/catalog.js';
 import { getBranchesForCharacter, getTalentNode } from '../src/content/talents/index.js';
+import {
+  getVillageBuilding,
+  emptyVillageBuildings,
+  maxVillageBuildings,
+  normalizeVillageBuildings,
+} from '../src/content/village/index.js';
 
 export const SIM_META_MODES = new Set(['fresh', 'geared', 'accumulate', 'balance']);
 export const SIM_CHARACTER_IDS = new Set(CHARACTER_IDS);
@@ -60,7 +68,7 @@ const TALENT_PRESETS = new Set(['none', 'max']);
 const VALUE_FLAGS = new Set([
   '--amulet-loadout', '--meta-pool', '--meta-start',
   '--amulet-pool', '--amulet-start', '--character',
-  '--armor-pool', '--talents', '--month', '--act',
+  '--armor-pool', '--talents', '--buildings', '--month', '--location', '--act',
 ]);
 
 function buildMaxTalentLoadout(characterId, armorPool = null) {
@@ -116,6 +124,73 @@ export function parseTalentSpec(val, characterId = 'rogue', armorPool = null) {
     choices.armorerArmorType = armorPool?.length === 1 ? armorPool[0] : 'plate';
   }
   return { preset: 'custom', talents, talentChoices: choices };
+}
+
+export function buildMaxBuildingLoadout() {
+  return maxVillageBuildings();
+}
+
+/**
+ * Parse --buildings none|max|id:rank,id:rank
+ * @returns {{ preset: 'none'|'max'|'custom', buildings: object }}
+ */
+export function parseBuildingSpec(val) {
+  const raw = String(val || '').trim();
+  if (!raw || raw === 'none') {
+    return { preset: 'none', buildings: emptyVillageBuildings() };
+  }
+  if (raw === 'max') {
+    return { preset: 'max', buildings: maxVillageBuildings() };
+  }
+
+  const buildings = emptyVillageBuildings();
+  for (const part of raw.split(',')) {
+    const token = part.trim();
+    if (!token) continue;
+    const colon = token.indexOf(':');
+    const id = colon >= 0 ? token.slice(0, colon).trim() : token;
+    const rankRaw = colon >= 0 ? token.slice(colon + 1).trim() : '1';
+    const def = getVillageBuilding(id);
+    if (!def) {
+      console.warn(`[sim] unknown building id ignored: ${id}`);
+      continue;
+    }
+    let rank = Number(rankRaw);
+    if (!Number.isFinite(rank) || rank <= 0) rank = 1;
+    buildings[id] = Math.min(def.maxRank, Math.max(1, Math.floor(rank)));
+  }
+  return { preset: 'custom', buildings: normalizeVillageBuildings(buildings) };
+}
+
+function acceptLocationId(raw) {
+  const id = String(raw || '').trim().toLowerCase();
+  if (!id) return null;
+  if (PATH_LOCATIONS[id]) return id;
+  if (MONTHS.some((m) => m?.id === id)) return id;
+  return null;
+}
+
+/**
+ * Parse --location id  or  --location id,id,id (one road per act).
+ * A single id is pinned on all three acts.
+ * @returns {string[]|null} length-3 actLocationIds or null
+ */
+export function parseLocationSpec(val) {
+  const raw = String(val || '').trim();
+  if (!raw) return null;
+  const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  const ids = [];
+  for (const part of parts) {
+    const id = acceptLocationId(part);
+    if (!id) {
+      console.warn(`[sim] unknown location ignored: ${part}`);
+      continue;
+    }
+    ids.push(id);
+  }
+  if (!ids.length) return null;
+  if (ids.length === 1) return [ids[0], ids[0], ids[0]];
+  return [ids[0] || null, ids[1] || ids[0] || null, ids[2] || ids[0] || null];
 }
 
 function parseIdList(raw) {
@@ -189,7 +264,9 @@ export function isSimFlagToken(a) {
     || a.startsWith('--character')
     || a.startsWith('--armor-pool')
     || a.startsWith('--talents')
+    || a.startsWith('--buildings')
     || a.startsWith('--month')
+    || a.startsWith('--location')
     || a.startsWith('--act')
     || a === '--no-meta'
     || a === '--no-amulets';
@@ -218,7 +295,9 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
   let characterId = 'rogue';
   let armorPool = null;
   let talentSpec = 'none';
+  let buildingSpec = 'none';
   let monthToken = null;
+  let locationToken = null;
   let act = null;
   let explicitAmuletStart = false;
   let explicitAmuletLoadout = false;
@@ -254,6 +333,13 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
       const val = flagValue(token, '--talents');
       if (val != null && val !== '') talentSpec = val;
       if (val && val !== 'none') enableMeta = true;
+    } else if (token.startsWith('--buildings')) {
+      const val = flagValue(token, '--buildings');
+      if (val != null && val !== '') buildingSpec = val;
+      if (val && val !== 'none') enableMeta = true;
+    } else if (token.startsWith('--location')) {
+      const val = flagValue(token, '--location');
+      if (val != null && val !== '') locationToken = val;
     } else if (token.startsWith('--month')) {
       const val = flagValue(token, '--month');
       if (val != null && val !== '') monthToken = val;
@@ -275,13 +361,23 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
     metaPool = [];
     metaStart = [];
     talentSpec = 'none';
+    buildingSpec = 'none';
+  } else if (
+    (talentSpec === 'none' || !talentSpec)
+    && (buildingSpec === 'none' || !buildingSpec)
+  ) {
+    // --meta with no explicit tree: village buildings are the live meta.
+    buildingSpec = 'max';
   }
 
   const calendarMonthIndex = monthToken != null ? resolveMonthIndex(monthToken) : 0;
   // Pin when month was explicitly set (full run or with --act).
-  const pinCalendarMonth = monthToken != null;
+  const pinCalendarMonth = monthToken != null && !locationToken;
+  const actLocationIds = parseLocationSpec(locationToken);
   const talentParsed = parseTalentSpec(talentSpec, normalizeCharacterId(characterId), armorPool);
   const talentLoadout = talentParsed.preset === 'custom' ? 'custom' : talentParsed.preset;
+  const buildingParsed = parseBuildingSpec(buildingSpec);
+  const buildingLoadout = buildingParsed.preset === 'custom' ? 'custom' : buildingParsed.preset;
 
   return {
     enableMeta,
@@ -297,7 +393,12 @@ export function parseSimFlags(flagTokens, metaMode = 'fresh') {
     talentSpec,
     talents: talentParsed.talents,
     talentChoices: talentParsed.talentChoices,
+    buildingLoadout,
+    buildingSpec,
+    buildings: buildingParsed.buildings,
     monthToken,
+    locationToken,
+    actLocationIds,
     calendarMonthIndex,
     pinCalendarMonth,
     act,
@@ -336,7 +437,7 @@ export function normalizeSimPools(flags, { allRelics = [], allAmulets = [], meta
     let start = out.amuletStart;
     if (start == null) {
       if (out.amuletLoadout === 'strong') start = [];
-      else if (out.amuletLoadout === 'bag') start = ['ringOfHealth'];
+      else if (out.amuletLoadout === 'bag') start = ['ringOfRegeneration'];
       else start = [];
     } else {
       start = start.slice();
@@ -373,7 +474,20 @@ export function formatSimFlagsLabel(flags) {
   } else {
     parts.push(`talents:${flags.talentLoadout || 'none'}`);
   }
-  if (flags.monthToken != null || flags.pinCalendarMonth) {
+  if (flags.buildingLoadout === 'custom') {
+    const built = flags.buildings || {};
+    const bits = Object.entries(built)
+      .filter(([, rank]) => rank > 0)
+      .map(([id, rank]) => `${id}${rank}`);
+    parts.push(`buildings:${bits.join('+') || 'none'}`);
+  } else {
+    parts.push(`buildings:${flags.buildingLoadout || 'none'}`);
+  }
+  if (flags.actLocationIds?.some(Boolean)) {
+    const ids = flags.actLocationIds;
+    const same = ids[0] && ids[0] === ids[1] && ids[1] === ids[2];
+    parts.push(same ? `location:${ids[0]}` : `location:${ids.filter(Boolean).join('+')}`);
+  } else if (flags.monthToken != null || flags.pinCalendarMonth) {
     parts.push(`month:${flags.monthToken ?? flags.calendarMonthIndex ?? 0}`);
   }
   if (flags.act) parts.push(`act:${flags.act}`);
@@ -444,7 +558,7 @@ export function buildSimRunExtras(flags, { allRelics = [], strongAmulets = [], a
     forceStartingAmulets = true;
     noBag = true;
   } else if (flags.explicitAmuletLoadout && flags.amuletLoadout === 'bag') {
-    amulets = ['ringOfHealth'];
+    amulets = ['ringOfRegeneration'];
     forceStartingAmulets = true;
     noBag = true;
   } else if (flags.explicitAmuletLoadout && flags.amuletLoadout === 'strong') {
@@ -494,8 +608,10 @@ export function buildSimRunExtras(flags, { allRelics = [], strongAmulets = [], a
     armorPool: flags.armorPool ? flags.armorPool.slice() : null,
     talents: talentConfig.talents,
     talentChoices: talentConfig.talentChoices,
+    buildings: normalizeVillageBuildings(flags.buildings),
     calendarMonthIndex: flags.calendarMonthIndex ?? 0,
-    pinCalendarMonth: Boolean(flags.pinCalendarMonth),
+    pinCalendarMonth: Boolean(flags.pinCalendarMonth) && !flags.actLocationIds?.some(Boolean),
+    actLocationIds: Array.isArray(flags.actLocationIds) ? flags.actLocationIds.slice() : null,
     act: act || null,
     startingWeaponRarity: actStartWeaponRarity(act || 1),
     actAmuletSeed,
@@ -517,8 +633,15 @@ export function simPoolFlagArgs(flags) {
       args.push('--amulet-loadout', flags.amuletLoadout);
     }
   }
-  if (flags.monthToken != null) args.push('--month', String(flags.monthToken));
+  if (flags.locationToken != null) args.push('--location', String(flags.locationToken));
+  else if (flags.monthToken != null) args.push('--month', String(flags.monthToken));
   if (flags.act) args.push('--act', String(flags.act));
+  if (flags.buildingLoadout && flags.buildingLoadout !== 'none') {
+    args.push('--buildings', flags.buildingSpec || flags.buildingLoadout);
+  }
+  if (flags.talentLoadout && flags.talentLoadout !== 'none') {
+    args.push('--talents', flags.talentSpec || flags.talentLoadout);
+  }
   return args;
 }
 
@@ -528,10 +651,12 @@ Sim flags (combine with stats-db / loot-stats / fresh):
   --character rogue|warrior   Playable class (default: rogue)
   --armor-pool chain|plate|both   Warrior armor spawn filter (default: both)
   --talents none|max|id:rank,...  No talents, max live branch, or custom ranks
+  --buildings none|max|id:rank,...  Village buildings (live meta). --meta alone = max
+  --location id | id,id,id     Pin Path location(s). One id covers all acts
   --month thornwake|silkdeep|tollroad|0|1|2  Pin calendar month roster (no act rotation)
   --act 1|2|3                 Run only that act; starters: common/uncommon/rare
                               Act 2/3 also seed 3/6 random starting amulets
-  --meta | --no-meta          Enable meta (talents) for the run
+  --meta | --no-meta          Enable meta (village buildings by default)
   --amulets | --no-amulets    Floor drops, events, shop amulets
   --amulet-loadout none|bag|strong   Starting amulets shortcut (overrides act seed)
   --meta-pool id,id           Relics allowed in this experiment

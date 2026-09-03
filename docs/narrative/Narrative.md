@@ -12,7 +12,7 @@ tags:
 
 > A second moon rose in the sky. The world now counts its days by crossings of fifteen.
 > A stone fell from the heavens, and it still remembers the road.
-> The hero follows that road — country after country, day after day — until they reach the place where the sky can be asked why it broke.
+> A villager follows that road — country after country, day after day — until they reach the place where the sky can be asked why it broke.
 
 This note is the **map of content** for the lore database.
 
@@ -25,6 +25,7 @@ This note is the **map of content** for the lore database.
 - [[The Waystar]]
 - [[The Calendar]]
 - [[The Path]]
+- [[The Village]]
 - [[The City]]
 - [[The Far Place]]
 - [[Death and Return]]
@@ -55,6 +56,7 @@ This note is the **map of content** for the lore database.
 - [[Tone and Fantasy]]
 - [[Replayability]]
 - [[Encounter Philosophy]]
+- [[Villager Support]]
 
 ## Meta
 
@@ -66,7 +68,7 @@ This note is the **map of content** for the lore database.
 
 ## One sentence
 
-**Evershift** is a journey measured in days on named roads: the hero follows the [[The Waystar|Waystar]], picks a country each act, and may follow the true chain — goblin tax-god, night fair, [[The Magus]] — to [[The Far Place]].
+**Evershift** is a journey measured in days on named roads: a villager follows the [[The Waystar|Waystar]], picks a country each act, and may follow the true chain — goblin tax-god, night fair, [[The Magus]] — to [[The Far Place]]. Between expeditions the [[The Village|Village]] answers with [[Villager Support]].
 
 ---
 

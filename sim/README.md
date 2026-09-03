@@ -113,10 +113,12 @@ node sim/balance-sim.js stats-db 1000 balance behavior-run --behavior magicHeavy
 |------|--------|
 | `--character rogue\|warrior` | Класс персонажа (default: rogue) |
 | `--armor-pool chain\|plate\|both` | Фильтр спавна брони воина |
-| `--talents none\|max\|id:rank,...` | Пустое дерево / max live-ветки / кастомные ранги (включает meta) |
-| `--month thornwake\|silkdeep\|tollroad\|0\|1\|2` | Пин ростера месяца (без ротации по актам) |
+| `--buildings none\|max\|id:rank,...` | Постройки деревни. `--meta` без этого флага = все постройки на максимуме |
+| `--location id` / `--location id,id,id` | Зафиксировать локацию на весь забег или по одной на акт |
+| `--talents none\|max\|id:rank,...` | Старое дерево (только talentcompare / talentladder) |
+| `--month thornwake\|silkdeep\|tollroad\|0\|1\|2` | Старый пин ростера месяца (без ротации по актам) |
 | `--act 1\|2\|3` | Только этот акт (F1–15 / 16–30 / 31–45). Стартеры: common / uncommon / rare. Act 2/3 сидят 3/6 random амулетов |
-| `--meta` / `--no-meta` | Вкл/выкл meta (таланты); preset `geared` ещё тянет relic-пул (сейчас пустой) |
+| `--meta` / `--no-meta` | Вкл/выкл мету (постройки деревни; `--talents` по-прежнему включает старое дерево) |
 | `--amulets` / `--no-amulets` | Дроп/ивенты/шоп амулетов |
 | `--amulet-loadout none` | Старт без амулетов (дефолт; перебивает act-seed) |
 | `--amulet-loadout bag` | Bottomless Bag с старта (перебивает act-seed) |
@@ -144,23 +146,27 @@ node sim/balance-sim.js stats-db 1000 fresh meta-run --meta --no-amulets
 # Амулеты + сумка, без меты
 node sim/balance-sim.js stats-db 1000 fresh bag-run --amulets --no-meta --amulet-loadout bag
 
-# Silkdeep, только act 2 (bands D/E), uncommon starters + 3 random amulets
-node sim/balance-sim.js stats-db 200 balance silk-a2 \
-  --month silkdeep --act 2 --character rogue --talents max
+# Silkdeep, только act 1, все постройки на максимуме
+node sim/balance-sim.js stats-db 200 balance silk-forge \
+  --location silkdeep --act 1 --character rogue --buildings max
 
-# Thornwake act 3, rare starters + 6 random amulets, точечные таланты
+# Thornwake, только кузня 3 и храм
 node sim/balance-sim.js loot-stats 100 balance \
-  --month thornwake --act 3 --character warrior \
-  --talents armorerStart:1,rivets:2 --armor-pool plate
+  --location thornwake --act 1 --character warrior \
+  --buildings forge:3,temple:1 --armor-pool plate
 
-# Настоящая мета-прогрессия (XP за смерть между runs)
+# Три разные дороги за один забег (акт 1/2/3) и частичная мета
+node sim/balance-sim.js stats-db 100 balance mixed-roads \
+  --location tollroad,brassfair,starfold --buildings forge:5,armory:2
+
+# Настоящая мета-прогрессия (поддержка копится между забегами)
 node sim/balance-sim.js stats-db 500 accumulate career --meta
 ```
 
 **Важно:**
 
-- `--meta` включает применение талантов; relic-пул в симе сейчас пустой (relics retired).
-- `accumulate` — единственный режим, где прогрессия **растёт от run к run** через `handlePlayerDeath` (XP; таланты не автопокупаются).
+- `--meta` включает постройки деревни (все на максимуме, если не задан `--buildings`). `--talents` по-прежнему включает старое дерево для talentcompare.
+- `accumulate` — единственный режим, где поддержка **растёт от забега к забегу** через `handlePlayerDeath` (постройки сами не покупаются).
 - `amulets-only` (`fresh --amulets --no-meta`) — **без стартовых** амулетов на act 1; набор только с пола/шопа.
 - `--act 2\|3` без явного `--amulet-loadout` / `--amulet-start` всегда сидит 3/6 random амулетов.
 

@@ -13,11 +13,6 @@ export const TEST_OPTION_DEFS = [
         labelKey: 'ui.testOptions.disableAmulets',
         descriptionKey: 'ui.testOptions.disableAmuletsDesc',
     },
-    {
-        id: TEST_OPTION_IDS.disableMetaProgression,
-        labelKey: 'ui.testOptions.disableMetaProgression',
-        descriptionKey: 'ui.testOptions.disableMetaProgressionDesc',
-    },
 ];
 
 let cache = null;
@@ -76,7 +71,12 @@ export function areAmuletsDisabled() {
 }
 
 export function isMetaProgressionDisabled() {
-    return isTestOptionEnabled(TEST_OPTION_IDS.disableMetaProgression);
+    // Live game: talent spend / talent effects are off (replacement ladder TBD).
+    // The sim can still turn them on via setSimTestOptionsOverride.
+    if (simOverride) {
+        return isTestOptionEnabled(TEST_OPTION_IDS.disableMetaProgression);
+    }
+    return true;
 }
 
 export function attachTestOptionsToGame(game) {

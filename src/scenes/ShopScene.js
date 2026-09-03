@@ -496,6 +496,11 @@ export class ShopScene extends StationRoomBase {
             this.showFeedback({ key: 'float.notEnoughCurrency', vars: { currency: this.getCurrencyDisplay(item.currency) } }, 0xff0000);
             return;
         }
+
+        if (item.data.type === 'gem') {
+            this.showFeedback({ key: 'float.dragGemOntoWeapon' }, 0xffe066);
+            return;
+        }
         
         // Check if it's an amulet - rarity offer opens a 3-pick overlay
         if (item.data.type === 'amulet') {

@@ -1,6 +1,8 @@
 // scenes/MapViewScene.js
 // Phaser is provided as a UMD global (see index.html) — no import needed.
 import { MapGenerator, MAP_VERSION } from '../map/MapGenerator.js';
+import { needsLocationPick } from '../content/locations/index.js';
+import { isSandboxMode } from '../sandbox/SandboxMode.js';
 import { t } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { MusicManager } from '../audio/MusicManager.js';
@@ -23,6 +25,12 @@ export class MapViewScene extends Phaser.Scene {
     const cf = Math.max(1, this.gameState.currentFloor || 1);
     this.currentAct = Math.min(3, Math.max(1, Math.floor((cf - 1) / 15) + 1));
 
+    const gameScene = this.scene.get('GameScene');
+    this._awaitingLocationPick = needsLocationPick(this.gameState, this.currentAct)
+      && !isSandboxMode(this)
+      && !gameScene?.tutorialMode;
+    if (this._awaitingLocationPick) return;
+
     // Build/keep full map. Regenerate when shape changes or when new node types were added.
     // MAP_VERSION is imported from MapGenerator so the two can never drift.
     const hasCurrentMapShape =
@@ -30,7 +38,7 @@ export class MapViewScene extends Phaser.Scene {
       this.gameState.dungeonMap?._version === MAP_VERSION;
     if (!this.gameState.dungeonMap || !hasCurrentMapShape) {
       const gen = new MapGenerator();
-      this.gameState.dungeonMap = gen.generateFullMap();
+      this.gameState.dungeonMap = gen.generateFullMap(this.gameState.actLocationIds);
     }
     this.actMap = this.gameState.dungeonMap[`act${this.currentAct}`];
 
@@ -38,7 +46,7 @@ export class MapViewScene extends Phaser.Scene {
     // map so we never dereference an undefined act below.
     if (!this.actMap?.floors?.length) {
       const gen = new MapGenerator();
-      this.gameState.dungeonMap = gen.generateFullMap();
+      this.gameState.dungeonMap = gen.generateFullMap(this.gameState.actLocationIds);
       this.actMap = this.gameState.dungeonMap[`act${this.currentAct}`]
                  || this.gameState.dungeonMap.act1;
     }
@@ -79,7 +87,6 @@ export class MapViewScene extends Phaser.Scene {
     //     with an emptied board), and
     //   - captures coins/items/HP the player just gained in a shop, rest, anvil,
     //     event or treasure room, none of which saved on their own.
-    const gameScene = this.scene.get('GameScene');
     if (gameScene?.gameState) {
       gameScene.gameState.roomType = 'MAP';
       gameScene.roomType = 'MAP';
@@ -93,12 +100,23 @@ export class MapViewScene extends Phaser.Scene {
   }
 
   create() {
+    if (this._awaitingLocationPick) {
+      this.scene.start('LocationPickScene', {
+        mode: 'nextAct',
+        act: this.currentAct,
+        gameState: this.gameState,
+        characterId: this.gameState?.characterId,
+      });
+      return;
+    }
+
     // Wake handler installed FIRST so a post-shop wake re-runs create()
     // even when we short-circuit the post-act-shop path below.
     this.events.off('wake', this.handleWake, this);
     this.events.on('wake', this.handleWake, this);
     this.events.once('shutdown', () => {
       this.events.off('wake', this.handleWake, this);
+      this.input.keyboard?.off('keydown-ESC', this._onManualPickEscape, this);
     });
     this._leavingMap = false;
 
@@ -151,9 +169,12 @@ export class MapViewScene extends Phaser.Scene {
       this.scene.start('MainMenuScene');
     });
 
-    this.add.text(320, 340, t(this, 'ui.map.instructions'), {
+    this._manualPick = false;
+    this._mapHint = this.add.text(320, 340, t(this, 'ui.map.instructions'), {
       fontSize: '12px', fill: '#d4b896', fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5);
+    this._addManualPickButton();
+    this.input.keyboard?.on('keydown-ESC', this._onManualPickEscape, this);
 
     // Peaceful theme fades in whenever the map is shown (create() re-runs on
     // every wake because handleWake restarts the scene).
@@ -291,6 +312,7 @@ export class MapViewScene extends Phaser.Scene {
     }
     // highlight from current node
     const curF = this.gameState.mapCursor.floor;
+    const detourReady = this._detourReady();
     if (curF < this.actMap.floors.length - 1) {
       const from = this.actMap.floors[curF][this.gameState.mapCursor.node];
       if (from) {
@@ -298,6 +320,12 @@ export class MapViewScene extends Phaser.Scene {
         from.connections.forEach(t => {
           drawCurve(from.__x, from.__y, nxt[t].__x, nxt[t].__y, 0xf2d3aa, 3);
         });
+        if (detourReady) {
+          nxt.forEach((dest, destIdx) => {
+            if (!dest || from.connections.includes(destIdx)) return;
+            drawCurve(from.__x, from.__y, dest.__x, dest.__y, 0xc8b06a, 2);
+          });
+        }
       }
     }
 
@@ -324,6 +352,10 @@ export class MapViewScene extends Phaser.Scene {
     this.linkTexture = rt;
   }
 
+  _detourReady() {
+    return !!this.scene.get('GameScene')?.amuletManager?.canUseStrategyDetour?.();
+  }
+
   getNodeVisualState(floorIdx, nodeIdx) {
     const curF = this.gameState.mapCursor.floor;
     const curN = this.gameState.mapCursor.node;
@@ -331,8 +363,10 @@ export class MapViewScene extends Phaser.Scene {
     if (floorIdx < curF) return 'behind';
     if (floorIdx === curF && nodeIdx === curN) return 'current';
     if (floorIdx === curF + 1) {
-      const curNode = this.actMap.floors[curF][curN];
-      return curNode.connections.includes(nodeIdx) ? 'available' : 'locked_next';
+      const curNode = this.actMap.floors[curF]?.[curN];
+      if (curNode?.connections?.includes(nodeIdx)) return 'available';
+      if (this._detourReady()) return 'detour';
+      return 'locked_next';
     }
     return 'locked';
   }
@@ -353,12 +387,15 @@ export class MapViewScene extends Phaser.Scene {
     let alpha = 1;
     if (state === 'behind')                                   alpha = 0.35;
     else if (state === 'locked' || state === 'locked_next')   alpha = 0.22;
-    else if (state === 'available')                           alpha = 1;
+    else if (state === 'available' || state === 'detour')        alpha = 1;
     else if (state === 'current')                             alpha = 1;
 
     // Tint: lighten available and current nodes slightly so they stand out
     const AVAILABLE_TINT = 0xddddff;
-    const tint = (state === 'available' || state === 'current') ? AVAILABLE_TINT : 0xffffff;
+    const DETOUR_TINT = 0xe8c96a;
+    const idleTint = state === 'detour'
+      ? DETOUR_TINT
+      : (state === 'available' || state === 'current') ? AVAILABLE_TINT : 0xffffff;
 
     // Quiet "you are here" ring behind the current node (added before it).
     // The selection brackets are a hover affordance now, so the ring stays as
@@ -380,31 +417,92 @@ export class MapViewScene extends Phaser.Scene {
       nodeSprite = this.add.circle(node.__x, node.__y, 18, fallbackColors[node.type] || 0x8b7355);
     }
     nodeSprite.setAlpha(alpha);
-    if (nodeSprite.setTint) nodeSprite.setTint(tint);
+    if (nodeSprite.setTint) nodeSprite.setTint(idleTint);
+    node.__sprite = nodeSprite;
+    nodeSprite.setData('floorIdx', floorIdx);
+    nodeSprite.setData('nodeIdx', nodeIdx);
+    this.nodeSprites.push(nodeSprite);
     this.mapContainer.add(nodeSprite);
 
-    if (state === 'available') {
-      nodeSprite.setInteractive({ useHandCursor: true });
-      nodeSprite.on('pointerover', () => {
-        if (this.isDragging) return;
-        // Soft click when the pointer lands on a selectable node.
-        SoundHelper.playSound(this, 'hover_node', 0.4);
-        // Rise one pixel and lighten while hovered.
-        nodeSprite.y = node.__y - 1;
-        if (nodeSprite.setTint) nodeSprite.setTint(0xffffff);
-        this.showHoverCorners(node);
-        this.showTooltip(t(this, this.getNodeTooltipKey(node.type)), node.__x, node.__y - 30);
+    const canClick = state === 'available' || state === 'detour';
+    if (canClick) this._bindNodeClick(nodeSprite, node, floorIdx, nodeIdx, idleTint);
+  }
+
+  _bindNodeClick(nodeSprite, node, floorIdx, nodeIdx, idleTint) {
+    if (nodeSprite.getData('clickBound')) return;
+    nodeSprite.setData('clickBound', true);
+    nodeSprite.setInteractive({ useHandCursor: true });
+    nodeSprite.on('pointerover', () => {
+      if (this.isDragging) return;
+      SoundHelper.playSound(this, 'hover_node', 0.4);
+      nodeSprite.y = node.__y - 1;
+      if (nodeSprite.setTint) nodeSprite.setTint(0xffffff);
+      this.showHoverCorners(node);
+      this.showTooltip(t(this, this.getNodeTooltipKey(node.type)), node.__x, node.__y - 30);
+    });
+    nodeSprite.on('pointerout', () => {
+      nodeSprite.y = node.__y;
+      if (nodeSprite.setTint) nodeSprite.setTint(idleTint);
+      this.hideHoverCorners();
+      this.hideTooltip();
+    });
+    nodeSprite.on('pointerdown', () => {
+      if (!this.isDragging) this.selectNode(floorIdx, nodeIdx, node);
+    });
+  }
+
+  _addManualPickButton() {
+    const x = 92;
+    const y = 30;
+    const btn = this.add.rectangle(x, y, 148, 22, 0x3d3228)
+      .setStrokeStyle(1, 0xf2d3aa)
+      .setDepth(20)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add.text(x, y, t(this, 'ui.map.chooseManually'), {
+      fontSize: '10px',
+      fill: '#f2d3aa',
+      fontFamily: '"HoMM Pixel", Arial, sans-serif',
+    }).setOrigin(0.5).setDepth(21);
+    this._manualPickBtn = btn;
+    this._manualPickLabel = label;
+    btn.on('pointerover', () => {
+      SoundHelper.playVariant(this, 'hover_button', 0.3);
+      btn.setFillStyle(0x524536);
+    });
+    btn.on('pointerout', () => {
+      btn.setFillStyle(this._manualPick ? 0x5a4630 : 0x3d3228);
+    });
+    btn.on('pointerdown', () => {
+      if (this._manualPick) this._cancelManualPick();
+      else this._enterManualPick();
+    });
+  }
+
+  _enterManualPick() {
+    if (this._leavingMap || this._manualPick) return;
+    this._manualPick = true;
+    this._manualPickBtn?.setFillStyle(0x5a4630);
+    this._manualPickLabel?.setText(t(this, 'ui.map.chooseManuallyCancel'));
+    this._mapHint?.setText(t(this, 'ui.map.chooseManuallyHint'));
+    const AVAILABLE_TINT = 0xddddff;
+    this.actMap.floors.forEach((floorNodes, floorIdx) => {
+      floorNodes.forEach((node, nodeIdx) => {
+        const sprite = node.__sprite;
+        if (!sprite) return;
+        sprite.setAlpha(1);
+        if (sprite.setTint) sprite.setTint(AVAILABLE_TINT);
+        this._bindNodeClick(sprite, node, floorIdx, nodeIdx, AVAILABLE_TINT);
       });
-      nodeSprite.on('pointerout', () => {
-        nodeSprite.y = node.__y;
-        if (nodeSprite.setTint) nodeSprite.setTint(AVAILABLE_TINT);
-        this.hideHoverCorners();
-        this.hideTooltip();
-      });
-      nodeSprite.on('pointerdown', () => {
-        if (!this.isDragging) this.selectNode(floorIdx, nodeIdx, node);
-      });
-    }
+    });
+  }
+
+  _cancelManualPick() {
+    if (!this._manualPick || this._leavingMap) return;
+    this.scene.restart({ gameState: this.gameState });
+  }
+
+  _onManualPickEscape() {
+    if (this._manualPick) this._cancelManualPick();
   }
 
   // A soft, static gold ring marking the player's current node. Kept understated
@@ -489,19 +587,35 @@ export class MapViewScene extends Phaser.Scene {
   }
   hideTooltip() { if (this.tooltip) { this.tooltip.destroy(); this.tooltip = null; } }
 
-  // Only allow moving from the SINGLE current node to connected nodes on the NEXT floor
+  // Move from the current node to a chosen room. Normal travel only allows
+  // the next floor along connections (or General's Table). Manual pick
+  // (debug) can jump to any room in the act; after that room finishes the
+  // map continues from there as usual.
   selectNode(targetFloorIdx, targetNodeIdx, node) {
     if (this._leavingMap) return; // ignore extra clicks during the exit fade
     const cur = this.gameState.mapCursor;
-    if (targetFloorIdx !== cur.floor + 1) return;
-    const fromNode = this.actMap.floors[cur.floor][cur.node];
-    if (!fromNode.connections.includes(targetNodeIdx)) return;
+    const fromNode = this.actMap.floors[cur.floor]?.[cur.node];
+    const manual = !!this._manualPick;
+    if (!manual) {
+      if (targetFloorIdx !== cur.floor + 1) return;
+      if (!fromNode) return;
+      const connected = fromNode.connections.includes(targetNodeIdx);
+      if (!connected && !this._detourReady()) return;
+      if (!connected) {
+        this.scene.get('GameScene')?.amuletManager?.consumeStrategyDetour?.();
+      }
+    }
     // The click is going through — drop the hover decoration so it can't linger
     // over the exit fade.
     this.hideHoverCorners();
     this.hideTooltip();
-    const availableNodes = fromNode.connections.map(nodeIndex => {
-      const option = this.actMap.floors[targetFloorIdx]?.[nodeIndex];
+    const nextRow = this.actMap.floors[targetFloorIdx] || [];
+    const connected = !manual && !!fromNode?.connections?.includes(targetNodeIdx);
+    const availableNodes = (manual
+      ? nextRow.map((_, nodeIndex) => nodeIndex)
+      : (connected ? fromNode.connections : nextRow.map((_, nodeIndex) => nodeIndex))
+    ).map(nodeIndex => {
+      const option = nextRow[nodeIndex];
       return {
         floor: targetFloorIdx,
         node: nodeIndex,
@@ -509,18 +623,20 @@ export class MapViewScene extends Phaser.Scene {
       };
     });
     recordHumanRunEvent(this, 'route_selected', {
-      from: { act: this.currentAct, floor: cur.floor, node: cur.node, type: fromNode.type || null },
+      from: { act: this.currentAct, floor: cur.floor, node: cur.node, type: fromNode?.type || null },
       chosen: { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx, type: node.type },
       available: availableNodes,
+      debugJump: manual || undefined,
     });
     SoundHelper.playVariant(this, 'map_select', 0.5);
-    // Mark from and to visited (fixes stuck visuals)
-    fromNode.visited = true;
+    if (fromNode) fromNode.visited = true;
     node.visited = true;
     this.gameState.mapCursor = { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx };
-    this.gameState.currentFloor = (this.gameState.currentFloor || 1) + 1;
-    // Store type
+    this.gameState.currentFloor = manual
+      ? (this.currentAct - 1) * 15 + targetFloorIdx + 1
+      : (this.gameState.currentFloor || 1) + 1;
     this.gameState.roomType = node.type;
+    this._manualPick = false;
 
     // Route (deferred so the map theme can fade out first).
     const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE', 'TREASURE_GOOD'];

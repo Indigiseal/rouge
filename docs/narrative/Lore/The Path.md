@@ -21,18 +21,20 @@ To walk the Path is to:
 
 - pick a country and enter it, knowing the other two waits remain;
 - survive day after day without certainty that the next dawn will be yours;
-- move toward an answer no city, shrine, or roadside sage can give.
+- move toward an answer no village, shrine, or roadside sage can give.
 
 This is not pilgrimage and not a treasure hunt. It is movement toward a place where the world may still remember its own cause.
 
-## The hero's role
+## The villager's role
 
-The story does not need the hero as a prophesied savior. It needs them as **the one who keeps walking**. While others hide from the farther countries, the hero chooses one and goes.
+The story does not need a prophesied savior. It needs **the one who keeps walking** — a neighbour who left, and who the village still believes might finish it. While others hide from the farther countries, this villager chooses one and goes.
 
 ## Related
 
 - [[The Waystar]]
+- [[The Village]]
 - [[The City]]
+- [[Villager Support]]
 - [[The Far Place]]
 - [[Locations Index]]
 - [[Run Structure]]

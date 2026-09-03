@@ -210,6 +210,7 @@ export const ASSET_MANIFEST = [
     // Load twinkle animation frames
     { key: 'twinkle', path: 'assets/art/twinkle60x78Sheet.png', type: 'spritesheet', frameWidth: 60, frameHeight: 78 },
     // Bosses
+    { key: 'greenWarden', path: 'assets/art/greenWarden.png', type: 'image' },
     { key: 'giantSkeleton', path: 'assets/art/giantSkeleton.png', type: 'image' },
     { key: 'GoblinKingSprite', path: 'assets/art/goblinKing.png', type: 'image' },
     { key: 'SpiderQween', path: 'assets/art/spiderBoss.png', type: 'image' },

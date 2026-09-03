@@ -288,8 +288,9 @@ export class StationRoomBase extends Phaser.Scene {
             return;
         }
 
-        sprite.setInteractive({ useHandCursor: true });
+        sprite.setInteractive({ useHandCursor: true, draggable: data.type === 'gem' });
         sprite.on('pointerover', () => {
+            if (sprite.getData('shopGemDragging')) return;
             // Float card up
             renderScene.tweens.add({ targets: sprite, y: y - 5, duration: 150, ease: 'Power2' });
             // Lift the on-card stat value with the card face
@@ -310,6 +311,7 @@ export class StationRoomBase extends Phaser.Scene {
             this.showItemTooltip(item.data, sprite.x, sprite.y);
         });
         sprite.on('pointerout', () => {
+            if (sprite.getData('shopGemDragging')) return;
             // Return card and shine to original position
             renderScene.tweens.add({ targets: sprite, y: y, duration: 150, ease: 'Power2' });
             if (statText) renderScene.tweens.add({ targets: statText, y: statY, duration: 150, ease: 'Power2' });
@@ -322,6 +324,12 @@ export class StationRoomBase extends Phaser.Scene {
             if (shadow) shadow.setAlpha(0);
             this.hideItemTooltip();
         });
+        if (data.type === 'gem') {
+            this.enableShopGemDrag(entry, priceText, {
+                x, y, statText, statY, hoverSprite, shadow,
+            });
+            return;
+        }
         sprite.on('pointerdown', () => {
             const wasPurchased = item.purchased;
             this.buyItem(item, priceText);
@@ -346,6 +354,119 @@ export class StationRoomBase extends Phaser.Scene {
                 this.hideItemTooltip();
             }
         });
+    }
+
+    enableShopGemDrag(entry, priceText, extras) {
+        const { sprite, item } = entry;
+        const { x, y, statText, statY, hoverSprite, shadow } = extras;
+        const renderScene = sprite.scene;
+        let dragged = false;
+
+        sprite.on('dragstart', () => {
+            dragged = true;
+            sprite.setData('shopGemDragging', true);
+            renderScene.tweens.killTweensOf(sprite);
+            this.hideItemTooltip();
+            sprite.setDepth(2500);
+            if (hoverSprite) {
+                hoverSprite.setVisible(false);
+                hoverSprite.setAlpha(0);
+                hoverSprite.stop?.();
+            }
+            if (shadow) shadow.setAlpha(0);
+        });
+        sprite.on('drag', (_pointer, dragX, dragY) => {
+            sprite.x = Phaser.Math.Clamp(dragX, 0, 640);
+            sprite.y = Phaser.Math.Clamp(dragY, 0, 360);
+        });
+        sprite.on('dragend', () => {
+            const slotIndex = this.findShopGemWeaponSlot(sprite);
+            if (slotIndex >= 0 && this.purchaseShopGem(item, priceText, slotIndex)) {
+                renderScene.tweens.killTweensOf(sprite);
+                sprite.x = x;
+                sprite.y = y;
+                if (statText) {
+                    renderScene.tweens.killTweensOf(statText);
+                    statText.y = statY;
+                }
+                if (hoverSprite) {
+                    renderScene.tweens.killTweensOf(hoverSprite);
+                    hoverSprite.y = y;
+                    hoverSprite.setVisible(false);
+                    hoverSprite.setAlpha(0);
+                    hoverSprite.stop?.();
+                }
+                if (shadow) shadow.setAlpha(0);
+                sprite.removeInteractive();
+                sprite.setAlpha(0.55);
+                this.hideItemTooltip();
+                return;
+            }
+            dragged = false;
+            sprite.setData('shopGemDragging', false);
+            sprite.setDepth(9);
+            sprite.x = x;
+            sprite.y = y;
+        });
+        sprite.on('pointerup', () => {
+            if (dragged || item.purchased) return;
+            this.showFeedback({ key: 'float.dragGemOntoWeapon' }, 0xffe066);
+        });
+    }
+
+    findShopGemWeaponSlot(sprite) {
+        const inv = this.gameScene?.inventorySystem;
+        if (!inv?.slotSprites || !sprite) return -1;
+        const cx = sprite.getBounds().centerX;
+        const cy = sprite.getBounds().centerY;
+        for (let i = 0; i < inv.slotSprites.length; i++) {
+            const slotSprite = inv.slotSprites[i];
+            const weapon = inv.slots[i];
+            if (weapon?.type !== 'weapon' || !slotSprite?.background) continue;
+            if (Phaser.Geom.Rectangle.Contains(slotSprite.background.getBounds(), cx, cy)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    purchaseShopGem(item, button, weaponSlotIndex) {
+        if (!item || item.purchased || item.data?.type !== 'gem') return false;
+
+        const hasEnoughCurrency = item.currency === 'coins'
+            ? this.gameState.coins >= item.price
+            : this.gameState.crystals >= item.price;
+        if (!hasEnoughCurrency) {
+            this.showFeedback({
+                key: 'float.notEnoughCurrency',
+                vars: { currency: this.getCurrencyDisplay?.(item.currency) || item.currency },
+            }, 0xff0000);
+            return false;
+        }
+
+        const inv = this.gameScene?.inventorySystem;
+        if (!inv?.applyGemToWeapon) return false;
+        if (!inv.applyGemToWeapon(item.data, weaponSlotIndex)) return false;
+
+        if (item.currency === 'coins') this.gameState.coins -= item.price;
+        else this.gameState.crystals -= item.price;
+
+        SoundHelper.playSound(this, 'shop_buy', 0.5);
+        item.purchased = true;
+        recordHumanRunEvent(this, 'shop_item_bought', {
+            shop: this.sys?.settings?.key === 'RareShopScene' ? 'rare' : 'regular',
+            destinationSlot: weaponSlotIndex,
+            item: snapshotHumanRunCard(item.data),
+            price: item.price,
+            currency: item.currency,
+            socketed: true,
+        });
+        this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+        this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
+        this.markButtonDone(button, t(this, 'ui.shop.sold'));
+        this.refreshStationInventoryDisplay();
+        this.gameScene?.updateUI?.();
+        return true;
     }
 
     createShopIllustrationBoard(frame = 1, boardFrame = 0, y = 224) {

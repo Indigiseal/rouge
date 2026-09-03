@@ -47,6 +47,7 @@ const SCENE_KEYS_TO_STOP = [
   'TreasureScene',
   'EventScene',
   'PauseMenuScene',
+  'LocationPickScene',
   SANDBOX_HUB_KEY,
   SANDBOX_STORY_KEY,
 ];

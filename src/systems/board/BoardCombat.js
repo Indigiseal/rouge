@@ -1,6 +1,6 @@
 // BoardCombat — attackEnemy, gem effects, poison/shock, remove defeated, floor clear
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
-import { gemStackDamage } from '../../content/cards/gems.js';
+import { FIRE_GEM_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../../content/cards/gems.js';
 import { weaponIgnoresFrontline } from '../../content/cards/weapons.js';
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { CombatSequencer } from '../combat/CombatSequencer.js';
@@ -22,6 +22,7 @@ import {
 } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 import { playSmokePuff } from '../../ui/SmokeBurst.js';
+import { hideItemTooltip, showControlMarkTooltip } from '../../ui/ItemTooltip.js';
 
 export class BoardCombat {
     constructor(cs) {
@@ -29,6 +30,8 @@ export class BoardCombat {
         this.isRangedWeapon = isRangedWeapon.bind(cs);
         this.isVenomousWeapon = isVenomousWeapon.bind(cs);
         this.applyWeaponPoison = applyWeaponPoison.bind(cs);
+        this.applyPoisonGemStacks = applyPoisonGemStacks.bind(cs);
+        this.splashPoisonGem = splashPoisonGem.bind(cs);
         this.getEnemyPoisonSummary = getEnemyPoisonSummary.bind(cs);
         this.applyShockStatus = applyShockStatus.bind(cs);
         this.attachFrozenFrame = attachFrozenFrame.bind(cs);
@@ -40,6 +43,8 @@ export class BoardCombat {
         this.maxHiddenMeleeRowR = maxHiddenMeleeRowR.bind(cs);
         this._revealOneBehindAfterFrontClears = _revealOneBehindAfterFrontClears.bind(cs);
         this.restoreEnemyStatusMarkers = restoreEnemyStatusMarkers.bind(cs);
+        this.destroyControlMarkers = destroyControlMarkers.bind(cs);
+        this.syncControlMarkers = syncControlMarkers.bind(cs);
         this.rollEvade = rollEvade.bind(cs);
         this.attackEnemy = attackEnemy.bind(cs);
         this.getFireSplashRadius = getFireSplashRadius.bind(cs);
@@ -130,35 +135,22 @@ function isVenomousWeapon(w) {
   return !!w && ((w.poisonDamage || 0) > 0 || (w.name || '').toLowerCase().includes('venomous dagger'));
 }
 
-function applyWeaponPoison(card, weapon) {
+function collectPoisonGemStacks(weapon, amuletManager) {
+  if (weapon?.gemEffect !== 'poison') return [];
+  const stacks = CardDataGenerator.weaponGemStack(weapon);
+  const tickDamage = amuletManager?.modifyPoisonGemTickDamage?.(1) ?? 1;
   const poisonStacks = [];
-  if (this.isVenomousWeapon(weapon)) {
+  for (let i = 0; i < stacks; i++) {
     poisonStacks.push({
-      damage: Math.max(1, weapon.poisonDamage || 1),
-      turns: Math.max(1, weapon.poisonTurns || 3)
+      damage: tickDamage,
+      turns: 3
     });
   }
+  return poisonStacks;
+}
 
-  if (weapon?.gemEffect === 'poison') {
-    const stacks = CardDataGenerator.weaponGemStack(weapon);
-    const tickDamage = this.scene.amuletManager?.modifyPoisonGemTickDamage?.(1) ?? 1;
-    for (let i = 0; i < stacks; i++) {
-      poisonStacks.push({
-        damage: tickDamage,
-        turns: 3
-      });
-    }
-  }
-
-  const relicEffects = this.scene.gameState?.relicEffects || {};
-  if (relicEffects.weaponPoisonChance && Math.random() < relicEffects.weaponPoisonChance) {
-    poisonStacks.push({
-      damage: Math.max(1, relicEffects.poisonDamage || 1),
-      turns: Math.max(1, relicEffects.poisonTurns || 3)
-    });
-  }
-
-  if (poisonStacks.length === 0) return;
+function applyPoisonStacksToCard(card, poisonStacks) {
+  if (!card?.data || !poisonStacks?.length) return;
   if (!card.data.statusEffects) card.data.statusEffects = [];
   poisonStacks.forEach(stack => {
     card.data.statusEffects.push({
@@ -169,8 +161,10 @@ function applyWeaponPoison(card, weapon) {
     });
   });
   const totalDamage = poisonStacks.reduce((sum, stack) => sum + stack.damage, 0);
-  this.scene.createFloatingText(card.sprite.x, card.sprite.y - 16, 'Poisoned!', 0x44ff44);
-  this.scene.createFloatingText(card.sprite.x, card.sprite.y - 32, `poison -${totalDamage}/turn`, 0x88dd88);
+  if (card.sprite) {
+    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 16, 'Poisoned!', 0x44ff44);
+    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 32, `poison -${totalDamage}/turn`, 0x88dd88);
+  }
 
   // Show looping poison icon at top-right corner of the enemy card
   if (card.sprite && !card.poisonMarker && this.scene.textures.exists('poisonedStatus')) {
@@ -189,6 +183,59 @@ function applyWeaponPoison(card, weapon) {
     if (this.scene.anims?.exists('poison_status_anim')) marker.play('poison_status_anim');
     card.poisonMarker = marker;
   }
+}
+
+function applyPoisonGemStacks(card, weapon) {
+  applyPoisonStacksToCard.call(this, card, collectPoisonGemStacks(weapon, this.scene.amuletManager));
+}
+
+function nearestEdgeDistSq(fromX, fromY, sprite) {
+  const b = sprite.getBounds();
+  const nx = Phaser.Math.Clamp(fromX, b.left, b.right);
+  const ny = Phaser.Math.Clamp(fromY, b.top, b.bottom);
+  const dx = nx - fromX;
+  const dy = ny - fromY;
+  return dx * dx + dy * dy;
+}
+
+function splashPoisonGem(mainIndex, weapon) {
+  const extra = this.scene.amuletManager?.getPoisonGemSplashTargets?.() || 0;
+  if (extra <= 0 || weapon?.gemEffect !== 'poison') return;
+  const main = this.boardCards[mainIndex];
+  const tx = main?.sprite?.x;
+  const ty = main?.sprite?.y;
+  if (tx == null || ty == null) return;
+  const radiusSq = FIRE_GEM_SPLASH_RADIUS * FIRE_GEM_SPLASH_RADIUS;
+  const candidates = [];
+  this.boardCards.forEach((card, i) => {
+    if (i === mainIndex || !card?.sprite || !this.isAnyEnemyCard(card)) return;
+    const dist = nearestEdgeDistSq(tx, ty, card.sprite);
+    if (dist <= radiusSq) candidates.push({ card, dist });
+  });
+  candidates.sort((a, b) => a.dist - b.dist);
+  candidates.slice(0, extra).forEach(({ card }) => this.applyPoisonGemStacks(card, weapon));
+}
+
+function applyWeaponPoison(card, weapon) {
+  const poisonStacks = [];
+  if (this.isVenomousWeapon(weapon)) {
+    poisonStacks.push({
+      damage: Math.max(1, weapon.poisonDamage || 1),
+      turns: Math.max(1, weapon.poisonTurns || 3)
+    });
+  }
+
+  collectPoisonGemStacks(weapon, this.scene.amuletManager).forEach((stack) => poisonStacks.push(stack));
+
+  const relicEffects = this.scene.gameState?.relicEffects || {};
+  if (relicEffects.weaponPoisonChance && Math.random() < relicEffects.weaponPoisonChance) {
+    poisonStacks.push({
+      damage: Math.max(1, relicEffects.poisonDamage || 1),
+      turns: Math.max(1, relicEffects.poisonTurns || 3)
+    });
+  }
+
+  applyPoisonStacksToCard.call(this, card, poisonStacks);
 }
 
 function getEnemyPoisonSummary(enemyData) {
@@ -382,6 +429,99 @@ function restoreEnemyStatusMarkers(card) {
   }
   if ((card.data.shockedTurns || 0) > 0 && this.scene.textures.exists('shockedStatus')) {
     card.shockMarker = makeMarker('shockedStatus', 'shock_status_anim', 4);
+  }
+}
+
+function destroyControlMarkers(card) {
+  if (!card) return;
+  if (card.controlHesitationMarker) {
+    card.controlHesitationMarker.destroy();
+    card.controlHesitationMarker = null;
+  }
+  if (card.controlTreacheryMarker) {
+    card.controlTreacheryMarker.destroy();
+    card.controlTreacheryMarker = null;
+  }
+  if (card.strategyScoutMarker) {
+    card.strategyScoutMarker.destroy();
+    card.strategyScoutMarker = null;
+  }
+}
+
+function bindScoutCardHover(card, scene) {
+  if (!card?.sprite || card._scoutHoverBound) return;
+  card._scoutHoverBound = true;
+  card.sprite.on('pointerover', () => {
+    if (!card.data?.strategyScout || card.revealed) return;
+    showControlMarkTooltip(scene, 'scout', card.sprite.x, card.sprite.y);
+  });
+  card.sprite.on('pointerout', () => {
+    if (!card.revealed) hideItemTooltip(scene);
+  });
+}
+
+function syncControlMarkers(card) {
+  if (!card?.sprite?.scene) {
+    destroyControlMarkers(card);
+    return;
+  }
+  const scene = card.sprite.scene;
+  const halfW = (card.sprite.displayWidth || 52) / 2;
+  const halfH = (card.sprite.displayHeight || 70) / 2;
+  const baseX = Math.round(card.sprite.x - halfW + 7);
+  const baseY = Math.round(card.sprite.y - halfH + 7);
+  const depth = (card.sprite.depth || 1) + 6;
+
+  const placeDot = (key, active, color, slot) => {
+    if (!active) {
+      if (card[key]) {
+        card[key].destroy();
+        card[key] = null;
+      }
+      return;
+    }
+    const x = baseX + slot * 11;
+    const y = baseY;
+    let marker = card[key];
+    if (!marker?.scene) {
+      marker = scene.add.circle(x, y, 5, color);
+      marker.setStrokeStyle?.(1, 0x111111, 0.85);
+      marker.setDepth?.(depth);
+      // Visual only. Interactive dots on enemies swallow pointerup while a
+      // weapon is dragged (Phaser globalTopOnly), so the card never gets
+      // dragend and sticks to the cursor. Revealed-enemy hover already
+      // explains these marks in the card tooltip.
+      card[key] = marker;
+    } else {
+      marker.x = x;
+      marker.y = y;
+      marker.setDepth?.(depth);
+    }
+  };
+
+  const hesitation = !!card.data?.controlHesitation;
+  placeDot('controlHesitationMarker', hesitation, 0x44c8ff, 0);
+  placeDot('controlTreacheryMarker', !!card.data?.controlTreachery, 0xff66aa, hesitation ? 1 : 0);
+
+  const scout = !!card.data?.strategyScout && !card.revealed;
+  const scoutX = Math.round(card.sprite.x);
+  const scoutY = Math.round(card.sprite.y - halfH + 7);
+  if (!scout) {
+    if (card.strategyScoutMarker) {
+      card.strategyScoutMarker.destroy();
+      card.strategyScoutMarker = null;
+    }
+  } else if (!card.strategyScoutMarker?.scene) {
+    const pin = scene.add.circle(scoutX, scoutY, 6, 0xc8b06a);
+    pin.setStrokeStyle?.(1, 0x111111, 0.85);
+    pin.setDepth?.(depth);
+    card.strategyScoutMarker = pin;
+    bindScoutCardHover(card, scene);
+  } else {
+    card.strategyScoutMarker.x = scoutX;
+    card.strategyScoutMarker.y = scoutY;
+    card.strategyScoutMarker.setDepth?.(depth);
+    bindScoutCardHover(card, scene);
   }
 }
 
@@ -609,9 +749,12 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         });
     }
 
-    if (!isReflection && weapon && card.data.health > 0) {
-        this.applyWeaponPoison(card, weapon);
-        this.applyRelicSlow(card);
+    if (!isReflection && weapon) {
+        if (card.data.health > 0) {
+            this.applyWeaponPoison(card, weapon);
+            this.applyRelicSlow(card);
+        }
+        this.splashPoisonGem(index, weapon);
     }
 
     // (Gem effect ran above, before the weapon damage was applied, so we
@@ -657,9 +800,10 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
 }
 
 function getFireSplashRadius() {
-    // Baseline trimmed 70 → 65 to make fire gems weaker early. The Ember
-    // Rune amulet adds its splash bonus back on top (and then some).
-    return 65 + (this.scene.amuletManager?.getFireSplashRadiusBonus?.() || 0);
+    return resolveFireGemSplashRadius(
+        this.scene.amuletManager?.getFireSplashRadiusMultiplier?.() || 1,
+        this.scene.amuletManager?.getFireSplashRadiusBonus?.() || 0
+    );
 }
 
 function applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
@@ -683,13 +827,7 @@ function applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
         const ty = target.sprite?.y ?? 0;
         this.boardCards.forEach((card, i) => {
             if (i === targetIndex || !card?.sprite) return;
-            const b = card.sprite.getBounds();
-            // Closest point on this sprite's bounding box to the struck card.
-            const nx = Phaser.Math.Clamp(tx, b.left, b.right);
-            const ny = Phaser.Math.Clamp(ty, b.top, b.bottom);
-            const dx = nx - tx;
-            const dy = ny - ty;
-            if (dx * dx + dy * dy <= SPLASH_RADIUS * SPLASH_RADIUS) {
+            if (nearestEdgeDistSq(tx, ty, card.sprite) <= SPLASH_RADIUS * SPLASH_RADIUS) {
                 this.burnEnemy(i, splashDamage);
             }
         });
@@ -697,12 +835,11 @@ function applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
     }
 
     if (weapon.gemEffect === 'lightning') {
-        // Lightning: flat zap by gem stack (stacks 4–5 provisional).
-        // Always hits 3 enemies total: main target + 2 others.
-        // Stacks only increase the damage.
+        // Lightning: flat zap by gem stack. Baseline is 3 enemies total
+        // (main + 2 hops). Uncommon Rune of Zap adds extra hops.
         let zapDamage = gemStackDamage(stack, this.scene.gameState?.currentFloor);
         zapDamage = this.scene.amuletManager?.modifyGemDamage?.(zapDamage, 'lightning') ?? zapDamage;
-        const extraZaps = 2; // always 2 additional = 3 total
+        const extraZaps = 2 + (this.scene.amuletManager?.getLightningExtraBounces?.() || 0);
         // One random zap SFX per lightning-gem swing (not per hop). Sits on
         // the gem beat so the zap answers the sword hit instead of racing it.
         CombatSequencer.playVariant(this.scene, 'gem', 'lightning_zap', 0.45);
@@ -839,7 +976,6 @@ function isTauntBlockingTarget(card) {
 function burnEnemy(index, amount) {
     const card = this.boardCards[index];
     if (!this.isAnyEnemyCard(card)) return;
-    if (isTauntBlockingTarget.call(this, card)) return;
     card.data.health -= amount;
     if (card.revealed && card.sprite?.scene) {
         CombatSequencer.schedule(this.scene, 'gem', () => {
@@ -937,12 +1073,7 @@ function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
             // splash: a boss's centre is far away but its body is not.
             this.boardCards.forEach((other, i) => {
                 if (i === index || !other?.sprite) return;
-                const b = other.sprite.getBounds();
-                const nx = Phaser.Math.Clamp(tx, b.left, b.right);
-                const ny = Phaser.Math.Clamp(ty, b.top, b.bottom);
-                const dx = nx - tx;
-                const dy = ny - ty;
-                if (dx * dx + dy * dy <= ENCHANT_FIRE_SPLASH_RADIUS * ENCHANT_FIRE_SPLASH_RADIUS) {
+                if (nearestEdgeDistSq(tx, ty, other.sprite) <= ENCHANT_FIRE_SPLASH_RADIUS * ENCHANT_FIRE_SPLASH_RADIUS) {
                     this.burnEnemy(i, splash);
                 }
             });
@@ -1050,6 +1181,7 @@ function hideEnemyCard(index) {
     if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
     if (card.frozenFrame) { card.frozenFrame.destroy(); card.frozenFrame = null; }
     this.destroyCardInfoText?.(card);
+    this.syncControlMarkers?.(card);
     return true;
 }
 
@@ -1068,7 +1200,7 @@ function removeDefeatedEnemy(index, card) {
 
         // Process amulet kill effects
         if (this.scene.amuletManager) {
-            this.scene.amuletManager.processEnemyKill();
+            this.scene.amuletManager.processEnemyKill(card);
         }
 
         const relicLifesteal = this.scene.gameState.relicEffects?.lifestealOnKill || 0;
@@ -1273,15 +1405,9 @@ function tryApplyBoardGem(card, index) {
             }
             break;
         }
-        if (!targetCard && inventory.addCard(card.data, i)) {
-            this.removeCard(index);
-            recordHumanRunEvent(this.scene, 'board_loot_collected', {
-                sourceBoardIndex: index,
-                destinationSlot: inventory.lastAddedSlot,
-                card: snapshotHumanRunCard(card.data),
-            });
-            // Picking a gem into an empty slot does not spend AP.
-            return true;
+        if (!targetCard) {
+            // Gems never land in an empty inventory slot — only onto a weapon.
+            continue;
         }
     }
 

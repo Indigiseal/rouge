@@ -133,6 +133,10 @@ export function applyPermanentWeaponDamageBonuses(characterId, weapon, damage, t
     || weapon.weaponType === 'spear' || weapon.weaponType === 'axe')) {
     result += heavy;
   }
+
+  // Village forge: flat on any weapon, printed on the card.
+  const villageFlat = talentEffects?.villageWeaponFlat || 0;
+  if (villageFlat > 0) result += villageFlat;
   return result;
 }
 

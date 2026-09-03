@@ -103,8 +103,9 @@ export class ArmorerPickScene extends Phaser.Scene {
     MusicManager.stopIfPlaying(this, 'menu_music', 300);
     this.cameras.main.fadeOut(350, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('GameScene', {
-        newGame: true,
+      this.scene.start('LocationPickScene', {
+        mode: 'newRun',
+        act: 1,
         characterId: this.characterId,
         armorerArmorType,
       });

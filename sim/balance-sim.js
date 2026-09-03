@@ -25,7 +25,7 @@ import { CardSystem } from '../src/systems/CardSystem.js';
 import { CardDataGenerator } from '../src/systems/loot/CardDataGenerator.js';
 import { installSeededRandom, beginSeededRun, parseSeedArg, isSeeded } from './rng.js';
 import { setTuningOverrides } from '../src/content/balance/Tuning.js';
-import { gemStackDamage } from '../src/content/cards/gems.js';
+import { FIRE_GEM_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../src/content/cards/gems.js';
 import { xpForRun, estimateBossesKilled } from '../src/content/economy/metaXp.js';
 import { weaponCanDamageEnemy, canHurtEnemyAtAll } from '../src/systems/board/BoardCombat.js';
 import { effectiveArmorDodge } from '../src/systems/combat/ArmorMath.js';
@@ -63,6 +63,12 @@ import {
   sampleAmuletIds,
 } from './parse-sim-flags.js';
 import { getDefaultAmuletIds } from './sim-catalog.js';
+import { normalizeActLocationIds } from '../src/content/locations/index.js';
+import {
+  healerRarityForRank,
+  maxVillageBuildings,
+  normalizeVillageBuildings,
+} from '../src/content/village/index.js';
 import { getBehaviorProfile, getBehaviorPresetNames } from './behavior-knobs.js';
 import {
   chooseWeaponPreservingAttack,
@@ -401,6 +407,24 @@ function applyAmuletPool(mock, poolIds) {
     if (!allow.has(id) && !opts.force) return false;
     return orig(id, opts);
   };
+}
+
+function applyHealerAmulet(mock, gs) {
+  if (areAmuletsDisabled()) return;
+  const rarity = healerRarityForRank(gs?.talentEffects?.healerRank || 0);
+  if (!rarity) return;
+  const gen = mock.cardSystem?.cardDataGenerator;
+  if (!gen?.createAmuletChoice) return;
+  const options = gen.createAmuletChoice(
+    gs.currentFloor || 1,
+    rarity,
+    3,
+    gs,
+    { ignoreMinFloor: true },
+  ) || [];
+  if (!options.length) return;
+  const pick = options[Math.floor(Math.random() * options.length)];
+  if (pick?.id) mock.amuletManager.addAmulet(pick.id);
 }
 
 /** Restrict MetaProgressionManager definitions so accumulate unlocks stay in-pool. */
@@ -884,31 +908,34 @@ function computeRunEndReason(gs, inv, { won, dead, lastEncounterType, stalemateD
 // class/build, then try the strongest takeable choice first.
 // Floor/shop never equip cursed; boss may.
 const AMULET_CHOICE_BASE_SCORE = Object.freeze({
-  lostNobleDiadem: 1200,
-  philosophersStone: 900,
   vampireFang: 760,
   legendaryWhetstone: 700,
   newDragonClaw: 680,
-  amuletOfGreaterProtection: 620,
   ringOfGreaterRegeneration: 580,
-  amuletOfGreaterEvasion: 550,
-  ringOfGreaterHealth: 520,
   glovesOfHermitWizard: 500,
   maskOfHollowWhispers: 440,
   earringOfGreaterWeaponDurability: 430,
   alchemistBag: 410,
   earringOfGreaterArmorDurability: 390,
-  runeOfPoison: 370,
-  runeOfZap: 350,
-  runeOfFire: 330,
+  greaterRuneOfPoison: 370,
+  greaterRuneOfZap: 350,
+  greaterRuneOfFire: 330,
   pouchOfGreed: 300,
   monocle: 280,
-  amuletOfProtection: 270,
   ringOfRegeneration: 260,
-  amuletOfEvasion: 245,
-  ringOfHealth: 235,
   earringOfWeaponDurability: 225,
   earringOfArmorDurability: 205,
+  generalsTable: 480,
+  vacancyStep: 360,
+  forcedMarch: 260,
+  runeOfPoison: 250,
+  runeOfZap: 240,
+  runeOfFire: 230,
+  tacticiansPin: 170,
+  collarOfBinding: 640,
+  twinMarks: 500,
+  markOfTreachery: 380,
+  markOfHesitation: 230,
 });
 
 function amuletChoiceScore(mock, pick) {
@@ -2172,16 +2199,20 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs
   }
 
   if (weapon.gemEffect === 'fire') {
-    const splashDamage = gemStackDamage(stack, floor);
+    let splashDamage = gemStackDamage(stack, floor);
+    splashDamage = gs?.scene?.amuletManager?.modifyGemDamage?.(splashDamage, 'fire') ?? splashDamage;
     affected.set(targetIndex, (affected.get(targetIndex) || 0) + splashDamage);
     const target = board[targetIndex];
-    const radius = 70;
+    const radius = resolveFireGemSplashRadius(
+      gs?.scene?.amuletManager?.getFireSplashRadiusMultiplier?.() || 1,
+      gs?.scene?.amuletManager?.getFireSplashRadiusBonus?.() || 0,
+    );
     const tx = target?.sprite?.x ?? 0;
     const ty = target?.sprite?.y ?? 0;
     for (let i = 0; i < board.length; i++) {
       if (i === targetIndex) continue;
       const card = board[i];
-      if (!card?.revealed || !(card.data?.type === 'enemy' || card.data?.type === 'boss') || card.data.health <= 0) continue;
+      if (!(card.data?.type === 'enemy' || card.data?.type === 'boss' || card.data?.type === 'eliteEnemy') || card.data.health <= 0) continue;
       const b = card.sprite?.getBounds?.();
       const nearestX = b ? Math.max(b.x, Math.min(tx, b.x + b.width)) : (card.sprite?.x ?? 0);
       const nearestY = b ? Math.max(b.y, Math.min(ty, b.y + b.height)) : (card.sprite?.y ?? 0);
@@ -2190,8 +2221,10 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs
       }
     }
   } else if (weapon.gemEffect === 'lightning') {
-    const zapDamage = gemStackDamage(stack, floor);
+    let zapDamage = gemStackDamage(stack, floor);
+    zapDamage = gs?.scene?.amuletManager?.modifyGemDamage?.(zapDamage, 'lightning') ?? zapDamage;
     affected.set(targetIndex, (affected.get(targetIndex) || 0) + zapDamage);
+    const extraZaps = 2 + (gs?.scene?.amuletManager?.getLightningExtraBounces?.() || 0);
     const candidates = board
       .map((card, index) => ({ card, index }))
       .filter(({ card, index }) => (
@@ -2206,12 +2239,34 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs
       if (br !== ar) return br - ar;
       return a.card.data.health - b.card.data.health;
     });
-    for (const { index } of candidates.slice(0, 2)) {
+    for (const { index } of candidates.slice(0, extraZaps)) {
       affected.set(index, (affected.get(index) || 0) + zapDamage);
     }
   } else if (weapon.gemEffect === 'poison') {
-    const poison = stack * 3; // 1 damage for 3 turns per socket.
+    const tick = gs?.scene?.amuletManager?.modifyPoisonGemTickDamage?.(1) ?? 1;
+    const poison = stack * tick * 3;
     affected.set(targetIndex, (affected.get(targetIndex) || 0) + poison);
+    const extra = gs?.scene?.amuletManager?.getPoisonGemSplashTargets?.() || 0;
+    if (extra > 0) {
+      const target = board[targetIndex];
+      const tx = target?.sprite?.x ?? 0;
+      const ty = target?.sprite?.y ?? 0;
+      const nearby = [];
+      for (let i = 0; i < board.length; i++) {
+        if (i === targetIndex) continue;
+        const card = board[i];
+        if (!(card.data?.type === 'enemy' || card.data?.type === 'boss' || card.data?.type === 'eliteEnemy') || card.data.health <= 0) continue;
+        const b = card.sprite?.getBounds?.();
+        const nearestX = b ? Math.max(b.x, Math.min(tx, b.x + b.width)) : (card.sprite?.x ?? 0);
+        const nearestY = b ? Math.max(b.y, Math.min(ty, b.y + b.height)) : (card.sprite?.y ?? 0);
+        const dist = Math.hypot(nearestX - tx, nearestY - ty);
+        if (dist <= FIRE_GEM_SPLASH_RADIUS) nearby.push({ index: i, dist });
+      }
+      nearby.sort((a, b) => a.dist - b.dist);
+      for (const { index } of nearby.slice(0, extra)) {
+        affected.set(index, (affected.get(index) || 0) + poison);
+      }
+    }
   }
   return affected;
 }
@@ -2220,7 +2275,8 @@ function expectedAmuletDodgeChance(gs) {
   // Includes Shadow Step: the planner's survival estimate has to see the same
   // dodge the damage resolver rolls, or the bot mis-reads how much punishment
   // it can take on deep floors.
-  const talentDodge = gs?.talentEffects?.shadowStepDodge || 0;
+  const talentDodge = (gs?.talentEffects?.shadowStepDodge || 0)
+    + (gs?.talentEffects?.villageDodge || 0);
   const manager = gs.scene?.amuletManager;
   if (!manager) return Math.min(1, talentDodge);
   return Math.min(1, talentDodge + (gs.activeAmulets || []).reduce((sum, amulet) => {
@@ -2370,7 +2426,7 @@ function expectedPlayerPoisonTick(gs, defense) {
 
 function cloneLookaheadBoard(board) {
   return board.map((card) => {
-    if (!card?.data || (card.data.type !== 'enemy' && card.data.type !== 'boss')) return null;
+    if (!card?.data || (card.data.type !== 'enemy' && card.data.type !== 'eliteEnemy' && card.data.type !== 'boss')) return null;
     return {
       revealed: Boolean(card.revealed),
       justRevealed: Boolean(card.justRevealed),
@@ -2436,6 +2492,29 @@ function simulateExpectedEnemyPhase(state, gs, defense) {
     if (enemy.health <= 0) continue;
     if (enemy.frozen > 0) {
       enemy.frozen--;
+      continue;
+    }
+    const others = eligible.filter((other) => (
+      other !== card && (other.data.health || 0) > 0
+    ));
+    const treacheryHasTarget = !!enemy.controlTreachery && others.length > 0;
+    if (enemy.controlHesitation && treacheryHasTarget) {
+      others.sort((a, b) => a.data.health - b.data.health);
+      others[0].data.health -= (enemy.attack || 0) * 0.5;
+      continue;
+    }
+    if (treacheryHasTarget) {
+      others.sort((a, b) => a.data.health - b.data.health);
+      others[0].data.health -= enemy.attack || 0;
+      continue;
+    }
+    if (enemy.controlHesitation) {
+      for (const ability of (enemy.abilities || [])) {
+        if (ability.type === 'poison') addProjectedPoison(defense, ability);
+      }
+      const outcome = expectedEnemyHitOutcome(gs, enemy, defense);
+      incoming += outcome.incoming * 0.5;
+      enemy.health -= outcome.retaliation * 0.5;
       continue;
     }
     for (const ability of (enemy.abilities || [])) {
@@ -4226,7 +4305,12 @@ function runGame(metrics, config = {}) {
   if (Number.isFinite(config.calendarMonthIndex)) {
     gs.calendarMonthIndex = config.calendarMonthIndex;
   }
-  gs.pinCalendarMonth = Boolean(config.pinCalendarMonth);
+  if (Array.isArray(config.actLocationIds) && config.actLocationIds.some(Boolean)) {
+    gs.actLocationIds = normalizeActLocationIds(config.actLocationIds);
+    gs.pinCalendarMonth = false;
+  } else {
+    gs.pinCalendarMonth = Boolean(config.pinCalendarMonth);
+  }
 
   const startAct = (config.act === 1 || config.act === 2 || config.act === 3) ? config.act : 1;
   const endAct = (config.act === 1 || config.act === 2 || config.act === 3) ? config.act : 3;
@@ -4247,14 +4331,18 @@ function runGame(metrics, config = {}) {
   gs._mergeTracker = tracker;
   if (config.lootStats) gs._lootStats = config.lootStats;
   if (config.statsRecorder) gs._statsRecorder = config.statsRecorder;
-  // Apply character talents (relics-on-death removed). Optional config.talents
-  // injects ranks for experiments; otherwise the run starts with an empty tree.
-  if (!isMetaProgressionDisabled()) {
+  // Apply village buildings always when a loadout is set. Talents only if
+  // the meta flag is on (legacy talentcompare / --talents).
+  const buildings = normalizeVillageBuildings(config.buildings);
+  const hasBuildings = Object.values(buildings).some((rank) => rank > 0);
+  if (!isMetaProgressionDisabled() || hasBuildings) {
     const meta = new MetaProgressionManager(mock);
     meta.characters = {
       rogue: { xp: 0, talents: {}, choices: {} },
       warrior: { xp: 0, talents: {}, choices: {} },
     };
+    meta.xp = 0;
+    meta.buildings = buildings;
     if (config.talents && typeof config.talents === 'object') {
       const id = gs.characterId || 'rogue';
       const ch = meta.ensureCharacter(id);
@@ -4266,10 +4354,15 @@ function runGame(metrics, config = {}) {
       || config.talentChoices?.armorerArmorType === 'plate') {
       applyOpts.armorerArmorType = config.talentChoices.armorerArmorType;
     }
-    meta.applyTalentEffects(gs, true, applyOpts);
+    if (!isMetaProgressionDisabled()) {
+      meta.applyTalentEffects(gs, true, applyOpts);
+    } else {
+      meta.applyVillageEffects(gs, true);
+    }
   }
   // Limit mid-run amulet finds before equipping the starting loadout.
   if (config.amuletPool) applyAmuletPool(mock, config.amuletPool);
+  applyHealerAmulet(mock, gs);
   // Record mid-run amulet gains into stats-db (only while a floor visit is open).
   if (gs._statsRecorder) {
     const origAddAmulet = mock.amuletManager.addAmulet.bind(mock.amuletManager);
@@ -5127,7 +5220,7 @@ function runLoadout() {
   let amulets;
   if (arg === 'auto') {
     // A representative "strong defensive + utility" stack.
-    amulets = ['ringOfHealth', 'philosophersStone', 'amuletOfEvasion', 'amuletOfProtection', 'legendaryWhetstone', 'alchemistBag', 'pouchOfGreed'];
+    amulets = ['ringOfRegeneration', 'legendaryWhetstone', 'alchemistBag', 'pouchOfGreed', 'vampireFang'];
   } else {
     amulets = arg.split(',').map((s) => s.trim()).filter(Boolean);
   }
@@ -5146,17 +5239,24 @@ const MAX_SHADOW_TALENTS = {
 const MAX_IRON_TALENTS = {
   hardened: 3, reprisal: 3, bulwark: 3, armorerStart: 1, rivets: 3,
 };
-const STRONG_AMULETS = ['ringOfHealth', 'philosophersStone', 'amuletOfGreaterEvasion', 'amuletOfGreaterProtection',
-  'legendaryWhetstone', 'alchemistBag', 'pouchOfGreed', 'vampireFang'];
+const STRONG_AMULETS = [
+  'ringOfGreaterRegeneration',
+  'legendaryWhetstone',
+  'alchemistBag',
+  'pouchOfGreed',
+  'vampireFang',
+  'newDragonClaw',
+  'glovesOfHermitWizard',
+];
 
 function runGeared() {
   const runs = parseInt(process.argv[3], 10) || RUNS;
-  console.log(`\nGeared run — max Shadow talents + strong amulets: ${STRONG_AMULETS.length}`);
+  console.log(`\nGeared run — max village buildings + strong amulets: ${STRONG_AMULETS.length}`);
   const metrics = newMetrics();
   for (let i = 0; i < runs; i++) {
     runGame(metrics, {
       characterId: 'rogue',
-      talents: MAX_SHADOW_TALENTS,
+      buildings: maxVillageBuildings(),
       amulets: STRONG_AMULETS,
     });
   }
@@ -5794,6 +5894,10 @@ function runStatsDb() {
         characterId: normFlags.characterId || DEFAULT_CHARACTER_ID,
         armorPool: normFlags.armorPool || null,
         talentLoadout: normFlags.talentLoadout || 'none',
+        buildingLoadout: normFlags.buildingLoadout || 'none',
+        buildings: normFlags.buildings || null,
+        locationToken: normFlags.locationToken || null,
+        actLocationIds: normFlags.actLocationIds || null,
         enableMeta: normFlags.enableMeta,
         enableAmulets: normFlags.enableAmulets,
         amuletLoadout: normFlags.amuletLoadout,
@@ -5913,7 +6017,8 @@ function runFresh() {
   const armorLabel = armorPool ? armorPool.join('+') : 'class-default';
   console.log(
     `\nFresh: ${runs} runs, character=${characterId}, armor=${armorLabel},` +
-    ` talents=${normFlags.talentLoadout || 'none'}`
+    ` talents=${normFlags.talentLoadout || 'none'}` +
+    ` buildings=${normFlags.buildingLoadout || 'none'}`
   );
   // 0 starting amulets; mid-run drops/shops/events use the full (non-old) pool.
   applySimFlags(simFlags);

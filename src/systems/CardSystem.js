@@ -119,10 +119,15 @@ export class CardSystem {
     revealTutorialLightningTargets(...args) { return this.spawner.revealTutorialLightningTargets(...args); }
     findTutorialCard(...args) { return this.spawner.findTutorialCard(...args); }
     getSerializableBoardLayout(...args) { return this.layout.getSerializableBoardLayout(...args); }
+    moveCardToSeat(...args) { return this.layout.moveCardToSeat(...args); }
+    swapCardSeats(...args) { return this.layout.swapCardSeats(...args); }
+    applyStrategyCluster(...args) { return this.layout.applyStrategyCluster(...args); }
     /** Pending reinforcement waves in save-safe form, or null if the room has none. */
     getSerializableWaveState() { return serializeReinforcementState(this._waveState); }
     restoreSavedBoard(...args) { return this.spawner.restoreSavedBoard(...args); }
     restoreEnemyStatusMarkers(...args) { return this.combat.restoreEnemyStatusMarkers(...args); }
+    destroyControlMarkers(...args) { return this.combat.destroyControlMarkers(...args); }
+    syncControlMarkers(...args) { return this.combat.syncControlMarkers(...args); }
     convertCardToFood(...args) { return this.spawner.convertCardToFood(...args); }
     spawnBossRewardBoard(...args) { return this.spawner.spawnBossRewardBoard(...args); }
     takeRewardCard(...args) { return this.spawner.takeRewardCard(...args); }
@@ -160,11 +165,16 @@ export class CardSystem {
             SoundHelper.playVariant(this.scene, 'legendary_reveal', 0.6);
         }
         card.revealed = true;
+        this.scene.amuletManager?.onStrategyReveal?.(card);
         // Elite "mystery" card being flipped — drop the gold back highlight so
         // the real card (or the mini-boss's own yellow tint) shows cleanly.
         if (card.data?.highlightedBack) {
             card.sprite?.clearTint?.();
             card.data.highlightedBack = false;
+        }
+        if (card.data?.strategyScout) {
+            card.data.strategyScout = false;
+            this.syncControlMarkers(card);
         }
         if (card.data?.tutorialTag) {
             this.scene.events.emit('tutorialProgress', `revealed:${card.data.tutorialTag}`);
@@ -262,7 +272,7 @@ export class CardSystem {
             this.applyEliteMiniBossVisual(card);
             
             this.createCardInfoText(card);
-            if (card.data?.type === 'enemy' || card.data?.type === 'boss') {
+            if (card.data?.type === 'enemy' || card.data?.type === 'eliteEnemy' || card.data?.type === 'boss') {
                 this.refreshEnemyAttackLabels();
             }
             card.sprite.setInteractive();
@@ -272,6 +282,7 @@ export class CardSystem {
             // (see _attachEnemyBoardHover). Traps aren't spoiled; empty is empty.
             this._attachBoardItemTooltip(card);
             this._attachEnemyBoardHover(card);
+            this.syncControlMarkers(card);
             if (card.data.type === 'gem') {
                 this.attachGemShadow(card);
                 this.enableGemDrag(card, index);
@@ -423,7 +434,7 @@ export class CardSystem {
     _attachEnemyBoardHover(card) {
         if (!card?.sprite || !card.data) return;
         const kind = card.data.type;
-        if (kind !== 'enemy' && kind !== 'boss') return;
+        if (kind !== 'enemy' && kind !== 'eliteEnemy' && kind !== 'boss') return;
 
         const sprite = card.sprite;
         const scene = this.scene;
@@ -466,6 +477,17 @@ export class CardSystem {
             if (card.shockMarker?.scene) {
                 card.shockMarker.x = mx;
                 card.shockMarker.y = my;
+            }
+            if (card.controlHesitationMarker?.scene) {
+                const hx = Math.round(x - halfW + 7);
+                const hy = Math.round(y - halfH + 7);
+                card.controlHesitationMarker.x = hx;
+                card.controlHesitationMarker.y = hy;
+            }
+            if (card.controlTreacheryMarker?.scene) {
+                const slot = card.data?.controlHesitation ? 1 : 0;
+                card.controlTreacheryMarker.x = Math.round(x - halfW + 7 + slot * 11);
+                card.controlTreacheryMarker.y = Math.round(y - halfH + 7);
             }
         };
 
@@ -540,6 +562,7 @@ export class CardSystem {
             if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
             if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
             if (card.frozenFrame) { card.frozenFrame.destroy(); card.frozenFrame = null; }
+            this.destroyControlMarkers(card);
             this.destroyCardInfoText(card);
             this.boardCards[index] = null;
         }
@@ -591,8 +614,6 @@ export class CardSystem {
                 // falls through to the shared pickup handling below
             case 'magic':
             case 'thorns':
-            case 'gem':
-                if (card.data.type === 'gem') SoundHelper.playSound(this.scene, 'gem_pickup', 0.5);
                 if (this.scene.inventorySystem.addCard(card.data)) {
                     const destinationSlot = this.scene.inventorySystem.lastAddedSlot;
                     this.removeCard(index);

@@ -10,7 +10,7 @@ import {
     WARRIOR_STANCES,
     WARRIOR_STANCE_AP_COST,
 } from '../content/characters/CharacterClasses.js';
-import { getMonthDisplayName } from '../content/months/index.js';
+import { getLocationDisplayName } from '../content/locations/index.js';
 import { MAGIC_SHIELD_DODGE_BONUS } from '../systems/combat/ArmorMath.js';
 
 // The amulet strip owns the top-left corner, so the hero column starts below
@@ -429,8 +429,8 @@ export const CombatHud = {
         this.updateActionPointUI();
         this.updateCurrencyUILayout();
         const _act = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
-        const monthName = getMonthDisplayName(
-            this.gameState.calendarMonthIndex ?? 0,
+        const monthName = getLocationDisplayName(
+            this.gameState,
             this.gameState.currentFloor || 1
         );
         this.floorText.setText(`${monthName}  ·  Act ${_act} · Floor ${this.gameState.currentFloor}`);

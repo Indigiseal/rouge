@@ -16,7 +16,7 @@ Obsidian редактирует ту же папку через symlink в vault
 ```text
 docs/narrative/
   Narrative.md              # map of content
-  Lore/                     # Second Moon, Waystar, Calendar, City, ...
+  Lore/                     # Second Moon, Waystar, Calendar, Village, ...
   Locations/                # PRIMARY
     Locations Index.md      # nine roads, three per act, true path marked
     Thornwake/              # one folder per road

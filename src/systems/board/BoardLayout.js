@@ -1,4 +1,10 @@
 // BoardLayout — brick grid, placement, floor/boss panels, layout serialization
+import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
+import {
+    planClusterSwaps,
+    seatOfCard,
+} from '../../content/amulets/strategy.js';
+
 export class BoardLayout {
     constructor(cs) {
         this.buildBrickGrid = buildBrickGrid.bind(cs);
@@ -20,6 +26,9 @@ export class BoardLayout {
         this.frontBandCount = frontBandCount.bind(cs);
         this.getSerializableBoardLayout = getSerializableBoardLayout.bind(cs);
         this._rebuildBrickNeighbors = _rebuildBrickNeighbors.bind(cs);
+        this.moveCardToSeat = moveCardToSeat.bind(cs);
+        this.swapCardSeats = swapCardSeats.bind(cs);
+        this.applyStrategyCluster = applyStrategyCluster.bind(cs);
     }
 }
 
@@ -305,6 +314,7 @@ function clearBoard() {
     card.poisonMarker?.destroy();
     card.shockMarker?.destroy();
     card.frozenFrame?.destroy();
+    this.destroyControlMarkers?.(card);
     if (card.infoText) {
       this.destroyCardInfoText?.(card);
     }
@@ -318,6 +328,9 @@ function clearBoard() {
     card.poisonMarker = null;
     card.shockMarker = null;
     card.frozenFrame = null;
+    card.controlHesitationMarker = null;
+    card.controlTreacheryMarker = null;
+    card.strategyScoutMarker = null;
     card.infoText = null;
   });
   this.boardCards = [];
@@ -461,4 +474,107 @@ function _rebuildBrickNeighbors() {
         card.data.brickNeighbors = nbrs;
     }
 }
+
+function applyEnemyRoleForSeat(card) {
+    const data = card?.data;
+    if (!data) return;
+    if (typeof this.isEnemyType === 'function' ? !this.isEnemyType(data.type) : false) return;
+    if (data.type === 'boss' || data.isMimic) return;
+    const row = data.brick?.r;
+    if (!Number.isFinite(row)) return;
+    data.role = row > 0 ? 'MELEE' : 'RANGED';
+}
+
+function syncMovedCardVisuals(card) {
+    if (!card) return;
+    const x = Number.isFinite(card.sprite?.x) ? card.sprite.x : card.restX;
+    const y = Number.isFinite(card.sprite?.y) ? card.sprite.y : card.restY;
+    if (card.shadow?.scene) {
+        card.shadow.x = x;
+        card.shadow.y = (Number.isFinite(card.restY) ? card.restY : y) + 28;
+    }
+    if (card.infoText?.scene) {
+        card.infoText.x = x;
+        card.infoText.y = y + 22;
+    }
+    if (card.frozenFrame?.scene) {
+        card.frozenFrame.setPosition?.(Math.round(x), Math.round(y));
+    }
+    if (card.gemShadow?.scene) {
+        const off = card.gemShadowOffset || { x: 0, y: 3 };
+        card.gemShadow.x = x + off.x;
+        card.gemShadow.y = y + off.y;
+    }
+    this.syncControlMarkers?.(card);
+}
+
+function finishSeatMove(card) {
+    if (card?.sprite) {
+        if (Number.isFinite(card.restX)) card.sprite.x = card.restX;
+        if (Number.isFinite(card.restY)) card.sprite.y = card.restY;
+        snapOriginToPixelGrid(card.sprite);
+    }
+    syncMovedCardVisuals.call(this, card);
+    if (card?.poisonMarker) {
+        card.poisonMarker.destroy();
+        card.poisonMarker = null;
+    }
+    if (card?.shockMarker) {
+        card.shockMarker.destroy();
+        card.shockMarker = null;
+    }
+    this.restoreEnemyStatusMarkers?.(card);
+}
+
+function moveCardToSeat(card, seat, { animate = true } = {}) {
+    if (!card || !seat?.brick) return;
+    if (card.data) card.data.brick = { r: seat.brick.r, c: seat.brick.c };
+    if (Number.isFinite(seat.restX)) card.restX = seat.restX;
+    if (Number.isFinite(seat.restY)) card.restY = seat.restY;
+    applyEnemyRoleForSeat.call(this, card);
+    const x = card.restX;
+    const y = card.restY;
+    const canTween = animate && typeof this.scene?.tweens?.add === 'function' && card.sprite;
+    if (canTween) {
+        this.killCardTweens?.(card);
+        this.scene.tweens.add({
+            targets: card.sprite,
+            x,
+            y,
+            duration: 220,
+            onUpdate: () => syncMovedCardVisuals.call(this, card),
+            onComplete: () => finishSeatMove.call(this, card),
+        });
+        return;
+    }
+    if (card.sprite) {
+        card.sprite.x = x;
+        card.sprite.y = y;
+    }
+    finishSeatMove.call(this, card);
+}
+
+function swapCardSeats(a, b, opts) {
+    if (!a || !b || a === b) return false;
+    const seatA = seatOfCard(a);
+    const seatB = seatOfCard(b);
+    if (!seatA.brick || !seatB.brick) return false;
+    moveCardToSeat.call(this, a, seatB, opts);
+    moveCardToSeat.call(this, b, seatA, opts);
+    this._rebuildBrickNeighbors?.();
+    if (this._boardPlace?.VSTEP) this.computeRowBands?.(this.boardCards, this._boardPlace.VSTEP);
+    this.refreshEnemyAttackLabels?.();
+    return true;
+}
+
+function applyStrategyCluster({ preferFront = false } = {}) {
+    const swaps = planClusterSwaps(this.boardCards, { preferFront });
+    if (!swaps.length) return false;
+    let moved = false;
+    for (const [a, b] of swaps) {
+        if (swapCardSeats.call(this, a, b)) moved = true;
+    }
+    return moved;
+}
+
 

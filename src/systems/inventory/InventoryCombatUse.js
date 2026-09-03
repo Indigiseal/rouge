@@ -240,6 +240,7 @@ export const InventoryCombatUse = {
                         if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
                         if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
                         this.scene.cardSystem.destroyCardInfoText?.(card);
+                        this.scene.cardSystem.syncControlMarkers?.(card);
                         flippedAny = true;
                     }
                 });

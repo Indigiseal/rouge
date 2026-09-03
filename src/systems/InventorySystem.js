@@ -39,6 +39,7 @@ export class InventorySystem {
         this.cardTooltip = null;
         this.createInventoryUI();
         this.rebuildInventorySprites();
+        this.bindInventoryDragRelease();
     }
 
     getCurrentWeapon() {
@@ -241,6 +242,10 @@ export class InventorySystem {
     // Modified addCard to use addCardDirect when appropriate
     addCard(cardData, preferredSlot = -1) {
         this.lastAddedSlot = -1;
+        if (cardData?.type === 'gem') {
+            this.scene.createFloatingText(512, 400, 'Drag onto a weapon to socket', 0xffe066);
+            return false;
+        }
         let emptySlot = preferredSlot !== -1 && this.slots[preferredSlot] === null 
             ? preferredSlot 
             : this.slots.findIndex(slot => slot === null);

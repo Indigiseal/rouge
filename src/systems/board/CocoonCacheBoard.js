@@ -300,6 +300,7 @@ export function openSilkCocoon(cs, index, cocoonCard) {
   if (boardCard.shockMarker) { boardCard.shockMarker.destroy(); boardCard.shockMarker = null; }
   if (boardCard.roleMarker) { boardCard.roleMarker.destroy(); boardCard.roleMarker = null; }
   if (boardCard.frozenFrame) { boardCard.frozenFrame.destroy(); boardCard.frozenFrame = null; }
+  cs.destroyControlMarkers?.(boardCard);
   boardCard.sprite?.destroy?.();
 
   let newData = payload?.card;

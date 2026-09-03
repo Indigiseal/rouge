@@ -12,8 +12,10 @@ Cursor подхватывает краткую версию из `.cursor/rules/
 
 **Структура рана:** 3 акта × 15 этажей, по локации на акт, выбор из трёх, всего 9
 локаций; true path Tollroad → Brassfair → Starfold. Описание — `docs/MECHANICS.md`
-→ Run structure. **В коде этого ещё нет:** там старая ротация месяцев
-(`calendar.js`, `src/content/months/`). Не считать локации реализованными.
+→ Run structure. Выбор в коде: `LocationPickScene` + `src/content/locations/`.
+Паки ростеров пока живут в `src/content/months/`. Карточка true/wrong после босса
+ещё не сделана. Между выбором героя и дорогой — деревня: `VillageScene` +
+`src/content/village/`.
 
 ---
 
@@ -77,12 +79,22 @@ createWeaponCardData    → runtime card
 
 Нельзя править только `descriptionRanks` в node и считать UI обновлённым — UI берёт copy из `displayCopy.js`.
 
+### Village
+
+- Каталог: `content/village/catalog.js` (`VILLAGE_BUILDINGS`, `VILLAGE_PLOTS`)
+- Эффекты: `resolveVillageEffects()` → merge на `talentEffects` (хижина: `villageMaxHp` в начале забега)
+- Persist: `metaProgression.buildings` (общие) и `metaProgression.xp` (общая Поддержка)
+- UI: `VillageScene`
+
 ### Economy / balance / events
 
 - Economy: `content/economy/{shop,repair,rest,metaXp}.js`
 - Balance knobs: `content/balance/` + `docs/BALANCE.md`
 - Events: один файл = один default-export → `events/index.js`
 - Event Sequences (any-location, e.g. Music Box) живут в `content/events/`, не в `content/months/<id>/events/`. Пак локации — только для эвентов, привязанных к самой локации.
+- Amulets: `content/amulets/` (`currentCatalog.js`, ветка strategy в `strategy.js`).
+  Вампиризм пока только `vampireFang`. Контроль (`control.js`) вынут из дропа,
+  код оставлен.
 
 ---
 
@@ -93,7 +105,8 @@ createWeaponCardData    → runtime card
 **Permanent** (на карте / `getDisplayedWeaponDamage`):
 
 1. Class % (rogue dagger/bow ×1.10, ceil)
-2. Twin Fang % (dagger full, bow half)
+2. Twin Fang / Heavy Edge (flat)
+3. Village forge (flat, any weapon)
 
 **Situational** (не печатать на карте):
 
@@ -139,7 +152,7 @@ Don't: держать combat math только в sim без зеркала в `
 - Talent UI copy: English ASCII в `displayCopy.js`
 - UI-строки игрока: `src/i18n/i18n.js`
 - Документация дизайна часто на русском; код-идентификаторы — English
-- Ответы пользователю — на русском
+- Ответы пользователю — на русском, обычными предложениями. Правило: `.cursor/rules/writing.mdc`.
 
 ---
 

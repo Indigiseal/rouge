@@ -31,7 +31,7 @@ Fifteen days in **one named country**. Forest, cave, goblin mile; then graves, n
 
 ## After death
 
-The Waystar returns the hero to the [[The City|City]]. Act 1's three roads are open again.
+The Waystar returns the villager to the [[The Village|Village]]. Act 1's three roads are open again. The neighbours' faith is [[Villager Support]].
 
 ## What we are not doing (for now)
 
@@ -47,3 +47,5 @@ The Waystar returns the hero to the [[The City|City]]. Act 1's three roads are o
 - [[Day and Floor]]
 - [[Death and Return]]
 - [[The Path]]
+- [[The Village]]
+- [[Villager Support]]

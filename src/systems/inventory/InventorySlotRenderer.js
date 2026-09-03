@@ -427,6 +427,7 @@ export const InventorySlotRenderer = {
             }
 
             this.createDragOverlay(cardSprite, slotIndex);
+            this.beginInventoryCardDrag(slotIndex, cardSprite);
         });
         
         cardSprite.on('drag', (pointer, dragX, dragY) => {
@@ -488,32 +489,7 @@ export const InventorySlotRenderer = {
         });
 
         cardSprite.on('dragend', () => {
-            // Ahead of the scene guard below: if the card was destroyed mid-drag
-            // the ring has no owner left to clear it and would sit on the board.
-            this.destroyFireReachIndicator();
-            if (!cardSprite.scene) return;
-
-            if (typeof cardSprite.clearTint === 'function') {
-                cardSprite.clearTint();
-            }
-            this.destroyDragOverlay();
-            this.applySlotVisualDepths(slotIndex);
-            
-            const currentSlot = this.slotSprites[slotIndex];
-            if (currentSlot) {
-                // Hide shadow after drag
-                if (currentSlot.shadow) {
-                    currentSlot.shadow.setAlpha(0);
-                }
-                
-                // Reset twinkle depth
-                if (currentSlot.twinkleSprite) {
-                    currentSlot.twinkleSprite.setDepth(this.getInventoryDepths().twinkle);
-                }
-            }
-            
-            // Validate the drop position
-            this.handleCardDrop(slotIndex, cardSprite);
+            this.finishInventoryCardDrag(slotIndex, cardSprite);
         });
         
         slotSprite.card = cardSprite;

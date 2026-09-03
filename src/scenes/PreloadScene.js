@@ -1,6 +1,7 @@
 import { loadAssetManifest } from '../content/assets/AssetManifest.js';
 import { buildResourceCardTextures } from '../content/assets/resourceCards.js';
 import { buildEnemyCardTextures } from '../content/assets/enemyCards.js';
+import { buildLocationCardTextures } from '../content/assets/locationCards.js';
 import { MONTHS } from '../content/months/calendar.js';
 
 export class PreloadScene extends Phaser.Scene {
@@ -234,6 +235,7 @@ export class PreloadScene extends Phaser.Scene {
         // the rest of the game keeps handling them as ordinary one-sprite cards.
         buildResourceCardTextures(this);
         buildEnemyCardTextures(this, MONTHS);
+        buildLocationCardTextures(this);
 
         this.scene.start('MainMenuScene');
     }

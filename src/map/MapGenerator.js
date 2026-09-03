@@ -1,5 +1,6 @@
 // utils/MapGenerator.js
 import { BOSS_TIERS } from '../content/cards/bosses.js';
+import { resolveActBossId } from '../content/locations/index.js';
 
 // Bumped whenever the map's SHAPE changes, so an in-progress run regenerates
 // instead of running on a stale layout. MapViewScene imports this rather than
@@ -47,9 +48,10 @@ export class MapGenerator {
     ];
   }
 
-  generateFullMap() {
+  generateFullMap(actLocationIds) {
+    const ids = Array.isArray(actLocationIds) ? actLocationIds : [null, null, null];
     const full = { _version: MAP_VERSION };
-    for (let act = 1; act <= 3; act++) full[`act${act}`] = this.generateAct(act);
+    for (let act = 1; act <= 3; act++) full[`act${act}`] = this.generateAct(act, ids[act - 1]);
     return full;
   }
 
@@ -60,7 +62,7 @@ export class MapGenerator {
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
-  generateAct(actNumber) {
+  generateAct(actNumber, locationId = null) {
     let attempts = 0;
     while (attempts++ < 100) {
       // ---- 1) Build lanes per floor (clean, contiguous blocks) ----
@@ -92,7 +94,7 @@ export class MapGenerator {
           floors,
           // Decided now, not at floor 15, so events during the act can react to
           // (and foreshadow) whoever is waiting at the end of it.
-          bossId: this._rollActBoss(actNumber),
+          bossId: resolveActBossId(actNumber, locationId) || this._rollActBoss(actNumber),
           startFloor: this.acts[actNumber - 1].start,
           endFloor: this.acts[actNumber - 1].end
         };

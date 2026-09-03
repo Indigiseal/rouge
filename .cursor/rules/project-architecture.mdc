@@ -7,7 +7,7 @@ alwaysApply: true
 
 Подробности и чеклисты: `docs/AGENT.md`. Механики: `docs/MECHANICS.md`. Куда крутить числа: `docs/BALANCE.md`. Freeze сейвов: `docs/OPEN-QUESTIONS.md`. Макро-лор: `docs/LORE.md` / `docs/narrative/` (Obsidian vault symlink → эта папка).
 
-Структура рана (дизайн): 3 акта × 15 этажей, по локации на акт, выбор из трёх, всего 9; true path Tollroad → Brassfair → Starfold. В коде пока старая ротация месяцев (`src/content/months/`, `calendar.js`) — локации не реализованы.
+Структура рана (дизайн): 3 акта × 15 этажей, по локации на акт, выбор из трёх, всего 9; true path Tollroad → Brassfair → Starfold. Выбор в коде: `LocationPickScene` + `src/content/locations/`. Паки пока в `src/content/months/`. Карточка true/wrong после босса не сделана. Деревня между героем и дорогой: `VillageScene` + `src/content/village/`.
 
 ## Слои
 
@@ -34,7 +34,7 @@ alwaysApply: true
 
 ## Permanent vs situational урон
 
-- Permanent (на карте): `applyPermanentWeaponDamageBonuses` — class % → Twin Fang %.
+- Permanent (на карте): `applyPermanentWeaponDamageBonuses` — class % → Twin Fang / Heavy Edge → village forge.
 - Situational (не на карте): weakness, Keen Edge (раз/этаж), First Blood (раз/этаж), warrior crit.
 - UI: `getDisplayedWeaponDamage` = только permanent.
 - Once-per-floor: отдельный флаг на `gameState`, сброс в `FloorSpawner`.
@@ -56,4 +56,4 @@ alwaysApply: true
 - После combat/loot/talent — сверять sim (`talentcompare` / balance batch).
 - Дизайн-решение → обновить `MECHANICS.md` / `OPEN-QUESTIONS.md`.
 - Не создавать README/тесты, пока не попросили.
-- Ответы пользователю — на русском; идентификаторы кода — English.
+- Ответы пользователю — на русском; идентификаторы кода — English. Как писать: `.cursor/rules/writing.mdc`.

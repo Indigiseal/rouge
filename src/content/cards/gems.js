@@ -26,6 +26,21 @@ export function gemSlotsForRarity(rarity) {
 // (docs/OPEN-QUESTIONS.md).
 export const GEM_STACK_DAMAGE = Object.freeze([3, 4, 5, 6, 7]);
 
+// Fire gem splash, measured centre-to-nearest-sprite-edge. Uncommon Rune of
+// Fire multiplies this; the old event rune still adds flat pixels on top.
+export const FIRE_GEM_SPLASH_RADIUS = 65;
+
+/**
+ * @param {number} [multiplier=1]
+ * @param {number} [flatBonus=0]
+ */
+export function resolveFireGemSplashRadius(multiplier = 1, flatBonus = 0) {
+  const scale = Number(multiplier);
+  const bonus = Number(flatBonus);
+  return Math.round(FIRE_GEM_SPLASH_RADIUS * (Number.isFinite(scale) && scale > 0 ? scale : 1))
+    + (Number.isFinite(bonus) ? bonus : 0);
+}
+
 // The stack ladder alone tracked enemy HP x2.33 against their x2.75 over a run,
 // so the same gem that stripped 37% of a floor-1 enemy stripped 14% on floor 45.
 // The depth term closes that gap from the act-2 boundary onward: act 1 is tuned

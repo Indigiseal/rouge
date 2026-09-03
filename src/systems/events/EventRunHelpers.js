@@ -13,17 +13,34 @@ const RARITY_TYPES = ['weapon', 'armor', 'thorns'];
 
 export const EventRunHelpers = {
   hasGem(effect) {
-    return this._findInventoryIndex(item => (
+    if (this._findInventoryIndex(item => (
       item?.type === 'gem' && item?.gemEffect === effect
+    )) >= 0) return true;
+    return this._findInventoryIndex(item => (
+      item?.type === 'weapon' && item?.gemEffect === effect && (item.gemCount || 1) > 0
     )) >= 0;
   },
 
   consumeGem(effect) {
-    const index = this._findInventoryIndex(item => (
+    const looseIndex = this._findInventoryIndex(item => (
       item?.type === 'gem' && item?.gemEffect === effect
     ));
-    if (index < 0) return false;
-    return this._removeInventoryCard(index);
+    if (looseIndex >= 0) return this._removeInventoryCard(looseIndex);
+
+    const weaponIndex = this._findInventoryIndex(item => (
+      item?.type === 'weapon' && item?.gemEffect === effect && (item.gemCount || 1) > 0
+    ));
+    if (weaponIndex < 0) return false;
+    const weapon = this.getInventorySlots()[weaponIndex];
+    weapon.gemCount = (weapon.gemCount || 1) - 1;
+    if (weapon.gemCount <= 0) {
+      weapon.gemEffect = null;
+      weapon.gemName = null;
+      weapon.gemColor = null;
+      weapon.gemCount = 0;
+    }
+    this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
+    return true;
   },
 
   hasKeyCard() {

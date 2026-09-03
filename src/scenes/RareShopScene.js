@@ -237,6 +237,11 @@ export class RareShopScene extends StationRoomBase {
             return;
         }
 
+        if (item.data.type === 'gem') {
+            this.showFeedback({ key: 'float.dragGemOntoWeapon' }, 0xffe066, 100);
+            return;
+        }
+
         // Amulets: pay, then pick 1 of 3 of the rolled rarity
         if (item.data.type === 'amulet') {
             if (this.gameScene?.amuletManager) {

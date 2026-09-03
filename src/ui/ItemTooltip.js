@@ -93,6 +93,7 @@ export function getTooltipLines(scene, data) {
         const damageType = data.damageType === 'physical' ? 'physical' : 'lightning';
         const attackStyle = data.attackStyle === 'melee' || data.range === 'melee' ? 'Melee' : 'Ranged';
         body = `${attackStyle} companion\nDeals ${data.attack ?? 0} ${damageType} damage after enemies`;
+        if (data.boundThrall) body += '\nBound enemy — discard to release';
         if (data.shockChance) body += `\nShock chance: ${Math.round(data.shockChance * 100)}%`;
         if (data.guardProtection) body += `\nGuard: +${data.guardProtection} protection`;
     } else if (data.type === 'magic') {
@@ -254,7 +255,35 @@ function getEnemyFeatureLines(scene, data) {
     if (data?.isMimic) {
         lines.push(t(scene, 'tooltip.mimicEscape', { turns: data.escapeTurnsLeft ?? data.escapeTurns ?? 3 }));
     }
+    if (data?.controlHesitation) {
+        lines.push(t(scene, 'tooltip.markHesitation'));
+    }
+    if (data?.controlTreachery) {
+        lines.push(t(scene, 'tooltip.markTreachery'));
+    }
     return lines;
+}
+
+/** Hover on a control-mark dot (works on face-down cards too). */
+export function showControlMarkTooltip(scene, kind, anchorX, anchorY, gap = BOARD_TOOLTIP_GAP) {
+    if (!scene || !scene.add) return;
+    hideItemTooltip(scene);
+    const hesitation = kind === 'hesitation' || kind?.hesitation;
+    const treachery = kind === 'treachery' || kind?.treachery;
+    const scout = kind === 'scout' || kind?.scout;
+    const lines = [];
+    if (scout) lines.push(t(scene, 'tooltip.strategyScout'));
+    if (hesitation) lines.push(t(scene, 'tooltip.markHesitation'));
+    if (treachery) lines.push(t(scene, 'tooltip.markTreachery'));
+    if (!lines.length) return;
+    const title = kind === 'scout'
+        ? t(scene, 'tooltip.strategyScoutTitle')
+        : hesitation && treachery
+        ? t(scene, 'tooltip.markBothTitle')
+        : hesitation
+            ? t(scene, 'tooltip.markHesitationTitle')
+            : t(scene, 'tooltip.markTreacheryTitle');
+    renderTooltipBox(scene, title, lines.join('\n'), TOOLTIP_TEXT_COLOR, anchorX, anchorY, TOOLTIP_DEPTH, gap);
 }
 
 /** Revealed-enemy tooltip — name + role; abilities as "Poison: …" lines. */

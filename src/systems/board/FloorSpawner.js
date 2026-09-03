@@ -48,6 +48,10 @@ export class FloorSpawner {
     }
 }
 
+function faceDownRestY(card, fallbackY) {
+    return Number.isFinite(card?.restY) ? card.restY : fallbackY;
+}
+
 function _baseCardsForFloor(cf) {
     const f = Math.max(1, Math.min(45, cf));
     if (f <= 15)      return Math.round(6  + ((f - 1)  / 14) * (11 - 6));
@@ -151,7 +155,7 @@ function spawnFloorCards() {
       const card = this.boardCards[i];
       if (card && !card.revealed) {
         shadow.setAlpha(1);
-        this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
+        this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(card, y) - 5, duration: 150 });
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
         cardSprite.play('card_hover_anim');
@@ -161,7 +165,7 @@ function spawnFloorCards() {
       const card = this.boardCards[i];
       if (card && !card.revealed) {
         shadow.setAlpha(0);
-        this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
+        this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(card, y), duration: 150 });
         cardSprite.stop();
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
@@ -348,6 +352,7 @@ function spawnFloorCards() {
     const ca = cells[a], cb = cells[b];
     return (ca.r - cb.r) || (ca.c - cb.c);
   });
+  this._openingRevealIndices = new Set(revealOrder);
   revealOrder.forEach((idx, order) => {
     this.scene.time.delayedCall(revealSettleMs + order * revealStaggerMs, () => this.revealCard(idx, true));
   });
@@ -466,7 +471,7 @@ function spawnTutorialCards() {
       const card = this.boardCards[i];
       if (card && !card.revealed) {
         shadow.setAlpha(1);
-        this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
+        this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(card, y) - 5, duration: 150 });
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
         cardSprite.play('card_hover_anim');
@@ -476,7 +481,7 @@ function spawnTutorialCards() {
       const card = this.boardCards[i];
       if (card && !card.revealed) {
         shadow.setAlpha(0);
-        this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
+        this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(card, y), duration: 150 });
         cardSprite.stop();
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
@@ -615,7 +620,7 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
         const current = this.boardCards[index];
         if (!current || current.revealed) return;
         shadow?.setAlpha(1);
-        this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
+        this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(current, y) - 5, duration: 150 });
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
         if (this.scene.anims.exists('card_hover_anim')) cardSprite.play('card_hover_anim');
@@ -624,7 +629,7 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
         const current = this.boardCards[index];
         if (!current || current.revealed) return;
         shadow?.setAlpha(0);
-        this.scene.tweens.add({ targets: cardSprite, y, duration: 150 });
+        this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(current, y), duration: 150 });
         cardSprite.stop?.();
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
@@ -642,6 +647,7 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
       this.enableGemDrag(card, index);
     }
     this.restoreEnemyStatusMarkers(card);
+    this.syncControlMarkers(card);
     if ((data.frozen || 0) > 0) this.attachFrozenFrame(card);
 
     // Trap damage already happened before the save; only finish its pending
@@ -930,6 +936,7 @@ function spawnDeathDrop(index, originalCard) {
     if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
     if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
     if (card.frozenFrame) { card.frozenFrame.destroy(); card.frozenFrame = null; }
+    this.destroyControlMarkers?.(card);
     card.sprite.destroy();
     card.data = newData;
 
@@ -1589,7 +1596,7 @@ function respawnCardOnBoard(cardData, options = {}) {
         const c = this.boardCards[slot];
         if (c && !c.revealed) {
             shadow.setAlpha(1);
-            this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
+            this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(c, y) - 5, duration: 150 });
             cardSprite.setTexture(this._cardBackKey());
             snapOriginToPixelGrid(cardSprite);
             if (this.scene.anims.exists('card_hover_anim')) cardSprite.play('card_hover_anim');
@@ -1599,7 +1606,7 @@ function respawnCardOnBoard(cardData, options = {}) {
         const c = this.boardCards[slot];
         if (c && !c.revealed) {
             shadow.setAlpha(0);
-            this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
+            this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(c, y), duration: 150 });
             cardSprite.stop();
             cardSprite.setTexture(this._cardBackKey());
             snapOriginToPixelGrid(cardSprite);
@@ -1684,7 +1691,7 @@ function dropWaveCards() {
             const c = this.boardCards[slot];
             if (c && !c.revealed) {
                 shadow.setAlpha(1);
-                this.scene.tweens.add({ targets: cardSprite, y: y - 5, duration: 150 });
+                this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(c, y) - 5, duration: 150 });
                 cardSprite.setTexture(this._cardBackKey());
                 snapOriginToPixelGrid(cardSprite);
                 if (this.scene.anims.exists('card_hover_anim')) cardSprite.play('card_hover_anim');
@@ -1694,7 +1701,7 @@ function dropWaveCards() {
             const c = this.boardCards[slot];
             if (c && !c.revealed) {
                 shadow.setAlpha(0);
-                this.scene.tweens.add({ targets: cardSprite, y: y, duration: 150 });
+                this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(c, y), duration: 150 });
                 cardSprite.stop();
                 cardSprite.setTexture(this._cardBackKey());
                 snapOriginToPixelGrid(cardSprite);

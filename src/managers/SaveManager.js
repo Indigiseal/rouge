@@ -4,13 +4,16 @@ import { applyAmuletAtlasPresentation } from '../content/amulets/RelicsOthersAtl
 import { DEFAULT_WARRIOR_STANCE, WARRIOR_STANCES } from '../content/characters/CharacterClasses.js';
 import { PLAYER_START_HP } from '../systems/GameState.js';
 import { normalizeMonthIndex } from '../content/months/index.js';
+import { normalizeActLocationIds } from '../content/locations/index.js';
+import { emptyVillageBuildings, normalizeVillageBuildings } from '../content/village/index.js';
+import { migrateSharedXp } from './MetaProgressionManager.js';
 
 export class SaveManager {
   constructor() {
     this.META_SAVE_KEY = 'metaProgression';
     this.RUN_SAVE_KEY = 'currentRun';
     this.SETTINGS_SAVE_KEY = 'gameSettings';
-    this.SAVE_VERSION = '1.0.6'; // Month faces live — wipe unfinished pre-month runs
+    this.SAVE_VERSION = '1.0.7'; // Path locations: actLocationIds on the run
     // Any currentRun with saveVersion < this is discarded so players start a
     // fresh Thornwake run instead of Continue into a skeleton board.
     this.RUN_MIN_COMPATIBLE_VERSION = '1.0.6';
@@ -44,6 +47,8 @@ export class SaveManager {
         rogue: { xp: 0, talents: {}, choices: {} },
         warrior: { xp: 0, talents: {}, choices: {} },
       },
+      buildings: normalizeVillageBuildings(metaData?.buildings),
+      xp: Math.max(0, Math.floor(Number(metaData?.xp) || 0)),
       unlockedRelics: [],
       totalDeaths: metaData?.totalDeaths ?? 0,
       bestFloor: metaData?.bestFloor ?? 1,
@@ -64,6 +69,8 @@ export class SaveManager {
           rogue: { xp: 0, talents: {}, choices: {} },
           warrior: { xp: 0, talents: {}, choices: {} },
         },
+        buildings: emptyVillageBuildings(),
+        xp: 0,
         unlockedRelics: [],
         totalDeaths: 0,
         bestFloor: 1,
@@ -83,6 +90,8 @@ export class SaveManager {
           rogue: { xp: 0, talents: {}, choices: {} },
           warrior: { xp: 0, talents: {}, choices: {} },
         },
+        buildings: emptyVillageBuildings(),
+        xp: 0,
         unlockedRelics: [],
         totalDeaths: 0,
         bestFloor: 1,
@@ -117,8 +126,13 @@ export class SaveManager {
         characters.warrior.xp = legacy;
       }
     }
+    const xp = migrateSharedXp(meta, characters);
+    characters.rogue.xp = xp;
+    characters.warrior.xp = xp;
     return {
       characters,
+      buildings: normalizeVillageBuildings(meta.buildings),
+      xp,
       unlockedRelics: [],
       totalDeaths: Number.isFinite(meta.totalDeaths) ? meta.totalDeaths : 0,
       bestFloor: Number.isFinite(meta.bestFloor) ? meta.bestFloor : 1,
@@ -147,6 +161,9 @@ export class SaveManager {
         crystals: gameState?.crystals ?? 0,
         currentFloor: gameState?.currentFloor ?? 1,
         calendarMonthIndex: gameState?.calendarMonthIndex ?? 0,
+        actLocationIds: Array.isArray(gameState?.actLocationIds)
+          ? [...gameState.actLocationIds]
+          : [null, null, null],
         warriorStance: gameState?.warriorStance ?? DEFAULT_WARRIOR_STANCE,
         // Added missing fields
         bonusInventorySlots: gameState?.bonusInventorySlots ?? 0,
@@ -160,6 +177,8 @@ export class SaveManager {
         journalBonusHP: gameState?.journalBonusHP ?? 0,
         mapBonusAP: gameState?.mapBonusAP ?? 0,
         mapFloorCount: gameState?.mapFloorCount ?? 0,
+        secondWindUsed: gameState?.secondWindUsed ?? 0,
+        strategyDetourUsedAct: gameState?.strategyDetourUsedAct ?? 0,
       },
       equipment: {
         equippedWeapon: gameState?.equippedWeapon ?? null,
@@ -261,6 +280,9 @@ export class SaveManager {
             ? Math.max(1, Math.min(45, Math.floor(parsed.player.currentFloor)))
             : 1,
           calendarMonthIndex: normalizeMonthIndex(parsed.player?.calendarMonthIndex ?? 0),
+          actLocationIds: Array.isArray(parsed.player?.actLocationIds)
+            ? [...parsed.player.actLocationIds]
+            : undefined,
           // Runs saved before stances existed have no field — default it.
           warriorStance: WARRIOR_STANCES[parsed.player?.warriorStance]
             ? parsed.player.warriorStance
@@ -275,6 +297,8 @@ export class SaveManager {
           journalBonusHP: parsed.player?.journalBonusHP ?? 0,
           mapBonusAP: parsed.player?.mapBonusAP ?? 0,
           mapFloorCount: parsed.player?.mapFloorCount ?? 0,
+          secondWindUsed: parsed.player?.secondWindUsed ?? 0,
+          strategyDetourUsedAct: parsed.player?.strategyDetourUsedAct ?? 0,
         },
         equipment: {
           equippedWeapon: parsed.equipment?.equippedWeapon ?? null,
@@ -371,6 +395,14 @@ export class SaveManager {
       run.player = run.player && typeof run.player === 'object' ? run.player : {};
       run.player.calendarMonthIndex = normalizeMonthIndex(run.player.calendarMonthIndex ?? 0);
     }
+
+    run.player = run.player && typeof run.player === 'object' ? run.player : {};
+    run.player.strategyDetourUsedAct = Number(run.player.strategyDetourUsedAct) || 0;
+    run.player.actLocationIds = normalizeActLocationIds(
+      run.player.actLocationIds,
+      run.player.calendarMonthIndex,
+      { legacyFill: !Array.isArray(run.player.actLocationIds) }
+    );
 
     run.navigation = run.navigation && typeof run.navigation === 'object'
       ? run.navigation

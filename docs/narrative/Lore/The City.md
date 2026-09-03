@@ -5,34 +5,19 @@ status: canon-draft
 tags:
   - evershift
   - city
+  - village
 ---
 
 # The City
 
-The City is what must be saved, even if it does not yet know how.
+**Superseded as the hero's home.** What older notes called the City is [[The Village]]: an ordinary settlement under two moons, from whose gates the Near Road splits three ways.
 
-It lives under two moons, as under two laws: the old one people still remember, and the new one that already rules. From its gates the Near Road splits three ways — woods, caves, the Mile. Rumor of the farther countries comes home as ash, bones, and names that no longer fit their owners. Almost no one speaks of the Inner Sky as a place you could walk.
+"City" remains as folk speech — the place that must be saved, spoken larger than it is. When a note still says City, read Village.
 
-## Why the hero leaves
-
-The hero does not leave for glory or loot. They leave because:
-
-- the Waystar points the road only for them;
-- waiting means allowing the nine countries to become normal;
-- if the source is never reached, the City will live from calamity to calamity until it forgets that time was ever peaceful.
-
-## What the City gives the story
-
-The City is:
-
-- the emotional reason for the journey;
-- the measure of the stakes;
-- the place the Waystar returns the hero after death;
-- where each expedition **chooses** the first of three Near Roads;
-- an image of ordinary life the Second Moon is gradually rewriting.
+The stake has not changed: ordinary life the Second Moon is rewriting. The people who live it are villagers. The walker who leaves is one of them. See [[The Village]], [[Villager Support]].
 
 ## Related
 
-- [[The Path]]
+- [[The Village]]
 - [[Death and Return]]
-- [[Locations Index]]
+- [[The Path]]

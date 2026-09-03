@@ -4,44 +4,8 @@ import { getAmuletAtlasPresentation } from './RelicsOthersAtlas.js';
 /** @param {object} mgr AmuletManager instance (bound as `this` for arrow hooks). */
 export function buildCurrentAmuletDefinitions(mgr) {
     return (function () {
-        const hp = (bonus) => ({
-            maxHealthBonus: bonus,
-            onEquip() {
-                this.gameState.maxHealth += bonus;
-                this.gameState.playerHealth += bonus;
-            },
-            onUnequip() {
-                this.gameState.maxHealth = Math.max(1, this.gameState.maxHealth - bonus);
-                this.gameState.playerHealth = Math.min(
-                    this.gameState.playerHealth,
-                    this.gameState.maxHealth
-                );
-            },
-        });
-
         return {
 
-            amuletOfEvasion: {
-                ...getAmuletAtlasPresentation('amuletOfEvasion'),
-                name: 'Amulet of Evasion',
-                description: '10% dodge chance',
-                rarity: 'common',
-                dodgeChance: 0.1,
-            },
-            ringOfHealth: {
-                ...getAmuletAtlasPresentation('ringOfHealth'),
-                name: 'Ring of Health',
-                description: '+15 max HP',
-                rarity: 'common',
-                ...hp(15),
-            },
-            amuletOfProtection: {
-                ...getAmuletAtlasPresentation('amuletOfProtection'),
-                name: 'Amulet of Protection',
-                description: 'Reduce all incoming damage by 20% (rounded up)',
-                rarity: 'common',
-                modifyDamageTaken: (damage) => Math.ceil(damage * 0.8),
-            },
             ringOfRegeneration: {
                 ...getAmuletAtlasPresentation('ringOfRegeneration'),
                 name: 'Ring of Regeneration',
@@ -65,31 +29,21 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 rarity: 'common',
                 weaponDurabilitySaveChance: 0.3,
             },
+            markOfHesitation: {
+                ...getAmuletAtlasPresentation('markOfHesitation'),
+                name: 'Mark of Hesitation',
+                description: 'One random enemy per floor is marked. 50% chance it skips its attack.',
+                rarity: 'common',
+                controlHesitation: true,
+            },
+            tacticiansPin: {
+                ...getAmuletAtlasPresentation('tacticiansPin'),
+                name: "Tactician's Pin",
+                description: 'At the start of combat, one face-down enemy is marked.',
+                rarity: 'common',
+                strategyScout: true,
+            },
 
-            amuletOfGreaterEvasion: {
-                ...getAmuletAtlasPresentation('amuletOfGreaterEvasion'),
-                name: 'Amulet of Greater Evasion',
-                description: '20% dodge chance. Replaces Amulet of Evasion.',
-                rarity: 'uncommon',
-                dodgeChance: 0.2,
-                replaces: ['amuletOfEvasion'],
-            },
-            ringOfGreaterHealth: {
-                ...getAmuletAtlasPresentation('ringOfGreaterHealth'),
-                name: 'Ring of Greater Health',
-                description: '+20 max HP. Replaces Ring of Health.',
-                rarity: 'uncommon',
-                ...hp(20),
-                replaces: ['ringOfHealth'],
-            },
-            amuletOfGreaterProtection: {
-                ...getAmuletAtlasPresentation('amuletOfGreaterProtection'),
-                name: 'Amulet of Greater Protection',
-                description: 'Reduce all incoming damage by 30% (rounded up). Replaces Amulet of Protection.',
-                rarity: 'uncommon',
-                modifyDamageTaken: (damage) => Math.ceil(damage * 0.7),
-                replaces: ['amuletOfProtection'],
-            },
             ringOfGreaterRegeneration: {
                 ...getAmuletAtlasPresentation('ringOfGreaterRegeneration'),
                 name: 'Ring of Greater Regeneration',
@@ -146,6 +100,42 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 rarity: 'uncommon',
                 modifyGoldFound: (amount) => Math.ceil(amount * 1.2),
             },
+            markOfTreachery: {
+                ...getAmuletAtlasPresentation('markOfTreachery'),
+                name: 'Mark of Treachery',
+                description: 'One random enemy per floor is marked. It attacks another revealed enemy instead of you. Replaces Mark of Hesitation.',
+                rarity: 'uncommon',
+                controlTreachery: true,
+                replaces: ['markOfHesitation'],
+            },
+            forcedMarch: {
+                ...getAmuletAtlasPresentation('forcedMarch'),
+                name: 'Forced March',
+                description: 'The first revealed ranged enemy not on the front row swaps with a random front-row card.',
+                rarity: 'uncommon',
+                strategyRangedMarch: true,
+            },
+            runeOfFire: {
+                ...getAmuletAtlasPresentation('runeOfFire'),
+                name: 'Rune of Fire',
+                description: 'Fire gem splash radius x1.5',
+                rarity: 'uncommon',
+                fireSplashRadiusMultiplier: 1.5,
+            },
+            runeOfZap: {
+                ...getAmuletAtlasPresentation('runeOfZap'),
+                name: 'Rune of Zap',
+                description: 'Lightning gems bounce to 1 extra enemy',
+                rarity: 'uncommon',
+                lightningExtraBounces: 1,
+            },
+            runeOfPoison: {
+                ...getAmuletAtlasPresentation('runeOfPoison'),
+                name: 'Rune of Poison',
+                description: 'Poison gems also poison 1 nearby enemy in fire-gem range',
+                rarity: 'uncommon',
+                poisonGemSplashTargets: 1,
+            },
 
             vampireFang: {
                 ...getAmuletAtlasPresentation('vampireFang'),
@@ -161,23 +151,23 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 rarity: 'rare',
                 modifyWeaponDamage: (damage) => Math.ceil(damage * 1.15),
             },
-            runeOfFire: {
-                ...getAmuletAtlasPresentation('runeOfFire'),
-                name: 'Rune of Fire',
+            greaterRuneOfFire: {
+                ...getAmuletAtlasPresentation('greaterRuneOfFire'),
+                name: 'Greater Rune of Fire',
                 description: '+20% fire gem damage (rounded up)',
                 rarity: 'rare',
                 fireGemDamageBonus: 0.2,
             },
-            runeOfZap: {
-                ...getAmuletAtlasPresentation('runeOfZap'),
-                name: 'Rune of Zap',
+            greaterRuneOfZap: {
+                ...getAmuletAtlasPresentation('greaterRuneOfZap'),
+                name: 'Greater Rune of Zap',
                 description: '+20% Zap gem damage (rounded up)',
                 rarity: 'rare',
                 zapGemDamageBonus: 0.2,
             },
-            runeOfPoison: {
-                ...getAmuletAtlasPresentation('runeOfPoison'),
-                name: 'Rune of Poison',
+            greaterRuneOfPoison: {
+                ...getAmuletAtlasPresentation('greaterRuneOfPoison'),
+                name: 'Greater Rune of Poison',
                 description: '+2 poison gem tick damage',
                 rarity: 'rare',
                 poisonGemTickBonus: 2,
@@ -189,21 +179,23 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 rarity: 'rare',
                 deathDropChance: 0.25,
             },
-
-            philosophersStone: {
-                ...getAmuletAtlasPresentation('philosophersStone'),
-                name: "Philosopher's Stone",
-                description: '+20 max HP and +6 HP at the start of each combat floor, +1 more every 4 floors. Replaces Health and Regeneration rings.',
-                rarity: 'legendary',
-                ...hp(20),
-                floorStartHeal: { base: 6, perFloor: 0.25 },
-                replaces: [
-                    'ringOfHealth',
-                    'ringOfGreaterHealth',
-                    'ringOfRegeneration',
-                    'ringOfGreaterRegeneration',
-                ],
+            twinMarks: {
+                ...getAmuletAtlasPresentation('twinMarks'),
+                name: 'Twin Marks',
+                description: 'One marked enemy has a 50% chance to skip its attack. Another marked enemy attacks its own kind. Replaces Marks of Hesitation and Treachery.',
+                rarity: 'rare',
+                controlHesitation: true,
+                controlTreachery: true,
+                replaces: ['markOfHesitation', 'markOfTreachery'],
             },
+            vacancyStep: {
+                ...getAmuletAtlasPresentation('vacancyStep'),
+                name: 'Close Order',
+                description: 'The first time two or more enemies are revealed they swap with face-down cards to stand as row or column neighbors.',
+                rarity: 'rare',
+                strategyCluster: true,
+            },
+
             legendaryWhetstone: {
                 ...getAmuletAtlasPresentation('legendaryWhetstone'),
                 name: 'Legendary Whetstone',
@@ -213,41 +205,33 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 modifyWeaponDamage: (damage) => Math.ceil(damage * 1.1),
                 replaces: ['earringOfWeaponDurability', 'earringOfGreaterWeaponDurability'],
             },
-            lostNobleDiadem: {
-                ...getAmuletAtlasPresentation('lostNobleDiadem'),
-                name: 'Lost Noble Diadem',
-                description: 'Prevents death once per run and heals 50% max HP',
-                rarity: 'legendary',
-                usesPerRun: 1,
-                onLethalDamage: () => {
-                    const data = this.getAmuletData('lostNobleDiadem');
-                    if (data?.usesLeft > 0) {
-                        data.usesLeft--;
-                        const healAmount = Math.ceil(this.gameState.maxHealth * 0.5);
-                        this.gameState.playerHealth = Math.min(
-                            this.gameState.maxHealth,
-                            this.gameState.playerHealth + healAmount
-                        );
-                        if (this.scene?.playerAvatar) {
-                            this.scene.createFloatingText(
-                                this.scene.playerAvatar.x,
-                                this.scene.playerAvatar.y,
-                                'INVULNERABLE!',
-                                0xffd700
-                            );
-                        }
-                        return true;
-                    }
-                    return false;
-                },
-            },
             glovesOfHermitWizard: {
                 ...getAmuletAtlasPresentation('glovesOfHermitWizard'),
                 name: 'Gloves of the Hermit Wizard',
                 description: '+35% damage from all gems (rounded up). Replaces Fire/Zap/Poison runes.',
                 rarity: 'legendary',
                 allGemDamageBonus: 0.35,
-                replaces: ['runeOfFire', 'runeOfZap', 'runeOfPoison'],
+                replaces: [
+                    'runeOfFire', 'runeOfZap', 'runeOfPoison',
+                    'greaterRuneOfFire', 'greaterRuneOfZap', 'greaterRuneOfPoison',
+                ],
+            },
+            collarOfBinding: {
+                ...getAmuletAtlasPresentation('collarOfBinding'),
+                name: 'Collar of Binding',
+                description: 'Twin Marks, and a killed marked non-boss enemy joins your bag as a companion if a slot is free. Stays until discarded. Replaces the control marks.',
+                rarity: 'legendary',
+                controlHesitation: true,
+                controlTreachery: true,
+                bindOnKill: true,
+                replaces: ['markOfHesitation', 'markOfTreachery', 'twinMarks'],
+            },
+            generalsTable: {
+                ...getAmuletAtlasPresentation('generalsTable'),
+                name: "General's Table",
+                description: 'Once per act, on the map, you may pick any room on the next floor instead of following the branches.',
+                rarity: 'legendary',
+                strategyDetour: true,
             },
         
         };

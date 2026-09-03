@@ -1,5 +1,6 @@
 import { CombatSequencer } from './combat/CombatSequencer.js';
 import { resolveTalentEffects } from '../content/talents/index.js';
+import { mergeVillageIntoTalentEffects } from '../content/village/index.js';
 import { DEFAULT_WARRIOR_STANCE } from '../content/characters/CharacterClasses.js';
 import {
     isEnemyRangedAttack as isEnemyRangedAttackResolved,
@@ -27,9 +28,11 @@ export class GameState {
         // Warrior stance: 'sweep' (swords cleave) or 'focus' (25% crit x2).
         // Rogue ignores it. Saved runs from before stances load as the default.
         this.warriorStance = DEFAULT_WARRIOR_STANCE;
-        // Calendar month at run start (0 = Thornwake). Act 2/3 walk the next
-        // months on the circle. See src/content/months/calendar.js.
+        // Chosen Path locations for acts 1/2/3. Null until the player picks.
+        // See src/content/locations/. calendarMonthIndex is kept for legacy
+        // saves and the sim pin; new runs resolve through actLocationIds.
         this.calendarMonthIndex = 0;
+        this.actLocationIds = [null, null, null];
         // When true, every floor uses calendarMonthIndex (no act rotation).
         // Sim-only override; not part of the save contract.
         this.pinCalendarMonth = false;
@@ -48,6 +51,10 @@ export class GameState {
         // null → use character class armorTypes.
         this.armorPool = null;
         this.talentEffects = {};
+        this.villageEffects = null;
+        this.secondWindUsed = 0;
+        this.strategyDetourUsedAct = 0;
+        this.revivedThisHit = false;
         this.discardedCardsThisRun = 0;
         this.discardCritChance = 0;
         this.storyRun = createDefaultStoryRun();
@@ -139,6 +146,15 @@ export class GameState {
         }
 
         this.talentEffects = next;
+        this.reapplyVillageEffects();
+    }
+
+    reapplyVillageEffects() {
+        if (!this.villageEffects) return;
+        this.talentEffects = mergeVillageIntoTalentEffects(
+            this.talentEffects || {},
+            this.villageEffects,
+        );
     }
 
     nextFloor() {

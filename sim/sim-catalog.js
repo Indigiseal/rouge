@@ -3,10 +3,19 @@ import './mock.js';
 import { AmuletManager } from '../src/managers/AmuletManager.js';
 import { CardDataGenerator } from '../src/systems/loot/CardDataGenerator.js';
 import { TALENT_NODES } from '../src/content/talents/index.js';
+import { VILLAGE_BUILDINGS, VILLAGE_BUILDING_IDS } from '../src/content/village/index.js';
 
 /** Relic meta retired — kept for dashboard API compatibility. */
 export function getRelicCatalog() {
   return [];
+}
+
+/** @returns {{ id: string, maxRank: number }[]} */
+export function getVillageBuildingCatalog() {
+  return VILLAGE_BUILDING_IDS.map((id) => {
+    const def = VILLAGE_BUILDINGS[id];
+    return { id, maxRank: def.maxRank };
+  });
 }
 
 /** @returns {{ id: string, name: string, description: string, hint: string, characterId: string, branchId: string, wip: boolean }[]} */

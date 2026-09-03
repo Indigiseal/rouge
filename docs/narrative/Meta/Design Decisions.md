@@ -41,7 +41,7 @@ Act 1 recognisable, act 2 owned-and-hungry, act 3 the sky's own country. The thr
 
 ## Wrong Act 3 still finishes a run
 
-Mirrorwane / Spherefall grant a lesser answer and full meta XP. They are not fake victories.
+Mirrorwane / Spherefall grant a lesser answer and full [[Villager Support]]. They are not fake victories.
 
 ## Discovery is not tracked
 
@@ -49,7 +49,7 @@ No codex, no journal, no mark on the choice screen for a road already walked. Wh
 
 ## Replay beyond the map
 
-The road pick stops being a real choice once the chain is known. That is accepted. Long-tail replay is the job of character meta and the planned village layer (plus possible seasonal act modifiers), not of the nine roads. See [[Replayability]].
+The road pick stops being a real choice once the chain is known. That is accepted. Long-tail replay is the job of the village layer (Support spent on buildings), not of the nine roads. See [[Replayability]], [[Villager Support]].
 
 ## Location combat roster
 
@@ -59,10 +59,16 @@ Each location: **3 melee**, **2 ranged**, **1 boss**.
 
 Bands × archetypes. Location picks who; floor picks how strong. See [[Enemy Power]].
 
+## The walker is a villager; meta is the village
+
+Not a chosen knight. An ordinary neighbour who left to find the source of the sphere's villains. Death returns them to the [[The Village|Village]]. What used to be called XP is **[[Villager Support]]** (RU: Поддержка селян) — faith the neighbours put in the next leaving. Spend: **build** a structure for an advantage, **upgrade** it for more of the same. Numbers unchanged from the old talent ladder. Buildings: Forge, Temple, Armory, Healer's House, Healer's Hut. Support is one shared pool.
+
 ## Related
 
 - [[The True Path]]
 - [[Run Structure]]
 - [[Replayability]]
+- [[The Village]]
+- [[Villager Support]]
 - [[Encounter Philosophy]]
 - [[Open Lore Questions]]

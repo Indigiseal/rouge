@@ -238,6 +238,91 @@ export const InventoryView = {
         overlay.parts?.forEach(({ clone }) => clone?.destroy?.());
         this.dragOverlay = null;
     },
+    // Phaser InputManager is globalTopOnly. A scene after GameScene in the
+    // list (LocationPick, Village, a leftover shop) can swallow pointerup
+    // even after it has stopped: INIT still canInput(). Then GAMEOBJECT_DRAG_END
+    // never fires and the card keeps following the cursor. Finish the drop
+    // with the same handleCardDrop dragend uses; do not tween or clamp here.
+    beginInventoryCardDrag(slotIndex, cardSprite) {
+        this._liveDrag = { slotIndex, cardSprite };
+        this.freezeBoardInputForDrag();
+    },
+    finishStuckInventoryDrag() {
+        const live = this._liveDrag;
+        if (!live) return;
+        this.finishInventoryCardDrag(live.slotIndex, live.cardSprite);
+    },
+    finishInventoryCardDrag(slotIndex, cardSprite) {
+        this._liveDrag = null;
+        this.destroyFireReachIndicator();
+        try {
+            if (!cardSprite?.scene) return;
+
+            if (typeof cardSprite.clearTint === 'function') {
+                cardSprite.clearTint();
+            }
+            this.destroyDragOverlay();
+            this.applySlotVisualDepths(slotIndex);
+
+            const currentSlot = this.slotSprites[slotIndex];
+            if (currentSlot) {
+                if (currentSlot.shadow) {
+                    currentSlot.shadow.setAlpha(0);
+                }
+                if (currentSlot.twinkleSprite) {
+                    currentSlot.twinkleSprite.setDepth(this.getInventoryDepths().twinkle);
+                }
+            }
+
+            this.handleCardDrop(slotIndex, cardSprite);
+        } catch (err) {
+            console.error(err);
+            if (cardSprite?.scene) this.returnCardToSlot(slotIndex, cardSprite);
+        } finally {
+            this.restoreBoardInputAfterDrag();
+            this.resetPhaserInventoryDrag(cardSprite);
+        }
+    },
+    freezeBoardInputForDrag() {
+        this.restoreBoardInputAfterDrag();
+        this._boardInputFrozen = [];
+        const board = this.scene.cardSystem?.boardCards || [];
+        board.forEach((card) => {
+            const sprite = card?.sprite;
+            if (!sprite?.input?.enabled) return;
+            sprite.input.enabled = false;
+            this._boardInputFrozen.push(sprite);
+        });
+    },
+    restoreBoardInputAfterDrag() {
+        (this._boardInputFrozen || []).forEach((sprite) => {
+            if (sprite?.input) sprite.input.enabled = true;
+        });
+        this._boardInputFrozen = [];
+    },
+    resetPhaserInventoryDrag(cardSprite) {
+        const input = this.scene?.input;
+        if (cardSprite?.input) cardSprite.input.dragState = 0;
+        if (!input) return;
+        const pointer = input.activePointer;
+        if (!pointer) return;
+        if (input.getDragState(pointer) !== 0) input.setDragState(pointer, 0);
+        const list = input._drag?.[pointer.id];
+        if (Array.isArray(list)) list.length = 0;
+    },
+    bindInventoryDragRelease() {
+        if (this._onInventoryPointerUp) return;
+        this._onInventoryPointerUp = () => this.finishStuckInventoryDrag();
+        window.addEventListener('pointerup', this._onInventoryPointerUp);
+        window.addEventListener('pointercancel', this._onInventoryPointerUp);
+        this.scene.events.once('shutdown', () => {
+            window.removeEventListener('pointerup', this._onInventoryPointerUp);
+            window.removeEventListener('pointercancel', this._onInventoryPointerUp);
+            this._onInventoryPointerUp = null;
+            this._liveDrag = null;
+            this.restoreBoardInputAfterDrag();
+        });
+    },
     // The enemy a swing would land on: closest revealed enemy within 150px of
     // the dragged card. Mirrors the pick in useWeapon() so the ring previews the
     // same target the drop will actually hit.
@@ -821,6 +906,7 @@ export const InventoryView = {
             lines.push(`${damageType} damage: ${card.attack || 2}`);
             lines.push(`${attackStyle} companion`);
             lines.push('Acts after enemies');
+            if (card.boundThrall) lines.push('Bound enemy — discard to release');
             if (card.shockChance) lines.push(`Shock chance: ${Math.round(card.shockChance * 100)}%`);
             if (card.guardProtection) lines.push(`Guard: +${card.guardProtection} protection`);
         } else if (card.type === 'magic') {

@@ -1,4 +1,14 @@
 import { createAmuletDefinitions } from '../content/amulets/index.js';
+import {
+    applyControlMarksToBoard,
+    createBoundThrallCard,
+} from '../content/amulets/control.js';
+import {
+    pickFirstRangedMarchPair,
+    pickScoutTarget,
+    STRATEGY_CLUSTER_DEBOUNCE_MS,
+} from '../content/amulets/strategy.js';
+import { getEnemyHitAttack } from '../content/combat/enemyAttack.js';
 import { depthScaled } from '../content/balance/DepthScaling.js';
 import { areAmuletsDisabled } from '../config/TestOptions.js';
 
@@ -47,9 +57,22 @@ export class AmuletManager {
         return this.sumAmuletProperty('maxHpPerDiscard');
     }
 
-    // Fire Rune — extra pixels added to the fire gem's splash radius.
+    // Legacy Fire Rune (event) — extra pixels added to the fire gem's splash radius.
     getFireSplashRadiusBonus() {
         return this.sumAmuletProperty('fireSplashRadiusBonus');
+    }
+
+    // Uncommon Rune of Fire — multiplies the base splash radius (1.5 → 98px).
+    getFireSplashRadiusMultiplier() {
+        return this.sumAmuletProperty('fireSplashRadiusMultiplier') || 1;
+    }
+
+    getLightningExtraBounces() {
+        return this.sumAmuletProperty('lightningExtraBounces') || 0;
+    }
+
+    getPoisonGemSplashTargets() {
+        return this.sumAmuletProperty('poisonGemSplashTargets') || 0;
     }
 
     // Remove an equipped amulet and reverse its onUnequip / max-HP bonus.
@@ -178,6 +201,8 @@ export class AmuletManager {
                     * (amulet.level || 1);
             }
         });
+        this.applyStrategyScout();
+        this.applyControlMarks();
         if (healTotal <= 0) return;
         const before = this.gameState.playerHealth;
         this.gameState.playerHealth = Math.min(
@@ -312,13 +337,14 @@ export class AmuletManager {
     }
 
     // Process enemy kill
-    processEnemyKill() {
+    processEnemyKill(card) {
         this.gameState.activeAmulets.forEach(amulet => {
             const definition = this.amuletDefinitions[amulet.id];
             if (definition && definition.onEnemyKill) {
                 definition.onEnemyKill();
             }
         });
+        this.tryBindThrall(card);
     }
 
     // Monocle — chance to find a crystal on kill. Caller grants currency + FX.
@@ -550,6 +576,164 @@ export class AmuletManager {
         return this.gameState.activeAmulets.some(a =>
             this.amuletDefinitions[a.id]?.charmingTune
         );
+    }
+
+    getControlFlags() {
+        const flags = { hesitation: false, treachery: false, bindOnKill: false };
+        this.gameState.activeAmulets.forEach((amulet) => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (!definition) return;
+            if (definition.controlHesitation) flags.hesitation = true;
+            if (definition.controlTreachery) flags.treachery = true;
+            if (definition.bindOnKill) flags.bindOnKill = true;
+        });
+        return flags;
+    }
+
+    getStrategyFlags() {
+        const flags = {
+            scout: false,
+            rangedMarch: false,
+            cluster: false,
+            detour: false,
+        };
+        this.gameState.activeAmulets.forEach((amulet) => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (!definition) return;
+            if (definition.strategyScout) flags.scout = true;
+            if (definition.strategyRangedMarch) flags.rangedMarch = true;
+            if (definition.strategyCluster) flags.cluster = true;
+            if (definition.strategyDetour) flags.detour = true;
+        });
+        return flags;
+    }
+
+    applyStrategyScout() {
+        if (this.scene.tutorialMode) return;
+        if (!this.getStrategyFlags().scout) return;
+        const cardSystem = this.scene.cardSystem;
+        const board = cardSystem?.boardCards;
+        if (!Array.isArray(board)) return;
+        for (const card of board) {
+            if (card?.data?.strategyScout) card.data.strategyScout = false;
+        }
+        const skip = [];
+        const pending = cardSystem._openingRevealIndices;
+        if (pending instanceof Set) {
+            for (const index of pending) {
+                if (board[index]) skip.push(board[index]);
+            }
+        }
+        const target = pickScoutTarget(board, skip);
+        if (!target?.data) return;
+        target.data.strategyScout = true;
+        cardSystem.syncControlMarkers?.(target);
+    }
+
+    onStrategyReveal(card) {
+        if (this.scene.tutorialMode) return;
+        const cardSystem = this.scene.cardSystem;
+        if (cardSystem?._openingRevealIndices instanceof Set) {
+            const index = cardSystem.boardCards.indexOf(card);
+            if (index >= 0) cardSystem._openingRevealIndices.delete(index);
+        }
+        const flags = this.getStrategyFlags();
+        if (flags.rangedMarch && !this.gameState.strategyMarchUsed) {
+            const pair = pickFirstRangedMarchPair(cardSystem?.boardCards, card);
+            if (pair) {
+                this.gameState.strategyMarchUsed = true;
+                cardSystem.swapCardSeats?.(pair[0], pair[1]);
+                if (this.scene.createFloatingText && pair[0].sprite) {
+                    this.scene.createFloatingText(
+                        pair[0].restX ?? pair[0].sprite.x,
+                        (pair[0].restY ?? pair[0].sprite.y) - 16,
+                        'March!',
+                        0xc8b06a
+                    );
+                }
+            }
+        }
+        if (flags.cluster) {
+            this.scheduleStrategyCluster();
+        }
+    }
+
+    scheduleStrategyCluster() {
+        if (this.gameState.strategyClusterUsed) return;
+        this._strategyClusterTimer?.remove?.(false);
+        this._strategyClusterTimer = this.scene.time.delayedCall(
+            STRATEGY_CLUSTER_DEBOUNCE_MS,
+            () => this.applyStrategyCluster()
+        );
+    }
+
+    applyStrategyCluster() {
+        this._strategyClusterTimer = null;
+        if (this.scene.tutorialMode) return;
+        if (this.gameState.strategyClusterUsed) return;
+        const flags = this.getStrategyFlags();
+        if (!flags.cluster) return;
+        const moved = !!this.scene.cardSystem?.applyStrategyCluster?.();
+        const revealedEnemies = (this.scene.cardSystem?.boardCards || []).filter((card) => (
+            card?.revealed && (card.data?.type === 'enemy' || card.data?.type === 'eliteEnemy')
+        ));
+        if (revealedEnemies.length >= 2) this.gameState.strategyClusterUsed = true;
+        if (moved && this.scene.createFloatingText) {
+            const avatar = this.scene.playerAvatar;
+            this.scene.createFloatingText(
+                avatar?.x ?? 320,
+                (avatar?.y ?? 180) - 16,
+                'Close ranks!',
+                0xc8b06a
+            );
+        }
+    }
+
+    canUseStrategyDetour() {
+        if (this.scene.tutorialMode) return false;
+        if (!this.getStrategyFlags().detour) return false;
+        const act = Number(this.gameState.mapCursor?.act) || 0;
+        if (act < 1) return false;
+        return (Number(this.gameState.strategyDetourUsedAct) || 0) !== act;
+    }
+
+    consumeStrategyDetour() {
+        const act = Number(this.gameState.mapCursor?.act) || 0;
+        if (act < 1) return;
+        this.gameState.strategyDetourUsedAct = act;
+    }
+
+    applyControlMarks() {
+        if (this.scene.tutorialMode) return;
+        const board = this.scene.cardSystem?.boardCards;
+        if (!Array.isArray(board)) return;
+        applyControlMarksToBoard(board, this.getControlFlags());
+        board.forEach((card) => this.scene.cardSystem?.syncControlMarkers?.(card));
+    }
+
+    tryBindThrall(card) {
+        if (!this.getControlFlags().bindOnKill) return false;
+        if (this.scene.tutorialMode) return false;
+        if (!card?.data) return false;
+        if (!card.data.controlHesitation && !card.data.controlTreachery) return false;
+        if (card.data.type === 'boss' || card.data.isCocoon || card.data.isMimic) return false;
+        const features = Array.isArray(card.data.features) ? card.data.features : [];
+        if (features.includes('cocoon_shell')) return false;
+        const inventory = this.scene.inventorySystem;
+        if (!inventory?.addCard) return false;
+        if (!inventory.slots?.some((slot) => slot == null)) return false;
+        const attack = getEnemyHitAttack(card, this.scene.cardSystem?.boardCards);
+        const thrall = createBoundThrallCard(card, attack);
+        if (!inventory.addCard(thrall)) return false;
+        if (this.scene.playerAvatar) {
+            this.scene.createFloatingText(
+                this.scene.playerAvatar.x,
+                this.scene.playerAvatar.y - 18,
+                'Bound!',
+                0xff66aa
+            );
+        }
+        return true;
     }
 
     // Traveler's Journal — recompute the max HP bonus based on unique amulets.

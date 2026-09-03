@@ -12,6 +12,25 @@ export {
 export { getAmuletAtlasPresentation } from './RelicsOthersAtlas.js';
 export { buildLegacyAmuletDefinitions } from './legacyCatalog.js';
 export { buildCurrentAmuletDefinitions } from './currentCatalog.js';
+export {
+    applyControlMarksToBoard,
+    CONTROL_HESITATION_CHANCE,
+    createBoundThrallCard,
+    pickControlTreacheryTarget,
+} from './control.js';
+export {
+    bricksAdjacent,
+    frontRowR,
+    isRangedFighter,
+    isStrategyBoardEnemy,
+    isStrategySwappable,
+    pickFirstRangedMarchPair,
+    pickScoutTarget,
+    planClusterSwaps,
+    seatOfCard,
+    STRATEGY_CLUSTER_DEBOUNCE_MS,
+    strategyNeighborBricks,
+} from './strategy.js';
 
 /**
  * Build the full runtime definitions map for an AmuletManager.

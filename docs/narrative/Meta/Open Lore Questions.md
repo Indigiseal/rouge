@@ -15,8 +15,8 @@ A living list of what is not yet locked in the lore.
 
 - [ ] What exactly waits in [[The Far Place]]?
 - [ ] Is the Second Moon an artifact, a being, a seal, or a machine?
-- [ ] Why does the [[The Waystar|Waystar]] choose / hold this particular hero?
-- [ ] Does the [[The City|City]] sense the hero's returns between expeditions?
+- [x] Why does the [[The Waystar|Waystar]] hold this walker? Not a prophesied pick — an ordinary villager who keeps walking; the stone will not release them. See [[The Village]], [[The Waystar]].
+- [x] Does home sense the returns? Yes: the [[The Village|Village]] sees how far the rumor reached; that faith is [[Villager Support]].
 - [ ] Does the Second Moon have a master, a cult, or keepers?
 - [x] Year completion is not a special narrative beat (Spherefall ≠ unique finale). See [[Design Decisions]].
 - [ ] Who is [[The Magus]]? Motive, face, relation to the sphere. Stub only.
@@ -25,13 +25,13 @@ A living list of what is not yet locked in the lore.
 
 - [x] Winning run = pick one road per act. Completing any road advances. See [[Run Structure]].
 - [x] **True path** (narrative, not a gate): Tollroad → Brassfair → Starfold. Wrong road: after-boss card, then next act. See [[The True Path]].
-- [x] On death, return to the City; nine roads stay. See [[Death and Return]].
+- [x] On death, return to the Village; nine roads stay. See [[Death and Return]], [[The Village]].
 - [ ] How should Day / Location / Act appear in the UI?
 - [ ] Distinct defeat epilogues per location, or only after-boss true/wrong cards?
 - [ ] Is the Far Place *behind* all three Act 3 doors, or *identical* with Starfold?
-- [x] Beating Mirrorwane / Spherefall is a full meta win and a lesser narrative answer.
+- [x] Beating Mirrorwane / Spherefall is a full Support win and a lesser narrative answer.
 - [x] The game does not remember what the player discovered — no codex, no journal, no marks on the choice screen. See [[Design Decisions]].
-- [x] Long-tail replay is not the map's job; it belongs to character meta and the planned village layer. See [[Replayability]].
+- [x] Long-tail replay is not the map's job; it belongs to the village layer ([[Villager Support]]). See [[Replayability]].
 - [ ] Seasons as an act modifier (local buff / debuff per act) — idea only, deferred. Must not become the old month wheel: a season would modify a run, not supply a roster.
 
 ## Locations

@@ -36,7 +36,8 @@ import {
   NEST_TOOK_EGG,
   NEST_LEFT,
 } from '../content/events/monster_bird_nest.js';
-import { getMonthDefForFloor } from '../content/months/calendar.js';
+import { getLocationIdForFloor } from '../content/locations/index.js';
+import { tryLethalRevive } from '../systems/combat/PlayerDamageResolver.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
@@ -124,13 +125,13 @@ export class EventScene extends Phaser.Scene {
     if (!story.slimyPrisonSeen) bonusFillers.push('slimy_prison');
     if (!story.bookWormSeen) bonusFillers.push('book_worm');
     if (!story.briarRoomSeen) bonusFillers.push('briar_room');
-    // Silkdeep-only: cocoon chamber. Soft-gated by the current act's month.
-    if (!story.silkCocoonCacheSeen) {
-      const monthId = getMonthDefForFloor(
-        this.gameState?.calendarMonthIndex ?? 0,
-        this.gameState?.currentFloor || 1
-      )?.id;
-      if (monthId === 'silkdeep') bonusFillers.push('silk_cocoon_cache');
+    const locationId = getLocationIdForFloor(
+      this.gameState,
+      this.gameState?.currentFloor || 1
+    );
+    // Silkdeep-only: cocoon chamber.
+    if (!story.silkCocoonCacheSeen && locationId === 'silkdeep') {
+      bonusFillers.push('silk_cocoon_cache');
     }
     // Boss-gated: the collectors only exist on runs where their King is the one
     // waiting at the end of the act, so what you do here reaches floor 15.
@@ -144,12 +145,12 @@ export class EventScene extends Phaser.Scene {
     if (!story.armWrestlingSeen && ((this.gameState.coins || 0) >= this.getArmWrestleCoinStake() || this.hasArmWrestleCard())) {
       bonusFillers.push('arm_wrestling');
     }
-    if ((this.gameState.currentFloor || 1) >= 31 && !story.screamingHeadSeen
+    if (locationId === 'spherefall' && !story.screamingHeadSeen
       && (!this.hasAmulet('fireRuneStone') || !this.hasAmulet('lightningRune') || !this.hasAmulet('poisonRune'))) {
       bonusFillers.push('screaming_head');
     }
-    if (!story.carnivalVisited) bonusFillers.push('something_wicked');
-    if (story.carnivalVisited && !story.brassWizardSeen) bonusFillers.push('brass_wizard');
+    if (locationId === 'brassfair' && !story.carnivalVisited) bonusFillers.push('something_wicked');
+    if (locationId === 'brassfair' && story.carnivalVisited && !story.brassWizardSeen) bonusFillers.push('brass_wizard');
     if (this.getQualifyingCompanions().length > 0) bonusFillers.push('old_drill_room');
     if (bonusFillers.length > 0) {
       return this.getEventById(bonusFillers[Math.floor(Math.random() * bonusFillers.length)]);
@@ -403,6 +404,8 @@ export class EventScene extends Phaser.Scene {
     }
 
     if (this.gameState.playerHealth <= 0) {
+      const reviveScene = this.gameScene || this.scene?.get?.('GameScene') || this;
+      if (tryLethalRevive(this.gameState, reviveScene)) return;
       this.gameState.lastDeathCause = deathCause;
       if (typeof this.gameState.setDeathCause === 'function') {
         this.gameState.setDeathCause(deathCause);

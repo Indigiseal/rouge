@@ -1,6 +1,5 @@
 // Defeat / victory result overlays for GameScene.
 import { MusicManager } from '../audio/MusicManager.js';
-import { isMetaProgressionDisabled } from '../config/TestOptions.js';
 
 export function showDefeatFallback(scene, deathStats) {
     const depth = 12000;
@@ -101,12 +100,12 @@ export function showDefeatResult(scene, deathStats, xpResult) {
     const gained = xpResult?.xpGained ?? 0;
     const total = xpResult?.totalXp
         ?? scene.metaManager?.getCharacterXp?.(scene.gameState?.characterId) ?? 0;
-    scene.add.text(320, 253, gained > 0 ? `+${gained} character XP` : 'No XP this run', {
+    scene.add.text(320, 253, gained > 0 ? `+${gained} Support` : 'No Support this run', {
         fontSize: '15px',
         fill: '#fed991',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
-    scene.add.text(320, 279, `Spend it on talents before the next run. Total: ${total}`, {
+    scene.add.text(320, 279, `Total: ${total}`, {
         fontSize: '11px',
         fill: '#b8b0b8',
         fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -154,7 +153,7 @@ export function gameWon(scene) {
     scene.clearEnemyTurnTimers();
 
     let xpResult = null;
-    if (!scene.sandboxMode && scene.metaManager && !isMetaProgressionDisabled()) {
+    if (!scene.sandboxMode && scene.metaManager) {
         scene.metaManager.totalRuns = (scene.metaManager.totalRuns || 0) + 1;
         const floor = scene.gameState?.currentFloor ?? 45;
         if (floor > scene.metaManager.bestFloor) scene.metaManager.bestFloor = floor;
@@ -191,13 +190,13 @@ export function gameWon(scene) {
     const gained = xpResult?.xpGained ?? 0;
     const total = xpResult?.totalXp
         ?? scene.metaManager?.getCharacterXp?.(scene.gameState?.characterId) ?? 0;
-    scene.add.text(320, 253, gained > 0 ? `+${gained} character XP` : `Stories: ${scene.getResolvedStoryCount()}/1`, {
+    scene.add.text(320, 253, gained > 0 ? `+${gained} Support` : `Stories: ${scene.getResolvedStoryCount()}/1`, {
         fontSize: '15px',
         fill: '#ffffff',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
     scene.add.text(320, 279, gained > 0
-        ? `Talents persist. Total XP: ${total}`
+        ? `Total Support: ${total}`
         : 'Glory will have to do.', {
         fontSize: '11px',
         fill: '#5b3b26',

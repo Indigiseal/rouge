@@ -155,11 +155,22 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     runeOfFire: 'fireRuneStone',
     runeOfZap: 'lightningRune',
     runeOfPoison: 'poisonRune',
+    greaterRuneOfFire: 'fireSpirit',
+    greaterRuneOfZap: 'stormShard',
+    greaterRuneOfPoison: 'wormVenomVial',
     maskOfHollowWhispers: 'hollowWhispersMask',
     philosophersStone: 'sunstone',
     legendaryWhetstone: 'goldBar',
     lostNobleDiadem: 'diadem',
     glovesOfHermitWizard: 'violetGauntlet',
+    markOfHesitation: 'charmingFan',
+    markOfTreachery: 'perfumeBottle',
+    twinMarks: 'hangingBat',
+    collarOfBinding: 'redCloak',
+    tacticiansPin: 'compass',
+    forcedMarch: 'horn',
+    vacancyStep: 'grapplingHook',
+    generalsTable: 'spectacles',
 });
 
 export const RELIC_ATLAS_KEYS = Object.freeze({

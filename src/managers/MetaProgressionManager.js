@@ -1,5 +1,5 @@
-// MetaProgressionManager.js — per-character XP + permanent talents.
-// Death/win grant character XP only (no relic unlocks).
+// MetaProgressionManager.js — shared Support + village buildings.
+// Death/win grant Support into one pool. Talents remain in the save for sim.
 
 import { isMetaProgressionDisabled } from '../config/TestOptions.js';
 import {
@@ -16,9 +16,29 @@ import {
   xpForRun as xpForRunFormula,
 } from '../content/economy/metaXp.js';
 import { normalizeMonthIndex, nextMonthIndex } from '../content/months/index.js';
+import {
+  getVillageBuilding,
+  costForVillageRank,
+  emptyVillageBuildings,
+  normalizeVillageBuildings,
+  resolveVillageEffects,
+  mergeVillageIntoTalentEffects,
+} from '../content/village/index.js';
 
 function emptyCharacterProgress() {
   return { xp: 0, talents: {}, choices: {} };
+}
+
+/** Shared Support. Root `xp` wins; otherwise merge per-hero leftovers. */
+export function migrateSharedXp(data, characters) {
+  if (data && Number.isFinite(Number(data.xp))) {
+    return Math.max(0, Math.floor(Number(data.xp)));
+  }
+  const rogue = Math.max(0, Number(characters?.rogue?.xp) || 0);
+  const warrior = Math.max(0, Number(characters?.warrior?.xp) || 0);
+  // Old migrate copied the same metaPoints onto both heroes — do not double.
+  if (rogue === warrior) return rogue;
+  return rogue + warrior;
 }
 
 export class MetaProgressionManager {
@@ -41,6 +61,9 @@ export class MetaProgressionManager {
           data.nextCalendarMonthIndex ?? 0
         );
         this.characters = this.migrateCharacters(data);
+        this.xp = migrateSharedXp(data, this.characters);
+        this.syncSharedXpToCharacters();
+        this.buildings = normalizeVillageBuildings(data.buildings);
         // Legacy fields kept empty so old UI paths don't crash.
         this.unlockedRelics = [];
         this.veteranHp = 0;
@@ -54,6 +77,8 @@ export class MetaProgressionManager {
       rogue: emptyCharacterProgress(),
       warrior: emptyCharacterProgress(),
     };
+    this.buildings = emptyVillageBuildings();
+    this.xp = 0;
     this.totalDeaths = 0;
     this.totalRuns = 0;
     this.bestFloor = 1;
@@ -91,8 +116,11 @@ export class MetaProgressionManager {
   }
 
   saveMetaProgression() {
+    this.syncSharedXpToCharacters();
     const data = {
+      xp: Math.max(0, Math.floor(Number(this.xp) || 0)),
       characters: this.characters,
+      buildings: normalizeVillageBuildings(this.buildings),
       totalDeaths: this.totalDeaths,
       totalRuns: this.totalRuns,
       bestFloor: this.bestFloor,
@@ -150,17 +178,69 @@ export class MetaProgressionManager {
     return Math.max(0, Number(this.ensureCharacter(characterId).talents[talentId]) || 0);
   }
 
-  getCharacterXp(characterId) {
-    return this.ensureCharacter(characterId).xp;
+  syncSharedXpToCharacters() {
+    const xp = Math.max(0, Math.floor(Number(this.xp) || 0));
+    this.xp = xp;
+    this.ensureCharacter('rogue').xp = xp;
+    this.ensureCharacter('warrior').xp = xp;
+  }
+
+  getCharacterXp(_characterId) {
+    return Math.max(0, Math.floor(Number(this.xp) || 0));
+  }
+
+  getBuildingRank(buildingId) {
+    const buildings = this.buildings || emptyVillageBuildings();
+    return Math.max(0, Number(buildings[buildingId]) || 0);
+  }
+
+  canUpgradeBuilding(characterId, buildingId) {
+    const def = getVillageBuilding(buildingId);
+    if (!def) return { ok: false, reason: 'invalid' };
+    if (!this.buildings) this.buildings = emptyVillageBuildings();
+    const rank = this.getBuildingRank(buildingId);
+    if (rank >= def.maxRank) return { ok: false, reason: 'max' };
+    const cost = costForVillageRank(rank);
+    if (cost == null) return { ok: false, reason: 'max' };
+    if (this.getCharacterXp() < cost) {
+      return { ok: false, reason: 'support', cost };
+    }
+    return { ok: true, cost, nextRank: rank + 1 };
+  }
+
+  /** Spend shared Support on a village building. */
+  upgradeBuilding(_characterId, buildingId) {
+    const check = this.canUpgradeBuilding(_characterId, buildingId);
+    if (!check.ok) return check;
+    this.xp = this.getCharacterXp() - check.cost;
+    this.buildings[buildingId] = check.nextRank;
+    this.saveMetaProgression();
+    return { ok: true, rank: check.nextRank, xpLeft: this.xp };
+  }
+
+  applyVillageEffects(gameState, applyStartingBonuses = false) {
+    if (!gameState) return;
+    const fx = resolveVillageEffects(this.buildings, gameState.characterId || 'rogue');
+    gameState.villageEffects = fx;
+    gameState.talentEffects = mergeVillageIntoTalentEffects(
+      gameState.talentEffects || {},
+      fx,
+    );
+    // HP is baked into maxHealth at run start and saved with the run.
+    // Continue must not add it again.
+    if (applyStartingBonuses && fx.villageMaxHp > 0 && !gameState._villageMaxHpApplied) {
+      gameState.maxHealth += fx.villageMaxHp;
+      gameState.playerHealth += fx.villageMaxHp;
+      gameState._villageMaxHpApplied = true;
+    }
   }
 
   /** Same formula as legacy meta points. */
   /** Test build only: hand a character XP from the talent screen. */
-  grantDebugXp(characterId, amount = 25) {
-    const ch = this.ensureCharacter(characterId);
-    ch.xp = Math.max(0, (ch.xp || 0) + amount);
+  grantDebugXp(_characterId, amount = 25) {
+    this.xp = this.getCharacterXp() + amount;
     this.saveMetaProgression();
-    return ch.xp;
+    return this.xp;
   }
 
   xpForRun(floor, bossesKilled = 0) {
@@ -181,29 +261,22 @@ export class MetaProgressionManager {
    * No relics are unlocked.
    */
   grantRunXp(characterId, floor, bossesKilled = null) {
-    if (isMetaProgressionDisabled()) {
-      return { xpGained: 0, totalXp: this.getCharacterXp(characterId), characterId };
-    }
     const bosses = bossesKilled == null ? this.estimateBossesKilled(floor) : bossesKilled;
     const xpGained = this.xpForRun(floor, bosses);
-    const ch = this.ensureCharacter(characterId);
-    ch.xp += xpGained;
+    this.xp = this.getCharacterXp() + xpGained;
     if (floor > this.bestFloor) this.bestFloor = floor;
     this.saveMetaProgression();
-    return { xpGained, totalXp: ch.xp, characterId };
+    return { xpGained, totalXp: this.xp, characterId };
   }
 
   /**
-   * End-of-run bookkeeping on death. XP only — no relic / veteranHp.
-   * Returns xp result (or null when meta disabled) for defeat UI.
+   * End-of-run bookkeeping on death. XP only — no relic / veteranHp / talents.
+   * Returns xp result for defeat UI.
    */
   handlePlayerDeath(killedBy, floor, characterId = 'rogue') {
-    if (isMetaProgressionDisabled()) return null;
-
     this.totalDeaths++;
     this.enemyKillStats[killedBy] = (this.enemyKillStats[killedBy] || 0) + 1;
-    const result = this.grantRunXp(characterId, floor);
-    return result;
+    return this.grantRunXp(characterId, floor);
   }
 
   canPurchaseTalent(characterId, talentId) {
@@ -227,7 +300,7 @@ export class MetaProgressionManager {
     if (rank >= (node.maxRank || 1)) return { ok: false, reason: 'max' };
     const cost = costForNextRank(rank);
     if (cost == null) return { ok: false, reason: 'max' };
-    if (ch.xp < cost) return { ok: false, reason: 'xp' };
+    if (this.getCharacterXp() < cost) return { ok: false, reason: 'xp' };
     return { ok: true, cost, nextRank: rank + 1 };
   }
 
@@ -240,10 +313,10 @@ export class MetaProgressionManager {
     if (!check.ok) return check;
 
     const ch = this.ensureCharacter(characterId);
-    ch.xp -= check.cost;
+    this.xp = this.getCharacterXp() - check.cost;
     ch.talents[talentId] = check.nextRank;
     this.saveMetaProgression();
-    return { ok: true, rank: check.nextRank, xpLeft: ch.xp };
+    return { ok: true, rank: check.nextRank, xpLeft: this.xp };
   }
 
   /** Apply permanent talents at run start. Relics are no longer applied.
@@ -251,24 +324,28 @@ export class MetaProgressionManager {
   applyTalentEffects(gameState, applyStartingBonuses = true, opts = {}) {
     gameState.relicEffects = {};
     gameState.talentEffects = resolveTalentEffects('rogue', {}, {});
-    if (isMetaProgressionDisabled()) return;
-
-    const characterId = gameState.characterId || 'rogue';
-    const ch = this.ensureCharacter(characterId);
-    const runChoices = { ...ch.choices };
-    if (opts.armorerArmorType === 'chain' || opts.armorerArmorType === 'plate') {
-      runChoices.runArmorerArmorType = opts.armorerArmorType;
+    if (!isMetaProgressionDisabled()) {
+      const characterId = gameState.characterId || 'rogue';
+      const ch = this.ensureCharacter(characterId);
+      const runChoices = { ...ch.choices };
+      if (opts.armorerArmorType === 'chain' || opts.armorerArmorType === 'plate') {
+        runChoices.runArmorerArmorType = opts.armorerArmorType;
+      }
+      // Depth accumulators have to be rebuilt as the run goes deeper, so keep the
+      // inputs on the run state — GameState refreshes from them on floor change.
+      gameState.talentSource = { characterId, talents: { ...ch.talents }, choices: runChoices };
+      const effects = resolveTalentEffects(characterId, ch.talents, runChoices, {
+        floorsCleared: Math.max(0, (gameState.currentFloor || 1) - 1),
+      });
+      gameState.talentEffects = effects;
     }
-    // Depth accumulators have to be rebuilt as the run goes deeper, so keep the
-    // inputs on the run state — GameState refreshes from them on floor change.
-    gameState.talentSource = { characterId, talents: { ...ch.talents }, choices: runChoices };
-    const effects = resolveTalentEffects(characterId, ch.talents, runChoices, {
-      floorsCleared: Math.max(0, (gameState.currentFloor || 1) - 1),
-    });
-    gameState.talentEffects = effects;
+    this.applyVillageEffects(gameState, applyStartingBonuses);
 
-    if (applyStartingBonuses && effects.armorerArmorType && !gameState.equippedArmor) {
-      gameState.equippedArmor = createStartingTalentArmor(effects.armorerArmorType, effects);
+    if (applyStartingBonuses && gameState.talentEffects?.armorerArmorType && !gameState.equippedArmor) {
+      gameState.equippedArmor = createStartingTalentArmor(
+        gameState.talentEffects.armorerArmorType,
+        gameState.talentEffects,
+      );
     }
   }
 
@@ -298,6 +375,8 @@ export class MetaProgressionManager {
       rogue: emptyCharacterProgress(),
       warrior: emptyCharacterProgress(),
     };
+    this.buildings = emptyVillageBuildings();
+    this.xp = 0;
     this.totalDeaths = 0;
     this.totalRuns = 0;
     this.bestFloor = 1;
