@@ -16,6 +16,7 @@ export default {
     {
       id: 'silk_cocoon_leave',
       text: 'Leave quietly',
+      textKey: 'ui.event.choice.silkCocoonLeave',
       action: () => {},
       outcome:
         'You ease back into the corridor without touching a strand.\n\n'
@@ -24,6 +25,7 @@ export default {
     {
       id: 'silk_cocoon_inspect',
       text: 'Search the cocoons',
+      textKey: 'ui.event.choice.silkCocoonSearch',
       action: (gs, scene) => scene.beginSilkCocoonCache('inspect'),
       outcome:
         'You draw a blade and step into the silk.\n\n'
@@ -33,6 +35,7 @@ export default {
     {
       id: 'silk_cocoon_burn',
       text: 'Burn them all!',
+      textKey: 'ui.event.choice.silkCocoonBurn',
       condition: (gs, scene) => scene.hasFireballCard(),
       action: (gs, scene) => {
         scene.consumeFireballCard();

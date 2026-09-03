@@ -1,3 +1,8 @@
+// The coach-marks are placed in world coordinates. scale.width/height are the
+// device viewport (twice as large since the canvas went full resolution), so
+// reading those put every highlight in the wrong place.
+import { WORLD_WIDTH, WORLD_HEIGHT } from '../config/renderScale.js';
+import { t } from '../i18n/i18n.js';
 // TutorialOverlay — the coach-mark layer used by the guided tutorial.
 //
 // Input model (the "hard lock"):
@@ -80,7 +85,7 @@ export class TutorialOverlay {
 
     // ---- construction ---------------------------------------------------
     _buildBlocker() {
-        const W = this.scene.scale.width, H = this.scene.scale.height;
+        const W = WORLD_WIDTH, H = WORLD_HEIGHT;
         this.blocker = this.scene.add.rectangle(0, 0, W, H, 0x000000, 0)
             .setOrigin(0, 0)
             .setDepth(this.DIM_DEPTH)
@@ -100,13 +105,13 @@ export class TutorialOverlay {
     }
 
     _buildSkip() {
-        const W = this.scene.scale.width;
+        const W = WORLD_WIDTH;
         this.skipBg = this.scene.add.rectangle(W - 6, 6, 54, 16, 0x1a1a1a, 0.85)
             .setOrigin(1, 0)
             .setDepth(this.ART_DEPTH)
             .setStrokeStyle(1, 0x888888)
             .setInteractive({ useHandCursor: true });
-        this.skipText = this.scene.add.text(W - 33, 14, 'Skip', {
+        this.skipText = this.scene.add.text(W - 33, 14, t(this.scene, 'ui.tutorial.skip'), {
             fontSize: '9px', fill: '#dddddd', fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(this.ART_DEPTH + 1);
         this.skipBg.on('pointerdown', (p, x, y, event) => {
@@ -135,8 +140,8 @@ export class TutorialOverlay {
 
     _normalizeHole(hole, pad = this.HOLE_PAD) {
         if (!hole) return null;
-        const W = this.scene.scale.width;
-        const H = this.scene.scale.height;
+        const W = WORLD_WIDTH;
+        const H = WORLD_HEIGHT;
         const x = Math.max(0, hole.x - pad);
         const y = Math.max(0, hole.y - pad);
         const right = Math.min(W, hole.x + hole.width + pad);
@@ -166,8 +171,8 @@ export class TutorialOverlay {
     // Build the shadow as a grid around one or more separate bright holes.
     // This avoids making one large lit rectangle between drag source and target.
     _setHoles(holes = []) {
-        const W = this.scene.scale.width;
-        const H = this.scene.scale.height;
+        const W = WORLD_WIDTH;
+        const H = WORLD_HEIGHT;
         const normalized = holes
             .map(hole => this._normalizeHole(hole))
             .filter(hole => hole && hole.width > 0 && hole.height > 0);
@@ -353,8 +358,8 @@ export class TutorialOverlay {
             this.bubbleValue = null;
             return;
         }
-        const W = this.scene.scale.width;
-        const H = this.scene.scale.height;
+        const W = WORLD_WIDTH;
+        const H = WORLD_HEIGHT;
         const maxW = 180;
         if (this.bubbleText && this.bubbleValue !== text) {
             this.bubbleText.destroy();

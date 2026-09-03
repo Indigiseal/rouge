@@ -143,6 +143,26 @@ export const TALENT_DISPLAY = Object.freeze({
   }),
 });
 
-export function getTalentDisplay(talentId) {
-  return TALENT_DISPLAY[talentId] || null;
+// Localized display copy lives alongside the canonical English data. Adding a
+// language is now data-only: no talent behavior or scene code needs changing.
+const TALENT_DISPLAY_TRANSLATIONS = Object.freeze({
+  es: Object.freeze({
+    keenEdge: { name: 'Filo agudo', descriptionRanks: ['El primer ataque con daga o arco de cada piso inflige +1 de daño.', 'El primer ataque con daga o arco de cada piso inflige +2 de daño.', 'El primer ataque con daga o arco de cada piso inflige +3 de daño.'] },
+    firstBlood: { name: 'Primer golpe', descriptionRanks: ['El primer ataque de cada piso inflige +25% de daño.', 'El primer ataque de cada piso inflige +40% de daño.', 'El primer ataque de cada piso inflige +55% de daño.'] },
+    twinFang: { name: 'Colmillo doble', descriptionRanks: ['Los golpes con daga infligen +8% de daño; los arcos, +4% (el punto de mano secundaria sigue siendo gratis).', 'Los golpes con daga infligen +12% de daño; los arcos, +6% (el punto de mano secundaria sigue siendo gratis).', 'Los golpes con daga infligen +18% de daño; los arcos, +9% (el punto de mano secundaria sigue siendo gratis).'] },
+    frontVolley: { name: 'Salva frontal', descriptionRanks: ['Los ataques de arco también golpean a un enemigo frontal aleatorio con el 18% del daño del arco (sin punto extra).', 'Los ataques de arco también golpean a un enemigo frontal aleatorio con el 26% del daño del arco (sin punto extra).', 'Los ataques de arco también golpean a un enemigo frontal aleatorio con el 34% del daño del arco (sin punto extra).'] },
+    assassinate: { name: 'Asesinar', descriptionRanks: ['Si un enemigo tiene 2 PV o menos tras tu golpe, remátalo (sin punto extra).', 'Si un enemigo tiene 2 PV o menos tras tu golpe, remátalo (sin punto extra).', 'Si un enemigo tiene 3 PV o menos tras tu golpe, remátalo (sin punto extra).'] },
+    armorerStart: { name: 'Inicio de armero', descriptionRanks: ['Empieza cada partida con malla o placas poco comunes; eliges cuál al iniciar la partida.'] },
+    rivets: { name: 'Remaches', descriptionRanks: ['25% de probabilidad de evitar cualquier pérdida de durabilidad de armadura (DEF, ignorar, esquivar).', '35% de probabilidad de evitar cualquier pérdida de durabilidad de armadura (DEF, ignorar, esquivar).', '45% de probabilidad de evitar cualquier pérdida de durabilidad de armadura (DEF, ignorar, esquivar).'] },
+    bulwark: { name: 'Baluarte', descriptionRanks: ['Malla y placas: +12% a las activaciones especiales de armadura (contraataque / ignorar a distancia).', 'Malla y placas: +24% a las activaciones especiales de armadura (contraataque / ignorar a distancia).', 'Malla y placas: +36% a las activaciones especiales de armadura (contraataque / ignorar a distancia).'] },
+    hardened: { name: 'Endurecido', descriptionRanks: ['Malla y placas: +1 DEF y +1 de durabilidad máxima.', 'Malla y placas: +1 DEF y +1 de durabilidad máxima.', 'Malla y placas: +1 DEF, +1 de durabilidad máxima y +5% a las activaciones de armadura.'] },
+    reprisal: { name: 'Represalia', descriptionRanks: ['Cuando DEF absorbe un golpe, refleja el 15% del daño bloqueado (redondeado hacia abajo; puede matar).', 'Cuando DEF absorbe un golpe, refleja el 25% del daño bloqueado (redondeado hacia abajo; puede matar).', 'Cuando DEF absorbe un golpe, refleja el 35% del daño bloqueado (redondeado hacia abajo; puede matar).'] },
+  }),
+});
+
+export function getTalentDisplay(talentId, language = 'en') {
+  const base = TALENT_DISPLAY[talentId];
+  if (!base) return null;
+  const translated = TALENT_DISPLAY_TRANSLATIONS[language]?.[talentId];
+  return translated ? { ...base, ...translated } : base;
 }

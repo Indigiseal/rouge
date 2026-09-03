@@ -249,7 +249,7 @@ export const InventorySlotRenderer = {
                 });
             }
 
-            this.showCardTooltip(cardData, slotIndex, pointer.x, pointer.y);
+            this.showCardTooltip(cardData, slotIndex, pointer.worldX, pointer.worldY);
         });
         
         cardSprite.on('pointerout', () => {

@@ -1,6 +1,7 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { REST_HEAL_AMOUNT } from '../content/economy/rest.js';
+import { t } from '../i18n/i18n.js';
 export class RestScene extends Phaser.Scene {
     constructor() {
         super({ key: 'RestScene' });
@@ -20,10 +21,10 @@ export class RestScene extends Phaser.Scene {
         this.campfireLoop = SoundHelper.fadeInMusic(this, 'campfire_loop', 0.5, 600, true);
         this.events.once('shutdown', () => this.stopCampfireLoop(450));
         this.add.image(320, 92, 'restRooms', 0).setOrigin(0.5);
-        this.add.text(320, 165, 'You rest by the campfire.', { fontSize: '18px', fill: '#ffffff', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
-        this.add.text(320, 205, `+${REST_HEAL_AMOUNT} HP Restored`, { fontSize: '22px', fill: '#00ff00', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
-        this.add.text(320, 240, 'Actions Fully Restored!', { fontSize: '22px', fill: '#00ff00', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
-        const continueButton = this.add.text(320, 280, 'Continue to Next Floor', { fontSize: '18px', fill: '#00ff00', fontFamily: '"HoMM Pixel"' })
+        this.add.text(320, 165, t(this, 'ui.rest.message'), { fontSize: '18px', fill: '#ffffff', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+        this.add.text(320, 205, t(this, 'ui.rest.hpRestored', { amount: REST_HEAL_AMOUNT }), { fontSize: '22px', fill: '#00ff00', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+        this.add.text(320, 240, t(this, 'ui.rest.actionsRestored'), { fontSize: '22px', fill: '#00ff00', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+        const continueButton = this.add.text(320, 280, t(this, 'ui.anvil.continue'), { fontSize: '18px', fill: '#00ff00', fontFamily: '"HoMM Pixel"' })
             .setInteractive({ useHandCursor: true })
             .on('pointerdown', () => {
                 // NO nextFloor() here—map already did it

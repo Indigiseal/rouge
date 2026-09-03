@@ -2,6 +2,7 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { createArmorCardData } from '../content/cards/armor.js';
+import { t } from '../i18n/i18n.js';
 
 export class ArmorerPickScene extends Phaser.Scene {
   constructor() {
@@ -20,13 +21,13 @@ export class ArmorerPickScene extends Phaser.Scene {
     }
     this.add.rectangle(320, 180, 640, 360, 0x000000, 0.55);
 
-    this.add.text(320, 28, "Armorer's Start", {
+    this.add.text(320, 28, t(this, 'ui.armorer.title'), {
       fontSize: '20px',
       fill: '#e6edf3',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5);
 
-    this.add.text(320, 52, 'Choose starting armor for this run', {
+    this.add.text(320, 52, t(this, 'ui.armorer.subtitle'), {
       fontSize: '11px',
       fill: '#8b949e',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -35,14 +36,14 @@ export class ArmorerPickScene extends Phaser.Scene {
     const chain = createArmorCardData('chain', 'uncommon');
     const plate = createArmorCardData('plate', 'uncommon');
     const chainBlurb = chain
-      ? `Uncommon · DEF ${chain.protection} + melee counter`
-      : 'Uncommon chain';
+      ? t(this, 'ui.armorer.chainBlurb', { amount: chain.protection })
+      : t(this, 'ui.armorer.chain');
     const plateBlurb = plate
-      ? `Uncommon · DEF ${plate.protection} + ignore ranged`
-      : 'Uncommon plate';
+      ? t(this, 'ui.armorer.plateBlurb', { amount: plate.protection })
+      : t(this, 'ui.armorer.plate');
 
-    this.createArmorCard(170, 200, 'chain', 'Chain', chainBlurb);
-    this.createArmorCard(470, 200, 'plate', 'Plate', plateBlurb);
+    this.createArmorCard(170, 200, 'chain', t(this, 'ui.armorer.chain'), chainBlurb);
+    this.createArmorCard(470, 200, 'plate', t(this, 'ui.armorer.plate'), plateBlurb);
 
     MusicManager.play(this, 'menu_music', 0.45, 500);
   }
@@ -58,7 +59,7 @@ export class ArmorerPickScene extends Phaser.Scene {
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5);
 
-    this.add.text(x, y - 20, 'Uncommon', {
+    this.add.text(x, y - 20, t(this, 'ui.armorer.uncommon'), {
       fontSize: '12px',
       fill: '#c9d1d9',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -75,7 +76,7 @@ export class ArmorerPickScene extends Phaser.Scene {
     const btn = this.add.rectangle(x, y + 70, 140, 28, 0x3d2418, 0.95)
       .setStrokeStyle(1, 0xd4a017)
       .setInteractive({ useHandCursor: true });
-    this.add.text(x, y + 70, 'Select', {
+    this.add.text(x, y + 70, t(this, 'ui.common.select'), {
       fontSize: '13px',
       fill: '#e6edf3',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',

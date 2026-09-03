@@ -38,6 +38,7 @@ import {
 } from '../content/events/monster_bird_nest.js';
 import { getLocationIdForFloor } from '../content/locations/index.js';
 import { tryLethalRevive } from '../systems/combat/PlayerDamageResolver.js';
+import { serifStyle } from '../ui/uiFont.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
@@ -722,7 +723,7 @@ export class EventScene extends Phaser.Scene {
     });
     scroll.track.on('pointerdown', (pointer) => {
       const frac = scroll.thumbTravel > 0
-        ? Phaser.Math.Clamp((pointer.y - scroll.thumbMinY) / scroll.thumbTravel, 0, 1)
+        ? Phaser.Math.Clamp((pointer.worldY - scroll.thumbMinY) / scroll.thumbTravel, 0, 1)
         : 0;
       this._setScrollOffset(Math.round(frac * scroll.maxOffset));
     });
@@ -754,7 +755,7 @@ export class EventScene extends Phaser.Scene {
   _enableReadingWheel() {
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
       const scroll = this._readingScroll;
-      if (!scroll?.maxOffset || !Phaser.Geom.Rectangle.Contains(scroll.bounds, pointer.x, pointer.y)) return;
+      if (!scroll?.maxOffset || !Phaser.Geom.Rectangle.Contains(scroll.bounds, pointer.worldX, pointer.worldY)) return;
       this._scrollReading(deltaY > 0 ? 24 : -24);
     });
   }
@@ -855,7 +856,7 @@ export class EventScene extends Phaser.Scene {
     // grows downward instead of overlapping the title.
     const eventDescription = this._getEventDescription();
     this.descText = this.add.text(this.eventLayout.centerX, 42, eventDescription, {
-      fontSize: '12px', fill: INK, fontFamily: '"HoMM Pixel"',
+      ...serifStyle('13px', INK),
       align: 'center', wordWrap: { width: 328 }
     }).setDepth(2);
     this._centerTextOnPixel(this.descText, this.eventLayout.centerX);
@@ -892,9 +893,7 @@ export class EventScene extends Phaser.Scene {
     // Outcome text (hidden until a choice is made). Positioned on resolve so it
     // stays within the panel, above the inventory strip.
     this.outcomeText = this.add.text(this.eventLayout.centerX, 150, '', {
-      fontSize: '11px',
-      fill: '#fff2d0',
-      fontFamily: '"HoMM Pixel"',
+      ...serifStyle('13px', '#fff2d0'),
       align: 'center',
       wordWrap: { width: 330 }
     }).setOrigin(0.5).setAlpha(0);
@@ -910,9 +909,7 @@ export class EventScene extends Phaser.Scene {
     // gained/lost" list shown under the outcome, so amulets/HP/crystals that
     // otherwise land silently in the corners are actually announced.
     this.rewardText = this.add.text(this.eventLayout.centerX, 200, '', {
-      fontSize: '12px',
-      fill: '#ffe066',
-      fontFamily: '"HoMM Pixel"',
+      ...serifStyle('13px', '#ffe066'),
       align: 'center',
       stroke: '#000000',
       strokeThickness: 3,
@@ -933,7 +930,7 @@ export class EventScene extends Phaser.Scene {
         .setAlpha(0)
         .setDepth(2);
     }
-    this.continueBtnText = this.add.text(continueX, continueY, 'Continue', {
+    this.continueBtnText = this.add.text(continueX, continueY, t(this, 'ui.common.continue'), {
       fontSize: '12px', fill: WHITE, fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5).setAlpha(0).setDepth(3);
 
@@ -1009,8 +1006,9 @@ export class EventScene extends Phaser.Scene {
       const bg = this.add.rectangle(x, y, buttonWidth, buttonHeight, 0x050505, 0.58)
         .setDepth(2);
 
-      const label = this.add.text(x, y, choice.text, {
-        fontSize: smallFont ? '10px' : (choice.text.length > 44 ? '11px' : '13px'),
+      const choiceLabel = this._choiceLabel(choice);
+      const label = this.add.text(x, y, choiceLabel, {
+        fontSize: smallFont ? '10px' : (choiceLabel.length > 44 ? '11px' : '13px'),
         fill: '#ffffff',
         fontFamily: '"HoMM Pixel"',
         align: 'center',
@@ -1024,6 +1022,13 @@ export class EventScene extends Phaser.Scene {
 
       this._choiceBtns.push({ bg, label });
     });
+  }
+
+  // A choice's on-screen label. `text` stays English — the human-run recorder
+  // and the balance sim both key off it — so translated copy rides alongside in
+  // `textKey`, and anything without one still renders its English text.
+  _choiceLabel(choice) {
+    return choice?.textKey ? t(this, choice.textKey) : (choice?.text ?? '');
   }
 
   _resolve(choice, choiceIdx, opts = {}) {
@@ -1143,7 +1148,7 @@ export class EventScene extends Phaser.Scene {
 
     // Never shrink narrative copy below the normal UI reading size. Overflow
     // is handled by the scroll window below.
-    const storyFont = story.length > 150 ? 11 : 12;
+    const storyFont = story.length > 150 ? 12 : 13;
     const rewardFont = 10;
 
     // Recreate the narration object instead of resizing the hidden placeholder.
@@ -1151,9 +1156,7 @@ export class EventScene extends Phaser.Scene {
     // Inspect -> Fight path, even though the outcome string is still present.
     this.outcomeText?.destroy?.();
     this.outcomeText = this.add.text(this.eventLayout.centerX, top, story, {
-      fontSize: `${storyFont}px`,
-      fill: '#fff2d0',
-      fontFamily: '"HoMM Pixel"',
+      ...serifStyle(`${storyFont}px`, '#fff2d0'),
       align: 'center',
       wordWrap: { width: 330 }
     }).setOrigin(0.5, 0).setAlpha(story ? 1 : 0).setDepth(4);
@@ -1647,6 +1650,7 @@ export class EventScene extends Phaser.Scene {
     this._reward(`Received: ${rerolledCard.name || 'a different card'}`);
     this._resolve({
       text: 'Offer card',
+      textKey: 'ui.event.choice.offerCard',
       action: () => {},
       outcome: 'You slide the card between the stone teeth.\n\nThe mouth closes. Stone grinds on stone, and for a few seconds the head chews.\n\nThen the jaw cracks open. A different card is lying on the tongue, damp with gray dust.'
     }, -1, { keepRewards: true });
@@ -1698,6 +1702,7 @@ export class EventScene extends Phaser.Scene {
       : `${cardData.name || 'Armor'}: +1 thorn damage`);
     this._resolve({
       text: 'Offer card',
+      textKey: 'ui.event.choice.offerCard',
       action: () => {},
       outcome: 'You hold the card out to the vines.\n\nThey wrap it carefully — almost gently — and sink a few black thorns into its edge.\n\nWhen they let go, the card is not the same.'
     }, -1, { keepRewards: true });
@@ -1948,6 +1953,7 @@ export class EventScene extends Phaser.Scene {
     this.gameScene?.updateUI?.();
     this._resolve({
       text: 'Wrestle',
+      textKey: 'ui.event.choice.wrestle',
       action: () => {},
       outcome: (state, s) => s.armWrestleOutcome
     }, -1, { keepRewards: true });
@@ -1988,6 +1994,7 @@ export class EventScene extends Phaser.Scene {
     this._resolve({
       id: 'music_box_force',
       text: 'Force it open',
+      textKey: 'ui.event.choice.forceOpen',
       action: () => {},
       outcome: (state, s) => s.musicBoxForceOutcome,
     }, -1, { keepRewards: true });
@@ -2034,6 +2041,7 @@ export class EventScene extends Phaser.Scene {
     this._resolve({
       id: 'nest_search',
       text: 'Search the nest',
+      textKey: 'ui.event.choice.searchNest',
       action: () => {},
       outcome: (state, s) => s.birdNestOutcome,
     }, -1, { keepRewards: true });
@@ -2233,8 +2241,8 @@ export class EventScene extends Phaser.Scene {
       if (!obj?.scene) return;
       const b = obj.getBounds();
       const over = pointer.isDown
-        && pointer.x >= b.left && pointer.x <= b.right
-        && pointer.y >= b.top && pointer.y <= b.bottom;
+        && pointer.worldX >= b.left && pointer.worldX <= b.right
+        && pointer.worldY >= b.top && pointer.worldY <= b.bottom;
       if (over) obj.setTint(0xffe9a8);
       else obj.clearTint();
     });
@@ -2267,9 +2275,10 @@ export class EventScene extends Phaser.Scene {
 
     this._rewardLines = [];
     this._rewardIcons = [];
-    this._reward(describeWeaponEnchant(cardData) || `${cardData.name}: enchanted`);
+    this._reward(describeWeaponEnchant(this, cardData) || `${cardData.name}: enchanted`);
     this._resolve({
       text: 'Offer weapon',
+      textKey: 'ui.event.choice.offerWeapon',
       action: () => {},
       outcome: `You press the weapon flat against the glass.\n\nThe case opens from the inside. The ${magicName} settles against the metal and sinks in, and the glass closes over nothing.\n\nThe other cases go dark.\n\nWhat you are holding is called ${cardData.name} now.`
     }, -1, { keepRewards: true });
@@ -2369,6 +2378,7 @@ export class EventScene extends Phaser.Scene {
     this._reward(`Traded: ${oldName} → ${newCard.name || 'upgraded card'}`);
     this._resolve({
       text: 'Trade',
+      textKey: 'ui.event.choice.trade',
       action: () => {},
       outcome: 'You hold the card out over the water. Your reflection lifts the wrong hand.\n\nThe card sinks without a sound. A different one comes up, cold and dripping tar.\n\nFor a second it feels like you made a deal with yourself.'
     }, -1, { keepRewards: true });
@@ -2488,7 +2498,7 @@ export class EventScene extends Phaser.Scene {
       const bg = this.add.rectangle(centerX, y, 130, 15, 0x050505, 0.58)
         .setDepth(5)
         .setInteractive({ useHandCursor: true });
-      const label = this.add.text(centerX, y, refuseChoice.text, {
+      const label = this.add.text(centerX, y, this._choiceLabel(refuseChoice), {
         fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
       }).setOrigin(0.5).setDepth(6);
       bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
@@ -2508,13 +2518,13 @@ export class EventScene extends Phaser.Scene {
 
     if (!target.over) { this._returnCarnivalCard(card); return; }
     if ((this.gameState?.coins || 0) < 1) {
-      this.gameScene?.createFloatingText?.(pointer.x, pointer.y, 'You need a coin', 0xff6666);
+      this.gameScene?.createFloatingText?.(pointer.worldX, pointer.worldY, 'You need a coin', 0xff6666);
       this._returnCarnivalCard(card);
       return;
     }
     // Junk trinkets need an open slot; the clover becomes an amulet and doesn't.
     if (!isAmulet && target.emptySlot < 0) {
-      this.gameScene?.createFloatingText?.(pointer.x, pointer.y, 'Your bag is full', 0xff6666);
+      this.gameScene?.createFloatingText?.(pointer.worldX, pointer.worldY, 'Your bag is full', 0xff6666);
       this._returnCarnivalCard(card);
       return;
     }
@@ -2544,15 +2554,15 @@ export class EventScene extends Phaser.Scene {
     if (minX === Infinity) return { over: false, emptySlot: -1 };
 
     const pad = 14;
-    const over = pointer.x >= minX - pad && pointer.x <= maxX + pad
-      && pointer.y >= midY - halfH - pad && pointer.y <= midY + halfH + pad;
+    const over = pointer.worldX >= minX - pad && pointer.worldX <= maxX + pad
+      && pointer.worldY >= midY - halfH - pad && pointer.worldY <= midY + halfH + pad;
     if (!over) return { over: false, emptySlot: -1 };
 
     let emptySlot = -1;
     slots.forEach((slot, i) => {
       const bg = slot?.background;
       if (!bg || inv.slots[i] != null || emptySlot >= 0) return;
-      if (Math.abs(pointer.x - bg.x) <= (bg.width || 50) / 2 + pad) emptySlot = i;
+      if (Math.abs(pointer.worldX - bg.x) <= (bg.width || 50) / 2 + pad) emptySlot = i;
     });
     if (emptySlot < 0) emptySlot = inv.slots.findIndex(item => item == null);
     return { over: true, emptySlot };
@@ -2598,7 +2608,7 @@ export class EventScene extends Phaser.Scene {
     // Shorten the wizard's narration window so it clears the tray.
     this._setReadingScroll([this.descText], 42, 120, this.descText.y + this.descText.height);
 
-    this._wizardHint = this.add.text(centerX, 128, 'Drag a card onto the tray', {
+    this._wizardHint = this.add.text(centerX, 128, t(this, 'ui.event.dragCardHint'), {
       fontSize: '11px', fill: '#ffe8b0', fontFamily: '"HoMM Pixel"', align: 'center'
     }).setOrigin(0.5).setDepth(5);
 
@@ -2616,7 +2626,7 @@ export class EventScene extends Phaser.Scene {
       const y = 244;
       const bg = this.add.rectangle(centerX, y, 150, 15, 0x050505, 0.58)
         .setDepth(5).setInteractive({ useHandCursor: true });
-      const label = this.add.text(centerX, y, declineChoice.text, {
+      const label = this.add.text(centerX, y, this._choiceLabel(declineChoice), {
         fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
       }).setOrigin(0.5).setDepth(6);
       bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
@@ -2641,6 +2651,7 @@ export class EventScene extends Phaser.Scene {
       this._deliverCardReward(this.createHolographicOmenCard(), 'Holographic Omen', 'Gained passive card: Holographic Omen');
       this._resolve({
         text: 'Trade junk',
+        textKey: 'ui.event.choice.tradeJunk',
         action: () => {},
         outcome: 'You put the trinket on the tray. It snaps back into the booth.\n\nThe glass goes dark. Then a rainbow sheen spreads across it from the inside — thin and oily, like light on spilled ink.\n\nA card slides out. It is far too bright for the machine that made it.'
       }, -1, { keepRewards: true });
@@ -2665,6 +2676,7 @@ export class EventScene extends Phaser.Scene {
       this._reward(`Traded: ${oldName} → ${newCard.name || 'a new card'}`);
       this._resolve({
         text: 'Reroll',
+        textKey: 'ui.event.choice.reroll',
         action: () => {},
         outcome: 'You put one of your cards on the tray. It snaps back before you can change your mind.\n\nBehind the glass, the wizard looks at the card for a long time. Then it taps the glass twice.\n\nA different card slides out.'
       }, -1, { keepRewards: true });

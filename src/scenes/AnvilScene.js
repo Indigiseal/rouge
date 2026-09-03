@@ -8,6 +8,7 @@ import {
     totalRepairCost,
 } from '../content/economy/repair.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
+import { t } from '../i18n/i18n.js';
 export class AnvilScene extends Phaser.Scene {
     constructor() {
         super({ key: 'AnvilScene' });
@@ -20,12 +21,12 @@ export class AnvilScene extends Phaser.Scene {
         this.add.image(540, 78, 'restRooms', 3).setOrigin(0.5);
         
         // Title and coins display
-        createTitle(this, 320, 30, 'Anvil - Repair Station', {
+        createTitle(this, 320, 30, t(this, 'ui.anvil.title'), {
             color: '#ffffff',
             fallbackSize: '28px'
         });
         
-        this.coinsText = this.add.text(320, 60, `Coins: ${this.gameState.coins}`, { 
+        this.coinsText = this.add.text(320, 60, t(this, 'ui.anvil.coins', { amount: this.gameState.coins }), {
             fontSize: '16px', 
             fill: '#ffd700', 
             fontFamily: '"HoMM Pixel"' 
@@ -35,7 +36,7 @@ export class AnvilScene extends Phaser.Scene {
         this.displayRepairableItems();
         
         // Continue button
-        const continueButton = this.add.text(320, 330, 'Continue to Next Floor', { 
+        const continueButton = this.add.text(320, 330, t(this, 'ui.anvil.continue'), {
             fontSize: '18px', 
             fill: '#00ff00', 
             fontFamily: '"HoMM Pixel"' 
@@ -110,7 +111,7 @@ export class AnvilScene extends Phaser.Scene {
         
         // If no items need repair, show message
         if (repairableItems.length === 0) {
-            this.add.text(320, 180, 'No items need repair.', { 
+            this.add.text(320, 180, t(this, 'ui.anvil.none'), {
                 fontSize: '14px', 
                 fill: '#cccccc', 
                 fontFamily: '"HoMM Pixel"' 
@@ -159,7 +160,7 @@ export class AnvilScene extends Phaser.Scene {
         const totalCost = totalRepairCost(item, missingDurability, this.getWeaponType(item.name));
         
         // Cost display
-        const costText = this.add.text(0, -5, `Cost: ${totalCost} coins`, { 
+        const costText = this.add.text(0, -5, t(this, 'ui.anvil.cost', { amount: totalCost }), {
             fontSize: '11px', 
             fill: '#ffd700', 
             fontFamily: '"HoMM Pixel"' 
@@ -168,8 +169,8 @@ export class AnvilScene extends Phaser.Scene {
         // Repair info
         const repairInfo = this.add.text(0, 10, 
             item.type === 'armor' 
-                ? `(${repairCost} per ${REPAIR_ARMOR_CHUNK} pts)` 
-                : `(${repairCost} per pt)`, 
+                ? t(this, 'ui.anvil.armorRate', { amount: repairCost, points: REPAIR_ARMOR_CHUNK })
+                : t(this, 'ui.anvil.rate', { amount: repairCost }),
             { 
                 fontSize: '9px', 
                 fill: '#888888', 
@@ -181,7 +182,7 @@ export class AnvilScene extends Phaser.Scene {
         const buttonY = 35;
         
         // Full repair button
-        const fullRepairButton = this.add.text(-35, buttonY, 'Full', { 
+        const fullRepairButton = this.add.text(-35, buttonY, t(this, 'ui.anvil.full'), {
             fontSize: '12px', 
             fill: totalCost <= this.gameState.coins ? '#00ff00' : '#666666', 
             backgroundColor: '#333333', 
@@ -247,7 +248,7 @@ export class AnvilScene extends Phaser.Scene {
         const totalCost = totalRepairCost(item, repairAmount, this.getWeaponType(item.name));
         
         if (this.gameState.coins < totalCost) {
-            this.showFeedback('Not enough coins!', 0xff0000);
+            this.showFeedback(t(this, 'ui.anvil.notEnoughCoins'), 0xff0000);
             return;
         }
         
@@ -273,7 +274,7 @@ export class AnvilScene extends Phaser.Scene {
         this.showFeedback(message, 0x00ff00);
         
         // Update UI
-        this.coinsText.setText(`Coins: ${this.gameState.coins}`);
+        this.coinsText.setText(t(this, 'ui.anvil.coins', { amount: this.gameState.coins }));
         this.displayRepairableItems();
         
         // Update GameScene UI if needed

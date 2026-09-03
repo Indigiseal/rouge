@@ -4,6 +4,8 @@
 import { showItemTooltip, hideItemTooltip, BOARD_TOOLTIP_GAP } from './ItemTooltip.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
+import { cameraWorldSize } from '../config/renderScale.js';
+import { t, translateItemName, translateRarity } from '../i18n/i18n.js';
 
 const RARITY_COLOR = {
   common: 0xb0b0b0,
@@ -44,8 +46,8 @@ export function openAmuletChoiceOverlay(scene, cfg) {
   };
 
   const cam = scene.cameras?.main;
-  const w = cam?.width || 640;
-  const h = cam?.height || 360;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: w, height: h } = cameraWorldSize(cam);
 
   // Dim the board so the choice reads as a modal event.
   const veil = push(scene.add.rectangle(w / 2, h / 2, w + 4, h + 4, 0x000000, 0.72));
@@ -53,14 +55,14 @@ export function openAmuletChoiceOverlay(scene, cfg) {
   veil.setInteractive(); // block clicks through
 
   const rarity = cfg.rarity || options[0].rarity || 'common';
-  const titleText = cfg.title || `Choose a ${rarity} amulet`;
+  const titleText = cfg.title || t(scene, 'ui.amulet.chooseTitle', { rarity: translateRarity(scene, rarity) });
   const title = push(scene.add.text(w / 2, 48, titleText, {
     fontSize: '18px',
     fontFamily: 'monospace',
     color: '#e6edf3',
   }).setOrigin(0.5).setDepth(depth + 1));
 
-  const subtitle = push(scene.add.text(w / 2, 72, 'Pick one', {
+  const subtitle = push(scene.add.text(w / 2, 72, t(scene, 'ui.amulet.pickOne'), {
     fontSize: '12px',
     fontFamily: 'monospace',
     color: '#8b949e',
@@ -86,7 +88,7 @@ export function openAmuletChoiceOverlay(scene, cfg) {
     sprite.setDepth(depth + 2);
     sprite.setInteractive({ useHandCursor: true });
 
-    const name = push(scene.add.text(x, cardY + 48, item.name || item.id, {
+    const name = push(scene.add.text(x, cardY + 48, translateItemName(scene, item) || item.id, {
       fontSize: '10px',
       fontFamily: 'monospace',
       color: '#e6edf3',

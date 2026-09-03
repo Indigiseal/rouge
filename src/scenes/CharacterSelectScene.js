@@ -2,6 +2,8 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { CHARACTER_CLASSES, CHARACTER_IDS } from '../content/characters/CharacterClasses.js';
+import { t } from '../i18n/i18n.js';
+import { FONT_SIZE, serifStyle } from '../ui/uiFont.js';
 
 export class CharacterSelectScene extends Phaser.Scene {
   constructor() {
@@ -16,17 +18,9 @@ export class CharacterSelectScene extends Phaser.Scene {
     }
     this.add.rectangle(320, 180, 640, 360, 0x000000, 0.55);
 
-    this.add.text(320, 28, 'Choose your hero', {
-      fontSize: '22px',
-      fill: '#e6edf3',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
+    this.add.text(320, 28, t(this, 'ui.character.title'), serifStyle('22px', '#e6edf3')).setOrigin(0.5);
 
-    this.add.text(320, 52, 'Once per run — before floor 1', {
-      fontSize: '11px',
-      fill: '#8b949e',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
+    this.add.text(320, 52, t(this, 'ui.character.subtitle'), serifStyle(FONT_SIZE.small, '#8b949e')).setOrigin(0.5);
 
     const slots = [
       { id: 'rogue', x: 170 },
@@ -53,37 +47,17 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.add.image(x, y - 85, 'characterPortraits', def.portraitFrame ?? 0);
     }
 
-    this.add.text(x, y - 37, def.name, {
-      fontSize: '18px',
-      fill: '#f0d78c',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
+    this.add.text(x, y - 37, def.name, serifStyle('18px', '#f0d78c')).setOrigin(0.5);
 
-    const startLine = def.id === 'rogue'
-      ? 'Start: Dagger + Bow'
-      : 'Start: 2x Sword';
-    this.add.text(x, y - 15, startLine, {
-      fontSize: '12px',
-      fill: '#c9d1d9',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
+    const startLine = t(this, def.id === 'rogue' ? 'ui.character.rogueStart' : 'ui.character.warriorStart');
+    this.add.text(x, y - 15, startLine, serifStyle(FONT_SIZE.body, '#c9d1d9')).setOrigin(0.5);
 
-    const armorLine = def.id === 'rogue'
-      ? 'Armor: Leather only'
-      : 'Armor: Chain & Plate';
-    this.add.text(x, y + 3, armorLine, {
-      fontSize: '12px',
-      fill: '#c9d1d9',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
+    const armorLine = t(this, def.id === 'rogue' ? 'ui.character.rogueArmor' : 'ui.character.warriorArmor');
+    this.add.text(x, y + 3, armorLine, serifStyle(FONT_SIZE.body, '#c9d1d9')).setOrigin(0.5);
 
-    const passive = def.id === 'rogue'
-      ? 'Passive: Dagger & Bow\ndeal +10% damage'
-      : 'Passive: 10% crit sword/axe\nChain: melee counter\nPlate: ignore ranged';
+    const passive = t(this, def.id === 'rogue' ? 'ui.character.roguePassive' : 'ui.character.warriorPassive');
     this.add.text(x, y + 37, passive, {
-      fontSize: '11px',
-      fill: '#8b949e',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
+      ...serifStyle(FONT_SIZE.small, '#8b949e'),
       align: 'center',
       lineSpacing: 4,
     }).setOrigin(0.5);
@@ -91,11 +65,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     const btn = this.add.rectangle(x, y + 90, 140, 28, 0x3d2418, 0.95)
       .setStrokeStyle(1, 0xd4a017)
       .setInteractive({ useHandCursor: true });
-    this.add.text(x, y + 90, 'Select', {
-      fontSize: '13px',
-      fill: '#e6edf3',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
+    this.add.text(x, y + 90, t(this, 'ui.common.select'), serifStyle('14px', '#e6edf3')).setOrigin(0.5);
 
     const hoverOn = () => {
       SoundHelper.playVariant(this, 'hover_button', 0.35);
@@ -119,11 +89,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     const bg = this.add.rectangle(320, 335, 160, 26, 0x2c1810, 0.92)
       .setStrokeStyle(1, 0x8b6914)
       .setInteractive({ useHandCursor: true });
-    this.add.text(320, 335, 'Back', {
-      fontSize: '12px',
-      fill: '#e6edf3',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5);
+    this.add.text(320, 335, t(this, 'ui.common.back'), serifStyle('14px', '#e6edf3')).setOrigin(0.5);
 
     bg.on('pointerover', () => {
       SoundHelper.playVariant(this, 'hover_button', 0.35);

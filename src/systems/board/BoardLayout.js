@@ -4,6 +4,7 @@ import {
     planClusterSwaps,
     seatOfCard,
 } from '../../content/amulets/strategy.js';
+import { cameraWorldSize } from '../../config/renderScale.js';
 
 export class BoardLayout {
     constructor(cs) {
@@ -141,20 +142,22 @@ function computePlacement(cells, opts = {}) {
     if (xp > maxXp) maxXp = xp;
   }
   const cam = this.scene.cameras.main;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: camW, height: camH } = cameraWorldSize(cam);
   let areaLeft, areaRight, areaTop, areaBottom;
   // Callers on other screens (the shop board) own a different play area and
   // have their own hand-tuned offsets. They pass an explicit rect so the combat
   // board's rect can change without dragging their layout along with it.
   if (opts.area) {
-    const sx = cam.width / 640, sy = cam.height / 360;
+    const sx = camW / 640, sy = camH / 360;
     areaLeft   = opts.area.left   * sx;
     areaRight  = opts.area.right  * sx;
     areaTop    = opts.area.top    * sy;
     areaBottom = opts.area.bottom * sy;
   } else if (this.constructor.USE_FIXED_PANEL) {
     // Scale the 640x360 design rect to the current camera
-    const sx = cam.width  / 640;
-    const sy = cam.height / 360;
+    const sx = camW  / 640;
+    const sy = camH / 360;
     const R  = this.constructor.FIXED_PANEL_640x360;
     areaLeft   = R.left   * sx;
     areaTop    = R.top    * sy;
@@ -162,16 +165,16 @@ function computePlacement(cells, opts = {}) {
     areaBottom = (R.top  + R.height) * sy;
   } else {
     // fallback to fractional+padded panel (what you already have)
-    const fracLeft   = cam.width  * this.constructor.BOARD_SAFE_FRAC.left;
-    const fracRight  = cam.width  * (1 - this.constructor.BOARD_SAFE_FRAC.right);
-    const fracTop    = cam.height * this.constructor.BOARD_SAFE_FRAC.top;
-    const fracBottom = cam.height * (1 - this.constructor.BOARD_SAFE_FRAC.bottom);
+    const fracLeft   = camW  * this.constructor.BOARD_SAFE_FRAC.left;
+    const fracRight  = camW  * (1 - this.constructor.BOARD_SAFE_FRAC.right);
+    const fracTop    = camH * this.constructor.BOARD_SAFE_FRAC.top;
+    const fracBottom = camH * (1 - this.constructor.BOARD_SAFE_FRAC.bottom);
     areaLeft   = Math.max(fracLeft,   this.constructor.BOARD_SAFE_PX.left);
-    areaRight  = Math.min(fracRight,  cam.width  - this.constructor.BOARD_SAFE_PX.right);
+    areaRight  = Math.min(fracRight,  camW  - this.constructor.BOARD_SAFE_PX.right);
     areaTop    = Math.max(fracTop,    this.constructor.BOARD_SAFE_PX.top);
-    areaBottom = Math.min(fracBottom, cam.height - this.constructor.BOARD_SAFE_PX.bottom);
-    const maxPanelW = Math.min(cam.width * 0.42, 340);
-    const maxPanelH = Math.min(cam.height * 0.78, 300);
+    areaBottom = Math.min(fracBottom, camH - this.constructor.BOARD_SAFE_PX.bottom);
+    const maxPanelW = Math.min(camW * 0.42, 340);
+    const maxPanelH = Math.min(camH * 0.78, 300);
     if ((areaRight - areaLeft) > maxPanelW)  areaLeft  = areaRight  - maxPanelW;
     if ((areaBottom - areaTop) > maxPanelH)  areaTop   = areaBottom - maxPanelH;
   }
@@ -346,8 +349,10 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
   const minY = Math.min(...points.map(p => p.y));
   const maxY = Math.max(...points.map(p => p.y));
   const cam = this.scene.cameras.main;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: camW, height: camH } = cameraWorldSize(cam);
   const x = ((minX + maxX) / 2) + 10;
-  const y = Math.min(cam.height - 122, ((minY + maxY) / 2) + 8) - 18;
+  const y = Math.min(camH - 122, ((minY + maxY) / 2) + 8) - 18;
 
   const panel = this.scene.add.image(x, animate ? y + 34 : y, textureKey);
   panel.setDepth(0);
@@ -377,10 +382,12 @@ function createBossBoardPanel() {
   if (!this.scene.textures.exists('gamingBoard')) return;
 
   const cam = this.scene.cameras.main;
-  const y = Math.min(cam.height - 122, cam.height / 2 + 8) - 18;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: camW, height: camH } = cameraWorldSize(cam);
+  const y = Math.min(camH - 122, camH / 2 + 8) - 18;
   // -10 (was +10): shifted 20px left to match the combat board and clear
   // the combat-log panel on the right.
-  const panel = this.scene.add.image((cam.width / 2) - 10, y + 34, 'gamingBoard');
+  const panel = this.scene.add.image((camW / 2) - 10, y + 34, 'gamingBoard');
   panel.setDepth(0);
   this.floorBoardPanel = panel;
   this.scene.tweens.add({
@@ -404,8 +411,10 @@ function _brickSizeForCount(n) {
 
 function brickToPixelLegacy(row, col, colGap, rowGap) {
   const cam = this.scene.cameras.main;
-  const x = (cam.width * 0.75) + col * colGap + ((row & 1) ? colGap / 2 : 0); // Responsive center
-  const y = (cam.height / 2) + row * rowGap;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: camW, height: camH } = cameraWorldSize(cam);
+  const x = (camW * 0.75) + col * colGap + ((row & 1) ? colGap / 2 : 0); // Responsive center
+  const y = (camH / 2) + row * rowGap;
   return { x, y };
 }
 

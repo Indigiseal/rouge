@@ -186,6 +186,11 @@ export const ASSET_MANIFEST = [
     { key: 'nextTurnDown', path: 'assets/art/nextTurnDown.png', type: 'image' },
     // Cog button skin â€” frame 0 = up, frame 1 = pressed.
     { key: 'optionsButton', path: 'assets/art/optionsButtonUpDown32x32.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
+    // Options screen skin, one 128x32 button per row:
+    // 0 language, 1 empty volume bar, 2 filled volume bar, 3 back, 4 reset.
+    { key: 'uiButtons', path: 'assets/art/uiButtons.png', type: 'spritesheet', frameWidth: 128, frameHeight: 32 },
+    // Draggable knob that rides the volume bars.
+    { key: 'volumeKnob', path: 'assets/art/toggle.png', type: 'image' },
     { key: 'MainPlayerAvatar', path: 'assets/art/MainPlayerAvatar.png', type: 'image' },
     { key: 'coinUI', path: 'assets/art/coinUI.png', type: 'image' },
     { key: 'CrystalUI', path: 'assets/art/CrystalUI.png', type: 'image' },
@@ -368,11 +373,29 @@ export const ASSET_MANIFEST = [
     { key: 'boss_defeated', path: 'assets/music/Boss_Defeated_01.mp3', type: 'audio' },
     // Looping campfire ambience for the Rest room.
     { key: 'campfire_loop', path: 'assets/music/Campfire_Loop_01.mp3', type: 'audio' },
-    // Looping music tracks
+    // The three looping music tracks are NOT here — see DEFERRED_AUDIO below.
+];
+
+/**
+ * Music that loads on first use instead of at boot.
+ *
+ * The browser decodes every preloaded sound to raw PCM before the game can
+ * start, and these three are minutes long: 16 MB of mp3 became 186 MB in
+ * memory, 110 MB of it these tracks, none of it needed to draw the main menu.
+ * MusicManager fetches one the first time something asks to play it.
+ *
+ * @type {AssetEntry[]}
+ */
+export const DEFERRED_AUDIO = [
     { key: 'menu_music', path: 'assets/music/TOE_Campfire.mp3', type: 'audio' },
     { key: 'boss_music', path: 'assets/music/TOE_BattleDrums.mp3', type: 'audio' },
     { key: 'map_music', path: 'assets/music/TOE_Peaceful.mp3', type: 'audio' },
 ];
+
+/** Path for a deferred track, or undefined if the key isn't deferred. */
+export function deferredAudioPath(key) {
+    return DEFERRED_AUDIO.find(entry => entry.key === key)?.path;
+}
 
 /**
  * Base enemy sprite key -> elite portrait key, for enemies that have dedicated

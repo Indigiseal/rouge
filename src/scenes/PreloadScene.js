@@ -15,20 +15,14 @@ export class PreloadScene extends Phaser.Scene {
         // brown canvas that players read as a hang.
         this.createLoadingUI();
 
-        // Append a timestamp to every asset URL so Phaser never serves a
-        // stale texture from its internal cache during development.
-        // Remove queryURL before shipping (or it bloats itch.io logs).
+        // Asset URLs are plain — no `?v=<timestamp>` suffix.
+        //
+        // That suffix made every URL unique on every boot, so the browser had
+        // never seen any of them and re-downloaded the whole game each load,
+        // for players on itch as much as in development. Freshness is the dev
+        // server's job now: it answers with an ETag, so an edited file resends
+        // and an untouched one costs nothing. See tools/server.mjs.
         this.load.setCORS('anonymous');
-        this.load.on('filedatareceived', () => {});
-        const _origImage = this.load.image.bind(this.load);
-        const _origSheet = this.load.spritesheet.bind(this.load);
-        const _origAudio = this.load.audio.bind(this.load);
-        const _origBitmap = this.load.bitmapFont.bind(this.load);
-        const v = `?v=${Date.now()}`;
-        this.load.image = (key, url, ...rest) => _origImage(key, Array.isArray(url) ? url.map(u => u + v) : url + v, ...rest);
-        this.load.spritesheet = (key, url, ...rest) => _origSheet(key, url + v, ...rest);
-        this.load.audio = (key, url, ...rest) => _origAudio(key, Array.isArray(url) ? url.map(u => u + v) : url + v, ...rest);
-        this.load.bitmapFont = (key, textureURL, xmlURL, ...rest) => _origBitmap(key, textureURL + v, xmlURL + v, ...rest);
 
         loadAssetManifest(this.load);
     }
@@ -318,11 +312,13 @@ export class PreloadScene extends Phaser.Scene {
         factory.text = function (x, y, text = '', style = {}) {
             const scene = this.scene;
             const rawValue = String(text ?? '');
-            const fontKey = fontSupportsText(scene, 'pixel-font', rawValue)
-                ? 'pixel-font'
-                : fontSupportsText(scene, 'cyrillic-ui-font', rawValue)
-                    ? 'cyrillic-ui-font'
-                    : null;
+            // minogram (pixel-font) is 6x10 and has no accented glyphs, so
+            // Spanish/Russian fell through to a second typeface mid-UI. Render
+            // every language in cyrillic-ui-font (probly12) instead — one pixel
+            // font throughout. Restore the pixel-font branch here to go back.
+            const fontKey = fontSupportsText(scene, 'cyrillic-ui-font', rawValue)
+                ? 'cyrillic-ui-font'
+                : null;
 
             if (!fontKey || style.useCanvasText) {
                 return originalTextFactory.call(this, x, y, text, style);
@@ -332,18 +328,10 @@ export class PreloadScene extends Phaser.Scene {
 
             const resolveBitmapSize = (nextStyle = {}) => {
                 const fontSize = parseFontSize(nextStyle.fontSize);
-                return fontKey === 'cyrillic-ui-font'
-                    ? 12
-                    : fontSize >= 18
-                        ? 20
-                        : 10;
+                return fontSize >= 18 ? 24 : 12;
             };
             const fontSize = parseFontSize(style.fontSize);
-            const bitmapSize = fontKey === 'cyrillic-ui-font'
-                ? 12
-                : fontSize >= 18
-                    ? 20
-                    : 10;
+            const bitmapSize = fontSize >= 18 ? 24 : 12;
             const align = style.align === 'center' ? 1 : style.align === 'right' ? 2 : 0;
             const bitmapText = this.bitmapText(Math.round(x), Math.round(y), fontKey, value, bitmapSize, align);
 

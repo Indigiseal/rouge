@@ -3,6 +3,8 @@
 // Difficulty comes from `ogrePush` / `clickPower` (EventScene maps armWrestleChance).
 
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { t } from '../i18n/i18n.js';
+import { cameraWorldSize } from '../config/renderScale.js';
 
 const DEPTH = 3500;
 const COUNTDOWN_SECS = 3;
@@ -37,8 +39,8 @@ export function openArmWrestlingMinigame(scene, cfg) {
   let baseArmScale = 1;
 
   const cam = scene.cameras?.main;
-  const w = cam?.width || 640;
-  const h = cam?.height || 360;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: w, height: h } = cameraWorldSize(cam);
   const cx = w / 2;
   const cy = h / 2;
 
@@ -55,7 +57,7 @@ export function openArmWrestlingMinigame(scene, cfg) {
   const finish = (won) => {
     if (phase === 'done') return;
     phase = 'done';
-    statusText.setText(won ? 'YOU WIN!' : 'YOU LOSE!');
+    statusText.setText(t(scene, won ? 'ui.armWrestling.win' : 'ui.armWrestling.lose'));
     statusText.setColor(won ? '#7ee787' : '#ff7b72');
     clickZone.disableInteractive();
     clickHint.setVisible(false);
@@ -74,7 +76,7 @@ export function openArmWrestlingMinigame(scene, cfg) {
   const panel = push(scene.add.rectangle(cx, cy - 8, panelW, panelH, 0x1a1420, 0.96));
   panel.setStrokeStyle(2, 0xc9a227).setDepth(DEPTH + 1);
 
-  push(scene.add.text(cx, cy - panelH / 2 + 16, 'Arm Wrestling', {
+  push(scene.add.text(cx, cy - panelH / 2 + 16, t(scene, 'ui.armWrestling.title'), {
     fontSize: '16px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#f0e6d2',
@@ -92,14 +94,14 @@ export function openArmWrestlingMinigame(scene, cfg) {
   } else {
     arms = push(scene.add.rectangle(cx, artY, 220, 90, 0x3a2a1a, 1));
     arms.setStrokeStyle(2, 0x8b6914).setDepth(DEPTH + 2);
-    push(scene.add.text(cx, artY, 'LOCKED HANDS', {
+    push(scene.add.text(cx, artY, t(scene, 'ui.armWrestling.lockedHands'), {
       fontSize: '12px',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
       color: '#c9a227',
     }).setOrigin(0.5).setDepth(DEPTH + 3));
   }
 
-  const statusText = push(scene.add.text(cx, cy - panelH / 2 + 36, 'Click as fast as you can!', {
+  const statusText = push(scene.add.text(cx, cy - panelH / 2 + 36, t(scene, 'ui.armWrestling.instructions'), {
     fontSize: '12px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#ffe8b0',
@@ -129,13 +131,13 @@ export function openArmWrestlingMinigame(scene, cfg) {
   const marker = push(scene.add.rectangle(cx, meterY, 6, meterH + 12, 0xf0e6d2, 1).setDepth(DEPTH + 5));
   marker.setStrokeStyle(1, 0xffffff);
 
-  push(scene.add.text(cx - meterW / 2 - 8, meterY, 'OGRE', {
+  push(scene.add.text(cx - meterW / 2 - 8, meterY, t(scene, 'ui.armWrestling.ogre'), {
     fontSize: '10px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#ff7b72',
   }).setOrigin(1, 0.5).setDepth(DEPTH + 3));
 
-  push(scene.add.text(cx + meterW / 2 + 8, meterY, 'YOU', {
+  push(scene.add.text(cx + meterW / 2 + 8, meterY, t(scene, 'ui.armWrestling.you'), {
     fontSize: '10px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#58a6ff',
@@ -147,7 +149,7 @@ export function openArmWrestlingMinigame(scene, cfg) {
   clickZone.setInteractive({ useHandCursor: true });
   if (clickZone.input) clickZone.input.alwaysEnabled = true;
 
-  const clickHint = push(scene.add.text(cx, meterY + 30, 'Click anywhere in the window!', {
+  const clickHint = push(scene.add.text(cx, meterY + 30, t(scene, 'ui.armWrestling.clickHint'), {
     fontSize: '11px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#8b949e',
@@ -252,7 +254,7 @@ export function openArmWrestlingMinigame(scene, cfg) {
       if (countdownAcc >= COUNTDOWN_SECS) {
         phase = 'fight';
         countdownText.setVisible(false);
-        statusText.setText('PUSH!');
+        statusText.setText(t(scene, 'ui.armWrestling.push'));
         statusText.setColor('#ffe8b0');
         clickHint.setVisible(true);
         // Slight tint so the hit area is obvious without blocking the art.
@@ -273,7 +275,7 @@ export function openArmWrestlingMinigame(scene, cfg) {
   clickZone.on('pointerdown', () => {
     if (closed) return;
     if (phase === 'countdown') {
-      statusText.setText('Wait for it...');
+      statusText.setText(t(scene, 'ui.armWrestling.wait'));
       statusText.setColor('#ff7b72');
       return;
     }
