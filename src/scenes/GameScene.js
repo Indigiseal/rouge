@@ -503,7 +503,7 @@ export class GameScene extends Phaser.Scene {
 
         if (this.enemiesCleared) {
             this._silkCocoonLeaveOffer = false;
-            this.nextFloorButtonText?.setText('Next');
+            this.nextFloorButtonText?.setText(t(this, 'ui.hud.next'));
             return;
         }
 
@@ -513,13 +513,13 @@ export class GameScene extends Phaser.Scene {
                 this.nextFloorButton?.disableInteractive();
                 this.nextFloorButton?.setVisible(false);
                 this.nextFloorButtonText?.setVisible(false);
-                this.nextFloorButtonText?.setText('Next');
+                this.nextFloorButtonText?.setText(t(this, 'ui.hud.next'));
             }
             return;
         }
 
         this._silkCocoonLeaveOffer = true;
-        this.nextFloorButtonText?.setText('Leave');
+        this.nextFloorButtonText?.setText(t(this, 'ui.hud.leave'));
         this.showNextFloorButton();
     }
 
@@ -1007,7 +1007,7 @@ export class GameScene extends Phaser.Scene {
             this.enemiesCleared = true;
             this.inventorySystem?.clearAllHandWebs?.();
             this._silkCocoonLeaveOffer = false;
-            this.nextFloorButtonText?.setText('Next');
+            this.nextFloorButtonText?.setText(t(this, 'ui.hud.next'));
             this.gameState.ambushId = null;
         }
 
@@ -1256,7 +1256,7 @@ export class GameScene extends Phaser.Scene {
         // — that would leave enemiesCleared=true with a still-hidden button,
         // and the next checkFloorClear would short-circuit on !enemiesCleared.
         this._silkCocoonLeaveOffer = false;
-        this.nextFloorButtonText?.setText('Next');
+        this.nextFloorButtonText?.setText(t(this, 'ui.hud.next'));
         this.showNextFloorButton();
         this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
         this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);

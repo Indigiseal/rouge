@@ -2,6 +2,7 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { SANDBOX_ENCOUNTERS, SANDBOX_STORY_KEY } from '../sandbox/SandboxMode.js';
+import { t } from '../i18n/i18n.js';
 
 export class SandboxHubScene extends Phaser.Scene {
   constructor() {
@@ -17,13 +18,13 @@ export class SandboxHubScene extends Phaser.Scene {
 
     this.add.rectangle(320, 180, 640, 360, 0x000000, 0.45);
 
-    this.add.text(320, 22, 'Test Site', {
+    this.add.text(320, 22, t(this, 'ui.sandbox.title'), {
       fontSize: '22px',
       fill: '#e6edf3',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5);
 
-    this.add.text(320, 44, 'Pick an encounter. When it ends, you return here.', {
+    this.add.text(320, 44, t(this, 'ui.sandbox.subtitle'), {
       fontSize: '11px',
       fill: '#8b949e',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -40,20 +41,20 @@ export class SandboxHubScene extends Phaser.Scene {
       const row = Math.floor(i / cols);
       const x = startX + col * gapX;
       const y = startY + row * gapY;
-      this.createEncounterButton(x, y, entry.label, () => this.launchEncounter(entry.id));
+      this.createEncounterButton(x, y, t(this, entry.labelKey ?? entry.label), () => this.launchEncounter(entry.id));
     });
 
     // "Event" above rolls whatever the story rules would serve next. This picks
     // a specific one instead, ignoring whether it has already been played.
     const rows = Math.ceil(SANDBOX_ENCOUNTERS.length / cols);
-    this.createEncounterButton(320, startY + rows * gapY + 8, 'Pick a Story...', () => {
+    this.createEncounterButton(320, startY + rows * gapY + 8, t(this, 'ui.sandbox.pickStory'), () => {
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start(SANDBOX_STORY_KEY);
       });
     }, 180);
 
-    this.createEncounterButton(320, 330, 'Back to Main Menu', () => {
+    this.createEncounterButton(320, 330, t(this, 'ui.sandbox.backToMenu'), () => {
       MusicManager.stopIfPlaying(this, 'menu_music', 300);
       this.cameras.main.fadeOut(250, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {

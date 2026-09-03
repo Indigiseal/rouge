@@ -11,6 +11,7 @@ import { t } from '../i18n/i18n.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
+import { cameraWorldSize } from '../config/renderScale.js';
 
 export class StationRoomBase extends Phaser.Scene {
     // ─── Inventory station mode ──────────────────────────────────────────────
@@ -148,8 +149,10 @@ export class StationRoomBase extends Phaser.Scene {
         const minY = Math.min(...points.map(p => p.y));
         const maxY = Math.max(...points.map(p => p.y));
         const cam = targetScene.cameras.main;
+        // Viewport in world units, not device pixels — see cameraWorldSize.
+        const { width: camW, height: camH } = cameraWorldSize(cam);
         const x = ((minX + maxX) / 2) + 10;
-        const y = Math.min(cam.height - 122, ((minY + maxY) / 2) + 8) - 18;
+        const y = Math.min(camH - 122, ((minY + maxY) / 2) + 8) - 18;
 
         const panel = targetScene.add.image(x, y, textureKey).setDepth(6);
         this.stationFloorBoardPanel = panel;

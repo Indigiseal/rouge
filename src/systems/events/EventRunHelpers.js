@@ -488,6 +488,7 @@ export const EventRunHelpers = {
   getBrassWizardTrayChoices() {
     return [{
       text: 'Pull your hand back',
+      textKey: 'ui.event.choice.pullBack',
       trayDecline: true,
       action: () => {},
       outcome: 'You step back. After a few seconds, the tray slides in by itself.'

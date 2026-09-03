@@ -168,13 +168,13 @@ export class MapViewScene extends Phaser.Scene {
   setupDragging() {
     this.dragArea.on('dragstart', (p) => {
       this.isDragging = true;
-      this.dragStartX = p.x - (this.mapContainer?.x ?? 320);
-      this.dragStartY = p.y - (this.mapContainer?.y ?? 180);
+      this.dragStartX = p.worldX - (this.mapContainer?.x ?? 320);
+      this.dragStartY = p.worldY - (this.mapContainer?.y ?? 180);
     });
     this.dragArea.on('drag', (p) => {
       if (!this.mapContainer) return;
-      this.mapContainer.x = Math.round(Phaser.Math.Clamp(p.x - this.dragStartX, this.mapPanBounds.minX, this.mapPanBounds.maxX));
-      this.mapContainer.y = Math.round(Phaser.Math.Clamp(p.y - this.dragStartY, this.mapPanBounds.minY, this.mapPanBounds.maxY));
+      this.mapContainer.x = Math.round(Phaser.Math.Clamp(p.worldX - this.dragStartX, this.mapPanBounds.minX, this.mapPanBounds.maxX));
+      this.mapContainer.y = Math.round(Phaser.Math.Clamp(p.worldY - this.dragStartY, this.mapPanBounds.minY, this.mapPanBounds.maxY));
     });
     this.dragArea.on('dragend', () => { this.isDragging = false; });
   }

@@ -5,6 +5,7 @@
 import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from '../i18n/i18n.js';
 import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
 import { createTooltipPanel, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
+import { cameraWorldSize } from '../config/renderScale.js';
 
 // Default tooltip depth — above the board and its card FX, below the modal
 // overlays. Callers that render higher pass their own depth.
@@ -335,7 +336,7 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth 
     let tipY = Math.round(anchorY) - gap - boxHeight;
     if (tipY < 4) tipY = Math.round(anchorY) + gap;
     const cam = scene.cameras?.main;
-    const screenW = cam?.width || 640;
+    const screenW = cameraWorldSize(cam).width;
     const tipX = Math.round(Phaser.Math.Clamp(
         Math.round(anchorX) - Math.round(boxWidth / 2),
         4,

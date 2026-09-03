@@ -1,7 +1,7 @@
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
-import { t, translateDescription, translateGemEffect, translateItemName } from '../../i18n/i18n.js';
+import { t, translateDescription, translateGemEffect, translateItemName, tCount } from '../../i18n/i18n.js';
 import { describeWeaponEnchant } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 
@@ -689,7 +689,7 @@ export const InventoryView = {
         // The enchant gets its own text object so it can be bright blue — a
         // single Text can only carry one colour, and this line is the reason
         // the player is hovering an enchanted weapon in the first place.
-        const enchantLine = describeWeaponEnchant(cardData);
+        const enchantLine = describeWeaponEnchant(this.scene, cardData);
         const lines = enchantLine ? allLines.filter(line => line !== enchantLine) : allLines;
 
         const textStyle = {
@@ -774,10 +774,10 @@ export const InventoryView = {
                     const zapDmg = Math.max(1, Math.floor(shownDmg * zapPct / 100));
                     lines.push(t(this.scene, 'tooltip.lightningZap', { amount: zapDmg }));
                 } else if (card.gemEffect === 'poison') {
-                    lines.push(t(this.scene, 'tooltip.poisonStacks', { stack, plural: stack > 1 ? 's' : '' }));
+                    lines.push(tCount(this.scene, 'tooltip.poisonStacks', stack));
                 }
             }
-            const enchantLine = describeWeaponEnchant(card);
+            const enchantLine = describeWeaponEnchant(this.scene, card);
             if (enchantLine) lines.push(enchantLine);
             if (card.special) lines.push(t(this.scene, 'tooltip.special', { value: this.describeWeaponSpecial(card) }));
             if (card.poisonDamage) lines.push(t(this.scene, 'tooltip.poisonTurns', { amount: card.poisonDamage, turns: card.poisonTurns || 0 }));

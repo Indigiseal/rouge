@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node tools/server.mjs",
     "test:inventory-transactions": "node tools/test-inventory-transactions.mjs",
+    "test:i18n": "node tools/validate-i18n.mjs",
     "test:sim-weapon-preservation": "node tools/test-sim-weapon-preservation.mjs",
     "test:sim-attack-priority": "node tools/test-sim-attack-priority.mjs",
     "sim": "node sim/balance-sim.js",
@@ -23,7 +24,9 @@
     "sim:grafana:down": "docker compose -f sim/db/docker-compose.yml down",
     "sim:grafana:logs": "docker compose -f sim/db/docker-compose.yml logs -f grafana",
     "sim:dashboard": "node tools/stats-dashboard.mjs",
-    "sim:compare-human": "node tools/compare-human-sim.mjs"
+    "sim:compare-human": "node tools/compare-human-sim.mjs",
+    "test:viewport": "node tools/audit-viewport-reads.mjs",
+    "test:fonts": "node tools/audit-font-coverage.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1"

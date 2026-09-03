@@ -3,7 +3,7 @@
 
 import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
+import { t, tCount, translateDescription, translateItemName } from '../i18n/i18n.js';
 import { CHARACTER_CLASSES } from '../content/characters/CharacterClasses.js';
 import { getMonthDisplayName } from '../content/months/index.js';
 
@@ -96,7 +96,9 @@ export const CombatHud = {
         // gamingBoard lip covers month/act/floor in the top-right.
         const TOP_HUD_DEPTH = 40;
         // Month first (bright), then Act/Floor (muted) — easy to spot which calendar month you're in.
-        this.floorText = this.add.text(455, 15, 'Thornwake  ·  Act 1 · Floor 1', {
+        this.floorText = this.add.text(455, 15, t(this.scene, 'ui.hud.floorBanner', {
+            month: 'Thornwake', act: 1, floor: 1,
+        }), {
             fontSize: '13px',
             fill: '#f5e6c8',
             fontFamily: '"HoMM Pixel"'
@@ -112,7 +114,7 @@ export const CombatHud = {
             .on('pointerout', () => pauseButton.setFillStyle(0x6f5452, 0.18))
             .on('pointerdown', () => { SoundHelper.playVariant(this, 'button_click', 0.5); this.pauseGame(); });
         
-        this.add.text(600, 15, 'PAUSE', {
+        this.add.text(600, 15, t(this, 'ui.hud.pause'), {
             fontSize: '9px',
             fill: '#6f5452',
             fontFamily: '"HoMM Pixel"'
@@ -122,11 +124,11 @@ export const CombatHud = {
         this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
         // Discard area
         this.discardArea = snapOriginToPixelGrid(this.add.image(601, 305, 'discardSprite'));
-        this.add.text(601, 305, 'Discard', { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+        this.add.text(601, 305, t(this, 'ui.hud.discard'), { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
         // Rest button removed - players must manage action points carefully
         // Amulet UI
         // Player effects label
-        this.add.text(45, 292, 'Effects', {
+        this.add.text(45, 292, t(this, 'ui.hud.effects'), {
             fontSize: '14px',
             fill: '#ffffff',
             fontFamily: '"HoMM Pixel"'
@@ -154,7 +156,7 @@ export const CombatHud = {
                 this.nextFloorButton.y = 50;
                 if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
             });
-        this.nextFloorButtonText = this.add.text(595, 50, 'Next', {
+        this.nextFloorButtonText = this.add.text(595, 50, t(this, 'ui.hud.next'), {
             fontSize: '12px',
             fill: '#e5bca4',
             fontFamily: '"HoMM Pixel"'
@@ -195,7 +197,7 @@ export const CombatHud = {
         panel.setDepth(40);
 
         const top = CY - H / 2;
-        const title = this.add.text(CX, top + 8, 'Combat Log', {
+        const title = this.add.text(CX, top + 8, t(this, 'ui.hud.combatLog'), {
             fontSize: '10px', fill: BROWN, fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5, 0).setDepth(42);
         const rule = this.add.rectangle(CX, top + 22, W - 18, 1, 0x6f5452, 0.4).setDepth(42);
@@ -241,14 +243,14 @@ export const CombatHud = {
         // screen, and a more obvious gesture than hunting for the wheel.
         this.input.on('pointerdown', (pointer) => {
             if (!this.combatLogHasPointer(pointer)) return;
-            this.combatLog.drag = { y: pointer.y, from: this.combatLog.scroll };
+            this.combatLog.drag = { y: pointer.worldY, from: this.combatLog.scroll };
         });
         this.input.on('pointermove', (pointer) => {
             const drag = this.combatLog?.drag;
             if (!drag || !pointer.isDown) return;
             // Pull down to reveal older lines, as if sliding the paper.
             const LINE_PX = 10;
-            const moved = Math.round((pointer.y - drag.y) / LINE_PX);
+            const moved = Math.round((pointer.worldY - drag.y) / LINE_PX);
             this.setCombatLogScroll(drag.from + moved);
         });
         this.input.on('pointerup', () => {
@@ -261,8 +263,8 @@ export const CombatHud = {
     combatLogHasPointer(pointer) {
         if (!this.combatLog?.visible) return false;
         const b = this.combatLog.bounds;
-        return pointer.x >= b.left && pointer.x <= b.right
-            && pointer.y >= b.top && pointer.y <= b.bottom;
+        return pointer.worldX >= b.left && pointer.worldX <= b.right
+            && pointer.worldY >= b.top && pointer.worldY <= b.bottom;
     },
 
     // scroll counts lines hidden BELOW the view: 0 is pinned to the newest
@@ -415,7 +417,9 @@ export const CombatHud = {
             this.gameState.calendarMonthIndex ?? 0,
             this.gameState.currentFloor || 1
         );
-        this.floorText.setText(`${monthName}  ·  Act ${_act} · Floor ${this.gameState.currentFloor}`);
+        this.floorText.setText(t(this.scene, 'ui.hud.floorBanner', {
+            month: monthName, act: _act, floor: this.gameState.currentFloor,
+        }));
         this.updateEquippedArmorPanel();
         
         // Update health orb
@@ -823,24 +827,32 @@ export const CombatHud = {
         const entries = [];
 
         // --- Debuffs / status effects from playerEffects array ---
+        // "3 turns" is not one word in every language — Russian wants ход /
+        // хода / ходов depending on the number — so the unit comes from tCount
+        // and the sentence order from a template.
+        const turns = (count) => tCount(this.scene, 'ui.hud.turnUnit', count);
+        const withTurns = (name, count) =>
+            t(this.scene, 'ui.hud.effectTurns', { name, count, unit: turns(count) });
+
         this.gameState.playerEffects.forEach((effect) => {
             switch (effect.type) {
                 case 'poison':
-                    entries.push({ text: `Poison ${effect.turns}`, color: '#66ff66' });
+                    entries.push({ text: t(this.scene, 'ui.hud.poison', { count: effect.turns }), color: '#66ff66' });
                     break;
                 case 'burn':
-                    entries.push({ text: `Burn (${effect.turns} turns)`, color: '#ff7040' });
+                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.burn'), effect.turns), color: '#ff7040' });
                     break;
                 case 'stun':
-                    entries.push({ text: `Stunned (${effect.turns} turns)`, color: '#ffd700' });
+                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.stun'), effect.turns), color: '#ffd700' });
                     break;
                 case 'weakness':
-                    entries.push({ text: `Weakened (${effect.turns} turns)`, color: '#aa66ff' });
+                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.weakness'), effect.turns), color: '#aa66ff' });
                     break;
                 default:
+                    // An effect with no key of its own still shows, in English.
                     entries.push({
                         text: effect.turns != null
-                            ? `${this.capitalizeEffect(effect.type)} (${effect.turns} turns)`
+                            ? withTurns(this.capitalizeEffect(effect.type), effect.turns)
                             : this.capitalizeEffect(effect.type),
                         color: '#cccccc'
                     });
@@ -849,25 +861,39 @@ export const CombatHud = {
 
         // --- Buffs from magic spells ---
         const gs = this.gameState;
+        const buffTurns = (nameKey, bonus, count) => t(this.scene, 'ui.hud.buffTurns', {
+            name: t(this.scene, nameKey), bonus, count, unit: turns(count),
+        });
         if (gs.shadowBlade && gs.shadowBlade.turns > 0) {
-            const mult = gs.shadowBlade.multiplier ? `+${Math.round((gs.shadowBlade.multiplier - 1) * 100)}% DMG` : '';
-            entries.push({ text: `Shadow Blade ${mult} (${gs.shadowBlade.turns} turns)`, color: '#b266ff' });
+            const mult = gs.shadowBlade.multiplier
+                ? t(this.scene, 'ui.hud.dmgBonus', { percent: Math.round((gs.shadowBlade.multiplier - 1) * 100) })
+                : '';
+            entries.push({ text: buffTurns('ui.hud.shadowBlade', mult, gs.shadowBlade.turns), color: '#b266ff' });
         }
         if (gs.magicShield && gs.magicShield.turns > 0) {
-            const mult = gs.magicShield.multiplier ? `+${Math.round((gs.magicShield.multiplier - 1) * 100)}% DEF` : '';
-            entries.push({ text: `Magic Shield ${mult} (${gs.magicShield.turns} turns)`, color: '#33aaff' });
+            const mult = gs.magicShield.multiplier
+                ? t(this.scene, 'ui.hud.defBonus', { percent: Math.round((gs.magicShield.multiplier - 1) * 100) })
+                : '';
+            entries.push({ text: buffTurns('ui.hud.magicShield', mult, gs.magicShield.turns), color: '#33aaff' });
         }
         if (gs.boneWall && gs.boneWall > 0) {
-            entries.push({ text: `Bone Shield (${gs.boneWall} ${gs.boneWall === 1 ? 'charge' : 'charges'})`, color: '#ffffff' });
+            entries.push({
+                text: t(this.scene, 'ui.hud.shieldCharges', {
+                    name: t(this.scene, 'ui.hud.boneShield'),
+                    count: gs.boneWall,
+                    unit: tCount(this.scene, 'ui.hud.chargeUnit', gs.boneWall),
+                }),
+                color: '#ffffff'
+            });
         }
         if (gs.blockNextAttack) {
-            entries.push({ text: 'Block Next Attack', color: '#88ccff' });
+            entries.push({ text: t(this.scene, 'ui.hud.blockNextAttack'), color: '#88ccff' });
         }
 
         // --- Relic-driven counters ---
         if ((gs.discardCritChance || 0) > 0) {
             const percent = Math.round(gs.discardCritChance * 100);
-            entries.push({ text: `Discard Crit +${percent}%`, color: '#ffd700' });
+            entries.push({ text: t(this.scene, 'ui.hud.discardCrit', { percent }), color: '#ffd700' });
         } else {
             // Show progress toward first crit step if the relic is equipped but not yet earned
             const relic = gs.relicEffects || {};
@@ -876,7 +902,10 @@ export const CombatHud = {
                 const next = relic.discardCritPerCards - (discarded % relic.discardCritPerCards);
                 if (discarded > 0 || relic.discardCritPerCards <= 10) {
                     entries.push({
-                        text: `Discard Crit (${next} to +${Math.round(relic.discardCritPerStep * 100)}%)`,
+                        text: t(this.scene, 'ui.hud.discardCritProgress', {
+                            cards: next,
+                            percent: Math.round(relic.discardCritPerStep * 100),
+                        }),
                         color: '#ddaa66'
                     });
                 }
