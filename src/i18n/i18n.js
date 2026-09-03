@@ -1398,6 +1398,169 @@ const STRINGS = {
     },
 };
 
+// Late additions are kept together so every locale receives the same new keys.
+// This avoids accidentally enabling an incomplete language while UI work lands.
+const UI_TEXT_ADDITIONS = {
+    en: {
+        'ui.card.egg': 'Egg',
+        'ui.musicBox.title': 'Force the Lock',
+        'ui.musicBox.brief': 'Find 4 pairs that fit. Do not seat the detonators.',
+        'ui.musicBox.safePairs': 'Seat these\n(4 pairs)',
+        'ui.musicBox.detonators': 'Detonators\nleave them',
+        'ui.musicBox.begin': 'Begin',
+        'ui.musicBox.instructions': 'Seat the wafers that fit. Leave the detonators alone.',
+        'ui.musicBox.ready': 'Two that belong together click home.',
+        'ui.musicBox.success': 'The lock gives.',
+        'ui.musicBox.detonated': 'The detonators complete a circuit.',
+        'ui.musicBox.pinSeated': 'A pin seats. {seated} / {total}.',
+        'ui.musicBox.noFit': 'Those wafers do not seat.',
+        'ui.treasure.takeHint': 'Click the card to take it',
+        'ui.treasure.inventoryFull': 'Inventory full - free a slot first',
+        'ui.treasure.rewardItem': 'Reward',
+        'ui.treasure.trapSpawned': 'Trap Spawned! -{amount} HP',
+        'ui.treasure.forcedReward': '+{coins} Coins +{crystals} Crystals',
+        'ui.treasure.forcedRewardTrap': '+{coins} Coins +{crystals} Crystals (Trap)',
+        'ui.event.choice.silkCocoonLeave': 'Leave quietly',
+        'ui.event.choice.silkCocoonSearch': 'Search the cocoons',
+        'ui.event.choice.silkCocoonBurn': 'Burn them all!',
+    },
+    es: {
+        'ui.card.egg': 'Huevo',
+        'ui.musicBox.title': 'Forzar la cerradura',
+        'ui.musicBox.brief': 'Encuentra 4 parejas que encajen. No coloques los detonadores.',
+        'ui.musicBox.safePairs': 'Coloca estas\n(4 parejas)',
+        'ui.musicBox.detonators': 'Detonadores\ndejalos',
+        'ui.musicBox.begin': 'Empezar',
+        'ui.musicBox.instructions': 'Coloca las obleas que encajen. Deja los detonadores tranquilos.',
+        'ui.musicBox.ready': 'Dos que pertenecen juntas encajan.',
+        'ui.musicBox.success': 'La cerradura cede.',
+        'ui.musicBox.detonated': 'Los detonadores completan un circuito.',
+        'ui.musicBox.pinSeated': 'Un pasador encaja. {seated} / {total}.',
+        'ui.musicBox.noFit': 'Esas obleas no encajan.',
+        'ui.treasure.takeHint': 'Haz clic en la carta para tomarla',
+        'ui.treasure.inventoryFull': 'Inventario lleno - libera primero un espacio',
+        'ui.treasure.rewardItem': 'Recompensa',
+        'ui.treasure.trapSpawned': '¡Trampa activada! -{amount} PV',
+        'ui.treasure.forcedReward': '+{coins} monedas +{crystals} cristales',
+        'ui.treasure.forcedRewardTrap': '+{coins} monedas +{crystals} cristales (trampa)',
+        'ui.event.choice.silkCocoonLeave': 'Irse en silencio',
+        'ui.event.choice.silkCocoonSearch': 'Registrar los capullos',
+        'ui.event.choice.silkCocoonBurn': '¡Quemarlos todos!',
+    },
+    fr: {
+        'ui.card.egg': 'Oeuf',
+        'ui.musicBox.title': 'Forcer la serrure',
+        'ui.musicBox.brief': 'Trouvez 4 paires compatibles. Ne placez pas les detonateurs.',
+        'ui.musicBox.safePairs': 'Placez celles-ci\n(4 paires)',
+        'ui.musicBox.detonators': 'Detonateurs\nlaissez-les',
+        'ui.musicBox.begin': 'Commencer',
+        'ui.musicBox.instructions': 'Placez les plaquettes compatibles. Laissez les detonateurs tranquilles.',
+        'ui.musicBox.ready': "Deux plaquettes assorties s'emboitent.",
+        'ui.musicBox.success': 'La serrure cede.',
+        'ui.musicBox.detonated': 'Les detonateurs ferment un circuit.',
+        'ui.musicBox.pinSeated': "Une goupille s'emboite. {seated} / {total}.",
+        'ui.musicBox.noFit': "Ces plaquettes ne s'emboitent pas.",
+        'ui.treasure.takeHint': 'Cliquez sur la carte pour la prendre',
+        'ui.treasure.inventoryFull': "Inventaire plein - liberez d'abord une place",
+        'ui.treasure.rewardItem': 'Recompense',
+        'ui.treasure.trapSpawned': 'Piege declenche ! -{amount} PV',
+        'ui.treasure.forcedReward': '+{coins} pieces +{crystals} cristaux',
+        'ui.treasure.forcedRewardTrap': '+{coins} pieces +{crystals} cristaux (piege)',
+        'ui.event.choice.silkCocoonLeave': 'Partir en silence',
+        'ui.event.choice.silkCocoonSearch': 'Fouiller les cocons',
+        'ui.event.choice.silkCocoonBurn': 'Tout bruler !',
+    },
+    ru: {
+        'ui.card.egg': 'Яйцо',
+        'ui.musicBox.title': 'Взломать замок',
+        'ui.musicBox.brief': 'Найдите 4 подходящие пары. Не соединяйте детонаторы.',
+        'ui.musicBox.safePairs': 'Соедините их\n(4 пары)',
+        'ui.musicBox.detonators': 'Детонаторы\nне трогать',
+        'ui.musicBox.begin': 'Начать',
+        'ui.musicBox.instructions': 'Соединяйте подходящие пластины. Не трогайте детонаторы.',
+        'ui.musicBox.ready': 'Подходящая пара защелкивается.',
+        'ui.musicBox.success': 'Замок поддается.',
+        'ui.musicBox.detonated': 'Детонаторы замыкают цепь.',
+        'ui.musicBox.pinSeated': 'Штифт встал. {seated} / {total}.',
+        'ui.musicBox.noFit': 'Эти пластины не подходят.',
+        'ui.treasure.takeHint': 'Нажмите на карту, чтобы забрать ее',
+        'ui.treasure.inventoryFull': 'Инвентарь полон - сначала освободите место',
+        'ui.treasure.rewardItem': 'Награда',
+        'ui.treasure.trapSpawned': 'Ловушка сработала! -{amount} ОЗ',
+        'ui.treasure.forcedReward': '+{coins} монет +{crystals} кристаллов',
+        'ui.treasure.forcedRewardTrap': '+{coins} монет +{crystals} кристаллов (ловушка)',
+        'ui.event.choice.silkCocoonLeave': 'Тихо уйти',
+        'ui.event.choice.silkCocoonSearch': 'Осмотреть коконы',
+        'ui.event.choice.silkCocoonBurn': 'Сжечь их всех!',
+    },
+};
+
+for (const [language, additions] of Object.entries(UI_TEXT_ADDITIONS)) {
+    Object.assign(STRINGS[language], additions);
+}
+
+const ENCHANT_TEXT_ADDITIONS = {
+    en: {
+        'enchant.fireball.title': 'Ember', 'enchant.fireball.summary': 'fire splash to nearby enemies',
+        'enchant.frostRing.title': 'Frostbound', 'enchant.frostRing.summary': 'freeze the enemy for 1 turn',
+        'enchant.restoration.title': 'Mending', 'enchant.restoration.summary': 'heal 3 HP on hit',
+        'enchant.soulDrain.title': 'Devouring', 'enchant.soulDrain.summary': 'slay a non-boss enemy outright',
+        'enchant.shadowBlade.title': 'Shadowed', 'enchant.shadowBlade.summary': '+50% damage on the hit',
+        'enchant.weakness.title': 'Sapping', 'enchant.weakness.summary': 'the enemy deals 30% less damage',
+        'enchant.boneWall.title': 'Bulwark', 'enchant.boneWall.summary': 'reflect the next attack',
+        'enchant.magicShield.title': 'Warding', 'enchant.magicShield.summary': '+20% armor for 1 turn',
+        'enchant.smokeScreen.title': 'Shrouding', 'enchant.smokeScreen.summary': 'hide an enemy on a kill',
+    },
+    es: {
+        'enchant.fireball.title': 'Brasa', 'enchant.fireball.summary': 'salpica fuego a enemigos cercanos',
+        'enchant.frostRing.title': 'Helado', 'enchant.frostRing.summary': 'congela al enemigo 1 turno',
+        'enchant.restoration.title': 'Reparador', 'enchant.restoration.summary': 'cura 3 PV al golpear',
+        'enchant.soulDrain.title': 'Devorador', 'enchant.soulDrain.summary': 'mata de inmediato a un enemigo que no sea jefe',
+        'enchant.shadowBlade.title': 'Sombrio', 'enchant.shadowBlade.summary': '+50% de dano al golpear',
+        'enchant.weakness.title': 'Debilitante', 'enchant.weakness.summary': 'el enemigo inflige 30% menos dano',
+        'enchant.boneWall.title': 'Baluarte', 'enchant.boneWall.summary': 'refleja el proximo ataque',
+        'enchant.magicShield.title': 'Protector', 'enchant.magicShield.summary': '+20% de armadura durante 1 turno',
+        'enchant.smokeScreen.title': 'Velado', 'enchant.smokeScreen.summary': 'oculta un enemigo al matar',
+    },
+    fr: {
+        'enchant.fireball.title': 'Braise', 'enchant.fireball.summary': 'eclabousse de feu les ennemis proches',
+        'enchant.frostRing.title': 'Givre', 'enchant.frostRing.summary': 'gele l ennemi pendant 1 tour',
+        'enchant.restoration.title': 'Reparation', 'enchant.restoration.summary': 'rend 3 PV a l impact',
+        'enchant.soulDrain.title': 'Devoration', 'enchant.soulDrain.summary': 'tue directement un ennemi non-boss',
+        'enchant.shadowBlade.title': 'Ombre', 'enchant.shadowBlade.summary': '+50% de degats a l impact',
+        'enchant.weakness.title': 'Affaiblissant', 'enchant.weakness.summary': 'l ennemi inflige 30% de degats en moins',
+        'enchant.boneWall.title': 'Rempart', 'enchant.boneWall.summary': 'renvoie la prochaine attaque',
+        'enchant.magicShield.title': 'Gardien', 'enchant.magicShield.summary': '+20% d armure pendant 1 tour',
+        'enchant.smokeScreen.title': 'Voile', 'enchant.smokeScreen.summary': 'cache un ennemi en le tuant',
+    },
+    ru: {
+        'enchant.fireball.title': 'Уголь', 'enchant.fireball.summary': 'огненный всплеск по соседним врагам',
+        'enchant.frostRing.title': 'Ледяной', 'enchant.frostRing.summary': 'замораживает врага на 1 ход',
+        'enchant.restoration.title': 'Исцеляющий', 'enchant.restoration.summary': 'лечит 3 ОЗ при ударе',
+        'enchant.soulDrain.title': 'Пожиратель', 'enchant.soulDrain.summary': 'сразу убивает врага не-босса',
+        'enchant.shadowBlade.title': 'Теневой', 'enchant.shadowBlade.summary': '+50% урона при ударе',
+        'enchant.weakness.title': 'Истощающий', 'enchant.weakness.summary': 'враг наносит на 30% меньше урона',
+        'enchant.boneWall.title': 'Оплот', 'enchant.boneWall.summary': 'отражает следующую атаку',
+        'enchant.magicShield.title': 'Оберег', 'enchant.magicShield.summary': '+20% брони на 1 ход',
+        'enchant.smokeScreen.title': 'Пелена', 'enchant.smokeScreen.summary': 'скрывает врага после убийства',
+    },
+};
+
+for (const [language, additions] of Object.entries(ENCHANT_TEXT_ADDITIONS)) {
+    Object.assign(STRINGS[language], additions);
+}
+
+const OVERLAY_TEXT_ADDITIONS = {
+    en: { 'ui.amulet.chooseTitle': 'Choose a {rarity} amulet', 'ui.amulet.pickOne': 'Pick one', 'ui.talents.max': 'MAX' },
+    es: { 'ui.amulet.chooseTitle': 'Elige un amuleto {rarity}', 'ui.amulet.pickOne': 'Elige uno', 'ui.talents.max': 'MAX' },
+    fr: { 'ui.amulet.chooseTitle': 'Choisissez une amulette {rarity}', 'ui.amulet.pickOne': 'Choisissez-en une', 'ui.talents.max': 'MAX' },
+    ru: { 'ui.amulet.chooseTitle': 'Выберите амулет: {rarity}', 'ui.amulet.pickOne': 'Выберите один', 'ui.talents.max': 'МАКС.' },
+};
+
+for (const [language, additions] of Object.entries(OVERLAY_TEXT_ADDITIONS)) {
+    Object.assign(STRINGS[language], additions);
+}
+
 const TEXT_ALIASES = {
     'Already owned!': 'float.alreadyOwned',
     'Max level reached!': 'float.maxLevel',

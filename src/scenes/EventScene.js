@@ -2277,7 +2277,7 @@ export class EventScene extends Phaser.Scene {
 
     this._rewardLines = [];
     this._rewardIcons = [];
-    this._reward(describeWeaponEnchant(cardData) || `${cardData.name}: enchanted`);
+    this._reward(describeWeaponEnchant(this, cardData) || `${cardData.name}: enchanted`);
     this._resolve({
       text: 'Offer weapon',
       textKey: 'ui.event.choice.offerWeapon',

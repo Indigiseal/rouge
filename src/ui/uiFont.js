@@ -44,6 +44,28 @@ export function serifStyle(size, color) {
     };
 }
 
+/**
+ * Add a line of serif text to a scene.
+ *
+ * The game runs two type tiers on purpose:
+ *
+ *   serif  — text you read: menus, options, headings, story prose, the talent
+ *            tree. Real typeface, rendered at PIXEL_SCALE so it is sharp.
+ *   bitmap — text you glance at: floating combat numbers, card labels, HUD
+ *            counters. Drawn by the text factory PreloadScene installs.
+ *
+ * The split is not only taste. Bitmap text batches on the GPU while every
+ * canvas Text object carries its own texture, and combat spawns floating
+ * numbers constantly. The serif is also 25-90% wider at the same nominal size,
+ * so it does not fit layouts that were spaced for the pixel font.
+ *
+ * Use this for the first tier; leave scene.add.text alone for the second.
+ */
+export function serifText(scene, x, y, text, { size = FONT_SIZE.body, color = '#ffffff', origin = 0.5 } = {}) {
+    const obj = scene.add.text(x, y, text, serifStyle(size, color));
+    return Array.isArray(origin) ? obj.setOrigin(origin[0], origin[1]) : obj.setOrigin(origin);
+}
+
 /** Sizes a label may shrink through, largest first. */
 const FIT_STEPS = ['16px', '15px', '14px', '13px', '12px', '11px', '10px'];
 

@@ -5,6 +5,7 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { cameraWorldSize } from '../config/renderScale.js';
+import { t } from '../i18n/i18n.js';
 
 const DEPTH = 3500;
 const COLS = 5;
@@ -92,7 +93,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
     if (phase === 'done') return;
     phase = 'done';
     busy = true;
-    statusText?.setText(won ? 'The lock gives.' : 'The charge completes.');
+    statusText?.setText(t(scene, won ? 'ui.musicBox.success' : 'ui.musicBox.detonated'));
     statusText?.setColor(won ? '#7ee787' : '#ff7b72');
     scene.time?.delayedCall?.(FINISH_MS, () => {
       close();
@@ -112,7 +113,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
   const panel = push(scene.add.rectangle(cx, cy - 4, panelW, panelH, 0x1a1420, 0.96));
   panel.setStrokeStyle(2, 0xc9a227).setDepth(DEPTH + 1);
 
-  push(scene.add.text(cx, cy - panelH / 2 + 16, 'Force the Lock', {
+  push(scene.add.text(cx, cy - panelH / 2 + 16, t(scene, 'ui.musicBox.title'), {
     fontSize: '16px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#f0e6d2',
@@ -137,7 +138,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
     return image;
   };
 
-  addBrief(scene.add.text(cx, cy - panelH / 2 + 38, 'Find 4 pairs that fit. Do not seat the detonators.', {
+  addBrief(scene.add.text(cx, cy - panelH / 2 + 38, t(scene, 'ui.musicBox.brief'), {
     fontSize: '11px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#ffe8b0',
@@ -149,7 +150,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
   const detY = cy + 48;
   wafer(cx - 78, pairY, FRAME_FIT_A);
   wafer(cx - 28, pairY, FRAME_FIT_B);
-  addBrief(scene.add.text(cx + 52, pairY, 'Seat these\n(4 pairs)', {
+  addBrief(scene.add.text(cx + 52, pairY, t(scene, 'ui.musicBox.safePairs'), {
     fontSize: '11px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#7ee787',
@@ -158,7 +159,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
 
   wafer(cx - 78, detY, FRAME_CHARGE, 0xff8866);
   wafer(cx - 28, detY, FRAME_CHARGE, 0xff8866);
-  addBrief(scene.add.text(cx + 52, detY, 'Detonators\nleave them', {
+  addBrief(scene.add.text(cx + 52, detY, t(scene, 'ui.musicBox.detonators'), {
     fontSize: '11px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#ff7b72',
@@ -168,7 +169,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
   const beginBg = addBrief(scene.add.rectangle(cx, cy + panelH / 2 - 22, 120, 24, 0x2a2030, 1));
   beginBg.setStrokeStyle(2, 0xc9a227).setDepth(DEPTH + 5);
   beginBg.setInteractive({ useHandCursor: true });
-  const beginLabel = addBrief(scene.add.text(cx, cy + panelH / 2 - 22, 'Begin', {
+  const beginLabel = addBrief(scene.add.text(cx, cy + panelH / 2 - 22, t(scene, 'ui.musicBox.begin'), {
     fontSize: '12px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#f0e6d2',
@@ -187,7 +188,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
     clearBrief();
     SoundHelper.playVariant(scene, 'button_click', 0.5);
 
-    push(scene.add.text(cx, cy - panelH / 2 + 34, 'Seat the wafers that fit. Leave the detonators alone.', {
+    push(scene.add.text(cx, cy - panelH / 2 + 34, t(scene, 'ui.musicBox.instructions'), {
       fontSize: '10px',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
       color: '#c9b48a',
@@ -195,7 +196,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
       align: 'center',
     }).setOrigin(0.5).setDepth(DEPTH + 2));
 
-    statusText = push(scene.add.text(cx, cy + panelH / 2 - 16, 'Two that belong together click home.', {
+    statusText = push(scene.add.text(cx, cy + panelH / 2 - 16, t(scene, 'ui.musicBox.ready'), {
       fontSize: '11px',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
       color: '#ffe8b0',
@@ -345,7 +346,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
         if (first.pairId === tile.pairId) {
           if (first.charge || tile.charge) {
             SoundHelper.playVariant(scene, 'player_hurt', 0.7);
-            statusText.setText('The detonators complete a circuit.');
+            statusText.setText(t(scene, 'ui.musicBox.detonated'));
             statusText.setColor('#ff7b72');
             first.image.setTint(0xff6644);
             tile.image.setTint(0xff6644);
@@ -356,7 +357,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
           tile.seated = true;
           seated += 1;
           SoundHelper.playVariant(scene, 'anvil_upgrade', 0.5);
-          statusText.setText(`A pin seats. ${seated} / ${SAFE_PAIR_COUNT}.`);
+          statusText.setText(t(scene, 'ui.musicBox.pinSeated', { seated, total: SAFE_PAIR_COUNT }));
           statusText.setColor('#7ee787');
           if (seated >= SAFE_PAIR_COUNT) {
             finish(true);
@@ -367,7 +368,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
         }
 
         SoundHelper.playVariant(scene, 'invalid_action', 0.45);
-        statusText.setText('Those wafers do not seat.');
+        statusText.setText(t(scene, 'ui.musicBox.noFit'));
         statusText.setColor('#ffe8b0');
         scene.time?.delayedCall?.(MISMATCH_MS, () => {
           if (phase !== 'play') return;

@@ -9,6 +9,7 @@
 // sync with content/cards/magic.js on their own — add a spell there and it
 // only needs a row in WEAPON_ENCHANTS to become enchantable.
 import { getMagic } from '../cards/magic.js';
+import { t } from '../../i18n/i18n.js';
 
 export const ENCHANT_CHANCE_BY_RARITY = Object.freeze({
   common: 0.25,
@@ -51,15 +52,15 @@ export const ENCHANT_SHIELD_MULTIPLIER = 1.2;
 //               a killing blow cannot swallow the effect (same reason gems do)
 //   onKill    — only meaningful once the target is actually dead
 export const WEAPON_ENCHANTS = Object.freeze({
-  fireball: { title: 'Ember', summary: 'fire splash to nearby enemies', timing: 'onHit' },
-  frostRing: { title: 'Frostbound', summary: 'freeze the enemy for 1 turn', timing: 'onHit' },
-  restoration: { title: 'Mending', summary: `heal ${ENCHANT_HEAL_AMOUNT} HP on hit`, timing: 'onHit' },
-  soulDrain: { title: 'Devouring', summary: 'slay a non-boss enemy outright', timing: 'preDamage' },
-  shadowBlade: { title: 'Shadowed', summary: '+50% damage on the hit', timing: 'preDamage' },
-  weakness: { title: 'Sapping', summary: 'the enemy deals 30% less damage', timing: 'onHit' },
-  boneWall: { title: 'Bulwark', summary: 'reflect the next attack', timing: 'onHit' },
-  magicShield: { title: 'Warding', summary: '+20% armor for 1 turn', timing: 'onHit' },
-  smokeScreen: { title: 'Shrouding', summary: 'hide an enemy on a kill', timing: 'onKill' },
+  fireball: { title: 'Ember', titleKey: 'enchant.fireball.title', summary: 'fire splash to nearby enemies', summaryKey: 'enchant.fireball.summary', timing: 'onHit' },
+  frostRing: { title: 'Frostbound', titleKey: 'enchant.frostRing.title', summary: 'freeze the enemy for 1 turn', summaryKey: 'enchant.frostRing.summary', timing: 'onHit' },
+  restoration: { title: 'Mending', titleKey: 'enchant.restoration.title', summary: `heal ${ENCHANT_HEAL_AMOUNT} HP on hit`, summaryKey: 'enchant.restoration.summary', timing: 'onHit' },
+  soulDrain: { title: 'Devouring', titleKey: 'enchant.soulDrain.title', summary: 'slay a non-boss enemy outright', summaryKey: 'enchant.soulDrain.summary', timing: 'preDamage' },
+  shadowBlade: { title: 'Shadowed', titleKey: 'enchant.shadowBlade.title', summary: '+50% damage on the hit', summaryKey: 'enchant.shadowBlade.summary', timing: 'preDamage' },
+  weakness: { title: 'Sapping', titleKey: 'enchant.weakness.title', summary: 'the enemy deals 30% less damage', summaryKey: 'enchant.weakness.summary', timing: 'onHit' },
+  boneWall: { title: 'Bulwark', titleKey: 'enchant.boneWall.title', summary: 'reflect the next attack', summaryKey: 'enchant.boneWall.summary', timing: 'onHit' },
+  magicShield: { title: 'Warding', titleKey: 'enchant.magicShield.title', summary: '+20% armor for 1 turn', summaryKey: 'enchant.magicShield.summary', timing: 'onHit' },
+  smokeScreen: { title: 'Shrouding', titleKey: 'enchant.smokeScreen.title', summary: 'hide an enemy on a kill', summaryKey: 'enchant.smokeScreen.summary', timing: 'onKill' },
 });
 
 // Frame index of each spell's glowing card face in the `glowingMagicCards`
@@ -133,6 +134,7 @@ export function applyEnchantToWeapon(weapon, magicType) {
   weapon.enchant = magicType;
   weapon.enchantChance = getEnchantChance(magicType);
   weapon.enchantTitle = enchant.title;
+  weapon.enchantTitleKey = enchant.titleKey;
   // Keep the printed name so merging can rebuild "Frostbound <upgraded name>"
   // instead of stacking prefixes into "Frostbound Frostbound Axe".
   weapon.enchantBaseName = weapon.enchantBaseName || weapon.name || 'Weapon';
@@ -154,7 +156,9 @@ export function carryEnchantToWeapon(weapon, magicType) {
   return applyEnchantToWeapon(weapon, magicType);
 }
 
-export function describeWeaponEnchant(weapon) {
+export function describeWeaponEnchant(sceneOrWeapon, maybeWeapon) {
+  const scene = maybeWeapon ? sceneOrWeapon : null;
+  const weapon = maybeWeapon || sceneOrWeapon;
   const enchant = getWeaponEnchant(weapon?.enchant);
   if (!enchant) return null;
   const chance = Number.isFinite(weapon.enchantChance)
@@ -162,5 +166,7 @@ export function describeWeaponEnchant(weapon) {
     : getEnchantChance(weapon.enchant);
   // "Warding 20%: +20% armor for 1 turn" — the proc chance stays attached to
   // the name so it never collides with a percentage inside the summary.
-  return `${enchant.title} ${Math.round(chance * 100)}%: ${enchant.summary}`;
+  const title = scene ? t(scene, enchant.titleKey) : enchant.title;
+  const summary = scene ? t(scene, enchant.summaryKey) : enchant.summary;
+  return `${title} ${Math.round(chance * 100)}%: ${summary}`;
 }

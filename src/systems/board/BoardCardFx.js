@@ -6,6 +6,7 @@ import { ELITE_SPRITE_KEYS } from '../../content/assets/AssetManifest.js';
 import { effectiveArmorProtection, isArmorWarded } from '../combat/ArmorMath.js';
 import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
 import { isSilkCocoonCard } from './CocoonCacheBoard.js';
+import { t, translateItemName } from '../../i18n/i18n.js';
 
 // The one value slot painted into the bottom-right of every card that shows a
 // single number — weapon damage, armor protection, thorn damage, trap damage.
@@ -152,7 +153,7 @@ function createCardInfoText(card) {
             // matching the weapon pips. Absolute children get flung off-card
             // when the inventory sets infoText.x/y = cardSprite.x/y.
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const coinLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, 'Coins', {
+            const coinLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, t(this.scene, 'tooltip.coins'), {
                 fontSize: '11px', fill: '#f8ab2e', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             const coinAmount = this.scene.add.text(
@@ -167,7 +168,7 @@ function createCardInfoText(card) {
 
         case 'crystal': {
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const crystalLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, 'Crystals', {
+            const crystalLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, t(this.scene, 'ui.shop.currencyCrystals'), {
                 fontSize: '11px', fill: '#4e1e45', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             const crystalAmount = this.scene.add.text(
@@ -211,7 +212,7 @@ function createCardInfoText(card) {
             // The carry-over egg is a food card under the hood, but it reads as
             // an "Egg" to the player rather than a +30 AP snack — label it so.
             const isEgg = card.data.id === 'monsterEgg' || card.data.name === 'Egg';
-            const foodLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, isEgg ? 'Egg' : 'Food', {
+            const foodLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, t(this.scene, isEgg ? 'ui.card.egg' : 'tooltip.food'), {
                 fontSize: '12px', fill: '#a55119', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             container.add(foodLabel);
@@ -233,7 +234,7 @@ function createCardInfoText(card) {
             // every other resource carried both. Same shape as the rest: the
             // category name low, the heal in the shared value slot.
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const potionLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, 'Potion', {
+            const potionLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, t(this.scene, 'tooltip.potion'), {
                 fontSize: '12px', fill: '#a8e870', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             const potionAmount = this.scene.add.text(
@@ -248,7 +249,7 @@ function createCardInfoText(card) {
 
         case 'key': {
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const keyLabel = this.scene.add.text(0, 18, 'Key', {
+            const keyLabel = this.scene.add.text(0, 18, t(this.scene, 'tooltip.key'), {
                 fontSize: '12px', fill: '#51484b', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             container.add(keyLabel);
@@ -262,7 +263,7 @@ function createCardInfoText(card) {
             // "+20% Armor"-style blurb is gone — the hover tooltip already
             // spells out what each spell does.
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const magicLabel = this.scene.add.text(0, 18, card.data.name, {
+            const magicLabel = this.scene.add.text(0, 18, translateItemName(this.scene, card.data), {
                 fontSize: '11px',
                 fill: '#a9e5de',
                 fontFamily: '"HoMM Pixel"',
@@ -1047,4 +1048,3 @@ function mimicEscape(index) {
     this.removeCard(index);
     this.checkFloorClear();
 }
-

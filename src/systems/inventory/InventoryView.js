@@ -689,7 +689,7 @@ export const InventoryView = {
         // The enchant gets its own text object so it can be bright blue — a
         // single Text can only carry one colour, and this line is the reason
         // the player is hovering an enchanted weapon in the first place.
-        const enchantLine = describeWeaponEnchant(cardData);
+        const enchantLine = describeWeaponEnchant(this.scene, cardData);
         const lines = enchantLine ? allLines.filter(line => line !== enchantLine) : allLines;
 
         const textStyle = {
@@ -777,7 +777,7 @@ export const InventoryView = {
                     lines.push(tCount(this.scene, 'tooltip.poisonStacks', stack));
                 }
             }
-            const enchantLine = describeWeaponEnchant(card);
+            const enchantLine = describeWeaponEnchant(this.scene, card);
             if (enchantLine) lines.push(enchantLine);
             if (card.special) lines.push(t(this.scene, 'tooltip.special', { value: this.describeWeaponSpecial(card) }));
             if (card.poisonDamage) lines.push(t(this.scene, 'tooltip.poisonTurns', { amount: card.poisonDamage, turns: card.poisonTurns || 0 }));

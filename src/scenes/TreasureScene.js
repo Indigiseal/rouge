@@ -5,7 +5,7 @@ import { StationRoomBase } from './StationRoomBase.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 import { CARD_VALUE_SLOT } from '../systems/board/BoardCardFx.js';
-import { t } from '../i18n/i18n.js';
+import { t, translateItemName } from '../i18n/i18n.js';
 
 export class TreasureScene extends StationRoomBase {
   constructor() {
@@ -242,7 +242,7 @@ export class TreasureScene extends StationRoomBase {
     this.pendingLoot = item;
     this.showRewardCard(item);
 
-    this.takeHint = this.add.text(470, 205, 'Click the card to take it', {
+    this.takeHint = this.add.text(470, 205, t(this, 'ui.treasure.takeHint'), {
       fontSize: '11px',
       fill: '#f2d3aa',
       fontFamily: '"HoMM Pixel"',
@@ -275,14 +275,14 @@ export class TreasureScene extends StationRoomBase {
         reason: 'inventory_full',
         item: snapshotHumanRunCard(item),
       });
-      this.showFeedback('Inventory full — free a slot first', 0xff4444, 250);
+      this.showFeedback(t(this, 'ui.treasure.inventoryFull'), 0xff4444, 250);
       return;
     }
 
     this.lootTaken = true;
     this.pendingLoot = null;
     SoundHelper.playSound(this, 'shop_buy', 0.5);
-    this.showFeedback('Taken!', 0x00ff00, 250);
+    this.showFeedback(t(this, 'float.taken'), 0x00ff00, 250);
 
     if (this.rewardCardContainer) {
       this.tweens.add({
@@ -326,7 +326,7 @@ export class TreasureScene extends StationRoomBase {
       .setStrokeStyle(2, this.getRarityColor(item.rarity));
     const sprite = this.add.image(0, -26, item.sprite || 'cardBack', item.spriteFrame ?? undefined)
       .setScale(1);
-    const name = this.add.text(0, 36, item.name || 'Reward', {
+    const name = this.add.text(0, 36, translateItemName(this, item) || t(this, 'ui.treasure.rewardItem'), {
       fontSize: '10px',
       fill: '#ffffff',
       fontFamily: '"HoMM Pixel"',
@@ -420,7 +420,7 @@ export class TreasureScene extends StationRoomBase {
         onComplete: () => {
           SoundHelper.playSound(this, 'trap_spring1', 0.5);
           this.gameState.takeDamage(TRAP_DAMAGE, -1, 'trap');
-          this.add.text(320, 250, `Trap Spawned! -${TRAP_DAMAGE} HP`, {
+          this.add.text(320, 250, t(this, 'ui.treasure.trapSpawned', { amount: TRAP_DAMAGE }), {
             fontSize: '14px',
             fill: '#ff0000',
             fontFamily: '"HoMM Pixel"'
@@ -443,7 +443,7 @@ export class TreasureScene extends StationRoomBase {
     const item = this.createRewardItem(reward.rarity);
     this.playLootScatter(chest.x, chest.y, reward.coins, reward.crystals);
 
-    this.add.text(320, 235, `+${reward.coins} Coins +${reward.crystals} Crystals${trapped ? ' (Trap)' : ''}`, {
+    this.add.text(320, 235, t(this, trapped ? 'ui.treasure.forcedRewardTrap' : 'ui.treasure.forcedReward', reward), {
       fontSize: '14px',
       fill: trapped ? '#ffff00' : '#00ff00',
       fontFamily: '"HoMM Pixel"'

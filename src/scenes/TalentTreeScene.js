@@ -207,7 +207,7 @@ export class TalentTreeScene extends Phaser.Scene {
 
     const check = this.meta.canPurchaseTalent(this.characterId, selectedId);
     let body = rank > 0
-      ? t(this, 'ui.talents.ownedNext', { rank, owned: ownedDesc, next: rank >= (node.maxRank || 1) ? 'MAX' : nextDesc })
+        ? t(this, 'ui.talents.ownedNext', { rank, owned: ownedDesc, next: rank >= (node.maxRank || 1) ? t(this, 'ui.talents.max') : nextDesc })
       : (nextDesc || t(this, 'ui.talents.noDescription'));
 
     if (node.wip || check.reason === 'wip') {
@@ -217,7 +217,7 @@ export class TalentTreeScene extends Phaser.Scene {
       this.buyLabel.setText(t(this, 'ui.talents.locked'));
       body = t(this, 'ui.talents.lockedHint', { description: nextDesc || t(this, 'ui.talents.noDescription'), name: prev?.name || check.prereqId });
     } else if (check.reason === 'max') {
-      this.buyLabel.setText('MAX');
+      this.buyLabel.setText(t(this, 'ui.talents.max'));
     } else if (check.ok) {
       this.buyLabel.setText(t(this, 'ui.talents.buyCost', { amount: check.cost }));
     } else if (check.reason === 'xp') {

@@ -25,7 +25,8 @@
     "sim:grafana:logs": "docker compose -f sim/db/docker-compose.yml logs -f grafana",
     "sim:dashboard": "node tools/stats-dashboard.mjs",
     "sim:compare-human": "node tools/compare-human-sim.mjs",
-    "test:viewport": "node tools/audit-viewport-reads.mjs"
+    "test:viewport": "node tools/audit-viewport-reads.mjs",
+    "test:fonts": "node tools/audit-font-coverage.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1"
