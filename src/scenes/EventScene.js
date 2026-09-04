@@ -125,11 +125,11 @@ export class EventScene extends Phaser.Scene {
     if (!story.wellSeen) bonusFillers.push('almost_you_well');
     if (!story.slimyPrisonSeen) bonusFillers.push('slimy_prison');
     if (!story.bookWormSeen) bonusFillers.push('book_worm');
-    if (!story.briarRoomSeen) bonusFillers.push('briar_room');
     const locationId = getLocationIdForFloor(
       this.gameState,
       this.gameState?.currentFloor || 1
     );
+    if (!story.briarRoomSeen && locationId === 'thornwake') bonusFillers.push('briar_room');
     // Silkdeep-only: cocoon chamber.
     if (!story.silkCocoonCacheSeen && locationId === 'silkdeep') {
       bonusFillers.push('silk_cocoon_cache');
@@ -231,6 +231,8 @@ export class EventScene extends Phaser.Scene {
       carnivalVisited: false,
       carnivalHagMet: false,
       brassWizardSeen: false,
+      tollroadAftermathSeen: false,
+      magusPendantObtained: false,
       pendingEvents: []
     };
 
@@ -325,6 +327,8 @@ export class EventScene extends Phaser.Scene {
       carnivalVisited: Boolean(existingStoryRun.carnivalVisited),
       carnivalHagMet: Boolean(existingStoryRun.carnivalHagMet),
       brassWizardSeen: Boolean(existingStoryRun.brassWizardSeen),
+      tollroadAftermathSeen: Boolean(existingStoryRun.tollroadAftermathSeen),
+      magusPendantObtained: Boolean(existingStoryRun.magusPendantObtained),
       pendingEvents
     };
 

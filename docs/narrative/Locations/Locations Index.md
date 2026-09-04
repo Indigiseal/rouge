@@ -80,9 +80,9 @@ A readable dungeon. After the Queen: *The silk is quiet. The Waystar still point
 
 A **real road** with booths, chains, and stolen banners. Goblins stamped a fake kingdom onto it: tariffs, "guards," a king who sat down on a wagon-throne. Club goblins, cutpurses, gate brutes, archers, wagon snipers.
 
-The **Goblin King** is the act boss. When he falls — or in the fight's speech — he boasts: his people found a **new deity**. They did not invent it. **Carnival priests** came down the Mile with lanterns, a name, and a seal. The goblins tax in that name. He thinks this makes him holy. It makes him a signpost. The Waystar burns toward **the night fair**.
+The **Goblin King** is the act boss. His false kingdom still taxes in the name of a power the goblins did not invent: **carnival priests** brought its seal down the Mile. When the King falls, a dark pendant hidden beneath his gold begins to shine. Touching it reveals an image of the **Magus**, who dismisses the King's wealth as children's toys and promises to bring beings capable of using the world's hidden treasures for higher purposes.
 
-After: *The King named a god. The Waystar burns toward the lanterns.*
+After: the apparition dissolves, but the hero keeps the warm pendant, certain it will be needed later.
 
 | Slot | Enemy | What it is |
 |---|---|---|

@@ -61,7 +61,7 @@ Bands × archetypes. Location picks who; floor picks how strong. See [[Enemy Pow
 
 ## The walker is a villager; meta is the village
 
-Not a chosen knight. An ordinary neighbour who left to find the source of the sphere's villains. Death returns them to the [[The Village|Village]]. What used to be called XP is **[[Villager Support]]** (RU: Поддержка селян) — faith the neighbours put in the next leaving. Spend: **build** a structure for an advantage, **upgrade** it for more of the same. Numbers unchanged from the old talent ladder. Buildings: Forge, Temple, Armory, Healer's House, Healer's Hut. Support is one shared pool.
+Not a chosen knight. An ordinary neighbour who left to find the source of the sphere's villains. Death returns them to the [[The Village|Village]]. What used to be called XP is **[[Villager Support]]** (RU: Поддержка селян) — faith the neighbours put in the next leaving. Spend: **build** a structure for an advantage, **upgrade** it for more of the same. Numbers unchanged from the old talent ladder. Buildings: Forge, Temple, Armory, Jeweler, Healer's Hut. Support is one shared pool.
 
 ## Related
 

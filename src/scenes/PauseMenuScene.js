@@ -257,7 +257,7 @@ export class PauseMenuScene extends Phaser.Scene {
         // running would leak its board over the main menu.
         this.scene.stop(this.pausedScene);
         this.scene.stop('MapViewScene');
-        ['ShopScene', 'RareShopScene', 'RestScene', 'AnvilScene', 'TreasureScene', 'EventScene',
+        ['ShopScene', 'RareShopScene', 'RestScene', 'AnvilScene', 'TreasureScene', 'EventScene', 'TollroadAftermathScene',
             'LocationPickScene', 'VillageScene', 'TalentTreeScene', 'ArmorerPickScene']
             .forEach(key => this.scene.stop(key));
         this.scene.stop();

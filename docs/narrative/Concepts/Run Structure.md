@@ -37,7 +37,7 @@ The Waystar returns the villager to the [[The Village|Village]]. Act 1's three r
 
 - No fail state for a wrong country.
 - No lock that hides later true roads.
-- Roadside events still need not form a novel. The **boss speeches** carry the true-path chain.
+- Roadside events still need not form a novel. The **post-boss narrative scenes** carry the true-path chain.
 
 ## Related
 

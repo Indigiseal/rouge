@@ -67,7 +67,7 @@ the current act; after that room the run continues from that floor.
   - **Temple** (1): one revive per run after a killing blow (50% HP). Remaining
     enemy swings and poison this phase stop so the rise is visible.
   - **Armory** (5): warrior +1..5 DEF on armor; rogue +10/20/30/40/50% dodge.
-  - **Healer's House** (4): at run start, pick 1 of 3 amulets; rank sets rarity
+  - **Jeweler** (4): at run start, pick 1 of 3 amulets; rank sets rarity
     common / uncommon / rare / legendary.
   - **Healer's Hut** (`cottage`, 4): +15 / +30 / +45 / +60 max HP at run start.
     One empty lot remains on the village map.

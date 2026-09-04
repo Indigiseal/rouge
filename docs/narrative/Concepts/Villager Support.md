@@ -35,7 +35,7 @@ The catalog of buildings:
 - **Forge** — five ranks. +1 weapon damage per rank, any weapon.
 - **Temple** — one rank. Once per run, rise after a killing blow.
 - **Armory** — five ranks. Warrior: +1 DEF per rank on armor. Rogue: +10% dodge per rank.
-- **Healer's House** — four ranks. At the start of a run, pick 1 of 3 random amulets. Rank sets the rarity: common, uncommon, rare, legendary.
+- **Jeweler** — four ranks. At the start of a run, pick 1 of 3 random amulets. Rank sets the rarity: common, uncommon, rare, legendary.
 - **Healer's Hut** — four ranks. +15 / +30 / +45 / +60 max HP at the start of a run.
 
 One empty lot sits on the map for a later building. Numbers stay the talent-ladder budget (`2/3/5/8/12`) until a pass retunes them. Live: `VillageScene` spends Support; effects apply on the next leaving. See `docs/MECHANICS.md`.

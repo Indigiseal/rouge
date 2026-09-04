@@ -42,6 +42,7 @@ import { humanRunRecorder, recordHumanRunEvent } from '../systems/HumanRunRecord
 import { openNoticeModal } from '../ui/ConfirmModal.js';
 import { isSilkCocoonCacheRoom, boardHasOpenCocoonEnemies } from '../systems/board/CocoonCacheBoard.js';
 import { playSmokeBurst, SMOKE_BURST_MS } from '../ui/SmokeBurst.js';
+import { shouldShowTollroadAftermath } from '../content/story/TollroadAftermath.js';
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -1147,8 +1148,9 @@ export class GameScene extends Phaser.Scene {
                 this.time.delayedCall(1500, () => this.gameWon());
                 return;
             }
-            // Otherwise stay in-scene and switch to the boss reward room
-            this.time.delayedCall(700, () => this.setupBossRewardRoom());
+            // Tollroad has a durable post-boss story beat before the normal
+            // reward room. Other roads continue straight to the spoils.
+            this.time.delayedCall(700, () => this.continueBossVictory());
             return;
         }
 
@@ -1173,6 +1175,15 @@ export class GameScene extends Phaser.Scene {
     // player keeps their avatar, inventory and full UI — just swaps the board.
     setupBossRewardRoom() {
         return setupBossRewardRoomUi(this);
+    }
+
+    continueBossVictory() {
+        if (shouldShowTollroadAftermath(this.gameState)) {
+            this.scene.sleep();
+            this.scene.launch('TollroadAftermathScene', { gameState: this.gameState });
+            return;
+        }
+        this.setupBossRewardRoom();
     }
 
     restoreSavedBossRewardRoom() {
@@ -1568,6 +1579,18 @@ export class GameScene extends Phaser.Scene {
             this.gameState.inventory = this.inventorySystem.slots;
             this.inventorySystem.rebuildInventorySprites();
             this.inventorySystem.setVisibility(true);
+        }
+        if (data?.bossNarrativeComplete) {
+            this.clearEnemyTurnTimers();
+            this.inventorySystem?.setDragOverlayScene?.(null);
+            this.inventorySystem?.clearDropZones?.();
+            this.inventorySystem?.setStationMode(false);
+            this.setupBossRewardRoom();
+            // The pendant flag and the generated reward cards must land in the
+            // same save. Continue then restores the reward room without either
+            // replaying the vision or paying its currency a second time.
+            this.saveCurrentRun();
+            return;
         }
         if (data?.shopStation) {
             // Arriving at the shop completes the floor-clear transition. Clear the
