@@ -85,6 +85,8 @@ export class CardSystem {
     isRangedWeapon(...args) { return this.combat.isRangedWeapon(...args); }
     isVenomousWeapon(...args) { return this.combat.isVenomousWeapon(...args); }
     applyWeaponPoison(...args) { return this.combat.applyWeaponPoison(...args); }
+    applyPoisonGemStacks(...args) { return this.combat.applyPoisonGemStacks(...args); }
+    splashPoisonGem(...args) { return this.combat.splashPoisonGem(...args); }
     getEnemyPoisonSummary(...args) { return this.combat.getEnemyPoisonSummary(...args); }
     applyShockStatus(...args) { return this.combat.applyShockStatus(...args); }
     attachFrozenFrame(...args) { return this.combat.attachFrozenFrame(...args); }

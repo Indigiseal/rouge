@@ -238,49 +238,88 @@ export const InventoryView = {
         overlay.parts?.forEach(({ clone }) => clone?.destroy?.());
         this.dragOverlay = null;
     },
-    // Phaser InputManager is globalTopOnly. A scene after GameScene in the
-    // list (LocationPick, Village, a leftover shop) can swallow pointerup
-    // even after it has stopped: INIT still canInput(). Then GAMEOBJECT_DRAG_END
-    // never fires and the card keeps following the cursor. Finish the drop
-    // with the same handleCardDrop dragend uses; do not tween or clamp here.
+    // Phaser's InputManager processes scenes from top to bottom. With
+    // globalTopOnly enabled, an interactive object in a scene above GameScene
+    // can consume pointerup before the inventory card receives dragend. Keep a
+    // DOM-level release fallback so one physical release always completes one
+    // inventory drop.
     beginInventoryCardDrag(slotIndex, cardSprite) {
         this._liveDrag = { slotIndex, cardSprite };
+        cardSprite?.setData?.('inventoryDragging', true);
         this.freezeBoardInputForDrag();
     },
-    finishStuckInventoryDrag() {
+    finishStuckInventoryDrag(releasePoint = null, cancelled = false) {
         const live = this._liveDrag;
-        if (!live) return;
-        this.finishInventoryCardDrag(live.slotIndex, live.cardSprite);
+        if (!live) return false;
+
+        if (cancelled) {
+            const originalX = live.cardSprite.getData?.('originalX');
+            const originalY = live.cardSprite.getData?.('originalY');
+            const slot = this.slotSprites?.[live.slotIndex];
+            live.cardSprite.x = Number.isFinite(originalX) ? originalX : (slot?.originalX ?? live.cardSprite.x);
+            live.cardSprite.y = Number.isFinite(originalY) ? originalY : (slot?.originalY ?? live.cardSprite.y);
+        }
+
+        // ScaleManager converts browser coordinates into canvas coordinates,
+        // but the game renders its 640x360 world through a zoomed camera onto a
+        // 1280x720 canvas. Convert through the camera as well; using the canvas
+        // point directly makes a drop over an enemy look like a drop over the
+        // bottom-right discard area.
+        const scale = this.scene?.scale;
+        const camera = this.scene?.cameras?.main;
+        const clientX = releasePoint?.clientX;
+        const clientY = releasePoint?.clientY;
+        if (
+            !cancelled
+            && Number.isFinite(clientX)
+            && Number.isFinite(clientY)
+            && typeof scale?.transformX === 'function'
+            && typeof scale?.transformY === 'function'
+            && typeof camera?.getWorldPoint === 'function'
+        ) {
+            const canvasX = scale.transformX(clientX);
+            const canvasY = scale.transformY(clientY);
+            const worldPoint = camera.getWorldPoint(canvasX, canvasY);
+            if (Number.isFinite(worldPoint?.x) && Number.isFinite(worldPoint?.y)) {
+                live.cardSprite.x = Math.round(worldPoint.x);
+                live.cardSprite.y = Math.round(worldPoint.y);
+            }
+        }
+
+        return this.finishInventoryCardDrag(live.slotIndex, live.cardSprite, true);
     },
-    finishInventoryCardDrag(slotIndex, cardSprite) {
+    finishInventoryCardDrag(slotIndex, cardSprite, forcePhaserReset = false) {
+        const live = this._liveDrag;
+        // Both Phaser and the DOM fallback can observe the same pointerup.
+        // Claim the drag once so damage/durability can never be applied twice.
+        if (!live || live.slotIndex !== slotIndex || live.cardSprite !== cardSprite) return false;
         this._liveDrag = null;
         this.destroyFireReachIndicator();
-        try {
-            if (!cardSprite?.scene) return;
 
-            if (typeof cardSprite.clearTint === 'function') {
-                cardSprite.clearTint();
-            }
+        try {
+            if (!cardSprite?.scene) return false;
+
+            cardSprite.setData?.('inventoryDragging', false);
+            cardSprite.clearTint?.();
             this.destroyDragOverlay();
             this.applySlotVisualDepths(slotIndex);
 
             const currentSlot = this.slotSprites[slotIndex];
-            if (currentSlot) {
-                if (currentSlot.shadow) {
-                    currentSlot.shadow.setAlpha(0);
-                }
-                if (currentSlot.twinkleSprite) {
-                    currentSlot.twinkleSprite.setDepth(this.getInventoryDepths().twinkle);
-                }
-            }
+            currentSlot?.shadow?.setAlpha?.(0);
+            currentSlot?.twinkleSprite?.setDepth?.(this.getInventoryDepths().twinkle);
 
             this.handleCardDrop(slotIndex, cardSprite);
+            return true;
         } catch (err) {
             console.error(err);
             if (cardSprite?.scene) this.returnCardToSlot(slotIndex, cardSprite);
+            return false;
         } finally {
             this.restoreBoardInputAfterDrag();
-            this.resetPhaserInventoryDrag(cardSprite);
+            // Never touch Phaser's private drag bookkeeping from inside its own
+            // dragend dispatch. It only needs repair when the DOM fallback ran
+            // precisely because Phaser missed that dispatch.
+            if (forcePhaserReset) this.resetPhaserInventoryDrag(cardSprite);
         }
     },
     freezeBoardInputForDrag() {
@@ -304,21 +343,50 @@ export const InventoryView = {
         const input = this.scene?.input;
         if (cardSprite?.input) cardSprite.input.dragState = 0;
         if (!input) return;
+
         const pointer = input.activePointer;
         if (!pointer) return;
-        if (input.getDragState(pointer) !== 0) input.setDragState(pointer, 0);
-        const list = input._drag?.[pointer.id];
-        if (Array.isArray(list)) list.length = 0;
+        if (input.getDragState?.(pointer) !== 0) input.setDragState?.(pointer, 0);
+        const dragList = input._drag?.[pointer.id];
+        if (Array.isArray(dragList)) dragList.length = 0;
     },
     bindInventoryDragRelease() {
         if (this._onInventoryPointerUp) return;
-        this._onInventoryPointerUp = () => this.finishStuckInventoryDrag();
-        window.addEventListener('pointerup', this._onInventoryPointerUp);
-        window.addEventListener('pointercancel', this._onInventoryPointerUp);
+        const releaseTarget = this.scene?.game?.canvas?.ownerDocument?.defaultView
+            || (typeof window !== 'undefined' ? window : null);
+        if (!releaseTarget?.addEventListener) return;
+
+        this._inventoryDragReleaseTarget = releaseTarget;
+        this._onInventoryPointerUp = (event) => {
+            if (!this._liveDrag || this._inventoryDragReleaseQueued) return;
+            this._inventoryDragReleaseQueued = true;
+            const cancelled = event?.type === 'pointercancel';
+            const releasePoint = cancelled
+                ? null
+                : { clientX: event?.clientX, clientY: event?.clientY };
+
+            // Let every listener for this pointerup finish first. Phaser may
+            // still emit the normal dragend later in the same event dispatch;
+            // that path has the authoritative final drag coordinates. Only if
+            // the drag is still live afterwards do we invoke the fallback.
+            const finishAfterPhaser = () => {
+                this._inventoryDragReleaseQueued = false;
+                this.finishStuckInventoryDrag(releasePoint, cancelled);
+            };
+            if (typeof releaseTarget.queueMicrotask === 'function') {
+                releaseTarget.queueMicrotask(finishAfterPhaser);
+            } else {
+                Promise.resolve().then(finishAfterPhaser);
+            }
+        };
+        releaseTarget.addEventListener('pointerup', this._onInventoryPointerUp);
+        releaseTarget.addEventListener('pointercancel', this._onInventoryPointerUp);
         this.scene.events.once('shutdown', () => {
-            window.removeEventListener('pointerup', this._onInventoryPointerUp);
-            window.removeEventListener('pointercancel', this._onInventoryPointerUp);
+            releaseTarget.removeEventListener('pointerup', this._onInventoryPointerUp);
+            releaseTarget.removeEventListener('pointercancel', this._onInventoryPointerUp);
             this._onInventoryPointerUp = null;
+            this._inventoryDragReleaseTarget = null;
+            this._inventoryDragReleaseQueued = false;
             this._liveDrag = null;
             this.restoreBoardInputAfterDrag();
         });

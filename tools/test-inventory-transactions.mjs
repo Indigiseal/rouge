@@ -4,6 +4,7 @@ import { humanRunRecorder } from '../src/systems/HumanRunRecorder.js';
 import { InventorySystem } from '../src/systems/InventorySystem.js';
 import { CombatTurnController } from '../src/systems/combat/CombatTurnController.js';
 import { CardMergeRules } from '../src/systems/inventory/CardMergeRules.js';
+import { InventoryView } from '../src/systems/inventory/InventoryView.js';
 
 function makeHarness(cards) {
     const gameState = {
@@ -191,6 +192,121 @@ function eventTypes() {
     turns.finishEnemyTurnEffects({ runCompanions: false });
     assert.equal(scene.gameState.playerHealth, 0);
     assert.equal(scene.killedBy, 'Poison');
+}
+
+{
+    const listeners = new Map();
+    let queuedRelease = null;
+    const releaseTarget = {
+        addEventListener(type, handler) { listeners.set(type, handler); },
+        queueMicrotask(handler) { queuedRelease = handler; },
+        removeEventListener(type, handler) {
+            if (listeners.get(type) === handler) listeners.delete(type);
+        },
+    };
+    let onShutdown = null;
+    let drops = 0;
+    let lastDropOutcome = null;
+    let forcedDragResets = 0;
+    const boardSprite = { input: { enabled: true } };
+    const cardSprite = {
+        scene: {},
+        x: 230,
+        y: 309,
+        input: { dragState: 2 },
+        clearTint() {},
+        getData(key) {
+            if (key === 'originalX') return 230;
+            if (key === 'originalY') return 309;
+            return undefined;
+        },
+        setData() {},
+    };
+    const inventory = Object.create(InventoryView);
+    Object.assign(inventory, {
+        scene: {
+            cardSystem: { boardCards: [{ sprite: boardSprite }] },
+            cameras: {
+                main: { getWorldPoint: (canvasX, canvasY) => ({ x: canvasX / 2, y: canvasY / 2 }) },
+            },
+            events: { once(type, handler) { if (type === 'shutdown') onShutdown = handler; } },
+            game: { canvas: { ownerDocument: { defaultView: releaseTarget } } },
+            scale: {
+                transformX: (clientX) => clientX,
+                transformY: (clientY) => clientY,
+            },
+            input: {
+                activePointer: { id: 0 },
+                _drag: { 0: [cardSprite] },
+                getDragState: () => 2,
+                setDragState: () => { forcedDragResets++; },
+            },
+        },
+        slotSprites: [{
+            shadow: { setAlpha() {} },
+            twinkleSprite: { setDepth() {} },
+        }],
+        applySlotVisualDepths() {},
+        destroyDragOverlay() {},
+        destroyFireReachIndicator() {},
+        getInventoryDepths: () => ({ twinkle: 16 }),
+        handleCardDrop: (_slotIndex, sprite) => {
+            drops++;
+            if (sprite.x >= 560 && sprite.y >= 270) lastDropOutcome = 'discard';
+            else if (sprite.y < 280) lastDropOutcome = 'attack';
+            else lastDropOutcome = 'return';
+        },
+        returnCardToSlot() {},
+    });
+
+    inventory.bindInventoryDragRelease();
+    assert.equal(typeof listeners.get('pointerup'), 'function');
+
+    inventory.beginInventoryCardDrag(0, cardSprite);
+    assert.equal(boardSprite.input.enabled, false);
+    listeners.get('pointerup')({ type: 'pointerup', clientX: 700, clientY: 290 });
+    assert.equal(drops, 0);
+    queuedRelease();
+    assert.equal(drops, 1);
+    assert.equal(cardSprite.x, 350);
+    assert.equal(cardSprite.y, 145);
+    assert.equal(lastDropOutcome, 'attack');
+    assert.equal(boardSprite.input.enabled, true);
+    assert.equal(forcedDragResets, 1);
+    assert.equal(cardSprite.input.dragState, 0);
+    assert.equal(inventory.scene.input._drag[0].length, 0);
+
+    // A late Phaser dragend for a fallback-completed release is harmless.
+    assert.equal(inventory.finishInventoryCardDrag(0, cardSprite), false);
+    assert.equal(drops, 1);
+
+    // On the normal path, Phaser wins before the queued fallback and owns its
+    // bookkeeping. The queued callback then observes no live drag.
+    inventory.beginInventoryCardDrag(0, cardSprite);
+    listeners.get('pointerup')({ type: 'pointerup', clientX: 1000, clientY: 600 });
+    cardSprite.x = 123;
+    cardSprite.y = 45;
+    assert.equal(inventory.finishInventoryCardDrag(0, cardSprite), true);
+    queuedRelease();
+    assert.equal(drops, 2);
+    assert.equal(cardSprite.x, 123);
+    assert.equal(cardSprite.y, 45);
+    assert.equal(forcedDragResets, 1);
+
+    // A cancelled pointer must never resolve a drop at a stale position.
+    inventory.beginInventoryCardDrag(0, cardSprite);
+    cardSprite.x = 600;
+    cardSprite.y = 310;
+    listeners.get('pointercancel')({ type: 'pointercancel', clientX: 1200, clientY: 620 });
+    queuedRelease();
+    assert.equal(drops, 3);
+    assert.equal(cardSprite.x, 230);
+    assert.equal(cardSprite.y, 309);
+    assert.equal(lastDropOutcome, 'return');
+    assert.equal(forcedDragResets, 2);
+
+    onShutdown();
+    assert.equal(listeners.size, 0);
 }
 
 console.log('Inventory, trace fidelity, and delayed poison death checks passed.');

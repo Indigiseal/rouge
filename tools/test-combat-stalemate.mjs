@@ -3,6 +3,7 @@
 // hurt anything here" — when they disagreed, a bow-only rogue meeting a Thorn
 // Sprite froze the board: no damage possible, no Next button, no enemy turns.
 import assert from 'node:assert/strict';
+import { CardSystem } from '../src/systems/CardSystem.js';
 import { weaponCanDamageEnemy } from '../src/systems/board/BoardCombat.js';
 import { CombatTurnController } from '../src/systems/combat/CombatTurnController.js';
 
@@ -16,6 +17,13 @@ const wolf = (revealed = true) => ({
   revealed,
   data: { type: 'enemy', enemyType: 'wolf', health: 8, features: [] },
 });
+
+// BoardCombat's functions are bound to the CardSystem facade. Every internal
+// helper called through `this` therefore needs a facade method too; without
+// these two, a normal hit mutated HP/durability and then threw before either
+// value could be redrawn.
+assert.equal(typeof CardSystem.prototype.applyPoisonGemStacks, 'function');
+assert.equal(typeof CardSystem.prototype.splashPoisonGem, 'function');
 
 // --- the shared predicate
 assert.equal(weaponCanDamageEnemy(bow, sprite()), false, 'bows must not hurt a ranged-immune enemy');
