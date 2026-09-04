@@ -6,7 +6,7 @@ import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { createTitle } from '../ui/titleText.js';
 import { serifStyle } from '../ui/uiFont.js';
 
-/** A one-time story scene shown after the Goblin King falls on Tollroad. */
+/** Story scene shown after the Goblin King falls on Tollroad. */
 export class TollroadAftermathScene extends Phaser.Scene {
   constructor() {
     super({ key: 'TollroadAftermathScene' });

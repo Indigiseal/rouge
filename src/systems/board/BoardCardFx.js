@@ -573,11 +573,23 @@ function attachGemShadow(card) {
 
 function enableGemDrag(card, index) {
     if (!card?.sprite || !card?.data) return;
+    // A revealed board item normally receives the generic pickup handler
+    // before its type-specific behavior is attached. Gems are socket-only, so
+    // remove that handler everywhere (combat, cocoons, restored saves, rewards).
+    card.sprite.off('pointerdown');
     card.sprite.setInteractive({ draggable: true, useHandCursor: true });
+    // Phaser's interactive config does not consistently register an object
+    // with the drag manager after it has already been interactive (reward
+    // gems are initialized that way). Make the registration explicit.
+    this.scene.input?.setDraggable?.(card.sprite, true);
     const home = { x: card.sprite.x, y: card.sprite.y };
     const animKey = `gem_${card.data.gemEffect}_sparkle`;
     const hoverAnimKey = `gem_${card.data.gemEffect}_hover`;
     let idleTimer = null;
+    let dragged = false;
+    card.sprite.on('pointerdown', () => {
+        dragged = false;
+    });
     if (this.scene.anims.exists(animKey)) {
         card.sprite.on('pointerover', () => {
             if (this.scene.anims.exists(hoverAnimKey)) {
@@ -609,6 +621,10 @@ function enableGemDrag(card, index) {
     }
 
     card.sprite.on('dragstart', () => {
+        dragged = true;
+        card.sprite.setData('boardGemDragging', true);
+        this.scene.tweens.killTweensOf(card.sprite);
+        if (card.infoText?.scene) this.scene.tweens.killTweensOf(card.infoText);
         card.sprite.stop();
         card.sprite.setDepth(2500);
         if (card.shadow) card.shadow.setAlpha(0);
@@ -624,6 +640,7 @@ function enableGemDrag(card, index) {
     });
     card.sprite.on('dragend', () => {
         if (this.tryApplyBoardGem(card, index)) return;
+        card.sprite.setData('boardGemDragging', false);
         card.sprite.setDepth(1);
         card.sprite.x = home.x;
         card.sprite.y = home.y;
@@ -638,6 +655,18 @@ function enableGemDrag(card, index) {
             card.gemShadow.setDepth((card.sprite.depth || 1) - 0.1);
             card.gemShadow.setVisible(true);
         }
+    });
+    card.sprite.on('pointerup', () => {
+        if (!dragged && card.sprite?.scene) {
+            this.scene.createFloatingText(
+                card.sprite.x,
+                card.sprite.y - 30,
+                'Drag onto a weapon to socket',
+                0xffe066
+            );
+        }
+        dragged = false;
+        card.sprite?.setData?.('boardGemDragging', false);
     });
 }
 

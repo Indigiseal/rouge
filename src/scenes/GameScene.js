@@ -163,6 +163,10 @@ export class GameScene extends Phaser.Scene {
                 this.gameState.storyRun.armWrestleRematchDone = false;
                 this.gameState.storyRun.gauntletWon = false;
             }
+            // This scene repeats once per Tollroad run. Durable story memory
+            // keeps the pendant/knowledge, but must not suppress a later run's
+            // post-boss scene.
+            this.gameState.storyRun.tollroadAftermathCompleteThisRun = false;
         }
 
         const storedHeroMemory = loadHeroMemory();
@@ -292,7 +296,16 @@ export class GameScene extends Phaser.Scene {
         // player can pause; rebuilding them via setupBossRewardRoom() would pay
         // the currency twice, so restore only the still-unclaimed saved cards.
         if (this.shouldLoadSave && this.gameState.roomType === 'BOSS_REWARD') {
-            this.restoreSavedBossRewardRoom();
+            // Migration for saves already stranded in the reward room by the
+            // old profile-wide "seen" guard: show the missing scene first, then
+            // restore these exact reward cards without paying currency twice.
+            if (shouldShowTollroadAftermath(this.gameState)) {
+                this._restoreBossRewardAfterNarrative = true;
+                this.scene.sleep();
+                this.scene.launch('TollroadAftermathScene', { gameState: this.gameState });
+            } else {
+                this.restoreSavedBossRewardRoom();
+            }
         } else if (this.shouldLoadSave && this._loadedBoardAvailable) {
             this.restoreSavedCombatRoom();
         } else {
@@ -498,6 +511,7 @@ export class GameScene extends Phaser.Scene {
         // Refresh type before spawn
         this.roomType = this.gameState.roomType || 'COMBAT';
         this.updateRoomTitle();
+        this.refreshDebugVictoryButton?.();
         // Fresh fight → fresh log, shown only in combat rooms.
         this.clearCombatLog();
         this.refreshCombatLogVisibility();
@@ -682,6 +696,44 @@ export class GameScene extends Phaser.Scene {
 
     isEnemyCard(card) {
         return !!this.cardSystem?.isEnemyType(card?.data?.type);
+    }
+
+    debugDefeatAllEnemies() {
+        const roomType = this.gameState?.roomType || this.roomType;
+        if (!['COMBAT', 'ELITE', 'BOSS'].includes(roomType)
+            || this.enemiesCleared
+            || this._transitioning
+            || this.gameState?.playerHealth <= 0) {
+            return 0;
+        }
+
+        this.clearEnemyTurnTimers();
+
+        // A debug clear means the whole floor, not merely the currently dealt
+        // wave. Cancel undealt reinforcements before normal clear checks run.
+        if (this.cardSystem?._waveState) {
+            this.cardSystem._waveState.wavesLeft = 0;
+            this.cardSystem._waveState.cardsPending = 0;
+            this.cardSystem._waveState.dropping = false;
+        }
+
+        let defeated = 0;
+        const cards = this.cardSystem?.boardCards || [];
+        // Defeat one card at a time. Setting every HP value to zero up front
+        // would let the first death falsely look like the last one.
+        cards.slice().forEach((card, index) => {
+            if (cards[index] !== card || !this.isEnemyCard(card) || (card.data?.health ?? 1) <= 0) return;
+            card.data.health = 0;
+            card.sprite?.disableInteractive?.();
+            this.cardSystem.removeDefeatedEnemy(index, card);
+            defeated++;
+        });
+
+        // Preserve the regular win pipeline: floor reward, Next button, boss
+        // reward and Tollroad aftermath are all driven by checkFloorClear().
+        this.cardSystem?.checkFloorClear?.();
+        this.refreshDebugVictoryButton?.();
+        return defeated;
     }
 
     getChickCompanionEntry() {
@@ -1082,6 +1134,7 @@ export class GameScene extends Phaser.Scene {
         }
 
         this._transitioning = true;
+        this.refreshDebugVictoryButton?.();
         this.clearEnemyTurnTimers();
         // Hard-disable AND hide the button so it can't be clicked again — and so
         // the label and its skin vanish together, not just the "Next" text.
@@ -1274,6 +1327,7 @@ export class GameScene extends Phaser.Scene {
         this.clearEnemyTurnTimers();
         this.finalizeCompanionCombatHistory();
         this.enemiesCleared = true;
+        this.refreshDebugVictoryButton?.();
         this.inventorySystem?.clearAllHandWebs?.();
         const floor = this.gameState.currentFloor;
         recordHumanRunEvent(this, 'floor_cleared', {
@@ -1585,7 +1639,12 @@ export class GameScene extends Phaser.Scene {
             this.inventorySystem?.setDragOverlayScene?.(null);
             this.inventorySystem?.clearDropZones?.();
             this.inventorySystem?.setStationMode(false);
-            this.setupBossRewardRoom();
+            if (this._restoreBossRewardAfterNarrative) {
+                this._restoreBossRewardAfterNarrative = false;
+                this.restoreSavedBossRewardRoom();
+            } else {
+                this.setupBossRewardRoom();
+            }
             // The pendant flag and the generated reward cards must land in the
             // same save. Continue then restores the reward room without either
             // replaying the vision or paying its currency a second time.
@@ -1622,6 +1681,7 @@ export class GameScene extends Phaser.Scene {
         // Restore current room type from gameState
         this.roomType = this.gameState.roomType || 'COMBAT';
         this.updateRoomTitle();
+        this.refreshDebugVictoryButton?.();
         // Show the log for combat rooms, hide it when we wake into loot/reward
         // rooms; startNewFloor() below re-clears it only for genuinely new fights.
         this.refreshCombatLogVisibility();

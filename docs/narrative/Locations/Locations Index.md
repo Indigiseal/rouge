@@ -80,9 +80,9 @@ A readable dungeon. After the Queen: *The silk is quiet. The Waystar still point
 
 A **real road** with booths, chains, and stolen banners. Goblins stamped a fake kingdom onto it: tariffs, "guards," a king who sat down on a wagon-throne. Club goblins, cutpurses, gate brutes, archers, wagon snipers.
 
-The **Goblin King** is the act boss. His false kingdom still taxes in the name of a power the goblins did not invent: **carnival priests** brought its seal down the Mile. When the King falls, a dark pendant hidden beneath his gold begins to shine. Touching it reveals an image of the **Magus**, who dismisses the King's wealth as children's toys and promises to bring beings capable of using the world's hidden treasures for higher purposes.
+The **Goblin King** is the act boss. His false kingdom still taxes in the name of a power the goblins did not invent: **carnival priests** brought its seal down the Mile. He dies whispering, "Magus... you promised..." A dark pendant hidden beneath his gold then begins to shine. Touching it reveals an unknown figure who dismisses the King's wealth as children's toys and promises to bring beings capable of using the world's hidden treasures for higher purposes.
 
-After: the apparition dissolves, but the hero keeps the warm pendant, certain it will be needed later.
+After: the apparition dissolves. The hero suspects it was the **Magus**, but the name is all they know. They keep the warm pendant, certain it will be needed later.
 
 | Slot | Enemy | What it is |
 |---|---|---|

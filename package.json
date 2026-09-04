@@ -9,6 +9,7 @@
     "test:sim-weapon-preservation": "node tools/test-sim-weapon-preservation.mjs",
     "test:sim-attack-priority": "node tools/test-sim-attack-priority.mjs",
     "test:combat-stalemate": "node tools/test-combat-stalemate.mjs",
+    "test:debug-victory": "node tools/test-debug-victory.mjs",
     "test:talent-effects": "node tools/test-talent-effects.mjs",
     "sim": "node sim/balance-sim.js",
     "sim:loot-stats": "node sim/balance-sim.js loot-stats 100",

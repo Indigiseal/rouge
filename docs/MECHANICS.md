@@ -30,6 +30,9 @@ soon as the card opens. A click walks that road. Packs still live under
 card is not in yet. Tracked in `docs/OPEN-QUESTIONS.md`.
 `MapViewScene` has a debug **Choose manually** button to jump to any room in
 the current act; after that room the run continues from that floor.
+- The combat HUD always shows a debug `WIN` button. It defeats every enemy on
+  the floor (including hidden enemies and bosses), cancels undealt
+  reinforcements, then follows the normal clear/reward/story flow.
 
 ## Core loop
 - Player reveals 2–3 enemies (front/back rows)

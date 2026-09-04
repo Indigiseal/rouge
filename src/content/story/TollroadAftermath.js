@@ -1,12 +1,8 @@
 import { getLocationIdForFloor } from '../locations/index.js';
 
-/**
- * The Tollroad vision is a durable story beat: once the hero has taken the
- * pendant, later runs keep that knowledge and key item without replaying the
- * scene after every Goblin King kill.
- */
+/** Show the vision after every Goblin King victory on the Tollroad. */
 export function shouldShowTollroadAftermath(gameState) {
-  if (!gameState || gameState?.storyRun?.tollroadAftermathSeen) return false;
+  if (!gameState || gameState?.storyRun?.tollroadAftermathCompleteThisRun) return false;
   return getLocationIdForFloor(gameState, gameState.currentFloor || 15) === 'tollroad';
 }
 
@@ -17,5 +13,6 @@ export function completeTollroadAftermath(gameState) {
   }
   gameState.storyRun.tollroadAftermathSeen = true;
   gameState.storyRun.magusPendantObtained = true;
+  gameState.storyRun.tollroadAftermathCompleteThisRun = true;
   return true;
 }

@@ -55,6 +55,10 @@ export const DEFAULT_STORY_RUN = Object.freeze({
   // narrative beats.
   tollroadAftermathSeen: false,
   magusPendantObtained: false,
+  // Unlike the knowledge above, this is reset for every new run. It prevents
+  // Continue from replaying the scene after it has already opened this run's
+  // boss reward, while still letting later Tollroad runs see the scene again.
+  tollroadAftermathCompleteThisRun: false,
   pendingEvents: Object.freeze([]),
 });
 

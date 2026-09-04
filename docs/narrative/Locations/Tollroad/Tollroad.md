@@ -21,7 +21,7 @@ tags:
 # Tollroad
 
 > [!info] Location — Act 1 (**true road**)
-> The King's Mile. The Goblin King's death awakens a hidden pendant and reveals the first image of the Magus. See [[The True Path]], [[Locations Index]].
+> The King's Mile. The Goblin King whispers the name Magus before his death; a hidden pendant then awakens and reveals an unknown figure the hero suspects may bear that name. See [[The True Path]], [[Locations Index]].
 
 A **real mile of road** with booths, chains, and stolen banners. A greedy Goblin King stamped a fake kingdom onto it: tariffs, "guards," scrap seals. This is not random banditry. It is a **false kingdom** — a price on every mile, now collected **in a god's name the goblins did not invent**.
 
@@ -66,7 +66,7 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 
 | Boss | Status | Note |
 |---|---|---|
-| [[Goblin King]] | in-game | False sovereign. His death awakens the Magus's pendant. Echoes [[Toll Collectors]]. |
+| [[Goblin King]] | in-game | False sovereign. Dies whispering, "Magus... you promised..." His death awakens a hidden pendant. Echoes [[Toll Collectors]]. |
 
 > [!note] Links
 > Enemy and boss names link to [[Enemies Index]] / [[Bosses Index]] pages.
@@ -99,14 +99,16 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 
 ## After the boss (true road)
 
-The King's last breath wakes a dark stone pendant hidden beneath his gold. When
-the hero touches it, the throne room falls away and an image of the Magus warns
-that the King's riches are toys for ignorant children. The world's true
-treasures are hidden, and the Magus intends to bring in beings capable of using
-them for higher purposes.
+The King dies whispering, "Magus... you promised..." His last breath wakes a
+dark stone pendant hidden beneath his gold. When the hero touches it, the throne
+room falls away and an unknown figure warns that the King's riches are toys for
+ignorant children. The world's true treasures are hidden, and the figure intends
+to bring in beings capable of using them for higher purposes.
 
-The apparition dissolves. The hero keeps the still-warm pendant as a key story
-item, certain that its purpose has not yet been fulfilled.
+The apparition dissolves. From the King's whisper, the hero can only infer that
+the figure was probably the Magus; the name is all they know. The hero keeps the
+still-warm pendant as a key story item, certain that its purpose has not yet been
+fulfilled.
 
 ## Related
 

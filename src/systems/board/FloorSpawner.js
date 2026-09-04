@@ -746,8 +746,15 @@ function spawnBossRewardBoard(items) {
         this.boardCards.push(cardEntry);
         const myIndex = this.boardCards.length - 1;
 
-        cardSprite.on('pointerdown', () => this.takeRewardCard(myIndex));
+        // Reward gems are socket-only, just like gems found on combat boards.
+        // Binding the generic take handler here sent them through addCard(),
+        // which correctly rejects gems but then misleadingly reported a full
+        // inventory and also stole the pointerdown needed to begin dragging.
+        if (item.type !== 'gem') {
+            cardSprite.on('pointerdown', () => this.takeRewardCard(myIndex));
+        }
         cardSprite.on('pointerover', () => {
+            if (cardSprite.getData('boardGemDragging')) return;
             // Lift the card and round each frame so its pixel art stays crisp.
             this.scene.tweens.add({
                 targets: cardSprite, y: cardY - 5, duration: 150, ease: 'Power2',
@@ -777,6 +784,7 @@ function spawnBossRewardBoard(items) {
             showItemTooltip(this.scene, item, cardSprite.x, cardSprite.y, TOOLTIP_DEPTH, BOARD_TOOLTIP_GAP);
         });
         cardSprite.on('pointerout', () => {
+            if (cardSprite.getData('boardGemDragging')) return;
             this.scene.tweens.add({
                 targets: cardSprite, y: cardY, duration: 150, ease: 'Power2',
                 onUpdate: this.snapYOnUpdate
@@ -819,6 +827,10 @@ function spawnBossRewardBoard(items) {
                 // to where it actually sits (some sit at the card, some at y=0).
                 if (cardEntry.infoText) cardEntry.infoRestY = cardEntry.infoText.y;
                 if (!notACard) shadow.setAlpha(0.6);
+                if (item.type === 'gem') {
+                    this.attachGemShadow(cardEntry);
+                    this.enableGemDrag(cardEntry, myIndex);
+                }
             }
         });
     });
@@ -829,6 +841,17 @@ function takeRewardCard(index) {
     if (!card) return;
 
     const data = card.data;
+    // Defensive guard for restored/legacy reward boards: gems never enter the
+    // inventory. They must be dragged directly onto a weapon socket.
+    if (data.type === 'gem') {
+        this.scene.createFloatingText(
+            card.sprite.x,
+            card.sprite.y - 30,
+            'Drag onto a weapon to socket',
+            0xffe066
+        );
+        return;
+    }
     let success = false;
 
     if (data.type === 'amulet') {

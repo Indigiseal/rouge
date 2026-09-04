@@ -137,6 +137,22 @@ export const CombatHud = {
             fill: '#6f5452',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH);
+
+        // Combat shortcut for testing complete floor/boss resolution.
+        this.debugVictoryButton = this.add.rectangle(455, 38, 58, 18, 0x713737, 0.9)
+            .setStrokeStyle(1, 0xd89772)
+            .setDepth(TOP_HUD_DEPTH)
+            .on('pointerover', () => this.debugVictoryButton.setFillStyle(0x934646, 1))
+            .on('pointerout', () => this.debugVictoryButton.setFillStyle(0x713737, 0.9))
+            .on('pointerdown', () => {
+                SoundHelper.playVariant(this, 'button_click', 0.5);
+                this.debugDefeatAllEnemies?.();
+            });
+        this.debugVictoryButtonText = this.add.text(455, 38, t(this, 'ui.hud.debugWin'), {
+            fontSize: '9px',
+            fill: '#f5e6c8',
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
         
         // Also add ESC key binding for pause
         this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
@@ -184,6 +200,24 @@ export const CombatHud = {
 
         // Running combat log on the right side.
         this.createCombatLog();
+        this.refreshDebugVictoryButton();
+    },
+
+    refreshDebugVictoryButton() {
+        if (!this.debugVictoryButton || !this.debugVictoryButtonText) return;
+        const roomType = this.gameState?.roomType || this.roomType;
+        const combatRoom = ['COMBAT', 'ELITE', 'BOSS'].includes(roomType);
+        const visible = Boolean(
+            combatRoom && !this.enemiesCleared && !this._transitioning
+        );
+
+        this.debugVictoryButton.setVisible(visible);
+        this.debugVictoryButtonText.setVisible(visible);
+        if (visible) {
+            this.debugVictoryButton.setInteractive({ useHandCursor: true });
+        } else {
+            this.debugVictoryButton.disableInteractive();
+        }
     },
 
     // A paper panel on the right that keeps a running, scrollable record of the

@@ -233,6 +233,7 @@ export class EventScene extends Phaser.Scene {
       brassWizardSeen: false,
       tollroadAftermathSeen: false,
       magusPendantObtained: false,
+      tollroadAftermathCompleteThisRun: false,
       pendingEvents: []
     };
 
@@ -329,6 +330,7 @@ export class EventScene extends Phaser.Scene {
       brassWizardSeen: Boolean(existingStoryRun.brassWizardSeen),
       tollroadAftermathSeen: Boolean(existingStoryRun.tollroadAftermathSeen),
       magusPendantObtained: Boolean(existingStoryRun.magusPendantObtained),
+      tollroadAftermathCompleteThisRun: Boolean(existingStoryRun.tollroadAftermathCompleteThisRun),
       pendingEvents
     };
 

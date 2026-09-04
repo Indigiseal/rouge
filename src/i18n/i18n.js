@@ -1788,36 +1788,36 @@ for (const [language, additions] of Object.entries(UI_TEXT_ADDITIONS)) {
 const TOLLROAD_AFTERMATH_TEXT = {
     en: {
         'ui.tollroadAftermath.title': "The King's Last Tribute",
-        'ui.tollroadAftermath.page1': "The Goblin King dies with one hand clenched around his crown and the other pressed to his chest. When the last breath leaves him, something beneath his layers of gold begins to shine.\n\nYou pull aside chains and stolen medals. Against his skin hangs a small dark stone in a plain metal setting — too plain for a king who gilded even his teeth. Pale light gathers inside it, pulsing as though it has only now awakened.",
+        'ui.tollroadAftermath.page1': "The Goblin King sags against his broken throne, one hand clenched around his crown and the other pressed to his chest. His lips move around one last, ragged whisper: \"Magus... you promised...\"\n\nWhen the final breath leaves him, something beneath his layers of gold begins to shine. You pull aside chains and stolen medals. Against his skin hangs a small dark stone in a plain metal setting — too plain for a king who gilded even his teeth. Pale light gathers inside it, pulsing as though it has only now awakened.",
         'ui.tollroadAftermath.page2': "The moment your fingers meet the stone, the throne room falls away. A tall figure resolves before you, woven from the pendant's cold light. Its face refuses to stay in focus. Only its eyes are clear.\n\n\"The pawn has fallen. But not every piece upon the board of your world has value.\n\nThe gold that gleams in his vaults is nothing but toys fashioned for ignorant children. True treasures lie hidden from the sight of the creatures who inhabit your world.\n\nAnd I will bring into this world those who can put them to far higher purpose.\"",
-        'ui.tollroadAftermath.page3': "The figure scatters into pale sparks, and the throne room rushes back: smoke, blood, overturned tribute. The stone is dark again, but it remains warm in your palm.\n\nYou keep the pendant. You cannot explain the certainty that settles over you — only that the Magus knew you were here, and that the stone's purpose has not yet been spent.",
+        'ui.tollroadAftermath.page3': "The figure scatters into pale sparks, and the throne room rushes back: smoke, blood, overturned tribute. The stone is dark again, but it remains warm in your palm.\n\nIf the King's dying whisper was meant for the figure, then this was probably the Magus. For now, the name is all you know. You keep the pendant, unable to shake the feeling that its purpose has not yet been spent.",
         'ui.tollroadAftermath.touch': 'Touch the pendant',
         'ui.tollroadAftermath.keep': 'Keep the pendant',
         'ui.sandbox.encounter.tollroadAftermath': 'Tollroad Aftermath',
     },
     es: {
         'ui.tollroadAftermath.title': 'El último tributo del rey',
-        'ui.tollroadAftermath.page1': 'El Rey Goblin muere con una mano aferrada a su corona y la otra sobre el pecho. Cuando exhala su último aliento, algo bajo sus capas de oro empieza a brillar.\n\nApartas cadenas y medallas robadas. Contra su piel cuelga una pequeña piedra oscura en un engaste de metal sencillo, demasiado sencillo para un rey que doraba hasta sus dientes. Una luz pálida se acumula en su interior, latiendo como si acabara de despertar.',
+        'ui.tollroadAftermath.page1': 'El Rey Goblin se desploma contra su trono roto, con una mano aferrada a la corona y la otra sobre el pecho. Sus labios forman un último susurro entrecortado: «Magus... lo prometiste...».\n\nCuando exhala su último aliento, algo bajo sus capas de oro empieza a brillar. Apartas cadenas y medallas robadas. Contra su piel cuelga una pequeña piedra oscura en un engaste de metal sencillo, demasiado sencillo para un rey que doraba hasta sus dientes. Una luz pálida se acumula en su interior, latiendo como si acabara de despertar.',
         'ui.tollroadAftermath.page2': 'En cuanto tus dedos tocan la piedra, la sala del trono desaparece. Una figura alta surge ante ti, tejida con la luz fría del colgante. Su rostro se niega a permanecer enfocado. Solo sus ojos se ven con claridad.\n\n«El peón ha caído. Pero no todas las piezas del tablero de vuestro mundo tienen valor.\n\nEl oro que brilla en sus cámaras no es más que juguetes creados para niños ignorantes. Los verdaderos tesoros están ocultos a la vista de las criaturas que habitan vuestro mundo.\n\nY traeré a este mundo a quienes puedan destinarlos a fines mucho más elevados».',
-        'ui.tollroadAftermath.page3': 'La figura se deshace en chispas pálidas y la sala del trono regresa de golpe: humo, sangre, tributos volcados. La piedra vuelve a estar oscura, pero sigue cálida en tu palma.\n\nConservas el colgante. No puedes explicar la certeza que se asienta en ti: solo sabes que el Mago sabía que estabas allí y que el propósito de la piedra aún no se ha cumplido.',
+        'ui.tollroadAftermath.page3': 'La figura se deshace en chispas pálidas y la sala del trono regresa de golpe: humo, sangre, tributos volcados. La piedra vuelve a estar oscura, pero sigue cálida en tu palma.\n\nSi el último susurro del Rey iba dirigido a esa figura, probablemente era Magus. Por ahora, el nombre es todo lo que sabes. Conservas el colgante, incapaz de librarte de la sensación de que su propósito aún no se ha cumplido.',
         'ui.tollroadAftermath.touch': 'Tocar el colgante',
         'ui.tollroadAftermath.keep': 'Conservar el colgante',
         'ui.sandbox.encounter.tollroadAftermath': 'Epílogo de Tollroad',
     },
     fr: {
         'ui.tollroadAftermath.title': 'Le dernier tribut du roi',
-        'ui.tollroadAftermath.page1': "Le Roi gobelin meurt, une main crispée sur sa couronne et l'autre plaquée contre sa poitrine. Lorsque son dernier souffle le quitte, quelque chose se met à briller sous ses couches d'or.\n\nVous écartez chaînes et médailles volées. Contre sa peau pend une petite pierre sombre dans une monture de métal ordinaire, bien trop simple pour un roi qui dorait jusqu'à ses dents. Une pâle lumière s'y rassemble et palpite, comme si elle venait seulement de s'éveiller.",
+        'ui.tollroadAftermath.page1': "Le Roi gobelin s'affaisse contre son trône brisé, une main crispée sur sa couronne et l'autre plaquée contre sa poitrine. Ses lèvres forment un dernier murmure rauque : « Magus... tu avais promis... »\n\nLorsque son dernier souffle le quitte, quelque chose se met à briller sous ses couches d'or. Vous écartez chaînes et médailles volées. Contre sa peau pend une petite pierre sombre dans une monture de métal ordinaire, bien trop simple pour un roi qui dorait jusqu'à ses dents. Une pâle lumière s'y rassemble et palpite, comme si elle venait seulement de s'éveiller.",
         'ui.tollroadAftermath.page2': "Dès que vos doigts touchent la pierre, la salle du trône disparaît. Une haute silhouette se dessine devant vous, tissée dans la lumière froide du pendentif. Son visage refuse de rester net. Seuls ses yeux sont clairs.\n\n« Le pion est tombé. Mais toutes les pièces sur l'échiquier de votre monde n'ont pas de valeur.\n\nL'or qui brille dans ses trésors n'est rien d'autre que des jouets façonnés pour des enfants ignorants. Les vrais trésors demeurent cachés au regard des créatures qui peuplent votre monde.\n\nEt je ferai venir dans ce monde ceux qui sauront les vouer à des desseins bien plus élevés. »",
-        'ui.tollroadAftermath.page3': "La silhouette se disperse en étincelles pâles et la salle du trône revient d'un seul coup : fumée, sang, tributs renversés. La pierre est de nouveau sombre, mais elle reste chaude dans votre paume.\n\nVous gardez le pendentif. Vous ne pouvez expliquer la certitude qui s'installe en vous : le Mage savait que vous étiez là, et la pierre n'a pas encore accompli son dessein.",
+        'ui.tollroadAftermath.page3': "La silhouette se disperse en étincelles pâles et la salle du trône revient d'un seul coup : fumée, sang, tributs renversés. La pierre est de nouveau sombre, mais elle reste chaude dans votre paume.\n\nSi le dernier murmure du Roi s'adressait à cette silhouette, il s'agissait probablement de Magus. Pour l'instant, ce nom est tout ce que vous savez. Vous gardez le pendentif, incapable de chasser le sentiment que son dessein n'est pas encore accompli.",
         'ui.tollroadAftermath.touch': 'Toucher le pendentif',
         'ui.tollroadAftermath.keep': 'Garder le pendentif',
         'ui.sandbox.encounter.tollroadAftermath': 'Épilogue de Tollroad',
     },
     ru: {
         'ui.tollroadAftermath.title': 'Последняя дань короля',
-        'ui.tollroadAftermath.page1': 'Король гоблинов умирает, одной рукой вцепившись в корону, а другую прижав к груди. Когда последний вздох покидает его тело, что-то под слоями золота начинает светиться.\n\nВы отводите в сторону цепи и краденые медали. На его груди висит маленький тёмный камень в простой металлической оправе — слишком скромной для короля, который золотил даже собственные зубы. Внутри камня собирается бледный свет. Он пульсирует, словно подвеска пробудилась лишь сейчас.',
+        'ui.tollroadAftermath.page1': 'Король гоблинов оседает на разбитый трон, одной рукой вцепившись в корону, а другую прижав к груди. Его губы шевелятся в последнем хриплом шёпоте: «Магус... ты обещал...»\n\nКогда последний вздох покидает его тело, что-то под слоями золота начинает светиться. Вы отводите в сторону цепи и краденые медали. На его груди висит маленький тёмный камень в простой металлической оправе — слишком скромной для короля, который золотил даже собственные зубы. Внутри камня собирается бледный свет, пульсируя так, словно подвеска пробудилась лишь сейчас.',
         'ui.tollroadAftermath.page2': 'Стоит вам коснуться камня, как тронный зал исчезает. Перед вами возникает высокая фигура, сотканная из холодного света подвески. Её лицо невозможно удержать в фокусе. Ясными остаются лишь глаза.\n\n«Пешка пала. Но не все фигуры на доске вашего мира имеют ценность.\n\nЗолото, что блестит в его сокровищницах, — лишь игрушки, созданные для несведущих детей. Настоящие сокровища сокрыты от взора существ, населяющих ваш мир.\n\nИ я приведу в этот мир тех, кто сможет использовать их для куда более высоких целей».',
-        'ui.tollroadAftermath.page3': 'Образ рассыпается бледными искрами, и тронный зал возвращается: дым, кровь, опрокинутые подношения. Камень снова погас, но в вашей ладони он остаётся тёплым.\n\nВы оставляете подвеску у себя. Невозможно объяснить возникшую уверенность — лишь чувство, что Маг знал о вашем присутствии и что предназначение камня ещё не исполнено.',
+        'ui.tollroadAftermath.page3': 'Образ рассыпается бледными искрами, и тронный зал возвращается: дым, кровь, опрокинутые подношения. Камень снова погас, но в вашей ладони он остаётся тёплым.\n\nЕсли предсмертный шёпот короля был обращён к этой фигуре, то перед вами, вероятно, был Магус. Пока имя — всё, что вам о нём известно. Вы оставляете подвеску у себя, не в силах отделаться от чувства, что предназначение камня ещё не исполнено.',
         'ui.tollroadAftermath.touch': 'Коснуться подвески',
         'ui.tollroadAftermath.keep': 'Оставить подвеску',
         'ui.sandbox.encounter.tollroadAftermath': 'Финал Tollroad',
@@ -1825,6 +1825,25 @@ const TOLLROAD_AFTERMATH_TEXT = {
 };
 
 for (const [language, additions] of Object.entries(TOLLROAD_AFTERMATH_TEXT)) {
+    Object.assign(STRINGS[language], additions);
+}
+
+const DEBUG_VICTORY_TEXT = {
+    en: {
+        'ui.hud.debugWin': 'WIN',
+    },
+    es: {
+        'ui.hud.debugWin': 'GANAR',
+    },
+    fr: {
+        'ui.hud.debugWin': 'GAGNER',
+    },
+    ru: {
+        'ui.hud.debugWin': 'ПОБЕДА',
+    },
+};
+
+for (const [language, additions] of Object.entries(DEBUG_VICTORY_TEXT)) {
     Object.assign(STRINGS[language], additions);
 }
 
