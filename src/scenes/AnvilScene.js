@@ -208,6 +208,7 @@ export class AnvilScene extends Phaser.Scene {
         };
         container.on('pointerover', () => {
             if (dragging) return;
+            SoundHelper.playSound(this, 'ui_card_hover', 0.35);
             if (shine && this.anims.exists('hover_cards_anim')) {
                 shine.setVisible(true).play('hover_cards_anim');
             }

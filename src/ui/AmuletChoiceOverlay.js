@@ -96,6 +96,7 @@ export function openAmuletChoiceOverlay(scene, cfg) {
     }).setOrigin(0.5, 0).setDepth(depth + 2));
 
     sprite.on('pointerover', () => {
+      SoundHelper.playSound(scene, 'ui_card_hover', 0.35);
       scene.tweens.add({ targets: sprite, y: cardY - 6, duration: 120, ease: 'Power2' });
       // +10 keeps the tooltip clear of the overlay's own layers (veil, cards,
       // labels sit at depth..depth+2) instead of rendering behind them.

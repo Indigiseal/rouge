@@ -16,6 +16,10 @@ export class SoundHelper {
         // keep passing 'button_click' and a second take can be dropped in here
         // later without touching them.
         button_click: ['ui_click'],
+        // Two takes for a card answering the pointer, picked at random per
+        // hover. Sweeping across a board fires this far more often than any
+        // other UI sound, and one sample repeating that fast reads as a stutter.
+        ui_card_hover: ['ui_card_hover_1', 'ui_card_hover_2'],
         invalid_action: ['invalid_action_1', 'invalid_action_2'],
         legendary_reveal: ['legendary_reveal_1', 'legendary_reveal_2'],
         player_hurt: ['player_hurt_1', 'player_hurt_2', 'player_hurt_3'],

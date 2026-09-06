@@ -20,6 +20,16 @@ export const TOOLTIP_PANEL_SLICE = { left: 5, right: 5, top: 5, bottom: 7 };
 // tooltip text reads dark rather than the pale colours used before it existed.
 export const TOOLTIP_TEXT_COLOR = '#383348';
 
+// Text inset that clears the drawn frame. Top and bottom differ because the
+// art's bottom edge carries the shadow and is 2px taller. Every tooltip in the
+// game lays its text out inside these, so a change to the frame art moves all
+// of them together.
+export const TOOLTIP_PAD = { x: 8, top: 7, bottom: 9 };
+
+// Body type for tooltip text, so the bag, the HUD panels and the board all
+// answer a hover in the same size.
+export const TOOLTIP_BODY_PX = '10px';
+
 // Colours for the fallback rectangle — the previous hand-drawn tooltip look.
 const FALLBACK_FILL = 0x1a120a;
 const FALLBACK_STROKE = 0xb89968;

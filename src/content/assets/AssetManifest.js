@@ -303,6 +303,13 @@ export const ASSET_MANIFEST = [
     // Tick under the volume sliders. Short on purpose: it fires once per step
     // while a slider is being dragged.
     { key: 'ui_slider_tick', path: 'assets/music/UI_Slider_Tick_01.mp3', type: 'audio' },
+    // Cards answering the pointer: board backs, the bag, shop and anvil rows.
+    // Quieter and softer than the button click, because sweeping a mouse across
+    // a full board fires it a dozen times — and two takes rotating at random so
+    // that sweep doesn't machine-gun one sample. Call sites ask for the group
+    // name 'ui_card_hover'; see SFX_VARIANTS in audio/SoundHelper.js.
+    { key: 'ui_card_hover_1', path: 'assets/music/UI_Card_Hover_01.mp3', type: 'audio' },
+    { key: 'ui_card_hover_2', path: 'assets/music/UI_Card_Hover_02.mp3', type: 'audio' },
     { key: 'invalid_action_1', path: 'assets/music/Invalid_Action_01.mp3', type: 'audio' },
     { key: 'invalid_action_2', path: 'assets/music/Invalid_Action_02.mp3', type: 'audio' },
     { key: 'legendary_reveal_1', path: 'assets/music/Legendary_Relic_Reveal_01.mp3', type: 'audio' },

@@ -293,6 +293,7 @@ export class StationRoomBase extends Phaser.Scene {
 
         sprite.setInteractive({ useHandCursor: true });
         sprite.on('pointerover', () => {
+            if (isCard) SoundHelper.playSound(this, 'ui_card_hover', 0.35);
             // Float card up
             renderScene.tweens.add({ targets: sprite, y: y - 5, duration: 150, ease: 'Power2' });
             // Lift the on-card stat value with the card face

@@ -341,27 +341,41 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
   const x = ((minX + maxX) / 2) + 10;
   const y = Math.min(camH - 122, ((minY + maxY) / 2) + 8) - 18;
 
-  const panel = this.scene.add.image(x, animate ? y + 34 : y, textureKey);
+  const panel = this.scene.add.image(x, animate ? y + BOARD_ENTRANCE_DROP : y, textureKey);
   panel.setDepth(0);
   this.floorBoardPanel = panel;
 
-  if (animate) {
-    this.scene.tweens.add({
-      targets: panel,
-      y: y - 8,
-      duration: 260,
-      ease: 'Cubic.easeOut',
-      onComplete: () => {
-        if (!panel.scene) return;
-        this.scene.tweens.add({
-          targets: panel,
-          y,
-          duration: 180,
-          ease: 'Bounce.easeOut'
-        });
-      }
-    });
-  }
+  if (animate) animateBoardEntrance.call(this, panel, y);
+}
+
+// The board slides up into place at the start of a fight: it starts low, rises
+// past its resting line, and settles back onto it.
+//
+// Only the APPROACH was deepened — the drop was 34px, which at this speed was
+// over before the eye found it. The overshoot and settle are the original 8px
+// and 180ms, so the last thing the animation does, and the line the board comes
+// to rest on, are exactly what they were before it was touched.
+const BOARD_ENTRANCE_DROP = 52;
+const BOARD_ENTRANCE_OVERSHOOT = 8;
+const BOARD_ENTRANCE_RISE_MS = 320;
+const BOARD_ENTRANCE_SETTLE_MS = 180;
+
+function animateBoardEntrance(panel, restY) {
+  this.scene.tweens.add({
+    targets: panel,
+    y: restY - BOARD_ENTRANCE_OVERSHOOT,
+    duration: BOARD_ENTRANCE_RISE_MS,
+    ease: 'Cubic.easeOut',
+    onComplete: () => {
+      if (!panel.scene) return;
+      this.scene.tweens.add({
+        targets: panel,
+        y: restY,
+        duration: BOARD_ENTRANCE_SETTLE_MS,
+        ease: 'Bounce.easeOut'
+      });
+    }
+  });
 }
 
 function createBossBoardPanel() {
@@ -374,19 +388,10 @@ function createBossBoardPanel() {
   const y = Math.min(camH - 122, camH / 2 + 8) - 18;
   // -10 (was +10): shifted 20px left to match the combat board and clear
   // the combat-log panel on the right.
-  const panel = this.scene.add.image((camW / 2) - 10, y + 34, 'gamingBoard');
+  const panel = this.scene.add.image((camW / 2) - 10, y + BOARD_ENTRANCE_DROP, 'gamingBoard');
   panel.setDepth(0);
   this.floorBoardPanel = panel;
-  this.scene.tweens.add({
-    targets: panel,
-    y: y - 8,
-    duration: 260,
-    ease: 'Cubic.easeOut',
-    onComplete: () => {
-      if (!panel.scene) return;
-      this.scene.tweens.add({ targets: panel, y, duration: 180, ease: 'Bounce.easeOut' });
-    }
-  });
+  animateBoardEntrance.call(this, panel, y);
 }
 
 function _brickSizeForCount(n) {

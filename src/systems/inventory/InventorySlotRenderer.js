@@ -142,7 +142,9 @@ export const InventorySlotRenderer = {
             // Get the current slot sprite reference
             const currentSlot = this.slotSprites[slotIndex];
             if (!currentSlot) return;
-            
+
+            SoundHelper.playSound(this.scene, 'ui_card_hover', 0.35);
+
             // Show and animate hover sprite
             if (currentSlot.hoverSprite) {
                 currentSlot.hoverSprite.setVisible(true);
