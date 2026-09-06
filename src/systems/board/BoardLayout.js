@@ -339,7 +339,9 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
   // Viewport in world units, not device pixels — see cameraWorldSize.
   const { width: camW, height: camH } = cameraWorldSize(cam);
   const x = ((minX + maxX) / 2) + 10;
-  const y = Math.min(camH - 122, ((minY + maxY) / 2) + 8) - 18;
+  // 8, not the 18 this sat at: the board art rode 10px high of the cards it is
+  // supposed to be under. Taya's call, off the built screen.
+  const y = Math.min(camH - 122, ((minY + maxY) / 2) + 8) - BOARD_PANEL_LIFT;
 
   const panel = this.scene.add.image(x, animate ? y + BOARD_ENTRANCE_DROP : y, textureKey);
   panel.setDepth(0);
@@ -355,6 +357,9 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
 // over before the eye found it. The overshoot and settle are the original 8px
 // and 180ms, so the last thing the animation does, and the line the board comes
 // to rest on, are exactly what they were before it was touched.
+// How far the board art rides above the centre of the card cluster it frames.
+const BOARD_PANEL_LIFT = 8;
+
 const BOARD_ENTRANCE_DROP = 52;
 const BOARD_ENTRANCE_OVERSHOOT = 8;
 const BOARD_ENTRANCE_RISE_MS = 320;
