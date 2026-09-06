@@ -4,7 +4,7 @@
 
 import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from '../i18n/i18n.js';
 import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
-import { createTooltipPanel, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
+import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
 import { cameraWorldSize } from '../config/renderScale.js';
 
 // Default tooltip depth — above the board and its card FX, below the modal
@@ -324,11 +324,9 @@ export function showEnemyTooltip(scene, card, gap = BOARD_TOOLTIP_GAP) {
 function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth = TOOLTIP_DEPTH, gap = TOOLTIP_GAP) {
     if (!name && !body) return;
 
-    // Padding clears the drawn frame rather than the old 1px stroke: the art's
-    // bottom edge is taller than its top, so the two differ.
-    const padX = 8;
-    const padTop = 7;
-    const padBottom = 9;
+    // Padding clears the drawn frame rather than the old 1px stroke, and comes
+    // from the frame's own module so every tooltip insets by the same amount.
+    const { x: padX, top: padTop, bottom: padBottom } = TOOLTIP_PAD;
     const maxWidth = 200;
 
     const nameText = scene.add.text(0, 0, name, {
@@ -341,7 +339,7 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth 
 
     const bodyText = body
         ? scene.add.text(0, Math.ceil(nameText.height) + 3, body, {
-            fontSize: '10px',
+            fontSize: TOOLTIP_BODY_PX,
             fill: TOOLTIP_TEXT_COLOR,
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             wordWrap: { width: maxWidth },

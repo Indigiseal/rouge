@@ -1,6 +1,7 @@
 // The coach-marks are placed in world coordinates. scale.width/height are the
 // device viewport (twice as large since the canvas went full resolution), so
 // reading those put every highlight in the wrong place.
+import { SoundHelper } from '../audio/SoundHelper.js';
 import { WORLD_WIDTH, WORLD_HEIGHT } from '../config/renderScale.js';
 import { t } from '../i18n/i18n.js';
 // TutorialOverlay — the coach-mark layer used by the guided tutorial.
@@ -115,6 +116,7 @@ export class TutorialOverlay {
             fontSize: '9px', fill: '#dddddd', fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(this.ART_DEPTH + 1);
         this.skipBg.on('pointerdown', (p, x, y, event) => {
+            SoundHelper.playVariant(this.scene, 'button_click', 0.5);
             event?.stopPropagation?.();
             if (this._onSkip) this._onSkip();
         });

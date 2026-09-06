@@ -1,4 +1,5 @@
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
+import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from '../../ui/NineSlicePanel.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
 import { t, translateDescription, translateGemEffect, translateItemName, tCount } from '../../i18n/i18n.js';
@@ -10,6 +11,14 @@ import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 // against the value picked in the art tool.
 const SLOT_INK = 0x0e0b10;
 const SLOT_FILL_ALPHA = 136 / 255;
+
+// Bag tooltip. Frame, ink, type size and padding all come from the shared
+// tooltip skin; only the text column is local, narrower than the board's 200
+// because this box is pinned beside the pointer down in the bag rather than
+// floated over open board. The enchant line takes the rarity blue the shared
+// tooltip already uses for rare items.
+const TOOLTIP_TEXT_W = 138;
+const TOOLTIP_ENCHANT_COLOR = '#66aaff';
 
 export const InventoryView = {
     setVisibility(isVisible) {
@@ -77,25 +86,12 @@ export const InventoryView = {
         slot.webOverlay?.setDepth?.(depths.webOverlay);
         slot.twinkleSprite?.setDepth?.(depths.twinkle);
     },
-    ensureWebOverlayTexture() {
-        if (this.scene.textures.exists('webCardOverlay')) return;
-        const g = this.scene.make.graphics({ x: 0, y: 0, add: false });
-        g.fillStyle(0xc8d8e8, 0.4);
-        g.fillRect(0, 0, 54, 70);
-        g.lineStyle(1, 0xffffff, 0.75);
-        for (let i = -70; i < 54; i += 7) {
-            g.lineBetween(i, 0, i + 70, 70);
-        }
-        g.generateTexture('webCardOverlay', 54, 70);
-        g.destroy();
-    },
     applyWebOverlay(slotIndex) {
         const slot = this.slotSprites?.[slotIndex];
         const cardSprite = slot?.card;
         const cardData = this.slots?.[slotIndex];
         if (!slot || !cardSprite?.scene || !(cardData?.webbedTurns > 0)) return;
 
-        this.ensureWebOverlayTexture();
         if (slot.webOverlay?.scene) {
             slot.webOverlay.x = cardSprite.x;
             slot.webOverlay.y = cardSprite.y;
@@ -839,31 +835,36 @@ export const InventoryView = {
         if (!cardData) return;
 
         const allLines = this.getCardTooltipLines(cardData, slotIndex);
-        // The enchant gets its own text object so it can be bright blue — a
-        // single Text can only carry one colour, and this line is the reason
-        // the player is hovering an enchanted weapon in the first place.
+        // The enchant is split out into its own text object because a single
+        // Text can only carry one colour.
         const enchantLine = describeWeaponEnchant(this.scene, cardData);
         const lines = enchantLine ? allLines.filter(line => line !== enchantLine) : allLines;
 
+        // Same frame, ink, type size and padding as every other hover tooltip in
+        // the game — see renderTooltipBox in ui/ItemTooltip.js. The bag used to
+        // draw its own dark plate with white 8px text, so pointing at a card in
+        // your hand answered in a different visual language from pointing at the
+        // same card on the board.
         const textStyle = {
-            fontSize: '8px',
-            fill: '#ffffff',
+            fontSize: TOOLTIP_BODY_PX,
+            fill: TOOLTIP_TEXT_COLOR,
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
-            lineSpacing: 1,
-            wordWrap: { width: 138 }
+            lineSpacing: 2,
+            wordWrap: { width: TOOLTIP_TEXT_W }
         };
         const tooltipText = this.scene.add.text(0, 0, lines.join('\n'), textStyle).setOrigin(0, 0);
+        // The enchant keeps a colour of its own — it is why the player is
+        // hovering an enchanted weapon — but takes the rarity blue the shared
+        // tooltip already uses, which reads on the light panel.
         const enchantText = enchantLine
-            ? this.scene.add.text(0, 0, enchantLine, { ...textStyle, fill: '#66ccff' }).setOrigin(0, 0)
+            ? this.scene.add.text(0, 0, enchantLine, { ...textStyle, fill: TOOLTIP_ENCHANT_COLOR }).setOrigin(0, 0)
             : null;
 
         const contentWidth = Math.max(tooltipText.width, enchantText?.width || 0);
         const contentHeight = tooltipText.height + (enchantText ? enchantText.height + 2 : 0);
-        const width = Math.ceil(Math.min(154, Math.max(92, contentWidth + 10)));
-        const height = Math.ceil(contentHeight + 10);
-        const bg = this.scene.add.rectangle(0, 0, width, height, 0x111122, 0.94)
-            .setOrigin(0, 0)
-            .setStrokeStyle(1, 0xf2d3aa);
+        const width = Math.ceil(Math.min(TOOLTIP_TEXT_W, contentWidth) + TOOLTIP_PAD.x * 2);
+        const height = Math.ceil(contentHeight + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom);
+        const bg = createTooltipPanel(this.scene, width, height);
 
         const pointerPixelX = Math.round(pointerX);
         const pointerPixelY = Math.round(pointerY);
@@ -872,8 +873,8 @@ export const InventoryView = {
         const targetY = pointerPixelY - Math.round(Math.min(24, height / 2));
         const clampedX = Math.round(Phaser.Math.Clamp(targetX, 6, 640 - width - 6));
         const clampedY = Math.round(Phaser.Math.Clamp(targetY, 6, 360 - height - 6));
-        tooltipText.setPosition(5, 5);
-        enchantText?.setPosition(5, 5 + tooltipText.height + 2);
+        tooltipText.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top);
+        enchantText?.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top + tooltipText.height + 2);
 
         const parts = enchantText ? [bg, tooltipText, enchantText] : [bg, tooltipText];
         this.cardTooltip = this.scene.add.container(clampedX, clampedY, parts);

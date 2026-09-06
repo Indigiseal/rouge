@@ -12,11 +12,40 @@ import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js';
 import { cameraWorldSize } from '../../config/renderScale.js';
 
+// --- Opening deal -----------------------------------------------------------
+// Every card on a fresh floor falls into its slot from above, top rows first,
+// so the room opens by being dealt rather than by already being there.
+//
+// Shorter drop and tighter stagger than a reinforcement wave: that one is an
+// event and can afford to take its time, this runs on every floor and has to
+// read as a flourish rather than a wait.
+const DEAL_DROP_HEIGHT = 220;
+const DEAL_FALL_MS = 340;
+// Held until the board panel has finished rising, so the cards land on a table
+// that has stopped moving.
+const DEAL_START_DELAY = 200;
+// Per-card delay, and the budget the whole cascade has to fit inside. A 6-card
+// floor deals at the full 45ms; a 26-card floor tightens to keep the opening
+// the same length rather than three times as long.
+const DEAL_STAGGER_MAX = 45;
+const DEAL_CASCADE_BUDGET_MS = 520;
+
+function dealStaggerFor(count) {
+    if (count <= 1) return 0;
+    return Math.min(DEAL_STAGGER_MAX, DEAL_CASCADE_BUDGET_MS / (count - 1));
+}
+
+// How long from spawn until the last card has settled.
+function dealDurationFor(count) {
+    return DEAL_START_DELAY + Math.max(0, count - 1) * dealStaggerFor(count) + DEAL_FALL_MS;
+}
+
 export class FloorSpawner {
     constructor(cs) {
         this._baseCardsForFloor = _baseCardsForFloor.bind(cs);
         this._effectiveCardCount = _effectiveCardCount.bind(cs);
         this.spawnFloorCards = spawnFloorCards.bind(cs);
+        this.dealBoardCardsIn = dealBoardCardsIn.bind(cs);
         this.spawnTutorialCards = spawnTutorialCards.bind(cs);
         this.revealTutorialLightningTargets = revealTutorialLightningTargets.bind(cs);
         this.findTutorialCard = findTutorialCard.bind(cs);
@@ -155,6 +184,7 @@ function spawnFloorCards() {
     cardSprite.on('pointerover', () => {
       const card = this.boardCards[i];
       if (card && !card.revealed) {
+        SoundHelper.playSound(this.scene, 'ui_card_hover', 0.35);
         shadow.setAlpha(1);
         this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(card, y) - 5, duration: 150 });
         cardSprite.setTexture(this._cardBackKey());
@@ -347,7 +377,9 @@ function spawnFloorCards() {
   // flip-open feel — instead of popping them all at once. Order by board
   // position (top row first, then left→right) so the wave reads cleanly,
   // and wait a short beat for the board panel to settle in first.
-  const revealSettleMs = 150;
+  // Wait out the deal below: a card cannot be flipped open while it is still
+  // falling towards the slot it will be flipped open in.
+  const revealSettleMs = dealDurationFor(initialCardCount) + 80;
   const revealStaggerMs = 120;
   const revealOrder = picks.slice().sort((a, b) => {
     const ca = cells[a], cb = cells[b];
@@ -384,6 +416,87 @@ function spawnFloorCards() {
       this.revealCard(cardIdx, true);
     }
   }
+
+  // Last thing the spawn does: everything above reads and writes the cards at
+  // their resting positions, and this puts them in the air to fall back into
+  // those same positions.
+  this.dealBoardCardsIn();
+}
+
+/**
+ * Lifts every card on the board to `DEAL_DROP_HEIGHT` above its slot and lets
+ * it fall back, staggered top row first and then left to right so the board
+ * fills like a dealt hand.
+ *
+ * Called at the very END of a spawn, after row bands, neighbours and the
+ * amulet reveals have all read the cards at their resting positions — those
+ * read `sprite.y` directly and would band the board wrongly if the cards were
+ * already in the air. Anything the spawn opened face-up simply falls in
+ * face-up.
+ *
+ * Returns the ms until the last card lands.
+ */
+function dealBoardCardsIn() {
+    const cells = this._boardCells;
+    if (!Array.isArray(cells)) return 0;
+
+    const falling = this.boardCards
+        .map((card, index) => ({ card, cell: cells[index] }))
+        .filter(({ card, cell }) => cell && card?.sprite?.scene);
+    if (!falling.length) return 0;
+
+    // Top rows land first, then left to right across each row — a pour, not a
+    // scatter. Cards keep the slot they were dealt; only their arrival is
+    // sequenced.
+    falling.sort((a, b) => (a.cell.r - b.cell.r) || (a.cell.c - b.cell.c));
+
+    const stagger = dealStaggerFor(falling.length);
+    falling.forEach(({ card }, order) => {
+        const sprite = card.sprite;
+        const restY = Number.isFinite(card.restY) ? card.restY : sprite.y;
+        const delay = DEAL_START_DELAY + order * stagger;
+
+        // A relic can open a card during the spawn (Watcher's Lamp, Wayfinder's
+        // Compass), and an open card carries its pips and value. They ride down
+        // with it rather than hanging at the slot waiting for it.
+        if (card.infoText?.scene) {
+            const infoRestY = card.infoText.y;
+            card.infoText.y = infoRestY - DEAL_DROP_HEIGHT;
+            this.scene.tweens.add({
+                targets: card.infoText,
+                y: infoRestY,
+                delay,
+                duration: DEAL_FALL_MS,
+                ease: 'Bounce.easeOut',
+                onUpdate: this.snapYOnUpdate,
+            });
+        }
+
+        sprite.y = restY - DEAL_DROP_HEIGHT;
+        // A card in the air must not be clickable: flipping one mid-fall would
+        // reveal it at whatever height it had reached. Switch the input object
+        // off rather than calling disableInteractive/setInteractive — a card the
+        // spawn already opened may be a gem, and re-arming it with a bare
+        // setInteractive() would drop the draggable flag enableGemDrag set.
+        if (sprite.input) sprite.input.enabled = false;
+
+        this.scene.tweens.add({
+            targets: sprite,
+            y: restY,
+            delay,
+            duration: DEAL_FALL_MS,
+            ease: 'Bounce.easeOut',
+            onUpdate: this.snapYOnUpdate,
+            onComplete: () => {
+                if (!sprite.scene) return;
+                snapOriginToPixelGrid(sprite);
+                if (sprite.input) sprite.input.enabled = true;
+                SoundHelper.playVariant(this.scene, 'card_place', 0.3);
+            },
+        });
+    });
+
+    return dealDurationFor(falling.length);
 }
 
 function spawnTutorialCards() {
@@ -475,6 +588,7 @@ function spawnTutorialCards() {
     cardSprite.on('pointerover', () => {
       const card = this.boardCards[i];
       if (card && !card.revealed) {
+        SoundHelper.playSound(this.scene, 'ui_card_hover', 0.35);
         shadow.setAlpha(1);
         this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(card, y) - 5, duration: 150 });
         cardSprite.setTexture(this._cardBackKey());
@@ -624,6 +738,7 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
       cardSprite.on('pointerover', () => {
         const current = this.boardCards[index];
         if (!current || current.revealed) return;
+        SoundHelper.playSound(this.scene, 'ui_card_hover', 0.35);
         shadow?.setAlpha(1);
         this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(current, y) - 5, duration: 150 });
         cardSprite.setTexture(this._cardBackKey());
@@ -755,6 +870,7 @@ function spawnBossRewardBoard(items) {
         }
         cardSprite.on('pointerover', () => {
             if (cardSprite.getData('boardGemDragging')) return;
+            SoundHelper.playSound(this.scene, 'ui_card_hover', 0.35);
             // Lift the card and round each frame so its pixel art stays crisp.
             this.scene.tweens.add({
                 targets: cardSprite, y: cardY - 5, duration: 150, ease: 'Power2',
@@ -1625,6 +1741,7 @@ function respawnCardOnBoard(cardData, options = {}) {
     cardSprite.on('pointerover', () => {
         const c = this.boardCards[slot];
         if (c && !c.revealed) {
+            SoundHelper.playSound(this.scene, 'ui_card_hover', 0.35);
             shadow.setAlpha(1);
             this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(c, y) - 5, duration: 150 });
             cardSprite.setTexture(this._cardBackKey());
@@ -1720,6 +1837,7 @@ function dropWaveCards() {
         cardSprite.on('pointerover', () => {
             const c = this.boardCards[slot];
             if (c && !c.revealed) {
+                SoundHelper.playSound(this.scene, 'ui_card_hover', 0.35);
                 shadow.setAlpha(1);
                 this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(c, y) - 5, duration: 150 });
                 cardSprite.setTexture(this._cardBackKey());

@@ -294,6 +294,7 @@ export class StationRoomBase extends Phaser.Scene {
         sprite.setInteractive({ useHandCursor: true, draggable: data.type === 'gem' });
         sprite.on('pointerover', () => {
             if (sprite.getData('shopGemDragging')) return;
+            if (isCard) SoundHelper.playSound(this, 'ui_card_hover', 0.35);
             // Float card up
             renderScene.tweens.add({ targets: sprite, y: y - 5, duration: 150, ease: 'Power2' });
             // Lift the on-card stat value with the card face
@@ -592,6 +593,7 @@ export class StationRoomBase extends Phaser.Scene {
         }).setOrigin(0.5);
 
         button.on('pointerdown', () => {
+            SoundHelper.playVariant(this, 'button_click', 0.5);
             if (button.setTexture && this.textures.exists('nextTurnDown')) button.setTexture('nextTurnDown');
             if (button.setTint) button.setTint(0x888888);
             button.y = baseY + 1;

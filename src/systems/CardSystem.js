@@ -117,6 +117,7 @@ export class CardSystem {
     _baseCardsForFloor(...args) { return this.spawner._baseCardsForFloor(...args); }
     _effectiveCardCount(...args) { return this.spawner._effectiveCardCount(...args); }
     spawnFloorCards(...args) { return this.spawner.spawnFloorCards(...args); }
+    dealBoardCardsIn(...args) { return this.spawner.dealBoardCardsIn(...args); }
     spawnTutorialCards(...args) { return this.spawner.spawnTutorialCards(...args); }
     revealTutorialLightningTargets(...args) { return this.spawner.revealTutorialLightningTargets(...args); }
     findTutorialCard(...args) { return this.spawner.findTutorialCard(...args); }
@@ -428,10 +429,13 @@ export class CardSystem {
     }
 
     /**
-     * Revealed enemies/bosses: passport tooltip + the same lift as face-down
-     * card backs (y - 5). The HP digits and status icons track the sprite so
-     * they don't lag behind, but the shadow stays on the floor — the gap that
-     * opens under a lifted card is the point of it.
+     * Revealed enemies/bosses: the passport tooltip, and nothing else.
+     *
+     * They used to lift 5px and raise a shadow like a face-down card, dragging
+     * HP digits, status markers and the frozen frame along with them — a lot of
+     * motion on a card you cannot pick up, only read. The card stays put now,
+     * and stays silent with it: the hover sound accompanies the lift, so on a
+     * card that doesn't move it would be a noise from nowhere.
      */
     _attachEnemyBoardHover(card) {
         if (!card?.sprite || !card.data) return;
@@ -440,89 +444,12 @@ export class CardSystem {
 
         const sprite = card.sprite;
         const scene = this.scene;
-        let lifted = false;
-
-        const syncFollowers = () => {
-            if (!card.sprite?.scene) return;
-            const s = card.sprite;
-            const x = Math.round(s.x);
-            const y = Math.round(s.y);
-            if (card.shadow?.scene) {
-                card.shadow.x = x;
-                // The shadow stays on the floor while the card lifts — that
-                // gap IS the hover effect. It sits behind the card at rest, so
-                // dragging it up with the sprite kept it hidden and no revealed
-                // card ever appeared to have one. Face-down cards get this
-                // right by simply never moving their shadow.
-                const groundY = Number.isFinite(card._hoverHomeY) ? card._hoverHomeY
-                    : Number.isFinite(card.restY) ? card.restY
-                    : y;
-                card.shadow.y = groundY + 28;
-            }
-            if (card.infoText?.scene) {
-                card.infoText.x = x;
-                card.infoText.y = y + (card._infoOffsetY || 0);
-            }
-            if (card.frozenFrame?.scene) {
-                card.frozenFrame.x = x;
-                card.frozenFrame.y = y;
-            }
-            const halfW = (s.displayWidth || 52) / 2;
-            const halfH = (s.displayHeight || 70) / 2;
-            const bodyOffsetY = card.data?.name === 'Spider Queen' ? 60 : 0;
-            const mx = Math.round(x + halfW - 2);
-            const my = Math.round(y - halfH + 2 + bodyOffsetY);
-            if (card.poisonMarker?.scene) {
-                card.poisonMarker.x = mx;
-                card.poisonMarker.y = my;
-            }
-            if (card.shockMarker?.scene) {
-                card.shockMarker.x = mx;
-                card.shockMarker.y = my;
-            }
-            if (card.controlHesitationMarker?.scene) {
-                const hx = Math.round(x - halfW + 7);
-                const hy = Math.round(y - halfH + 7);
-                card.controlHesitationMarker.x = hx;
-                card.controlHesitationMarker.y = hy;
-            }
-            if (card.controlTreacheryMarker?.scene) {
-                const slot = card.data?.controlHesitation ? 1 : 0;
-                card.controlTreacheryMarker.x = Math.round(x - halfW + 7 + slot * 11);
-                card.controlTreacheryMarker.y = Math.round(y - halfH + 7);
-            }
-        };
-
-        const liftTo = (targetY) => {
-            scene.tweens.killTweensOf(sprite);
-            scene.tweens.add({
-                targets: sprite,
-                y: targetY,
-                duration: 150,
-                onUpdate: () => {
-                    snapOriginToPixelGrid(sprite);
-                    syncFollowers();
-                },
-                onComplete: () => {
-                    snapOriginToPixelGrid(sprite);
-                    syncFollowers();
-                },
-            });
-        };
 
         sprite.on('pointerover', () => {
             if (!card.revealed || !card.sprite?.scene) return;
-            if (!lifted) {
-                lifted = true;
-                // Prefer the slot restY so a stuck mid-lift reveal can't become
-                // the new "home" and float the card forever.
-                card._hoverHomeY = Number.isFinite(card.restY)
-                    ? card.restY
-                    : Math.round(sprite.y);
-                card._infoOffsetY = (card.infoText?.y ?? sprite.y) - sprite.y;
-                if (card.shadow) card.shadow.setAlpha(1);
-                liftTo(card._hoverHomeY - 5);
-            }
+            // No hover sound here. The card no longer moves under the pointer,
+            // and a sound with nothing to accompany reads as a stray noise —
+            // the hover sound belongs to cards that lift.
             if (kind === 'boss') {
                 showBossTooltip(scene, card.data, sprite.x, sprite.y, BOARD_TOOLTIP_GAP);
             } else {
@@ -531,12 +458,6 @@ export class CardSystem {
         });
         sprite.on('pointerout', () => {
             hideItemTooltip(scene);
-            if (!lifted) return;
-            lifted = false;
-            const home = Number.isFinite(card.restY)
-                ? card.restY
-                : (card._hoverHomeY ?? Math.round(sprite.y + 5));
-            liftTo(home);
         });
         sprite.once('destroy', () => hideItemTooltip(scene));
     }

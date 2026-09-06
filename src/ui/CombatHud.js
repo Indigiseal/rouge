@@ -2,6 +2,7 @@
 // Mixed into GameScene via Object.assign(GameScene.prototype, CombatHud).
 
 import { snapOriginToPixelGrid } from './PixelSnap.js';
+import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { t, tCount, translateDescription, translateItemName } from '../i18n/i18n.js';
 import {
@@ -808,19 +809,21 @@ export const CombatHud = {
         }
 
         const description = `${translateItemName(this, relic)}\n${translateDescription(this, relic.description)}`;
-        const tooltipText = this.add.text(6, 6, description, {
-            fontSize: '10px',
-            fill: relic.cursed ? '#ff9999' : '#ffd700',
+        // Same frame, ink, type size and padding as every other hover tooltip.
+        // A cursed relic keeps a red of its own; the rest read as body text
+        // rather than the gold that suited the old black plate.
+        const tooltipText = this.add.text(0, 0, description, {
+            fontSize: TOOLTIP_BODY_PX,
+            fill: relic.cursed ? '#ff6666' : TOOLTIP_TEXT_COLOR,
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             align: 'left',
             wordWrap: { width: 190 }
         }).setOrigin(0);
+        tooltipText.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top);
 
-        const width = Math.ceil(Math.min(220, Math.max(120, tooltipText.width + 12)));
-        const height = Math.ceil(tooltipText.height + 12);
-        const bg = this.add.rectangle(0, 0, width, height, 0x000000, 0.9)
-            .setOrigin(0)
-            .setStrokeStyle(1, relic.cursed ? 0xff6666 : 0xffd700);
+        const width = Math.ceil(tooltipText.width) + TOOLTIP_PAD.x * 2;
+        const height = Math.ceil(tooltipText.height) + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom;
+        const bg = createTooltipPanel(this, width, height);
 
         const clampedX = Phaser.Math.Clamp(Math.round(x), 4, 640 - width - 4);
         const clampedY = Phaser.Math.Clamp(Math.round(y), 4, 360 - height - 4);
@@ -850,23 +853,23 @@ export const CombatHud = {
 
         const tooltipX = Math.round(this.armorPanel.x + 50);
         const tooltipY = Math.round(this.armorPanel.y - 20);
+        // Same frame, ink, type size and padding as every other hover tooltip —
+        // this panel used to answer with a black box and blue text of its own.
         const tooltipText = this.add.text(0, 0, lines, {
-            fontSize: '10px',
-            fill: '#66aaff',
+            fontSize: TOOLTIP_BODY_PX,
+            fill: TOOLTIP_TEXT_COLOR,
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             align: 'center',
             lineSpacing: 2
         }).setOrigin(0, 0);
         // Auto-size the background to fit however many lines we have
-        const lineCount = lines.split('\n').length;
-        const width = Math.max(120, Math.ceil(tooltipText.width) + 10);
-        const height = lineCount * 13 + 10;
-        const bg = this.add.rectangle(0, 0, width, height, 0x000000, 0.85)
-            .setOrigin(0, 0)
-            .setStrokeStyle(1, 0x66aaff);
+        const textWidth = Math.ceil(tooltipText.width);
+        const width = textWidth + TOOLTIP_PAD.x * 2;
+        const height = Math.ceil(tooltipText.height) + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom;
+        const bg = createTooltipPanel(this, width, height);
         tooltipText.setPosition(
-            Math.round((width - Math.ceil(tooltipText.width)) / 2),
-            5
+            Math.round((width - textWidth) / 2),
+            TOOLTIP_PAD.top
         );
 
         this.armorTooltip = this.add.container(tooltipX, tooltipY, [bg, tooltipText]);
@@ -1109,19 +1112,23 @@ export const CombatHud = {
             }
         }
         
+        // Same frame, ink and padding as every other hover tooltip. Cursed
+        // amulets keep their red, which is the shared tooltip's cursed rarity
+        // colour; everything else takes the body ink.
         const tooltipText = this.add.text(0, 0, description, {
-            fontSize: '11px',
-            fill: definition && definition.cursed ? '#ff6666' : '#ffffff',
+            fontSize: TOOLTIP_BODY_PX,
+            fill: definition && definition.cursed ? '#ff6666' : TOOLTIP_TEXT_COLOR,
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
-            backgroundColor: '#000000',
-            padding: { x: 5, y: 3 },
             wordWrap: { width: 200 }
-        }).setOrigin(0, 0.5);
-        
-        const tooltipBg = this.add.rectangle(0, 0, tooltipText.width, tooltipText.height, 0x000000, 0.7)
-            .setStrokeStyle(1, definition && definition.cursed ? 0xff6666 : 0xffffff)
-            .setOrigin(0, 0.5);
-        
+        }).setOrigin(0, 0);
+
+        const width = Math.ceil(tooltipText.width) + TOOLTIP_PAD.x * 2;
+        const height = Math.ceil(tooltipText.height) + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom;
+        // The strip anchors this box at the amulet's centre line, so the panel
+        // hangs half above it rather than starting there.
+        const tooltipBg = createTooltipPanel(this, width, height).setPosition(0, -Math.round(height / 2));
+        tooltipText.setPosition(TOOLTIP_PAD.x, -Math.round(height / 2) + TOOLTIP_PAD.top);
+
         this.amuletTooltip = this.add.container(x, y, [tooltipBg, tooltipText]);
         this.amuletTooltip.setDepth(100);
     },

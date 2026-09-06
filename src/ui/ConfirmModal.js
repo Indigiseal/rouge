@@ -23,7 +23,10 @@ function createModalButton(scene, x, y, width, height, text, color, callback) {
             button.setFillStyle(color, 0.5);
         })
         .on('pointerout', () => button.setFillStyle(color, 0.3))
-        .on('pointerdown', callback);
+        .on('pointerdown', () => {
+            SoundHelper.playVariant(scene, 'button_click', 0.5);
+            callback();
+        });
 
     return { button, text: buttonText };
 }

@@ -64,7 +64,10 @@ export class TalentTreeScene extends Phaser.Scene {
       .setStrokeStyle(1, 0xd4a017)
       .setInteractive({ useHandCursor: true });
     this.buyLabel = this.add.text(466, 262, t(this, 'ui.talents.buy'), serifStyle('14px', '#e6edf3')).setOrigin(0.5);
-    this.buyBtn.on('pointerdown', () => this.tryBuy());
+    this.buyBtn.on('pointerdown', () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
+      this.tryBuy();
+    });
 
     this.createBranchColumns();
     this.createFooter();
@@ -106,7 +109,10 @@ export class TalentTreeScene extends Phaser.Scene {
         .setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
       const rankText = this.add.text(x + 58, y, '', serifStyle('9px', '#c9d1d9')).setOrigin(1, 0.5);
 
-      const select = () => this.selectTalent(talentId);
+      const select = () => {
+        SoundHelper.playVariant(this, 'button_click', 0.45);
+        this.selectTalent(talentId);
+      };
       bg.on('pointerover', () => {
         SoundHelper.playVariant(this, 'hover_button', 0.3);
         bg.setStrokeStyle(1, 0xd4a017);
@@ -138,7 +144,10 @@ export class TalentTreeScene extends Phaser.Scene {
         btn.setStrokeStyle(1, 0xd4a017);
       });
       btn.on('pointerout', () => btn.setStrokeStyle(1, stroke));
-      btn.on('pointerdown', onClick);
+      btn.on('pointerdown', (...args) => {
+        SoundHelper.playVariant(this, 'button_click', 0.5);
+        onClick?.(...args);
+      });
       return { btn, text };
     };
 

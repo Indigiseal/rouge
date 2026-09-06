@@ -44,7 +44,10 @@ export class ShopScene extends StationRoomBase {
         })
         .setOrigin(0.5)
         .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => this.toggleMode());
+        .on('pointerdown', () => {
+            SoundHelper.playVariant(this, 'button_click', 0.5);
+            this.toggleMode();
+        });
         
         // Generate and display shop items
         this.generateShopItems();

@@ -1,4 +1,15 @@
 // scenes/MainMenuScene.js
+import {
+    OptionsSkin,
+    OPTIONS_BACKDROP,
+    OPTIONS_INK,
+    OPTIONS_PANEL_H,
+    OPTIONS_PANEL_W,
+    OPTIONS_RESET_INK,
+    RESET_LABEL_OFFSET_X,
+    UI_BUTTON,
+    UI_BUTTON_W,
+} from '../ui/OptionsSkin.js';
 import { SaveManager } from '../managers/SaveManager.js';
 import { getLanguageName, getLanguageOptions, normalizeLanguageCode, t } from '../i18n/i18n.js';
 import {
@@ -15,23 +26,10 @@ import { openConfirmModal } from '../ui/ConfirmModal.js';
 import { FONT_SIZE, fitLabel, serifStyle } from '../ui/uiFont.js';
 
 // --- Options screen skin -----------------------------------------------------
-// uiButtons.png stacks one 128x32 button per row.
-const UI_BUTTON = { language: 0, barEmpty: 1, barFill: 2, back: 3, reset: 4 };
-const UI_BUTTON_W = 128;
-// The bars' pointed end caps eat the first and last few pixels, so the stretch
-// that actually reads as "filled" runs from x=5 to x=122 inside the 128px frame.
-const BAR_TRACK_X = 5;
-const BAR_TRACK_W = 117;
-const OPTIONS_PANEL_W = 376;
-const OPTIONS_PANEL_H = 292;
-const OPTIONS_INK = '#050505';        // OPTIONS, Music Volume, Sound Effects
-const OPTIONS_RESET_INK = '#ffc2a2';  // label on the red reset plate
-const OPTIONS_BACKDROP = 0x4a433c;
+// Plates, panel size, palette and label offsets all come from ui/OptionsSkin.js,
+// which the pause screen wears too. Only this screen's own geometry lives here.
 // Reset sits in the screen's bottom-right corner, off the paper entirely.
 const SCREEN_MARGIN = 8;
-// The reset plate carries a warning badge on its left ~27px, so its label sits
-// centred in what's left of the plate rather than on the plate's own centre.
-const RESET_LABEL_OFFSET_X = 14;
 // The language plate is drawn in the top 26px of its 32px cell, so its label
 // needs lifting to sit on the plate rather than on the cell's centre line.
 const LANGUAGE_LABEL_OFFSET_Y = -3;
@@ -114,8 +112,12 @@ export class MainMenuScene extends Phaser.Scene {
                 veil.destroy();
                 label.destroy();
             });
-            // The queued menu theme flushes itself once the context resumes.
-            SoundHelper.resumeAudio(this);
+            // The menu track may still be downloading at the moment of the
+            // click. Resume Web Audio, then explicitly preserve/start its
+            // request so the deferred track begins as soon as it is available.
+            SoundHelper.resumeAudio(this)
+                .catch(() => {})
+                .finally(() => MusicManager.play(this, 'menu_music', 0.6, 900));
         };
         veil.once('pointerup', dismiss);
         // A keypress counts as interaction too, so honour it rather than
@@ -149,7 +151,11 @@ export class MainMenuScene extends Phaser.Scene {
         if (!this.mainMenuButtons) return;
         // setText does not re-fit, so a longer translation would overflow the
         // plate it was measured against.
-        const refit = (entry) => entry && fitLabel(
+        // The cog is icon-only, so its entry carries no label at all. Refitting
+        // it threw, and because the throw landed inside cycleLanguage() the
+        // options screen never reached its own refresh — the language changed
+        // everywhere except the window you changed it from.
+        const refit = (entry) => entry?.text && fitLabel(
             entry.text.setFontSize(MENU_LABEL_PX), MENU_PLATE_LABEL_W, MENU_LABEL_PX);
         this.mainMenuButtons.newRun.text.setText(t(this, 'ui.menu.newRun'));
         this.mainMenuButtons.continue.text.setText(t(this, 'ui.menu.continue'));
@@ -196,6 +202,9 @@ export class MainMenuScene extends Phaser.Scene {
         fitLabel(txt, MENU_PLATE_LABEL_W, MENU_LABEL_PX);
 
         if (!disabled) {
+            // A release from the tutorial's Back button can land on this menu.
+            // Only activate a gesture that began on this button.
+            let pressedPointer = null;
             btn.setInteractive({ useHandCursor: true })
                 .on('pointerover', () => {
                     SoundHelper.playVariant(this, 'hover_button', 0.4);
@@ -203,18 +212,23 @@ export class MainMenuScene extends Phaser.Scene {
                     if (hasSprite) btn.setTint(0xdddddd);
                 })
                 .on('pointerout', () => {
+                    pressedPointer = null;
                     btn.clearTint();
                     if (hasSprite) btn.setTexture('nextTurnUp');
                     txt.setY(y);
                 })
-                .on('pointerdown', () => {
+                .on('pointerdown', (pointer) => {
+                    pressedPointer = pointer;
+                    SoundHelper.playVariant(this, 'button_click', 0.5);
                     if (hasSprite) btn.setTexture('nextTurnDown');
                     txt.setY(y + 1); // subtle press down
                 })
-                .on('pointerup', () => {
+                .on('pointerup', (pointer) => {
+                    const activated = pressedPointer !== null && pressedPointer === pointer;
+                    pressedPointer = null;
                     if (hasSprite) btn.setTexture('nextTurnUp');
                     txt.setY(y);
-                    callback();
+                    if (activated) callback();
                 });
         }
 
@@ -247,23 +261,29 @@ export class MainMenuScene extends Phaser.Scene {
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
 
+        let pressedPointer = null;
         btn.setInteractive({ useHandCursor: true })
             .on('pointerover', () => {
                 SoundHelper.playVariant(this, 'hover_button', 0.4);
                 if (hasSprite) btn.setTint(0xdddddd);
             })
             .on('pointerout', () => {
+                pressedPointer = null;
                 if (hasSprite) { btn.clearTint(); btn.setFrame(0); }
                 glyph?.setY(y);
             })
-            .on('pointerdown', () => {
+            .on('pointerdown', (pointer) => {
+                pressedPointer = pointer;
+                SoundHelper.playVariant(this, 'button_click', 0.5);
                 if (hasSprite) btn.setFrame(1);
                 glyph?.setY(y + 1);
             })
-            .on('pointerup', () => {
+            .on('pointerup', (pointer) => {
+                const activated = pressedPointer !== null && pressedPointer === pointer;
+                pressedPointer = null;
                 if (hasSprite) btn.setFrame(0);
                 glyph?.setY(y);
-                callback();
+                if (activated) callback();
             });
 
         return { button: btn, shadow, text: glyph };
@@ -287,7 +307,10 @@ export class MainMenuScene extends Phaser.Scene {
                     button.setFillStyle(color, 0.5);
                 })
                 .on('pointerout', () => button.setFillStyle(color, 0.3))
-                .on('pointerdown', callback);
+                .on('pointerdown', () => {
+                    SoundHelper.playVariant(this, 'button_click', 0.5);
+                    callback();
+                });
         }
 
         return { button, text: buttonText };
@@ -378,6 +401,7 @@ export class MainMenuScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         button.on('pointerdown', () => {
+            SoundHelper.playVariant(this, 'button_click', 0.5);
             const next = !isTestOptionEnabled(optionId);
             setTestOption(optionId, next);
             invalidateTestOptionsCache();
@@ -456,7 +480,7 @@ export class MainMenuScene extends Phaser.Scene {
             });
         keep(languageButton.shadow, languageButton.button, languageButton.text, languageLabel);
 
-        keep(this.add.rectangle(CX, panelTop + 126, 156, 1, 0x8e7352, 0.48));
+        keep(OptionsSkin.createDivider.call(this, CX, panelTop + 126));
 
         // Each row is a tight cluster — label, then its bar, then the reading
         // underneath — so the two volumes read as two groups rather than four
@@ -471,7 +495,7 @@ export class MainMenuScene extends Phaser.Scene {
         this.createVolumeControl(t(this, 'ui.options.musicVolume'), panelTop + 181, 'music',
             { labelRightX, barX, showReading: false });
 
-        keep(this.add.rectangle(CX, panelTop + 216, 156, 1, 0x8e7352, 0.48));
+        keep(OptionsSkin.createDivider.call(this, CX, panelTop + 216));
 
         // Back closes the screen, so it sits centred on the paper it belongs to.
         const backButton = this.createUiButton(CX, panelBottom - 37, UI_BUTTON.back,
@@ -502,65 +526,13 @@ export class MainMenuScene extends Phaser.Scene {
     // Paper panel behind the options controls, at the size Taya specced (376x298).
     // Falls back to a flat plate if the 9-slice art or Phaser's nineslice factory
     // is missing, same habit as the event paper.
-    createOptionsPanel(x, y) {
-        if (this.textures.exists('eventPaper9Slice')) {
-            const addNineSlice = this.add.nineslice || this.add.nineSlice;
-            if (addNineSlice) {
-                try {
-                    return addNineSlice.call(this.add, x, y, 'eventPaper9Slice', null,
-                        OPTIONS_PANEL_W, OPTIONS_PANEL_H, 32, 32, 32, 32);
-                } catch {
-                    // fall through to the flat plate
-                }
-            }
-        }
-        return this.add.rectangle(x, y, OPTIONS_PANEL_W, OPTIONS_PANEL_H, 0xd8b98c)
-            .setStrokeStyle(2, 0x5a3a24);
-    }
+    createOptionsPanel(...args) { return OptionsSkin.createOptionsPanel.apply(this, args); }
 
     // Skinned options button over a uiButtons frame. Same behaviour contract as
     // createSpriteButton — shadow, hover lighten, 1px press nudge. The sheet has
     // no pressed art yet, so the press darkens the plate instead of swapping a
     // frame; point this at a down frame if one arrives.
-    createUiButton(x, y, frame, label, { color = '#ffffff', labelOffsetX = 0, labelOffsetY = 0,
-        labelSize = SERIF_BODY_PX, labelWidth = UI_BUTTON_W - 12, callback } = {}) {
-        const hasSprite = this.textures.exists('uiButtons');
-        const labelY = y + labelOffsetY;
-
-        const shadow = hasSprite
-            ? this.add.image(x, y + 4, 'uiButtons', frame).setOrigin(0.5).setTint(0x000000).setAlpha(0.5)
-            : this.add.rectangle(x, y + 4, UI_BUTTON_W, 26, 0x000000, 0.5).setOrigin(0.5);
-
-        const btn = hasSprite
-            ? this.add.image(x, y, 'uiButtons', frame).setOrigin(0.5)
-            : this.add.rectangle(x, y, UI_BUTTON_W, 26, 0x8a5a32).setStrokeStyle(1, 0x2a1a10).setOrigin(0.5);
-
-        const txt = this.add
-            .text(x + labelOffsetX, labelY, label, serifStyle(labelSize, color))
-            .setOrigin(0.5);
-        fitLabel(txt, labelWidth, labelSize);
-
-        btn.setInteractive({ useHandCursor: true })
-            .on('pointerover', () => {
-                SoundHelper.playVariant(this, 'hover_button', 0.4);
-                if (hasSprite) btn.setTint(0xdddddd);
-            })
-            .on('pointerout', () => {
-                if (hasSprite) btn.clearTint();
-                txt.setY(labelY);
-            })
-            .on('pointerdown', () => {
-                if (hasSprite) btn.setTint(0x999999);
-                txt.setY(labelY + 1);
-            })
-            .on('pointerup', () => {
-                if (hasSprite) btn.clearTint();
-                txt.setY(labelY);
-                callback?.();
-            });
-
-        return { button: btn, shadow, text: txt };
-    }
+    createUiButton(...args) { return OptionsSkin.createUiButton.apply(this, args); }
 
     closeOptionsMenu(parts) {
         parts.forEach(item => item?.destroy?.());
@@ -603,98 +575,8 @@ export class MainMenuScene extends Phaser.Scene {
     // One labelled volume row: label, the skinned bar under it, the reading under
     // that. The filled bar is the same art as the empty one, drawn over it and
     // cropped to the current level, so the two always line up exactly.
-    createVolumeControl(label, y, volumeType, layout = {}) {
-        if (!this.volumeControls) this.volumeControls = [];
+    createVolumeControl(...args) { return OptionsSkin.createVolumeControl.apply(this, args); }
 
-        // Labels are right-aligned against the bar, the way Taya's mockup has
-        // them. At 16px the serif is far wider than the bitmap font it replaced
-        // ("Volumen de música" is 125px against the old 77px), so a left-aligned
-        // label ran straight into the bar.
-        const { labelRightX = 282, barX = 320, showReading = true } = layout;
-        const barY = y;
-        const readingY = barY + 14;
-        const trackX = barX - UI_BUTTON_W / 2 + BAR_TRACK_X;
-        const hasSprite = this.textures.exists('uiButtons');
-
-        const labelText = this.add
-            .text(labelRightX, y, label, serifStyle(SERIF_BODY_PX, OPTIONS_INK))
-            .setOrigin(1, 0.5);
-
-        const currentVolume = this.game.globalVolume[volumeType];
-
-        const sliderBg = hasSprite
-            ? this.add.image(barX, barY, 'uiButtons', UI_BUTTON.barEmpty).setOrigin(0.5)
-            : this.add.rectangle(barX, barY, BAR_TRACK_W, 12, 0x4a3526).setStrokeStyle(1, 0x2a1a10);
-
-        const sliderFill = hasSprite
-            ? this.add.image(barX, barY, 'uiButtons', UI_BUTTON.barFill).setOrigin(0.5)
-            : this.add.rectangle(trackX, barY, BAR_TRACK_W * currentVolume, 12, 0x8a9a7a).setOrigin(0, 0.5);
-
-        const handle = (this.textures.exists('volumeKnob')
-            ? this.add.image(trackX, barY, 'volumeKnob').setOrigin(0.5)
-            : this.add.circle(trackX, barY, 6, 0xffc2a2).setStrokeStyle(1, 0x050505))
-            .setInteractive({ draggable: true, useHandCursor: true });
-
-        const volumeText = this.add.text(barX, readingY, '', {
-            fontSize: '12px',
-            fill: OPTIONS_INK,
-            fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5).setVisible(showReading);
-
-        // Move the slider to a target volume (0..1) and apply it. Shared by both
-        // dragging the handle and clicking anywhere on the track.
-        const applyVolume = (newVolume, { silent = false } = {}) => {
-            newVolume = Phaser.Math.Clamp(newVolume, 0, 1);
-            const filled = BAR_TRACK_W * newVolume;
-            handle.x = trackX + filled;
-            this.game.globalVolume[volumeType] = newVolume;
-
-            if (hasSprite) {
-                // Crop from the frame's left edge through the filled stretch, so
-                // the bar's pointed left cap stays drawn while it has any level.
-                sliderFill.setVisible(newVolume > 0);
-                sliderFill.setCrop(0, 0, BAR_TRACK_X + filled, 32);
-            } else {
-                sliderFill.width = filled;
-            }
-            volumeText.setText(Math.round(newVolume * 100) + '%');
-
-            if (silent) return;
-
-            this.saveSettings();
-            if (volumeType === 'music') MusicManager.updateCurrentVolume(this);
-
-            // Play test sound for feedback
-            if (volumeType === 'sfx' && newVolume > 0) {
-                SoundHelper.playSound(this, 'coin_collect', 0.3);
-            }
-        };
-
-        applyVolume(currentVolume, { silent: true });
-
-        // Click (or drag) anywhere on the track to jump the slider there — not
-        // just a slow drag of the handle. The zone spans the full track.
-        const sliderZone = this.add.zone(barX, barY, BAR_TRACK_W, 24)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerdown', (pointer) => applyVolume((pointer.worldX - trackX) / BAR_TRACK_W));
-        // Keep the handle above the zone so grabbing it still starts a drag.
-        this.children.bringToTop(handle);
-
-        // Handle dragging
-        handle.on('drag', (pointer, dragX) => applyVolume((dragX - trackX) / BAR_TRACK_W));
-
-        // Store controls for cleanup
-        this.volumeControls.push({
-            type: volumeType,
-            label: labelText,
-            bg: sliderBg,
-            fill: sliderFill,
-            handle: handle,
-            text: volumeText,
-            zone: sliderZone
-        });
-    }
-    
     getCurrentLanguage() {
         this.game.language = normalizeLanguageCode(this.game.language);
         return getLanguageName(this.game.language);

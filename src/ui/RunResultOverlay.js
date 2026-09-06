@@ -1,5 +1,6 @@
 // Defeat / victory result overlays for GameScene.
 import { MusicManager } from '../audio/MusicManager.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
 import { t } from '../i18n/i18n.js';
 
 export function showDefeatFallback(scene, deathStats) {
@@ -25,7 +26,10 @@ export function showDefeatFallback(scene, deathStats) {
         padding: { x: 18, y: 10 },
         fontFamily: 'Arial, sans-serif'
     }).setOrigin(0.5).setDepth(depth + 1).setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => scene.leaveSandboxOrMenu());
+        .on('pointerdown', () => {
+            SoundHelper.playVariant(scene, 'button_click', 0.5);
+            scene.leaveSandboxOrMenu();
+        });
 }
 
 export function addResultPanel(scene, x, y, width, height, frame, depth) {
@@ -47,7 +51,10 @@ export function addResultButton(scene, x, y, label, onClick, depth) {
         .setOrigin(0.5)
         .setDepth(depth)
         .setInteractive({ useHandCursor: true })
-        .on('pointerdown', onClick);
+        .on('pointerdown', (...args) => {
+            SoundHelper.playVariant(scene, 'button_click', 0.5);
+            onClick?.(...args);
+        });
 
     scene.add.text(x, y - 1, label, {
         fontSize: '16px',
