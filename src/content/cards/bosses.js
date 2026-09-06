@@ -83,6 +83,23 @@ export const BOSSES = {
       { type: 'rage', threshold: 0.35, damageBoost: 1.5 }
     ]
   },
+  mireBride: {
+    type: 'boss', tier: 2,
+    name: 'The Mire Bride',
+    // Base stats sit under the tier-2 median on purpose. She carries a
+    // stacking DoT, and the Spider Queen pass showed what that costs: a DoT
+    // on median stats put her fight 43% over budget for her tier.
+    health: 158,
+    attack: 16,
+    sprite: 'MireBride',
+    abilities: [
+      // She pulls travellers under: the bog does the killing, slowly, while
+      // the fen dead she raises keep you from leaving.
+      { type: 'poison', damage: 2, turns: 3, stackable: true, maxStacks: 4 },
+      { type: 'summon', enemyType: 'drowned', chance: 0.25, count: 1 },
+      { type: 'evade', chance: 0.1 }
+    ]
+  },
   lich: {
     type: 'boss', tier: 2,
     name: 'Lich',
@@ -127,7 +144,7 @@ export const BOSSES = {
 // Which bosses can appear as each act's finale.
 export const BOSS_TIERS = {
   1: ['giantSkeleton', 'goblinKing', 'spiderQueen', 'greenWarden'],
-  2: ['soulEater', 'lich', 'cerberus'],
+  2: ['soulEater', 'lich', 'cerberus', 'mireBride'],
   3: ['ancientCerberus']
 };
 

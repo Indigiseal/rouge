@@ -2,6 +2,10 @@ import { resolveEnemyStats } from '../balance/EnemyPower.js';
 import { THORNWAKE_ENEMY_DEFS } from '../months/thornwake/index.js';
 import { SILKDEEP_ENEMY_DEFS } from '../months/silkdeep/index.js';
 import { TOLLROAD_ENEMY_DEFS } from '../months/tollroad/index.js';
+import { BONEFLOOD_ENEMY_DEFS } from '../months/boneflood/index.js';
+import { MIRETURN_ENEMY_DEFS } from '../months/mireturn/index.js';
+import { VEILBLEED_ENEMY_DEFS } from '../months/veilbleed/index.js';
+import { ASHHOWL_ENEMY_DEFS } from '../months/ashhowl/index.js';
 
 // Enemy catalog.
 // - Month packs (band + archetype): content/months/<id>/enemies/
@@ -98,6 +102,17 @@ export const ENEMIES = {
   ...THORNWAKE_ENEMY_DEFS,
   ...SILKDEEP_ENEMY_DEFS,
   ...TOLLROAD_ENEMY_DEFS,
+  ...BONEFLOOD_ENEMY_DEFS,
+  ...MIRETURN_ENEMY_DEFS,
+  // Some month packs claim ids the legacy pool above also defines, because
+  // they are the same creatures: Boneflood's skeleton and skeleton_archer,
+  // Veilbleed's Lost Soul. Month defs win, so each moves onto band stats and
+  // picks up its month's art — including the skeletons the Lich summons.
+  //
+  // cerberusHead is NOT among them. It stays summon-only: the Cerberus bosses
+  // throw it, and it is never dealt onto a board.
+  ...VEILBLEED_ENEMY_DEFS,
+  ...ASHHOWL_ENEMY_DEFS,
 };
 
 export const SUMMON_ONLY_ENEMY_TYPES = new Set(['cerberusHead']);

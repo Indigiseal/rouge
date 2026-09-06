@@ -1,14 +1,15 @@
 // Enemy cards — every month's roster in three tiers, composited from
 // assets/art/enemiesSpriteSheet.png plus the icon strip.
 //
-// The sheet is an 8x6 grid of 52x70 cells. One row per month:
+// The sheet is an 8x7 grid of 52x70 cells. One row per month:
 //
 //        0..4  the five enemies, in roster order
 //        5..7  the card face for normal / veteran / elite
 //
-//   row 0  Thornwake      row 3  Boneflood
-//   row 1  Silkdeep       row 4  Mireturn
-//   row 2  Tollroad       row 5  Veilbleed
+//   row 0  Thornwake      row 4  Mireturn
+//   row 1  Silkdeep       row 5  Veilbleed
+//   row 2  Tollroad       row 6  Ashhowl
+//   row 3  Boneflood
 //
 // A column is NEVER written down by hand. It is the enemy's position in its
 // month's roster — MELEE first, then RANGED, which is the order the rosters
@@ -42,6 +43,7 @@ export const MONTH_SHEET_ROWS = Object.freeze({
     boneflood: 3,
     mireturn: 4,
     veilbleed: 5,
+    ashhowl: 6,
 });
 
 /** Card-face column per tier — the three faces to the right of each roster. */
@@ -100,10 +102,18 @@ export function enemyCardPresentation(monthId, roster, enemyId) {
     if (column === -1) {
         throw new Error(`"${enemyId}" is not on the ${monthId} roster — no sheet column`);
     }
+    // A month can be written before it is drawn. buildEnemyCardTextures skips
+    // months with no row, so pointing at a composited key that will never be
+    // built renders nothing at all; the placeholder ghost renders a creature.
+    // The column still travels with the card, so the day a row is added to
+    // MONTH_SHEET_ROWS every enemy in that month picks up its real face with no
+    // other change.
+    const drawn = MONTH_SHEET_ROWS[monthId] !== undefined;
     return Object.freeze({
         monthId,
         sheetColumn: column,
-        sprite: enemyCardKey(monthId, column, 'normal'),
+        sprite: drawn ? enemyCardKey(monthId, column, 'normal') : 'enemyPlaceholder',
+        placeholderArt: !drawn,
     });
 }
 

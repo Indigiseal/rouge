@@ -2208,6 +2208,7 @@ export class EventScene extends Phaser.Scene {
 
   sneakPastGoblinMine() {
     this.ensureStoryState();
+    SoundHelper.playSound(this, 'dice_roll', 0.65);
     const roll = 1 + Math.floor(Math.random() * 6);
     if (roll <= 3) {
       this.gameState.storyRun.goblinMinersKilled = true;

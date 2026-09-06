@@ -62,6 +62,41 @@ export const PATH_LOCATIONS = Object.freeze({
     bossId: null,
     portrait: 'giantSkeleton',
   }),
+  // Restored from the twelve-month calendar. Each has a written cast in
+  // docs/narrative and now a coded roster; Mireturn and Veilbleed wear real
+  // art from rows 4 and 5 of the enemy sheet, Ashhowl waits on a row 6.
+  //
+  // They are deliberately absent from ACT_ROADS: the pick screen deals exactly
+  // three cards (LocationPickScene's CARD_XS), so a fourth road in an act
+  // would be dealt to an undefined x. Choosing which three an act offers — or
+  // rolling three of the five — is a design call, not a wiring one.
+  mireturn: Object.freeze({
+    id: 'mireturn',
+    name: 'Mireturn',
+    place: 'The Mireturn Fens',
+    act: 2,
+    truePath: false,
+    bossId: 'mireBride',
+    portrait: 'MireBride',
+  }),
+  veilbleed: Object.freeze({
+    id: 'veilbleed',
+    name: 'Veilbleed',
+    place: 'The Bleeding Veil',
+    act: 2,
+    truePath: false,
+    bossId: 'soulEater',
+    portrait: 'SoulEater',
+  }),
+  ashhowl: Object.freeze({
+    id: 'ashhowl',
+    name: 'Ashhowl',
+    place: 'The Ashhowl Wastes',
+    act: 2,
+    truePath: false,
+    bossId: 'cerberus',
+    portrait: 'Cerberus',
+  }),
   brassfair: Object.freeze({
     id: 'brassfair',
     name: 'Brassfair',

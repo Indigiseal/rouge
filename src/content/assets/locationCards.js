@@ -52,3 +52,35 @@ export function buildLocationCardTextures(scene) {
 
   return built;
 }
+
+/**
+ * The door art for each road, as frames of assets/art/paths.png.
+ *
+ * Taya drew these in a fixed order and they are 64x64, not the 52x70 of a card,
+ * so the frame index is written down here rather than derived from anything.
+ * The eleventh frame is a runic portal with no location behind it yet — it is
+ * deliberately unlisted, so nothing can pick it by accident.
+ *
+ * Four roads have no door drawn (Duskhold, Frosthollow, Stormhatch, Starfold);
+ * they fall back to the boss-portrait card back above.
+ */
+export const LOCATION_DOORS_KEY = 'locationDoors';
+export const LOCATION_DOOR_SIZE = 64;
+export const LOCATION_DOOR_FRAMES = Object.freeze({
+  thornwake: 0,
+  silkdeep: 1,
+  tollroad: 2,
+  boneflood: 3,
+  mireturn: 4,
+  veilbleed: 5,
+  ashhowl: 6,
+  brassfair: 7,
+  mirrorwane: 8,
+  spherefall: 9,
+});
+
+/** Door frame for a location, or null if none is drawn for it. */
+export function locationDoorFrame(id) {
+  const frame = LOCATION_DOOR_FRAMES[id];
+  return frame === undefined ? null : frame;
+}

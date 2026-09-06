@@ -230,6 +230,10 @@ export const ASSET_MANIFEST = [
     { key: 'skeleton_archer', path: 'assets/art/skeletonArcher_c.png', type: 'image' },
     { key: 'Lich', path: 'assets/art/lich.png', type: 'image' },
     { key: 'SoulEater', path: 'assets/art/soulEater.png', type: 'image' },
+    { key: 'MireBride', path: 'assets/art/mireBrideBoss.png', type: 'image' },
+    // The door you walk through to choose a road. One 64x64 frame per
+    // location, in the order LOCATION_DOOR_FRAMES declares.
+    { key: 'locationDoors', path: 'assets/art/paths.png', type: 'spritesheet', frameWidth: 64, frameHeight: 64 },
     { key: 'Cerberus', path: 'assets/art/cerberus.png', type: 'image' },
     { key: 'AncientCerberus', path: 'assets/art/ancientCerberus.png', type: 'image' },
     // Magic Cards
@@ -390,6 +394,7 @@ export const ASSET_MANIFEST = [
     { key: 'hero_death_3', path: 'assets/music/Death_03.mp3', type: 'audio' },
     // Act boss defeated â€” plays over the bespoke boss death animation.
     { key: 'boss_defeated', path: 'assets/music/Boss_Defeated_01.mp3', type: 'audio' },
+    { key: 'dice_roll', path: 'assets/music/dice-throw-1.ogg', type: 'audio' },
     // Looping campfire ambience for the Rest room.
     { key: 'campfire_loop', path: 'assets/music/Campfire_Loop_01.mp3', type: 'audio' },
     // The three looping music tracks are NOT here — see DEFERRED_AUDIO below.

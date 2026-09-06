@@ -6,15 +6,19 @@
 import { THORNWAKE_MONTH } from './thornwake/index.js';
 import { SILKDEEP_MONTH } from './silkdeep/index.js';
 import { TOLLROAD_MONTH } from './tollroad/index.js';
+import { BONEFLOOD_MONTH } from './boneflood/index.js';
+import { MIRETURN_MONTH } from './mireturn/index.js';
+import { VEILBLEED_MONTH } from './veilbleed/index.js';
+import { ASHHOWL_MONTH } from './ashhowl/index.js';
 
 export const MONTHS = Object.freeze([
   THORNWAKE_MONTH,
   SILKDEEP_MONTH,
   TOLLROAD_MONTH,
-  Object.freeze({ id: 'boneflood', name: 'Boneflood', enemies: null }),
-  Object.freeze({ id: 'mireturn', name: 'Mireturn', enemies: null }),
-  Object.freeze({ id: 'veilbleed', name: 'Veilbleed', enemies: null }),
-  Object.freeze({ id: 'ashhowl', name: 'Ashhowl', enemies: null }),
+  BONEFLOOD_MONTH,
+  MIRETURN_MONTH,
+  VEILBLEED_MONTH,
+  ASHHOWL_MONTH,
   Object.freeze({ id: 'brassfair', name: 'Brassfair', enemies: null }),
   Object.freeze({ id: 'frosthollow', name: 'Frosthollow', enemies: null }),
   Object.freeze({ id: 'stormhatch', name: 'Stormhatch', enemies: null }),

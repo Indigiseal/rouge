@@ -2,7 +2,11 @@ import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { applyLocationChoice, roadsForAct } from '../content/locations/index.js';
 import { PATH_LOCATIONS } from '../content/locations/catalog.js';
-import { locationCardBackKey } from '../content/assets/locationCards.js';
+import {
+  LOCATION_DOORS_KEY,
+  locationCardBackKey,
+  locationDoorFrame,
+} from '../content/assets/locationCards.js';
 import { t } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
@@ -63,6 +67,13 @@ export class LocationPickScene extends Phaser.Scene {
     const loc = PATH_LOCATIONS[locationId];
     if (!loc) return;
 
+    // What the card turns into. A road with a door drawn for it reveals the
+    // door itself — 64x64 rather than a 52x70 card, so the sprite grows a
+    // little as it turns over. Roads still waiting on a door fall back to the
+    // composited card back with the boss portrait on it.
+    const doorFrame = this.textures.exists(LOCATION_DOORS_KEY)
+      ? locationDoorFrame(loc.id)
+      : null;
     const backKey = this.textures.exists(locationCardBackKey(loc.id))
       ? locationCardBackKey(loc.id)
       : (this.textures.exists(loc.portrait) ? loc.portrait : 'cardBack');
@@ -101,6 +112,7 @@ export class LocationPickScene extends Phaser.Scene {
       placeText,
       pitchText,
       backKey,
+      doorFrame,
     };
     this._cards.push(entry);
 
@@ -116,11 +128,13 @@ export class LocationPickScene extends Phaser.Scene {
   }
 
   flipToLocationBack(entry) {
-    const { sprite, backKey } = entry;
+    const { sprite, backKey, doorFrame } = entry;
     SoundHelper.playSound(this, 'card_flip', 0.55);
     const finish = () => {
       sprite.off('animationcomplete', finish);
-      sprite.setTexture(backKey).setScale(CARD_SCALE);
+      if (doorFrame === null) sprite.setTexture(backKey);
+      else sprite.setTexture(LOCATION_DOORS_KEY, doorFrame);
+      sprite.setScale(CARD_SCALE);
       this.showCardDetails(entry);
       this.enableCard(entry);
     };
