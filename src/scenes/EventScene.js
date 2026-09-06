@@ -376,7 +376,7 @@ export class EventScene extends Phaser.Scene {
 
   heal(amount) {
     const gained = this._applyHeal(amount);
-    if (gained > 0) this._reward(`+${gained} HP`);
+    if (gained > 0) this._reward({ key: 'event.reward.hp', vars: { amount: `+${gained}` } });
     return gained;
   }
 
@@ -386,7 +386,7 @@ export class EventScene extends Phaser.Scene {
     this.gameState.coins = currentCoins + amount;
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     this.gameScene?.updateUI?.();
-    this._reward(`${amount > 0 ? '+' : ''}${amount} coins`);
+    this._reward({ key: 'event.reward.coins', vars: { amount: `${amount > 0 ? '+' : ''}${amount}` } });
   }
 
   gainCrystals(amount) {
@@ -395,7 +395,7 @@ export class EventScene extends Phaser.Scene {
     this.gameState.crystals = currentCrystals + amount;
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     this.gameScene?.updateUI?.();
-    this._reward(`${amount > 0 ? '+' : ''}${amount} crystals`);
+    this._reward({ key: 'event.reward.crystals', vars: { amount: `${amount > 0 ? '+' : ''}${amount}` } });
   }
 
   damagePlayer(amount, deathCause = 'environmental', killedBy = 'Dungeon Event') {
@@ -475,17 +475,17 @@ export class EventScene extends Phaser.Scene {
   }
 
   _getEventDescription() {
-    if (typeof this.event.description === 'function') {
-      return this.event.description(this.gameState, this);
-    }
-    return this.event.description;
+    const description = typeof this.event.description === 'function'
+      ? this.event.description(this.gameState, this)
+      : this.event.description;
+    return translateDescription(this, description);
   }
 
   _getChoiceOutcome(choice) {
-    if (typeof choice.outcome === 'function') {
-      return choice.outcome(this.gameState, this);
-    }
-    return choice.outcome;
+    const outcome = typeof choice.outcome === 'function'
+      ? choice.outcome(this.gameState, this)
+      : choice.outcome;
+    return translateDescription(this, outcome);
   }
 
   _getEventIllustrationFrame() {
@@ -857,7 +857,7 @@ export class EventScene extends Phaser.Scene {
     // shared with the other screen titles via createTitle. The body bitmap font
     // only has crisp 10px/20px steps and a scaled TTF was soft; this pre-
     // rasterized font is pixel-sharp at 16px under the 2x zoom.
-    createTitle(this, this.eventLayout.centerX, 26, this.event.title, {
+    createTitle(this, this.eventLayout.centerX, 26, translateDescription(this, this.event.title), {
       color: PURPLE, fallbackSize: '20px', depth: 2
     });
 
@@ -1041,7 +1041,7 @@ export class EventScene extends Phaser.Scene {
   // and the balance sim both key off it — so translated copy rides alongside in
   // `textKey`, and anything without one still renders its English text.
   _choiceLabel(choice) {
-    return choice?.textKey ? t(this, choice.textKey) : (choice?.text ?? '');
+    return choice?.textKey ? t(this, choice.textKey) : translateDescription(this, choice?.text ?? '');
   }
 
   _resolve(choice, choiceIdx, opts = {}) {
@@ -1235,7 +1235,7 @@ export class EventScene extends Phaser.Scene {
 
     const amulet = (this.gameState?.activeAmulets || []).find(item => item?.id === amuletId)
       || { id: amuletId, name: definition.name };
-    let description = translateItemName(this, amulet) || definition.name || 'Amulet';
+    let description = translateItemName(this, amulet) || translateItemName(this, definition) || t(this, 'tooltip.relic');
     description += `\n${translateDescription(this, definition.description)}`;
     if (amulet.level > 1) description += ` (${t(this, 'tooltip.level', { level: amulet.level })})`;
     if (definition.cursed) description = `${t(this, 'tooltip.cursed')} ${description}`;
@@ -1264,8 +1264,8 @@ export class EventScene extends Phaser.Scene {
 
   // Records a concrete reward/loss line shown in the outcome's summary.
   _reward(text) {
-    if (typeof text !== 'string' || !text) return;
-    (this._rewardLines ||= []).push(text);
+    if (!text) return;
+    (this._rewardLines ||= []).push(t(this, text));
   }
 
   // Adds an awarded card to the inventory — but, crucially, never loses it when
@@ -1274,18 +1274,23 @@ export class EventScene extends Phaser.Scene {
   // card over the instant a slot frees (station-mode discards are free during an
   // event). Used by companion/card rewards so a full inventory only ever *delays*
   // the reward, never silently deletes it.
-  _deliverCardReward(card, shortName, gainedLabel = `Gained: ${shortName}`) {
+  _deliverCardReward(card, shortName, gainedLabel = null) {
     if (!card) return false;
+    const localizedName = translateItemName(this, card) || translateItemName(this, shortName) || t(this, 'tooltip.card');
+    const localizedGainedLabel = t(this, gainedLabel || {
+      key: 'event.reward.gained',
+      vars: { name: localizedName },
+    });
     if (this._addCardToInventory(card)) {
       this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
       this.gameScene?.updateUI?.();
-      this._reward(gainedLabel);
+      this._reward(localizedGainedLabel);
       return true;
     }
 
-    const pending = { card, shortName, gainedLabel };
+    const pending = { card, shortName, gainedLabel: localizedGainedLabel };
     (this._pendingCardRewards ||= []).push(pending);
-    this._reward(`Inventory full — discard a card to claim the ${shortName}`);
+    this._reward({ key: 'event.reward.inventoryFull', vars: { name: translateItemName(this, shortName) } });
     pending.rewardLineIndex = (this._rewardLines || []).length - 1;
     return false;
   }
@@ -1341,7 +1346,9 @@ export class EventScene extends Phaser.Scene {
     // heal(), which would push its own "+X HP" line and double-report
     // alongside this method's "Fully healed" wording.
     const gained = this._applyHeal(this.gameState?.maxHealth || 9999);
-    this._reward(gained > 0 ? `Fully healed (+${gained} HP)` : 'Already at full HP');
+    this._reward(gained > 0
+      ? { key: 'event.reward.fullyHealed', vars: { amount: gained } }
+      : 'event.reward.fullHealth');
   }
 
   // Removes a random inventory card that isn't a key or potion. Returns false
@@ -1359,7 +1366,7 @@ export class EventScene extends Phaser.Scene {
     const index = candidates[Math.floor(Math.random() * candidates.length)];
     const name = slots[index]?.name || 'a card';
     const removed = this._removeInventoryCard(index);
-    if (removed) this._reward(`Lost: ${name}`);
+    if (removed) this._reward({ key: 'event.reward.lost', vars: { name: translateItemName(this, name) } });
     return removed;
   }
 
@@ -1371,7 +1378,7 @@ export class EventScene extends Phaser.Scene {
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     this.gameScene?.updateUI?.();
     const lost = current - this.gameState.playerHealth;
-    if (lost > 0) this._reward(`-${lost} HP`);
+    if (lost > 0) this._reward({ key: 'event.reward.hp', vars: { amount: `-${lost}` } });
   }
 
   loseActionPoints(amount) {
@@ -1382,7 +1389,7 @@ export class EventScene extends Phaser.Scene {
     this.gameScene?.updateActionPointUI?.();
     this.gameScene?.updateUI?.();
     const lost = current - this.gameState.actionsLeft;
-    if (lost > 0) this._reward(`-${lost} AP`);
+    if (lost > 0) this._reward({ key: 'event.reward.ap', vars: { amount: `-${lost}` } });
   }
 
   gainRandomAmulet() {
@@ -1437,7 +1444,9 @@ export class EventScene extends Phaser.Scene {
     this.gameState.storyRun.skeletonCompanionObtained = true;
     this._saveStoredStoryRun();
     const companion = new CardDataGenerator().createSkeletonWarriorCompanionCard();
-    return this._deliverCardReward(companion, 'Skeleton Warrior', 'Gained companion: Skeleton Warrior');
+    return this._deliverCardReward(companion, 'Skeleton Warrior', {
+      key: 'event.reward.gainedCompanion', vars: { name: translateItemName(this, companion) },
+    });
   }
 
   getCompanionKey(companion) {
@@ -1462,9 +1471,11 @@ export class EventScene extends Phaser.Scene {
   }
 
   getCompanionTrainingChoiceLabel(companion) {
-    if (companion?.id === 'chickCompanion') return 'Train Storm Chick';
-    if (companion?.id === 'skeletonWarriorCompanion') return 'Train Skeleton Warrior';
-    return `Train ${companion?.name || 'Companion'}`;
+    if (companion?.id === 'chickCompanion') return t(this, 'event.companion.trainStormChick');
+    if (companion?.id === 'skeletonWarriorCompanion') return t(this, 'event.companion.trainSkeletonWarrior');
+    return t(this, 'event.companion.train', {
+      name: translateItemName(this, companion) || t(this, 'event.companion.default'),
+    });
   }
 
   trainCompanion(key) {
@@ -1482,19 +1493,19 @@ export class EventScene extends Phaser.Scene {
       companion.upgradedForm = 'stormHatchling';
       companion.sprite = 'chickCompanionUP'; // upgraded art: crackling storm chick
       this.companionTrainingOutcome = 'You set the Storm Chick card down by the old lightning rods.\n\nThe rods start to hum. A bolt jumps between them and hits the card square on.\n\nIn the picture, the chick puffs up, feathers crackling.';
-      this._reward('Storm Hatchling: 20% chance to Shock for 1 turn');
+      this._reward('event.reward.stormHatchling');
     } else if (companion.id === 'skeletonWarriorCompanion') {
       companion.name = 'Slimebone Guard';
       companion.guardProtection = Math.max(1, Number(companion.guardProtection) || 0);
       companion.upgradedForm = 'slimeboneGuard';
       companion.sprite = 'skeletonCompanionUP'; // upgraded art: skeleton with a raised shield
       this.companionTrainingOutcome = 'You set the Skeleton Warrior card down beside the broken shields.\n\nThe scraps rattle across the floor and stack themselves over it.\n\nIn the picture, the skeleton lowers its cracked sword and raises a battered shield.';
-      this._reward('Slimebone Guard: +1 protection while carried');
+      this._reward('event.reward.slimeboneGuard');
     } else {
       companion.attack = Math.max(0, Number(companion.attack) || 0) + 1;
       companion.upgradedForm = 'trained';
       this.companionTrainingOutcome = 'You set the card down in the middle of the drill room.\n\nThe old practice circles glow, faintly and briefly.\n\nIn the picture, something moves sharper than it did a minute ago.';
-      this._reward(`${companion.name || 'Companion'}: +1 damage`);
+      this._reward({ key: 'event.reward.companionDamage', vars: { name: translateItemName(this, companion) || t(this, 'event.companion.default') } });
     }
 
     companion.trained = true;
@@ -1511,11 +1522,11 @@ export class EventScene extends Phaser.Scene {
     const mgr = this.gameScene?.amuletManager;
     if (!mgr?.addAmulet || typeof id !== 'string') return false;
     const def = mgr.amuletDefinitions?.[id];
-    const name = def?.name || 'Amulet';
+    const name = translateItemName(this, def) || t(this, 'tooltip.relic');
     const ok = mgr.addAmulet(id);
     this.gameScene.updateUI?.();
     if (ok) {
-      this._reward(`Gained amulet: ${name}`);
+      this._reward({ key: 'event.reward.gainedAmulet', vars: { name } });
       this._pushRewardIcon(def?.sprite || 'relicsOthers', def?.spriteFrame ?? 0, id);
     }
     return ok;
@@ -1659,8 +1670,8 @@ export class EventScene extends Phaser.Scene {
 
     this._rewardLines = [];
     this._rewardIcons = [];
-    this._reward(`Offered: ${oldName}`);
-    this._reward(`Received: ${rerolledCard.name || 'a different card'}`);
+    this._reward({ key: 'event.reward.offered', vars: { name: translateItemName(this, cardData) } });
+    this._reward({ key: 'event.reward.received', vars: { name: translateItemName(this, rerolledCard) || t(this, 'tooltip.card') } });
     this._resolve({
       text: 'Offer card',
       textKey: 'ui.event.choice.offerCard',
@@ -1710,9 +1721,10 @@ export class EventScene extends Phaser.Scene {
 
     this._rewardLines = [];
     this._rewardIcons = [];
-    this._reward(cardData.type === 'weapon'
-      ? `${cardData.name || 'Weapon'}: +1 permanent damage`
-      : `${cardData.name || 'Armor'}: +1 thorn damage`);
+    this._reward({
+      key: cardData.type === 'weapon' ? 'event.reward.permanentDamage' : 'event.reward.thornDamage',
+      vars: { name: translateItemName(this, cardData) },
+    });
     this._resolve({
       text: 'Offer card',
       textKey: 'ui.event.choice.offerCard',
@@ -1924,7 +1936,7 @@ export class EventScene extends Phaser.Scene {
         this.armWrestleOutcome = 'He is stronger than you and both of you know it, so you do not try to out-pull him. You wait until he leans, and then you stop being where he is pushing.\n\nHis own weight takes his hand down onto the slab.\n\nThe room goes very quiet. The ogre looks at his hand for a while, then at you, and pushes the whole stack of coins across the table without a word.';
       } else {
         this._loseArmWrestle();
-        this._reward(`Lost stake: ${this.getArmWrestleCoinStake()} coins`);
+        this._reward({ key: 'event.reward.lostStake', vars: { name: t(this, 'event.reward.coins', { amount: this.getArmWrestleCoinStake() }) } });
         this.armWrestleOutcome = 'You get about two seconds of holding him.\n\nThen your knuckles find the stone.\n\nHe takes the coins. That is all he takes.';
       }
     } else if (pending.kind === 'card') {
@@ -1932,12 +1944,15 @@ export class EventScene extends Phaser.Scene {
       const rematch = pending.rematch;
 
       if (won) {
-        this._reward(`Kept: ${stakeName}`);
+        this._reward({ key: 'event.reward.kept', vars: { name: translateItemName(this, stakeName) } });
         if (rematch) {
           this.gameState.storyRun.armWrestleRematchDone = true;
           this.gameState.storyRun.gauntletWon = true;
           this.clearPendingEvent('arm_wrestling');
-          this._deliverCardReward(createGauntletCard(), "Ogre's Gauntlet", "Gained card: Ogre's Gauntlet");
+          const gauntlet = createGauntletCard();
+          this._deliverCardReward(gauntlet, "Ogre's Gauntlet", {
+            key: 'event.reward.gainedCard', vars: { name: translateItemName(this, gauntlet) },
+          });
           this.armWrestleOutcome = `He goes at it properly this time, and it takes everything you have.\n\nWhen his hand finally goes down the crowd does not cheer. They just look at the ogre.\n\nHe unhooks the stone guard and pushes it across to you, then sits back with his arms folded and watches you take it, ${stakeName} and all.`;
         } else {
           this.gainCoins(this.getArmWrestlePot());
@@ -1954,7 +1969,7 @@ export class EventScene extends Phaser.Scene {
         if (inv && idx >= 0) {
           inv.removeCard(idx, true);
         }
-        this._reward(`Lost stake: ${stakeName}`);
+        this._reward({ key: 'event.reward.lostStake', vars: { name: translateItemName(this, stakeName) } });
         if (rematch) this.gameState.storyRun.armWrestleRematchDone = true;
         this._loseArmWrestle();
         this.armWrestleOutcome = rematch
@@ -2288,7 +2303,7 @@ export class EventScene extends Phaser.Scene {
 
     this._rewardLines = [];
     this._rewardIcons = [];
-    this._reward(describeWeaponEnchant(this, cardData) || `${cardData.name}: enchanted`);
+    this._reward(describeWeaponEnchant(this, cardData) || { key: 'event.reward.enchanted', vars: { name: translateItemName(this, cardData) } });
     this._resolve({
       text: 'Offer weapon',
       textKey: 'ui.event.choice.offerWeapon',
@@ -2329,7 +2344,9 @@ export class EventScene extends Phaser.Scene {
       sprite: magic.sprite,
       damage: magic.damage,
       healAmount: magic.healAmount,
-    }, magic.name, `Gained card: ${magic.name}`);
+    }, magic.name, {
+      key: 'event.reward.gainedCard', vars: { name: translateItemName(this, magic) },
+    });
 
     this.reliquaryBreakOutcome = `You put your elbow through the case holding the ${magic.name}.\n\nThe ward goes off late and shallow, opening a line across your forearm — but the card is in your fist and it stays there.\n\nThe other two cases go dark before the glass finishes falling.`;
     return true;
@@ -2388,7 +2405,7 @@ export class EventScene extends Phaser.Scene {
     // carrying the reward line we just recorded.
     this._rewardLines = [];
     this._rewardIcons = [];
-    this._reward(`Traded: ${oldName} → ${newCard.name || 'upgraded card'}`);
+    this._reward({ key: 'event.reward.traded', vars: { oldName: translateItemName(this, oldName), newName: translateItemName(this, newCard) || t(this, 'tooltip.card') } });
     this._resolve({
       text: 'Trade',
       textKey: 'ui.event.choice.trade',
@@ -2666,8 +2683,11 @@ export class EventScene extends Phaser.Scene {
       cardSprite.destroy();
       this._rewardLines = [];
       this._rewardIcons = [];
-      this._reward(`Traded: ${cardData.name || 'Carnival Junk'}`);
-      this._deliverCardReward(this.createHolographicOmenCard(), 'Holographic Omen', 'Gained passive card: Holographic Omen');
+      this._reward({ key: 'event.reward.traded', vars: { oldName: translateItemName(this, cardData), newName: translateItemName(this, 'Holographic Omen') } });
+      const omen = this.createHolographicOmenCard();
+      this._deliverCardReward(omen, 'Holographic Omen', {
+        key: 'event.reward.gainedPassive', vars: { name: translateItemName(this, omen) },
+      });
       this._resolve({
         text: 'Trade junk',
         textKey: 'ui.event.choice.tradeJunk',
@@ -2692,7 +2712,7 @@ export class EventScene extends Phaser.Scene {
       this.gameScene?.updateUI?.();
       this._rewardLines = [];
       this._rewardIcons = [];
-      this._reward(`Traded: ${oldName} → ${newCard.name || 'a new card'}`);
+      this._reward({ key: 'event.reward.traded', vars: { oldName: translateItemName(this, oldName), newName: translateItemName(this, newCard) || t(this, 'tooltip.card') } });
       this._resolve({
         text: 'Reroll',
         textKey: 'ui.event.choice.reroll',
@@ -2763,7 +2783,10 @@ export class EventScene extends Phaser.Scene {
       if (Number.isInteger(reward.rewardLineIndex) && this._rewardLines) {
         this._rewardLines[reward.rewardLineIndex] = reward.gainedLabel;
       }
-      this.gameScene?.createFloatingText?.(512, 400, `${reward.shortName} claimed!`, 0x66ff66);
+      this.gameScene?.createFloatingText?.(512, 400, {
+        key: 'float.claimed',
+        vars: { name: translateItemName(this, reward.card || reward.shortName) },
+      }, 0x66ff66);
       delivered = true;
     }
 

@@ -11,6 +11,7 @@ import {
 import { getEnemyHitAttack } from '../content/combat/enemyAttack.js';
 import { depthScaled } from '../content/balance/DepthScaling.js';
 import { areAmuletsDisabled } from '../config/TestOptions.js';
+import { translateItemName } from '../i18n/i18n.js';
 
 export class AmuletManager {
     constructor(scene) {
@@ -85,7 +86,10 @@ export class AmuletManager {
         }
         this.gameState.activeAmulets.splice(index, 1);
         if (!silent) {
-            this.scene.createFloatingText(320, 160, `${definition?.name || amuletId} replaced`, 0xffaa66);
+            this.scene.createFloatingText(320, 160, {
+                key: 'float.itemReplaced',
+                vars: { name: translateItemName(this.scene, definition?.name || amuletId) },
+            }, 0xffaa66);
         }
         return true;
     }
@@ -165,7 +169,10 @@ export class AmuletManager {
             const existing = this.getAmuletData(amuletId);
             if (existing.level < definition.maxLevel) {
                 existing.level++;
-                this.scene.createFloatingText(320, 180, `${definition.name} upgraded!`, 0x00ff00);
+                this.scene.createFloatingText(320, 180, {
+                    key: 'float.upgradedItem',
+                    vars: { name: translateItemName(this.scene, definition.name) },
+                }, 0x00ff00);
             } else {
                 this.scene.createFloatingText(320, 180, 'Max level reached!', 0xffa500);
                 return false;

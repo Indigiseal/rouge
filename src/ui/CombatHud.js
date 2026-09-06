@@ -841,10 +841,10 @@ export const CombatHud = {
             lines += `\n${t(this, 'tooltip.dodge', { percent: Math.round(armor.dodgeChance * 100) })}`;
         }
         if (armor.meleeCounterChance) {
-            lines += `\nMelee counter: ${Math.round(armor.meleeCounterChance * 100)}%`;
+            lines += `\n${t(this, 'tooltip.meleeCounter', { percent: Math.round(armor.meleeCounterChance * 100) })}`;
         }
         if (armor.rangedIgnoreChance) {
-            lines += `\nIgnore ranged: ${Math.round(armor.rangedIgnoreChance * 100)}%`;
+            lines += `\n${t(this, 'tooltip.ignoreRanged', { percent: Math.round(armor.rangedIgnoreChance * 100) })}`;
         }
         if (armor.reflection) {
             lines += `\n${t(this, 'tooltip.reflect', { value: `${armor.reflection}%` })}`;

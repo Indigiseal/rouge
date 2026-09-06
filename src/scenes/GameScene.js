@@ -1367,8 +1367,8 @@ export class GameScene extends Phaser.Scene {
             playSmokeBurst(this, { x: 320, y: 170 });
             this.time.delayedCall(SMOKE_BURST_MS, () => {
                 openNoticeModal(this, {
-                    title: 'Smoke Bomb!',
-                    body: 'The goblins throw a smoke bomb at your feet and escape into the haze.\n\nThey will return beside the Goblin King, battered from this fight.',
+                    title: t(this, 'ui.notice.smokeBombTitle'),
+                    body: t(this, 'ui.notice.smokeBombBody'),
                 });
             });
         }
@@ -1388,19 +1388,19 @@ export class GameScene extends Phaser.Scene {
 
         if (story.latchboxRewardClaimed) {
             if (story.boxState === 'repaired') {
-                lines.push('The Loyal Latchbox carries one more burden than your pack should hold.');
+                lines.push(t(this, 'ui.victoryStory.latchbox'));
             } else {
-                lines.push('The broken trap box coughed up its valuables and retired in disgrace.');
+                lines.push(t(this, 'ui.victoryStory.retiredBox'));
             }
         } else if (story.boxState === 'exploded') {
-            lines.push('A music box ended as slag on a ruined floor.');
+            lines.push(t(this, 'ui.victoryStory.boxSlag'));
         } else if (story.boxState && story.boxState !== 'unknown') {
-            lines.push('A tiny robber box is still loose somewhere in the dungeon.');
+            lines.push(t(this, 'ui.victoryStory.boxLoose'));
         }
 
         return lines.length > 0
             ? lines.join('\n')
-            : 'You have conquered the dungeon, though many stories remain untold.';
+            : t(this, 'ui.victoryStory.default');
     }
 
     getResolvedStoryCount() {
@@ -1602,10 +1602,10 @@ export class GameScene extends Phaser.Scene {
     
     updateRoomTitle() {
         if (!this.roomTitle) return;
-        let title = 'Combat Room';
-        if (this.roomType === 'ELITE') title = 'Elite Combat';
-        if (this.roomType === 'BOSS') title = 'Boss Fight';
-        if (this.roomType === 'BOSS_REWARD') title = 'Victory Spoils';
+        let title = t(this, 'ui.room.combat');
+        if (this.roomType === 'ELITE') title = t(this, 'ui.room.elite');
+        if (this.roomType === 'BOSS') title = t(this, 'ui.room.boss');
+        if (this.roomType === 'BOSS_REWARD') title = t(this, 'ui.room.spoils');
         this.roomTitle.setText(title);
     }
     

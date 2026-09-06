@@ -4,7 +4,7 @@ import { fitLabel, serifStyle } from '../ui/uiFont.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { totalRepairCost } from '../content/economy/repair.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
-import { t } from '../i18n/i18n.js';
+import { t, translateItemName } from '../i18n/i18n.js';
 import { BoardCardFx } from '../systems/board/BoardCardFx.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 
@@ -349,7 +349,10 @@ export class AnvilScene extends Phaser.Scene {
                 container.getData('cost').setText('0').setVisible(true);
                 this.repairInProgress = false;
                 this.input.enabled = true;
-                this.showFeedback(`${item.name} fully repaired!`, 0xffd700);
+                this.showFeedback({
+                    key: 'float.repairedItem',
+                    vars: { name: translateItemName(this, item) },
+                }, 0xffd700);
             });
         };
         const strike = (remaining) => {
@@ -383,7 +386,7 @@ export class AnvilScene extends Phaser.Scene {
             this.tweens.killTweensOf(this.feedbackText);
             this.feedbackText.destroy();
         }
-        const feedbackText = this.feedbackText = this.label(320, 88, message, '12px',
+        const feedbackText = this.feedbackText = this.label(320, 88, t(this, message), '12px',
             color === 0xff0000 ? '#8b3025' : '#614019');
         fitLabel(feedbackText, 500, '12px');
         // Above everything on this screen: the drop plate, the card being carried

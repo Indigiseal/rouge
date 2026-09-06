@@ -1899,15 +1899,845 @@ for (const [language, additions] of Object.entries(ENCHANT_TEXT_ADDITIONS)) {
 }
 
 const OVERLAY_TEXT_ADDITIONS = {
-    en: { 'ui.amulet.chooseTitle': 'Choose a {rarity} amulet', 'ui.amulet.pickOne': 'Pick one', 'ui.talents.max': 'MAX' },
-    es: { 'ui.amulet.chooseTitle': 'Elige un amuleto {rarity}', 'ui.amulet.pickOne': 'Elige uno', 'ui.talents.max': 'MAX' },
-    fr: { 'ui.amulet.chooseTitle': 'Choisissez une amulette {rarity}', 'ui.amulet.pickOne': 'Choisissez-en une', 'ui.talents.max': 'MAX' },
-    ru: { 'ui.amulet.chooseTitle': 'Выберите амулет: {rarity}', 'ui.amulet.pickOne': 'Выберите один', 'ui.talents.max': 'МАКС.' },
+    en: { 'ui.amulet.chooseTitle': 'Choose a {rarity} amulet', 'ui.amulet.bossRewardTitle': 'Boss reward — {rarity} amulet', 'ui.amulet.pickOne': 'Pick one', 'ui.talents.max': 'MAX' },
+    es: { 'ui.amulet.chooseTitle': 'Elige un amuleto {rarity}', 'ui.amulet.bossRewardTitle': 'Recompensa de jefe — amuleto {rarity}', 'ui.amulet.pickOne': 'Elige uno', 'ui.talents.max': 'MAX' },
+    fr: { 'ui.amulet.chooseTitle': 'Choisissez une amulette {rarity}', 'ui.amulet.bossRewardTitle': 'Récompense de boss — amulette {rarity}', 'ui.amulet.pickOne': 'Choisissez-en une', 'ui.talents.max': 'MAX' },
+    ru: { 'ui.amulet.chooseTitle': 'Выберите амулет: {rarity}', 'ui.amulet.bossRewardTitle': 'Награда босса — амулет: {rarity}', 'ui.amulet.pickOne': 'Выберите один', 'ui.talents.max': 'МАКС.' },
 };
 
 for (const [language, additions] of Object.entries(OVERLAY_TEXT_ADDITIONS)) {
     Object.assign(STRINGS[language], additions);
 }
+
+// Combat messages are emitted from several systems through GameScene's shared
+// floating-text helper. Keeping their text here means a new combat effect cannot
+// accidentally ship as English in the supported languages.
+const FLOATING_TEXT_ADDITIONS = {
+    en: {
+        'ui.common.ok': 'OK',
+        'float.alreadyUpgraded': 'Already upgraded!', 'float.frozen': 'Frozen!', 'float.itemReplaced': '{name} replaced',
+        'float.alreadyEquipped': 'Already equipped!', 'float.dealOneDamage': 'Deal 1 damage to open',
+        'float.nothingNew': 'Nothing new to offer', 'float.webbed': 'Webbed!', 'float.webwoven': 'Webwoven!',
+        'float.waitEnemyTurn': 'Wait for the enemy turn!', 'float.mothWingReturned': 'Moth-Wing Dust returned it!',
+        'float.firstBlood': 'First Blood!', 'float.critical': 'Critical!', 'float.assassinate': 'Assassinate!',
+        'float.volley': 'Volley!', 'float.reinforcements': 'Reinforcements!', 'float.shocked': 'Shocked!',
+        'float.doubleDamage': 'Double Damage!', 'float.warHorn': 'WAR HORN!', 'float.shadowed': 'Shadowed!',
+        'float.devoured': 'Devoured!', 'float.omenBackfires': 'Omen Backfires!', 'float.bulwark': 'Bulwark!',
+        'float.shockWoreOff': 'Shock Wore Off!', 'float.charmedLute': 'Charmed (Lute)', 'float.heavyShot': 'Heavy shot!',
+        'float.enraged': 'ENRAGED!', 'float.armorBroken': 'Armor Broken!', 'float.stunned': 'Stunned!',
+        'float.gnaw': 'Gnaw!', 'float.youNeedCoin': 'You need a coin', 'float.bagFull': 'Your bag is full',
+        'float.claimed': '{name} claimed!', 'float.repairedItem': '{name} fully repaired!',
+        'float.poisonPerTurn': 'Poison -{amount}/turn',
+    },
+    es: {
+        'ui.common.ok': 'Aceptar',
+        'float.alreadyUpgraded': '¡Ya mejorado!', 'float.frozen': '¡Congelado!', 'float.itemReplaced': '{name} reemplazado',
+        'float.alreadyEquipped': '¡Ya equipado!', 'float.dealOneDamage': 'Inflige 1 de daño para abrir',
+        'float.nothingNew': 'No hay nada nuevo que ofrecer', 'float.webbed': '¡Atrapado en la telaraña!', 'float.webwoven': '¡Tejido en telaraña!',
+        'float.waitEnemyTurn': '¡Espera el turno enemigo!', 'float.mothWingReturned': '¡El polvo de ala de polilla lo devolvió!',
+        'float.firstBlood': '¡Primera sangre!', 'float.critical': '¡Crítico!', 'float.assassinate': '¡Asesinato!',
+        'float.volley': '¡Andanada!', 'float.reinforcements': '¡Refuerzos!', 'float.shocked': '¡Electrocutado!',
+        'float.doubleDamage': '¡Daño doble!', 'float.warHorn': '¡CUERNO DE GUERRA!', 'float.shadowed': '¡En las sombras!',
+        'float.devoured': '¡Devorado!', 'float.omenBackfires': '¡El presagio se vuelve en contra!', 'float.bulwark': '¡Baluarte!',
+        'float.shockWoreOff': '¡La descarga terminó!', 'float.charmedLute': 'Hechizado (Laúd)', 'float.heavyShot': '¡Disparo pesado!',
+        'float.enraged': '¡ENFURECIDO!', 'float.armorBroken': '¡Armadura rota!', 'float.stunned': '¡Aturdido!',
+        'float.gnaw': '¡Roer!', 'float.youNeedCoin': 'Necesitas una moneda', 'float.bagFull': 'Tu bolsa está llena',
+        'float.claimed': '¡{name} reclamado!', 'float.repairedItem': '¡{name} totalmente reparado!',
+        'float.poisonPerTurn': 'Veneno -{amount}/turno',
+    },
+    fr: {
+        'ui.common.ok': 'OK',
+        'float.alreadyUpgraded': 'Déjà amélioré !', 'float.frozen': 'Gelé !', 'float.itemReplaced': '{name} remplacé',
+        'float.alreadyEquipped': 'Déjà équipé !', 'float.dealOneDamage': 'Infligez 1 dégât pour ouvrir',
+        'float.nothingNew': 'Rien de nouveau à proposer', 'float.webbed': 'Entoilé !', 'float.webwoven': 'Tissé dans une toile !',
+        'float.waitEnemyTurn': 'Attendez le tour ennemi !', 'float.mothWingReturned': 'La poudre d’aile de mite l’a renvoyé !',
+        'float.firstBlood': 'Premier sang !', 'float.critical': 'Critique !', 'float.assassinate': 'Assassinat !',
+        'float.volley': 'Volée !', 'float.reinforcements': 'Renforts !', 'float.shocked': 'Électrocuté !',
+        'float.doubleDamage': 'Dégâts doublés !', 'float.warHorn': 'COR DE GUERRE !', 'float.shadowed': 'Dans l’ombre !',
+        'float.devoured': 'Dévoré !', 'float.omenBackfires': 'Le présage se retourne !', 'float.bulwark': 'Rempart !',
+        'float.shockWoreOff': 'Le choc s’est dissipé !', 'float.charmedLute': 'Charmé (Luth)', 'float.heavyShot': 'Tir puissant !',
+        'float.enraged': 'ENRAGÉ !', 'float.armorBroken': 'Armure brisée !', 'float.stunned': 'Étourdi !',
+        'float.gnaw': 'Ronge !', 'float.youNeedCoin': 'Il vous faut une pièce', 'float.bagFull': 'Votre sac est plein',
+        'float.claimed': '{name} récupéré !', 'float.repairedItem': '{name} entièrement réparé !',
+        'float.poisonPerTurn': 'Poison -{amount}/tour',
+    },
+    ru: {
+        'ui.common.ok': 'ОК',
+        'float.alreadyUpgraded': 'Уже улучшено!', 'float.frozen': 'Заморожен!', 'float.itemReplaced': '{name} заменен',
+        'float.alreadyEquipped': 'Уже экипировано!', 'float.dealOneDamage': 'Нанесите 1 урон, чтобы открыть',
+        'float.nothingNew': 'Больше нечего предложить', 'float.webbed': 'Опутан паутиной!', 'float.webwoven': 'Оплетен паутиной!',
+        'float.waitEnemyTurn': 'Дождитесь хода врага!', 'float.mothWingReturned': 'Пыльца мотылька вернула его!',
+        'float.firstBlood': 'Первая кровь!', 'float.critical': 'Критический удар!', 'float.assassinate': 'Убийство!',
+        'float.volley': 'Залп!', 'float.reinforcements': 'Подкрепление!', 'float.shocked': 'Поражен молнией!',
+        'float.doubleDamage': 'Двойной урон!', 'float.warHorn': 'БОЕВОЙ РОГ!', 'float.shadowed': 'В тени!',
+        'float.devoured': 'Поглощен!', 'float.omenBackfires': 'Предзнаменование обернулось против вас!', 'float.bulwark': 'Оплот!',
+        'float.shockWoreOff': 'Электричество рассеялось!', 'float.charmedLute': 'Очарован (лютня)', 'float.heavyShot': 'Тяжелый выстрел!',
+        'float.enraged': 'В ЯРОСТИ!', 'float.armorBroken': 'Броня сломана!', 'float.stunned': 'Оглушен!',
+        'float.gnaw': 'Грызня!', 'float.youNeedCoin': 'Нужна монета', 'float.bagFull': 'Сумка полна',
+        'float.claimed': '{name} получен!', 'float.repairedItem': '{name} полностью отремонтирован!',
+        'float.poisonPerTurn': 'Яд -{amount}/ход',
+    },
+};
+
+for (const [language, additions] of Object.entries(FLOATING_TEXT_ADDITIONS)) {
+    Object.assign(STRINGS[language], additions);
+}
+
+const CHARACTER_TEXT_ADDITIONS = {
+    en: { 'character.rogue': 'Rogue', 'character.warrior': 'Warrior' },
+    es: { 'character.rogue': 'Pícaro', 'character.warrior': 'Guerrero' },
+    fr: { 'character.rogue': 'Voleur', 'character.warrior': 'Guerrier' },
+    ru: { 'character.rogue': 'Разбойник', 'character.warrior': 'Воин' },
+};
+
+for (const [language, additions] of Object.entries(CHARACTER_TEXT_ADDITIONS)) {
+    Object.assign(STRINGS[language], additions);
+}
+
+// Event rewards are assembled while an event resolves, so they do not pass
+// through the regular scene labels. Keeping their templates in the catalog
+// prevents a localized event from ending with an English reward ledger.
+const EVENT_TEXT_ADDITIONS = {
+    en: {
+        'tooltip.passiveEffect': 'Passive effect while carried.', 'tooltip.noEffect': 'No effect.',
+        'tooltip.tapEquipDiscard': 'Tap to equip · drag to bag to discard', 'tooltip.carnivalToken': 'A carnival token.',
+        'event.reward.hp': '{amount} HP', 'event.reward.ap': '{amount} AP',
+        'event.reward.coins': '{amount} coins', 'event.reward.crystals': '{amount} crystals',
+        'event.reward.fullyHealed': 'Fully healed (+{amount} HP)', 'event.reward.fullHealth': 'Already at full HP',
+        'event.reward.lost': 'Lost: {name}', 'event.reward.gainedAmulet': 'Gained amulet: {name}',
+        'event.reward.gained': 'Gained: {name}', 'event.reward.inventoryFull': 'Inventory full — discard a card to claim {name}',
+        'event.companion.trainStormChick': 'Train Storm Chick', 'event.companion.trainSkeletonWarrior': 'Train Skeleton Warrior', 'event.companion.train': 'Train {name}', 'event.companion.default': 'Companion',
+        'tooltip.damage.physical': 'Physical damage: {amount}', 'tooltip.damage.lightning': 'Lightning damage: {amount}', 'tooltip.companion.melee': 'Melee companion', 'tooltip.companion.ranged': 'Ranged companion', 'tooltip.companion.actsAfter': 'Acts after enemies', 'tooltip.companion.shockChance': 'Shock chance: {amount}%', 'tooltip.companion.guard': 'Guard: +{amount} protection',
+        'ui.room.combat': 'Combat Room', 'ui.room.elite': 'Elite Combat', 'ui.room.boss': 'Boss Fight', 'ui.room.spoils': 'Victory Spoils',
+        'ui.victoryStory.latchbox': 'The Loyal Latchbox carries one more burden than your pack should hold.', 'ui.victoryStory.retiredBox': 'The broken trap box coughed up its valuables and retired in disgrace.', 'ui.victoryStory.boxSlag': 'A music box ended as slag on a ruined floor.', 'ui.victoryStory.boxLoose': 'A tiny robber box is still loose somewhere in the dungeon.', 'ui.victoryStory.default': 'You have conquered the dungeon, though many stories remain untold.',
+        'ui.notice.smokeBombTitle': 'Smoke Bomb!', 'ui.notice.smokeBombBody': 'The goblins throw a smoke bomb at your feet and escape into the haze.\n\nThey will return beside the Goblin King, battered from this fight.',
+        'tooltip.meleeCounter': 'Melee counter: {percent}%', 'tooltip.meleeCounterBlocked': 'Melee counter: {percent}% (50% blocked)', 'tooltip.ignoreRanged': 'Ignore ranged: {percent}%',
+        'ui.treasure.weaponStats': '{rarity}  {amount} DMG', 'ui.treasure.armorStats': '{rarity}  {amount} DEF', 'ui.treasure.magicStats': '{rarity} Magic', 'ui.treasure.thornsStats': '{rarity} {amount} Thorns',
+        'event.reward.brassCog': 'Brass cog', 'event.reward.fedMagic': 'Fed magic card: {name}', 'event.reward.consumedMagic': 'Consumed magic card: {name}', 'event.reward.spentCoins': '-{amount} coins', 'event.reward.noReward': 'No reward',
+        'event.reward.gainedCard': 'Gained card: {name}', 'event.reward.gainedJunk': 'Gained junk card: {name}', 'event.reward.gainedCompanion': 'Gained companion: {name}', 'event.reward.gainedPassive': 'Gained passive card: {name}', 'event.reward.cloverHint': 'Gained: {name} — tap it in battle to equip', 'event.reward.repaired': 'Repaired: {name} (+{amount} durability)',
+        'event.reward.offered': 'Offered: {name}', 'event.reward.received': 'Received: {name}', 'event.reward.traded': 'Traded: {oldName} → {newName}', 'event.reward.kept': 'Kept: {name}', 'event.reward.lostStake': 'Lost stake: {name}', 'event.reward.enchanted': '{name}: enchanted', 'event.reward.permanentDamage': '{name}: +1 permanent damage', 'event.reward.thornDamage': '{name}: +1 thorn damage',
+        'event.reward.stormHatchling': 'Storm Hatchling: 20% chance to Shock for 1 turn', 'event.reward.slimeboneGuard': 'Slimebone Guard: +1 protection while carried', 'event.reward.companionDamage': '{name}: +1 damage',
+    },
+    es: {
+        'tooltip.passiveEffect': 'Efecto pasivo mientras se lleva.', 'tooltip.noEffect': 'Sin efecto.',
+        'tooltip.tapEquipDiscard': 'Toca para equipar · arrastra a la bolsa para descartar', 'tooltip.carnivalToken': 'Una ficha de carnaval.',
+        'event.reward.hp': '{amount} PV', 'event.reward.ap': '{amount} PA',
+        'event.reward.coins': '{amount} monedas', 'event.reward.crystals': '{amount} cristales',
+        'event.reward.fullyHealed': 'Curación completa (+{amount} PV)', 'event.reward.fullHealth': 'Ya tienes toda la vida',
+        'event.reward.lost': 'Perdido: {name}', 'event.reward.gainedAmulet': 'Amuleto obtenido: {name}',
+        'event.reward.gained': 'Obtenido: {name}', 'event.reward.inventoryFull': 'Bolsa llena — descarta una carta para obtener {name}',
+        'event.companion.trainStormChick': 'Entrenar al polluelo de tormenta', 'event.companion.trainSkeletonWarrior': 'Entrenar al guerrero esqueleto', 'event.companion.train': 'Entrenar a {name}', 'event.companion.default': 'Compañero',
+        'tooltip.damage.physical': 'Daño físico: {amount}', 'tooltip.damage.lightning': 'Daño de rayo: {amount}', 'tooltip.companion.melee': 'Compañero cuerpo a cuerpo', 'tooltip.companion.ranged': 'Compañero a distancia', 'tooltip.companion.actsAfter': 'Actúa después de los enemigos', 'tooltip.companion.shockChance': 'Probabilidad de descarga: {amount}%', 'tooltip.companion.guard': 'Guardia: +{amount} protección',
+        'ui.room.combat': 'Sala de combate', 'ui.room.elite': 'Combate de élite', 'ui.room.boss': 'Combate contra jefe', 'ui.room.spoils': 'Botín de la victoria',
+        'ui.victoryStory.latchbox': 'La Caja Fiel lleva una carga más de las que debería contener tu bolsa.', 'ui.victoryStory.retiredBox': 'La caja trampa rota soltó sus tesoros y se retiró en desgracia.', 'ui.victoryStory.boxSlag': 'Una caja de música terminó convertida en escoria sobre un suelo en ruinas.', 'ui.victoryStory.boxLoose': 'Una diminuta caja ladrona sigue suelta en algún lugar de la mazmorra.', 'ui.victoryStory.default': 'Has conquistado la mazmorra, aunque aún quedan muchas historias por contar.',
+        'ui.notice.smokeBombTitle': '¡Bomba de humo!', 'ui.notice.smokeBombBody': 'Los goblins lanzan una bomba de humo a tus pies y escapan entre la niebla.\n\nVolverán junto al Rey Goblin, maltrechos por esta pelea.',
+        'tooltip.meleeCounter': 'Contraataque cuerpo a cuerpo: {percent}%', 'tooltip.meleeCounterBlocked': 'Contraataque cuerpo a cuerpo: {percent}% (bloquea 50%)', 'tooltip.ignoreRanged': 'Ignorar ataques a distancia: {percent}%',
+        'ui.treasure.weaponStats': '{rarity}  {amount} DAÑO', 'ui.treasure.armorStats': '{rarity}  {amount} DEF', 'ui.treasure.magicStats': '{rarity} Magia', 'ui.treasure.thornsStats': '{rarity} {amount} Espinas',
+        'event.reward.brassCog': 'Engranaje de latón', 'event.reward.fedMagic': 'Carta mágica entregada: {name}', 'event.reward.consumedMagic': 'Carta mágica consumida: {name}', 'event.reward.spentCoins': '-{amount} monedas', 'event.reward.noReward': 'Sin recompensa',
+        'event.reward.gainedCard': 'Carta obtenida: {name}', 'event.reward.gainedJunk': 'Baratija obtenida: {name}', 'event.reward.gainedCompanion': 'Compañero obtenido: {name}', 'event.reward.gainedPassive': 'Carta pasiva obtenida: {name}', 'event.reward.cloverHint': 'Obtenido: {name} — tócalo en combate para equiparlo', 'event.reward.repaired': 'Reparado: {name} (+{amount} de durabilidad)',
+        'event.reward.offered': 'Ofrecido: {name}', 'event.reward.received': 'Recibido: {name}', 'event.reward.traded': 'Intercambiado: {oldName} → {newName}', 'event.reward.kept': 'Conservado: {name}', 'event.reward.lostStake': 'Apuesta perdida: {name}', 'event.reward.enchanted': '{name}: encantado', 'event.reward.permanentDamage': '{name}: +1 de daño permanente', 'event.reward.thornDamage': '{name}: +1 de daño de espinas',
+        'event.reward.stormHatchling': 'Cría de tormenta: 20% de probabilidad de electrocutar durante 1 turno', 'event.reward.slimeboneGuard': 'Guardia de hueso viscoso: +1 de protección mientras se lleva', 'event.reward.companionDamage': '{name}: +1 de daño',
+    },
+    fr: {
+        'tooltip.passiveEffect': 'Effet passif tant qu’elle est transportée.', 'tooltip.noEffect': 'Aucun effet.',
+        'tooltip.tapEquipDiscard': 'Touchez pour équiper · glissez dans le sac pour défausser', 'tooltip.carnivalToken': 'Un jeton de carnaval.',
+        'event.reward.hp': '{amount} PV', 'event.reward.ap': '{amount} PA',
+        'event.reward.coins': '{amount} pièces', 'event.reward.crystals': '{amount} cristaux',
+        'event.reward.fullyHealed': 'Soins complets (+{amount} PV)', 'event.reward.fullHealth': 'Déjà à tous vos PV',
+        'event.reward.lost': 'Perdu : {name}', 'event.reward.gainedAmulet': 'Amulette obtenue : {name}',
+        'event.reward.gained': 'Obtenu : {name}', 'event.reward.inventoryFull': 'Sac plein — défaussez une carte pour obtenir {name}',
+        'event.companion.trainStormChick': 'Entraîner le poussin-tempête', 'event.companion.trainSkeletonWarrior': 'Entraîner le guerrier squelette', 'event.companion.train': 'Entraîner {name}', 'event.companion.default': 'Compagnon',
+        'tooltip.damage.physical': 'Dégâts physiques : {amount}', 'tooltip.damage.lightning': 'Dégâts de foudre : {amount}', 'tooltip.companion.melee': 'Compagnon de mêlée', 'tooltip.companion.ranged': 'Compagnon à distance', 'tooltip.companion.actsAfter': 'Agit après les ennemis', 'tooltip.companion.shockChance': 'Chance de choc : {amount} %', 'tooltip.companion.guard': 'Garde : +{amount} protection',
+        'ui.room.combat': 'Salle de combat', 'ui.room.elite': 'Combat d’élite', 'ui.room.boss': 'Combat de boss', 'ui.room.spoils': 'Butin de la victoire',
+        'ui.victoryStory.latchbox': 'La Boîte Fidèle porte un fardeau de plus que votre sac ne devrait contenir.', 'ui.victoryStory.retiredBox': 'La boîte piégée cassée a recraché ses objets précieux avant de prendre une retraite honteuse.', 'ui.victoryStory.boxSlag': 'Une boîte à musique a fini en scories sur le sol d’une ruine.', 'ui.victoryStory.boxLoose': 'Une minuscule boîte voleuse court toujours quelque part dans le donjon.', 'ui.victoryStory.default': 'Vous avez conquis le donjon, même si de nombreuses histoires restent à raconter.',
+        'ui.notice.smokeBombTitle': 'Bombe fumigène !', 'ui.notice.smokeBombBody': 'Les gobelins lancent une bombe fumigène à vos pieds et s’échappent dans la brume.\n\nIls reviendront auprès du Roi gobelin, amochés par ce combat.',
+        'tooltip.meleeCounter': 'Contre de mêlée : {percent} %', 'tooltip.meleeCounterBlocked': 'Contre de mêlée : {percent} % (bloque 50 %)', 'tooltip.ignoreRanged': 'Ignorer les tirs : {percent} %',
+        'ui.treasure.weaponStats': '{rarity}  {amount} DGT', 'ui.treasure.armorStats': '{rarity}  {amount} DEF', 'ui.treasure.magicStats': '{rarity} Magie', 'ui.treasure.thornsStats': '{rarity} {amount} Épines',
+        'event.reward.brassCog': 'Rouage de laiton', 'event.reward.fedMagic': 'Carte magique donnée : {name}', 'event.reward.consumedMagic': 'Carte magique consommée : {name}', 'event.reward.spentCoins': '-{amount} pièces', 'event.reward.noReward': 'Aucune récompense',
+        'event.reward.gainedCard': 'Carte obtenue : {name}', 'event.reward.gainedJunk': 'Babiole obtenue : {name}', 'event.reward.gainedCompanion': 'Compagnon obtenu : {name}', 'event.reward.gainedPassive': 'Carte passive obtenue : {name}', 'event.reward.cloverHint': 'Obtenu : {name} — touchez-le en combat pour l’équiper', 'event.reward.repaired': 'Réparé : {name} (+{amount} durabilité)',
+        'event.reward.offered': 'Offert : {name}', 'event.reward.received': 'Reçu : {name}', 'event.reward.traded': 'Échangé : {oldName} → {newName}', 'event.reward.kept': 'Conservé : {name}', 'event.reward.lostStake': 'Mise perdue : {name}', 'event.reward.enchanted': '{name} : enchanté', 'event.reward.permanentDamage': '{name} : +1 dégât permanent', 'event.reward.thornDamage': '{name} : +1 dégât d’épines',
+        'event.reward.stormHatchling': 'Oisillon-tempête : 20 % de chance d’électrocuter pendant 1 tour', 'event.reward.slimeboneGuard': 'Garde visqueux : +1 protection tant qu’il est transporté', 'event.reward.companionDamage': '{name} : +1 dégât',
+    },
+    ru: {
+        'tooltip.passiveEffect': 'Пассивный эффект, пока карта в сумке.', 'tooltip.noEffect': 'Без эффекта.',
+        'tooltip.tapEquipDiscard': 'Нажмите, чтобы экипировать · перетащите в сумку, чтобы сбросить', 'tooltip.carnivalToken': 'Карнавальный жетон.',
+        'event.reward.hp': '{amount} ОЗ', 'event.reward.ap': '{amount} ОД',
+        'event.reward.coins': '{amount} монет', 'event.reward.crystals': '{amount} кристаллов',
+        'event.reward.fullyHealed': 'Полностью исцелен (+{amount} ОЗ)', 'event.reward.fullHealth': 'Здоровье уже полное',
+        'event.reward.lost': 'Потеряно: {name}', 'event.reward.gainedAmulet': 'Получен амулет: {name}',
+        'event.reward.gained': 'Получено: {name}', 'event.reward.inventoryFull': 'Сумка полна — сбросьте карту, чтобы получить {name}',
+        'event.companion.trainStormChick': 'Тренировать грозового цыпленка', 'event.companion.trainSkeletonWarrior': 'Тренировать скелета-воина', 'event.companion.train': 'Тренировать: {name}', 'event.companion.default': 'Спутник',
+        'tooltip.damage.physical': 'Физический урон: {amount}', 'tooltip.damage.lightning': 'Урон молнией: {amount}', 'tooltip.companion.melee': 'Спутник ближнего боя', 'tooltip.companion.ranged': 'Дальний спутник', 'tooltip.companion.actsAfter': 'Действует после врагов', 'tooltip.companion.shockChance': 'Шанс шока: {amount}%', 'tooltip.companion.guard': 'Защита: +{amount}',
+        'ui.room.combat': 'Боевая комната', 'ui.room.elite': 'Элитный бой', 'ui.room.boss': 'Битва с боссом', 'ui.room.spoils': 'Трофеи победы',
+        'ui.victoryStory.latchbox': 'Верная шкатулка несет на одну ношу больше, чем должна вмещать ваша сумка.', 'ui.victoryStory.retiredBox': 'Сломанная шкатулка-ловушка выкашляла ценности и с позором ушла на покой.', 'ui.victoryStory.boxSlag': 'Музыкальная шкатулка закончила свой путь куском шлака на разрушенном полу.', 'ui.victoryStory.boxLoose': 'Маленькая шкатулка-грабитель все еще бродит где-то по подземелью.', 'ui.victoryStory.default': 'Вы покорили подземелье, хотя многие истории остались нерассказанными.',
+        'ui.notice.smokeBombTitle': 'Дымовая бомба!', 'ui.notice.smokeBombBody': 'Гоблины бросают дымовую бомбу вам под ноги и скрываются в дыму.\n\nОни вернутся к Королю гоблинов, потрепанные этой схваткой.',
+        'tooltip.meleeCounter': 'Контратака в ближнем бою: {percent}%', 'tooltip.meleeCounterBlocked': 'Контратака в ближнем бою: {percent}% (блокирует 50%)', 'tooltip.ignoreRanged': 'Игнорирование дальних атак: {percent}%',
+        'ui.treasure.weaponStats': '{rarity}  {amount} УРОН', 'ui.treasure.armorStats': '{rarity}  {amount} ЗАЩ', 'ui.treasure.magicStats': '{rarity} Магия', 'ui.treasure.thornsStats': '{rarity} {amount} Шипы',
+        'event.reward.brassCog': 'Латунная шестеренка', 'event.reward.fedMagic': 'Скормлена магическая карта: {name}', 'event.reward.consumedMagic': 'Использована магическая карта: {name}', 'event.reward.spentCoins': '-{amount} монет', 'event.reward.noReward': 'Без награды',
+        'event.reward.gainedCard': 'Получена карта: {name}', 'event.reward.gainedJunk': 'Получена безделушка: {name}', 'event.reward.gainedCompanion': 'Получен спутник: {name}', 'event.reward.gainedPassive': 'Получена пассивная карта: {name}', 'event.reward.cloverHint': 'Получено: {name} — нажмите в бою, чтобы экипировать', 'event.reward.repaired': 'Отремонтировано: {name} (+{amount} прочности)',
+        'event.reward.offered': 'Предложено: {name}', 'event.reward.received': 'Получено: {name}', 'event.reward.traded': 'Обмен: {oldName} → {newName}', 'event.reward.kept': 'Сохранено: {name}', 'event.reward.lostStake': 'Ставка проиграна: {name}', 'event.reward.enchanted': '{name}: зачаровано', 'event.reward.permanentDamage': '{name}: +1 постоянного урона', 'event.reward.thornDamage': '{name}: +1 урона шипами',
+        'event.reward.stormHatchling': 'Грозовой птенец: 20% шанс оглушить током на 1 ход', 'event.reward.slimeboneGuard': 'Слизекостный страж: +1 защиты, пока находится в сумке', 'event.reward.companionDamage': '{name}: +1 урона',
+    },
+};
+
+for (const [language, additions] of Object.entries(EVENT_TEXT_ADDITIONS)) {
+    Object.assign(STRINGS[language], additions);
+}
+
+// The bound-enemy line on a companion card. The Collar of Binding shipped it
+// as an English literal in two files; keyed here so it speaks every language
+// the rest of that tooltip does.
+const COMPANION_TEXT_ADDITIONS = {
+    en: { 'tooltip.boundThrall': 'Bound enemy — discard to release' },
+    es: { 'tooltip.boundThrall': 'Enemigo vinculado — descártalo para liberarlo' },
+    fr: { 'tooltip.boundThrall': 'Ennemi lié — jetez-le pour le libérer' },
+    ru: { 'tooltip.boundThrall': 'Связанный враг — сбросьте, чтобы освободить' },
+    de: { 'tooltip.boundThrall': 'Gebundener Gegner — ablegen zum Freilassen' },
+};
+
+for (const [language, additions] of Object.entries(COMPANION_TEXT_ADDITIONS)) {
+    Object.assign(STRINGS[language], additions);
+}
+
+/**
+ * German.
+ *
+ * Written as one table rather than spread through the blocks above, because it
+ * is the one locale nobody on the team reads natively: keeping it whole means a
+ * German speaker can review the entire language in a single sitting instead of
+ * hunting it across eight objects. It merges last, so anything the addition
+ * tables above also define is overridden here.
+ *
+ * 'de' is NOT in SUPPORTED_LANGUAGES yet — the language button will not offer it
+ * until the item-name and description tables at the top of this file carry
+ * German too, so that a German UI never frames English item cards.
+ *
+ * Umlauts are written as real characters. The old fifteen-key stub spelled them
+ * out (Zurueck, loeschen) for a bitmap font that has since been replaced; both
+ * fonts now carry ä ö ü Ä Ö Ü ß, which tools/audit-font-coverage.mjs proves.
+ * They do NOT carry German low quotes („ “), so quoted text uses the straight
+ * pair the other locales use.
+ */
+const GERMAN_STRINGS = {
+    // --- Menus, options, test screens ---------------------------------------
+    'ui.menu.testOptions': 'Testoptionen',
+    'ui.menu.tutorial': 'Tutorial',
+    'ui.menu.testSite': 'Testgelände',
+    'ui.testOptions.title': 'TESTOPTIONEN',
+    'ui.testOptions.subtitle': 'Balance-Schalter — bleiben zwischen Sitzungen erhalten',
+    'ui.testOptions.back': 'Zurück',
+    'ui.testOptions.on': 'AN',
+    'ui.testOptions.off': 'AUS',
+    'ui.testOptions.disableAmulets': 'Amulette deaktivieren',
+    'ui.testOptions.disableAmuletsDesc': 'Keine Amulettfunde, -läden, -ereignisse oder -plätze.',
+    'ui.testOptions.disableMetaProgression': 'Meta-Fortschritt deaktivieren',
+    'ui.testOptions.disableMetaProgressionDesc': 'Keine Reliktfreischaltungen, Veteranen-LP oder Todesboni.',
+    'ui.options.languageLabel': 'Sprache',
+    'ui.common.continue': 'Weiter',
+    'ui.common.select': 'Wählen',
+    'ui.common.back': 'Zurück',
+    'ui.common.ok': 'OK',
+
+    // --- Death screen -------------------------------------------------------
+    'ui.death.fallen': 'DU BIST GEFALLEN',
+    'ui.death.killedBy': 'Getötet von {enemy} in Etage {floor}',
+    'ui.death.newRelic': 'NEUES RELIKT FREIGESCHALTET!',
+    'ui.death.noRelic': 'Diesmal kein neues Relikt',
+    'ui.death.tryDifferent': 'Stirb an anderen Gegnern, um mehr Relikte freizuschalten!',
+    'ui.death.totalDeaths': 'Tode insgesamt: {amount}',
+    'ui.death.bestFloor': 'Beste Etage: {floor}',
+    'ui.death.relicsUnlocked': 'Relikte freigeschaltet: {amount}',
+
+    // --- Map ----------------------------------------------------------------
+    'ui.map.title': 'Akt {act} - Etage {floor}',
+    'ui.map.instructions': 'Leuchtende Knoten anklicken - Ziehen zum Verschieben',
+    'map.tooltip.combat': 'Kampfraum',
+    'map.tooltip.elite': 'Elitekampf - stärkerer Gegner, bessere Beute',
+    'map.tooltip.shop': 'Laden - Gegenstände kaufen',
+    'map.tooltip.rareShop': 'Raritätenladen - besondere Waren',
+    'map.tooltip.rest': 'Rast - LP & Aktionen auffüllen',
+    'map.tooltip.anvil': 'Schmied - Ausrüstung reparieren oder verbessern',
+    'map.tooltip.event': 'Unbekannte Begegnung',
+    'map.tooltip.boss': 'Bosskampf!',
+    'map.tooltip.treasure': 'Truhenraum',
+    'map.tooltip.treasureGood': 'Schatzkammer - reichere Belohnungen!',
+
+    // --- Shop ---------------------------------------------------------------
+    'ui.shop.title': 'Laden',
+    'ui.shop.rareTitle': 'Seltene Waren',
+    'ui.shop.coins': 'Münzen: {amount}',
+    'ui.shop.crystals': 'Kristalle: {amount}',
+    'ui.shop.floor': 'Akt {act}  Etage {floor}',
+    'ui.shop.sellItems': 'Verkaufen',
+    'ui.shop.buyItems': 'Kaufen',
+    'ui.shop.continue': 'Weiter zur nächsten Etage',
+    'ui.shop.selectSell': 'Gegenstand zum Verkauf wählen:',
+    'ui.shop.sell': 'Verkaufen',
+    'ui.shop.sold': 'Verkauft',
+    'ui.shop.empty': 'Leer',
+    'ui.shop.sellPrice': 'Verkauf: {price} Münzen',
+    'ui.shop.soldFeedback': '{name} für {price} Münzen verkauft ({before}->{after})',
+    'ui.shop.magic': 'Magie',
+    'ui.shop.currencyCoins': 'Münzen',
+    'ui.shop.currencyCrystals': 'Kristalle',
+
+    // --- HUD ----------------------------------------------------------------
+    'ui.hud.pause': 'PAUSE',
+    'ui.hud.discard': 'Ablegen',
+    'ui.hud.effects': 'Effekte',
+    'ui.hud.next': 'Weiter',
+    'ui.hud.leave': 'Verlassen',
+    'ui.hud.combatLog': 'Kampfprotokoll',
+    'ui.hud.floor': '{month}  ·  Akt {act} · Etage {floor}',
+    'ui.hud.floorBanner': '{month}  ·  Akt {act} · Etage {floor}',
+    'ui.hud.effect.burn': 'Brand',
+    'ui.hud.effect.stun': 'Betäubt',
+    'ui.hud.effect.weakness': 'Geschwächt',
+    'ui.hud.shadowBlade': 'Schattenklinge',
+    'ui.hud.magicShield': 'Magieschild',
+    'ui.hud.boneShield': 'Knochenschild',
+    'ui.hud.poison': 'Gift {count}',
+    'ui.hud.blockNextAttack': 'Nächsten Angriff blocken',
+    'ui.hud.discardCrit': 'Ablage-Krit +{percent}%',
+    'ui.hud.discardCritProgress': 'Ablage-Krit ({cards} bis +{percent}%)',
+    'ui.hud.effectTurns': '{name} ({count} {unit})',
+    'ui.hud.buffTurns': '{name} {bonus} ({count} {unit})',
+    'ui.hud.shieldCharges': '{name} ({count} {unit})',
+    // German counts like English here: one form for 1, one for everything else.
+    // 'few' repeats 'many' so the shared three-slot plural table stays filled.
+    'ui.hud.turnUnit.one': 'Zug',
+    'ui.hud.turnUnit.few': 'Züge',
+    'ui.hud.turnUnit.many': 'Züge',
+    'ui.hud.chargeUnit.one': 'Ladung',
+    'ui.hud.chargeUnit.few': 'Ladungen',
+    'ui.hud.chargeUnit.many': 'Ladungen',
+    'ui.hud.dmgBonus': '+{percent}% SCH',
+    'ui.hud.defBonus': '+{percent}% VER',
+
+    // --- Pause --------------------------------------------------------------
+    'ui.pause.title': 'PAUSIERT',
+    'ui.pause.soundSettings': 'Toneinstellungen',
+    'ui.pause.resume': 'Fortsetzen',
+    'ui.pause.saveQuit': 'Speichern & beenden',
+    'ui.pause.exportJson': 'JSON exportieren',
+    'ui.pause.record': 'Lauf aufzeichnen',
+    'ui.pause.stopRecording': 'Aufzeichnung stoppen',
+    'ui.pause.noRecordedRun': 'Kein aufgezeichneter Lauf zum Export',
+    'ui.pause.exportUnavailable': 'Export ist in diesem Browser nicht verfügbar',
+    'ui.pause.recorderMemory': 'Aufzeichnung im Speicher ({amount} Ereignisse)',
+    'ui.pause.recorderOn': 'Spielaufzeichnung: AN ({amount} Ereignisse)',
+    'ui.pause.recorderReady': 'Aufgezeichneter Lauf bereit ({amount} Ereignisse)',
+    'ui.pause.recorderOff': 'Spielaufzeichnung: AUS',
+
+    // --- Anvil / rest -------------------------------------------------------
+    'ui.anvil.title': 'Amboss - Reparaturstelle',
+    'ui.anvil.coins': 'Münzen: {amount}',
+    'ui.anvil.continue': 'Weiter zur nächsten Etage',
+    'ui.anvil.none': 'Nichts muss repariert werden.',
+    'ui.anvil.cost': 'Kosten: {amount} Münzen',
+    'ui.anvil.armorRate': '({amount} pro {points} Pkt.)',
+    'ui.anvil.rate': '({amount} pro Pkt.)',
+    'ui.anvil.full': 'Voll',
+    'ui.anvil.notEnoughCoins': 'Nicht genug Münzen!',
+    'ui.rest.message': 'Du rastest am Lagerfeuer.',
+    'ui.rest.hpRestored': '+{amount} LP wiederhergestellt',
+    'ui.rest.actionsRestored': 'Aktionen voll aufgefüllt!',
+
+    // --- Treasure -----------------------------------------------------------
+    'ui.treasure.eliteTitle': 'ELITETRUHE',
+    'ui.treasure.title': 'SCHATZTRUHE',
+    'ui.treasure.forceHint': 'Mit einem Schlüssel sicher öffnen oder die Truhe anklicken und aufbrechen.',
+    'ui.treasure.hint': 'Öffne deine Belohnungstruhe.',
+    'ui.treasure.open': 'Öffnen',
+    'ui.treasure.noKey': 'Kein Schlüssel',
+    'ui.treasure.useKey': 'Schlüssel nutzen',
+    'ui.treasure.opened': 'Geöffnet',
+    'ui.treasure.reward': '+{coins} Münzen +{crystals} Kristalle',
+    'ui.treasure.takeHint': 'Karte anklicken, um sie zu nehmen',
+    'ui.treasure.inventoryFull': 'Inventar voll - erst einen Platz schaffen',
+    'ui.treasure.rewardItem': 'Belohnung',
+    'ui.treasure.trapSpawned': 'Falle ausgelöst! -{amount} LP',
+    'ui.treasure.forcedReward': '+{coins} Münzen +{crystals} Kristalle',
+    'ui.treasure.forcedRewardTrap': '+{coins} Münzen +{crystals} Kristalle (Falle)',
+    'ui.treasure.weaponStats': '{rarity}  {amount} SCH',
+    'ui.treasure.armorStats': '{rarity}  {amount} VER',
+    'ui.treasure.magicStats': '{rarity} Magie',
+    'ui.treasure.thornsStats': '{rarity} {amount} Dornen',
+
+    // --- Run result ---------------------------------------------------------
+    'ui.result.defeat': 'NIEDERLAGE',
+    'ui.result.killedBy': 'Getötet von {enemy}',
+    'ui.result.reachedFloor': 'Etage {floor} erreicht',
+    'ui.result.characterXp': '+{amount} Helden-EP',
+    'ui.result.noXp': 'Kein EP in diesem Lauf',
+    'ui.result.spendXp': 'Gib sie vor dem nächsten Lauf für Talente aus. Gesamt: {amount}',
+    'ui.result.victory': 'SIEG!',
+    'ui.result.dungeonConquered': 'Der Kerker ist bezwungen.',
+    'ui.result.stories': 'Geschichten: {amount}/1',
+    'ui.result.talentsPersist': 'Talente bleiben. Gesamt-EP: {amount}',
+    'ui.result.glory': 'Dann muss der Ruhm genügen.',
+    'ui.result.mainMenu': 'Hauptmenü',
+    'ui.room.combat': 'Kampfraum',
+    'ui.room.elite': 'Elitekampf',
+    'ui.room.boss': 'Bosskampf',
+    'ui.room.spoils': 'Siegesbeute',
+    'ui.victoryStory.latchbox': 'Die treue Riegelkiste trägt eine Last mehr, als dein Rucksack fassen sollte.',
+    'ui.victoryStory.retiredBox': 'Die zerbrochene Fallenkiste spuckte ihre Wertsachen aus und trat in Schande ab.',
+    'ui.victoryStory.boxSlag': 'Eine Spieldose endete als Schlacke auf zerstörtem Boden.',
+    'ui.victoryStory.boxLoose': 'Eine kleine Räuberkiste treibt sich noch irgendwo im Kerker herum.',
+    'ui.victoryStory.default': 'Du hast den Kerker bezwungen, doch viele Geschichten bleiben unerzählt.',
+
+    // --- Character select / armorer / talents -------------------------------
+    'ui.character.title': 'Wähle deinen Helden',
+    'ui.character.subtitle': 'Einmal pro Lauf — vor Etage 1',
+    'ui.character.rogueStart': 'Start: Dolch + Bogen',
+    'ui.character.warriorStart': 'Start: 2x Schwert',
+    'ui.character.rogueArmor': 'Rüstung: nur Leder',
+    'ui.character.warriorArmor': 'Rüstung: Ketten & Platte',
+    'ui.character.roguePassive': 'Passiv: Dolch & Bogen\nverursachen +10% Schaden',
+    'ui.character.warriorPassive': 'Passiv: 10% Krit mit Schwert/Axt\nKette: Nahkampfkonter\nPlatte: Fernkampf ignorieren',
+    'ui.armorer.title': 'Beim Waffenschmied',
+    'ui.armorer.subtitle': 'Wähle die Startrüstung für diesen Lauf',
+    'ui.armorer.uncommon': 'Ungewöhnlich',
+    'ui.armorer.chain': 'Kette',
+    'ui.armorer.plate': 'Platte',
+    'ui.armorer.chainBlurb': 'Ungewöhnlich · VER {amount} + Nahkampfkonter',
+    'ui.armorer.plateBlurb': 'Ungewöhnlich · VER {amount} + Fernkampf ignorieren',
+    'ui.talents.rogueTitle': 'Schurkentalente',
+    'ui.talents.warriorTitle': 'Kriegertalente',
+    'ui.talents.selectTalent': 'Wähle ein Talent',
+    'ui.talents.buy': 'Kaufen',
+    'ui.talents.startRun': 'Lauf starten',
+    'ui.talents.metaDisabled': 'Meta deaktiviert',
+    'ui.talents.xp': 'EP: {amount}',
+    'ui.talents.wip': 'IN ARBEIT',
+    'ui.talents.locked': 'Gesperrt',
+    'ui.talents.ownedNext': 'Besitzt R{rank}: {owned}\nNächster: {next}',
+    'ui.talents.noDescription': 'Keine Beschreibung.',
+    'ui.talents.lockedHint': '{description}\nGesperrt: kaufe zuerst mindestens 1 Rang in {name}.',
+    'ui.talents.buyCost': 'Kaufen {amount}',
+    'ui.talents.wipBranch': 'Dieser Zweig ist in Arbeit - nur zum Ansehen.',
+    'ui.talents.notEnoughXp': 'Nicht genug EP.',
+    'ui.talents.wipCannotBuy': 'In Arbeit - noch nicht käuflich.',
+    'ui.talents.needRank': 'Zuerst 1 Rang in {name} nötig.',
+    'ui.talents.cannotBuy': 'Kauf nicht möglich.',
+    'ui.talents.branch.shadow': 'Schatten',
+    'ui.talents.branch.ghost': 'Geist',
+    'ui.talents.branch.scoundrel': 'Halunke',
+    'ui.talents.branch.iron': 'Eisen',
+    'ui.talents.branch.edge': 'Schneide',
+    'ui.talents.branch.camp': 'Lager',
+    'ui.talents.max': 'MAX',
+
+    // --- Test site ----------------------------------------------------------
+    'ui.sandbox.title': 'Testgelände',
+    'ui.sandbox.subtitle': 'Wähle eine Begegnung. Danach kehrst du hierher zurück.',
+    'ui.sandbox.pickStory': 'Geschichte wählen...',
+    'ui.sandbox.backToMenu': 'Zurück zum Hauptmenü',
+    'ui.sandbox.storiesTitle': 'Testgelände — Geschichten',
+    'ui.sandbox.storiesSubtitle': 'Jede Geschichte, gespielt oder nicht. Fortschritt wird nicht gespeichert.',
+    'ui.sandbox.backToSite': 'Zurück zum Testgelände',
+    'ui.sandbox.encounter.combat': 'Kampf',
+    'ui.sandbox.encounter.elite': 'Elitekampf',
+    'ui.sandbox.encounter.boss': 'Boss',
+    'ui.sandbox.encounter.bossReward': 'Bossbelohnung',
+    'ui.sandbox.encounter.shop': 'Laden',
+    'ui.sandbox.encounter.rareShop': 'Raritätenladen',
+    'ui.sandbox.encounter.rest': 'Rast',
+    'ui.sandbox.encounter.anvil': 'Amboss',
+    'ui.sandbox.encounter.event': 'Ereignis (zufällig)',
+    'ui.sandbox.encounter.treasure': 'Schatz',
+    'ui.sandbox.encounter.treasureGood': 'Schatz (gut)',
+    'ui.sandbox.encounter.eliteChest': 'Elitetruhe',
+
+    // --- Tutorial -----------------------------------------------------------
+    'ui.tutorial.flipCard': 'Tippe eine Karte an, um sie umzudrehen.',
+    'ui.tutorial.stashSword': 'Tippe das Schwert an, um es in dein Inventar zu legen.',
+    'ui.tutorial.strikeSkeleton': 'Zieh dein Schwert auf das Skelett, um zuzuschlagen.',
+    'ui.tutorial.flipAnother': 'Dreh eine weitere Karte um.',
+    'ui.tutorial.actionPoints': 'Diese Rauten sind Aktionspunkte. Bei 0 AP hungerst du: Waffenschaden sinkt um 20%. Tippe Essen an, um AP aufzufüllen.',
+    'ui.tutorial.archerBehind': 'Ein Bogenschütze schleicht sich dahinter. Greif ihn mit dem Schwert an.',
+    'ui.tutorial.hiddenEnemy': 'Nichts getroffen — ein verborgener Gegner deckt die hintere Reihe. Dreh Karten um, um ihn zu finden.',
+    'ui.tutorial.killFrontMelee': 'Da ist er. Töte den Nahkämpfer vorn, bevor du an ihm vorbeikommst.',
+    'ui.tutorial.finishArcher': 'Vorne ist frei — jetzt erreicht dein Schwert den Bogenschützen. Mach ihn fertig.',
+    'ui.tutorial.anotherSword': 'Noch ein Schwert — dreh es um.',
+    'ui.tutorial.addToBag': 'Antippen, um es in die Tasche zu legen.',
+    'ui.tutorial.mergeSwords': 'Zieh ein Schwert auf das andere, um sie zu einer stärkeren Waffe zu verschmelzen.',
+    'ui.tutorial.durability': 'Die Punkte auf einer Waffe sind Haltbarkeit. Jeder Angriff verbraucht einen; bei null zerbricht die Waffe für immer. Gleiche Karten zu verschmelzen stellt alle Punkte wieder her.',
+    'ui.tutorial.flipGem': 'Ein Blitzedelstein liegt auf dem Feld. Dreh ihn um.',
+    'ui.tutorial.takeGem': 'Tippe den Blitzedelstein an, um ihn ins Inventar zu legen.',
+    'ui.tutorial.socketGem': 'Zieh den Blitzedelstein aus dem Inventar auf dein Schwert, um ihn einzusetzen. Er trifft den getroffenen Gegner und bis zu zwei weitere offene Gegner.',
+    'ui.tutorial.strikeWithGem': 'Drei Gegner sind offen. Schlag mit dem besetzten Schwert zu und sieh, wie der Blitz auf alle drei überspringt.',
+    'ui.tutorial.lightningExplained': 'Blitz trifft das Ziel und zwei weitere offene Gegner. Besonders nützlich, um Gegner hinter der vorderen Reihe zu erreichen.',
+    'ui.tutorial.potionCard': 'Noch eine Karte — ein Heiltrank.',
+    'ui.tutorial.takePotion': 'Antippen, um den Trank aufzunehmen.',
+    'ui.tutorial.drinkPotion': 'Zieh den Trank auf dein Porträt, um ihn zu trinken.',
+    'ui.tutorial.flipCoin': 'Münzen kaufen Karten in Läden. Dreh die Münzkarte um.',
+    'ui.tutorial.takeCoins': 'Tippe die Münzen an, um sie einzusammeln.',
+    'ui.tutorial.wrapUp': 'Das ist der ganze Kreislauf: umdrehen, kämpfen, sammeln und stärker werden. Drücke Fertig, wenn du so weit bist.',
+    'ui.tutorial.skip': 'Überspringen',
+    'ui.tutorial.finish': 'Fertig',
+
+    // --- Events and minigames -----------------------------------------------
+    'ui.event.choice.offerCard': 'Karte anbieten',
+    'ui.event.choice.offerWeapon': 'Waffe anbieten',
+    'ui.event.choice.wrestle': 'Ringen',
+    'ui.event.choice.forceOpen': 'Aufbrechen',
+    'ui.event.choice.searchNest': 'Nest durchsuchen',
+    'ui.event.choice.trade': 'Handeln',
+    'ui.event.choice.tradeJunk': 'Plunder tauschen',
+    'ui.event.choice.reroll': 'Neu würfeln',
+    'ui.event.choice.pullBack': 'Hand zurückziehen',
+    'ui.event.choice.silkCocoonLeave': 'Leise gehen',
+    'ui.event.choice.silkCocoonSearch': 'Kokons durchsuchen',
+    'ui.event.choice.silkCocoonBurn': 'Alle verbrennen!',
+    'ui.event.dragCardHint': 'Zieh eine Karte auf das Tablett',
+    'ui.armWrestling.title': 'Armdrücken',
+    'ui.armWrestling.lockedHands': 'HÄNDE VERSCHRÄNKT',
+    'ui.armWrestling.instructions': 'Klicke so schnell du kannst!',
+    'ui.armWrestling.ogre': 'OGER',
+    'ui.armWrestling.you': 'DU',
+    'ui.armWrestling.clickHint': 'Klicke irgendwo ins Fenster!',
+    'ui.armWrestling.push': 'DRÜCK!',
+    'ui.armWrestling.wait': 'Warte ab...',
+    'ui.armWrestling.win': 'DU GEWINNST!',
+    'ui.armWrestling.lose': 'DU VERLIERST!',
+    'ui.birdNest.title': 'Das Nest',
+    'ui.birdNest.instructionsCog': 'Räum den Plunder weg. Nimm Zahnrad und Ei, wenn du kannst. Achte auf den Schatten.',
+    'ui.birdNest.instructionsEgg': 'Räum den Plunder weg. Nimm das Ei, wenn du kannst. Achte auf den Schatten.',
+    'ui.birdNest.status': 'Zieh Plunder beiseite. Klicke eine freie Beute an, um sie zu nehmen.',
+    'ui.birdNest.run': 'Weglaufen',
+    'ui.birdNest.buried': 'Noch verschüttet. Räum erst den Plunder weg.',
+    'ui.birdNest.cogTaken': 'Das Messingzahnrad gehört dir.',
+    'ui.birdNest.eggTaken': 'Das Ei liegt warm in deiner Hand.',
+    'ui.birdNest.caught': 'Der Schatten hat dich gefunden.',
+    'ui.card.egg': 'Ei',
+    'ui.musicBox.title': 'Das Schloss knacken',
+    'ui.musicBox.brief': 'Finde 4 Paare, die passen. Setze die Zünder nicht.',
+    'ui.musicBox.safePairs': 'Diese setzen\n(4 Paare)',
+    'ui.musicBox.detonators': 'Zünder\nliegen lassen',
+    'ui.musicBox.begin': 'Beginnen',
+    'ui.musicBox.instructions': 'Setze die passenden Plättchen. Lass die Zünder in Ruhe.',
+    'ui.musicBox.ready': 'Zwei, die zusammengehören, rasten ein.',
+    'ui.musicBox.success': 'Das Schloss gibt nach.',
+    'ui.musicBox.detonated': 'Die Zünder schließen den Stromkreis.',
+    'ui.musicBox.pinSeated': 'Ein Stift sitzt. {seated} / {total}.',
+    'ui.musicBox.noFit': 'Diese Plättchen sitzen nicht.',
+    'ui.amulet.chooseTitle': 'Wähle ein {rarity} Amulett',
+    'ui.amulet.bossRewardTitle': 'Bossbelohnung — {rarity} Amulett',
+    'ui.amulet.pickOne': 'Wähle eines',
+    'ui.notice.smokeBombTitle': 'Rauchbombe!',
+    'ui.notice.smokeBombBody': 'Die Goblins werfen dir eine Rauchbombe vor die Füße und entkommen im Dunst.\n\nSie kehren an der Seite des Goblinkönigs zurück, gezeichnet von diesem Kampf.',
+
+    // --- Card tooltips ------------------------------------------------------
+    // Stat abbreviations run in one family across the whole locale, because they
+    // share the cramped card corners: SCH Schaden, VER Verteidigung, HALT
+    // Haltbarkeit, LP Lebenspunkte, AP Aktionspunkte, EP Erfahrung.
+    'tooltip.item': 'Gegenstand',
+    'tooltip.card': 'Karte',
+    'tooltip.noRarity': 'Keine Seltenheit',
+    'tooltip.weapon': 'Waffe',
+    'tooltip.armor': 'Rüstung',
+    'tooltip.thorns': 'Dornen',
+    'tooltip.potion': 'Trank',
+    'tooltip.food': 'Essen',
+    'tooltip.magic': 'Magie',
+    'tooltip.gem': 'Edelstein',
+    'tooltip.relic': 'Relikt',
+    'tooltip.key': 'Schlüssel',
+    'tooltip.coins': 'Münzen',
+    'tooltip.ruby': 'Rubin',
+    'tooltip.melee': 'Nahkampf',
+    'tooltip.ranged': 'Fernkampf',
+    'tooltip.family': 'Familie: {value}',
+    'tooltip.damageShort': 'SCH: {amount}',
+    'tooltip.protectionShort': 'SCHUTZ: {amount}',
+    'tooltip.defDur': '{def} VER  -  {dur} HALT',
+    'tooltip.dmgDur': '{dmg} SCH  -  {dur} HALT',
+    'tooltip.enemyHpAtk': '{hp} LP  -  {atk} ANG',
+    'tooltip.durabilityShort': 'HALT',
+    'tooltip.armorBody': '{rarity} Rüstung',
+    'tooltip.heals': 'Heilt {amount} LP',
+    'tooltip.healsColon': 'Heilt: {amount} LP',
+    'tooltip.restores': 'Stellt {amount} AP her',
+    'tooltip.restoresColon': 'Stellt her: {amount} AP',
+    'tooltip.magicSpell': 'Zauberspruch',
+    'tooltip.socket': 'Fassung: {effect}',
+    'tooltip.effect': 'Effekt: {effect}',
+    'tooltip.thornBody': '{rarity}{amount} Dornenschaden  -  {dur} HALT',
+    'tooltip.thornDamage': 'Dornenschaden: {amount}',
+    'tooltip.keyBody': 'Öffnet verschlossene Schatztruhen',
+    'tooltip.keySafe': 'Öffnet eine Truhe gefahrlos.',
+    'tooltip.skeleton': 'Skelett',
+    'tooltip.goblin': 'Goblin',
+    'tooltip.spider': 'Spinne',
+    'tooltip.range': 'Reichweite: {value}',
+    'tooltip.gemLine': 'Edelstein: {effect}{stack}',
+    'tooltip.fireSplash': 'Feuerfunken: {amount} Schaden an Nachbarn',
+    'tooltip.lightningZap': 'Blitz: {amount} Schaden an bis zu 3 Gegnern',
+    'tooltip.poisonStacks.one': 'Gift: {count} Stapel (1 Schaden / 3 Züge je)',
+    'tooltip.poisonStacks.few': 'Gift: {count} Stapel (1 Schaden / 3 Züge je)',
+    'tooltip.poisonStacks.many': 'Gift: {count} Stapel (1 Schaden / 3 Züge je)',
+    'tooltip.special': 'Besonderes: {value}',
+    'tooltip.poisonTurns': 'Gift: {amount} x {turns} Züge',
+    'tooltip.pips': 'Punkte: {value}',
+    'tooltip.dodge': 'Ausweichen: {percent}%',
+    'tooltip.reflect': 'Reflexion: {value}',
+    'tooltip.meleeAttackers': 'Nahkämpfer bekommen Schaden zurück.',
+    'tooltip.noMerge': 'Keine Verschmelzung',
+    'tooltip.merges': 'Verschmilzt: Platz {slots}',
+    'tooltip.noMergeReasons': 'Keine Verschmelzung: {reasons}',
+    'tooltip.noteUnusual': 'Hinweis: ungewöhnliche Werte ({details})',
+    'tooltip.baseDamage': 'Grundschaden {amount}',
+    'tooltip.baseProtection': 'Grundschutz {amount}',
+    'tooltip.level': 'Stufe {level}',
+    'tooltip.usesLeft': 'Noch {uses} Anwendungen',
+    'tooltip.cursed': '[VERFLUCHT]',
+    'tooltip.passiveEffect': 'Passiver Effekt, solange getragen.',
+    'tooltip.noEffect': 'Kein Effekt.',
+    'tooltip.tapEquipDiscard': 'Antippen zum Anlegen · in die Tasche ziehen zum Ablegen',
+    'tooltip.carnivalToken': 'Eine Jahrmarktsmarke.',
+    'tooltip.damage.physical': 'Physischer Schaden: {amount}',
+    'tooltip.damage.lightning': 'Blitzschaden: {amount}',
+    'tooltip.companion.melee': 'Nahkampfgefährte',
+    'tooltip.companion.ranged': 'Fernkampfgefährte',
+    'tooltip.companion.actsAfter': 'Handelt nach den Gegnern',
+    'tooltip.companion.shockChance': 'Schockchance: {amount}%',
+    'tooltip.companion.guard': 'Wache: +{amount} Schutz',
+    'tooltip.meleeCounter': 'Nahkampfkonter: {percent}%',
+    'tooltip.meleeCounterBlocked': 'Nahkampfkonter: {percent}% (50% geblockt)',
+    'tooltip.ignoreRanged': 'Fernkampf ignorieren: {percent}%',
+
+    // --- Enemy traits -------------------------------------------------------
+    // Each is a named trait followed by what it does, the same shape as the
+    // English: the name carries the flavour, the clause carries the rule.
+    'tooltip.wolfPack': 'Rudel: +1 ANG pro weiterem lebenden Wolf',
+    'tooltip.sporeOnHit': 'Sporen: 15% Fehlschlag beim nächsten Angriff',
+    'tooltip.thornsReflect': 'Dornen: reflektieren 1 echten Schaden',
+    'tooltip.veilFlip': 'Schleier: dreht sich jede Runde verdeckt',
+    'tooltip.rangedImmune': 'Borke: immun gegen Fernkampf',
+    'tooltip.gnaw': 'Nagen: 50% Chance auf +1 Rüstungsverschleiß bei Treffer',
+    'tooltip.taunt': 'Provokation: dieser Gegner muss angegriffen werden',
+    'tooltip.poisonAmp': 'Giftverstärkung: +1 Giftschaden pro Tick bei Treffer',
+    'tooltip.webHand': 'Netz: sperrt eine zufällige Handkarte für 1 Zug',
+    'tooltip.clubStun': 'Keule: 5% Betäubung (nächste Aktion entfällt)',
+    'tooltip.coinSteal': 'Beutelschneider: stiehlt bei Angriff 10 Münzen',
+    'tooltip.goblinRally': 'Sammeln: 15% zusätzliche Goblin-Angriffe',
+    'tooltip.ignoreArmor': 'Durchschlag: 10% Chance, Rüstung zu ignorieren',
+    'tooltip.heavyShot': 'Wucht: 20% Chance auf 150% Schaden',
+    'tooltip.cocoonShell': 'Kokon: 1 Schaden zum Öffnen (kein Umdrehen)',
+    'tooltip.veteran': 'Veteran: +15% LP/ANG',
+    'tooltip.eliteMiniBoss': 'Elite: Mini-Boss (+30% LP/ANG)',
+    'tooltip.mimicEscape': 'Flucht: entkommt in {turns} Zügen, wenn nicht getötet',
+
+    // --- Boss passport ------------------------------------------------------
+    'boss.abilitiesTitle': 'Fähigkeiten',
+    'boss.attack': 'Angriff: {atk}',
+    'boss.lifesteal': 'Lebensraub: heilt sich um {pct}% seines Angriffs, wenn er dich trifft',
+    'boss.summon': 'Beschwörung: kann {enemy} an seine Seite rufen',
+    'boss.poison': 'Gift: stapelt {dmg} Schaden pro Zug für {turns} Züge',
+    'boss.armorBreak': 'Rüstungsbruch: durchdringt {amount} deiner Rüstung',
+    'boss.rage': 'Wut: schlägt unter {pct}% LP {mult}x härter zu',
+    'boss.evade': 'Ausweichen: {pct}% Chance, dass dein Angriff fehlgeht',
+    'boss.coinSteal': 'Münzraub: kann bei einem Treffer bis zu {amount} Münzen stehlen',
+    'boss.noAbilities': 'Ein Schläger — keine besonderen Fähigkeiten.',
+
+    // --- Weapon enchants ----------------------------------------------------
+    // Title is a name, summary is the clause that follows it on the card.
+    'enchant.fireball.title': 'Glut',
+    'enchant.fireball.summary': 'Feuerfunken auf nahe Gegner',
+    'enchant.frostRing.title': 'Frostbann',
+    'enchant.frostRing.summary': 'friert den Gegner 1 Zug lang ein',
+    'enchant.restoration.title': 'Heilung',
+    'enchant.restoration.summary': 'heilt 3 LP bei Treffer',
+    'enchant.soulDrain.title': 'Verschlingen',
+    'enchant.soulDrain.summary': 'tötet einen Gegner ohne Boss sofort',
+    'enchant.shadowBlade.title': 'Umschattet',
+    'enchant.shadowBlade.summary': '+50% Schaden bei diesem Treffer',
+    'enchant.weakness.title': 'Zehrend',
+    'enchant.weakness.summary': 'der Gegner verursacht 30% weniger Schaden',
+    'enchant.boneWall.title': 'Bollwerk',
+    'enchant.boneWall.summary': 'reflektiert den nächsten Angriff',
+    'enchant.magicShield.title': 'Schirmend',
+    'enchant.magicShield.summary': '+20% Rüstung für 1 Zug',
+    'enchant.smokeScreen.title': 'Verhüllend',
+    'enchant.smokeScreen.summary': 'verbirgt bei einem Kill einen Gegner',
+
+    // --- Heroes -------------------------------------------------------------
+    'character.rogue': 'Schurke',
+    'character.warrior': 'Krieger',
+
+    // --- Floating combat text -----------------------------------------------
+    // These fly up off a card and are gone in a second, so they are kept as
+    // short as German allows: a shout, not a sentence.
+    'float.alreadyOwned': 'Schon im Besitz!',
+    'float.maxLevel': 'Höchststufe erreicht!',
+    'float.inventoryFull': 'Inventar voll!',
+    'float.discarded': 'Abgelegt!',
+    'float.noValidTarget': 'Kein gültiges Ziel!',
+    'float.fireball': 'Feuerball!',
+    'float.enemiesFrozen': 'Gegner eingefroren!',
+    'float.fullRestore': 'Voll aufgefüllt!',
+    'float.shadowBladeActive': 'Schattenklinge aktiv!',
+    'float.weakened': 'Geschwächt!',
+    'float.weakenedAttack': 'Geschwächter Angriff!',
+    'float.boneWall': 'Knochenschild!',
+    'float.boneWallActive': 'Knochenschild aktiv!',
+    'float.magicShieldActive': 'Magieschild aktiv!',
+    'float.cardsMerged': 'Karten verschmolzen!',
+    'float.sameTier': 'Gegenstände müssen gleichrangig sein!',
+    'float.magicCannotMerge': 'Magiekarten lassen sich nicht verschmelzen!',
+    'float.notEnoughActions': 'Nicht genug Aktionen!',
+    'float.differentGem': 'Anderer Edelstein bereits eingesetzt!',
+    'float.gemSlotsFull': 'Fassungen voll!',
+    'float.gemSocketed': '{name} eingesetzt{stack}',
+    'float.equippedItem': '{name} angelegt!',
+    'float.upgradedItem': '{name} verbessert!',
+    'float.equippedArmor': '{name} angelegt',
+    'float.unequippedArmor': '{name} abgelegt',
+    'float.plus': '+{amount}',
+    'float.plusHp': '+{amount} LP',
+    'float.plusAp': '+{amount} AP',
+    'float.plusActions': '+{amount} Aktionen',
+    'float.plusInventorySlots': '+{amount} Inventarplätze!',
+    'float.plusCoins': '+{amount} Münzen',
+    'float.plusCrystals': '+{amount} Kristalle',
+    'float.plusCoinsCrystals': '+{coins} Münzen +{crystals} Kristalle!',
+    'float.maxHp': '+{amount} max. LP',
+    'float.maxHpSource': '+{amount} max. LP ({source})',
+    'float.maxActions': '+{amount} max. Aktionen',
+    'float.refreshedPips': 'Aufgefrischt: {amount} Punkte',
+    'float.damage': '-{amount}',
+    'float.poisonDamage': '-{amount} Gift',
+    'float.fireDamage': '-{amount} Feuer',
+    'float.burnDamage': '-{amount} Brand',
+    'float.elementDamage': '-{amount} {label}',
+    'float.leech': '+{amount} Lebensraub',
+    'float.thornsDamage': '-{amount} Dornen',
+    'float.reflectDamage': '-{amount} (Reflexion)',
+    'float.reflectedDamage': '-{amount} (reflektiert)',
+    'float.mirroredDamage': '-{amount} (gespiegelt)',
+    'float.poisonStatus': 'Vergiftet!',
+    'float.poisonImmune': 'Giftimmun!',
+    'float.dodged': 'Ausgewichen!',
+    'float.dodge': 'Ausweichen!',
+    'float.blocked': 'Geblockt!',
+    'float.blockedFrontline': 'Von der Frontlinie geblockt!',
+    'float.freeAction': 'Freie Aktion!',
+    'float.weaponBroke': 'Waffe zerbrochen!',
+    'float.itemBroke': '{name} zerbrochen!',
+    'float.thornsBroke': 'Dornen zerbrochen!',
+    'float.shadowBladeFaded': 'Schattenklinge verblasst',
+    'float.magicShieldFaded': 'Magieschild verblasst',
+    'float.poisonWoreOff': 'Gift lässt nach',
+    'float.miss': 'Daneben!',
+    'float.spored': 'Versport!',
+    'float.thornsReflect': '-{amount} Dornen!',
+    'float.immune': 'Immun!',
+    'float.crit': 'KRIT!',
+    'float.critPercent': 'Krit {percent}%',
+    'float.luckyStrike': 'GLÜCKSTREFFER!',
+    'float.executed': 'HINGERICHTET!',
+    'float.nothing': 'Nichts...',
+    'float.loot': 'Beute!',
+    'float.taken': 'Genommen!',
+    'float.trapRemember': 'Falle! Merk sie dir...',
+    'float.mimicKill': 'Mimik! In {turns} Zügen töten',
+    'float.summoning': 'Beschwörung!',
+    'float.summoned': 'Beschworen!',
+    'float.echoed': 'Widerhall!',
+    'float.slowed': 'Verlangsamt!',
+    'float.thawed': 'Aufgetaut!',
+    'float.frozenTurns': 'Eingefroren ({turns})',
+    'float.turnsLeft': 'Noch {turns}!',
+    'float.charmed': 'Bezaubert!',
+    'float.charmedTune': 'Bezaubert (Melodie)',
+    'float.dualWield': 'Beidhändig!',
+    'float.heavyStrike': 'Wuchtschlag!',
+    'float.coinsStolen': '-{amount} Münzen gestohlen!',
+    'float.mimicEscaped': 'Mimik entkommen!',
+    'float.floorCleared': 'Etage geräumt! +{amount} Münzen',
+    'float.act': 'Akt {act}',
+    'float.allEnemiesDefeated': 'Alle Gegner besiegt!',
+    'float.clearOrProceed': 'Räum die restlichen Karten oder geh weiter.',
+    'float.gameSaved': 'Spiel gespeichert',
+    'float.purchased': 'Gekauft!',
+    'float.notEnoughCurrency': 'Nicht genug {currency}!',
+    'float.alreadyUpgraded': 'Schon verbessert!',
+    'float.frozen': 'Eingefroren!',
+    'float.itemReplaced': '{name} ersetzt',
+    'float.alreadyEquipped': 'Schon angelegt!',
+    'float.dealOneDamage': '1 Schaden zum Öffnen',
+    'float.nothingNew': 'Nichts Neues im Angebot',
+    'float.webbed': 'Eingesponnen!',
+    'float.webwoven': 'Netzumwoben!',
+    'float.waitEnemyTurn': 'Warte den Gegnerzug ab!',
+    'float.mothWingReturned': 'Mottenflügelstaub hat es zurückgeholt!',
+    'float.firstBlood': 'Erstes Blut!',
+    'float.critical': 'Kritisch!',
+    'float.assassinate': 'Meuchelmord!',
+    'float.volley': 'Salve!',
+    'float.reinforcements': 'Verstärkung!',
+    'float.shocked': 'Geschockt!',
+    'float.doubleDamage': 'Doppelter Schaden!',
+    'float.warHorn': 'KRIEGSHORN!',
+    'float.shadowed': 'Umschattet!',
+    'float.devoured': 'Verschlungen!',
+    'float.omenBackfires': 'Das Omen schlägt zurück!',
+    'float.bulwark': 'Bollwerk!',
+    'float.shockWoreOff': 'Schock lässt nach!',
+    'float.charmedLute': 'Bezaubert (Laute)',
+    'float.heavyShot': 'Wuchtschuss!',
+    'float.enraged': 'RASEND!',
+    'float.armorBroken': 'Rüstung zerbrochen!',
+    'float.stunned': 'Betäubt!',
+    'float.gnaw': 'Nagen!',
+    'float.youNeedCoin': 'Du brauchst eine Münze',
+    'float.bagFull': 'Deine Tasche ist voll',
+    'float.claimed': '{name} eingesackt!',
+    'float.repairedItem': '{name} voll repariert!',
+    'float.poisonPerTurn': 'Gift -{amount}/Zug',
+
+    // --- Event rewards ------------------------------------------------------
+    'event.reward.hp': '{amount} LP',
+    'event.reward.ap': '{amount} AP',
+    'event.reward.coins': '{amount} Münzen',
+    'event.reward.crystals': '{amount} Kristalle',
+    'event.reward.fullyHealed': 'Voll geheilt (+{amount} LP)',
+    'event.reward.fullHealth': 'Bereits bei vollen LP',
+    'event.reward.lost': 'Verloren: {name}',
+    'event.reward.gainedAmulet': 'Amulett erhalten: {name}',
+    'event.reward.gained': 'Erhalten: {name}',
+    'event.reward.inventoryFull': 'Inventar voll — lege eine Karte ab, um {name} zu nehmen',
+    'event.reward.brassCog': 'Messingzahnrad',
+    'event.reward.fedMagic': 'Magiekarte verfüttert: {name}',
+    'event.reward.consumedMagic': 'Magiekarte verbraucht: {name}',
+    'event.reward.spentCoins': '-{amount} Münzen',
+    'event.reward.noReward': 'Keine Belohnung',
+    'event.reward.gainedCard': 'Karte erhalten: {name}',
+    'event.reward.gainedJunk': 'Plunderkarte erhalten: {name}',
+    'event.reward.gainedCompanion': 'Gefährten erhalten: {name}',
+    'event.reward.gainedPassive': 'Passivkarte erhalten: {name}',
+    'event.reward.cloverHint': 'Erhalten: {name} — im Kampf antippen zum Anlegen',
+    'event.reward.repaired': 'Repariert: {name} (+{amount} Haltbarkeit)',
+    'event.reward.offered': 'Angeboten: {name}',
+    'event.reward.received': 'Bekommen: {name}',
+    'event.reward.traded': 'Getauscht: {oldName} → {newName}',
+    'event.reward.kept': 'Behalten: {name}',
+    'event.reward.lostStake': 'Einsatz verloren: {name}',
+    'event.reward.enchanted': '{name}: verzaubert',
+    'event.reward.permanentDamage': '{name}: +1 dauerhafter Schaden',
+    'event.reward.thornDamage': '{name}: +1 Dornenschaden',
+    'event.reward.stormHatchling': 'Sturmküken: 20% Chance auf Schock für 1 Zug',
+    'event.reward.slimeboneGuard': 'Schleimknochenwache: +1 Schutz, solange getragen',
+    'event.reward.companionDamage': '{name}: +1 Schaden',
+    'event.companion.trainStormChick': 'Sturmküken ausbilden',
+    'event.companion.trainSkeletonWarrior': 'Skelettkrieger ausbilden',
+    'event.companion.train': '{name} ausbilden',
+    'event.companion.default': 'Gefährte',
+};
+
+Object.assign(STRINGS.de, GERMAN_STRINGS);
 
 const TEXT_ALIASES = {
     'Already owned!': 'float.alreadyOwned',
@@ -1968,6 +2798,36 @@ const TEXT_ALIASES = {
     'Game Saved': 'float.gameSaved',
     'Purchased!': 'float.purchased',
     'Drag onto a weapon to socket': 'float.dragGemOntoWeapon',
+    'Already equipped!': 'float.alreadyEquipped',
+    'Already upgraded!': 'float.alreadyUpgraded',
+    'Frozen!': 'float.frozen',
+    'Deal 1 damage to open': 'float.dealOneDamage',
+    'Nothing new to offer': 'float.nothingNew',
+    'Webbed!': 'float.webbed',
+    'Webwoven!': 'float.webwoven',
+    'Wait for the enemy turn!': 'float.waitEnemyTurn',
+    'Moth-Wing Dust returned it!': 'float.mothWingReturned',
+    'First Blood!': 'float.firstBlood',
+    'Critical!': 'float.critical',
+    'Assassinate!': 'float.assassinate',
+    'Volley!': 'float.volley',
+    'Reinforcements!': 'float.reinforcements',
+    'Shocked!': 'float.shocked',
+    'Double Damage!': 'float.doubleDamage',
+    'WAR HORN!': 'float.warHorn',
+    'Shadowed!': 'float.shadowed',
+    'Devoured!': 'float.devoured',
+    'Omen Backfires!': 'float.omenBackfires',
+    'Bulwark!': 'float.bulwark',
+    'Shock Wore Off!': 'float.shockWoreOff',
+    'Charmed (Lute)': 'float.charmedLute',
+    'Heavy shot!': 'float.heavyShot',
+    'ENRAGED!': 'float.enraged',
+    'Armor Broken!': 'float.armorBroken',
+    'Stunned!': 'float.stunned',
+    'Gnaw!': 'float.gnaw',
+    'You need a coin': 'float.youNeedCoin',
+    'Your bag is full': 'float.bagFull',
 };
 
 const TEXT_PATTERNS = [
@@ -2007,11 +2867,18 @@ const TEXT_PATTERNS = [
     [/^(\d+) left!$/, match => ['float.turnsLeft', { turns: match[1] }]],
     [/^-(\d+) coins stolen!$/, match => ['float.coinsStolen', { amount: match[1] }]],
     [/^Crit (\d+)%$/, match => ['float.critPercent', { percent: match[1] }]],
+    [/^poison -(\d+)\/turn$/i, match => ['float.poisonPerTurn', { amount: match[1] }]],
+    [/^(.+) claimed!$/, match => ['float.claimed', { name: match[1] }]],
+    [/^(.+) fully repaired!$/, match => ['float.repairedItem', { name: match[1] }]],
     [/^Not enough (.+)!$/, match => ['float.notEnoughCurrency', { currency: match[1] }]],
 ];
 
 const EXACT_NAME_TRANSLATIONS = {
     fr: {
+        'Mark of Hesitation': 'Marque d’Hésitation',
+        'Mark of Treachery': 'Marque de Trahison',
+        'Twin Marks': 'Marques Jumelles',
+        'Collar of Binding': 'Collier de Contrainte',
         'Nothing': 'Rien', 'Mimic': 'Mimique', 'Coins': 'Pièces', 'Crystal': 'Cristal', 'Mysterious Key': 'Clé mystérieuse', 'Thorns Card': 'Carte d’épines',
         'Minor Healing Potion': 'Potion de soin mineure', 'Healing Potion': 'Potion de soin', 'Greater Healing Potion': 'Grande potion de soin', 'Bread': 'Pain', 'Rations': 'Rations', 'Hearty Meal': 'Repas copieux', 'Feast': 'Festin',
         'Fireball': 'Boule de feu', 'Frost Ring': 'Anneau de givre', 'Restoration': 'Restauration', 'Soul Drain': 'Drain d’âme', 'Shadow Blade': 'Lame d’ombre', 'Weakness': 'Faiblesse', 'Bone Shield': 'Bouclier d’os', 'Magic Shield': 'Bouclier magique', 'Smoke Screen': 'Écran de fumée', 'Fire Gem': 'Gemme de feu', 'Poison Gem': 'Gemme de poison', 'Lightning Gem': 'Gemme de foudre',
@@ -2020,6 +2887,10 @@ const EXACT_NAME_TRANSLATIONS = {
         "Wayfinder's Compass": 'Boussole du guide', "Skeleton's Lockpicks": 'Crochets du squelette', 'Ember Rune': 'Rune de braise', "Scavenger's Coffer": 'Coffret du charognard', "Giant's Morningstar": 'Étoile du matin du géant', "Merchant's Seal": 'Sceau du marchand', 'Nightwatch Familiar': 'Familier de veille nocturne', "Courtier's Fan": 'Éventail de courtisan', 'Crimson Mantle': 'Manteau cramoisi', "Wayfarer's Camp": 'Camp du voyageur', 'Masquerade of Feathers': 'Mascarade de plumes', 'Lute of First Light': 'Luth de la première lumière', "Seeker's Lens": 'Lentille du chercheur', "Pilgrim's Loaf": 'Pain du pèlerin', 'Gravebloom Bundle': 'Bouquet de fleurs de tombe', 'Winter Aegis': 'Égide d’hiver', 'Storm Shard': 'Éclat de tempête', 'Griffin Medallion': 'Médaillon de griffon', 'Ember of Defiance': 'Braise de défiance', 'Harvest Crown': 'Couronne des récoltes', "Lost Princess's Diadem": 'Diadème de la princesse perdue', "Camp Cook's Toque": 'Toque du cuisinier de camp', "Musketeer's Plume": 'Plume de mousquetaire', "Starcaller's Hat": 'Chapeau de l’invocateur d’étoiles', "Veteran's Carryall": 'Sac du vétéran', "Dungeonmaster's Spectacles": 'Lunettes du maître du donjon', 'Goblin War Horn': 'Cor de guerre gobelin', "Scribe's Quill": 'Plume du scribe', 'Blood Signet': 'Chevalière de sang', 'Last Light Pendant': 'Pendentif de la dernière lumière', 'Verdant Hood': 'Capuche verdoyante', "Oracle's Fishbowl": 'Bocal de l’oracle', 'Quickhand Gloves': 'Gants de main vive', "Prospector's Pick": 'Pioche du prospecteur', 'Ironhide Tonic': 'Tonique de peau de fer', 'Moonwell Phial': 'Fiole du puits de lune', "Delver's Hook": 'Crochet de l’explorateur', "Queen's Antivenom": 'Antivenin de la reine', "Lich's Covenant": 'Pacte de liche', "Berserker's Warbelt": 'Ceinture de guerre du berserker', 'Orb of Thorns': 'Orbe d’épines', 'Golden Seed': 'Graine dorée', 'Tempered Ingot': 'Lingot trempé', "Siren's Perfume": 'Parfum de sirène', 'Stoneheart Medallion': 'Médaillon de cœur de pierre', 'Carrion Oath': 'Serment de charogne', 'Mask of Hollow Whispers': 'Masque des murmures creux', "Webweaver's Thread": 'Fil de la tisseuse de toiles',
     },
     es: {
+        'Mark of Hesitation': 'Marca de Vacilación',
+        'Mark of Treachery': 'Marca de Traición',
+        'Twin Marks': 'Marcas Gemelas',
+        'Collar of Binding': 'Collar de Vinculación',
         'Nothing': 'Nada',
         'Mimic': 'Mímico',
         'Coins': 'Monedas',
@@ -2263,8 +3134,25 @@ const EXACT_NAME_TRANSLATIONS = {
     },
 };
 
+Object.assign(EXACT_NAME_TRANSLATIONS.es, {
+    'Dusty Pipe': 'Pipa polvorienta', 'Rubber Duck': 'Pato de goma', 'Broken Ring': 'Anillo roto',
+    'Carnival Junk': 'Baratija de carnaval', 'Holographic Omen': 'Presagio holográfico',
+});
+Object.assign(EXACT_NAME_TRANSLATIONS.fr, {
+    'Dusty Pipe': 'Pipe poussiéreuse', 'Rubber Duck': 'Canard en caoutchouc', 'Broken Ring': 'Anneau cassé',
+    'Carnival Junk': 'Babiole de carnaval', 'Holographic Omen': 'Présage holographique',
+});
+Object.assign(EXACT_NAME_TRANSLATIONS.ru, {
+    'Dusty Pipe': 'Пыльная трубка', 'Rubber Duck': 'Резиновая утка', 'Broken Ring': 'Сломанное кольцо',
+    'Carnival Junk': 'Карнавальная безделушка', 'Holographic Omen': 'Голографическое предзнаменование',
+});
+
 const DESCRIPTION_TRANSLATIONS = {
     fr: {
+        'One random enemy per floor is marked. 50% chance it skips its attack.': 'Un ennemi au hasard est marqué à chaque étage. 50% de chances qu’il passe son attaque.',
+        'One random enemy per floor is marked. It attacks another revealed enemy instead of you. Replaces Mark of Hesitation.': 'Un ennemi au hasard est marqué à chaque étage. Il attaque un autre ennemi révélé à votre place. Remplace la Marque d’Hésitation.',
+        'One marked enemy has a 50% chance to skip its attack. Another marked enemy attacks its own kind. Replaces Marks of Hesitation and Treachery.': 'Un ennemi marqué a 50% de chances de passer son attaque. Un autre marqué attaque les siens. Remplace les Marques d’Hésitation et de Trahison.',
+        'Twin Marks, and a killed marked non-boss enemy joins your bag as a companion if a slot is free. Stays until discarded. Replaces the control marks.': 'Marques Jumelles, et un ennemi marqué non-boss tué rejoint votre sac comme compagnon si une place est libre. Reste jusqu’à ce qu’il soit jeté. Remplace les marques de contrôle.',
         'Deals 15 damage to a single enemy': 'Inflige 15 dégâts à un seul ennemi',
         'Freezes all enemies for 3 turns': 'Gèle tous les ennemis pendant 3 tours',
         'Fully restores HP and Action Points': 'Restaure entièrement les PV et les points d’action',
@@ -2283,6 +3171,10 @@ const DESCRIPTION_TRANSLATIONS = {
         'dual wield': 'double arme', 'hits any enemy': 'touche n’importe quel ennemi', 'can block': 'peut bloquer', 'heavy strike': 'frappe lourde', 'magic cards cannot merge': 'les cartes magiques ne peuvent pas fusionner', 'gems socket into weapons': 'les gemmes se sertissent dans les armes', 'different family': 'famille différente', 'stats/effect differ': 'statistiques/effet différents',
     },
     es: {
+        'One random enemy per floor is marked. 50% chance it skips its attack.': 'Un enemigo al azar por piso queda marcado. 50% de probabilidad de que pierda su ataque.',
+        'One random enemy per floor is marked. It attacks another revealed enemy instead of you. Replaces Mark of Hesitation.': 'Un enemigo al azar por piso queda marcado. Ataca a otro enemigo revelado en tu lugar. Sustituye a la Marca de Vacilación.',
+        'One marked enemy has a 50% chance to skip its attack. Another marked enemy attacks its own kind. Replaces Marks of Hesitation and Treachery.': 'Un enemigo marcado tiene un 50% de probabilidad de perder su ataque. Otro marcado ataca a los suyos. Sustituye a las Marcas de Vacilación y Traición.',
+        'Twin Marks, and a killed marked non-boss enemy joins your bag as a companion if a slot is free. Stays until discarded. Replaces the control marks.': 'Marcas Gemelas, y un enemigo marcado que no sea jefe se une a tu bolsa como compañero al morir si hay hueco. Permanece hasta que lo descartes. Sustituye a las marcas de control.',
         'Deals 15 damage to a single enemy': 'Inflige 15 de daño a un solo enemigo',
         'Freezes all enemies for 3 turns': 'Congela a todos los enemigos 3 turnos',
         'Fully restores HP and Action Points': 'Recupera del todo los PV y los puntos de acción',
@@ -2450,6 +3342,351 @@ const DESCRIPTION_TRANSLATIONS = {
     },
 };
 
+// Story copy lives in the event content files so designers can read an event
+// as one unit. This parallel lookup keeps that authoring flow while translating
+// the complete text of the most frequently encountered early events.
+const EVENT_NARRATIVE_TRANSLATIONS = {
+    es: {
+        'Quiet Crossroads': 'Cruce tranquilo',
+        'For one floor, nothing is haunted, cursed, or pretending to be a chest.\n\nThere is a small dry alcove, a few coins someone dropped, and quiet.': 'Durante un piso, nada está embrujado, maldito ni finge ser un cofre.\n\nHay un pequeño hueco seco, unas monedas que alguien dejó caer y silencio.',
+        'Gain 10 coins': 'Ganar 10 monedas', 'Heal 5 HP': 'Curar 5 PV', 'Leave': 'Salir',
+        'You pocket the coins and move on.': 'Guardas las monedas y sigues adelante.',
+        'You sit down for a few minutes. Nothing attacks you. It helps more than it should.': 'Te sientas unos minutos. Nada te ataca. Ayuda más de lo que debería.',
+        "You don't trust it. You keep moving.": 'No te fías. Sigues avanzando.',
+        'The Egg Hatches': 'El huevo eclosiona',
+        'The egg starts knocking against the inside of its card. Tap. Tap. Crack.\n\nThe music box scuttles underneath and catches the shell in its open lid.': 'El huevo empieza a golpear desde dentro de su carta. Toc. Toc. Crack.\n\nLa caja de música se escabulle debajo y atrapa la cáscara con su tapa abierta.',
+        'See what hatches': 'Ver qué nace',
+        'A chick kicks free, glares at the room, and test-fires a yellow spark into the wall.\n\nSatisfied, it climbs into your bag and claims a slot.\n\nChick Companion: 2 lightning damage after enemy turns.': 'Un polluelo se libera de una patada, mira fijamente la sala y prueba una chispa amarilla contra la pared.\n\nSatisfecho, se mete en tu bolsa y ocupa una casilla.\n\nCompañero polluelo: 2 de daño de rayo tras los turnos enemigos.',
+        'The shell taps once more, then goes still. Whatever was inside is already somewhere else.': 'La cáscara golpea una vez más y luego queda inmóvil. Lo que había dentro ya está en otro lugar.',
+        'The Copying Mirror': 'El espejo copiador',
+        'A tall silver mirror leans against the wall, humming to itself.\n\n(Drag a card from your bag onto it and it will conjure a perfect copy — merge the pair here if you like. Or walk on.)': 'Un alto espejo de plata se apoya contra la pared y zumba para sí mismo.\n\n(Arrastra una carta de tu bolsa sobre él y conjurará una copia perfecta; puedes fusionar la pareja aquí. O sigue tu camino.)',
+        'Leave the mirror': 'Dejar el espejo', 'You walk on. Behind you, the mirror keeps humming to its own reflection.': 'Sigues caminando. Detrás de ti, el espejo sigue zumbando a su propio reflejo.',
+        'The Briar Room': 'La sala de zarzas',
+        'The room is walled in briars — floor to ceiling, grown through a litter of old weapons and armor scraps.\n\nWhen you step in, the vines turn toward your bag.': 'La sala está cercada por zarzas, del suelo al techo, crecidas entre armas viejas y restos de armadura.\n\nCuando entras, las enredaderas se vuelven hacia tu bolsa.',
+        'Offer a weapon or armor card': 'Ofrecer una carta de arma o armadura', 'Slash through the vines': 'Abrirse paso entre las enredaderas', 'Burn the vines': 'Quemar las enredaderas',
+        'Choose a weapon or armor card and drag it onto the briars.': 'Elige una carta de arma o armadura y arrástrala sobre las zarzas.',
+        'Leave without offering a card': 'Salir sin ofrecer una carta',
+        'You back off before the vines reach your boots. Slowly, they settle against the walls.': 'Retrocedes antes de que las enredaderas alcancen tus botas. Lentamente, vuelven a las paredes.',
+        'You cut through. The thorns score your hands and wrap the blade all the way down.\n\nWhen you reach the far door, some are still knotted around it.': 'Te abres paso. Las espinas te arañan las manos y se enrollan por toda la hoja.\n\nCuando llegas a la puerta del fondo, algunas siguen anudadas a ella.',
+        'One fireball. The vines shrivel and drop, and the room fills with drifting ash.\n\nUnder the blackened roots, something small catches the light.': 'Una bola de fuego. Las enredaderas se marchitan y caen, y la sala se llena de ceniza flotante.\n\nBajo las raíces ennegrecidas, algo pequeño capta la luz.',
+        'You keep to the corridor. The vines settle back against the walls.': 'Sigues por el corredor. Las enredaderas vuelven a asentarse contra las paredes.',
+    },
+    fr: {
+        'Quiet Crossroads': 'Carrefour tranquille',
+        'For one floor, nothing is haunted, cursed, or pretending to be a chest.\n\nThere is a small dry alcove, a few coins someone dropped, and quiet.': 'Pendant un étage, rien n’est hanté, maudit ou déguisé en coffre.\n\nIl y a une petite alcôve sèche, quelques pièces tombées par quelqu’un et du calme.',
+        'Gain 10 coins': 'Gagner 10 pièces', 'Heal 5 HP': 'Soigner 5 PV', 'Leave': 'Partir',
+        'You pocket the coins and move on.': 'Vous empochez les pièces et continuez.',
+        'You sit down for a few minutes. Nothing attacks you. It helps more than it should.': 'Vous vous asseyez quelques minutes. Rien ne vous attaque. Cela aide plus que prévu.',
+        "You don't trust it. You keep moving.": 'Vous ne lui faites pas confiance. Vous continuez.',
+        'The Egg Hatches': 'L’œuf éclot',
+        'The egg starts knocking against the inside of its card. Tap. Tap. Crack.\n\nThe music box scuttles underneath and catches the shell in its open lid.': 'L’œuf commence à cogner contre l’intérieur de sa carte. Toc. Toc. Crac.\n\nLa boîte à musique se glisse dessous et attrape la coquille dans son couvercle ouvert.',
+        'See what hatches': 'Voir ce qui éclot',
+        'A chick kicks free, glares at the room, and test-fires a yellow spark into the wall.\n\nSatisfied, it climbs into your bag and claims a slot.\n\nChick Companion: 2 lightning damage after enemy turns.': 'Un poussin se libère d’un coup de patte, fixe la salle et lance une étincelle jaune contre le mur.\n\nSatisfait, il grimpe dans votre sac et prend une place.\n\nCompagnon poussin : 2 dégâts de foudre après les tours ennemis.',
+        'The shell taps once more, then goes still. Whatever was inside is already somewhere else.': 'La coquille cogne une fois encore, puis s’immobilise. Ce qui était dedans est déjà ailleurs.',
+        'The Copying Mirror': 'Le miroir copieur',
+        'A tall silver mirror leans against the wall, humming to itself.\n\n(Drag a card from your bag onto it and it will conjure a perfect copy — merge the pair here if you like. Or walk on.)': 'Un grand miroir d’argent est appuyé contre le mur et fredonne pour lui-même.\n\n(Faites glisser une carte de votre sac dessus : il en créera une copie parfaite. Fusionnez la paire ici si vous voulez, ou continuez.)',
+        'Leave the mirror': 'Laisser le miroir', 'You walk on. Behind you, the mirror keeps humming to its own reflection.': 'Vous continuez. Derrière vous, le miroir fredonne toujours à son propre reflet.',
+        'The Briar Room': 'La salle des ronces',
+        'The room is walled in briars — floor to ceiling, grown through a litter of old weapons and armor scraps.\n\nWhen you step in, the vines turn toward your bag.': 'La salle est cernée de ronces, du sol au plafond, parmi de vieilles armes et des débris d’armure.\n\nQuand vous entrez, les lianes se tournent vers votre sac.',
+        'Offer a weapon or armor card': 'Offrir une carte d’arme ou d’armure', 'Slash through the vines': 'Tailler les lianes', 'Burn the vines': 'Brûler les lianes',
+        'Choose a weapon or armor card and drag it onto the briars.': 'Choisissez une carte d’arme ou d’armure et faites-la glisser sur les ronces.',
+        'Leave without offering a card': 'Partir sans offrir de carte',
+        'You back off before the vines reach your boots. Slowly, they settle against the walls.': 'Vous reculez avant que les lianes n’atteignent vos bottes. Lentement, elles retournent contre les murs.',
+        'You cut through. The thorns score your hands and wrap the blade all the way down.\n\nWhen you reach the far door, some are still knotted around it.': 'Vous tranchez votre chemin. Les épines entaillent vos mains et s’enroulent le long de la lame.\n\nQuand vous atteignez la porte du fond, certaines y sont encore nouées.',
+        'One fireball. The vines shrivel and drop, and the room fills with drifting ash.\n\nUnder the blackened roots, something small catches the light.': 'Une boule de feu. Les lianes se recroquevillent et tombent, et la salle se remplit de cendre flottante.\n\nSous les racines noircies, quelque chose de petit accroche la lumière.',
+        'You keep to the corridor. The vines settle back against the walls.': 'Vous restez dans le couloir. Les lianes retournent contre les murs.',
+    },
+    ru: {
+        'Quiet Crossroads': 'Тихий перекресток',
+        'For one floor, nothing is haunted, cursed, or pretending to be a chest.\n\nThere is a small dry alcove, a few coins someone dropped, and quiet.': 'На целый этаж здесь нет ничего проклятого, населенного призраками или притворяющегося сундуком.\n\nЕсть маленькая сухая ниша, несколько оброненных кем-то монет и тишина.',
+        'Gain 10 coins': 'Получить 10 монет', 'Heal 5 HP': 'Восстановить 5 ОЗ', 'Leave': 'Уйти',
+        'You pocket the coins and move on.': 'Вы забираете монеты и идете дальше.',
+        'You sit down for a few minutes. Nothing attacks you. It helps more than it should.': 'Вы садитесь на несколько минут. Никто не нападает. Это помогает больше, чем должно.',
+        "You don't trust it. You keep moving.": 'Вы не доверяете этому месту. Вы идете дальше.',
+        'The Egg Hatches': 'Яйцо вылупляется',
+        'The egg starts knocking against the inside of its card. Tap. Tap. Crack.\n\nThe music box scuttles underneath and catches the shell in its open lid.': 'Яйцо начинает стучать изнутри своей карты. Тук. Тук. Хруст.\n\nМузыкальная шкатулка юркает под него и ловит скорлупу открытой крышкой.',
+        'See what hatches': 'Посмотреть, кто вылупится',
+        'A chick kicks free, glares at the room, and test-fires a yellow spark into the wall.\n\nSatisfied, it climbs into your bag and claims a slot.\n\nChick Companion: 2 lightning damage after enemy turns.': 'Цыпленок вырывается наружу, сердито смотрит на комнату и пускает пробную желтую искру в стену.\n\nДовольный, он забирается в сумку и занимает ячейку.\n\nЦыпленок-спутник: 2 урона молнией после ходов врагов.',
+        'The shell taps once more, then goes still. Whatever was inside is already somewhere else.': 'Скорлупа стукает еще раз, затем замирает. То, что было внутри, уже где-то в другом месте.',
+        'The Copying Mirror': 'Копирующее зеркало',
+        'A tall silver mirror leans against the wall, humming to itself.\n\n(Drag a card from your bag onto it and it will conjure a perfect copy — merge the pair here if you like. Or walk on.)': 'Высокое серебряное зеркало прислонено к стене и тихо гудит.\n\n(Перетащите на него карту из сумки: оно создаст точную копию. Если хотите, объедините пару здесь или идите дальше.)',
+        'Leave the mirror': 'Оставить зеркало', 'You walk on. Behind you, the mirror keeps humming to its own reflection.': 'Вы идете дальше. За вашей спиной зеркало продолжает гудеть своему отражению.',
+        'The Briar Room': 'Зал колючек',
+        'The room is walled in briars — floor to ceiling, grown through a litter of old weapons and armor scraps.\n\nWhen you step in, the vines turn toward your bag.': 'Комната от пола до потолка заросла колючими плетями среди старого оружия и обломков брони.\n\nКогда вы входите, лозы поворачиваются к вашей сумке.',
+        'Offer a weapon or armor card': 'Предложить карту оружия или брони', 'Slash through the vines': 'Прорубиться сквозь лозы', 'Burn the vines': 'Сжечь лозы',
+        'Choose a weapon or armor card and drag it onto the briars.': 'Выберите карту оружия или брони и перетащите ее на колючки.',
+        'Leave without offering a card': 'Уйти, ничего не предлагая',
+        'You back off before the vines reach your boots. Slowly, they settle against the walls.': 'Вы отступаете, прежде чем лозы добираются до ботинок. Медленно они возвращаются к стенам.',
+        'You cut through. The thorns score your hands and wrap the blade all the way down.\n\nWhen you reach the far door, some are still knotted around it.': 'Вы прорубаетесь. Шипы царапают руки и обвивают лезвие по всей длине.\n\nКогда вы доходите до дальней двери, некоторые все еще оплетают ее.',
+        'One fireball. The vines shrivel and drop, and the room fills with drifting ash.\n\nUnder the blackened roots, something small catches the light.': 'Один огненный шар. Лозы съеживаются и опадают, комнату наполняет летящий пепел.\n\nПод обугленными корнями что-то маленькое ловит свет.',
+        'You keep to the corridor. The vines settle back against the walls.': 'Вы остаетесь в коридоре. Лозы снова прижимаются к стенам.',
+    },
+};
+
+// Additional complete story branches. Keeping these separate from the shorter
+// table above makes the authored event text easy to compare during review.
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.es, {
+    'The Book Worm': 'El gusano de biblioteca',
+    'An underground library. The shelves go up past the lantern light.\n\nAt the reading desk, a dark elf woman sits over an open book. She doesn\'t look up — not at your footsteps, not at your cough.\n\nThen you see the worm. Pale, slow, chewing a path through the ink. You lift it off the page.\n\nNow she looks up.\n\n"Book worms," she says. "They ruin old spells if they feed too long."': 'Una biblioteca subterránea. Las estanterías suben más allá de la luz de las linternas.\n\nEn el escritorio de lectura, una elfa oscura está sentada ante un libro abierto. No levanta la vista, ni por tus pasos ni por tu tos.\n\nEntonces ves al gusano. Pálido, lento, abriendo un camino por la tinta. Lo levantas de la página.\n\nAhora ella mira arriba.\n\n«Gusanos de libro», dice. «Arruinan los hechizos antiguos si comen demasiado tiempo.»',
+    'Feed it a magic card': 'Darle una carta mágica', 'Squish the book worm': 'Aplastar al gusano', 'Put it back on the book': 'Devolverlo al libro',
+    'You hold out a magic card. The worm devours half of it like it has been starving, curls tight — and unfolds into a small gray moth.\n\nIt circles your hand once, shedding silver dust. You catch what you can in a vial.\n\n"Moths are better," the librarian says. "They leave the books alone."': 'Le ofreces una carta mágica. El gusano devora la mitad como si estuviera hambriento, se enrosca y se despliega convertido en una pequeña polilla gris.\n\nDa una vuelta a tu mano, soltando polvo de plata. Recoges lo que puedes en un frasco.\n\n«Las polillas son mejores», dice la bibliotecaria. «Dejan tranquilos a los libros.»',
+    'You close your fist. The worm leaves a smear of bitter green venom across your palm.\n\nThe librarian studies it, scrapes it into a small glass charm, and hands the charm to you.\n\n"Useful," she says.': 'Cierras el puño. El gusano deja una mancha de veneno verde y amargo en tu palma.\n\nLa bibliotecaria lo examina, lo raspa en un pequeño amuleto de cristal y te lo entrega.\n\n«Útil», dice.',
+    'You set the worm back on the page. It resumes eating mid-sentence.\n\nThe librarian stares at you. Then she says a very quiet "ugh," gathers her things, and disappears into the shelves.\n\nShe leaves her ink pen on the desk. You take it.': 'Vuelves a poner el gusano sobre la página. Reanuda su comida a mitad de frase.\n\nLa bibliotecaria te mira fijamente. Luego dice un «uf» muy bajo, recoge sus cosas y desaparece entre las estanterías.\n\nDeja su pluma de tinta en el escritorio. La tomas.',
+    'The Slimy Prison': 'La prisión viscosa',
+    'A gelatinous cube fills the corridor. Inside it, a skeleton in torn mage robes, drifting.\n\nThen it moves. Green light crawls along its ribs, rebuilding bone as fast as the cube dissolves it.\n\nThe skull turns toward you.': 'Un cubo gelatinoso llena el corredor. Dentro flota un esqueleto con túnicas de mago desgarradas.\n\nEntonces se mueve. Una luz verde recorre sus costillas y reconstruye hueso tan rápido como el cubo lo disuelve.\n\nEl cráneo se vuelve hacia ti.',
+    'Pull him free': 'Sacarlo de allí', 'End his suffering': 'Acabar con su sufrimiento', 'Grab the floating amulet': 'Tomar el amuleto flotante',
+    'The cube fights you for him, and takes some skin.\n\nOn the far side he stands, drips, and presses a card into your hand: a skeleton warrior with a cracked sword.\n\nA portal opens behind him. He is gone before you can ask anything.': 'El cubo lucha por retenerlo y se lleva parte de tu piel.\n\nAl otro lado se pone de pie, goteando, y te pone una carta en la mano: un guerrero esqueleto con una espada rota.\n\nUn portal se abre detrás de él. Desaparece antes de que puedas preguntarle nada.',
+    'You drive your weapon through the cube. The green light gutters and goes out.\n\nFor the first time, the bones are allowed to stop. He sinks slowly through the slime.\n\nWhat is left of the spell condenses into a dark amulet.': 'Hundes el arma en el cubo. La luz verde parpadea y se apaga.\n\nPor primera vez, los huesos pueden detenerse. Se hunde despacio en el limo.\n\nLo que queda del hechizo se condensa en un amuleto oscuro.',
+    'There is an amulet drifting near his ribs.\n\nYou push your arm in past his reaching hand and take it. The slime burns the whole way.\n\nHe watches you leave through the green glass. Still trapped.': 'Un amuleto flota junto a sus costillas.\n\nMetes el brazo más allá de su mano extendida y lo tomas. El limo quema todo el camino.\n\nTe observa marcharte a través del cristal verde. Sigue atrapado.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.fr, {
+    'The Book Worm': 'Le ver de bibliothèque',
+    'An underground library. The shelves go up past the lantern light.\n\nAt the reading desk, a dark elf woman sits over an open book. She doesn\'t look up — not at your footsteps, not at your cough.\n\nThen you see the worm. Pale, slow, chewing a path through the ink. You lift it off the page.\n\nNow she looks up.\n\n"Book worms," she says. "They ruin old spells if they feed too long."': 'Une bibliothèque souterraine. Les étagères montent au-delà de la lumière des lanternes.\n\nÀ la table de lecture, une elfe noire est penchée sur un livre ouvert. Elle ne lève pas les yeux, ni à vos pas ni à votre toux.\n\nPuis vous voyez le ver. Pâle, lent, il creuse un chemin dans l’encre. Vous le retirez de la page.\n\nAlors elle lève les yeux.\n\n« Les vers de bibliothèque, dit-elle. Ils ruinent les vieux sorts s’ils se nourrissent trop longtemps. »',
+    'Feed it a magic card': 'Lui donner une carte magique', 'Squish the book worm': 'Écraser le ver', 'Put it back on the book': 'Le remettre sur le livre',
+    'You hold out a magic card. The worm devours half of it like it has been starving, curls tight — and unfolds into a small gray moth.\n\nIt circles your hand once, shedding silver dust. You catch what you can in a vial.\n\n"Moths are better," the librarian says. "They leave the books alone."': 'Vous tendez une carte magique. Le ver en dévore la moitié comme s’il mourait de faim, se roule sur lui-même, puis se déploie en un petit papillon gris.\n\nIl tourne une fois autour de votre main en laissant tomber de la poussière d’argent. Vous en recueillez ce que vous pouvez dans une fiole.\n\n« Les mites sont préférables, dit la bibliothécaire. Elles laissent les livres tranquilles. »',
+    'You close your fist. The worm leaves a smear of bitter green venom across your palm.\n\nThe librarian studies it, scrapes it into a small glass charm, and hands the charm to you.\n\n"Useful," she says.': 'Vous fermez le poing. Le ver laisse une traînée de venin vert et amer dans votre paume.\n\nLa bibliothécaire l’étudie, le racle dans une petite breloque de verre et vous la tend.\n\n« Utile », dit-elle.',
+    'You set the worm back on the page. It resumes eating mid-sentence.\n\nThe librarian stares at you. Then she says a very quiet "ugh," gathers her things, and disappears into the shelves.\n\nShe leaves her ink pen on the desk. You take it.': 'Vous remettez le ver sur la page. Il recommence à manger au milieu d’une phrase.\n\nLa bibliothécaire vous fixe. Puis elle lâche un discret « beurk », rassemble ses affaires et disparaît entre les étagères.\n\nElle laisse sa plume sur le bureau. Vous la prenez.',
+    'The Slimy Prison': 'La prison visqueuse',
+    'A gelatinous cube fills the corridor. Inside it, a skeleton in torn mage robes, drifting.\n\nThen it moves. Green light crawls along its ribs, rebuilding bone as fast as the cube dissolves it.\n\nThe skull turns toward you.': 'Un cube gélatineux remplit le couloir. À l’intérieur flotte un squelette vêtu de robes de mage déchirées.\n\nPuis il bouge. Une lumière verte rampe le long de ses côtes, reconstruisant l’os aussi vite que le cube le dissout.\n\nLe crâne se tourne vers vous.',
+    'Pull him free': 'Le tirer dehors', 'End his suffering': 'Mettre fin à ses souffrances', 'Grab the floating amulet': 'Prendre l’amulette flottante',
+    'The cube fights you for him, and takes some skin.\n\nOn the far side he stands, drips, and presses a card into your hand: a skeleton warrior with a cracked sword.\n\nA portal opens behind him. He is gone before you can ask anything.': 'Le cube vous le dispute et emporte un peu de peau.\n\nDe l’autre côté, il se lève, dégoulinant, et presse une carte dans votre main : un guerrier squelette à l’épée fendue.\n\nUn portail s’ouvre derrière lui. Il disparaît avant que vous puissiez poser une question.',
+    'You drive your weapon through the cube. The green light gutters and goes out.\n\nFor the first time, the bones are allowed to stop. He sinks slowly through the slime.\n\nWhat is left of the spell condenses into a dark amulet.': 'Vous enfoncez votre arme dans le cube. La lumière verte vacille puis s’éteint.\n\nPour la première fois, les os ont le droit de s’arrêter. Il s’enfonce lentement dans la vase.\n\nCe qui reste du sort se condense en une amulette sombre.',
+    'There is an amulet drifting near his ribs.\n\nYou push your arm in past his reaching hand and take it. The slime burns the whole way.\n\nHe watches you leave through the green glass. Still trapped.': 'Une amulette flotte près de ses côtes.\n\nVous passez le bras au-delà de sa main tendue et la prenez. La vase brûle tout le long.\n\nIl vous regarde partir à travers le verre vert. Toujours prisonnier.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.ru, {
+    'The Book Worm': 'Книжный червь',
+    'An underground library. The shelves go up past the lantern light.\n\nAt the reading desk, a dark elf woman sits over an open book. She doesn\'t look up — not at your footsteps, not at your cough.\n\nThen you see the worm. Pale, slow, chewing a path through the ink. You lift it off the page.\n\nNow she looks up.\n\n"Book worms," she says. "They ruin old spells if they feed too long."': 'Подземная библиотека. Полки уходят вверх за свет фонарей.\n\nЗа читальным столом темная эльфийка сидит над раскрытой книгой. Она не поднимает глаз ни на ваши шаги, ни на кашель.\n\nПотом вы замечаете червя. Бледный, медленный, он прогрызает дорожку в чернилах. Вы снимаете его со страницы.\n\nТеперь она поднимает взгляд.\n\n«Книжные черви, — говорит она. — Они портят старые заклинания, если кормятся слишком долго.»',
+    'Feed it a magic card': 'Скормить ему магическую карту', 'Squish the book worm': 'Раздавить книжного червя', 'Put it back on the book': 'Вернуть его на книгу',
+    'You hold out a magic card. The worm devours half of it like it has been starving, curls tight — and unfolds into a small gray moth.\n\nIt circles your hand once, shedding silver dust. You catch what you can in a vial.\n\n"Moths are better," the librarian says. "They leave the books alone."': 'Вы протягиваете магическую карту. Червь пожирает половину, будто голодал вечность, сворачивается и разворачивается маленьким серым мотыльком.\n\nОн один раз облетает вашу руку, осыпая ее серебряной пылью. Вы собираете, сколько можете, в склянку.\n\n«Мотыльки лучше, — говорит библиотекарь. — Они оставляют книги в покое.»',
+    'You close your fist. The worm leaves a smear of bitter green venom across your palm.\n\nThe librarian studies it, scrapes it into a small glass charm, and hands the charm to you.\n\n"Useful," she says.': 'Вы сжимаете кулак. Червь оставляет на ладони мазок горького зеленого яда.\n\nБиблиотекарь изучает его, соскребает в маленький стеклянный амулет и отдает вам.\n\n«Полезно», — говорит она.',
+    'You set the worm back on the page. It resumes eating mid-sentence.\n\nThe librarian stares at you. Then she says a very quiet "ugh," gathers her things, and disappears into the shelves.\n\nShe leaves her ink pen on the desk. You take it.': 'Вы кладете червя обратно на страницу. Он снова ест прямо посреди предложения.\n\nБиблиотекарь смотрит на вас. Потом тихо произносит: «Фу», собирает вещи и исчезает между полками.\n\nНа столе остается ее чернильная ручка. Вы забираете ее.',
+    'The Slimy Prison': 'Слизистая тюрьма',
+    'A gelatinous cube fills the corridor. Inside it, a skeleton in torn mage robes, drifting.\n\nThen it moves. Green light crawls along its ribs, rebuilding bone as fast as the cube dissolves it.\n\nThe skull turns toward you.': 'Коридор заполняет студенистый куб. Внутри плавает скелет в разорванных магических одеждах.\n\nПотом он двигается. Зеленый свет ползет по ребрам, восстанавливая кость так же быстро, как куб ее растворяет.\n\nЧереп поворачивается к вам.',
+    'Pull him free': 'Вытащить его', 'End his suffering': 'Прекратить его страдания', 'Grab the floating amulet': 'Схватить парящий амулет',
+    'The cube fights you for him, and takes some skin.\n\nOn the far side he stands, drips, and presses a card into your hand: a skeleton warrior with a cracked sword.\n\nA portal opens behind him. He is gone before you can ask anything.': 'Куб борется с вами за него и забирает немного кожи.\n\nНа другой стороне он встает, стекая слизью, и вкладывает вам в руку карту: скелета-воина с треснувшим мечом.\n\nЗа ним открывается портал. Он исчезает, прежде чем вы успеваете что-то спросить.',
+    'You drive your weapon through the cube. The green light gutters and goes out.\n\nFor the first time, the bones are allowed to stop. He sinks slowly through the slime.\n\nWhat is left of the spell condenses into a dark amulet.': 'Вы пронзаете куб оружием. Зеленый свет мерцает и гаснет.\n\nВпервые костям позволено остановиться. Он медленно погружается в слизь.\n\nОстатки заклинания сгущаются в темный амулет.',
+    'There is an amulet drifting near his ribs.\n\nYou push your arm in past his reaching hand and take it. The slime burns the whole way.\n\nHe watches you leave through the green glass. Still trapped.': 'У его ребер парит амулет.\n\nВы просовываете руку мимо его тянущейся ладони и забираете его. Слизь обжигает на всем пути.\n\nОн смотрит, как вы уходите сквозь зеленое стекло. Все еще в ловушке.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.es, {
+    'The Well of Almost-You': 'El pozo de casi-tú',
+    'A stone well, filled nearly to the lip with black water — more tar than water.\n\nYour reflection is wrong. Frizzled hair. Cracked armor. And in its hand, a card you have never owned.\n\n(Drag a weapon, armor or thorns card into the well — it sinks, and something else of the same rarity comes up.)': 'Un pozo de piedra, lleno casi hasta el borde de agua negra, más alquitrán que agua.\n\nTu reflejo está mal. Pelo chamuscado. Armadura agrietada. Y en su mano, una carta que nunca has tenido.\n\n(Arrastra una carta de arma, armadura o espinas al pozo: se hundirá y saldrá otra de la misma rareza.)',
+    'Reach into the well': 'Meter la mano en el pozo', 'Drop a crystal into the well': 'Echar un cristal al pozo', 'Walk away': 'Alejarse',
+    'The water is cold. Then it grabs back.\n\nFor a second your arm is somewhere else — another room, another run. You pull free with something in your fist.\n\nYour reflection is smiling now.': 'El agua está fría. Luego te agarra.\n\nDurante un segundo tu brazo está en otro lugar, otra sala, otra partida. Te liberas con algo en el puño.\n\nAhora tu reflejo sonríe.',
+    'You drop a crystal in. It falls upward.\n\nYour reflection catches it, studies it, pockets it — and sends four back down.': 'Dejas caer un cristal. Cae hacia arriba.\n\nTu reflejo lo atrapa, lo estudia, se lo guarda y devuelve cuatro hacia abajo.',
+    'You step back from the edge.\n\nYour reflection stays a second longer than it should. Then it steps back too.': 'Te apartas del borde.\n\nTu reflejo se queda un segundo más de lo debido. Luego también se aparta.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.fr, {
+    'The Well of Almost-You': 'Le puits du presque-vous',
+    'A stone well, filled nearly to the lip with black water — more tar than water.\n\nYour reflection is wrong. Frizzled hair. Cracked armor. And in its hand, a card you have never owned.\n\n(Drag a weapon, armor or thorns card into the well — it sinks, and something else of the same rarity comes up.)': 'Un puits de pierre, rempli presque à ras bord d’une eau noire, plus goudron que eau.\n\nVotre reflet ne va pas. Cheveux roussis. Armure fendue. Et dans sa main, une carte que vous n’avez jamais possédée.\n\n(Faites glisser une carte d’arme, d’armure ou d’épines dans le puits : elle coule et une autre de même rareté remonte.)',
+    'Reach into the well': 'Plonger la main dans le puits', 'Drop a crystal into the well': 'Jeter un cristal dans le puits', 'Walk away': 'S’éloigner',
+    'The water is cold. Then it grabs back.\n\nFor a second your arm is somewhere else — another room, another run. You pull free with something in your fist.\n\nYour reflection is smiling now.': 'L’eau est froide. Puis elle vous attrape.\n\nPendant une seconde, votre bras est ailleurs : une autre salle, une autre partie. Vous vous libérez avec quelque chose dans le poing.\n\nVotre reflet sourit maintenant.',
+    'You drop a crystal in. It falls upward.\n\nYour reflection catches it, studies it, pockets it — and sends four back down.': 'Vous jetez un cristal. Il tombe vers le haut.\n\nVotre reflet l’attrape, l’étudie, le glisse dans sa poche et en renvoie quatre.',
+    'You step back from the edge.\n\nYour reflection stays a second longer than it should. Then it steps back too.': 'Vous reculez du bord.\n\nVotre reflet reste une seconde de trop. Puis il recule aussi.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.ru, {
+    'The Well of Almost-You': 'Колодец почти-тебя',
+    'A stone well, filled nearly to the lip with black water — more tar than water.\n\nYour reflection is wrong. Frizzled hair. Cracked armor. And in its hand, a card you have never owned.\n\n(Drag a weapon, armor or thorns card into the well — it sinks, and something else of the same rarity comes up.)': 'Каменный колодец почти до краев наполнен черной водой — скорее дегтем, чем водой.\n\nВаше отражение неправильное. Опаленные волосы. Треснувшая броня. А в руке — карта, которой у вас никогда не было.\n\n(Перетащите в колодец карту оружия, брони или шипов: она утонет, а взамен поднимется другая того же качества.)',
+    'Reach into the well': 'Засунуть руку в колодец', 'Drop a crystal into the well': 'Бросить кристалл в колодец', 'Walk away': 'Уйти',
+    'The water is cold. Then it grabs back.\n\nFor a second your arm is somewhere else — another room, another run. You pull free with something in your fist.\n\nYour reflection is smiling now.': 'Вода холодная. Потом она хватает вас в ответ.\n\nНа секунду ваша рука оказывается где-то еще — в другой комнате, в другом забеге. Вы вырываетесь, сжимая что-то в кулаке.\n\nТеперь ваше отражение улыбается.',
+    'You drop a crystal in. It falls upward.\n\nYour reflection catches it, studies it, pockets it — and sends four back down.': 'Вы бросаете кристалл. Он падает вверх.\n\nОтражение ловит его, изучает, прячет в карман и отправляет вниз четыре.',
+    'You step back from the edge.\n\nYour reflection stays a second longer than it should. Then it steps back too.': 'Вы отходите от края.\n\nВаше отражение остается на секунду дольше положенного. Потом оно тоже отступает.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.es, {
+    'The Screaming Head': 'La cabeza que grita',
+    'A stone head, half-buried in the floor, big as a cart. The rest of the statue is not in the room.\n\nThe face is frozen mid-scream — broken teeth, empty eye sockets. Dust trickles from the mouth when you step closer.\n\nDeep inside the mouth, something shifts.': 'Una cabeza de piedra, medio enterrada en el suelo, tan grande como un carro. El resto de la estatua no está en la sala.\n\nEl rostro quedó congelado a mitad de un grito: dientes rotos, cuencas vacías. Cuando te acercas, cae polvo de la boca.\n\nAlgo se mueve en lo profundo de la boca.',
+    'Place a card in its mouth': 'Poner una carta en su boca', 'Pull your hand back': 'Retirar la mano', 'Reach into the mouth': 'Meter la mano en la boca',
+    'Place a Fire Gem in the eye socket': 'Poner una gema de fuego en la cuenca', 'Place a Lightning Gem in the eye socket': 'Poner una gema de rayo en la cuenca', 'Place a Poison Gem in the eye socket': 'Poner una gema de veneno en la cuenca',
+    "Choose a card and drag it into the statue's mouth.": 'Elige una carta y arrástrala a la boca de la estatua.',
+    'You pull the card away. The teeth stay open. Waiting.': 'Retiras la carta. Los dientes siguen abiertos. Esperando.',
+    'Cold stone. Dust. Then the jaw snaps shut.\n\nThe teeth catch your arm on the way out — and so does something small and hard, clenched in your fist.': 'Piedra fría. Polvo. Entonces la mandíbula se cierra de golpe.\n\nLos dientes atrapan tu brazo al sacarlo, y también algo pequeño y duro que queda apretado en tu puño.',
+    'The gem fits the socket exactly.\n\nRed light spreads through the cracks in the face. The head exhales one slow cloud of dust — and when it clears, a Fire Rune is resting on the stone tongue.': 'La gema encaja exactamente en la cuenca.\n\nUna luz roja se extiende por las grietas del rostro. La cabeza exhala una lenta nube de polvo y, cuando se disipa, una runa de fuego descansa sobre la lengua de piedra.',
+    'The gem clicks into place.\n\nA thin bolt skips across the cracked forehead, and the teeth chatter once. The head exhales dust — and a Lightning Rune flickers between its teeth.': 'La gema encaja con un clic.\n\nUn rayo fino recorre la frente agrietada y los dientes castañetean una vez. La cabeza exhala polvo y una runa de rayo parpadea entre los dientes.',
+    'Green light seeps through the cracks, and the mouth curls — almost like remembering pain.\n\nThe head exhales a bitter cloud. Behind it, a dark green rune rests on the stone tongue.': 'Una luz verde se filtra por las grietas y la boca se curva, casi como si recordara el dolor.\n\nLa cabeza exhala una nube amarga. Detrás de ella, una runa verde oscura descansa sobre la lengua de piedra.',
+    'You leave it screaming at the ceiling.\n\nA little more dust falls from its teeth as you pass.': 'La dejas gritando al techo.\n\nAl pasar, cae un poco más de polvo de sus dientes.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.fr, {
+    'The Screaming Head': 'La tête hurlante',
+    'A stone head, half-buried in the floor, big as a cart. The rest of the statue is not in the room.\n\nThe face is frozen mid-scream — broken teeth, empty eye sockets. Dust trickles from the mouth when you step closer.\n\nDeep inside the mouth, something shifts.': 'Une tête de pierre, à moitié enfouie dans le sol, grande comme une charrette. Le reste de la statue n’est pas dans la salle.\n\nLe visage est figé en plein cri : dents cassées, orbites vides. De la poussière coule de la bouche quand vous approchez.\n\nAu fond de la bouche, quelque chose bouge.',
+    'Place a card in its mouth': 'Placer une carte dans sa bouche', 'Pull your hand back': 'Retirer votre main', 'Reach into the mouth': 'Plonger la main dans la bouche',
+    'Place a Fire Gem in the eye socket': 'Placer une gemme de feu dans l’orbite', 'Place a Lightning Gem in the eye socket': 'Placer une gemme de foudre dans l’orbite', 'Place a Poison Gem in the eye socket': 'Placer une gemme de poison dans l’orbite',
+    "Choose a card and drag it into the statue's mouth.": 'Choisissez une carte et faites-la glisser dans la bouche de la statue.',
+    'You pull the card away. The teeth stay open. Waiting.': 'Vous retirez la carte. Les dents restent ouvertes. Elles attendent.',
+    'Cold stone. Dust. Then the jaw snaps shut.\n\nThe teeth catch your arm on the way out — and so does something small and hard, clenched in your fist.': 'Pierre froide. Poussière. Puis la mâchoire claque.\n\nLes dents attrapent votre bras quand vous le retirez, ainsi que quelque chose de petit et de dur serré dans votre poing.',
+    'The gem fits the socket exactly.\n\nRed light spreads through the cracks in the face. The head exhales one slow cloud of dust — and when it clears, a Fire Rune is resting on the stone tongue.': 'La gemme s’ajuste parfaitement à l’orbite.\n\nUne lumière rouge se répand dans les fissures du visage. La tête exhale un lent nuage de poussière et, lorsqu’il se dissipe, une rune de feu repose sur la langue de pierre.',
+    'The gem clicks into place.\n\nA thin bolt skips across the cracked forehead, and the teeth chatter once. The head exhales dust — and a Lightning Rune flickers between its teeth.': 'La gemme s’enclenche.\n\nUn fin éclair court sur le front fissuré et les dents claquent une fois. La tête exhale de la poussière, et une rune de foudre scintille entre ses dents.',
+    'Green light seeps through the cracks, and the mouth curls — almost like remembering pain.\n\nThe head exhales a bitter cloud. Behind it, a dark green rune rests on the stone tongue.': 'Une lumière verte suinte par les fissures, et la bouche se tord, comme si elle se souvenait de la douleur.\n\nLa tête exhale un nuage amer. Derrière lui, une rune vert foncé repose sur la langue de pierre.',
+    'You leave it screaming at the ceiling.\n\nA little more dust falls from its teeth as you pass.': 'Vous la laissez hurler vers le plafond.\n\nUn peu plus de poussière tombe de ses dents quand vous passez.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.ru, {
+    'The Screaming Head': 'Кричащая голова',
+    'A stone head, half-buried in the floor, big as a cart. The rest of the statue is not in the room.\n\nThe face is frozen mid-scream — broken teeth, empty eye sockets. Dust trickles from the mouth when you step closer.\n\nDeep inside the mouth, something shifts.': 'Каменная голова размером с телегу наполовину вросла в пол. Остальной части статуи в комнате нет.\n\nЛицо застыло в середине крика: сломанные зубы, пустые глазницы. Когда вы подходите, изо рта сыплется пыль.\n\nГлубоко во рту что-то шевелится.',
+    'Place a card in its mouth': 'Положить карту ей в рот', 'Pull your hand back': 'Отдернуть руку', 'Reach into the mouth': 'Засунуть руку в рот',
+    'Place a Fire Gem in the eye socket': 'Вставить огненный камень в глазницу', 'Place a Lightning Gem in the eye socket': 'Вставить камень молнии в глазницу', 'Place a Poison Gem in the eye socket': 'Вставить ядовитый камень в глазницу',
+    "Choose a card and drag it into the statue's mouth.": 'Выберите карту и перетащите ее в рот статуи.',
+    'You pull the card away. The teeth stay open. Waiting.': 'Вы отдергиваете карту. Зубы остаются открытыми. Они ждут.',
+    'Cold stone. Dust. Then the jaw snaps shut.\n\nThe teeth catch your arm on the way out — and so does something small and hard, clenched in your fist.': 'Холодный камень. Пыль. Затем челюсть захлопывается.\n\nЗубы цепляют вашу руку на выходе, а в кулаке оказывается что-то маленькое и твердое.',
+    'The gem fits the socket exactly.\n\nRed light spreads through the cracks in the face. The head exhales one slow cloud of dust — and when it clears, a Fire Rune is resting on the stone tongue.': 'Камень точно входит в глазницу.\n\nКрасный свет расходится по трещинам лица. Голова выпускает медленное облако пыли, и когда оно рассеивается, на каменном языке лежит огненная руна.',
+    'The gem clicks into place.\n\nA thin bolt skips across the cracked forehead, and the teeth chatter once. The head exhales dust — and a Lightning Rune flickers between its teeth.': 'Камень щелкает на месте.\n\nТонкая молния пробегает по треснувшему лбу, зубы один раз стучат. Голова выдыхает пыль, и между зубами мерцает руна молнии.',
+    'Green light seeps through the cracks, and the mouth curls — almost like remembering pain.\n\nThe head exhales a bitter cloud. Behind it, a dark green rune rests on the stone tongue.': 'Зеленый свет сочится через трещины, а рот кривится, словно вспоминая боль.\n\nГолова выдыхает горькое облако. На каменном языке за ним лежит темно-зеленая руна.',
+    'You leave it screaming at the ceiling.\n\nA little more dust falls from its teeth as you pass.': 'Вы оставляете ее кричать в потолок.\n\nКогда вы проходите мимо, с зубов осыпается еще немного пыли.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.es, {
+    'The Too-Nice Room': 'La sala demasiado agradable',
+    'Halfway down the corridor there is a room that should not be here.\n\nFlowers. A made bed. Tea, still steaming.\n\nNothing in this dungeon has been kind to you yet.': 'A mitad del corredor hay una sala que no debería estar ahí.\n\nFlores. Una cama hecha. Té, todavía humeante.\n\nHasta ahora, nada en esta mazmorra ha sido amable contigo.',
+    'Rest in the bed': 'Descansar en la cama', 'Leave the room': 'Salir de la sala', 'Inspect the room': 'Examinar la sala', 'Confront the fairy': 'Enfrentarse al hada', 'Fight the fairy': 'Luchar contra el hada',
+    'You sleep better than you have in years.\n\nYou wake healed — and one card lighter. From somewhere inside the wall, very quiet laughter.': 'Duermes mejor que en muchos años.\n\nDespiertas curado y con una carta menos. Desde algún lugar dentro de la pared llega una risa muy baja.',
+    'You back out. The pillow sighs.': 'Retrocedes. La almohada suspira.',
+    'The flowers are cloth. The tea went cold an hour ago at most.\n\nAnd behind the pillow, a fairy is sitting on one of your cards, trying very hard not to giggle.': 'Las flores son de tela. El té se enfrió hace una hora como mucho.\n\nY detrás de la almohada, un hada está sentada sobre una de tus cartas, esforzándose mucho por no reír.',
+    'You grab her before she can fly. She shrieks, kicks, and finally throws an amulet at your chest. "TAKE IT AND LET GO."\n\nThe moment you do, the room folds into the wall — bed, tea, fairy, and all.': 'La agarras antes de que pueda volar. Chilla, da patadas y finalmente te lanza un amuleto al pecho. «TÓMALO Y SUÉLTAME».\n\nEn cuanto lo haces, la sala se pliega dentro de la pared: cama, té, hada y todo lo demás.',
+    'She is faster than you, and her spell hits like a door slamming — but you catch her with the tea table on her second pass.\n\nShe surrenders an amulet, spits on your boot, and vanishes with the room.': 'Es más rápida que tú y su hechizo golpea como una puerta al cerrarse, pero en su segunda pasada la alcanzas con la mesa del té.\n\nEntrega un amuleto, escupe sobre tu bota y desaparece junto con la sala.',
+    'The Old Drill Room': 'La vieja sala de entrenamiento',
+    'An old training room. Broken shields on the walls, wooden targets in the corners — claw marks, sword cuts, small burned holes.\n\nPractice circles are scratched into the floor.\n\nSomething in the room reacts to your companion cards.': 'Una vieja sala de entrenamiento. Escudos rotos en las paredes, blancos de madera en las esquinas: marcas de garras, cortes de espada y pequeños agujeros quemados.\n\nHay círculos de práctica rayados en el suelo.\n\nAlgo en la sala reacciona a tus cartas de compañero.',
+    'Search the room': 'Registrar la sala',
+    'You go through the room properly — behind the targets, under the shields.\n\nA few coins somebody never came back for.': 'Registras la sala a fondo, detrás de los blancos y debajo de los escudos.\n\nUnas monedas que alguien nunca regresó a buscar.',
+    'You set the Storm Chick card down by the old lightning rods.\n\nThe rods start to hum. A bolt jumps between them and hits the card square on.\n\nIn the picture, the chick puffs up, feathers crackling.': 'Dejas la carta del Polluelo de Tormenta junto a los viejos pararrayos.\n\nLas varillas empiezan a zumbar. Un rayo salta entre ellas y golpea la carta de lleno.\n\nEn la imagen, el polluelo se hincha y sus plumas crepitan.',
+    'You set the Skeleton Warrior card down beside the broken shields.\n\nThe scraps rattle across the floor and stack themselves over it.\n\nIn the picture, the skeleton lowers its cracked sword and raises a battered shield.': 'Dejas la carta del Guerrero Esqueleto junto a los escudos rotos.\n\nLos restos traquetean por el suelo y se apilan sobre ella.\n\nEn la imagen, el esqueleto baja su espada agrietada y alza un escudo abollado.',
+    'You set the card down in the middle of the drill room.\n\nThe old practice circles glow, faintly and briefly.\n\nIn the picture, something moves sharper than it did a minute ago.': 'Dejas la carta en el centro de la sala de entrenamiento.\n\nLos viejos círculos de práctica brillan débilmente por un instante.\n\nEn la imagen, algo se mueve con más precisión que hace un minuto.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.fr, {
+    'The Too-Nice Room': 'La pièce trop parfaite',
+    'Halfway down the corridor there is a room that should not be here.\n\nFlowers. A made bed. Tea, still steaming.\n\nNothing in this dungeon has been kind to you yet.': 'À mi-chemin du couloir se trouve une pièce qui ne devrait pas être là.\n\nDes fleurs. Un lit fait. Du thé encore fumant.\n\nJusqu’ici, rien dans ce donjon ne vous a traité avec bonté.',
+    'Rest in the bed': 'Se reposer dans le lit', 'Leave the room': 'Quitter la pièce', 'Inspect the room': 'Inspecter la pièce', 'Confront the fairy': 'Confronter la fée', 'Fight the fairy': 'Combattre la fée',
+    'You sleep better than you have in years.\n\nYou wake healed — and one card lighter. From somewhere inside the wall, very quiet laughter.': 'Vous dormez mieux que depuis des années.\n\nVous vous réveillez guéri, avec une carte en moins. Quelque part dans le mur, un rire très discret.',
+    'You back out. The pillow sighs.': 'Vous reculez. L’oreiller soupire.',
+    'The flowers are cloth. The tea went cold an hour ago at most.\n\nAnd behind the pillow, a fairy is sitting on one of your cards, trying very hard not to giggle.': 'Les fleurs sont en tissu. Le thé a refroidi il y a tout au plus une heure.\n\nEt derrière l’oreiller, une fée est assise sur l’une de vos cartes, faisant tout son possible pour ne pas rire.',
+    'You grab her before she can fly. She shrieks, kicks, and finally throws an amulet at your chest. "TAKE IT AND LET GO."\n\nThe moment you do, the room folds into the wall — bed, tea, fairy, and all.': 'Vous l’attrapez avant qu’elle ne s’envole. Elle hurle, donne des coups et finit par lancer une amulette contre votre poitrine. « PRENEZ-LA ET LÂCHEZ-MOI. »\n\nDès que vous obéissez, la pièce se replie dans le mur : lit, thé, fée et tout le reste.',
+    'She is faster than you, and her spell hits like a door slamming — but you catch her with the tea table on her second pass.\n\nShe surrenders an amulet, spits on your boot, and vanishes with the room.': 'Elle est plus rapide que vous et son sort frappe comme une porte qui claque, mais à son deuxième passage vous l’atteignez avec la table à thé.\n\nElle abandonne une amulette, crache sur votre botte et disparaît avec la pièce.',
+    'The Old Drill Room': 'L’ancienne salle d’exercice',
+    'An old training room. Broken shields on the walls, wooden targets in the corners — claw marks, sword cuts, small burned holes.\n\nPractice circles are scratched into the floor.\n\nSomething in the room reacts to your companion cards.': 'Une ancienne salle d’entraînement. Des boucliers brisés aux murs, des cibles en bois dans les coins : traces de griffes, coups d’épée, petits trous brûlés.\n\nDes cercles d’exercice sont gravés dans le sol.\n\nQuelque chose dans la salle réagit à vos cartes de compagnon.',
+    'Search the room': 'Fouiller la salle',
+    'You go through the room properly — behind the targets, under the shields.\n\nA few coins somebody never came back for.': 'Vous fouillez correctement la salle, derrière les cibles et sous les boucliers.\n\nQuelques pièces que quelqu’un n’est jamais revenu chercher.',
+    'You set the Storm Chick card down by the old lightning rods.\n\nThe rods start to hum. A bolt jumps between them and hits the card square on.\n\nIn the picture, the chick puffs up, feathers crackling.': 'Vous posez la carte du poussin-tempête près des vieux paratonnerres.\n\nLes tiges se mettent à bourdonner. Un éclair bondit entre elles et frappe la carte de plein fouet.\n\nDans l’image, le poussin gonfle ses plumes crépitantes.',
+    'You set the Skeleton Warrior card down beside the broken shields.\n\nThe scraps rattle across the floor and stack themselves over it.\n\nIn the picture, the skeleton lowers its cracked sword and raises a battered shield.': 'Vous posez la carte du guerrier squelette près des boucliers brisés.\n\nLes débris claquent sur le sol et s’empilent sur elle.\n\nDans l’image, le squelette baisse son épée fendue et lève un bouclier cabossé.',
+    'You set the card down in the middle of the drill room.\n\nThe old practice circles glow, faintly and briefly.\n\nIn the picture, something moves sharper than it did a minute ago.': 'Vous posez la carte au milieu de la salle d’exercice.\n\nLes vieux cercles d’entraînement luisent faiblement pendant un instant.\n\nDans l’image, quelque chose bouge avec plus de précision qu’une minute auparavant.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.ru, {
+    'The Too-Nice Room': 'Слишком уютная комната',
+    'Halfway down the corridor there is a room that should not be here.\n\nFlowers. A made bed. Tea, still steaming.\n\nNothing in this dungeon has been kind to you yet.': 'На полпути по коридору находится комната, которой здесь быть не должно.\n\nЦветы. Заправленная кровать. Еще горячий чай.\n\nДо сих пор ничто в этом подземелье не было к вам добрым.',
+    'Rest in the bed': 'Отдохнуть на кровати', 'Leave the room': 'Покинуть комнату', 'Inspect the room': 'Осмотреть комнату', 'Confront the fairy': 'Потребовать ответа у феи', 'Fight the fairy': 'Сразиться с феей',
+    'You sleep better than you have in years.\n\nYou wake healed — and one card lighter. From somewhere inside the wall, very quiet laughter.': 'Вы спите лучше, чем за многие годы.\n\nВы просыпаетесь исцеленным, но без одной карты. Откуда-то из стены доносится очень тихий смех.',
+    'You back out. The pillow sighs.': 'Вы пятитесь назад. Подушка вздыхает.',
+    'The flowers are cloth. The tea went cold an hour ago at most.\n\nAnd behind the pillow, a fairy is sitting on one of your cards, trying very hard not to giggle.': 'Цветы сделаны из ткани. Чай остыл не больше часа назад.\n\nА за подушкой на одной из ваших карт сидит фея и изо всех сил старается не хихикать.',
+    'You grab her before she can fly. She shrieks, kicks, and finally throws an amulet at your chest. "TAKE IT AND LET GO."\n\nThe moment you do, the room folds into the wall — bed, tea, fairy, and all.': 'Вы хватаете ее прежде, чем она успевает взлететь. Она визжит, пинается и наконец бросает амулет вам в грудь. «БЕРИ И ОТПУСТИ МЕНЯ».\n\nКак только вы это делаете, комната складывается в стену вместе с кроватью, чаем и феей.',
+    'She is faster than you, and her spell hits like a door slamming — but you catch her with the tea table on her second pass.\n\nShe surrenders an amulet, spits on your boot, and vanishes with the room.': 'Она быстрее вас, а ее заклинание бьет как захлопнувшаяся дверь, но на втором заходе вы достаете ее чайным столиком.\n\nОна отдает амулет, плюет на ваш сапог и исчезает вместе с комнатой.',
+    'The Old Drill Room': 'Старый тренировочный зал',
+    'An old training room. Broken shields on the walls, wooden targets in the corners — claw marks, sword cuts, small burned holes.\n\nPractice circles are scratched into the floor.\n\nSomething in the room reacts to your companion cards.': 'Старая тренировочная комната. На стенах разбитые щиты, по углам деревянные мишени: следы когтей, удары мечей, маленькие прожженные дыры.\n\nНа полу выцарапаны тренировочные круги.\n\nЧто-то в комнате реагирует на карты спутников.',
+    'Search the room': 'Обыскать комнату',
+    'You go through the room properly — behind the targets, under the shields.\n\nA few coins somebody never came back for.': 'Вы как следует обыскиваете комнату: за мишенями, под щитами.\n\nНесколько монет, за которыми кто-то так и не вернулся.',
+    'You set the Storm Chick card down by the old lightning rods.\n\nThe rods start to hum. A bolt jumps between them and hits the card square on.\n\nIn the picture, the chick puffs up, feathers crackling.': 'Вы кладете карту грозового цыпленка рядом со старыми громоотводами.\n\nСтержни начинают гудеть. Между ними прыгает молния и бьет точно в карту.\n\nНа рисунке цыпленок распушается, а его перья потрескивают.',
+    'You set the Skeleton Warrior card down beside the broken shields.\n\nThe scraps rattle across the floor and stack themselves over it.\n\nIn the picture, the skeleton lowers its cracked sword and raises a battered shield.': 'Вы кладете карту скелета-воина рядом с разбитыми щитами.\n\nОбломки с грохотом ползут по полу и складываются поверх нее.\n\nНа рисунке скелет опускает треснувший меч и поднимает помятый щит.',
+    'You set the card down in the middle of the drill room.\n\nThe old practice circles glow, faintly and briefly.\n\nIn the picture, something moves sharper than it did a minute ago.': 'Вы кладете карту в центре тренировочного зала.\n\nСтарые тренировочные круги ненадолго загораются тусклым светом.\n\nНа рисунке что-то движется точнее, чем минуту назад.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.es, {
+    'Something Wicked': 'Algo maligno',
+    'You hear the carnival before you see it — crowd noise, and a happy tune played slightly wrong.\n\nThe corridor opens into a chamber strung with lanterns. Monsters crowd the prize booths. Everyone is smiling. No one looks at you.\n\nThen a hand closes on your shoulder. An old woman, a tray of trinkets pressed against your chest.\n\n"One coin. Wonderful things. Very cheap."\n\nHer grip does not loosen.': 'Oyes el carnaval antes de verlo: ruido de multitud y una melodía alegre tocada un poco mal.\n\nEl corredor desemboca en una sala adornada con faroles. Los monstruos se agolpan ante los puestos de premios. Todos sonríen. Nadie te mira.\n\nEntonces una mano se cierra sobre tu hombro. Una anciana te aprieta contra el pecho una bandeja de baratijas.\n\n«Una moneda. Cosas maravillosas. Muy baratas.»\n\nNo afloja el agarre.',
+    'Buy the dusty pipe': 'Comprar la pipa polvorienta', 'Buy the rubber duck': 'Comprar el pato de goma', 'Buy the broken ring': 'Comprar el anillo roto', 'Buy the four-leaf clover': 'Comprar el trébol de cuatro hojas', 'Refuse': 'Negarse',
+    'You pay. Her fingers open.\n\nThe pipe smells of cold ash. When you look for her again, she is gone.': 'Pagas. Sus dedos se abren.\n\nLa pipa huele a ceniza fría. Cuando vuelves a buscarla, ha desaparecido.',
+    "You pay. Her fingers open.\n\nThe duck's painted eyes are nearly worn away. It still looks amused. When you look for her again, she is gone.": 'Pagas. Sus dedos se abren.\n\nLos ojos pintados del pato están casi borrados. Aun así parece divertido. Cuando vuelves a buscarla, ha desaparecido.',
+    'You pay. Her fingers open.\n\nThe cracked gem catches no light at all. When you look for her again, she is gone.': 'Pagas. Sus dedos se abren.\n\nLa gema agrietada no refleja ninguna luz. Cuando vuelves a buscarla, ha desaparecido.',
+    'You pay. Her fingers open.\n\nUnder the cloudy glass, the clover glitters green — once. When you look for her again, she is gone.': 'Pagas. Sus dedos se abren.\n\nBajo el cristal turbio, el trébol emite un destello verde, una sola vez. Cuando vuelves a buscarla, ha desaparecido.',
+    'You twist free. Her nails catch your shoulder on the way out — three thin lines that sting longer than they should.': 'Te retuerces hasta soltarte. Sus uñas te arañan el hombro al salir: tres líneas finas que escuecen más de lo debido.',
+    'Cold ash clings to the bowl. The stem points toward bad ideas.': 'Ceniza fría se pega a la cazoleta. La boquilla apunta hacia malas ideas.', 'Its painted eyes are almost gone. It still seems amused.': 'Sus ojos pintados casi han desaparecido. Aun así parece divertido.', 'A cracked gem catches no light, but it remembers being expensive.': 'Una gema agrietada no refleja luz, pero recuerda haber sido cara.', 'A cheap prize from a carnival that should not fit inside the dungeon.': 'Un premio barato de un carnaval que no debería caber dentro de la mazmorra.', 'A shiny carnival card that makes every fight begin wrong.': 'Una carta brillante de carnaval que hace que cada combate empiece mal.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.fr, {
+    'Something Wicked': 'Quelque chose de sinistre',
+    'You hear the carnival before you see it — crowd noise, and a happy tune played slightly wrong.\n\nThe corridor opens into a chamber strung with lanterns. Monsters crowd the prize booths. Everyone is smiling. No one looks at you.\n\nThen a hand closes on your shoulder. An old woman, a tray of trinkets pressed against your chest.\n\n"One coin. Wonderful things. Very cheap."\n\nHer grip does not loosen.': 'Vous entendez le carnaval avant de le voir : le bruit de la foule et un air joyeux joué légèrement faux.\n\nLe couloir débouche dans une salle tendue de lanternes. Des monstres se pressent autour des stands de prix. Tout le monde sourit. Personne ne vous regarde.\n\nPuis une main se referme sur votre épaule. Une vieille femme presse un plateau de babioles contre votre poitrine.\n\n« Une pièce. Des merveilles. Très bon marché. »\n\nSon étreinte ne se desserre pas.',
+    'Buy the dusty pipe': 'Acheter la pipe poussiéreuse', 'Buy the rubber duck': 'Acheter le canard en caoutchouc', 'Buy the broken ring': 'Acheter l’anneau cassé', 'Buy the four-leaf clover': 'Acheter le trèfle à quatre feuilles', 'Refuse': 'Refuser',
+    'You pay. Her fingers open.\n\nThe pipe smells of cold ash. When you look for her again, she is gone.': 'Vous payez. Ses doigts s’ouvrent.\n\nLa pipe sent la cendre froide. Quand vous la cherchez de nouveau, elle a disparu.',
+    "You pay. Her fingers open.\n\nThe duck's painted eyes are nearly worn away. It still looks amused. When you look for her again, she is gone.": 'Vous payez. Ses doigts s’ouvrent.\n\nLes yeux peints du canard sont presque effacés. Il paraît encore amusé. Quand vous la cherchez de nouveau, elle a disparu.',
+    'You pay. Her fingers open.\n\nThe cracked gem catches no light at all. When you look for her again, she is gone.': 'Vous payez. Ses doigts s’ouvrent.\n\nLa gemme fendue ne capte aucune lumière. Quand vous la cherchez de nouveau, elle a disparu.',
+    'You pay. Her fingers open.\n\nUnder the cloudy glass, the clover glitters green — once. When you look for her again, she is gone.': 'Vous payez. Ses doigts s’ouvrent.\n\nSous le verre trouble, le trèfle brille en vert, une seule fois. Quand vous la cherchez de nouveau, elle a disparu.',
+    'You twist free. Her nails catch your shoulder on the way out — three thin lines that sting longer than they should.': 'Vous vous dégagez en pivotant. Ses ongles accrochent votre épaule : trois fines lignes qui brûlent plus longtemps qu’elles ne devraient.',
+    'Cold ash clings to the bowl. The stem points toward bad ideas.': 'De la cendre froide colle au fourneau. Le tuyau indique la direction des mauvaises idées.', 'Its painted eyes are almost gone. It still seems amused.': 'Ses yeux peints ont presque disparu. Il semble toujours amusé.', 'A cracked gem catches no light, but it remembers being expensive.': 'Une gemme fendue ne capte aucune lumière, mais se souvient d’avoir coûté cher.', 'A cheap prize from a carnival that should not fit inside the dungeon.': 'Un prix bon marché venu d’un carnaval qui ne devrait pas tenir dans le donjon.', 'A shiny carnival card that makes every fight begin wrong.': 'Une carte de carnaval brillante qui fait mal commencer chaque combat.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.ru, {
+    'Something Wicked': 'Нечто зловещее',
+    'You hear the carnival before you see it — crowd noise, and a happy tune played slightly wrong.\n\nThe corridor opens into a chamber strung with lanterns. Monsters crowd the prize booths. Everyone is smiling. No one looks at you.\n\nThen a hand closes on your shoulder. An old woman, a tray of trinkets pressed against your chest.\n\n"One coin. Wonderful things. Very cheap."\n\nHer grip does not loosen.': 'Вы слышите карнавал раньше, чем видите его: шум толпы и веселую мелодию, сыгранную чуть фальшиво.\n\nКоридор выходит в зал, увешанный фонарями. Монстры толпятся у призовых киосков. Все улыбаются. Никто на вас не смотрит.\n\nЗатем рука сжимает ваше плечо. Старуха прижимает к вашей груди поднос с безделушками.\n\n«Одна монета. Чудесные вещи. Очень дешево.»\n\nЕе хватка не слабеет.',
+    'Buy the dusty pipe': 'Купить пыльную трубку', 'Buy the rubber duck': 'Купить резиновую утку', 'Buy the broken ring': 'Купить сломанное кольцо', 'Buy the four-leaf clover': 'Купить четырехлистный клевер', 'Refuse': 'Отказаться',
+    'You pay. Her fingers open.\n\nThe pipe smells of cold ash. When you look for her again, she is gone.': 'Вы платите. Ее пальцы разжимаются.\n\nТрубка пахнет холодным пеплом. Когда вы снова ищете старуху взглядом, ее уже нет.',
+    "You pay. Her fingers open.\n\nThe duck's painted eyes are nearly worn away. It still looks amused. When you look for her again, she is gone.": 'Вы платите. Ее пальцы разжимаются.\n\nНарисованные глаза утки почти стерлись. Она все равно выглядит довольной. Когда вы снова ищете старуху взглядом, ее уже нет.',
+    'You pay. Her fingers open.\n\nThe cracked gem catches no light at all. When you look for her again, she is gone.': 'Вы платите. Ее пальцы разжимаются.\n\nТреснувший камень совсем не отражает свет. Когда вы снова ищете старуху взглядом, ее уже нет.',
+    'You pay. Her fingers open.\n\nUnder the cloudy glass, the clover glitters green — once. When you look for her again, she is gone.': 'Вы платите. Ее пальцы разжимаются.\n\nПод мутным стеклом клевер один раз вспыхивает зеленым. Когда вы снова ищете старуху взглядом, ее уже нет.',
+    'You twist free. Her nails catch your shoulder on the way out — three thin lines that sting longer than they should.': 'Вы вырываетесь. Ее ногти задевают ваше плечо: три тонкие полосы жгут дольше, чем должны.',
+    'Cold ash clings to the bowl. The stem points toward bad ideas.': 'Холодный пепел прилип к чаше. Мундштук указывает в сторону дурных идей.', 'Its painted eyes are almost gone. It still seems amused.': 'Нарисованные глаза почти стерлись. Утка все равно выглядит довольной.', 'A cracked gem catches no light, but it remembers being expensive.': 'Треснувший камень не отражает свет, но помнит, что когда-то стоил дорого.', 'A cheap prize from a carnival that should not fit inside the dungeon.': 'Дешевый приз с карнавала, которому не место внутри подземелья.', 'A shiny carnival card that makes every fight begin wrong.': 'Блестящая карнавальная карта, из-за которой каждый бой начинается неправильно.',
+});
+
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.es, {
+    'The Brass Wizard': 'El mago de latón', 'Insert 1 coin': 'Introducir 1 moneda', 'Leave the booth': 'Salir del puesto',
+    'The carnival music thins out near a booth with cracked blue curtains.\n\nBehind the glass sits a fortune-telling machine: a brass wizard in a faded robe, painted stars mostly peeled away. Its mouth hangs open. Its pale eyes point at nothing.\n\nThe coin slot below the glass is polished bright from use.': 'La música del carnaval se desvanece cerca de un puesto con cortinas azules agrietadas.\n\nTras el cristal hay una máquina adivinatoria: un mago de latón con una túnica descolorida y estrellas pintadas casi desprendidas. Tiene la boca abierta. Sus ojos pálidos no miran a ninguna parte.\n\nLa ranura para monedas bajo el cristal brilla de tanto uso.',
+    "You leave the slot empty.\n\nThe wizard watches you go, mouth open, holding a fortune it doesn't get to tell.": 'Dejas la ranura vacía.\n\nEl mago te observa marcharte, con la boca abierta y una fortuna que no podrá contar.',
+    'The brass hand jerks toward the deck — and stops.\n\nThen the mouth starts clicking. Slow at first. Then faster, louder, echoing in the booth like it is counting down to something.\n\nYou do not wait to find out what.': 'La mano de latón se sacude hacia la baraja y se detiene.\n\nEntonces la boca empieza a chasquear. Despacio al principio; luego más rápido y más fuerte, resonando en el puesto como una cuenta atrás.\n\nNo esperas a descubrir para qué.',
+    'The hand drags across the deck inside its chest. One card drops through the slot.\n\nIt is warm, as if the machine had been holding it for years.': 'La mano recorre la baraja dentro de su pecho. Una carta cae por la ranura.\n\nEstá caliente, como si la máquina la hubiera sostenido durante años.',
+    "A wooden tray snaps out of the booth — exactly the size of a card.\n\nThe wizard's eyes tilt down toward your bag. It waits.": 'Una bandeja de madera sale de golpe del puesto, del tamaño exacto de una carta.\n\nLos ojos del mago bajan hacia tu bolsa. Espera.',
+    'The eyes roll white. When they settle, they are a color no machine should have.\n\nHuman eyes. They hold on you a moment too long.\n\nThen the hand opens, and a single fortune card slides out.': 'Los ojos se vuelven blancos. Cuando se detienen, tienen un color que ninguna máquina debería poseer.\n\nOjos humanos. Te sostienen la mirada demasiado tiempo.\n\nEntonces la mano se abre y sale una única carta de la fortuna.',
+    'You step back. After a few seconds, the tray slides in by itself.': 'Retrocedes. Después de unos segundos, la bandeja vuelve a entrar sola.',
+});
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.fr, {
+    'The Brass Wizard': 'Le magicien de laiton', 'Insert 1 coin': 'Insérer 1 pièce', 'Leave the booth': 'Quitter le stand',
+    'The carnival music thins out near a booth with cracked blue curtains.\n\nBehind the glass sits a fortune-telling machine: a brass wizard in a faded robe, painted stars mostly peeled away. Its mouth hangs open. Its pale eyes point at nothing.\n\nThe coin slot below the glass is polished bright from use.': 'La musique du carnaval faiblit près d’un stand aux rideaux bleus craquelés.\n\nDerrière la vitre se trouve une machine à prédire l’avenir : un magicien de laiton en robe délavée, dont les étoiles peintes se sont presque toutes écaillées. Sa bouche reste ouverte. Ses yeux pâles ne fixent rien.\n\nLa fente à pièces sous la vitre brille à force d’avoir servi.',
+    "You leave the slot empty.\n\nThe wizard watches you go, mouth open, holding a fortune it doesn't get to tell.": 'Vous laissez la fente vide.\n\nLe magicien vous regarde partir, bouche ouverte, gardant une prédiction qu’il ne pourra pas prononcer.',
+    'The brass hand jerks toward the deck — and stops.\n\nThen the mouth starts clicking. Slow at first. Then faster, louder, echoing in the booth like it is counting down to something.\n\nYou do not wait to find out what.': 'La main de laiton se tend brusquement vers le paquet, puis s’arrête.\n\nLa bouche se met alors à claquer. Lentement d’abord, puis plus vite et plus fort, résonnant dans le stand comme un compte à rebours.\n\nVous n’attendez pas de savoir vers quoi.',
+    'The hand drags across the deck inside its chest. One card drops through the slot.\n\nIt is warm, as if the machine had been holding it for years.': 'La main racle le paquet dans sa poitrine. Une carte tombe par la fente.\n\nElle est chaude, comme si la machine la gardait depuis des années.',
+    "A wooden tray snaps out of the booth — exactly the size of a card.\n\nThe wizard's eyes tilt down toward your bag. It waits.": 'Un plateau de bois jaillit du stand, exactement de la taille d’une carte.\n\nLes yeux du magicien s’inclinent vers votre sac. Il attend.',
+    'The eyes roll white. When they settle, they are a color no machine should have.\n\nHuman eyes. They hold on you a moment too long.\n\nThen the hand opens, and a single fortune card slides out.': 'Les yeux deviennent blancs. Lorsqu’ils s’immobilisent, ils ont une couleur qu’aucune machine ne devrait posséder.\n\nDes yeux humains. Ils s’attardent sur vous un peu trop longtemps.\n\nPuis la main s’ouvre et une unique carte de fortune en glisse.',
+    'You step back. After a few seconds, the tray slides in by itself.': 'Vous reculez. Après quelques secondes, le plateau rentre tout seul.',
+});
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.ru, {
+    'The Brass Wizard': 'Латунный волшебник', 'Insert 1 coin': 'Вставить 1 монету', 'Leave the booth': 'Покинуть киоск',
+    'The carnival music thins out near a booth with cracked blue curtains.\n\nBehind the glass sits a fortune-telling machine: a brass wizard in a faded robe, painted stars mostly peeled away. Its mouth hangs open. Its pale eyes point at nothing.\n\nThe coin slot below the glass is polished bright from use.': 'Карнавальная музыка стихает возле киоска с потрескавшимися синими шторами.\n\nЗа стеклом сидит предсказательная машина: латунный волшебник в выцветшей мантии, с которой почти облупились нарисованные звезды. Его рот открыт. Бледные глаза смотрят в пустоту.\n\nЩель для монет под стеклом отполирована частым использованием.',
+    "You leave the slot empty.\n\nThe wizard watches you go, mouth open, holding a fortune it doesn't get to tell.": 'Вы оставляете щель пустой.\n\nВолшебник смотрит вам вслед с открытым ртом, храня предсказание, которое ему не доведется произнести.',
+    'The brass hand jerks toward the deck — and stops.\n\nThen the mouth starts clicking. Slow at first. Then faster, louder, echoing in the booth like it is counting down to something.\n\nYou do not wait to find out what.': 'Латунная рука дергается к колоде и останавливается.\n\nЗатем рот начинает щелкать. Сначала медленно, потом все быстрее и громче, словно в киоске идет обратный отсчет.\n\nВы не ждете, чтобы узнать, до чего.',
+    'The hand drags across the deck inside its chest. One card drops through the slot.\n\nIt is warm, as if the machine had been holding it for years.': 'Рука проводит по колоде внутри груди. Одна карта падает через щель.\n\nОна теплая, словно машина держала ее много лет.',
+    "A wooden tray snaps out of the booth — exactly the size of a card.\n\nThe wizard's eyes tilt down toward your bag. It waits.": 'Из киоска резко выдвигается деревянный поднос точно по размеру карты.\n\nГлаза волшебника опускаются к вашей сумке. Он ждет.',
+    'The eyes roll white. When they settle, they are a color no machine should have.\n\nHuman eyes. They hold on you a moment too long.\n\nThen the hand opens, and a single fortune card slides out.': 'Глаза закатываются и белеют. Когда они останавливаются, их цвет не должен принадлежать машине.\n\nЧеловеческие глаза. Они смотрят на вас чуть дольше, чем следует.\n\nЗатем рука раскрывается, и из нее выскальзывает единственная карта предсказания.',
+    'You step back. After a few seconds, the tray slides in by itself.': 'Вы отступаете. Через несколько секунд поднос задвигается сам.',
+});
+
+// Every event heading is translated even where its longer story branch still
+// has bespoke copy pending. This avoids an English title sitting above a
+// localized HUD or choice panel.
+const EVENT_TITLE_TRANSLATIONS = {
+    es: {
+        'The Well of Almost-You': 'El pozo de casi-tú', 'Arm Wrestling': 'Pulso', 'The Book Worm': 'El gusano de biblioteca',
+        'The Brass Wizard': 'El mago de latón', 'The Broken Music Box': 'La caja de música rota', 'Goblin Engineer': 'Ingeniero goblin',
+        'Monster Bird Nest': 'Nido de ave monstruosa', 'The Old Drill Room': 'La vieja sala de entrenamiento', 'The Reliquary': 'El relicario',
+        'The Screaming Head': 'La cabeza que grita', 'The Slimy Prison': 'La prisión viscosa', 'Something Wicked': 'Algo maligno',
+        'Toll Collectors': 'Cobradores de peaje', 'The Too-Nice Room': 'La sala demasiado agradable',
+    },
+    fr: {
+        'The Well of Almost-You': 'Le puits du presque-vous', 'Arm Wrestling': 'Bras de fer', 'The Book Worm': 'Le ver de bibliothèque',
+        'The Brass Wizard': 'Le magicien de laiton', 'The Broken Music Box': 'La boîte à musique cassée', 'Goblin Engineer': 'Ingénieur gobelin',
+        'Monster Bird Nest': 'Nid d’oiseau monstrueux', 'The Old Drill Room': 'L’ancienne salle d’exercice', 'The Reliquary': 'Le reliquaire',
+        'The Screaming Head': 'La tête hurlante', 'The Slimy Prison': 'La prison visqueuse', 'Something Wicked': 'Quelque chose de sinistre',
+        'Toll Collectors': 'Percepteurs de péage', 'The Too-Nice Room': 'La pièce trop parfaite',
+    },
+    ru: {
+        'The Well of Almost-You': 'Колодец почти-тебя', 'Arm Wrestling': 'Армрестлинг', 'The Book Worm': 'Книжный червь',
+        'The Brass Wizard': 'Латунный волшебник', 'The Broken Music Box': 'Сломанная музыкальная шкатулка', 'Goblin Engineer': 'Гоблин-инженер',
+        'Monster Bird Nest': 'Гнездо чудовищной птицы', 'The Old Drill Room': 'Старый тренировочный зал', 'The Reliquary': 'Реликварий',
+        'The Screaming Head': 'Кричащая голова', 'The Slimy Prison': 'Слизистая тюрьма', 'Something Wicked': 'Нечто зловещее',
+        'Toll Collectors': 'Сборщики пошлины', 'The Too-Nice Room': 'Слишком уютная комната',
+    },
+};
+
 const RARITY_TRANSLATIONS = {
     fr: {
         common: 'Commun',
@@ -2475,6 +3712,18 @@ const RARITY_TRANSLATIONS = {
         legendary: 'Легендарный',
         cursed: 'Проклятый',
     },
+    // German rarities are adjectives before a noun, so they really inflect —
+    // 'Seltenes Schwert' but 'Seltene Axt'. translateItemName joins the two
+    // uninflected, which reads as a label rather than a sentence: the same
+    // compromise French and Spanish already make with gender.
+    de: {
+        common: 'Gewöhnlich',
+        uncommon: 'Ungewöhnlich',
+        rare: 'Selten',
+        epic: 'Episch',
+        legendary: 'Legendär',
+        cursed: 'Verflucht',
+    },
 };
 
 const WEAPON_TRANSLATIONS = {
@@ -2499,6 +3748,13 @@ const WEAPON_TRANSLATIONS = {
         bow: 'Лук',
         chain: 'Цепь',
     },
+    de: {
+        dagger: 'Dolch',
+        sword: 'Schwert',
+        axe: 'Axt',
+        bow: 'Bogen',
+        chain: 'Kette',
+    },
 };
 
 const ARMOR_TRANSLATIONS = {
@@ -2520,6 +3776,12 @@ const ARMOR_TRANSLATIONS = {
         plate: 'Латная броня',
         bone: 'Костяная броня',
     },
+    de: {
+        leather: 'Lederrüstung',
+        chain: 'Kettenhemd',
+        plate: 'Plattenrüstung',
+        bone: 'Knochenrüstung',
+    },
 };
 
 const GEM_EFFECT_TRANSLATIONS = {
@@ -2540,6 +3802,12 @@ const GEM_EFFECT_TRANSLATIONS = {
         poison: 'Яд',
         lightning: 'Молния',
         gem: 'Камень',
+    },
+    de: {
+        fire: 'Feuer',
+        poison: 'Gift',
+        lightning: 'Blitz',
+        gem: 'Edelstein',
     },
 };
 
@@ -2632,6 +3900,9 @@ function pluralCategory(language, count) {
         if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) return 'few';
         return 'many';
     }
+    // English, Spanish, French and German all split at exactly one, so they take
+    // the default. Only add a branch above for a language that genuinely counts
+    // differently — Russian's three forms are why this function exists.
     return n === 1 ? 'one' : 'many';
 }
 
@@ -2680,6 +3951,11 @@ export function translateCardType(sceneOrGame, type) {
     return t(sceneOrGame, keyByType[type] || 'tooltip.card');
 }
 
+export function translateCharacterName(sceneOrGame, characterId) {
+    const id = String(characterId || '').toLowerCase();
+    return t(sceneOrGame, `character.${id}`);
+}
+
 export function translateGemEffect(sceneOrGame, effect) {
     const language = getGameLanguage(sceneOrGame);
     const key = String(effect || 'gem').toLowerCase();
@@ -2689,7 +3965,10 @@ export function translateGemEffect(sceneOrGame, effect) {
 export function translateDescription(sceneOrGame, description) {
     const language = getGameLanguage(sceneOrGame);
     const raw = String(description || '');
-    return DESCRIPTION_TRANSLATIONS[language]?.[raw] || raw;
+    return EVENT_NARRATIVE_TRANSLATIONS[language]?.[raw]
+        || EVENT_TITLE_TRANSLATIONS[language]?.[raw]
+        || DESCRIPTION_TRANSLATIONS[language]?.[raw]
+        || raw;
 }
 
 export function translateItemName(sceneOrGame, data) {

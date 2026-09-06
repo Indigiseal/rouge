@@ -4,6 +4,7 @@
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { isGauntlet } from '../../content/balance/Gauntlet.js';
 import { resourceCardKey } from '../../content/assets/resourceCards.js';
+import { t, translateItemName } from '../../i18n/i18n.js';
 
 // The card types a reroll (Screaming Head, brass wizard tray) can hand back.
 const REROLL_CARD_TYPES = ['weapon', 'armor', 'thorns', 'potion', 'food', 'magic'];
@@ -92,7 +93,7 @@ export const EventRunHelpers = {
     const before = Number.isFinite(this.gameState.playerHealth) ? this.gameState.playerHealth : 0;
     this.damagePlayer(35, 'music_box_explosion', 'Exploding Music Box');
     const lost = before - (Number.isFinite(this.gameState.playerHealth) ? this.gameState.playerHealth : 0);
-    if (lost > 0) this._reward(`-${lost} HP`);
+    if (lost > 0) this._reward({ key: 'event.reward.hp', vars: { amount: `-${lost}` } });
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     this.gameScene?.updateUI?.();
     this.addPendingEvent('monster_bird_nest');
@@ -131,7 +132,7 @@ export const EventRunHelpers = {
       story.birdAngry = true;
       this.addEggOrFallback();
     }
-    if (canTakeCog) this._reward('Brass cog');
+    if (canTakeCog) this._reward('event.reward.brassCog');
     this.addPendingEvent('goblin_engineer');
   },
 
@@ -164,7 +165,7 @@ export const EventRunHelpers = {
     if (index < 0) return false;
     const card = this.getInventorySlots()[index];
     const removed = this._removeInventoryCard(index);
-    if (removed) this._reward(`Fed magic card: ${card?.name || 'Magic Card'}`);
+    if (removed) this._reward({ key: 'event.reward.fedMagic', vars: { name: translateItemName(this, card) || t(this, 'tooltip.magic') } });
     return removed;
   },
 
@@ -180,7 +181,7 @@ export const EventRunHelpers = {
     ));
     if (index < 0) return false;
     const removed = this._removeInventoryCard(index);
-    if (removed) this._reward('Consumed magic card: Fireball');
+    if (removed) this._reward({ key: 'event.reward.consumedMagic', vars: { name: translateItemName(this, 'Fireball') } });
     return removed;
   },
 
@@ -189,7 +190,9 @@ export const EventRunHelpers = {
       this.gameState?.currentFloor || 1,
       'rare'
     );
-    return this._deliverCardReward(thorns, 'Rare Thorns', 'Gained card: Rare Thorns');
+    return this._deliverCardReward(thorns, 'Rare Thorns', {
+      key: 'event.reward.gainedCard', vars: { name: translateItemName(this, thorns) },
+    });
   },
 
   hasSacrificeCard() {
@@ -227,7 +230,7 @@ export const EventRunHelpers = {
   addEggOrFallback() {
     const egg = new CardDataGenerator().createEggCard();
     if (this._addCardToInventory(egg)) {
-      this._reward(`Gained: ${egg?.name || 'Egg'}`);
+      this._reward({ key: 'event.reward.gained', vars: { name: translateItemName(this, egg) || t(this, 'tooltip.card') } });
       return true;
     }
     this.heal(5);
@@ -341,7 +344,7 @@ export const EventRunHelpers = {
   addPotionToInventory() {
     const potion = new CardDataGenerator().createPotionCard(this.gameState?.currentFloor || 1);
     const added = this._addCardToInventory(potion);
-    if (added) this._reward(`Gained: ${potion?.name || 'Potion'}`);
+    if (added) this._reward({ key: 'event.reward.gained', vars: { name: translateItemName(this, potion) || t(this, 'tooltip.potion') } });
     return added;
   },
 
@@ -358,7 +361,7 @@ export const EventRunHelpers = {
     this.gameState.coins = before - amount;
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     this.gameScene?.updateUI?.();
-    this._reward(`-${amount} coin${amount === 1 ? '' : 's'}`);
+    this._reward({ key: 'event.reward.spentCoins', vars: { amount } });
     return true;
   },
 
@@ -366,7 +369,9 @@ export const EventRunHelpers = {
     this.markCarnivalHagMet();
     if (!this.spendCoins(1)) return false;
     const junk = this.createCarnivalJunkCard(junkId);
-    const added = this._deliverCardReward(junk, junk.name || 'Carnival Junk', `Gained junk card: ${junk.name || 'Carnival Junk'}`);
+    const added = this._deliverCardReward(junk, junk.name || 'Carnival Junk', {
+      key: 'event.reward.gainedJunk', vars: { name: translateItemName(this, junk) },
+    });
     this.addPendingEvent('brass_wizard');
     return added;
   },
@@ -384,7 +389,7 @@ export const EventRunHelpers = {
     const slot = inv?.deliverCloverAmulet?.();
     if (Number.isInteger(slot) && slot >= 0) {
       this.gameScene?.updateUI?.();
-      this._reward('Gained: Lucky Clover — tap it in battle to equip');
+      this._reward({ key: 'event.reward.cloverHint', vars: { name: translateItemName(this, 'Lucky Clover') } });
       this._pushRewardIcon('relicsOthers', 69, 'luckyClover');
       return true;
     }
@@ -480,13 +485,15 @@ export const EventRunHelpers = {
     const roll = Math.random();
     if (roll < 0.25) {
       this.brassWizardOutcome = 'The brass hand jerks toward the deck — and stops.\n\nThen the mouth starts clicking. Slow at first. Then faster, louder, echoing in the booth like it is counting down to something.\n\nYou do not wait to find out what.';
-      this._reward('No reward');
+      this._reward('event.reward.noReward');
       return true;
     }
 
     if (roll < 0.55) {
       const card = this.createRespectableCarnivalCard();
-      this._deliverCardReward(card, card?.name || 'fortune card', `Gained card: ${card?.name || 'Fortune Card'}`);
+      this._deliverCardReward(card, card?.name || 'fortune card', {
+        key: 'event.reward.gainedCard', vars: { name: translateItemName(this, card) || t(this, 'tooltip.card') },
+      });
       this.brassWizardOutcome = 'The hand drags across the deck inside its chest. One card drops through the slot.\n\nIt is warm, as if the machine had been holding it for years.';
       return true;
     }
@@ -604,7 +611,7 @@ export const EventRunHelpers = {
     this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
     this.gameScene?.updateEquippedArmorPanel?.();
     this.gameScene?.updateUI?.();
-    if (repaired > 0) this._reward(`Repaired: ${item.name || 'item'} (+${repaired} durability)`);
+    if (repaired > 0) this._reward({ key: 'event.reward.repaired', vars: { name: translateItemName(this, item) || t(this, 'tooltip.item'), amount: repaired } });
     return true;
   },
 
