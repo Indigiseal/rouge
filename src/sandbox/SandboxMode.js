@@ -117,6 +117,14 @@ const SANDBOX_STORY_SETUP = {
     grant: ['fireball'],
     monthId: 'silkdeep',
   },
+  // Expose the dynamite choice immediately when testing the new Tollroad arc.
+  goblin_mine: {
+    grant: ['fireball'],
+    monthId: 'tollroad',
+  },
+  royal_bridge: {
+    monthId: 'tollroad',
+  },
 };
 
 // Give the story a clean slate: nothing seen, nothing pending. This is what

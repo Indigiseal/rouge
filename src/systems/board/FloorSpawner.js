@@ -1502,9 +1502,12 @@ function enforceForcedEnemyTypes(floor) {
   this.boardCards.forEach((card) => {
     if (!card || !this.isEnemyType(card.data?.type)) return;
     const role = card.data.role || 'MELEE';
-    const enemyType = this._forcedEnemyTypes.includes('goblin_archer') && role === 'RANGED'
-      ? 'goblin_archer'
-      : 'goblin';
+    const roleMatches = this._forcedEnemyTypes.filter((enemyType) => {
+      const def = this.cardDataGenerator.enemyData?.[enemyType];
+      return (def?.role || 'MELEE') === role;
+    });
+    const pool = roleMatches.length > 0 ? roleMatches : this._forcedEnemyTypes;
+    const enemyType = pool[Math.floor(Math.random() * pool.length)];
     const replacement = this.cardDataGenerator.createTieredEnemy(enemyType, floor);
     replacement.brick = card.data.brick;
     replacement.brickNeighbors = card.data.brickNeighbors;
@@ -1518,6 +1521,12 @@ function spawnBoss() {
         'boss', this.scene.gameState.currentFloor, false, this.scene.gameState
     );
     bossData.maxHealth = bossData.maxHealth || bossData.health;
+    if (bossData.name === 'Goblin King') {
+        const fraction = Number(this.scene.gameState?.storyRun?.goblinKingStartingHealthFraction);
+        if (Number.isFinite(fraction) && fraction > 0 && fraction < 1) {
+            bossData.health = Math.max(1, Math.ceil(bossData.maxHealth * fraction));
+        }
+    }
     const cam = this.scene.cameras.main;
     // Viewport in world units, not device pixels — see cameraWorldSize.
     const { width: camW, height: camH } = cameraWorldSize(cam);

@@ -135,7 +135,9 @@ function computePlacement(cells, opts = {}) {
   // measure primitive bounds
   let minR = Infinity, maxR = -Infinity, minXp = Infinity, maxXp = -Infinity;
   for (const { r, c } of cells) {
-    const xp = c + ((r & 1) ? 0.5 : 0);
+    // Rows share the same column axis. Keeping x tied only to `c` makes
+    // vertically aligned cards read as an actual column on the combat board.
+    const xp = c;
     if (r  < minR)  minR  = r;
     if (r  > maxR)  maxR  = r;
     if (xp < minXp) minXp = xp;
@@ -224,7 +226,7 @@ function computePlacement(cells, opts = {}) {
 }
 
 function brickToPixel(r, c, place) {
-  const xp = c + ((r & 1) ? 0.5 : 0);        // primitive x' (offset for odd rows = brick stagger)
+  const xp = c;
   const x  = place.cx + (xp - place.midXp) * place.HSTEP;
   const y  = place.cy + (r  - place.midR)  * place.VSTEP;
   // Snap to integer pixels. Sub-pixel positions caused the whole board
@@ -595,5 +597,4 @@ function applyStrategyCluster({ preferFront = false } = {}) {
     }
     return moved;
 }
-
 

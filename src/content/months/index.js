@@ -30,4 +30,7 @@ export {
   TOLLROAD_ENEMY_DEFS,
   TOLLROAD_ROSTER,
   TOLLROAD_GOBLIN_ALLY_TYPES,
+  TOLLROAD_EVENTS,
+  TOLLROAD_EVENT_IDS,
+  pickTollroadEventId,
 } from './tollroad/index.js';

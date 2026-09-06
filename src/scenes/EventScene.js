@@ -37,6 +37,7 @@ import {
   NEST_LEFT,
 } from '../content/events/monster_bird_nest.js';
 import { getLocationIdForFloor } from '../content/locations/index.js';
+import { pickTollroadEventId } from '../content/months/tollroad/index.js';
 import { tryLethalRevive } from '../systems/combat/PlayerDamageResolver.js';
 import { serifStyle } from '../ui/uiFont.js';
 
@@ -61,7 +62,10 @@ const EVENT_ILLUSTRATION_FRAMES = {
   // TODO: swap to the Reliquary's own frame once its art lands. Frame 11
   // (the Copying Mirror's glassy panel) is the closest stand-in for now.
   reliquary: 11,
-  silk_cocoon_cache: 31
+  silk_cocoon_cache: 31,
+  goblin_mine: 29,
+  goblin_mine_return: 29,
+  royal_bridge: 29,
 };
 
 export class EventScene extends Phaser.Scene {
@@ -90,6 +94,14 @@ export class EventScene extends Phaser.Scene {
     if (this.forcedEventId && getEvent(this.forcedEventId)) {
       return this.getEventById(this.forcedEventId);
     }
+
+    const locationId = getLocationIdForFloor(
+      this.gameState,
+      this.gameState?.currentFloor || 1
+    );
+    // Tollroad owns its narrative pool. Global story chains and filler events
+    // must not displace the King's Mile encounters during a normal run.
+    if (locationId === 'tollroad') return this._pickTollroadEvent();
 
     const forcedId = this._getForcedEventId();
     if (forcedId && (forcedId !== 'hatching_egg' || this.canShowEggHatchingEvent())) {
@@ -125,10 +137,6 @@ export class EventScene extends Phaser.Scene {
     if (!story.wellSeen) bonusFillers.push('almost_you_well');
     if (!story.slimyPrisonSeen) bonusFillers.push('slimy_prison');
     if (!story.bookWormSeen) bonusFillers.push('book_worm');
-    const locationId = getLocationIdForFloor(
-      this.gameState,
-      this.gameState?.currentFloor || 1
-    );
     if (!story.briarRoomSeen && locationId === 'thornwake') bonusFillers.push('briar_room');
     // Silkdeep-only: cocoon chamber.
     if (!story.silkCocoonCacheSeen && locationId === 'silkdeep') {
@@ -157,6 +165,13 @@ export class EventScene extends Phaser.Scene {
       return this.getEventById(bonusFillers[Math.floor(Math.random() * bonusFillers.length)]);
     }
     return this.getEventById('quiet_crossroads');
+  }
+
+  _pickTollroadEvent() {
+    const story = this.gameState.storyRun;
+    const canArmWrestle = (this.gameState.coins || 0) >= this.getArmWrestleCoinStake()
+      || this.hasArmWrestleCard();
+    return this.getEventById(pickTollroadEventId({ story, canArmWrestle }));
   }
 
   getEventById(id) {
@@ -234,6 +249,12 @@ export class EventScene extends Phaser.Scene {
       tollroadAftermathSeen: false,
       magusPendantObtained: false,
       tollroadAftermathCompleteThisRun: false,
+      goblinMineSeen: false,
+      goblinMinersKilled: false,
+      goblinMinersAllied: false,
+      royalBridgeSeen: false,
+      goblinKingStartingHealthFraction: 1,
+      pendingPostCombatEventId: null,
       pendingEvents: []
     };
 
@@ -331,6 +352,16 @@ export class EventScene extends Phaser.Scene {
       tollroadAftermathSeen: Boolean(existingStoryRun.tollroadAftermathSeen),
       magusPendantObtained: Boolean(existingStoryRun.magusPendantObtained),
       tollroadAftermathCompleteThisRun: Boolean(existingStoryRun.tollroadAftermathCompleteThisRun),
+      goblinMineSeen: Boolean(existingStoryRun.goblinMineSeen),
+      goblinMinersKilled: Boolean(existingStoryRun.goblinMinersKilled),
+      goblinMinersAllied: Boolean(existingStoryRun.goblinMinersAllied),
+      royalBridgeSeen: Boolean(existingStoryRun.royalBridgeSeen),
+      goblinKingStartingHealthFraction: Number.isFinite(existingStoryRun.goblinKingStartingHealthFraction)
+        ? existingStoryRun.goblinKingStartingHealthFraction
+        : 1,
+      pendingPostCombatEventId: typeof existingStoryRun.pendingPostCombatEventId === 'string'
+        ? existingStoryRun.pendingPostCombatEventId
+        : null,
       pendingEvents
     };
 
@@ -2166,6 +2197,78 @@ export class EventScene extends Phaser.Scene {
     this.gameState.storyRun.merchantRobbed = true;
   }
 
+  // ─── Tollroad crystal mine and royal bridge ─────────────────────────────
+
+  burnGoblinMine() {
+    this.ensureStoryState();
+    this.consumeFireballCard();
+    this.gameState.storyRun.goblinMinersKilled = true;
+    this.gainCrystals(3);
+  }
+
+  sneakPastGoblinMine() {
+    this.ensureStoryState();
+    const roll = 1 + Math.floor(Math.random() * 6);
+    if (roll <= 3) {
+      this.gameState.storyRun.goblinMinersKilled = true;
+      this.gameState.pendingAmbush = {
+        id: 'goblin_mine_sneak',
+        normalCombatBoard: true,
+        enemyTypes: ['goblin', 'goblin_archer', 'tollBrute'],
+      };
+      this.goblinMineSneakOutcome = `D6: ${roll}. A miner looks up just as your boot sends gravel across the road. The foreman shouts, and the work gang reaches for weapons.`;
+      return;
+    }
+    this.goblinMineSneakOutcome = `D6: ${roll}. The foreman's shouting covers your steps. You reach the next bend without a single miner looking your way.`;
+  }
+
+  enterGoblinMine() {
+    this.ensureStoryState();
+    this.gameState.storyRun.pendingPostCombatEventId = 'goblin_mine_return';
+    this.gameState.pendingAmbush = {
+      id: 'goblin_mine_spiders',
+      normalCombatBoard: true,
+      enemyTypes: ['spider'],
+    };
+  }
+
+  refuseGoblinMiners() {
+    this.ensureStoryState();
+    this.gameState.storyRun.goblinMinersAllied = false;
+  }
+
+  completeGoblinMineAlliance() {
+    this.ensureStoryState();
+    this.gameState.storyRun.goblinMinersAllied = true;
+  }
+
+  resolveMinerBridgeSabotage() {
+    this.ensureStoryState();
+    this.gameState.storyRun.goblinKingStartingHealthFraction = 0.75;
+  }
+
+  fireballRoyalProcession() {
+    this.ensureStoryState();
+    this.consumeFireballCard();
+    this.gameState.storyRun.goblinKingStartingHealthFraction = Math.min(
+      this.gameState.storyRun.goblinKingStartingHealthFraction || 1,
+      0.9,
+    );
+  }
+
+  attackRoyalProcession() {
+    this.ensureStoryState();
+    this.gameState.pendingAmbush = {
+      id: 'royal_procession',
+      normalCombatBoard: true,
+      enemyTypes: ['goblin', 'goblin_archer', 'tollBrute'],
+    };
+  }
+
+  letRoyalProcessionPass() {
+    this.ensureStoryState();
+  }
+
   // ─── The Reliquary (the wall supplies the spell, the player supplies iron) ─
 
   // Rolled once per visit and cached. _getVisibleChoices() re-runs on every
@@ -2754,7 +2857,9 @@ export class EventScene extends Phaser.Scene {
       toll_collectors: 'tollCollectorsSeen',
       arm_wrestling: 'armWrestlingSeen',
       something_wicked: 'carnivalVisited',
-      brass_wizard: 'brassWizardSeen'
+      brass_wizard: 'brassWizardSeen',
+      goblin_mine: 'goblinMineSeen',
+      royal_bridge: 'royalBridgeSeen',
     };
     const flag = flagByEvent[this.event?.id];
     if (!flag) return;

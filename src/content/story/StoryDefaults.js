@@ -59,6 +59,12 @@ export const DEFAULT_STORY_RUN = Object.freeze({
   // Continue from replaying the scene after it has already opened this run's
   // boss reward, while still letting later Tollroad runs see the scene again.
   tollroadAftermathCompleteThisRun: false,
+  goblinMineSeen: false,
+  goblinMinersKilled: false,
+  goblinMinersAllied: false,
+  royalBridgeSeen: false,
+  goblinKingStartingHealthFraction: 1,
+  pendingPostCombatEventId: null,
   pendingEvents: Object.freeze([]),
 });
 

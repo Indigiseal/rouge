@@ -162,6 +162,12 @@ export class GameScene extends Phaser.Scene {
                 this.gameState.storyRun.armWrestleLost = false;
                 this.gameState.storyRun.armWrestleRematchDone = false;
                 this.gameState.storyRun.gauntletWon = false;
+                this.gameState.storyRun.goblinMineSeen = false;
+                this.gameState.storyRun.goblinMinersKilled = false;
+                this.gameState.storyRun.goblinMinersAllied = false;
+                this.gameState.storyRun.royalBridgeSeen = false;
+                this.gameState.storyRun.goblinKingStartingHealthFraction = 1;
+                this.gameState.storyRun.pendingPostCombatEventId = null;
             }
             // This scene repeats once per Tollroad run. Durable story memory
             // keeps the pendant/knowledge, but must not suppress a later run's
@@ -1154,6 +1160,23 @@ export class GameScene extends Phaser.Scene {
             this.amuletManager.processFloorEnd();
         }
         this._floorEndAlreadyProcessed = false;
+
+        // Some event ambushes resolve with a story beat immediately after the
+        // player wins. Consume the handoff before the ordinary map transition.
+        const postCombatEventId = this.gameState.storyRun?.pendingPostCombatEventId;
+        if (postCombatEventId) {
+            this.gameState.storyRun.pendingPostCombatEventId = null;
+            this.gameState.ambushId = null;
+            this.saveCurrentRun();
+            this.time.delayedCall(500, () => {
+                this.scene.sleep();
+                this.scene.launch('EventScene', {
+                    gameState: this.gameState,
+                    forcedEventId: postCombatEventId,
+                });
+            });
+            return;
+        }
 
         // Test Site: after a fight (or boss reward leave), return to the hub.
         // Elite still opens its chest first; TreasureScene exits back to the hub.
