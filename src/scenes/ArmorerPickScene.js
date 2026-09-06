@@ -96,8 +96,12 @@ export class ArmorerPickScene extends Phaser.Scene {
     panel.on('pointerout', hoverOff);
     btn.on('pointerover', hoverOn);
     btn.on('pointerout', hoverOff);
-    panel.on('pointerdown', () => this.pick(armorType));
-    btn.on('pointerdown', () => this.pick(armorType));
+    const press = () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
+      this.pick(armorType);
+    };
+    panel.on('pointerdown', press);
+    btn.on('pointerdown', press);
   }
 
   pick(armorerArmorType) {

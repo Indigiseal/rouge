@@ -12,7 +12,10 @@ export class SoundHelper {
         dodge_miss: ['dodge_miss_1', 'dodge_miss_2', 'dodge_miss_3'],
         map_select: ['map_select_3'],
         armor_break: ['armor_break_1', 'armor_break_2', 'armor_break_3'],
-        button_click: ['button_click_1', 'button_click_2'],
+        // One click for every button in the game. A group of one, so call sites
+        // keep passing 'button_click' and a second take can be dropped in here
+        // later without touching them.
+        button_click: ['ui_click'],
         invalid_action: ['invalid_action_1', 'invalid_action_2'],
         legendary_reveal: ['legendary_reveal_1', 'legendary_reveal_2'],
         player_hurt: ['player_hurt_1', 'player_hurt_2', 'player_hurt_3'],
@@ -50,8 +53,27 @@ export class SoundHelper {
         return !!scene?.sound?.locked || (ctx && ctx.state !== 'running');
     }
 
+    // Has the player touched the page yet? Until they have, the browser refuses
+    // to start audio at all, and every resume() we attempt is both futile and
+    // logged as "The AudioContext was not allowed to start".
+    //
+    // hasBeenActive, not isActive: the autoplay policy unlocks on the FIRST
+    // interaction and stays unlocked (sticky activation), so once the player has
+    // clicked anything we may resume freely — including from a timer or a scene
+    // change, where the transient isActive would already have expired. Browsers
+    // that don't expose the flag (Safari) fall through to trying, as before.
+    static pageIsSilentUntilGesture() {
+        const activation = typeof navigator !== 'undefined' ? navigator.userActivation : null;
+        if (!activation || typeof activation.hasBeenActive !== 'boolean') return false;
+        return !activation.hasBeenActive;
+    }
+
     static resumeAudio(scene) {
         try { scene?.sound?.unlock?.(); } catch (_) {}
+
+        // Nothing to resume into yet. The unlock listeners are already waiting
+        // on the first click or keypress and will come back here then.
+        if (this.pageIsSilentUntilGesture()) return Promise.resolve();
 
         const ctx = this.getAudioContext(scene);
         if (ctx?.resume && ctx.state !== 'running' && ctx.state !== 'closed') {

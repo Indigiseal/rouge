@@ -140,6 +140,7 @@ export class MapViewScene extends Phaser.Scene {
     const closeBtn = this.add.circle(600, 30, 15, 0xae5347).setInteractive({ useHandCursor: true });
     this.add.text(600, 30, 'X', { fontSize: '16px', fill: '#f2d3aa' }).setOrigin(0.5);
     closeBtn.on('pointerdown', () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
       const gameScene = this.scene.get('GameScene');
       if (gameScene?.gameState) {
         gameScene.gameState.roomType = 'MAP';

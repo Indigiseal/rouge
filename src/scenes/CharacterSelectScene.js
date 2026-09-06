@@ -81,8 +81,12 @@ export class CharacterSelectScene extends Phaser.Scene {
     panel.on('pointerout', hoverOff);
     btn.on('pointerover', hoverOn);
     btn.on('pointerout', hoverOff);
-    panel.on('pointerdown', () => this.selectCharacter(def.id));
-    btn.on('pointerdown', () => this.selectCharacter(def.id));
+    const press = () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
+      this.selectCharacter(def.id);
+    };
+    panel.on('pointerdown', press);
+    btn.on('pointerdown', press);
   }
 
   createBackButton() {
@@ -97,6 +101,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     });
     bg.on('pointerout', () => bg.setStrokeStyle(1, 0x8b6914));
     bg.on('pointerdown', () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
       this.cameras.main.fadeOut(250, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('MainMenuScene');

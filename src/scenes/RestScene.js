@@ -27,6 +27,7 @@ export class RestScene extends Phaser.Scene {
         const continueButton = this.add.text(320, 280, t(this, 'ui.anvil.continue'), { fontSize: '18px', fill: '#00ff00', fontFamily: '"HoMM Pixel"' })
             .setInteractive({ useHandCursor: true })
             .on('pointerdown', () => {
+                SoundHelper.playVariant(this, 'button_click', 0.5);
                 // NO nextFloor() here—map already did it
                 this.stopCampfireLoop(450);
                 if (isSandboxMode(this)) {

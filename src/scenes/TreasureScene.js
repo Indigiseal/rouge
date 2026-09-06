@@ -102,6 +102,7 @@ export class TreasureScene extends StationRoomBase {
     this.keyButton.setInteractive({ useHandCursor: true });
     this.keyButton.removeAllListeners();
     this.keyButton.on('pointerdown', () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
       if (this.opened) return;
       if (!this.requiresKey) {
         this.openRewardChest(this.chest);

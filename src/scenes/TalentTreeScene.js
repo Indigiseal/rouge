@@ -51,7 +51,10 @@ export class TalentTreeScene extends Phaser.Scene {
       .setStrokeStyle(1, 0xd4a017)
       .setInteractive({ useHandCursor: true });
     this.buyLabel = this.add.text(500, 292, t(this, 'ui.talents.buy'), serifStyle('14px', '#e6edf3')).setOrigin(0.5);
-    this.buyBtn.on('pointerdown', () => this.tryBuy());
+    this.buyBtn.on('pointerdown', () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
+      this.tryBuy();
+    });
 
     this.createBranchColumns();
     this.createFooter();
@@ -84,7 +87,10 @@ export class TalentTreeScene extends Phaser.Scene {
           serifStyle('13px', branch.wip ? '#8b949e' : '#e6edf3'))
           .setOrigin(0.5).setInteractive({ useHandCursor: true });
 
-        const select = () => this.selectTalent(talentId);
+        const select = () => {
+          SoundHelper.playVariant(this, 'button_click', 0.45);
+          this.selectTalent(talentId);
+        };
         bg.on('pointerover', () => {
           SoundHelper.playVariant(this, 'hover_button', 0.3);
           bg.setStrokeStyle(1, 0xd4a017);
@@ -116,6 +122,7 @@ export class TalentTreeScene extends Phaser.Scene {
     back.on('pointerover', () => back.setStrokeStyle(1, 0xd4a017));
     back.on('pointerout', () => back.setStrokeStyle(1, 0x8b6914));
     back.on('pointerdown', () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
       this.cameras.main.fadeOut(250, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('CharacterSelectScene');
@@ -131,7 +138,10 @@ export class TalentTreeScene extends Phaser.Scene {
       start.setFillStyle(0x5a3820, 0.98);
     });
     start.on('pointerout', () => start.setFillStyle(0x3d2418, 0.95));
-    start.on('pointerdown', () => this.startRun());
+    start.on('pointerdown', () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
+      this.startRun();
+    });
   }
 
   selectTalent(talentId) {

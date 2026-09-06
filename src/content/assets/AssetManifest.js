@@ -34,6 +34,13 @@ export const ASSET_MANIFEST = [
     { key: 'musicBoxLockWafers', path: 'assets/art/musicBoxLockWafers.png', type: 'spritesheet', frameWidth: 58, frameHeight: 72 },
     { key: 'statueHead', path: 'assets/art/statueHead.png', type: 'image' },
     { key: 'panelArmor', path: 'assets/art/panelArmor.png', type: 'image' },
+    { key: 'anvilSlot', path: 'assets/art/blackRectangle1.png', type: 'image' },
+    { key: 'anvilDropAnim', path: 'assets/art/anvilDropAnim.png', type: 'spritesheet', frameWidth: 69, frameHeight: 89 },
+    { key: 'anvilClankAnim', path: 'assets/art/anvilClanckAnim80x86.png', type: 'spritesheet', frameWidth: 80, frameHeight: 86 },
+    { key: 'anvilBanner', path: 'assets/art/bannerAnvil.png', type: 'image' },
+    { key: 'anvilIllustration', path: 'assets/art/anvil1.png', type: 'image' },
+    { key: 'anvilPriceTag', path: 'assets/art/priceTag.png', type: 'image' },
+    { key: 'webCardOverlay', path: 'assets/art/web.png', type: 'image' },
     // Little banner behind each shop item's price (32x18)
     { key: 'priceTag', path: 'assets/art/priceTag.png', type: 'image' },
     { key: 'pixel-font', path: 'assets/fonts/minogram_6x10.png', xmlPath: 'assets/fonts/minogram_6x10.xml', type: 'bitmapFont' },
@@ -289,8 +296,13 @@ export const ASSET_MANIFEST = [
     { key: 'armor_break_1', path: 'assets/music/Armor_Break_01.mp3', type: 'audio' },
     { key: 'armor_break_2', path: 'assets/music/Armor_Break_02.mp3', type: 'audio' },
     { key: 'armor_break_3', path: 'assets/music/Armor_Break_03.mp3', type: 'audio' },
-    { key: 'button_click_1', path: 'assets/music/Button_Click_01.mp3', type: 'audio' },
-    { key: 'button_click_2', path: 'assets/music/Button_Click_02.mp3', type: 'audio' },
+    // Every button in the game presses with this one click. The two older
+    // Button_Click_0*.mp3 takes are no longer loaded — nothing referenced them
+    // but the button_click group, and that now points here.
+    { key: 'ui_click', path: 'assets/music/UI_Click_01.mp3', type: 'audio' },
+    // Tick under the volume sliders. Short on purpose: it fires once per step
+    // while a slider is being dragged.
+    { key: 'ui_slider_tick', path: 'assets/music/UI_Slider_Tick_01.mp3', type: 'audio' },
     { key: 'invalid_action_1', path: 'assets/music/Invalid_Action_01.mp3', type: 'audio' },
     { key: 'invalid_action_2', path: 'assets/music/Invalid_Action_02.mp3', type: 'audio' },
     { key: 'legendary_reveal_1', path: 'assets/music/Legendary_Relic_Reveal_01.mp3', type: 'audio' },

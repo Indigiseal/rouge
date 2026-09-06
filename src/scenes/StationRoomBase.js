@@ -471,6 +471,7 @@ export class StationRoomBase extends Phaser.Scene {
         }).setOrigin(0.5);
 
         button.on('pointerdown', () => {
+            SoundHelper.playVariant(this, 'button_click', 0.5);
             if (button.setTexture && this.textures.exists('nextTurnDown')) button.setTexture('nextTurnDown');
             if (button.setTint) button.setTint(0x888888);
             button.y = baseY + 1;

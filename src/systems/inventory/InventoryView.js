@@ -77,25 +77,12 @@ export const InventoryView = {
         slot.webOverlay?.setDepth?.(depths.webOverlay);
         slot.twinkleSprite?.setDepth?.(depths.twinkle);
     },
-    ensureWebOverlayTexture() {
-        if (this.scene.textures.exists('webCardOverlay')) return;
-        const g = this.scene.make.graphics({ x: 0, y: 0, add: false });
-        g.fillStyle(0xc8d8e8, 0.4);
-        g.fillRect(0, 0, 54, 70);
-        g.lineStyle(1, 0xffffff, 0.75);
-        for (let i = -70; i < 54; i += 7) {
-            g.lineBetween(i, 0, i + 70, 70);
-        }
-        g.generateTexture('webCardOverlay', 54, 70);
-        g.destroy();
-    },
     applyWebOverlay(slotIndex) {
         const slot = this.slotSprites?.[slotIndex];
         const cardSprite = slot?.card;
         const cardData = this.slots?.[slotIndex];
         if (!slot || !cardSprite?.scene || !(cardData?.webbedTurns > 0)) return;
 
-        this.ensureWebOverlayTexture();
         if (slot.webOverlay?.scene) {
             slot.webOverlay.x = cardSprite.x;
             slot.webOverlay.y = cardSprite.y;

@@ -1,6 +1,14 @@
 // scenes/PauseMenuScene.js
-import { MusicManager } from '../audio/MusicManager.js';
-import { SoundHelper } from '../audio/SoundHelper.js';
+import {
+    OptionsSkin,
+    OPTIONS_BACKDROP,
+    OPTIONS_INK,
+    OPTIONS_RESET_INK,
+    RESET_LABEL_OFFSET_X,
+    UI_BUTTON,
+    UI_BUTTON_W,
+} from '../ui/OptionsSkin.js';
+import { FONT_SIZE, fitLabel, serifStyle } from '../ui/uiFont.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { humanRunRecorder } from '../systems/HumanRunRecorder.js';
@@ -18,109 +26,63 @@ export class PauseMenuScene extends Phaser.Scene {
     }
     
     create() {
-        // Semi-transparent black overlay
-        this.overlay = this.add.rectangle(320, 180, 640, 360, 0x000000, 0.7);
-        
-        // Menu container background
-        const menuBg = this.add.rectangle(320, 180, 440, 338, 0x2c1810)
-            .setStrokeStyle(3, 0xffffff);
-        
-        // Title
-        this.add.text(320, 35, t(this, 'ui.pause.title'), {
-            fontSize: '32px',
-            fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
-        
-        // Sound settings title
-        this.add.text(320, 72, t(this, 'ui.pause.soundSettings'), {
-            fontSize: '18px',
-            fill: '#cccccc',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
-        
-        this.createVolumeSlider(t(this, 'ui.options.musicVolume'), 112, 'music');
-        this.createVolumeSlider(t(this, 'ui.options.soundEffects'), 152, 'sfx');
-        
-        // Resume button
-        const resumeButton = this.add.rectangle(230, 205, 120, 35, 0x00ff00, 0.3)
-            .setStrokeStyle(2, 0x00ff00)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); resumeButton.setFillStyle(0x00ff00, 0.5); })
-            .on('pointerout', () => resumeButton.setFillStyle(0x00ff00, 0.3))
-            .on('pointerdown', () => this.resumeGame());
-        
-        this.add.text(230, 205, t(this, 'ui.pause.resume'), {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
-        
-        // Main Menu button (optional - for future use)
-        const mainMenuButton = this.add.rectangle(410, 205, 120, 35, 0xff6666, 0.3)
-            .setStrokeStyle(2, 0xff6666)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); mainMenuButton.setFillStyle(0xff6666, 0.5); })
-            .on('pointerout', () => mainMenuButton.setFillStyle(0xff6666, 0.3))
-            .on('pointerdown', () => this.quitToMainMenu());
-        
-        this.add.text(410, 205, t(this, 'ui.pause.saveQuit'), {
-            fontSize: '16px',
-            fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
+        // Station rooms render in separate scenes above GameScene. Object depth
+        // cannot put this menu above them; move the whole pause scene to the top.
+        this.scene.bringToTop();
+        this.pausedStationScenes = [
+            'ShopScene', 'RareShopScene', 'RestScene', 'AnvilScene', 'TreasureScene', 'EventScene',
+        ].filter(key => this.scene.isActive(key));
+        this.pausedStationScenes.forEach(key => this.scene.pause(key));
 
+        this.volumeControls = [];
+        this.overlay = this.add.rectangle(320, 180, 640, 360, OPTIONS_BACKDROP).setInteractive();
+        OptionsSkin.createOptionsPanel.call(this, 320, 180);
+        this.add.text(320, 62, t(this, 'ui.pause.title'), serifStyle(FONT_SIZE.heading, OPTIONS_INK))
+            .setOrigin(0.5);
+        this.add.text(320, 94, t(this, 'ui.pause.soundSettings'), serifStyle(FONT_SIZE.body, OPTIONS_INK))
+            .setOrigin(0.5);
+        // Sound effects above music, the order the options screen lists them in —
+        // the same two bars in the same two places on whichever screen you open.
+        const layout = { labelRightX: 298, barX: 370, showReading: false };
+        OptionsSkin.createVolumeControl.call(this, t(this, 'ui.options.soundEffects'), 125, 'sfx', layout);
+        OptionsSkin.createVolumeControl.call(this, t(this, 'ui.options.musicVolume'), 155, 'music', layout);
+        OptionsSkin.createDivider.call(this, 320, 184);
+        this.createPauseButton(246, 212, t(this, 'ui.pause.resume'), () => this.resumeGame());
+        this.createPauseButton(394, 212, t(this, 'ui.pause.saveQuit'), () => this.quitToMainMenu(), true);
         this.createRecorderControls();
-        
-        // ESC key to resume
         this.input.keyboard.on('keydown-ESC', () => this.resumeGame());
+    }
+
+    // Same two plates the options screen uses: the plain one, and the red one
+    // with the warning badge for the button that ends the run. The badge eats
+    // the plate's left ~27px, so a label on it gets less room and an offset.
+    createPauseButton(x, y, label, callback, warning = false) {
+        return OptionsSkin.createUiButton.call(this, x, y,
+            warning ? UI_BUTTON.reset : UI_BUTTON.back, label, {
+                color: warning ? OPTIONS_RESET_INK : '#ffffff',
+                labelOffsetX: warning ? RESET_LABEL_OFFSET_X : 0,
+                labelWidth: warning ? UI_BUTTON_W - 38 : UI_BUTTON_W - 12,
+                callback,
+            });
     }
 
     createRecorderControls() {
         this.recorderStatusText = this.add.text(320, 253, '', {
-            fontSize: '13px',
-            fill: '#d7c9a8',
-            fontFamily: '"HoMM Pixel"'
+            ...serifStyle('14px', OPTIONS_INK),
+            wordWrap: { width: 310 }, align: 'center',
         }).setOrigin(0.5);
-
-        const toggleButton = this.add.rectangle(245, 305, 145, 35, 0x6c63ff, 0.32)
-            .setStrokeStyle(2, 0x8c86ff)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => toggleButton.setFillStyle(0x6c63ff, 0.52))
-            .on('pointerout', () => toggleButton.setFillStyle(0x6c63ff, 0.32))
-            .on('pointerdown', () => {
-                SoundHelper.playVariant(this, 'hover_button', 0.4);
-                humanRunRecorder.toggle(this.getRecordingScene());
-                this.refreshRecorderControls();
-            });
-
-        this.recorderToggleText = this.add.text(245, 305, '', {
-            fontSize: '14px',
-            fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
-
-        const exportButton = this.add.rectangle(395, 305, 125, 35, 0x4caf50, 0.28)
-            .setStrokeStyle(2, 0x65c66a)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => exportButton.setFillStyle(0x4caf50, 0.48))
-            .on('pointerout', () => exportButton.setFillStyle(0x4caf50, 0.28))
-            .on('pointerdown', () => {
-                SoundHelper.playVariant(this, 'hover_button', 0.4);
-                const result = humanRunRecorder.download();
-                if (!result.ok && result.reason === 'no_trace') {
-                    this.recorderStatusText.setText(t(this, 'ui.pause.noRecordedRun'));
-                } else if (!result.ok) {
-                    this.recorderStatusText.setText(t(this, 'ui.pause.exportUnavailable'));
-                }
-            });
-
-        this.add.text(395, 305, t(this, 'ui.pause.exportJson'), {
-            fontSize: '14px',
-            fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5);
-
+        this.recorderToggleText = this.createPauseButton(246, 292, '', () => {
+            humanRunRecorder.toggle(this.getRecordingScene());
+            this.refreshRecorderControls();
+        }).text;
+        this.createPauseButton(394, 292, t(this, 'ui.pause.exportJson'), () => {
+            const result = humanRunRecorder.download();
+            if (!result.ok && result.reason === 'no_trace') {
+                this.recorderStatusText.setText(t(this, 'ui.pause.noRecordedRun'));
+            } else if (!result.ok) {
+                this.recorderStatusText.setText(t(this, 'ui.pause.exportUnavailable'));
+            }
+        });
         this.refreshRecorderControls();
     }
 
@@ -135,6 +97,11 @@ export class PauseMenuScene extends Phaser.Scene {
     refreshRecorderControls() {
         const status = humanRunRecorder.getStatus();
         this.recorderToggleText?.setText(status.active ? t(this, 'ui.pause.stopRecording') : t(this, 'ui.pause.record'));
+        // Record / Stop recording are different lengths, so the label is refitted
+        // to the same room createPauseButton measured it against.
+        if (this.recorderToggleText) {
+            fitLabel(this.recorderToggleText.setFontSize(FONT_SIZE.body), UI_BUTTON_W - 12, FONT_SIZE.body);
+        }
         if (status.storageError) {
             this.recorderStatusText?.setText(t(this, 'ui.pause.recorderMemory', { amount: status.eventCount }));
         } else if (status.active) {
@@ -146,84 +113,9 @@ export class PauseMenuScene extends Phaser.Scene {
         }
     }
     
-    createVolumeSlider(label, y, volumeType) {
-        // Label
-        this.add.text(180, y, label + ':', {
-            fontSize: '14px',
-            fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(1, 0.5);
-        
-        // Slider background
-        const sliderBg = this.add.rectangle(320, y, 200, 10, 0x333333)
-            .setStrokeStyle(1, 0x666666);
-        
-        // Slider fill
-        const sliderFill = this.add.rectangle(
-            220, y, 
-            200 * this.game.globalVolume[volumeType], 10, 
-            0x00ff00
-        ).setOrigin(0, 0.5);
-        
-        // Slider handle
-        const handle = this.add.circle(
-            220 + (200 * this.game.globalVolume[volumeType]), 
-            y, 8, 0xffffff
-        ).setStrokeStyle(2, 0x000000)
-        .setInteractive({ draggable: true, useHandCursor: true });
-        
-        // Volume percentage text
-        const volumeText = this.add.text(440, y, 
-            Math.round(this.game.globalVolume[volumeType] * 100) + '%', {
-            fontSize: '14px',
-            fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0, 0.5);
-        
-        // Make slider interactive
-        const sliderZone = this.add.zone(320, y, 200, 30)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerdown', (pointer) => {
-                const localX = pointer.worldX - 220;
-                const newVolume = Phaser.Math.Clamp(localX / 200, 0, 1);
-                this.updateVolume(volumeType, newVolume, handle, sliderFill, volumeText);
-            });
-        
-        // Handle dragging
-        handle.on('drag', (pointer, dragX) => {
-            const newVolume = Phaser.Math.Clamp((dragX - 220) / 200, 0, 1);
-            this.updateVolume(volumeType, newVolume, handle, sliderFill, volumeText);
-        });
-        
-        // Constrain handle dragging
-        this.input.setDraggable(handle);
-        handle.on('drag', (pointer, dragX, dragY) => {
-            handle.x = Phaser.Math.Clamp(dragX, 220, 420);
-            handle.y = y; // Keep Y position fixed
-            
-            const newVolume = (handle.x - 220) / 200;
-            this.updateVolume(volumeType, newVolume, handle, sliderFill, volumeText);
-        });
-    }
-    
-    updateVolume(volumeType, newVolume, handle, sliderFill, volumeText) {
-        this.game.globalVolume[volumeType] = newVolume;
-        
-        // Update visual elements
-        handle.x = 220 + (200 * newVolume);
-        sliderFill.width = 200 * newVolume;
-        volumeText.setText(Math.round(newVolume * 100) + '%');
-        
-        // Apply volume changes to the game
-        this.applyVolumeSettings();
-        if (volumeType === 'music') MusicManager.updateCurrentVolume(this);
-        
-        // Play a test sound for feedback (except for music)
-        if (volumeType !== 'music' && newVolume > 0) {
-            SoundHelper.playSound(this, 'coin_collect', 0.3);
-        }
-    }
-    
+    // Shared volume controls save only audio settings in this scene.
+    saveSettings() { this.applyVolumeSettings(); }
+
     applyVolumeSettings() {
         // Update the global sound manager volume
         this.sound.volume = this.game.globalVolume.master;
@@ -235,6 +127,7 @@ export class PauseMenuScene extends Phaser.Scene {
     resumeGame() {
         // Resume the paused scene
         this.scene.resume(this.pausedScene);
+        this.pausedStationScenes?.forEach(key => this.scene.resume(key));
         this.scene.stop();
     }
     

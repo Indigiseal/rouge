@@ -84,7 +84,10 @@ export class SandboxHubScene extends Phaser.Scene {
       bg.setFillStyle(0x2c1810, 0.92);
       bg.setStrokeStyle(1, 0x8b6914);
     });
-    bg.on('pointerdown', () => onClick?.());
+    bg.on('pointerdown', () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
+      onClick?.();
+    });
 
     return { bg, text };
   }

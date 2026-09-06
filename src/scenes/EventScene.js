@@ -682,7 +682,10 @@ export class EventScene extends Phaser.Scene {
         fontSize: '11px', fill: '#6c4f35', fontFamily: '"HoMM Pixel"',
         backgroundColor: '#ead2aa', padding: { x: 3, y: 1 }
       }).setOrigin(0.5).setDepth(8).setInteractive({ useHandCursor: true });
-      arrow.on('pointerdown', () => this._scrollReading(delta));
+      arrow.on('pointerdown', () => {
+        SoundHelper.playVariant(this, 'button_click', 0.35);
+        this._scrollReading(delta);
+      });
       return arrow;
     };
 
@@ -932,6 +935,7 @@ export class EventScene extends Phaser.Scene {
     }).setOrigin(0.5).setAlpha(0).setDepth(3);
 
     this.continueBtn.on('pointerdown', () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
       if (this.continueBtn.setTexture && this.textures.exists('nextTurnDown')) {
         this.continueBtn.setTexture('nextTurnDown');
       }
@@ -1015,7 +1019,10 @@ export class EventScene extends Phaser.Scene {
       bg.setInteractive({ useHandCursor: true });
       bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
       bg.on('pointerout', () => { bg.setFillStyle(0x050505, 0.58); });
-      bg.on('pointerdown', () => this._resolve(choice, i));
+      bg.on('pointerdown', () => {
+        SoundHelper.playVariant(this, 'button_click', 0.5);
+        this._resolve(choice, i);
+      });
 
       this._choiceBtns.push({ bg, label });
     });
@@ -2500,7 +2507,10 @@ export class EventScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(6);
       bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
       bg.on('pointerout', () => bg.setFillStyle(0x050505, 0.58));
-      bg.on('pointerdown', () => this._resolve(refuseChoice, -1));
+      bg.on('pointerdown', () => {
+        SoundHelper.playVariant(this, 'button_click', 0.5);
+        this._resolve(refuseChoice, -1);
+      });
       this._carnivalRefuse = { bg, label };
     }
   }
@@ -2628,7 +2638,10 @@ export class EventScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(6);
       bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
       bg.on('pointerout', () => bg.setFillStyle(0x050505, 0.58));
-      bg.on('pointerdown', () => this._resolve(declineChoice, -1));
+      bg.on('pointerdown', () => {
+        SoundHelper.playVariant(this, 'button_click', 0.5);
+        this._resolve(declineChoice, -1);
+      });
       this._wizardDecline = { bg, label };
     }
   }
