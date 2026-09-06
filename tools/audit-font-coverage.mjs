@@ -25,7 +25,11 @@ let source = fs.readFileSync(path.join(ROOT, 'src/i18n/i18n.js'), 'utf8')
   .replace('const SUPPORTED_LANGUAGES =', 'globalThis.SUPPORTED_LANGUAGES =');
 const ctx = {};
 vm.runInNewContext(source, ctx, { filename: 'i18n.js' });
-const supported = ctx.SUPPORTED_LANGUAGES || ['en'];
+// A locale being written is not in SUPPORTED_LANGUAGES yet, and it is exactly
+// the one whose glyphs nobody has checked. Name it to include it:
+//   node tools/audit-font-coverage.mjs de
+const requested = process.argv.slice(2).filter((arg) => !arg.startsWith('-'));
+const supported = [...new Set([...(ctx.SUPPORTED_LANGUAGES || ['en']), ...requested])];
 
 // --- what each font can draw ------------------------------------------------
 const bitmapGlyphs = (xmlPath) => {

@@ -11,6 +11,7 @@ import { boardVariantFromAmbush } from './BoardVariant.js';
 import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js';
 import { cameraWorldSize } from '../../config/renderScale.js';
+import { t, translateItemName, translateRarity } from '../../i18n/i18n.js';
 
 // --- Opening deal -----------------------------------------------------------
 // Every card on a fresh floor falls into its slot from above, top rows first,
@@ -962,7 +963,9 @@ function takeRewardCard(index) {
                 rarity: offer.rarity,
                 options: takeable,
                 amuletManager: this.scene.amuletManager,
-                title: `Boss reward — ${offer.rarity} amulet`,
+                title: t(this.scene, 'ui.amulet.bossRewardTitle', {
+                    rarity: translateRarity(this.scene, offer.rarity),
+                }),
                 onPicked: () => this.scene.updateUI?.(),
             });
             return;
@@ -973,7 +976,9 @@ function takeRewardCard(index) {
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Already owned!', 0xff4444);
                 return;
             }
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, `${data.name} equipped!`, 0x9932cc);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, {
+                key: 'float.equippedItem', vars: { name: translateItemName(this.scene, data) },
+            }, 0x9932cc);
         }
     } else if (this.scene.inventorySystem.addCard(data)) {
         success = true;

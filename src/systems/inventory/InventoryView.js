@@ -799,10 +799,10 @@ export const InventoryView = {
             }
             if (card.dodgeChance) lines.push(t(this.scene, 'tooltip.dodge', { percent: Math.round(card.dodgeChance * 100) }));
             if (card.meleeCounterChance) {
-                lines.push(`Melee counter: ${Math.round(card.meleeCounterChance * 100)}% (50% blocked)`);
+                lines.push(t(this.scene, 'tooltip.meleeCounterBlocked', { percent: Math.round(card.meleeCounterChance * 100) }));
             }
             if (card.rangedIgnoreChance) {
-                lines.push(`Ignore ranged: ${Math.round(card.rangedIgnoreChance * 100)}%`);
+                lines.push(t(this.scene, 'tooltip.ignoreRanged', { percent: Math.round(card.rangedIgnoreChance * 100) }));
             }
             if (card.reflection) lines.push(t(this.scene, 'tooltip.reflect', { value: card.reflection }));
             if (card.thornDamage) lines.push(t(this.scene, 'tooltip.thornDamage', { amount: card.thornDamage }));
@@ -817,28 +817,30 @@ export const InventoryView = {
         } else if (card.type === 'food') {
             lines.push(t(this.scene, 'tooltip.restoresColon', { amount: card.actionAmount || 0 }));
         } else if (card.type === 'companion') {
-            const damageType = card.damageType === 'physical' ? 'Physical' : 'Lightning';
-            const attackStyle = card.attackStyle === 'melee' || card.range === 'melee' ? 'Melee' : 'Ranged';
-            lines.push(`${damageType} damage: ${card.attack || 2}`);
-            lines.push(`${attackStyle} companion`);
-            lines.push('Acts after enemies');
-            if (card.shockChance) lines.push(`Shock chance: ${Math.round(card.shockChance * 100)}%`);
-            if (card.guardProtection) lines.push(`Guard: +${card.guardProtection} protection`);
+            const damageKey = card.damageType === 'physical' ? 'tooltip.damage.physical' : 'tooltip.damage.lightning';
+            const styleKey = card.attackStyle === 'melee' || card.range === 'melee'
+                ? 'tooltip.companion.melee'
+                : 'tooltip.companion.ranged';
+            lines.push(t(this.scene, damageKey, { amount: card.attack || 2 }));
+            lines.push(t(this.scene, styleKey));
+            lines.push(t(this.scene, 'tooltip.companion.actsAfter'));
+            if (card.shockChance) lines.push(t(this.scene, 'tooltip.companion.shockChance', { amount: Math.round(card.shockChance * 100) }));
+            if (card.guardProtection) lines.push(t(this.scene, 'tooltip.companion.guard', { amount: card.guardProtection }));
         } else if (card.type === 'magic') {
             lines.push(card.description ? translateDescription(this.scene, card.description) : this.describeMagicCard(card));
         } else if (card.type === 'passive') {
-            lines.push(card.description ? translateDescription(this.scene, card.description) : 'Passive effect while carried.');
+            lines.push(card.description ? translateDescription(this.scene, card.description) : t(this.scene, 'tooltip.passiveEffect'));
             if (card.flavor) lines.push(translateDescription(this.scene, card.flavor));
         } else if (card.type === 'amulet' || card.type === 'amuletPickup') {
             lines.push(this.describeAmuletCard(card));
-            if (card.type === 'amuletPickup') lines.push('Tap to equip · drag to bag to discard');
+            if (card.type === 'amuletPickup') lines.push(t(this.scene, 'tooltip.tapEquipDiscard'));
         } else if (card.type === 'key') {
             lines.push(t(this.scene, 'tooltip.keySafe'));
         } else if (card.type === 'gem') {
             lines.push(t(this.scene, 'tooltip.effect', { effect: this.describeGemEffect(card.gemEffect) }));
         } else if (card.type === 'junk') {
-            lines.push(card.description ? translateDescription(this.scene, card.description) : 'No effect.');
-            if (card.carnivalToken) lines.push('A carnival token.');
+            lines.push(card.description ? translateDescription(this.scene, card.description) : t(this.scene, 'tooltip.noEffect'));
+            if (card.carnivalToken) lines.push(t(this.scene, 'tooltip.carnivalToken'));
         }
 
         return lines;

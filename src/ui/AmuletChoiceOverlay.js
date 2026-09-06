@@ -122,9 +122,11 @@ export function openAmuletChoiceOverlay(scene, cfg) {
       }
       SoundHelper.playSound(scene, 'shop_buy', 0.5);
       if (typeof scene.createFloatingText === 'function') {
-        scene.createFloatingText(x, cardY - 36, `${item.name} equipped!`, 0x9932cc);
+        scene.createFloatingText(x, cardY - 36, {
+          key: 'float.equippedItem', vars: { name: translateItemName(scene, item) },
+        }, 0x9932cc);
       } else if (typeof scene.showFeedback === 'function') {
-        scene.showFeedback({ key: 'float.equippedItem', vars: { name: item.name } }, 0x9932cc);
+        scene.showFeedback({ key: 'float.equippedItem', vars: { name: translateItemName(scene, item) } }, 0x9932cc);
       }
       recordHumanRunEvent(scene, 'amulet_chosen', {
         title: titleText,

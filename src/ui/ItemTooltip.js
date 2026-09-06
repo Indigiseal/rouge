@@ -80,10 +80,10 @@ export function getTooltipLines(scene, data) {
             lines.push(t(scene, 'tooltip.dodge', { percent: Math.round(data.dodgeChance * 100) }));
         }
         if (data.meleeCounterChance) {
-            lines.push(`Melee counter: ${Math.round(data.meleeCounterChance * 100)}% (50% blocked)`);
+            lines.push(t(scene, 'tooltip.meleeCounterBlocked', { percent: Math.round(data.meleeCounterChance * 100) }));
         }
         if (data.rangedIgnoreChance) {
-            lines.push(`Ignore ranged: ${Math.round(data.rangedIgnoreChance * 100)}%`);
+            lines.push(t(scene, 'tooltip.ignoreRanged', { percent: Math.round(data.rangedIgnoreChance * 100) }));
         }
         body = lines.join('\n');
     } else if (data.type === 'potion') {
@@ -91,11 +91,13 @@ export function getTooltipLines(scene, data) {
     } else if (data.type === 'food') {
         body = t(scene, 'tooltip.restores', { amount: data.actionAmount ?? 0 });
     } else if (data.type === 'companion') {
-        const damageType = data.damageType === 'physical' ? 'physical' : 'lightning';
-        const attackStyle = data.attackStyle === 'melee' || data.range === 'melee' ? 'Melee' : 'Ranged';
-        body = `${attackStyle} companion\nDeals ${data.attack ?? 0} ${damageType} damage after enemies`;
-        if (data.shockChance) body += `\nShock chance: ${Math.round(data.shockChance * 100)}%`;
-        if (data.guardProtection) body += `\nGuard: +${data.guardProtection} protection`;
+        const damageKey = data.damageType === 'physical' ? 'tooltip.damage.physical' : 'tooltip.damage.lightning';
+        const styleKey = data.attackStyle === 'melee' || data.range === 'melee'
+            ? 'tooltip.companion.melee'
+            : 'tooltip.companion.ranged';
+        body = `${t(scene, styleKey)}\n${t(scene, damageKey, { amount: data.attack ?? 0 })}\n${t(scene, 'tooltip.companion.actsAfter')}`;
+        if (data.shockChance) body += `\n${t(scene, 'tooltip.companion.shockChance', { amount: Math.round(data.shockChance * 100) })}`;
+        if (data.guardProtection) body += `\n${t(scene, 'tooltip.companion.guard', { amount: data.guardProtection })}`;
     } else if (data.type === 'magic') {
         body = data.description ? translateDescription(scene, data.description) : t(scene, 'tooltip.magicSpell');
     } else if (data.type === 'gem') {

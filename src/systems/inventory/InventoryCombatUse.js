@@ -8,6 +8,7 @@ import {
 import { getMagic } from '../../content/cards/index.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { playSmokeBurst } from '../../ui/SmokeBurst.js';
+import { translateItemName } from '../../i18n/i18n.js';
 
 export const InventoryCombatUse = {
     isEnemyBoardCard(card, includeBoss = true) {
@@ -707,7 +708,9 @@ export const InventoryCombatUse = {
         this.cleanupBoardArtifacts(cardSprite);
         
         SoundHelper.playSound(this.scene, 'item_discard', 0.7);
-        this.scene.createFloatingText(cardSprite.x, cardSprite.y, `${weapon.name} broke!`, 0xff0000);
+        this.scene.createFloatingText(cardSprite.x, cardSprite.y, {
+            key: 'float.itemBroke', vars: { name: translateItemName(this.scene, weapon) },
+        }, 0xff0000);
         this.scene.grantCardSpentRelicBonus?.(weapon, cardSprite.x, cardSprite.y);
         
         // Dissolve flourish on the spent weapon card before it's removed.

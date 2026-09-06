@@ -7,6 +7,7 @@ import { InventoryCombatUse } from './inventory/InventoryCombatUse.js';
 import { InventoryView } from './inventory/InventoryView.js';
 import { InventorySlotRenderer } from './inventory/InventorySlotRenderer.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from './HumanRunRecorder.js';
+import { translateItemName } from '../i18n/i18n.js';
 
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
@@ -114,7 +115,10 @@ export class InventorySystem {
         this.syncGameStateInventory();
         if (rebuild) this.rebuildInventorySprites();
         const stackLabel = weapon.gemCount > 1 ? ` (x${weapon.gemCount})` : '';
-        this.scene.createFloatingText(512, 380, `${gem.name} socketed${stackLabel}`, gem.color || 0xffe066);
+        this.scene.createFloatingText(512, 380, {
+            key: 'float.gemSocketed',
+            vars: { name: translateItemName(this.scene, gem), stack: stackLabel },
+        }, gem.color || 0xffe066);
         SoundHelper.playSound(this.scene, 'gem_socket', 0.5);
         return true;
     }
@@ -143,7 +147,10 @@ export class InventorySystem {
             return false;
         }
 
-        this.scene.createFloatingText(cardSprite.x, cardSprite.y - 8, `${def?.name || 'Amulet'} equipped!`, 0x88ff88);
+        this.scene.createFloatingText(cardSprite.x, cardSprite.y - 8, {
+            key: 'float.equippedItem',
+            vars: { name: translateItemName(this.scene, cardData) },
+        }, 0x88ff88);
         SoundHelper.playSound(this.scene, 'crystal_collect', 0.5);
         this.cleanupCardSprites(slotIndex, cardSprite);
         this.removeCard(slotIndex, false, 'amulet_equipped');

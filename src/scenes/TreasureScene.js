@@ -5,7 +5,7 @@ import { StationRoomBase } from './StationRoomBase.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 import { CARD_VALUE_SLOT } from '../systems/board/BoardCardFx.js';
-import { t, translateItemName } from '../i18n/i18n.js';
+import { t, translateItemName, translateRarity } from '../i18n/i18n.js';
 
 export class TreasureScene extends StationRoomBase {
   constructor() {
@@ -306,11 +306,12 @@ export class TreasureScene extends StationRoomBase {
   }
 
   getRewardStats(item) {
-    if (item.type === 'weapon') return `${item.rarity}  ${item.damage || 0} DMG`;
-    if (item.type === 'armor') return `${item.rarity}  ${item.protection || 0} DEF`;
-    if (item.type === 'magic') return `${item.rarity} Magic`;
-    if (item.type === 'thorns') return `${item.rarity} ${item.thornDamage || 0} Thorns`;
-    return item.rarity || '';
+    const rarity = translateRarity(this, item.rarity);
+    if (item.type === 'weapon') return t(this, 'ui.treasure.weaponStats', { rarity, amount: item.damage || 0 });
+    if (item.type === 'armor') return t(this, 'ui.treasure.armorStats', { rarity, amount: item.protection || 0 });
+    if (item.type === 'magic') return t(this, 'ui.treasure.magicStats', { rarity });
+    if (item.type === 'thorns') return t(this, 'ui.treasure.thornsStats', { rarity, amount: item.thornDamage || 0 });
+    return rarity;
   }
 
   // getRarityColor / playLootScatter / scatterLootSprite / createItemSprite all

@@ -2,7 +2,7 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { CHARACTER_CLASSES, CHARACTER_IDS } from '../content/characters/CharacterClasses.js';
-import { t } from '../i18n/i18n.js';
+import { t, translateCharacterName } from '../i18n/i18n.js';
 import { FONT_SIZE, serifStyle } from '../ui/uiFont.js';
 
 export class CharacterSelectScene extends Phaser.Scene {
@@ -47,7 +47,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.add.image(x, y - 85, 'characterPortraits', def.portraitFrame ?? 0);
     }
 
-    this.add.text(x, y - 37, def.name, serifStyle('18px', '#f0d78c')).setOrigin(0.5);
+    this.add.text(x, y - 37, translateCharacterName(this, def.id), serifStyle('18px', '#f0d78c')).setOrigin(0.5);
 
     const startLine = t(this, def.id === 'rogue' ? 'ui.character.rogueStart' : 'ui.character.warriorStart');
     this.add.text(x, y - 15, startLine, serifStyle(FONT_SIZE.body, '#c9d1d9')).setOrigin(0.5);

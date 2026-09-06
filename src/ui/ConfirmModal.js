@@ -5,6 +5,7 @@
 // Only one modal at a time per scene (uses scene.activeModal).
 
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { t } from '../i18n/i18n.js';
 
 function createModalButton(scene, x, y, width, height, text, color, callback) {
     const button = scene.add.rectangle(x, y, width, height, color, 0.3)
@@ -48,8 +49,8 @@ export function openConfirmModal(scene, {
     body,
     onConfirm,
     onCancel,
-    confirmLabel = 'OK',
-    cancelLabel = 'Cancel',
+    confirmLabel,
+    cancelLabel,
 } = {}) {
     if (scene.activeModal) return null;
 
@@ -77,11 +78,11 @@ export function openConfirmModal(scene, {
         scene.activeModal = null;
     };
 
-    const yes = createModalButton(scene, 265, 230, 90, 30, confirmLabel, 0xff4444, () => {
+    const yes = createModalButton(scene, 265, 230, 90, 30, confirmLabel || t(scene, 'ui.common.ok'), 0xff4444, () => {
         cleanup();
         onConfirm?.();
     });
-    const no = createModalButton(scene, 375, 230, 90, 30, cancelLabel, 0x888888, () => {
+    const no = createModalButton(scene, 375, 230, 90, 30, cancelLabel || t(scene, 'ui.options.cancel'), 0x888888, () => {
         cleanup();
         onCancel?.();
     });
@@ -96,7 +97,7 @@ export function openConfirmModal(scene, {
 export function openNoticeModal(scene, {
     title,
     body,
-    confirmLabel = 'Continue',
+    confirmLabel,
     onConfirm,
 } = {}) {
     if (scene.activeModal) return null;
@@ -122,7 +123,7 @@ export function openNoticeModal(scene, {
         [dimmer, box, titleText, bodyText, button.button, button.text].forEach(o => o?.destroy());
         scene.activeModal = null;
     };
-    const button = createModalButton(scene, 320, 245, 110, 30, confirmLabel, 0xffaa44, () => {
+    const button = createModalButton(scene, 320, 245, 110, 30, confirmLabel || t(scene, 'ui.common.continue'), 0xffaa44, () => {
         cleanup();
         onConfirm?.();
     });
