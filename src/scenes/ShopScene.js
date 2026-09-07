@@ -27,6 +27,7 @@ export class ShopScene extends StationRoomBase {
         // Get reference to GameScene for inventory access
         this.gameScene = this.scene.get('GameScene');
         this.enableShopStation();
+        this.addOptionsCog();
         
         // Title
         createTitle(this, 320, 20, t(this, 'ui.shop.title'), {

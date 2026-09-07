@@ -1,6 +1,8 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { createOptionsCog } from '../ui/OptionsCog.js';
 import { createTitle } from '../ui/titleText.js';
 import { fitLabel, serifStyle } from '../ui/uiFont.js';
+import { createPaintedButton } from '../ui/PaintedButton.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { totalRepairCost } from '../content/economy/repair.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
@@ -58,6 +60,7 @@ export class AnvilScene extends Phaser.Scene {
             .setDepth(11).setVisible(false);
         this.anvilClankAnimation.on('animationcomplete', () => this.anvilClankAnimation.setVisible(false));
 
+        createOptionsCog(this, () => this.openOptions());
         this.displayRepairableItems();
         this.createPaintedButton(568, 340, t(this, 'ui.hud.leave'), () => {
             if (isSandboxMode(this)) {
@@ -69,37 +72,22 @@ export class AnvilScene extends Phaser.Scene {
         });
     }
 
+    // The cog reaches the pause menu, which is where a run finds sound, saving
+    // and quitting. It pauses this room the same way the ESC key does in a fight.
+    openOptions() {
+        if (this.scene.isActive('PauseMenuScene')) return;
+        this.scene.launch('PauseMenuScene', { pausedScene: this.scene.key });
+        this.scene.pause();
+    }
+
     label(x, y, value, size = '14px', color = '#f0dfbb') {
         return this.add.text(x, y, value, serifStyle(size, color)).setOrigin(0.5);
     }
 
+    // The plate, its press and its sounds live in ui/PaintedButton.js — the rest
+    // room wears the same button, and one copy is how they stay the same button.
     createPaintedButton(x, y, text, action, enabled = true) {
-        const plate = this.add.image(0, 0, 'nextTurnUp');
-        const label = this.label(0, -3, text, '14px', enabled ? '#fff0cc' : '#b6a994');
-        fitLabel(label, plate.width - 8, '14px');
-        const button = this.add.container(x, y, [plate, label]);
-        if (!enabled) {
-            plate.setTint(0x777777);
-            return button;
-        }
-        plate.setInteractive({ useHandCursor: true });
-        plate.on('pointerover', () => {
-            SoundHelper.playVariant(this, 'hover_button', 0.4);
-            plate.setTint(0xffe0a3);
-        });
-        plate.on('pointerout', () => { plate.setTexture('nextTurnUp'); plate.clearTint(); label.y = -3; });
-        plate.on('pointerdown', () => {
-            SoundHelper.playVariant(this, 'button_click', 0.5);
-            plate.setTexture('nextTurnDown');
-            label.y = -2;
-        });
-        plate.on('pointerup', () => {
-            plate.setTexture('nextTurnUp');
-            plate.clearTint();
-            label.y = -3;
-            action();
-        });
-        return button;
+        return createPaintedButton(this, x, y, text, action, { enabled });
     }
 
     displayRepairableItems() {

@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 
 globalThis.Phaser = { Scene: class {} };
+// This suite drives the WIN shortcut, which a tester build refuses. Node has
+// no URL and no localStorage, so the flag reads false here: say out loud
+// that this is a developer context.
+const { setDevToolsEnabled } = await import('../src/config/DevTools.js');
+setDevToolsEnabled(true);
 const { GameScene } = await import('../src/scenes/GameScene.js');
 const {
   completeTollroadAftermath,

@@ -12,6 +12,7 @@ import { FONT_SIZE, fitLabel, serifStyle } from '../ui/uiFont.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { humanRunRecorder } from '../systems/HumanRunRecorder.js';
+import { devToolsEnabled } from '../config/DevTools.js';
 import { t } from '../i18n/i18n.js';
 
 export class PauseMenuScene extends Phaser.Scene {
@@ -49,7 +50,9 @@ export class PauseMenuScene extends Phaser.Scene {
         OptionsSkin.createDivider.call(this, 320, 184);
         this.createPauseButton(246, 212, t(this, 'ui.pause.resume'), () => this.resumeGame());
         this.createPauseButton(394, 212, t(this, 'ui.pause.saveQuit'), () => this.quitToMainMenu(), true);
-        this.createRecorderControls();
+        // Instrumentation for us: recording a run and exporting it as JSON.
+        // Nothing a tester can act on, so a tester build does not draw it.
+        if (devToolsEnabled()) this.createRecorderControls();
         this.input.keyboard.on('keydown-ESC', () => this.resumeGame());
     }
 

@@ -2217,10 +2217,10 @@ export class EventScene extends Phaser.Scene {
         normalCombatBoard: true,
         enemyTypes: ['goblin', 'goblin_archer', 'tollBrute'],
       };
-      this.goblinMineSneakOutcome = `D6: ${roll}. A miner looks up just as your boot sends gravel across the road. The foreman shouts, and the work gang reaches for weapons.`;
+      this.goblinMineSneakOutcome = t(this, 'event.tollroad.mine.sneak.failure', { roll });
       return;
     }
-    this.goblinMineSneakOutcome = `D6: ${roll}. The foreman's shouting covers your steps. You reach the next bend without a single miner looking your way.`;
+    this.goblinMineSneakOutcome = t(this, 'event.tollroad.mine.sneak.success', { roll });
   }
 
   enterGoblinMine() {

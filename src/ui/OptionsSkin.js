@@ -30,20 +30,25 @@ const OPTIONS_RULE_W = 156;
 
 const SERIF_BODY_PX = FONT_SIZE.body;
 export const OptionsSkin = {
-    createOptionsPanel(x, y) {
+    // Paper at any size. The options screen wants a full sheet; the rest room
+    // wants a note pinned over the top of the cave — same art, same fallback.
+    createPaperPanel(x, y, width = OPTIONS_PANEL_W, height = OPTIONS_PANEL_H) {
         if (this.textures.exists('eventPaper9Slice')) {
             const addNineSlice = this.add.nineslice || this.add.nineSlice;
             if (addNineSlice) {
                 try {
                     return addNineSlice.call(this.add, x, y, 'eventPaper9Slice', null,
-                        OPTIONS_PANEL_W, OPTIONS_PANEL_H, 32, 32, 32, 32);
+                        width, height, 32, 32, 32, 32);
                 } catch {
                     // fall through to the flat plate
                 }
             }
         }
-        return this.add.rectangle(x, y, OPTIONS_PANEL_W, OPTIONS_PANEL_H, 0xd8b98c)
+        return this.add.rectangle(x, y, width, height, 0xd8b98c)
             .setStrokeStyle(2, 0x5a3a24);
+    },
+    createOptionsPanel(x, y) {
+        return OptionsSkin.createPaperPanel.call(this, x, y);
     },
     // Hairline rule separating one group of controls from the next.
     createDivider(x, y, width = OPTIONS_RULE_W) {

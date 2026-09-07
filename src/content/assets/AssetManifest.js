@@ -17,6 +17,8 @@ export const ASSET_MANIFEST = [
     { key: 'characterPortraits', path: 'assets/art/portraits.png', type: 'spritesheet', frameWidth: 64, frameHeight: 64 },
     // Frame order: rest floor, defeat UI, victory UI, blacksmith floor.
     { key: 'restRooms', path: 'assets/art/rest.png', type: 'spritesheet', frameWidth: 144, frameHeight: 122 },
+    // Full-screen art for the rest room: cave, fire, cooking pot, shrine.
+    { key: 'restFire', path: 'assets/art/restFire.png', type: 'image' },
     // Frame order: defeat info, defeat detail, victory info, victory detail.
     { key: 'resultPanels', path: 'assets/art/defeatWin9x9panels.png', type: 'spritesheet', frameWidth: 96, frameHeight: 96 },
     { key: 'resultBanners', path: 'assets/art/bannerLostWin.png', type: 'spritesheet', frameWidth: 160, frameHeight: 32 },
@@ -32,6 +34,9 @@ export const ASSET_MANIFEST = [
     // Arm Wrestling minigame art (human vs ogre locked hands).
     { key: 'armWrestlingHands', path: 'assets/art/armWrestlingHands.png', type: 'image' },
     { key: 'musicBoxLockWafers', path: 'assets/art/musicBoxLockWafers.png', type: 'spritesheet', frameWidth: 58, frameHeight: 72 },
+    // The movement itself — disc, pinned barrel, comb and gears. Shown on the
+    // lock minigame's brief, where the wafers beside it are those same parts.
+    { key: 'musicBoxOpen', path: 'assets/art/musicBoxOpen.png', type: 'image' },
     { key: 'statueHead', path: 'assets/art/statueHead.png', type: 'image' },
     { key: 'panelArmor', path: 'assets/art/panelArmor.png', type: 'image' },
     { key: 'anvilSlot', path: 'assets/art/blackRectangle1.png', type: 'image' },
@@ -320,6 +325,8 @@ export const ASSET_MANIFEST = [
     // name 'ui_card_hover'; see SFX_VARIANTS in audio/SoundHelper.js.
     { key: 'ui_card_hover_1', path: 'assets/music/UI_Card_Hover_01.mp3', type: 'audio' },
     { key: 'ui_card_hover_2', path: 'assets/music/UI_Card_Hover_02.mp3', type: 'audio' },
+    // The road opening when a floor is cleared.
+    { key: 'door_open', path: 'assets/music/Door_Open_01.mp3', type: 'audio' },
     { key: 'invalid_action_1', path: 'assets/music/Invalid_Action_01.mp3', type: 'audio' },
     { key: 'invalid_action_2', path: 'assets/music/Invalid_Action_02.mp3', type: 'audio' },
     { key: 'legendary_reveal_1', path: 'assets/music/Legendary_Relic_Reveal_01.mp3', type: 'audio' },

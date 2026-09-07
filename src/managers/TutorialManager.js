@@ -392,15 +392,14 @@ export class TutorialManager {
                 eventKey: 'revealed:lightningGem',
                 done: () => this.boardRevealed('lightningGem'),
             },
-            {
-                textKey: 'ui.tutorial.takeGem',
-                target: () => this.boardSprite('lightningGem'),
-                eventKey: 'inventory:lightningGem',
-                done: () => this.invSlot('lightningGem') >= 0,
-            },
+            // One step, not two. Gems used to be tapped into the bag and then
+            // dragged out of it onto a weapon; they now go from the board
+            // straight onto the weapon, and tryApplyBoardGem refuses an empty
+            // slot outright — so the old "take it into your inventory" step
+            // could never complete and the tutorial stopped here.
             {
                 textKey: 'ui.tutorial.socketGem',
-                target: () => this.invSprite('lightningGem'),
+                target: () => this.boardSprite('lightningGem'),
                 hintTarget: () => this.tutorialSwordSprite(),
                 done: () => this.hasLightningGemSocketed(),
             },

@@ -31,6 +31,7 @@ export class RareShopScene extends StationRoomBase {
 
         this.gameScene = this.scene.get('GameScene');
         this.enableShopStation();
+        this.addOptionsCog();
 
         createTitle(this, 320, 30, t(this, 'ui.shop.rareTitle'), {
             color: '#DA70D6',

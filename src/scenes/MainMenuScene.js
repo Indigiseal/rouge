@@ -20,6 +20,8 @@ import {
     TEST_OPTION_DEFS,
 } from '../config/TestOptions.js';
 import { MusicManager } from '../audio/MusicManager.js';
+import { devToolsEnabled } from '../config/DevTools.js';
+import { COG_X, COG_Y } from '../ui/OptionsCog.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { openConfirmModal } from '../ui/ConfirmModal.js';
@@ -140,10 +142,15 @@ export class MainMenuScene extends Phaser.Scene {
             newRun: this.createSpriteButton(320, 110, t(this, 'ui.menu.newRun'),   () => this.startNewGame()),
             continue: this.createSpriteButton(320, 142, t(this, 'ui.menu.continue'),  hasSavedRun ? () => this.continueGame() : null),
             tutorial: this.createSpriteButton(320, 174, t(this, 'ui.menu.tutorial'), () => this.startTutorial()),
-            testSite: this.createSpriteButton(320, 206, t(this, 'ui.menu.testSite'), () => this.startTestSite()),
-            testOptions: this.createSpriteButton(320, 238, t(this, 'ui.menu.testOptions'), () => this.showTestOptionsMenu()),
+            // The two test screens are ours, not the player's. devToolsEnabled()
+            // is false in a tester build, and the entry points below refuse the
+            // scene change as well — a hidden button is not a disabled one.
+            ...(devToolsEnabled() ? {
+                testSite: this.createSpriteButton(320, 206, t(this, 'ui.menu.testSite'), () => this.startTestSite()),
+                testOptions: this.createSpriteButton(320, 238, t(this, 'ui.menu.testOptions'), () => this.showTestOptionsMenu()),
+            } : {}),
             // Cog tucked into the top-right corner (32x32, 6px margin).
-            options: this.createIconButton(618, 22, 'optionsButton', () => this.showOptionsMenu()),
+            options: this.createIconButton(COG_X, COG_Y, 'optionsButton', () => this.showOptionsMenu()),
         };
     }
 
@@ -160,7 +167,7 @@ export class MainMenuScene extends Phaser.Scene {
         this.mainMenuButtons.newRun.text.setText(t(this, 'ui.menu.newRun'));
         this.mainMenuButtons.continue.text.setText(t(this, 'ui.menu.continue'));
         this.mainMenuButtons.tutorial.text.setText(t(this, 'ui.menu.tutorial'));
-        this.mainMenuButtons.testSite.text.setText(t(this, 'ui.menu.testSite'));
+        this.mainMenuButtons.testSite?.text.setText(t(this, 'ui.menu.testSite'));
         // Options is the cog icon now — a glyph, nothing to translate.
         if (this.mainMenuButtons.testOptions) {
             this.mainMenuButtons.testOptions.text.setText(t(this, 'ui.menu.testOptions'));
@@ -317,6 +324,7 @@ export class MainMenuScene extends Phaser.Scene {
     }
     
     showTestOptionsMenu() {
+        if (!devToolsEnabled()) return;
         this.children.list.forEach(child => {
             if (child !== this.children.list[0]) {
                 child.setVisible(false);
@@ -649,6 +657,7 @@ export class MainMenuScene extends Phaser.Scene {
     }
 
     startTestSite() {
+        if (!devToolsEnabled()) return;
         this.fadeOutMenuMusic();
         this.cameras.main.fadeOut(350, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {

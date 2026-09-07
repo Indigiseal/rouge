@@ -11,9 +11,24 @@ import { t } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 
-const CARD_SCALE = 2;
+// 1, not 2. The doors are 64x64 pixel art and are drawn at native size — at
+// double they filled a third of the screen height each and stopped reading as
+// objects you walk through. The card that turns into one is 52x70, so the two
+// are near enough in size that the flip no longer changes scale.
+const CARD_SCALE = 1;
 const CARD_Y = 168;
 const CARD_XS = [160, 320, 480];
+// The writing sits under art that is now roughly 64-70px tall, so it comes up
+// with it. Offsets from CARD_Y, keeping the old rhythm: name, place a line
+// under it, then the pitch a little clear of both.
+// The arrival: start this far above the resting line, drop for ARRIVE_MS, and
+// let the ease carry it past and back.
+const ARRIVE_LIFT = 28;
+const ARRIVE_MS = 420;
+const ARRIVE_STAGGER = 110;
+const NAME_DY = 46;
+const PLACE_DY = 60;
+const PITCH_DY = 82;
 
 export class LocationPickScene extends Phaser.Scene {
   constructor() {
@@ -78,18 +93,22 @@ export class LocationPickScene extends Phaser.Scene {
       ? locationCardBackKey(loc.id)
       : (this.textures.exists(loc.portrait) ? loc.portrait : 'cardBack');
 
+    // The door itself, straight away. There is no card and no flip: it drops in
+    // from above, sinks past where it belongs, and rocks back up onto it.
     const sprite = snapOriginToPixelGrid(
-      this.add.sprite(x, CARD_Y + 24, 'cardBack').setScale(CARD_SCALE).setDepth(4)
+      doorFrame === null
+        ? this.add.sprite(x, CARD_Y - ARRIVE_LIFT, backKey)
+        : this.add.sprite(x, CARD_Y - ARRIVE_LIFT, LOCATION_DOORS_KEY, doorFrame)
     );
-    sprite.setAlpha(0);
+    sprite.setScale(CARD_SCALE).setDepth(4).setAlpha(0);
 
-    const nameText = this.add.text(x, CARD_Y + 82, '', {
+    const nameText = this.add.text(x, CARD_Y + NAME_DY, '', {
       fontSize: '12px',
       fill: '#f2d3aa',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5).setAlpha(0).setDepth(6);
 
-    const placeText = this.add.text(x, CARD_Y + 96, '', {
+    const placeText = this.add.text(x, CARD_Y + PLACE_DY, '', {
       fontSize: '10px',
       fill: '#8b949e',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -97,7 +116,7 @@ export class LocationPickScene extends Phaser.Scene {
       wordWrap: { width: 140 },
     }).setOrigin(0.5).setAlpha(0).setDepth(6);
 
-    const pitchText = this.add.text(x, CARD_Y + 118, '', {
+    const pitchText = this.add.text(x, CARD_Y + PITCH_DY, '', {
       fontSize: '10px',
       fill: '#c9d1d9',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -116,34 +135,32 @@ export class LocationPickScene extends Phaser.Scene {
     };
     this._cards.push(entry);
 
+    const delay = delayIndex * ARRIVE_STAGGER;
+
+    // Back.easeOut on a downward move is the dip: it travels past CARD_Y and
+    // eases back up onto it. The fade is a separate tween because a Back ease
+    // would overshoot alpha past 1 as well.
     this.tweens.add({
       targets: sprite,
       y: CARD_Y,
-      alpha: 1,
-      duration: 280,
-      delay: delayIndex * 90,
-      ease: 'Quad.easeOut',
-      onComplete: () => this.flipToLocationBack(entry),
+      duration: ARRIVE_MS,
+      delay,
+      ease: 'Back.easeOut',
+      onUpdate: () => { sprite.y = Math.round(sprite.y); },
+      onComplete: () => {
+        snapOriginToPixelGrid(sprite);
+        SoundHelper.playVariant(this, 'card_place', 0.4);
+        this.showCardDetails(entry);
+        this.enableCard(entry);
+      },
     });
-  }
-
-  flipToLocationBack(entry) {
-    const { sprite, backKey, doorFrame } = entry;
-    SoundHelper.playSound(this, 'card_flip', 0.55);
-    const finish = () => {
-      sprite.off('animationcomplete', finish);
-      if (doorFrame === null) sprite.setTexture(backKey);
-      else sprite.setTexture(LOCATION_DOORS_KEY, doorFrame);
-      sprite.setScale(CARD_SCALE);
-      this.showCardDetails(entry);
-      this.enableCard(entry);
-    };
-    if (this.anims.exists('card_flip_anim')) {
-      sprite.once('animationcomplete', finish);
-      sprite.play('card_flip_anim');
-    } else {
-      finish();
-    }
+    this.tweens.add({
+      targets: sprite,
+      alpha: 1,
+      duration: 160,
+      delay,
+      ease: 'Quad.easeOut',
+    });
   }
 
   enableCard(entry) {

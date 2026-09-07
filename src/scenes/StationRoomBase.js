@@ -5,6 +5,7 @@
 
 import { CardSystem } from '../systems/CardSystem.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { createOptionsCog } from '../ui/OptionsCog.js';
 import { showItemTooltip, hideItemTooltip, TOOLTIP_DEPTH, STATION_TOOLTIP_GAP } from '../ui/ItemTooltip.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { t } from '../i18n/i18n.js';
@@ -15,6 +16,17 @@ import { cameraWorldSize } from '../config/renderScale.js';
 
 export class StationRoomBase extends Phaser.Scene {
     // ─── Inventory station mode ──────────────────────────────────────────────
+
+    // Every station room wears the same cog in the same corner. It pauses the
+    // room the way ESC pauses a fight; the pause menu resumes whatever it was
+    // handed.
+    addOptionsCog() {
+        createOptionsCog(this, () => {
+            if (this.scene.isActive('PauseMenuScene')) return;
+            this.scene.launch('PauseMenuScene', { pausedScene: this.scene.key });
+            this.scene.pause();
+        });
+    }
 
     enableShopStation() {
         this.gameScene = this.gameScene || this.scene.get('GameScene');

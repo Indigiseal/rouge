@@ -146,6 +146,14 @@ export function openMusicBoxLockMinigame(scene, cfg) {
     align: 'center',
   }).setOrigin(0.5).setDepth(DEPTH + 2));
 
+  // The movement you are picking, sitting in the empty column left of the
+  // examples. Part of the brief, so it clears when the grid needs the room.
+  if (scene.textures?.exists?.('musicBoxOpen')) {
+    const art = addBrief(scene.add.image(cx - 152, cy + 12, 'musicBoxOpen'));
+    art.setDepth(DEPTH + 3);
+    snapOriginToPixelGrid(art);
+  }
+
   const pairY = cy - 18;
   const detY = cy + 48;
   wafer(cx - 78, pairY, FRAME_FIT_A);

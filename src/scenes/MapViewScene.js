@@ -7,6 +7,7 @@ import { t } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { devToolsEnabled } from '../config/DevTools.js';
 import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 import { createSelectionCorners, createTooltipPanel, TOOLTIP_TEXT_COLOR } from '../ui/NineSlicePanel.js';
 
@@ -453,6 +454,8 @@ export class MapViewScene extends Phaser.Scene {
   }
 
   _addManualPickButton() {
+    // Jumping to an arbitrary room skips the run. Ours only.
+    if (!devToolsEnabled()) return;
     const x = 92;
     const y = 30;
     const btn = this.add.rectangle(x, y, 148, 22, 0x3d3228)

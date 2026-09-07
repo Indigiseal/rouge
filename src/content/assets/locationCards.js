@@ -84,3 +84,15 @@ export function locationDoorFrame(id) {
   const frame = LOCATION_DOOR_FRAMES[id];
   return frame === undefined ? null : frame;
 }
+
+// paths.png carries two rows of the same doors: row 0 shut, row 1 open. The
+// sheet is 11 columns wide, so a location's open door is its closed frame plus
+// one row. The floor-clear reveal in combat swaps to this rather than drawing a
+// Next button — the road you chose visibly opens.
+export const LOCATION_DOOR_COLUMNS = 11;
+
+/** Open-door frame for a location, or null if no door is drawn for it. */
+export function locationOpenDoorFrame(id) {
+  const shut = locationDoorFrame(id);
+  return shut === null ? null : shut + LOCATION_DOOR_COLUMNS;
+}

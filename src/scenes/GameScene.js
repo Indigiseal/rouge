@@ -4,6 +4,9 @@ import { GameState, PLAYER_START_HP } from '../systems/GameState.js';
 import { AmuletManager } from '../managers/AmuletManager.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { LOCATION_DOORS_KEY, locationDoorFrame, locationOpenDoorFrame } from '../content/assets/locationCards.js';
+import { getLocationIdForFloor } from '../content/locations/index.js';
+import { devToolsEnabled } from '../config/DevTools.js';
 import { SaveManager } from '../managers/SaveManager.js';
 import { MetaProgressionManager } from '../managers/MetaProgressionManager.js';
 import { TutorialManager } from '../managers/TutorialManager.js';
@@ -501,6 +504,12 @@ export class GameScene extends Phaser.Scene {
             this.nextFloorButton.y = 50;
             if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
             this.nextFloorButton.clearTint();
+            this._doorOpenSounded = false;
+            // The road is visible from the first turn, shut. It opens when the
+            // board is cleared. Rooms with no door drawn keep the old plate,
+            // hidden until then.
+            this.nextFloorButton.setTexture('nextTurnUp');
+            this.showClosedDoorExit();
         }
         // Grace is now per-enemy (card.justRevealed) — a freshly revealed enemy sits
         // out the action that revealed it. No global first-turn skip needed.
@@ -565,6 +574,53 @@ export class GameScene extends Phaser.Scene {
         }
         if (this.nextFloorButtonText) {
             this.nextFloorButtonText.setVisible(true).setDepth(5001);
+        }
+        this.showOpenDoorExit();
+    }
+
+    /**
+     * The board is clear, so the road opens.
+     *
+     * Rather than a Next plate, the door for the location this act is being
+     * walked shows in its open state, and you hear it go. Falls back to the
+     * plate for a road with no door drawn (Duskhold, Starfold) and for any room
+     * that reaches this with no location resolved.
+     */
+    /**
+     * The shut door, standing where the exit will be while enemies remain.
+     *
+     * Deliberately NOT interactive: it is scenery until the floor is cleared,
+     * and clicking it must not end the fight. showNextFloorButton re-arms it.
+     */
+    showClosedDoorExit() {
+        const button = this.nextFloorButton;
+        if (!button?.scene || !this.textures.exists(LOCATION_DOORS_KEY)) return;
+
+        const frame = locationDoorFrame(getLocationIdForFloor(this.gameState));
+        if (frame === null) return;
+
+        button.setTexture(LOCATION_DOORS_KEY, frame)
+            .setVisible(true)
+            .setDepth(5000)
+            .clearTint();
+        button.disableInteractive();
+        this.nextFloorButtonText?.setVisible(false);
+    }
+
+    showOpenDoorExit() {
+        const button = this.nextFloorButton;
+        if (!button?.scene || !this.textures.exists(LOCATION_DOORS_KEY)) return;
+
+        const locationId = getLocationIdForFloor(this.gameState);
+        const frame = locationOpenDoorFrame(locationId);
+        if (frame === null) return;
+
+        button.setTexture(LOCATION_DOORS_KEY, frame);
+        // The plate's label would sit across the doorway.
+        this.nextFloorButtonText?.setVisible(false);
+        if (!this._doorOpenSounded) {
+            this._doorOpenSounded = true;
+            SoundHelper.playSound(this, 'door_open', 0.6);
         }
     }
 
@@ -705,6 +761,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     debugDefeatAllEnemies() {
+        // Refused outright in a tester build. The button is gone there, but a
+        // method on the scene is reachable from the console.
+        if (!devToolsEnabled()) return 0;
         const roomType = this.gameState?.roomType || this.roomType;
         if (!['COMBAT', 'ELITE', 'BOSS'].includes(roomType)
             || this.enemiesCleared

@@ -29,6 +29,7 @@ export class TreasureScene extends StationRoomBase {
     // picking up the chest loot. Without this the reward was auto-dumped into
     // the first empty slot — or lost entirely when the bag was full.
     this.enableShopStation();
+    this.addOptionsCog();
 
     this.createChestRoom();
   }

@@ -3,7 +3,9 @@
 
 import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
+import { createOptionsCog } from './OptionsCog.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { devToolsEnabled } from '../config/DevTools.js';
 import { t, tCount, translateDescription, translateItemName } from '../i18n/i18n.js';
 import {
     CHARACTER_CLASSES,
@@ -17,10 +19,17 @@ import { MAGIC_SHIELD_DODGE_BONUS } from '../systems/combat/ArmorMath.js';
 // The amulet strip owns the top-left corner, so the hero column starts below
 // it. Everything from the avatar down to the crystal counter is offset by this
 // much; change it here rather than re-typing every y.
-const HUD_COLUMN_SHIFT = 30;
+// 22, was 30: the whole hero column — avatar, orb, armour, AP, coins,
+// crystals — sits 8px higher. A guess at "scoot it up"; this is the one number
+// that moves all of it.
+const HUD_COLUMN_SHIFT = 22;
 // The avatar frame shrank from 84x86 to 80x80, so everything below it — armor
 // slot, AP diamonds, coins, crystals — closes the 7px gap the old art left.
 const HUD_LOWER_SHIFT = HUD_COLUMN_SHIFT - 7;
+// Where the discard bin sits. Left of the bag now; the inventory panel is capped
+// so it never grows into it.
+export const DISCARD_X = 39;
+export const DISCARD_Y = 305;
 
 // Stance plate colours. Sweep wears the HUD's own brown/tan so it reads as part
 // of the hero column; Focus goes warm so an active crit stance is obvious at a
@@ -63,7 +72,8 @@ export const CombatHud = {
         this.healthText.setDepth(30);
 
         // Armor equip panel under hero portrait
-        this.armorPanel = snapOriginToPixelGrid(this.add.image(40, 138 + HUD_LOWER_SHIFT, 'panelArmor'));
+        // 132, was 138: the armour slot tucks 6px nearer the portrait above it.
+        this.armorPanel = snapOriginToPixelGrid(this.add.image(40, 132 + HUD_LOWER_SHIFT, 'panelArmor'));
         this.armorPanel.setInteractive();
         this.armorPanel.setDepth(5);
         this.armorPanelEquippedSprite = null;
@@ -82,15 +92,16 @@ export const CombatHud = {
         // Coin and Crystal UI under armor panel with animations
         // (live positions come from updateCurrencyUILayout, which applies the
         // same column shift plus any extra AP row)
-        this.coinSprite = this.add.sprite(26, 210 + HUD_LOWER_SHIFT, 'coinUI').setScale(1);
-        this.coinsText = this.add.text(26, 227 + HUD_LOWER_SHIFT, '0', {
+        // Each 1px up, closing the gap to the action points above them.
+        this.coinSprite = this.add.sprite(26, 209 + HUD_LOWER_SHIFT, 'coinUI').setScale(1);
+        this.coinsText = this.add.text(26, 226 + HUD_LOWER_SHIFT, '0', {
             fontSize: '12px',
             fill: '#cf8834',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
 
-        this.crystalSprite = this.add.sprite(54, 211 + HUD_LOWER_SHIFT, 'CrystalUI').setScale(1);
-        this.crystalsText = this.add.text(54, 228 + HUD_LOWER_SHIFT, '0', {
+        this.crystalSprite = this.add.sprite(54, 210 + HUD_LOWER_SHIFT, 'CrystalUI').setScale(1);
+        this.crystalsText = this.add.text(54, 227 + HUD_LOWER_SHIFT, '0', {
             fontSize: '12px',
             fill: '#a83c69',
             fontFamily: '"HoMM Pixel"'
@@ -124,22 +135,23 @@ export const CombatHud = {
         }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH);
         this.monthText = null;
         
-        // Pause button - positioned in top right corner
-        const pauseButton = this.add.rectangle(600, 15, 46, 18, 0x6f5452, 0.18)
-            .setStrokeStyle(1, 0x6f5452)
-            .setDepth(TOP_HUD_DEPTH)
-            .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); pauseButton.setFillStyle(0x6f5452, 0.32); })
-            .on('pointerout', () => pauseButton.setFillStyle(0x6f5452, 0.18))
-            .on('pointerdown', () => { SoundHelper.playVariant(this, 'button_click', 0.5); this.pauseGame(); });
-        
-        this.add.text(600, 15, t(this, 'ui.hud.pause'), {
-            fontSize: '9px',
-            fill: '#6f5452',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH);
+        // The cog, in the corner every other screen keeps it in. It replaced a
+        // written PAUSE plate that sat 18px left and 7px up of here — and which
+        // was also the pause control the shops appeared to have, since a station
+        // room leaves GameScene awake and drawing underneath it.
+        createOptionsCog(this, () => this.pauseGame(), { depth: TOP_HUD_DEPTH });
 
-        // Combat shortcut for testing complete floor/boss resolution.
+        // Combat shortcut for testing complete floor/boss resolution. Built
+        // only for us: it ends a fight outright, which is not a thing a run
+        // should be able to do.
+        if (devToolsEnabled()) this.createDebugVictoryButton(TOP_HUD_DEPTH);
+
+        // Also add ESC key binding for pause
+        this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
+        this.buildRestOfHud(TOP_HUD_DEPTH);
+    },
+
+    createDebugVictoryButton(TOP_HUD_DEPTH) {
         this.debugVictoryButton = this.add.rectangle(455, 38, 58, 18, 0x713737, 0.9)
             .setStrokeStyle(1, 0xd89772)
             .setDepth(TOP_HUD_DEPTH)
@@ -154,22 +166,25 @@ export const CombatHud = {
             fill: '#f5e6c8',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
-        
-        // Also add ESC key binding for pause
-        this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
-        // Discard area
-        this.discardArea = snapOriginToPixelGrid(this.add.image(601, 305, 'discardSprite'));
-        this.add.text(601, 305, t(this, 'ui.hud.discard'), { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+    },
+
+    buildRestOfHud(TOP_HUD_DEPTH) {
+        // Discard bin, now on the LEFT of the bag rather than the right. The
+        // corner it moved into is the one the Effects heading just vacated, and
+        // the inventory panel's width cap mirrors to match (see
+        // rebuildInventorySprites).
+        this.discardArea = snapOriginToPixelGrid(this.add.image(DISCARD_X, DISCARD_Y, 'discardSprite'));
+        this.add.text(DISCARD_X, DISCARD_Y, t(this, 'ui.hud.discard'), { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
         // Rest button removed - players must manage action points carefully
-        // Amulet UI
-        // Player effects label
-        this.add.text(45, 292, t(this, 'ui.hud.effects'), {
-            fontSize: '14px',
-            fill: '#ffffff',
-            fontFamily: '"HoMM Pixel"'
-        }).setOrigin(0.5, 0);
+        // No "Effects" heading: the icons under it say what they are, and the
+        // word was the only thing left in that corner once the discard bin moved
+        // across. The group it labelled still draws.
         this.playerEffectsUIGroup = this.add.group();
         // Next Floor Button (initially hidden) - top right, under pause
+        // In a fight the way out is the road you picked, standing open — see
+        // showNextFloorButton, which swaps this to the open-door frame and
+        // sounds it. Built on the plate so every other room keeps its Next
+        // button unchanged.
         this.nextFloorButton = snapOriginToPixelGrid(this.add.image(595, 50, 'nextTurnUp'))
             .setDepth(5000)
             .setInteractive({ useHandCursor: true })
@@ -228,7 +243,8 @@ export const CombatHud = {
     createCombatLog() {
         // Narrow panel hugging the right edge (right edge fixed at ~639, so the
         // extra width grows leftward) that still clears the gaming board.
-        const CX = 575, CY = 150, W = 128, H = 200;
+        // 577/185, was 575/150: 2px right and 35px down.
+        const CX = 577, CY = 185, W = 128, H = 200;
         const BROWN = '#6f5452';
         this.combatLog = { lines: [], maxVisible: 12, scroll: 0, visible: false, objects: [] };
         this.combatLog.bounds = { left: CX - W / 2, right: CX + W / 2, top: CY - H / 2, bottom: CY + H / 2 };

@@ -1,5 +1,6 @@
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from '../../ui/NineSlicePanel.js';
+import { DISCARD_X } from '../../ui/CombatHud.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
 import { t, translateDescription, translateGemEffect, translateItemName, tCount } from '../../i18n/i18n.js';
@@ -101,7 +102,12 @@ export const InventoryView = {
             const overlay = snapOriginToPixelGrid(
                 this.scene.add.image(cardSprite.x, cardSprite.y, 'webCardOverlay')
             );
-            overlay.setDisplaySize(cardSprite.displayWidth || 54, cardSprite.displayHeight || 70);
+            // Drawn at native size, NOT stretched to the card. web.png is 60x78
+            // against a 54x70 card because Taya drew the silk to overhang the
+            // edges; forcing it to the card's size squashed it by 0.90 across
+            // and 0.897 down — two different fractional scales, which is what
+            // smeared the pixels. Those numbers came from the generated
+            // placeholder this art replaced, which really was card-sized.
             overlay.setDepth(this.getInventoryDepths().webOverlay);
             this.uiGroup?.add?.(overlay);
             slot.webOverlay = overlay;
@@ -528,15 +534,21 @@ export const InventoryView = {
         // the slots on a half-pixel. Fractional positions re-round (and shift 1px)
         // whenever a board card's blend-mode hover sprite forces a render-batch flush.
         const startX = Math.round(inventoryCenterX - (totalWidth / 2) + (slotWidth / 2));
-        const y = 309;
+        // The panel drops 2px; the slots — and so every card sitting in one —
+        // drop 6. They used to share a single y, which is why the cards could
+        // not be nudged without taking the frame with them.
+        const panelY = 309 + 2;
+        const y = 309 + 6;
         // The panel wraps the slots with generous padding, but is capped so its
         // right edge never reaches the discard bin (~x 567) once the bag grows to
         // many slots. The panel is centered on inventoryCenterX, so the cap is
         // symmetric. 5–7 slots keep the roomy framing; only a near-full 8-slot bag
         // tightens up (its slots already run close to the bin either way).
         const desiredPanelWidth = Math.max(368, totalWidth + 90);
-        const discardClearWidth = 2 * (562 - inventoryCenterX);
-        this.createInventoryPanel(inventoryCenterX, y, Math.min(desiredPanelWidth, discardClearWidth));
+        // The bin is on the LEFT now, so the clearance that caps the panel is
+        // measured leftward from the bag's centre instead of rightward.
+        const discardClearWidth = 2 * (inventoryCenterX - (DISCARD_X + 39));
+        this.createInventoryPanel(inventoryCenterX, panelY, Math.min(desiredPanelWidth, discardClearWidth));
         
         for (let i = 0; i < slotCount; i++) {
             const x = startX + i * (slotWidth + spacing);
