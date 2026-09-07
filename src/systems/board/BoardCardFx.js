@@ -7,6 +7,7 @@ import { effectiveArmorProtection, isArmorWarded } from '../combat/ArmorMath.js'
 import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
 import { isSilkCocoonCard } from './CocoonCacheBoard.js';
 import { t, translateItemName } from '../../i18n/i18n.js';
+import { scaleGoldReward } from '../../content/economy/gold.js';
 
 // The one value slot painted into the bottom-right of every card that shows a
 // single number — weapon damage, armor protection, thorn damage, trap damage.
@@ -885,7 +886,8 @@ function updateBossInfoText(card) {
 
 function playKillLootPickup(x, y, reward, sourceLabel = 'Pick') {
     const isCoin = reward?.kind === 'coin';
-    const amount = reward?.amount || 1;
+    const rawAmount = reward?.amount || 1;
+    const amount = isCoin ? scaleGoldReward(rawAmount) : rawAmount;
 
     // Grant FIRST (and unconditionally) so the reward can never be lost if
     // the sprite/animation is unavailable or the anim event misses.
@@ -1037,7 +1039,7 @@ function playMergeEffect(x, y, isLegendary = false, options = {}) {
 function mimicTreasureExplosion(x, y) {
     // Loot scales a little with depth
     const floor = this.scene.gameState.currentFloor || 1;
-    const coinReward = 20 + floor * 2;
+    const coinReward = scaleGoldReward(20 + floor * 2);
     const crystalReward = 5 + Math.floor(floor / 5);
 
     // Create splash sprite

@@ -38,7 +38,7 @@ export class LocationPickScene extends Phaser.Scene {
   init(data = {}) {
     this.pickAct = Math.max(1, Math.min(3, Math.floor(Number(data.act) || 1)));
     this.mode = data.mode === 'nextAct' ? 'nextAct' : 'newRun';
-    this.characterId = data.characterId === 'warrior' ? 'warrior' : 'rogue';
+    this.characterId = 'rogue';
     this.armorerArmorType = data.armorerArmorType || null;
     this.gameState = data.gameState || null;
     this._locked = false;

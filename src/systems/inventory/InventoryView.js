@@ -6,6 +6,11 @@ import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClas
 import { t, translateDescription, translateGemEffect, translateItemName, tCount } from '../../i18n/i18n.js';
 import { describeWeaponEnchant } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
+import {
+    axeHeavyCleaveTargetIndices,
+    spearPierceTargetIndices,
+    swordCleaveTargetIndices,
+} from '../../content/cards/weapons.js';
 
 // Bag slot styling. The near-black ink is used for both the fill and the
 // hairline frame; writing the alpha as a fraction of 255 keeps it legible
@@ -297,6 +302,7 @@ export const InventoryView = {
         if (!live || live.slotIndex !== slotIndex || live.cardSprite !== cardSprite) return false;
         this._liveDrag = null;
         this.destroyFireReachIndicator();
+        this.destroyWeaponAttackIndicator();
 
         try {
             if (!cardSprite?.scene) return false;
@@ -398,6 +404,7 @@ export const InventoryView = {
     // same target the drop will actually hit.
     findWeaponTargetSprite(cardSprite) {
         let closest = null;
+        let closestCard = null;
         let closestDistance = Infinity;
         this.scene.cardSystem?.boardCards?.forEach(card => {
             if (!card?.revealed || !card.sprite || !this.isEnemyBoardCard(card)) return;
@@ -407,9 +414,68 @@ export const InventoryView = {
             if (distance < closestDistance) {
                 closestDistance = distance;
                 closest = card.sprite;
+                closestCard = card;
             }
         });
-        return closestDistance < 150 ? closest : null;
+        if (closestDistance >= 150) return null;
+        const board = this.scene.cardSystem?.boardCards || [];
+        const activeTaunt = board.some(card => this.scene.cardSystem.isActiveBoardTaunter?.(card));
+        if (activeTaunt && !this.scene.cardSystem.isActiveBoardTaunter?.(closestCard)) return null;
+        return closest;
+    },
+    updateWeaponAttackIndicator(cardSprite, slotIndex) {
+        const weapon = this.slots[slotIndex];
+        if (this.stationMode || weapon?.type !== 'weapon') {
+            this.destroyWeaponAttackIndicator();
+            return;
+        }
+
+        const board = this.scene.cardSystem?.boardCards || [];
+        const targetSprite = this.findWeaponTargetSprite(cardSprite);
+        const primaryIndex = board.findIndex(card => card?.sprite === targetSprite);
+        if (primaryIndex < 0) {
+            this.destroyWeaponAttackIndicator();
+            return;
+        }
+
+        const affected = new Map([[primaryIndex, 1]]);
+        const hasAp = (this.scene.gameState?.actionsLeft || 0) > 0;
+        if (hasAp && weapon.special === 'cleave') {
+            for (const index of swordCleaveTargetIndices(board, primaryIndex)) affected.set(index, 0.5);
+        } else if (hasAp && (weapon.special === 'pierce' || weapon.special === 'reach')) {
+            for (const index of spearPierceTargetIndices(board, primaryIndex)) affected.set(index, 0.5);
+        } else if (weapon.special === 'specialAttack') {
+            const target = board[primaryIndex];
+            const hp = target?.data?.health || 0;
+            const maxHp = Math.max(1, target?.data?.maxHealth || hp || 1);
+            if (hp / maxHp > 0.2) {
+                const fan = axeHeavyCleaveTargetIndices(board, primaryIndex);
+                if (fan.upper != null) affected.set(fan.upper, 0.5);
+                for (const index of fan.sides) affected.set(index, 0.25);
+            }
+        }
+
+        if (!this.weaponAttackIndicator?.scene) {
+            this.weaponAttackIndicator = this.scene.add.graphics().setDepth(25);
+        }
+        const g = this.weaponAttackIndicator;
+        g.clear();
+        for (const [index, fraction] of affected) {
+            const sprite = board[index]?.sprite;
+            if (!sprite?.scene) continue;
+            const width = (sprite.displayWidth || sprite.width || 53) + 6;
+            const height = (sprite.displayHeight || sprite.height || 70) + 6;
+            const color = fraction >= 1 ? 0xffdd55 : fraction >= 0.5 ? 0xff8844 : 0xff4455;
+            const alpha = fraction >= 1 ? 0.28 : fraction >= 0.5 ? 0.22 : 0.16;
+            g.fillStyle(color, alpha);
+            g.fillRoundedRect(sprite.x - width / 2, sprite.y - height / 2, width, height, 4);
+            g.lineStyle(fraction >= 1 ? 2 : 1, color, 0.9);
+            g.strokeRoundedRect(sprite.x - width / 2, sprite.y - height / 2, width, height, 4);
+        }
+    },
+    destroyWeaponAttackIndicator() {
+        if (this.weaponAttackIndicator?.scene) this.weaponAttackIndicator.destroy();
+        this.weaponAttackIndicator = null;
     },
     // Translucent red ring showing how far a fire gem's splash would reach from
     // the enemy this swing would strike. Because the splash tests centre-to-
@@ -1086,9 +1152,11 @@ export const InventoryView = {
     describeWeaponSpecial(card) {
         const special = card.special || '';
         if (special === 'dualWield') return translateDescription(this.scene, 'dual wield');
+        if (special === 'cleave') return translateDescription(this.scene, 'cleave: half damage to adjacent enemies while AP remains');
+        if (special === 'pierce' || special === 'reach') return translateDescription(this.scene, 'piercing: half damage to enemies behind target while AP remains');
         if (special === 'throwing') return translateDescription(this.scene, 'hits any enemy');
         if (special === 'block' && card.weaponType !== 'bow') return translateDescription(this.scene, 'can block');
-        if (special === 'specialAttack') return translateDescription(this.scene, 'heavy strike');
+        if (special === 'specialAttack') return translateDescription(this.scene, 'heavy cleave; executes wounded non-boss enemies');
         return special;
     },
     describeMagicCard(card) {

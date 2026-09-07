@@ -45,11 +45,17 @@ the current act; after that room the run continues from that floor.
 - Event-only amulets are outside the pool and outside steering
 
 ## Weapon specials
-- **dagger** `dualWield` — a second dagger swings for free (off-hand pip is free)
+- **dagger** `dualWield` — while AP remains, a second dagger swings for free
+  (off-hand pip is free)
 - **bow** ranged — reaches past the frontline gate
-- **sword** `cleave` — the blow carries into one other front enemy for 50%
-  (`SWORD_CLEAVE_FRACTION`), no extra pip or AP; taunt respected, boss counts as front
-- **axe** `specialAttack` — Heavy Strike, 150% for +1 durability, finisher only
+- **sword** `cleave` — while AP remains, the blow hits revealed enemies directly
+  left and right of the target for 50% (`SWORD_CLEAVE_FRACTION`); works for every class
+- **spear** `pierce` — while AP remains, the thrust deals 50% damage to every
+  revealed enemy behind the target in the same column
+- **axe** `specialAttack` — Heavy Cleave above 20% HP: 100% to the target,
+  50% to the next enemy above it, then 25% to that enemy's left/right
+  neighbours. At 20% HP or below, Heavy Strike executes a surviving non-boss
+  for one extra durability; an ordinary lethal hit costs no extra durability.
 
 ## Weapon choice (data layer, UI pending)
 - `CardDataGenerator.createWeaponChoice(floor, count)` returns 2–3 weapons of

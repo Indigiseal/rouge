@@ -25,8 +25,7 @@ export class GameState {
         this.actionsLeft = 15;
         this.maxActions = 15;
         this._currentFloor = 1;
-        // Warrior stance: 'sweep' (swords cleave) or 'focus' (25% crit x2).
-        // Rogue ignores it. Saved runs from before stances load as the default.
+        // Legacy save field. The single hero has no class stance.
         this.warriorStance = DEFAULT_WARRIOR_STANCE;
         // Chosen Path locations for acts 1/2/3. Null until the player picks.
         // See src/content/locations/. calendarMonthIndex is kept for legacy
@@ -45,7 +44,7 @@ export class GameState {
         this.equippedWeapon = null;
         this.equippedArmor = null;
         this.inventory = new Array(5).fill(null);
-        this.startingCardsGranted = false; // Guards the one-time starting swords (prevents resume/restart dupes)
+        this.startingCardsGranted = false; // Guards the one-time starter cards.
         this.characterId = 'rogue';
         // Optional sim/experiment override: ['chain'] | ['plate'] | ['chain','plate'].
         // null → use character class armorTypes.

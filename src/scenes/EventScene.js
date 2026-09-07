@@ -23,6 +23,7 @@ import {
 import { EventRunHelpers } from '../systems/events/EventRunHelpers.js';
 import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 import { openArmWrestlingMinigame } from '../ui/ArmWrestlingMinigame.js';
+import { scaleGoldReward } from '../content/economy/gold.js';
 import { openMusicBoxLockMinigame } from '../ui/MusicBoxLockMinigame.js';
 import { openBirdNestMinigame } from '../ui/BirdNestMinigame.js';
 import {
@@ -413,6 +414,7 @@ export class EventScene extends Phaser.Scene {
 
   gainCoins(amount) {
     if (!this.gameState || !Number.isFinite(amount) || amount === 0) return;
+    if (amount > 0) amount = scaleGoldReward(amount);
     const currentCoins = Number.isFinite(this.gameState.coins) ? this.gameState.coins : 0;
     this.gameState.coins = currentCoins + amount;
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
@@ -2928,10 +2930,15 @@ export class EventScene extends Phaser.Scene {
       exitToSandboxHub(this);
       return;
     }
-    // Park GameScene back to sleep (we woke it for the station) and return to map.
+    // Park GameScene back to sleep (we woke it for the station) and hard-relaunch
+    // the map. A post-combat story (the goblin mine return) arrives after its
+    // original MapViewScene was stopped for the ambush; wake() is a no-op for a
+    // stopped scene and used to leave a blank screen after returning the
+    // detonator. Stop + launch is safe for both stopped and sleeping maps.
     this.scene.sleep('GameScene');
     this.scene.stop();
-    this.scene.wake('MapViewScene');
+    this.scene.stop('MapViewScene');
+    this.scene.launch('MapViewScene', { gameState: this.gameState });
   }
 }
 

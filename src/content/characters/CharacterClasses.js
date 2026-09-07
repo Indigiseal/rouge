@@ -3,7 +3,7 @@
 
 import { createWeaponCardData } from '../cards/weapons.js';
 
-export const CHARACTER_IDS = Object.freeze(['rogue', 'warrior']);
+export const CHARACTER_IDS = Object.freeze(['rogue']);
 
 export const CHARACTER_CLASSES = Object.freeze({
   rogue: {
@@ -12,38 +12,18 @@ export const CHARACTER_CLASSES = Object.freeze({
     nameRu: 'Разбойник',
     // Frame in the 'characterPortraits' sheet (assets/art/portraits.png).
     portraitFrame: 0,
-    blurb: 'Leather only. Starts with dagger and bow. Dagger and bow deal +10% damage (shown on the card).',
-    blurbRu: 'Только кожаная броня. Старт: кинжал и лук. Кинжал и лук наносят +10% урона (цифра на карте уже с бонусом).',
-    armorTypes: ['leather'],
+    blurb: 'Starts with dagger and bow. Can use every weapon and armor family.',
+    blurbRu: 'Старт: кинжал и лук. Доступны все семейства оружия и брони.',
+    armorTypes: ['leather', 'chain', 'plate'],
     // Refs only — stats live in content/cards/weapons.js (spawn floors ignored).
     startingWeapons: Object.freeze([
       Object.freeze({ weaponType: 'dagger', rarity: 'common' }),
       Object.freeze({ weaponType: 'bow', rarity: 'common' }),
     ]),
-    // Printed dagger/bow damage on cards uses getDisplayedWeaponDamage (base × 1.1, ceil).
-    weaponDamageBonusTypes: ['dagger', 'bow'],
-    weaponDamageBonus: 0.1,
-    critChance: 0,
-    critWeaponTypes: [],
-  },
-  warrior: {
-    id: 'warrior',
-    name: 'Warrior',
-    nameRu: 'Воин',
-    portraitFrame: 1,
-    blurb: 'No leather. Starts with two swords. Two stances: Sweep (swords cleave) and Focus (20% crit for double damage, any weapon). Chain counters melee; plate ignores ranged.',
-    blurbRu: 'Без кожи. Старт: два меча. Две стойки: Размах (меч рубит соседа) и Сосредоточение (20% крит в двойной урон, любым оружием). Chain — контратака в ближнем; plate — ignore дальних.',
-    armorTypes: ['chain', 'plate'],
-    startingWeapons: Object.freeze([
-      Object.freeze({ weaponType: 'sword', rarity: 'common' }),
-      Object.freeze({ weaponType: 'sword', rarity: 'common' }),
-    ]),
     weaponDamageBonusTypes: [],
     weaponDamageBonus: 0,
-    // Crit replaces the normal hit: damage = weapon * (1 + 0.05 * rarityTier).
-    // rarityTier: common 1 / uncommon 2 / rare 3 / legendary 4 (epic counts as 3).
-    critChance: 0.1,
-    critWeaponTypes: ['sword', 'spear', 'axe', 'bow', 'dagger'],
+    critChance: 0,
+    critWeaponTypes: [],
   },
 });
 
@@ -69,7 +49,7 @@ export function getCharacter(characterId) {
 }
 
 export function normalizeCharacterId(characterId) {
-  return CHARACTER_CLASSES[characterId] ? characterId : 'rogue';
+  return 'rogue';
 }
 
 export function characterAllowsArmorType(characterId, armorType) {

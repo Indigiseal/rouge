@@ -163,7 +163,7 @@ export class MetaProgressionManager {
   }
 
   ensureCharacter(characterId) {
-    const id = characterId === 'warrior' ? 'warrior' : 'rogue';
+    const id = 'rogue';
     if (!this.characters[id]) this.characters[id] = emptyCharacterProgress();
     if (!this.characters[id].talents) this.characters[id].talents = {};
     if (!this.characters[id].choices) this.characters[id].choices = {};

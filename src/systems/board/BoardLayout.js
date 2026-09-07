@@ -138,8 +138,9 @@ function computePlacement(cells, opts = {}) {
     // Rows share the same column axis. Keeping x tied only to `c` makes
     // vertically aligned cards read as an actual column on the combat board.
     const xp = c;
-    if (r  < minR)  minR  = r;
-    if (r  > maxR)  maxR  = r;
+    const rp = r + ((Math.abs(c) & 1) ? COLUMN_Y_STAGGER : 0);
+    if (rp < minR) minR = rp;
+    if (rp > maxR) maxR = rp;
     if (xp < minXp) minXp = xp;
     if (xp > maxXp) maxXp = xp;
   }
@@ -227,13 +228,19 @@ function computePlacement(cells, opts = {}) {
 
 function brickToPixel(r, c, place) {
   const xp = c;
+  const rp = r + ((Math.abs(c) & 1) ? COLUMN_Y_STAGGER : 0);
   const x  = place.cx + (xp - place.midXp) * place.HSTEP;
-  const y  = place.cy + (r  - place.midR)  * place.VSTEP;
+  const y  = place.cy + (rp - place.midR) * place.VSTEP;
   // Snap to integer pixels. Sub-pixel positions caused the whole board
   // to look like it shifted 1px every time a card hovered/tweened — the
   // pixel-rounded render position would alternate as decimals carried.
   return { x: Math.round(x), y: Math.round(y) };
 }
+
+// Preserve strict x-alignment for column attacks while giving the formation
+// some of the rhythm the old horizontal brick stagger provided. At the usual
+// 75px row step this is a restrained 10–11px vertical offset.
+const COLUMN_Y_STAGGER = 0.14;
 
 function clearFloorBoardPanel() {
   // Tear down the side-extra panels first; they sit behind the main board
@@ -597,4 +604,3 @@ function applyStrategyCluster({ preferFront = false } = {}) {
     }
     return moved;
 }
-

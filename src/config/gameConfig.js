@@ -13,7 +13,6 @@ import { EventScene } from '../scenes/EventScene.js';
 import { TreasureScene } from '../scenes/TreasureScene.js';
 import { SandboxHubScene } from '../scenes/SandboxHubScene.js';
 import { SandboxStoryScene } from '../scenes/SandboxStoryScene.js';
-import { CharacterSelectScene } from '../scenes/CharacterSelectScene.js';
 import { VillageScene } from '../scenes/VillageScene.js';
 import { TalentTreeScene } from '../scenes/TalentTreeScene.js';
 import { ArmorerPickScene } from '../scenes/ArmorerPickScene.js';
@@ -51,7 +50,6 @@ export function createGameConfig(Phaser) {
       TreasureScene,
       SandboxHubScene,
       SandboxStoryScene,
-      CharacterSelectScene,
       VillageScene,
       TalentTreeScene,
       ArmorerPickScene,

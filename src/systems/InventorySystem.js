@@ -61,7 +61,7 @@ export class InventorySystem {
     }
 
     addStartingCards() {
-        // Grant the starter swords exactly once per run. Without this guard,
+        // Grant the starter weapons exactly once per run. Without this guard,
         // every startNewFloor() on floor 1 (scene create, Continue/resume,
         // restart) re-added them, stacking up 2 → 4 → 6 swords.
         if (this.scene.gameState.startingCardsGranted) return;

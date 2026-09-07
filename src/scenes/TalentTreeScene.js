@@ -26,7 +26,7 @@ export class TalentTreeScene extends Phaser.Scene {
   }
 
   init(data) {
-    this.characterId = data?.characterId === 'warrior' ? 'warrior' : 'rogue';
+    this.characterId = 'rogue';
   }
 
   create() {
@@ -41,7 +41,7 @@ export class TalentTreeScene extends Phaser.Scene {
     }
     this.add.rectangle(320, 180, 640, 360, 0x000000, 0.62);
 
-    const title = t(this, this.characterId === 'warrior' ? 'ui.talents.warriorTitle' : 'ui.talents.rogueTitle');
+    const title = t(this, 'ui.talents.rogueTitle');
     this.add.text(320, 16, title, serifStyle(FONT_SIZE.heading, '#e6edf3')).setOrigin(0.5);
 
     this.xpText = this.add.text(320, 34, '', serifStyle('14px', '#f0d78c')).setOrigin(0.5);

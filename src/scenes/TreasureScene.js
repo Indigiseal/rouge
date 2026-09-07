@@ -6,6 +6,7 @@ import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 import { CARD_VALUE_SLOT } from '../systems/board/BoardCardFx.js';
 import { t, translateItemName, translateRarity } from '../i18n/i18n.js';
+import { scaleGoldReward } from '../content/economy/gold.js';
 
 export class TreasureScene extends StationRoomBase {
   constructor() {
@@ -158,6 +159,7 @@ export class TreasureScene extends StationRoomBase {
 
   grantChestRewards(chest, fullReward, trapped) {
     const reward = this.getRewardValues(true);
+    reward.coins = scaleGoldReward(reward.coins);
     this.gameState.coins += reward.coins;
     this.gameState.crystals += reward.crystals;
 
@@ -440,6 +442,7 @@ export class TreasureScene extends StationRoomBase {
 
   grantForcedChestRewards(chest, trapped) {
     const reward = this.getRewardValues(false);
+    reward.coins = scaleGoldReward(reward.coins);
     this.gameState.coins += reward.coins;
     this.gameState.crystals += reward.crystals;
 

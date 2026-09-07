@@ -11,6 +11,8 @@ import { SaveManager } from '../managers/SaveManager.js';
 import { MetaProgressionManager } from '../managers/MetaProgressionManager.js';
 import { TutorialManager } from '../managers/TutorialManager.js';
 import { CombatHud } from '../ui/CombatHud.js';
+import { scaleGoldReward } from '../content/economy/gold.js';
+import { normalizeCharacterId } from '../content/characters/CharacterClasses.js';
 import {
     showDefeatFallback as showDefeatFallbackOverlay,
     addResultPanel as addResultPanelOverlay,
@@ -100,7 +102,7 @@ export class GameScene extends Phaser.Scene {
         } else {
             // New run
             this.gameState = new GameState(this);
-            this.gameState.characterId = data.characterId || 'rogue';
+            this.gameState.characterId = normalizeCharacterId(data.characterId);
             this.gameState.actLocationIds = emptyActLocationIds();
             this.gameState.calendarMonthIndex = 0;
             if (this.tutorialMode || this.sandboxMode) {
@@ -1436,7 +1438,7 @@ export class GameScene extends Phaser.Scene {
         // while acts 2-3 hoarded 500-750 unspent coins (4.5/6 affordable).
         if (!isBossFloor) {
             const base = Math.floor(24 + floor * 1.2);
-            const reward = this.amuletManager ? this.amuletManager.modifyGoldFound(base) : base;
+            const reward = this.amuletManager ? this.amuletManager.modifyGoldFound(base) : scaleGoldReward(base);
             this.gameState.coins += reward;
             this.createFloatingText(320, 140, `+${reward} coins`, 0xffd700);
             this.updateUI?.();
@@ -1525,8 +1527,9 @@ export class GameScene extends Phaser.Scene {
 
         const coinBonus = this.amuletManager?.getDiscardCoinBonus?.() || 0;
         if (coinBonus > 0) {
-            this.gameState.coins = (this.gameState.coins || 0) + coinBonus;
-            this.createFloatingText(x, y - 18, `+${coinBonus} Coin (Ink Pen)`, 0xffd700);
+            const scaledCoinBonus = scaleGoldReward(coinBonus);
+            this.gameState.coins = (this.gameState.coins || 0) + scaledCoinBonus;
+            this.createFloatingText(x, y - 18, `+${scaledCoinBonus} Coin (Ink Pen)`, 0xffd700);
             this.playCoinAnimation?.();
             this.updateUI();
         }
@@ -1611,7 +1614,7 @@ export class GameScene extends Phaser.Scene {
         this.gameState.bottomlessBagApplied = runData.player.bottomlessBagApplied;
         this.gameState.discardedCardsThisRun = runData.player.discardedCardsThisRun || 0;
         this.gameState.discardCritChance = runData.player.discardCritChance || 0;
-        this.gameState.characterId = runData.player.characterId || 'rogue';
+        this.gameState.characterId = normalizeCharacterId(runData.player.characterId);
         this.gameState.journalBonusHP = runData.player.journalBonusHP || 0;
         this.gameState.mapBonusAP = runData.player.mapBonusAP || 0;
         this.gameState.mapFloorCount = runData.player.mapFloorCount || 0;

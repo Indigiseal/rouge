@@ -29,7 +29,14 @@ import { FIRE_GEM_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } fr
 import { xpForRun, estimateBossesKilled } from '../src/content/economy/metaXp.js';
 import { weaponCanDamageEnemy, canHurtEnemyAtAll } from '../src/systems/board/BoardCombat.js';
 import { effectiveArmorDodge } from '../src/systems/combat/ArmorMath.js';
-import { SWORD_CLEAVE_FRACTION, weaponIgnoresFrontline } from '../src/content/cards/weapons.js';
+import {
+  SPEAR_PIERCE_FRACTION,
+  SWORD_CLEAVE_FRACTION,
+  spearPierceTargetIndices,
+  swordCleaveTargetIndices,
+  axeHeavyCleaveTargetIndices,
+  weaponIgnoresFrontline,
+} from '../src/content/cards/weapons.js';
 import { AmuletManager } from '../src/managers/AmuletManager.js';
 import { MetaProgressionManager } from '../src/managers/MetaProgressionManager.js';
 import { MapGenerator } from '../src/map/MapGenerator.js';
@@ -84,7 +91,6 @@ import {
   normalizeCharacterId,
   rollClassWeaponCrit,
   classCritProfile,
-  stanceCleaves,
   WARRIOR_STANCE_AP_COST,
 } from '../src/content/characters/CharacterClasses.js';
 import {
@@ -248,11 +254,11 @@ function applyAssassinateSim(mock, gs, enemyIndex) {
   return hp;
 }
 
-// Mirrors InventoryCombatUse.applySwordCleave: one random other front enemy
-// (bosses count as front) takes SWORD_CLEAVE_FRACTION of the swing, free.
-// Stance policy. Sweep only pays when the blade has a neighbour to carry into,
-// so the bot focuses up for lone targets and bosses and sweeps a crowd. The AP
-// cost is what stops it flipping every single swing.
+// Mirrors InventoryCombatUse.applySwordCleave: the two horizontal neighbours
+// take SWORD_CLEAVE_FRACTION of the swing while the player still has AP.
+// Cleave no longer depends on stance, so the bot only has a reason to switch
+// into Focus for its crit bonus. The AP cost still makes that opening choice
+// part of the run's action economy.
 // STANCE_SWITCH_AP is a tuning knob, not a rule: 0 measures the ceiling of the
 // mechanic, the real cost measures what a player would actually pay.
 const STANCE_SWITCH_AP = Number(process.env.SIM_STANCE_AP ?? WARRIOR_STANCE_AP_COST);
@@ -260,21 +266,7 @@ const STANCE_POLICY = process.env.SIM_STANCE_POLICY || 'adaptive';
 
 function maybeSwitchWarriorStance(gs, board) {
   if (gs.characterId !== 'warrior' || STANCE_POLICY === 'off') return false;
-  let front = 0;
-  for (const card of board) {
-    if (!card?.revealed || !card.data) continue;
-    if (card.data.type !== 'enemy' && card.data.type !== 'boss') continue;
-    if ((card.data.health ?? 0) <= 0) continue;
-    if (card.data.role !== 'MELEE' && card.data.type !== 'boss') continue;
-    front += 1;
-  }
-  // A boss floor is a single-target problem even when minions are on the board:
-  // cleave spends half the swing on a summon that will be replaced anyway,
-  // while the boss is the only thing whose death ends the fight.
-  const bossPresent = board.some((c) => (
-    c?.revealed && c.data?.type === 'boss' && (c.data?.health ?? 0) > 0
-  ));
-  const want = (!bossPresent && front >= 2) ? 'sweep' : 'focus';
+  const want = 'focus';
   if (want === gs.warriorStance) return false;
   if (gs.actionsLeft < STANCE_SWITCH_AP) return false;
   gs.actionsLeft -= STANCE_SWITCH_AP;
@@ -284,22 +276,46 @@ function maybeSwitchWarriorStance(gs, board) {
 
 function applySwordCleaveSim(mock, gs, primaryIndex, swordDamage, weapon) {
   if (weapon?.special !== 'cleave') return 0;
-  if (!stanceCleaves(gs?.characterId, gs?.warriorStance)) return 0;
   const board = mock.cardSystem.boardCards || [];
-  const candidates = [];
-  board.forEach((card, index) => {
-    if (index === primaryIndex) return;
-    if (!card?.revealed || !card.data) return;
-    if (card.data.type !== 'enemy' && card.data.type !== 'boss') return;
-    if ((card.data.health ?? 0) <= 0) return;
-    if (card.data.role !== 'MELEE' && card.data.type !== 'boss') return;
-    candidates.push(index);
-  });
-  if (!candidates.length) return 0;
-  const target = candidates[Math.floor(Math.random() * candidates.length)];
   const dmg = Math.max(1, Math.ceil(swordDamage * SWORD_CLEAVE_FRACTION));
-  mock.cardSystem.attackEnemy(target, dmg, false, weapon, true);
-  return dmg + applyAssassinateSim(mock, gs, target);
+  let dealt = 0;
+  for (const target of swordCleaveTargetIndices(board, primaryIndex)) {
+    mock.cardSystem.attackEnemy(target, dmg, false, weapon, true);
+    dealt += dmg + applyAssassinateSim(mock, gs, target);
+  }
+  return dealt;
+}
+
+function applySpearPierceSim(mock, gs, primaryIndex, spearDamage, weapon, primaryCard = null) {
+  if (weapon?.special !== 'pierce' && weapon?.special !== 'reach') return 0;
+  const board = mock.cardSystem.boardCards || [];
+  const damage = Math.max(1, Math.ceil(spearDamage * SPEAR_PIERCE_FRACTION));
+  let dealt = 0;
+  for (const target of spearPierceTargetIndices(board, primaryIndex, primaryCard)) {
+    const hp = board[target]?.data?.health || 0;
+    mock.cardSystem.attackEnemy(target, damage, false, weapon, true);
+    dealt += Math.min(hp, damage);
+    dealt += applyAssassinateSim(mock, gs, target);
+  }
+  return dealt;
+}
+
+function applyAxeHeavyCleaveSim(mock, gs, primaryIndex, axeDamage, weapon, primaryCard = null) {
+  if (weapon?.special !== 'specialAttack') return 0;
+  const board = mock.cardSystem.boardCards || [];
+  const targets = axeHeavyCleaveTargetIndices(board, primaryIndex, primaryCard);
+  if (targets.upper == null) return 0;
+  let dealt = 0;
+  const hit = (target, fraction) => {
+    const card = board[target];
+    if (!card?.revealed || (card.data?.health ?? 0) <= 0) return;
+    const damage = Math.max(1, Math.ceil(axeDamage * fraction));
+    mock.cardSystem.attackEnemy(target, damage, false, weapon, true, { bypassTargeting: true });
+    dealt += damage + applyAssassinateSim(mock, gs, target);
+  };
+  hit(targets.upper, 0.5);
+  for (const target of targets.sides) hit(target, 0.25);
+  return dealt;
 }
 
 function applyFrontVolleySim(mock, gs, primaryIndex, bowDamage, weapon) {
@@ -2181,22 +2197,44 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs
   const armor = Math.max(0, board[targetIndex]?.data?.armor || 0);
   const directDamage = Math.max(1, baseDamage - armor);
   const affected = new Map([[targetIndex, directDamage]]);
-  if (!weapon?.gemEffect) return affected;
 
   // A cleaving sword lands on a neighbour too — the planner has to see that or
   // it keeps valuing swords as single-target sticks.
-  if (weapon?.special === 'cleave' && stanceCleaves(gs?.characterId, gs?.warriorStance)) {
+  if (gs?.actionsLeft > 0 && weapon?.special === 'cleave') {
     const cleaveDamage = Math.max(1, Math.ceil(baseDamage * SWORD_CLEAVE_FRACTION));
-    for (let i = 0; i < board.length; i++) {
-      if (i === targetIndex) continue;
-      const card = board[i];
-      if (!card?.revealed || !(card.data?.type === 'enemy' || card.data?.type === 'boss')) continue;
-      if (card.data.health <= 0) continue;
-      if (card.data.role !== 'MELEE' && card.data.type !== 'boss') continue;
+    for (const i of swordCleaveTargetIndices(board, targetIndex)) {
       affected.set(i, (affected.get(i) || 0) + cleaveDamage);
-      break;
     }
   }
+
+  if (gs?.actionsLeft > 0 && (weapon?.special === 'pierce' || weapon?.special === 'reach')) {
+    const pierceDamage = Math.max(1, Math.ceil(baseDamage * SPEAR_PIERCE_FRACTION));
+    for (const index of spearPierceTargetIndices(board, targetIndex)) {
+      affected.set(index, (affected.get(index) || 0) + pierceDamage);
+    }
+  }
+
+  if (weapon?.special === 'specialAttack') {
+    const target = board[targetIndex];
+    const hp = target?.data?.health || 0;
+    const maxHp = Math.max(1, target?.data?.maxHealth || hp || 1);
+    if (hp / maxHp > 0.2) {
+      const targets = axeHeavyCleaveTargetIndices(board, targetIndex);
+      if (targets.upper != null) {
+        affected.set(targets.upper, (affected.get(targets.upper) || 0)
+          + Math.max(1, Math.ceil(baseDamage * 0.5)));
+        for (const index of targets.sides) {
+          affected.set(index, (affected.get(index) || 0)
+            + Math.max(1, Math.ceil(baseDamage * 0.25)));
+        }
+      }
+    } else if (target?.data?.type !== 'boss' && (weapon.durability || 0) >= 2) {
+      const armor = Math.max(0, target?.data?.armor || 0);
+      if (Math.max(1, baseDamage - armor) < hp) affected.set(targetIndex, hp);
+    }
+  }
+
+  if (!weapon?.gemEffect) return affected;
 
   if (weapon.gemEffect === 'fire') {
     let splashDamage = gemStackDamage(stack, floor);
@@ -2641,7 +2679,7 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
       const baseDamage = effDmg(weapon);
       const targetHp = board[index]?.data?.health || 0;
       const affected = estimateGemSplash(board, index, weapon, baseDamage, gs.currentFloor, gs);
-      const offhand = findOffhandDagger(weapon, gs, inv);
+      const offhand = wasExhausted ? null : findOffhandDagger(weapon, gs, inv);
       // The real second dagger only swings if the primary weapon (including
       // its gem) did not already remove the selected target.
       if (offhand && (affected.get(index) || 0) < targetHp) {
@@ -3012,12 +3050,27 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
 
       // Keen Edge / First Blood apply to the primary swing only (not off-hand).
       const useFirstBlood = gs?.talentEffects?.firstBloodFlat > 0 && !gs.firstAttackThisFloorUsed;
-      const dmg = simWeaponHitDamage(gs, gs.equippedWeapon, wasExhausted, {
+      let dmg = simWeaponHitDamage(gs, gs.equippedWeapon, wasExhausted, {
         applyFirstBlood: useFirstBlood,
         applyKeenEdge: true,
       });
       if (useFirstBlood) gs.firstAttackThisFloorUsed = true;
       const weaponBeforeAttack = gs.equippedWeapon;
+      const axeTarget = board[attackIdx];
+      const axeTargetHp = axeTarget?.data?.health || 0;
+      const axeTargetMaxHp = Math.max(1, axeTarget?.data?.maxHealth || axeTargetHp || 1);
+      const axeHeavyCleave = weaponBeforeAttack?.special === 'specialAttack'
+        && axeTargetHp / axeTargetMaxHp > 0.2;
+      if (weaponBeforeAttack?.special === 'specialAttack'
+          && !axeHeavyCleave
+          && axeTarget?.data?.type !== 'boss'
+          && (weaponBeforeAttack.durability || 0) >= 2) {
+        const armor = Math.max(0, axeTarget?.data?.armor || 0);
+        if (Math.max(1, dmg - armor) < axeTargetHp) {
+          dmg = axeTargetHp + armor;
+          weaponBeforeAttack.durability--;
+        }
+      }
       if ((weaponBeforeAttack?.durability || 0) === 1) {
         mock._lastPipWeaponAttacks = (mock._lastPipWeaponAttacks || 0) + 1;
         const preservationReason = attackPlan.preservationReason || 'unknown';
@@ -3072,11 +3125,13 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
         continue;
       }
       // Main hit always lands first.
+      const primaryCardBeforeAttack = board[attackIdx];
+      const primaryHealthBeforeAttack = primaryCardBeforeAttack?.data?.health;
       mock.cardSystem.attackEnemy(attackIdx, dmg, false, gs.equippedWeapon || null, false);
       combatDamageDealt += applyAssassinateSim(mock, gs, attackIdx);
       // Dual wield = free OFFHAND dagger swing only. Main-hand damage is
       // baseline weapon damage and must not inflate this specialization bucket.
-      const offhand = findOffhandDagger(weaponBeforeAttack, gs, inv);
+      const offhand = wasExhausted ? null : findOffhandDagger(weaponBeforeAttack, gs, inv);
       if (offhand && board[attackIdx]?.data?.health > 0) {
         const dmg2 = simOffhandDamage(gs, offhand, wasExhausted);
         combatDamageDealt += dmg2;
@@ -3085,9 +3140,20 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
         });
         combatDamageDealt += applyAssassinateSim(mock, gs, attackIdx);
       }
-      // Sword cleave: the swing carries into one other front enemy.
-      if (weaponBeforeAttack) {
+      // Cleave and pierce only trigger when the swing began with AP available.
+      if (weaponBeforeAttack && !wasExhausted) {
         combatDamageDealt += applySwordCleaveSim(mock, gs, attackIdx, dmg, weaponBeforeAttack);
+        if ((primaryCardBeforeAttack?.data?.health ?? primaryHealthBeforeAttack) < primaryHealthBeforeAttack) {
+          combatDamageDealt += applySpearPierceSim(
+            mock, gs, attackIdx, dmg, weaponBeforeAttack, primaryCardBeforeAttack
+          );
+        }
+      }
+      if (weaponBeforeAttack && axeHeavyCleave
+          && (primaryCardBeforeAttack?.data?.health ?? primaryHealthBeforeAttack) < primaryHealthBeforeAttack) {
+        combatDamageDealt += applyAxeHeavyCleaveSim(
+          mock, gs, attackIdx, dmg, weaponBeforeAttack, primaryCardBeforeAttack
+        );
       }
       // Front Volley: bow also clips a random front (MELEE) enemy.
       if (weaponBeforeAttack) {

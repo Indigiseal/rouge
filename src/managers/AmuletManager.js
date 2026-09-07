@@ -12,6 +12,7 @@ import { getEnemyHitAttack } from '../content/combat/enemyAttack.js';
 import { depthScaled } from '../content/balance/DepthScaling.js';
 import { areAmuletsDisabled } from '../config/TestOptions.js';
 import { translateItemName } from '../i18n/i18n.js';
+import { scaleGoldReward } from '../content/economy/gold.js';
 
 export class AmuletManager {
     constructor(scene) {
@@ -468,7 +469,7 @@ export class AmuletManager {
     
     // Modify gold found
     modifyGoldFound(baseAmount) {
-        let amount = baseAmount;
+        let amount = scaleGoldReward(baseAmount);
         this.gameState.activeAmulets.forEach(amulet => {
             const definition = this.amuletDefinitions[amulet.id];
             if (definition && definition.modifyGoldFound) {

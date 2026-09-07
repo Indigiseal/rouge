@@ -15,7 +15,7 @@ export class VillageScene extends Phaser.Scene {
   }
 
   init(data = {}) {
-    this.characterId = data.characterId === 'warrior' ? 'warrior' : 'rogue';
+    this.characterId = 'rogue';
     this.selectedId = null;
     this.plotViews = [];
   }
