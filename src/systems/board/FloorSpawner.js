@@ -1322,16 +1322,35 @@ function ensureEnemyMinimum(floor, roomType) {
 // none, one or several. Runs before assignEliteMiniBoss, which may then promote
 // one of them the rest of the way up — applyEnemyTier recomputes from the
 // untiered stats, so that costs 1.3x total rather than compounding.
+export const GUARANTEED_VETERAN_AMBUSH_IDS = Object.freeze([
+  'goblin_mine_sneak',
+  'goblin_mine_spiders',
+  'royal_procession',
+]);
+
+export function ambushRequiresVeteran(ambushId) {
+  return GUARANTEED_VETERAN_AMBUSH_IDS.includes(ambushId);
+}
+
 function assignVeterans(roomType, floor) {
   if (!this.boardCards?.length) return;
   const chance = veteranChanceFor(floor, roomType);
-  if (chance <= 0) return;
+  const eligible = [];
 
   for (const card of this.boardCards) {
     const data = card?.data;
     if (!data || !this.isEnemyType(data.type) || !canTierEnemy(data)) continue;
+    eligible.push(data);
     if (data.enemyTier && data.enemyTier !== 'normal') continue;
-    if (Math.random() < chance) applyEnemyTier(data, 'veteran');
+    if (chance > 0 && Math.random() < chance) applyEnemyTier(data, 'veteran');
+  }
+
+  if (ambushRequiresVeteran(this.scene.gameState?.ambushId)
+      && eligible.length > 0
+      && !eligible.some((data) => data.enemyTier === 'veteran' || data.enemyTier === 'elite')) {
+    const candidates = eligible.filter((data) => !data.enemyTier || data.enemyTier === 'normal');
+    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+    if (chosen) applyEnemyTier(chosen, 'veteran');
   }
 }
 
@@ -1530,6 +1549,10 @@ function spawnBoss() {
         'boss', this.scene.gameState.currentFloor, false, this.scene.gameState
     );
     bossData.maxHealth = bossData.maxHealth || bossData.health;
+    // Bosses occupy their own farthest row. Their large art spans several
+    // logical columns, but melee still has to clear the creatures in front.
+    bossData.alwaysBackline = true;
+    bossData.brick = { r: 0, c: 0 };
     if (bossData.name === 'Goblin King') {
         const fraction = Number(this.scene.gameState?.storyRun?.goblinKingStartingHealthFraction);
         if (Number.isFinite(fraction) && fraction > 0 && fraction < 1) {
@@ -1540,7 +1563,7 @@ function spawnBoss() {
     // Viewport in world units, not device pixels — see cameraWorldSize.
     const { width: camW, height: camH } = cameraWorldSize(cam);
     const x = camW / 2 - 20; // match the 20px-left board shift
-    const bossOffsetY = bossData.name === 'Spider Queen' ? -100 : 0;
+    const bossOffsetY = bossData.name === 'Spider Queen' ? -90 : -45;
     const y = camH / 2 + bossOffsetY;
     this.createBossBoardPanel();
     const cardSprite = snapOriginToPixelGrid(this.scene.add.image(x, y, bossData.sprite));
@@ -1579,9 +1602,13 @@ function injectTollGuards(bossX, bossY) {
     // They arrive beaten and half-hearted: still a real cost, not a wall.
     const GUARD_ATTACK_AT_BOSS = 5;
     const spriteKey = this.scene.textures.exists('goblin_c') ? 'goblin_c' : 'cardBack';
-    const places = [{ dx: -112, dy: 66 }, { dx: 112, dy: 66 }, { dx: 0, dy: 112 }];
+    const places = [
+        { dx: -112, dy: 102, c: -1 },
+        { dx: 112, dy: 102, c: 1 },
+        { dx: -174, dy: 102, c: -2 },
+    ];
 
-    places.forEach(({ dx, dy }) => {
+    places.forEach(({ dx, dy, c }) => {
         const data = {
             type: 'enemy',
             name: 'Toll Collector',
@@ -1593,6 +1620,7 @@ function injectTollGuards(bossX, bossY) {
             armor: 0,
             tollGuard: true,
             abilities: [{ type: 'coin_steal', chance: 0.5, amount: 1 }],
+            brick: { r: 1, c },
         };
         const sprite = snapOriginToPixelGrid(this.scene.add.sprite(bossX + dx, bossY + dy, spriteKey));
         sprite.setInteractive();
@@ -1682,15 +1710,23 @@ function summonEnemy(enemyType, bossCard) {
     summonedEnemy.attack = Math.max(1, Math.round(summonedEnemy.attack * 0.6));
     summonedEnemy.health = Math.max(1, Math.round(summonedEnemy.health * 0.65));
     summonedEnemy.maxHealth = summonedEnemy.health;
+    summonedEnemy.summonedByBoss = true;
 
     // Add "Summoned" prefix to distinguish from regular enemies
     summonedEnemy.name = 'Summoned ' + summonedEnemy.name;
     
-    // Calculate position and create the card (rest of your existing code)
-    const row = Math.floor(emptySlot / 4);
-    const col = emptySlot % 4;
-    const x = 220 + col * (52 + 8);
-    const y = 145 + row * (70 + 12);
+    // Summons form one readable row below the boss, leaving the centre clear
+    // for the boss HP/ATK strip. Reuse a vacated lane when a summon dies.
+    const lanes = [-1, 1, -2, 2, -3, 3];
+    const usedLanes = new Set(this.boardCards
+        .filter((card) => card?.data?.summonedByBoss)
+        .map((card) => card.data.summonLane));
+    const summonLane = lanes.find((lane) => !usedLanes.has(lane)) ?? lanes[lanes.length - 1];
+    const { height: camH } = cameraWorldSize(this.scene.cameras.main);
+    const x = bossCard.sprite.x + summonLane * 76;
+    const y = Math.min(camH - 125, bossCard.sprite.y + 102);
+    summonedEnemy.summonLane = summonLane;
+    summonedEnemy.brick = { r: 1, c: summonLane };
     
     // Create card sprite with animation
     const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);

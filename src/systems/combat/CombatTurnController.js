@@ -744,10 +744,12 @@ export class CombatTurnController {
             // including a boss's summons — nothing behind it can be reached.
             // Once the frontline is gone, everything is fair game, bosses and
             // archers alike.
+            const bossHasFrontline = candidates.some(({ card }) => !card.data?.alwaysBackline);
             const blocked = scene.cardSystem?._anyMeleeAlive?.({ includeHidden: true });
-            const reachable = blocked
-                ? candidates.filter(({ card }) => card.data?.role === 'MELEE')
-                : candidates;
+            const reachable = candidates.filter(({ card }) => {
+                if (bossHasFrontline && card.data?.alwaysBackline) return false;
+                return !blocked || card.data?.role === 'MELEE';
+            });
             if (reachable.length === 0) return null;
             return reachable[Math.floor(Math.random() * reachable.length)];
         }

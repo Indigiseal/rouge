@@ -580,12 +580,19 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
 
         // Check if there are any melee enemies alive (revealed or hidden)
         const meleeBlockers = this._anyMeleeAlive({ includeHidden: true });
+        const bossFrontline = card.data.alwaysBackline && this.boardCards.some((other) => (
+            other !== card
+            && other
+            && this.isEnemyType(other.data?.type)
+            && (other.data?.health ?? 0) > 0
+        ));
 
         // Bows bypass the frontline gate because range is their whole point;
         // the spear bypasses it while staying melee, as part of its piercing
         // identity. Printed damage is applied as-is (no ranged multiplier);
         // see docs/OPEN-QUESTIONS.md for weakened/display.
-        if (!weaponIgnoresFrontline(weapon) && meleeBlockers && card.data.role !== 'MELEE') {
+        if (!weaponIgnoresFrontline(weapon)
+            && (bossFrontline || (meleeBlockers && card.data.role !== 'MELEE'))) {
             SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
             this.scene.createFloatingText(
                 this.scene.playerAvatar.x,

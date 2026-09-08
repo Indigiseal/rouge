@@ -162,7 +162,15 @@ export class CardSystem {
         // response; player-initiated flips still wake enemies (with justRevealed grace).
         if (!freeAction) {
             if (this.scene.isEnemyTurn) return;
-            this.scene.amuletManager?.processPlayerTurn?.();
+            const hiddenEnemyExists = this.boardCards.some((other) => (
+                other && !other.revealed && this.isEnemyType(other.data?.type)
+                && (other.data?.health ?? 1) > 0 && !other.data?.isMimic
+            ));
+            this.scene.amuletManager?.processPlayerTurn?.({
+                kind: 'cardReveal',
+                revealedEnemy: this.isEnemyType(card.data.type),
+                hiddenEnemyExists,
+            });
             this.scene.scheduleEnemyTurn?.();
         }
         

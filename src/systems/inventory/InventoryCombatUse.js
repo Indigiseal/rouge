@@ -12,6 +12,7 @@ import {
     spearPierceTargetIndices,
     swordCleaveTargetIndices,
     axeHeavyCleaveTargetIndices,
+    weaponIgnoresFrontline,
 } from '../../content/cards/weapons.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { playSmokeBurst } from '../../ui/SmokeBurst.js';
@@ -407,6 +408,25 @@ export const InventoryCombatUse = {
                 board[closestEnemy]?.sprite?.y ?? cardSprite.y,
                 'Must target Taunt!',
                 0x88aaff
+            );
+            this.returnWeaponToSlot(slotIndex, cardSprite);
+            return;
+        }
+
+        const chosenTarget = board[closestEnemy];
+        const bossHasFrontline = chosenTarget?.data?.alwaysBackline && board.some((card) => (
+            card !== chosenTarget
+            && card
+            && this.isEnemyBoardCard(card)
+            && (card.data?.health ?? 0) > 0
+        ));
+        if (bossHasFrontline && !weaponIgnoresFrontline(weapon)) {
+            SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
+            this.scene.createFloatingText(
+                chosenTarget.sprite?.x ?? cardSprite.x,
+                chosenTarget.sprite?.y ?? cardSprite.y,
+                'Blocked by frontline!',
+                0xff6666,
             );
             this.returnWeaponToSlot(slotIndex, cardSprite);
             return;

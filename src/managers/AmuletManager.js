@@ -230,10 +230,16 @@ export class AmuletManager {
         }
     }
 
-    processPlayerTurn() {
+    processPlayerTurn(context = null) {
         // Once the room is won, collecting/revealing the remaining rewards is
         // cleanup rather than combat and must not recharge active abilities.
         if (this.scene.enemiesCleared) return;
+        // Do not let cooldown movement leak that a harmless-looking face-down
+        // board still contains an enemy. Ordinary flips stay neutral until the
+        // hidden enemy itself is revealed or the player takes a combat action.
+        if (context?.kind === 'cardReveal'
+            && !context.revealedEnemy
+            && context.hiddenEnemyExists) return;
         let changed = false;
         for (const amulet of this.gameState.activeAmulets) {
             if ((amulet.cooldownLeft || 0) <= 0) continue;

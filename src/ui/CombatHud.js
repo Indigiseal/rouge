@@ -1274,11 +1274,14 @@ export const CombatHud = {
         }
 
         entries.forEach((entry, i) => {
-            const y = 312 + i * 15;
-            const text = this.add.text(10, y, entry.text, {
-                fontSize: '12px',
+            // Statuses belong to the equipped hero kit, not to the discard
+            // control. Place them in the open lane immediately right of armor.
+            const y = 132 + i * 14;
+            const text = this.add.text(80, y, entry.text, {
+                fontSize: '10px',
                 fill: entry.color,
-                fontFamily: '"HoMM Pixel"'
+                fontFamily: '"HoMM Pixel"',
+                wordWrap: { width: 105 },
             });
             this.playerEffectsUIGroup.add(text);
         });
