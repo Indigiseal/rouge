@@ -22,7 +22,6 @@ export const ASSET_MANIFEST = [
     // Frame order: defeat info, defeat detail, victory info, victory detail.
     { key: 'resultPanels', path: 'assets/art/defeatWin9x9panels.png', type: 'spritesheet', frameWidth: 96, frameHeight: 96 },
     { key: 'resultBanners', path: 'assets/art/bannerLostWin.png', type: 'spritesheet', frameWidth: 160, frameHeight: 32 },
-    { key: 'eventPaper', path: 'assets/art/paper.png', type: 'image' },
     { key: 'eventPaper9Slice', path: 'assets/art/paper9Slice.png', type: 'image' },
     // Hover-tooltip frame. 48x48 with a 5px border on three sides and a taller
     // 7px decorative bottom edge — see TOOLTIP_PANEL_SLICE in ui/NineSlicePanel.js.

@@ -161,7 +161,7 @@ export const CombatHud = {
     },
 
     createDebugVictoryButton(TOP_HUD_DEPTH) {
-        this.debugVictoryButton = this.add.rectangle(455, 38, 58, 18, 0x713737, 0.9)
+        this.debugVictoryButton = this.add.rectangle(288, 20, 58, 18, 0x713737, 0.9)
             .setStrokeStyle(1, 0xd89772)
             .setDepth(TOP_HUD_DEPTH)
             .on('pointerover', () => this.debugVictoryButton.setFillStyle(0x934646, 1))
@@ -170,7 +170,7 @@ export const CombatHud = {
                 SoundHelper.playVariant(this, 'button_click', 0.5);
                 this.debugDefeatAllEnemies?.();
             });
-        this.debugVictoryButtonText = this.add.text(455, 38, t(this, 'ui.hud.debugWin'), {
+        this.debugVictoryButtonText = this.add.text(288, 20, t(this, 'ui.hud.debugWin'), {
             fontSize: '9px',
             fill: '#f5e6c8',
             fontFamily: '"HoMM Pixel"'
@@ -178,14 +178,14 @@ export const CombatHud = {
     },
 
     createDebugItemButton(TOP_HUD_DEPTH) {
-        const button = this.add.rectangle(520, 38, 62, 18, 0x374f71, 0.9)
+        const button = this.add.rectangle(352, 20, 62, 18, 0x374f71, 0.9)
             .setStrokeStyle(1, 0x72a7d8)
             .setDepth(TOP_HUD_DEPTH)
             .setInteractive({ useHandCursor: true })
             .on('pointerover', () => button.setFillStyle(0x466d93, 1))
             .on('pointerout', () => button.setFillStyle(0x374f71, 0.9))
             .on('pointerdown', () => this.openDebugItemGrant());
-        const label = this.add.text(520, 38, 'ITEM', {
+        const label = this.add.text(352, 20, 'ITEM', {
             fontSize: '9px', fill: '#f5e6c8', fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
         this.debugItemButton = button;
@@ -391,7 +391,7 @@ export const CombatHud = {
         // showNextFloorButton, which swaps this to the open-door frame and
         // sounds it. Built on the plate so every other room keeps its Next
         // button unchanged.
-        this.nextFloorButton = snapOriginToPixelGrid(this.add.image(595, 50, 'nextTurnUp'))
+        this.nextFloorButton = snapOriginToPixelGrid(this.add.image(560, 50, 'nextTurnUp'))
             .setDepth(5000)
             .setInteractive({ useHandCursor: true })
             .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); this.nextFloorButton.setTint(0xd4eaf7); })
@@ -412,7 +412,7 @@ export const CombatHud = {
                 this.nextFloorButton.y = 50;
                 if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
             });
-        this.nextFloorButtonText = this.add.text(595, 50, t(this, 'ui.hud.next'), {
+        this.nextFloorButtonText = this.add.text(560, 50, t(this, 'ui.hud.next'), {
             fontSize: '12px',
             fill: '#e5bca4',
             fontFamily: '"HoMM Pixel"'
@@ -872,7 +872,13 @@ export const CombatHud = {
             this.amuletTooltip = null;
         }
 
-        const amulets = this.gameState.activeAmulets;
+        const allAmulets = this.gameState.activeAmulets;
+        const activeAmulets = allAmulets.filter((amulet) => (
+            this.amuletManager?.amuletDefinitions?.[amulet.id]?.activeAbility
+        ));
+        const amulets = allAmulets.filter((amulet) => (
+            !this.amuletManager?.amuletDefinitions?.[amulet.id]?.activeAbility
+        ));
         const MAX_VISIBLE = 10;
         // Atlas icons are 32px frames with transparent padding around the art.
         // A 29px step overlaps frames by 3px without crowding the visible item.
@@ -882,7 +888,64 @@ export const CombatHud = {
         // left of the original 34) still leaves room for the left scroll arrow
         // at x 12 once the bag holds more than 10.
         const ROW_X = 28;
-        const ROW_Y = 13;
+        const ROW_Y = 20;
+
+        // Active abilities use a one-item carousel: the arrows switch the live
+        // button itself, so the dock never grows into the player HUD.
+        if (activeAmulets.length > 0) {
+            const ACTIVE_X = 103;
+            const ACTIVE_Y = 53;
+            this.activeAmuletIndex = Phaser.Math.Clamp(
+                this.activeAmuletIndex || 0, 0, activeAmulets.length - 1,
+            );
+            const amulet = activeAmulets[this.activeAmuletIndex];
+            if (activeAmulets.length > 1) {
+                const turn = (delta) => {
+                    this.activeAmuletIndex = (
+                        this.activeAmuletIndex + delta + activeAmulets.length
+                    ) % activeAmulets.length;
+                    this.updateAmuletsUI();
+                };
+                // One glyph, mirrored for the left side: both arrows now have
+                // exactly the same silhouette and hit size in the pixel font.
+                const left = this.add.text(ACTIVE_X - 25, ACTIVE_Y, '►', {
+                    fontSize: '12px', fill: '#ffd700', fontFamily: '"HoMM Pixel"',
+                }).setOrigin(0.5).setDepth(22).setInteractive({ useHandCursor: true });
+                const right = this.add.text(ACTIVE_X + 25, ACTIVE_Y, '►', {
+                    fontSize: '12px', fill: '#ffd700', fontFamily: '"HoMM Pixel"',
+                }).setOrigin(0.5).setDepth(22).setInteractive({ useHandCursor: true });
+                left.setRotation(Math.PI);
+                left.on('pointerdown', () => turn(-1));
+                right.on('pointerdown', () => turn(1));
+                this.amuletUIGroup.add(left);
+                this.amuletUIGroup.add(right);
+                const page = this.add.text(ACTIVE_X + 47, ACTIVE_Y, `${this.activeAmuletIndex + 1}/${activeAmulets.length}`, {
+                    fontSize: '7px', fill: '#9f9484', fontFamily: '"HoMM Pixel"',
+                }).setOrigin(0.5).setDepth(22);
+                this.amuletUIGroup.add(page);
+            }
+
+            const def = this.amuletManager.amuletDefinitions[amulet.id];
+            const sprite = this.add.image(
+                ACTIVE_X, ACTIVE_Y, def?.sprite ?? amulet.sprite ?? 'relicsOthers',
+                def?.spriteFrame ?? amulet.spriteFrame ?? 0,
+            ).setDepth(22).setInteractive({ useHandCursor: true });
+            sprite.on('pointerdown', () => this.amuletManager.activateAmulet(amulet.id));
+            sprite.on('pointerover', () => this.showAmuletTooltip(amulet, ACTIVE_X + 20, ACTIVE_Y));
+            sprite.on('pointerout', () => {
+                this.amuletTooltip?.destroy();
+                this.amuletTooltip = null;
+            });
+            this.amuletUIGroup.add(sprite);
+
+            const cooldown = Math.max(0, Math.floor(amulet.cooldownLeft || 0));
+            const plate = this.add.circle(ACTIVE_X + 9, ACTIVE_Y + 9, 8, cooldown > 0 ? 0x221a18 : 0x27452e, 0.94).setDepth(23);
+            const badge = this.add.text(ACTIVE_X + 9, ACTIVE_Y + 9, cooldown > 0 ? String(cooldown) : '✓', {
+                fontSize: '8px', fill: cooldown > 0 ? '#ffcc88' : '#9cffad', fontFamily: '"HoMM Pixel"',
+            }).setOrigin(0.5).setDepth(24);
+            this.amuletUIGroup.add(plate);
+            this.amuletUIGroup.add(badge);
+        }
 
         // Keep the offset in bounds (e.g. if amulets were removed since last scroll)
         const maxOffset = Math.max(0, amulets.length - MAX_VISIBLE);
@@ -1365,12 +1428,11 @@ export const CombatHud = {
 
         const width = Math.ceil(tooltipText.width) + TOOLTIP_PAD.x * 2;
         const height = Math.ceil(tooltipText.height) + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom;
-        // The strip anchors this box at the amulet's centre line, so the panel
-        // hangs half above it rather than starting there.
-        const tooltipBg = createTooltipPanel(this, width, height).setPosition(0, -Math.round(height / 2));
-        tooltipText.setPosition(TOOLTIP_PAD.x, -Math.round(height / 2) + TOOLTIP_PAD.top);
-
-        this.amuletTooltip = this.add.container(x, y, [tooltipBg, tooltipText]);
+        const tooltipBg = createTooltipPanel(this, width, height).setPosition(0, 0);
+        tooltipText.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top);
+        const tooltipX = Phaser.Math.Clamp(x, 4, Math.max(4, 636 - width));
+        const tooltipY = Phaser.Math.Clamp(y + 18, 36, Math.max(36, 356 - height));
+        this.amuletTooltip = this.add.container(tooltipX, tooltipY, [tooltipBg, tooltipText]);
         this.amuletTooltip.setDepth(100);
     },
 };

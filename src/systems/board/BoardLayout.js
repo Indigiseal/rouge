@@ -280,7 +280,8 @@ function createSideExtraPanel(side = 'right', { animate = true, delayMs = 200 } 
   const sideW = tex.width || 200;
   const endX  = main.x + dir * (main.displayWidth * 0.45 - sideW * 0.1);
 
-  const panel = this.scene.add.image(startX, main.y, 'gamingBoardSideExtra');
+  const restY = main.getData('restY') ?? main.y;
+  const panel = this.scene.add.image(startX, restY, 'gamingBoardSideExtra');
   panel.setOrigin(0.5);
   panel.setDepth(main.depth - 1); // sit BEHIND the main board
   if (side === 'left') panel.setFlipX(true);
@@ -367,7 +368,19 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
 
   const panel = this.scene.add.image(x, animate ? y + BOARD_ENTRANCE_DROP : y, textureKey);
   panel.setDepth(0);
+  panel.setData('restY', y);
   this.floorBoardPanel = panel;
+
+  // Preserve native card scale. If an unusual formation reaches outside the
+  // main board art, extend the backdrop under it instead of shrinking cards.
+  const halfCardW = (this.constructor.CARD_ART?.width || 53) / 2;
+  const halfPanelW = (panel.displayWidth || panel.width || 366) / 2;
+  if (minX - halfCardW < x - halfPanelW + 8) {
+    this.createSideExtraPanel('left', { animate, delayMs: 120 });
+  }
+  if (maxX + halfCardW > x + halfPanelW - 8) {
+    this.createSideExtraPanel('right', { animate, delayMs: 120 });
+  }
 
   if (animate) animateBoardEntrance.call(this, panel, y);
 }

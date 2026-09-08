@@ -7,7 +7,7 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { LOCATION_DOORS_KEY, locationDoorFrame, locationOpenDoorFrame } from '../content/assets/locationCards.js';
 // Where the way out stands: the Next plate, the open door, and the shut door
 // that waits there during the fight all share this spot.
-const NEXT_EXIT_X = 595;
+const NEXT_EXIT_X = 560;
 const NEXT_EXIT_Y = 50;
 import { getLocationIdForFloor } from '../content/locations/index.js';
 import { devToolsEnabled } from '../config/DevTools.js';
@@ -517,8 +517,8 @@ export class GameScene extends Phaser.Scene {
             this.nextFloorButton.setVisible(false);
             this.nextFloorButtonText?.setVisible(false);
             this.nextFloorButton.setInteractive();
-            this.nextFloorButton.y = 50;
-            if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
+            this.nextFloorButton.y = NEXT_EXIT_Y;
+            if (this.nextFloorButtonText) this.nextFloorButtonText.y = NEXT_EXIT_Y;
             this.nextFloorButton.clearTint();
             this._doorOpenSounded = false;
             // The road is visible from the first turn, shut. It opens when the
@@ -584,6 +584,9 @@ export class GameScene extends Phaser.Scene {
         if (this.nextFloorButton) {
             this.nextFloorButton
                 .setVisible(true)
+                .setActive(true)
+                .setAlpha(1)
+                .setScale(1)
                 .setDepth(5000)
                 .setInteractive({ useHandCursor: true })
                 .clearTint();
@@ -628,7 +631,13 @@ export class GameScene extends Phaser.Scene {
                 .image(NEXT_EXIT_X, NEXT_EXIT_Y, LOCATION_DOORS_KEY, frame)
                 .setDepth(4999);
         }
-        this.closedDoorMarker.setTexture(LOCATION_DOORS_KEY, frame).setVisible(true);
+        this.closedDoorMarker
+            .setTexture(LOCATION_DOORS_KEY, frame)
+            .setVisible(true)
+            .setActive(true)
+            .setAlpha(1)
+            .setScale(1)
+            .setDepth(4999);
     }
 
     /** The shut door comes down whenever the way out is real. */
@@ -645,7 +654,13 @@ export class GameScene extends Phaser.Scene {
         if (frame === null) return;
 
         this.hideClosedDoorExit();
-        button.setTexture(LOCATION_DOORS_KEY, frame);
+        button
+            .setTexture(LOCATION_DOORS_KEY, frame)
+            .setVisible(true)
+            .setActive(true)
+            .setAlpha(1)
+            .setScale(1)
+            .setDepth(5000);
         // The plate's label would sit across the doorway.
         this.nextFloorButtonText?.setVisible(false);
         if (!this._doorOpenSounded) {
@@ -1020,13 +1035,11 @@ export class GameScene extends Phaser.Scene {
         const nearby = this.floatingTextSlots.filter(slot =>
             Math.abs(slot.x - x) < 72 && Math.abs(slot.y - y) < 48
         ).length;
-        const lane = nearby % 6;
-        const row = Math.floor(nearby / 6);
         const slot = {
             x,
             y,
-            xOffset: ((lane % 3) - 1) * 10,
-            yOffset: -lane * 15 - row * 10,
+            xOffset: 0,
+            yOffset: -nearby * 16,
             expiresAt: now + 1700,
             active: true
         };
