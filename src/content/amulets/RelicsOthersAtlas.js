@@ -171,6 +171,9 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     forcedMarch: 'horn',
     vacancyStep: 'grapplingHook',
     generalsTable: 'spectacles',
+    provisionersBell: 'breadLoaf',
+    shiftingMedallion: 'runeOfBalance',
+    keepersWard: 'shieldPotion',
 });
 
 export const RELIC_ATLAS_KEYS = Object.freeze({

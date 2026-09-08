@@ -112,6 +112,28 @@ export function getWeaponStats(weaponType, rarity) {
   return WEAPONS[weaponType]?.[rarity] || null;
 }
 
+function inferWeaponType(weapon) {
+  if (WEAPONS[weapon?.weaponType]) return weapon.weaponType;
+  const identity = `${weapon?.name || ''} ${weapon?.sprite || ''} ${weapon?.id || ''}`.toLowerCase();
+  return Object.keys(WEAPONS).find(type => identity.includes(type)) || '';
+}
+
+/** Restore intrinsic weapon identity on cards persisted before abilities changed. */
+export function normalizeWeaponIdentity(weapon) {
+  if (weapon?.type !== 'weapon') return weapon;
+  const weaponType = inferWeaponType(weapon);
+  const stats = getWeaponStats(weaponType, weapon.rarity);
+  if (!stats) return weapon;
+
+  const normalized = { ...weapon, weaponType };
+  // Damage, durability, gems and enchants are run state and must survive. These
+  // fields describe the weapon type itself and therefore follow the catalogue.
+  normalized.special = stats.special ?? null;
+  if (stats.range !== undefined) normalized.range = stats.range;
+  else delete normalized.range;
+  return normalized;
+}
+
 /**
  * Per-class overrides of the shared schedule above.
  *
@@ -157,7 +179,23 @@ export function spearPierceTargetIndices(board, primaryIndex, primaryCard = null
   const primary = board?.[primaryIndex] || primaryCard;
   const column = primary?.data?.brick?.c;
   const row = primary?.data?.brick?.r;
-  if (!Number.isFinite(column) || !Number.isFinite(row)) return [];
+  if (!Number.isFinite(column) || !Number.isFinite(row)) {
+    const px = primary?.restX ?? primary?.sprite?.x;
+    const py = primary?.restY ?? primary?.sprite?.y;
+    if (!Number.isFinite(px) || !Number.isFinite(py)) return [];
+    return board
+      .map((card, index) => ({ card, index }))
+      .filter(({ card, index }) => {
+        const x = card?.restX ?? card?.sprite?.x;
+        const y = card?.restY ?? card?.sprite?.y;
+        return index !== primaryIndex && card?.revealed
+          && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+          && (card.data?.health ?? 0) > 0 && Number.isFinite(x) && Number.isFinite(y)
+          && y < py && Math.abs(x - px) <= 35;
+      })
+      .sort((a, b) => (b.card.restY ?? b.card.sprite?.y) - (a.card.restY ?? a.card.sprite?.y))
+      .map(({ index }) => index);
+  }
 
   return board
     .map((card, index) => ({ card, index }))
@@ -179,7 +217,9 @@ export function swordCleaveTargetIndices(board, primaryIndex, primaryCard = null
   const primary = board?.[primaryIndex] || primaryCard;
   const column = primary?.data?.brick?.c;
   const row = primary?.data?.brick?.r;
-  if (!Number.isFinite(column) || !Number.isFinite(row)) return [];
+  if (!Number.isFinite(column) || !Number.isFinite(row)) {
+    return spatialCrossTargets(board, primaryIndex, primary, { horizontalOnly: true }).sides;
+  }
 
   return board
     .map((card, index) => ({ card, index }))
@@ -195,15 +235,14 @@ export function swordCleaveTargetIndices(board, primaryIndex, primaryCard = null
     .map(({ index }) => index);
 }
 
-/**
- * Heavy Cleave geometry: nearest revealed enemy above the target in the same
- * column, followed by revealed enemies immediately left/right of that enemy.
- */
+/** Heavy Cleave geometry: a cross centred on the selected target. */
 export function axeHeavyCleaveTargetIndices(board, primaryIndex, primaryCard = null) {
   const primary = board?.[primaryIndex] || primaryCard;
   const column = primary?.data?.brick?.c;
   const row = primary?.data?.brick?.r;
-  if (!Number.isFinite(column) || !Number.isFinite(row)) return { upper: null, sides: [] };
+  if (!Number.isFinite(column) || !Number.isFinite(row)) {
+    return spatialCrossTargets(board, primaryIndex, primary);
+  }
 
   const enemies = board
     .map((card, index) => ({ card, index }))
@@ -213,20 +252,40 @@ export function axeHeavyCleaveTargetIndices(board, primaryIndex, primaryCard = n
       && (card.data?.type === 'enemy' || card.data?.type === 'boss')
       && (card.data?.health ?? 0) > 0
     ));
-  const upperEntry = enemies
-    .filter(({ card }) => card.data?.brick?.c === column && card.data?.brick?.r < row)
-    .sort((a, b) => b.card.data.brick.r - a.card.data.brick.r)[0];
-  if (!upperEntry) return { upper: null, sides: [] };
-
-  const upperRow = upperEntry.card.data.brick.r;
+  const vertical = enemies
+    .filter(({ card }) => (
+      card.data?.brick?.c === column
+      && Math.abs(card.data?.brick?.r - row) === 1
+    ))
+    .sort((a, b) => a.card.data.brick.r - b.card.data.brick.r)
+    .map(({ index }) => index);
   const sides = enemies
     .filter(({ card }) => (
-      card.data?.brick?.r === upperRow
+      card.data?.brick?.r === row
       && Math.abs(card.data?.brick?.c - column) === 1
     ))
     .sort((a, b) => a.card.data.brick.c - b.card.data.brick.c)
     .map(({ index }) => index);
-  return { upper: upperEntry.index, sides };
+  return { vertical, sides };
+}
+
+function spatialCrossTargets(board, primaryIndex, primary, { horizontalOnly = false } = {}) {
+  const px = primary?.restX ?? primary?.sprite?.x;
+  const py = primary?.restY ?? primary?.sprite?.y;
+  if (!Number.isFinite(px) || !Number.isFinite(py)) return { vertical: [], sides: [] };
+  const enemies = board
+    .map((card, index) => ({ card, index, x: card?.restX ?? card?.sprite?.x, y: card?.restY ?? card?.sprite?.y }))
+    .filter(({ card, index, x, y }) => index !== primaryIndex && card?.revealed
+      && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+      && (card.data?.health ?? 0) > 0 && Number.isFinite(x) && Number.isFinite(y));
+  const nearest = (items, distance) => items.sort((a, b) => distance(a) - distance(b))[0]?.index;
+  const left = nearest(enemies.filter(e => Math.abs(e.y - py) <= 20 && e.x < px), e => px - e.x);
+  const right = nearest(enemies.filter(e => Math.abs(e.y - py) <= 20 && e.x > px), e => e.x - px);
+  const sides = [left, right].filter(Number.isInteger);
+  if (horizontalOnly) return { vertical: [], sides };
+  const upper = nearest(enemies.filter(e => Math.abs(e.x - px) <= 35 && e.y < py), e => py - e.y);
+  const lower = nearest(enemies.filter(e => Math.abs(e.x - px) <= 35 && e.y > py), e => e.y - py);
+  return { vertical: [upper, lower].filter(Number.isInteger), sides };
 }
 
 export function weaponSpawnMinFloor(weaponType, rarity, characterId = null) {

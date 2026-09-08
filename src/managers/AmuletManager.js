@@ -157,7 +157,8 @@ export class AmuletManager {
             sprite: definition.sprite,
             spriteFrame: definition.spriteFrame ?? 0,
             level: 1,
-            usesLeft: definition.usesPerRun || 0
+            usesLeft: definition.usesPerRun || 0,
+            cooldownLeft: 0,
         };
         
         // Initialize special tracking properties for specific amulets
@@ -196,6 +197,7 @@ export class AmuletManager {
 
     // Process start-of-floor effects (regen rings, Philosopher's Stone, …)
     processFloorStart() {
+        this.cancelActiveAbility();
         let healTotal = 0;
         this.gameState.activeAmulets.forEach((amulet) => {
             const definition = this.amuletDefinitions[amulet.id];
@@ -226,6 +228,116 @@ export class AmuletManager {
                 0x00ff00
             );
         }
+    }
+
+    processPlayerTurn() {
+        // Once the room is won, collecting/revealing the remaining rewards is
+        // cleanup rather than combat and must not recharge active abilities.
+        if (this.scene.enemiesCleared) return;
+        let changed = false;
+        for (const amulet of this.gameState.activeAmulets) {
+            if ((amulet.cooldownLeft || 0) <= 0) continue;
+            amulet.cooldownLeft = Math.max(0, amulet.cooldownLeft - 1);
+            changed = true;
+        }
+        if (changed) this.scene.updateUI?.();
+    }
+
+    activateAmulet(amuletId) {
+        const amulet = this.getAmuletData(amuletId);
+        const definition = this.amuletDefinitions[amuletId];
+        if (!amulet || !definition?.activeAbility) return false;
+        if ((amulet.cooldownLeft || 0) > 0) {
+            this.scene.createFloatingText(320, 42, `Cooldown: ${amulet.cooldownLeft}`, 0xffaa66);
+            return false;
+        }
+
+        if (definition.activeAbility === 'revealFood') {
+            const board = this.scene.cardSystem?.boardCards || [];
+            const targets = board
+                .map((card, index) => ({ card, index }))
+                .filter(({ card }) => card && !card.revealed && card.data?.type === 'food');
+            if (targets.length === 0) {
+                this.scene.createFloatingText(320, 42, 'No hidden food', 0xcccccc);
+                return false;
+            }
+            for (const { index } of targets) this.scene.cardSystem.revealCard(index, true);
+            this.startCooldown(amulet, definition);
+            this.scene.createFloatingText(320, 42, `Food revealed: ${targets.length}`, 0x66ff99);
+            return true;
+        }
+
+        if (definition.activeAbility === 'swapCards') {
+            const available = (this.scene.cardSystem?.boardCards || []).filter(Boolean);
+            if (available.length < 2) {
+                this.scene.createFloatingText(320, 42, 'Not enough cards', 0xcccccc);
+                return false;
+            }
+            if (this.activeAbility?.amuletId === amuletId) {
+                this.cancelActiveAbility();
+                this.scene.createFloatingText(320, 42, 'Swap cancelled', 0xcccccc);
+                return false;
+            }
+            this.cancelActiveAbility();
+            this.activeAbility = { amuletId, firstIndex: null };
+            this.scene.createFloatingText(320, 42, 'Choose the first card', 0x66ccff);
+            return true;
+        }
+        return false;
+    }
+
+    handleActiveBoardCardSelection(index) {
+        const active = this.activeAbility;
+        if (!active) return false;
+        const board = this.scene.cardSystem?.boardCards || [];
+        const card = board[index];
+        if (!card) return true;
+
+        if (active.firstIndex == null) {
+            active.firstIndex = index;
+            this.drawSwapSelection(card);
+            this.scene.createFloatingText(card.sprite?.x || 320, (card.sprite?.y || 80) - 30, 'First', 0x66ccff);
+            return true;
+        }
+        if (active.firstIndex === index) {
+            this.scene.createFloatingText(card.sprite?.x || 320, (card.sprite?.y || 80) - 30, 'Choose another card', 0xffaa66);
+            return true;
+        }
+
+        const first = board[active.firstIndex];
+        const amulet = this.getAmuletData(active.amuletId);
+        const definition = this.amuletDefinitions[active.amuletId];
+        const swapped = this.scene.cardSystem?.swapCardSeats?.(first, card, { animate: true });
+        if (swapped) {
+            this.startCooldown(amulet, definition);
+            this.scene.createFloatingText(320, 42, 'Cards swapped', 0x66ff99);
+        }
+        this.cancelActiveAbility();
+        return true;
+    }
+
+    startCooldown(amulet, definition) {
+        if (!amulet || !definition) return;
+        amulet.cooldownLeft = Math.max(0, Math.floor(definition.cooldownTurns || 0));
+        this.scene.updateUI?.();
+        this.scene.saveCurrentRun?.();
+    }
+
+    drawSwapSelection(card) {
+        this.swapSelectionMarker?.destroy?.();
+        const sprite = card?.sprite;
+        if (!sprite?.scene) return;
+        const width = (sprite.displayWidth || sprite.width || 53) + 8;
+        const height = (sprite.displayHeight || sprite.height || 70) + 8;
+        this.swapSelectionMarker = this.scene.add.graphics().setDepth(30);
+        this.swapSelectionMarker.lineStyle(2, 0x66ccff, 1);
+        this.swapSelectionMarker.strokeRoundedRect(sprite.x - width / 2, sprite.y - height / 2, width, height, 4);
+    }
+
+    cancelActiveAbility() {
+        this.activeAbility = null;
+        this.swapSelectionMarker?.destroy?.();
+        this.swapSelectionMarker = null;
     }
 
     // Process end of floor effects
@@ -632,8 +744,12 @@ export class AmuletManager {
                 if (board[index]) skip.push(board[index]);
             }
         }
-        const target = pickScoutTarget(board, skip);
+        // Prefer an enemy that was going to stay hidden anyway. If every enemy
+        // was selected for the opening cascade, reserve one of those instead.
+        const target = pickScoutTarget(board, skip) || pickScoutTarget(board);
         if (!target?.data) return;
+        const targetIndex = board.indexOf(target);
+        if (pending instanceof Set && targetIndex >= 0) pending.delete(targetIndex);
         target.data.strategyScout = true;
         cardSystem.syncControlMarkers?.(target);
     }

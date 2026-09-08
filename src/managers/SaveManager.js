@@ -7,6 +7,7 @@ import { normalizeMonthIndex } from '../content/months/index.js';
 import { normalizeActLocationIds } from '../content/locations/index.js';
 import { emptyVillageBuildings, normalizeVillageBuildings } from '../content/village/index.js';
 import { migrateSharedXp } from './MetaProgressionManager.js';
+import { normalizeWeaponIdentity } from '../content/cards/weapons.js';
 
 export class SaveManager {
   constructor() {
@@ -381,9 +382,19 @@ export class SaveManager {
     }
 
     if (Array.isArray(run.effects?.activeAmulets)) {
-      run.effects.activeAmulets = run.effects.activeAmulets.map(amulet =>
-        applyAmuletAtlasPresentation(amulet)
-      );
+      const retiredDurabilityAmulets = new Set([
+        'temperedSteel',
+        'earringOfArmorDurability', 'earringOfWeaponDurability',
+        'earringOfGreaterArmorDurability', 'earringOfGreaterWeaponDurability',
+        'legendaryWhetstone',
+      ]);
+      const seen = new Set();
+      run.effects.activeAmulets = run.effects.activeAmulets
+        .map(amulet => retiredDurabilityAmulets.has(amulet?.id)
+          ? { ...amulet, id: 'keepersWard', level: 1 }
+          : amulet)
+        .filter(amulet => amulet?.id && !seen.has(amulet.id) && seen.add(amulet.id))
+        .map(amulet => applyAmuletAtlasPresentation(amulet));
     }
 
     // Bow blocking was removed in 1.0.4. Clear a block already armed in an
@@ -425,10 +436,12 @@ export class SaveManager {
       run.equipment.inventory = run.equipment.inventory.map(item =>
         item?.type === 'amulet'
           ? applyAmuletAtlasPresentation(item)
-          : this.removeLegacyBowBlock(item)
+          : normalizeWeaponIdentity(this.removeLegacyBowBlock(item))
       );
     }
-    run.equipment.equippedWeapon = this.removeLegacyBowBlock(run.equipment?.equippedWeapon);
+    run.equipment.equippedWeapon = normalizeWeaponIdentity(
+      this.removeLegacyBowBlock(run.equipment?.equippedWeapon)
+    );
 
     run.board = run.board && typeof run.board === 'object'
       ? run.board
@@ -448,7 +461,7 @@ export class SaveManager {
         if (!c) return null;
         const data = c.data?.type === 'amulet'
           ? applyAmuletAtlasPresentation(c.data)
-          : this.removeLegacyBowBlock(c.data ?? null);
+          : normalizeWeaponIdentity(this.removeLegacyBowBlock(c.data ?? null));
         return {
           revealed: !!c.revealed,
           justRevealed: !!c.justRevealed,

@@ -54,18 +54,28 @@ function playBossEntrance(cardSprite, bossData) {
     const targetY = cardSprite.y;
     cardSprite.y = targetY - 70;
     cardSprite.setAlpha(0);
+    const syncBossStats = () => {
+        const info = cardSprite.getData?.('infoText');
+        if (!info?.scene) return;
+        info.x = Math.round(cardSprite.x);
+        info.y = Math.round(cardSprite.y + (cardSprite.displayHeight || cardSprite.height || 100) / 2 + 18);
+    };
+    syncBossStats();
     this.scene.tweens.add({
         targets: cardSprite,
         y: targetY + 8,
         alpha: 1,
         duration: 420,
         ease: 'Sine.easeOut',
+        onUpdate: syncBossStats,
         onComplete: () => {
             this.scene.tweens.add({
                 targets: cardSprite,
                 y: targetY,
                 duration: 180,
-                ease: 'Back.easeOut'
+                ease: 'Back.easeOut',
+                onUpdate: syncBossStats,
+                onComplete: syncBossStats,
             });
         }
     });
@@ -589,6 +599,8 @@ function enableGemDrag(card, index) {
     let idleTimer = null;
     let dragged = false;
     card.sprite.on('pointerdown', () => {
+        const selectingSwap = this.scene.amuletManager?.handleActiveBoardCardSelection?.(index) || false;
+        card.sprite.setData('amuletSwapSelecting', selectingSwap);
         dragged = false;
     });
     if (this.scene.anims.exists(animKey)) {
@@ -622,6 +634,7 @@ function enableGemDrag(card, index) {
     }
 
     card.sprite.on('dragstart', () => {
+        if (card.sprite.getData('amuletSwapSelecting')) return;
         dragged = true;
         card.sprite.setData('boardGemDragging', true);
         this.scene.tweens.killTweensOf(card.sprite);
@@ -632,6 +645,7 @@ function enableGemDrag(card, index) {
         if (card.gemShadow) card.gemShadow.setVisible(false);
     });
     card.sprite.on('drag', (pointer, dragX, dragY) => {
+        if (card.sprite.getData('amuletSwapSelecting')) return;
         card.sprite.x = Phaser.Math.Clamp(dragX, 0, 640);
         card.sprite.y = Phaser.Math.Clamp(dragY, 0, 360);
         if (card.infoText?.scene) {
@@ -640,6 +654,10 @@ function enableGemDrag(card, index) {
         }
     });
     card.sprite.on('dragend', () => {
+        if (card.sprite.getData('amuletSwapSelecting')) {
+            card.sprite.setData('amuletSwapSelecting', false);
+            return;
+        }
         if (this.tryApplyBoardGem(card, index)) return;
         card.sprite.setData('boardGemDragging', false);
         card.sprite.setDepth(1);
@@ -658,6 +676,10 @@ function enableGemDrag(card, index) {
         }
     });
     card.sprite.on('pointerup', () => {
+        if (card.sprite.getData('amuletSwapSelecting')) {
+            card.sprite.setData('amuletSwapSelecting', false);
+            return;
+        }
         if (!dragged && card.sprite?.scene) {
             this.scene.createFloatingText(
                 card.sprite.x,

@@ -105,15 +105,44 @@ assert.deepEqual(
 assert.deepEqual(
   axeHeavyCleaveTargetIndices([
     columnEnemy(3, 2), // selected target
-    columnEnemy(1, 2), // farther enemy in the same column
-    columnEnemy(2, 2), // nearest enemy above: 50%
-    columnEnemy(2, 1), // left of that enemy: 25%
-    columnEnemy(2, 3), // right of that enemy: 25%
-    columnEnemy(3, 1), // left of primary, not part of Heavy Cleave
-    columnEnemy(2, 4), // too far to the right
+    columnEnemy(1, 2), // two cells above: outside the cross
+    columnEnemy(2, 2), // immediately above: 50%
+    columnEnemy(4, 2), // immediately below: 50%
+    columnEnemy(3, 1), // immediately left: 50%
+    columnEnemy(3, 3), // immediately right: 50%
+    columnEnemy(3, 4), // two cells right: outside the cross
   ], 0),
-  { upper: 2, sides: [3, 4] },
-  'heavy cleave fans out from the nearest enemy above the selected target',
+  { vertical: [2, 3], sides: [4, 5] },
+  'heavy cleave hits the four adjacent cells in a cross around its target',
+);
+
+const bossFormationEnemy = (x, y, type = 'enemy') => ({
+  revealed: true,
+  restX: x,
+  restY: y,
+  data: { type, health: 10 },
+});
+const bossFormation = [
+  bossFormationEnemy(280, 145), // selected summon
+  bossFormationEnemy(220, 145), // summon to the left
+  bossFormationEnemy(340, 145), // summon to the right
+  bossFormationEnemy(300, 80, 'boss'), // boss behind the selected summon
+  bossFormationEnemy(300, 20, 'boss'), // farther target in the same column
+];
+assert.deepEqual(
+  spearPierceTargetIndices(bossFormation, 0),
+  [3, 4],
+  'spear passes through the full boss column behind a summon',
+);
+assert.deepEqual(
+  swordCleaveTargetIndices(bossFormation, 0),
+  [1, 2],
+  'sword cleaves into adjacent summons in a boss row',
+);
+assert.deepEqual(
+  axeHeavyCleaveTargetIndices(bossFormation, 0),
+  { vertical: [3], sides: [1, 2] },
+  'axe cross includes adjacent summons and the boss behind them',
 );
 
 // --- the detector

@@ -16,14 +16,10 @@ import { getAmuletAtlasPresentation } from '../amulets/RelicsOthersAtlas.js';
 export const AMULET_DROP_DATA = [
   // Common (from floor 0 / start of run)
   { id: 'ringOfRegeneration', minFloor: 0, weight: 10, rarity: 'common', group: 'survival' },
-  { id: 'earringOfArmorDurability', minFloor: 0, weight: 8, rarity: 'common', group: 'survival' },
-  { id: 'earringOfWeaponDurability', minFloor: 0, weight: 8, rarity: 'common', group: 'offense' },
   { id: 'tacticiansPin', minFloor: 0, weight: 8, rarity: 'common', group: 'strategy' },
 
   // Uncommon (from floor 10)
   { id: 'ringOfGreaterRegeneration', minFloor: 10, weight: 7, rarity: 'uncommon', group: 'survival' },
-  { id: 'earringOfGreaterArmorDurability', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'survival' },
-  { id: 'earringOfGreaterWeaponDurability', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'offense' },
   { id: 'alchemistBag', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'survival' },
   { id: 'monocle', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'utility' },
   { id: 'pouchOfGreed', minFloor: 10, weight: 8, rarity: 'uncommon', group: 'utility' },
@@ -40,9 +36,11 @@ export const AMULET_DROP_DATA = [
   { id: 'greaterRuneOfPoison', minFloor: 16, weight: 4, rarity: 'rare', group: 'magic' },
   { id: 'maskOfHollowWhispers', minFloor: 16, weight: 4, rarity: 'rare', group: 'utility' },
   { id: 'vacancyStep', minFloor: 16, weight: 4, rarity: 'rare', group: 'strategy' },
+  { id: 'provisionersBell', minFloor: 16, weight: 4, rarity: 'rare', group: 'utility' },
+  { id: 'shiftingMedallion', minFloor: 16, weight: 4, rarity: 'rare', group: 'strategy' },
+  { id: 'keepersWard', minFloor: 16, weight: 5, rarity: 'rare', group: 'survival' },
 
   // Legendary (shops / boss until boss-only set exists)
-  { id: 'legendaryWhetstone', minFloor: 0, weight: 2, rarity: 'legendary', group: 'offense' },
   { id: 'glovesOfHermitWizard', minFloor: 0, weight: 2, rarity: 'legendary', group: 'magic' },
   { id: 'generalsTable', minFloor: 0, weight: 2, rarity: 'legendary', group: 'strategy' },
 ];

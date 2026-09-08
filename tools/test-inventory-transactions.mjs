@@ -5,6 +5,9 @@ import { InventorySystem } from '../src/systems/InventorySystem.js';
 import { CombatTurnController } from '../src/systems/combat/CombatTurnController.js';
 import { CardMergeRules } from '../src/systems/inventory/CardMergeRules.js';
 import { InventoryView } from '../src/systems/inventory/InventoryView.js';
+import { normalizeWeaponIdentity } from '../src/content/cards/weapons.js';
+import { AmuletManager } from '../src/managers/AmuletManager.js';
+import { AMULETS } from '../src/content/cards/amulets.js';
 
 function makeHarness(cards) {
     const gameState = {
@@ -58,6 +61,143 @@ function makeHarness(cards) {
 
 function eventTypes() {
     return JSON.parse(humanRunRecorder.exportJson()).events.map((event) => event.type);
+}
+
+{
+    const manager = new AmuletManager({ gameState: { activeAmulets: [] } });
+    const retired = [
+        'temperedSteel', 'earringOfArmorDurability', 'earringOfWeaponDurability',
+        'earringOfGreaterArmorDurability', 'earringOfGreaterWeaponDurability', 'legendaryWhetstone',
+    ];
+    for (const id of retired) assert.equal(manager.amuletDefinitions[id], undefined, `${id} must be retired`);
+    assert.equal(manager.amuletDefinitions.keepersWard.rarity, 'rare');
+    assert.equal(manager.amuletDefinitions.keepersWard.weaponDurabilitySaveChance, 0.3);
+    assert.equal(manager.amuletDefinitions.keepersWard.armorDurabilitySaveChance, 0.3);
+    assert.equal(AMULETS.some(amulet => amulet.id === 'keepersWard'), true);
+    assert.equal(AMULETS.some(amulet => retired.includes(amulet.id)), false);
+}
+
+{
+    const manager = new AmuletManager({ gameState: { activeAmulets: [{ id: 'keepersWard' }] } });
+    assert.equal(manager.getWeaponDurabilityRate(), 0.7);
+    assert.equal(manager.getArmorDurabilitySaveChance(), 0.3);
+}
+
+{
+    const board = [0, 1].map(index => ({
+        revealed: false,
+        sprite: { scene: {} },
+        data: { type: 'enemy', brick: { r: 0, c: index } },
+    }));
+    const pending = new Set([0, 1]);
+    let synced = null;
+    const scene = {
+        gameState: { activeAmulets: [{ id: 'tacticiansPin' }] },
+        cardSystem: {
+            boardCards: board,
+            _openingRevealIndices: pending,
+            syncControlMarkers: card => { synced = card; },
+        },
+        tutorialMode: false,
+    };
+    const manager = new AmuletManager(scene);
+    manager.applyStrategyScout();
+
+    const marked = board.filter(card => card.data.strategyScout);
+    assert.equal(marked.length, 1);
+    assert.equal(pending.size, 1, 'the pinned enemy must be removed from the opening reveal queue');
+    assert.equal(synced, marked[0]);
+}
+
+{
+    const manager = new AmuletManager({ gameState: { activeAmulets: [] } });
+    const retired = [
+        'temperedSteel',
+        'earringOfArmorDurability', 'earringOfWeaponDurability',
+        'earringOfGreaterArmorDurability', 'earringOfGreaterWeaponDurability',
+        'legendaryWhetstone',
+    ];
+    assert.equal(AMULETS.some(amulet => retired.includes(amulet.id)), false);
+    assert.equal(retired.some(id => manager.amuletDefinitions[id]), false);
+    assert.equal(manager.amuletDefinitions.keepersWard.rarity, 'rare');
+    assert.equal(manager.amuletDefinitions.keepersWard.weaponDurabilitySaveChance, 0.3);
+    assert.equal(manager.amuletDefinitions.keepersWard.armorDurabilitySaveChance, 0.3);
+}
+
+{
+    const activeAmulets = [{ id: 'testActive', cooldownLeft: 3 }];
+    let uiUpdates = 0;
+    const manager = Object.create(AmuletManager.prototype);
+    manager.gameState = { activeAmulets };
+    manager.scene = { enemiesCleared: false, updateUI: () => { uiUpdates++; } };
+
+    manager.processPlayerTurn();
+    assert.equal(activeAmulets[0].cooldownLeft, 2);
+    assert.equal(uiUpdates, 1);
+
+    manager.scene.enemiesCleared = true;
+    manager.processPlayerTurn();
+    assert.equal(activeAmulets[0].cooldownLeft, 2, 'post-combat cleanup must not reduce cooldowns');
+    assert.equal(uiUpdates, 1);
+}
+
+{
+    const foodAmulet = { id: 'foodActive', cooldownLeft: 0 };
+    const swapAmulet = { id: 'swapActive', cooldownLeft: 0 };
+    const board = [
+        { revealed: false, data: { type: 'food' }, sprite: {} },
+        { revealed: false, data: { type: 'enemy' }, sprite: {} },
+        { revealed: true, data: { type: 'coin' }, sprite: {} },
+    ];
+    const revealed = [];
+    const swaps = [];
+    const manager = Object.create(AmuletManager.prototype);
+    manager.gameState = { activeAmulets: [foodAmulet, swapAmulet] };
+    manager.amuletDefinitions = {
+        foodActive: { activeAbility: 'revealFood', cooldownTurns: 10 },
+        swapActive: { activeAbility: 'swapCards', cooldownTurns: 15 },
+    };
+    manager.scene = {
+        cardSystem: {
+            boardCards: board,
+            revealCard: (index, free) => revealed.push([index, free]),
+            swapCardSeats: (a, b) => { swaps.push([a, b]); return true; },
+        },
+        createFloatingText: () => {},
+        saveCurrentRun: () => {},
+        updateUI: () => {},
+    };
+
+    assert.equal(manager.activateAmulet('foodActive'), true);
+    assert.deepEqual(revealed, [[0, true]]);
+    assert.equal(foodAmulet.cooldownLeft, 10);
+
+    assert.equal(manager.activateAmulet('swapActive'), true);
+    assert.equal(manager.handleActiveBoardCardSelection(0), true);
+    assert.equal(manager.handleActiveBoardCardSelection(2), true);
+    assert.deepEqual(swaps, [[board[0], board[2]]]);
+    assert.equal(swapAmulet.cooldownLeft, 15);
+    assert.equal(manager.activeAbility, null);
+}
+
+{
+    const legacySword = {
+        type: 'weapon',
+        name: 'Rare Sword',
+        rarity: 'rare',
+        damage: 9,
+        durability: 3,
+        maxDurability: 10,
+        special: null,
+        gemEffect: 'fire',
+    };
+    const normalized = normalizeWeaponIdentity(legacySword);
+
+    assert.equal(normalized.weaponType, 'sword');
+    assert.equal(normalized.special, 'cleave');
+    assert.equal(normalized.damage, 9);
+    assert.equal(normalized.durability, 3);
+    assert.equal(normalized.gemEffect, 'fire');
 }
 
 {

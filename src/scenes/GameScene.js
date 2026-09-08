@@ -685,6 +685,7 @@ export class GameScene extends Phaser.Scene {
         // Goblin club_stun: skip this action, then enemies still respond.
         if ((this.gameState.playerStunnedTurns || 0) > 0) {
             this.gameState.playerStunnedTurns--;
+            this.amuletManager?.processPlayerTurn?.();
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Stunned!', 0xffcc66);
             this.updateUI();
             this.scheduleEnemyTurn();
@@ -696,6 +697,7 @@ export class GameScene extends Phaser.Scene {
         
         // Check for Quickhand Gloves free first action
         if (this.gameState.shouldUseFreeAction()) {
+            this.amuletManager?.processPlayerTurn?.();
             this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Free Action!', 0x00ff00);
             this.updateUI();
             // After any action, revealed enemies attack
@@ -728,6 +730,8 @@ export class GameScene extends Phaser.Scene {
                 SoundHelper.playVariant(this, 'empty_stomach', 0.5);
             }
         }
+
+        this.amuletManager?.processPlayerTurn?.();
         
         this.updateUI();
         // After any action, emit one enemy turn. Extra clicks before it fires should not stack turns.
@@ -1060,9 +1064,17 @@ export class GameScene extends Phaser.Scene {
     }
     
     shakeCard(cardSprite) {
-        const originalX = cardSprite.x;
+        const boardCard = this.cardSystem?.boardCards?.find(card => card?.sprite === cardSprite);
+        const originalX = Number.isFinite(boardCard?.restX) ? boardCard.restX : cardSprite.x;
         const intensity = 4;
         const duration = 50;
+        // Overlapping cleave/gem impacts used to capture an already-shifted x
+        // as their new origin, leaving the card apart from its HP/ATK overlay.
+        this.tweens.killTweensOf(cardSprite);
+        cardSprite.x = originalX;
+        const syncStats = () => {
+            if (boardCard?.infoText?.scene) boardCard.infoText.x = Math.round(cardSprite.x);
+        };
         this.tweens.add({
             targets: cardSprite,
             x: originalX - intensity,
@@ -1070,8 +1082,10 @@ export class GameScene extends Phaser.Scene {
             repeat: 2,
             duration: duration,
             ease: 'Sine.easeInOut',
+            onUpdate: syncStats,
             onComplete: () => {
                 cardSprite.x = originalX;
+                syncStats();
             }
         });
     }

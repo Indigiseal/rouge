@@ -15,6 +15,14 @@ import {
 } from '../content/characters/CharacterClasses.js';
 import { getLocationDisplayName } from '../content/locations/index.js';
 import { MAGIC_SHIELD_DODGE_BONUS } from '../systems/combat/ArmorMath.js';
+import { WEAPONS, createWeaponCardData } from '../content/cards/weapons.js';
+import { ARMORS, createArmorCardData } from '../content/cards/armor.js';
+import { POTIONS } from '../content/cards/potions.js';
+import { FOOD } from '../content/cards/food.js';
+import { MAGIC } from '../content/cards/magic.js';
+import { GEMS } from '../content/cards/gems.js';
+import { createGauntletCard } from '../content/balance/Gauntlet.js';
+import { AMULETS } from '../content/cards/amulets.js';
 
 // The amulet strip owns the top-left corner, so the hero column starts below
 // it. Everything from the avatar down to the crystal counter is offset by this
@@ -142,7 +150,10 @@ export const CombatHud = {
         // Combat shortcut for testing complete floor/boss resolution. Built
         // only for us: it ends a fight outright, which is not a thing a run
         // should be able to do.
-        if (devToolsEnabled()) this.createDebugVictoryButton(TOP_HUD_DEPTH);
+        if (devToolsEnabled()) {
+            this.createDebugVictoryButton(TOP_HUD_DEPTH);
+            this.createDebugItemButton(TOP_HUD_DEPTH);
+        }
 
         // Also add ESC key binding for pause
         this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
@@ -164,6 +175,203 @@ export const CombatHud = {
             fill: '#f5e6c8',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
+    },
+
+    createDebugItemButton(TOP_HUD_DEPTH) {
+        const button = this.add.rectangle(520, 38, 62, 18, 0x374f71, 0.9)
+            .setStrokeStyle(1, 0x72a7d8)
+            .setDepth(TOP_HUD_DEPTH)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerover', () => button.setFillStyle(0x466d93, 1))
+            .on('pointerout', () => button.setFillStyle(0x374f71, 0.9))
+            .on('pointerdown', () => this.openDebugItemGrant());
+        const label = this.add.text(520, 38, 'ITEM', {
+            fontSize: '9px', fill: '#f5e6c8', fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
+        this.debugItemButton = button;
+        this.debugItemButtonText = label;
+    },
+
+    openDebugItemGrant() {
+        if (this.debugItemOverlay?.scene) {
+            this.debugItemOverlay.destroy(true);
+            this.debugItemOverlay = null;
+            return;
+        }
+        const rarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+        const categories = { weapon: [], armor: [], amulet: [], amuletNonSpawn: [], other: [] };
+        for (const type of Object.keys(WEAPONS)) {
+            for (const rarity of rarities) {
+                const card = createWeaponCardData(type, rarity);
+                if (card) categories.weapon.push({ label: `${type} ${rarity}`, card });
+            }
+        }
+        for (const rarity of rarities) {
+            categories.weapon.push({ label: `gauntlet ${rarity}`, card: createGauntletCard(rarity) });
+        }
+        for (const type of Object.keys(ARMORS)) {
+            for (const rarity of rarities) {
+                const card = createArmorCardData(type, rarity);
+                if (card) categories.armor.push({ label: `${type} ${rarity}`, card });
+            }
+        }
+        for (const item of POTIONS) categories.other.push({ label: item.name, card: { ...item, type: 'potion' } });
+        for (const item of FOOD) categories.other.push({ label: item.name, card: { ...item, type: 'food' } });
+        for (const item of MAGIC) categories.other.push({ label: item.name, card: { ...item, type: 'magic' } });
+        for (const item of GEMS) categories.other.push({
+            label: item.name,
+            card: { type: 'gem', gemEffect: item.effect, name: item.name, sprite: 'gemsRGY', spriteFrame: item.frame, color: item.color, rarity: 'common' },
+        });
+        const generator = this.cardSystem?.cardDataGenerator;
+        if (generator) {
+            categories.other.push({ label: 'Mysterious Key', card: generator.createKeyCard(this.gameState.currentFloor) });
+            categories.other.push({ label: 'Egg', card: generator.createEggCard() });
+            const chick = generator.createChickCompanionCard();
+            const skeleton = generator.createSkeletonWarriorCompanionCard();
+            categories.other.push({ label: chick.name, card: chick });
+            categories.other.push({ label: skeleton.name, card: skeleton });
+            categories.other.push({
+                label: 'Storm Hatchling',
+                card: { ...chick, name: 'Storm Hatchling', sprite: 'chickCompanionUP', shockChance: 0.2, upgradedForm: 'stormHatchling', trained: true, attack: chick.attack + 1 },
+            });
+            categories.other.push({
+                label: 'Slimebone Guard',
+                card: { ...skeleton, name: 'Slimebone Guard', sprite: 'skeletonCompanionUP', guardProtection: 1, upgradedForm: 'slimeboneGuard', trained: true, attack: skeleton.attack + 1 },
+            });
+            for (const rarity of rarities) {
+                categories.other.push({ label: `thorns ${rarity}`, card: generator.createThornsCard(this.gameState.currentFloor, rarity) });
+            }
+        }
+        categories.other.push(
+            { label: 'Dusty Pipe', card: { id: 'carnivalDustyPipe', type: 'junk', name: 'Dusty Pipe', sprite: 'carnivalPipe', rarity: 'common', carnivalToken: true, noEffect: true } },
+            { label: 'Rubber Duck', card: { id: 'carnivalRubberDuck', type: 'junk', name: 'Rubber Duck', sprite: 'carnivalDucky', rarity: 'common', carnivalToken: true, noEffect: true } },
+            { label: 'Broken Ring', card: { id: 'carnivalBrokenRing', type: 'junk', name: 'Broken Ring', sprite: 'carnivalRing', rarity: 'common', carnivalToken: true, noEffect: true } },
+            { label: 'Holographic Omen', card: { id: 'holographicOmen', type: 'passive', name: 'Holographic Omen', sprite: 'holographicOmen', rarity: 'rare', passiveEffect: 'holographicOmen', unique: true } },
+        );
+        const spawnableAmuletIds = new Set(AMULETS.map(amulet => amulet.id));
+        for (const [id, def] of Object.entries(this.amuletManager?.amuletDefinitions || {})) {
+            const entry = { label: def.name || id, amuletId: id, sprite: def.sprite, spriteFrame: def.spriteFrame };
+            categories[spawnableAmuletIds.has(id) ? 'amulet' : 'amuletNonSpawn'].push(entry);
+        }
+        this.showDebugItemOverlay(categories);
+    },
+
+    grantDebugItem(entry) {
+        if (entry.amuletId) {
+            this.amuletManager.addAmulet(entry.amuletId, { force: true });
+            this.closeDebugItemOverlay();
+            return;
+        }
+        const slot = this.inventorySystem.slots.findIndex(item => item == null);
+        if (slot < 0) {
+            this.createFloatingText(320, 330, 'Inventory Full!', 0xff7777);
+            this.closeDebugItemOverlay();
+            return;
+        }
+        this.inventorySystem.addCardDirect({ ...entry.card }, slot);
+        this.inventorySystem.syncGameStateInventory?.();
+        this.saveCurrentRun?.();
+        this.createFloatingText(320, 330, `Added: ${entry.card.name}`, 0x66ff99);
+        this.closeDebugItemOverlay();
+    },
+
+    closeDebugItemOverlay() {
+        this.debugItemOverlay?.destroy?.(true);
+        this.debugItemOverlay = null;
+    },
+
+    showDebugItemOverlay(categories) {
+        const depth = 20000;
+        const root = this.add.container(0, 0).setDepth(depth);
+        this.debugItemOverlay = root;
+        const add = object => { root.add(object); return object; };
+        add(this.add.rectangle(320, 180, 640, 360, 0x08070a, 0.78).setInteractive());
+        add(this.add.rectangle(320, 180, 548, 316, 0x241c22, 0.98).setStrokeStyle(2, 0xc89b62));
+        add(this.add.text(320, 35, 'DEBUG ITEM VAULT', {
+            fontSize: '16px', fill: '#f4d49b', fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5));
+        const close = add(this.add.text(572, 34, '×', {
+            fontSize: '22px', fill: '#ffb0a0', fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }));
+        close.on('pointerdown', () => this.closeDebugItemOverlay());
+
+        let activeCategory = 'weapon';
+        let page = 0;
+        const content = this.add.container(0, 0);
+        root.add(content);
+        let redrawQueued = false;
+        const queueRender = () => {
+            if (redrawQueued) return;
+            redrawQueued = true;
+            this.events.once('postupdate', () => {
+                redrawQueued = false;
+                if (root.active) render();
+            });
+        };
+        const tabLabels = {
+            weapon: 'WEAPONS', armor: 'ARMOR', amulet: 'AMULETS',
+            amuletNonSpawn: 'NON-SPAWN', other: 'OTHER',
+        };
+        const tabs = {};
+        Object.keys(tabLabels).forEach((key, i) => {
+            const x = 124 + i * 98;
+            const plate = add(this.add.rectangle(x, 63, 91, 22, 0x493741).setStrokeStyle(1, 0x967353).setInteractive({ useHandCursor: true }));
+            const text = add(this.add.text(x, 63, tabLabels[key], {
+                fontSize: '9px', fill: '#ead6b9', fontFamily: '"HoMM Pixel"'
+            }).setOrigin(0.5));
+            plate.on('pointerdown', () => {
+                activeCategory = key;
+                page = 0;
+                queueRender();
+            });
+            tabs[key] = plate;
+        });
+
+        const render = () => {
+            content.removeAll(true);
+            Object.entries(tabs).forEach(([key, tab]) => tab.setFillStyle(key === activeCategory ? 0x7a5538 : 0x493741));
+            const list = categories[activeCategory] || [];
+            const perPage = 18;
+            const pages = Math.max(1, Math.ceil(list.length / perPage));
+            page = Math.max(0, Math.min(page, pages - 1));
+            list.slice(page * perPage, (page + 1) * perPage).forEach((entry, i) => {
+                const col = i % 6;
+                const row = Math.floor(i / 6);
+                const x = 112 + col * 83;
+                const y = 108 + row * 72;
+                const hit = this.add.rectangle(x, y, 72, 64, 0x332932, 0.9)
+                    .setStrokeStyle(1, 0x6e5961).setInteractive({ useHandCursor: true });
+                const spriteKey = entry.amuletId ? entry.sprite : entry.card?.sprite;
+                const frame = entry.amuletId ? entry.spriteFrame : entry.card?.spriteFrame;
+                const icon = this.add.image(x, y - 8, spriteKey, frame);
+                const isAmulet = activeCategory === 'amulet' || activeCategory === 'amuletNonSpawn';
+                const maxW = isAmulet ? 28 : 38;
+                const maxH = isAmulet ? 28 : 43;
+                const scale = Math.min(maxW / Math.max(1, icon.width), maxH / Math.max(1, icon.height), 1);
+                icon.setScale(scale);
+                const label = this.add.text(x, y + 23, entry.label, {
+                    fontSize: '7px', fill: '#eadcc8', fontFamily: '"HoMM Pixel"',
+                    align: 'center', wordWrap: { width: 68 }
+                }).setOrigin(0.5);
+                hit.on('pointerover', () => hit.setFillStyle(0x58404b, 1));
+                hit.on('pointerout', () => hit.setFillStyle(0x332932, 0.9));
+                hit.on('pointerdown', () => this.grantDebugItem(entry));
+                content.add([hit, icon, label]);
+            });
+            const navY = 326;
+            const prev = this.add.text(265, navY, '◄', { fontSize: '14px', fill: page > 0 ? '#f4d49b' : '#665b55', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+            const next = this.add.text(375, navY, '►', { fontSize: '14px', fill: page + 1 < pages ? '#f4d49b' : '#665b55', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+            if (page > 0) prev.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+                page--;
+                queueRender();
+            });
+            if (page + 1 < pages) next.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+                page++;
+                queueRender();
+            });
+            content.add([prev, next, this.add.text(320, navY, `${page + 1}/${pages}`, { fontSize: '9px', fill: '#cdbb9e', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5)]);
+        };
+        render();
     },
 
     buildRestOfHud(TOP_HUD_DEPTH) {
@@ -714,6 +922,22 @@ export const CombatHud = {
             amuletSprite.setDepth(22);
             this.amuletUIGroup.add(amuletSprite);
 
+            if (def?.activeAbility) {
+                amuletSprite.setInteractive({ useHandCursor: true });
+                amuletSprite.on('pointerdown', () => this.amuletManager.activateAmulet(amulet.id));
+                const cooldown = Math.max(0, Math.floor(amulet.cooldownLeft || 0));
+                if (cooldown > 0) {
+                    const cooldownPlate = this.add.circle(x + 8, y + 8, 8, 0x221a18, 0.92).setDepth(23);
+                    const cooldownText = this.add.text(x + 8, y + 8, String(cooldown), {
+                        fontSize: '8px',
+                        fill: '#ffcc88',
+                        fontFamily: '"HoMM Pixel"',
+                    }).setOrigin(0.5).setDepth(24);
+                    this.amuletUIGroup.add(cooldownPlate);
+                    this.amuletUIGroup.add(cooldownText);
+                }
+            }
+
             // Level badge for stackable amulets
             if (amulet.level && amulet.level > 1) {
                 const levelText = this.add.text(x + 8, y + 8, amulet.level.toString(), {
@@ -1113,6 +1337,10 @@ export const CombatHud = {
         
         if (definition) {
             description += `\n${translateDescription(this, definition.description)}`;
+            if (definition.activeAbility) {
+                const cooldown = Math.max(0, Math.floor(amulet.cooldownLeft || 0));
+                description += cooldown > 0 ? `\nCooldown: ${cooldown}` : '\nReady';
+            }
             
             // Add level info for stackable amulets
             if (amulet.level && amulet.level > 1) {

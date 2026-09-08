@@ -388,7 +388,12 @@ function spawnFloorCards() {
   });
   this._openingRevealIndices = new Set(revealOrder);
   revealOrder.forEach((idx, order) => {
-    this.scene.time.delayedCall(revealSettleMs + order * revealStaggerMs, () => this.revealCard(idx, true));
+    this.scene.time.delayedCall(revealSettleMs + order * revealStaggerMs, () => {
+      // Tactician's Pin may reserve one of the queued enemies face-down after
+      // the board is built but before this delayed opening cascade runs.
+      if (!this._openingRevealIndices?.has(idx)) return;
+      this.revealCard(idx, true);
+    });
   });
 
   const omenDelay = revealSettleMs + (Math.max(0, revealOrder.length - 1) * revealStaggerMs) + 160;
@@ -487,10 +492,14 @@ function dealBoardCardsIn() {
             delay,
             duration: DEAL_FALL_MS,
             ease: 'Bounce.easeOut',
-            onUpdate: this.snapYOnUpdate,
+            onUpdate: (tween, target) => {
+                this.snapYOnUpdate(tween, target);
+                this.syncControlMarkers?.(card);
+            },
             onComplete: () => {
                 if (!sprite.scene) return;
                 snapOriginToPixelGrid(sprite);
+                this.syncControlMarkers?.(card);
                 if (sprite.input) sprite.input.enabled = true;
                 SoundHelper.playVariant(this.scene, 'card_place', 0.3);
             },

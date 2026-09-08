@@ -766,7 +766,7 @@ export const InventoryCombatUse = {
     applyAxeHeavyCleave(primaryIndex, axeDamage, weapon, primaryCard = null) {
         const board = this.scene.cardSystem?.boardCards || [];
         const targets = axeHeavyCleaveTargetIndices(board, primaryIndex, primaryCard);
-        if (targets.upper == null) return;
+        if (targets.vertical.length === 0 && targets.sides.length === 0) return;
 
         const hit = (target, fraction, label) => {
             const card = board[target];
@@ -782,8 +782,8 @@ export const InventoryCombatUse = {
             this.applyAssassinateTalent(target);
         };
 
-        hit(targets.upper, 0.5, 'Heavy Cleave!');
-        for (const target of targets.sides) hit(target, 0.25, 'Heavy Cleave!');
+        for (const target of targets.vertical) hit(target, 0.5, 'Heavy Cleave!');
+        for (const target of targets.sides) hit(target, 0.5, 'Heavy Cleave!');
     },
     applyFrontVolleyTalent(primaryIndex, weapon, flatDamage) {
         const boards = this.scene.cardSystem?.boardCards || [];

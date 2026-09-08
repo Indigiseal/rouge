@@ -450,8 +450,8 @@ export const InventoryView = {
             const maxHp = Math.max(1, target?.data?.maxHealth || hp || 1);
             if (hp / maxHp > 0.2) {
                 const fan = axeHeavyCleaveTargetIndices(board, primaryIndex);
-                if (fan.upper != null) affected.set(fan.upper, 0.5);
-                for (const index of fan.sides) affected.set(index, 0.25);
+                for (const index of fan.vertical) affected.set(index, 0.5);
+                for (const index of fan.sides) affected.set(index, 0.5);
             }
         }
 

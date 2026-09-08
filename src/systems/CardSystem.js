@@ -155,12 +155,14 @@ export class CardSystem {
     pickCardType(...args) { return this.spawner.pickCardType(...args); }
     generateRandomCard(...args) { return this.spawner.generateRandomCard(...args); }
     revealCard(index, freeAction = false) {
+        if (!freeAction && this.scene.amuletManager?.handleActiveBoardCardSelection?.(index)) return;
         const card = this.boardCards[index];
         if (!card || card.revealed || !card.data) return;
         // Reveals do not spend AP. Floor-start free reveals also skip the enemy
         // response; player-initiated flips still wake enemies (with justRevealed grace).
         if (!freeAction) {
             if (this.scene.isEnemyTurn) return;
+            this.scene.amuletManager?.processPlayerTurn?.();
             this.scene.scheduleEnemyTurn?.();
         }
         
@@ -494,6 +496,7 @@ export class CardSystem {
     }
 
     interactWithCard(index) {
+        if (this.scene.amuletManager?.handleActiveBoardCardSelection?.(index)) return;
         const card = this.boardCards[index];
         if (!card || !card.revealed) return;
         

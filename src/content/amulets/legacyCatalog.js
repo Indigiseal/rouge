@@ -121,13 +121,6 @@ export function buildLegacyAmuletDefinitions(mgr) {
                 }
             },
             
-            temperedSteel: {
-                ...getAmuletAtlasPresentation('temperedSteel'),
-                description: 'Weapons lose half durability',
-                rarity: 'rare',
-                weaponDurabilityRate: 0.5
-            },
-            
             bottomlessBag: {
                 ...getAmuletAtlasPresentation('bottomlessBag'),
                 description: '+2 inventory slots',

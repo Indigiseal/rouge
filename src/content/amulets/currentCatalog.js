@@ -15,20 +15,6 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 // nothing by act 2 (0% of its act-1 value in sim).
                 floorStartHeal: { base: 8, perFloor: 0.3 },
             },
-            earringOfArmorDurability: {
-                ...getAmuletAtlasPresentation('earringOfArmorDurability'),
-                name: 'Earring of Armor Durability',
-                description: '25% chance not to spend armor durability on block/dodge',
-                rarity: 'common',
-                armorDurabilitySaveChance: 0.25,
-            },
-            earringOfWeaponDurability: {
-                ...getAmuletAtlasPresentation('earringOfWeaponDurability'),
-                name: 'Earring of Weapon Durability',
-                description: '30% chance not to spend weapon durability on attack',
-                rarity: 'common',
-                weaponDurabilitySaveChance: 0.3,
-            },
             markOfHesitation: {
                 ...getAmuletAtlasPresentation('markOfHesitation'),
                 name: 'Mark of Hesitation',
@@ -42,6 +28,7 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 description: 'At the start of combat, one face-down enemy is marked.',
                 rarity: 'common',
                 strategyScout: true,
+                onEquip: () => this.applyStrategyScout(),
             },
 
             ringOfGreaterRegeneration: {
@@ -51,22 +38,6 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 rarity: 'uncommon',
                 floorStartHeal: { base: 12, perFloor: 0.45 },
                 replaces: ['ringOfRegeneration'],
-            },
-            earringOfGreaterArmorDurability: {
-                ...getAmuletAtlasPresentation('earringOfGreaterArmorDurability'),
-                name: 'Earring of Greater Armor Durability',
-                description: '35% chance not to spend armor durability on block/dodge. Replaces Earring of Armor Durability.',
-                rarity: 'uncommon',
-                armorDurabilitySaveChance: 0.35,
-                replaces: ['earringOfArmorDurability'],
-            },
-            earringOfGreaterWeaponDurability: {
-                ...getAmuletAtlasPresentation('earringOfGreaterWeaponDurability'),
-                name: 'Earring of Greater Weapon Durability',
-                description: '40% chance not to spend weapon durability on attack. Replaces Earring of Weapon Durability.',
-                rarity: 'uncommon',
-                weaponDurabilitySaveChance: 0.4,
-                replaces: ['earringOfWeaponDurability'],
             },
             alchemistBag: {
                 ...getAmuletAtlasPresentation('alchemistBag'),
@@ -195,16 +166,31 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 rarity: 'rare',
                 strategyCluster: true,
             },
-
-            legendaryWhetstone: {
-                ...getAmuletAtlasPresentation('legendaryWhetstone'),
-                name: 'Legendary Whetstone',
-                description: '40% chance not to spend weapon durability on attack and +10% weapon damage. Replaces Weapon Durability earrings.',
-                rarity: 'legendary',
-                weaponDurabilitySaveChance: 0.4,
-                modifyWeaponDamage: (damage) => Math.ceil(damage * 1.1),
-                replaces: ['earringOfWeaponDurability', 'earringOfGreaterWeaponDurability'],
+            provisionersBell: {
+                ...getAmuletAtlasPresentation('provisionersBell'),
+                name: "Provisioner's Bell",
+                description: 'Active: reveal every food card on the board. Cooldown: 10 player turns.',
+                rarity: 'rare',
+                activeAbility: 'revealFood',
+                cooldownTurns: 10,
             },
+            shiftingMedallion: {
+                ...getAmuletAtlasPresentation('shiftingMedallion'),
+                name: 'Shifting Medallion',
+                description: 'Active: choose two board cards and swap their positions. Cooldown: 15 player turns.',
+                rarity: 'rare',
+                activeAbility: 'swapCards',
+                cooldownTurns: 15,
+            },
+            keepersWard: {
+                ...getAmuletAtlasPresentation('keepersWard'),
+                name: "Keeper's Ward",
+                description: '30% chance not to spend weapon durability on attack or armor durability on block/dodge.',
+                rarity: 'rare',
+                weaponDurabilitySaveChance: 0.3,
+                armorDurabilitySaveChance: 0.3,
+            },
+
             glovesOfHermitWizard: {
                 ...getAmuletAtlasPresentation('glovesOfHermitWizard'),
                 name: 'Gloves of the Hermit Wizard',

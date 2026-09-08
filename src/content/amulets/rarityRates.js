@@ -55,11 +55,6 @@ export const AMULET_SOURCE_MIN_FLOOR = {
 // When an upgrade is owned, its weaker forms are excluded from offers.
 export const AMULET_UPGRADE_REPLACES = {
   ringOfGreaterRegeneration: ['ringOfRegeneration'],
-  earringOfGreaterArmorDurability: ['earringOfArmorDurability'],
-  earringOfGreaterWeaponDurability: ['earringOfWeaponDurability'],
-  legendaryWhetstone: [
-    'earringOfWeaponDurability', 'earringOfGreaterWeaponDurability',
-  ],
   glovesOfHermitWizard: [
     'runeOfFire', 'runeOfZap', 'runeOfPoison',
     'greaterRuneOfFire', 'greaterRuneOfZap', 'greaterRuneOfPoison',
