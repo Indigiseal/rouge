@@ -5,6 +5,10 @@ import { AmuletManager } from '../managers/AmuletManager.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { LOCATION_DOORS_KEY, locationDoorFrame, locationOpenDoorFrame } from '../content/assets/locationCards.js';
+// Where the way out stands: the Next plate, the open door, and the shut door
+// that waits there during the fight all share this spot.
+const NEXT_EXIT_X = 595;
+const NEXT_EXIT_Y = 50;
 import { getLocationIdForFloor } from '../content/locations/index.js';
 import { devToolsEnabled } from '../config/DevTools.js';
 import { SaveManager } from '../managers/SaveManager.js';
@@ -589,22 +593,35 @@ export class GameScene extends Phaser.Scene {
     /**
      * The shut door, standing where the exit will be while enemies remain.
      *
-     * Deliberately NOT interactive: it is scenery until the floor is cleared,
-     * and clicking it must not end the fight. showNextFloorButton re-arms it.
+     * Its OWN image, not the Next button wearing a door texture. That was the
+     * first shape of this and it was wrong: the button is a control with a
+     * pointerdown that calls floorCleared(), and anything that re-armed it —
+     * startNewFloor does, and so does a station room handing the fight back —
+     * turned the scenery back into a live button. Clicking the shut door then
+     * ended the floor, which looked like the door vanishing.
+     *
+     * A separate image can never be clicked, because it is never interactive.
      */
     showClosedDoorExit() {
-        const button = this.nextFloorButton;
-        if (!button?.scene || !this.textures.exists(LOCATION_DOORS_KEY)) return;
+        if (!this.textures.exists(LOCATION_DOORS_KEY)) return;
 
         const frame = locationDoorFrame(getLocationIdForFloor(this.gameState));
-        if (frame === null) return;
+        if (frame === null) {
+            this.closedDoorMarker?.setVisible(false);
+            return;
+        }
 
-        button.setTexture(LOCATION_DOORS_KEY, frame)
-            .setVisible(true)
-            .setDepth(5000)
-            .clearTint();
-        button.disableInteractive();
-        this.nextFloorButtonText?.setVisible(false);
+        if (!this.closedDoorMarker?.scene) {
+            this.closedDoorMarker = this.add
+                .image(NEXT_EXIT_X, NEXT_EXIT_Y, LOCATION_DOORS_KEY, frame)
+                .setDepth(4999);
+        }
+        this.closedDoorMarker.setTexture(LOCATION_DOORS_KEY, frame).setVisible(true);
+    }
+
+    /** The shut door comes down whenever the way out is real. */
+    hideClosedDoorExit() {
+        this.closedDoorMarker?.setVisible(false);
     }
 
     showOpenDoorExit() {
@@ -615,6 +632,7 @@ export class GameScene extends Phaser.Scene {
         const frame = locationOpenDoorFrame(locationId);
         if (frame === null) return;
 
+        this.hideClosedDoorExit();
         button.setTexture(LOCATION_DOORS_KEY, frame);
         // The plate's label would sit across the doorway.
         this.nextFloorButtonText?.setVisible(false);
@@ -1208,6 +1226,7 @@ export class GameScene extends Phaser.Scene {
             this.nextFloorButton.setVisible(false);
         }
         this.nextFloorButtonText?.setVisible(false);
+        this.hideClosedDoorExit();
         // Elite rooms still use the chest-click TreasureScene flow
         const rewardChestMode = this.gameState.roomType === 'ELITE' ? 'elite' : null;
 
