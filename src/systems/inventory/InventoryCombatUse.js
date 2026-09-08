@@ -6,8 +6,13 @@ import {
     rollClassWeaponCrit,
 } from '../../content/characters/CharacterClasses.js';
 import { getMagic } from '../../content/cards/index.js';
-import { SWORD_CLEAVE_FRACTION } from '../../content/cards/weapons.js';
-import { stanceCleaves } from '../../content/characters/CharacterClasses.js';
+import {
+    SPEAR_PIERCE_FRACTION,
+    SWORD_CLEAVE_FRACTION,
+    spearPierceTargetIndices,
+    swordCleaveTargetIndices,
+    axeHeavyCleaveTargetIndices,
+} from '../../content/cards/weapons.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { playSmokeBurst } from '../../ui/SmokeBurst.js';
 import { translateItemName } from '../../i18n/i18n.js';
@@ -76,7 +81,7 @@ export const InventoryCombatUse = {
         }
 
         let used = false;
-        
+
         switch(magicCard.magicType) {
             case 'fireball':
                 // Find closest enemy to where card was dropped
@@ -369,14 +374,9 @@ export const InventoryCombatUse = {
             }
         }
         
-        // Regular attack logic for all weapons
-        const wasExhausted = this.scene.gameState.actionsLeft <= 0;
-        if (!this.scene.useAction()) {
-            this.returnWeaponToSlot(slotIndex, cardSprite);
-            return;
-        }
-        
-        // Find closest enemy
+        // Resolve and validate the intended primary target before spending AP.
+        // Taunt constrains target selection; it must not turn an invalid drop
+        // into an attack that consumes the player's turn and hits nothing.
         let closestEnemy = -1;
         let closestDistance = Infinity;
         
@@ -392,6 +392,32 @@ export const InventoryCombatUse = {
                 }
             }
         });
+
+        if (closestEnemy === -1 || closestDistance >= 150) {
+            this.returnWeaponToSlot(slotIndex, cardSprite);
+            return;
+        }
+
+        const board = this.scene.cardSystem.boardCards;
+        const activeTaunt = board.some(card => this.scene.cardSystem.isActiveBoardTaunter?.(card));
+        if (activeTaunt && !this.scene.cardSystem.isActiveBoardTaunter?.(board[closestEnemy])) {
+            SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
+            this.scene.createFloatingText(
+                board[closestEnemy]?.sprite?.x ?? cardSprite.x,
+                board[closestEnemy]?.sprite?.y ?? cardSprite.y,
+                'Must target Taunt!',
+                0x88aaff
+            );
+            this.returnWeaponToSlot(slotIndex, cardSprite);
+            return;
+        }
+
+        // Regular attack logic for all weapons
+        const wasExhausted = this.scene.gameState.actionsLeft <= 0;
+        if (!this.scene.useAction()) {
+            this.returnWeaponToSlot(slotIndex, cardSprite);
+            return;
+        }
 
         if (closestEnemy !== -1 && closestDistance < 150) {
             // Equip weapon before attacking
@@ -449,6 +475,7 @@ export const InventoryCombatUse = {
             
             // Handle special abilities
             let attackCount = 1;
+            let heavyCleave = false;
             
             // DAGGER: Dual Wield - Attack twice. The SECOND hit uses the OTHER
             // dagger's stats (damage AND gem), so two socketed daggers contribute
@@ -456,7 +483,7 @@ export const InventoryCombatUse = {
             // expect when they see two daggers in their hands.
             let secondaryDagger = null;
             let secondaryIndex = -1;
-            if (weapon.special === 'dualWield') {
+            if (!wasExhausted && weapon.special === 'dualWield') {
                 // Find a different dual-wield dagger in inventory (skip the equipped one)
                 for (let s = 0; s < this.slots.length; s++) {
                     const item = this.slots[s];
@@ -471,26 +498,32 @@ export const InventoryCombatUse = {
                     this.scene.createFloatingText(cardSprite.x, cardSprite.y - 20, 'Dual Wield!', 0xffff00);
                 }
             }
-            // AXE: Heavy Strike — 150% damage for +1 durability, but only fires
-            // when it would actually finish the enemy. Keeps axes from burning
-            // their pips on every swing. Skipped on a critical hit.
+            // AXE: healthy targets expose the formation to Heavy Cleave. At
+            // 20% HP or below, a non-boss that survives an ordinary hit is
+            // executed by Heavy Strike for one extra durability pip.
             else if (!didCrit && weapon.special === 'specialAttack') {
-                if (weapon.durability >= 2) {
-                    const targetCard = this.scene.cardSystem.boardCards[closestEnemy];
-                    const targetHP = targetCard?.data?.health ?? 0;
-                    const boostedDamage = Math.floor(attackDamage * 1.5);
-                    const regularWouldKill = targetHP <= attackDamage;
-                    const heavyWouldKill = targetHP <= boostedDamage;
-
-                    if (!regularWouldKill && heavyWouldKill) {
-                        attackDamage = boostedDamage;
-                        weapon.durability--; // Extra durability cost — finisher only
+                const targetCard = this.scene.cardSystem.boardCards[closestEnemy];
+                const targetHP = targetCard?.data?.health ?? 0;
+                const targetMaxHP = Math.max(1, targetCard?.data?.maxHealth || targetHP || 1);
+                const healthRatio = targetHP / targetMaxHP;
+                if (healthRatio > 0.2) {
+                    heavyCleave = true;
+                } else if (targetCard?.data?.type !== 'boss' && weapon.durability >= 2) {
+                    const armor = Math.max(0, targetCard?.data?.armor || 0);
+                    const ordinaryDamage = Math.max(1, attackDamage - armor);
+                    if (ordinaryDamage < targetHP) {
+                        // attackEnemy resolves armour after modifiers, so HP +
+                        // armour guarantees the execution without bypassing its
+                        // normal hit, gem, enchant, and death pipelines.
+                        attackDamage = targetHP + armor;
+                        weapon.durability--; // plus the normal pip = 2 total
                         this.scene.createFloatingText(cardSprite.x, cardSprite.y - 20, 'Heavy Strike!', 0xff6600);
                     }
                 }
             }
 
             const targetBefore = this.scene.cardSystem.boardCards[closestEnemy];
+            const targetHealthBefore = targetBefore?.data?.health;
             recordHumanRunEvent(this.scene, 'weapon_attack', {
                 slot: slotIndex,
                 wasExhausted,
@@ -544,12 +577,24 @@ export const InventoryCombatUse = {
                 }
             }
 
-            // SWORD: Cleave — the blow carries into one other front enemy for
-            // SWORD_CLEAVE_FRACTION of the damage. No extra pip, no extra AP:
-            // the sword's whole identity is that one swing answers a crowd.
-            if (weapon.special === 'cleave'
-                && stanceCleaves(characterId, this.scene.gameState?.warriorStance)) {
+            // SWORD: with AP available, the swing catches the enemies directly
+            // left and right of the selected target for half damage. The effect
+            // belongs to the weapon, not to the warrior or either stance.
+            if (!wasExhausted && weapon.special === 'cleave') {
                 this.applySwordCleave(closestEnemy, attackDamage, weapon);
+            }
+
+            // SPEAR: the thrust continues through every revealed enemy behind
+            // the chosen target in its logical column.
+            if (!wasExhausted
+                && (weapon.special === 'pierce' || weapon.special === 'reach')
+                && (targetBefore?.data?.health ?? targetHealthBefore) < targetHealthBefore) {
+                this.applySpearPierce(closestEnemy, attackDamage, weapon, targetBefore);
+            }
+
+            if (heavyCleave
+                && (targetBefore?.data?.health ?? targetHealthBefore) < targetHealthBefore) {
+                this.applyAxeHeavyCleave(closestEnemy, attackDamage, weapon, targetBefore);
             }
 
             // Front Volley: bow also hits a random front (MELEE) enemy.
@@ -683,41 +728,62 @@ export const InventoryCombatUse = {
             this.scene.createFloatingText(card.sprite.x, card.sprite.y - 28, 'Assassinate!', 0xaa66ff);
         }
     },
-    // Same target rule as Front Volley: one random other front enemy, taunt
-    // respected. Bosses count as front — a blade sweeping off a minion into the
-    // boss beside it is the point of the ability.
+    // Hit revealed enemies in the board cells immediately left and right of the
+    // selected target. Cleave is incidental area damage, so taunt does not
+    // redirect it away from those physical neighbours.
     applySwordCleave(primaryIndex, swordDamage, weapon) {
         const boards = this.scene.cardSystem?.boardCards || [];
-        const tauntActive = boards.some((card) => (
-            card?.revealed
-            && (card.data?.health ?? 0) > 0
-            && Array.isArray(card.data?.features)
-            && card.data.features.includes('taunt')
-            && card.sprite?.texture?.key
-            && card.sprite.texture.key !== 'cardBack'
-            && !String(card.sprite.texture.key).startsWith('cardFlip')
-        ));
-        const candidates = [];
-        boards.forEach((card, index) => {
-            if (index === primaryIndex) return;
-            if (!card?.revealed || !card.data) return;
-            if (card.data.type !== 'enemy' && card.data.type !== 'boss') return;
-            if ((card.data.health ?? 0) <= 0) return;
-            if (card.data.role !== 'MELEE' && card.data.type !== 'boss') return;
-            if (tauntActive && !(Array.isArray(card.data.features) && card.data.features.includes('taunt'))) {
-                return;
-            }
-            candidates.push(index);
-        });
-        if (!candidates.length) return;
-        const target = candidates[Math.floor(Math.random() * candidates.length)];
         const cleaveDmg = Math.max(1, Math.ceil(swordDamage * SWORD_CLEAVE_FRACTION));
-        this.scene.cardSystem.attackEnemy(target, cleaveDmg, false, weapon, true);
-        const sprite = boards[target]?.sprite;
-        if (sprite) {
-            this.scene.createFloatingText(sprite.x, sprite.y - 24, 'Cleave!', 0xffcc66);
+        for (const target of swordCleaveTargetIndices(boards, primaryIndex)) {
+            const sprite = boards[target]?.sprite;
+            this.scene.cardSystem.attackEnemy(
+                target, cleaveDmg, false, weapon, true, { bypassTargeting: true }
+            );
+            if (sprite) {
+                this.scene.createFloatingText(sprite.x, sprite.y - 24, 'Cleave!', 0xffcc66);
+            }
+            this.applyAssassinateTalent(target);
         }
-        this.applyAssassinateTalent(target);
+    },
+    applySpearPierce(primaryIndex, spearDamage, weapon, primaryCard = null) {
+        const board = this.scene.cardSystem?.boardCards || [];
+        const targets = spearPierceTargetIndices(board, primaryIndex, primaryCard);
+        const damage = Math.max(1, Math.ceil(spearDamage * SPEAR_PIERCE_FRACTION));
+
+        for (const target of targets) {
+            const card = board[target];
+            if (!card?.revealed || (card.data?.health ?? 0) <= 0) continue;
+            const { x, y } = card.sprite || {};
+            this.scene.cardSystem.attackEnemy(
+                target, damage, false, weapon, true, { bypassTargeting: true }
+            );
+            if (Number.isFinite(x) && Number.isFinite(y)) {
+                this.scene.createFloatingText(x, y - 24, 'Pierce!', 0xffcc66);
+            }
+            this.applyAssassinateTalent(target);
+        }
+    },
+    applyAxeHeavyCleave(primaryIndex, axeDamage, weapon, primaryCard = null) {
+        const board = this.scene.cardSystem?.boardCards || [];
+        const targets = axeHeavyCleaveTargetIndices(board, primaryIndex, primaryCard);
+        if (targets.upper == null) return;
+
+        const hit = (target, fraction, label) => {
+            const card = board[target];
+            if (!card?.revealed || (card.data?.health ?? 0) <= 0) return;
+            const damage = Math.max(1, Math.ceil(axeDamage * fraction));
+            const { x, y } = card.sprite || {};
+            this.scene.cardSystem.attackEnemy(
+                target, damage, false, weapon, true, { bypassTargeting: true }
+            );
+            if (Number.isFinite(x) && Number.isFinite(y)) {
+                this.scene.createFloatingText(x, y - 24, label, 0xff9933);
+            }
+            this.applyAssassinateTalent(target);
+        };
+
+        hit(targets.upper, 0.5, 'Heavy Cleave!');
+        for (const target of targets.sides) hit(target, 0.25, 'Heavy Cleave!');
     },
     applyFrontVolleyTalent(primaryIndex, weapon, flatDamage) {
         const boards = this.scene.cardSystem?.boardCards || [];
@@ -746,7 +812,9 @@ export const InventoryCombatUse = {
         if (!candidates.length) return;
         const target = candidates[Math.floor(Math.random() * candidates.length)];
         const volleyDmg = Math.max(1, Math.floor(flatDamage));
-        this.scene.cardSystem.attackEnemy(target, volleyDmg, false, weapon, true);
+        this.scene.cardSystem.attackEnemy(
+            target, volleyDmg, false, weapon, true, { bypassTargeting: true }
+        );
         const sprite = boards[target]?.sprite;
         if (sprite) {
             this.scene.createFloatingText(sprite.x, sprite.y - 24, 'Volley!', 0x88ccff);

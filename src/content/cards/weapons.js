@@ -11,11 +11,13 @@ import { gemSlotsForRarity } from './gems.js';
 // off-identity weapon against the rogue's 100% — and handing him MORE swords
 // made him worse, because he traded away the bow's reach for nothing.
 //
-// Cleave carries the blow into one other front enemy. Picked over a defensive
+// Cleave carries the blow into the enemies immediately to either side of the
+// selected target. Picked over a defensive
 // ability because its value grows with how many enemies share the board, and
 // enemy density rises by act (0.19 -> 0.28, EnemyDensity.js) — so the sword
 // scales with depth on its own, the same principle as DepthScaling.js.
 export const SWORD_CLEAVE_FRACTION = 0.5;
+export const SPEAR_PIERCE_FRACTION = 0.5;
 
 export const WEAPON_RARITIES = Object.freeze([
   'common', 'uncommon', 'rare', 'epic', 'legendary',
@@ -47,15 +49,15 @@ export const WEAPONS = Object.freeze({
   // Spear: the warrior's answer to the back row. He had none — the frontline
   // gate holds melee to MELEE-role targets, so the only way to touch an archer
   // was a bow, which carries neither his crit nor any Iron synergy. Measured, he
-  // spent about half of act 1 on borrowed ranged weapons. Reach keeps him on his
-  // own ladder instead. Damage sits under the sword: the sword trades reach for
-  // cleave, the spear trades cleave for reach.
+  // spent about half of act 1 on borrowed ranged weapons. Piercing keeps him on
+  // his own ladder instead. Damage sits under the sword: the sword trades range
+  // for cleave, while the spear drives half damage through the rest of a column.
   spear: Object.freeze({
-    common: Object.freeze({ damage: 4, sprite: 'spear_C', special: 'reach' }),
-    uncommon: Object.freeze({ damage: 5, sprite: 'spear_U', special: 'reach' }),
-    rare: Object.freeze({ damage: 6, sprite: 'spear_R', special: 'reach' }),
-    epic: Object.freeze({ damage: 7, sprite: 'spear_E', special: 'reach' }),
-    legendary: Object.freeze({ damage: 8, sprite: 'spear_L', special: 'reach' }),
+    common: Object.freeze({ damage: 4, sprite: 'spear_C', special: 'pierce' }),
+    uncommon: Object.freeze({ damage: 5, sprite: 'spear_U', special: 'pierce' }),
+    rare: Object.freeze({ damage: 6, sprite: 'spear_R', special: 'pierce' }),
+    epic: Object.freeze({ damage: 7, sprite: 'spear_E', special: 'pierce' }),
+    legendary: Object.freeze({ damage: 8, sprite: 'spear_L', special: 'pierce' }),
   }),
   axe: Object.freeze({
     common: Object.freeze({ damage: 7, sprite: 'axe_C', special: 'specialAttack' }),
@@ -78,6 +80,11 @@ export const WEAPON_SPAWN_MIN_FLOOR = Object.freeze({
   // Bow commons from F1 — half of the rogue starting kit needs resupply early.
   bow: Object.freeze({
     common: 1, uncommon: 12, rare: 24, epic: 30, legendary: 38,
+  }),
+  // Melee counterpart to the bow: the same availability curve, but its thrust
+  // continues through enemies in one board column.
+  spear: Object.freeze({
+    common: 12, uncommon: 20, rare: 30, epic: 40, legendary: 40,
   }),
   // Act 2 weapon — not in the act-1 floor pool (dagger+bow lane).
   sword: Object.freeze({
@@ -130,18 +137,96 @@ export function getWeaponStats(weaponType, rarity) {
 export const WEAPON_SPAWN_MIN_FLOOR_BY_CLASS = Object.freeze({});
 
 /**
- * Does this weapon reach past the frontline gate?
+ * Does this weapon bypass the frontline gate?
  *
  * The gate holds melee attacks to MELEE-role targets while any melee enemy
- * lives. Bows bypass it because reach is their whole point; the spear bypasses
- * it while staying a melee weapon, which is the whole point of the spear. One
+ * lives. Bows bypass it because range is their whole point; the spear bypasses
+ * it while staying a melee weapon, as part of its piercing identity. One
  * predicate, so the combat gate and the bot's target planner cannot drift apart
  * on the answer the way the stalemate detector once did.
  */
 export function weaponIgnoresFrontline(weapon) {
   if (!weapon) return false;
-  if (weapon.special === 'reach') return true;
+  // `reach` remains valid for cards loaded from older saves.
+  if (weapon.special === 'pierce' || weapon.special === 'reach') return true;
   return weapon.range === 'ranged' || weapon.isRanged === true;
+}
+
+/** Enemies behind the selected target in the spear's logical board column. */
+export function spearPierceTargetIndices(board, primaryIndex, primaryCard = null) {
+  const primary = board?.[primaryIndex] || primaryCard;
+  const column = primary?.data?.brick?.c;
+  const row = primary?.data?.brick?.r;
+  if (!Number.isFinite(column) || !Number.isFinite(row)) return [];
+
+  return board
+    .map((card, index) => ({ card, index }))
+    .filter(({ card, index }) => (
+      index !== primaryIndex
+      && card?.revealed
+      && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+      && (card.data?.health ?? 0) > 0
+      && card.data?.brick?.c === column
+      // Larger r is closer to the player; piercing continues away from them.
+      && card.data?.brick?.r < row
+    ))
+    .sort((a, b) => b.card.data.brick.r - a.card.data.brick.r)
+    .map(({ index }) => index);
+}
+
+/** Revealed enemies immediately left and right of the selected board cell. */
+export function swordCleaveTargetIndices(board, primaryIndex, primaryCard = null) {
+  const primary = board?.[primaryIndex] || primaryCard;
+  const column = primary?.data?.brick?.c;
+  const row = primary?.data?.brick?.r;
+  if (!Number.isFinite(column) || !Number.isFinite(row)) return [];
+
+  return board
+    .map((card, index) => ({ card, index }))
+    .filter(({ card, index }) => (
+      index !== primaryIndex
+      && card?.revealed
+      && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+      && (card.data?.health ?? 0) > 0
+      && card.data?.brick?.r === row
+      && Math.abs(card.data?.brick?.c - column) === 1
+    ))
+    .sort((a, b) => a.card.data.brick.c - b.card.data.brick.c)
+    .map(({ index }) => index);
+}
+
+/**
+ * Heavy Cleave geometry: nearest revealed enemy above the target in the same
+ * column, followed by revealed enemies immediately left/right of that enemy.
+ */
+export function axeHeavyCleaveTargetIndices(board, primaryIndex, primaryCard = null) {
+  const primary = board?.[primaryIndex] || primaryCard;
+  const column = primary?.data?.brick?.c;
+  const row = primary?.data?.brick?.r;
+  if (!Number.isFinite(column) || !Number.isFinite(row)) return { upper: null, sides: [] };
+
+  const enemies = board
+    .map((card, index) => ({ card, index }))
+    .filter(({ card, index }) => (
+      index !== primaryIndex
+      && card?.revealed
+      && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+      && (card.data?.health ?? 0) > 0
+    ));
+  const upperEntry = enemies
+    .filter(({ card }) => card.data?.brick?.c === column && card.data?.brick?.r < row)
+    .sort((a, b) => b.card.data.brick.r - a.card.data.brick.r)[0];
+  if (!upperEntry) return { upper: null, sides: [] };
+
+  const upperRow = upperEntry.card.data.brick.r;
+  const sides = enemies
+    .filter(({ card }) => (
+      card.data?.brick?.r === upperRow
+      && Math.abs(card.data?.brick?.c - column) === 1
+    ))
+    .sort((a, b) => a.card.data.brick.c - b.card.data.brick.c)
+    .map(({ index }) => index);
+  return { upper: upperEntry.index, sides };
 }
 
 export function weaponSpawnMinFloor(weaponType, rarity, characterId = null) {

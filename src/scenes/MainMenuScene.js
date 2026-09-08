@@ -631,10 +631,11 @@ export class MainMenuScene extends Phaser.Scene {
         this.saveManager.clearCurrentRun();
 
         this.fadeOutMenuMusic();
-        // Character pick once, then floor 1
+        // There is one unrestricted hero now, so a new run goes straight to
+        // the village instead of presenting a class choice.
         this.cameras.main.fadeOut(500, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
-            this.scene.start('CharacterSelectScene');
+            this.scene.start('VillageScene', { characterId: 'rogue' });
         });
     }
     

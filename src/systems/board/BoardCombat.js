@@ -54,6 +54,7 @@ export class BoardCombat {
         this.hasHolographicOmen = hasHolographicOmen.bind(cs);
         this.applyHolographicOmenStartEffect = applyHolographicOmenStartEffect.bind(cs);
         this.isAnyEnemyCard = isAnyEnemyCard.bind(cs);
+        this.isActiveBoardTaunter = isActiveBoardTaunter.bind(cs);
         this.burnEnemy = burnEnemy.bind(cs);
         this.damageGemTarget = damageGemTarget.bind(cs);
         this.applyRelicSlow = applyRelicSlow.bind(cs);
@@ -535,7 +536,7 @@ function rollEvade(card) {
     return true;
 }
 
-function attackEnemy(index, damage, isReflection = false, weaponUsed = null, skipDurability = false) {
+function attackEnemy(index, damage, isReflection = false, weaponUsed = null, skipDurability = false, options = {}) {
     const card = this.boardCards[index];
     if (!card || !card.revealed || !this.isEnemyType(card.data.type)) return;
     
@@ -548,7 +549,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
 
     // Silk Husk — while any revealed taunter lives, player damage may only hit taunters.
     // Reflection / thorns still connect (isReflection); player weapon/magic does not.
-    if (!isReflection && isTauntBlockingTarget.call(this, card)) {
+    if (!isReflection && !options.bypassTargeting && isTauntBlockingTarget.call(this, card)) {
         SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
         this.scene.createFloatingText(
             this.scene.playerAvatar.x,
@@ -559,7 +560,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         return;
     }
     
-    if (!isReflection && weapon) {
+    if (!isReflection && weapon && !options.bypassTargeting) {
         const isRanged = this.isRangedWeapon(weapon);
 
         // Immunity check lives in weaponCanDamageEnemy so the stalemate
@@ -579,9 +580,9 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         // Check if there are any melee enemies alive (revealed or hidden)
         const meleeBlockers = this._anyMeleeAlive({ includeHidden: true });
 
-        // Bows bypass the frontline gate because reach is their whole point;
-        // the spear bypasses it while staying melee, which is the whole point of
-        // the spear. Printed damage is applied as-is (no ranged multiplier);
+        // Bows bypass the frontline gate because range is their whole point;
+        // the spear bypasses it while staying melee, as part of its piercing
+        // identity. Printed damage is applied as-is (no ranged multiplier);
         // see docs/OPEN-QUESTIONS.md for weakened/display.
         if (!weaponIgnoresFrontline(weapon) && meleeBlockers && card.data.role !== 'MELEE') {
             SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
@@ -1413,4 +1414,3 @@ function tryApplyBoardGem(card, index) {
 
     return false;
 }
-

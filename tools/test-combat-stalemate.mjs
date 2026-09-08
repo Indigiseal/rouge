@@ -4,8 +4,21 @@
 // Sprite froze the board: no damage possible, no Next button, no enemy turns.
 import assert from 'node:assert/strict';
 import { CardSystem } from '../src/systems/CardSystem.js';
-import { weaponCanDamageEnemy } from '../src/systems/board/BoardCombat.js';
+import { BoardCombat, weaponCanDamageEnemy } from '../src/systems/board/BoardCombat.js';
 import { CombatTurnController } from '../src/systems/combat/CombatTurnController.js';
+import {
+  CHARACTER_IDS,
+  normalizeCharacterId,
+  resolveArmorSpawnTypes,
+} from '../src/content/characters/CharacterClasses.js';
+import {
+  createWeaponCardData,
+  axeHeavyCleaveTargetIndices,
+  isWeaponSpawnableAtFloor,
+  spearPierceTargetIndices,
+  swordCleaveTargetIndices,
+  weaponIgnoresFrontline,
+} from '../src/content/cards/weapons.js';
 
 const bow = { type: 'weapon', weaponType: 'bow', range: 'ranged', durability: 5 };
 const dagger = { type: 'weapon', weaponType: 'dagger', range: 'melee', durability: 4 };
@@ -18,17 +31,90 @@ const wolf = (revealed = true) => ({
   data: { type: 'enemy', enemyType: 'wolf', health: 8, features: [] },
 });
 
+// --- single unrestricted hero and legacy save migration
+assert.deepEqual(CHARACTER_IDS, ['rogue']);
+assert.equal(normalizeCharacterId('warrior'), 'rogue');
+assert.deepEqual(resolveArmorSpawnTypes('rogue'), ['leather', 'chain', 'plate']);
+
 // BoardCombat's functions are bound to the CardSystem facade. Every internal
 // helper called through `this` therefore needs a facade method too; without
 // these two, a normal hit mutated HP/durability and then threw before either
 // value could be redrawn.
 assert.equal(typeof CardSystem.prototype.applyPoisonGemStacks, 'function');
 assert.equal(typeof CardSystem.prototype.splashPoisonGem, 'function');
+assert.equal(typeof CardSystem.prototype.isActiveBoardTaunter, 'function');
+
+const tauntProbe = new BoardCombat({
+  isEnemyType: (type) => type === 'enemy' || type === 'boss',
+  _isCardBackTexture: (texture) => texture === 'cardBack' || String(texture).startsWith('cardFlip'),
+});
+const taunter = {
+  revealed: true,
+  sprite: { scene: {}, texture: { key: 'silkHusk' } },
+  data: { type: 'enemy', health: 5, features: ['taunt'] },
+};
+assert.equal(tauntProbe.isActiveBoardTaunter(taunter), true, 'a live face-up taunter constrains primary targeting');
+assert.equal(
+  tauntProbe.isActiveBoardTaunter({ ...taunter, data: { ...taunter.data, isCocoon: true } }),
+  false,
+  'an unopened cocoon shell does not provoke',
+);
 
 // --- the shared predicate
 assert.equal(weaponCanDamageEnemy(bow, sprite()), false, 'bows must not hurt a ranged-immune enemy');
 assert.equal(weaponCanDamageEnemy(dagger, sprite()), true, 'melee still connects with a ranged-immune enemy');
 assert.equal(weaponCanDamageEnemy(bow, wolf()), true, 'bows hurt ordinary enemies');
+
+// --- spear spawn and column piercing
+const spear = createWeaponCardData('spear', 'common');
+assert.equal(isWeaponSpawnableAtFloor('spear', 'common', 11), false, 'common spears stay locked before floor 12');
+assert.equal(isWeaponSpawnableAtFloor('spear', 'common', 12), true, 'common spears spawn from floor 12');
+assert.equal(spear.special, 'pierce');
+assert.equal(weaponIgnoresFrontline(spear), true, 'piercing spears can select the back line');
+const columnEnemy = (r, c = 2, revealed = true) => ({
+  revealed,
+  data: { type: 'enemy', health: 10, brick: { r, c } },
+});
+assert.deepEqual(
+  spearPierceTargetIndices([
+    columnEnemy(2),       // selected front enemy
+    columnEnemy(0),       // furthest enemy in the same column
+    columnEnemy(1),       // next enemy in the same column
+    columnEnemy(1, 3),    // another column
+    columnEnemy(-1, 2, false), // hidden enemy
+    columnEnemy(3),       // closer to the player, not behind the target
+  ], 0),
+  [2, 1],
+  'piercing continues through revealed enemies behind the target, nearest first',
+);
+
+// --- sword cleave adjacency
+assert.deepEqual(
+  swordCleaveTargetIndices([
+    columnEnemy(1, 2), // selected target
+    columnEnemy(1, 1), // immediate left
+    columnEnemy(1, 3), // immediate right
+    columnEnemy(1, 4), // two cells away
+    columnEnemy(0, 2), // above
+    columnEnemy(1, 3, false), // hidden duplicate position
+  ], 0),
+  [1, 2],
+  'cleave hits only revealed enemies immediately left and right of its target',
+);
+
+assert.deepEqual(
+  axeHeavyCleaveTargetIndices([
+    columnEnemy(3, 2), // selected target
+    columnEnemy(1, 2), // farther enemy in the same column
+    columnEnemy(2, 2), // nearest enemy above: 50%
+    columnEnemy(2, 1), // left of that enemy: 25%
+    columnEnemy(2, 3), // right of that enemy: 25%
+    columnEnemy(3, 1), // left of primary, not part of Heavy Cleave
+    columnEnemy(2, 4), // too far to the right
+  ], 0),
+  { upper: 2, sides: [3, 4] },
+  'heavy cleave fans out from the nearest enemy above the selected target',
+);
 
 // --- the detector
 function stalemate({ board, inventory, equippedWeapon = null }) {

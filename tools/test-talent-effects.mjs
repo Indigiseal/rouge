@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { resolveTalentEffects, TALENT_NODES, getBranchesForCharacter } from '../src/content/talents/index.js';
 
-for (const characterId of ['rogue', 'warrior']) {
+for (const characterId of ['rogue']) {
   const branch = getBranchesForCharacter(characterId).find((b) => b.purchasable);
   if (!branch) continue;
   const maxed = {};
@@ -37,7 +37,7 @@ for (const characterId of ['rogue', 'warrior']) {
 // nothing at all. Every rank must differ from the one below it SOMEWHERE in a
 // run — not necessarily on every floor, but somewhere a player would see it.
 const FLOORS = Array.from({ length: 45 }, (_, i) => i);
-for (const characterId of ['rogue', 'warrior']) {
+for (const characterId of ['rogue']) {
   const branch = getBranchesForCharacter(characterId).find((b) => b.purchasable);
   if (!branch) continue;
   for (const talentId of branch.nodes) {
@@ -62,7 +62,7 @@ for (const characterId of ['rogue', 'warrior']) {
 // describes itself identically is the same bad purchase from the player's side:
 // Keen Edge once printed "+1 damage" for ranks 1, 2 and 3 because the leading
 // term was the base and only the tail differed.
-for (const characterId of ['rogue', 'warrior']) {
+for (const characterId of ['rogue']) {
   const branch = getBranchesForCharacter(characterId).find((b) => b.purchasable);
   if (!branch) continue;
   for (const talentId of branch.nodes) {

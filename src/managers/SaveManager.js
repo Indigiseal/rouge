@@ -1,7 +1,7 @@
 // SaveManager.js - Complete fixed version
 
 import { applyAmuletAtlasPresentation } from '../content/amulets/RelicsOthersAtlas.js';
-import { DEFAULT_WARRIOR_STANCE, WARRIOR_STANCES } from '../content/characters/CharacterClasses.js';
+import { DEFAULT_WARRIOR_STANCE, WARRIOR_STANCES, normalizeCharacterId } from '../content/characters/CharacterClasses.js';
 import { PLAYER_START_HP } from '../systems/GameState.js';
 import { normalizeMonthIndex } from '../content/months/index.js';
 import { normalizeActLocationIds } from '../content/locations/index.js';
@@ -293,7 +293,8 @@ export class SaveManager {
           bottomlessBagApplied: parsed.player?.bottomlessBagApplied ?? false,
           discardedCardsThisRun: parsed.player?.discardedCardsThisRun ?? 0,
           discardCritChance: parsed.player?.discardCritChance ?? 0,
-          characterId: parsed.player?.characterId ?? 'rogue',
+          // Legacy warrior runs continue as the single unrestricted hero.
+          characterId: normalizeCharacterId(parsed.player?.characterId),
           journalBonusHP: parsed.player?.journalBonusHP ?? 0,
           mapBonusAP: parsed.player?.mapBonusAP ?? 0,
           mapFloorCount: parsed.player?.mapFloorCount ?? 0,

@@ -80,9 +80,7 @@ export const CombatHud = {
         this.armorPanelBriarFrame = null;
         this.armorPanelInfoText = null;
 
-        // Warrior stance toggle, under the hero portrait. The rogue has no
-        // stances, so nothing is created for them.
-        this.createStanceButton();
+        // The single hero has no class stance toggle.
 
         // Action points: each diamond is four AP, with spent quadrants darkened.
         this.actionPointSprites = [];
@@ -1002,10 +1000,9 @@ export const CombatHud = {
     },
 
     // ── Warrior stance ────────────────────────────────────────────────────
-    // The warrior's identity lives in the stance rather than in his weapon
-    // type: Sweep makes swords cleave, Focus buys crit on whatever he is
-    // holding. Switching costs AP so the stance is a read of the board, not a
-    // free toggle flipped before every swing.
+    // Focus buys crit on whatever the warrior is holding. Sword cleave is now
+    // intrinsic to the weapon for every character and does not depend on this
+    // stance. Switching still costs AP.
     createStanceButton() {
         if (this.gameState?.characterId !== 'warrior') return;
         // Tucked into the hero column rather than floating beside the board:

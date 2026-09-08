@@ -11,11 +11,15 @@ export {
   WEAPON_SPAWN_MIN_FLOOR,
   WEAPON_DURABILITY_BY_TYPE,
   WEAPON_UNLOCKS,
+  SPEAR_PIERCE_FRACTION,
   weaponDurability,
   getWeaponStats,
   weaponSpawnMinFloor,
   isWeaponSpawnableAtFloor,
   createWeaponCardData,
+  spearPierceTargetIndices,
+  swordCleaveTargetIndices,
+  axeHeavyCleaveTargetIndices,
 } from './weapons.js';
 export {
   ARMORS,

@@ -487,6 +487,7 @@ export const InventorySlotRenderer = {
 
 
             this.updateDragOverlay(cardSprite);
+            this.updateWeaponAttackIndicator(cardSprite, slotIndex);
             this.updateFireReachIndicator(cardSprite, slotIndex);
         });
 

@@ -190,7 +190,7 @@ export class RareShopScene extends StationRoomBase {
 
     createUpgradedWeapon(excludeType = null) {
         const floor = this.gameState.currentFloor;
-        const weaponTypes = ['dagger', 'bow', 'sword', 'axe'];
+        const weaponTypes = ['dagger', 'bow', 'spear', 'sword', 'axe'];
         let availableWeapons = weaponTypes.filter((weaponType) => (
             isWeaponSpawnableAtFloor(weaponType, 'uncommon', floor)
         ));

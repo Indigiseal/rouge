@@ -36,13 +36,13 @@ export const ARMORS = Object.freeze({
 /** Earliest floor this type×rarity may appear as loot. Starters ignore this. */
 export const ARMOR_SPAWN_MIN_FLOOR = Object.freeze({
   leather: Object.freeze({
-    common: 1, uncommon: 10, rare: 18, epic: 26, legendary: 34,
+    common: 1, uncommon: 10, rare: 25, epic: 35, legendary: 35,
   }),
   chain: Object.freeze({
-    common: 1, uncommon: 1, rare: 1, epic: 1, legendary: 1,
+    common: 1, uncommon: 10, rare: 25, epic: 35, legendary: 35,
   }),
   plate: Object.freeze({
-    common: 1, uncommon: 1, rare: 1, epic: 1, legendary: 1,
+    common: 1, uncommon: 10, rare: 25, epic: 35, legendary: 35,
   }),
 });
 

@@ -3,6 +3,7 @@
 
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { needsLocationPick } from '../content/locations/index.js';
+import { scaleGoldReward } from '../content/economy/gold.js';
 
 export function setupBossRewardRoom(scene) {
     scene.gameState.roomType = 'BOSS_REWARD';
@@ -23,7 +24,7 @@ export function setupBossRewardRoom(scene) {
 
     // Currency reward — scales with floor
     const floor = scene.gameState.currentFloor;
-    const coinBonus = 25 + floor;
+    const coinBonus = scaleGoldReward(25 + floor);
     const crystalBonus = 4 + Math.floor(floor / 6);
     scene.gameState.coins += coinBonus;
     scene.gameState.crystals += crystalBonus;
@@ -139,4 +140,3 @@ export function leaveBossRewardRoom(scene) {
         scene.scene.launch('MapViewScene', { gameState: scene.gameState });
     });
 }
-

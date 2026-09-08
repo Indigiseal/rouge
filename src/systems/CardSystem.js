@@ -11,6 +11,7 @@ import { BoardCardFx } from './board/BoardCardFx.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from './HumanRunRecorder.js';
 import { serializeReinforcementState } from '../content/balance/Reinforcements.js';
 import { cardBackKey, isCardBackTexture, opensByDamage, revealAnimKey } from './board/BoardVariant.js';
+import { scaleGoldReward } from '../content/economy/gold.js';
 
 export class CardSystem {
 
@@ -97,6 +98,7 @@ export class CardSystem {
     currentFrontRowR(...args) { return this.combat.currentFrontRowR(...args); }
     maxHiddenMeleeRowR(...args) { return this.combat.maxHiddenMeleeRowR(...args); }
     _revealOneBehindAfterFrontClears(...args) { return this.combat._revealOneBehindAfterFrontClears(...args); }
+    isActiveBoardTaunter(...args) { return this.combat.isActiveBoardTaunter(...args); }
     buildBrickGrid(...args) { return this.layout.buildBrickGrid(...args); }
     pickConnectedBrick(...args) { return this.layout.pickConnectedBrick(...args); }
     buildCompactBrickCluster(...args) { return this.layout.buildCompactBrickCluster(...args); }
@@ -501,7 +503,7 @@ export class CardSystem {
                 
                 // Apply gold modifier from amulets
                 const coinAmount = this.scene.amuletManager ? 
-                    this.scene.amuletManager.modifyGoldFound(card.data.amount) : card.data.amount;
+                    this.scene.amuletManager.modifyGoldFound(card.data.amount) : scaleGoldReward(card.data.amount);
                 
                 this.scene.gameState.coins += coinAmount;
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${coinAmount}`, 0xffd700);
