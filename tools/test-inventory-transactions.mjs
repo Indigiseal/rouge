@@ -75,6 +75,14 @@ function eventTypes() {
     assert.equal(manager.amuletDefinitions.keepersWard.armorDurabilitySaveChance, 0.3);
     assert.equal(AMULETS.some(amulet => amulet.id === 'keepersWard'), true);
     assert.equal(AMULETS.some(amulet => retired.includes(amulet.id)), false);
+    assert.equal(AMULETS.some(amulet => amulet.id === 'monocle'), false);
+    assert.deepEqual(
+        AMULETS.find(amulet => amulet.id === 'forcedMarch'),
+        { ...AMULETS.find(amulet => amulet.id === 'forcedMarch'), minFloor: 0, rarity: 'common' },
+    );
+    for (const id of ['armsfindersCharm', 'apothecarysEye', 'gemseekersLens', 'plagueHeart']) {
+        assert.equal(AMULETS.some(amulet => amulet.id === id), true, `${id} must be in the drop catalog`);
+    }
 }
 
 {
@@ -178,6 +186,30 @@ function eventTypes() {
     assert.deepEqual(swaps, [[board[0], board[2]]]);
     assert.equal(swapAmulet.cooldownLeft, 15);
     assert.equal(manager.activeAbility, null);
+}
+
+{
+    const active = { id: 'weaponActive', cooldownLeft: 0 };
+    const board = [
+        { revealed: false, data: { type: 'weapon' }, sprite: {} },
+        { revealed: false, data: { type: 'weapon' }, sprite: {} },
+        { revealed: false, data: { type: 'potion' }, sprite: {} },
+    ];
+    const revealed = [];
+    const manager = Object.create(AmuletManager.prototype);
+    manager.gameState = { activeAmulets: [active] };
+    manager.amuletDefinitions = {
+        weaponActive: { activeAbility: 'revealWeapon', cooldownTurns: 10 },
+    };
+    manager.scene = {
+        cardSystem: { boardCards: board, revealCard: (index, free) => revealed.push([index, free]) },
+        createFloatingText: () => {}, saveCurrentRun: () => {}, updateUI: () => {},
+    };
+    assert.equal(manager.activateAmulet('weaponActive'), true);
+    assert.equal(revealed.length, 1, 'a random reveal amulet must reveal exactly one card');
+    assert.equal(board[revealed[0][0]].data.type, 'weapon');
+    assert.equal(revealed[0][1], true, 'active reveal must be a free reveal');
+    assert.equal(active.cooldownLeft, 10);
 }
 
 {

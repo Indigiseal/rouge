@@ -267,6 +267,28 @@ export class AmuletManager {
             return true;
         }
 
+        const randomRevealTypes = {
+            revealWeapon: { type: 'weapon', empty: 'No hidden weapons', success: 'Weapon revealed' },
+            revealPotion: { type: 'potion', empty: 'No hidden potions', success: 'Potion revealed' },
+            revealGem: { type: 'gem', empty: 'No hidden gems', success: 'Gem revealed' },
+        };
+        const reveal = randomRevealTypes[definition.activeAbility];
+        if (reveal) {
+            const board = this.scene.cardSystem?.boardCards || [];
+            const targets = board
+                .map((card, index) => ({ card, index }))
+                .filter(({ card }) => card && !card.revealed && card.data?.type === reveal.type);
+            if (targets.length === 0) {
+                this.scene.createFloatingText(320, 42, reveal.empty, 0xcccccc);
+                return false;
+            }
+            const target = targets[Math.floor(Math.random() * targets.length)];
+            this.scene.cardSystem.revealCard(target.index, true);
+            this.startCooldown(amulet, definition);
+            this.scene.createFloatingText(320, 42, reveal.success, 0x66ff99);
+            return true;
+        }
+
         if (definition.activeAbility === 'swapCards') {
             const available = (this.scene.cardSystem?.boardCards || []).filter(Boolean);
             if (available.length < 2) {
@@ -461,8 +483,10 @@ export class AmuletManager {
         this.gameState.activeAmulets.forEach(amulet => {
             const definition = this.amuletDefinitions[amulet.id];
             if (definition && definition.onEnemyKill) {
-                definition.onEnemyKill();
+                definition.onEnemyKill(card);
             }
+            const burstDamage = definition?.poisonDeathExplosionDamage || 0;
+            if (burstDamage > 0) this.scene.cardSystem?.explodePoisonedEnemy?.(card, burstDamage);
         });
         this.tryBindThrall(card);
     }

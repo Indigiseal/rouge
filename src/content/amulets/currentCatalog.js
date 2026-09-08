@@ -83,7 +83,7 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 ...getAmuletAtlasPresentation('forcedMarch'),
                 name: 'Forced March',
                 description: 'The first revealed ranged enemy not on the front row swaps with a random front-row card.',
-                rarity: 'uncommon',
+                rarity: 'common',
                 strategyRangedMarch: true,
             },
             runeOfFire: {
@@ -190,6 +190,30 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 weaponDurabilitySaveChance: 0.3,
                 armorDurabilitySaveChance: 0.3,
             },
+            armsfindersCharm: {
+                ...getAmuletAtlasPresentation('armsfindersCharm'),
+                name: "Armsfinder's Charm",
+                description: 'Active: reveal one random weapon card on the board. Cooldown: 10 player turns.',
+                rarity: 'rare',
+                activeAbility: 'revealWeapon',
+                cooldownTurns: 10,
+            },
+            apothecarysEye: {
+                ...getAmuletAtlasPresentation('apothecarysEye'),
+                name: "Apothecary's Eye",
+                description: 'Active: reveal one random potion card on the board. Cooldown: 10 player turns.',
+                rarity: 'rare',
+                activeAbility: 'revealPotion',
+                cooldownTurns: 10,
+            },
+            gemseekersLens: {
+                ...getAmuletAtlasPresentation('gemseekersLens'),
+                name: "Gemseeker's Lens",
+                description: 'Active: reveal one random gem card on the board. Cooldown: 10 player turns.',
+                rarity: 'rare',
+                activeAbility: 'revealGem',
+                cooldownTurns: 10,
+            },
 
             glovesOfHermitWizard: {
                 ...getAmuletAtlasPresentation('glovesOfHermitWizard'),
@@ -218,6 +242,13 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 description: 'Once per act, on the map, you may pick any room on the next floor instead of following the branches.',
                 rarity: 'legendary',
                 strategyDetour: true,
+            },
+            plagueHeart: {
+                ...getAmuletAtlasPresentation('plagueHeart'),
+                name: 'Plague Heart',
+                description: 'A poisoned enemy explodes on death, dealing 10 damage to every adjacent enemy.',
+                rarity: 'legendary',
+                poisonDeathExplosionDamage: 10,
             },
         
         };

@@ -57,6 +57,7 @@ export class BoardCombat {
         this.isActiveBoardTaunter = isActiveBoardTaunter.bind(cs);
         this.burnEnemy = burnEnemy.bind(cs);
         this.damageGemTarget = damageGemTarget.bind(cs);
+        this.explodePoisonedEnemy = explodePoisonedEnemy.bind(cs);
         this.applyRelicSlow = applyRelicSlow.bind(cs);
         this.rollWeaponEnchant = rollWeaponEnchant.bind(cs);
         this.applyWeaponEnchantOnHit = applyWeaponEnchantOnHit.bind(cs);
@@ -1028,6 +1029,28 @@ function damageGemTarget(index, amount, label, color, effect = null, beat = 'gem
     } else {
         this.updateEnemyInfoText(card);
     }
+}
+
+function explodePoisonedEnemy(card, amount) {
+    if (!card?.data?.statusEffects?.some((effect) => effect.type === 'poison')) return false;
+    const neighborIndices = Array.isArray(card.data.brickNeighbors)
+        ? [...new Set(card.data.brickNeighbors)]
+        : [];
+    let hit = false;
+    for (const index of neighborIndices) {
+        const target = this.boardCards[index];
+        if (target === card || !this.isOpenEnemyCard(target) || (target.data.health ?? 0) <= 0) continue;
+        target.data.health -= amount;
+        CombatSequencer.floatingText(this.scene, 'gem', target.sprite.x, target.sprite.y - 18, `-${amount} Plague`, 0x88dd66);
+        CombatSequencer.shakeCard(this.scene, 'gem', target.sprite);
+        hit = true;
+        if (target.data.health <= 0) this.removeDefeatedEnemy(index, target);
+        else this.updateEnemyInfoText(target);
+    }
+    if (hit && card.sprite) {
+        this.scene.createFloatingText?.(card.sprite.x, card.sprite.y - 28, 'Plague Burst!', 0x88dd66);
+    }
+    return hit;
 }
 
 function applyRelicSlow(card) {

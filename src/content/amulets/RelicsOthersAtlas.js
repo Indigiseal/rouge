@@ -174,6 +174,10 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     provisionersBell: 'breadLoaf',
     shiftingMedallion: 'runeOfBalance',
     keepersWard: 'shieldPotion',
+    armsfindersCharm: 'divinersSpade',
+    apothecarysEye: 'moonPotion',
+    gemseekersLens: 'magnifyingGlass',
+    plagueHeart: 'wormVenomVial',
 });
 
 export const RELIC_ATLAS_KEYS = Object.freeze({

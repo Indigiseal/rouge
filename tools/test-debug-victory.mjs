@@ -6,7 +6,7 @@ globalThis.Phaser = { Scene: class {} };
 // that this is a developer context.
 const { setDevToolsEnabled } = await import('../src/config/DevTools.js');
 setDevToolsEnabled(true);
-const { GameScene } = await import('../src/scenes/GameScene.js');
+const { GameScene, applyAmbushVictoryStory } = await import('../src/scenes/GameScene.js');
 const {
   completeTollroadAftermath,
   shouldShowTollroadAftermath,
@@ -70,6 +70,14 @@ const eventRoom = makeScene('EVENT');
 assert.equal(GameScene.prototype.debugDefeatAllEnemies.call(eventRoom.scene), 0);
 assert.equal(eventRoom.scene.cardSystem.boardCards[0], eventRoom.hiddenEnemy);
 assert.equal(eventRoom.clearChecks, 0, 'the shortcut must be inert outside combat');
+
+const processionState = {
+  ambushId: 'royal_procession',
+  storyRun: { goblinKingStartingHealthFraction: 1 },
+};
+assert.equal(applyAmbushVictoryStory(processionState), true);
+assert.equal(processionState.storyRun.goblinKingStartingHealthFraction, 0.75,
+  'winning the procession ambush must carry a wounded Goblin King into the boss fight');
 
 assert.equal(
   shouldShowTollroadAftermath({

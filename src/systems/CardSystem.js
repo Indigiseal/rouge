@@ -693,6 +693,7 @@ export class CardSystem {
     playLightningShine(...args) { return this.fx.playLightningShine(...args); }
     playLightningArc(...args) { return this.fx.playLightningArc(...args); }
     damageGemTarget(...args) { return this.combat.damageGemTarget(...args); }
+    explodePoisonedEnemy(...args) { return this.combat.explodePoisonedEnemy(...args); }
     applyRelicSlow(...args) { return this.combat.applyRelicSlow(...args); }
     rollWeaponEnchant(...args) { return this.combat.rollWeaponEnchant(...args); }
     applyWeaponEnchantOnHit(...args) { return this.combat.applyWeaponEnchantOnHit(...args); }

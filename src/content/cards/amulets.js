@@ -17,13 +17,12 @@ export const AMULET_DROP_DATA = [
   // Common (from floor 0 / start of run)
   { id: 'ringOfRegeneration', minFloor: 0, weight: 10, rarity: 'common', group: 'survival' },
   { id: 'tacticiansPin', minFloor: 0, weight: 8, rarity: 'common', group: 'strategy' },
+  { id: 'forcedMarch', minFloor: 0, weight: 6, rarity: 'common', group: 'strategy' },
 
   // Uncommon (from floor 10)
   { id: 'ringOfGreaterRegeneration', minFloor: 10, weight: 7, rarity: 'uncommon', group: 'survival' },
   { id: 'alchemistBag', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'survival' },
-  { id: 'monocle', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'utility' },
   { id: 'pouchOfGreed', minFloor: 10, weight: 8, rarity: 'uncommon', group: 'utility' },
-  { id: 'forcedMarch', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'strategy' },
   { id: 'runeOfFire', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'magic' },
   { id: 'runeOfZap', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'magic' },
   { id: 'runeOfPoison', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'magic' },
@@ -39,10 +38,14 @@ export const AMULET_DROP_DATA = [
   { id: 'provisionersBell', minFloor: 16, weight: 4, rarity: 'rare', group: 'utility' },
   { id: 'shiftingMedallion', minFloor: 16, weight: 4, rarity: 'rare', group: 'strategy' },
   { id: 'keepersWard', minFloor: 16, weight: 5, rarity: 'rare', group: 'survival' },
+  { id: 'armsfindersCharm', minFloor: 16, weight: 4, rarity: 'rare', group: 'utility' },
+  { id: 'apothecarysEye', minFloor: 16, weight: 4, rarity: 'rare', group: 'utility' },
+  { id: 'gemseekersLens', minFloor: 16, weight: 4, rarity: 'rare', group: 'magic' },
 
   // Legendary (shops / boss until boss-only set exists)
   { id: 'glovesOfHermitWizard', minFloor: 0, weight: 2, rarity: 'legendary', group: 'magic' },
   { id: 'generalsTable', minFloor: 0, weight: 2, rarity: 'legendary', group: 'strategy' },
+  { id: 'plagueHeart', minFloor: 0, weight: 2, rarity: 'legendary', group: 'magic' },
 ];
 
 /** Drop catalog with atlas presentation merged in. */

@@ -28,7 +28,7 @@ export const GEM_STACK_DAMAGE = Object.freeze([3, 4, 5, 6, 7]);
 
 // Fire gem splash, measured centre-to-nearest-sprite-edge. Uncommon Rune of
 // Fire multiplies this; the old event rune still adds flat pixels on top.
-export const FIRE_GEM_SPLASH_RADIUS = 65;
+export const FIRE_GEM_SPLASH_RADIUS = 59;
 
 /**
  * @param {number} [multiplier=1]

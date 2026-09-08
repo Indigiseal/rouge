@@ -53,6 +53,16 @@ import { isSilkCocoonCacheRoom, boardHasOpenCocoonEnemies } from '../systems/boa
 import { playSmokeBurst, SMOKE_BURST_MS } from '../ui/SmokeBurst.js';
 import { shouldShowTollroadAftermath } from '../content/story/TollroadAftermath.js';
 
+export function applyAmbushVictoryStory(gameState) {
+    const story = gameState?.storyRun;
+    if (gameState?.ambushId !== 'royal_procession' || !story) return false;
+    story.goblinKingStartingHealthFraction = Math.min(
+        story.goblinKingStartingHealthFraction || 1,
+        0.75,
+    );
+    return true;
+}
+
 export class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
@@ -1477,6 +1487,7 @@ export class GameScene extends Phaser.Scene {
             this.updateUI?.();
         }
         const story = this.gameState?.storyRun;
+        applyAmbushVictoryStory(this.gameState);
         if (this.gameState?.ambushId === 'toll_collectors' && !story?.tollEscapeNoticeShown) {
             story.tollEscapeNoticeShown = true;
             // Show the smoke before the words: the bomb goes off, and only once
