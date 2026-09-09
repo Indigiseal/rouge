@@ -49,6 +49,12 @@ export const DEFAULT_STORY_RUN = Object.freeze({
   tollFought: false,
   tollKiller: false,
   tollEscapeNoticeShown: false,
+  tollWatchFailed: false,
+  bridgeDestroyed: false,
+  tollGuardsEscaped: 0,
+  tollEscapeMode: null,
+  tollroadDetour: null,
+  jetpackFlightPending: false,
   merchantRobbed: false,
   // Durable Tollroad story progression. The pendant is a key item rather than
   // an inventory card, so it never consumes a slot and can be used by later

@@ -4019,6 +4019,63 @@ export function normalizeLanguageCode(language) {
         : legacy[lower] || 'en';
 }
 
+Object.assign(STRINGS.en, {
+    'ui.tollroadIntro.title': "The King's Mile",
+    'ui.tollroadIntro.page1': 'You step into a forest clearing. Behind you, the heavy door slams into a crooked wooden frame with a deep, timbered boom. It looks as though a forester\'s cottage ought to stand here, but someone has rubbed away the walls, floor, roof, and everything they held, leaving only the doorway hanging in the air.\n\nThen the door thins into nothing. There will be no going back that way. You set off through the trees.',
+    'ui.tollroadIntro.page2': 'Before long the ground rises beneath your feet. From the hilltop, a broad valley opens below. Roads web every field, and every road narrows through a gate. Little green figures wait beside striped barriers with ledgers, scales, and open palms.\n\nToll boards have been nailed to trees, wells, bridges—even to a scarecrow. Carts stand stripped beside the road while goblins argue over their contents. Above it all, green-and-gold banners mark each stolen roof for the Goblin King.\n\nNothing moves through this valley without paying. The goblins own the roads, and greed appears to be their only law.',
+    'ui.tollroadIntro.goOn': 'Enter the valley',
+});
+
+Object.assign(STRINGS.ru, {
+    'ui.tollroadIntro.title': 'Королевская миля',
+    'ui.tollroadIntro.page1': 'Ты оказываешься посреди лесной поляны. За спиной тяжёлая дверь с гулким стуком захлопывается в немного покосившейся деревянной раме. Кажется, здесь должна стоять избушка лесника, но кто-то словно ластиком стёр стены, пол, крышу и всё её содержимое, оставив лишь дверной проём, висящий в воздухе.\n\nЗатем дверь растворяется вместе с проёмом. Этим путём уже не вернуться. Ты углубляешься в лес.',
+    'ui.tollroadIntro.page2': 'Вскоре дорога выводит тебя на холм, и внизу открывается широкая долина. Поля опутаны дорогами, и каждая дорога сужается у заставы. Возле полосатых шлагбаумов суетятся маленькие зелёные фигуры — со счётными книгами, весами и протянутыми ладонями.\n\nТаблички с пошлинами прибиты к деревьям, колодцам, мостам и даже к пугалу. На обочинах стоят обобранные телеги, пока гоблины ссорятся из-за их содержимого. Над каждой отнятой крышей висит зелёно-золотое знамя Короля гоблинов.\n\nНичто в этой долине не сдвинется с места, не заплатив. Гоблины владеют дорогами, а жадность здесь — единственный закон.',
+    'ui.tollroadIntro.goOn': 'Спуститься в долину',
+});
+
+Object.assign(STRINGS.es, {
+    'ui.tollroadIntro.title': 'La Milla del Rey',
+    'ui.tollroadIntro.page1': 'Apareces en medio de un claro del bosque. A tu espalda, la pesada puerta se cierra contra un marco de madera algo torcido con un golpe profundo. Parece que aquí debería haber una cabaña de guardabosques, pero alguien ha borrado las paredes, el suelo, el tejado y todo cuanto contenían, dejando solo el umbral suspendido en el aire.\n\nEntonces también la puerta se desvanece. Ya no podrás volver por allí. Te adentras entre los árboles.',
+    'ui.tollroadIntro.page2': 'Poco después, el terreno asciende hasta una colina. Desde la cima se abre un amplio valle. Los caminos cubren los campos como una red, y cada uno se estrecha al llegar a una barrera. Pequeñas figuras verdes aguardan junto a los postes rayados con libros de cuentas, balanzas y las palmas extendidas.\n\nHay tablones de peaje clavados en árboles, pozos, puentes e incluso en un espantapájaros. Carros desvalijados descansan junto al camino mientras los goblins se disputan su contenido. Sobre cada tejado robado ondea el estandarte verde y dorado del Rey Goblin.\n\nNada cruza este valle sin pagar. Los goblins son dueños de los caminos, y la codicia parece ser su única ley.',
+    'ui.tollroadIntro.goOn': 'Entrar en el valle',
+});
+
+Object.assign(STRINGS.fr, {
+    'ui.tollroadIntro.title': 'Le Mille du Roi',
+    'ui.tollroadIntro.page1': 'Vous vous retrouvez au milieu d’une clairière. Derrière vous, la lourde porte se referme contre un chambranle de bois un peu de travers dans un grondement sourd. Une cabane de forestier devrait se dresser ici, mais quelqu’un semble en avoir gommé les murs, le sol, le toit et tout ce qu’ils abritaient, ne laissant que cette ouverture suspendue dans les airs.\n\nPuis la porte se dissout à son tour. Impossible de revenir par là. Vous vous enfoncez entre les arbres.',
+    'ui.tollroadIntro.page2': 'Bientôt, le terrain monte jusqu’à une colline. Du sommet, une vaste vallée s’ouvre devant vous. Les routes quadrillent chaque champ et chacune se resserre devant une barrière. De petites silhouettes vertes attendent près des poteaux rayés, registres, balances et paumes ouvertes à la main.\n\nDes écriteaux de péage sont cloués aux arbres, aux puits, aux ponts et même à un épouvantail. Des charrettes dépouillées bordent la route tandis que des gobelins se disputent leur contenu. Au-dessus de chaque toit volé flotte la bannière verte et or du Roi gobelin.\n\nRien ne traverse cette vallée sans payer. Les gobelins possèdent les routes, et l’avidité semble être leur seule loi.',
+    'ui.tollroadIntro.goOn': 'Entrer dans la vallée',
+});
+
+Object.assign(STRINGS.en, {
+    'ui.detour.title': 'The Marsh Detour', 'ui.detour.subtitle': 'Three stops stand between you and the King’s road.',
+    'ui.detour.fight': 'Danger {number}', 'ui.detour.merchant': 'Merchant',
+    'ui.detour.exitTitle': 'Beyond the Broken Bridge',
+    'ui.detour.exitBody': 'At last the reeds thin and the ground rises beneath your boots. You climb out of the marsh onto the King’s road—and find yourself on the far side of the ruined bridge.\n\nAcross the gap, the tax collectors’ abandoned barrier is little more than a stripe of color in the distance. Ahead, the road winds toward the Goblin King’s castle. The detour is over.',
+    'ui.detour.return': 'Return to the King’s road',
+});
+Object.assign(STRINGS.es, {
+    'ui.detour.title': 'El desvío del pantano', 'ui.detour.subtitle': 'Tres etapas te separan del camino del Rey.',
+    'ui.detour.fight': 'Peligro {number}', 'ui.detour.merchant': 'Mercader',
+    'ui.detour.exitTitle': 'Más allá del puente derruido',
+    'ui.detour.exitBody': 'Por fin los juncos se dispersan y el terreno se eleva bajo tus botas. Sales del pantano al camino del Rey, al otro lado del puente derruido.\n\nAl otro lado del vacío, la barrera abandonada de los recaudadores apenas es una franja de color. Delante, el camino serpentea hacia el castillo del Rey Goblin. El desvío ha terminado.',
+    'ui.detour.return': 'Volver al camino del Rey',
+});
+Object.assign(STRINGS.fr, {
+    'ui.detour.title': 'Le détour des marais', 'ui.detour.subtitle': 'Trois étapes vous séparent de la route du Roi.',
+    'ui.detour.fight': 'Danger {number}', 'ui.detour.merchant': 'Marchand',
+    'ui.detour.exitTitle': 'Au-delà du pont détruit',
+    'ui.detour.exitBody': 'Enfin, les roseaux s’éclaircissent et le sol remonte sous vos bottes. Vous quittez le marais pour retrouver la route du Roi, de l’autre côté du pont détruit.\n\nAu-delà du gouffre, la barrière abandonnée des collecteurs n’est plus qu’une tache de couleur. Devant vous, la route serpente vers le château du Roi gobelin. Le détour est terminé.',
+    'ui.detour.return': 'Reprendre la route du Roi',
+});
+Object.assign(STRINGS.ru, {
+    'ui.detour.title': 'Обход через болото', 'ui.detour.subtitle': 'Три остановки отделяют тебя от королевской дороги.',
+    'ui.detour.fight': 'Опасность {number}', 'ui.detour.merchant': 'Торговец',
+    'ui.detour.exitTitle': 'По ту сторону моста',
+    'ui.detour.exitBody': 'Наконец камыш редеет, а земля под ногами идёт вверх. Ты выбираешься из болота на королевскую дорогу — по другую сторону разрушенного моста.\n\nЗа провалом брошенный шлагбаум поборников кажется лишь цветной полоской вдали. Впереди дорога вьётся к замку Короля гоблинов. Обход окончен.',
+    'ui.detour.return': 'Вернуться на королевскую дорогу',
+});
+
 export function getLanguageName(code) {
     const normalized = normalizeLanguageCode(code);
     return LANGUAGE_OPTIONS.find(option => option.code === normalized)?.name || 'English';

@@ -5,6 +5,9 @@ import {
 } from '../src/content/months/tollroad/events/index.js';
 import goblinMine from '../src/content/months/tollroad/events/goblin_mine.js';
 import royalBridge from '../src/content/months/tollroad/events/royal_bridge.js';
+import tollCollectors from '../src/content/events/toll_collectors.js';
+import armWrestling from '../src/content/events/arm_wrestling.js';
+import { getSandboxStories } from '../src/sandbox/SandboxMode.js';
 
 const story = (overrides = {}) => ({
   pendingEvents: [],
@@ -20,6 +23,41 @@ assert.equal(pickTollroadEventId({ story: story(), random: () => 0 }), 'goblin_m
 assert.equal(
   pickTollroadEventId({ story: story({ goblinMineSeen: true }) }),
   'royal_bridge',
+);
+
+const intactState = { coins: 250, storyRun: { bridgeDestroyed: false, tollWatchFailed: false } };
+const intactChoices = tollCollectors.choices(intactState);
+assert.match(intactChoices.find((choice) => choice.id === 'toll_pay').text, /100/);
+assert.ok(intactChoices.some((choice) => choice.id === 'toll_wait'));
+const alertChoices = tollCollectors.choices({ coins: 250, storyRun: { bridgeDestroyed: false, tollWatchFailed: true } });
+assert.match(alertChoices.find((choice) => choice.id === 'toll_pay').text, /200/);
+assert.equal(alertChoices.some((choice) => choice.id === 'toll_wait'), false);
+const brokenChoices = tollCollectors.choices({ coins: 250, storyRun: { bridgeDestroyed: true } });
+assert.match(brokenChoices.find((choice) => choice.id === 'toll_jetpack').text, /150/);
+assert.ok(brokenChoices.some((choice) => choice.id === 'toll_ask_detour'));
+
+const rematch = getSandboxStories().find((entry) => entry.id === 'arm_wrestling_rematch');
+assert.equal(rematch?.eventId, 'arm_wrestling', 'Test Site must expose the arm-wrestling rematch');
+const sandboxRematchChoices = armWrestling.choices(
+  { sandboxMode: true, storyRun: { armWrestleWon: true, armWrestleRematchDone: false } },
+  {
+    isArmWrestleRematch: () => true,
+    getArmWrestleCoinStake: () => 10,
+    hasArmWrestleCard: () => false,
+  },
+);
+assert.equal(
+  sandboxRematchChoices.find((choice) => choice.id === 'arm_bet_card')?.condition(
+    { sandboxMode: true }, { hasArmWrestleCard: () => false },
+  ),
+  true,
+  'Test Site rematch must always expose the card-bet button',
+);
+const sandboxTolls = getSandboxStories().filter((entry) => entry.eventId === 'toll_collectors');
+assert.deepEqual(
+  sandboxTolls.map((entry) => entry.id).sort(),
+  ['toll_collectors_destroyed', 'toll_collectors_intact'],
+  'Test Site must expose both bridge states for the toll collectors',
 );
 assert.equal(
   pickTollroadEventId({

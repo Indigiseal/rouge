@@ -1585,13 +1585,12 @@ function spawnBoss() {
     this.scene.time.delayedCall(650, () => this.applyHolographicOmenStartEffect());
 }
 
-// The collectors you rushed the doors at got away, reported you, and are
-// standing behind their King when you finally reach him — still carrying what
-// you did to them, at half health.
+// Collectors who escaped after their veteran fell are waiting beside the King.
 function injectTollGuards(bossX, bossY) {
     const gs = this.scene.gameState;
     const story = gs?.storyRun;
-    if (!story?.tollFought) return false;
+    const escaped = Math.max(0, Math.min(2, Number(story?.tollGuardsEscaped) || 0));
+    if (!escaped) return false;
     if (this.boardCards[4]?.data?.name !== 'Goblin King') return false;
 
     const tier = (gs.currentFloor || 15) >= 11 ? { attack: 8, health: 11 } : { attack: 5, health: 9 };
@@ -1608,7 +1607,7 @@ function injectTollGuards(bossX, bossY) {
         { dx: -174, dy: 102, c: -2 },
     ];
 
-    places.forEach(({ dx, dy, c }) => {
+    places.slice(0, escaped).forEach(({ dx, dy, c }) => {
         const data = {
             type: 'enemy',
             name: 'Toll Collector',

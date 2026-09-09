@@ -4,6 +4,8 @@ import { GameScene } from '../scenes/GameScene.js';
 import { MapViewScene } from '../scenes/MapViewScene.js';
 import { LocationPickScene } from '../scenes/LocationPickScene.js';
 import { TollroadAftermathScene } from '../scenes/TollroadAftermathScene.js';
+import { TollroadIntroScene } from '../scenes/TollroadIntroScene.js';
+import { TollroadDetourScene } from '../scenes/TollroadDetourScene.js';
 import { RestScene } from '../scenes/RestScene.js';
 import { AnvilScene } from '../scenes/AnvilScene.js';
 import { ShopScene } from '../scenes/ShopScene.js';
@@ -54,6 +56,8 @@ export function createGameConfig(Phaser) {
       TalentTreeScene,
       ArmorerPickScene,
       LocationPickScene,
+      TollroadIntroScene,
+      TollroadDetourScene,
       TollroadAftermathScene,
     ],
     scale: {

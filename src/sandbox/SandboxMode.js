@@ -51,6 +51,7 @@ const SCENE_KEYS_TO_STOP = [
   'TreasureScene',
   'EventScene',
   'TollroadAftermathScene',
+  'TollroadDetourScene',
   'PauseMenuScene',
   'LocationPickScene',
   SANDBOX_HUB_KEY,
@@ -72,10 +73,26 @@ export function getSandboxEncounter(id) {
 // Every story, straight from the content pack, so a newly written event shows
 // up in the Test Site without anyone remembering to register it twice.
 export function getSandboxStories() {
-  return EVENTS.map((event) => ({
+  const stories = EVENTS.map((event) => ({
     id: event.id,
     label: event.title || event.id,
   }));
+  const armIndex = stories.findIndex((story) => story.id === 'arm_wrestling');
+  if (armIndex >= 0) {
+    stories.splice(armIndex + 1, 0, {
+      id: 'arm_wrestling_rematch',
+      eventId: 'arm_wrestling',
+      label: 'Arm Wrestling — Rematch',
+    });
+  }
+  const tollIndex = stories.findIndex((story) => story.id === 'toll_collectors');
+  if (tollIndex >= 0) {
+    stories.splice(tollIndex, 1,
+      { id: 'toll_collectors_intact', eventId: 'toll_collectors', label: 'Toll Collectors — Intact Bridge' },
+      { id: 'toll_collectors_destroyed', eventId: 'toll_collectors', label: 'Toll Collectors — Destroyed Bridge' },
+    );
+  }
+  return stories;
 }
 
 // The Test Site forces a story regardless of what has been seen, but forcing
@@ -124,6 +141,19 @@ const SANDBOX_STORY_SETUP = {
   },
   royal_bridge: {
     monthId: 'tollroad',
+  },
+  arm_wrestling_rematch: {
+    monthId: 'tollroad',
+    story: { armWrestlingSeen: true, armWrestleWon: true, armWrestleRematchDone: false },
+    grant: ['armWrestleCommonStake', 'armWrestleUncommonStake'],
+  },
+  toll_collectors_intact: {
+    monthId: 'tollroad',
+    story: { bridgeDestroyed: false, goblinMinersAllied: false, royalBridgeSeen: true },
+  },
+  toll_collectors_destroyed: {
+    monthId: 'tollroad',
+    story: { bridgeDestroyed: true, goblinMinersAllied: true, royalBridgeSeen: true },
   },
 };
 
@@ -181,6 +211,26 @@ function grantSandboxStoryItem(gameScene, grant) {
       sprite: def?.sprite || 'fireBall',
       damage: def?.damage ?? 15,
     });
+    return;
+  }
+
+  if (grant === 'armWrestleCommonStake') {
+    const stake = gen.createCardData('weapon', gs.currentFloor || 10, false, null, 'common');
+    if (stake) {
+      stake.rarity = 'common';
+      stake.durability = stake.maxDurability || stake.durability || 12;
+      inv.addCard(stake);
+    }
+    return;
+  }
+
+  if (grant === 'armWrestleUncommonStake') {
+    const stake = gen.createCardData('weapon', gs.currentFloor || 10, false, null, 'uncommon');
+    if (stake) {
+      stake.rarity = 'uncommon';
+      stake.durability = stake.maxDurability || stake.durability || 12;
+      inv.addCard(stake);
+    }
     return;
   }
 

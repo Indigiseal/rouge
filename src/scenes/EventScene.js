@@ -242,6 +242,12 @@ export class EventScene extends Phaser.Scene {
       tollFought: false,
       tollKiller: false,
       tollEscapeNoticeShown: false,
+      tollWatchFailed: false,
+      bridgeDestroyed: false,
+      tollGuardsEscaped: 0,
+      tollEscapeMode: null,
+      tollroadDetour: null,
+      jetpackFlightPending: false,
       merchantRobbed: false,
       screamingHeadSeen: false,
       carnivalVisited: false,
@@ -345,6 +351,13 @@ export class EventScene extends Phaser.Scene {
       tollFought: Boolean(existingStoryRun.tollFought),
       tollKiller: Boolean(existingStoryRun.tollKiller),
       tollEscapeNoticeShown: Boolean(existingStoryRun.tollEscapeNoticeShown),
+      tollWatchFailed: Boolean(existingStoryRun.tollWatchFailed),
+      bridgeDestroyed: Boolean(existingStoryRun.bridgeDestroyed
+        || (existingStoryRun.goblinMinersAllied && existingStoryRun.royalBridgeSeen)),
+      tollGuardsEscaped: Math.max(0, Math.min(2, Number(existingStoryRun.tollGuardsEscaped) || 0)),
+      tollEscapeMode: typeof existingStoryRun.tollEscapeMode === 'string' ? existingStoryRun.tollEscapeMode : null,
+      tollroadDetour: existingStoryRun.tollroadDetour || null,
+      jetpackFlightPending: Boolean(existingStoryRun.jetpackFlightPending),
       merchantRobbed: Boolean(existingStoryRun.merchantRobbed),
       screamingHeadSeen: Boolean(existingStoryRun.screamingHeadSeen),
       carnivalVisited: Boolean(existingStoryRun.carnivalVisited),
@@ -1831,7 +1844,7 @@ export class EventScene extends Phaser.Scene {
       && item.type !== 'companion'
       && item.id !== 'monsterEgg'
       && !this._isKeyCard(item)
-      && ranks.indexOf(item.rarity) >= 1 // he inspects it: uncommon or better
+      && ranks.indexOf(item.rarity) >= 1 // uncommon or better
     );
   }
 
@@ -1867,7 +1880,10 @@ export class EventScene extends Phaser.Scene {
     // Click power stays sized for the base drift; ogre push is then sped up.
     const ogrePushBase = Phaser.Math.Linear(0.1, 0.06, (t - 0.05) / 0.85);
     const clickPower = (ogrePushBase / 2) * 1.5;
-    const ogrePush = ogrePushBase * 3.75;
+    // The rematch is the gauntlet gate: the ogre stops playing to the crowd
+    // and pushes twenty percent faster than he did in the first bout.
+    const rematchMultiplier = this._armWrestlePending?.rematch ? 1.2 : 1;
+    const ogrePush = ogrePushBase * 3.75 * rematchMultiplier;
     return { ogrePush, clickPower };
   }
 
@@ -1887,7 +1903,10 @@ export class EventScene extends Phaser.Scene {
 
   beginArmWrestleCardBet() {
     const inv = this.gameScene?.inventorySystem;
-    const target = this.eventIllustrationImage;
+    // Use the whole illustration board, not only the ogre sprite's tight
+    // transparent bounds. Visually dropping onto the ogre/table should always
+    // intersect the wager target.
+    const target = this.eventIllustrationBoard || this.eventIllustrationImage;
     if (!inv || !target?.getBounds) return false;
     this.armWrestleBetActive = true;
     inv.clearDropZones();
@@ -1906,7 +1925,7 @@ export class EventScene extends Phaser.Scene {
     const inv = this.gameScene?.inventorySystem;
     if (!inv || !cardData || !this.armWrestleBetActive || this.resolved) return false;
     if (!this._isArmWrestleStakeCard(cardData)) {
-      this._mirrorFloat('He turns it over once and hands it back', 0xff6666, cardSprite);
+      this._mirrorFloat('He turns it over once and hands it back. "I do not fight for junk."', 0xff6666, cardSprite);
       return false;
     }
 
@@ -2129,16 +2148,17 @@ export class EventScene extends Phaser.Scene {
   /** Three clerks with knives. Tagged so the boss fight can recognise them. */
   buildTollGuards() {
     const tier = this._tollGuardTier();
-    return [0, 1, 2].map(() => ({
+    return [true, false, false].map((veteran) => ({
       type: 'enemy',
-      name: 'Toll Collector',
+      name: veteran ? 'Veteran Toll Collector' : 'Toll Collector',
       sprite: 'goblin_c',
       role: 'MELEE',
-      health: tier.health,
-      maxHealth: tier.health,
-      attack: tier.attack,
+      health: veteran ? Math.ceil(tier.health * 1.5) : tier.health,
+      maxHealth: veteran ? Math.ceil(tier.health * 1.5) : tier.health,
+      attack: veteran ? tier.attack + 2 : tier.attack,
       armor: 0,
       tollGuard: true,
+      tollVeteran: veteran,
       abilities: [{ type: 'coin_steal', chance: 0.5, amount: 1 }],
     }));
   }
@@ -2174,12 +2194,11 @@ export class EventScene extends Phaser.Scene {
     this.ensureStoryState();
     const story = this.gameState.storyRun;
     story.tollFought = true;
-    story.tollKiller = true; // they will absolutely mention this to the King
-    // Handed to FloorSpawner on the way out — see continueAdventure().
+    story.tollKiller = true;
+    story.tollEscapeMode = story.bridgeDestroyed ? 'jetpack' : 'smoke';
     this.gameState.pendingAmbush = {
       id: 'toll_collectors',
-      normalCombatBoard: true,
-      enemyTypes: ['goblin', 'goblin_archer'],
+      enemies: this.buildTollGuards(),
     };
   }
 
@@ -2195,8 +2214,28 @@ export class EventScene extends Phaser.Scene {
 
   waitAtTheToll() {
     this.ensureStoryState();
-    // The merchant never reaches this act's shop.
+    SoundHelper.playSound(this, 'dice_roll', 0.65);
+    const roll = 1 + Math.floor(Math.random() * 6);
+    if (roll <= 3) {
+      this.gameState.storyRun.tollWatchFailed = true;
+      this.tollWaitOutcome = `D6: ${roll}. The veteran spots you behind the roadside wall. The clerk crosses out the old price and writes 200 beneath it. All three now watch you too closely to try the same trick again.`;
+      return false;
+    }
     this.gameState.storyRun.merchantRobbed = true;
+    this.tollWaitOutcome = `D6: ${roll}. A merchant wagon rattles up to the barrier. While the collectors surround the driver and begin valuing every axle, you catch the back rail, pull yourself among the covered crates, and ride across the bridge unnoticed.`;
+    return true;
+  }
+
+  buyGoblinJetpack(amount) {
+    this.ensureStoryState();
+    this.spendCoins(amount);
+    this.gameState.storyRun.jetpackFlightPending = true;
+  }
+
+  beginTollroadDetour() {
+    this.ensureStoryState();
+    const merchantAt = Math.random() < 0.5 ? 1 + Math.floor(Math.random() * 3) : 0;
+    this.gameState.storyRun.tollroadDetour = { index: 0, merchantAt, complete: false };
   }
 
   // ─── Tollroad crystal mine and royal bridge ─────────────────────────────
@@ -2247,6 +2286,7 @@ export class EventScene extends Phaser.Scene {
 
   resolveMinerBridgeSabotage() {
     this.ensureStoryState();
+    this.gameState.storyRun.bridgeDestroyed = true;
     this.gameState.storyRun.goblinKingStartingHealthFraction = 0.75;
   }
 
@@ -2924,6 +2964,14 @@ export class EventScene extends Phaser.Scene {
       this.scene.stop('MapViewScene');
       this.scene.wake('GameScene', { roomType: 'COMBAT', isNewRoom: true });
       this.scene.stop();
+      return;
+    }
+    const detour = this.gameState?.storyRun?.tollroadDetour;
+    if (detour && !detour.complete) {
+      this.scene.sleep('GameScene');
+      this.scene.stop();
+      this.scene.stop('MapViewScene');
+      this.scene.launch('TollroadDetourScene', { gameState: this.gameState });
       return;
     }
     if (isSandboxMode(this) || isSandboxMode(this.gameScene)) {

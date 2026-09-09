@@ -58,6 +58,13 @@ export class StationRoomBase extends Phaser.Scene {
             this.gameScene.inventorySystem.setVisibility(false);
             this.scene.sleep('GameScene');
         }
+        const detour = this.gameState?.storyRun?.tollroadDetour;
+        if (detour && !detour.complete) {
+            this.scene.stop();
+            if (detour.index >= 3) detour.complete = true;
+            this.scene.start('TollroadDetourScene', { gameState: this.gameState });
+            return;
+        }
         if (isSandboxMode(this) || isSandboxMode(this.gameScene)) {
             exitToSandboxHub(this);
             return;

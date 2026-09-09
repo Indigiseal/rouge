@@ -209,11 +209,16 @@ export class LocationPickScene extends Phaser.Scene {
       return;
     }
 
-    this.scene.start('GameScene', {
+    const runData = {
       newGame: true,
       characterId: this.characterId,
       armorerArmorType: this.armorerArmorType,
       locationId,
-    });
+    };
+    if (locationId === 'tollroad') {
+      this.scene.start('TollroadIntroScene', { runData });
+      return;
+    }
+    this.scene.start('GameScene', runData);
   }
 }

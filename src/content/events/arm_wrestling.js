@@ -26,10 +26,13 @@ export default {
 
       const cardBet = {
         id: 'arm_bet_card',
-        text: rematch ? 'Put a card up against the guard' : 'Put a card up instead',
-        condition: (state, s) => s.hasArmWrestleCard(),
+        text: rematch ? 'Bet an uncommon or better card against the guard' : 'Bet an uncommon or better card instead',
+        // The Test Site is a mechanics harness: always expose the stake flow
+        // there even if a generated loadout happens to carry legacy card data
+        // without a modern rarity field.
+        condition: (state, s) => s.hasArmWrestleCard() || Boolean(state?.sandboxMode),
         action: (state, s) => s.beginArmWrestleCardBet(),
-        outcome: 'Drag a card onto the table. He will not play for junk.',
+        outcome: 'Drag an uncommon or better card onto the ogre. If he thinks it is junk, you can try another card or leave.',
         next: {
           choices: [
             {

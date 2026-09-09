@@ -1290,6 +1290,11 @@ function removeDefeatedEnemy(index, card) {
             });
         });
         
+        // The collectors react the instant their veteran falls, before a relic
+        // can replace his board slot with a death drop.
+        const tollVeteranDefeated = Boolean(card.data?.tollVeteran);
+        if (tollVeteranDefeated) this.scene.handleTollVeteranDefeat?.(index);
+
         // Mask of Hollow Whispers — chance to drop a random pickup in the enemy's spot
         const dropChance = this.scene.amuletManager?.getDeathDropChance?.() || 0;
         if (dropChance > 0 && Math.random() < dropChance) {
