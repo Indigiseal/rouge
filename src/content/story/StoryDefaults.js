@@ -69,6 +69,7 @@ export const DEFAULT_STORY_RUN = Object.freeze({
   goblinMinersKilled: false,
   goblinMinersAllied: false,
   royalBridgeSeen: false,
+  tollroadThroneHallSeen: false,
   goblinKingStartingHealthFraction: 1,
   pendingPostCombatEventId: null,
   pendingEvents: Object.freeze([]),

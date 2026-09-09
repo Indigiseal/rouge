@@ -103,7 +103,7 @@ export function buildCurrentAmuletDefinitions(mgr) {
             runeOfPoison: {
                 ...getAmuletAtlasPresentation('runeOfPoison'),
                 name: 'Rune of Poison',
-                description: 'Poison gems also poison 1 nearby enemy in fire-gem range',
+                description: 'Poison gems also poison 1 nearby enemy',
                 rarity: 'uncommon',
                 poisonGemSplashTargets: 1,
             },

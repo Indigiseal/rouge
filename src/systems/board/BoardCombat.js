@@ -1,6 +1,6 @@
 // BoardCombat — attackEnemy, gem effects, poison/shock, remove defeated, floor clear
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
-import { FIRE_GEM_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../../content/cards/gems.js';
+import { POISON_RUNE_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../../content/cards/gems.js';
 import { weaponIgnoresFrontline } from '../../content/cards/weapons.js';
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { CombatSequencer } from '../combat/CombatSequencer.js';
@@ -207,7 +207,7 @@ function splashPoisonGem(mainIndex, weapon) {
   const tx = main?.sprite?.x;
   const ty = main?.sprite?.y;
   if (tx == null || ty == null) return;
-  const radiusSq = FIRE_GEM_SPLASH_RADIUS * FIRE_GEM_SPLASH_RADIUS;
+  const radiusSq = POISON_RUNE_SPLASH_RADIUS * POISON_RUNE_SPLASH_RADIUS;
   const candidates = [];
   this.boardCards.forEach((card, i) => {
     if (i === mainIndex || !card?.sprite || !this.isAnyEnemyCard(card)) return;

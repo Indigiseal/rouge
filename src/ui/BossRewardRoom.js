@@ -1,8 +1,7 @@
 // Boss reward room flow kept inside GameScene (roomType BOSS_REWARD for saves/Continue).
 // Extracted here so GameScene stays thin; not a separate Phaser.Scene.
 
-import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
-import { needsLocationPick } from '../content/locations/index.js';
+import { exitToSandboxHub } from '../sandbox/SandboxMode.js';
 import { scaleGoldReward } from '../content/economy/gold.js';
 
 export function setupBossRewardRoom(scene) {
@@ -128,15 +127,9 @@ export function leaveBossRewardRoom(scene) {
     scene.time.delayedCall(500, () => {
         scene.scene.sleep();
         scene.scene.stop('MapViewScene');
-        if (nextAct <= 3 && needsLocationPick(scene.gameState, nextAct) && !isSandboxMode(scene)) {
-            scene.scene.launch('LocationPickScene', {
-                mode: 'nextAct',
-                act: nextAct,
-                gameState: scene.gameState,
-                characterId: scene.gameState.characterId,
-            });
-            return;
-        }
+        // MapView owns the inter-act sequence. It consumes pendingActShop
+        // first, then opens LocationPick; bypassing it here left the shop queued
+        // until after the new act's opening fight.
         scene.scene.launch('MapViewScene', { gameState: scene.gameState });
     });
 }

@@ -30,6 +30,10 @@ export const GEM_STACK_DAMAGE = Object.freeze([3, 4, 5, 6, 7]);
 // Fire multiplies this; the old event rune still adds flat pixels on top.
 export const FIRE_GEM_SPLASH_RADIUS = 59;
 
+// Rune of Poison currently reaches as far as the base Fire Gem, but owns its
+// balance value so future Fire Gem radius changes do not alter the rune.
+export const POISON_RUNE_SPLASH_RADIUS = 59;
+
 /**
  * @param {number} [multiplier=1]
  * @param {number} [flatBonus=0]

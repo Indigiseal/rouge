@@ -14,6 +14,7 @@ import { EVENTS, getEvent } from '../content/events/index.js';
 import { getMagic } from '../content/cards/magic.js';
 import { getPlannedActBoss } from '../map/MapGenerator.js';
 import { createGauntletCard } from '../content/balance/Gauntlet.js';
+import { applyEnemyTier } from '../content/balance/EnemyTiers.js';
 import {
   applyEnchantToWeapon,
   describeWeaponEnchant,
@@ -172,7 +173,37 @@ export class EventScene extends Phaser.Scene {
     const story = this.gameState.storyRun;
     const canArmWrestle = (this.gameState.coins || 0) >= this.getArmWrestleCoinStake()
       || this.hasArmWrestleCard();
-    return this.getEventById(pickTollroadEventId({ story, canArmWrestle }));
+    const tollroadEventId = pickTollroadEventId({ story, canArmWrestle });
+    if (tollroadEventId) return this.getEventById(tollroadEventId);
+    return this._pickSharedTollroadEvent();
+  }
+
+  _pickSharedTollroadEvent() {
+    const story = this.gameState.storyRun;
+    const forcedId = this._getForcedEventId();
+    if (forcedId && (forcedId !== 'hatching_egg' || this.canShowEggHatchingEvent())) {
+      return this.getEventById(forcedId);
+    }
+    if (story.pendingEvents.includes('monster_bird_nest')) return this.getEventById('monster_bird_nest');
+    if (story.pendingEvents.includes('goblin_engineer') && story.boxState !== 'unknown' && !story.latchboxRewardClaimed) {
+      return this.getEventById('goblin_engineer');
+    }
+    if (story.pendingEvents.includes('hatching_egg') && this.canShowEggHatchingEvent()) {
+      return this.getEventById('hatching_egg');
+    }
+    if (story.pendingEvents.includes('brass_wizard')) return this.getEventById('brass_wizard');
+    if (story.boxState === 'unknown') return this.getEventById('broken_music_box');
+
+    const pool = [];
+    if (!story.mirrorSeen) pool.push('mirror');
+    if (!story.tooNiceRoomSeen) pool.push('too_nice_room');
+    if (!story.wellSeen) pool.push('almost_you_well');
+    if (!story.slimyPrisonSeen) pool.push('slimy_prison');
+    if (!story.bookWormSeen) pool.push('book_worm');
+    if (!story.reliquarySeen && this.hasEnchantableWeapon()) pool.push('reliquary');
+    if (this.getQualifyingCompanions().length > 0) pool.push('old_drill_room');
+    if (!pool.length) return this.getEventById('quiet_crossroads');
+    return this.getEventById(pool[Math.floor(Math.random() * pool.length)]);
   }
 
   getEventById(id) {
@@ -260,6 +291,7 @@ export class EventScene extends Phaser.Scene {
       goblinMinersKilled: false,
       goblinMinersAllied: false,
       royalBridgeSeen: false,
+      tollroadThroneHallSeen: false,
       goblinKingStartingHealthFraction: 1,
       pendingPostCombatEventId: null,
       pendingEvents: []
@@ -370,6 +402,7 @@ export class EventScene extends Phaser.Scene {
       goblinMinersKilled: Boolean(existingStoryRun.goblinMinersKilled),
       goblinMinersAllied: Boolean(existingStoryRun.goblinMinersAllied),
       royalBridgeSeen: Boolean(existingStoryRun.royalBridgeSeen),
+      tollroadThroneHallSeen: Boolean(existingStoryRun.tollroadThroneHallSeen),
       goblinKingStartingHealthFraction: Number.isFinite(existingStoryRun.goblinKingStartingHealthFraction)
         ? existingStoryRun.goblinKingStartingHealthFraction
         : 1,
@@ -848,12 +881,14 @@ export class EventScene extends Phaser.Scene {
       : fallbackBottom;
 
     this._descriptionViewportBottom = bottom;
-    this._setReadingScroll(
-      [this.descText],
-      top,
-      bottom,
-      this.descText.y + this.descText.height
-    );
+    const targets = [this.descText];
+    let contentBottom = this.descText.y + this.descText.height;
+    if (this.descriptionHintText?.scene) {
+      this.descriptionHintText.setY(contentBottom + 7);
+      targets.push(this.descriptionHintText);
+      contentBottom = this.descriptionHintText.y + this.descriptionHintText.height;
+    }
+    this._setReadingScroll(targets, top, bottom, contentBottom);
   }
 
   _isPlainObject(value) {
@@ -916,6 +951,19 @@ export class EventScene extends Phaser.Scene {
     }).setDepth(2);
     this._centerTextOnPixel(this.descText, this.eventLayout.centerX);
 
+    const armWrestleRematch = this.event?.id === 'arm_wrestling' && this.isArmWrestleRematch();
+    if (armWrestleRematch) {
+      this.descriptionHintText = this.add.text(
+        this.eventLayout.centerX,
+        this.descText.y + this.descText.height + 7,
+        this.event.rematchHint,
+        {
+          fontSize: '11px', fill: '#9b3f25', fontFamily: '"HoMM Pixel"',
+          align: 'center', wordWrap: { width: 310 },
+        }
+      ).setOrigin(0.5, 0).setDepth(3);
+    }
+
     // The choices keep their own safe area above the inventory. Once they are
     // rendered, their measured bounds determine how tall the description's
     // reading viewport can be.
@@ -935,8 +983,15 @@ export class EventScene extends Phaser.Scene {
       this._choiceColumns = 2;
       this._choiceTopY = 196;
     }
+    if (armWrestleRematch) this._choiceTopY = 204;
     this._buildChoices();
     this._fitDescriptionAboveChoices();
+
+    // In the rematch the wager is the opening interaction, not a separate
+    // button: cards can be dropped on the ogre as soon as the scene appears.
+    if (armWrestleRematch) {
+      this.beginArmWrestleCardBet();
+    }
 
     // Built after the choices so the cases can be seated directly above them.
     if (this.event?.id === 'reliquary') this._setupReliquaryCases();
@@ -1166,6 +1221,7 @@ export class EventScene extends Phaser.Scene {
     // jumble. Top-anchor the outcome just under the title so even long text
     // flows downward with room to spare above the inventory strip.
     this.descText?.setVisible(false);
+    this.descriptionHintText?.setVisible(false);
     this.dividerRect?.setVisible(false);
     // The Reliquary's cases are inline art, so they must clear out of the way
     // of the outcome panel just like the story text does.
@@ -1925,7 +1981,7 @@ export class EventScene extends Phaser.Scene {
     const inv = this.gameScene?.inventorySystem;
     if (!inv || !cardData || !this.armWrestleBetActive || this.resolved) return false;
     if (!this._isArmWrestleStakeCard(cardData)) {
-      this._mirrorFloat('He turns it over once and hands it back. "I do not fight for junk."', 0xff6666, cardSprite);
+      this._mirrorFloat('He turns it over once and hands it back. "I do not fight for junk. Bring me something better (uncommon or better)."', 0xff6666, cardSprite);
       return false;
     }
 
@@ -2148,19 +2204,23 @@ export class EventScene extends Phaser.Scene {
   /** Three clerks with knives. Tagged so the boss fight can recognise them. */
   buildTollGuards() {
     const tier = this._tollGuardTier();
-    return [true, false, false].map((veteran) => ({
-      type: 'enemy',
-      name: veteran ? 'Veteran Toll Collector' : 'Toll Collector',
-      sprite: 'goblin_c',
-      role: 'MELEE',
-      health: veteran ? Math.ceil(tier.health * 1.5) : tier.health,
-      maxHealth: veteran ? Math.ceil(tier.health * 1.5) : tier.health,
-      attack: veteran ? tier.attack + 2 : tier.attack,
-      armor: 0,
-      tollGuard: true,
-      tollVeteran: veteran,
-      abilities: [{ type: 'coin_steal', chance: 0.5, amount: 1 }],
-    }));
+    return [true, false, false].map((veteran) => {
+      const guard = {
+        type: 'enemy',
+        name: veteran ? 'Veteran Toll Collector' : 'Toll Collector',
+        sprite: 'goblin_c',
+        role: 'MELEE',
+        health: tier.health,
+        maxHealth: tier.health,
+        attack: tier.attack,
+        armor: 0,
+        enemyTier: 'normal',
+        tollGuard: true,
+        tollVeteran: veteran,
+        abilities: [{ type: 'coin_steal', chance: 0.5, amount: 1 }],
+      };
+      return veteran ? applyEnemyTier(guard, 'veteran') : guard;
+    });
   }
 
   /** Goblins respect steel they can price. Rare or better does the job. */
@@ -2903,6 +2963,7 @@ export class EventScene extends Phaser.Scene {
       brass_wizard: 'brassWizardSeen',
       goblin_mine: 'goblinMineSeen',
       royal_bridge: 'royalBridgeSeen',
+      tollroad_throne_hall: 'tollroadThroneHallSeen',
     };
     const flag = flagByEvent[this.event?.id];
     if (!flag) return;

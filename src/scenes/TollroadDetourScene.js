@@ -83,7 +83,7 @@ export class TollroadDetourScene extends Phaser.Scene {
     this.gameState.pendingAmbush = {
       id: 'tollroad_detour',
       normalCombatBoard: true,
-      enemyTypes: ['spider', 'skeleton', 'goblin'],
+      enemyTypes: ['bogSlug', 'drowned', 'mireBrute', 'fenSpitter', 'mireToad'],
     };
     this.gameState.roomType = 'COMBAT';
     this.scene.wake('GameScene', { roomType: 'COMBAT', isNewRoom: true });

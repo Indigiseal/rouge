@@ -192,6 +192,7 @@ export class GameScene extends Phaser.Scene {
                 this.gameState.storyRun.goblinMinersKilled = false;
                 this.gameState.storyRun.goblinMinersAllied = false;
                 this.gameState.storyRun.royalBridgeSeen = false;
+                this.gameState.storyRun.tollroadThroneHallSeen = false;
                 this.gameState.storyRun.goblinKingStartingHealthFraction = 1;
                 this.gameState.storyRun.pendingPostCombatEventId = null;
             }

@@ -1,7 +1,8 @@
 // scenes/MapViewScene.js
 // Phaser is provided as a UMD global (see index.html) — no import needed.
 import { MapGenerator, MAP_VERSION } from '../map/MapGenerator.js';
-import { needsLocationPick } from '../content/locations/index.js';
+import { getLocationIdForFloor, needsLocationPick } from '../content/locations/index.js';
+import { TOLLROAD_NARRATIVE_CHECKPOINTS, pendingTollroadCheckpoint } from '../content/story/TollroadNarrative.js';
 import { isSandboxMode } from '../sandbox/SandboxMode.js';
 import { t } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
@@ -101,16 +102,6 @@ export class MapViewScene extends Phaser.Scene {
   }
 
   create() {
-    if (this._awaitingLocationPick) {
-      this.scene.start('LocationPickScene', {
-        mode: 'nextAct',
-        act: this.currentAct,
-        gameState: this.gameState,
-        characterId: this.gameState?.characterId,
-      });
-      return;
-    }
-
     // Wake handler installed FIRST so a post-shop wake re-runs create()
     // even when we short-circuit the post-act-shop path below.
     this.events.off('wake', this.handleWake, this);
@@ -131,6 +122,18 @@ export class MapViewScene extends Phaser.Scene {
       this.gameState.pendingActShop = null;
       this.scene.sleep();
       this.scene.launch(shopKey, { gameState: this.gameState });
+      return;
+    }
+
+    // The inter-act shop belongs to the road just completed. Only after the
+    // player leaves it do they choose the next road.
+    if (this._awaitingLocationPick) {
+      this.scene.start('LocationPickScene', {
+        mode: 'nextAct',
+        act: this.currentAct,
+        gameState: this.gameState,
+        characterId: this.gameState?.characterId,
+      });
       return;
     }
 
@@ -209,10 +212,15 @@ export class MapViewScene extends Phaser.Scene {
     const floorGap = 60;        // vertical spacing
     const cx = 0;               // container origin is centered already
     const startY = -150;
+    this.narrativeCheckpoints = getLocationIdForFloor(this.gameState) === 'tollroad'
+      ? TOLLROAD_NARRATIVE_CHECKPOINTS.map(checkpoint => ({ ...checkpoint }))
+      : [];
 
     // Assign positions per floor: nodes are centered symmetrically around x=0
     this.actMap.floors.forEach((floorNodes, f) => {
-      const y = startY + f * floorGap;
+      const floorNumber = f + 1;
+      const insertedBefore = this.narrativeCheckpoints.filter(cp => cp.afterFloor < floorNumber).length;
+      const y = startY + f * floorGap + insertedBefore * 42;
       const count = floorNodes.length;
       floorNodes.forEach((node, i) => {
         // Round to whole pixels: even node counts give half-integer offsets,
@@ -238,6 +246,7 @@ export class MapViewScene extends Phaser.Scene {
     this.actMap.floors.forEach((floorNodes, f) => {
       floorNodes.forEach((node, i) => this.drawNode(node, f, i));
     });
+    this.narrativeCheckpoints.forEach(checkpoint => this.drawNarrativeCheckpoint(checkpoint));
 
     this.centerOnCurrentNode();
   }
@@ -308,7 +317,16 @@ export class MapViewScene extends Phaser.Scene {
       const nxt = this.actMap.floors[f + 1];
       cur.forEach(n => {
         n.connections.forEach(t => {
-          drawCurve(n.__x, n.__y, nxt[t].__x, nxt[t].__y, 0x5e5146, 2);
+          const checkpoint = this.narrativeCheckpoints?.find(cp => cp.afterFloor === f + 1);
+          if (checkpoint) {
+            const checkpointY = Math.round((n.__y + nxt[t].__y) / 2);
+            checkpoint.__x = 0;
+            checkpoint.__y = checkpointY;
+            drawCurve(n.__x, n.__y, 0, checkpointY, 0x5e5146, 2);
+            drawCurve(0, checkpointY, nxt[t].__x, nxt[t].__y, 0x5e5146, 2);
+          } else {
+            drawCurve(n.__x, n.__y, nxt[t].__x, nxt[t].__y, 0x5e5146, 2);
+          }
         });
       });
     }
@@ -319,8 +337,15 @@ export class MapViewScene extends Phaser.Scene {
       const from = this.actMap.floors[curF][this.gameState.mapCursor.node];
       if (from) {
         const nxt = this.actMap.floors[curF + 1];
-        from.connections.forEach(t => {
-          drawCurve(from.__x, from.__y, nxt[t].__x, nxt[t].__y, 0xf2d3aa, 3);
+        const checkpoint = this.narrativeCheckpoints?.find(cp => cp.afterFloor === curF + 1);
+        const checkpointPending = checkpoint && !this.gameState.storyRun?.[checkpoint.seenFlag];
+        const highlightedTargets = checkpoint && !checkpointPending
+          ? nxt.map((_, index) => index)
+          : from.connections;
+        highlightedTargets.forEach(t => {
+          if (checkpointPending) drawCurve(from.__x, from.__y, checkpoint.__x, checkpoint.__y, 0xf2d3aa, 3);
+          else if (checkpoint) drawCurve(checkpoint.__x, checkpoint.__y, nxt[t].__x, nxt[t].__y, 0xf2d3aa, 3);
+          else drawCurve(from.__x, from.__y, nxt[t].__x, nxt[t].__y, 0xf2d3aa, 3);
         });
         if (detourReady) {
           nxt.forEach((dest, destIdx) => {
@@ -355,6 +380,9 @@ export class MapViewScene extends Phaser.Scene {
   }
 
   _detourReady() {
+    // Strategy Detour only bends ordinary routes. Mandatory location-story
+    // checkpoints are gates in the act itself and can never be skipped.
+    if (pendingTollroadCheckpoint(this.gameState)) return false;
     return !!this.scene.get('GameScene')?.amuletManager?.canUseStrategyDetour?.();
   }
 
@@ -365,12 +393,64 @@ export class MapViewScene extends Phaser.Scene {
     if (floorIdx < curF) return 'behind';
     if (floorIdx === curF && nodeIdx === curN) return 'current';
     if (floorIdx === curF + 1) {
+      if (this.narrativeCheckpoints?.length && pendingTollroadCheckpoint(this.gameState)) return 'locked_next';
+      const completedCheckpoint = this.narrativeCheckpoints?.find(checkpoint => (
+        checkpoint.afterFloor === curF + 1
+        && this.gameState.storyRun?.[checkpoint.seenFlag]
+      ));
+      // A mandatory story stop merges the incoming roads into one node, then
+      // fans back out. Every road visibly leaving that node must be selectable.
+      if (completedCheckpoint) return 'available';
       const curNode = this.actMap.floors[curF]?.[curN];
       if (curNode?.connections?.includes(nodeIdx)) return 'available';
       if (this._detourReady()) return 'detour';
       return 'locked_next';
     }
     return 'locked';
+  }
+
+  drawNarrativeCheckpoint(checkpoint) {
+    const seen = Boolean(this.gameState.storyRun?.[checkpoint.seenFlag]);
+    const pending = pendingTollroadCheckpoint(this.gameState);
+    const available = pending?.eventId === checkpoint.eventId;
+    const useSheet = this.textures.exists('mapNodes');
+    const frame = this.add.circle(checkpoint.__x, checkpoint.__y, 27, 0x2b1d3d, 0.92)
+      .setStrokeStyle(3, 0xd6ad5c, available ? 1 : 0.65);
+    this.mapContainer.add(frame);
+    const innerFrame = this.add.circle(checkpoint.__x, checkpoint.__y, 23, 0x000000, 0)
+      .setStrokeStyle(1, 0xb98ce0, 0.9);
+    this.mapContainer.add(innerFrame);
+    const sprite = useSheet
+      ? this.add.image(checkpoint.__x, checkpoint.__y, 'mapNodes', 8)
+      : this.add.circle(checkpoint.__x, checkpoint.__y, 18, 0x755b8d);
+    sprite.setAlpha(seen ? 0.35 : available ? 1 : 0.22);
+    sprite.setTint?.(available ? 0xe7c8ff : 0xffffff);
+    checkpoint.__sprite = sprite;
+    this.mapContainer.add(sprite);
+    if (!available) return;
+    this._bindNarrativeCheckpointClick(checkpoint);
+  }
+
+  _bindNarrativeCheckpointClick(checkpoint) {
+    const sprite = checkpoint?.__sprite;
+    if (!sprite || sprite.getData('clickBound')) return;
+    sprite.setData('clickBound', true);
+    sprite.setInteractive({ useHandCursor: true });
+    sprite.on('pointerover', () => this.showTooltip(t(this, 'map.tooltip.event'), checkpoint.__x, checkpoint.__y - 30));
+    sprite.on('pointerout', () => this.hideTooltip());
+    sprite.on('pointerdown', () => this.selectNarrativeCheckpoint(checkpoint));
+  }
+
+  selectNarrativeCheckpoint(checkpoint) {
+    if (this._leavingMap) return;
+    this._leavingMap = true;
+    SoundHelper.playVariant(this, 'map_select', 0.5);
+    this.gameState.roomType = 'EVENT';
+    MusicManager.stopIfPlaying(this, 'map_music', 300);
+    this.time.delayedCall(380, () => {
+      this.scene.sleep();
+      this.scene.launch('EventScene', { gameState: this.gameState, forcedEventId: checkpoint.eventId });
+    });
   }
 
   drawNode(node, floorIdx, nodeIdx) {
@@ -498,6 +578,13 @@ export class MapViewScene extends Phaser.Scene {
         this._bindNodeClick(sprite, node, floorIdx, nodeIdx, AVAILABLE_TINT);
       });
     });
+    this.narrativeCheckpoints.forEach(checkpoint => {
+      const sprite = checkpoint.__sprite;
+      if (!sprite) return;
+      sprite.setAlpha(1);
+      sprite.setTint?.(0xe7ddff);
+      this._bindNarrativeCheckpointClick(checkpoint);
+    });
   }
 
   _cancelManualPick() {
@@ -600,10 +687,14 @@ export class MapViewScene extends Phaser.Scene {
     const cur = this.gameState.mapCursor;
     const fromNode = this.actMap.floors[cur.floor]?.[cur.node];
     const manual = !!this._manualPick;
+    const completedCheckpoint = this.narrativeCheckpoints?.find(checkpoint => (
+      checkpoint.afterFloor === cur.floor + 1
+      && this.gameState.storyRun?.[checkpoint.seenFlag]
+    ));
     if (!manual) {
       if (targetFloorIdx !== cur.floor + 1) return;
       if (!fromNode) return;
-      const connected = fromNode.connections.includes(targetNodeIdx);
+      const connected = Boolean(completedCheckpoint) || fromNode.connections.includes(targetNodeIdx);
       if (!connected && !this._detourReady()) return;
       if (!connected) {
         this.scene.get('GameScene')?.amuletManager?.consumeStrategyDetour?.();
@@ -614,10 +705,12 @@ export class MapViewScene extends Phaser.Scene {
     this.hideHoverCorners();
     this.hideTooltip();
     const nextRow = this.actMap.floors[targetFloorIdx] || [];
-    const connected = !manual && !!fromNode?.connections?.includes(targetNodeIdx);
+    const connected = !manual && (Boolean(completedCheckpoint) || !!fromNode?.connections?.includes(targetNodeIdx));
     const availableNodes = (manual
       ? nextRow.map((_, nodeIndex) => nodeIndex)
-      : (connected ? fromNode.connections : nextRow.map((_, nodeIndex) => nodeIndex))
+      : (completedCheckpoint
+          ? nextRow.map((_, nodeIndex) => nodeIndex)
+          : (connected ? fromNode.connections : nextRow.map((_, nodeIndex) => nodeIndex)))
     ).map(nodeIndex => {
       const option = nextRow[nodeIndex];
       return {

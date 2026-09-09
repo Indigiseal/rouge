@@ -13,6 +13,7 @@
 export default {
     id: 'arm_wrestling',
     title: 'Arm Wrestling',
+    rematchHint: 'Drag a card onto the ogre (uncommon or better)',
     description: (gs, scene) => {
       const crowd = scene.getArmWrestleCrowdLine();
       if (scene.isArmWrestleRematch()) {
@@ -54,7 +55,9 @@ export default {
       };
 
       // He will not play for coin twice — the rematch is about the guard.
-      if (rematch) return [cardBet, decline];
+      // The rematch opens directly in wager mode: the ogre itself is the drop
+      // target, so the only button needed is the way to leave.
+      if (rematch) return [decline];
 
       return [
         {

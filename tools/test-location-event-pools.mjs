@@ -8,6 +8,7 @@ import royalBridge from '../src/content/months/tollroad/events/royal_bridge.js';
 import tollCollectors from '../src/content/events/toll_collectors.js';
 import armWrestling from '../src/content/events/arm_wrestling.js';
 import { getSandboxStories } from '../src/sandbox/SandboxMode.js';
+import { pendingTollroadCheckpoint } from '../src/content/story/TollroadNarrative.js';
 
 const story = (overrides = {}) => ({
   pendingEvents: [],
@@ -19,11 +20,18 @@ const story = (overrides = {}) => ({
   ...overrides,
 });
 
-assert.equal(pickTollroadEventId({ story: story(), random: () => 0 }), 'goblin_mine');
+assert.equal(pickTollroadEventId({ story: story(), canArmWrestle: true, random: () => 0 }), 'arm_wrestling');
 assert.equal(
-  pickTollroadEventId({ story: story({ goblinMineSeen: true }) }),
-  'royal_bridge',
+  pickTollroadEventId({ story: story(), canArmWrestle: true, random: () => 0.6 }),
+  null,
 );
+assert.equal(pendingTollroadCheckpoint({ currentFloor: 5, storyRun: story() })?.eventId, 'goblin_mine');
+assert.equal(pendingTollroadCheckpoint({ currentFloor: 10, storyRun: story({ goblinMineSeen: true }) })?.eventId, 'royal_bridge');
+assert.equal(pendingTollroadCheckpoint({ currentFloor: 12, storyRun: story({ goblinMineSeen: true, royalBridgeSeen: true }) })?.eventId, 'toll_collectors');
+assert.equal(pendingTollroadCheckpoint({
+  currentFloor: 14,
+  storyRun: story({ goblinMineSeen: true, royalBridgeSeen: true, tollCollectorsSeen: true }),
+})?.eventId, 'tollroad_throne_hall');
 
 const intactState = { coins: 250, storyRun: { bridgeDestroyed: false, tollWatchFailed: false } };
 const intactChoices = tollCollectors.choices(intactState);
@@ -46,12 +54,15 @@ const sandboxRematchChoices = armWrestling.choices(
     hasArmWrestleCard: () => false,
   },
 );
-assert.equal(
-  sandboxRematchChoices.find((choice) => choice.id === 'arm_bet_card')?.condition(
-    { sandboxMode: true }, { hasArmWrestleCard: () => false },
-  ),
-  true,
-  'Test Site rematch must always expose the card-bet button',
+assert.deepEqual(
+  sandboxRematchChoices.map((choice) => choice.id),
+  ['arm_decline'],
+  'The rematch must accept a card directly on the ogre and only render the exit button',
+);
+assert.match(
+  armWrestling.rematchHint,
+  /Drag a card onto the ogre.*uncommon or better/i,
+  'The rematch must provide a separate drag hint with its minimum rarity',
 );
 const sandboxTolls = getSandboxStories().filter((entry) => entry.eventId === 'toll_collectors');
 assert.deepEqual(
@@ -63,6 +74,7 @@ assert.equal(
   pickTollroadEventId({
     story: story({ goblinMineSeen: true, royalBridgeSeen: true, tollCollectorsSeen: true }),
     canArmWrestle: true,
+    random: () => 0,
   }),
   'arm_wrestling',
 );
@@ -81,16 +93,16 @@ assert.equal(
       armWrestlingSeen: true,
     }),
   }),
-  'toll_collectors',
+  null,
 );
 
-for (const roll of [0, 0.49, 0.99]) {
+for (const roll of [0, 0.59, 0.6, 0.99]) {
   const eventId = pickTollroadEventId({
     story: story({ goblinMineSeen: true, royalBridgeSeen: true }),
     canArmWrestle: true,
     random: () => roll,
   });
-  assert.ok(TOLLROAD_EVENT_IDS.includes(eventId), `${eventId} must belong to Tollroad`);
+  assert.ok(eventId === null || TOLLROAD_EVENT_IDS.includes(eventId), `${eventId} must be optional Tollroad content`);
 }
 
 const fireballChoice = goblinMine.choices.find((choice) => choice.id === 'mine_fireball');

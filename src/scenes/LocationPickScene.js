@@ -203,9 +203,25 @@ export class LocationPickScene extends Phaser.Scene {
   leave(locationId) {
     if (this.mode === 'nextAct' && this.gameState) {
       applyLocationChoice(this.gameState, locationId);
+      const act = this.pickAct;
+      const startNode = this.gameState.dungeonMap?.[`act${act}`]?.floors?.[0]?.[0];
+      this.gameState.mapCursor = { act, floor: 0, node: 0 };
+      this.gameState.currentFloor = (act - 1) * 15 + 1;
+      this.gameState.roomType = startNode?.type || 'COMBAT';
+      if (startNode) startNode.visited = true;
       const gameScene = this.scene.get('GameScene');
+      // BossRewardRoom put the shared combat scene into transition mode before
+      // sleeping it. The first room of the new act must start as a normal room,
+      // otherwise its cleared-state exit (including the Brassfair door) stays
+      // suppressed.
+      if (gameScene) gameScene._transitioning = false;
       gameScene?.saveCurrentRun?.();
-      this.scene.start('MapViewScene', { gameState: this.gameState });
+      this.scene.stop('MapViewScene');
+      this.scene.stop();
+      this.scene.wake('GameScene', {
+        roomType: this.gameState.roomType,
+        isNewRoom: true,
+      });
       return;
     }
 
