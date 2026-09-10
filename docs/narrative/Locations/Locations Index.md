@@ -12,11 +12,15 @@ tags:
 
 Nine **roads**. The player picks one per act. Completing any road advances the act. **One road per act is true** — see [[The True Path]].
 
+Each choice is presented as a **Waystar door**: a portal-threshold to one bounded
+passage through a country, not a claim that the entire country fits behind a
+wooden door. Every location must satisfy the shared [[Location Rule]].
+
 True chain: **Tollroad → Brassfair → Starfold** (goblin tax-god → dark carnival of that god → the Magus's house).
 
 Roster target per location: **3 melee + 2 ranged + 1 boss**.
 
-Layout: each road has a folder `Locations/<Name>/` with its note and an `Events/` subfolder. Encounters owned by no road live in `_Shared/`; retired faces in `_Shelved/`.
+Layout: each road has a folder `Locations/<Name>/` with its note and an `Events/` subfolder. Encounters owned by no road live in `_Shared/`; retired faces in `_Shelved/`. Runtime packs live in `src/content/location-packs/<id>/`.
 
 ## Acts
 
@@ -33,7 +37,7 @@ Layout: each road has a folder `Locations/<Name>/` with its note and an `Events/
 | Act | Location | Place | Boss | True? | Content |
 |---|---|---|---|---|---|
 | 1 | [[Thornwake]] | The Briar March | [[The Green Warden]] | no | Pack in-game |
-| 1 | [[Silkdeep]] | The Silkdeep Caves | [[Spider Queen]] | no | Pack in-game |
+| 1 | [[Silkdeep]] | The Palace of the Last Feast | [[Spider Queen]] | no | Pack in-game |
 | 1 | [[Tollroad]] | The King's Mile | [[Goblin King]] | **yes** | Pack in-game |
 | 2 | [[Boneflood]] | The Ossuary Fields | [[Giant Skeleton]] | no | Boss in-game |
 | 2 | [[Brassfair]] | The Night Fair | [[The Ringmaster]] | **yes** | Events in-game |
@@ -61,20 +65,29 @@ You can still camp here. You can still cut. After the Warden: *The forest kept y
 | artillery | [[Thorn Fairy]] | Vine-bound fae. Flips face-down between strikes. |
 | boss | [[The Green Warden]] | Keeper of the March. |
 
-### [[Silkdeep]] — The Silkdeep Caves (wrong)
+### [[Silkdeep]] — The Palace of the Last Feast (wrong)
 
-**Limestone caves** under the hills, wet, loud with clicks. The Path ducks into a mouth in the rock. Cave spiders poison every bite. Giant centipedes chew armor. Walking cocoons (husks) force you to strike them first. Scorpions shoot stingers that make poison worse. Small webbers glue a weapon in your hand. The **Spider Queen** holds the lowest chamber.
+A **human baron's palace**, frozen during the feast that destroyed it. Cocooned
+guests remain at table, musicians hang above their instruments, and spider eggs
+fill the serving dishes. The baron's court magician once read possible futures
+in the webs of exotic spiders. When the indebted baron tried to steal and sell
+the Crown Weaver, the hidden colony grew and claimed the gathered court. The
+stolen spider became the **Spider Queen**.
 
-A readable dungeon. After the Queen: *The silk is quiet. The Waystar still points elsewhere.*
+Unknown to the player on the first visit, the court magician deliberately led
+the baron toward this disaster after an unseen whisper recruited him. He later
+became [[The Magus]] and helped raise the Second Moon. Silkdeep is therefore a
+hidden flashback whose meaning arrives much later. After the Queen: *The silk is
+quiet. The Waystar still points elsewhere.*
 
 | Slot | Enemy | What it is |
 |---|---|---|
-| skirmisher | [[Spider]] | Cave spider. Poison on hit. |
-| swarm | [[Cave Crawler]] | Giant centipede. Gnaws armor durability. |
-| bruiser | [[Silk Husk]] | Walking cocoon. Taunt while face-up. |
+| skirmisher | [[Spider]] | Enlarged menagerie spider. Poison on hit. |
+| swarm | [[Cave Crawler]] | Palace vermin swollen by the web. Gnaws armor durability. |
+| bruiser | [[Silk Husk]] | Cocooned guest forced to walk. Taunt while face-up. |
 | artillery | [[Stinger Scorpion]] | Regenerating stinger. Amplifies poison. |
 | artillery | [[Silkslinger]] | Webs one hand card for a turn. |
-| boss | [[Spider Queen]] | Queen of the lowest chamber. |
+| boss | [[Spider Queen]] | The stolen Crown Weaver, enthroned over the final feast. |
 
 ### [[Tollroad]] — The King's Mile (**true**)
 

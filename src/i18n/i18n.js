@@ -70,6 +70,9 @@ const STRINGS = {
         'ui.village.maxed': 'Maxed',
         'ui.village.need': 'Need {cost}',
         'ui.village.healerTitle': 'A gift from the jeweler',
+        'ui.village.debugResetMeta': 'RESET META',
+        'ui.village.resetMetaTitle': 'Reset meta progression?',
+        'ui.village.resetMetaBody': 'Wipes Support, buildings, and meta stats.\nThe current run and settings are kept.',
         'village.forge.name': 'Forge',
         'village.forge.desc': '+1 weapon damage per rank, any weapon. Five ranks.',
         'village.temple.name': 'Temple',
@@ -579,6 +582,9 @@ const STRINGS = {
         'ui.village.maxed': 'Al maximo',
         'ui.village.need': 'Faltan {cost}',
         'ui.village.healerTitle': 'Un regalo del joyero',
+        'ui.village.debugResetMeta': 'REINICIAR META',
+        'ui.village.resetMetaTitle': '¿Reiniciar la metaprogresión?',
+        'ui.village.resetMetaBody': 'Borra Apoyo, edificios y estadísticas meta.\nLa partida actual y los ajustes se conservan.',
         'village.forge.name': 'Forja',
         'village.forge.desc': '+1 de dano de arma por rango, cualquier arma. Cinco rangos.',
         'village.temple.name': 'Templo',
@@ -1049,6 +1055,9 @@ const STRINGS = {
         'ui.village.maxed': 'Maximum',
         'ui.village.need': 'Il faut {cost}',
         'ui.village.healerTitle': 'Un cadeau du joaillier',
+        'ui.village.debugResetMeta': 'RÉINIT. MÉTA',
+        'ui.village.resetMetaTitle': 'Réinitialiser la métaprogression ?',
+        'ui.village.resetMetaBody': 'Efface le Soutien, les bâtiments et les statistiques méta.\nLa partie actuelle et les réglages sont conservés.',
         'village.forge.name': 'Forge',
         'village.forge.desc': '+1 dégât d’arme par rang, n’importe quelle arme. Cinq rangs.',
         'village.temple.name': 'Temple',
@@ -1232,6 +1241,9 @@ const STRINGS = {
         'ui.village.maxed': 'Максимум',
         'ui.village.need': 'Нужно {cost}',
         'ui.village.healerTitle': 'Дар ювелира',
+        'ui.village.debugResetMeta': 'СБРОС МЕТА-ПРОГРЕССА',
+        'ui.village.resetMetaTitle': 'Сбросить мета-прогресс?',
+        'ui.village.resetMetaBody': 'Удалит поддержку, здания и статистику меты.\nТекущий забег и настройки сохранятся.',
         'village.forge.name': 'Кузня',
         'village.forge.desc': '+1 урона оружия за ранг, любое оружие. Пять рангов.',
         'village.temple.name': 'Храм',
@@ -4045,6 +4057,38 @@ Object.assign(STRINGS.fr, {
     'ui.tollroadIntro.page1': 'Vous vous retrouvez au milieu d’une clairière. Derrière vous, la lourde porte se referme contre un chambranle de bois un peu de travers dans un grondement sourd. Une cabane de forestier devrait se dresser ici, mais quelqu’un semble en avoir gommé les murs, le sol, le toit et tout ce qu’ils abritaient, ne laissant que cette ouverture suspendue dans les airs.\n\nPuis la porte se dissout à son tour. Impossible de revenir par là. Vous vous enfoncez entre les arbres.',
     'ui.tollroadIntro.page2': 'Bientôt, le terrain monte jusqu’à une colline. Du sommet, une vaste vallée s’ouvre devant vous. Les routes quadrillent chaque champ et chacune se resserre devant une barrière. De petites silhouettes vertes attendent près des poteaux rayés, registres, balances et paumes ouvertes à la main.\n\nDes écriteaux de péage sont cloués aux arbres, aux puits, aux ponts et même à un épouvantail. Des charrettes dépouillées bordent la route tandis que des gobelins se disputent leur contenu. Au-dessus de chaque toit volé flotte la bannière verte et or du Roi gobelin.\n\nRien ne traverse cette vallée sans payer. Les gobelins possèdent les routes, et l’avidité semble être leur seule loi.',
     'ui.tollroadIntro.goOn': 'Entrer dans la vallée',
+});
+
+Object.assign(STRINGS.en, {
+    'ui.silkdeepIntro.title': 'The Palace of the Last Feast',
+    'ui.silkdeepIntro.page1': 'You pass through a heavy stone door draped in old webbing—and find yourself walking out of a crypt.\n\nThe small tomb stands alone among dead hedges and weather-worn statues, in the neglected grounds behind a vast palace. The doorway at your back is already dark. It offers no road home.',
+    'ui.silkdeepIntro.page2': 'You walk around the crypt, and the palace reveals itself. Pale silk covers the roofs, bridges the windows, and hangs from the towers in heavy sheets.\n\nThere is enough web here for an army of spiders. Yet the grounds are silent. You do not see a single one.\n\nAcross the abandoned courtyard, the massive doors of the main entrance stand slightly ajar.',
+    'ui.silkdeepIntro.page3': 'The doors are too heavy to move, but the gap between them is just wide enough. You turn sideways and squeeze through.\n\nA great entrance hall opens before you, abandoned beneath layers of web. Two monumental semicircular staircases curve toward the second floor.\n\nSomething rustles in a dark corner. Another corner answers. Above the stairs, small pairs of eyes open in the shadows.',
+    'ui.silkdeepIntro.goOn': 'Enter the palace',
+});
+
+Object.assign(STRINGS.ru, {
+    'ui.silkdeepIntro.title': 'Дворец последнего пира',
+    'ui.silkdeepIntro.page1': 'Ты проходишь через тяжёлую каменную дверь, обвитую старой паутиной, — и обнаруживаешь, что выходишь из склепа.\n\nНебольшая усыпальница стоит среди мёртвых изгородей и истёртых непогодой статуй, на запущенных задворках огромного дворца. Проём за твоей спиной уже погрузился во тьму. Обратного пути он не предлагает.',
+    'ui.silkdeepIntro.page2': 'Ты обходишь склеп, и дворец открывается целиком. Бледный шёлк покрывает крыши, соединяет окна и тяжёлыми полотнами свисает с башен.\n\nЭтой паутины хватило бы на целую армию пауков. Но вокруг стоит тишина. Ни одного из них не видно.\n\nНа другом конце заброшенного двора массивные двери главного входа остались слегка приоткрыты.',
+    'ui.silkdeepIntro.page3': 'Двери слишком тяжелы, чтобы сдвинуть их, но щель между ними достаточно широка. Повернувшись боком, ты протискиваешься внутрь.\n\nПеред тобой открывается огромный главный холл, заброшенный под слоями паутины. Две монументальные полукруглые лестницы изгибаются к верхнему этажу.\n\nВ тёмном углу слышится шорох. Ему отвечает другой. Над лестницами в темноте открываются маленькие пары глаз.',
+    'ui.silkdeepIntro.goOn': 'Войти во дворец',
+});
+
+Object.assign(STRINGS.es, {
+    'ui.silkdeepIntro.title': 'El Palacio del Último Banquete',
+    'ui.silkdeepIntro.page1': 'Cruzas una pesada puerta de piedra cubierta de telarañas antiguas y descubres que estás saliendo de una cripta.\n\nLa pequeña tumba se alza entre setos muertos y estatuas erosionadas, en los jardines abandonados detrás de un palacio inmenso. El umbral a tu espalda ya está oscuro. No ofrece ningún camino de vuelta.',
+    'ui.silkdeepIntro.page2': 'Rodeas la cripta y el palacio aparece ante ti. Seda pálida cubre los tejados, une las ventanas y cuelga de las torres en pesados lienzos.\n\nHay telaraña suficiente para un ejército de arañas. Sin embargo, los jardines están en silencio. No ves ni una sola.\n\nAl otro lado del patio abandonado, las enormes puertas de la entrada principal permanecen entreabiertas.',
+    'ui.silkdeepIntro.page3': 'Las puertas pesan demasiado para moverlas, pero la abertura entre ellas es suficiente. Te pones de lado y pasas.\n\nAnte ti se abre un gran vestíbulo, abandonado bajo capas de telaraña. Dos escaleras semicirculares monumentales ascienden hacia el piso superior.\n\nAlgo cruje en un rincón oscuro. Otro rincón responde. Sobre las escaleras se abren pequeños pares de ojos en las sombras.',
+    'ui.silkdeepIntro.goOn': 'Entrar en el palacio',
+});
+
+Object.assign(STRINGS.fr, {
+    'ui.silkdeepIntro.title': 'Le Palais du Dernier Festin',
+    'ui.silkdeepIntro.page1': 'Vous franchissez une lourde porte de pierre drapée de vieilles toiles et découvrez que vous sortez d’un caveau.\n\nLe petit tombeau se dresse parmi des haies mortes et des statues rongées par le temps, dans les jardins négligés derrière un immense palais. L’ouverture dans votre dos est déjà sombre. Elle n’offre aucun chemin de retour.',
+    'ui.silkdeepIntro.page2': 'Vous contournez le caveau et le palais se révèle. Une soie pâle couvre les toits, relie les fenêtres et pend des tours en lourds rideaux.\n\nIl y a là assez de toile pour une armée d’araignées. Pourtant, les jardins restent silencieux. Vous n’en voyez aucune.\n\nDe l’autre côté de la cour abandonnée, les portes massives de l’entrée principale sont restées entrouvertes.',
+    'ui.silkdeepIntro.page3': 'Les portes sont trop lourdes pour être déplacées, mais l’espace entre elles suffit. Vous vous tournez de côté et vous glissez à l’intérieur.\n\nUn vaste hall s’ouvre devant vous, abandonné sous des couches de toile. Deux escaliers monumentaux en demi-cercle montent vers l’étage.\n\nUn bruit remue dans un coin sombre. Un autre lui répond. Au-dessus des marches, de petites paires d’yeux s’ouvrent dans l’ombre.',
+    'ui.silkdeepIntro.goOn': 'Entrer dans le palais',
 });
 
 Object.assign(STRINGS.en, {

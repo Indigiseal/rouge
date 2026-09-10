@@ -296,8 +296,10 @@
       уже так: победа не смотрит на true path.)
     - **[ ]** Ростеры и боссы актов 2–3 в коде (Duskhold и Brassfair паков нет).
     - **[ ]** Баланс: три локации акта равны по сложности (см. `docs/BALANCE.md`).
-    - **[ ]** Переименовать `src/content/months/` → `locations/` вместе с этим
-      (сейчас имя папки врёт). Отдельным коммитом, без правок логики.
+    - **[x]** Переименовать старый `src/content/months/` в
+      `src/content/location-packs/`; gameplay использует общий контракт локации.
+      Month-названия остаются только как deprecated-алиасы миграции замороженных
+      сейвов и будут удалены при следующем bump save-контракта.
     - **[x]** Ключи localStorage не менять без migrate + bump `SAVE_VERSION`.
       Ран 1.0.7 хранит `player.actLocationIds`; 1.0.6 мигрирует через calendar fallback.
 

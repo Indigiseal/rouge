@@ -43,7 +43,7 @@ import {
     THORNS_SPRITE_BY_RARITY,
     buildEnemyCardFromDef,
 } from '../../content/cards/index.js';
-import { getLocationMonthDef } from '../../content/locations/index.js';
+import { getLocationContent } from '../../content/locations/index.js';
 
 export class CardDataGenerator {
     // Re-export content tables as statics for existing callers.
@@ -180,11 +180,11 @@ export class CardDataGenerator {
     }
 
     createEnemyCard(floor, isElite = false, preferredRole = null, gameState = null) {
-        const monthPool = this.getMonthEnemyPool(floor, preferredRole, gameState);
-        let availableEnemies = monthPool;
+        const locationPool = this.getLocationEnemyPool(floor, preferredRole, gameState);
+        let availableEnemies = locationPool;
 
         if (!availableEnemies.length) {
-            // Legacy global pool when the current month has no roster yet.
+            // Legacy global pool when the current location has no roster yet.
             availableEnemies = Object.keys(this.enemyData).filter(key =>
                 floor >= this.enemyData[key].minFloor
                 && !CardDataGenerator.SUMMON_ONLY_ENEMY_TYPES.has(key)
@@ -204,9 +204,9 @@ export class CardDataGenerator {
         return this.createTieredEnemy(enemyType, floor, isElite);
     }
 
-    getMonthEnemyPool(floor, preferredRole = null, gameState = null) {
-        const month = getLocationMonthDef(gameState, floor);
-        const roster = month?.enemies;
+    getLocationEnemyPool(floor, preferredRole = null, gameState = null) {
+        const location = getLocationContent(gameState, floor);
+        const roster = location?.enemies;
         if (!roster) return [];
 
         const roleKey = preferredRole === 'RANGED' ? 'RANGED' : preferredRole === 'MELEE' ? 'MELEE' : null;
@@ -221,7 +221,7 @@ export class CardDataGenerator {
         });
 
         // If the role slice is empty (shouldn't happen for Thornwake), fall back
-        // to the full month roster before leaving month mode.
+        // to the full location roster before leaving location mode.
         if (!pool.length && roleKey) {
             pool = [...(roster.MELEE || []), ...(roster.RANGED || [])].filter((key) => {
                 const def = this.enemyData[key];
@@ -230,6 +230,11 @@ export class CardDataGenerator {
             });
         }
         return pool;
+    }
+
+    /** @deprecated Compatibility alias for older board helpers. */
+    getMonthEnemyPool(floor, preferredRole = null, gameState = null) {
+        return this.getLocationEnemyPool(floor, preferredRole, gameState);
     }
 
     createTieredEnemy(enemyType, floor, isElite = false) {
@@ -891,4 +896,3 @@ export class CardDataGenerator {
         };
     }
 }
-

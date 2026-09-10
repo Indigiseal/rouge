@@ -2,13 +2,17 @@ import assert from 'node:assert/strict';
 import {
   TOLLROAD_EVENT_IDS,
   pickTollroadEventId,
-} from '../src/content/months/tollroad/events/index.js';
-import goblinMine from '../src/content/months/tollroad/events/goblin_mine.js';
-import royalBridge from '../src/content/months/tollroad/events/royal_bridge.js';
+} from '../src/content/location-packs/tollroad/events/index.js';
+import goblinMine from '../src/content/location-packs/tollroad/events/goblin_mine.js';
+import royalBridge from '../src/content/location-packs/tollroad/events/royal_bridge.js';
 import tollCollectors from '../src/content/events/toll_collectors.js';
 import armWrestling from '../src/content/events/arm_wrestling.js';
 import { getSandboxStories } from '../src/sandbox/SandboxMode.js';
-import { pendingTollroadCheckpoint } from '../src/content/story/TollroadNarrative.js';
+import {
+  getLocationRule,
+  pendingLocationAftermath,
+  pendingLocationCheckpoint,
+} from '../src/content/locations/rules.js';
 
 const story = (overrides = {}) => ({
   pendingEvents: [],
@@ -25,13 +29,25 @@ assert.equal(
   pickTollroadEventId({ story: story(), canArmWrestle: true, random: () => 0.6 }),
   null,
 );
-assert.equal(pendingTollroadCheckpoint({ currentFloor: 5, storyRun: story() })?.eventId, 'goblin_mine');
-assert.equal(pendingTollroadCheckpoint({ currentFloor: 10, storyRun: story({ goblinMineSeen: true }) })?.eventId, 'royal_bridge');
-assert.equal(pendingTollroadCheckpoint({ currentFloor: 12, storyRun: story({ goblinMineSeen: true, royalBridgeSeen: true }) })?.eventId, 'toll_collectors');
-assert.equal(pendingTollroadCheckpoint({
-  currentFloor: 14,
-  storyRun: story({ goblinMineSeen: true, royalBridgeSeen: true, tollCollectorsSeen: true }),
-})?.eventId, 'tollroad_throne_hall');
+const tollroadRun = (currentFloor, storyRun) => ({
+  currentFloor,
+  actLocationIds: ['tollroad', null, null],
+  storyRun,
+});
+const tollroadRule = getLocationRule('tollroad');
+assert.equal(tollroadRule?.introSceneKey, 'TollroadIntroScene');
+assert.equal(getLocationRule('silkdeep')?.introSceneKey, 'SilkdeepIntroScene');
+assert.equal(tollroadRule?.enemies?.MELEE?.length, 3);
+assert.equal(tollroadRule?.enemies?.RANGED?.length, 2);
+assert.ok(tollroadRule?.events?.length > 0);
+assert.equal(pendingLocationCheckpoint(tollroadRun(5, story()))?.eventId, 'goblin_mine');
+assert.equal(pendingLocationCheckpoint(tollroadRun(10, story({ goblinMineSeen: true })))?.eventId, 'royal_bridge');
+assert.equal(pendingLocationCheckpoint(tollroadRun(12, story({ goblinMineSeen: true, royalBridgeSeen: true })))?.eventId, 'toll_collectors');
+assert.equal(pendingLocationCheckpoint(tollroadRun(
+  14,
+  story({ goblinMineSeen: true, royalBridgeSeen: true, tollCollectorsSeen: true }),
+))?.eventId, 'tollroad_throne_hall');
+assert.equal(pendingLocationAftermath(tollroadRun(15, story()))?.sceneKey, 'TollroadAftermathScene');
 
 const intactState = { coins: 250, storyRun: { bridgeDestroyed: false, tollWatchFailed: false } };
 const intactChoices = tollCollectors.choices(intactState);

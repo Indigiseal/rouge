@@ -25,7 +25,7 @@
 **Code reality:** `LocationPickScene` deals three cards per act; the **back**
 is the location portrait (`locBack_<id>`), with name / place / pitch shown as
 soon as the card opens. A click walks that road. Packs still live under
-`src/content/months/<id>/`. Act 2–3 rosters and named bosses are incomplete
+`src/content/location-packs/<id>/`. Act 2–3 rosters and named bosses are incomplete
 (Duskhold / Brassfair / Starfold packs not shipped). The after-boss true/wrong
 card is not in yet. Tracked in `docs/OPEN-QUESTIONS.md`.
 `MapViewScene` has a debug **Choose manually** button to jump to any room in
@@ -120,7 +120,7 @@ the current act; after that room the run continues from that floor.
   - **Monster Bird Nest** → overlay (`BirdNestMinigame`): drag stacked junk off the egg and/or brass cog. A bird-shadow sweeps from random sides; holding junk under it costs **−5s** immediately and drains the 20s bar faster. Timeout = fail (no loot; `nestRaidTimedOut`; punishment TBD). Run keeps whatever was already taken. No HP/armor tax on the egg. Then `goblin_engineer`.
 
 ## Silkdeep event — The Silk Cache
-- Event id `silk_cocoon_cache` (location pack `src/content/months/silkdeep/events/`); once per run while the act location is Silkdeep.
+- Event id `silk_cocoon_cache` (location pack `src/content/location-packs/silkdeep/events/`); once per run while the act location is Silkdeep.
 - Choices: leave / search cocoons / burn them all (requires Fireball scroll, consumes it).
 - Search → combat board of 8 revealed cocoon shells (1 HP). Clicking does not flip; any 1 damage cracks a shell.
   Three shells hide loot (1 amulet + 2 weapon/armor for the floor); five hide a random Silkdeep enemy (**not** Silkslinger).

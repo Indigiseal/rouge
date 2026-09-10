@@ -129,9 +129,9 @@ export const CombatHud = {
         this.amuletScrollOffset = 0; // which amulet is the first one shown
         this.armorTooltip = null; // tooltip shown on hover over equipped armor
         // Above the floor board frame (depth 0) and stone BG — otherwise the
-        // gamingBoard lip covers month/act/floor in the top-right.
+        // gamingBoard lip covers location/act/floor in the top-right.
         const TOP_HUD_DEPTH = 40;
-        // Month first (bright), then Act/Floor (muted) — easy to spot which calendar month you're in.
+        // Location first (bright), then Act/Floor (muted).
         this.floorText = this.add.text(455, 15, t(this.scene, 'ui.hud.floorBanner', {
             month: 'Thornwake', act: 1, floor: 1,
         }), {
@@ -139,7 +139,7 @@ export const CombatHud = {
             fill: '#f5e6c8',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH);
-        this.monthText = null;
+        this.locationText = null;
         
         // The cog, in the corner every other screen keeps it in. It replaced a
         // written PAUSE plate that sat 18px left and 7px up of here — and which
@@ -688,12 +688,12 @@ export const CombatHud = {
         this.updateActionPointUI();
         this.updateCurrencyUILayout();
         const _act = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
-        const monthName = getLocationDisplayName(
+        const locationName = getLocationDisplayName(
             this.gameState,
             this.gameState.currentFloor || 1
         );
         this.floorText.setText(t(this.scene, 'ui.hud.floorBanner', {
-            month: monthName, act: _act, floor: this.gameState.currentFloor,
+            month: locationName, act: _act, floor: this.gameState.currentFloor,
         }));
         this.updateEquippedArmorPanel();
         

@@ -2,7 +2,7 @@
 
 import { EVENTS } from '../content/events/index.js';
 import { getMagic } from '../content/cards/magic.js';
-import { resolveMonthIndex } from '../content/months/calendar.js';
+import { resolveMonthIndex } from '../content/location-packs/calendar.js';
 
 export const SANDBOX_HUB_KEY = 'SandboxHubScene';
 export const SANDBOX_STORY_KEY = 'SandboxStoryScene';
@@ -132,27 +132,27 @@ const SANDBOX_STORY_SETUP = {
   // Burn choice needs a Fireball scroll; pin Silkdeep so hatched enemies match.
   silk_cocoon_cache: {
     grant: ['fireball'],
-    monthId: 'silkdeep',
+    locationId: 'silkdeep',
   },
   // Expose the dynamite choice immediately when testing the new Tollroad arc.
   goblin_mine: {
     grant: ['fireball'],
-    monthId: 'tollroad',
+    locationId: 'tollroad',
   },
   royal_bridge: {
-    monthId: 'tollroad',
+    locationId: 'tollroad',
   },
   arm_wrestling_rematch: {
-    monthId: 'tollroad',
+    locationId: 'tollroad',
     story: { armWrestlingSeen: true, armWrestleWon: true, armWrestleRematchDone: false },
     grant: ['armWrestleCommonStake', 'armWrestleUncommonStake'],
   },
   toll_collectors_intact: {
-    monthId: 'tollroad',
+    locationId: 'tollroad',
     story: { bridgeDestroyed: false, goblinMinersAllied: false, royalBridgeSeen: true },
   },
   toll_collectors_destroyed: {
-    monthId: 'tollroad',
+    locationId: 'tollroad',
     story: { bridgeDestroyed: true, goblinMinersAllied: true, royalBridgeSeen: true },
   },
 };
@@ -170,8 +170,8 @@ export function applySandboxStorySetup(gameScene, eventId) {
   if (!setup) return;
 
   if (setup.story) Object.assign(gs.storyRun, setup.story);
-  if (setup.monthId) {
-    gs.calendarMonthIndex = resolveMonthIndex(setup.monthId);
+  if (setup.locationId) {
+    gs.calendarMonthIndex = resolveMonthIndex(setup.locationId);
     gs.pinCalendarMonth = true;
   }
   for (const grant of setup.grant || []) {

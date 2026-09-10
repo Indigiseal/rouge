@@ -51,7 +51,7 @@ import { humanRunRecorder, recordHumanRunEvent } from '../systems/HumanRunRecord
 import { openNoticeModal } from '../ui/ConfirmModal.js';
 import { isSilkCocoonCacheRoom, boardHasOpenCocoonEnemies } from '../systems/board/CocoonCacheBoard.js';
 import { playSmokeBurst, SMOKE_BURST_MS } from '../ui/SmokeBurst.js';
-import { shouldShowTollroadAftermath } from '../content/story/TollroadAftermath.js';
+import { pendingLocationAftermath } from '../content/locations/index.js';
 
 export function applyAmbushVictoryStory(gameState) {
     const story = gameState?.storyRun;
@@ -332,10 +332,11 @@ export class GameScene extends Phaser.Scene {
             // Migration for saves already stranded in the reward room by the
             // old profile-wide "seen" guard: show the missing scene first, then
             // restore these exact reward cards without paying currency twice.
-            if (shouldShowTollroadAftermath(this.gameState)) {
+            const aftermath = pendingLocationAftermath(this.gameState);
+            if (aftermath) {
                 this._restoreBossRewardAfterNarrative = true;
                 this.scene.sleep();
-                this.scene.launch('TollroadAftermathScene', { gameState: this.gameState });
+                this.scene.launch(aftermath.sceneKey, { gameState: this.gameState });
             } else {
                 this.restoreSavedBossRewardRoom();
             }
@@ -1399,9 +1400,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     continueBossVictory() {
-        if (shouldShowTollroadAftermath(this.gameState)) {
+        const aftermath = pendingLocationAftermath(this.gameState);
+        if (aftermath) {
             this.scene.sleep();
-            this.scene.launch('TollroadAftermathScene', { gameState: this.gameState });
+            this.scene.launch(aftermath.sceneKey, { gameState: this.gameState });
             return;
         }
         this.setupBossRewardRoom();

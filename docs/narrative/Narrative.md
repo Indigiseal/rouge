@@ -53,6 +53,7 @@ This note is the **map of content** for the lore database.
 - [[Day and Floor]]
 - [[Run Structure]]
 - [[The True Path]]
+- [[Location Rule]]
 - [[Tone and Fantasy]]
 - [[Replayability]]
 - [[Encounter Philosophy]]

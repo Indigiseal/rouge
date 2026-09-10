@@ -1,8 +1,12 @@
 // scenes/MapViewScene.js
 // Phaser is provided as a UMD global (see index.html) — no import needed.
 import { MapGenerator, MAP_VERSION } from '../map/MapGenerator.js';
-import { getLocationIdForFloor, needsLocationPick } from '../content/locations/index.js';
-import { TOLLROAD_NARRATIVE_CHECKPOINTS, pendingTollroadCheckpoint } from '../content/story/TollroadNarrative.js';
+import {
+  getLocationIdForFloor,
+  getLocationNarrativeCheckpoints,
+  needsLocationPick,
+  pendingLocationCheckpoint,
+} from '../content/locations/index.js';
 import { isSandboxMode } from '../sandbox/SandboxMode.js';
 import { t } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
@@ -212,9 +216,8 @@ export class MapViewScene extends Phaser.Scene {
     const floorGap = 60;        // vertical spacing
     const cx = 0;               // container origin is centered already
     const startY = -150;
-    this.narrativeCheckpoints = getLocationIdForFloor(this.gameState) === 'tollroad'
-      ? TOLLROAD_NARRATIVE_CHECKPOINTS.map(checkpoint => ({ ...checkpoint }))
-      : [];
+    this.narrativeCheckpoints = getLocationNarrativeCheckpoints(this.gameState)
+      .map(checkpoint => ({ ...checkpoint }));
 
     // Assign positions per floor: nodes are centered symmetrically around x=0
     this.actMap.floors.forEach((floorNodes, f) => {
@@ -382,7 +385,7 @@ export class MapViewScene extends Phaser.Scene {
   _detourReady() {
     // Strategy Detour only bends ordinary routes. Mandatory location-story
     // checkpoints are gates in the act itself and can never be skipped.
-    if (pendingTollroadCheckpoint(this.gameState)) return false;
+    if (pendingLocationCheckpoint(this.gameState)) return false;
     return !!this.scene.get('GameScene')?.amuletManager?.canUseStrategyDetour?.();
   }
 
@@ -393,7 +396,7 @@ export class MapViewScene extends Phaser.Scene {
     if (floorIdx < curF) return 'behind';
     if (floorIdx === curF && nodeIdx === curN) return 'current';
     if (floorIdx === curF + 1) {
-      if (this.narrativeCheckpoints?.length && pendingTollroadCheckpoint(this.gameState)) return 'locked_next';
+      if (this.narrativeCheckpoints?.length && pendingLocationCheckpoint(this.gameState)) return 'locked_next';
       const completedCheckpoint = this.narrativeCheckpoints?.find(checkpoint => (
         checkpoint.afterFloor === curF + 1
         && this.gameState.storyRun?.[checkpoint.seenFlag]
@@ -411,7 +414,7 @@ export class MapViewScene extends Phaser.Scene {
 
   drawNarrativeCheckpoint(checkpoint) {
     const seen = Boolean(this.gameState.storyRun?.[checkpoint.seenFlag]);
-    const pending = pendingTollroadCheckpoint(this.gameState);
+    const pending = pendingLocationCheckpoint(this.gameState);
     const available = pending?.eventId === checkpoint.eventId;
     const useSheet = this.textures.exists('mapNodes');
     const frame = this.add.circle(checkpoint.__x, checkpoint.__y, 27, 0x2b1d3d, 0.92)

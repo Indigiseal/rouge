@@ -1,6 +1,6 @@
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { applyLocationChoice, roadsForAct } from '../content/locations/index.js';
+import { applyLocationChoice, getLocationRule, roadsForAct } from '../content/locations/index.js';
 import { PATH_LOCATIONS } from '../content/locations/catalog.js';
 import {
   LOCATION_DOORS_KEY,
@@ -231,8 +231,9 @@ export class LocationPickScene extends Phaser.Scene {
       armorerArmorType: this.armorerArmorType,
       locationId,
     };
-    if (locationId === 'tollroad') {
-      this.scene.start('TollroadIntroScene', { runData });
+    const introSceneKey = getLocationRule(locationId)?.introSceneKey;
+    if (introSceneKey) {
+      this.scene.start(introSceneKey, { runData });
       return;
     }
     this.scene.start('GameScene', runData);

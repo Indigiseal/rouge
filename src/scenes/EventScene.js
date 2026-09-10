@@ -39,7 +39,7 @@ import {
   NEST_LEFT,
 } from '../content/events/monster_bird_nest.js';
 import { getLocationIdForFloor } from '../content/locations/index.js';
-import { pickTollroadEventId } from '../content/months/tollroad/index.js';
+import { pickTollroadEventId } from '../content/location-packs/tollroad/index.js';
 import { tryLethalRevive } from '../systems/combat/PlayerDamageResolver.js';
 import { serifStyle } from '../ui/uiFont.js';
 

@@ -1,6 +1,6 @@
 import { BONEFLOOD_ENEMY_DEFS, BONEFLOOD_ROSTER } from './enemies/index.js';
 
-export const BONEFLOOD_MONTH = Object.freeze({
+export const BONEFLOOD_LOCATION_PACK = Object.freeze({
   id: 'boneflood',
   name: 'Boneflood',
   enemies: BONEFLOOD_ROSTER,

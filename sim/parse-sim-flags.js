@@ -18,8 +18,8 @@ import {
   TEST_OPTION_IDS,
 } from '../src/config/TestOptions.js';
 import { CHARACTER_IDS, normalizeCharacterId } from '../src/content/characters/CharacterClasses.js';
-import { resolveMonthIndex } from '../src/content/months/index.js';
-import { MONTHS } from '../src/content/months/calendar.js';
+import { resolveMonthIndex } from '../src/content/location-packs/index.js';
+import { LOCATION_PACK_LIST } from '../src/content/location-packs/registry.js';
 import { PATH_LOCATIONS } from '../src/content/locations/catalog.js';
 import { getBranchesForCharacter, getTalentNode } from '../src/content/talents/index.js';
 import {
@@ -166,7 +166,7 @@ function acceptLocationId(raw) {
   const id = String(raw || '').trim().toLowerCase();
   if (!id) return null;
   if (PATH_LOCATIONS[id]) return id;
-  if (MONTHS.some((m) => m?.id === id)) return id;
+  if (LOCATION_PACK_LIST.some((location) => location?.id === id)) return id;
   return null;
 }
 

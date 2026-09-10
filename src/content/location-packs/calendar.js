@@ -3,28 +3,10 @@
 // (`src/content/locations/`). This file still owns month packs and is the
 // fallback for legacy saves (`legacyFill`) and the sandbox pin.
 
-import { THORNWAKE_MONTH } from './thornwake/index.js';
-import { SILKDEEP_MONTH } from './silkdeep/index.js';
-import { TOLLROAD_MONTH } from './tollroad/index.js';
-import { BONEFLOOD_MONTH } from './boneflood/index.js';
-import { MIRETURN_MONTH } from './mireturn/index.js';
-import { VEILBLEED_MONTH } from './veilbleed/index.js';
-import { ASHHOWL_MONTH } from './ashhowl/index.js';
+import { LOCATION_PACK_LIST } from './registry.js';
 
-export const MONTHS = Object.freeze([
-  THORNWAKE_MONTH,
-  SILKDEEP_MONTH,
-  TOLLROAD_MONTH,
-  BONEFLOOD_MONTH,
-  MIRETURN_MONTH,
-  VEILBLEED_MONTH,
-  ASHHOWL_MONTH,
-  Object.freeze({ id: 'brassfair', name: 'Brassfair', enemies: null }),
-  Object.freeze({ id: 'frosthollow', name: 'Frosthollow', enemies: null }),
-  Object.freeze({ id: 'stormhatch', name: 'Stormhatch', enemies: null }),
-  Object.freeze({ id: 'mirrorwane', name: 'Mirrorwane', enemies: null }),
-  Object.freeze({ id: 'spherefall', name: 'Spherefall', enemies: null }),
-]);
+// Deprecated aliases used only by save migration and older simulator flags.
+export const MONTHS = LOCATION_PACK_LIST;
 
 export const MONTH_COUNT = MONTHS.length;
 

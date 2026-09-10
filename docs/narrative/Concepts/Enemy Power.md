@@ -53,7 +53,7 @@ Each enemy has a note under `Enemies/`; bosses under `Bosses/`. Location cast ta
 
 Write monster features as rules without passport damage numbers. Power comes from band + archetype.
 
-**Thornwake (locked in code under `src/content/months/thornwake/`):**
+**Thornwake (locked in code under `src/content/location-packs/thornwake/`):**
 
 | Enemy | Feature | Rule |
 |---|---|---|
@@ -63,7 +63,7 @@ Write monster features as rules without passport damage numbers. Power comes fro
 | [[Spore Archer]] | `spore_on_hit` | Applies Spored; next player weapon attack has 15% miss, then clears |
 | [[Thorn Fairy]] | `veil_flip` | Each of her turns flips face-up (no strike) or strikes then flips face-down |
 
-**Silkdeep (locked in narrative; code under `src/content/months/silkdeep/`):**
+**Silkdeep (locked in narrative; code under `src/content/location-packs/silkdeep/`):**
 
 | Enemy | Feature | Rule |
 |---|---|---|
@@ -73,7 +73,7 @@ Write monster features as rules without passport damage numbers. Power comes fro
 | [[Stinger Scorpion]] | `poison_amp` | On hit, +1 to active poison tick damage (requires existing poison) |
 | [[Silkslinger]] | `web_hand` | Webs one random hand card for 1 turn; only-weapon webbed ⇒ skip attack like no weapon |
 
-**Tollroad (locked in code under `src/content/months/tollroad/`):**
+**Tollroad (locked in code under `src/content/location-packs/tollroad/`):**
 
 | Enemy | Feature | Rule |
 |---|---|---|

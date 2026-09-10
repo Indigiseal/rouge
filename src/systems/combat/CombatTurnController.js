@@ -5,7 +5,7 @@ import { CONTROL_HESITATION_CHANCE, pickControlTreacheryTarget } from '../../con
 import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
 import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
 import { getEnemy } from '../../content/cards/enemies.js';
-import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/months/tollroad/index.js';
+import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 
 const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
 // Gap between consecutive enemies' attacks. Derived from the sequencer's last

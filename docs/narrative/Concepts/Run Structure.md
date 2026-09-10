@@ -11,7 +11,11 @@ tags:
 
 ## Locked rule
 
-Each act the player **picks one of three roads**. Completing that location (boss down) **always** opens the next act. One pick per act is the **true road**. Wrong pick still counts; a card says it was not the Waystar's road. See [[The True Path]].
+Each act the player **picks one of three Waystar doors**. A door folds distance
+and opens onto one bounded passage through a country; the hero does not enter an
+entire open world. Completing that location (boss down) **always** opens the next
+act. One pick per act is the **true road**. Wrong pick still counts; a card says
+it was not the Waystar's road. See [[The True Path]], [[Location Rule]].
 
 | Act | Days / floors | Roads (true in bold) |
 |---|---|---|
@@ -49,3 +53,4 @@ The Waystar returns the villager to the [[The Village|Village]]. Act 1's three r
 - [[The Path]]
 - [[The Village]]
 - [[Villager Support]]
+- [[Location Rule]]

@@ -21,7 +21,9 @@ The sphere does not merely hang in the sky. It **rewrites the world's rhythm**. 
 
 People still count a crossing in fifteen days. They no longer ask what day of summer it is. They ask **which country the road has entered**, and whether anyone who went that way came back.
 
-[[Starfold]] is the extreme: the sphere as a place you can walk. The Magus who keeps that working is not written yet.
+[[Starfold]] is the extreme: the sphere as a place you can walk. [[The Magus]],
+once a human court magician in [[Silkdeep]], foretold and helped cause its rise
+after an unknown whisper promised him the coming Age of Confluence.
 
 ## What people believe
 
@@ -34,7 +36,9 @@ Different lands offer different explanations:
 - a key, with the ordinary moon as its lock;
 - a magician's working, hung where a moon should be.
 
-None of these versions is final. For most people, origin matters less than a simpler truth: the Path has countries now, and some of them should not exist.
+The public does not know which version is true. The authorial truth currently
+locks only the Magus's involvement and the whisper that recruited him; the
+nature of the sphere and its promised ruler remain open.
 
 ## Narrative function
 

@@ -10,7 +10,9 @@ tags:
 
 # Spider Queen
 
-In-game Silkdeep / cave finale boss.
+The former Crown Weaver: the priceless divination spider the baron tried to
+steal and sell during his last feast. The broken web and the panic of the court
+transformed it into the ruler of the preserved palace.
 
 ## Combat sheet
 
@@ -18,7 +20,7 @@ In-game Silkdeep / cave finale boss.
 |---|---|
 | Status | in-game |
 | Primary location | [[Silkdeep]] |
-| Place | [[Silkdeep#The Silkdeep Caves\|The Silkdeep Caves]] |
+| Place | [[Silkdeep#The Palace of the Last Feast\|The Palace of the Last Feast]] |
 
 Boss power uses **act boss-bands**, not ordinary enemy bands. See [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -26,6 +28,6 @@ Boss power uses **act boss-bands**, not ordinary enemy bands. See [[Enemy Power]
 
 - [[Bosses Index]]
 - [[Silkdeep]]
-- Place: [[Silkdeep#The Silkdeep Caves|The Silkdeep Caves]]
+- Place: [[Silkdeep#The Palace of the Last Feast|The Palace of the Last Feast]]
 - [[Enemies Index]]
 - [[Locations Index]]

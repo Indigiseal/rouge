@@ -5,6 +5,7 @@ import { MapViewScene } from '../scenes/MapViewScene.js';
 import { LocationPickScene } from '../scenes/LocationPickScene.js';
 import { TollroadAftermathScene } from '../scenes/TollroadAftermathScene.js';
 import { TollroadIntroScene } from '../scenes/TollroadIntroScene.js';
+import { SilkdeepIntroScene } from '../scenes/SilkdeepIntroScene.js';
 import { TollroadDetourScene } from '../scenes/TollroadDetourScene.js';
 import { RestScene } from '../scenes/RestScene.js';
 import { AnvilScene } from '../scenes/AnvilScene.js';
@@ -57,6 +58,7 @@ export function createGameConfig(Phaser) {
       ArmorerPickScene,
       LocationPickScene,
       TollroadIntroScene,
+      SilkdeepIntroScene,
       TollroadDetourScene,
       TollroadAftermathScene,
     ],

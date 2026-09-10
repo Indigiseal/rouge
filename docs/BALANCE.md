@@ -120,7 +120,7 @@ for (const f of [15, 30, 45]) {
 `docs/MECHANICS.md` → Run structure, `docs/narrative/Locations/Locations Index.md`.
 
 **Статус кода:** bands + archetypes; ростеры **Thornwake** и **Silkdeep**
-(`src/content/months/<id>/enemies/`). Выбора локаций ещё нет — в билде ротация
+(`src/content/location-packs/<id>/enemies/`). Выбора локаций ещё нет — в билде ротация
 первых `MONTH_ROTATION_LENGTH` месяцев (`calendar.js`). Остальные месяцы
 календаря пока без ростера → legacy `tiers[]` если когда-то выпадут.
 

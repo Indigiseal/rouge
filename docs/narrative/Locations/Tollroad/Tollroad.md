@@ -23,6 +23,10 @@ tags:
 > [!info] Location — Act 1 (**true road**)
 > The King's Mile. The Goblin King whispers the name Magus before his death; a hidden pendant then awakens and reveals an unknown figure the hero suspects may bear that name. See [[The True Path]], [[Locations Index]].
 
+Tollroad is the reference implementation of the shared [[Location Rule]]. The
+Waystar door opens at the near end of the King's Mile: a specific fifteen-day
+passage through the goblins' false kingdom, not the whole surrounding country.
+
 A **real mile of road** with booths, chains, and stolen banners. A greedy Goblin King stamped a fake kingdom onto it: tariffs, "guards," scrap seals. This is not random banditry. It is a **false kingdom** — a price on every mile, now collected **in a god's name the goblins did not invent**.
 
 ## Theme
@@ -90,7 +94,8 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 ## Gaps
 
 - Optional vignettes: Weighing Shed / Counterfeit Pass (not drafted).
-- Identity features locked in code under `src/content/months/tollroad/`.
+- Runtime pack: `src/content/location-packs/tollroad/`; orchestration contract:
+  `src/content/locations/rules.js`.
 
 ## Opening text (draft)
 

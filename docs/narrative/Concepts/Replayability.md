@@ -17,7 +17,7 @@ Replay is **which roads you pick**, plus whether you follow the **true chain**.
 - One true road per act. Following all three is a discovery, not a requirement.
 - Wrong countries are real places with real bosses. The card after the boss is the only penalty: you learn it was not the Waystar's road.
 
-Early runs: learn the map (forest, caves, mile, graves, carnival, castle, glass, craters, sky).
+Early runs: learn the map (briar, abandoned feast-palace, mile, graves, carnival, castle, glass, craters, sky).
 
 Later runs: hunt the chain (goblin god → night fair → Magus) or remix on purpose.
 

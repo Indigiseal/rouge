@@ -11,6 +11,13 @@ tags:
 
 The Path is the road indicated by the [[The Waystar|Waystar]]. People argue whether it crosses the whole world or only those places the Second Moon has already spoiled. For the hero, the difference is small: wherever they go, the road always looks as if the world is trying either to stop them or to test them.
 
+The doors on the Path are **Waystar crossings**. They are real thresholds, but
+not ordinary doors standing between neighbouring rooms. Each opens onto one
+reachable cut of a distant country: the King's Mile rather than every goblin
+road, the approach to Silkdeep's ruined palace rather than the whole barony. Space folds
+at the threshold; after the crossing, the hero walks real ground for fifteen
+days. The next open door is the Path continuing from that cut.
+
 The Path does not promise safety. It promises only direction.
 
 It has **nine locations**. Three near countries, three worse countries, three sky countries. At each act the hero chooses. One choice is the true road. See [[Locations Index]], [[The True Path]].
@@ -38,3 +45,4 @@ The story does not need a prophesied savior. It needs **the one who keeps walkin
 - [[The Far Place]]
 - [[Locations Index]]
 - [[Run Structure]]
+- [[Location Rule]]
