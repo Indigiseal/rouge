@@ -38,13 +38,21 @@ function Send-Response {
         [string]$StatusText,
         [byte[]]$Body,
         [string]$ContentType = "text/plain; charset=utf-8",
-        [bool]$SendBody = $true
+        [bool]$SendBody = $true,
+        [string]$ExtraHeaders = ""
     )
 
+    # no-cache, NOT no-store. The two read alike and do opposite things:
+    # no-store forbade the browser from keeping a copy at all, so every load
+    # re-fetched all 80MB of art and audio from disk. no-cache lets it keep
+    # them and asks it to check first — and the ETag below turns that check
+    # into a 304 with no body whenever the file has not changed. Edits still
+    # appear immediately, because the check happens on every request.
     $headers = "HTTP/1.1 $StatusCode $StatusText`r`n" +
         "Content-Type: $ContentType`r`n" +
         "Content-Length: $($Body.Length)`r`n" +
-        "Cache-Control: no-store, no-cache, must-revalidate, max-age=0`r`n" +
+        "Cache-Control: no-cache`r`n" +
+        $ExtraHeaders +
         "Connection: close`r`n`r`n"
     $headerBytes = [System.Text.Encoding]::ASCII.GetBytes($headers)
     $Stream.Write($headerBytes, 0, $headerBytes.Length)
@@ -101,7 +109,14 @@ try {
             )
 
             $requestLine = $reader.ReadLine()
-            while ($reader.ReadLine()) {}
+            # The conditional headers live here; the loop used to discard them,
+            # which is why the server could never answer 304.
+            $ifNoneMatch = $null
+            while ($headerLine = $reader.ReadLine()) {
+                if ($headerLine -match '^(?i)If-None-Match:\s*(.+)$') {
+                    $ifNoneMatch = $Matches[1].Trim()
+                }
+            }
 
             if (-not $requestLine) {
                 continue
@@ -148,6 +163,18 @@ try {
                 continue
             }
 
+            # Size plus mtime is enough to tell "same file" from "edited file"
+            # without hashing 80MB on every request.
+            $info = [System.IO.FileInfo]::new($target)
+            $etag = '"{0:x}-{1:x}"' -f $info.LastWriteTimeUtc.Ticks, $info.Length
+            $validators = "ETag: $etag`r`n" +
+                "Last-Modified: $($info.LastWriteTimeUtc.ToString('r'))`r`n"
+
+            if ($ifNoneMatch -and $ifNoneMatch -eq $etag) {
+                Send-Response $stream 304 "Not Modified" @() "text/plain; charset=utf-8" $false $validators
+                continue
+            }
+
             $body = [System.IO.File]::ReadAllBytes($target)
             $extension = [System.IO.Path]::GetExtension($target).ToLowerInvariant()
             $contentType = if ($mimeTypes.ContainsKey($extension)) {
@@ -157,7 +184,7 @@ try {
                 "application/octet-stream"
             }
 
-            Send-Response $stream 200 "OK" $body $contentType ($method -eq "GET")
+            Send-Response $stream 200 "OK" $body $contentType ($method -eq "GET") $validators
         }
         catch {
             if ($stream -and $stream.CanWrite) {
