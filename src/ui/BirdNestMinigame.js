@@ -12,8 +12,14 @@ const TIME_LIMIT = 20;
 const SHADOW_SCALE = 1.3;
 const CATCH_PENALTY = 5;
 const CATCH_DRAIN = 2.4;
-const NEST_W = 220;
-const NEST_H = 150;
+// The bowl art sits 10px below the panel's centre — far enough down to look
+// seated, not so far that its rim reaches the status line beneath it.
+const NEST_OFFSET_Y = 10;
+// nest.png's pebbled floor, measured off the art: an ellipse 150x96 whose
+// centre is 3px below the image's own middle. Pieces are placed inside a
+// slightly tighter ellipse so a 32px piece leans on the stones rather than
+// sitting on top of them.
+const NEST_FLOOR = { dy: 3, hx: 62, hy: 34 };
 
 function rand(min, max) {
   return min + Math.random() * (max - min);
@@ -32,67 +38,80 @@ function circlesOverlap(ax, ay, ar, bx, by, br) {
   return dx * dx + dy * dy <= r * r;
 }
 
+// The bird's shadow is the last thing here without art of its own.
 function ensureNestTextures(scene) {
-  if (!scene?.textures || scene.textures.exists('birdNestBowl')) return;
-
-  const make = (key, w, h, draw) => {
-    const g = scene.make.graphics({ x: 0, y: 0, add: false });
-    draw(g);
-    g.generateTexture(key, w, h);
-    g.destroy();
-  };
-
-  make('birdNestBowl', 240, 168, (g) => {
-    g.fillStyle(0x3a2414, 1);
-    g.fillEllipse(120, 88, 230, 155);
-    g.fillStyle(0x5a3820, 1);
-    g.fillEllipse(120, 84, 210, 138);
-    g.fillStyle(0x2a180c, 1);
-    g.fillEllipse(120, 90, 168, 100);
-    g.lineStyle(3, 0x6a4a28, 1);
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * Math.PI * 2;
-      g.beginPath();
-      g.moveTo(120 + Math.cos(a) * 70, 88 + Math.sin(a) * 46);
-      g.lineTo(120 + Math.cos(a) * 112, 88 + Math.sin(a) * 74);
-      g.strokePath();
-    }
-  });
-
-  make('birdNestShadow', 120, 48, (g) => {
-    g.fillStyle(0x000000, 0.55);
-    g.fillEllipse(60, 24, 118, 40);
-    g.fillStyle(0x000000, 0.28);
-    g.fillEllipse(60, 24, 80, 22);
-  });
+  if (!scene?.textures || scene.textures.exists('birdNestShadow')) return;
+  const g = scene.make.graphics({ x: 0, y: 0, add: false });
+  g.fillStyle(0x000000, 0.55);
+  g.fillEllipse(60, 24, 118, 40);
+  g.fillStyle(0x000000, 0.28);
+  g.fillEllipse(60, 24, 80, 22);
+  g.generateTexture('birdNestShadow', 120, 48);
+  g.destroy();
 }
 
-// nestMiniGame is 10 frames of 32x32. Frame 0 is the cog — the prize — so the
-// junk is frames 1..9. The radius is the piece's own silhouette rather than the
-// 32px cell, so a thin feather does not bury the egg the way a twig bundle does.
+// nestMiniGame is 12 frames of 32x32. Frame 0 is the cog — the prize — so the
+// junk is frames 1..11. The radius is the piece's own silhouette rather than
+// the 32px cell, so a leaf does not bury the egg the way a twig bundle does.
 const COG_FRAME = 0;
 const NEST_JUNK_FRAMES = [
-  { frame: 1, r: 12 },  // feather
-  { frame: 2, r: 10 },  // violet button
-  { frame: 3, r: 14 },  // twig bundle
-  { frame: 4, r: 13 },  // tusk
-  { frame: 5, r: 13 },  // acorns
-  { frame: 6, r: 12 },  // grass tuft
-  { frame: 7, r: 10 },  // green button
-  { frame: 8, r: 12 },  // brown leaf
-  { frame: 9, r: 13 },  // pale leaf
+  { frame: 1,  r: 12 },  // feather
+  { frame: 2,  r: 11 },  // violet button
+  { frame: 3,  r: 14 },  // twig bundle
+  { frame: 4,  r: 13 },  // tusk
+  { frame: 5,  r: 13 },  // acorns
+  { frame: 6,  r: 12 },  // grass tuft
+  { frame: 7,  r: 11 },  // green button
+  { frame: 8,  r: 12 },  // brown leaf
+  { frame: 9,  r: 13 },  // pale leaf
+  { frame: 10, r: 13 },  // budded twig
+  { frame: 11, r: 13 },  // river stone
 ];
 
-// Ten pieces over two prizes: every frame once, and the twig bundle twice
-// because it is the widest and does the most burying. Ordered rather than
-// random — the same nest every time is easier to tune than a lucky one, and
-// the two prizes are covered by design rather than by chance.
-const JUNK = [
-  NEST_JUNK_FRAMES[2], NEST_JUNK_FRAMES[0], NEST_JUNK_FRAMES[4],
-  NEST_JUNK_FRAMES[7], NEST_JUNK_FRAMES[5],
-  NEST_JUNK_FRAMES[8], NEST_JUNK_FRAMES[1], NEST_JUNK_FRAMES[3],
-  NEST_JUNK_FRAMES[6], NEST_JUNK_FRAMES[2],
+// Eleven pieces, every frame exactly once. Positions are offsets from the
+// CENTRE OF THE FLOOR, not from the panel, so moving the bowl carries the
+// nest's contents with it.
+//
+// They are deliberate, not jittered. The old spots were nudged randomly at
+// spawn, which was fine while the prizes sat under one heap — with the pieces
+// spread over the whole floor a few pixels of drift is the difference between
+// a buried cog and one sitting in plain sight. These are checked against
+// prizeCovered's own overlap test rather than judged by eye: three pieces over
+// the egg, three over the cog, every piece on the pebbled floor, and no two
+// junk pieces closer than 18px.
+const JUNK_LAYOUT = [
+  // Three lying over the egg and three over the cog — a prize is only a puzzle
+  // while something is on it.
+  { frame: 4,  dx: -26, dy: -16 },
+  { frame: 1,  dx: -40, dy:   4 },
+  { frame: 9,  dx: -12, dy:   9 },
+  { frame: 8,  dx:  34, dy:  -5 },
+  { frame: 7,  dx:  22, dy:  18 },
+  { frame: 3,  dx:  46, dy:  14 },
+  // The rest scattered to the edges so the floor reads as a nest someone has
+  // been hoarding in, rather than one heap in the middle of bare pebbles.
+  { frame: 5,  dx:  -4, dy: -24 },
+  { frame: 10, dx:  26, dy: -24 },
+  { frame: 6,  dx:  60, dy:  -2 },
+  { frame: 11, dx: -58, dy:  -6 },
+  { frame: 2,  dx:  -2, dy:  25 },
 ];
+
+// Both prizes, on the same floor-relative footing as the junk.
+const EGG_SPOT = { dx: -26, dy: -3 };
+const COG_SPOT = { dx: 34, dy: 9 };
+
+const junkRadius = (frame) =>
+  NEST_JUNK_FRAMES.find((j) => j.frame === frame)?.r || 12;
+
+// Pulls a layout offset back onto the pebbled floor if it strays off it. Every
+// position above is already inside; this is here so that editing one of them,
+// or adding a piece, cannot quietly leave it sitting up on the rim stones.
+function clampToFloor(dx, dy) {
+  const k = Math.hypot(dx / NEST_FLOOR.hx, dy / NEST_FLOOR.hy);
+  if (k <= 1) return { dx, dy };
+  return { dx: Math.round(dx / k), dy: Math.round(dy / k) };
+}
 
 
 /**
@@ -201,7 +220,12 @@ export function openBirdNestMinigame(scene, cfg) {
     color: '#ffe8b0',
   }).setOrigin(0.5).setDepth(DEPTH + 4));
 
-  const nest = push(scene.add.image(cx, cy + 18, 'birdNestBowl'));
+  const nestY = cy + NEST_OFFSET_Y;
+  // Centre of the pebbled floor: everything in the bowl is placed off this,
+  // not off the panel, so the bowl and its contents move as one.
+  const floorX = cx;
+  const floorY = nestY + NEST_FLOOR.dy;
+  const nest = push(scene.add.image(cx, nestY, 'nestBowl'));
   nest.setDepth(DEPTH + 5);
   snapOriginToPixelGrid(nest);
 
@@ -232,19 +256,11 @@ export function openBirdNestMinigame(scene, cfg) {
   runLabel.setInteractive({ useHandCursor: true });
   runLabel.on('pointerdown', onRun);
 
-  const nestLeft = cx - NEST_W / 2 + 18;
-  const nestRight = cx + NEST_W / 2 - 18;
-  const nestTop = cy + 18 - NEST_H / 2 + 22;
-  const nestBot = cy + 18 + NEST_H / 2 - 18;
   const junkLeft = cx - panelW / 2 + 28;
   const junkRight = cx + panelW / 2 - 28;
   const junkTop = cy - panelH / 2 + 64;
   const junkBot = cy + panelH / 2 - 52;
 
-  const clampInNest = (x, y) => ({
-    x: Phaser.Math.Clamp(x, nestLeft, nestRight),
-    y: Phaser.Math.Clamp(y, nestTop, nestBot),
-  });
   const clampJunk = (x, y) => ({
     x: Phaser.Math.Clamp(x, junkLeft, junkRight),
     y: Phaser.Math.Clamp(y, junkTop, junkBot),
@@ -343,11 +359,25 @@ export function openBirdNestMinigame(scene, cfg) {
     }
   };
 
-  // The egg is its own 45x48 image; the cog is frame 0 of the junk sheet. They
-  // sit further apart than the old generated pair, because both are bigger now.
-  addPiece('egg', { key: 'eggMiniGame' }, cx - (includeCog ? 30 : 0), cy + 20, 20, false);
+  // The egg is its own 45x48 image; the cog is frame 0 of the junk sheet.
+  // With no cog to share the floor with, the egg takes the middle.
+  addPiece(
+    'egg',
+    { key: 'eggMiniGame' },
+    floorX + (includeCog ? EGG_SPOT.dx : 0),
+    floorY + (includeCog ? EGG_SPOT.dy : 0),
+    20,
+    false,
+  );
   if (includeCog) {
-    addPiece('cog', { key: 'nestMiniGame', frame: COG_FRAME }, cx + 34, cy + 30, 15, false);
+    addPiece(
+      'cog',
+      { key: 'nestMiniGame', frame: COG_FRAME },
+      floorX + COG_SPOT.dx,
+      floorY + COG_SPOT.dy,
+      15,
+      false,
+    );
   }
 
   // Two loose rows across the bowl's dark inner floor. The old spots were
@@ -359,16 +389,16 @@ export function openBirdNestMinigame(scene, cfg) {
   // and three over the cog — checked against prizeCovered's own overlap test,
   // not by eye — while leaving 19px between the nearest pair of junk pieces so
   // the nest still reads as scattered rather than piled.
-  const junkSpots = [
-    [cx - 58, cy + 6], [cx - 30, cy + 12], [cx - 2, cy + 2],
-    [cx + 30, cy + 16], [cx + 56, cy + 6],
-    [cx - 60, cy + 38], [cx - 34, cy + 40], [cx - 16, cy + 34],
-    [cx + 26, cy + 42], [cx + 50, cy + 30],
-  ];
-  junkSpots.forEach((spot, i) => {
-    const def = JUNK[i % JUNK.length];
-    const jitter = clampInNest(spot[0] + rand(-8, 8), spot[1] + rand(-6, 6));
-    addPiece('junk', { key: 'nestMiniGame', frame: def.frame }, jitter.x, jitter.y, def.r, true);
+  JUNK_LAYOUT.forEach((spot) => {
+    const { dx, dy } = clampToFloor(spot.dx, spot.dy);
+    addPiece(
+      'junk',
+      { key: 'nestMiniGame', frame: spot.frame },
+      floorX + dx,
+      floorY + dy,
+      junkRadius(spot.frame),
+      true,
+    );
   });
   refreshPrizes();
 
@@ -423,30 +453,30 @@ export function openBirdNestMinigame(scene, cfg) {
     const span = 210;
     const jitter = rand(-36, 36);
     let fromX = cx;
-    let fromY = cy + 18;
+    let fromY = nestY;
     let toX = cx;
-    let toY = cy + 18;
+    let toY = nestY;
     let rot = 0;
     if (side === 0) {
       fromX = cx - span;
       toX = cx + span;
-      fromY = cy + 18 + jitter;
-      toY = cy + 18 - jitter;
+      fromY = nestY + jitter;
+      toY = nestY - jitter;
     } else if (side === 1) {
       fromX = cx + span;
       toX = cx - span;
-      fromY = cy + 18 + jitter;
-      toY = cy + 18 - jitter;
+      fromY = nestY + jitter;
+      toY = nestY - jitter;
       rot = Math.PI;
     } else if (side === 2) {
-      fromY = cy + 18 - 110;
-      toY = cy + 18 + 110;
+      fromY = nestY - 110;
+      toY = nestY + 110;
       fromX = cx + jitter;
       toX = cx - jitter;
       rot = Math.PI / 2;
     } else {
-      fromY = cy + 18 + 110;
-      toY = cy + 18 - 110;
+      fromY = nestY + 110;
+      toY = nestY - 110;
       fromX = cx + jitter;
       toX = cx - jitter;
       rot = -Math.PI / 2;

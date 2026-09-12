@@ -32,9 +32,13 @@ export const ASSET_MANIFEST = [
     { key: 'eventsShops', path: 'assets/art/eventsShops80x80.png', type: 'spritesheet', frameWidth: 80, frameHeight: 80 },
     // Arm Wrestling minigame art (human vs ogre locked hands).
     { key: 'armWrestlingHands', path: 'assets/art/armWrestlingHands.png', type: 'image' },
-    // Nest raid minigame. 10 frames of 32x32: frame 0 is the brass cog the
-    // player is digging for, frames 1-9 are the junk buried over it — see
+    // Nest raid minigame. 12 frames of 32x32: frame 0 is the brass cog the
+    // player is digging for, frames 1-11 are the junk buried over it — see
     // NEST_JUNK_FRAMES in ui/BirdNestMinigame.js.
+    // The bowl the whole thing sits in. Its pebbled floor is an ellipse about
+    // 150x96 centred 3px below the image's middle; NEST_FLOOR in the minigame
+    // is that measurement, and every piece is placed inside it.
+    { key: 'nestBowl', path: 'assets/art/nest.png', type: 'image' },
     { key: 'nestMiniGame', path: 'assets/art/nestMiniGame.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
     // The other prize, drawn larger than a junk piece because it is the thing
     // the whole nest is built around.
