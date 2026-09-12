@@ -67,28 +67,31 @@ function ensureNestTextures(scene) {
   });
 }
 
-// nestMiniGame is 8 frames of 32x32. Frame 0 is the cog — the prize — so the
-// junk is frames 1..7: feather, spectacles, twig bundle, tusk, acorns, grass
-// tuft, mossy stone. The radius is the piece's own silhouette rather than the
+// nestMiniGame is 10 frames of 32x32. Frame 0 is the cog — the prize — so the
+// junk is frames 1..9. The radius is the piece's own silhouette rather than the
 // 32px cell, so a thin feather does not bury the egg the way a twig bundle does.
 const COG_FRAME = 0;
 const NEST_JUNK_FRAMES = [
-  { frame: 1, r: 13 },  // feather
-  { frame: 2, r: 11 },  // spectacles
+  { frame: 1, r: 12 },  // feather
+  { frame: 2, r: 10 },  // violet button
   { frame: 3, r: 14 },  // twig bundle
   { frame: 4, r: 13 },  // tusk
   { frame: 5, r: 13 },  // acorns
   { frame: 6, r: 12 },  // grass tuft
-  { frame: 7, r: 10 },  // mossy stone
+  { frame: 7, r: 10 },  // green button
+  { frame: 8, r: 12 },  // brown leaf
+  { frame: 9, r: 13 },  // pale leaf
 ];
 
-// Ten pieces over two prizes, so some frames repeat. Ordered rather than
-// random: the same nest every time is easier to tune than a lucky one.
+// Ten pieces over two prizes: every frame once, and the twig bundle twice
+// because it is the widest and does the most burying. Ordered rather than
+// random — the same nest every time is easier to tune than a lucky one, and
+// the two prizes are covered by design rather than by chance.
 const JUNK = [
   NEST_JUNK_FRAMES[2], NEST_JUNK_FRAMES[0], NEST_JUNK_FRAMES[4],
-  NEST_JUNK_FRAMES[5], NEST_JUNK_FRAMES[1], NEST_JUNK_FRAMES[3],
-  NEST_JUNK_FRAMES[6], NEST_JUNK_FRAMES[2], NEST_JUNK_FRAMES[4],
-  NEST_JUNK_FRAMES[0],
+  NEST_JUNK_FRAMES[7], NEST_JUNK_FRAMES[5],
+  NEST_JUNK_FRAMES[8], NEST_JUNK_FRAMES[1], NEST_JUNK_FRAMES[3],
+  NEST_JUNK_FRAMES[6], NEST_JUNK_FRAMES[2],
 ];
 
 
@@ -350,11 +353,17 @@ export function openBirdNestMinigame(scene, cfg) {
   // Two loose rows across the bowl's dark inner floor. The old spots were
   // tuned for the generated junk, which was much smaller than these 32px
   // pieces; kept that tight, the nest read as a bare ring around one clump.
+  //
+  // Spreading them is not free, though: the prizes are only a puzzle while
+  // something is lying on them. These positions put two pieces over the egg
+  // and three over the cog — checked against prizeCovered's own overlap test,
+  // not by eye — while leaving 19px between the nearest pair of junk pieces so
+  // the nest still reads as scattered rather than piled.
   const junkSpots = [
     [cx - 58, cy + 6], [cx - 30, cy + 12], [cx - 2, cy + 2],
-    [cx + 24, cy + 10], [cx + 54, cy + 6],
-    [cx - 60, cy + 38], [cx - 32, cy + 42], [cx - 4, cy + 32],
-    [cx + 26, cy + 40], [cx + 56, cy + 32],
+    [cx + 30, cy + 16], [cx + 56, cy + 6],
+    [cx - 60, cy + 38], [cx - 34, cy + 40], [cx - 16, cy + 34],
+    [cx + 26, cy + 42], [cx + 50, cy + 30],
   ];
   junkSpots.forEach((spot, i) => {
     const def = JUNK[i % JUNK.length];
