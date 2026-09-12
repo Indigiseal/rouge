@@ -39,6 +39,11 @@ export const ASSET_MANIFEST = [
     // 150x96 centred 3px below the image's middle; NEST_FLOOR in the minigame
     // is that measurement, and every piece is placed inside it.
     { key: 'nestBowl', path: 'assets/art/nest.png', type: 'image' },
+    // The bird that keeps passing over the nest, seen from below. Drawn facing
+    // UP at rest, so the minigame rotates it to the heading it is flying. The
+    // art carries its own 52% alpha — it is already a shadow, so nothing should
+    // dim it further.
+    { key: 'shadowBird', path: 'assets/art/shadowBird.png', type: 'image' },
     { key: 'nestMiniGame', path: 'assets/art/nestMiniGame.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
     // The other prize, drawn larger than a junk piece because it is the thing
     // the whole nest is built around.

@@ -9,7 +9,23 @@ import { cameraWorldSize } from '../config/renderScale.js';
 
 const DEPTH = 3500;
 const TIME_LIMIT = 20;
-const SHADOW_SCALE = 1.3;
+// shadowBird.png is 276x122. At 0.85 the wingspan is 235 against the bowl's
+// 261 — big enough to read as a bird crossing the nest rather than a smear.
+// Matching the old blob's footprint was the wrong target: that was a blur
+// standing in for art, and at its size this silhouette is unreadable.
+const SHADOW_SCALE = 0.85;
+// The catch zone, as a fraction of the drawn silhouette's half-extents. Well
+// under the bounding box, for two reasons. A spread bird is mostly empty air
+// between the wing tips, so being clipped by the gap between primaries is not
+// a fair catch; and it keeps the zone near the 151x57 the old blob used, so
+// growing the bird for legibility does not quietly make the raid harder.
+const SHADOW_CATCH = { w: 0.72, h: 0.62 };
+// How far out a pass starts and ends. Both are past the edge of a 640x360
+// screen, so the bird flies in from off-frame instead of appearing on top of
+// the nest — there is no mask over the overlay, so wherever a pass begins is
+// simply where the bird pops into existence.
+const SHADOW_RUN_X = 380;
+const SHADOW_RUN_Y = 250;
 const CATCH_PENALTY = 5;
 const CATCH_DRAIN = 2.4;
 // The bowl art sits 10px below the panel's centre — far enough down to look
@@ -36,18 +52,6 @@ function circlesOverlap(ax, ay, ar, bx, by, br) {
   const dy = ay - by;
   const r = ar + br;
   return dx * dx + dy * dy <= r * r;
-}
-
-// The bird's shadow is the last thing here without art of its own.
-function ensureNestTextures(scene) {
-  if (!scene?.textures || scene.textures.exists('birdNestShadow')) return;
-  const g = scene.make.graphics({ x: 0, y: 0, add: false });
-  g.fillStyle(0x000000, 0.55);
-  g.fillEllipse(60, 24, 118, 40);
-  g.fillStyle(0x000000, 0.28);
-  g.fillEllipse(60, 24, 80, 22);
-  g.generateTexture('birdNestShadow', 120, 48);
-  g.destroy();
 }
 
 // nestMiniGame is 12 frames of 32x32. Frame 0 is the cog — the prize — so the
@@ -216,8 +220,6 @@ export function openBirdNestMinigame(scene, cfg) {
   if (!scene || typeof cfg?.onDone !== 'function') return null;
   if (scene._birdNestMinigameOpen) return null;
   scene._birdNestMinigameOpen = true;
-
-  ensureNestTextures(scene);
 
   const includeCog = cfg.includeCog !== false;
   const nodes = [];
@@ -486,24 +488,31 @@ export function openBirdNestMinigame(scene, cfg) {
   });
   refreshPrizes();
 
-  shadow = push(scene.add.image(cx, cy, 'birdNestShadow'));
+  shadow = push(scene.add.image(cx, cy, 'shadowBird'));
   shadow.setDepth(DEPTH + 200);
   shadow.setScale(SHADOW_SCALE);
+  // Hidden between passes rather than dimmed: the art already carries the
+  // opacity a shadow should have, so anything less than 1 while it is over the
+  // nest would be washing out what was drawn.
   shadow.setAlpha(0);
-  snapOriginToPixelGrid(shadow);
 
   const shadowOverlapsHeld = () => {
     if (!held || held.taken || shadow.alpha < 0.2) return false;
-    const vertical = Math.abs(Math.sin(shadow.rotation)) > 0.5;
-    const longR = 58 * SHADOW_SCALE;
-    const shortR = 22 * SHADOW_SCALE;
+    // Into the bird's own frame, then a plain ellipse test. The old version
+    // switched between two axis-aligned ellipses depending on whether the pass
+    // was roughly vertical, which could not describe a bird flying a diagonal —
+    // and every pass is a slight diagonal, because the ends are jittered.
+    const dx = held.image.x - shadow.x;
+    const dy = held.image.y - shadow.y;
+    const c = Math.cos(-shadow.rotation);
+    const sn = Math.sin(-shadow.rotation);
     return ellipseContains(
-      shadow.x,
-      shadow.y,
-      vertical ? shortR : longR,
-      vertical ? longR : shortR,
-      held.image.x,
-      held.image.y,
+      0,
+      0,
+      (shadow.displayWidth / 2) * SHADOW_CATCH.w,
+      (shadow.displayHeight / 2) * SHADOW_CATCH.h,
+      dx * c - dy * sn,
+      dx * sn + dy * c,
     );
   };
 
@@ -534,42 +543,44 @@ export function openBirdNestMinigame(scene, cfg) {
     if (phase !== 'play' || closed) return;
     caughtThisPass = false;
     const side = Math.floor(Math.random() * 4);
-    const span = 210;
     const jitter = rand(-36, 36);
     let fromX = cx;
     let fromY = nestY;
     let toX = cx;
     let toY = nestY;
-    let rot = 0;
     if (side === 0) {
-      fromX = cx - span;
-      toX = cx + span;
+      fromX = cx - SHADOW_RUN_X;
+      toX = cx + SHADOW_RUN_X;
       fromY = nestY + jitter;
       toY = nestY - jitter;
     } else if (side === 1) {
-      fromX = cx + span;
-      toX = cx - span;
+      fromX = cx + SHADOW_RUN_X;
+      toX = cx - SHADOW_RUN_X;
       fromY = nestY + jitter;
       toY = nestY - jitter;
-      rot = Math.PI;
     } else if (side === 2) {
-      fromY = nestY - 110;
-      toY = nestY + 110;
+      fromY = nestY - SHADOW_RUN_Y;
+      toY = nestY + SHADOW_RUN_Y;
       fromX = cx + jitter;
       toX = cx - jitter;
-      rot = Math.PI / 2;
     } else {
-      fromY = nestY + 110;
-      toY = nestY - 110;
+      fromY = nestY + SHADOW_RUN_Y;
+      toY = nestY - SHADOW_RUN_Y;
       fromX = cx + jitter;
       toX = cx - jitter;
-      rot = -Math.PI / 2;
     }
     shadow.x = fromX;
     shadow.y = fromY;
-    shadow.rotation = rot;
-    shadow.setAlpha(0.82);
-    const dur = rand(620, 970);
+    // Point the bird along the line it is actually travelling. The art faces
+    // up, hence the quarter turn. Taken from the heading rather than the four
+    // hardcoded angles the blob used, so the jittered ends read as a bird on a
+    // slight diagonal instead of one flying sideways.
+    shadow.rotation = Math.atan2(toY - fromY, toX - fromX) + Math.PI / 2;
+    shadow.setAlpha(1);
+    // Timed by speed, not by a flat duration: the vertical run is much shorter
+    // than the horizontal one, and a fixed duration would have made the bird
+    // crawl across one axis and bolt across the other.
+    const dur = Math.hypot(toX - fromX, toY - fromY) / rand(0.48, 0.62);
     shadowTween = scene.tweens.add({
       targets: shadow,
       x: toX,
