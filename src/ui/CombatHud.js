@@ -4,6 +4,7 @@
 import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
 import { createOptionsCog } from './OptionsCog.js';
+import { looseGemCard } from '../content/cards/gems.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { devToolsEnabled } from '../config/DevTools.js';
 import { t, tCount, translateDescription, translateItemName } from '../i18n/i18n.js';
@@ -220,7 +221,7 @@ export const CombatHud = {
         for (const item of MAGIC) categories.other.push({ label: item.name, card: { ...item, type: 'magic' } });
         for (const item of GEMS) categories.other.push({
             label: item.name,
-            card: { type: 'gem', gemEffect: item.effect, name: item.name, sprite: 'gemsRGY', spriteFrame: item.frame, color: item.color, rarity: 'common' },
+            card: looseGemCard(item),
         });
         const generator = this.cardSystem?.cardDataGenerator;
         if (generator) {

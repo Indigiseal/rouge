@@ -6,6 +6,8 @@
 import { CardSystem } from '../systems/CardSystem.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
+import { hideGemSockets, showGemSockets } from '../ui/GemSockets.js';
+import { attachGemShine } from '../ui/GemShine.js';
 import { showItemTooltip, hideItemTooltip, TOOLTIP_DEPTH, STATION_TOOLTIP_GAP } from '../ui/ItemTooltip.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { t } from '../i18n/i18n.js';
@@ -307,6 +309,10 @@ export class StationRoomBase extends Phaser.Scene {
         sprite.on('pointerover', () => {
             if (sprite.getData('shopGemDragging')) return;
             if (isCard) SoundHelper.playSound(this, 'ui_card_hover', 0.35);
+            if (data.type === 'gem') {
+                showGemSockets(this, data);
+                sprite.gemShine?.start();
+            }
             // Float card up
             renderScene.tweens.add({ targets: sprite, y: y - 5, duration: 150, ease: 'Power2' });
             // Lift the on-card stat value with the card face
@@ -328,6 +334,10 @@ export class StationRoomBase extends Phaser.Scene {
         });
         sprite.on('pointerout', () => {
             if (sprite.getData('shopGemDragging')) return;
+            if (data.type === 'gem') {
+                hideGemSockets(this);
+                sprite.gemShine?.stop();
+            }
             // Return card and shine to original position
             renderScene.tweens.add({ targets: sprite, y: y, duration: 150, ease: 'Power2' });
             if (statText) renderScene.tweens.add({ targets: statText, y: statY, duration: 150, ease: 'Power2' });
@@ -378,9 +388,19 @@ export class StationRoomBase extends Phaser.Scene {
         const renderScene = sprite.scene;
         let dragged = false;
 
+        // The shelf gem catches the light the same way a socketed one does.
+        // Drawn in the scene that owns the sprite, masked to the stone.
+        attachGemShine(renderScene, sprite);
+
         sprite.on('dragstart', () => {
             dragged = true;
             sprite.setData('shopGemDragging', true);
+            // item is the SHELF ENTRY here ({ data, price, purchased }), not the
+            // card — the hover handler above works on item.data. Passing the
+            // wrapper meant canSocketGem saw type undefined, matched nothing,
+            // and the hint vanished the moment the gem was picked up.
+            showGemSockets(this, item.data);
+            sprite.gemShine?.start();
             renderScene.tweens.killTweensOf(sprite);
             this.hideItemTooltip();
             sprite.setDepth(2500);
@@ -394,6 +414,7 @@ export class StationRoomBase extends Phaser.Scene {
         sprite.on('drag', (_pointer, dragX, dragY) => {
             sprite.x = Phaser.Math.Clamp(dragX, 0, 640);
             sprite.y = Phaser.Math.Clamp(dragY, 0, 360);
+            sprite.gemShine?.sync();
         });
         sprite.on('dragend', () => {
             const slotIndex = this.findShopGemWeaponSlot(sprite);
@@ -419,6 +440,8 @@ export class StationRoomBase extends Phaser.Scene {
                 return;
             }
             dragged = false;
+            hideGemSockets(this);
+            sprite.gemShine?.stop();
             sprite.setData('shopGemDragging', false);
             sprite.setDepth(9);
             sprite.x = x;

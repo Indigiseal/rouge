@@ -14,7 +14,9 @@ import { t } from '../i18n/i18n.js';
 const LIST_TOP = 52;
 const LIST_BOTTOM = 322;
 const ROW_H = 20;
-const SCROLL_STEP = 28;
+const SCROLL_STEP = 30;
+// A press that wanders further than this is a drag, not a click.
+const DRAG_SLOP = 4;
 
 
 export class SandboxStoryScene extends Phaser.Scene {
@@ -128,7 +130,19 @@ export class SandboxStoryScene extends Phaser.Scene {
       if (!this._drag || !pointer.isDown) return;
       this.setScroll(this._drag.from - (pointer.y - this._drag.y));
     });
-    this.input.on('pointerup', () => { this._drag = null; });
+    this.input.on('pointerup', () => { this._drag = null; this._press = null; });
+
+    // The bar is a control too: grab the thumb and pull.
+    if (this.scrollThumb) {
+      this.scrollThumb.setInteractive({ useHandCursor: true, draggable: true });
+      this.input.setDraggable(this.scrollThumb);
+      this.scrollThumb.on('drag', (pointer, dragX, dragY) => {
+        const visible = LIST_BOTTOM - LIST_TOP;
+        const travel = visible - this.scrollThumb.height;
+        if (travel <= 0) return;
+        this.setScroll(((dragY - LIST_TOP) / travel) * this.scrollMax);
+      });
+    }
   }
 
   scrollList(delta) {
@@ -164,7 +178,17 @@ export class SandboxStoryScene extends Phaser.Scene {
       bg.setFillStyle(0x2c1810, 0.92);
       bg.setStrokeStyle(1, 0x8b6914);
     });
-    bg.on('pointerdown', () => {
+    // Fires on release, not press, and only if the pointer barely moved. The
+    // list scrolls by dragging, and a row that launched on pointerdown made
+    // that impossible: every attempt to drag started a story instead.
+    bg.on('pointerdown', (pointer) => {
+      this._press = { bg, y: pointer.y };
+    });
+    bg.on('pointerup', (pointer) => {
+      const press = this._press;
+      this._press = null;
+      if (press?.bg !== bg) return;
+      if (Math.abs(pointer.y - press.y) > DRAG_SLOP) return;
       SoundHelper.playVariant(this, 'button_click', 0.5);
       onClick?.();
     });

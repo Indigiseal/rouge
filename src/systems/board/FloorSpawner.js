@@ -9,6 +9,7 @@ import { reinforcementStateFor, reinforcementStateFromSave } from '../../content
 import { applyEnemyTier, canTierEnemy, veteranChanceFor } from '../../content/balance/EnemyTiers.js';
 import { boardVariantFromAmbush } from './BoardVariant.js';
 import { resourceCardKey } from '../../content/assets/resourceCards.js';
+import { looseGemCard } from '../../content/cards/gems.js';
 import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js';
 import { cameraWorldSize } from '../../config/renderScale.js';
 import { t, translateItemName, translateRarity } from '../../i18n/i18n.js';
@@ -536,11 +537,7 @@ function spawnTutorialCards() {
   const food = this.cardDataGenerator.createCardData('food', cf);   food.tutorialTag = 'food';
   const potion = this.cardDataGenerator.createCardData('potion', cf); potion.tutorialTag = 'potion';
   const coin = this.cardDataGenerator.createCardData('coin', cf);   coin.tutorialTag = 'coin';
-  const lightningGem = {
-    type: 'gem', gemEffect: 'lightning', name: 'Lightning Gem',
-    sprite: 'gemsRGY', spriteFrame: 12, color: 0xffe066,
-    rarity: 'common', tutorialTag: 'lightningGem'
-  };
+  const lightningGem = { ...looseGemCard('lightning'), tutorialTag: 'lightningGem' };
   const mkLightningTarget = (tag, enemyType, role) => {
     const enemy = this.cardDataGenerator.createTieredEnemy(enemyType, cf);
     enemy.role = role;

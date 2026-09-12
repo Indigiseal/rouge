@@ -114,20 +114,16 @@ export class PreloadScene extends Phaser.Scene {
             repeat: -1
         });
 
-        ['fire', 'poison', 'lightning'].forEach((effect, row) => {
-            this.anims.create({
-                key: `gem_${effect}_sparkle`,
-                frames: this.anims.generateFrameNumbers('gemsRGY', { start: row * 6, end: row * 6 + 5 }),
-                frameRate: 8,
-                repeat: 0
-            });
-            this.anims.create({
-                key: `gem_${effect}_hover`,
-                frames: this.anims.generateFrameNumbers('gemsRGY', { start: row * 6, end: row * 6 + 5 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        });
+        // The gem_*_sparkle / gem_*_hover animations used to live here, six
+        // frames per colour off gemsRGY. They are gone with that sheet: a loose
+        // gem now wears gemsTiered, and playing an animation built from the old
+        // texture would have swapped the stone back to the 16x16 art the moment
+        // the pointer touched it.
+        //
+        // enableGemDrag asks anims.exists() before playing either, so their
+        // absence is handled: the gem simply sits still. The masked sweep in
+        // ui/GemShine.js is the replacement when we want loose gems to catch
+        // the light too.
         
     
         this.anims.create({

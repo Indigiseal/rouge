@@ -1,6 +1,9 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
+import { gemTierFrame } from '../../content/cards/gems.js';
+import { attachGemShine } from '../../ui/GemShine.js';
+import { GEM_SPOT_KEY, gemSpotPosition } from '../../ui/GemSockets.js';
 
 export const InventorySlotRenderer = {
     // New method that doesn't trigger rebuilds
@@ -101,29 +104,29 @@ export const InventorySlotRenderer = {
             slotSprite.gemEffectSprite = gemEffectSprite;
             cardSprite.setData('gemEffectSprite', gemEffectSprite);
 
-            // Static gem indicator(s) in top-right corner of card — one per stacked gem
-            const gemFrameByEffect = { fire: 0, poison: 6, lightning: 12 };
-            const gemFrame = gemFrameByEffect[cardData.gemEffect] ?? 0;
-            const stackCount = CardDataGenerator.weaponGemStack(cardData);
+            // One gem in the card's top-right corner, drawn at the size its
+            // level earns: small shard, shard, small gem, medium gem, big gem.
+            // It used to be a column of identical 16px icons, one per level,
+            // which said the same thing in more pixels.
+            const gemTier = CardDataGenerator.weaponGemStack(cardData);
+            const gemFrame = gemTierFrame(cardData.gemEffect, gemTier);
 
-            // Compute top-right corner of card with a 1px inset.
-            // Round to integers so the gem indicator doesn't jitter a pixel
-            // when a neighbouring card's blend-mode hover sprite forces a
-            // render-batch flush.
-            const halfW = (cardSprite.displayWidth || 45) / 2;
-            const halfH = (cardSprite.displayHeight || 65) / 2;
-            const gemX = Math.round(x + halfW - 1);
-            const gemY = Math.round(y - halfH + 1);
+            // Top middle, tucked inside the card's top edge — the gem sets
+            // into a socket there rather than perching on the corner. Rounded
+            // to whole pixels so it cannot jitter when a neighbouring card's
+            // blend-mode hover sprite forces a render-batch flush.
+            const spotAt = gemSpotPosition(cardSprite);
+            const gemX = spotAt.x;
+            const gemY = spotAt.y;
 
-            // Container holds one sprite per stack. Each gem is fully visible —
-            // 16px tall, spaced 16px apart so they sit directly under each other.
-            const GEM_SPACING = 16;
             const gemContainer = this.scene.add.container(gemX, gemY);
-            for (let s = 0; s < stackCount; s++) {
-                const child = this.scene.add.sprite(0, s * GEM_SPACING, 'gemsRGY', gemFrame);
-                child.setOrigin(1, 0);
-                gemContainer.add(child);
+            // The socket first, then the stone on top of it: set in, not stuck on.
+            if (this.scene.textures.exists(GEM_SPOT_KEY)) {
+                gemContainer.add(this.scene.add.image(0, 0, GEM_SPOT_KEY));
             }
+            const gemSprite = this.scene.add.sprite(0, 0, 'gemsTiered', gemFrame);
+            gemContainer.add(gemSprite);
+            attachGemShine(this.scene, gemSprite, { container: gemContainer });
             gemContainer.setDepth(15);
             this.uiGroup.add(gemContainer);
             gemContainer.restX = gemX;
@@ -144,6 +147,10 @@ export const InventorySlotRenderer = {
             if (!currentSlot) return;
 
             SoundHelper.playSound(this.scene, 'ui_card_hover', 0.35);
+
+            // The socketed gem catches the light while the card is under the
+            // pointer. Masked to the stone, so it never spills onto the card.
+            currentSlot.gemIndicator?.startGemShine?.();
 
             // Show and animate hover sprite
             if (currentSlot.hoverSprite) {
@@ -261,7 +268,9 @@ export const InventorySlotRenderer = {
             
             const currentSlot = this.slotSprites[slotIndex];
             if (!currentSlot) return;
-            
+
+            currentSlot.gemIndicator?.stopGemShine?.();
+
             // Hide hover sprite
             if (currentSlot.hoverSprite) {
                 currentSlot.hoverSprite.setVisible(false);
@@ -367,6 +376,27 @@ export const InventorySlotRenderer = {
             }
             this.hideCardTooltip();
             SoundHelper.playVariant(this.scene, 'card_place', 0.4);
+
+            // Kill the hover lift before the drag starts writing positions.
+            //
+            // Hovering a card starts a 150ms tween on each thing that rides it —
+            // the gem and its socket, the thorn frame, the web. The drag handler
+            // then sets those positions directly every frame, so for the first
+            // 150ms of a drag the tween and the drag were both writing y, and
+            // the tween won often enough that the gem visibly trailed the card.
+            // The card's own value never lagged because it is set directly and
+            // never tweened, which is the tell.
+            const currentSlotAtDragStart = this.slotSprites[slotIndex];
+            if (currentSlotAtDragStart) {
+                this.scene.tweens.killTweensOf([
+                    currentSlotAtDragStart.gemIndicator,
+                    currentSlotAtDragStart.briarFrame,
+                    currentSlotAtDragStart.webOverlay,
+                    currentSlotAtDragStart.shadow,
+                    currentSlotAtDragStart.twinkleSprite,
+                    currentSlotAtDragStart.gemEffectSprite,
+                ].filter((target) => target?.scene));
+            }
 
             // Store the starting position
             cardSprite.setData('dragStartX', cardSprite.x);

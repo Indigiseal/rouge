@@ -12,6 +12,9 @@ import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 
 // Floating "repaired" / "not enough coins" message. Sits above the carried card
 // (depth 10) and the hammer sparks (11), and is readable before it fades.
+// Two hammer blows per repair, and how far each knocks the card off square.
+const REPAIR_STRIKES = 2;
+const REPAIR_TILT_DEGREES = 7;
 const FEEDBACK_DEPTH = 100;
 const FEEDBACK_HOLD_MS = 1400;
 const FEEDBACK_FADE_MS = 900;
@@ -352,10 +355,21 @@ export class AnvilScene extends Phaser.Scene {
                 light.setAlpha(0.65);
                 this.tweens.add({ targets: light, alpha: 0, duration: 220 });
             }
+            // The hit knocks the card off square: the first one counter-clockwise,
+            // the second back the other way, so the two hops read as two blows
+            // from different angles rather than the same hop played twice. Phaser
+            // turns clockwise on a positive angle, so the first tilt is negative.
+            // Derived from which hit this IS, not from what is left to do — that
+            // stays right if the count ever changes.
+            const hit = REPAIR_STRIKES - remaining;
+            const tilt = hit % 2 === 0 ? -REPAIR_TILT_DEGREES : REPAIR_TILT_DEGREES;
             this.tweens.add({
-                targets: container, y: restY - 12, duration: 65, ease: 'Quad.easeOut',
+                targets: container, y: restY - 12, angle: tilt,
+                duration: 65, ease: 'Quad.easeOut',
                 onComplete: () => this.tweens.add({
-                    targets: container, y: restY, duration: 150, ease: 'Quad.easeIn',
+                    // Square again as it lands — the tilt belongs to the hop.
+                    targets: container, y: restY, angle: 0,
+                    duration: 150, ease: 'Quad.easeIn',
                     onComplete: () => this.time.delayedCall(160,
                         () => remaining > 1 ? strike(remaining - 1) : finish()),
                 }),
@@ -365,7 +379,7 @@ export class AnvilScene extends Phaser.Scene {
         this.tweens.add({
             targets: container, x: this.anvilDropZone.x, y: restY,
             duration: 180, ease: 'Quad.easeOut',
-            onComplete: () => strike(2),
+            onComplete: () => strike(REPAIR_STRIKES),
         });
     }
 

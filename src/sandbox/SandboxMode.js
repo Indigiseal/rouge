@@ -71,11 +71,26 @@ export function getSandboxEncounter(id) {
 
 // Every story, straight from the content pack, so a newly written event shows
 // up in the Test Site without anyone remembering to register it twice.
+// Stories that contain a minigame, and the choice that opens it. The Test Site
+// lists stories, not minigames, so these were effectively unlisted: the only
+// way to reach the music box lock was to know that "Force it open" inside The
+// Broken Music Box leads to it. The label says so now.
+const STORY_MINIGAMES = Object.freeze({
+  broken_music_box: 'Force it open',
+  monster_bird_nest: 'Search the nest',
+  arm_wrestling: 'Put a card up',
+});
+
 export function getSandboxStories() {
-  return EVENTS.map((event) => ({
-    id: event.id,
-    label: event.title || event.id,
-  }));
+  return EVENTS.map((event) => {
+    const via = STORY_MINIGAMES[event.id];
+    const label = event.title || event.id;
+    return {
+      id: event.id,
+      label: via ? `${label} (minigame)` : label,
+      minigameChoice: via || null,
+    };
+  });
 }
 
 // The Test Site forces a story regardless of what has been seen, but forcing

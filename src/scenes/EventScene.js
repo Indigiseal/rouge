@@ -568,21 +568,10 @@ export class EventScene extends Phaser.Scene {
       return;
     }
 
-    if (this.textures.exists('eventPaper')) {
-      paper = this.add.image(x, startY, 'eventPaper')
-        .setDisplaySize(paperWidth, paperHeight)
-        .setDepth(0)
-        .setAlpha(0);
-      this.tweens.add({
-        targets: paper,
-        y,
-        alpha: 1,
-        duration: 360,
-        delay: 70,
-        ease: 'Cubic.easeOut'
-      });
-      return;
-    }
+    // A flat 'eventPaper' image used to sit between the nine-slice above and
+    // the drawn rectangle below. assets/art/paper.png is gone — the nine-slice
+    // replaced it — so that branch could never be taken again, and its manifest
+    // entry existed only to 404 on every boot.
 
     paper = this.add.rectangle(x, startY, paperWidth, paperHeight, 0xd9b98e)
       .setStrokeStyle(2, 0x6c4f35)

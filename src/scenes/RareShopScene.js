@@ -1,5 +1,6 @@
 import { CardSystem } from '../systems/CardSystem.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { looseGemCard } from '../content/cards/gems.js';
 import { t, translateItemName } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
@@ -170,22 +171,13 @@ export class RareShopScene extends StationRoomBase {
         return { data: item, price, currency: 'coins', purchased: false };
     }
 
+    // The shop kept its own copy of the gem table, and that copy had no
+    // `effect` on its entries — so asking looseGemCard for art fell back to the
+    // fire row while the effect stayed whatever was rolled. The shelf showed a
+    // red gem and a poison one went into the weapon. Ask by effect instead:
+    // GEMS is the one table, and name, colour and art all come from it.
     createGemCard(effect) {
-        const gems = {
-            fire:      { name: 'Fire Gem',      frame: 0,  color: 0xff7040 },
-            poison:    { name: 'Poison Gem',    frame: 6,  color: 0x66ff66 },
-            lightning: { name: 'Lightning Gem', frame: 12, color: 0xffe066 }
-        };
-        const gem = gems[effect] || gems.fire;
-        return {
-            type: 'gem',
-            gemEffect: effect,
-            name: gem.name,
-            sprite: 'gemsRGY',
-            spriteFrame: gem.frame,
-            color: gem.color,
-            rarity: 'common'
-        };
+        return looseGemCard(effect);
     }
 
     createUpgradedWeapon(excludeType = null) {

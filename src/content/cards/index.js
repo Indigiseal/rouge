@@ -42,6 +42,8 @@ export {
   FIRE_GEM_SPLASH_RADIUS,
   gemSlotsForRarity,
   gemStackDamage,
+  looseGemCard,
+  gemTierFrame,
   resolveFireGemSplashRadius,
 } from './gems.js';
 export { AMULETS, AMULET_DROP_DATA, getAmulet } from './amulets.js';

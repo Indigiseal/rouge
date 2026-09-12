@@ -1,6 +1,8 @@
 // BoardCardFx — VFX/FX helpers, info text, kill loot presentation
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
+import { hideGemSockets, showGemSockets } from '../../ui/GemSockets.js';
+import { attachGemShine } from '../../ui/GemShine.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
 import { ELITE_SPRITE_KEYS } from '../../content/assets/AssetManifest.js';
 import { effectiveArmorProtection, isArmorWarded } from '../combat/ArmorMath.js';
@@ -594,6 +596,8 @@ function enableGemDrag(card, index) {
     // gems are initialized that way). Make the registration explicit.
     this.scene.input?.setDraggable?.(card.sprite, true);
     const home = { x: card.sprite.x, y: card.sprite.y };
+    // Masked to the stone, so the streak never spills onto the board.
+    const shine = attachGemShine(this.scene, card.sprite);
     const animKey = `gem_${card.data.gemEffect}_sparkle`;
     const hoverAnimKey = `gem_${card.data.gemEffect}_hover`;
     let idleTimer = null;
@@ -603,6 +607,25 @@ function enableGemDrag(card, index) {
         card.sprite.setData('amuletSwapSelecting', selectingSwap);
         dragged = false;
     });
+    // Hover belongs to the gem, NOT to the old sparkle animation. These used to
+    // live inside the anims.exists(animKey) guard below, which was fine while
+    // gem_*_sparkle existed — it no longer does, so the guard is false and
+    // everything inside it is never registered. The socket hint and the shine
+    // would have gone with it.
+    card.sprite.on('pointerover', () => {
+        // Every card that could take this gem shows an empty socket, so "where
+        // does this go?" is answered before anything is dragged.
+        showGemSockets(this.scene, card.data);
+        shine?.start();
+    });
+    card.sprite.on('pointerout', () => {
+        // Not while dragging: the pointer leaves the gem the moment it is
+        // picked up, and both the hint and the shine are most useful then.
+        if (card.sprite.getData('boardGemDragging')) return;
+        hideGemSockets(this.scene);
+        shine?.stop();
+    });
+
     if (this.scene.anims.exists(animKey)) {
         card.sprite.on('pointerover', () => {
             if (this.scene.anims.exists(hoverAnimKey)) {
@@ -612,6 +635,7 @@ function enableGemDrag(card, index) {
             }
         });
         card.sprite.on('pointerout', () => {
+            if (card.sprite.getData('boardGemDragging')) return;
             card.sprite.stop();
             card.sprite.setFrame(card.data.spriteFrame || 0);
         });
@@ -637,6 +661,8 @@ function enableGemDrag(card, index) {
         if (card.sprite.getData('amuletSwapSelecting')) return;
         dragged = true;
         card.sprite.setData('boardGemDragging', true);
+        showGemSockets(this.scene, card.data);
+        shine?.start();
         this.scene.tweens.killTweensOf(card.sprite);
         if (card.infoText?.scene) this.scene.tweens.killTweensOf(card.infoText);
         card.sprite.stop();
@@ -648,12 +674,17 @@ function enableGemDrag(card, index) {
         if (card.sprite.getData('amuletSwapSelecting')) return;
         card.sprite.x = Phaser.Math.Clamp(dragX, 0, 640);
         card.sprite.y = Phaser.Math.Clamp(dragY, 0, 360);
+        shine?.sync();
         if (card.infoText?.scene) {
             card.infoText.x = card.sprite.x;
             card.infoText.y = card.sprite.y + 22;
         }
     });
     card.sprite.on('dragend', () => {
+        // The hint goes down however the drag ends — socketed, dropped short,
+        // or abandoned. Before the early returns below, so none can skip it.
+        hideGemSockets(this.scene);
+        shine?.stop();
         if (card.sprite.getData('amuletSwapSelecting')) {
             card.sprite.setData('amuletSwapSelecting', false);
             return;

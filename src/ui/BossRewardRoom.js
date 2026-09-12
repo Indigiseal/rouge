@@ -4,6 +4,7 @@
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { needsLocationPick } from '../content/locations/index.js';
 import { scaleGoldReward } from '../content/economy/gold.js';
+import { looseGemCard } from '../content/cards/gems.js';
 
 export function setupBossRewardRoom(scene) {
     scene.gameState.roomType = 'BOSS_REWARD';
@@ -79,13 +80,7 @@ export function makeBossRewardGem(scene) {
     ];
     const gem = gems[Math.floor(Math.random() * gems.length)];
     return {
-        type: 'gem',
-        gemEffect: gem.effect,
-        name: gem.name,
-        sprite: 'gemsRGY',
-        spriteFrame: gem.frame,
-        color: gem.color,
-        rarity: 'common'
+        ...looseGemCard(gem)
     };
 }
 

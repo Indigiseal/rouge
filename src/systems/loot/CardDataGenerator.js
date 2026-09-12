@@ -32,6 +32,7 @@ import {
     FOOD,
     MAGIC,
     GEMS,
+    looseGemCard,
     GEM_SLOTS_BY_RARITY,
     gemSlotsForRarity as gemSlotsForRarityFn,
     AMULETS,
@@ -879,16 +880,7 @@ export class CardDataGenerator {
     }
 
     createGemCard(floor) {
-        const gem = GEMS[Math.floor(Math.random() * GEMS.length)];
-        return {
-            type: 'gem',
-            gemEffect: gem.effect,
-            name: gem.name,
-            sprite: 'gemsRGY',
-            spriteFrame: gem.frame,
-            color: gem.color,
-            rarity: 'common'
-        };
+        return looseGemCard(GEMS[Math.floor(Math.random() * GEMS.length)]);
     }
 }
 

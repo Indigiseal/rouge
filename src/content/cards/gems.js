@@ -20,6 +20,65 @@ export function gemSlotsForRarity(rarity) {
   return GEM_SLOTS_BY_RARITY[rarity] || 1;
 }
 
+// --- Tiered gem art ---------------------------------------------------------
+// gemsTiered.png is 5 columns by 3 rows of 18x18: the columns are the five
+// sizes, the rows are the three colours. A gem used to be drawn as a little
+// stack of identical icons — one per level — and is now drawn once, at the size
+// its level earns.
+//
+// The row order is the SHEET's, which is not the order GEMS is declared in:
+// red, yellow, green against fire, poison, lightning. Mapping by colour rather
+// than by position is the whole reason this table is written out.
+export const GEM_TIER_NAMES = Object.freeze([
+  'smallShard', 'shard', 'smallGem', 'mediumGem', 'bigGem',
+]);
+export const GEM_TIER_COUNT = GEM_TIER_NAMES.length;
+const GEM_SHEET_COLUMNS = GEM_TIER_COUNT;
+const GEM_SHEET_ROW = Object.freeze({
+  fire: 0,       // red
+  lightning: 1,  // yellow
+  poison: 2,     // green
+});
+
+/**
+ * Frame on gemsTiered for an effect at a given level.
+ *
+ * @param {string} effect 'fire' | 'poison' | 'lightning'
+ * @param {number} tier 1..5; anything outside is clamped rather than dropped,
+ *   because a legendary weapon can carry 5 and a bug should show a gem, not a
+ *   missing texture.
+ */
+// A gem found in the world — a shop, a chest, a board drop — is always the
+// smallest of the five: a small shard. It grows by being socketed, not by being
+// found. One helper so the six places that hand out gems cannot disagree about
+// which art a loose one wears.
+export const LOOSE_GEM_TIER = 1;
+
+/**
+ * Card data for a loose gem of `effect`, or of a whole GEMS entry.
+ * @param {{effect: string, name: string, color: number}|string} gemOrEffect
+ */
+export function looseGemCard(gemOrEffect) {
+  const gem = typeof gemOrEffect === 'string'
+    ? GEMS.find((g) => g.effect === gemOrEffect) || GEMS[0]
+    : gemOrEffect;
+  return {
+    type: 'gem',
+    gemEffect: gem.effect,
+    name: gem.name,
+    sprite: 'gemsTiered',
+    spriteFrame: gemTierFrame(gem.effect, LOOSE_GEM_TIER),
+    color: gem.color,
+    rarity: 'common',
+  };
+}
+
+export function gemTierFrame(effect, tier = 1) {
+  const row = GEM_SHEET_ROW[effect] ?? GEM_SHEET_ROW.fire;
+  const level = Math.max(1, Math.min(GEM_TIER_COUNT, Math.floor(tier) || 1));
+  return row * GEM_SHEET_COLUMNS + (level - 1);
+}
+
 // Fire/lightning damage by gem stack. Used to be an inline [3,4,5,6,7] in
 // BoardCombat and mirrored three times in the sim — the table lives here now.
 // Stacks 4-5 stay provisional until gem merge power is decided

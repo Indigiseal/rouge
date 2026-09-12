@@ -1,4 +1,5 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
+import { gemSpotPosition } from '../../ui/GemSockets.js';
 import { CombatSequencer } from '../combat/CombatSequencer.js';
 import {
     applyPermanentWeaponDamageBonuses,
@@ -892,10 +893,9 @@ export const InventoryCombatUse = {
             }
             if (slotSprite.gemIndicator && slotSprite.gemIndicator.scene) {
                 const indicator = slotSprite.gemIndicator;
-                const halfW = (cardSprite.displayWidth || 45) / 2;
-                const halfH = (cardSprite.displayHeight || 65) / 2;
-                indicator.x = cardSprite.x + halfW - 1;
-                indicator.y = cardSprite.y - halfH + 1;
+                const spot = gemSpotPosition(cardSprite);
+                indicator.x = spot.x;
+                indicator.y = spot.y;
                 indicator.restX = indicator.x;
                 indicator.restY = indicator.y;
                 indicator.setVisible(true);
@@ -966,10 +966,9 @@ export const InventoryCombatUse = {
                 // Restore gem indicator — dragstart hid it when attacking
                 if (originalSlot.gemIndicator && originalSlot.gemIndicator.scene) {
                     const indicator = originalSlot.gemIndicator;
-                    const halfW = (cardSprite.displayWidth || 45) / 2;
-                    const halfH = (cardSprite.displayHeight || 65) / 2;
-                    indicator.x = cardSprite.x + halfW - 1;
-                    indicator.y = cardSprite.y - halfH + 1;
+                    const spot = gemSpotPosition(cardSprite);
+                    indicator.x = spot.x;
+                    indicator.y = spot.y;
                     indicator.restX = indicator.x;
                     indicator.restY = indicator.y;
                     indicator.setVisible(true);

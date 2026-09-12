@@ -22,7 +22,6 @@ export const ASSET_MANIFEST = [
     // Frame order: defeat info, defeat detail, victory info, victory detail.
     { key: 'resultPanels', path: 'assets/art/defeatWin9x9panels.png', type: 'spritesheet', frameWidth: 96, frameHeight: 96 },
     { key: 'resultBanners', path: 'assets/art/bannerLostWin.png', type: 'spritesheet', frameWidth: 160, frameHeight: 32 },
-    { key: 'eventPaper', path: 'assets/art/paper.png', type: 'image' },
     { key: 'eventPaper9Slice', path: 'assets/art/paper9Slice.png', type: 'image' },
     // Hover-tooltip frame. 48x48 with a 5px border on three sides and a taller
     // 7px decorative bottom edge — see TOOLTIP_PANEL_SLICE in ui/NineSlicePanel.js.
@@ -133,6 +132,14 @@ export const ASSET_MANIFEST = [
     { key: 'luckyClover', path: 'assets/art/clover.png', type: 'spritesheet', frameWidth: 53, frameHeight: 70 },
     { key: 'mapNodes', path: 'assets/art/mapNodes42x42.png', type: 'spritesheet', frameWidth: 42, frameHeight: 42 },
     { key: 'gemsRGY', path: 'assets/art/gemsRGY-Sheet.png', type: 'spritesheet', frameWidth: 16, frameHeight: 16 },
+    // A gem's size IS its level: 5 tiers across, 3 colours down — see
+    // gemTierFrame in content/cards/gems.js.
+    { key: 'gemsTiered', path: 'assets/art/gemsTiered.png', type: 'spritesheet', frameWidth: 18, frameHeight: 18 },
+    // The socket a gem sets into: shown empty on cards that could take a
+    // dragged gem, and drawn under the gem once one is set.
+    { key: 'gemSpot', path: 'assets/art/gemSpot.png', type: 'image' },
+    // 7-frame shine that sweeps across a gem on hover, masked to its silhouette.
+    { key: 'gemLightAnim', path: 'assets/art/gemLightAnim.png', type: 'spritesheet', frameWidth: 18, frameHeight: 18 },
     // Enemy role marker: frame 0 = melee, frame 1 = ranged | 'enemyCardType' sprite sheet was the old melee/ranged/poison badge | overlay. The new enemy art bakes those icons into the cards, and | HP / ATK now render as corner numbers, so we no longer load it.
     { key: 'gemEffectsOnCards', path: 'assets/art/gemEffectsOnCards64x80.png', type: 'spritesheet', frameWidth: 64, frameHeight: 80 },
     { key: 'enemiesHitEffects', path: 'assets/art/enemiesHitEffects64x80.png', type: 'spritesheet', frameWidth: 64, frameHeight: 80 },
