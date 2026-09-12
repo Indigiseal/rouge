@@ -1033,13 +1033,27 @@ export class EventScene extends Phaser.Scene {
       fontSize: '12px', fill: WHITE, fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5).setAlpha(0).setDepth(3);
 
+    // The label rides the press. Swapping to the pressed plate without moving
+    // the text left the word floating a pixel above a button that had visibly
+    // gone down — every other plate in the game (PaintedButton, the station
+    // rooms, the main menu) drops its label the same 1px.
+    const pressLabel = (down) => {
+      if (this.continueBtnText?.scene) this.continueBtnText.y = continueY + (down ? 1 : 0);
+    };
     this.continueBtn.on('pointerdown', () => {
       SoundHelper.playVariant(this, 'button_click', 0.5);
       if (this.continueBtn.setTexture && this.textures.exists('nextTurnDown')) {
         this.continueBtn.setTexture('nextTurnDown');
       }
+      pressLabel(true);
     });
-    this.continueBtn.on('pointerup', () => this.continueAdventure());
+    this.continueBtn.on('pointerup', () => {
+      if (this.continueBtn.setTexture && this.textures.exists('nextTurnUp')) {
+        this.continueBtn.setTexture('nextTurnUp');
+      }
+      pressLabel(false);
+      this.continueAdventure();
+    });
     this.continueBtn.on('pointerover', () => {
       SoundHelper.playVariant(this, 'hover_button', 0.4);
       if (this.continueBtn.setTint) this.continueBtn.setTint(0xfff2c8);
@@ -1052,6 +1066,7 @@ export class EventScene extends Phaser.Scene {
       } else {
         this.continueBtn.setFillStyle?.(0x080808, 0.66);
       }
+      pressLabel(false);
     });
   }
 

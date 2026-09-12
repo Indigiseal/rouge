@@ -141,7 +141,15 @@ export const InventorySlotRenderer = {
         // Add hover events
         cardSprite.on('pointerover', (pointer) => {
             if (!cardSprite.scene) return;
-            
+
+            // A card already in hand is not being hovered. Without this the
+            // lift tween restarts mid-drag and fights the drag handler, which
+            // is writing the same positions directly, for another 150ms.
+            // Tested against _liveDrag rather than the inventoryDragging flag:
+            // _liveDrag is cleared the moment a drop is claimed, so this can
+            // never latch a card out of its hover.
+            if (this._liveDrag?.cardSprite === cardSprite) return;
+
             // Get the current slot sprite reference
             const currentSlot = this.slotSprites[slotIndex];
             if (!currentSlot) return;
@@ -265,7 +273,15 @@ export const InventorySlotRenderer = {
             if (!cardSprite.scene) return;
 
             this.hideCardTooltip();
-            
+
+            // Drag fast enough for the pointer to outrun the card and Phaser
+            // fires pointerout mid-drag. Everything below returns the card and
+            // its riders to their resting slot positions, which would tween
+            // them home while the drag is still writing them — that fight is
+            // the "sometimes" in the trailing pips. The drop path is what puts
+            // the card back, so there is nothing to restore here anyway.
+            if (this._liveDrag?.cardSprite === cardSprite) return;
+
             const currentSlot = this.slotSprites[slotIndex];
             if (!currentSlot) return;
 
@@ -379,16 +395,23 @@ export const InventorySlotRenderer = {
 
             // Kill the hover lift before the drag starts writing positions.
             //
-            // Hovering a card starts a 150ms tween on each thing that rides it —
-            // the gem and its socket, the thorn frame, the web. The drag handler
-            // then sets those positions directly every frame, so for the first
-            // 150ms of a drag the tween and the drag were both writing y, and
-            // the tween won often enough that the gem visibly trailed the card.
-            // The card's own value never lagged because it is set directly and
-            // never tweened, which is the tell.
+            // Hovering a card starts a 150ms tween on each thing that rides it.
+            // The drag handler then sets those positions directly every frame,
+            // so for the first 150ms of a drag the tween and the drag were both
+            // writing y, and the tween won often enough that the rider visibly
+            // trailed the card.
+            //
+            // infoText belongs in this list and was missing from it. It is the
+            // container holding the card's durability pips AND its value, and
+            // the hover lift tweens it like everything else — so the pips
+            // trailed the card exactly the way the gem used to. The pips show it
+            // worst because they are a tall column up the card's edge; the value
+            // is one glyph near the middle and lags just as far, invisibly.
             const currentSlotAtDragStart = this.slotSprites[slotIndex];
             if (currentSlotAtDragStart) {
                 this.scene.tweens.killTweensOf([
+                    cardSprite,
+                    cardSprite.getData('infoText'),
                     currentSlotAtDragStart.gemIndicator,
                     currentSlotAtDragStart.briarFrame,
                     currentSlotAtDragStart.webOverlay,
