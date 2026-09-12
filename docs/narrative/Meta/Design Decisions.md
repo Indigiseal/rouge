@@ -29,7 +29,7 @@ Wrong country: after-boss card ("this was not the road"), then the next act's th
 
 | Act | Locations |
 |---|---|
-| 1 | Thornwake (forest), Silkdeep (caves), **Tollroad** (goblin mile, true) |
+| 1 | Thornwake (forest), Silkdeep (palace of the last feast), **Tollroad** (goblin mile, true) |
 | 2 | Boneflood (ossuary), **Brassfair** (dark carnival, true), Duskhold (vampire castle) |
 | 3 | Mirrorwane (mirror palace), Spherefall (craters), **Starfold** (Inner Sky, true) |
 

@@ -14,7 +14,9 @@ tags:
 
 # Spider
 
-Primary predator of the Silkdeep Caves — a cave spider that lives by bite and venom. Every successful strike leaves poison in the wound; the Path learns quickly not to let them pile up.
+One of the court magician's exotic specimens, multiplied and enlarged after
+the final feast. Every successful strike leaves poison in the wound; the Path
+learns quickly not to let them pile up.
 
 ## Combat sheet
 
@@ -25,7 +27,7 @@ Primary predator of the Silkdeep Caves — a cave spider that lives by bite and 
 | Game id | `spider` |
 | Status | in-game |
 | Primary location | [[Silkdeep]] |
-| Place | [[Silkdeep#The Silkdeep Caves]] |
+| Place | [[Silkdeep#The Palace of the Last Feast]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -37,6 +39,6 @@ Poison on hit — stacks venom damage over turns (existing combat poison).
 
 - [[Enemies Index]]
 - [[Silkdeep]]
-- Place: [[Silkdeep#The Silkdeep Caves]]
+- Place: [[Silkdeep#The Palace of the Last Feast]]
 - [[Enemy Power]]
 - [[Locations Index]]

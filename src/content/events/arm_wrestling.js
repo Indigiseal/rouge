@@ -13,6 +13,7 @@
 export default {
     id: 'arm_wrestling',
     title: 'Arm Wrestling',
+    rematchHint: 'Drag a card onto the ogre (uncommon or better)',
     description: (gs, scene) => {
       const crowd = scene.getArmWrestleCrowdLine();
       if (scene.isArmWrestleRematch()) {
@@ -26,10 +27,13 @@ export default {
 
       const cardBet = {
         id: 'arm_bet_card',
-        text: rematch ? 'Put a card up against the guard' : 'Put a card up instead',
-        condition: (state, s) => s.hasArmWrestleCard(),
+        text: rematch ? 'Bet an uncommon or better card against the guard' : 'Bet an uncommon or better card instead',
+        // The Test Site is a mechanics harness: always expose the stake flow
+        // there even if a generated loadout happens to carry legacy card data
+        // without a modern rarity field.
+        condition: (state, s) => s.hasArmWrestleCard() || Boolean(state?.sandboxMode),
         action: (state, s) => s.beginArmWrestleCardBet(),
-        outcome: 'Drag a card onto the table. He will not play for junk.',
+        outcome: 'Drag an uncommon or better card onto the ogre. If he thinks it is junk, you can try another card or leave.',
         next: {
           choices: [
             {
@@ -51,7 +55,9 @@ export default {
       };
 
       // He will not play for coin twice — the rematch is about the guard.
-      if (rematch) return [cardBet, decline];
+      // The rematch opens directly in wager mode: the ogre itself is the drop
+      // target, so the only button needed is the way to leave.
+      if (rematch) return [decline];
 
       return [
         {

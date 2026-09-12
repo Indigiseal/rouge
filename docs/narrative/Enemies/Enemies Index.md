@@ -28,7 +28,7 @@ Canonical map: [[Locations Index]]. True path: [[The True Path]].
 - [[Spore Archer]] (`ranged`, `artillery`, in-game) — glowing sporeling; `spore_on_hit`.
 - [[Thorn Fairy]] (`ranged`, `artillery`, in-game) — vine-bound fae; `veil_flip`.
 
-#### [[Silkdeep]] — The Silkdeep Caves
+#### [[Silkdeep]] — The Palace of the Last Feast
 
 - Boss: [[Spider Queen]]
 - [[Spider]] (`melee`, `skirmisher`, in-game) — poison on hit.

@@ -1,14 +1,14 @@
 import { resolveEnemyStats } from '../balance/EnemyPower.js';
-import { THORNWAKE_ENEMY_DEFS } from '../months/thornwake/index.js';
-import { SILKDEEP_ENEMY_DEFS } from '../months/silkdeep/index.js';
-import { TOLLROAD_ENEMY_DEFS } from '../months/tollroad/index.js';
-import { BONEFLOOD_ENEMY_DEFS } from '../months/boneflood/index.js';
-import { MIRETURN_ENEMY_DEFS } from '../months/mireturn/index.js';
-import { VEILBLEED_ENEMY_DEFS } from '../months/veilbleed/index.js';
-import { ASHHOWL_ENEMY_DEFS } from '../months/ashhowl/index.js';
+import { THORNWAKE_ENEMY_DEFS } from '../location-packs/thornwake/index.js';
+import { SILKDEEP_ENEMY_DEFS } from '../location-packs/silkdeep/index.js';
+import { TOLLROAD_ENEMY_DEFS } from '../location-packs/tollroad/index.js';
+import { BONEFLOOD_ENEMY_DEFS } from '../location-packs/boneflood/index.js';
+import { MIRETURN_ENEMY_DEFS } from '../location-packs/mireturn/index.js';
+import { VEILBLEED_ENEMY_DEFS } from '../location-packs/veilbleed/index.js';
+import { ASHHOWL_ENEMY_DEFS } from '../location-packs/ashhowl/index.js';
 
 // Enemy catalog.
-// - Month packs (band + archetype): content/months/<id>/enemies/
+// - Month packs (band + archetype): content/location-packs/<id>/enemies/
 // - Legacy types keep per-type `tiers[]` (fallback when month has no roster).
 // - HP/ATK for band types: resolveEnemyStats(floor, archetype). See docs/BALANCE.md.
 // Month defs win over legacy on the same id (e.g. Silkdeep spider / Tollroad goblin).

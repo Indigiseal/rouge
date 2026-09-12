@@ -1,6 +1,6 @@
 // BoardCombat — attackEnemy, gem effects, poison/shock, remove defeated, floor clear
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
-import { FIRE_GEM_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../../content/cards/gems.js';
+import { POISON_RUNE_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../../content/cards/gems.js';
 import { weaponIgnoresFrontline } from '../../content/cards/weapons.js';
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { CombatSequencer } from '../combat/CombatSequencer.js';
@@ -207,7 +207,7 @@ function splashPoisonGem(mainIndex, weapon) {
   const tx = main?.sprite?.x;
   const ty = main?.sprite?.y;
   if (tx == null || ty == null) return;
-  const radiusSq = FIRE_GEM_SPLASH_RADIUS * FIRE_GEM_SPLASH_RADIUS;
+  const radiusSq = POISON_RUNE_SPLASH_RADIUS * POISON_RUNE_SPLASH_RADIUS;
   const candidates = [];
   this.boardCards.forEach((card, i) => {
     if (i === mainIndex || !card?.sprite || !this.isAnyEnemyCard(card)) return;
@@ -580,12 +580,19 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
 
         // Check if there are any melee enemies alive (revealed or hidden)
         const meleeBlockers = this._anyMeleeAlive({ includeHidden: true });
+        const bossFrontline = card.data.alwaysBackline && this.boardCards.some((other) => (
+            other !== card
+            && other
+            && this.isEnemyType(other.data?.type)
+            && (other.data?.health ?? 0) > 0
+        ));
 
         // Bows bypass the frontline gate because range is their whole point;
         // the spear bypasses it while staying melee, as part of its piercing
         // identity. Printed damage is applied as-is (no ranged multiplier);
         // see docs/OPEN-QUESTIONS.md for weakened/display.
-        if (!weaponIgnoresFrontline(weapon) && meleeBlockers && card.data.role !== 'MELEE') {
+        if (!weaponIgnoresFrontline(weapon)
+            && (bossFrontline || (meleeBlockers && card.data.role !== 'MELEE'))) {
             SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
             this.scene.createFloatingText(
                 this.scene.playerAvatar.x,
@@ -1283,6 +1290,11 @@ function removeDefeatedEnemy(index, card) {
             });
         });
         
+        // The collectors react the instant their veteran falls, before a relic
+        // can replace his board slot with a death drop.
+        const tollVeteranDefeated = Boolean(card.data?.tollVeteran);
+        if (tollVeteranDefeated) this.scene.handleTollVeteranDefeat?.(index);
+
         // Mask of Hollow Whispers — chance to drop a random pickup in the enemy's spot
         const dropChance = this.scene.amuletManager?.getDeathDropChance?.() || 0;
         if (dropChance > 0 && Math.random() < dropChance) {

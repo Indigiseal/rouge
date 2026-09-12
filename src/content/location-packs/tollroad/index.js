@@ -1,7 +1,7 @@
 import { TOLLROAD_ENEMY_DEFS, TOLLROAD_ROSTER } from './enemies/index.js';
 import { TOLLROAD_EVENTS } from './events/index.js';
 
-export const TOLLROAD_MONTH = Object.freeze({
+export const TOLLROAD_LOCATION_PACK = Object.freeze({
   id: 'tollroad',
   name: 'Tollroad',
   enemies: TOLLROAD_ROSTER,

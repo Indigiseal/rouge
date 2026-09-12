@@ -15,7 +15,7 @@ import {
   estimateBossesKilled as estimateBossesKilledFormula,
   xpForRun as xpForRunFormula,
 } from '../content/economy/metaXp.js';
-import { normalizeMonthIndex, nextMonthIndex } from '../content/months/index.js';
+import { normalizeMonthIndex, nextMonthIndex } from '../content/location-packs/index.js';
 import {
   getVillageBuilding,
   costForVillageRank,
@@ -382,6 +382,7 @@ export class MetaProgressionManager {
     this.bestFloor = 1;
     this.enemyKillStats = {};
     this.pendingEgg = false;
+    this.nextCalendarMonthIndex = 0;
     this.unlockedRelics = [];
     this.veteranHp = 0;
     this.metaPoints = 0;

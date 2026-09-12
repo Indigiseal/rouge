@@ -7,7 +7,7 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { LOCATION_DOORS_KEY, locationDoorFrame, locationOpenDoorFrame } from '../content/assets/locationCards.js';
 // Where the way out stands: the Next plate, the open door, and the shut door
 // that waits there during the fight all share this spot.
-const NEXT_EXIT_X = 595;
+const NEXT_EXIT_X = 560;
 const NEXT_EXIT_Y = 50;
 import { getLocationIdForFloor } from '../content/locations/index.js';
 import { devToolsEnabled } from '../config/DevTools.js';
@@ -51,7 +51,7 @@ import { humanRunRecorder, recordHumanRunEvent } from '../systems/HumanRunRecord
 import { openNoticeModal } from '../ui/ConfirmModal.js';
 import { isSilkCocoonCacheRoom, boardHasOpenCocoonEnemies } from '../systems/board/CocoonCacheBoard.js';
 import { playSmokeBurst, SMOKE_BURST_MS } from '../ui/SmokeBurst.js';
-import { shouldShowTollroadAftermath } from '../content/story/TollroadAftermath.js';
+import { pendingLocationAftermath } from '../content/locations/index.js';
 
 export function applyAmbushVictoryStory(gameState) {
     const story = gameState?.storyRun;
@@ -97,6 +97,7 @@ export class GameScene extends Phaser.Scene {
         // A specific story picked from the Test Site, rather than whichever one
         // the story rules would have served next.
         this.sandboxEventId = data.sandboxEventId || null;
+        this.sandboxStorySetupId = data.sandboxStorySetupId || this.sandboxEventId;
         if (this.sandboxMode) this.shouldLoadSave = false;
         this._transitioning = false;
         this._resultScreenShown = false;
@@ -170,6 +171,12 @@ export class GameScene extends Phaser.Scene {
                 this.gameState.storyRun.paidTheToll = false;
                 this.gameState.storyRun.tollIntimidated = false;
                 this.gameState.storyRun.tollFought = false;
+                this.gameState.storyRun.tollWatchFailed = false;
+                this.gameState.storyRun.bridgeDestroyed = false;
+                this.gameState.storyRun.tollGuardsEscaped = 0;
+                this.gameState.storyRun.tollEscapeMode = null;
+                this.gameState.storyRun.tollroadDetour = null;
+                this.gameState.storyRun.jetpackFlightPending = false;
                 this.gameState.storyRun.tollKiller = false;
                 this.gameState.storyRun.merchantRobbed = false;
                 this.gameState.storyRun.tollEscapeNoticeShown = false;
@@ -185,6 +192,7 @@ export class GameScene extends Phaser.Scene {
                 this.gameState.storyRun.goblinMinersKilled = false;
                 this.gameState.storyRun.goblinMinersAllied = false;
                 this.gameState.storyRun.royalBridgeSeen = false;
+                this.gameState.storyRun.tollroadThroneHallSeen = false;
                 this.gameState.storyRun.goblinKingStartingHealthFraction = 1;
                 this.gameState.storyRun.pendingPostCombatEventId = null;
             }
@@ -324,10 +332,11 @@ export class GameScene extends Phaser.Scene {
             // Migration for saves already stranded in the reward room by the
             // old profile-wide "seen" guard: show the missing scene first, then
             // restore these exact reward cards without paying currency twice.
-            if (shouldShowTollroadAftermath(this.gameState)) {
+            const aftermath = pendingLocationAftermath(this.gameState);
+            if (aftermath) {
                 this._restoreBossRewardAfterNarrative = true;
                 this.scene.sleep();
-                this.scene.launch('TollroadAftermathScene', { gameState: this.gameState });
+                this.scene.launch(aftermath.sceneKey, { gameState: this.gameState });
             } else {
                 this.restoreSavedBossRewardRoom();
             }
@@ -371,7 +380,7 @@ export class GameScene extends Phaser.Scene {
             if (this.sandboxEventId) {
                 // Seed whatever this story needs before it opens — a recovered
                 // cog, an egg, a companion with service behind it.
-                applySandboxStorySetup(this, this.sandboxEventId);
+                applySandboxStorySetup(this, this.sandboxStorySetupId);
                 payload.forcedEventId = this.sandboxEventId;
             }
             this.scene.launch(encounter.sceneKey, payload);
@@ -517,8 +526,8 @@ export class GameScene extends Phaser.Scene {
             this.nextFloorButton.setVisible(false);
             this.nextFloorButtonText?.setVisible(false);
             this.nextFloorButton.setInteractive();
-            this.nextFloorButton.y = 50;
-            if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
+            this.nextFloorButton.y = NEXT_EXIT_Y;
+            if (this.nextFloorButtonText) this.nextFloorButtonText.y = NEXT_EXIT_Y;
             this.nextFloorButton.clearTint();
             this._doorOpenSounded = false;
             // The road is visible from the first turn, shut. It opens when the
@@ -584,6 +593,9 @@ export class GameScene extends Phaser.Scene {
         if (this.nextFloorButton) {
             this.nextFloorButton
                 .setVisible(true)
+                .setActive(true)
+                .setAlpha(1)
+                .setScale(1)
                 .setDepth(5000)
                 .setInteractive({ useHandCursor: true })
                 .clearTint();
@@ -628,7 +640,13 @@ export class GameScene extends Phaser.Scene {
                 .image(NEXT_EXIT_X, NEXT_EXIT_Y, LOCATION_DOORS_KEY, frame)
                 .setDepth(4999);
         }
-        this.closedDoorMarker.setTexture(LOCATION_DOORS_KEY, frame).setVisible(true);
+        this.closedDoorMarker
+            .setTexture(LOCATION_DOORS_KEY, frame)
+            .setVisible(true)
+            .setActive(true)
+            .setAlpha(1)
+            .setScale(1)
+            .setDepth(4999);
     }
 
     /** The shut door comes down whenever the way out is real. */
@@ -645,7 +663,13 @@ export class GameScene extends Phaser.Scene {
         if (frame === null) return;
 
         this.hideClosedDoorExit();
-        button.setTexture(LOCATION_DOORS_KEY, frame);
+        button
+            .setTexture(LOCATION_DOORS_KEY, frame)
+            .setVisible(true)
+            .setActive(true)
+            .setAlpha(1)
+            .setScale(1)
+            .setDepth(5000);
         // The plate's label would sit across the doorway.
         this.nextFloorButtonText?.setVisible(false);
         if (!this._doorOpenSounded) {
@@ -1020,13 +1044,11 @@ export class GameScene extends Phaser.Scene {
         const nearby = this.floatingTextSlots.filter(slot =>
             Math.abs(slot.x - x) < 72 && Math.abs(slot.y - y) < 48
         ).length;
-        const lane = nearby % 6;
-        const row = Math.floor(nearby / 6);
         const slot = {
             x,
             y,
-            xOffset: ((lane % 3) - 1) * 10,
-            yOffset: -lane * 15 - row * 10,
+            xOffset: 0,
+            yOffset: -nearby * 16,
             expiresAt: now + 1700,
             active: true
         };
@@ -1282,6 +1304,26 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        const detour = this.gameState.storyRun?.tollroadDetour;
+        const returningFromDetourFight = Boolean(detour?.inCombat);
+        const startingDetourAfterCollectors = Boolean(
+            detour && !detour.complete && this.gameState.ambushId === 'toll_collectors'
+        );
+        if (returningFromDetourFight || startingDetourAfterCollectors) {
+            detour.inCombat = false;
+            if (returningFromDetourFight) {
+                detour.index = Math.min(3, (detour.index || 0) + 1);
+            }
+            detour.complete = detour.index >= 3;
+            this.gameState.ambushId = null;
+            this.saveCurrentRun();
+            this.time.delayedCall(500, () => {
+                this.scene.sleep();
+                this.scene.launch('TollroadDetourScene', { gameState: this.gameState });
+            });
+            return;
+        }
+
         // Test Site: after a fight (or boss reward leave), return to the hub.
         // Elite still opens its chest first; TreasureScene exits back to the hub.
         if (this.sandboxMode) {
@@ -1358,9 +1400,10 @@ export class GameScene extends Phaser.Scene {
     }
 
     continueBossVictory() {
-        if (shouldShowTollroadAftermath(this.gameState)) {
+        const aftermath = pendingLocationAftermath(this.gameState);
+        if (aftermath) {
             this.scene.sleep();
-            this.scene.launch('TollroadAftermathScene', { gameState: this.gameState });
+            this.scene.launch(aftermath.sceneKey, { gameState: this.gameState });
             return;
         }
         this.setupBossRewardRoom();
@@ -1375,6 +1418,9 @@ export class GameScene extends Phaser.Scene {
         this._transitioning = false;
         this.roomType = this.gameState.roomType || 'COMBAT';
         this.updateRoomTitle();
+        // createCombatLog() starts hidden. Fresh rooms reveal it from
+        // startNewFloor(), but a continued fight bypasses that path.
+        this.refreshCombatLogVisibility();
 
         const cards = this._loadedBoardCards || [];
         const restored = this.cardSystem.restoreSavedBoard(
@@ -1488,18 +1534,6 @@ export class GameScene extends Phaser.Scene {
         }
         const story = this.gameState?.storyRun;
         applyAmbushVictoryStory(this.gameState);
-        if (this.gameState?.ambushId === 'toll_collectors' && !story?.tollEscapeNoticeShown) {
-            story.tollEscapeNoticeShown = true;
-            // Show the smoke before the words: the bomb goes off, and only once
-            // the haze is up does the notice explain where they went.
-            playSmokeBurst(this, { x: 320, y: 170 });
-            this.time.delayedCall(SMOKE_BURST_MS, () => {
-                openNoticeModal(this, {
-                    title: t(this, 'ui.notice.smokeBombTitle'),
-                    body: t(this, 'ui.notice.smokeBombBody'),
-                });
-            });
-        }
         // Null-guard: if the button hasn't been (re)created yet, do NOT throw
         // — that would leave enemiesCleared=true with a still-hidden button,
         // and the next checkFloorClear would short-circuit on !enemiesCleared.
@@ -1508,6 +1542,52 @@ export class GameScene extends Phaser.Scene {
         this.showNextFloorButton();
         this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
         this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
+    }
+
+    handleTollVeteranDefeat(veteranIndex) {
+        if (this.gameState?.ambushId !== 'toll_collectors') return false;
+        const story = this.gameState.storyRun;
+        const survivors = (this.cardSystem?.boardCards || [])
+            .map((card, index) => ({ card, index }))
+            .filter(({ card, index }) => index !== veteranIndex && card?.data?.tollGuard);
+        if (!survivors.length) {
+            story.tollGuardsEscaped = 0;
+            if (story.tollEscapeMode === 'jetpack') {
+                story.jetpackFlightPending = true;
+                openNoticeModal(this, {
+                    title: 'Goblin engineering',
+                    body: 'With the veteran down last, nobody remains to claim the machine. You strap on the rocket pack yourself.\n\n[ROCKET-PACK FLIGHT — MINIGAME PLACEHOLDER]',
+                });
+            }
+            return false;
+        }
+
+        story.tollEscapeNoticeShown = true;
+        if (story.tollEscapeMode === 'smoke') {
+            story.tollGuardsEscaped = survivors.length;
+            playSmokeBurst(this, { x: 320, y: 170 });
+            survivors.forEach(({ index }) => this.cardSystem.removeCard(index));
+            this.time.delayedCall(SMOKE_BURST_MS, () => openNoticeModal(this, {
+                title: t(this, 'ui.notice.smokeBombTitle'),
+                body: survivors.length === 1
+                    ? 'The last collector sees the veteran fall, throws down a smoke bomb, and vanishes toward the castle.'
+                    : 'The two collectors see the veteran fall, throw down a smoke bomb, and vanish toward the castle.',
+            }));
+            return true;
+        }
+
+        const roll = 1 + Math.floor(Math.random() * 6);
+        SoundHelper.playSound(this, 'dice_roll', 0.65);
+        survivors.forEach(({ index }) => this.cardSystem.removeCard(index));
+        story.tollGuardsEscaped = roll >= 4 ? survivors.length : 0;
+        story.tollroadDetour = { index: 0, merchantAt: Math.random() < 0.5 ? 1 + Math.floor(Math.random() * 3) : 0, complete: false };
+        openNoticeModal(this, {
+            title: 'D6: ' + roll,
+            body: roll <= 3
+                ? `${survivors.length === 1 ? 'The survivor grabs' : 'The survivors grab'} the rocket pack, but fail to release it in time. The fireworks carry ${survivors.length === 1 ? 'the goblin' : 'them'} far past the landing place and scatter into a distant explosion. You will have to take the marsh road.`
+                : `${survivors.length === 1 ? 'The survivor straps' : 'The survivors strap'} into the rocket pack, clear the broken span, and run toward the castle. You will have to take the marsh road.`,
+        });
+        return true;
     }
 
     getVictoryStorySummary() {

@@ -2,7 +2,7 @@
 
 import { EVENTS } from '../content/events/index.js';
 import { getMagic } from '../content/cards/magic.js';
-import { resolveMonthIndex } from '../content/months/calendar.js';
+import { resolveMonthIndex } from '../content/location-packs/calendar.js';
 
 export const SANDBOX_HUB_KEY = 'SandboxHubScene';
 export const SANDBOX_STORY_KEY = 'SandboxStoryScene';
@@ -51,6 +51,7 @@ const SCENE_KEYS_TO_STOP = [
   'TreasureScene',
   'EventScene',
   'TollroadAftermathScene',
+  'TollroadDetourScene',
   'PauseMenuScene',
   'LocationPickScene',
   SANDBOX_HUB_KEY,
@@ -82,15 +83,36 @@ const STORY_MINIGAMES = Object.freeze({
 });
 
 export function getSandboxStories() {
-  return EVENTS.map((event) => {
-    const via = STORY_MINIGAMES[event.id];
-    const label = event.title || event.id;
+  // Every entry goes through here, including the variants spliced in below, so
+  // a story that opens a minigame is labelled as one no matter which list it
+  // arrived from.
+  const entry = (id, eventId, label) => {
+    const via = STORY_MINIGAMES[eventId];
     return {
-      id: event.id,
+      id,
+      eventId,
       label: via ? `${label} (minigame)` : label,
       minigameChoice: via || null,
     };
-  });
+  };
+
+  const stories = EVENTS.map((event) => entry(event.id, event.id, event.title || event.id));
+
+  // Some stories read differently depending on state the Test Site has to set
+  // up, so they are listed once per state rather than once per event.
+  const armIndex = stories.findIndex((story) => story.id === 'arm_wrestling');
+  if (armIndex >= 0) {
+    stories.splice(armIndex + 1, 0,
+      entry('arm_wrestling_rematch', 'arm_wrestling', 'Arm Wrestling — Rematch'));
+  }
+  const tollIndex = stories.findIndex((story) => story.id === 'toll_collectors');
+  if (tollIndex >= 0) {
+    stories.splice(tollIndex, 1,
+      entry('toll_collectors_intact', 'toll_collectors', 'Toll Collectors — Intact Bridge'),
+      entry('toll_collectors_destroyed', 'toll_collectors', 'Toll Collectors — Destroyed Bridge'),
+    );
+  }
+  return stories;
 }
 
 // The Test Site forces a story regardless of what has been seen, but forcing
@@ -130,15 +152,28 @@ const SANDBOX_STORY_SETUP = {
   // Burn choice needs a Fireball scroll; pin Silkdeep so hatched enemies match.
   silk_cocoon_cache: {
     grant: ['fireball'],
-    monthId: 'silkdeep',
+    locationId: 'silkdeep',
   },
   // Expose the dynamite choice immediately when testing the new Tollroad arc.
   goblin_mine: {
     grant: ['fireball'],
-    monthId: 'tollroad',
+    locationId: 'tollroad',
   },
   royal_bridge: {
-    monthId: 'tollroad',
+    locationId: 'tollroad',
+  },
+  arm_wrestling_rematch: {
+    locationId: 'tollroad',
+    story: { armWrestlingSeen: true, armWrestleWon: true, armWrestleRematchDone: false },
+    grant: ['armWrestleCommonStake', 'armWrestleUncommonStake'],
+  },
+  toll_collectors_intact: {
+    locationId: 'tollroad',
+    story: { bridgeDestroyed: false, goblinMinersAllied: false, royalBridgeSeen: true },
+  },
+  toll_collectors_destroyed: {
+    locationId: 'tollroad',
+    story: { bridgeDestroyed: true, goblinMinersAllied: true, royalBridgeSeen: true },
   },
 };
 
@@ -155,8 +190,8 @@ export function applySandboxStorySetup(gameScene, eventId) {
   if (!setup) return;
 
   if (setup.story) Object.assign(gs.storyRun, setup.story);
-  if (setup.monthId) {
-    gs.calendarMonthIndex = resolveMonthIndex(setup.monthId);
+  if (setup.locationId) {
+    gs.calendarMonthIndex = resolveMonthIndex(setup.locationId);
     gs.pinCalendarMonth = true;
   }
   for (const grant of setup.grant || []) {
@@ -196,6 +231,26 @@ function grantSandboxStoryItem(gameScene, grant) {
       sprite: def?.sprite || 'fireBall',
       damage: def?.damage ?? 15,
     });
+    return;
+  }
+
+  if (grant === 'armWrestleCommonStake') {
+    const stake = gen.createCardData('weapon', gs.currentFloor || 10, false, null, 'common');
+    if (stake) {
+      stake.rarity = 'common';
+      stake.durability = stake.maxDurability || stake.durability || 12;
+      inv.addCard(stake);
+    }
+    return;
+  }
+
+  if (grant === 'armWrestleUncommonStake') {
+    const stake = gen.createCardData('weapon', gs.currentFloor || 10, false, null, 'uncommon');
+    if (stake) {
+      stake.rarity = 'uncommon';
+      stake.durability = stake.maxDurability || stake.durability || 12;
+      inv.addCard(stake);
+    }
     return;
   }
 

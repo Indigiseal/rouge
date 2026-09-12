@@ -13,7 +13,8 @@ Cursor подхватывает краткую версию из `.cursor/rules/
 **Структура рана:** 3 акта × 15 этажей, по локации на акт, выбор из трёх, всего 9
 локаций; true path Tollroad → Brassfair → Starfold. Описание — `docs/MECHANICS.md`
 → Run structure. Выбор в коде: `LocationPickScene` + `src/content/locations/`.
-Паки ростеров пока живут в `src/content/months/`. Карточка true/wrong после босса
+Паки ростеров живут в `src/content/location-packs/`. Полный контракт локации
+собирается в `src/content/locations/rules.js` (Tollroad — эталон). Карточка true/wrong после босса
 ещё не сделана. Между выбором героя и дорогой — деревня: `VillageScene` +
 `src/content/village/`.
 
@@ -50,10 +51,10 @@ Don't: хардкодить статы/цены/XP в scenes; пихать би�
 - Каталоги: `content/cards/{weapons,armor,enemies,bosses,...}.js`
 - Barrel: `content/cards/index.js`
 - Фабрики — единственный способ собрать runtime-карту: `createWeaponCardData`, `createArmorCardData`
-- Враги локации (band×archetype): `content/months/<id>/enemies/*.js` + `assets/`;
+- Враги локации (band×archetype): `content/location-packs/<id>/enemies/*.js` + `assets/`;
   `cards/enemies.js` мержит эти defs + legacy `tiers[]`.
-  Папка `months/` — старое имя каталога; нарративно это локации
-  (`docs/narrative/Locations/`), переименование кода ещё не делали
+  Оркестрация вступления, чекпоинтов и финала: `content/locations/rules.js`.
+  Правило наполнения: `docs/narrative/Concepts/Location Rule.md`.
 
 Оружие (`weapons.js`):
 
@@ -91,7 +92,7 @@ createWeaponCardData    → runtime card
 - Economy: `content/economy/{shop,repair,rest,metaXp}.js`
 - Balance knobs: `content/balance/` + `docs/BALANCE.md`
 - Events: один файл = один default-export → `events/index.js`
-- Event Sequences (any-location, e.g. Music Box) живут в `content/events/`, не в `content/months/<id>/events/`. Пак локации — только для эвентов, привязанных к самой локации.
+- Event Sequences (any-location, e.g. Music Box) живут в `content/events/`, не в `content/location-packs/<id>/events/`. Пак локации — только для эвентов, привязанных к самой локации.
 - Amulets: `content/amulets/` (`currentCatalog.js`, ветка strategy в `strategy.js`).
   Вампиризм пока только `vampireFang`. Контроль (`control.js`) вынут из дропа,
   код оставлен.

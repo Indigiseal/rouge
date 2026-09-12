@@ -12,7 +12,7 @@ tags:
 
 The hero is not a knight, a chosen bloodline, or a city savior by office. They are **a villager** who left home to find the source of the Second Moon's law — the power that pools villains into the nine countries and tries to make calamity ordinary.
 
-Older notes called this settlement [[The City]]. That name still appears in rumor (a "city" under two moons). On the ground it is a village: gates, fields, people who remember the old seasons. From those gates the Near Road still splits three ways — woods, caves, the Mile.
+Older notes called this settlement [[The City]]. That name still appears in rumor (a "city" under two moons). On the ground it is a village: gates, fields, people who remember the old seasons. From those gates the Near Road still splits three ways — briar, the palace of the last feast, or the Mile.
 
 ## Why this villager leaves
 

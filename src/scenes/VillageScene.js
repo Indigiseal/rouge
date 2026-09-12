@@ -8,6 +8,7 @@ import {
 } from '../content/village/index.js';
 import { t } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
+import { openConfirmModal } from '../ui/ConfirmModal.js';
 
 export class VillageScene extends Phaser.Scene {
   constructor() {
@@ -63,10 +64,10 @@ export class VillageScene extends Phaser.Scene {
       wordWrap: { width: 520 },
     }).setOrigin(0.5);
 
-    this.buildBtn = this.add.rectangle(466, 338, 132, 24, 0x3d2418, 0.95)
+    this.buildBtn = this.add.rectangle(315, 338, 140, 24, 0x3d2418, 0.95)
       .setStrokeStyle(1, 0xd4a017)
       .setInteractive({ useHandCursor: true });
-    this.buildLabel = this.add.text(466, 338, t(this, 'ui.village.build'), {
+    this.buildLabel = this.add.text(315, 338, t(this, 'ui.village.build'), {
       fontSize: '11px',
       fill: '#e6edf3',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -78,18 +79,21 @@ export class VillageScene extends Phaser.Scene {
     });
     this.buildBtn.on('pointerout', () => this.buildBtn.setStrokeStyle(1, 0xd4a017));
 
-    this.makeFooterButton(80, t(this, 'ui.village.back'), 0x2c1810, 0x8b6914, () => {
+    this.makeFooterButton(55, t(this, 'ui.village.back'), 0x2c1810, 0x8b6914, () => {
       this.cameras.main.fadeOut(250, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('CharacterSelectScene');
       });
-    });
-    this.makeFooterButton(240, t(this, 'ui.village.leave'), 0x3d2418, 0xd4a017, () => this.leave());
+    }, 90);
+    this.makeFooterButton(155, t(this, 'ui.village.leave'), 0x3d2418, 0xd4a017, () => this.leave(), 90);
 
-    this.makeFooterButton(580, '+25', 0x1f3d2b, 0x4a9e6a, () => {
+    this.makeFooterButton(430, '+25', 0x1f3d2b, 0x4a9e6a, () => {
       this.meta.grantDebugXp(this.characterId, 25);
       this.refresh();
-    });
+    }, 70);
+    this.makeFooterButton(555, t(this, 'ui.village.debugResetMeta'), 0x3d1818, 0xb84a4a, () => {
+      this.confirmResetMetaProgression();
+    }, 150, 8);
 
     this.refresh();
     MusicManager.play(this, 'menu_music', 0.45, 500);
@@ -142,12 +146,12 @@ export class VillageScene extends Phaser.Scene {
     });
   }
 
-  makeFooterButton(x, label, fill, stroke, onClick) {
-    const btn = this.add.rectangle(x, 338, 110, 24, fill, 0.95)
+  makeFooterButton(x, label, fill, stroke, onClick, width = 110, fontSize = 11) {
+    const btn = this.add.rectangle(x, 338, width, 24, fill, 0.95)
       .setStrokeStyle(1, stroke)
       .setInteractive({ useHandCursor: true });
     this.add.text(x, 338, label, {
-      fontSize: '11px',
+      fontSize: `${fontSize}px`,
       fill: '#e6edf3',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5);
@@ -157,6 +161,20 @@ export class VillageScene extends Phaser.Scene {
     });
     btn.on('pointerout', () => btn.setStrokeStyle(1, stroke));
     btn.on('pointerdown', onClick);
+  }
+
+  confirmResetMetaProgression() {
+    openConfirmModal(this, {
+      title: t(this, 'ui.village.resetMetaTitle'),
+      body: t(this, 'ui.village.resetMetaBody'),
+      confirmLabel: t(this, 'ui.options.reset'),
+      cancelLabel: t(this, 'ui.options.cancel'),
+      onConfirm: () => {
+        this.selectedId = null;
+        this.meta.resetProgression();
+        this.refresh();
+      },
+    });
   }
 
   tryBuild() {

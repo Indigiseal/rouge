@@ -15,8 +15,8 @@ import slimyPrison from './slimy_prison.js';
 import quietCrossroads from './quiet_crossroads.js';
 import screamingHead from './screaming_head.js';
 import reliquary from './reliquary.js';
-import { SILKDEEP_EVENTS } from '../months/silkdeep/events/index.js';
-import { ALL_TOLLROAD_EVENTS } from '../months/tollroad/events/index.js';
+import { SILKDEEP_EVENTS } from '../location-packs/silkdeep/events/index.js';
+import { ALL_TOLLROAD_EVENTS } from '../location-packs/tollroad/events/index.js';
 
 export const EVENTS = [
   brokenMusicBox,

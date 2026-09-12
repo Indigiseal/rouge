@@ -19,7 +19,7 @@ A silk-choked chamber of cocoons, littered with abandoned arms. Leave quietly, c
 |---|---|
 | Event id | `silk_cocoon_cache` |
 | Primary location | [[Silkdeep]] |
-| Code | `src/content/months/silkdeep/events/silk_cocoon_cache.js` |
+| Code | `src/content/location-packs/silkdeep/events/silk_cocoon_cache.js` |
 
 ## Notes
 
@@ -27,4 +27,4 @@ Location-gated in `_pickEvent` while the act location is Silkdeep. Once per run 
 
 ## Full copy
 
-In-game narrative text: `docs/event-stories.md` · code: `src/content/months/silkdeep/events/silk_cocoon_cache.js`
+In-game narrative text: `docs/event-stories.md` · code: `src/content/location-packs/silkdeep/events/silk_cocoon_cache.js`

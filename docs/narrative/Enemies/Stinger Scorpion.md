@@ -25,7 +25,7 @@ A cave scorpion that has learned to spend its sting as a bolt. The barb launches
 | Game id | `stingerScorpion` |
 | Status | proposed |
 | Primary location | [[Silkdeep]] |
-| Place | [[Silkdeep#The Silkdeep Caves]] |
+| Place | [[Silkdeep#The Palace of the Last Feast]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -37,6 +37,6 @@ Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 - [[Enemies Index]]
 - [[Silkdeep]]
-- Place: [[Silkdeep#The Silkdeep Caves]]
+- Place: [[Silkdeep#The Palace of the Last Feast]]
 - [[Enemy Power]]
 - [[Locations Index]]

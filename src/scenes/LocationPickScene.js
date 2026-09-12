@@ -1,6 +1,6 @@
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { applyLocationChoice, roadsForAct } from '../content/locations/index.js';
+import { applyLocationChoice, getLocationRule, roadsForAct } from '../content/locations/index.js';
 import { PATH_LOCATIONS } from '../content/locations/catalog.js';
 import {
   LOCATION_DOORS_KEY,
@@ -203,17 +203,39 @@ export class LocationPickScene extends Phaser.Scene {
   leave(locationId) {
     if (this.mode === 'nextAct' && this.gameState) {
       applyLocationChoice(this.gameState, locationId);
+      const act = this.pickAct;
+      const startNode = this.gameState.dungeonMap?.[`act${act}`]?.floors?.[0]?.[0];
+      this.gameState.mapCursor = { act, floor: 0, node: 0 };
+      this.gameState.currentFloor = (act - 1) * 15 + 1;
+      this.gameState.roomType = startNode?.type || 'COMBAT';
+      if (startNode) startNode.visited = true;
       const gameScene = this.scene.get('GameScene');
+      // BossRewardRoom put the shared combat scene into transition mode before
+      // sleeping it. The first room of the new act must start as a normal room,
+      // otherwise its cleared-state exit (including the Brassfair door) stays
+      // suppressed.
+      if (gameScene) gameScene._transitioning = false;
       gameScene?.saveCurrentRun?.();
-      this.scene.start('MapViewScene', { gameState: this.gameState });
+      this.scene.stop('MapViewScene');
+      this.scene.stop();
+      this.scene.wake('GameScene', {
+        roomType: this.gameState.roomType,
+        isNewRoom: true,
+      });
       return;
     }
 
-    this.scene.start('GameScene', {
+    const runData = {
       newGame: true,
       characterId: this.characterId,
       armorerArmorType: this.armorerArmorType,
       locationId,
-    });
+    };
+    const introSceneKey = getLocationRule(locationId)?.introSceneKey;
+    if (introSceneKey) {
+      this.scene.start(introSceneKey, { runData });
+      return;
+    }
+    this.scene.start('GameScene', runData);
   }
 }

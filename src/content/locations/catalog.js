@@ -1,4 +1,4 @@
-// Nine Path locations. Roster packs still live under content/months/<id>/;
+// Nine Path locations. Roster packs still live under content/location-packs/<id>/;
 // this file is the run-structure SoT: which three roads an act offers, which
 // one is true, and which portrait sits on the card back at the pick screen.
 

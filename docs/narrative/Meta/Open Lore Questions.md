@@ -17,9 +17,13 @@ A living list of what is not yet locked in the lore.
 - [ ] Is the Second Moon an artifact, a being, a seal, or a machine?
 - [x] Why does the [[The Waystar|Waystar]] hold this walker? Not a prophesied pick — an ordinary villager who keeps walking; the stone will not release them. See [[The Village]], [[The Waystar]].
 - [x] Does home sense the returns? Yes: the [[The Village|Village]] sees how far the rumor reached; that faith is [[Villager Support]].
-- [ ] Does the Second Moon have a master, a cult, or keepers?
+- [x] Does the Second Moon have a master, a cult, or keepers? The Magus is its
+  active keeper and the earthly deputy of an unknown higher power; the fair and
+  goblin kingdom spread a degraded worship of that power's visible agent.
 - [x] Year completion is not a special narrative beat (Spherefall ≠ unique finale). See [[Design Decisions]].
-- [ ] Who is [[The Magus]]? Motive, face, relation to the sphere. Stub only.
+- [x] Who is [[The Magus]]? Silkdeep's former court magician, recruited by an
+  unknown whisper, prophet and agent of the Second Moon's rise. Face, birth name,
+  and ultimate loyalty remain open.
 
 ## Calendar and run
 
@@ -41,7 +45,8 @@ A living list of what is not yet locked in the lore.
 - [ ] Finalize Starfold's name (working: Starfold / The Inner Sky).
 - [ ] Bind Act 2–3 rosters in code. Duskhold and Brassfair combat packs do not exist yet.
 - [ ] Starfold combat roster (five ordinary + Magus).
-- [ ] Write the Magus as a person (already locked as the named deity).
+- [ ] Finish the Magus as a person: birth name, voice, appearance, relationship
+  to the promised ruler, and the exact later reveal connecting him to Silkdeep.
 
 ## Events
 

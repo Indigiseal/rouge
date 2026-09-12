@@ -204,7 +204,9 @@ export function spearPierceTargetIndices(board, primaryIndex, primaryCard = null
       && card?.revealed
       && (card.data?.type === 'enemy' || card.data?.type === 'boss')
       && (card.data?.health ?? 0) > 0
-      && card.data?.brick?.c === column
+      // A large boss owns the whole far row, so a spear driven through a
+      // summon reaches it regardless of which foreground column was chosen.
+      && (card.data?.brick?.c === column || card.data?.alwaysBackline)
       // Larger r is closer to the player; piercing continues away from them.
       && card.data?.brick?.r < row
     ))
@@ -228,6 +230,7 @@ export function swordCleaveTargetIndices(board, primaryIndex, primaryCard = null
       && card?.revealed
       && (card.data?.type === 'enemy' || card.data?.type === 'boss')
       && (card.data?.health ?? 0) > 0
+      && !card.data?.alwaysBackline
       && card.data?.brick?.r === row
       && Math.abs(card.data?.brick?.c - column) === 1
     ))
@@ -251,6 +254,7 @@ export function axeHeavyCleaveTargetIndices(board, primaryIndex, primaryCard = n
       && card?.revealed
       && (card.data?.type === 'enemy' || card.data?.type === 'boss')
       && (card.data?.health ?? 0) > 0
+      && !card.data?.alwaysBackline
     ));
   const vertical = enemies
     .filter(({ card }) => (
@@ -277,6 +281,7 @@ function spatialCrossTargets(board, primaryIndex, primary, { horizontalOnly = fa
     .map((card, index) => ({ card, index, x: card?.restX ?? card?.sprite?.x, y: card?.restY ?? card?.sprite?.y }))
     .filter(({ card, index, x, y }) => index !== primaryIndex && card?.revealed
       && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+      && !card.data?.alwaysBackline
       && (card.data?.health ?? 0) > 0 && Number.isFinite(x) && Number.isFinite(y));
   const nearest = (items, distance) => items.sort((a, b) => distance(a) - distance(b))[0]?.index;
   const left = nearest(enemies.filter(e => Math.abs(e.y - py) <= 20 && e.x < px), e => px - e.x);

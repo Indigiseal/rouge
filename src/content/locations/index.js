@@ -1,12 +1,18 @@
 import { BOSSES } from '../cards/bosses.js';
 import {
-  MONTHS,
   getMonthDef,
   getMonthDefForFloor,
   getMonthIndexForFloor,
   actOffsetForFloor,
-} from '../months/calendar.js';
+} from '../location-packs/calendar.js';
+import { LOCATION_PACK_LIST, getLocationPack } from '../location-packs/registry.js';
 import { ACT_ROADS, PATH_LOCATIONS, TRUE_PATH } from './catalog.js';
+export {
+  getLocationRule,
+  getLocationNarrativeCheckpoints,
+  pendingLocationCheckpoint,
+  pendingLocationAftermath,
+} from './rules.js';
 
 export { ACT_ROADS, PATH_LOCATIONS, TRUE_PATH };
 
@@ -33,7 +39,7 @@ export function normalizeActLocationIds(ids, fallbackCalendarIndex = 0, opts = {
   const accept = (id) => {
     if (!id) return null;
     if (PATH_LOCATIONS[id]) return id;
-    if (MONTHS.some((m) => m.id === id)) return id;
+    if (getLocationPack(id)) return id;
     return null;
   };
   if (Array.isArray(ids)) {
@@ -44,8 +50,8 @@ export function normalizeActLocationIds(ids, fallbackCalendarIndex = 0, opts = {
   }
   if (opts.legacyFill) {
     for (let i = 0; i < 3; i += 1) {
-      const month = MONTHS[getMonthIndexForFloor(fallbackCalendarIndex, 1 + i * 15)];
-      out[i] = accept(month?.id);
+      const legacyPack = LOCATION_PACK_LIST[getMonthIndexForFloor(fallbackCalendarIndex, 1 + i * 15)];
+      out[i] = accept(legacyPack?.id);
     }
   }
   return out;
@@ -57,22 +63,25 @@ export function getLocationIdForFloor(gameState, floor = gameState?.currentFloor
   }
   const act = actOffsetForFloor(floor);
   const chosen = gameState?.actLocationIds?.[act];
-  if (chosen && (PATH_LOCATIONS[chosen] || MONTHS.some((m) => m.id === chosen))) return chosen;
+  if (chosen && (PATH_LOCATIONS[chosen] || getLocationPack(chosen))) return chosen;
   return getMonthDefForFloor(gameState?.calendarMonthIndex ?? 0, floor)?.id || 'thornwake';
 }
 
-export function getLocationMonthDef(gameState, floor) {
+export function getLocationContent(gameState, floor) {
   const id = getLocationIdForFloor(gameState, floor);
-  return MONTHS.find((m) => m.id === id) || {
+  return getLocationPack(id) || {
     id,
     name: PATH_LOCATIONS[id]?.name || id,
     enemies: null,
   };
 }
 
+/** @deprecated Compatibility alias for older callers. */
+export const getLocationMonthDef = getLocationContent;
+
 export function getLocationDisplayName(gameState, floor) {
   const id = getLocationIdForFloor(gameState, floor);
-  return PATH_LOCATIONS[id]?.name || getLocationMonthDef(gameState, floor).name;
+  return PATH_LOCATIONS[id]?.name || getLocationContent(gameState, floor).name;
 }
 
 /** True when this act still needs a road pick (sandbox pin and tutorial skip). */

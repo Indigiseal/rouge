@@ -10,7 +10,7 @@
 
 import { getEnemyHitAttack } from '../src/content/combat/enemyAttack.js';
 import { CONTROL_HESITATION_CHANCE } from '../src/content/amulets/control.js';
-import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../src/content/months/tollroad/index.js';
+import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../src/content/location-packs/tollroad/index.js';
 
 const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
 

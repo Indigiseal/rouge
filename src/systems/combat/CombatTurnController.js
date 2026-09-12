@@ -5,7 +5,7 @@ import { CONTROL_HESITATION_CHANCE, pickControlTreacheryTarget } from '../../con
 import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
 import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
 import { getEnemy } from '../../content/cards/enemies.js';
-import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/months/tollroad/index.js';
+import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 
 const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
 // Gap between consecutive enemies' attacks. Derived from the sequencer's last
@@ -744,10 +744,12 @@ export class CombatTurnController {
             // including a boss's summons — nothing behind it can be reached.
             // Once the frontline is gone, everything is fair game, bosses and
             // archers alike.
+            const bossHasFrontline = candidates.some(({ card }) => !card.data?.alwaysBackline);
             const blocked = scene.cardSystem?._anyMeleeAlive?.({ includeHidden: true });
-            const reachable = blocked
-                ? candidates.filter(({ card }) => card.data?.role === 'MELEE')
-                : candidates;
+            const reachable = candidates.filter(({ card }) => {
+                if (bossHasFrontline && card.data?.alwaysBackline) return false;
+                return !blocked || card.data?.role === 'MELEE';
+            });
             if (reachable.length === 0) return null;
             return reachable[Math.floor(Math.random() * reachable.length)];
         }

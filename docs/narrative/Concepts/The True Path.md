@@ -19,11 +19,11 @@ Wrong country: you still win the act. The game says so, plainly, then opens the 
 |---|---|---|---|
 | 1 | [[Tollroad]] | Unknown projection, probably [[The Magus]] | The dying [[Goblin King]] whispers, "Magus... you promised..." The dark pendant beneath his gold awakens and reveals an unnamed figure who calls the King a fallen pawn, dismisses his riches as toys, and promises to bring beings able to use the world's hidden treasures. The hero keeps the pendant and can only infer the figure's identity. |
 | 2 | [[Brassfair]] | [[The Ringmaster]] | The dark carnival **sells that deity** as the greatest wonder: tickets, relics, a brass sky. The Ringmaster is priest and con-man. He says the tent is a porch. The house is **inside the sphere**. |
-| 3 | [[Starfold]] | [[The Magus]] | The deity itself. The Inner Sky. End of the true road. |
+| 3 | [[Starfold]] | [[The Magus]] | The visible architect and keeper of the Second Moon: not the ultimate power, but its prophet, deputy, and principal agent. The Inner Sky. End of the true road. |
 
 True expedition: **Tollroad → Brassfair → Starfold**.
 
-The name **Magus** first reaches the player in the Goblin King's dying whisper. The Tollroad pendant then casts an unstable, unnamed projection; the hero can reasonably suspect the two are connected but receives no confirmation or further information. The world already uses the name: goblins tax for it, the fair sells it, and Starfold is the Magus's house.
+The name **Magus** first reaches the player in the Goblin King's dying whisper. The Tollroad pendant then casts an unstable, unnamed projection; the hero can reasonably suspect the two are connected but receives no confirmation or further information. The world already uses the name: goblins tax for its visible emissary, the fair sells him as a god, and Starfold is the Magus's house. Only later does the player learn that he serves something higher still.
 
 ## After the act boss
 

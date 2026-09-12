@@ -143,10 +143,20 @@ function eventTypes() {
     assert.equal(activeAmulets[0].cooldownLeft, 2);
     assert.equal(uiUpdates, 1);
 
+    manager.processPlayerTurn({ kind: 'cardReveal', revealedEnemy: false, hiddenEnemyExists: true });
+    assert.equal(activeAmulets[0].cooldownLeft, 2,
+        'ordinary reveals must not expose a hidden enemy through cooldown movement');
+    assert.equal(uiUpdates, 1);
+
+    manager.processPlayerTurn({ kind: 'cardReveal', revealedEnemy: true, hiddenEnemyExists: true });
+    assert.equal(activeAmulets[0].cooldownLeft, 1,
+        'revealing the hidden enemy itself is a visible combat turn');
+    assert.equal(uiUpdates, 2);
+
     manager.scene.enemiesCleared = true;
     manager.processPlayerTurn();
-    assert.equal(activeAmulets[0].cooldownLeft, 2, 'post-combat cleanup must not reduce cooldowns');
-    assert.equal(uiUpdates, 1);
+    assert.equal(activeAmulets[0].cooldownLeft, 1, 'post-combat cleanup must not reduce cooldowns');
+    assert.equal(uiUpdates, 2);
 }
 
 {

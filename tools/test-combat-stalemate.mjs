@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import { CardSystem } from '../src/systems/CardSystem.js';
 import { BoardCombat, weaponCanDamageEnemy } from '../src/systems/board/BoardCombat.js';
+import { FloorSpawner, ambushRequiresVeteran } from '../src/systems/board/FloorSpawner.js';
 import { CombatTurnController } from '../src/systems/combat/CombatTurnController.js';
 import {
   CHARACTER_IDS,
@@ -35,6 +36,24 @@ const wolf = (revealed = true) => ({
 assert.deepEqual(CHARACTER_IDS, ['rogue']);
 assert.equal(normalizeCharacterId('warrior'), 'rogue');
 assert.deepEqual(resolveArmorSpawnTypes('rogue'), ['leather', 'chain', 'plate']);
+for (const id of ['goblin_mine_sneak', 'goblin_mine_spiders', 'royal_procession']) {
+  assert.equal(ambushRequiresVeteran(id), true, `${id} must guarantee a veteran`);
+}
+assert.equal(ambushRequiresVeteran('toll_collectors'), false);
+{
+  const enemies = [
+    { data: { type: 'enemy', name: 'Goblin', health: 10, maxHealth: 10, attack: 4 } },
+    { data: { type: 'enemy', name: 'Goblin Archer', health: 8, maxHealth: 8, attack: 5 } },
+  ];
+  const cs = {
+    scene: { gameState: { ambushId: 'royal_procession' } },
+    boardCards: enemies,
+    isEnemyType: (type) => type === 'enemy' || type === 'boss',
+  };
+  new FloorSpawner(cs).assignVeterans('COMBAT', 3);
+  assert.equal(enemies.filter(({ data }) => data.enemyTier === 'veteran').length, 1,
+    'a required event ambush gets one veteran even before random veteran floors');
+}
 
 // BoardCombat's functions are bound to the CardSystem facade. Every internal
 // helper called through `this` therefore needs a facade method too; without
@@ -123,16 +142,18 @@ const bossFormationEnemy = (x, y, type = 'enemy') => ({
   data: { type, health: 10 },
 });
 const bossFormation = [
-  bossFormationEnemy(280, 145), // selected summon
-  bossFormationEnemy(220, 145), // summon to the left
-  bossFormationEnemy(340, 145), // summon to the right
-  bossFormationEnemy(300, 80, 'boss'), // boss behind the selected summon
-  bossFormationEnemy(300, 20, 'boss'), // farther target in the same column
+  columnEnemy(1, 2), // selected summon
+  columnEnemy(1, 1), // summon to the left
+  columnEnemy(1, 3), // summon to the right
+  {
+    ...columnEnemy(0, 0),
+    data: { ...columnEnemy(0, 0).data, type: 'boss', alwaysBackline: true },
+  },
 ];
 assert.deepEqual(
   spearPierceTargetIndices(bossFormation, 0),
-  [3, 4],
-  'spear passes through the full boss column behind a summon',
+  [3],
+  'a spear reaches a large far-row boss through any summon column',
 );
 assert.deepEqual(
   swordCleaveTargetIndices(bossFormation, 0),
@@ -141,8 +162,8 @@ assert.deepEqual(
 );
 assert.deepEqual(
   axeHeavyCleaveTargetIndices(bossFormation, 0),
-  { vertical: [3], sides: [1, 2] },
-  'axe cross includes adjacent summons and the boss behind them',
+  { vertical: [], sides: [1, 2] },
+  'axe cross includes adjacent summons but cannot leak into the boss backline',
 );
 
 // --- the detector

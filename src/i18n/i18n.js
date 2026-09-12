@@ -70,6 +70,9 @@ const STRINGS = {
         'ui.village.maxed': 'Maxed',
         'ui.village.need': 'Need {cost}',
         'ui.village.healerTitle': 'A gift from the jeweler',
+        'ui.village.debugResetMeta': 'RESET META',
+        'ui.village.resetMetaTitle': 'Reset meta progression?',
+        'ui.village.resetMetaBody': 'Wipes Support, buildings, and meta stats.\nThe current run and settings are kept.',
         'village.forge.name': 'Forge',
         'village.forge.desc': '+1 weapon damage per rank, any weapon. Five ranks.',
         'village.temple.name': 'Temple',
@@ -579,6 +582,9 @@ const STRINGS = {
         'ui.village.maxed': 'Al maximo',
         'ui.village.need': 'Faltan {cost}',
         'ui.village.healerTitle': 'Un regalo del joyero',
+        'ui.village.debugResetMeta': 'REINICIAR META',
+        'ui.village.resetMetaTitle': '¿Reiniciar la metaprogresión?',
+        'ui.village.resetMetaBody': 'Borra Apoyo, edificios y estadísticas meta.\nLa partida actual y los ajustes se conservan.',
         'village.forge.name': 'Forja',
         'village.forge.desc': '+1 de dano de arma por rango, cualquier arma. Cinco rangos.',
         'village.temple.name': 'Templo',
@@ -1049,6 +1055,9 @@ const STRINGS = {
         'ui.village.maxed': 'Maximum',
         'ui.village.need': 'Il faut {cost}',
         'ui.village.healerTitle': 'Un cadeau du joaillier',
+        'ui.village.debugResetMeta': 'RÉINIT. MÉTA',
+        'ui.village.resetMetaTitle': 'Réinitialiser la métaprogression ?',
+        'ui.village.resetMetaBody': 'Efface le Soutien, les bâtiments et les statistiques méta.\nLa partie actuelle et les réglages sont conservés.',
         'village.forge.name': 'Forge',
         'village.forge.desc': '+1 dégât d’arme par rang, n’importe quelle arme. Cinq rangs.',
         'village.temple.name': 'Temple',
@@ -1232,6 +1241,9 @@ const STRINGS = {
         'ui.village.maxed': 'Максимум',
         'ui.village.need': 'Нужно {cost}',
         'ui.village.healerTitle': 'Дар ювелира',
+        'ui.village.debugResetMeta': 'СБРОС МЕТА-ПРОГРЕССА',
+        'ui.village.resetMetaTitle': 'Сбросить мета-прогресс?',
+        'ui.village.resetMetaBody': 'Удалит поддержку, здания и статистику меты.\nТекущий забег и настройки сохранятся.',
         'village.forge.name': 'Кузня',
         'village.forge.desc': '+1 урона оружия за ранг, любое оружие. Пять рангов.',
         'village.temple.name': 'Храм',
@@ -4018,6 +4030,95 @@ export function normalizeLanguageCode(language) {
         ? lower
         : legacy[lower] || 'en';
 }
+
+Object.assign(STRINGS.en, {
+    'ui.tollroadIntro.title': "The King's Mile",
+    'ui.tollroadIntro.page1': 'You step into a forest clearing. Behind you, the heavy door slams into a crooked wooden frame with a deep, timbered boom. It looks as though a forester\'s cottage ought to stand here, but someone has rubbed away the walls, floor, roof, and everything they held, leaving only the doorway hanging in the air.\n\nThen the door thins into nothing. There will be no going back that way. You set off through the trees.',
+    'ui.tollroadIntro.page2': 'Before long the ground rises beneath your feet. From the hilltop, a broad valley opens below. Roads web every field, and every road narrows through a gate. Little green figures wait beside striped barriers with ledgers, scales, and open palms.\n\nToll boards have been nailed to trees, wells, bridges—even to a scarecrow. Carts stand stripped beside the road while goblins argue over their contents. Above it all, green-and-gold banners mark each stolen roof for the Goblin King.\n\nNothing moves through this valley without paying. The goblins own the roads, and greed appears to be their only law.',
+    'ui.tollroadIntro.goOn': 'Enter the valley',
+});
+
+Object.assign(STRINGS.ru, {
+    'ui.tollroadIntro.title': 'Королевская миля',
+    'ui.tollroadIntro.page1': 'Ты оказываешься посреди лесной поляны. За спиной тяжёлая дверь с гулким стуком захлопывается в немного покосившейся деревянной раме. Кажется, здесь должна стоять избушка лесника, но кто-то словно ластиком стёр стены, пол, крышу и всё её содержимое, оставив лишь дверной проём, висящий в воздухе.\n\nЗатем дверь растворяется вместе с проёмом. Этим путём уже не вернуться. Ты углубляешься в лес.',
+    'ui.tollroadIntro.page2': 'Вскоре дорога выводит тебя на холм, и внизу открывается широкая долина. Поля опутаны дорогами, и каждая дорога сужается у заставы. Возле полосатых шлагбаумов суетятся маленькие зелёные фигуры — со счётными книгами, весами и протянутыми ладонями.\n\nТаблички с пошлинами прибиты к деревьям, колодцам, мостам и даже к пугалу. На обочинах стоят обобранные телеги, пока гоблины ссорятся из-за их содержимого. Над каждой отнятой крышей висит зелёно-золотое знамя Короля гоблинов.\n\nНичто в этой долине не сдвинется с места, не заплатив. Гоблины владеют дорогами, а жадность здесь — единственный закон.',
+    'ui.tollroadIntro.goOn': 'Спуститься в долину',
+});
+
+Object.assign(STRINGS.es, {
+    'ui.tollroadIntro.title': 'La Milla del Rey',
+    'ui.tollroadIntro.page1': 'Apareces en medio de un claro del bosque. A tu espalda, la pesada puerta se cierra contra un marco de madera algo torcido con un golpe profundo. Parece que aquí debería haber una cabaña de guardabosques, pero alguien ha borrado las paredes, el suelo, el tejado y todo cuanto contenían, dejando solo el umbral suspendido en el aire.\n\nEntonces también la puerta se desvanece. Ya no podrás volver por allí. Te adentras entre los árboles.',
+    'ui.tollroadIntro.page2': 'Poco después, el terreno asciende hasta una colina. Desde la cima se abre un amplio valle. Los caminos cubren los campos como una red, y cada uno se estrecha al llegar a una barrera. Pequeñas figuras verdes aguardan junto a los postes rayados con libros de cuentas, balanzas y las palmas extendidas.\n\nHay tablones de peaje clavados en árboles, pozos, puentes e incluso en un espantapájaros. Carros desvalijados descansan junto al camino mientras los goblins se disputan su contenido. Sobre cada tejado robado ondea el estandarte verde y dorado del Rey Goblin.\n\nNada cruza este valle sin pagar. Los goblins son dueños de los caminos, y la codicia parece ser su única ley.',
+    'ui.tollroadIntro.goOn': 'Entrar en el valle',
+});
+
+Object.assign(STRINGS.fr, {
+    'ui.tollroadIntro.title': 'Le Mille du Roi',
+    'ui.tollroadIntro.page1': 'Vous vous retrouvez au milieu d’une clairière. Derrière vous, la lourde porte se referme contre un chambranle de bois un peu de travers dans un grondement sourd. Une cabane de forestier devrait se dresser ici, mais quelqu’un semble en avoir gommé les murs, le sol, le toit et tout ce qu’ils abritaient, ne laissant que cette ouverture suspendue dans les airs.\n\nPuis la porte se dissout à son tour. Impossible de revenir par là. Vous vous enfoncez entre les arbres.',
+    'ui.tollroadIntro.page2': 'Bientôt, le terrain monte jusqu’à une colline. Du sommet, une vaste vallée s’ouvre devant vous. Les routes quadrillent chaque champ et chacune se resserre devant une barrière. De petites silhouettes vertes attendent près des poteaux rayés, registres, balances et paumes ouvertes à la main.\n\nDes écriteaux de péage sont cloués aux arbres, aux puits, aux ponts et même à un épouvantail. Des charrettes dépouillées bordent la route tandis que des gobelins se disputent leur contenu. Au-dessus de chaque toit volé flotte la bannière verte et or du Roi gobelin.\n\nRien ne traverse cette vallée sans payer. Les gobelins possèdent les routes, et l’avidité semble être leur seule loi.',
+    'ui.tollroadIntro.goOn': 'Entrer dans la vallée',
+});
+
+Object.assign(STRINGS.en, {
+    'ui.silkdeepIntro.title': 'The Palace of the Last Feast',
+    'ui.silkdeepIntro.page1': 'You pass through a heavy stone door draped in old webbing—and find yourself walking out of a crypt.\n\nThe small tomb stands alone among dead hedges and weather-worn statues, in the neglected grounds behind a vast palace. The doorway at your back is already dark. It offers no road home.',
+    'ui.silkdeepIntro.page2': 'You walk around the crypt, and the palace reveals itself. Pale silk covers the roofs, bridges the windows, and hangs from the towers in heavy sheets.\n\nThere is enough web here for an army of spiders. Yet the grounds are silent. You do not see a single one.\n\nAcross the abandoned courtyard, the massive doors of the main entrance stand slightly ajar.',
+    'ui.silkdeepIntro.page3': 'The doors are too heavy to move, but the gap between them is just wide enough. You turn sideways and squeeze through.\n\nA great entrance hall opens before you, abandoned beneath layers of web. Two monumental semicircular staircases curve toward the second floor.\n\nSomething rustles in a dark corner. Another corner answers. Above the stairs, small pairs of eyes open in the shadows.',
+    'ui.silkdeepIntro.goOn': 'Enter the palace',
+});
+
+Object.assign(STRINGS.ru, {
+    'ui.silkdeepIntro.title': 'Дворец последнего пира',
+    'ui.silkdeepIntro.page1': 'Ты проходишь через тяжёлую каменную дверь, обвитую старой паутиной, — и обнаруживаешь, что выходишь из склепа.\n\nНебольшая усыпальница стоит среди мёртвых изгородей и истёртых непогодой статуй, на запущенных задворках огромного дворца. Проём за твоей спиной уже погрузился во тьму. Обратного пути он не предлагает.',
+    'ui.silkdeepIntro.page2': 'Ты обходишь склеп, и дворец открывается целиком. Бледный шёлк покрывает крыши, соединяет окна и тяжёлыми полотнами свисает с башен.\n\nЭтой паутины хватило бы на целую армию пауков. Но вокруг стоит тишина. Ни одного из них не видно.\n\nНа другом конце заброшенного двора массивные двери главного входа остались слегка приоткрыты.',
+    'ui.silkdeepIntro.page3': 'Двери слишком тяжелы, чтобы сдвинуть их, но щель между ними достаточно широка. Повернувшись боком, ты протискиваешься внутрь.\n\nПеред тобой открывается огромный главный холл, заброшенный под слоями паутины. Две монументальные полукруглые лестницы изгибаются к верхнему этажу.\n\nВ тёмном углу слышится шорох. Ему отвечает другой. Над лестницами в темноте открываются маленькие пары глаз.',
+    'ui.silkdeepIntro.goOn': 'Войти во дворец',
+});
+
+Object.assign(STRINGS.es, {
+    'ui.silkdeepIntro.title': 'El Palacio del Último Banquete',
+    'ui.silkdeepIntro.page1': 'Cruzas una pesada puerta de piedra cubierta de telarañas antiguas y descubres que estás saliendo de una cripta.\n\nLa pequeña tumba se alza entre setos muertos y estatuas erosionadas, en los jardines abandonados detrás de un palacio inmenso. El umbral a tu espalda ya está oscuro. No ofrece ningún camino de vuelta.',
+    'ui.silkdeepIntro.page2': 'Rodeas la cripta y el palacio aparece ante ti. Seda pálida cubre los tejados, une las ventanas y cuelga de las torres en pesados lienzos.\n\nHay telaraña suficiente para un ejército de arañas. Sin embargo, los jardines están en silencio. No ves ni una sola.\n\nAl otro lado del patio abandonado, las enormes puertas de la entrada principal permanecen entreabiertas.',
+    'ui.silkdeepIntro.page3': 'Las puertas pesan demasiado para moverlas, pero la abertura entre ellas es suficiente. Te pones de lado y pasas.\n\nAnte ti se abre un gran vestíbulo, abandonado bajo capas de telaraña. Dos escaleras semicirculares monumentales ascienden hacia el piso superior.\n\nAlgo cruje en un rincón oscuro. Otro rincón responde. Sobre las escaleras se abren pequeños pares de ojos en las sombras.',
+    'ui.silkdeepIntro.goOn': 'Entrar en el palacio',
+});
+
+Object.assign(STRINGS.fr, {
+    'ui.silkdeepIntro.title': 'Le Palais du Dernier Festin',
+    'ui.silkdeepIntro.page1': 'Vous franchissez une lourde porte de pierre drapée de vieilles toiles et découvrez que vous sortez d’un caveau.\n\nLe petit tombeau se dresse parmi des haies mortes et des statues rongées par le temps, dans les jardins négligés derrière un immense palais. L’ouverture dans votre dos est déjà sombre. Elle n’offre aucun chemin de retour.',
+    'ui.silkdeepIntro.page2': 'Vous contournez le caveau et le palais se révèle. Une soie pâle couvre les toits, relie les fenêtres et pend des tours en lourds rideaux.\n\nIl y a là assez de toile pour une armée d’araignées. Pourtant, les jardins restent silencieux. Vous n’en voyez aucune.\n\nDe l’autre côté de la cour abandonnée, les portes massives de l’entrée principale sont restées entrouvertes.',
+    'ui.silkdeepIntro.page3': 'Les portes sont trop lourdes pour être déplacées, mais l’espace entre elles suffit. Vous vous tournez de côté et vous glissez à l’intérieur.\n\nUn vaste hall s’ouvre devant vous, abandonné sous des couches de toile. Deux escaliers monumentaux en demi-cercle montent vers l’étage.\n\nUn bruit remue dans un coin sombre. Un autre lui répond. Au-dessus des marches, de petites paires d’yeux s’ouvrent dans l’ombre.',
+    'ui.silkdeepIntro.goOn': 'Entrer dans le palais',
+});
+
+Object.assign(STRINGS.en, {
+    'ui.detour.title': 'The Marsh Detour', 'ui.detour.subtitle': 'Three stops stand between you and the King’s road.',
+    'ui.detour.fight': 'Danger {number}', 'ui.detour.merchant': 'Merchant',
+    'ui.detour.exitTitle': 'Beyond the Broken Bridge',
+    'ui.detour.exitBody': 'At last the reeds thin and the ground rises beneath your boots. You climb out of the marsh onto the King’s road—and find yourself on the far side of the ruined bridge.\n\nAcross the gap, the tax collectors’ abandoned barrier is little more than a stripe of color in the distance. Ahead, the road winds toward the Goblin King’s castle. The detour is over.',
+    'ui.detour.return': 'Return to the King’s road',
+});
+Object.assign(STRINGS.es, {
+    'ui.detour.title': 'El desvío del pantano', 'ui.detour.subtitle': 'Tres etapas te separan del camino del Rey.',
+    'ui.detour.fight': 'Peligro {number}', 'ui.detour.merchant': 'Mercader',
+    'ui.detour.exitTitle': 'Más allá del puente derruido',
+    'ui.detour.exitBody': 'Por fin los juncos se dispersan y el terreno se eleva bajo tus botas. Sales del pantano al camino del Rey, al otro lado del puente derruido.\n\nAl otro lado del vacío, la barrera abandonada de los recaudadores apenas es una franja de color. Delante, el camino serpentea hacia el castillo del Rey Goblin. El desvío ha terminado.',
+    'ui.detour.return': 'Volver al camino del Rey',
+});
+Object.assign(STRINGS.fr, {
+    'ui.detour.title': 'Le détour des marais', 'ui.detour.subtitle': 'Trois étapes vous séparent de la route du Roi.',
+    'ui.detour.fight': 'Danger {number}', 'ui.detour.merchant': 'Marchand',
+    'ui.detour.exitTitle': 'Au-delà du pont détruit',
+    'ui.detour.exitBody': 'Enfin, les roseaux s’éclaircissent et le sol remonte sous vos bottes. Vous quittez le marais pour retrouver la route du Roi, de l’autre côté du pont détruit.\n\nAu-delà du gouffre, la barrière abandonnée des collecteurs n’est plus qu’une tache de couleur. Devant vous, la route serpente vers le château du Roi gobelin. Le détour est terminé.',
+    'ui.detour.return': 'Reprendre la route du Roi',
+});
+Object.assign(STRINGS.ru, {
+    'ui.detour.title': 'Обход через болото', 'ui.detour.subtitle': 'Три остановки отделяют тебя от королевской дороги.',
+    'ui.detour.fight': 'Опасность {number}', 'ui.detour.merchant': 'Торговец',
+    'ui.detour.exitTitle': 'По ту сторону моста',
+    'ui.detour.exitBody': 'Наконец камыш редеет, а земля под ногами идёт вверх. Ты выбираешься из болота на королевскую дорогу — по другую сторону разрушенного моста.\n\nЗа провалом брошенный шлагбаум поборников кажется лишь цветной полоской вдали. Впереди дорога вьётся к замку Короля гоблинов. Обход окончен.',
+    'ui.detour.return': 'Вернуться на королевскую дорогу',
+});
 
 export function getLanguageName(code) {
     const normalized = normalizeLanguageCode(code);

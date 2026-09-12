@@ -76,7 +76,7 @@ export class SandboxStoryScene extends Phaser.Scene {
         startX + col * gapX,
         startY + row * gapY,
         story.label,
-        () => this.launchStory(story.id),
+        () => this.launchStory(story.eventId || story.id, story.id),
       );
       this.listView.add([parts.bg, parts.text]);
     });
@@ -196,7 +196,7 @@ export class SandboxStoryScene extends Phaser.Scene {
     return { bg, text };
   }
 
-  launchStory(eventId) {
+  launchStory(eventId, setupId = eventId) {
     MusicManager.stopIfPlaying(this, 'menu_music', 250);
     this.cameras.main.fadeOut(280, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
@@ -204,6 +204,7 @@ export class SandboxStoryScene extends Phaser.Scene {
         sandbox: true,
         sandboxRoom: 'EVENT',
         sandboxEventId: eventId,
+        sandboxStorySetupId: setupId,
       });
     });
   }

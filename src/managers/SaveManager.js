@@ -3,7 +3,7 @@
 import { applyAmuletAtlasPresentation } from '../content/amulets/RelicsOthersAtlas.js';
 import { DEFAULT_WARRIOR_STANCE, WARRIOR_STANCES, normalizeCharacterId } from '../content/characters/CharacterClasses.js';
 import { PLAYER_START_HP } from '../systems/GameState.js';
-import { normalizeMonthIndex } from '../content/months/index.js';
+import { normalizeMonthIndex } from '../content/location-packs/index.js';
 import { normalizeActLocationIds } from '../content/locations/index.js';
 import { emptyVillageBuildings, normalizeVillageBuildings } from '../content/village/index.js';
 import { migrateSharedXp } from './MetaProgressionManager.js';

@@ -27,7 +27,7 @@ Replaces the old draft "Web-Bound Skeleton."
 | Game id | `silkHusk` |
 | Status | proposed |
 | Primary location | [[Silkdeep]] |
-| Place | [[Silkdeep#The Silkdeep Caves]] |
+| Place | [[Silkdeep#The Palace of the Last Feast]] |
 
 Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
@@ -39,6 +39,6 @@ Power: `band(floor) × archetype` — see [[Enemy Power]] and `docs/BALANCE.md`.
 
 - [[Enemies Index]]
 - [[Silkdeep]]
-- Place: [[Silkdeep#The Silkdeep Caves]]
+- Place: [[Silkdeep#The Palace of the Last Feast]]
 - [[Enemy Power]]
 - [[Locations Index]]
