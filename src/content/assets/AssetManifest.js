@@ -32,6 +32,13 @@ export const ASSET_MANIFEST = [
     { key: 'eventsShops', path: 'assets/art/eventsShops80x80.png', type: 'spritesheet', frameWidth: 80, frameHeight: 80 },
     // Arm Wrestling minigame art (human vs ogre locked hands).
     { key: 'armWrestlingHands', path: 'assets/art/armWrestlingHands.png', type: 'image' },
+    // Nest raid minigame. 8 frames of 32x32: frame 0 is the brass cog the
+    // player is digging for, frames 1-7 are the junk buried over it — see
+    // NEST_JUNK_FRAMES in ui/BirdNestMinigame.js.
+    { key: 'nestMiniGame', path: 'assets/art/nestMiniGame.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
+    // The other prize, drawn larger than a junk piece because it is the thing
+    // the whole nest is built around.
+    { key: 'eggMiniGame', path: 'assets/art/eggMiniGame.png', type: 'image' },
     { key: 'musicBoxLockWafers', path: 'assets/art/musicBoxLockWafers.png', type: 'spritesheet', frameWidth: 58, frameHeight: 72 },
     // The movement itself — disc, pinned barrel, comb and gears. Shown on the
     // lock minigame's brief, where the wafers beside it are those same parts.

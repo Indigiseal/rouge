@@ -32,11 +32,6 @@ function circlesOverlap(ax, ay, ar, bx, by, br) {
   return dx * dx + dy * dy <= r * r;
 }
 
-function fillRound(g, x, y, w, h, r, color) {
-  g.fillStyle(color, 1);
-  g.fillRoundedRect(x, y, w, h, r);
-}
-
 function ensureNestTextures(scene) {
   if (!scene?.textures || scene.textures.exists('birdNestBowl')) return;
 
@@ -64,98 +59,6 @@ function ensureNestTextures(scene) {
     }
   });
 
-  make('birdNestEgg', 36, 44, (g) => {
-    g.fillStyle(0x1a120c, 1);
-    g.fillEllipse(18, 23, 34, 42);
-    g.fillStyle(0xe8d8b0, 1);
-    g.fillEllipse(18, 23, 28, 36);
-    g.fillStyle(0xf4ead0, 1);
-    g.fillEllipse(14, 16, 10, 12);
-    g.fillStyle(0xc47a3a, 1);
-    g.fillCircle(12, 22, 2);
-    g.fillCircle(22, 28, 2);
-    g.fillCircle(16, 32, 2);
-  });
-
-  make('birdNestCog', 34, 34, (g) => {
-    g.fillStyle(0x1a120c, 1);
-    g.fillCircle(17, 17, 16);
-    g.fillStyle(0xc9a227, 1);
-    g.fillCircle(17, 17, 14);
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      g.fillCircle(17 + Math.cos(a) * 14, 17 + Math.sin(a) * 14, 4);
-    }
-    g.fillStyle(0xc9a227, 1);
-    g.fillCircle(17, 17, 12);
-    g.fillStyle(0x2a1c10, 1);
-    g.fillCircle(17, 17, 5);
-  });
-
-  make('birdNestTwig', 52, 14, (g) => {
-    g.fillStyle(0x6a4a28, 1);
-    g.fillRoundedRect(0, 4, 52, 6, 2);
-    g.fillStyle(0x8a6a40, 1);
-    g.fillRoundedRect(1, 5, 50, 3, 2);
-  });
-
-  make('birdNestButton', 22, 22, (g) => {
-    g.fillStyle(0x3a2a18, 1);
-    g.fillCircle(11, 11, 10);
-    g.fillStyle(0x8a3020, 1);
-    g.fillCircle(11, 11, 8);
-    g.fillStyle(0xf0d890, 1);
-    g.fillCircle(8, 8, 2);
-    g.fillCircle(14, 8, 2);
-    g.fillCircle(8, 14, 2);
-    g.fillCircle(14, 14, 2);
-  });
-
-  make('birdNestKey', 32, 16, (g) => {
-    g.fillStyle(0xb08a40, 1);
-    g.fillCircle(8, 8, 7);
-    g.fillStyle(0x2a1c10, 1);
-    g.fillCircle(8, 8, 3);
-    g.fillRect(8, 6, 22, 4);
-    g.fillRect(26, 6, 3, 8);
-    g.fillRect(21, 6, 3, 6);
-  });
-
-  make('birdNestShell', 26, 20, (g) => {
-    g.fillStyle(0xd4c4a0, 1);
-    g.fillEllipse(13, 12, 24, 16);
-    g.lineStyle(1, 0x8a7048, 1);
-    g.beginPath();
-    g.moveTo(13, 4);
-    g.lineTo(6, 16);
-    g.moveTo(13, 4);
-    g.lineTo(20, 16);
-    g.strokePath();
-  });
-
-  make('birdNestLeaf', 28, 18, (g) => {
-    g.fillStyle(0x4a7040, 1);
-    g.fillEllipse(14, 9, 26, 14);
-    g.lineStyle(1, 0x2a4820, 1);
-    g.beginPath();
-    g.moveTo(2, 9);
-    g.lineTo(26, 9);
-    g.strokePath();
-  });
-
-  make('birdNestScrap', 24, 18, (g) => {
-    fillRound(g, 1, 3, 22, 12, 2, 0x8a6a30);
-    g.fillStyle(0xd4b060, 1);
-    g.fillRect(3, 5, 18, 3);
-  });
-
-  make('birdNestStone', 18, 16, (g) => {
-    g.fillStyle(0x5a5a58, 1);
-    g.fillEllipse(9, 8, 16, 13);
-    g.fillStyle(0x7a7a78, 1);
-    g.fillEllipse(7, 6, 6, 5);
-  });
-
   make('birdNestShadow', 120, 48, (g) => {
     g.fillStyle(0x000000, 0.55);
     g.fillEllipse(60, 24, 118, 40);
@@ -164,18 +67,30 @@ function ensureNestTextures(scene) {
   });
 }
 
-const JUNK = [
-  { key: 'birdNestTwig', r: 22 },
-  { key: 'birdNestButton', r: 11 },
-  { key: 'birdNestKey', r: 16 },
-  { key: 'birdNestShell', r: 13 },
-  { key: 'birdNestLeaf', r: 14 },
-  { key: 'birdNestScrap', r: 12 },
-  { key: 'birdNestStone', r: 9 },
-  { key: 'birdNestTwig', r: 22 },
-  { key: 'birdNestButton', r: 11 },
-  { key: 'birdNestLeaf', r: 14 },
+// nestMiniGame is 8 frames of 32x32. Frame 0 is the cog — the prize — so the
+// junk is frames 1..7: feather, spectacles, twig bundle, tusk, acorns, grass
+// tuft, mossy stone. The radius is the piece's own silhouette rather than the
+// 32px cell, so a thin feather does not bury the egg the way a twig bundle does.
+const COG_FRAME = 0;
+const NEST_JUNK_FRAMES = [
+  { frame: 1, r: 13 },  // feather
+  { frame: 2, r: 11 },  // spectacles
+  { frame: 3, r: 14 },  // twig bundle
+  { frame: 4, r: 13 },  // tusk
+  { frame: 5, r: 13 },  // acorns
+  { frame: 6, r: 12 },  // grass tuft
+  { frame: 7, r: 10 },  // mossy stone
 ];
+
+// Ten pieces over two prizes, so some frames repeat. Ordered rather than
+// random: the same nest every time is easier to tune than a lucky one.
+const JUNK = [
+  NEST_JUNK_FRAMES[2], NEST_JUNK_FRAMES[0], NEST_JUNK_FRAMES[4],
+  NEST_JUNK_FRAMES[5], NEST_JUNK_FRAMES[1], NEST_JUNK_FRAMES[3],
+  NEST_JUNK_FRAMES[6], NEST_JUNK_FRAMES[2], NEST_JUNK_FRAMES[4],
+  NEST_JUNK_FRAMES[0],
+];
+
 
 /**
  * @param {Phaser.Scene} scene
@@ -332,8 +247,11 @@ export function openBirdNestMinigame(scene, cfg) {
     y: Phaser.Math.Clamp(y, junkTop, junkBot),
   });
 
-  const addPiece = (kind, key, x, y, r, draggable) => {
-    const image = push(scene.add.image(x, y, key));
+  const addPiece = (kind, art, x, y, r, draggable) => {
+    // `art` is a key, or a key plus a frame for anything off nestMiniGame.
+    const image = push(art.frame === undefined
+      ? scene.add.image(x, y, art.key)
+      : scene.add.image(x, y, art.key, art.frame));
     image.setDepth(DEPTH + nextDepth);
     snapOriginToPixelGrid(image);
     const piece = {
@@ -422,18 +340,26 @@ export function openBirdNestMinigame(scene, cfg) {
     }
   };
 
-  addPiece('egg', 'birdNestEgg', cx - (includeCog ? 16 : 0), cy + 22, 16, false);
-  if (includeCog) addPiece('cog', 'birdNestCog', cx + 22, cy + 28, 15, false);
+  // The egg is its own 45x48 image; the cog is frame 0 of the junk sheet. They
+  // sit further apart than the old generated pair, because both are bigger now.
+  addPiece('egg', { key: 'eggMiniGame' }, cx - (includeCog ? 30 : 0), cy + 20, 20, false);
+  if (includeCog) {
+    addPiece('cog', { key: 'nestMiniGame', frame: COG_FRAME }, cx + 34, cy + 30, 15, false);
+  }
 
+  // Two loose rows across the bowl's dark inner floor. The old spots were
+  // tuned for the generated junk, which was much smaller than these 32px
+  // pieces; kept that tight, the nest read as a bare ring around one clump.
   const junkSpots = [
-    [cx - 36, cy + 8], [cx + 10, cy + 6], [cx + 40, cy + 24],
-    [cx - 8, cy + 36], [cx - 48, cy + 30], [cx + 28, cy + 44],
-    [cx - 20, cy + 48], [cx + 4, cy + 18], [cx - 52, cy + 14], [cx + 52, cy + 16],
+    [cx - 58, cy + 6], [cx - 30, cy + 12], [cx - 2, cy + 2],
+    [cx + 24, cy + 10], [cx + 54, cy + 6],
+    [cx - 60, cy + 38], [cx - 32, cy + 42], [cx - 4, cy + 32],
+    [cx + 26, cy + 40], [cx + 56, cy + 32],
   ];
   junkSpots.forEach((spot, i) => {
     const def = JUNK[i % JUNK.length];
     const jitter = clampInNest(spot[0] + rand(-8, 8), spot[1] + rand(-6, 6));
-    addPiece('junk', def.key, jitter.x, jitter.y, def.r, true);
+    addPiece('junk', { key: 'nestMiniGame', frame: def.frame }, jitter.x, jitter.y, def.r, true);
   });
   refreshPrizes();
 
