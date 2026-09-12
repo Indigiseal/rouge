@@ -68,50 +68,141 @@ const NEST_JUNK_FRAMES = [
   { frame: 11, r: 13 },  // river stone
 ];
 
-// Eleven pieces, every frame exactly once. Positions are offsets from the
-// CENTRE OF THE FLOOR, not from the panel, so moving the bowl carries the
-// nest's contents with it.
-//
-// They are deliberate, not jittered. The old spots were nudged randomly at
-// spawn, which was fine while the prizes sat under one heap — with the pieces
-// spread over the whole floor a few pixels of drift is the difference between
-// a buried cog and one sitting in plain sight. These are checked against
-// prizeCovered's own overlap test rather than judged by eye: three pieces over
-// the egg, three over the cog, every piece on the pebbled floor, and no two
-// junk pieces closer than 18px.
-const JUNK_LAYOUT = [
-  // Three lying over the egg and three over the cog — a prize is only a puzzle
-  // while something is on it.
-  { frame: 4,  dx: -26, dy: -16 },
-  { frame: 1,  dx: -40, dy:   4 },
-  { frame: 9,  dx: -12, dy:   9 },
-  { frame: 8,  dx:  34, dy:  -5 },
-  { frame: 7,  dx:  22, dy:  18 },
-  { frame: 3,  dx:  46, dy:  14 },
-  // The rest scattered to the edges so the floor reads as a nest someone has
-  // been hoarding in, rather than one heap in the middle of bare pebbles.
-  { frame: 5,  dx:  -4, dy: -24 },
-  { frame: 10, dx:  26, dy: -24 },
-  { frame: 6,  dx:  60, dy:  -2 },
-  { frame: 11, dx: -58, dy:  -6 },
-  { frame: 2,  dx:  -2, dy:  25 },
-];
-
-// Both prizes, on the same floor-relative footing as the junk.
-const EGG_SPOT = { dx: -26, dy: -3 };
-const COG_SPOT = { dx: 34, dy: 9 };
-
 const junkRadius = (frame) =>
   NEST_JUNK_FRAMES.find((j) => j.frame === frame)?.r || 12;
 
-// Pulls a layout offset back onto the pebbled floor if it strays off it. Every
-// position above is already inside; this is here so that editing one of them,
-// or adding a piece, cannot quietly leave it sitting up on the rim stones.
-function clampToFloor(dx, dy) {
-  const k = Math.hypot(dx / NEST_FLOOR.hx, dy / NEST_FLOOR.hy);
-  if (k <= 1) return { dx, dy };
-  return { dx: Math.round(dx / k), dy: Math.round(dy / k) };
+// --- Laying out a nest ------------------------------------------------------
+// Every raid gets a different nest, but never an unfair one. Scattering eleven
+// pieces at random is easy; the hard part is that a prize is only a puzzle
+// while something is lying on it, and pure random regularly leaves the cog
+// sitting in the open. So the prizes are placed first, cover is dealt onto
+// them deliberately, and only the leftovers are scattered freely.
+
+// Prizes roam most of the floor but keep clear of the rim: three pieces of
+// cover have to fit in a ring around each one, and the egg's art is 45x48, so
+// a prize pressed against the stones would push its own cover off the pebbles.
+const PRIZE_AREA = { hx: 44, hy: 17 };
+// Far enough apart that the egg and the cog never overlap each other.
+const PRIZE_GAP = 36;
+// Cover sits this far from a prize's centre. The ceiling is what matters: the
+// loosest piece (r 11) covers a prize out to 18px by prizeCovered's own test,
+// so 15 keeps every frame comfortably inside "buried" whichever one is dealt.
+const COVER_MIN = 8;
+const COVER_MAX = 15;
+const COVERS_PER_PRIZE = 3;
+// Junk pieces this close read as a stack rather than a scatter.
+const MIN_JUNK_SEP = 17;
+const PLAN_ATTEMPTS = 80;
+
+function insideFloor(dx, dy) {
+  const x = dx / NEST_FLOOR.hx;
+  const y = dy / NEST_FLOOR.hy;
+  return x * x + y * y <= 1;
 }
+
+function randomInEllipse(hx, hy) {
+  // sqrt on the radius, or points bunch towards the centre.
+  const a = rand(0, Math.PI * 2);
+  const r = Math.sqrt(Math.random());
+  // Rounded here, at the point of creation, so that every rule below is
+  // checked against the whole-pixel position the piece will actually take.
+  // Rounding afterwards let a piece that passed cleanly land a pixel over the
+  // rim, or a hair inside its neighbour.
+  return { dx: Math.round(r * hx * Math.cos(a)), dy: Math.round(r * hy * Math.sin(a)) };
+}
+
+function shuffled(list) {
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function farEnough(placed, dx, dy) {
+  return placed.every((p) => Math.hypot(p.dx - dx, p.dy - dy) >= MIN_JUNK_SEP);
+}
+
+/**
+ * One candidate nest, or null if this roll painted itself into a corner.
+ * Cheap enough to simply throw away and roll again.
+ */
+function tryPlanNest(includeCog) {
+  const egg = randomInEllipse(PRIZE_AREA.hx, PRIZE_AREA.hy);
+  let cog = null;
+  if (includeCog) {
+    for (let i = 0; i < 30; i++) {
+      const candidate = randomInEllipse(PRIZE_AREA.hx, PRIZE_AREA.hy);
+      if (Math.hypot(candidate.dx - egg.dx, candidate.dy - egg.dy) >= PRIZE_GAP) {
+        cog = candidate;
+        break;
+      }
+    }
+    if (!cog) return null;
+  }
+
+  const frames = shuffled(NEST_JUNK_FRAMES.map((j) => j.frame));
+  const junk = [];
+
+  // Cover, dealt around each prize at thirds of a circle so three pieces can
+  // ring it without stacking on each other.
+  for (const prize of [egg, cog]) {
+    if (!prize) continue;
+    const base = rand(0, Math.PI * 2);
+    for (let k = 0; k < COVERS_PER_PRIZE; k++) {
+      const angle = base + (k * Math.PI * 2) / COVERS_PER_PRIZE + rand(-0.4, 0.4);
+      const reach = rand(COVER_MIN, COVER_MAX);
+      const dx = Math.round(prize.dx + Math.cos(angle) * reach);
+      const dy = Math.round(prize.dy + Math.sin(angle) * reach);
+      if (!insideFloor(dx, dy) || !farEnough(junk, dx, dy)) return null;
+      junk.push({ frame: frames[junk.length], dx, dy });
+    }
+  }
+
+  // Everything left over goes wherever it fits.
+  while (junk.length < frames.length) {
+    let placed = false;
+    for (let i = 0; i < 60 && !placed; i++) {
+      const { dx, dy } = randomInEllipse(NEST_FLOOR.hx, NEST_FLOOR.hy);
+      // Re-checked rather than trusted: randomInEllipse rounds to whole
+      // pixels, which can carry a point that was inside the floor a pixel back
+      // over the rim.
+      if (!insideFloor(dx, dy) || !farEnough(junk, dx, dy)) continue;
+      junk.push({ frame: frames[junk.length], dx, dy });
+      placed = true;
+    }
+    if (!placed) return null;
+  }
+
+  // Everything is already on whole pixels — see randomInEllipse.
+  return { egg, cog, junk };
+}
+
+/**
+ * A nest, guaranteed. Rolls until one satisfies every rule; falls back to a
+ * hand-checked layout on the vanishingly unlikely chance that none does, so a
+ * bad run of dice can never hand the player an empty or unfair bowl.
+ */
+export function planNestLayout(includeCog = true) {
+  for (let i = 0; i < PLAN_ATTEMPTS; i++) {
+    const plan = tryPlanNest(includeCog);
+    if (plan) return plan;
+  }
+  return {
+    egg: { dx: -26, dy: -3 },
+    cog: includeCog ? { dx: 34, dy: 9 } : null,
+    junk: [
+      { frame: 4, dx: -26, dy: -16 }, { frame: 1, dx: -40, dy: 4 },
+      { frame: 9, dx: -12, dy: 9 }, { frame: 8, dx: 34, dy: -5 },
+      { frame: 7, dx: 22, dy: 18 }, { frame: 3, dx: 46, dy: 14 },
+      { frame: 5, dx: -4, dy: -24 }, { frame: 10, dx: 26, dy: -24 },
+      { frame: 6, dx: 60, dy: -2 }, { frame: 11, dx: -58, dy: -6 },
+      { frame: 2, dx: -2, dy: 25 },
+    ],
+  };
+}
+
 
 
 /**
@@ -359,43 +450,36 @@ export function openBirdNestMinigame(scene, cfg) {
     }
   };
 
+  // A fresh nest every raid. The prizes go down first so the junk that follows
+  // is drawn — and stacked in prizeCovered's depth test — on top of them.
+  const layout = planNestLayout(includeCog);
+
   // The egg is its own 45x48 image; the cog is frame 0 of the junk sheet.
-  // With no cog to share the floor with, the egg takes the middle.
   addPiece(
     'egg',
     { key: 'eggMiniGame' },
-    floorX + (includeCog ? EGG_SPOT.dx : 0),
-    floorY + (includeCog ? EGG_SPOT.dy : 0),
+    floorX + layout.egg.dx,
+    floorY + layout.egg.dy,
     20,
     false,
   );
-  if (includeCog) {
+  if (layout.cog) {
     addPiece(
       'cog',
       { key: 'nestMiniGame', frame: COG_FRAME },
-      floorX + COG_SPOT.dx,
-      floorY + COG_SPOT.dy,
+      floorX + layout.cog.dx,
+      floorY + layout.cog.dy,
       15,
       false,
     );
   }
 
-  // Two loose rows across the bowl's dark inner floor. The old spots were
-  // tuned for the generated junk, which was much smaller than these 32px
-  // pieces; kept that tight, the nest read as a bare ring around one clump.
-  //
-  // Spreading them is not free, though: the prizes are only a puzzle while
-  // something is lying on them. These positions put two pieces over the egg
-  // and three over the cog — checked against prizeCovered's own overlap test,
-  // not by eye — while leaving 19px between the nearest pair of junk pieces so
-  // the nest still reads as scattered rather than piled.
-  JUNK_LAYOUT.forEach((spot) => {
-    const { dx, dy } = clampToFloor(spot.dx, spot.dy);
+  layout.junk.forEach((spot) => {
     addPiece(
       'junk',
       { key: 'nestMiniGame', frame: spot.frame },
-      floorX + dx,
-      floorY + dy,
+      floorX + spot.dx,
+      floorY + spot.dy,
       junkRadius(spot.frame),
       true,
     );
