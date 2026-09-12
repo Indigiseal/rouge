@@ -5,6 +5,11 @@ import {
     seatOfCard,
 } from '../../content/amulets/strategy.js';
 import { cameraWorldSize } from '../../config/renderScale.js';
+import {
+    BOARD_PANEL_KEY,
+    BOARD_PANEL_SLICE,
+    createNineSlicePanel,
+} from '../../ui/NineSlicePanel.js';
 
 export class BoardLayout {
     constructor(cs) {
@@ -349,6 +354,12 @@ function clearBoard() {
   this.boardCards = [];
 }
 
+// Breathing room between the outermost card edge and the inside of the board's
+// frame. The old fixed-size board triggered its side wings at 8px of clearance,
+// so anything at or above that reads as "the cards fit".
+const BOARD_CARD_MARGIN_X = 16;
+const BOARD_CARD_MARGIN_Y = 14;
+
 function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamingBoard') {
   this.clearFloorBoardPanel();
   if (!this.scene.textures.exists(textureKey)) return;
@@ -366,15 +377,51 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
   // supposed to be under. Taya's call, off the built screen.
   const y = Math.min(camH - 122, ((minY + maxY) / 2) + 8) - BOARD_PANEL_LIFT;
 
-  const panel = this.scene.add.image(x, animate ? y + BOARD_ENTRANCE_DROP : y, textureKey);
+  // The board grows to the formation standing on it rather than the formation
+  // being squeezed into a fixed plank.
+  //
+  // Measured out from the PANEL's centre, not the cluster's. The two are not
+  // the same point — x sits 10px right of the cards to clear the combat log,
+  // and y can be pushed up by the camH clamp above — so a width of
+  // "cluster + margin on each side" would quietly spend 10px of the left
+  // margin and leave that edge tighter than asked. Taking the furthest reach
+  // from the centre and doubling it gives the tighter side the full margin.
+  //
+  // The authored size is the floor, never the target: an ordinary floor still
+  // gets exactly the board that was drawn, and only a formation that would
+  // otherwise overhang the edge makes it bigger. The viewport is the ceiling.
+  const src = this.scene.textures.get(textureKey).getSourceImage();
+  const nativeW = src?.width || 366;
+  const nativeH = src?.height || 304;
+  const cardScale = place?.cardScale || 1;
+  const halfCardW = ((this.constructor.CARD_ART?.width || 53) * cardScale) / 2;
+  const halfCardH = ((this.constructor.CARD_ART?.height || 70) * cardScale) / 2;
+  const reachX = Math.max(x - (minX - halfCardW), (maxX + halfCardW) - x);
+  const reachY = Math.max(y - (minY - halfCardH), (maxY + halfCardH) - y);
+  const panelW = Math.min(camW, Math.max(nativeW, (reachX + BOARD_CARD_MARGIN_X) * 2));
+  const panelH = Math.min(camH, Math.max(nativeH, (reachY + BOARD_CARD_MARGIN_Y) * 2));
+
+  // Only gamingBoard has measured slice insets. Every other backdrop (the shop
+  // and station planks) keeps the plain image it has always used — they frame
+  // fixed layouts and have nothing to grow for.
+  let panel = null;
+  if (textureKey === BOARD_PANEL_KEY && (panelW > nativeW || panelH > nativeH)) {
+    panel = createNineSlicePanel(this.scene, panelW, panelH, {
+      key: textureKey,
+      slice: BOARD_PANEL_SLICE,
+    });
+  }
+  if (!panel) panel = this.scene.add.image(0, 0, textureKey);
+  panel.x = x;
+  panel.y = animate ? y + BOARD_ENTRANCE_DROP : y;
   panel.setDepth(0);
   panel.setData('restY', y);
   this.floorBoardPanel = panel;
 
-  // Preserve native card scale. If an unusual formation reaches outside the
-  // main board art, extend the backdrop under it instead of shrinking cards.
-  const halfCardW = (this.constructor.CARD_ART?.width || 53) / 2;
-  const halfPanelW = (panel.displayWidth || panel.width || 366) / 2;
+  // Preserve native card scale. A formation wide enough to reach past even the
+  // grown board — which now means past the viewport — still gets the backdrop
+  // extended under it rather than the cards shrunk.
+  const halfPanelW = (panel.displayWidth || panel.width || nativeW) / 2;
   if (minX - halfCardW < x - halfPanelW + 8) {
     this.createSideExtraPanel('left', { animate, delayMs: 120 });
   }

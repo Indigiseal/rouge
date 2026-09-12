@@ -129,6 +129,68 @@ export function createTooltipPanel(scene, width, height, opts = {}) {
     return scene.add.container(0, 0, pieces);
 }
 
+// The gaming board, sliced so it can grow with the formation standing on it.
+// Measured off gamingBoard.png (366x304): rows 181-287 are 107 byte-identical
+// rows and cols 194-238 are 45 byte-identical columns, so those two bands are
+// the ones that repeat. Everything outside them — the branch ornaments over the
+// top corners and the bottom lip — rides in the caps at its authored size.
+//
+// The bands are off-centre (the left cap is 194px against the right's 127) and
+// that is fine: they are flat fill, so the seam lands where there is no drawn
+// detail to interrupt. The numbers must keep summing to the source dimensions.
+export const BOARD_PANEL_KEY = 'gamingBoard';
+export const BOARD_PANEL_SLICE = { left: 194, right: 127, top: 181, bottom: 16 };
+
+/**
+ * Nine-slice panel centred on its own origin, sized to `width` x `height`.
+ *
+ * Unlike createTooltipPanel this anchors at the centre, because the things that
+ * want it (the board) are positioned by their middle. Returns null rather than
+ * a fallback shape when it cannot build — the caller already has a plain image
+ * to fall back to, and a stand-in rectangle behind the cards would read as a
+ * bug rather than as degraded art.
+ */
+export function createNineSlicePanel(scene, width, height, opts = {}) {
+    const { key, slice } = opts;
+    if (!scene?.add?.tileSprite || !key || !slice) return null;
+
+    // Even dimensions only: the pieces are laid out from -w/2, and an odd size
+    // would put every one of them on a half pixel.
+    const w = Math.ceil(width / 2) * 2;
+    const h = Math.ceil(height / 2) * 2;
+    if (w < slice.left + slice.right + 1) return null;
+    if (h < slice.top + slice.bottom + 1) return null;
+    if (!ensureFrames(scene, key, slice)) return null;
+
+    const p = framePrefix(key);
+    const ws = [slice.left, w - slice.left - slice.right, slice.right];
+    const hs = [slice.top, h - slice.top - slice.bottom, slice.bottom];
+    const xs = [-w / 2, -w / 2 + ws[0], w / 2 - ws[2]];
+    const ys = [-h / 2, -h / 2 + hs[0], h / 2 - hs[2]];
+
+    const pieces = PIECES.map((name, i) => {
+        const col = i % 3;
+        const row = Math.floor(i / 3);
+        const frame = `${p}${name}`;
+        // Corners keep their exact pixels; edges and centre repeat theirs.
+        // Tiling rather than stretching is the house habit (see the note at the
+        // top of this file) and costs nothing here, because both bands are a
+        // single repeated row/column of flat colour either way.
+        if (col !== 1 && row !== 1) {
+            return scene.add.image(xs[col], ys[row], key, frame).setOrigin(0, 0);
+        }
+        return scene.add
+            .tileSprite(xs[col], ys[row], ws[col], hs[row], key, frame)
+            .setOrigin(0, 0);
+    });
+
+    const container = scene.add.container(0, 0, pieces);
+    // Without this the container reports zero size and callers reading
+    // displayWidth (the board's overflow check) would size their wings to it.
+    container.setSize(w, h);
+    return container;
+}
+
 export const CORNER_SELECT_KEY = 'cornerSelect';
 
 /**
