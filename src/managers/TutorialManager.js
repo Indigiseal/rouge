@@ -91,6 +91,9 @@ export class TutorialManager {
     hasUncommonSword() {
         return (this.inv?.slots || []).some(s => s && s.weaponType === 'sword' && s.rarity === 'uncommon');
     }
+    wearingTutorialArmor() {
+        return this.scene.gameState?.equippedArmor?.tutorialTag === 'armor';
+    }
     hasLightningGemSocketed() {
         return (this.inv?.slots || []).some(s => s && s.weaponType === 'sword' && s.gemEffect === 'lightning');
     }
@@ -469,6 +472,30 @@ export class TutorialManager {
                 hintTarget: () => avatar(),
                 eventKey: 'inventoryRemoved:potion',
                 done: () => this.invSlot('potion') < 0,
+            },
+            // Armor, in three steps: found on the board, carried in the bag, worn
+            // from the bag. It follows the potion because both are "things you
+            // put on yourself", and the drop that equips it is the same gesture
+            // that just drank the potion, aimed at the armor slot instead.
+            {
+                textKey: 'ui.tutorial.flipArmor',
+                target: () => this.boardSprite('armor'),
+                eventKey: 'revealed:armor',
+                done: () => this.boardRevealed('armor'),
+            },
+            {
+                textKey: 'ui.tutorial.takeArmor',
+                target: () => this.boardSprite('armor'),
+                eventKey: 'inventory:armor',
+                done: () => this.invSlot('armor') >= 0,
+            },
+            {
+                textKey: 'ui.tutorial.wearArmor',
+                target: () => this.invSprite('armor'),
+                hintTarget: () => this.scene.armorPanel,
+                // Dropping on the portrait equips it too, same as in a run. The
+                // lesson points at the slot; it does not forbid the other way.
+                done: () => this.wearingTutorialArmor(),
             },
             {
                 textKey: 'ui.tutorial.flipCoin',

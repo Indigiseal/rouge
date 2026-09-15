@@ -537,6 +537,11 @@ function spawnTutorialCards() {
   const food = this.cardDataGenerator.createCardData('food', cf);   food.tutorialTag = 'food';
   const potion = this.cardDataGenerator.createCardData('potion', cf); potion.tutorialTag = 'potion';
   const coin = this.cardDataGenerator.createCardData('coin', cf);   coin.tutorialTag = 'coin';
+  // Generated for the hero actually playing, so the lesson hands over the
+  // armor type they will find in a real run (plate, or leather for the classes
+  // that dodge). Floor 1 always has a common of either.
+  const armor = this.cardDataGenerator.createCardData('armor', cf, false, this.scene.gameState);
+  if (armor) armor.tutorialTag = 'armor';
   const lightningGem = { ...looseGemCard('lightning'), tutorialTag: 'lightningGem' };
   const mkLightningTarget = (tag, enemyType, role) => {
     const enemy = this.cardDataGenerator.createTieredEnemy(enemyType, cf);
@@ -552,8 +557,10 @@ function spawnTutorialCards() {
     return enemy;
   };
 
-  // 8-cell compact cluster (rows: back r=0 → front larger r).
-  const cells = this.buildCompactBrickCluster(12);
+  // One cell per card (rows: back r=0 → front larger r). Sized from the deck
+  // rather than written down, so adding a lesson card cannot leave it with
+  // nowhere to land.
+  const cells = this.buildCompactBrickCluster(armor ? 13 : 12);
   const place = this.computePlacement(cells);
   this.createFloorBoardPanel(cells, place, true);
   this._boardCells = cells;
@@ -573,11 +580,11 @@ function spawnTutorialCards() {
   deck[takeFrom(frontIdx.length > 1 ? frontIdx : cells.map((_, i) => i))] = mkMelee('guard');
   // Fill the remaining slots with the item deck.
   const items = [
-    mkSword('sword1'), food, mkSword('sword2'), potion, coin, lightningGem,
+    mkSword('sword1'), food, mkSword('sword2'), potion, armor, coin, lightningGem,
     mkLightningTarget('lightningTarget1', 'skeleton', 'MELEE'),
     mkLightningTarget('lightningTarget2', 'skeleton', 'MELEE'),
     mkLightningTarget('lightningTarget3', 'goblin_archer', 'RANGED')
-  ];
+  ].filter(Boolean);
   for (let i = 0; i < cells.length && items.length; i++) {
     if (!deck[i]) deck[i] = items.shift();
   }
