@@ -44,6 +44,7 @@ export class BoardCardFx {
         this.playKillLootPickup = playKillLootPickup.bind(cs);
         this.playBossDeathEffect = playBossDeathEffect.bind(cs);
         this.playCardDisappearEffect = playCardDisappearEffect.bind(cs);
+        this.playCardBreakEffect = playCardBreakEffect.bind(cs);
         this.playMergeEffect = playMergeEffect.bind(cs);
         this.mimicTreasureExplosion = mimicTreasureExplosion.bind(cs);
         this.mimicEscape = mimicEscape.bind(cs);
@@ -1019,12 +1020,14 @@ function playBossDeathEffect(sprite) {
 }
 
 function playCardDisappearEffect(cardSprite, options = {}) {
-    if (!cardSprite || !this.scene.textures?.exists?.('cardDisappearSheet')) return;
+    const sheetKey = options.sheetKey ?? 'cardDisappearSheet';
+    const animKey = options.animKey ?? 'card_disappear_anim';
+    if (!cardSprite || !this.scene.textures?.exists?.(sheetKey)) return;
     const x = cardSprite.x;
     const y = cardSprite.y;
     const depth = options.depth ?? ((cardSprite.depth || 0) + 5);
     const lift = options.lift ?? 4;
-    const liftDuration = 220;
+    const liftDuration = options.liftDuration ?? 220;
     // Short beat where the card hovers (lifted) before the dissolve plays.
     const holdDuration = options.hold ?? 100;
 
@@ -1041,7 +1044,7 @@ function playCardDisappearEffect(cardSprite, options = {}) {
         this.scene.tweens.add({ targets: ghost, y: y - lift, duration: liftDuration, ease: 'Sine.easeOut' });
     }
 
-    const fx = snapOriginToPixelGrid(this.scene.add.sprite(x, y, 'cardDisappearSheet', 0));
+    const fx = snapOriginToPixelGrid(this.scene.add.sprite(x, y, sheetKey, 0));
     fx.setDepth(depth + 1);
     this.scene.tweens.add({ targets: fx, y: y - lift, duration: liftDuration, ease: 'Sine.easeOut' });
 
@@ -1056,8 +1059,8 @@ function playCardDisappearEffect(cardSprite, options = {}) {
     this.scene.time.delayedCall(holdDuration, () => {
         if (!fx.active) return;
         if (ghost && ghost.active) ghost.destroy();
-        if (this.scene.anims.exists('card_disappear_anim')) {
-            fx.play('card_disappear_anim');
+        if (this.scene.anims.exists(animKey)) {
+            fx.play(animKey);
             fx.once('animationcomplete', cleanup);
         } else {
             cleanup();
@@ -1066,6 +1069,33 @@ function playCardDisappearEffect(cardSprite, options = {}) {
     // Safety net in case the animation event is missed (e.g. anim missing).
     this.scene.time.delayedCall(holdDuration + 1000, cleanup);
     return fx;
+}
+
+// A weapon, armor or thorns card that spent its last pip. The enemy death,
+// in orange, with a rise the eye can actually catch: an enemy lifts 4px and
+// dissolves almost at once, which on a card the player was holding reads as it
+// simply vanishing. This one climbs 12px and finishes climbing before it burns.
+//
+// Drawn high by default. A weapon breaks where it was dropped — on top of the
+// enemy it hit, which is often dying in the same instant — and at the card's
+// own depth the two dissolves stacked into one.
+const CARD_BREAK_LIFT = 12;
+const CARD_BREAK_RISE_MS = 260;
+const CARD_BREAK_DEPTH = 1150;
+
+function playCardBreakEffect(cardSprite, options = {}) {
+    const hasBreakSheet = this.scene.textures?.exists?.('cardBreakSheet');
+    return this.playCardDisappearEffect(cardSprite, {
+        // Falls back to the purple dissolve rather than to nothing if the
+        // orange sheet is missing.
+        sheetKey: hasBreakSheet ? 'cardBreakSheet' : 'cardDisappearSheet',
+        animKey: hasBreakSheet ? 'card_break_anim' : 'card_disappear_anim',
+        lift: CARD_BREAK_LIFT,
+        liftDuration: CARD_BREAK_RISE_MS,
+        hold: CARD_BREAK_RISE_MS,
+        depth: CARD_BREAK_DEPTH,
+        ...options,
+    });
 }
 
 function playMergeEffect(x, y, isLegendary = false, options = {}) {

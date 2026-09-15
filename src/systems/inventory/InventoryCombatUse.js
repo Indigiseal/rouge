@@ -864,8 +864,8 @@ export const InventoryCombatUse = {
         }, 0xff0000);
         this.scene.grantCardSpentRelicBonus?.(weapon, cardSprite.x, cardSprite.y);
         
-        // Dissolve flourish on the spent weapon card before it's removed.
-        this.scene.cardSystem?.playCardDisappearEffect?.(cardSprite);
+        // The spent weapon rises and burns out before it's removed.
+        this.scene.cardSystem?.playCardBreakEffect?.(cardSprite);
 
         // Clean up ALL sprites properly
         this.cleanupCardSprites(slotIndex, cardSprite);

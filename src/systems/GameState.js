@@ -200,6 +200,11 @@ export class GameState {
             CombatSequencer.floatingText(this.scene, 'break',
                 this.scene.playerAvatar.x, this.scene.playerAvatar.y + 20, `${this.equippedArmor.name} broke!`, 0xffa500);
             this.scene.grantCardSpentRelicBonus?.(this.equippedArmor, this.scene.playerAvatar.x, this.scene.playerAvatar.y);
+            // Armor used to vanish outright: updateUI rebuilds the armor slot and
+            // the worn card is simply not redrawn. The effect runs on a clone, so
+            // it survives that rebuild destroying the real sprite.
+            const wornSprite = this.scene.armorPanelEquippedSprite;
+            if (wornSprite?.active) this.scene.cardSystem?.playCardBreakEffect?.(wornSprite);
             this.equippedArmor = null;
             this.scene.updateUI();
         }

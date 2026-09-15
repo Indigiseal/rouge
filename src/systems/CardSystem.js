@@ -717,6 +717,7 @@ export class CardSystem {
     playKillLootPickup(...args) { return this.fx.playKillLootPickup(...args); }
     playBossDeathEffect(...args) { return this.fx.playBossDeathEffect(...args); }
     playCardDisappearEffect(...args) { return this.fx.playCardDisappearEffect(...args); }
+    playCardBreakEffect(...args) { return this.fx.playCardBreakEffect(...args); }
     playMergeEffect(...args) { return this.fx.playMergeEffect(...args); }
     mimicTreasureExplosion(...args) { return this.fx.mimicTreasureExplosion(...args); }
     mimicEscape(...args) { return this.fx.mimicEscape(...args); }

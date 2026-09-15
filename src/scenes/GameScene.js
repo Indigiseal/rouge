@@ -422,6 +422,14 @@ export class GameScene extends Phaser.Scene {
             frameRate: 22,
             repeat: 0
         });
+        // Its orange twin for destroyed items, at the same speed so the two
+        // read as one family of effect.
+        if (this.textures.exists('cardBreakSheet') && !this.anims.exists('card_break_anim')) this.anims.create({
+            key: 'card_break_anim',
+            frames: this.anims.generateFrameNumbers('cardBreakSheet', { start: 0, end: 5 }),
+            frameRate: 22,
+            repeat: 0
+        });
 
         // Card merge flicker — played on top of the merged card. 2 frames, looped
         // once so the flicker plays twice (repeat: 1). Legendary merges use a

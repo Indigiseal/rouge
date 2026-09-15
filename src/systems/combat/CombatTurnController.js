@@ -624,6 +624,10 @@ export class CombatTurnController {
         if (thorns.item.durability <= 0) {
             CombatSequencer.floatingText(scene, 'break', scene.playerAvatar.x, scene.playerAvatar.y + 20, 'Thorns broke!', 0x9dff7a);
             scene.grantCardSpentRelicBonus(thorns.item, scene.playerAvatar.x, scene.playerAvatar.y);
+            // Same destroyed-card effect as a weapon or armor, taken from the bag
+            // sprite before removeCard tears it down.
+            const thornsSprite = scene.inventorySystem?.slotSprites?.[thorns.index]?.card;
+            if (thornsSprite?.active) scene.cardSystem?.playCardBreakEffect?.(thornsSprite);
             if (scene.inventorySystem) {
                 scene.inventorySystem.removeCard(thorns.index);
             } else if (scene.gameState.inventory) {
