@@ -422,8 +422,7 @@ export class GameScene extends Phaser.Scene {
             frameRate: 22,
             repeat: 0
         });
-        // Its orange twin for destroyed items, at the same speed so the two
-        // read as one family of effect.
+        // The player's-card dissolve, at the enemy one's speed.
         if (this.textures.exists('cardBreakSheet') && !this.anims.exists('card_break_anim')) this.anims.create({
             key: 'card_break_anim',
             frames: this.anims.generateFrameNumbers('cardBreakSheet', { start: 0, end: 5 }),
@@ -593,6 +592,23 @@ export class GameScene extends Phaser.Scene {
 
     stopBossMusic() {
         MusicManager.stopIfPlaying(this, 'boss_music', 600);
+    }
+
+    // The tutorial's own exit. showNextFloorButton stays shut in tutorial mode
+    // because clearing the rigged board is not the end of the lesson; the door
+    // opens only when the step that teaches it asks, and floorCleared turns the
+    // click into that step's progress instead of an actual departure.
+    showTutorialExit() {
+        if (!this.tutorialMode || !this.nextFloorButton) return;
+        this.nextFloorButton
+            .setVisible(true)
+            .setActive(true)
+            .setAlpha(1)
+            .setScale(1)
+            .setInteractive({ useHandCursor: true })
+            .clearTint();
+        this.nextFloorButtonText?.setVisible(true);
+        this.showOpenDoorExit();
     }
 
     showNextFloorButton() {
@@ -1247,6 +1263,14 @@ export class GameScene extends Phaser.Scene {
         // Player already dead (e.g. a mutual kill via Thorns/reflect) — don't let a
         // stray click on the Next Floor button revive them via setupBossRewardRoom().
         if (this.gameState.playerHealth <= 0) return;
+
+        // In the tutorial the door is a lesson, not a way out: stepping through
+        // it completes the step, and the tutorial's own Finish ends the floor.
+        if (this.tutorialMode) {
+            this.events.emit('tutorialProgress', 'leftRoom');
+            this.tutorialManager?._handleProgress?.('leftRoom');
+            return;
+        }
 
         // Silk Cache Leave: walk away while only cocoons/loot remain — no clear payout.
         if (this._silkCocoonLeaveOffer && !this.enemiesCleared) {

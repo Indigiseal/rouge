@@ -33,6 +33,7 @@ export class TutorialManager {
         this._actionPointArea = null;
         this._tickInterval = null;
 
+        this._leftRoom = false;       // the door step's one-shot flag
         this._onBlocked = () => { this._blocked = true; };
         this._onProgress = (key) => this._handleProgress(key);
 
@@ -176,6 +177,7 @@ export class TutorialManager {
 
     _handleProgress(key) {
         if (!this.active) return;
+        if (key === 'leftRoom') this._leftRoom = true;
         const step = this.steps[this.stepIndex];
         if (this._matchesProgress(step, key)) {
             this._queueAdvance(key);
@@ -513,6 +515,15 @@ export class TutorialManager {
                 target: () => this.boardSprite('coin'),
                 eventKey: 'removed:coin',
                 done: () => !this.boardCard('coin'),
+            },
+            // The way out. Everything on the board is dealt with by now, so the
+            // door opens the way it does when a real room is cleared.
+            {
+                textKey: 'ui.tutorial.leaveRoom',
+                enter: () => this.scene.showTutorialExit?.(),
+                target: () => this.scene.nextFloorButton,
+                eventKey: 'leftRoom',
+                done: () => this._leftRoom,
             },
             // 16 — done
             {
