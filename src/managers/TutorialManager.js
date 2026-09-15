@@ -340,6 +340,34 @@ export class TutorialManager {
                 eventKey: 'removed:food',
                 done: () => !this.boardCard('food'),
             },
+            // Armor, in three steps: found on the board, carried in the bag, worn
+            // from the bag. It sits between the food and the archer ambush on
+            // purpose. The skeleton is dead and the archer and guard are still
+            // face-down, so nothing can hit the player while they put it on — and
+            // the very next steps are the tutorial's only real fight, two enemies
+            // swinging back, so the armor is doing its job the moment it is worn.
+            // That fight costs it about 5 of its 15 pips, so it is still whole
+            // when the last-pip lesson warns that armor breaks too.
+            {
+                textKey: 'ui.tutorial.flipArmor',
+                target: () => this.boardSprite('armor'),
+                eventKey: 'revealed:armor',
+                done: () => this.boardRevealed('armor'),
+            },
+            {
+                textKey: 'ui.tutorial.takeArmor',
+                target: () => this.boardSprite('armor'),
+                eventKey: 'inventory:armor',
+                done: () => this.invSlot('armor') >= 0,
+            },
+            {
+                textKey: 'ui.tutorial.wearArmor',
+                target: () => this.invSprite('armor'),
+                hintTarget: () => this.scene.armorPanel,
+                // Dropping on the portrait equips it too, same as in a run. The
+                // lesson points at the slot; it does not forbid the other way.
+                done: () => this.wearingTutorialArmor(),
+            },
             // 6 — attack the archer; it's blocked by the hidden guard
             {
                 textKey: 'ui.tutorial.archerBehind',
@@ -479,30 +507,6 @@ export class TutorialManager {
                 hintTarget: () => avatar(),
                 eventKey: 'inventoryRemoved:potion',
                 done: () => this.invSlot('potion') < 0,
-            },
-            // Armor, in three steps: found on the board, carried in the bag, worn
-            // from the bag. It follows the potion because both are "things you
-            // put on yourself", and the drop that equips it is the same gesture
-            // that just drank the potion, aimed at the armor slot instead.
-            {
-                textKey: 'ui.tutorial.flipArmor',
-                target: () => this.boardSprite('armor'),
-                eventKey: 'revealed:armor',
-                done: () => this.boardRevealed('armor'),
-            },
-            {
-                textKey: 'ui.tutorial.takeArmor',
-                target: () => this.boardSprite('armor'),
-                eventKey: 'inventory:armor',
-                done: () => this.invSlot('armor') >= 0,
-            },
-            {
-                textKey: 'ui.tutorial.wearArmor',
-                target: () => this.invSprite('armor'),
-                hintTarget: () => this.scene.armorPanel,
-                // Dropping on the portrait equips it too, same as in a run. The
-                // lesson points at the slot; it does not forbid the other way.
-                done: () => this.wearingTutorialArmor(),
             },
             {
                 textKey: 'ui.tutorial.flipCoin',
