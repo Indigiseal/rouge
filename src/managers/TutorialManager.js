@@ -94,6 +94,23 @@ export class TutorialManager {
     hasLightningGemSocketed() {
         return (this.inv?.slots || []).some(s => s && s.weaponType === 'sword' && s.gemEffect === 'lightning');
     }
+    // Whether a weapon dropped on the board may land on this enemy.
+    //
+    // The overlay's hard lock gates what the player can PICK UP, not where they
+    // put it down: a weapon drop resolves to whichever revealed enemy is nearest
+    // the release point, up to 150px away. With several enemies face-up at once
+    // that let a swing land on the wrong one — a tester dropped the lightning
+    // sword beside a 3-HP skeleton instead of the 9-HP one, the chain came out
+    // different and left an enemy standing, and the step still advanced because
+    // it only listens for "lightning happened". A step that names a weapon
+    // target now owns that choice; any other enemy is refused before AP is spent.
+    allowsWeaponTarget(boardCard) {
+        if (!this.active) return true;
+        const tag = this.steps[this.stepIndex]?.weaponTarget;
+        if (!tag) return true;
+        return !!boardCard && boardCard === this.boardCard(tag)?.card;
+    }
+
     // ---- lifecycle ------------------------------------------------------
     start() {
         this.active = true;
@@ -296,6 +313,7 @@ export class TutorialManager {
             // 3 — attack the skeleton (drag from bag onto the enemy)
             {
                 textKey: 'ui.tutorial.strikeSkeleton',
+                weaponTarget: 'skeleton',
                 target: () => this.invSprite('sword1'),
                 hintTarget: () => this.boardSprite('skeleton'),
                 eventKey: 'removed:skeleton',
@@ -320,6 +338,7 @@ export class TutorialManager {
             // 6 — attack the archer; it's blocked by the hidden guard
             {
                 textKey: 'ui.tutorial.archerBehind',
+                weaponTarget: 'archer',
                 enter: () => {
                     const a = this.boardCard('archer');
                     if (a && !a.card.revealed) this.cs.revealCard(a.index, true);
@@ -339,6 +358,9 @@ export class TutorialManager {
             // 8 — kill the guard first
             {
                 textKey: 'ui.tutorial.killFrontMelee',
+                // The archer is face-up here too; swinging at it is the lesson
+                // the previous step already taught, not this one.
+                weaponTarget: 'guard',
                 target: () => this.invSprite('sword1'),
                 hintTarget: () => this.boardSprite('guard'),
                 eventKey: 'removed:guard',
@@ -347,6 +369,7 @@ export class TutorialManager {
             // 9 — now the archer is reachable
             {
                 textKey: 'ui.tutorial.finishArcher',
+                weaponTarget: 'archer',
                 target: () => this.invSprite('sword1'),
                 hintTarget: () => this.boardSprite('archer'),
                 eventKey: 'removed:archer',
@@ -405,6 +428,9 @@ export class TutorialManager {
             },
             {
                 textKey: 'ui.tutorial.strikeWithGem',
+                // All three lightning targets are face-up at once. Only the 9-HP
+                // one makes the chain clear the other two.
+                weaponTarget: 'lightningTarget1',
                 enter: () => this.cs.revealTutorialLightningTargets(),
                 target: () => this.tutorialSwordSprite(),
                 hintTarget: () => this.boardSprite('lightningTarget1'),

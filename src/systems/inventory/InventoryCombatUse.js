@@ -401,6 +401,14 @@ export const InventoryCombatUse = {
         }
 
         const board = this.scene.cardSystem.boardCards;
+        // The tutorial names one enemy per strike (see allowsWeaponTarget). A
+        // drop near a different one is refused before AP is spent, the same way
+        // an out-of-range drop is — the pointer is already on the right card.
+        if (this.scene.tutorialManager?.allowsWeaponTarget?.(board[closestEnemy]) === false) {
+            SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
+            this.returnWeaponToSlot(slotIndex, cardSprite);
+            return;
+        }
         const activeTaunt = board.some(card => this.scene.cardSystem.isActiveBoardTaunter?.(card));
         if (activeTaunt && !this.scene.cardSystem.isActiveBoardTaunter?.(board[closestEnemy])) {
             SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
