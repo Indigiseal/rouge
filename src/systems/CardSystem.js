@@ -718,6 +718,7 @@ export class CardSystem {
     playBossDeathEffect(...args) { return this.fx.playBossDeathEffect(...args); }
     playCardDisappearEffect(...args) { return this.fx.playCardDisappearEffect(...args); }
     playCardBreakEffect(...args) { return this.fx.playCardBreakEffect(...args); }
+    playCardDiscardEffect(...args) { return this.fx.playCardDiscardEffect(...args); }
     playMergeEffect(...args) { return this.fx.playMergeEffect(...args); }
     mimicTreasureExplosion(...args) { return this.fx.mimicTreasureExplosion(...args); }
     mimicEscape(...args) { return this.fx.mimicEscape(...args); }

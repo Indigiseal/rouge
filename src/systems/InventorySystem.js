@@ -304,6 +304,9 @@ export class InventorySystem {
             this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Discarded!', 0xff0000);
             this.scene.recordCardDiscarded?.(cardData, cardSprite.x, cardSprite.y);
 
+            // Falls down the chute on a clone, before the real sprite goes.
+            this.scene.cardSystem?.playCardDiscardEffect?.(cardSprite, this.discardArea);
+
             // Properly clean up ALL sprites and effects
             this.cleanupCardSprites(slotIndex, cardSprite);
             this.removeCard(slotIndex, false, 'discard'); // Don't destroy the sprite in removeCard

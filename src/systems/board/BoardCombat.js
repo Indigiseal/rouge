@@ -1410,6 +1410,8 @@ function tryApplyBoardGem(card, index) {
         SoundHelper.playSound(this.scene, 'item_discard', 0.7);
         this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Discarded!', 0xff0000);
         this.scene.recordCardDiscarded?.(card.data, card.sprite.x, card.sprite.y);
+        // A gem dragged off the board falls down the same chute a bag card does.
+        this.playCardDiscardEffect?.(card.sprite, inventory.discardArea);
         this.removeCard(index);
         recordHumanRunEvent(this.scene, 'board_card_discarded', {
             sourceBoardIndex: index,

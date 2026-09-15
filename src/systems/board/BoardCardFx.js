@@ -45,6 +45,7 @@ export class BoardCardFx {
         this.playBossDeathEffect = playBossDeathEffect.bind(cs);
         this.playCardDisappearEffect = playCardDisappearEffect.bind(cs);
         this.playCardBreakEffect = playCardBreakEffect.bind(cs);
+        this.playCardDiscardEffect = playCardDiscardEffect.bind(cs);
         this.playMergeEffect = playMergeEffect.bind(cs);
         this.mimicTreasureExplosion = mimicTreasureExplosion.bind(cs);
         this.mimicEscape = mimicEscape.bind(cs);
@@ -1071,31 +1072,68 @@ function playCardDisappearEffect(cardSprite, options = {}) {
     return fx;
 }
 
-// A weapon, armor or thorns card that spent its last pip. The enemy death,
-// in orange, with a rise the eye can actually catch: an enemy lifts 4px and
-// dissolves almost at once, which on a card the player was holding reads as it
-// simply vanishing. This one climbs 12px and finishes climbing before it burns.
-//
-// Drawn high by default. A weapon breaks where it was dropped — on top of the
-// enemy it hit, which is often dying in the same instant — and at the card's
-// own depth the two dissolves stacked into one.
-const CARD_BREAK_LIFT = 12;
-const CARD_BREAK_RISE_MS = 260;
-const CARD_BREAK_DEPTH = 1150;
-
+// A player's card that spent its last pip — weapon, armor or thorns. Exactly
+// the enemy death (same lift, same hold, same depth rule); only the animation
+// differs, drawn for the player's own cards so a breaking item never reads as
+// an enemy dying.
 function playCardBreakEffect(cardSprite, options = {}) {
     const hasBreakSheet = this.scene.textures?.exists?.('cardBreakSheet');
     return this.playCardDisappearEffect(cardSprite, {
-        // Falls back to the purple dissolve rather than to nothing if the
-        // orange sheet is missing.
+        // Falls back to the enemy dissolve rather than to nothing if the
+        // player-card sheet is missing.
         sheetKey: hasBreakSheet ? 'cardBreakSheet' : 'cardDisappearSheet',
         animKey: hasBreakSheet ? 'card_break_anim' : 'card_disappear_anim',
-        lift: CARD_BREAK_LIFT,
-        liftDuration: CARD_BREAK_RISE_MS,
-        hold: CARD_BREAK_RISE_MS,
-        depth: CARD_BREAK_DEPTH,
         ...options,
     });
+}
+
+// A card dropped into the discard chute. It is pulled to the chute's mouth
+// while it shrinks and tilts — both at once, the way something tipping over an
+// edge turns as it goes — and only once it has fallen does it fade.
+const DISCARD_SHRINK_TO = 0.35;
+const DISCARD_TILT_DEG = 18;
+const DISCARD_FALL_MS = 260;
+const DISCARD_FADE_MS = 140;
+const DISCARD_MIN_DEPTH = 20;
+
+function playCardDiscardEffect(cardSprite, chute = null) {
+    const texKey = cardSprite?.texture?.key;
+    if (!cardSprite || !texKey || texKey === '__MISSING' || texKey === '__DEFAULT') return null;
+    const ghost = this.scene.add.sprite(cardSprite.x, cardSprite.y, texKey, cardSprite.frame?.name);
+    ghost.setOrigin(cardSprite.originX, cardSprite.originY);
+    ghost.setScale(cardSprite.scaleX, cardSprite.scaleY);
+    // Never below the bag panel (depth 10). A bag card drops from depth 12, but
+    // a gem dragged off the board falls from the board's depth 2 and would go
+    // down the chute hidden behind the panel frame.
+    ghost.setDepth(Math.max((cardSprite.depth || 0) + 5, DISCARD_MIN_DEPTH));
+
+    const toX = chute?.x ?? cardSprite.x;
+    const toY = chute?.y ?? cardSprite.y;
+    this.scene.tweens.add({
+        targets: ghost,
+        x: toX,
+        y: toY,
+        scaleX: cardSprite.scaleX * DISCARD_SHRINK_TO,
+        scaleY: cardSprite.scaleY * DISCARD_SHRINK_TO,
+        angle: DISCARD_TILT_DEG,
+        duration: DISCARD_FALL_MS,
+        // Accelerating, like a fall — not easing into a gentle landing.
+        ease: 'Quad.easeIn',
+        onComplete: () => {
+            if (!ghost.active) return;
+            this.scene.tweens.add({
+                targets: ghost,
+                alpha: 0,
+                duration: DISCARD_FADE_MS,
+                onComplete: () => { if (ghost.active) ghost.destroy(); },
+            });
+        },
+    });
+    // Safety net: never leave a ghost on screen if a tween is killed.
+    this.scene.time.delayedCall(DISCARD_FALL_MS + DISCARD_FADE_MS + 400, () => {
+        if (ghost.active) ghost.destroy();
+    });
+    return ghost;
 }
 
 function playMergeEffect(x, y, isLegendary = false, options = {}) {

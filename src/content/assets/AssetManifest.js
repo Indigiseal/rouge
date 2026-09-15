@@ -202,9 +202,9 @@ export const ASSET_MANIFEST = [
     { key: 'hoverCardsUpSheet', path: 'assets/art/hoverCardsUp54x70Sheet.png', type: 'spritesheet', frameWidth: 54, frameHeight: 70 },
     // Card disappear dissolve (6 frames, 54x70 each) â€” plays on top of a card | as it is removed (enemy defeated, weapon pips spent).
     { key: 'cardDisappearSheet', path: 'assets/art/cardDissappearAnimation54x70.png', type: 'spritesheet', frameWidth: 54, frameHeight: 70 },
-    // The same dissolve in orange, for a card that is DESTROYED rather than
-    // killed — a weapon, armor or thorns card that spent its last pip — so a
-    // breaking item never reads as an enemy dying.
+    // Taya's dedicated dissolve for the PLAYER's cards — a weapon, armor or
+    // thorns card that spent its last pip. Played exactly like the enemy death
+    // above; only the frames differ.
     { key: 'cardBreakSheet', path: 'assets/art/cardDissappear2Animation54x70.png', type: 'spritesheet', frameWidth: 54, frameHeight: 70 },
     // Card merge flicker (2 frames, 54x70 each) â€” plays on top of the merged | card. `mergeLegendarySheet` is the legendary-tier variant.
     { key: 'mergeSheet', path: 'assets/art/merge.png', type: 'spritesheet', frameWidth: 54, frameHeight: 70 },
