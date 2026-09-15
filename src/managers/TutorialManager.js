@@ -378,6 +378,23 @@ export class TutorialManager {
                 eventKey: 'removed:archer',
                 done: () => !this.boardCard('archer'),
             },
+            // The pip lesson lands on the one-pip moment itself. The sword starts
+            // at 7 and each scripted enemy takes two swings (the blocked swing at
+            // the archer spends AP, not a pip), so the archer's death leaves
+            // exactly one. Cleave never shortens a fight here: it only reaches a
+            // face-up enemy in the same row, and none is ever beside the target.
+            {
+                textKey: 'ui.tutorial.lastPip',
+                target: () => this.tutorialSwordSprite(),
+                targetBounds: () => this.tutorialSwordPipArea(),
+                enter: () => {
+                    this.scene.time.delayedCall(3200, () => {
+                        if (this.active && this.steps[this.stepIndex]?.lastPipLesson) this._advance();
+                    });
+                },
+                lastPipLesson: true,
+                done: () => false,
+            },
             // 10 — flip the second sword
             {
                 textKey: 'ui.tutorial.anotherSword',
@@ -399,18 +416,6 @@ export class TutorialManager {
                 hintTarget: () => this.invSprite('sword1'),
                 eventKey: 'merged:sword',
                 done: () => this.hasUncommonSword(),
-            },
-            {
-                textKey: 'ui.tutorial.durability',
-                target: () => this.tutorialSwordSprite(),
-                targetBounds: () => this.tutorialSwordPipArea(),
-                enter: () => {
-                    this.scene.time.delayedCall(3200, () => {
-                        if (this.active && this.steps[this.stepIndex]?.durabilityLesson) this._advance();
-                    });
-                },
-                durabilityLesson: true,
-                done: () => false,
             },
             {
                 textKey: 'ui.tutorial.flipGem',
