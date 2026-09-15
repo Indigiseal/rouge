@@ -220,4 +220,56 @@ assert.equal(
   'the equipped weapon counts even when the pack is empty',
 );
 
+// A Silkslinger webs the player's only weapon: an ordinary enemy (not the
+// ranged-immune sprite above), one dagger, and nothing else on the board or in
+// the pack. Nothing can hit it and nothing can save it from the web running out
+// on its own, so this must read as a dead position — the same shape as the
+// quiver-of-bows case, minus the weapon-type mismatch.
+const webbedDagger = { ...dagger, webbedTurns: 1 };
+assert.equal(
+  stalemate({ board: [wolf()], inventory: [webbedDagger] }),
+  true,
+  'a webbed-shut only weapon against a lone enemy is a dead position',
+);
+assert.equal(
+  stalemate({ board: [wolf()], inventory: [webbedDagger, dagger] }),
+  false,
+  'a second, unwebbed dagger is still a way out',
+);
+
+// Loot left uncollected on the board must not paper over that same dead
+// position. This is the actual bug: any non-enemy board card used to read as
+// "a way forward" regardless of what it was, so a coin sitting next to a
+// Silkslinger's web made the detector call a genuine stalemate "fine" for as
+// long as that coin went uncollected — no forced enemy turn ever ran to tick
+// the web down or otherwise move the fight forward, and picking the coin up
+// changes nothing about the fight either.
+assert.equal(
+  stalemate({
+    board: [wolf(), { revealed: true, data: { type: 'coin', amount: 5 } }],
+    inventory: [webbedDagger],
+  }),
+  true,
+  'uncollected loot that cannot fight back does not excuse a webbed-shut weapon',
+);
+// A face-down card is still a live unknown — it might be a second weapon —
+// and a REVEALED weapon or magic card left on the board is a real option, so
+// both still count as genuine ways forward.
+assert.equal(
+  stalemate({
+    board: [wolf(), { revealed: false, data: { type: 'coin' } }],
+    inventory: [webbedDagger],
+  }),
+  false,
+  'an unflipped card could still be a weapon, webbed or not',
+);
+assert.equal(
+  stalemate({
+    board: [wolf(), { revealed: true, data: { type: 'magic', magicType: 'fireball' } }],
+    inventory: [webbedDagger],
+  }),
+  false,
+  'a revealed magic card still on the board is a real way out',
+);
+
 console.log('Combat stalemate and weapon-immunity checks passed.');

@@ -66,9 +66,31 @@ export class CombatTurnController {
         ));
         if (!enemiesRemain) return false;
 
-        // A remaining board card can still reveal or provide a way forward.
-        // Cocoon shells are already face-up enemies — loot pickups still count.
-        if (board.some(card => card && !scene.isEnemyCard(card))) return false;
+        // A remaining board card can still be a way forward — but only if
+        // interacting with it could plausibly change the fight. A face-down
+        // card might turn out to be a weapon or a spell, so it always counts.
+        // An already-revealed weapon or magic card sitting uncollected is a
+        // genuine option too. Plain loot — a coin, food, a potion, armor, a
+        // gem with nothing left to socket it into — is not: picking it up
+        // spends no action and cannot make an unreachable enemy reachable.
+        //
+        // This used to treat ANY non-enemy card as a way out, on the theory
+        // that "something is still there to collect" means the player isn't
+        // stuck yet. That is true right up until the last enemy is a Silkslinger
+        // that has webbed the player's only weapon and a coin is still sitting
+        // uncollected on the board: the player can pick up every scrap of loot
+        // there is and the fight never becomes winnable, but the old check kept
+        // reporting "not a stalemate" for as long as that coin sat there, so
+        // the web never got a chance to matter — no forced enemy turn ever
+        // fired to tick it down, weaken the player, or otherwise move the
+        // fight forward. Cocoon shells don't hit this at all; they are already
+        // enemy-typed, so isEnemyCard excludes them here regardless.
+        const boardOffersWayForward = board.some(card => {
+            if (!card || scene.isEnemyCard(card)) return false;
+            if (!card.revealed) return true;
+            return card.data?.type === 'weapon' || card.data?.type === 'magic';
+        });
+        if (boardOffersWayForward) return false;
 
         // Normal rooms: face-down cards can be flipped without a weapon.
         // Cocoon cache has no flips — only damage opens shells.
