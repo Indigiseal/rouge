@@ -58,6 +58,9 @@ export const ASSET_MANIFEST = [
     { key: 'anvilDropAnim', path: 'assets/art/anvilDropAnim.png', type: 'spritesheet', frameWidth: 69, frameHeight: 89 },
     { key: 'anvilClankAnim', path: 'assets/art/anvilClanckAnim80x86.png', type: 'spritesheet', frameWidth: 80, frameHeight: 86 },
     { key: 'anvilBanner', path: 'assets/art/bannerAnvil.png', type: 'image' },
+    // The rest room's title ribbon — same 262x48 shape as the anvil's, so both
+    // rooms put their name in the same place.
+    { key: 'restBanner', path: 'assets/art/bannerRestl.png', type: 'image' },
     { key: 'anvilIllustration', path: 'assets/art/anvil1.png', type: 'image' },
     { key: 'anvilPriceTag', path: 'assets/art/priceTag.png', type: 'image' },
     { key: 'webCardOverlay', path: 'assets/art/web.png', type: 'image' },
