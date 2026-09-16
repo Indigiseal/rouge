@@ -819,6 +819,41 @@ export class InventorySystem {
         return true;
     }
 
+    /**
+     * Throw away the armor the hero is wearing, without it passing through the
+     * bag first. Dragging the worn armor onto the discard chute lands here.
+     *
+     * Deliberately not routed through unequipArmor: that needs a free slot and
+     * refuses when the bag is full, which is exactly the moment a player most
+     * wants to bin the armor they are standing in. Nothing here needs a slot.
+     */
+    discardEquippedArmor(sourceSprite = null) {
+        const armor = this.scene.gameState.equippedArmor;
+        if (!armor) return false;
+
+        const x = sourceSprite?.x ?? this.scene.playerAvatar.x;
+        const y = sourceSprite?.y ?? this.scene.playerAvatar.y;
+
+        recordHumanRunEvent(this.scene, 'equipped_armor_discarded', {
+            armor: snapshotHumanRunCard(armor),
+        });
+        SoundHelper.playSound(this.scene, 'item_discard', 0.7);
+        this.scene.createFloatingText(x, y, 'Discarded!', 0xff0000);
+        // Counts toward the same discard tally as a bag card, so relics and
+        // amulets that pay out per discard cannot tell the two apart.
+        this.scene.recordCardDiscarded?.(armor, x, y);
+        if (sourceSprite?.active) {
+            this.scene.cardSystem?.playCardDiscardEffect?.(sourceSprite, this.discardArea);
+        }
+
+        this.scene.gameState.equippedArmor = null;
+        // Rebuilds the armor panel, which destroys the sprite just dragged —
+        // the chute animation above runs on its own clone and survives that.
+        this.scene.updateUI();
+        this.updateTwinkleEffects();
+        return true;
+    }
+
     unequipArmor() {
         const armor = this.scene.gameState.equippedArmor;
         if (!armor) return false;

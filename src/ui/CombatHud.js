@@ -841,7 +841,58 @@ export const CombatHud = {
                 )
                 .setDepth(6.5);
         }
-        this.armorPanelEquippedSprite.on('pointerdown', () => {
+        // Tap to unequip, drag to the chute to throw it away. The tap has to
+        // wait for pointerup: on pointerdown it fired the instant the armor was
+        // grabbed, so a drag unequipped it before it had moved anywhere.
+        this.input.setDraggable(this.armorPanelEquippedSprite, true);
+        const restX = this.armorPanelEquippedSprite.x;
+        const restY = this.armorPanelEquippedSprite.y;
+        let dragging = false;
+        // The pips and the thorn frame ride along, the way they do on a bag card.
+        const riders = () => [this.armorPanelInfoText, this.armorPanelBriarFrame]
+            .filter((rider) => rider?.active);
+        const moveTo = (x, y) => {
+            const sprite = this.armorPanelEquippedSprite;
+            if (!sprite?.active) return;
+            const dx = x - sprite.x;
+            const dy = y - sprite.y;
+            sprite.setPosition(x, y);
+            riders().forEach((rider) => rider.setPosition(rider.x + dx, rider.y + dy));
+        };
+        this.armorPanelEquippedSprite.on('dragstart', () => {
+            dragging = true;
+            if (this.armorTooltip) {
+                this.armorTooltip.destroy();
+                this.armorTooltip = null;
+            }
+            // Above the bag panel and the chute, so the armor stays visible all
+            // the way down rather than sliding under the HUD it crosses.
+            this.armorPanelEquippedSprite.setDepth(1002);
+            riders().forEach((rider) => rider.setDepth(1003));
+        });
+        this.armorPanelEquippedSprite.on('drag', (pointer, dragX, dragY) => {
+            moveTo(Math.round(dragX), Math.round(dragY));
+        });
+        this.armorPanelEquippedSprite.on('dragend', () => {
+            const sprite = this.armorPanelEquippedSprite;
+            const overChute = this.discardArea
+                && sprite?.active
+                && Phaser.Geom.Intersects.RectangleToRectangle(
+                    sprite.getBounds(), this.discardArea.getBounds()
+                );
+            if (overChute && this.inventorySystem?.discardEquippedArmor?.(sprite)) {
+                return;   // updateUI has rebuilt the panel; this sprite is gone
+            }
+            moveTo(restX, restY);
+            sprite?.setDepth(6);
+            riders().forEach((rider) => rider.setDepth(7));
+            // Cleared a tick late, not here: pointerup lands in the same input
+            // event as dragend, so clearing it now would let the release at the
+            // end of a drag read as a tap and unequip the armor anyway.
+            this.time.delayedCall(0, () => { dragging = false; });
+        });
+        this.armorPanelEquippedSprite.on('pointerup', () => {
+            if (dragging) return;
             this.inventorySystem?.unequipArmor?.();
         });
         this.armorPanelEquippedSprite.on('pointerover', () => {
