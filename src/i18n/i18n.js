@@ -10,6 +10,7 @@ const LANGUAGE_OPTIONS = [
 
 const STRINGS = {
     en: {
+        'ui.combat.you': 'You',
         'ui.menu.newRun': 'New Run',
         'ui.menu.continue': 'Continue',
         'ui.menu.options': 'Options',
@@ -526,6 +527,7 @@ const STRINGS = {
         'ui.birdNest.caught': 'The shadow found you.',
     },
     es: {
+        'ui.combat.you': 'Tú',
         'ui.menu.newRun': 'Nueva partida',
         'ui.menu.continue': 'Continuar',
         'ui.menu.options': 'Opciones',
@@ -1041,6 +1043,7 @@ const STRINGS = {
         'ui.birdNest.caught': 'La sombra te encontró.',
     },
     fr: {
+        'ui.combat.you': 'Vous',
         'ui.menu.clickToPlay': 'Cliquez pour jouer',
         'ui.map.chooseManually': 'Choisir à la main',
         'ui.map.chooseManuallyCancel': 'Annuler le saut',
@@ -1189,6 +1192,7 @@ const STRINGS = {
         'ui.options.cancel': '\u53d6\u6d88',
     },
     ru: {
+        'ui.combat.you': 'Ты',
         'ui.menu.newRun': 'Новый забег',
         'ui.menu.continue': 'Продолжить',
         'ui.menu.options': 'Настройки',

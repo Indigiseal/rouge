@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Combat feedback preview</title>
+  <link rel="stylesheet" href="../src/ui/fontFaces.css">
+  <style>
+    body { background:#241c1a; color:#f6efe1; font:15px 'UI Feedback',sans-serif; margin:18px auto; max-width:1100px; padding:0 12px; }
+    h1 { font:500 30px 'UI Serif',serif; margin:0 0 12px; }
+    button,select { font:inherit; color:inherit; background:#49372b; border:1px solid #96744d; border-radius:5px; padding:7px 10px; margin:3px; cursor:pointer; }
+    #game { width:100%; aspect-ratio:16/9; } canvas { width:100% !important; height:auto !important; }
+    #metrics { white-space:pre-wrap; font:12px monospace; color:#d4c6b5; }
+    .reading { font:500 22px 'UI Serif',serif; }
+  </style>
+  <script src="../vendor/phaser-3.70.0.min.js"></script>
+</head>
+<body>
+  <h1>Combat feedback</h1>
+  <div>
+    <button data-scenario="damage">Damage: 1 · 5 · 15 · 30</button>
+    <button data-scenario="critical">Normal 30 / Critical 30</button>
+    <button data-scenario="burst">Rapid mixed burst</button>
+    <button data-scenario="language">Miss · Block · Heal · Break</button>
+    <button data-scenario="clear">Clear / simulate room transition</button>
+    <select id="locale" aria-label="Language"><option value="en">English</option><option value="fr">Français</option><option value="ru">Русский</option><option value="ja">日本語</option><option value="zh">简体中文</option><option value="zh-tw">繁體中文</option><option value="ko">한국어</option></select>
+    <label><input id="hold" type="checkbox" checked> Hold for inspection</label>
+  </div>
+  <p id="state">Loading fonts…</p>
+  <div id="game"></div>
+  <p class="reading" id="specimen">The reading face keeps stories and the combat log distinct.</p>
+  <pre id="metrics"></pre>
+  <script type="module" src="./combat-feedback-preview.js"></script>
+</body>
+</html>

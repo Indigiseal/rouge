@@ -1,0 +1,106 @@
+/* Self-hosted Unicode fonts. Rebuild with tools/build-ui-fonts.py. */
+@font-face {
+font-family: "UI Serif";
+src: url("../../assets/fonts/ui/reading-500.woff2") format("woff2");
+font-weight: 500;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Feedback";
+src: url("../../assets/fonts/ui/feedback-600.woff2") format("woff2");
+font-weight: 600;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Feedback";
+src: url("../../assets/fonts/ui/feedback-700.woff2") format("woff2");
+font-weight: 700;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Symbols";
+src: url("../../assets/fonts/ui/symbols.woff2") format("woff2");
+font-weight: 400;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Serif jp";
+src: url("../../assets/fonts/ui/reading-jp-500.woff2") format("woff2");
+font-weight: 500;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Feedback jp";
+src: url("../../assets/fonts/ui/feedback-jp-600.woff2") format("woff2");
+font-weight: 600;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Feedback jp";
+src: url("../../assets/fonts/ui/feedback-jp-700.woff2") format("woff2");
+font-weight: 700;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Serif sc";
+src: url("../../assets/fonts/ui/reading-sc-500.woff2") format("woff2");
+font-weight: 500;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Feedback sc";
+src: url("../../assets/fonts/ui/feedback-sc-600.woff2") format("woff2");
+font-weight: 600;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Feedback sc";
+src: url("../../assets/fonts/ui/feedback-sc-700.woff2") format("woff2");
+font-weight: 700;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Serif tc";
+src: url("../../assets/fonts/ui/reading-tc-500.woff2") format("woff2");
+font-weight: 500;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Feedback tc";
+src: url("../../assets/fonts/ui/feedback-tc-600.woff2") format("woff2");
+font-weight: 600;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Feedback tc";
+src: url("../../assets/fonts/ui/feedback-tc-700.woff2") format("woff2");
+font-weight: 700;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Serif kr";
+src: url("../../assets/fonts/ui/reading-kr-500.woff2") format("woff2");
+font-weight: 500;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Feedback kr";
+src: url("../../assets/fonts/ui/feedback-kr-600.woff2") format("woff2");
+font-weight: 600;
+font-display: swap;
+}
+@font-face {
+font-family: "UI Feedback kr";
+src: url("../../assets/fonts/ui/feedback-kr-700.woff2") format("woff2");
+font-weight: 700;
+font-display: swap;
+}
+
+@font-face {
+font-family: "UI Icons";
+src: url("../../assets/fonts/ui/icons.woff2") format("woff2");
+font-weight: 400;
+font-display: swap;
+}
+
+

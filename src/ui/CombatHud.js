@@ -2,6 +2,7 @@
 // Mixed into GameScene via Object.assign(GameScene.prototype, CombatHud).
 
 import { snapOriginToPixelGrid } from './PixelSnap.js';
+import { serifStyle } from './uiFont.js';
 import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
 import { createOptionsCog } from './OptionsCog.js';
 import { looseGemCard } from '../content/cards/gems.js';
@@ -444,9 +445,8 @@ export const CombatHud = {
     },
 
     // A paper panel on the right that keeps a running, scrollable record of the
-    // fight (damage, status effects, kills) so players can read back what the
-    // fast-fading floating text already showed. Text uses the same muted brown
-    // as the PAUSE label rather than the bright floating-text colors.
+    // fight (damage, status effects, kills). The reading face and dark ink keep
+    // this transcript legible while the combat numbers animate independently.
     createCombatLog() {
         // Narrow panel hugging the right edge (right edge fixed at ~639, so the
         // extra width grows leftward) that still clears the gaming board.
@@ -474,14 +474,14 @@ export const CombatHud = {
 
         const top = CY - H / 2;
         const title = this.add.text(CX, top + 8, t(this, 'ui.hud.combatLog'), {
-            fontSize: '10px', fill: BROWN, fontFamily: '"HoMM Pixel"'
+            ...serifStyle('13px', '#513d35')
         }).setOrigin(0.5, 0).setDepth(42);
         const rule = this.add.rectangle(CX, top + 22, W - 18, 1, 0x6f5452, 0.4).setDepth(42);
 
         const bodyTop = top + 27;
         const body = this.add.text(CX - W / 2 + 7, bodyTop, '', {
-            fontSize: '8px', fill: BROWN, fontFamily: '"HoMM Pixel"',
-            lineSpacing: 2, wordWrap: { width: W - 14 }
+            ...serifStyle('12px', '#513d35'),
+            lineSpacing: 3, wordWrap: { width: W - 22, useAdvancedWrap: true }
         }).setOrigin(0, 0).setDepth(42);
 
         this.combatLog.panel = panel;
@@ -652,7 +652,7 @@ export const CombatHud = {
         const pa = this.playerAvatar;
         if (pa) {
             const dx = pa.x - x, dy = pa.y - y;
-            if (dx * dx + dy * dy <= 48 * 48) return 'You';
+            if (dx * dx + dy * dy <= 48 * 48) return t(this, 'ui.combat.you');
         }
         const cards = this.cardSystem?.boardCards || [];
         let best = null, bestD = 52 * 52;
@@ -662,7 +662,7 @@ export const CombatHud = {
             const d = dx * dx + dy * dy;
             if (d < bestD) { bestD = d; best = c; }
         }
-        return best?.data?.name || null;
+        return best?.data ? translateItemName(this, best.data) : null;
     },
     updateUI() {
         // Force sync inventory EVERY time UI updates
@@ -1116,6 +1116,7 @@ export const CombatHud = {
         // rather than the gold that suited the old black plate.
         const tooltipText = this.add.text(0, 0, description, {
             fontSize: TOOLTIP_BODY_PX,
+            fontRole: 'reading',
             fill: relic.cursed ? '#ff6666' : TOOLTIP_TEXT_COLOR,
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             align: 'left',

@@ -499,7 +499,6 @@ export const InventoryCombatUse = {
                 attackDamage = critRoll.damage;
                 if (wasExhausted) attackDamage = Math.ceil(attackDamage * 0.8);
                 didCrit = true;
-                this.scene.createFloatingText(cardSprite.x, cardSprite.y - 20, 'Critical!', 0xff4444);
             }
             
             // Handle special abilities
@@ -577,7 +576,7 @@ export const InventoryCombatUse = {
                 if (i === 0) {
                     // First hit: the dragged weapon. skipDurability=false so its
                     // pip is spent normally inside attackEnemy.
-                    this.scene.cardSystem.attackEnemy(closestEnemy, attackDamage, false, weapon, false);
+                    this.scene.cardSystem.attackEnemy(closestEnemy, attackDamage, false, weapon, false, { critical: didCrit });
                     this.applyAssassinateTalent(closestEnemy);
                 } else {
                     // Second dual-wield hit: use the OTHER dagger's stats — its

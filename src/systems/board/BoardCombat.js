@@ -1,5 +1,6 @@
 // BoardCombat — attackEnemy, gem effects, poison/shock, remove defeated, floor clear
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
+import { t, translateItemName } from '../../i18n/i18n.js';
 import { POISON_RUNE_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../../content/cards/gems.js';
 import { weaponIgnoresFrontline } from '../../content/cards/weapons.js';
 import { SoundHelper } from '../../audio/SoundHelper.js';
@@ -610,6 +611,8 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     
     // Apply amulet damage modifiers to weapon damage (not reflection)
     let finalDamage = damage;
+    let feedbackCritical = Boolean(options.critical);
+    let feedbackLabel = options.feedbackLabel;
     if (!isReflection && weapon && this.scene.amuletManager) {
         finalDamage = this.scene.amuletManager.modifyWeaponDamage(damage);
     }
@@ -641,9 +644,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         + (this.scene.amuletManager?.getCriticalChanceBonus?.() || 0);
     if (!isReflection && weapon && critChance > 0 && Math.random() < critChance) {
         finalDamage *= 2;
-        // Big yellow CRIT! plus a sharp screen shake so a crit really lands.
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 24, 'CRIT!', 0xffe066, '26px');
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 46, 'Double Damage!', 0xff8800);
+        feedbackCritical = true;
         this.scene.cameras.main.shake(200, 0.012);
         // Lucky Streak (Fortune Card): a crit can shake loose a coin or crystal.
         const luckyReward = this.scene.amuletManager?.rollLuckyStreakCritReward?.();
@@ -656,8 +657,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         && !this.scene.gameState.firstAttackThisFloorUsed) {
         finalDamage *= 2;
         this.scene.gameState.firstAttackThisFloorUsed = true;
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'WAR HORN!', 0xffaa00);
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 54, 'Double Damage!', 0xff8800);
+        feedbackLabel = 'WAR HORN!';
     }
 
     // Reliquary enchant: ONE roll per swing. `preDamage` procs change the blow
@@ -667,10 +667,10 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     let enchantInstantKill = false;
     if (enchantProc === 'shadowBlade') {
         finalDamage = Math.floor(finalDamage * ENCHANT_SHADOW_MULTIPLIER);
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'Shadowed!', 0x9a6cff);
+        feedbackLabel = 'Shadowed!';
     } else if (enchantProc === 'soulDrain' && card.data.type !== 'boss') {
         enchantInstantKill = true;
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 38, 'Devoured!', 0x9932cc);
+        feedbackLabel = 'Devoured!';
     }
 
     if (!isReflection) {
@@ -775,12 +775,17 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // explicit label so the player's own hit is unmistakable in the combat
     // log next to gem "Zap"/"Fire" numbers (skipLog avoids double-logging).
     CombatSequencer.floatingText(this.scene, isReflection ? 'reflect_damage' : 'damage',
-        card.sprite.x, card.sprite.y, `-${finalDamage}`, 0xff0000, '15px', { skipLog: true });
-    const targetName = card.data?.name || 'Enemy';
+        card.sprite.x, card.sprite.y, { key: 'float.damage', vars: { amount: finalDamage } }, 0xff0000, '15px', {
+            skipLog: true, type: isReflection ? 'tick' : 'damage', amount: finalDamage,
+            critical: feedbackCritical, lethal: card.data.health <= 0, label: feedbackLabel, target: card.sprite,
+        });
+    const targetName = translateItemName(this.scene, card.data) || 'Enemy';
     const weaponLabel = (!isReflection && weapon?.weaponType)
-        ? ` (${weapon.weaponType.charAt(0).toUpperCase()}${weapon.weaponType.slice(1)})`
+        ? ` (${translateItemName(this.scene, { type: 'weapon', weaponType: weapon.weaponType })})`
         : (isReflection ? ' (Reflected)' : '');
-    this.scene.pushCombatLog?.(`${targetName} -${finalDamage}${weaponLabel}`);
+    const feedbackDetail = [feedbackCritical && t(this.scene, 'float.crit'), feedbackLabel && t(this.scene, feedbackLabel)]
+        .filter(Boolean).map(label => ' — ' + label).join('');
+    this.scene.pushCombatLog?.(`${targetName} -${finalDamage}${weaponLabel}${feedbackDetail}`);
 
     // Thorn Ent — retaliates 1 true damage through armor on a connecting swing.
     if (
@@ -1380,7 +1385,7 @@ function checkFloorClear() {
         if (bossFloors.includes(currentFloor)) {
             // Check if this is the final floor
             if (currentFloor === 45) {
-                this.scene.time.delayedCall(1000, () => this.scene.gameWon());
+                this.scene.time.delayedCall(2500, () => this.scene.gameWon());
             } else {
                 // Boss defeated, continue to next floor
                 this.scene.onEnemiesCleared();

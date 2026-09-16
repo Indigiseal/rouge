@@ -26,6 +26,7 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { openConfirmModal } from '../ui/ConfirmModal.js';
 import { FONT_SIZE, fitLabel, serifStyle } from '../ui/uiFont.js';
+import { loadUiFonts } from '../ui/fontFamilies.js';
 
 // --- Options screen skin -----------------------------------------------------
 // Plates, panel size, palette and label offsets all come from ui/OptionsSkin.js,
@@ -603,6 +604,7 @@ export class MainMenuScene extends Phaser.Scene {
         const currentIndex = languages.indexOf(normalizeLanguageCode(this.game.language));
         const nextIndex = (currentIndex + 1) % languages.length;
         this.game.language = languages[nextIndex];
+        loadUiFonts(this.game.language).catch(error => console.warn('Language font:', error));
         this.saveSettings();
         this.refreshMainMenuText();
     }

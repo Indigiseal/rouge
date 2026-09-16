@@ -12,31 +12,7 @@
          build below is self-contained and sets window.Phaser. -->
     <script src="vendor/phaser-3.70.0.min.js"></script>
     <style>
-        @font-face {
-            font-family: "HoMM Pixel";
-            src: url("assets/fonts/Able5.ttf") format("truetype");
-            font-display: block;
-        }
-
-        /* Options-screen serif. EB Garamond (SIL Open Font License — see
-           assets/fonts/EB_Garamond/OFL.txt), subset to the Latin and Cyrillic
-           the game can display: 33 KB instead of the 6 MB the full download is.
-           Rebuild with tools/subset-font.py.
-
-           TO CHANGE THE TYPEFACE, these two src lines are the only edit. The
-           family is called "UI Serif" rather than "Garamond" precisely so that
-           swapping the face does not leave a lying name behind in the code.
-
-           For a different weight of the same face, swap "Medium" for "SemiBold";
-           the subset script builds both and only the one named here downloads.
-           For a different face entirely, put its .ttf in EB_Garamond/static/,
-           add it to WEIGHTS in tools/subset-font.py, run it, and point here. */
-        @font-face {
-            font-family: "UI Serif";
-            src: url("assets/fonts/EBGaramond-Medium-subset.woff2") format("woff2"),
-                 url("assets/fonts/EBGaramond-Medium-subset.ttf") format("truetype");
-            font-display: block;
-        }
+        @import url("src/ui/fontFaces.css");
 
         body {
             margin: 0;
@@ -44,7 +20,7 @@
             /* Matches the Phaser canvas colour so handing over to the game's
                own loading bar is not a visible flash of a different screen. */
             background: #2c1810;
-            font-family: "HoMM Pixel", Arial, Helvetica, sans-serif;
+            font-family: "UI Feedback", sans-serif;
             overflow: hidden;
         }
         #phaser-game-container {

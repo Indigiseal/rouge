@@ -1,4 +1,5 @@
 import { CardSystem } from '../systems/CardSystem.js';
+import { CombatFeedback } from '../ui/CombatFeedback.js';
 import { InventorySystem } from '../systems/InventorySystem.js';
 import { GameState, PLAYER_START_HP } from '../systems/GameState.js';
 import { AmuletManager } from '../managers/AmuletManager.js';
@@ -1003,101 +1004,18 @@ export class GameScene extends Phaser.Scene {
         }
     }
     createFloatingText(x, y, text, color, fontSize = '15px', opts = {}) {
-        const message = t(this, text);
-        // Mirror every combat event into the running log (brown, not the
-        // bright floating-text color) so players can read the fight back. The
-        // position tells us who the number belongs to (You / enemy name).
-        // Callers that log the event themselves pass { skipLog: true }.
-        if (!opts.skipLog) this.addCombatLog(message, x, y);
-        const slot = this.reserveFloatingTextSlot(x, y);
-        const startX = Phaser.Math.Clamp(x + slot.xOffset, 32, 608);
-        const startY = Phaser.Math.Clamp(y + slot.yOffset, 24, 336);
-        const fill = Phaser.Display.Color.IntegerToColor(color).rgba;
-        const floatText = this.add.text(startX, startY, message, {
-            fontSize,
-            fill,
-            fontFamily: '"HoMM Pixel", Arial, sans-serif',
-            align: 'center',
-            stroke: '#000000',
-            strokeThickness: 3,
-            shadow: {
-                offsetX: 1,
-                offsetY: 1,
-                color: '#000000',
-                blur: 0,
-                fill: true
-            }
-        }).setOrigin(0.5).setDepth(10000);
-
-        // Track the live text so a floor transition (which sleeps the scene and
-        // freezes its tweens mid-flight) can sweep away any stragglers instead
-        // of leaving them frozen on the next floor's board.
-        (this._floatingTexts || (this._floatingTexts = [])).push(floatText);
-        floatText.once('destroy', () => {
-            const list = this._floatingTexts;
-            if (!list) return;
-            const idx = list.indexOf(floatText);
-            if (idx !== -1) list.splice(idx, 1);
-        });
-
-        this.tweens.add({
-            targets: floatText,
-            y: floatText.y - 28,
-            duration: 650,
-            ease: 'Cubic.easeOut',
-            onComplete: () => {
-                this.tweens.add({
-                    targets: floatText,
-                    alpha: 0,
-                    duration: 450,
-                    delay: 450,
-                    ease: 'Linear',
-                    onComplete: () => {
-                        slot.active = false;
-                        floatText.destroy();
-                    }
-                });
-            }
-        });
+        this.showCombatFeedback({ x, y, message: text, ...opts });
     }
 
-    reserveFloatingTextSlot(x, y) {
-        const now = this.time.now;
-        this.floatingTextSlots = (this.floatingTextSlots || []).filter(slot => slot.active && slot.expiresAt > now);
-
-        const nearby = this.floatingTextSlots.filter(slot =>
-            Math.abs(slot.x - x) < 72 && Math.abs(slot.y - y) < 48
-        ).length;
-        const slot = {
-            x,
-            y,
-            xOffset: 0,
-            yOffset: -nearby * 16,
-            expiresAt: now + 1700,
-            active: true
-        };
-        this.floatingTextSlots.push(slot);
-        return slot;
+    showCombatFeedback({ x, y, message, ...options }) {
+        this.combatFeedback ||= new CombatFeedback(this);
+        this.combatFeedback.emit(x, y, message, options);
     }
 
-    // Immediately destroy any live floating numbers/labels and free their
-    // layout slots. Called on floor transitions and scene shutdown so a text
-    // whose fade-out tween was paused (scene slept mid-flight) can't linger on
-    // the next floor's board.
     clearFloatingTexts() {
-        if (Array.isArray(this._floatingTexts)) {
-            // Copy first: destroy() fires the 'destroy' handler that splices the
-            // live array, which would corrupt a direct iteration.
-            [...this._floatingTexts].forEach(txt => {
-                if (!txt) return;
-                this.tweens?.killTweensOf(txt);
-                txt.destroy();
-            });
-        }
-        this._floatingTexts = [];
-        this.floatingTextSlots = [];
+        this.combatFeedback?.clear();
     }
-    
+
     createSlashEffect(x, y) {
         const slash = this.add.graphics();
         slash.lineStyle(5, 0xffffff, 1);

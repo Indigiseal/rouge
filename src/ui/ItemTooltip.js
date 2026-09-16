@@ -342,6 +342,7 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth 
     const bodyText = body
         ? scene.add.text(0, Math.ceil(nameText.height) + 3, body, {
             fontSize: TOOLTIP_BODY_PX,
+            fontRole: 'reading',
             fill: TOOLTIP_TEXT_COLOR,
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             wordWrap: { width: maxWidth },

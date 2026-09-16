@@ -31,7 +31,8 @@
     "sim:dashboard": "node tools/stats-dashboard.mjs",
     "sim:compare-human": "node tools/compare-human-sim.mjs",
     "test:viewport": "node tools/audit-viewport-reads.mjs",
-    "test:fonts": "node tools/audit-font-coverage.mjs"
+    "test:fonts": "node tools/audit-font-coverage.mjs",
+    "test:combat-feedback": "node tools/test-combat-feedback.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1"

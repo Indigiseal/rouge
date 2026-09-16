@@ -112,7 +112,9 @@ export class CombatSequencer {
             scene.logCombatEvent?.(text, x, y);
             opts.skipLog = true;
         }
-        this.schedule(scene, beat, () => scene.createFloatingText?.(x, y, text, color, size, opts));
+        // Capture the target before a lethal hit swaps its card for loot.
+        // The feedback manager owns visual spacing and transition cleanup.
+        scene.createFloatingText?.(x, y, text, color, size, { ...opts, delayMs: this._offsetOf(beat) });
     }
 
     static shakeCard(scene, beat, sprite) {

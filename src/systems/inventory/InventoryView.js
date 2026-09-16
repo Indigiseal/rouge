@@ -925,6 +925,7 @@ export const InventoryView = {
         // same card on the board.
         const textStyle = {
             fontSize: TOOLTIP_BODY_PX,
+            fontRole: 'reading',
             fill: TOOLTIP_TEXT_COLOR,
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             lineSpacing: 2,

@@ -488,7 +488,9 @@ export class CombatTurnController {
 
         if (tookDamage) {
             CombatSequencer.playVariant(scene, 'hurt', 'player_hurt', 0.5);
-            CombatSequencer.floatingText(scene, 'hurt', scene.playerAvatar.x, scene.playerAvatar.y, `-${actualDamage}`, 0xff0000);
+            CombatSequencer.floatingText(scene, 'hurt', scene.playerAvatar.x, scene.playerAvatar.y,
+                { key: 'float.damage', vars: { amount: actualDamage } }, 0xff0000, '15px',
+                { type: 'damage', amount: actualDamage, lethal: scene.gameState.playerHealth <= 0, target: scene.playerAvatar });
 
             if (playerHealthBeforeDamage > 0 && scene.gameState.playerHealth <= 0) {
                 scene.killedBy = card.data.name || card.data.type || 'Enemy';
