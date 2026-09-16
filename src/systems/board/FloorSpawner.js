@@ -191,7 +191,7 @@ function spawnFloorCards() {
         this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(card, y) - 5, duration: 150 });
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
-        cardSprite.play('card_hover_anim');
+        cardSprite.play(this._cardHoverAnimKey());
       }
     });
     cardSprite.on('pointerout', () => {
@@ -607,7 +607,7 @@ function spawnTutorialCards() {
         this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(card, y) - 5, duration: 150 });
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
-        cardSprite.play('card_hover_anim');
+        cardSprite.play(this._cardHoverAnimKey());
       }
     });
     cardSprite.on('pointerout', () => {
@@ -757,7 +757,7 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
         this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(current, y) - 5, duration: 150 });
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
-        if (this.scene.anims.exists('card_hover_anim')) cardSprite.play('card_hover_anim');
+        if (this.scene.anims.exists(this._cardHoverAnimKey())) cardSprite.play(this._cardHoverAnimKey());
       });
       cardSprite.on('pointerout', () => {
         const current = this.boardCards[index];
@@ -1808,7 +1808,7 @@ function respawnCardOnBoard(cardData, options = {}) {
             this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(c, y) - 5, duration: 150 });
             cardSprite.setTexture(this._cardBackKey());
             snapOriginToPixelGrid(cardSprite);
-            if (this.scene.anims.exists('card_hover_anim')) cardSprite.play('card_hover_anim');
+            if (this.scene.anims.exists(this._cardHoverAnimKey())) cardSprite.play(this._cardHoverAnimKey());
         }
     });
     cardSprite.on('pointerout', () => {
@@ -1904,7 +1904,7 @@ function dropWaveCards() {
                 this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(c, y) - 5, duration: 150 });
                 cardSprite.setTexture(this._cardBackKey());
                 snapOriginToPixelGrid(cardSprite);
-                if (this.scene.anims.exists('card_hover_anim')) cardSprite.play('card_hover_anim');
+                if (this.scene.anims.exists(this._cardHoverAnimKey())) cardSprite.play(this._cardHoverAnimKey());
             }
         });
         cardSprite.on('pointerout', () => {

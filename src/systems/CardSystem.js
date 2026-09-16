@@ -10,7 +10,8 @@ import { BoardCombat } from './board/BoardCombat.js';
 import { BoardCardFx } from './board/BoardCardFx.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from './HumanRunRecorder.js';
 import { serializeReinforcementState } from '../content/balance/Reinforcements.js';
-import { cardBackKey, isCardBackTexture, opensByDamage, revealAnimKey } from './board/BoardVariant.js';
+import { cardBackKey, cardHoverAnimKey, isCardBackTexture, opensByDamage, revealAnimKey } from './board/BoardVariant.js';
+import { getLocationIdForFloor } from '../content/locations/index.js';
 import { scaleGoldReward } from '../content/economy/gold.js';
 
 export class CardSystem {
@@ -74,9 +75,15 @@ export class CardSystem {
     }
 
     /** Face-down art for the current room. */
-    _cardBackKey() { return cardBackKey(this._boardVariant); }
+    /** The location whose card art this board wears. */
+    _cardArtLocationId() {
+        const gameState = this.scene?.gameState;
+        return gameState ? getLocationIdForFloor(gameState) : null;
+    }
+    _cardBackKey() { return cardBackKey(this._boardVariant, this._cardArtLocationId()); }
+    _cardHoverAnimKey() { return cardHoverAnimKey(this._boardVariant, this._cardArtLocationId()); }
     /** Reveal animation for the current room. */
-    _revealAnimKey() { return revealAnimKey(this._boardVariant); }
+    _revealAnimKey() { return revealAnimKey(this._boardVariant, this._cardArtLocationId()); }
     /** True when this room's face-down cards must be damaged, not clicked. */
     _opensByDamage() { return opensByDamage(this._boardVariant); }
     /** True when `textureKey` is face-down or mid-flip art in this room. */

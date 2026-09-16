@@ -4,6 +4,7 @@ import { PIXEL_SCALE } from '../config/renderScale.js';
 import { wrapUiText } from '../ui/wrapText.js';
 import { buildResourceCardTextures } from '../content/assets/resourceCards.js';
 import { buildEnemyCardTextures } from '../content/assets/enemyCards.js';
+import { buildLocationCardArt } from '../content/assets/locationCardArt.js';
 import { buildLocationCardTextures } from '../content/assets/locationCards.js';
 import { LOCATION_PACK_LIST } from '../content/location-packs/registry.js';
 
@@ -84,6 +85,10 @@ export class PreloadScene extends Phaser.Scene {
         // Assets are in — take the loading overlay down before anything draws.
         this.removeBootLoader();
         this.installCrispTextFactory();
+
+        // Each location's back, flip and hover, off the shared sheets. Built
+        // before the fallbacks below so a missing row falls back to them.
+        buildLocationCardArt(this);
 
         this.anims.create({
             key: 'card_flip_anim',

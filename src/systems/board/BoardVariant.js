@@ -15,8 +15,16 @@
 //     openBy: 'damage',          // 'click' (default) | 'damage'
 //   }
 
+import {
+    locationCardBackKey,
+    locationCardRow,
+    locationFlipAnimKey,
+    locationHoverAnimKey,
+} from '../../content/assets/locationCardArt.js';
+
 export const DEFAULT_CARD_BACK = 'cardBack';
 export const DEFAULT_REVEAL_ANIM = 'card_flip_anim';
+export const DEFAULT_HOVER_ANIM = 'card_hover_anim';
 
 /** Face-down cards are opened by clicking them. */
 export const OPEN_BY_CLICK = 'click';
@@ -47,14 +55,38 @@ export function boardVariantFromAmbush(ambush) {
     });
 }
 
-/** The face-down texture for `variant`, or the standard card back. */
-export function cardBackKey(variant) {
-    return variant?.cardBack || DEFAULT_CARD_BACK;
+// Where a room gets its face-down look when the variant does not name one:
+// the location being walked. A variant still wins — a cocoon cache is cocoons
+// whichever road it sits on — and a location with no art drawn yet falls back
+// to the single-colour originals.
+//
+// Each of these takes the location id rather than reading it from anywhere, so
+// this module stays free of game state and remains straightforward to test.
+function locationOr(fallback, locationId, keyFor) {
+    if (locationCardRow(locationId) === undefined) return fallback;
+    return keyFor(locationId);
 }
 
-/** The reveal animation for `variant`, or the standard paper flip. */
-export function revealAnimKey(variant) {
-    return variant?.revealAnim || DEFAULT_REVEAL_ANIM;
+/** The face-down texture for `variant`, else the location's, else standard. */
+export function cardBackKey(variant, locationId = null) {
+    return variant?.cardBack || locationOr(DEFAULT_CARD_BACK, locationId, locationCardBackKey);
+}
+
+/** The reveal animation for `variant`, else the location's, else standard. */
+export function revealAnimKey(variant, locationId = null) {
+    return variant?.revealAnim || locationOr(DEFAULT_REVEAL_ANIM, locationId, locationFlipAnimKey);
+}
+
+/**
+ * The animation a face-down card plays under the pointer.
+ *
+ * Not a variant field: a variant that replaces the back with something that is
+ * not a card at all (a cocoon) has its own hover handling, and nothing in the
+ * variant spec has ever named a hover.
+ */
+export function cardHoverAnimKey(variant, locationId = null) {
+    if (variant?.cardBack) return DEFAULT_HOVER_ANIM;
+    return locationOr(DEFAULT_HOVER_ANIM, locationId, locationHoverAnimKey);
 }
 
 /** True when this room's face-down cards need damage rather than a click. */
@@ -74,5 +106,9 @@ export function isCardBackTexture(textureKey, variant) {
     const key = String(textureKey);
     return key === DEFAULT_CARD_BACK
         || key === cardBackKey(variant)
+        // Any location's back, not just the one this room is using: a board can
+        // outlive a location change, and a card whose art says "face down" must
+        // read as face down wherever that art came from.
+        || key.startsWith('cardBack_')
         || key.startsWith('cardFlip');
 }

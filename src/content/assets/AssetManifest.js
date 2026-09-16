@@ -185,6 +185,13 @@ export const ASSET_MANIFEST = [
     { key: 'shop_buy', path: 'assets/music/dropInBagStore.mp3', type: 'audio' },
     { key: 'card_flip', path: 'assets/music/flipcard-91468.mp3', type: 'audio' },
     // Load flip animation frames
+    // Per-location card art: 5 columns by 7 rows, one row per location in the
+    // same order as enemiesSpriteSheet. See content/assets/locationCardArt.js,
+    // which also cuts each location's resting card back out of flip column 0.
+    { key: 'cardFlipSheet', path: 'assets/art/cardFlip54x86SheetAll.png', type: 'spritesheet', frameWidth: 54, frameHeight: 86 },
+    { key: 'cardHoverSheet', path: 'assets/art/cardHover52x72SheetAll.png', type: 'spritesheet', frameWidth: 52, frameHeight: 72 },
+    // The single-colour originals. Still the fallback for a room with no
+    // location resolved, and for a location whose row is not drawn yet.
     { key: 'cardFlip1', path: 'assets/art/cardFlip1.png', type: 'image' },
     { key: 'cardFlip2', path: 'assets/art/cardFlip2.png', type: 'image' },
     { key: 'cardFlip3', path: 'assets/art/cardFlip3.png', type: 'image' },
