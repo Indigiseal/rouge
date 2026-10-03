@@ -1,0 +1,984 @@
+import { createAmuletDefinitions } from '../content/amulets/index.js';
+import {
+    applyControlMarksToBoard,
+    createBoundThrallCard,
+} from '../content/amulets/control.js';
+import {
+    pickFirstRangedMarchPair,
+    pickScoutTarget,
+    STRATEGY_CLUSTER_DEBOUNCE_MS,
+} from '../content/amulets/strategy.js';
+import { getEnemyHitAttack } from '../content/combat/enemyAttack.js';
+import { depthScaled } from '../content/balance/DepthScaling.js';
+import { areAmuletsDisabled } from '../config/TestOptions.js';
+import { translateItemName } from '../i18n/i18n.js';
+import { scaleGoldReward } from '../content/economy/gold.js';
+
+export class AmuletManager {
+    constructor(scene) {
+        this.scene = scene;
+        this.gameState = scene.gameState;
+        
+        this.amuletDefinitions = createAmuletDefinitions(this);
+    }
+
+    // Check if player has a specific amulet
+    hasAmulet(amuletId) {
+        return this.gameState.activeAmulets.some(a => a.id === amuletId);
+    }
+    
+    // Get amulet data (for tracking uses, etc.)
+    getAmuletData(amuletId) {
+        return this.gameState.activeAmulets.find(a => a.id === amuletId);
+    }
+
+    isPoisonImmune() {
+        return this.gameState.activeAmulets.some(amulet => (
+            this.amuletDefinitions[amulet.id]?.poisonImmunity
+        ));
+    }
+
+    // Sum a numeric definition property across all active amulets.
+    sumAmuletProperty(prop) {
+        return this.gameState.activeAmulets.reduce((total, amulet) => (
+            total + (this.amuletDefinitions[amulet.id]?.[prop] || 0)
+        ), 0);
+    }
+
+    shouldReturnMagicCard() {
+        const chance = this.sumAmuletProperty('magicCardReturnChance');
+        return chance > 0 && Math.random() < Math.min(1, chance);
+    }
+
+    getDiscardCoinBonus() {
+        return this.sumAmuletProperty('coinsPerDiscard');
+    }
+
+    // Golden Seed — permanent max HP gained per card discarded.
+    getDiscardMaxHpBonus() {
+        return this.sumAmuletProperty('maxHpPerDiscard');
+    }
+
+    // Legacy Fire Rune (event) — extra pixels added to the fire gem's splash radius.
+    getFireSplashRadiusBonus() {
+        return this.sumAmuletProperty('fireSplashRadiusBonus');
+    }
+
+    // Uncommon Rune of Fire — multiplies the base splash radius (1.5 → 98px).
+    getFireSplashRadiusMultiplier() {
+        return this.sumAmuletProperty('fireSplashRadiusMultiplier') || 1;
+    }
+
+    getLightningExtraBounces() {
+        return this.sumAmuletProperty('lightningExtraBounces') || 0;
+    }
+
+    getPoisonGemSplashTargets() {
+        return this.sumAmuletProperty('poisonGemSplashTargets') || 0;
+    }
+
+    // Remove an equipped amulet and reverse its onUnequip / max-HP bonus.
+    removeAmulet(amuletId, { silent = false } = {}) {
+        const index = this.gameState.activeAmulets.findIndex((a) => a.id === amuletId);
+        if (index < 0) return false;
+        const definition = this.amuletDefinitions[amuletId];
+        if (definition?.onUnequip) {
+            definition.onUnequip.call(this);
+        }
+        this.gameState.activeAmulets.splice(index, 1);
+        if (!silent) {
+            this.scene.createFloatingText(320, 160, {
+                key: 'float.itemReplaced',
+                vars: { name: translateItemName(this.scene, definition?.name || amuletId) },
+            }, 0xffaa66);
+        }
+        return true;
+    }
+
+    // True if an owned amulet already replaces this id (upgrade present).
+    isReplacedByOwned(amuletId) {
+        return this.gameState.activeAmulets.some((owned) => {
+            const replaces = this.amuletDefinitions[owned.id]?.replaces;
+            return Array.isArray(replaces) && replaces.includes(amuletId);
+        });
+    }
+
+    // Would addAmulet() succeed for this id? Offers are built when a card
+    // spawns but redeemed much later, by which point the player may already own
+    // what was rolled — callers use this to drop dead options before showing a
+    // choice, and before charging for one.
+    // Keep the rejection reasons here in step with addAmulet() below.
+    canAddAmulet(amuletId, { force = false } = {}) {
+        if (areAmuletsDisabled() && !force) return false;
+        const definition = this.amuletDefinitions[amuletId];
+        if (!definition) return false;
+        if (this.isReplacedByOwned(amuletId)) return false;
+        if (this.hasAmulet(amuletId) && !definition.stackable) return false;
+        return true;
+    }
+
+    // Every still-takeable option from a (possibly stale) offer list.
+    takeableOptions(options) {
+        return (options || []).filter((o) => o?.id && this.canAddAmulet(o.id));
+    }
+
+    // Add an amulet to the player.
+    // force=true bypasses the "amulets disabled" test option — used by the
+    // balance sim for controlled solo-amulet sweeps (starting loadout only;
+    // floor/shop drops stay blocked while the option is on).
+    addAmulet(amuletId, { force = false } = {}) {
+        if (areAmuletsDisabled() && !force) return false;
+
+        const definition = this.amuletDefinitions[amuletId];
+        if (!definition) return false;
+
+        // Already have a stronger version that replaces this one.
+        if (this.isReplacedByOwned(amuletId)) {
+            this.scene.createFloatingText(320, 180, 'Already upgraded!', 0xffa500);
+            return false;
+        }
+        
+        // Check if stackable or already owned
+        if (this.hasAmulet(amuletId) && !definition.stackable) {
+            this.scene.createFloatingText(320, 180, 'Already owned!', 0xff0000);
+            return false;
+        }
+
+        // Upgrade path: strip replaced weaker amulets first (undo their bonuses).
+        if (Array.isArray(definition.replaces)) {
+            for (const oldId of definition.replaces) {
+                if (this.hasAmulet(oldId)) this.removeAmulet(oldId, { silent: true });
+            }
+        }
+        
+        const amuletData = {
+            id: amuletId,
+            name: definition.name,
+            sprite: definition.sprite,
+            spriteFrame: definition.spriteFrame ?? 0,
+            level: 1,
+            usesLeft: definition.usesPerRun || 0,
+            cooldownLeft: 0,
+        };
+        
+        // Initialize special tracking properties for specific amulets
+        if (amuletId === 'soulHarvester') {
+            amuletData.killCount = 0;
+        }
+        
+        // Handle stacking
+        if (definition.stackable && this.hasAmulet(amuletId)) {
+            const existing = this.getAmuletData(amuletId);
+            if (existing.level < definition.maxLevel) {
+                existing.level++;
+                this.scene.createFloatingText(320, 180, {
+                    key: 'float.upgradedItem',
+                    vars: { name: translateItemName(this.scene, definition.name) },
+                }, 0x00ff00);
+            } else {
+                this.scene.createFloatingText(320, 180, 'Max level reached!', 0xffa500);
+                return false;
+            }
+        } else {
+            this.gameState.activeAmulets.push(amuletData);
+            
+            // Run onEquip effect if it exists
+            if (definition.onEquip) {
+                definition.onEquip.call(this);
+            }
+        }
+        
+        // Refresh Traveler's Journal bonus after any new amulet
+        this.recalculateJournalBonus();
+
+        this.scene.updateUI();
+        return true;
+    }
+
+    // Process start-of-floor effects (regen rings, Philosopher's Stone, …)
+    processFloorStart() {
+        this.cancelActiveAbility();
+        let healTotal = 0;
+        this.gameState.activeAmulets.forEach((amulet) => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (!definition) return;
+            if (definition.onFloorStart) {
+                definition.onFloorStart(amulet.level || 1);
+            }
+            if (definition.floorStartHeal) {
+                // Regen may be flat (number) or depth-scaled ({base, perFloor}).
+                healTotal += depthScaled(definition.floorStartHeal, this.gameState.currentFloor)
+                    * (amulet.level || 1);
+            }
+        });
+        this.applyStrategyScout();
+        this.applyControlMarks();
+        if (healTotal <= 0) return;
+        const before = this.gameState.playerHealth;
+        this.gameState.playerHealth = Math.min(
+            this.gameState.maxHealth,
+            this.gameState.playerHealth + healTotal
+        );
+        const gained = this.gameState.playerHealth - before;
+        if (gained > 0 && this.scene.playerAvatar) {
+            this.scene.createFloatingText(
+                this.scene.playerAvatar.x,
+                this.scene.playerAvatar.y,
+                `+${gained} HP (Regen)`,
+                0x00ff00
+            );
+        }
+    }
+
+    processPlayerTurn(context = null) {
+        // Once the room is won, collecting/revealing the remaining rewards is
+        // cleanup rather than combat and must not recharge active abilities.
+        if (this.scene.enemiesCleared) return;
+        // Do not let cooldown movement leak that a harmless-looking face-down
+        // board still contains an enemy. Ordinary flips stay neutral until the
+        // hidden enemy itself is revealed or the player takes a combat action.
+        if (context?.kind === 'cardReveal'
+            && !context.revealedEnemy
+            && context.hiddenEnemyExists) return;
+        let changed = false;
+        for (const amulet of this.gameState.activeAmulets) {
+            if ((amulet.cooldownLeft || 0) <= 0) continue;
+            amulet.cooldownLeft = Math.max(0, amulet.cooldownLeft - 1);
+            changed = true;
+        }
+        if (changed) this.scene.updateUI?.();
+    }
+
+    activateAmulet(amuletId) {
+        const amulet = this.getAmuletData(amuletId);
+        const definition = this.amuletDefinitions[amuletId];
+        if (!amulet || !definition?.activeAbility) return false;
+        if ((amulet.cooldownLeft || 0) > 0) {
+            this.scene.createFloatingText(320, 42, `Cooldown: ${amulet.cooldownLeft}`, 0xffaa66);
+            return false;
+        }
+
+        if (definition.activeAbility === 'revealFood') {
+            const board = this.scene.cardSystem?.boardCards || [];
+            const targets = board
+                .map((card, index) => ({ card, index }))
+                .filter(({ card }) => card && !card.revealed && card.data?.type === 'food');
+            if (targets.length === 0) {
+                this.scene.createFloatingText(320, 42, 'No hidden food', 0xcccccc);
+                return false;
+            }
+            for (const { index } of targets) this.scene.cardSystem.revealCard(index, true);
+            this.startCooldown(amulet, definition);
+            this.scene.createFloatingText(320, 42, `Food revealed: ${targets.length}`, 0x66ff99);
+            return true;
+        }
+
+        const randomRevealTypes = {
+            revealWeapon: { type: 'weapon', empty: 'No hidden weapons', success: 'Weapon revealed' },
+            revealPotion: { type: 'potion', empty: 'No hidden potions', success: 'Potion revealed' },
+            revealGem: { type: 'gem', empty: 'No hidden gems', success: 'Gem revealed' },
+        };
+        const reveal = randomRevealTypes[definition.activeAbility];
+        if (reveal) {
+            const board = this.scene.cardSystem?.boardCards || [];
+            const targets = board
+                .map((card, index) => ({ card, index }))
+                .filter(({ card }) => card && !card.revealed && card.data?.type === reveal.type);
+            if (targets.length === 0) {
+                this.scene.createFloatingText(320, 42, reveal.empty, 0xcccccc);
+                return false;
+            }
+            const target = targets[Math.floor(Math.random() * targets.length)];
+            this.scene.cardSystem.revealCard(target.index, true);
+            this.startCooldown(amulet, definition);
+            this.scene.createFloatingText(320, 42, reveal.success, 0x66ff99);
+            return true;
+        }
+
+        if (definition.activeAbility === 'swapCards') {
+            const available = (this.scene.cardSystem?.boardCards || []).filter(Boolean);
+            if (available.length < 2) {
+                this.scene.createFloatingText(320, 42, 'Not enough cards', 0xcccccc);
+                return false;
+            }
+            if (this.activeAbility?.amuletId === amuletId) {
+                this.cancelActiveAbility();
+                this.scene.createFloatingText(320, 42, 'Swap cancelled', 0xcccccc);
+                return false;
+            }
+            this.cancelActiveAbility();
+            this.activeAbility = { amuletId, firstIndex: null };
+            this.scene.createFloatingText(320, 42, 'Choose the first card', 0x66ccff);
+            return true;
+        }
+        return false;
+    }
+
+    handleActiveBoardCardSelection(index) {
+        const active = this.activeAbility;
+        if (!active) return false;
+        const board = this.scene.cardSystem?.boardCards || [];
+        const card = board[index];
+        if (!card) return true;
+
+        if (active.firstIndex == null) {
+            active.firstIndex = index;
+            this.drawSwapSelection(card);
+            this.scene.createFloatingText(card.sprite?.x || 320, (card.sprite?.y || 80) - 30, 'First', 0x66ccff);
+            return true;
+        }
+        if (active.firstIndex === index) {
+            this.scene.createFloatingText(card.sprite?.x || 320, (card.sprite?.y || 80) - 30, 'Choose another card', 0xffaa66);
+            return true;
+        }
+
+        const first = board[active.firstIndex];
+        const amulet = this.getAmuletData(active.amuletId);
+        const definition = this.amuletDefinitions[active.amuletId];
+        const swapped = this.scene.cardSystem?.swapCardSeats?.(first, card, { animate: true });
+        if (swapped) {
+            this.startCooldown(amulet, definition);
+            this.scene.createFloatingText(320, 42, 'Cards swapped', 0x66ff99);
+        }
+        this.cancelActiveAbility();
+        return true;
+    }
+
+    startCooldown(amulet, definition) {
+        if (!amulet || !definition) return;
+        amulet.cooldownLeft = Math.max(0, Math.floor(definition.cooldownTurns || 0));
+        this.scene.updateUI?.();
+        this.scene.saveCurrentRun?.();
+    }
+
+    drawSwapSelection(card) {
+        this.swapSelectionMarker?.destroy?.();
+        const sprite = card?.sprite;
+        if (!sprite?.scene) return;
+        const width = (sprite.displayWidth || sprite.width || 53) + 8;
+        const height = (sprite.displayHeight || sprite.height || 70) + 8;
+        this.swapSelectionMarker = this.scene.add.graphics().setDepth(30);
+        this.swapSelectionMarker.lineStyle(2, 0x66ccff, 1);
+        this.swapSelectionMarker.strokeRoundedRect(sprite.x - width / 2, sprite.y - height / 2, width, height, 4);
+    }
+
+    cancelActiveAbility() {
+        this.activeAbility = null;
+        this.swapSelectionMarker?.destroy?.();
+        this.swapSelectionMarker = null;
+    }
+
+    // Process end of floor effects
+    processFloorEnd() {
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.onFloorEnd) {
+                definition.onFloorEnd(amulet.level || 1);
+            }
+        });
+    }
+    
+    // Fire any amulet hooks that respond to drinking a healing potion
+    // (e.g. Carrion Oath's poison purge). Call AFTER the heal is applied.
+    processPotionUse() {
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.onPotionUse) {
+                definition.onPotionUse(amulet.level || 1);
+            }
+        });
+    }
+
+    // Modify potion healing
+    modifyPotionHealing(baseAmount) {
+        let amount = baseAmount;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.modifyPotionHealing) {
+                amount = definition.modifyPotionHealing(amount);
+            }
+        });
+        return amount;
+    }
+    
+    // Modify weapon damage
+    modifyWeaponDamage(baseDamage) {
+        let damage = baseDamage;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.modifyWeaponDamage) {
+                damage = definition.modifyWeaponDamage(damage);
+            }
+        });
+        const relicBonus = this.gameState.relicEffects?.weaponDamageBonus || 0;
+        if (relicBonus) {
+            damage += relicBonus;
+        }
+        return damage;
+    }
+    
+    // Check dodge chance
+    checkDodge() {
+        let totalDodgeChance = 0;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.dodgeChance) {
+                totalDodgeChance += definition.dodgeChance;
+            }
+        });
+        return Math.random() < totalDodgeChance;
+    }
+    
+    // Modify damage taken
+    modifyDamageTaken(baseDamage) {
+        let damage = baseDamage;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.modifyDamageTaken) {
+                damage = definition.modifyDamageTaken(damage);
+            }
+        });
+        return damage;
+    }
+    
+    // Check for lethal damage prevention
+    checkLethalPrevention() {
+        for (let amulet of this.gameState.activeAmulets) {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.onLethalDamage) {
+                if (definition.onLethalDamage()) {
+                    return true; // Prevent death
+                }
+            }
+        }
+        return false;
+    }
+    
+    // Fire AP-restore amulets (Tea Room Bell) when the player enters a
+    // non-battle room (shop, rest, anvil, event, treasure). AP carries into the
+    // next fight, so this is a small economy boost between battles.
+    processNonBattleSceneEnter() {
+        let total = 0;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.restoreApOnNonBattle) {
+                total += definition.restoreApOnNonBattle;
+            }
+        });
+        if (total <= 0) return;
+
+        const before = this.gameState.actionsLeft || 0;
+        this.gameState.actionsLeft = Math.min(this.gameState.maxActions, before + total);
+        const gained = this.gameState.actionsLeft - before;
+        if (gained <= 0) return;
+
+        this.scene.updateActionPointUI?.();
+        this.scene.updateUI?.();
+        if (this.scene.playerAvatar) {
+            this.scene.createFloatingText?.(
+                this.scene.playerAvatar.x,
+                this.scene.playerAvatar.y - 20,
+                `+${gained} AP (Bell)`,
+                0x66ddff
+            );
+        }
+    }
+
+    // Process enemy kill
+    processEnemyKill(card) {
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.onEnemyKill) {
+                definition.onEnemyKill(card);
+            }
+            const burstDamage = definition?.poisonDeathExplosionDamage || 0;
+            if (burstDamage > 0) this.scene.cardSystem?.explodePoisonedEnemy?.(card, burstDamage);
+        });
+        this.tryBindThrall(card);
+    }
+
+    // Monocle — chance to find a crystal on kill. Caller grants currency + FX.
+    rollMonocleCrystalReward() {
+        const chance = this.sumAmuletProperty('crystalOnKillChance');
+        if (chance <= 0 || Math.random() >= chance) return null;
+        return { kind: 'crystal', amount: 1 };
+    }
+
+    // Vampire Fang — heal for a % of weapon damage dealt (ceil).
+    processLifesteal(damageDealt) {
+        const percent = this.sumAmuletProperty('lifestealPercent');
+        if (percent <= 0 || damageDealt <= 0) return 0;
+        const heal = Math.ceil(damageDealt * percent);
+        if (heal <= 0) return 0;
+        const before = this.gameState.playerHealth;
+        this.gameState.playerHealth = Math.min(
+            this.gameState.maxHealth,
+            this.gameState.playerHealth + heal
+        );
+        const gained = this.gameState.playerHealth - before;
+        if (gained > 0 && this.scene.playerAvatar) {
+            this.scene.createFloatingText(
+                this.scene.playerAvatar.x,
+                this.scene.playerAvatar.y - 12,
+                `+${gained} HP (Life)`,
+                0xff6688
+            );
+        }
+        return gained;
+    }
+
+    getArmorDurabilitySaveChance() {
+        return Math.min(0.95, this.sumAmuletProperty('armorDurabilitySaveChance'));
+    }
+
+    // Probability of SPENDING 1 weapon durability (1 = always spend).
+    getWeaponDurabilityRate() {
+        let rate = 1;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.weaponDurabilityRate) {
+                rate *= definition.weaponDurabilityRate;
+            }
+        });
+        // Whetstone (talent) shares the amulets' save pool: weapons breaking is a
+        // real way runs end (3-6% of them), while max AP measurably is not —
+        // +25 AP moved the average run by half a floor.
+        const talentSave = this.gameState?.talentEffects?.weaponDurabilitySave || 0;
+        const save = Math.min(0.95, this.sumAmuletProperty('weaponDurabilitySaveChance') + talentSave);
+        return Math.max(0, Math.min(1, rate * (1 - save)));
+    }
+
+    // Scale gem hit damage: hermit gloves (+20% all) or typed runes.
+    modifyGemDamage(baseDamage, gemType) {
+        let damage = baseDamage;
+        const allBonus = this.sumAmuletProperty('allGemDamageBonus');
+        if (allBonus > 0) {
+            damage = Math.ceil(damage * (1 + allBonus));
+            return Math.max(1, damage);
+        }
+        let typed = 0;
+        if (gemType === 'fire') typed = this.sumAmuletProperty('fireGemDamageBonus');
+        else if (gemType === 'lightning' || gemType === 'zap') typed = this.sumAmuletProperty('zapGemDamageBonus');
+        if (typed > 0) damage = Math.ceil(damage * (1 + typed));
+        return Math.max(1, damage);
+    }
+
+    getPoisonGemTickBonus() {
+        if (this.sumAmuletProperty('allGemDamageBonus') > 0) {
+            // Hermit gloves replace poison rune; +20% on tick 1 → ceil(1.2)=2 vs +1 flat.
+            // Spec: gloves = +20% all gem damage. Poison ticks are gem damage.
+            return 0; // percent applied in modifyGemDamage for poison stacks below
+        }
+        return this.sumAmuletProperty('poisonGemTickBonus');
+    }
+
+    modifyPoisonGemTickDamage(baseDamage) {
+        const allBonus = this.sumAmuletProperty('allGemDamageBonus');
+        if (allBonus > 0) return Math.max(1, Math.ceil(baseDamage * (1 + allBonus)));
+        return Math.max(1, baseDamage + this.sumAmuletProperty('poisonGemTickBonus'));
+    }
+
+    // Prospector's Pick — 10% chance per kill to find 1-2 coins OR a crystal.
+    // Returns { kind: 'coin'|'crystal', amount } or null. The caller grants the
+    // currency and plays the pickup animation on the enemy's defeat tile.
+    rollProspectorPickReward() {
+        if (!this.hasAmulet('prospectorsPick')) return null;
+        if (Math.random() >= 0.10) return null;
+        if (Math.random() < 0.5) {
+            return { kind: 'coin', amount: 1 + Math.floor(Math.random() * 2) }; // 1 or 2
+        }
+        return { kind: 'crystal', amount: 1 };
+    }
+
+    // Lucky Streak (Fortune Card) — when the player lands a CRIT, a 25% chance to
+    // shake loose 1-2 coins or a crystal. Returns { kind: 'coin'|'crystal', amount }
+    // or null. The caller grants it and plays the coin-jump / crystal-scatter fx.
+    rollLuckyStreakCritReward() {
+        if (!this.hasAmulet('fortuneCard')) return null;
+        if (Math.random() >= 0.25) return null;
+        if (Math.random() < 0.65) {
+            return { kind: 'coin', amount: 1 + Math.floor(Math.random() * 2) }; // 1 or 2
+        }
+        return { kind: 'crystal', amount: 1 };
+    }
+
+    // Cross-tier merging was granted by Golden Hammer, which has been removed
+    // for being too powerful. Kept as a stub (always false) so existing callers
+    // in inventorySystem keep working.
+    canCrossTierMerge() {
+        return false;
+    }
+    
+    // Modify gold found
+    modifyGoldFound(baseAmount) {
+        let amount = scaleGoldReward(baseAmount);
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.modifyGoldFound) {
+                amount = definition.modifyGoldFound(amount);
+            }
+        });
+        const relicMultiplier = this.gameState.relicEffects?.coinMultiplier || 1;
+        if (relicMultiplier !== 1) {
+            amount = Math.floor(amount * relicMultiplier);
+        }
+        return amount;
+    }
+    
+    // Modify food AP
+    modifyFoodAP(baseAmount) {
+        let amount = baseAmount;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.modifyFoodAP) {
+                amount = definition.modifyFoodAP(amount);
+            }
+        });
+        return amount;
+    }
+
+    // Modify crystal pickup amount (Diviner's Spade)
+    modifyCrystalFound(baseAmount) {
+        let amount = baseAmount;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.modifyCrystalFound) {
+                amount = definition.modifyCrystalFound(amount);
+            }
+        });
+        return amount;
+    }
+
+    // Sum of extraStartNonEnemyReveals from all equipped amulets (Wayfinder's Compass)
+    getExtraNonEnemyReveals() {
+        let total = 0;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.extraStartNonEnemyReveals) {
+                total += definition.extraStartNonEnemyReveals;
+            }
+        });
+        return total;
+    }
+
+    // Sum of bonusShopSlots from all equipped amulets (Merchant's Seal)
+    getBonusShopSlots() {
+        let total = 0;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.bonusShopSlots) {
+                total += definition.bonusShopSlots;
+            }
+        });
+        return total;
+    }
+
+    // Combined charm chance — sum from all equipped amulets (Siren's Perfume)
+    getCharmChance() {
+        let chance = 0;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.charmChance) {
+                chance += definition.charmChance;
+            }
+        });
+        return chance;
+    }
+
+    // Combined deathDropChance — Mask of Hollow Whispers
+    getDeathDropChance() {
+        let chance = 0;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.deathDropChance) {
+                chance += definition.deathDropChance;
+            }
+        });
+        return chance;
+    }
+
+    getCriticalChanceBonus() {
+        return this.sumAmuletProperty('critChanceBonus');
+    }
+
+    processCardReward(cardData) {
+        if (!cardData || cardData.type === 'coin' || cardData.type === 'crystal') return;
+        const bonus = this.sumAmuletProperty('crystalOnFirstCardReward');
+        if (bonus <= 0) return;
+
+        const floor = this.gameState.currentFloor || 1;
+        if (this.gameState.fortuneCardRewardFloor === floor) return;
+        this.gameState.fortuneCardRewardFloor = floor;
+        this.gameState.crystals = (this.gameState.crystals || 0) + bonus;
+        this.scene.updateUI?.();
+        this.scene.createFloatingText?.(512, 382, `+${bonus} crystal (Fortune)`, 0x66ddff);
+    }
+
+    // Watcher's Lamp — wants one trap revealed at floor start
+    wantsTrapPreview() {
+        return this.gameState.activeAmulets.some(a =>
+            this.amuletDefinitions[a.id]?.previewOneTrap
+        );
+    }
+
+    // Lute of First Light — first melee attack per floor is no-damage
+    hasCharmingTune() {
+        return this.gameState.activeAmulets.some(a =>
+            this.amuletDefinitions[a.id]?.charmingTune
+        );
+    }
+
+    getControlFlags() {
+        const flags = { hesitation: false, treachery: false, bindOnKill: false };
+        this.gameState.activeAmulets.forEach((amulet) => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (!definition) return;
+            if (definition.controlHesitation) flags.hesitation = true;
+            if (definition.controlTreachery) flags.treachery = true;
+            if (definition.bindOnKill) flags.bindOnKill = true;
+        });
+        return flags;
+    }
+
+    getStrategyFlags() {
+        const flags = {
+            scout: false,
+            rangedMarch: false,
+            cluster: false,
+            detour: false,
+        };
+        this.gameState.activeAmulets.forEach((amulet) => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (!definition) return;
+            if (definition.strategyScout) flags.scout = true;
+            if (definition.strategyRangedMarch) flags.rangedMarch = true;
+            if (definition.strategyCluster) flags.cluster = true;
+            if (definition.strategyDetour) flags.detour = true;
+        });
+        return flags;
+    }
+
+    applyStrategyScout() {
+        if (this.scene.tutorialMode) return;
+        if (!this.getStrategyFlags().scout) return;
+        const cardSystem = this.scene.cardSystem;
+        const board = cardSystem?.boardCards;
+        if (!Array.isArray(board)) return;
+        for (const card of board) {
+            if (card?.data?.strategyScout) card.data.strategyScout = false;
+        }
+        const skip = [];
+        const pending = cardSystem._openingRevealIndices;
+        if (pending instanceof Set) {
+            for (const index of pending) {
+                if (board[index]) skip.push(board[index]);
+            }
+        }
+        // Prefer an enemy that was going to stay hidden anyway. If every enemy
+        // was selected for the opening cascade, reserve one of those instead.
+        const target = pickScoutTarget(board, skip) || pickScoutTarget(board);
+        if (!target?.data) return;
+        const targetIndex = board.indexOf(target);
+        if (pending instanceof Set && targetIndex >= 0) pending.delete(targetIndex);
+        target.data.strategyScout = true;
+        cardSystem.syncControlMarkers?.(target);
+    }
+
+    onStrategyReveal(card) {
+        if (this.scene.tutorialMode) return;
+        const cardSystem = this.scene.cardSystem;
+        if (cardSystem?._openingRevealIndices instanceof Set) {
+            const index = cardSystem.boardCards.indexOf(card);
+            if (index >= 0) cardSystem._openingRevealIndices.delete(index);
+        }
+        const flags = this.getStrategyFlags();
+        if (flags.rangedMarch && !this.gameState.strategyMarchUsed) {
+            const pair = pickFirstRangedMarchPair(cardSystem?.boardCards, card);
+            if (pair) {
+                this.gameState.strategyMarchUsed = true;
+                cardSystem.swapCardSeats?.(pair[0], pair[1]);
+                if (this.scene.createFloatingText && pair[0].sprite) {
+                    this.scene.createFloatingText(
+                        pair[0].restX ?? pair[0].sprite.x,
+                        (pair[0].restY ?? pair[0].sprite.y) - 16,
+                        'March!',
+                        0xc8b06a
+                    );
+                }
+            }
+        }
+        if (flags.cluster) {
+            this.scheduleStrategyCluster();
+        }
+    }
+
+    scheduleStrategyCluster() {
+        if (this.gameState.strategyClusterUsed) return;
+        this._strategyClusterTimer?.remove?.(false);
+        this._strategyClusterTimer = this.scene.time.delayedCall(
+            STRATEGY_CLUSTER_DEBOUNCE_MS,
+            () => this.applyStrategyCluster()
+        );
+    }
+
+    applyStrategyCluster() {
+        this._strategyClusterTimer = null;
+        if (this.scene.tutorialMode) return;
+        if (this.gameState.strategyClusterUsed) return;
+        const flags = this.getStrategyFlags();
+        if (!flags.cluster) return;
+        const moved = !!this.scene.cardSystem?.applyStrategyCluster?.();
+        const revealedEnemies = (this.scene.cardSystem?.boardCards || []).filter((card) => (
+            card?.revealed && (card.data?.type === 'enemy' || card.data?.type === 'eliteEnemy')
+        ));
+        if (revealedEnemies.length >= 2) this.gameState.strategyClusterUsed = true;
+        if (moved && this.scene.createFloatingText) {
+            const avatar = this.scene.playerAvatar;
+            this.scene.createFloatingText(
+                avatar?.x ?? 320,
+                (avatar?.y ?? 180) - 16,
+                'Close ranks!',
+                0xc8b06a
+            );
+        }
+    }
+
+    canUseStrategyDetour() {
+        if (this.scene.tutorialMode) return false;
+        if (!this.getStrategyFlags().detour) return false;
+        const act = Number(this.gameState.mapCursor?.act) || 0;
+        if (act < 1) return false;
+        return (Number(this.gameState.strategyDetourUsedAct) || 0) !== act;
+    }
+
+    consumeStrategyDetour() {
+        const act = Number(this.gameState.mapCursor?.act) || 0;
+        if (act < 1) return;
+        this.gameState.strategyDetourUsedAct = act;
+    }
+
+    applyControlMarks() {
+        if (this.scene.tutorialMode) return;
+        const board = this.scene.cardSystem?.boardCards;
+        if (!Array.isArray(board)) return;
+        applyControlMarksToBoard(board, this.getControlFlags());
+        board.forEach((card) => this.scene.cardSystem?.syncControlMarkers?.(card));
+    }
+
+    tryBindThrall(card) {
+        if (!this.getControlFlags().bindOnKill) return false;
+        if (this.scene.tutorialMode) return false;
+        if (!card?.data) return false;
+        if (!card.data.controlHesitation && !card.data.controlTreachery) return false;
+        if (card.data.type === 'boss' || card.data.isCocoon || card.data.isMimic) return false;
+        const features = Array.isArray(card.data.features) ? card.data.features : [];
+        if (features.includes('cocoon_shell')) return false;
+        const inventory = this.scene.inventorySystem;
+        if (!inventory?.addCard) return false;
+        if (!inventory.slots?.some((slot) => slot == null)) return false;
+        const attack = getEnemyHitAttack(card, this.scene.cardSystem?.boardCards);
+        const thrall = createBoundThrallCard(card, attack);
+        if (!inventory.addCard(thrall)) return false;
+        if (this.scene.playerAvatar) {
+            this.scene.createFloatingText(
+                this.scene.playerAvatar.x,
+                this.scene.playerAvatar.y - 18,
+                'Bound!',
+                0xff66aa
+            );
+        }
+        return true;
+    }
+
+    // Traveler's Journal — recompute the max HP bonus based on unique amulets.
+    // Called on every addAmulet so the bonus updates when you grow your collection.
+    recalculateJournalBonus() {
+        const hasJournal = this.hasAmulet('travelersJournal');
+        const prevBonus = this.gameState.journalBonusHP || 0;
+        const newBonus = hasJournal
+            ? new Set(this.gameState.activeAmulets.map(a => a.id)).size * 2
+            : 0;
+        const delta = newBonus - prevBonus;
+        if (delta === 0) return;
+        this.gameState.maxHealth = Math.max(1, this.gameState.maxHealth + delta);
+        if (delta > 0) {
+            this.gameState.playerHealth = Math.min(
+                this.gameState.maxHealth,
+                this.gameState.playerHealth + delta
+            );
+        } else {
+            this.gameState.playerHealth = Math.min(this.gameState.maxHealth, this.gameState.playerHealth);
+        }
+        this.gameState.journalBonusHP = newBonus;
+        if (delta > 0) {
+            this.scene.createFloatingText(
+                this.scene.playerAvatar.x,
+                this.scene.playerAvatar.y - 14,
+                `+${delta} Max HP (Journal)`,
+                0x66ff88
+            );
+        }
+    }
+
+    // True if any equipped amulet lets you open chests without a key
+    canBypassChestKey() {
+        return this.gameState.activeAmulets.some(a =>
+            this.amuletDefinitions[a.id]?.bypassChestKey
+        );
+    }
+
+    // True if any equipped amulet wants one card per floor converted to food
+    wantsFoodCardConversion() {
+        return this.gameState.activeAmulets.some(a =>
+            this.amuletDefinitions[a.id]?.convertOneCardToFood
+        );
+    }
+    
+    // Modify spell healing (for restoration and soul drain)
+    modifySpellHealing(baseAmount) {
+        let amount = baseAmount;
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            // Apply healing ring effects to spell healing too
+            if (definition && definition.modifyPotionHealing) {
+                amount = definition.modifyPotionHealing(amount);
+            }
+        });
+        return amount;
+    }
+    
+    // Check health cap (for berserker belt)
+    getMaxHealthCap() {
+        let cap = 1; // 100% by default
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.maxHealthCap) {
+                cap = Math.min(cap, definition.maxHealthCap);
+            }
+        });
+        return cap;
+    }
+    
+    // Check for free action chance (Quickhand Gloves amulet)
+    getFreeActionChance() {
+        if (this.hasAmulet('speedBoots')) {
+            return 0.15; // 15% chance for a free action with Quickhand Gloves
+        }
+        return 0;
+    }
+    
+    // Initialize all equipped amulet effects (call on game start/load)
+    initializeEquippedAmulets() {
+        this.gameState.activeAmulets.forEach(amulet => {
+            const definition = this.amuletDefinitions[amulet.id];
+            if (definition && definition.onEquip) {
+                definition.onEquip.call(this);
+            }
+        });
+    }
+    
+    // Check if player has free first action (Quickhand Gloves)
+    hasFreeFirstAction() {
+        return this.hasAmulet('speedBoots') && !this.gameState.firstActionUsed;
+    }
+}

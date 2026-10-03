@@ -1,0 +1,1514 @@
+// Combat HUD: avatar, HP, AP, currency, combat log, armor/amulet/relic panels.
+// Mixed into GameScene via Object.assign(GameScene.prototype, CombatHud).
+
+import { snapOriginToPixelGrid } from './PixelSnap.js';
+import { serifStyle } from './uiFont.js';
+import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
+import { createOptionsCog } from './OptionsCog.js';
+import { setHoverLight } from './HoverLight.js';
+import { looseGemCard } from '../content/cards/gems.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { devToolsEnabled } from '../config/DevTools.js';
+import { t, tCount, translateDescription, translateItemName } from '../i18n/i18n.js';
+import {
+    CHARACTER_CLASSES,
+    getWarriorStance,
+    WARRIOR_STANCES,
+    WARRIOR_STANCE_AP_COST,
+} from '../content/characters/CharacterClasses.js';
+import { getLocationDisplayName } from '../content/locations/index.js';
+import { MAGIC_SHIELD_DODGE_BONUS } from '../systems/combat/ArmorMath.js';
+import { WEAPONS, createWeaponCardData } from '../content/cards/weapons.js';
+import { ARMORS, createArmorCardData } from '../content/cards/armor.js';
+import { POTIONS } from '../content/cards/potions.js';
+import { FOOD } from '../content/cards/food.js';
+import { MAGIC } from '../content/cards/magic.js';
+import { GEMS } from '../content/cards/gems.js';
+import { createGauntletCard } from '../content/balance/Gauntlet.js';
+import { AMULETS } from '../content/cards/amulets.js';
+import { hudAmuletTexture } from '../content/amulets/RelicsOthersAtlas.js';
+import { EXIT_DOOR_X, EXIT_DOOR_Y } from './ExitDoor.js';
+
+// The amulet strip owns the top-left corner, so the hero column starts below
+// it. Everything from the avatar down to the crystal counter is offset by this
+// much; change it here rather than re-typing every y.
+// 15 (was 22, and 30 before that): the whole hero column — avatar, orb,
+// armour, AP, coins, crystals — sits 7px higher. This is the one number that
+// moves all of it; the amulet strip above moved up the same 7px with it.
+const HUD_COLUMN_SHIFT = 15;
+// The avatar frame shrank from 84x86 to 80x80, so everything below it — armor
+// slot, AP diamonds, coins, crystals — closes the 7px gap the old art left.
+const HUD_LOWER_SHIFT = HUD_COLUMN_SHIFT - 7;
+// Packing under the armour slot. The AP diamonds sit this much nearer the
+// slot, and the coins and crystals this much nearer it again, so each gap in
+// the stack shrinks by 2px (to about 1.5px and 1px).
+const AP_TUCK = 2;
+const CURRENCY_TUCK = 4;
+// Where the discard bin sits. Left of the bag now; the inventory panel is capped
+// so it never grows into it. y 314 (was 305) puts the bin's top edge (69px
+// art, top at y-34) at 280, level with the top of the 70px bag cards centred
+// at 315.
+export const DISCARD_X = 39;
+export const DISCARD_Y = 314;
+
+// Stance plate colours. Sweep wears the HUD's own brown/tan so it reads as part
+// of the hero column; Focus goes warm so an active crit stance is obvious at a
+// glance without needing an icon.
+const STANCE_COLORS = Object.freeze({
+    sweep: Object.freeze({ fill: 0x2b2118, hover: 0x3a2d20, border: 0x8a6a3f, text: '#e5bca4' }),
+    focus: Object.freeze({ fill: 0x4a2418, hover: 0x5c2e1f, border: 0xcf8834, text: '#ffcc66' }),
+});
+
+export const CombatHud = {
+    createUI() {
+        // Player avatar — now just the frame the hero portrait sits in.
+        this.playerAvatar = this.add.image(41, 44 + HUD_COLUMN_SHIFT, 'MainPlayerAvatar');
+        this.playerAvatar.setScale(1);
+        this.playerAvatar.setDepth(2);
+        // Chosen hero's face, centred on the avatar frame. Same sheet the
+        // character select uses, so the two screens can never disagree.
+        const heroDef = CHARACTER_CLASSES[this.gameState?.characterId] || CHARACTER_CLASSES.rogue;
+        if (this.textures.exists('characterPortraits')) {
+            this.playerPortrait = this.add.image(
+                this.playerAvatar.x, this.playerAvatar.y,
+                'characterPortraits', heroDef?.portraitFrame ?? 0
+            );
+            this.playerPortrait.setDepth(3);
+        }
+        // Health orb, overlapping the lower-right of the avatar frame. Depth 4/5
+        // puts it above both the frame (2) and the portrait (3) — on default
+        // depth it was drawing behind the portrait art.
+        this.healthOrbEmpty = this.add.image(87, 102 + HUD_COLUMN_SHIFT, 'healthOrb', 1)
+            .setOrigin(0.5, 1).setDepth(4);
+        this.healthOrbFull = this.add.image(87, 102 + HUD_COLUMN_SHIFT, 'healthOrb', 0)
+            .setOrigin(0.5, 1).setDepth(5);
+        this.healthText = this.add.text(87, 105 + HUD_COLUMN_SHIFT, '50/50', {
+            fontSize: '10px',
+            fill: '#ffffff',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(0.5, 0);
+        this.healthText.setDepth(30);
+
+        // Armor equip panel under hero portrait
+        // 132, was 138: the armour slot tucks 6px nearer the portrait above it.
+        this.armorPanel = snapOriginToPixelGrid(this.add.image(40, 132 + HUD_LOWER_SHIFT, 'panelArmor'));
+        this.armorPanel.setInteractive();
+        this.armorPanel.setDepth(5);
+        this.armorPanelEquippedSprite = null;
+        this.armorPanelBriarFrame = null;
+        this.armorPanelInfoText = null;
+
+        // The single hero has no class stance toggle.
+
+        // Action points: each diamond is four AP, with spent quadrants darkened.
+        this.actionPointSprites = [];
+        this.actionPointOverlays = [];
+        this.createActionPointUI();
+        
+        // Coin and Crystal UI under armor panel with animations
+        // (live positions come from updateCurrencyUILayout, which applies the
+        // same column shift plus any extra AP row)
+        // Each 1px up, closing the gap to the action points above them.
+        this.coinSprite = this.add.sprite(26, 209 + HUD_LOWER_SHIFT - CURRENCY_TUCK, 'coinUI').setScale(1);
+        this.coinsText = this.add.text(26, 226 + HUD_LOWER_SHIFT - CURRENCY_TUCK, '0', {
+            fontSize: '12px',
+            fill: '#cf8834',
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5);
+
+        this.crystalSprite = this.add.sprite(54, 210 + HUD_LOWER_SHIFT - CURRENCY_TUCK, 'CrystalUI').setScale(1);
+        this.crystalsText = this.add.text(54, 227 + HUD_LOWER_SHIFT - CURRENCY_TUCK, '0', {
+            fontSize: '12px',
+            fill: '#a83c69',
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5);
+        this.updateCurrencyUILayout();
+        
+        // Store previous values to detect changes
+        this.previousCoins = 0;
+        this.previousCrystals = 0;
+        
+        this.actionsText = this.add.text(125, 45, '', {
+            fontSize: '12px',
+            fill: '#00ff00',
+            fontFamily: '"HoMM Pixel"'
+        }).setVisible(false);
+        // Amulets displayed horizontally above armor info
+        this.amuletUIGroup = this.add.group();
+        this.relicUIGroup = this.add.group();
+        this.amuletScrollOffset = 0; // which amulet is the first one shown
+        this.armorTooltip = null; // tooltip shown on hover over equipped armor
+        // Above the floor board frame (depth 0) and stone BG — otherwise the
+        // gamingBoard lip covers location/act/floor in the top-right.
+        const TOP_HUD_DEPTH = 40;
+        // Location first (bright), then Act/Floor (muted).
+        this.floorText = this.add.text(455, 15, t(this.scene, 'ui.hud.floorBanner', {
+            month: 'Thornwake', act: 1, floor: 1,
+        }), {
+            fontSize: '13px',
+            fill: '#f5e6c8',
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH);
+        this.locationText = null;
+        
+        // The cog, in the corner every other screen keeps it in. It replaced a
+        // written PAUSE plate that sat 18px left and 7px up of here — and which
+        // was also the pause control the shops appeared to have, since a station
+        // room leaves GameScene awake and drawing underneath it.
+        createOptionsCog(this, () => this.pauseGame(), { depth: TOP_HUD_DEPTH });
+
+        // Combat shortcut for testing complete floor/boss resolution. Built
+        // only for us: it ends a fight outright, which is not a thing a run
+        // should be able to do.
+        if (devToolsEnabled()) {
+            this.createDebugVictoryButton(TOP_HUD_DEPTH);
+            this.createDebugItemButton(TOP_HUD_DEPTH);
+        }
+
+        // Also add ESC key binding for pause
+        this.input.keyboard.on('keydown-ESC', () => this.pauseGame());
+        this.buildRestOfHud(TOP_HUD_DEPTH);
+    },
+
+    createDebugVictoryButton(TOP_HUD_DEPTH) {
+        this.debugVictoryButton = this.add.rectangle(288, 20, 58, 18, 0x713737, 0.9)
+            .setStrokeStyle(1, 0xd89772)
+            .setDepth(TOP_HUD_DEPTH)
+            .on('pointerover', () => this.debugVictoryButton.setFillStyle(0x934646, 1))
+            .on('pointerout', () => this.debugVictoryButton.setFillStyle(0x713737, 0.9))
+            .on('pointerdown', () => {
+                SoundHelper.playVariant(this, 'button_click', 0.5);
+                this.debugDefeatAllEnemies?.();
+            });
+        this.debugVictoryButtonText = this.add.text(288, 20, t(this, 'ui.hud.debugWin'), {
+            fontSize: '9px',
+            fill: '#f5e6c8',
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
+    },
+
+    createDebugItemButton(TOP_HUD_DEPTH) {
+        const button = this.add.rectangle(352, 20, 62, 18, 0x374f71, 0.9)
+            .setStrokeStyle(1, 0x72a7d8)
+            .setDepth(TOP_HUD_DEPTH)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerover', () => button.setFillStyle(0x466d93, 1))
+            .on('pointerout', () => button.setFillStyle(0x374f71, 0.9))
+            .on('pointerdown', () => this.openDebugItemGrant());
+        const label = this.add.text(352, 20, 'ITEM', {
+            fontSize: '9px', fill: '#f5e6c8', fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
+        this.debugItemButton = button;
+        this.debugItemButtonText = label;
+    },
+
+    openDebugItemGrant() {
+        if (this.debugItemOverlay?.scene) {
+            this.debugItemOverlay.destroy(true);
+            this.debugItemOverlay = null;
+            return;
+        }
+        const rarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+        const categories = { weapon: [], armor: [], amulet: [], amuletNonSpawn: [], other: [] };
+        for (const type of Object.keys(WEAPONS)) {
+            for (const rarity of rarities) {
+                const card = createWeaponCardData(type, rarity);
+                if (card) categories.weapon.push({ label: `${type} ${rarity}`, card });
+            }
+        }
+        for (const rarity of rarities) {
+            categories.weapon.push({ label: `gauntlet ${rarity}`, card: createGauntletCard(rarity) });
+        }
+        for (const type of Object.keys(ARMORS)) {
+            for (const rarity of rarities) {
+                const card = createArmorCardData(type, rarity);
+                if (card) categories.armor.push({ label: `${type} ${rarity}`, card });
+            }
+        }
+        for (const item of POTIONS) categories.other.push({ label: item.name, card: { ...item, type: 'potion' } });
+        for (const item of FOOD) categories.other.push({ label: item.name, card: { ...item, type: 'food' } });
+        for (const item of MAGIC) categories.other.push({ label: item.name, card: { ...item, type: 'magic' } });
+        for (const item of GEMS) categories.other.push({
+            label: item.name,
+            card: looseGemCard(item),
+        });
+        const generator = this.cardSystem?.cardDataGenerator;
+        if (generator) {
+            categories.other.push({ label: 'Mysterious Key', card: generator.createKeyCard(this.gameState.currentFloor) });
+            categories.other.push({ label: 'Egg', card: generator.createEggCard() });
+            const chick = generator.createChickCompanionCard();
+            const skeleton = generator.createSkeletonWarriorCompanionCard();
+            categories.other.push({ label: chick.name, card: chick });
+            categories.other.push({ label: skeleton.name, card: skeleton });
+            categories.other.push({
+                label: 'Storm Hatchling',
+                card: { ...chick, name: 'Storm Hatchling', sprite: 'chickCompanionUP', shockChance: 0.2, upgradedForm: 'stormHatchling', trained: true, attack: chick.attack + 1 },
+            });
+            categories.other.push({
+                label: 'Slimebone Guard',
+                card: { ...skeleton, name: 'Slimebone Guard', sprite: 'skeletonCompanionUP', guardProtection: 1, upgradedForm: 'slimeboneGuard', trained: true, attack: skeleton.attack + 1 },
+            });
+            for (const rarity of rarities) {
+                categories.other.push({ label: `thorns ${rarity}`, card: generator.createThornsCard(this.gameState.currentFloor, rarity) });
+            }
+        }
+        categories.other.push(
+            { label: 'Dusty Pipe', card: { id: 'carnivalDustyPipe', type: 'junk', name: 'Dusty Pipe', sprite: 'carnivalPipe', rarity: 'common', carnivalToken: true, noEffect: true } },
+            { label: 'Rubber Duck', card: { id: 'carnivalRubberDuck', type: 'junk', name: 'Rubber Duck', sprite: 'carnivalDucky', rarity: 'common', carnivalToken: true, noEffect: true } },
+            { label: 'Broken Ring', card: { id: 'carnivalBrokenRing', type: 'junk', name: 'Broken Ring', sprite: 'carnivalRing', rarity: 'common', carnivalToken: true, noEffect: true } },
+            { label: 'Holographic Omen', card: { id: 'holographicOmen', type: 'passive', name: 'Holographic Omen', sprite: 'holographicOmen', rarity: 'rare', passiveEffect: 'holographicOmen', unique: true } },
+        );
+        const spawnableAmuletIds = new Set(AMULETS.map(amulet => amulet.id));
+        for (const [id, def] of Object.entries(this.amuletManager?.amuletDefinitions || {})) {
+            const entry = { label: def.name || id, amuletId: id, sprite: def.sprite, spriteFrame: def.spriteFrame };
+            categories[spawnableAmuletIds.has(id) ? 'amulet' : 'amuletNonSpawn'].push(entry);
+        }
+        this.showDebugItemOverlay(categories);
+    },
+
+    grantDebugItem(entry) {
+        if (entry.amuletId) {
+            this.amuletManager.addAmulet(entry.amuletId, { force: true });
+            this.closeDebugItemOverlay();
+            return;
+        }
+        const slot = this.inventorySystem.slots.findIndex(item => item == null);
+        if (slot < 0) {
+            this.createFloatingText(320, 330, 'Inventory Full!', 0xff7777);
+            this.closeDebugItemOverlay();
+            return;
+        }
+        this.inventorySystem.addCardDirect({ ...entry.card }, slot);
+        this.inventorySystem.syncGameStateInventory?.();
+        this.saveCurrentRun?.();
+        this.createFloatingText(320, 330, `Added: ${entry.card.name}`, 0x66ff99);
+        this.closeDebugItemOverlay();
+    },
+
+    closeDebugItemOverlay() {
+        this.debugItemOverlay?.destroy?.(true);
+        this.debugItemOverlay = null;
+    },
+
+    showDebugItemOverlay(categories) {
+        const depth = 20000;
+        const root = this.add.container(0, 0).setDepth(depth);
+        this.debugItemOverlay = root;
+        const add = object => { root.add(object); return object; };
+        add(this.add.rectangle(320, 180, 640, 360, 0x08070a, 0.78).setInteractive());
+        add(this.add.rectangle(320, 180, 548, 316, 0x241c22, 0.98).setStrokeStyle(2, 0xc89b62));
+        add(this.add.text(320, 35, 'DEBUG ITEM VAULT', {
+            fontSize: '16px', fill: '#f4d49b', fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5));
+        const close = add(this.add.text(572, 34, '×', {
+            fontSize: '22px', fill: '#ffb0a0', fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true }));
+        close.on('pointerdown', () => this.closeDebugItemOverlay());
+
+        let activeCategory = 'weapon';
+        let page = 0;
+        const content = this.add.container(0, 0);
+        root.add(content);
+        let redrawQueued = false;
+        const queueRender = () => {
+            if (redrawQueued) return;
+            redrawQueued = true;
+            this.events.once('postupdate', () => {
+                redrawQueued = false;
+                if (root.active) render();
+            });
+        };
+        const tabLabels = {
+            weapon: 'WEAPONS', armor: 'ARMOR', amulet: 'AMULETS',
+            amuletNonSpawn: 'NON-SPAWN', other: 'OTHER',
+        };
+        const tabs = {};
+        Object.keys(tabLabels).forEach((key, i) => {
+            const x = 124 + i * 98;
+            const plate = add(this.add.rectangle(x, 63, 91, 22, 0x493741).setStrokeStyle(1, 0x967353).setInteractive({ useHandCursor: true }));
+            const text = add(this.add.text(x, 63, tabLabels[key], {
+                fontSize: '9px', fill: '#ead6b9', fontFamily: '"HoMM Pixel"'
+            }).setOrigin(0.5));
+            plate.on('pointerdown', () => {
+                activeCategory = key;
+                page = 0;
+                queueRender();
+            });
+            tabs[key] = plate;
+        });
+
+        const render = () => {
+            content.removeAll(true);
+            Object.entries(tabs).forEach(([key, tab]) => tab.setFillStyle(key === activeCategory ? 0x7a5538 : 0x493741));
+            const list = categories[activeCategory] || [];
+            const perPage = 18;
+            const pages = Math.max(1, Math.ceil(list.length / perPage));
+            page = Math.max(0, Math.min(page, pages - 1));
+            list.slice(page * perPage, (page + 1) * perPage).forEach((entry, i) => {
+                const col = i % 6;
+                const row = Math.floor(i / 6);
+                const x = 112 + col * 83;
+                const y = 108 + row * 72;
+                const hit = this.add.rectangle(x, y, 72, 64, 0x332932, 0.9)
+                    .setStrokeStyle(1, 0x6e5961).setInteractive({ useHandCursor: true });
+                const spriteKey = entry.amuletId ? entry.sprite : entry.card?.sprite;
+                const frame = entry.amuletId ? entry.spriteFrame : entry.card?.spriteFrame;
+                const icon = this.add.image(x, y - 8, spriteKey, frame);
+                const isAmulet = activeCategory === 'amulet' || activeCategory === 'amuletNonSpawn';
+                const maxW = isAmulet ? 28 : 38;
+                const maxH = isAmulet ? 28 : 43;
+                const scale = Math.min(maxW / Math.max(1, icon.width), maxH / Math.max(1, icon.height), 1);
+                icon.setScale(scale);
+                const label = this.add.text(x, y + 23, entry.label, {
+                    fontSize: '7px', fill: '#eadcc8', fontFamily: '"HoMM Pixel"',
+                    align: 'center', wordWrap: { width: 68 }
+                }).setOrigin(0.5);
+                hit.on('pointerover', () => hit.setFillStyle(0x58404b, 1));
+                hit.on('pointerout', () => hit.setFillStyle(0x332932, 0.9));
+                hit.on('pointerdown', () => this.grantDebugItem(entry));
+                content.add([hit, icon, label]);
+            });
+            const navY = 326;
+            const prev = this.add.text(265, navY, '◄', { fontSize: '14px', fill: page > 0 ? '#f4d49b' : '#665b55', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+            const next = this.add.text(375, navY, '►', { fontSize: '14px', fill: page + 1 < pages ? '#f4d49b' : '#665b55', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+            if (page > 0) prev.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+                page--;
+                queueRender();
+            });
+            if (page + 1 < pages) next.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+                page++;
+                queueRender();
+            });
+            content.add([prev, next, this.add.text(320, navY, `${page + 1}/${pages}`, { fontSize: '9px', fill: '#cdbb9e', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5)]);
+        };
+        render();
+    },
+
+    buildRestOfHud(TOP_HUD_DEPTH) {
+        // Discard bin, now on the LEFT of the bag rather than the right. The
+        // corner it moved into is the one the Effects heading just vacated, and
+        // the inventory panel's width cap mirrors to match (see
+        // rebuildInventorySprites).
+        this.discardArea = snapOriginToPixelGrid(this.add.image(DISCARD_X, DISCARD_Y, 'discardSprite'));
+        this.add.text(DISCARD_X, DISCARD_Y, t(this, 'ui.hud.discard'), { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+        // Rest button removed - players must manage action points carefully
+        // No "Effects" heading: the icons under it say what they are, and the
+        // word was the only thing left in that corner once the discard bin moved
+        // across. The group it labelled still draws.
+        this.playerEffectsUIGroup = this.add.group();
+        // Next Floor Button (initially hidden) - top right, under pause
+        // In a fight the way out is the road you picked, standing open — see
+        // showNextFloorButton, which swaps this to the open-door frame and
+        // sounds it. Built on the plate so every other room keeps its Next
+        // button unchanged.
+        // A sprite, not an image: a road whose door has its own sheet (Boneflood)
+        // plays the door swinging open here when the floor is cleared.
+        this.nextFloorButton = snapOriginToPixelGrid(this.add.sprite(EXIT_DOOR_X, EXIT_DOOR_Y, 'nextTurnUp'))
+            .setDepth(5000)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); setHoverLight(this.nextFloorButton, true); })
+            .on('pointerout', () => {
+                this.nextFloorButton.clearTint();
+                setHoverLight(this.nextFloorButton, false);
+                this.nextFloorButton.y = EXIT_DOOR_Y;
+                if (this.nextFloorButtonText) this.nextFloorButtonText.y = EXIT_DOOR_Y;
+            })
+            .on('pointerdown', () => {
+                SoundHelper.playVariant(this, 'button_click', 0.5);
+                this.nextFloorButton.setTint(0x888888);
+                this.nextFloorButton.y = EXIT_DOOR_Y + 1;
+                if (this.nextFloorButtonText) this.nextFloorButtonText.y = EXIT_DOOR_Y + 1;
+                this.floorCleared();
+            })
+            .on('pointerup', () => {
+                this.nextFloorButton.clearTint();
+                this.nextFloorButton.y = EXIT_DOOR_Y;
+                if (this.nextFloorButtonText) this.nextFloorButtonText.y = EXIT_DOOR_Y;
+            });
+        this.nextFloorButtonText = this.add.text(EXIT_DOOR_X, EXIT_DOOR_Y, t(this, 'ui.hud.next'), {
+            fontSize: '12px',
+            fill: '#e5bca4',
+            fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5).setDepth(5001);
+        this.nextFloorButton.setVisible(false);
+        this.nextFloorButtonText.setVisible(false);
+
+        // Running combat log on the right side.
+        this.createCombatLog();
+        this.refreshDebugVictoryButton();
+    },
+
+    refreshDebugVictoryButton() {
+        if (!this.debugVictoryButton || !this.debugVictoryButtonText) return;
+        const roomType = this.gameState?.roomType || this.roomType;
+        const combatRoom = ['COMBAT', 'ELITE', 'BOSS'].includes(roomType);
+        const visible = Boolean(
+            combatRoom && !this.enemiesCleared && !this._transitioning
+        );
+
+        this.debugVictoryButton.setVisible(visible);
+        this.debugVictoryButtonText.setVisible(visible);
+        if (visible) {
+            this.debugVictoryButton.setInteractive({ useHandCursor: true });
+        } else {
+            this.debugVictoryButton.disableInteractive();
+        }
+    },
+
+    // A paper panel on the right that keeps a running, scrollable record of the
+    // fight (damage, status effects, kills). The reading face and dark ink keep
+    // this transcript legible while the combat numbers animate independently.
+    createCombatLog() {
+        // Narrow panel hugging the right edge (right edge fixed at ~639, so the
+        // extra width grows leftward) that still clears the gaming board.
+        // 577/185, was 575/150: 2px right and 35px down.
+        const CX = 577, CY = 185, W = 128, H = 200;
+        const BROWN = '#6f5452';
+        this.combatLog = { lines: [], maxVisible: 12, scroll: 0, visible: false, objects: [] };
+        this.combatLog.bounds = { left: CX - W / 2, right: CX + W / 2, top: CY - H / 2, bottom: CY + H / 2 };
+
+        // Reuse the event paper art as a nine-slice panel (already preloaded).
+        let panel = null;
+        if (this.textures.exists('eventPaper9Slice')) {
+            const addNineSlice = this.add.nineslice || this.add.nineSlice;
+            if (addNineSlice) {
+                try {
+                    panel = addNineSlice.call(this.add, CX, CY, 'eventPaper9Slice', null, W, H, 32, 32, 32, 32);
+                } catch { panel = null; }
+            }
+        }
+        if (!panel) {
+            // Fallback if the art/nine-slice helper is unavailable.
+            panel = this.add.rectangle(CX, CY, W, H, 0xe8d6ad, 0.96).setStrokeStyle(2, 0x6f5452, 0.6);
+        }
+        panel.setDepth(40);
+
+        const top = CY - H / 2;
+        const title = this.add.text(CX, top + 8, t(this, 'ui.hud.combatLog'), {
+            ...serifStyle('13px', '#513d35')
+        }).setOrigin(0.5, 0).setDepth(42);
+        const rule = this.add.rectangle(CX, top + 22, W - 18, 1, 0x6f5452, 0.4).setDepth(42);
+
+        const bodyTop = top + 27;
+        const body = this.add.text(CX - W / 2 + 7, bodyTop, '', {
+            ...serifStyle('12px', '#513d35'),
+            lineSpacing: 3, wordWrap: { width: W - 22, useAdvancedWrap: true }
+        }).setOrigin(0, 0).setDepth(42);
+
+        this.combatLog.panel = panel;
+        this.combatLog.body = body;
+        // Pixel height available for text before it would spill past the panel
+        // bottom. Entries can wrap to 2+ lines, so we cap by height, not count.
+        this.combatLog.bodyMaxHeight = (CY + H / 2 - 10) - bodyTop;
+
+        // Scrollbar: shows there IS history above and where you are in it.
+        // Hidden whenever everything already fits (see updateCombatLogScrollbar).
+        const trackX = CX + W / 2 - 7;
+        const track = this.add.rectangle(trackX, bodyTop, 3, this.combatLog.bodyMaxHeight, 0x6f5452, 0.18)
+            .setOrigin(0.5, 0).setDepth(42);
+        const thumb = this.add.rectangle(trackX, bodyTop, 3, 20, 0x6f5452, 0.7)
+            .setOrigin(0.5, 0).setDepth(43);
+        this.combatLog.track = track;
+        this.combatLog.thumb = thumb;
+        this.combatLog.trackX = trackX;
+        this.combatLog.trackTop = bodyTop;
+        this.combatLog.trackHeight = this.combatLog.bodyMaxHeight;
+        this.combatLog.maxScroll = 0;
+
+        this.combatLog.objects = [panel, title, rule, body, track, thumb];
+
+        // Wheel over the panel scrolls back through the fight history. A
+        // scene-level listener with a manual bounds check is far more reliable
+        // than a per-object 'wheel' event (which frequently never fires).
+        this.input.on('wheel', (pointer, over, dx, dy) => {
+            if (!this.combatLogHasPointer(pointer)) return;
+            // Wheel up (dy < 0) goes back in history; wheel down returns to newest.
+            this.scrollCombatLog(dy > 0 ? -1 : 1);
+        });
+
+        // Drag the paper to scroll it — the only option on a trackpad or touch
+        // screen, and a more obvious gesture than hunting for the wheel.
+        this.input.on('pointerdown', (pointer) => {
+            if (!this.combatLogHasPointer(pointer)) return;
+            this.combatLog.drag = { y: pointer.worldY, from: this.combatLog.scroll };
+        });
+        this.input.on('pointermove', (pointer) => {
+            const drag = this.combatLog?.drag;
+            if (!drag || !pointer.isDown) return;
+            // Pull down to reveal older lines, as if sliding the paper.
+            const LINE_PX = 10;
+            const moved = Math.round((pointer.worldY - drag.y) / LINE_PX);
+            this.setCombatLogScroll(drag.from + moved);
+        });
+        this.input.on('pointerup', () => {
+            if (this.combatLog) this.combatLog.drag = null;
+        });
+
+        this.setCombatLogVisible(false);
+    },
+    // True when the pointer is over the log panel and the log is on screen.
+    combatLogHasPointer(pointer) {
+        if (!this.combatLog?.visible) return false;
+        const b = this.combatLog.bounds;
+        return pointer.worldX >= b.left && pointer.worldX <= b.right
+            && pointer.worldY >= b.top && pointer.worldY <= b.bottom;
+    },
+
+    // scroll counts lines hidden BELOW the view: 0 is pinned to the newest
+    // entry, higher values walk back through the fight.
+    setCombatLogScroll(value) {
+        if (!this.combatLog) return;
+        const max = this.combatLog.maxScroll || 0;
+        const next = Phaser.Math.Clamp(Math.round(value), 0, max);
+        if (next === this.combatLog.scroll) return;
+        this.combatLog.scroll = next;
+        this.renderCombatLog();
+    },
+
+    scrollCombatLog(delta) {
+        this.setCombatLogScroll((this.combatLog?.scroll || 0) + delta);
+    },
+
+    renderCombatLog() {
+        if (!this.combatLog?.body) return;
+        const { lines, maxVisible, scroll, bodyMaxHeight } = this.combatLog;
+        const body = this.combatLog.body;
+        const end = Math.max(0, lines.length - scroll);
+        let start = Math.max(0, end - maxVisible);
+        body.setText(lines.slice(start, end).join('\n'));
+        // Wrapped entries can push the text past the panel bottom — drop the
+        // oldest visible lines until what's shown fits inside the paper.
+        while (start < end - 1 && body.height > bodyMaxHeight) {
+            start++;
+            body.setText(lines.slice(start, end).join('\n'));
+        }
+        // How far back you can go is set by what actually fits, not by the line
+        // count — otherwise scrolling runs on into blank paper.
+        const shown = Math.max(1, end - start);
+        this.combatLog.maxScroll = Math.max(0, lines.length - shown);
+        this.updateCombatLogScrollbar(shown);
+    },
+
+    updateCombatLogScrollbar(shown) {
+        const log = this.combatLog;
+        if (!log?.track || !log.thumb) return;
+        const total = log.lines.length;
+        const overflows = total > shown;
+        log.track.setVisible(log.visible && overflows);
+        log.thumb.setVisible(log.visible && overflows);
+        if (!overflows) return;
+
+        const thumbH = Math.max(8, Math.round(log.trackHeight * (shown / total)));
+        // scroll 0 (newest) parks the thumb at the bottom, like a chat window.
+        const fromTop = log.maxScroll > 0 ? (log.maxScroll - log.scroll) / log.maxScroll : 1;
+        log.thumb.setSize(3, thumbH);
+        log.thumb.setPosition(log.trackX, log.trackTop + Math.round((log.trackHeight - thumbH) * fromTop));
+    },
+
+    // Push a fully-formed line into the log (no auto-attribution). Used for
+    // explicitly-labelled entries like the player's own weapon hits.
+    pushCombatLog(text) {
+        if (!this.combatLog?.visible) return;
+        const line = (text == null ? '' : String(text)).trim();
+        if (!line) return;
+        this.combatLog.lines.push(line);
+        if (this.combatLog.lines.length > 200) this.combatLog.lines.shift();
+        // Follow the newest entry only when already parked at the bottom. If the
+        // player has scrolled back to read something, a fresh hit must not yank
+        // the view out from under them — scroll counts from the end, so holding
+        // position means stepping back one for the line just appended.
+        if (this.combatLog.scroll > 0) this.combatLog.scroll += 1;
+        this.renderCombatLog();
+    },
+    addCombatLog(message, x, y) {
+        if (!this.combatLog?.visible) return;
+        let text = (message == null ? '' : String(message)).trim();
+        if (!text) return;
+        // Attribute the event to whoever the floating text sits on.
+        const label = (Number.isFinite(x) && Number.isFinite(y))
+            ? this.combatLogLabel(x, y) : null;
+        if (label) text = `${label} ${text}`;
+        this.pushCombatLog(text);
+    },
+    // Record an event in the log at the moment it RESOLVES, for callers whose
+    // floating text is deliberately delayed. The log is a transcript of the
+    // fight in the order it actually happened; the timeline in CombatSequencer
+    // only governs how that fight is narrated on screen.
+    logCombatEvent(text, x, y) {
+        this.addCombatLog(t(this, text), x, y);
+    },
+    clearCombatLog() {
+        if (!this.combatLog) return;
+        this.combatLog.lines = [];
+        this.combatLog.scroll = 0;
+        this.renderCombatLog();
+    },
+    setCombatLogVisible(v) {
+        if (!this.combatLog) return;
+        this.combatLog.visible = v;
+        this.combatLog.objects.forEach(o => o?.setVisible?.(v));
+        if (!v) this.combatLog.drag = null;
+        // The blanket setVisible above would show the scrollbar even with
+        // nothing to scroll — re-render so it re-decides.
+        this.renderCombatLog();
+    },
+    refreshCombatLogVisibility() {
+        this.setCombatLogVisible(['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType));
+    },
+
+    // Works out who a floating-text event belongs to from its position: text on
+    // the player avatar is "You", text on a revealed enemy card takes that
+    // enemy's name. Returns null for centre-screen / global messages.
+    combatLogLabel(x, y) {
+        const pa = this.playerAvatar;
+        if (pa) {
+            const dx = pa.x - x, dy = pa.y - y;
+            if (dx * dx + dy * dy <= 48 * 48) return t(this, 'ui.combat.you');
+        }
+        const cards = this.cardSystem?.boardCards || [];
+        let best = null, bestD = 52 * 52;
+        for (const c of cards) {
+            if (!c?.sprite || !c.revealed || !c.data) continue;
+            const dx = c.sprite.x - x, dy = c.sprite.y - y;
+            const d = dx * dx + dy * dy;
+            if (d < bestD) { bestD = d; best = c; }
+        }
+        return best?.data ? translateItemName(this, best.data) : null;
+    },
+    updateUI() {
+        // Force sync inventory EVERY time UI updates
+        if (this.inventorySystem && this.inventorySystem.slots) {
+            this.gameState.inventory = [...this.inventorySystem.slots];
+        }
+        
+        this.healthText.setText(`${this.gameState.playerHealth}/${this.gameState.maxHealth}`);
+        
+        // Check for coin changes and play animation
+        if (this.gameState.coins !== this.previousCoins) {
+            this.previousCoins = this.gameState.coins;
+            this.playCoinAnimation();
+        }
+        
+        // Check for crystal changes and play animation
+        if (this.gameState.crystals !== this.previousCrystals) {
+            this.previousCrystals = this.gameState.crystals;
+            this.playCrystalAnimation();
+        }
+        
+        this.coinsText.setText(this.gameState.coins);
+        this.crystalsText.setText(this.gameState.crystals);
+        this.updateActionPointUI();
+        this.updateCurrencyUILayout();
+        const _act = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
+        const locationName = getLocationDisplayName(
+            this.gameState,
+            this.gameState.currentFloor || 1
+        );
+        this.floorText.setText(t(this.scene, 'ui.hud.floorBanner', {
+            month: locationName, act: _act, floor: this.gameState.currentFloor,
+        }));
+        this.updateEquippedArmorPanel();
+        
+        // Update health orb
+        const healthPercent = Math.max(0, this.gameState.playerHealth / this.gameState.maxHealth);
+        const orbFrame = this.textures.getFrame('healthOrb', 0);
+        const orbWidth = orbFrame?.width || 62;
+        const orbHeight = orbFrame?.height || 54;
+        const visibleHeight = Math.ceil(orbHeight * healthPercent);
+        this.healthOrbFull.setCrop(0, orbHeight - visibleHeight, orbWidth, visibleHeight);
+        this.updateAmuletsUI();
+        this.updateRelicsUI();
+        this.updatePlayerEffectsUI();
+    },
+    playCoinAnimation() {
+        // Play the coin spin animation only (no scaling effects)
+        this.coinSprite.play('coin_spin_anim');
+    },
+    playCrystalAnimation() {
+        // Play the crystal glow animation only (no scaling or alpha effects)
+        this.crystalSprite.play('crystal_glow_anim');
+    },
+    createActionPointUI() {
+        this.actionPointSprites.forEach(sprite => sprite.destroy());
+        this.actionPointOverlays.forEach(overlay => overlay.destroy());
+        this.actionPointSprites = [];
+        this.actionPointOverlays = [];
+
+        const maxActions = Math.max(1, this.gameState?.maxActions || 1);
+        const nodeCount = Math.ceil(maxActions / 4);
+        // Stack into two rows once we have more than 5 nodes so the strip
+        // doesn't run off the left edge of the screen on AP-heavy builds.
+        const MAX_PER_ROW = 5;
+        const rows = nodeCount > MAX_PER_ROW ? 2 : 1;
+        const perRow = Math.ceil(nodeCount / rows);
+        const spacing = 16; // = diamond width, so nodes butt together into one strip
+        const rowGap = 18; // vertical gap between the two rows of nodes
+        const centerX = 41;
+        const baseY = 189 + HUD_LOWER_SHIFT - AP_TUCK;
+
+        for (let i = 0; i < nodeCount; i++) {
+            const row = Math.floor(i / perRow);
+            const colInRow = i % perRow;
+            const rowCount = (row === rows - 1) ? (nodeCount - row * perRow) : perRow;
+            const startX = centerX - ((rowCount - 1) * spacing) / 2;
+            const x = startX + colInRow * spacing;
+            const y = baseY + row * rowGap;
+
+            const sprite = this.add.image(x, y, 'actionPoint');
+            sprite.setDepth(8);
+            this.actionPointSprites.push(sprite);
+
+            const overlay = this.add.graphics();
+            overlay.setDepth(9);
+            this.actionPointOverlays.push(overlay);
+        }
+
+        this.updateCurrencyUILayout();
+    },
+    updateCurrencyUILayout() {
+        if (!this.coinSprite || !this.coinsText || !this.crystalSprite || !this.crystalsText) return;
+
+        const maxActions = Math.max(1, this.gameState?.maxActions || 1);
+        const nodeCount = Math.ceil(maxActions / 4);
+        const hasExtraActionRow = nodeCount > 5;
+        const yOffset = hasExtraActionRow ? 24 : 0;
+
+        const y = HUD_LOWER_SHIFT - CURRENCY_TUCK + yOffset;
+        this.coinSprite.setPosition(26, 210 + y);
+        this.coinsText.setPosition(26, 227 + y);
+        this.crystalSprite.setPosition(54, 211 + y);
+        this.crystalsText.setPosition(54, 228 + y);
+    },
+    updateActionPointUI() {
+        const maxActions = Math.max(1, this.gameState.maxActions || 1);
+        const actionsLeft = Phaser.Math.Clamp(this.gameState.actionsLeft || 0, 0, maxActions);
+        const nodeCount = Math.ceil(maxActions / 4);
+
+        if (this.actionPointSprites.length !== nodeCount) {
+            this.createActionPointUI();
+        }
+
+        this.actionPointOverlays.forEach((overlay, nodeIndex) => {
+            const sprite = this.actionPointSprites[nodeIndex];
+            if (!overlay || !sprite) return;
+
+            overlay.clear();
+            overlay.fillStyle(0x000000, 0.62);
+
+            for (let section = 0; section < 4; section++) {
+                const actionIndex = nodeIndex * 4 + section;
+                const unavailable = actionIndex >= maxActions || actionIndex >= actionsLeft;
+                if (unavailable) {
+                    this.drawActionPointSection(overlay, sprite.x, sprite.y, section);
+                }
+            }
+        });
+    },
+    drawActionPointSection(graphics, x, y, section) {
+        const half = 8;
+        const pointsBySection = [
+            [{ x, y }, { x, y: y - half }, { x: x + half, y }],
+            [{ x, y }, { x: x + half, y }, { x, y: y + half }],
+            [{ x, y }, { x, y: y + half }, { x: x - half, y }],
+            [{ x, y }, { x: x - half, y }, { x, y: y - half }]
+        ];
+        graphics.fillPoints(pointsBySection[section], true);
+    },
+    updateEquippedArmorPanel() {
+        if (this.armorTooltip) {
+            this.armorTooltip.destroy();
+            this.armorTooltip = null;
+        }
+        if (this.armorPanelEquippedSprite) {
+            this.armorPanelEquippedSprite.destroy();
+            this.armorPanelEquippedSprite = null;
+        }
+        if (this.armorPanelBriarFrame) {
+            this.armorPanelBriarFrame.destroy();
+            this.armorPanelBriarFrame = null;
+        }
+        if (this.armorPanelInfoText) {
+            if (this.armorPanelInfoText.list) {
+                this.armorPanelInfoText.destroy(true);
+            } else {
+                this.armorPanelInfoText.destroy();
+            }
+            this.armorPanelInfoText = null;
+        }
+
+        const armor = this.gameState.equippedArmor;
+        if (!armor || !armor.sprite || !this.armorPanel) return;
+
+        this.armorPanelEquippedSprite = snapOriginToPixelGrid(this.add.image(this.armorPanel.x, this.armorPanel.y - 6, armor.sprite));
+        this.armorPanelEquippedSprite.setDepth(6);
+        this.armorPanelEquippedSprite.setInteractive({ useHandCursor: true });
+        if ((armor.briarDamageBonus || 0) > 0 && this.textures.exists('thornFrame')) {
+            this.armorPanelBriarFrame = snapOriginToPixelGrid(
+                this.add.image(this.armorPanelEquippedSprite.x, this.armorPanelEquippedSprite.y, 'thornFrame')
+            );
+            this.armorPanelBriarFrame
+                .setDisplaySize(
+                    this.armorPanelEquippedSprite.displayWidth || 54,
+                    this.armorPanelEquippedSprite.displayHeight || 70
+                )
+                .setDepth(6.5);
+        }
+        // Tap to unequip, drag to the chute to throw it away. The tap has to
+        // wait for pointerup: on pointerdown it fired the instant the armor was
+        // grabbed, so a drag unequipped it before it had moved anywhere.
+        this.input.setDraggable(this.armorPanelEquippedSprite, true);
+        const restX = this.armorPanelEquippedSprite.x;
+        const restY = this.armorPanelEquippedSprite.y;
+        let dragging = false;
+        // The pips and the thorn frame ride along, the way they do on a bag card.
+        const riders = () => [this.armorPanelInfoText, this.armorPanelBriarFrame]
+            .filter((rider) => rider?.active);
+        const moveTo = (x, y) => {
+            const sprite = this.armorPanelEquippedSprite;
+            if (!sprite?.active) return;
+            const dx = x - sprite.x;
+            const dy = y - sprite.y;
+            sprite.setPosition(x, y);
+            riders().forEach((rider) => rider.setPosition(rider.x + dx, rider.y + dy));
+        };
+        this.armorPanelEquippedSprite.on('dragstart', () => {
+            dragging = true;
+            if (this.armorTooltip) {
+                this.armorTooltip.destroy();
+                this.armorTooltip = null;
+            }
+            // Above the bag panel and the chute, so the armor stays visible all
+            // the way down rather than sliding under the HUD it crosses.
+            this.armorPanelEquippedSprite.setDepth(1002);
+            riders().forEach((rider) => rider.setDepth(1003));
+        });
+        this.armorPanelEquippedSprite.on('drag', (pointer, dragX, dragY) => {
+            moveTo(Math.round(dragX), Math.round(dragY));
+        });
+        this.armorPanelEquippedSprite.on('dragend', () => {
+            const sprite = this.armorPanelEquippedSprite;
+            const overChute = this.discardArea
+                && sprite?.active
+                && Phaser.Geom.Intersects.RectangleToRectangle(
+                    sprite.getBounds(), this.discardArea.getBounds()
+                );
+            if (overChute && this.inventorySystem?.discardEquippedArmor?.(sprite)) {
+                return;   // updateUI has rebuilt the panel; this sprite is gone
+            }
+            moveTo(restX, restY);
+            sprite?.setDepth(6);
+            riders().forEach((rider) => rider.setDepth(7));
+            // Cleared a tick late, not here: pointerup lands in the same input
+            // event as dragend, so clearing it now would let the release at the
+            // end of a drag read as a tap and unequip the armor anyway.
+            this.time.delayedCall(0, () => { dragging = false; });
+        });
+        this.armorPanelEquippedSprite.on('pointerup', () => {
+            if (dragging) return;
+            this.inventorySystem?.unequipArmor?.();
+        });
+        this.armorPanelEquippedSprite.on('pointerover', () => {
+            this.showArmorTooltip(armor);
+        });
+        this.armorPanelEquippedSprite.on('pointerout', () => {
+            if (this.armorTooltip) {
+                this.armorTooltip.destroy();
+                this.armorTooltip = null;
+            }
+        });
+
+        const armorCard = {
+            sprite: this.armorPanelEquippedSprite,
+            data: armor,
+            infoText: null
+        };
+        this.cardSystem.createCardInfoText(armorCard);
+        if (armorCard.infoText) {
+            armorCard.infoText.setDepth(7);
+            this.armorPanelInfoText = armorCard.infoText;
+            this.armorPanelEquippedSprite.setData('infoText', armorCard.infoText);
+        }
+    },
+    updateAmuletsUI() {
+        this.amuletUIGroup.clear(true, true);
+        if (this.amuletTooltip) {
+            this.amuletTooltip.destroy();
+            this.amuletTooltip = null;
+        }
+
+        const allAmulets = this.gameState.activeAmulets;
+        const activeAmulets = allAmulets.filter((amulet) => (
+            this.amuletManager?.amuletDefinitions?.[amulet.id]?.activeAbility
+        ));
+        const amulets = allAmulets.filter((amulet) => (
+            !this.amuletManager?.amuletDefinitions?.[amulet.id]?.activeAbility
+        ));
+        const MAX_VISIBLE = 10;
+        // Equipped amulets draw from the 28px sheet here (hudAmuletTexture), not
+        // the 32px one the choice screen and the board use. Its art is ~24px
+        // inside the cell, so a 25px step keeps the 1px of daylight between
+        // icons that the 32px sheet had at 29.
+        const SPACING = 25;
+        // The strip owns the top-left corner now: the hero column below it was
+        // shifted down by HUD_COLUMN_SHIFT to clear this row. x 18: 10px left of
+        // the previous 28 (and 34 before that), now the icons are the small
+        // 28px set. The left scroll arrow, shown once more than 10 are held,
+        // sits 16px left of this, at x 2.
+        const ROW_X = 18;
+        // 13, was 20: up 7px with the hero column. The same height the relic
+        // row already uses; the icons' transparent frame edge may sit off the top.
+        const ROW_Y = 13;
+
+        // Active abilities use a one-item carousel: the arrows switch the live
+        // button itself, so the dock never grows into the player HUD.
+        if (activeAmulets.length > 0) {
+            const ACTIVE_X = 103;
+            const ACTIVE_Y = 46; // was 53: up 7px with the hero column
+            this.activeAmuletIndex = Phaser.Math.Clamp(
+                this.activeAmuletIndex || 0, 0, activeAmulets.length - 1,
+            );
+            const amulet = activeAmulets[this.activeAmuletIndex];
+            if (activeAmulets.length > 1) {
+                const turn = (delta) => {
+                    this.activeAmuletIndex = (
+                        this.activeAmuletIndex + delta + activeAmulets.length
+                    ) % activeAmulets.length;
+                    this.updateAmuletsUI();
+                };
+                // One glyph, mirrored for the left side: both arrows now have
+                // exactly the same silhouette and hit size in the pixel font.
+                const left = this.add.text(ACTIVE_X - 25, ACTIVE_Y, '►', {
+                    fontSize: '12px', fill: '#ffd700', fontFamily: '"HoMM Pixel"',
+                }).setOrigin(0.5).setDepth(22).setInteractive({ useHandCursor: true });
+                const right = this.add.text(ACTIVE_X + 25, ACTIVE_Y, '►', {
+                    fontSize: '12px', fill: '#ffd700', fontFamily: '"HoMM Pixel"',
+                }).setOrigin(0.5).setDepth(22).setInteractive({ useHandCursor: true });
+                left.setRotation(Math.PI);
+                left.on('pointerdown', () => turn(-1));
+                right.on('pointerdown', () => turn(1));
+                this.amuletUIGroup.add(left);
+                this.amuletUIGroup.add(right);
+                const page = this.add.text(ACTIVE_X + 47, ACTIVE_Y, `${this.activeAmuletIndex + 1}/${activeAmulets.length}`, {
+                    fontSize: '7px', fill: '#9f9484', fontFamily: '"HoMM Pixel"',
+                }).setOrigin(0.5).setDepth(22);
+                this.amuletUIGroup.add(page);
+            }
+
+            const def = this.amuletManager.amuletDefinitions[amulet.id];
+            const sprite = this.add.image(
+                ACTIVE_X, ACTIVE_Y, hudAmuletTexture(this, def?.sprite ?? amulet.sprite ?? 'relicsOthers'),
+                def?.spriteFrame ?? amulet.spriteFrame ?? 0,
+            ).setDepth(22).setInteractive({ useHandCursor: true });
+            sprite.on('pointerdown', () => this.amuletManager.activateAmulet(amulet.id));
+            sprite.on('pointerover', () => this.showAmuletTooltip(amulet, ACTIVE_X + 20, ACTIVE_Y));
+            sprite.on('pointerout', () => {
+                this.amuletTooltip?.destroy();
+                this.amuletTooltip = null;
+            });
+            this.amuletUIGroup.add(sprite);
+
+            const cooldown = Math.max(0, Math.floor(amulet.cooldownLeft || 0));
+            const plate = this.add.circle(ACTIVE_X + 9, ACTIVE_Y + 9, 8, cooldown > 0 ? 0x221a18 : 0x27452e, 0.94).setDepth(23);
+            const badge = this.add.text(ACTIVE_X + 9, ACTIVE_Y + 9, cooldown > 0 ? String(cooldown) : '✓', {
+                fontSize: '8px', fill: cooldown > 0 ? '#ffcc88' : '#9cffad', fontFamily: '"HoMM Pixel"',
+            }).setOrigin(0.5).setDepth(24);
+            this.amuletUIGroup.add(plate);
+            this.amuletUIGroup.add(badge);
+        }
+
+        // Keep the offset in bounds (e.g. if amulets were removed since last scroll)
+        const maxOffset = Math.max(0, amulets.length - MAX_VISIBLE);
+        this.amuletScrollOffset = Phaser.Math.Clamp(this.amuletScrollOffset || 0, 0, maxOffset);
+
+        const needsScroll = amulets.length > MAX_VISIBLE;
+
+        // ── Left arrow ──────────────────────────────────────────────────────────
+        if (needsScroll) {
+            const leftArrow = this.add.text(ROW_X - 16, ROW_Y, '◄', {
+                fontSize: '11px',
+                fill: this.amuletScrollOffset > 0 ? '#ffd700' : '#554433',
+                fontFamily: '"HoMM Pixel"'
+            }).setOrigin(0.5).setDepth(22);
+            if (this.amuletScrollOffset > 0) {
+                leftArrow.setInteractive({ useHandCursor: true });
+                leftArrow.on('pointerdown', () => {
+                    this.amuletScrollOffset = Math.max(0, this.amuletScrollOffset - 1);
+                    this.updateAmuletsUI();
+                });
+            }
+            this.amuletUIGroup.add(leftArrow);
+        }
+
+        // ── Visible amulets ─────────────────────────────────────────────────────
+        const visibleAmulets = amulets.slice(this.amuletScrollOffset, this.amuletScrollOffset + MAX_VISIBLE);
+        visibleAmulets.forEach((amulet, i) => {
+            const x = ROW_X + i * SPACING;
+            const y = ROW_Y;
+
+            // Always resolve sprite from the live definition
+            const def = this.amuletManager?.amuletDefinitions?.[amulet.id];
+            const spriteKey   = hudAmuletTexture(this, def?.sprite ?? amulet.sprite ?? 'relicsOthers');
+            const spriteFrame = def?.spriteFrame  ?? amulet.spriteFrame  ?? 0;
+
+            const amuletSprite = this.add.image(x, y, spriteKey, spriteFrame).setInteractive();
+            amuletSprite.setDepth(22);
+            this.amuletUIGroup.add(amuletSprite);
+
+            if (def?.activeAbility) {
+                amuletSprite.setInteractive({ useHandCursor: true });
+                amuletSprite.on('pointerdown', () => this.amuletManager.activateAmulet(amulet.id));
+                const cooldown = Math.max(0, Math.floor(amulet.cooldownLeft || 0));
+                if (cooldown > 0) {
+                    const cooldownPlate = this.add.circle(x + 8, y + 8, 8, 0x221a18, 0.92).setDepth(23);
+                    const cooldownText = this.add.text(x + 8, y + 8, String(cooldown), {
+                        fontSize: '8px',
+                        fill: '#ffcc88',
+                        fontFamily: '"HoMM Pixel"',
+                    }).setOrigin(0.5).setDepth(24);
+                    this.amuletUIGroup.add(cooldownPlate);
+                    this.amuletUIGroup.add(cooldownText);
+                }
+            }
+
+            // Level badge for stackable amulets
+            if (amulet.level && amulet.level > 1) {
+                const levelText = this.add.text(x + 8, y + 8, amulet.level.toString(), {
+                    fontSize: '10px',
+                    fill: '#ffffff',
+                    fontFamily: '"HoMM Pixel"'
+                }).setOrigin(0.5).setDepth(23);
+                this.amuletUIGroup.add(levelText);
+            }
+
+            amuletSprite.on('pointerover', () => {
+                this.showAmuletTooltip(amulet, amuletSprite.x + 20, amuletSprite.y);
+            });
+            amuletSprite.on('pointerout', () => {
+                if (this.amuletTooltip) {
+                    this.amuletTooltip.destroy();
+                    this.amuletTooltip = null;
+                }
+            });
+        });
+
+        // ── Right arrow ─────────────────────────────────────────────────────────
+        if (needsScroll) {
+            const rightArrow = this.add.text(ROW_X + MAX_VISIBLE * SPACING, ROW_Y, '►', {
+                fontSize: '11px',
+                fill: this.amuletScrollOffset < maxOffset ? '#ffd700' : '#554433',
+                fontFamily: '"HoMM Pixel"'
+            }).setOrigin(0.5).setDepth(22);
+            if (this.amuletScrollOffset < maxOffset) {
+                rightArrow.setInteractive({ useHandCursor: true });
+                rightArrow.on('pointerdown', () => {
+                    this.amuletScrollOffset = Math.min(maxOffset, this.amuletScrollOffset + 1);
+                    this.updateAmuletsUI();
+                });
+            }
+            this.amuletUIGroup.add(rightArrow);
+
+            // Small counter so the player knows how many are hidden: e.g. "3/14"
+            const countText = this.add.text(
+                ROW_X + MAX_VISIBLE * SPACING,
+                ROW_Y + 12,
+                `${this.amuletScrollOffset + 1}-${Math.min(this.amuletScrollOffset + MAX_VISIBLE, amulets.length)}/${amulets.length}`,
+                { fontSize: '8px', fill: '#aaaaaa', fontFamily: '"HoMM Pixel"' }
+            ).setOrigin(0.5).setDepth(22);
+            this.amuletUIGroup.add(countText);
+        }
+    },
+    updateRelicsUI() {
+        this.relicUIGroup.clear(true, true);
+        if (this.relicTooltip) {
+            this.relicTooltip.destroy();
+            this.relicTooltip = null;
+        }
+
+        const relics = this.metaManager?.getUnlockedRelics?.() || [];
+        // Relic silhouettes are a little narrower inside the same atlas frame
+        // so use a 5px overlap to make their visible spacing match the amulets.
+        const RELIC_SPACING = 27;
+        const RELIC_Y = 13;       // transparent frame edge may safely sit above y=0
+        relics.forEach((relic, i) => {
+            const x = 125 + i * RELIC_SPACING;
+            const y = RELIC_Y;
+            const usesSheet = relic.iconSheet && this.textures.exists(relic.iconSheet);
+            const iconKey = usesSheet ? relic.iconSheet : this.textures.exists(relic.icon) ? relic.icon : 'amulet';
+            const iconFrame = usesSheet ? relic.iconFrame : undefined;
+            const relicSprite = this.add.image(x, y, iconKey, iconFrame).setInteractive();
+            relicSprite.setDepth(20);
+            this.relicUIGroup.add(relicSprite);
+
+            relicSprite.on('pointerover', () => {
+                this.showRelicTooltip(relic, relicSprite.x + 20, relicSprite.y);
+            });
+            relicSprite.on('pointerout', () => {
+                if (this.relicTooltip) {
+                    this.relicTooltip.destroy();
+                    this.relicTooltip = null;
+                }
+            });
+
+            // Progress pips for relics with a "per-N-cards" counter (e.g. Explorer Cape)
+            const perCards = relic.effect?.discardCritPerCards;
+            if (perCards && perCards > 0) {
+                const discarded = this.gameState.discardedCardsThisRun || 0;
+                const max = relic.effect.maxDiscardCritChance ?? 1;
+                const step = relic.effect.discardCritPerStep || 0;
+                const atMax = step > 0 && (this.gameState.discardCritChance || 0) >= max;
+                const progress = atMax ? perCards : (discarded % perCards);
+
+                const pipSize = 2;
+                const pipSpacing = 3;
+                const totalWidth = (perCards - 1) * pipSpacing;
+                const pipY = y + 11;
+                for (let p = 0; p < perCards; p++) {
+                    const pipX = x - totalWidth / 2 + p * pipSpacing;
+                    const filled = p < progress;
+                    const color = atMax ? 0xffd700 : (filled ? 0xffd700 : 0x554433);
+                    const pip = this.add.rectangle(pipX, pipY, pipSize, pipSize, color);
+                    pip.setDepth(21);
+                    this.relicUIGroup.add(pip);
+                }
+            }
+        });
+    },
+    showRelicTooltip(relic, x, y) {
+        if (this.relicTooltip) {
+            this.relicTooltip.destroy();
+        }
+
+        const description = `${translateItemName(this, relic)}\n${translateDescription(this, relic.description)}`;
+        // Same frame, ink, type size and padding as every other hover tooltip.
+        // A cursed relic keeps a red of its own; the rest read as body text
+        // rather than the gold that suited the old black plate.
+        const tooltipText = this.add.text(0, 0, description, {
+            fontSize: TOOLTIP_BODY_PX,
+            fontRole: 'reading',
+            fill: relic.cursed ? '#ff6666' : TOOLTIP_TEXT_COLOR,
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            align: 'left',
+            wordWrap: { width: 190 }
+        }).setOrigin(0);
+        tooltipText.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top);
+
+        const width = Math.ceil(tooltipText.width) + TOOLTIP_PAD.x * 2;
+        const height = Math.ceil(tooltipText.height) + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom;
+        const bg = createTooltipPanel(this, width, height);
+
+        const clampedX = Phaser.Math.Clamp(Math.round(x), 4, 640 - width - 4);
+        const clampedY = Phaser.Math.Clamp(Math.round(y), 4, 360 - height - 4);
+
+        this.relicTooltip = this.add.container(clampedX, clampedY, [bg, tooltipText]);
+        this.relicTooltip.setDepth(1000);
+    },
+    showArmorTooltip(armor) {
+        if (this.armorTooltip) {
+            this.armorTooltip.destroy();
+            this.armorTooltip = null;
+        }
+        let lines = `${translateItemName(this, armor)}\n${t(this, 'tooltip.protectionShort', { amount: armor.protection })}`;
+        if (armor.dodgeChance) {
+            lines += `\n${t(this, 'tooltip.dodge', { percent: Math.round(armor.dodgeChance * 100) })}`;
+        }
+        if (armor.meleeCounterChance) {
+            lines += `\n${t(this, 'tooltip.meleeCounter', { percent: Math.round(armor.meleeCounterChance * 100) })}`;
+        }
+        if (armor.rangedIgnoreChance) {
+            lines += `\n${t(this, 'tooltip.ignoreRanged', { percent: Math.round(armor.rangedIgnoreChance * 100) })}`;
+        }
+        if (armor.reflection) {
+            lines += `\n${t(this, 'tooltip.reflect', { value: `${armor.reflection}%` })}`;
+        }
+        lines += `\n${t(this, 'tooltip.pips', { value: `${armor.durability}/${armor.maxDurability}` })}`;
+
+        const tooltipX = Math.round(this.armorPanel.x + 50);
+        const tooltipY = Math.round(this.armorPanel.y - 20);
+        // Same frame, ink, type size and padding as every other hover tooltip —
+        // this panel used to answer with a black box and blue text of its own.
+        const tooltipText = this.add.text(0, 0, lines, {
+            fontSize: TOOLTIP_BODY_PX,
+            fill: TOOLTIP_TEXT_COLOR,
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            align: 'center',
+            lineSpacing: 2
+        }).setOrigin(0, 0);
+        // Auto-size the background to fit however many lines we have
+        const textWidth = Math.ceil(tooltipText.width);
+        const width = textWidth + TOOLTIP_PAD.x * 2;
+        const height = Math.ceil(tooltipText.height) + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom;
+        const bg = createTooltipPanel(this, width, height);
+        tooltipText.setPosition(
+            Math.round((width - textWidth) / 2),
+            TOOLTIP_PAD.top
+        );
+
+        this.armorTooltip = this.add.container(tooltipX, tooltipY, [bg, tooltipText]);
+        this.armorTooltip.setDepth(1000);
+    },
+    updatePlayerEffectsUI() {
+        this.playerEffectsUIGroup.clear(true, true);
+
+        // Build a unified list of effects to display (debuffs + buffs + relic counters)
+        const entries = [];
+
+        // --- Debuffs / status effects from playerEffects array ---
+        // "3 turns" is not one word in every language — Russian wants ход /
+        // хода / ходов depending on the number — so the unit comes from tCount
+        // and the sentence order from a template.
+        const turns = (count) => tCount(this.scene, 'ui.hud.turnUnit', count);
+        const withTurns = (name, count) =>
+            t(this.scene, 'ui.hud.effectTurns', { name, count, unit: turns(count) });
+
+        this.gameState.playerEffects.forEach((effect) => {
+            switch (effect.type) {
+                case 'poison':
+                    entries.push({ text: t(this.scene, 'ui.hud.poison', { count: effect.turns }), color: '#66ff66' });
+                    break;
+                case 'burn':
+                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.burn'), effect.turns), color: '#ff7040' });
+                    break;
+                case 'stun':
+                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.stun'), effect.turns), color: '#ffd700' });
+                    break;
+                case 'weakness':
+                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.weakness'), effect.turns), color: '#aa66ff' });
+                    break;
+                default:
+                    // An effect with no key of its own still shows, in English.
+                    entries.push({
+                        text: effect.turns != null
+                            ? withTurns(this.capitalizeEffect(effect.type), effect.turns)
+                            : this.capitalizeEffect(effect.type),
+                        color: '#cccccc'
+                    });
+            }
+        });
+
+        // --- Buffs from magic spells ---
+        const gs = this.gameState;
+        const buffTurns = (nameKey, bonus, count) => t(this.scene, 'ui.hud.buffTurns', {
+            name: t(this.scene, nameKey), bonus, count, unit: turns(count),
+        });
+        if (gs.shadowBlade && gs.shadowBlade.turns > 0) {
+            const mult = gs.shadowBlade.multiplier
+                ? t(this.scene, 'ui.hud.dmgBonus', { percent: Math.round((gs.shadowBlade.multiplier - 1) * 100) })
+                : '';
+            entries.push({ text: buffTurns('ui.hud.shadowBlade', mult, gs.shadowBlade.turns), color: '#b266ff' });
+        }
+        if (gs.magicShield && gs.magicShield.turns > 0) {
+            // Leather has no DEF to multiply, so the buff reads as dodge there.
+            const dodgeArmor = (gs.equippedArmor?.protection || 0) <= 0
+                && (gs.equippedArmor?.dodgeChance || 0) > 0;
+            const mult = dodgeArmor
+                ? t(this.scene, 'ui.hud.dodgeBonus', { percent: Math.round(MAGIC_SHIELD_DODGE_BONUS * 100) })
+                : (gs.magicShield.multiplier
+                    ? t(this.scene, 'ui.hud.defBonus', { percent: Math.round((gs.magicShield.multiplier - 1) * 100) })
+                    : '');
+            entries.push({ text: buffTurns('ui.hud.magicShield', mult, gs.magicShield.turns), color: '#33aaff' });
+        }
+        if (gs.boneWall && gs.boneWall > 0) {
+            entries.push({
+                text: t(this.scene, 'ui.hud.shieldCharges', {
+                    name: t(this.scene, 'ui.hud.boneShield'),
+                    count: gs.boneWall,
+                    unit: tCount(this.scene, 'ui.hud.chargeUnit', gs.boneWall),
+                }),
+                color: '#ffffff'
+            });
+        }
+        if (gs.blockNextAttack) {
+            entries.push({ text: t(this.scene, 'ui.hud.blockNextAttack'), color: '#88ccff' });
+        }
+
+        // --- Relic-driven counters ---
+        if ((gs.discardCritChance || 0) > 0) {
+            const percent = Math.round(gs.discardCritChance * 100);
+            entries.push({ text: t(this.scene, 'ui.hud.discardCrit', { percent }), color: '#ffd700' });
+        } else {
+            // Show progress toward first crit step if the relic is equipped but not yet earned
+            const relic = gs.relicEffects || {};
+            if (relic.discardCritPerCards && relic.discardCritPerStep) {
+                const discarded = gs.discardedCardsThisRun || 0;
+                const next = relic.discardCritPerCards - (discarded % relic.discardCritPerCards);
+                if (discarded > 0 || relic.discardCritPerCards <= 10) {
+                    entries.push({
+                        text: t(this.scene, 'ui.hud.discardCritProgress', {
+                            cards: next,
+                            percent: Math.round(relic.discardCritPerStep * 100),
+                        }),
+                        color: '#ddaa66'
+                    });
+                }
+            }
+        }
+
+        entries.forEach((entry, i) => {
+            // Statuses belong to the equipped hero kit, not to the discard
+            // control. Place them in the open lane immediately right of armor.
+            // 125, was 132: up 7px with the armour slot it sits beside.
+            const y = 125 + i * 14;
+            const text = this.add.text(80, y, entry.text, {
+                fontSize: '10px',
+                fill: entry.color,
+                fontFamily: '"HoMM Pixel"',
+                wordWrap: { width: 105 },
+            });
+            this.playerEffectsUIGroup.add(text);
+        });
+
+        this.updatePlayerPoisonMarker();
+    },
+
+    // ── Warrior stance ────────────────────────────────────────────────────
+    // Focus buys crit on whatever the warrior is holding. Sword cleave is now
+    // intrinsic to the weapon for every character and does not depend on this
+    // stance. Switching still costs AP.
+    createStanceButton() {
+        if (this.gameState?.characterId !== 'warrior') return;
+        // Tucked into the hero column rather than floating beside the board:
+        // the niche right of the armour panel (ends x 74) and under the health
+        // orb (ends y 132) is the only free space that still reads as part of
+        // the hero's own kit.
+        const x = 97;
+        const y = 148;
+        this.stanceButton = snapOriginToPixelGrid(
+            this.add.rectangle(x, y, 40, 18, STANCE_COLORS.sweep.fill)
+        )
+            .setStrokeStyle(1, STANCE_COLORS.sweep.border)
+            .setDepth(30)
+            .setInteractive({ useHandCursor: true })
+            .on('pointerover', () => {
+                SoundHelper.playVariant(this, 'hover_button', 0.4);
+                this.stanceButton.setFillStyle(this._stancePalette().hover);
+            })
+            .on('pointerout', () => this.stanceButton.setFillStyle(this._stancePalette().fill))
+            .on('pointerdown', () => this.toggleWarriorStance());
+        this.stanceButtonText = this.add.text(x, y, '', {
+            fontSize: '10px',
+            fontFamily: '"HoMM Pixel"',
+        }).setOrigin(0.5).setDepth(31);
+        this.updateStanceButton();
+    },
+
+    _stancePalette() {
+        const id = getWarriorStance(this.gameState?.warriorStance).id;
+        return STANCE_COLORS[id] || STANCE_COLORS.sweep;
+    },
+
+    updateStanceButton() {
+        if (!this.stanceButtonText) return;
+        const stance = getWarriorStance(this.gameState?.warriorStance);
+        const palette = this._stancePalette();
+        this.stanceButtonText.setText(t(this, `stance.${stance.id}`));
+        this.stanceButtonText.setColor(palette.text);
+        this.stanceButton?.setFillStyle(palette.fill);
+        this.stanceButton?.setStrokeStyle(1, palette.border);
+    },
+
+    toggleWarriorStance() {
+        if (this.gameState?.characterId !== 'warrior') return;
+        if (this._transitioning || this.gameState.playerHealth <= 0) return;
+        const ids = Object.keys(WARRIOR_STANCES);
+        const current = getWarriorStance(this.gameState.warriorStance).id;
+        const next = ids[(ids.indexOf(current) + 1) % ids.length];
+        if (this.gameState.actionsLeft < WARRIOR_STANCE_AP_COST) {
+            SoundHelper.playVariant(this, 'invalid_action', 0.5);
+            this.createFloatingText(
+                this.playerAvatar.x, this.playerAvatar.y, t(this, 'stance.noAp'), 0xff6666
+            );
+            return;
+        }
+        // Costs AP but does not hand the enemies a turn: changing your grip is
+        // not an attack. The sim's stance policy spends it the same way, so bot
+        // and player pay the same price.
+        this.gameState.actionsLeft -= WARRIOR_STANCE_AP_COST;
+        this.gameState.warriorStance = next;
+        SoundHelper.playVariant(this, 'button_click', 0.5);
+        this.createFloatingText(
+            this.playerAvatar.x, this.playerAvatar.y - 12,
+            t(this, `stance.${next}`), 0xffcc66
+        );
+        this.updateStanceButton();
+        this.updateUI?.();
+    },
+
+    // Animated poison icon pinned to the top-right corner of the hero portrait.
+    // Runs continuously while the player has any poison effect, removed once it wears off.
+    updatePlayerPoisonMarker() {
+        const poisoned = this.gameState.playerEffects?.some(e => e.type === 'poison');
+
+        if (poisoned) {
+            if (!this.playerPoisonMarker && this.playerAvatar && this.textures.exists('poisonedStatus')) {
+                const halfW = (this.playerAvatar.displayWidth || 0) / 2;
+                const halfH = (this.playerAvatar.displayHeight || 0) / 2;
+                const marker = this.add.sprite(
+                    Math.round(this.playerAvatar.x + halfW - 2),
+                    Math.round(this.playerAvatar.y - halfH + 2),
+                    'poisonedStatus'
+                );
+                marker.setOrigin(1, 0);
+                marker.setDepth(40);
+                if (this.anims.exists('poison_status_anim')) marker.play('poison_status_anim');
+                this.playerPoisonMarker = marker;
+            }
+        } else if (this.playerPoisonMarker) {
+            this.playerPoisonMarker.destroy();
+            this.playerPoisonMarker = null;
+        }
+    },
+    capitalizeEffect(value) {
+        const text = (value || '').toString();
+        return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+    },
+    showAmuletTooltip(amulet, x, y) {
+        if (this.amuletTooltip) {
+            this.amuletTooltip.destroy();
+        }
+        
+        // Get amulet definition for better description
+        const definition = this.amuletManager ? 
+            this.amuletManager.amuletDefinitions[amulet.id] : null;
+        
+        let description = translateItemName(this, amulet);
+        
+        if (definition) {
+            description += `\n${translateDescription(this, definition.description)}`;
+            if (definition.activeAbility) {
+                const cooldown = Math.max(0, Math.floor(amulet.cooldownLeft || 0));
+                description += cooldown > 0 ? `\nCooldown: ${cooldown}` : '\nReady';
+            }
+            
+            // Add level info for stackable amulets
+            if (amulet.level && amulet.level > 1) {
+                description += ` (${t(this, 'tooltip.level', { level: amulet.level })})`;
+            }
+            
+            // Add cursed indicator
+            if (definition.cursed) {
+                description = `${t(this, 'tooltip.cursed')} ${description}`;
+            }
+        }
+        
+        // Same frame, ink and padding as every other hover tooltip. Cursed
+        // amulets keep their red, which is the shared tooltip's cursed rarity
+        // colour; everything else takes the body ink.
+        const tooltipText = this.add.text(0, 0, description, {
+            fontSize: TOOLTIP_BODY_PX,
+            fill: definition && definition.cursed ? '#ff6666' : TOOLTIP_TEXT_COLOR,
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            wordWrap: { width: 200 }
+        }).setOrigin(0, 0);
+
+        const width = Math.ceil(tooltipText.width) + TOOLTIP_PAD.x * 2;
+        const height = Math.ceil(tooltipText.height) + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom;
+        const tooltipBg = createTooltipPanel(this, width, height).setPosition(0, 0);
+        tooltipText.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top);
+        const tooltipX = Phaser.Math.Clamp(x, 4, Math.max(4, 636 - width));
+        const tooltipY = Phaser.Math.Clamp(y + 18, 36, Math.max(36, 356 - height));
+        this.amuletTooltip = this.add.container(tooltipX, tooltipY, [tooltipBg, tooltipText]);
+        this.amuletTooltip.setDepth(100);
+    },
+};

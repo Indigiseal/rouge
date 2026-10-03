@@ -1,0 +1,670 @@
+// BoardLayout — brick grid, placement, floor/boss panels, layout serialization
+import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
+import {
+    planClusterSwaps,
+    seatOfCard,
+} from '../../content/amulets/strategy.js';
+import { cameraWorldSize } from '../../config/renderScale.js';
+import {
+    BOARD_PANEL_KEY,
+    BOARD_PANEL_SLICE,
+    createNineSlicePanel,
+} from '../../ui/NineSlicePanel.js';
+
+export class BoardLayout {
+    constructor(cs) {
+        this.buildBrickGrid = buildBrickGrid.bind(cs);
+        this.pickConnectedBrick = pickConnectedBrick.bind(cs);
+        this.buildCompactBrickCluster = buildCompactBrickCluster.bind(cs);
+        this.computePlacement = computePlacement.bind(cs);
+        this.brickToPixel = brickToPixel.bind(cs);
+        this.clearFloorBoardPanel = clearFloorBoardPanel.bind(cs);
+        this.createSideExtraPanel = createSideExtraPanel.bind(cs);
+        this.killCardTweens = killCardTweens.bind(cs);
+        this.snapYOnUpdate = snapYOnUpdate.bind(cs);
+        this.clearBoard = clearBoard.bind(cs);
+        this.createFloorBoardPanel = createFloorBoardPanel.bind(cs);
+        this.createBossBoardPanel = createBossBoardPanel.bind(cs);
+        this._brickSizeForCount = _brickSizeForCount.bind(cs);
+        this.brickToPixelLegacy = brickToPixelLegacy.bind(cs);
+        this.brickNeighbors = brickNeighbors.bind(cs);
+        this.computeRowBands = computeRowBands.bind(cs);
+        this.frontBandCount = frontBandCount.bind(cs);
+        this.getSerializableBoardLayout = getSerializableBoardLayout.bind(cs);
+        this._rebuildBrickNeighbors = _rebuildBrickNeighbors.bind(cs);
+        this.moveCardToSeat = moveCardToSeat.bind(cs);
+        this.swapCardSeats = swapCardSeats.bind(cs);
+        this.applyStrategyCluster = applyStrategyCluster.bind(cs);
+    }
+}
+
+function buildBrickGrid(n) {
+  // Aim for a roughly square-ish grid, adjusted for brick density (odd rows offset)
+  const aspect = 1.1; // Slightly wider for brick stagger
+  let num_rows = Math.max(2, Math.round(Math.sqrt(n / aspect)));
+  let num_cols = Math.ceil(n / num_rows);
+  // Adjust if too skinny/tall
+  while (num_rows * num_cols < n) num_cols++;
+  while (num_cols > num_rows * 1.5) { num_rows++; num_cols = Math.ceil(n / num_rows); }
+  
+  const cells = [];
+  let idx = 0;
+  for (let r = 0; r < num_rows && idx < n; r++) {
+    for (let c = 0; c < num_cols && idx < n; c++) {
+      cells.push({ r, c });
+      idx++;
+    }
+  }
+  // Center the grid coords around (0,0) for better primitive midpoint
+  const minR = Math.min(...cells.map(cell => cell.r));
+  const minC = Math.min(...cells.map(cell => cell.c));
+  return cells.map(cell => ({
+    r: cell.r - minR,
+    c: cell.c - minC
+  }));
+}
+
+function pickConnectedBrick(n) {
+  const key = (r,c) => `${r},${c}`;
+  const chosen = new Set([key(0,0)]);
+  const frontier = [{ r:0, c:0 }];
+  while (chosen.size < n) {
+    const from = frontier[Math.floor(Math.random() * frontier.length)];
+    const OFFS = (from.r & 1) ? this.constructor.OFFS_ODD : this.constructor.OFFS_EVEN;
+    // shuffle neighbors
+    for (let i = OFFS.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [OFFS[i], OFFS[j]] = [OFFS[j], OFFS[i]];
+    }
+    let placed = false;
+    for (const [dc, dr] of OFFS) {
+      const nr = from.r + dr, nc = from.c + dc;
+      const k = key(nr, nc);
+      if (!chosen.has(k)) {
+        chosen.add(k);
+        frontier.push({ r: nr, c: nc });
+        placed = true;
+        break;
+      }
+    }
+    // if stuck, push another existing tile to keep expanding
+    if (!placed) {
+      const any = Array.from(chosen)[Math.floor(Math.random() * chosen.size)];
+      const [rr, cc] = any.split(',').map(Number);
+      frontier.push({ r: rr, c: cc });
+    }
+  }
+  // normalize so min r/c = 0 (helps centering)
+  const cells = Array.from(chosen).map(s => {
+    const [r,c] = s.split(',').map(Number);
+    return { r, c };
+  });
+  const minR = Math.min(...cells.map(x => x.r));
+  const minC = Math.min(...cells.map(x => x.c));
+  return cells.map(x => ({ r: x.r - minR, c: x.c - minC }));
+}
+
+function buildCompactBrickCluster(n) {
+  // Choose a near-square row count, then cap it: the play area is much wider
+  // than it is tall, so a 16-card board reads far better as 3 rows of 5-6 than
+  // as 4 rows of 4 squeezed into the same height.
+  let rows = Math.max(2, Math.round(Math.sqrt(n)));
+  rows = Math.min(rows, this.constructor.MAX_CLUSTER_ROWS);
+  // distribute columns across rows as evenly as possible
+  const base = Math.floor(n / rows);
+  const rem  = n % rows;
+  // row lengths (all base, then +1 given to middle rows first)
+  const lens = new Array(rows).fill(base);
+  // order rows from center outward: e.g. [2,1,3,0,4,...]
+  const order = [];
+  const mid = Math.floor(rows / 2);
+  order.push(mid);
+  for (let d = 1; order.length < rows; d++) {
+    if (mid - d >= 0) order.push(mid - d);
+    if (mid + d <  rows) order.push(mid + d);
+  }
+  for (let i = 0; i < rem; i++) lens[order[i]] += 1;
+  // build cells; each row is centered horizontally
+  const cells = [];
+  for (let r = 0; r < rows; r++) {
+    const cols = lens[r];
+    const startC = -Math.floor((cols - 1) / 2);  // centers the row
+    for (let k = 0; k < cols; k++) {
+      cells.push({ r, c: startC + k });
+    }
+  }
+  return cells;
+}
+
+function computePlacement(cells, opts = {}) {
+  // measure primitive bounds
+  let minR = Infinity, maxR = -Infinity, minXp = Infinity, maxXp = -Infinity;
+  for (const { r, c } of cells) {
+    // Rows share the same column axis. Keeping x tied only to `c` makes
+    // vertically aligned cards read as an actual column on the combat board.
+    const xp = c;
+    const rp = r + ((Math.abs(c) & 1) ? COLUMN_Y_STAGGER : 0);
+    if (rp < minR) minR = rp;
+    if (rp > maxR) maxR = rp;
+    if (xp < minXp) minXp = xp;
+    if (xp > maxXp) maxXp = xp;
+  }
+  const cam = this.scene.cameras.main;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: camW, height: camH } = cameraWorldSize(cam);
+  let areaLeft, areaRight, areaTop, areaBottom;
+  // Callers on other screens (the shop board) own a different play area and
+  // have their own hand-tuned offsets. They pass an explicit rect so the combat
+  // board's rect can change without dragging their layout along with it.
+  if (opts.area) {
+    const sx = camW / 640, sy = camH / 360;
+    areaLeft   = opts.area.left   * sx;
+    areaRight  = opts.area.right  * sx;
+    areaTop    = opts.area.top    * sy;
+    areaBottom = opts.area.bottom * sy;
+  } else if (this.constructor.USE_FIXED_PANEL) {
+    // Scale the 640x360 design rect to the current camera
+    const sx = camW  / 640;
+    const sy = camH / 360;
+    const R  = this.constructor.FIXED_PANEL_640x360;
+    areaLeft   = R.left   * sx;
+    areaTop    = R.top    * sy;
+    areaRight  = (R.left + R.width)  * sx;
+    areaBottom = (R.top  + R.height) * sy;
+  } else {
+    // fallback to fractional+padded panel (what you already have)
+    const fracLeft   = camW  * this.constructor.BOARD_SAFE_FRAC.left;
+    const fracRight  = camW  * (1 - this.constructor.BOARD_SAFE_FRAC.right);
+    const fracTop    = camH * this.constructor.BOARD_SAFE_FRAC.top;
+    const fracBottom = camH * (1 - this.constructor.BOARD_SAFE_FRAC.bottom);
+    areaLeft   = Math.max(fracLeft,   this.constructor.BOARD_SAFE_PX.left);
+    areaRight  = Math.min(fracRight,  camW  - this.constructor.BOARD_SAFE_PX.right);
+    areaTop    = Math.max(fracTop,    this.constructor.BOARD_SAFE_PX.top);
+    areaBottom = Math.min(fracBottom, camH - this.constructor.BOARD_SAFE_PX.bottom);
+    const maxPanelW = Math.min(camW * 0.42, 340);
+    const maxPanelH = Math.min(camH * 0.78, 300);
+    if ((areaRight - areaLeft) > maxPanelW)  areaLeft  = areaRight  - maxPanelW;
+    if ((areaBottom - areaTop) > maxPanelH)  areaTop   = areaBottom - maxPanelH;
+  }
+  // Optional caller override: clamp the bottom of the usable area so the
+  // cluster stays above e.g. the shop's inventory bar.
+  if (typeof opts.areaBottom === 'number') areaBottom = Math.min(areaBottom, opts.areaBottom);
+  // Optional caller override: widen the usable area when an extension
+  // panel (the wing) is being shown so cards actually spread into the
+  // extra space instead of crowding the original panel.
+  const extraRight = Math.max(0, opts.extraRightWidth || 0);
+  const extraLeft  = Math.max(0, opts.extraLeftWidth  || 0);
+  areaRight += extraRight;
+  areaLeft  -= extraLeft;
+
+  const areaW = Math.max(10, areaRight - areaLeft);
+  const areaH = Math.max(10, areaBottom - areaTop);
+  const widthUnits  = (maxXp - minXp) + 1;
+  const heightUnits = (maxR  - minR ) + 1;
+  // The combat rect is the real safe area, so its steps use all of it. Legacy
+  // callers keep their old inset via opts.
+  const padX = opts.padX ?? 0;
+  const padY = opts.padY ?? 0;
+  const VSTEP = Math.min((areaH - padY) / Math.max(1, heightUnits), 75);
+  // Keep ordinary fights compact.  Extra width is reserved for a crowded board
+  // only, so a 6-card fight does not inherit the large-board spacing.
+  const maxHStep = opts.maxHStep ?? this.constructor.COMPACT_HSTEP;
+  const HSTEP = Math.min((areaW - padX) / Math.max(1, widthUnits), maxHStep);
+  // Pixel-art cards stay at native size. Reinforcement waves prevent dense
+  // rooms from ever requiring a scaled-down board.
+  const cardScale = 1;
+  // Centre on the BASE play area, excluding any wing extension. Adding extra
+  // width for crowded floors used to drag the whole board to the right
+  // (cx shifted by extraRight/2); centring on the base keeps the board in the
+  // same spot regardless of card count, while the extra width still feeds
+  // HSTEP so the cards spread out instead of overlapping.
+  const baseAreaW = areaW - extraRight - extraLeft;
+  // The fight's play area runs x 122-505, centred at 313.5, so a 6.5px nudge
+  // puts the cluster on the screen's centre line (320), level with the bag
+  // below it. It used to be 20, which sat the cluster 13.5px right of centre
+  // and the board frame (once its own +10 was added) 23.5px right. Station
+  // boards pass their own nudge and are not moved by this default.
+  const cx = areaLeft + extraLeft + baseAreaW / 2 + (opts.nudgeX ?? 6.5);
+  const cy = areaTop  + areaH / 2 + (opts.nudgeY ?? 0);
+  const midXp = (minXp + maxXp) / 2;
+  const midR  = (minR  + maxR ) / 2;
+  // // debug: uncomment to see the panel box
+  // const g = this.scene.add.graphics().lineStyle(1, 0x00ff00, 0.6);
+  // g.strokeRect(areaLeft, areaTop, areaW, areaH).setDepth(-1);
+  return { HSTEP, VSTEP, cx, cy, midXp, midR, cardScale };
+}
+
+function brickToPixel(r, c, place) {
+  const xp = c;
+  const rp = r + ((Math.abs(c) & 1) ? COLUMN_Y_STAGGER : 0);
+  const x  = place.cx + (xp - place.midXp) * place.HSTEP;
+  const y  = place.cy + (rp - place.midR) * place.VSTEP;
+  // Snap to integer pixels. Sub-pixel positions caused the whole board
+  // to look like it shifted 1px every time a card hovered/tweened — the
+  // pixel-rounded render position would alternate as decimals carried.
+  return { x: Math.round(x), y: Math.round(y) };
+}
+
+// Preserve strict x-alignment for column attacks while giving the formation
+// some of the rhythm the old horizontal brick stagger provided. At the usual
+// 75px row step this is a restrained 10–11px vertical offset.
+const COLUMN_Y_STAGGER = 0.14;
+
+function clearFloorBoardPanel() {
+  // Tear down the side-extra panels first; they sit behind the main board
+  // and share its lifecycle.
+  (this.sideExtraPanels || []).forEach(panel => {
+    if (!panel) return;
+    this.scene.tweens.killTweensOf(panel);
+    panel.destroy();
+  });
+  this.sideExtraPanels = [];
+  this.sideExtraPanel = null;
+  if (!this.floorBoardPanel) return;
+  this.scene.tweens.killTweensOf(this.floorBoardPanel);
+  this.floorBoardPanel.destroy();
+  this.floorBoardPanel = null;
+}
+
+function createSideExtraPanel(side = 'right', { animate = true, delayMs = 200 } = {}) {
+  if (!this.floorBoardPanel) return;
+  if (!this.scene.textures.exists('gamingBoardSideExtra')) return;
+  if (!Array.isArray(this.sideExtraPanels)) this.sideExtraPanels = [];
+  // Replace an existing panel on THIS side so re-spawns don't stack, while
+  // leaving the opposite side alone — wide boards wear both wings.
+  this.sideExtraPanels = this.sideExtraPanels.filter(panel => {
+    if (!panel || panel.getData('side') !== side) return Boolean(panel);
+    this.scene.tweens.killTweensOf(panel);
+    panel.destroy();
+    return false;
+  });
+
+  const main = this.floorBoardPanel;
+  const dir = side === 'left' ? -1 : 1;
+  // Start tucked behind the main board's centre, then slide outward so
+  // roughly half of the extra panel pokes past the main board edge.
+  const startX = main.x;
+  const tex = this.scene.textures.get('gamingBoardSideExtra').getSourceImage();
+  const sideW = tex.width || 200;
+  const endX  = main.x + dir * (main.displayWidth * 0.45 - sideW * 0.1);
+
+  const restY = main.getData('restY') ?? main.y;
+  const panel = this.scene.add.image(startX, restY, 'gamingBoardSideExtra');
+  panel.setOrigin(0.5);
+  panel.setDepth(main.depth - 1); // sit BEHIND the main board
+  if (side === 'left') panel.setFlipX(true);
+  panel.setAlpha(animate ? 0 : 1);
+  panel.setData('side', side);
+  this.sideExtraPanels.push(panel);
+  this.sideExtraPanel = panel;
+
+  if (!animate) {
+    panel.x = endX;
+    return;
+  }
+  this.scene.tweens.add({
+    targets: panel, alpha: 1, duration: 180, delay: delayMs
+  });
+  this.scene.tweens.add({
+    targets: panel, x: endX, duration: 420, delay: delayMs, ease: 'Cubic.easeOut'
+  });
+}
+
+function killCardTweens(card) {
+  if (card.sprite) this.scene.tweens.killTweensOf(card.sprite);
+  if (card.infoText) this.scene.tweens.killTweensOf(card.infoText);
+  if (card.hoverSprite) this.scene.tweens.killTweensOf(card.hoverSprite);
+}
+
+function snapYOnUpdate(_tween, target) {
+  if (target?.scene) target.y = Math.round(target.y);
+}
+
+function clearBoard() {
+  this.clearFloorBoardPanel();
+  this.boardCards.forEach(card => {
+    if (!card) return;
+    card.gemIdleTimer?.remove?.(false);
+    this.killCardTweens(card);
+    card.sprite?.destroy();
+    card.shadow?.destroy();
+    card.gemShadow?.destroy();
+    card.hoverSprite?.destroy();
+    card.glow?.destroy();
+    card.roleMarker?.destroy();
+    card.poisonMarker?.destroy();
+    card.shockMarker?.destroy();
+    card.frozenFrame?.destroy();
+    this.destroyControlMarkers?.(card);
+    if (card.infoText) {
+      this.destroyCardInfoText?.(card);
+    }
+    // Null references so any lingering closures see a falsy sprite.
+    card.sprite = null;
+    card.shadow = null;
+    card.gemShadow = null;
+    card.hoverSprite = null;
+    card.glow = null;
+    card.roleMarker = null;
+    card.poisonMarker = null;
+    card.shockMarker = null;
+    card.frozenFrame = null;
+    card.controlHesitationMarker = null;
+    card.controlTreacheryMarker = null;
+    card.strategyScoutMarker = null;
+    card.infoText = null;
+  });
+  this.boardCards = [];
+}
+
+// Breathing room between the outermost card edge and the inside of the board's
+// frame. The old fixed-size board triggered its side wings at 8px of clearance,
+// so anything at or above that reads as "the cards fit".
+const BOARD_CARD_MARGIN_X = 16;
+const BOARD_CARD_MARGIN_Y = 14;
+
+function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamingBoard') {
+  this.clearFloorBoardPanel();
+  if (!this.scene.textures.exists(textureKey)) return;
+
+  const points = cells.map(({ r, c }) => this.brickToPixel(r, c, place));
+  const minX = Math.min(...points.map(p => p.x));
+  const maxX = Math.max(...points.map(p => p.x));
+  const minY = Math.min(...points.map(p => p.y));
+  const maxY = Math.max(...points.map(p => p.y));
+  const cam = this.scene.cameras.main;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: camW, height: camH } = cameraWorldSize(cam);
+  // Centred on the cards it frames. It used to sit 10px right of them.
+  const x = (minX + maxX) / 2;
+  // 8, not the 18 this sat at: the board art rode 10px high of the cards it is
+  // supposed to be under. Taya's call, off the built screen.
+  const y = Math.min(camH - 122, ((minY + maxY) / 2) + 8) - BOARD_PANEL_LIFT;
+
+  // The board grows to the formation standing on it rather than the formation
+  // being squeezed into a fixed plank.
+  //
+  // Measured out from the PANEL's centre, not the cluster's. The two are not
+  // always the same point — y can be pushed up by the camH clamp above, and x
+  // has been offset from the cards before — so a width of
+  // "cluster + margin on each side" would quietly spend 10px of the left
+  // margin and leave that edge tighter than asked. Taking the furthest reach
+  // from the centre and doubling it gives the tighter side the full margin.
+  //
+  // The authored size is the floor, never the target: an ordinary floor still
+  // gets exactly the board that was drawn, and only a formation that would
+  // otherwise overhang the edge makes it bigger. The viewport is the ceiling.
+  const src = this.scene.textures.get(textureKey).getSourceImage();
+  const nativeW = src?.width || 366;
+  const nativeH = src?.height || 304;
+  const cardScale = place?.cardScale || 1;
+  const halfCardW = ((this.constructor.CARD_ART?.width || 53) * cardScale) / 2;
+  const halfCardH = ((this.constructor.CARD_ART?.height || 70) * cardScale) / 2;
+  const reachX = Math.max(x - (minX - halfCardW), (maxX + halfCardW) - x);
+  const reachY = Math.max(y - (minY - halfCardH), (maxY + halfCardH) - y);
+  const panelW = Math.min(camW, Math.max(nativeW, (reachX + BOARD_CARD_MARGIN_X) * 2));
+  const panelH = Math.min(camH, Math.max(nativeH, (reachY + BOARD_CARD_MARGIN_Y) * 2));
+
+  // Only gamingBoard has measured slice insets. Every other backdrop (the shop
+  // and station planks) keeps the plain image it has always used — they frame
+  // fixed layouts and have nothing to grow for.
+  let panel = null;
+  if (textureKey === BOARD_PANEL_KEY && (panelW > nativeW || panelH > nativeH)) {
+    panel = createNineSlicePanel(this.scene, panelW, panelH, {
+      key: textureKey,
+      slice: BOARD_PANEL_SLICE,
+    });
+  }
+  if (!panel) panel = this.scene.add.image(0, 0, textureKey);
+  panel.x = x;
+  panel.y = animate ? y + BOARD_ENTRANCE_DROP : y;
+  panel.setDepth(0);
+  panel.setData('restY', y);
+  this.floorBoardPanel = panel;
+
+  // Preserve native card scale. A formation wide enough to reach past even the
+  // grown board — which now means past the viewport — still gets the backdrop
+  // extended under it rather than the cards shrunk.
+  const halfPanelW = (panel.displayWidth || panel.width || nativeW) / 2;
+  if (minX - halfCardW < x - halfPanelW + 8) {
+    this.createSideExtraPanel('left', { animate, delayMs: 120 });
+  }
+  if (maxX + halfCardW > x + halfPanelW - 8) {
+    this.createSideExtraPanel('right', { animate, delayMs: 120 });
+  }
+
+  if (animate) animateBoardEntrance.call(this, panel, y);
+}
+
+// The board slides up into place at the start of a fight: it starts low, rises
+// past its resting line, and settles back onto it.
+//
+// Only the APPROACH was deepened — the drop was 34px, which at this speed was
+// over before the eye found it. The overshoot and settle are the original 8px
+// and 180ms, so the last thing the animation does, and the line the board comes
+// to rest on, are exactly what they were before it was touched.
+// How far the board art rides above the centre of the card cluster it frames.
+const BOARD_PANEL_LIFT = 8;
+
+const BOARD_ENTRANCE_DROP = 52;
+const BOARD_ENTRANCE_OVERSHOOT = 8;
+const BOARD_ENTRANCE_RISE_MS = 320;
+const BOARD_ENTRANCE_SETTLE_MS = 180;
+
+function animateBoardEntrance(panel, restY) {
+  this.scene.tweens.add({
+    targets: panel,
+    y: restY - BOARD_ENTRANCE_OVERSHOOT,
+    duration: BOARD_ENTRANCE_RISE_MS,
+    ease: 'Cubic.easeOut',
+    onComplete: () => {
+      if (!panel.scene) return;
+      this.scene.tweens.add({
+        targets: panel,
+        y: restY,
+        duration: BOARD_ENTRANCE_SETTLE_MS,
+        ease: 'Bounce.easeOut'
+      });
+    }
+  });
+}
+
+function createBossBoardPanel() {
+  this.clearFloorBoardPanel();
+  if (!this.scene.textures.exists('gamingBoard')) return;
+
+  const cam = this.scene.cameras.main;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: camW, height: camH } = cameraWorldSize(cam);
+  const y = Math.min(camH - 122, camH / 2 + 8) - 18;
+  // -10 (was +10): shifted 20px left to match the combat board and clear
+  // the combat-log panel on the right.
+  const panel = this.scene.add.image((camW / 2) - 10, y + BOARD_ENTRANCE_DROP, 'gamingBoard');
+  panel.setDepth(0);
+  this.floorBoardPanel = panel;
+  animateBoardEntrance.call(this, panel, y);
+}
+
+function _brickSizeForCount(n) {
+  // card-center spacing and card sprite scale
+  if (n <= 10) return { colGap: 64, rowGap: 60, scale: 0.95 };
+  if (n <= 16) return { colGap: 56, rowGap: 54, scale: 0.88 };
+  return           { colGap: 50, rowGap: 48, scale: 0.82 }; // 17..26
+}
+
+function brickToPixelLegacy(row, col, colGap, rowGap) {
+  const cam = this.scene.cameras.main;
+  // Viewport in world units, not device pixels — see cameraWorldSize.
+  const { width: camW, height: camH } = cameraWorldSize(cam);
+  const x = (camW * 0.75) + col * colGap + ((row & 1) ? colGap / 2 : 0); // Responsive center
+  const y = (camH / 2) + row * rowGap;
+  return { x, y };
+}
+
+function brickNeighbors(row, col) {
+  const odd = row & 1;
+  return odd ? [
+    [row-1, col],   [row-1, col+1],
+    [row,   col-1], [row,   col+1],
+    [row+1, col],   [row+1, col+1],
+  ] : [
+    [row-1, col-1], [row-1, col],
+    [row,   col-1], [row,   col+1],
+    [row+1, col-1], [row+1, col],
+  ];
+}
+
+function computeRowBands(cards, vStep) {
+  // The board array can hold null slots (cards already removed before a
+  // save) and rare entries without a sprite — skip both so restore doesn't
+  // crash on `c.sprite`.
+  const valid = cards.filter(c => c?.sprite);
+  const ys = valid.map(c => c.sprite.y).sort((a,b)=>b-a); // deepest first
+  const bands = [];
+  const tol = vStep * 0.5;
+  ys.forEach(y => {
+    if (!bands.some(by => Math.abs(by - y) <= tol)) bands.push(y);
+  });
+  // assign band index 0.. (0 = closest to player / deepest Y)
+  valid.forEach(c => {
+    if (c.data) c.data.band = bands.findIndex(by => Math.abs(by - c.sprite.y) <= tol);
+  });
+  return bands.length;
+}
+
+function frontBandCount(cardCount) {
+  return cardCount >= 14 ? 2 : 1; // two front rows on denser boards
+}
+
+function getSerializableBoardLayout() {
+  if (!Array.isArray(this._boardCells) || !this._boardPlace) return null;
+  return {
+    cells: this._boardCells.map(cell => cell ? { r: cell.r, c: cell.c } : null),
+    place: { ...this._boardPlace }
+  };
+}
+
+function _rebuildBrickNeighbors() {
+    const indexByRC = new Map();
+    for (let i = 0; i < this.boardCards.length; i++) {
+        const card = this.boardCards[i];
+        if (!card || !card.data?.brick) continue;
+        const { r, c } = card.data.brick;
+        indexByRC.set(`${r},${c}`, i);
+        card.data.brickNeighbors = [];
+    }
+    for (let i = 0; i < this.boardCards.length; i++) {
+        const card = this.boardCards[i];
+        if (!card || !card.data?.brick) continue;
+        const { r, c } = card.data.brick;
+        const OFFS = (r & 1) ? this.constructor.OFFS_ODD : this.constructor.OFFS_EVEN;
+        const nbrs = [];
+        for (const [dc, dr] of OFFS) {
+            const key = `${r + dr},${c + dc}`;
+            if (indexByRC.has(key)) nbrs.push(indexByRC.get(key));
+        }
+        card.data.brickNeighbors = nbrs;
+    }
+}
+
+function applyEnemyRoleForSeat(card) {
+    const data = card?.data;
+    if (!data) return;
+    if (typeof this.isEnemyType === 'function' ? !this.isEnemyType(data.type) : false) return;
+    if (data.type === 'boss' || data.isMimic) return;
+    const row = data.brick?.r;
+    if (!Number.isFinite(row)) return;
+    data.role = row > 0 ? 'MELEE' : 'RANGED';
+}
+
+function syncMovedCardVisuals(card) {
+    if (!card) return;
+    const x = Number.isFinite(card.sprite?.x) ? card.sprite.x : card.restX;
+    const y = Number.isFinite(card.sprite?.y) ? card.sprite.y : card.restY;
+    if (card.shadow?.scene) {
+        card.shadow.x = x;
+        card.shadow.y = (Number.isFinite(card.restY) ? card.restY : y) + 28;
+    }
+    if (card.infoText?.scene) {
+        card.infoText.x = x;
+        card.infoText.y = y + 22;
+    }
+    if (card.frozenFrame?.scene) {
+        card.frozenFrame.setPosition?.(Math.round(x), Math.round(y));
+    }
+    if (card.gemShadow?.scene) {
+        const off = card.gemShadowOffset || { x: 0, y: 3 };
+        card.gemShadow.x = x + off.x;
+        card.gemShadow.y = y + off.y;
+    }
+    this.syncControlMarkers?.(card);
+}
+
+function finishSeatMove(card) {
+    if (card?.sprite) {
+        if (Number.isFinite(card.restX)) card.sprite.x = card.restX;
+        if (Number.isFinite(card.restY)) card.sprite.y = card.restY;
+        snapOriginToPixelGrid(card.sprite);
+    }
+    syncMovedCardVisuals.call(this, card);
+    if (card?.poisonMarker) {
+        card.poisonMarker.destroy();
+        card.poisonMarker = null;
+    }
+    if (card?.shockMarker) {
+        card.shockMarker.destroy();
+        card.shockMarker = null;
+    }
+    this.restoreEnemyStatusMarkers?.(card);
+}
+
+function moveCardToSeat(card, seat, { animate = true } = {}) {
+    if (!card || !seat?.brick) return;
+    if (card.data) card.data.brick = { r: seat.brick.r, c: seat.brick.c };
+    if (Number.isFinite(seat.restX)) card.restX = seat.restX;
+    if (Number.isFinite(seat.restY)) card.restY = seat.restY;
+    applyEnemyRoleForSeat.call(this, card);
+    const x = card.restX;
+    const y = card.restY;
+    const canTween = animate && typeof this.scene?.tweens?.add === 'function' && card.sprite;
+    if (canTween) {
+        this.killCardTweens?.(card);
+        this.scene.tweens.add({
+            targets: card.sprite,
+            x,
+            y,
+            duration: 220,
+            onUpdate: () => syncMovedCardVisuals.call(this, card),
+            onComplete: () => finishSeatMove.call(this, card),
+        });
+        return;
+    }
+    if (card.sprite) {
+        card.sprite.x = x;
+        card.sprite.y = y;
+    }
+    finishSeatMove.call(this, card);
+}
+
+function swapCardSeats(a, b, opts) {
+    if (!a || !b || a === b) return false;
+    const seatA = seatOfCard(a);
+    const seatB = seatOfCard(b);
+    if (!seatA.brick || !seatB.brick) return false;
+    moveCardToSeat.call(this, a, seatB, opts);
+    moveCardToSeat.call(this, b, seatA, opts);
+    this._rebuildBrickNeighbors?.();
+    if (this._boardPlace?.VSTEP) this.computeRowBands?.(this.boardCards, this._boardPlace.VSTEP);
+    this.refreshEnemyAttackLabels?.();
+    return true;
+}
+
+function applyStrategyCluster({ preferFront = false } = {}) {
+    const swaps = planClusterSwaps(this.boardCards, { preferFront });
+    if (!swaps.length) return false;
+    let moved = false;
+    for (const [a, b] of swaps) {
+        if (swapCardSeats.call(this, a, b)) moved = true;
+    }
+    return moved;
+}

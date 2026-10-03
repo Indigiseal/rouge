@@ -1,0 +1,11 @@
+
+Stats DB: 1000 runs → /Users/petrgorskin/Projects/dungeon_rogue/rouge/sim/db/stats.sqlite
+  label: tune-v3
+  mode: balance
+
+Batch saved:
+  batch_id=20  label=tune-v3
+  runs=1000  floor_visits=15474
+  combat_visits=6809  weapon_rows=55920  enemy_rows=18204
+
+Elapsed 1.28s

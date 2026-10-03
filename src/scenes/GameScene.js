@@ -1,0 +1,1967 @@
+import { CardSystem } from '../systems/CardSystem.js';
+import { applyOverlayLight } from '../ui/OverlayLightPipeline.js';
+import { CombatFeedback } from '../ui/CombatFeedback.js';
+import { InventorySystem } from '../systems/InventorySystem.js';
+import { GameState, PLAYER_START_HP } from '../systems/GameState.js';
+import { AmuletManager } from '../managers/AmuletManager.js';
+import { MusicManager } from '../audio/MusicManager.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { ensureDoorOpenAnim, isLocationDoorTexture, locationDoorArt } from '../content/assets/locationCards.js';
+// Where the way out stands: the Next plate, the open door, and the shut door
+// that waits there during the fight all share this spot.
+// Every other room's door stands here too (ui/ExitDoor.js).
+const NEXT_EXIT_X = EXIT_DOOR_X;
+const NEXT_EXIT_Y = EXIT_DOOR_Y;
+// Pause between the killing blow's last sound starting and the door opening,
+// so the death is heard as its own event before the room announces it's clear.
+const ROOM_CLEAR_ANNOUNCE_PAD_MS = 200;
+// Must match the event screen's dim (EventScene create), so where the dim ends
+// the backdrop carries on in the same colour.
+const EVENT_BACKDROP_COLOR = 0x1a1a2e;
+import { getLocationIdForFloor } from '../content/locations/index.js';
+import { devToolsEnabled } from '../config/DevTools.js';
+import { SaveManager } from '../managers/SaveManager.js';
+import { MetaProgressionManager } from '../managers/MetaProgressionManager.js';
+import { TutorialManager } from '../managers/TutorialManager.js';
+import { CombatHud } from '../ui/CombatHud.js';
+import { setHoverLight } from '../ui/HoverLight.js';
+import { EXIT_DOOR_X, EXIT_DOOR_Y } from '../ui/ExitDoor.js';
+import { scaleGoldReward } from '../content/economy/gold.js';
+import { normalizeCharacterId } from '../content/characters/CharacterClasses.js';
+import {
+    showDefeatFallback as showDefeatFallbackOverlay,
+    addResultPanel as addResultPanelOverlay,
+    addResultButton as addResultButtonOverlay,
+    showDefeatResult as showDefeatResultOverlay,
+    addRelicIcon as addRelicIconOverlay,
+    createUnlockParticles as createUnlockParticlesOverlay,
+    gameWon as showVictoryResult,
+} from '../ui/RunResultOverlay.js';
+import {
+    setupBossRewardRoom as setupBossRewardRoomUi,
+    restoreSavedBossRewardRoom as restoreSavedBossRewardRoomUi,
+    makeBossRewardGem as makeBossRewardGemUi,
+    leaveBossRewardRoom as leaveBossRewardRoomUi,
+} from '../ui/BossRewardRoom.js';
+import { t } from '../i18n/i18n.js';
+import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from '../content/story/StoryProgress.js';
+import { areAmuletsDisabled } from '../config/TestOptions.js';
+import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
+import { CombatTurnController } from '../systems/combat/CombatTurnController.js';
+import { CombatSequencer } from '../systems/combat/CombatSequencer.js';
+import { applyLocationChoice, emptyActLocationIds, normalizeActLocationIds } from '../content/locations/index.js';
+import { HEALER_RARITIES, healerRarityForRank } from '../content/village/index.js';
+import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
+import {
+    applySandboxLoadout,
+    applySandboxStorySetup,
+    exitToSandboxHub,
+    getSandboxEncounter,
+    isSandboxMode,
+} from '../sandbox/SandboxMode.js';
+import { humanRunRecorder, recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
+import { openNoticeModal } from '../ui/ConfirmModal.js';
+import { isSilkCocoonCacheRoom, boardHasOpenCocoonEnemies } from '../systems/board/CocoonCacheBoard.js';
+import { playSmokeBurst, SMOKE_BURST_MS } from '../ui/SmokeBurst.js';
+import { pendingLocationAftermath } from '../content/locations/index.js';
+
+export function applyAmbushVictoryStory(gameState) {
+    const story = gameState?.storyRun;
+    if (gameState?.ambushId !== 'royal_procession' || !story) return false;
+    story.goblinKingStartingHealthFraction = Math.min(
+        story.goblinKingStartingHealthFraction || 1,
+        0.75,
+    );
+    return true;
+}
+
+export class GameScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'GameScene' });
+        this._transitioning = false;
+        this.skipNextEnemyAttack = false;
+        this.combatTurns = new CombatTurnController(this);
+    }
+
+    get isEnemyTurn() {
+        return this.combatTurns?.isEnemyTurn ?? false;
+    }
+
+    set isEnemyTurn(value) {
+        if (this.combatTurns) this.combatTurns.isEnemyTurn = value;
+    }
+
+    init(data = {}) {
+        this.saveManager = new SaveManager();
+        this.metaManager = new MetaProgressionManager(this);
+        // Phaser reuses the same Scene instance after Quit -> Main Menu -> New
+        // Run. Never let run-local flags from the previous instance leak into
+        // the next one (notably shouldLoadSave, which could restore an old floor).
+        this.shouldLoadSave = Boolean(data.loadSave);
+        // Guided tutorial: a self-contained rigged floor launched from the menu.
+        // It never loads/saves and skips relic/story seeding so the lesson board
+        // is identical every time.
+        this.tutorialMode = Boolean(data.tutorial);
+        if (this.tutorialMode) this.shouldLoadSave = false;
+        // Test Site: forced single encounter, then back to the hub.
+        this.sandboxMode = Boolean(data.sandbox);
+        this.sandboxRoom = data.sandboxRoom || null;
+        // A specific story picked from the Test Site, rather than whichever one
+        // the story rules would have served next.
+        this.sandboxEventId = data.sandboxEventId || null;
+        this.sandboxStorySetupId = data.sandboxStorySetupId || this.sandboxEventId;
+        if (this.sandboxMode) this.shouldLoadSave = false;
+        this._transitioning = false;
+        this._resultScreenShown = false;
+        this._gameOverInProgress = false;
+        // Reset per-scene-entry so a cleared-room restore flag can't leak into
+        // the next run (Phaser reuses the GameScene instance across runs).
+        this._floorEndAlreadyProcessed = false;
+        this.events.off('endPlayerTurn');
+        this.events.off('wake', this.wake, this);
+        this.combatTurns?.resetBinding?.();
+        
+        if (this.shouldLoadSave) {
+            // Load existing run
+            this.gameState = new GameState(this);
+            // Load will happen in create() after systems are initialized
+            this.shouldLoadSave = true;
+        } else {
+            // New run
+            this.gameState = new GameState(this);
+            this.gameState.characterId = normalizeCharacterId(data.characterId);
+            this.gameState.actLocationIds = emptyActLocationIds();
+            this.gameState.calendarMonthIndex = 0;
+            if (this.tutorialMode || this.sandboxMode) {
+              applyLocationChoice(this.gameState, 'thornwake');
+            } else if (data.locationId) {
+              applyLocationChoice(this.gameState, data.locationId);
+            }
+            // Village buildings always apply. Talent tree is live-off (flag).
+            if (!this.tutorialMode && !this.sandboxMode) {
+                const opts = {};
+                if (data.armorerArmorType === 'chain' || data.armorerArmorType === 'plate') {
+                    opts.armorerArmorType = data.armorerArmorType;
+                }
+                this.metaManager.applyRelicEffects(this.gameState, true, opts);
+            }
+            // Cross-run story memory: seed the fresh run from any saved story
+            // progress so completed events don't repeat and story chains resume
+            // where a past life left off. (Continues restore storyRun from the
+            // run save instead, so we only seed brand-new runs.)
+            //
+            // The Test Site deliberately skips this. Seeding it there is exactly
+            // what made a finished story untestable: once the music box was
+            // resolved, boxState was never 'unknown' again and the event could
+            // not be reached without wiping the profile.
+            const storedStory = this.sandboxMode ? null : loadStoryProgress();
+            if (storedStory) {
+                Object.assign(this.gameState.storyRun, storedStory);
+                // birdAngry / angryNestmotherRollFloor are per-run combat
+                // consequences (the angry nestmother spawns in elite rooms and
+                // is cleared on kill in combat, which doesn't re-save story
+                // progress). Don't let them carry across deaths, or the bird
+                // would haunt every future run forever.
+                this.gameState.storyRun.birdAngry = false;
+                this.gameState.storyRun.angryNestmotherRollFloor = null;
+                // The copying-mirror and the too-nice room are once-per-run bonus
+                // encounters, not once-ever story beats — let each new run meet
+                // them again.
+                this.gameState.storyRun.mirrorSeen = false;
+                this.gameState.storyRun.tooNiceRoomSeen = false;
+                this.gameState.storyRun.wellSeen = false;
+                this.gameState.storyRun.bookWormSeen = false;
+                this.gameState.storyRun.briarRoomSeen = false;
+                this.gameState.storyRun.slimyPrisonSeen = false;
+                this.gameState.storyRun.reliquarySeen = false;
+                this.gameState.storyRun.tollCollectorsSeen = false;
+                // Toll Collectors consequences are per-RUN, exactly like
+                // birdAngry above. Without this, attacking the collectors once
+                // left tollFought saved forever, and their wounded guards then
+                // turned up beside the Goblin King in every later run — even
+                // runs where the player never met them.
+                this.gameState.storyRun.paidTheToll = false;
+                this.gameState.storyRun.tollIntimidated = false;
+                this.gameState.storyRun.tollFought = false;
+                this.gameState.storyRun.tollWatchFailed = false;
+                this.gameState.storyRun.bridgeDestroyed = false;
+                this.gameState.storyRun.tollGuardsEscaped = 0;
+                this.gameState.storyRun.tollEscapeMode = null;
+                this.gameState.storyRun.tollroadDetour = null;
+                this.gameState.storyRun.jetpackFlightPending = false;
+                this.gameState.storyRun.tollKiller = false;
+                this.gameState.storyRun.merchantRobbed = false;
+                this.gameState.storyRun.tollEscapeNoticeShown = false;
+                // Arm wrestling is a per-run encounter too: without this, one
+                // win would queue the ogre's rematch in every future run, and
+                // one loss would lock the gauntlet away forever.
+                this.gameState.storyRun.armWrestlingSeen = false;
+                this.gameState.storyRun.armWrestleWon = false;
+                this.gameState.storyRun.armWrestleLost = false;
+                this.gameState.storyRun.armWrestleRematchDone = false;
+                this.gameState.storyRun.gauntletWon = false;
+                this.gameState.storyRun.goblinMineSeen = false;
+                this.gameState.storyRun.goblinMinersKilled = false;
+                this.gameState.storyRun.goblinMinersAllied = false;
+                this.gameState.storyRun.royalBridgeSeen = false;
+                this.gameState.storyRun.tollroadThroneHallSeen = false;
+                this.gameState.storyRun.goblinKingStartingHealthFraction = 1;
+                this.gameState.storyRun.pendingPostCombatEventId = null;
+            }
+            // This scene repeats once per Tollroad run. Durable story memory
+            // keeps the pendant/knowledge, but must not suppress a later run's
+            // post-boss scene.
+            this.gameState.storyRun.tollroadAftermathCompleteThisRun = false;
+        }
+
+        const storedHeroMemory = loadHeroMemory();
+        if (storedHeroMemory) {
+            Object.keys(this.gameState.heroMemory).forEach(key => {
+                this.gameState.heroMemory[key] = Boolean(
+                    this.gameState.heroMemory[key] || storedHeroMemory[key]
+                );
+            });
+        }
+
+        // Repair profiles created before the death check accepted the durable
+        // hatch flag. The hatch event is persisted across runs, so it is enough
+        // evidence to restore the shop unlock that should have been recorded.
+        if (this.gameState.storyRun?.chickHatched
+            && !this.gameState.heroMemory.chickRareShopUnlocked) {
+            this.gameState.heroMemory.chickRareShopUnlocked = true;
+            saveHeroMemory(this.gameState.heroMemory);
+        }
+        if (this.gameState.storyRun?.skeletonCompanionObtained
+            && !this.gameState.heroMemory.skeletonRareShopUnlocked) {
+            this.gameState.heroMemory.skeletonRareShopUnlocked = true;
+            saveHeroMemory(this.gameState.heroMemory);
+        }
+        
+        this.skipNextEnemyAttack = false;
+        this.killedBy = null;
+        this.roomType = data.roomType || (this.sandboxMode && this.sandboxRoom) || 'COMBAT';
+        this.clearEnemyTurnTimers();
+    }
+    
+    create() {
+        this.events.once('shutdown', this.shutdown, this);
+        // LocationPick / Village sit after GameScene in the scene list.
+        // Phaser InputManager is globalTopOnly: if those scenes are still
+        // running, their cards swallow pointerup and the weapon never gets
+        // dragend (same bug as the EventScene glass cases).
+        this.stopScenesAboveCombat({ keepMap: true });
+        // Load saved volume settings. Master volume is kept internally at 1;
+        // players adjust Music and Sound Effects directly.
+        this.game.globalVolume = loadVolumeSettings();
+        saveVolumeSettings(this.game.globalVolume);
+        
+        // Apply volume settings
+        this.sound.volume = this.game.globalVolume.master;
+        
+        // Create tiled stone background
+        this.createBackground();
+
+        // Warm light sheet over the whole frame, in Aseprite's Overlay mode.
+        // A camera post-process, so it covers the board, the cards, the HUD
+        // and the bag together rather than needing to out-depth them.
+        applyOverlayLight(this);
+        
+        // Create animations
+        this.createAnimations();
+        
+        // Initialize AmuletManager FIRST
+        this.amuletManager = new AmuletManager(this);
+        
+        // Initialize systems
+        this.cardSystem = new CardSystem(this);
+        this.inventorySystem = new InventorySystem(this, this.gameState.inventory);
+        
+        // After this.inventorySystem = new InventorySystem(...)
+        this.inventorySystem.slots = this.gameState.inventory || new Array(5).fill(null); // Load from state if exists
+        this.gameState.inventory = this.inventorySystem.slots; // Sync back
+        
+        this.inventorySystem.setVisibility(true); // Ensure shown on start
+        
+        // Load saved run if continuing
+        if (this.shouldLoadSave) {
+            this.loadCurrentRun();
+        } else if (!this.tutorialMode && !this.sandboxMode && this.metaManager
+            && !this.gameState.villageEffects) {
+            this.metaManager.applyVillageEffects(this.gameState, false);
+        }
+        
+        // Create UI
+        this.createUI();
+        
+        // Room title
+        this.roomTitle = null;
+
+        // Restored combat rooms bypass startNewFloor(), so bind turn handling
+        // before choosing between a fresh board and a saved one.
+        this.bindEnemyTurnHandler();
+        this.inventorySystem.setDiscardArea(this.discardArea);
+        this.inventorySystem.setArmorPanel(this.armorPanel);
+
+        // Decide where a loaded run resumes — the authoritative "where did the
+        // player leave from" call, made purely from the save so it holds no
+        // matter when the last save was written (floor-clear autosave, shop,
+        // rest, elite chest, tab close, etc.).
+        //
+        // We only drop the player straight back INTO a room for two cases:
+        //   - a genuine in-progress fight (combat/elite/boss, not yet cleared), or
+        //   - an unclaimed boss-reward room.
+        // Everything else resumes on the MAP, which owns the next-room choice:
+        //   - a CLEARED combat room (its remaining cards are just uncollected
+        //     loot, forfeited on leaving anyway) — restoring it would strand the
+        //     player back in a fight they already won (the reported Continue bug), and
+        //   - a save taken inside a shop/rest/anvil/event/treasure (roomType like
+        //     'SHOP'/'REST'/…), e.g. after quitting from there.
+        if (this.shouldLoadSave) {
+            const rt = this.gameState.roomType;
+            const inProgressCombat =
+                ['COMBAT', 'ELITE', 'BOSS'].includes(rt) && !this._loadedEnemiesCleared;
+            if (rt !== 'MAP' && rt !== 'BOSS_REWARD' && !inProgressCombat) {
+                this.gameState.roomType = 'MAP';
+                this.roomType = 'MAP';
+            }
+        }
+
+        // Continue from the map before restoring a combat board. The map owns
+        // the next-room choice, while the saved cursor keeps its exact position.
+        this.events.on('wake', this.wake, this);
+        if (this.shouldLoadSave && this.gameState.roomType === 'MAP') {
+            this.scene.sleep();
+            this.scene.launch('MapViewScene', { gameState: this.gameState });
+            return;
+        }
+
+        this.stopScenesAboveCombat({ keepMap: false });
+
+        if (this.sandboxMode && this.sandboxRoom) {
+            this.bootSandboxEncounter();
+            return;
+        }
+        
+        // Start or restore the room. Boss rewards are already paid before the
+        // player can pause; rebuilding them via setupBossRewardRoom() would pay
+        // the currency twice, so restore only the still-unclaimed saved cards.
+        if (this.shouldLoadSave && this.gameState.roomType === 'BOSS_REWARD') {
+            // Migration for saves already stranded in the reward room by the
+            // old profile-wide "seen" guard: show the missing scene first, then
+            // restore these exact reward cards without paying currency twice.
+            const aftermath = pendingLocationAftermath(this.gameState);
+            if (aftermath) {
+                this._restoreBossRewardAfterNarrative = true;
+                this.scene.sleep();
+                this.scene.launch(aftermath.sceneKey, { gameState: this.gameState });
+            } else {
+                this.restoreSavedBossRewardRoom();
+            }
+        } else if (this.shouldLoadSave && this._loadedBoardAvailable) {
+            this.restoreSavedCombatRoom();
+        } else {
+            this.startNewFloor();
+            this.offerHealerAmuletIfNeeded();
+        }
+        
+        // Update room title after loading
+        this.updateRoomTitle();
+        
+        // Guided tutorial overlay drives the rigged board created above.
+        if (this.tutorialMode) {
+            this.tutorialManager = new TutorialManager(this);
+            this.tutorialManager.start();
+        }
+    }
+
+    bootSandboxEncounter() {
+        this.gameState.sandboxMode = true;
+        const encounter = getSandboxEncounter(this.sandboxRoom);
+        applySandboxLoadout(this, this.sandboxRoom);
+
+        if (this.sandboxRoom === 'BOSS_REWARD') {
+            this.setupBossRewardRoom();
+            this.updateRoomTitle();
+            return;
+        }
+
+        if (encounter?.kind === 'station' && encounter.sceneKey) {
+            const roomType = this.sandboxRoom.startsWith('TREASURE')
+                ? (this.sandboxRoom === 'TREASURE_GOOD' ? 'TREASURE_GOOD' : 'TREASURE')
+                : this.sandboxRoom;
+            this.gameState.roomType = roomType;
+            this.roomType = roomType;
+            this.scene.sleep();
+            const payload = { gameState: this.gameState };
+            if (encounter.rewardMode) payload.rewardMode = encounter.rewardMode;
+            if (this.sandboxEventId) {
+                // Seed whatever this story needs before it opens — a recovered
+                // cog, an egg, a companion with service behind it.
+                applySandboxStorySetup(this, this.sandboxStorySetupId);
+                payload.forcedEventId = this.sandboxEventId;
+            }
+            this.scene.launch(encounter.sceneKey, payload);
+            return;
+        }
+
+        this.gameState.roomType = this.sandboxRoom;
+        this.roomType = this.sandboxRoom;
+        this.startNewFloor();
+        this.updateRoomTitle();
+    }
+
+    leaveSandboxOrMenu() {
+        if (this.sandboxMode || isSandboxMode(this)) {
+            exitToSandboxHub(this);
+            return;
+        }
+        this.scene.start('MainMenuScene');
+    }
+
+    update() {
+        this.tutorialManager?.tick?.();
+    }
+
+    createAnimations() {
+        // Create hover card animation
+        if (!this.anims.exists('hover_cards_anim')) this.anims.create({
+            key: 'hover_cards_anim',
+            frames: this.anims.generateFrameNumbers('hoverCardsUpSheet', { start: 0, end: 4 }),
+            frameRate: 12,
+            repeat: 0
+        });
+
+        // Card disappear dissolve — played on top of a card as it is removed
+        // (enemy defeated, weapon pips spent). 6 frames, plays once.
+        if (this.textures.exists('cardDisappearSheet') && !this.anims.exists('card_disappear_anim')) this.anims.create({
+            key: 'card_disappear_anim',
+            frames: this.anims.generateFrameNumbers('cardDisappearSheet', { start: 0, end: 5 }),
+            frameRate: 22,
+            repeat: 0
+        });
+        // The player's-card dissolve, at the enemy one's speed.
+        if (this.textures.exists('cardBreakSheet') && !this.anims.exists('card_break_anim')) this.anims.create({
+            key: 'card_break_anim',
+            frames: this.anims.generateFrameNumbers('cardBreakSheet', { start: 0, end: 5 }),
+            frameRate: 22,
+            repeat: 0
+        });
+
+        // Card merge flicker — played on top of the merged card. 2 frames, looped
+        // once so the flicker plays twice (repeat: 1). Legendary merges use a
+        // separate, flashier sheet.
+        if (this.textures.exists('mergeSheet') && !this.anims.exists('merge_anim')) this.anims.create({
+            key: 'merge_anim',
+            frames: this.anims.generateFrameNumbers('mergeSheet', { start: 0, end: 1 }),
+            frameRate: 18,
+            repeat: 1
+        });
+        if (this.textures.exists('mergeLegendarySheet') && !this.anims.exists('merge_legendary_anim')) this.anims.create({
+            key: 'merge_legendary_anim',
+            frames: this.anims.generateFrameNumbers('mergeLegendarySheet', { start: 0, end: 1 }),
+            frameRate: 18,
+            repeat: 1
+        });
+        
+        // Create coin animation. Now sourced from the coinAnimSheet spritesheet
+        // (frame 0 = old coinAnimation1 ... frame 5 = coinAnimation6). Sequence
+        // preserved: the old anim used coinAnimation2-6 = sheet frames 1-5.
+        if (!this.anims.exists('coin_spin_anim')) this.anims.create({
+            key: 'coin_spin_anim',
+            frames: this.anims.generateFrameNumbers('coinAnimSheet', { start: 1, end: 5 }),
+            frameRate: 10,
+            repeat: 0
+        });
+
+        // Create crystal animation. From crystalAnimSheet (frame 0 = old
+        // crystalAnimation1). Old sequence was crystalAnimation2,3,4,5,1 —
+        // i.e. sheet frames 1,2,3,4,0 (loops back to the rest frame) — preserved.
+        if (!this.anims.exists('crystal_glow_anim')) this.anims.create({
+            key: 'crystal_glow_anim',
+            frames: [
+                { key: 'crystalAnimSheet', frame: 1 },
+                { key: 'crystalAnimSheet', frame: 2 },
+                { key: 'crystalAnimSheet', frame: 3 },
+                { key: 'crystalAnimSheet', frame: 4 },
+                { key: 'crystalAnimSheet', frame: 0 }
+            ],
+            frameRate: 8,
+            repeat: 0
+        });
+    }
+
+    createBackground() {
+        // Use the single dungeon background image
+        const background = this.add.image(320, 180, 'stoneFloor');
+        background.setDisplaySize(640, 360);
+        background.setOrigin(0.5, 0.5);
+        // Under the board frame and top HUD (month / floor / pause).
+        background.setDepth(-10);
+        this.backgroundImage = background;
+    }
+
+    // An event dims the top of the screen and leaves the bottom strip to this
+    // scene's inventory and discard bin. With the dungeon painting behind them,
+    // the edge of the event's dim cut straight across the painting (vines and
+    // all) just above the panel painted into its foot. During an event the
+    // painting is swapped for a flat backdrop in the event's own dim colour, so
+    // the dim has no edge to show, and the panel is laid on separately, under
+    // the inventory and the bin.
+    setEventBackdrop(on) {
+        if (on && !this.eventBackdrop?.scene) {
+            this.eventBackdrop = this.add.rectangle(320, 180, 640, 360, EVENT_BACKDROP_COLOR)
+                .setDepth(-9);
+            this.underInventoryPanel = this.textures.exists('panelUnderInventory')
+                ? this.add.image(320, 360, 'panelUnderInventory').setOrigin(0.5, 1).setDepth(-8)
+                : null;
+        }
+        this.eventBackdrop?.setVisible(on);
+        this.underInventoryPanel?.setVisible(on);
+        this.backgroundImage?.setVisible(!on);
+    }
+
+    stopScenesAboveCombat({ keepMap = false } = {}) {
+        const keep = new Set(['GameScene', 'PreloadScene']);
+        if (keepMap) keep.add('MapViewScene');
+        this.game.scene.getScenes(false).forEach((scene) => {
+            const key = scene.sys.settings.key;
+            if (keep.has(key)) return;
+            // INIT scenes still canInput() in Phaser 3.70. A leftover
+            // LocationPick card list would swallow pointerup over the board.
+            if (scene.input) scene.input.enabled = false;
+            if (scene.sys.isActive() || scene.sys.isSleeping()) {
+                this.scene.stop(key);
+            }
+        });
+    }
+
+    offerHealerAmuletIfNeeded() {
+        if (this.shouldLoadSave || this.tutorialMode || this.sandboxMode) return;
+        if (areAmuletsDisabled()) return;
+        const rank = this.gameState?.talentEffects?.healerRank || 0;
+        const rolled = healerRarityForRank(rank);
+        if (!rolled) return;
+        // The rarity is a roll now, so it can land on a tier with nothing
+        // left to offer. Step down a tier at a time rather than give nothing.
+        const tiers = HEALER_RARITIES.slice(0, HEALER_RARITIES.indexOf(rolled) + 1).reverse();
+        let rarity = null;
+        let options = [];
+        for (const tier of tiers) {
+            options = this.cardSystem?.cardDataGenerator?.createAmuletChoice(
+                this.gameState.currentFloor || 1,
+                tier,
+                3,
+                this.gameState,
+                { ignoreMinFloor: true },
+            ) || [];
+            if (options.length) { rarity = tier; break; }
+        }
+        if (!options.length) return;
+        this.time.delayedCall(350, () => {
+            openAmuletChoiceOverlay(this, {
+                rarity,
+                options,
+                amuletManager: this.amuletManager,
+                title: t(this, 'ui.village.healerTitle'),
+            });
+        });
+    }
+
+    startNewFloor() {
+        this.clearEnemyTurnTimers();
+        this.clearFloatingTexts();
+        // Fresh combat floor reached (restores bypass startNewFloor()).
+        SoundHelper.playVariant(this, 'new_level', 0.5);
+        this._floorEndAlreadyProcessed = false;
+        this._transitioning = false;
+        this.enemiesCleared = false;
+        if (this.nextFloorButton) {
+            this.nextFloorButton.setVisible(false);
+            this.nextFloorButtonText?.setVisible(false);
+            this.nextFloorButton.setInteractive();
+            this.nextFloorButton.y = NEXT_EXIT_Y;
+            if (this.nextFloorButtonText) this.nextFloorButtonText.y = NEXT_EXIT_Y;
+            this.nextFloorButton.clearTint();
+            this._doorOpenSounded = false;
+            // The road is visible from the first turn, shut. It opens when the
+            // board is cleared. Rooms with no door drawn keep the old plate,
+            // hidden until then.
+            // Stop a door that was still swinging, or it would keep writing
+            // its frames over the plate.
+            this.nextFloorButton.anims?.stop?.();
+            this.nextFloorButton.setTexture('nextTurnUp');
+            this.showClosedDoorExit();
+        }
+        // Grace is now per-enemy (card.justRevealed) — a freshly revealed enemy sits
+        // out the action that revealed it. No global first-turn skip needed.
+        this.gameState.playerHealth = Math.max(1, Math.floor(this.gameState.playerHealth || PLAYER_START_HP));  // Sanitize HP
+        this.gameState.maxHealth = Math.max(1, Math.floor(this.gameState.maxHealth || PLAYER_START_HP));
+        if (this.gameState.playerHealth > this.gameState.maxHealth) this.gameState.playerHealth = this.gameState.maxHealth;
+        
+        // Armor safety net
+        if (this.gameState.equippedArmor) {
+            this.gameState.equippedArmor.protection = Math.max(0, Math.floor(this.gameState.equippedArmor.protection || 0));
+            this.gameState.equippedArmor.durability = Math.max(0, Math.floor(this.gameState.equippedArmor.durability || 25));
+        }
+        
+        // Refresh type before spawn
+        this.roomType = this.gameState.roomType || 'COMBAT';
+        this.updateRoomTitle();
+        this.refreshDebugVictoryButton?.();
+        // Fresh fight → fresh log, shown only in combat rooms.
+        this.clearCombatLog();
+        this.refreshCombatLogVisibility();
+        // Boss floors get their own battle-drums track; everything else is silent.
+        if (this.roomType === 'BOSS') this.startBossMusic(); else this.stopBossMusic();
+        // Reset per-floor amulet flags
+        this.gameState.charmingTuneUsed = false;
+        this.gameState.strategyMarchUsed = false;
+        this.gameState.strategyClusterUsed = false;
+        if (this.tutorialMode) {
+            // Rigged lesson board. No starter swords — the tutorial hands them
+            // out on the board so the player learns to pick them up.
+            this.cardSystem.spawnTutorialCards();
+        } else {
+            this.cardSystem.spawnFloorCards();
+            this.inventorySystem.addStartingCards();
+        }
+        this.amuletManager?.processFloorStart?.();
+        recordHumanRunEvent(this, 'floor_started', {
+            floor: this.gameState.currentFloor,
+            roomType: this.roomType,
+        });
+        // DON'T replenish action points here
+        this.updateUI();
+        this.cardSystem.checkFloorClear();
+        // Last, so the bag it lifts already holds this floor's starting cards.
+        this.inventorySystem?.playPanelIntro?.();
+    }
+
+    startBossMusic() {
+        MusicManager.play(this, 'boss_music', 0.6, 700);
+    }
+
+    stopBossMusic() {
+        MusicManager.stopIfPlaying(this, 'boss_music', 600);
+    }
+
+    // The tutorial's own exit. showNextFloorButton stays shut in tutorial mode
+    // because clearing the rigged board is not the end of the lesson; the door
+    // opens only when the step that teaches it asks, and floorCleared turns the
+    // click into that step's progress instead of an actual departure.
+    showTutorialExit() {
+        if (!this.tutorialMode || !this.nextFloorButton) return;
+        this.nextFloorButton
+            .setVisible(true)
+            .setActive(true)
+            .setAlpha(1)
+            .setScale(1)
+            .setInteractive({ useHandCursor: true })
+            .clearTint();
+        this.nextFloorButtonText?.setVisible(true);
+        this.showOpenDoorExit();
+    }
+
+    showNextFloorButton() {
+        if (this.tutorialMode) return;
+        if (this._transitioning || this.gameState?.playerHealth <= 0) return;
+        if (this.nextFloorButton) {
+            this.nextFloorButton
+                .setVisible(true)
+                .setActive(true)
+                .setAlpha(1)
+                .setScale(1)
+                .setDepth(5000)
+                .setInteractive({ useHandCursor: true })
+                .clearTint();
+        }
+        if (this.nextFloorButtonText) {
+            this.nextFloorButtonText.setVisible(true).setDepth(5001);
+        }
+        this.showOpenDoorExit();
+    }
+
+    /**
+     * The board is clear, so the road opens.
+     *
+     * Rather than a Next plate, the door for the location this act is being
+     * walked shows in its open state, and you hear it go. Falls back to the
+     * plate for a road with no door drawn (Duskhold, Starfold) and for any room
+     * that reaches this with no location resolved.
+     */
+    /**
+     * The shut door, standing where the exit will be while enemies remain.
+     *
+     * Its OWN image, not the Next button wearing a door texture. That was the
+     * first shape of this and it was wrong: the button is a control with a
+     * pointerdown that calls floorCleared(), and anything that re-armed it —
+     * startNewFloor does, and so does a station room handing the fight back —
+     * turned the scenery back into a live button. Clicking the shut door then
+     * ended the floor, which looked like the door vanishing.
+     *
+     * A separate image can never be clicked, because it is never interactive.
+     */
+    showClosedDoorExit() {
+        const art = locationDoorArt(this, getLocationIdForFloor(this.gameState));
+        if (!art) {
+            this.closedDoorMarker?.setVisible(false);
+            return;
+        }
+
+        if (!this.closedDoorMarker?.scene) {
+            this.closedDoorMarker = this.add
+                .image(NEXT_EXIT_X, NEXT_EXIT_Y, art.key, art.shut)
+                .setDepth(4999);
+        }
+        this.closedDoorMarker
+            .setTexture(art.key, art.shut)
+            .setVisible(true)
+            .setActive(true)
+            .setAlpha(1)
+            .setScale(1)
+            .setDepth(4999);
+    }
+
+    /** The shut door comes down whenever the way out is real. */
+    hideClosedDoorExit() {
+        this.closedDoorMarker?.setVisible(false);
+    }
+
+    // A shop, treasure room or chest opens over this scene with its own door
+    // in the same spot. Take this room's exit down so only one door shows;
+    // the next fight's startNewFloor() puts it back.
+    hideExitUnderStation() {
+        this.nextFloorButton?.disableInteractive?.();
+        this.nextFloorButton?.setVisible(false);
+        this.nextFloorButtonText?.setVisible(false);
+        this.hideClosedDoorExit();
+    }
+
+    showOpenDoorExit() {
+        const button = this.nextFloorButton;
+        if (!button?.scene) return;
+
+        const art = locationDoorArt(this, getLocationIdForFloor(this.gameState));
+        if (!art) return;
+
+        this.hideClosedDoorExit();
+        // The first time this floor's door opens, a door with its own sheet
+        // swings open from shut. Every later call (this runs again whenever
+        // the clear is re-checked) just shows it open, so it never swings twice.
+        const opening = !this._doorOpenSounded;
+        const anim = opening ? ensureDoorOpenAnim(this, art) : null;
+        button
+            .setTexture(art.key, anim ? art.shut : art.open)
+            .setVisible(true)
+            .setActive(true)
+            .setAlpha(1)
+            .setScale(1)
+            .setDepth(5000);
+        if (anim && button.play) button.play(anim);
+        // The plate's label would sit across the doorway.
+        this.nextFloorButtonText?.setVisible(false);
+        if (opening) {
+            this._doorOpenSounded = true;
+            SoundHelper.playSound(this, 'door_open', 0.6);
+        }
+    }
+
+    /**
+     * Silk Cache ambush: leave anytime no hatched enemies remain (cocoons alone
+     * are optional). Reuses the Next control with a Leave label until a real
+     * enemy hatches or the room fully clears.
+     */
+    refreshSilkCocoonLeaveButton() {
+        if (this.tutorialMode || this._transitioning || this.gameState?.playerHealth <= 0) return;
+        if (!isSilkCocoonCacheRoom(this.gameState)) return;
+
+        if (this.enemiesCleared) {
+            this._silkCocoonLeaveOffer = false;
+            this.nextFloorButtonText?.setText(t(this, 'ui.hud.next'));
+            return;
+        }
+
+        if (boardHasOpenCocoonEnemies(this.cardSystem?.boardCards)) {
+            if (this._silkCocoonLeaveOffer) {
+                this._silkCocoonLeaveOffer = false;
+                this.nextFloorButton?.disableInteractive();
+                this.nextFloorButton?.setVisible(false);
+                this.nextFloorButtonText?.setVisible(false);
+                this.nextFloorButtonText?.setText(t(this, 'ui.hud.next'));
+            }
+            return;
+        }
+
+        this._silkCocoonLeaveOffer = true;
+        this.nextFloorButtonText?.setText(t(this, 'ui.hud.leave'));
+        this.showNextFloorButton();
+    }
+
+    bindEnemyTurnHandler() {
+        this.combatTurns.bindEnemyTurnHandler();
+    }
+
+    useAction() {
+        if (this.isEnemyTurn) return false;
+
+        // Goblin club_stun: skip this action, then enemies still respond.
+        if ((this.gameState.playerStunnedTurns || 0) > 0) {
+            this.gameState.playerStunnedTurns--;
+            this.amuletManager?.processPlayerTurn?.();
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Stunned!', 0xffcc66);
+            this.updateUI();
+            this.scheduleEnemyTurn();
+            return false;
+        }
+
+        // Check if player is already exhausted BEFORE consuming the action
+        const wasExhausted = this.gameState.actionsLeft <= 0;
+        
+        // Check for Quickhand Gloves free first action
+        if (this.gameState.shouldUseFreeAction()) {
+            this.amuletManager?.processPlayerTurn?.();
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Free Action!', 0x00ff00);
+            this.updateUI();
+            // After any action, revealed enemies attack
+            this.scheduleEnemyTurn();
+            return true;
+        }
+        
+        // Check for other free action chances
+        let actionConsumed = true;
+        
+        if (this.amuletManager) {
+            const freeActionChance = this.amuletManager.getFreeActionChance();
+            if (freeActionChance > 0 && Math.random() < freeActionChance) {
+                actionConsumed = false;
+                this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Free Action!', 0x00ff00);
+            }
+        }
+        
+        // REMOVED: Exhaustion damage - player is just weakened now
+        // Only show the weakened message when out of action points
+        if (wasExhausted && actionConsumed) {
+            // Just show weakened state, no damage. Empty stomach = out of energy.
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Weakened!', 0xff6600);
+        }
+        
+        // Consume action point if not a free action and player has AP
+        if (actionConsumed && this.gameState.actionsLeft > 0) {
+            this.gameState.actionsLeft--;
+            if (this.gameState.actionsLeft <= 0) {
+                SoundHelper.playVariant(this, 'empty_stomach', 0.5);
+            }
+        }
+
+        this.amuletManager?.processPlayerTurn?.();
+        
+        this.updateUI();
+        // After any action, emit one enemy turn. Extra clicks before it fires should not stack turns.
+        this.scheduleEnemyTurn();
+        
+        return true; // Always return true to allow actions
+    }
+
+    scheduleEnemyTurn() {
+        this.combatTurns.scheduleEnemyTurn();
+    }
+
+    hasCombatStalemate() {
+        return this.combatTurns.hasCombatStalemate();
+    }
+
+    queueStalemateEnemyTurn() {
+        this.combatTurns.queueStalemateEnemyTurn();
+    }
+
+    _drainEnemyTurns() {
+        this.combatTurns._drainEnemyTurns();
+    }
+
+    // Also add a method to check if player is currently exhausted (for weapon damage calculation)
+    isPlayerExhausted() {
+        return this.gameState.actionsLeft <= 0;
+    }
+
+    // endTurn() method removed - no more Rest button to restore action points
+
+    // enemyTurn() method removed - enemies now attack after each player action
+    // The revealedEnemiesAttack method handles all enemy responses
+    
+    startPlayerTurn() {
+        this.isEnemyTurn = false;
+        // Action points no longer reset automatically
+        this.updateUI();
+    }
+
+    runEnemyTurn() {
+        this.combatTurns.runEnemyTurn();
+    }
+
+    // `keepNarration` leaves the sounds and numbers of blows already struck to
+    // play out. Only the room-clear wants that: it fires on the killing blow,
+    // and that blow should still be heard. Every other caller is leaving the
+    // room or the run, where leftover narration would bleed into what's next.
+    clearEnemyTurnTimers({ keepNarration = false } = {}) {
+        this.combatTurns.clearEnemyTurnTimers();
+        if (!keepNarration) CombatSequencer.cancelAll(this);
+    }
+
+    isEnemyCard(card) {
+        return !!this.cardSystem?.isEnemyType(card?.data?.type);
+    }
+
+    debugDefeatAllEnemies() {
+        // Refused outright in a tester build. The button is gone there, but a
+        // method on the scene is reachable from the console.
+        if (!devToolsEnabled()) return 0;
+        const roomType = this.gameState?.roomType || this.roomType;
+        if (!['COMBAT', 'ELITE', 'BOSS'].includes(roomType)
+            || this.enemiesCleared
+            || this._transitioning
+            || this.gameState?.playerHealth <= 0) {
+            return 0;
+        }
+
+        this.clearEnemyTurnTimers();
+
+        // A debug clear means the whole floor, not merely the currently dealt
+        // wave. Cancel undealt reinforcements before normal clear checks run.
+        if (this.cardSystem?._waveState) {
+            this.cardSystem._waveState.wavesLeft = 0;
+            this.cardSystem._waveState.cardsPending = 0;
+            this.cardSystem._waveState.dropping = false;
+        }
+
+        let defeated = 0;
+        const cards = this.cardSystem?.boardCards || [];
+        // Defeat one card at a time. Setting every HP value to zero up front
+        // would let the first death falsely look like the last one.
+        cards.slice().forEach((card, index) => {
+            if (cards[index] !== card || !this.isEnemyCard(card) || (card.data?.health ?? 1) <= 0) return;
+            card.data.health = 0;
+            card.sprite?.disableInteractive?.();
+            this.cardSystem.removeDefeatedEnemy(index, card);
+            defeated++;
+        });
+
+        // Preserve the regular win pipeline: floor reward, Next button, boss
+        // reward and Tollroad aftermath are all driven by checkFloorClear().
+        this.cardSystem?.checkFloorClear?.();
+        this.refreshDebugVictoryButton?.();
+        return defeated;
+    }
+
+    getChickCompanionEntry() {
+        const slots = this.inventorySystem?.slots || this.gameState?.inventory || [];
+        const index = slots.findIndex(item => item?.id === 'chickCompanion');
+        return index >= 0 ? { companion: slots[index], index } : null;
+    }
+
+    getSkeletonCompanionEntry() {
+        // The id is unchanged by the Slimebone Guard upgrade, so this catches
+        // both the base and the trained form.
+        const slots = this.inventorySystem?.slots || this.gameState?.inventory || [];
+        const index = slots.findIndex(item => item?.id === 'skeletonWarriorCompanion');
+        return index >= 0 ? { companion: slots[index], index } : null;
+    }
+
+    getCompanionEntries() {
+        const slots = this.inventorySystem?.slots || this.gameState?.inventory || [];
+        return slots
+            .map((companion, index) => ({ companion, index }))
+            .filter(({ companion }) => companion?.type === 'companion');
+    }
+
+    getCompanionKey(companion) {
+        const raw = companion?.companionId
+            || companion?.id
+            || companion?.companionType
+            || companion?.name;
+        return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+    }
+
+    syncCompanionHistory() {
+        if (!this.gameState.companionHistory || typeof this.gameState.companionHistory !== 'object') {
+            this.gameState.companionHistory = {};
+        }
+        this.getCompanionEntries().forEach(({ companion }) => {
+            const key = this.getCompanionKey(companion);
+            if (!key || this.gameState.companionHistory[key]) return;
+            this.gameState.companionHistory[key] = {
+                name: companion.name || 'Companion',
+                roomsFought: 0,
+                acquiredFloor: this.gameState.currentFloor || 1,
+                lastCountedFloor: null,
+                lastCountedRoomId: null,
+                upgraded: false
+            };
+        });
+        return this.gameState.companionHistory;
+    }
+
+    getCurrentCombatRoomId() {
+        const cursor = this.gameState.mapCursor || {};
+        return [
+            cursor.act ?? 'act',
+            cursor.floor ?? this.gameState.currentFloor ?? 1,
+            cursor.node ?? 'node',
+            this.gameState.roomType || this.roomType || 'COMBAT'
+        ].join(':');
+    }
+
+    markCompanionParticipated(companion) {
+        const combatTypes = new Set(['COMBAT', 'ELITE', 'HARD', 'BOSS']);
+        const roomType = this.gameState.roomType || this.roomType;
+        if (!combatTypes.has(roomType)) return false;
+        this.syncCompanionHistory();
+        const key = this.getCompanionKey(companion);
+        if (!key) return false;
+        if (!this.gameState.companionRoomParticipants || typeof this.gameState.companionRoomParticipants !== 'object') {
+            this.gameState.companionRoomParticipants = {};
+        }
+        this.gameState.companionRoomParticipants[key] = this.getCurrentCombatRoomId();
+        return true;
+    }
+
+    finalizeCompanionCombatHistory() {
+        const combatTypes = new Set(['COMBAT', 'ELITE', 'HARD', 'BOSS']);
+        const roomType = this.gameState.roomType || this.roomType;
+        if (!combatTypes.has(roomType)) return 0;
+
+        const history = this.syncCompanionHistory();
+        const participants = this.gameState.companionRoomParticipants || {};
+        const roomId = this.getCurrentCombatRoomId();
+        let counted = 0;
+        Object.entries(participants).forEach(([key, participatedRoomId]) => {
+            const entry = history[key];
+            if (!entry || participatedRoomId !== roomId || entry.lastCountedRoomId === roomId) return;
+            entry.roomsFought = (Number(entry.roomsFought) || 0) + 1;
+            entry.lastCountedFloor = this.gameState.currentFloor || 1;
+            entry.lastCountedRoomId = roomId;
+            counted++;
+        });
+        this.gameState.companionRoomParticipants = {};
+        return counted;
+    }
+
+    getCompanionProtectionBonus() {
+        return this.getCompanionEntries().reduce((total, { companion }) => (
+            total + Math.max(0, Number(companion.guardProtection) || 0)
+        ), 0);
+    }
+
+    createDamageEffect(x, y) {
+        const flash = this.add.circle(x, y, 50, 0xff0000, 0.5);
+        this.tweens.add({
+            targets: flash,
+            alpha: 0,
+            scale: 1.5,
+            duration: 300,
+            onComplete: () => flash.destroy()
+        });
+    }
+    // takeDamage method is now primarily handled in GameState
+    // This is kept for calls that might not have been updated yet
+    takeDamage(rawDamage, enemyIndex = -1) {
+        // Player takes damage and reflection is handled inside takeDamage
+        const { actualDamage, tookDamage } = this.gameState.takeDamage(rawDamage, enemyIndex);
+        if (tookDamage) {
+            SoundHelper.playVariant(this, 'player_hurt', 0.5);
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
+        }
+    }
+    createFloatingText(x, y, text, color, fontSize = '15px', opts = {}) {
+        this.showCombatFeedback({ x, y, message: text, ...opts });
+    }
+
+    showCombatFeedback({ x, y, message, ...options }) {
+        this.combatFeedback ||= new CombatFeedback(this);
+        this.combatFeedback.emit(x, y, message, options);
+    }
+
+    clearFloatingTexts() {
+        this.combatFeedback?.clear();
+    }
+
+    createSlashEffect(x, y) {
+        const slash = this.add.graphics();
+        slash.lineStyle(5, 0xffffff, 1);
+        slash.beginPath();
+        slash.moveTo(-25, -25);
+        slash.lineTo(25, 25);
+        slash.closePath();
+        slash.strokePath();
+        slash.x = x;
+        slash.y = y;
+        slash.setAngle(Phaser.Math.Between(-20, 20));
+        this.tweens.add({
+            targets: slash,
+            alpha: 0,
+            scale: 1.4,
+            duration: 250,
+            ease: 'Cubic.easeOut',
+            onComplete: () => slash.destroy()
+        });
+    }
+    
+    shakeCard(cardSprite) {
+        const boardCard = this.cardSystem?.boardCards?.find(card => card?.sprite === cardSprite);
+        const originalX = Number.isFinite(boardCard?.restX) ? boardCard.restX : cardSprite.x;
+        const intensity = 4;
+        const duration = 50;
+        // Overlapping cleave/gem impacts used to capture an already-shifted x
+        // as their new origin, leaving the card apart from its HP/ATK overlay.
+        this.tweens.killTweensOf(cardSprite);
+        cardSprite.x = originalX;
+        const syncStats = () => {
+            if (boardCard?.infoText?.scene) boardCard.infoText.x = Math.round(cardSprite.x);
+        };
+        this.tweens.add({
+            targets: cardSprite,
+            x: originalX - intensity,
+            yoyo: true,
+            repeat: 2,
+            duration: duration,
+            ease: 'Sine.easeInOut',
+            onUpdate: syncStats,
+            onComplete: () => {
+                cardSprite.x = originalX;
+                syncStats();
+            }
+        });
+    }
+    
+    gameOver() {
+        if (this._resultScreenShown || this._gameOverInProgress) return;
+        this._gameOverInProgress = true;
+        this._transitioning = true;
+        SoundHelper.playVariant(this, 'hero_death', 0.6);
+        this.stopBossMusic();
+        this.clearEnemyTurnTimers();
+        this.nextFloorButton?.disableInteractive();
+
+        const trackedDeathCause = this.gameState?.getDeathStats?.()?.cause;
+        const killedBy = trackedDeathCause === 'poison'
+            ? 'Poison'
+            : (this.killedBy || 'Unknown Enemy');
+        const floor = this.gameState?.currentFloor ?? 1;
+        humanRunRecorder.finishAndDownload(this, 'defeat', { killedBy, floor });
+        let deathStats = { killedBy, floor };
+        let xpResult = null;
+
+        try {
+            deathStats = this.gameState.getDeathStats();
+            deathStats.killedBy = killedBy;
+            deathStats.floor = floor;
+
+            this.unlockChickForRareShopAfterDeath();
+            this.unlockSkeletonForRareShopAfterDeath();
+            if (!this.sandboxMode) this.saveManager?.clearCurrentRun();
+
+            if (!this.sandboxMode && this.metaManager) {
+                this.metaManager.totalRuns++;
+                if (floor > this.metaManager.bestFloor) {
+                    this.metaManager.bestFloor = floor;
+                }
+                // Carry an unhatched egg to the next run (consumed at run start).
+                const hasEgg = (this.gameState.inventory || []).some(
+                    item => item?.id === 'monsterEgg' || item?.name === 'Egg'
+                );
+                this.metaManager.setPendingEgg(hasEgg);
+                this.queueNextRunMonth();
+                const characterId = this.gameState.characterId || 'rogue';
+                xpResult = this.metaManager.handlePlayerDeath(killedBy, floor, characterId);
+            }
+        } catch (error) {
+            // Death UI is critical. Meta/save failures must never strand the run
+            // at zero health with no way back to the main menu.
+            console.error('Failed to finish death bookkeeping:', error);
+        }
+
+        try {
+            this.showDefeatResult(deathStats, xpResult);
+            this._resultScreenShown = true;
+        } catch (error) {
+            console.error('Failed to render the full defeat screen:', error);
+            this.showDefeatFallback(deathStats);
+            this._resultScreenShown = true;
+        } finally {
+            this._gameOverInProgress = false;
+        }
+    }
+
+    showDefeatFallback(deathStats) {
+        return showDefeatFallbackOverlay(this, deathStats);
+    }
+
+    unlockChickForRareShopAfterDeath() {
+        // Hatching is the achievement that unlocks the Chick for later heroes.
+        // Checking only the live inventory here was brittle: the companion can
+        // be removed by an event (or the inventory view can be between syncs)
+        // before gameOver runs even though this run did hatch it.
+        const chickWasHatched = Boolean(
+            this.gameState?.storyRun?.chickHatched
+            || this.getChickCompanionEntry()
+        );
+        if (!chickWasHatched) return false;
+        this.gameState.heroMemory.chickRareShopUnlocked = true;
+        saveHeroMemory(this.gameState.heroMemory);
+        return true;
+    }
+
+    unlockSkeletonForRareShopAfterDeath() {
+        // Obtaining the Skeleton Warrior (Slimy Prison → "Pull him free") is the
+        // achievement that lets future heroes buy it from the rare shop. Uses the
+        // durable story flag OR the live inventory, mirroring the Chick unlock.
+        const skeletonWasObtained = Boolean(
+            this.gameState?.storyRun?.skeletonCompanionObtained
+            || this.getSkeletonCompanionEntry()
+        );
+        if (!skeletonWasObtained) return false;
+        this.gameState.heroMemory.skeletonRareShopUnlocked = true;
+        saveHeroMemory(this.gameState.heroMemory);
+        return true;
+    }
+
+    addResultPanel(x, y, width, height, frame, depth) {
+        return addResultPanelOverlay(this, x, y, width, height, frame, depth);
+    }
+
+    addResultButton(x, y, label, onClick, depth) {
+        return addResultButtonOverlay(this, x, y, label, onClick, depth);
+    }
+
+    showDefeatResult(deathStats, xpResult) {
+        return showDefeatResultOverlay(this, deathStats, xpResult);
+    }
+
+    addRelicIcon(relic, x, y, depth) {
+        return addRelicIconOverlay(this, relic, x, y, depth);
+    }
+
+    createUnlockParticles(depth = 11002) {
+        return createUnlockParticlesOverlay(this, depth);
+    }
+
+    floorCleared() {
+        if (this._transitioning) return;
+        // Player already dead (e.g. a mutual kill via Thorns/reflect) — don't let a
+        // stray click on the Next Floor button revive them via setupBossRewardRoom().
+        if (this.gameState.playerHealth <= 0) return;
+
+        // In the tutorial the door is a lesson, not a way out: stepping through
+        // it completes the step, and the tutorial's own Finish ends the floor.
+        if (this.tutorialMode) {
+            this.events.emit('tutorialProgress', 'leftRoom');
+            this.tutorialManager?._handleProgress?.('leftRoom');
+            return;
+        }
+
+        // Silk Cache Leave: walk away while only cocoons/loot remain — no clear payout.
+        if (this._silkCocoonLeaveOffer && !this.enemiesCleared) {
+            this.clearEnemyTurnTimers();
+            this.enemiesCleared = true;
+            this.inventorySystem?.clearAllHandWebs?.();
+            this._silkCocoonLeaveOffer = false;
+            this.nextFloorButtonText?.setText(t(this, 'ui.hud.next'));
+            this.gameState.ambushId = null;
+        }
+
+        recordHumanRunEvent(this, 'floor_departed', {
+            floor: this.gameState.currentFloor,
+            roomType: this.gameState.roomType,
+        });
+
+        // Leaving any floor ends the boss track (harmless no-op off boss floors).
+        this.stopBossMusic();
+
+        // Boss reward room → leaving means advancing to the next act
+        if (this.gameState.roomType === 'BOSS_REWARD') {
+            this.leaveBossRewardRoom();
+            return;
+        }
+
+        this._transitioning = true;
+        this.refreshDebugVictoryButton?.();
+        this.clearEnemyTurnTimers();
+        // Hard-disable the button so it can't be clicked again. The plate is
+        // hidden so its label and skin vanish together; an open door stays,
+        // because the player has just walked through it, not used it up.
+        if (this.nextFloorButton) {
+            const button = this.nextFloorButton;
+            button.disableInteractive();
+            if (isLocationDoorTexture(button.texture?.key)) {
+                // Disabling it here swallows the pointerup and pointerout that
+                // would normally undo the press, so undo it now: no press
+                // shade, no hover light, back on its spot.
+                button.clearTint();
+                setHoverLight(button, false);
+                button.y = NEXT_EXIT_Y;
+            } else {
+                button.setVisible(false);
+            }
+        }
+        this.nextFloorButtonText?.setVisible(false);
+        this.hideClosedDoorExit();
+        // Elite rooms still use the chest-click TreasureScene flow
+        const rewardChestMode = this.gameState.roomType === 'ELITE' ? 'elite' : null;
+
+        // Process amulet floor end effects before moving to next floor.
+        // Skip when leaving a combat room that was already cleared before a
+        // save/restore — its floor-end effects ran the first time it cleared, so
+        // running them again on Continue would double-apply (e.g. bonus HP/AP).
+        if (this.amuletManager && !this._floorEndAlreadyProcessed) {
+            this.amuletManager.processFloorEnd();
+        }
+        this._floorEndAlreadyProcessed = false;
+
+        // Some event ambushes resolve with a story beat immediately after the
+        // player wins. Consume the handoff before the ordinary map transition.
+        const postCombatEventId = this.gameState.storyRun?.pendingPostCombatEventId;
+        if (postCombatEventId) {
+            this.gameState.storyRun.pendingPostCombatEventId = null;
+            this.gameState.ambushId = null;
+            this.saveCurrentRun();
+            this.time.delayedCall(500, () => {
+                this.scene.sleep();
+                this.scene.launch('EventScene', {
+                    gameState: this.gameState,
+                    forcedEventId: postCombatEventId,
+                });
+            });
+            return;
+        }
+
+        const detour = this.gameState.storyRun?.tollroadDetour;
+        const returningFromDetourFight = Boolean(detour?.inCombat);
+        const startingDetourAfterCollectors = Boolean(
+            detour && !detour.complete && this.gameState.ambushId === 'toll_collectors'
+        );
+        if (returningFromDetourFight || startingDetourAfterCollectors) {
+            detour.inCombat = false;
+            if (returningFromDetourFight) {
+                detour.index = Math.min(3, (detour.index || 0) + 1);
+            }
+            detour.complete = detour.index >= 3;
+            this.gameState.ambushId = null;
+            this.saveCurrentRun();
+            this.time.delayedCall(500, () => {
+                this.scene.sleep();
+                this.scene.launch('TollroadDetourScene', { gameState: this.gameState });
+            });
+            return;
+        }
+
+        // Test Site: after a fight (or boss reward leave), return to the hub.
+        // Elite still opens its chest first; TreasureScene exits back to the hub.
+        if (this.sandboxMode) {
+            const bossFloors = [15, 30, 45];
+            const completedActBoss =
+                bossFloors.includes(this.gameState.currentFloor) ||
+                this.gameState.roomType === 'BOSS';
+            if (completedActBoss) {
+                this.time.delayedCall(700, () => this.setupBossRewardRoom());
+                return;
+            }
+            this.time.delayedCall(500, () => {
+                this.scene.sleep();
+                if (rewardChestMode) {
+                    this.scene.launch('TreasureScene', {
+                        gameState: this.gameState,
+                        rewardMode: rewardChestMode,
+                    });
+                } else {
+                    exitToSandboxHub(this);
+                }
+            });
+            return;
+        }
+
+        // Use the SAME signals the boss-spawn uses, so spawning and completing the
+        // boss always agree. Relying on roomType alone was fragile: if it drifted to
+        // COMBAT (act transition / save-load / sub-scene return) the boss would spawn
+        // via the map-cursor fallback but never be recognized as completed — so the
+        // game kept handing out normal floors past the final boss instead of winning.
+        const bossFloors = [15, 30, 45];
+        const completedActBoss =
+            bossFloors.includes(this.gameState.currentFloor) ||
+            this.gameState.roomType === 'BOSS' ||
+            (this.gameState.mapCursor?.floor ?? -1) >= 14;
+
+        if (completedActBoss) {
+            // Final boss → straight to victory, no reward room. Detect the final act
+            // by the map cursor's act (robust to a 1-floor currentFloor drift) and
+            // keep the floor check as a fallback.
+            const isFinalAct = (this.gameState.mapCursor?.act >= 3) || this.gameState.currentFloor >= 45;
+            if (isFinalAct) {
+                this.saveCurrentRun();
+                this.time.delayedCall(1500, () => this.gameWon());
+                return;
+            }
+            // Tollroad has a durable post-boss story beat before the normal
+            // reward room. Other roads continue straight to the spoils.
+            this.time.delayedCall(700, () => this.continueBossVictory());
+            return;
+        }
+
+        // AUTO-SAVE the current run
+        this.saveCurrentRun();
+
+        this.time.delayedCall(500, () => {
+            this.scene.sleep();
+            if (rewardChestMode) {
+                this.scene.launch('TreasureScene', {
+                    gameState: this.gameState,
+                    rewardMode: rewardChestMode
+                });
+            } else {
+                this.scene.stop('MapViewScene');
+                this.scene.launch('MapViewScene', { gameState: this.gameState });
+            }
+        });
+    }
+
+    // Replaces the previous TreasureScene boss flow. Stays inside GameScene so the
+    // player keeps their avatar, inventory and full UI — just swaps the board.
+    setupBossRewardRoom() {
+        return setupBossRewardRoomUi(this);
+    }
+
+    continueBossVictory() {
+        const aftermath = pendingLocationAftermath(this.gameState);
+        if (aftermath) {
+            this.scene.sleep();
+            this.scene.launch(aftermath.sceneKey, { gameState: this.gameState });
+            return;
+        }
+        this.setupBossRewardRoom();
+    }
+
+    restoreSavedBossRewardRoom() {
+        return restoreSavedBossRewardRoomUi(this);
+    }
+
+    restoreSavedCombatRoom() {
+        this.clearEnemyTurnTimers();
+        this._transitioning = false;
+        this.roomType = this.gameState.roomType || 'COMBAT';
+        this.updateRoomTitle();
+        // createCombatLog() starts hidden. Fresh rooms reveal it from
+        // startNewFloor(), but a continued fight bypasses that path.
+        this.refreshCombatLogVisibility();
+
+        const cards = this._loadedBoardCards || [];
+        const restored = this.cardSystem.restoreSavedBoard(
+            cards, this._loadedBoardLayout, this._loadedWaveState
+        );
+        this._loadedBoardCards = null;
+        this._loadedBoardLayout = null;
+        this._loadedWaveState = null;
+        this._loadedBoardAvailable = false;
+        this.enemiesCleared = !!this._loadedEnemiesCleared;
+        this._loadedEnemiesCleared = false;
+
+        // A save can carry an empty/all-null board (corrupted, or written right
+        // at floor-clear so every card had already been removed). Restoring that
+        // strands the player in a hollow, card-less combat room. Whenever there
+        // are no live cards, recover by rolling this floor fresh — it keeps the
+        // player on their current floor (no rewind) with a playable board.
+        // startNewFloor() resets enemiesCleared and hides the Next button, so a
+        // stale "cleared" flag from the save can't leak into the new floor.
+        const hasLiveCards = this.cardSystem.boardCards.some(card => card);
+        if (!restored || !hasLiveCards) {
+            this.startNewFloor();
+            return;
+        }
+
+        // The inventory came from the same save; the starting-card guard keeps
+        // this idempotent while preserving the normal new-run initialization.
+        this.inventorySystem.addStartingCards();
+        this.updateUI();
+        if (this.enemiesCleared) {
+            // This room's floor-end amulet effects already ran when it first
+            // cleared (before the save). Guard the next floorCleared() so they
+            // don't fire again when the player clicks Next.
+            this._floorEndAlreadyProcessed = true;
+            this.showNextFloorButton();
+        } else {
+            this.cardSystem.checkFloorClear();
+            this.queueStalemateEnemyTurn();
+        }
+    }
+
+    makeBossRewardGem() {
+        return makeBossRewardGemUi(this);
+    }
+
+    leaveBossRewardRoom() {
+        return leaveBossRewardRoomUi(this);
+    }
+
+    upgradeCompanionsForNextAct(nextAct) {
+        // Acts 2 and 3 are the only real crossings. Guarding the act number
+        // keeps a final-victory transition from granting a meaningless upgrade.
+        if (nextAct < 2 || nextAct > 3) return 0;
+
+        const slots = this.inventorySystem?.slots || this.gameState?.inventory || [];
+        const companions = slots.filter(item => item?.type === 'companion');
+        companions.forEach(companion => {
+            companion.attack = Math.max(0, Number(companion.attack) || 0) + 1;
+            companion.actUpgrades = (Number(companion.actUpgrades) || 0) + 1;
+            this.createFloatingText(
+                320,
+                145 + companions.indexOf(companion) * 14,
+                `${companion.name || 'Companion'} +1 ATK`,
+                0xffe066
+            );
+        });
+
+        if (companions.length > 0) {
+            this.gameState.inventory = slots;
+            this.inventorySystem?.rebuildInventorySprites?.();
+            this.updateUI();
+        }
+        return companions.length;
+    }
+    
+    onEnemiesCleared() {
+        // The killing blow is what got us here, and its sounds and numbers are
+        // still on the narration timeline. Keep them.
+        this.clearEnemyTurnTimers({ keepNarration: true });
+        this.finalizeCompanionCombatHistory();
+        this.enemiesCleared = true;
+        this.refreshDebugVictoryButton?.();
+        this.inventorySystem?.clearAllHandWebs?.();
+        const floor = this.gameState.currentFloor;
+        recordHumanRunEvent(this, 'floor_cleared', {
+            floor,
+            roomType: this.roomType || this.gameState.roomType,
+        });
+        const isBossFloor = [15, 30, 45].includes(floor);
+        if (this.roomType === 'BOSS' || this.gameState.roomType === 'BOSS' || isBossFloor) {
+            this.stopBossMusic();
+        }
+        if (this.tutorialMode) {
+            this.updateUI?.();
+            return;
+        }
+
+        // Floor-clear coin reward. Coins are no longer paid per enemy kill (that
+        // faucet was flooding the economy); instead you're paid once for clearing
+        // a battle floor. Boss floors are skipped here — they hand out their own
+        // reward room. Honors the amulet gold modifier like the old kill payout.
+        // Formula tuned via sim/balance-sim.js's shop-affordability probe to hit
+        // "3-4 items affordable per regular shop visit, 2-3 per rare shop visit,
+        // no act-3 coin hoarding" — see its "Shop affordability" report section.
+        // Flattened from 20+floor*3: act 1 was coin-starved (2.7/6 affordable)
+        // while acts 2-3 hoarded 500-750 unspent coins (4.5/6 affordable).
+        let reward = 0;
+        if (!isBossFloor) {
+            const base = Math.floor(24 + floor * 1.2);
+            reward = this.amuletManager ? this.amuletManager.modifyGoldFound(base) : scaleGoldReward(base);
+            this.gameState.coins += reward;
+            this.updateUI?.();
+        }
+        const story = this.gameState?.storyRun;
+        applyAmbushVictoryStory(this.gameState);
+        this._silkCocoonLeaveOffer = false;
+
+        // The room is cleared as of now; it just isn't announced yet. The door,
+        // its sound and the victory text wait until the killing blow has been
+        // heard, so the fight ends on the enemy's death and then the door
+        // rather than the door opening under the last hit.
+        const announce = () => {
+            if (this._transitioning || !this.enemiesCleared) return;
+            if (reward > 0) this.createFloatingText(320, 140, `+${reward} coins`, 0xffd700);
+            // Null-guard: if the button hasn't been (re)created yet, do NOT
+            // throw — that would leave enemiesCleared=true with a still-hidden
+            // button, and the next checkFloorClear would short-circuit on
+            // !enemiesCleared.
+            this.nextFloorButtonText?.setText(t(this, 'ui.hud.next'));
+            this.showNextFloorButton();
+            this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
+            this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
+        };
+        const wait = CombatSequencer.remainingMs(this);
+        if (wait > 0) CombatSequencer.after(this, wait + ROOM_CLEAR_ANNOUNCE_PAD_MS, announce);
+        else announce();
+    }
+
+    handleTollVeteranDefeat(veteranIndex) {
+        if (this.gameState?.ambushId !== 'toll_collectors') return false;
+        const story = this.gameState.storyRun;
+        const survivors = (this.cardSystem?.boardCards || [])
+            .map((card, index) => ({ card, index }))
+            .filter(({ card, index }) => index !== veteranIndex && card?.data?.tollGuard);
+        if (!survivors.length) {
+            story.tollGuardsEscaped = 0;
+            if (story.tollEscapeMode === 'jetpack') {
+                story.jetpackFlightPending = true;
+                openNoticeModal(this, {
+                    title: 'Goblin engineering',
+                    body: 'With the veteran down last, nobody remains to claim the machine. You strap on the rocket pack yourself.\n\n[ROCKET-PACK FLIGHT — MINIGAME PLACEHOLDER]',
+                });
+            }
+            return false;
+        }
+
+        story.tollEscapeNoticeShown = true;
+        if (story.tollEscapeMode === 'smoke') {
+            story.tollGuardsEscaped = survivors.length;
+            playSmokeBurst(this, { x: 320, y: 170 });
+            survivors.forEach(({ index }) => this.cardSystem.removeCard(index));
+            this.time.delayedCall(SMOKE_BURST_MS, () => openNoticeModal(this, {
+                title: t(this, 'ui.notice.smokeBombTitle'),
+                body: survivors.length === 1
+                    ? 'The last collector sees the veteran fall, throws down a smoke bomb, and vanishes toward the castle.'
+                    : 'The two collectors see the veteran fall, throw down a smoke bomb, and vanish toward the castle.',
+            }));
+            return true;
+        }
+
+        const roll = 1 + Math.floor(Math.random() * 6);
+        SoundHelper.playSound(this, 'dice_roll', 0.65);
+        survivors.forEach(({ index }) => this.cardSystem.removeCard(index));
+        story.tollGuardsEscaped = roll >= 4 ? survivors.length : 0;
+        story.tollroadDetour = { index: 0, merchantAt: Math.random() < 0.5 ? 1 + Math.floor(Math.random() * 3) : 0, complete: false };
+        openNoticeModal(this, {
+            title: 'D6: ' + roll,
+            body: roll <= 3
+                ? `${survivors.length === 1 ? 'The survivor grabs' : 'The survivors grab'} the rocket pack, but fail to release it in time. The fireworks carry ${survivors.length === 1 ? 'the goblin' : 'them'} far past the landing place and scatter into a distant explosion. You will have to take the marsh road.`
+                : `${survivors.length === 1 ? 'The survivor straps' : 'The survivors strap'} into the rocket pack, clear the broken span, and run toward the castle. You will have to take the marsh road.`,
+        });
+        return true;
+    }
+
+    getVictoryStorySummary() {
+        const story = this.gameState?.storyRun || {};
+        const lines = [];
+
+        if (story.latchboxRewardClaimed) {
+            if (story.boxState === 'repaired') {
+                lines.push(t(this, 'ui.victoryStory.latchbox'));
+            } else {
+                lines.push(t(this, 'ui.victoryStory.retiredBox'));
+            }
+        } else if (story.boxState === 'exploded') {
+            lines.push(t(this, 'ui.victoryStory.boxSlag'));
+        } else if (story.boxState && story.boxState !== 'unknown') {
+            lines.push(t(this, 'ui.victoryStory.boxLoose'));
+        }
+
+        return lines.length > 0
+            ? lines.join('\n')
+            : t(this, 'ui.victoryStory.default');
+    }
+
+    getResolvedStoryCount() {
+        const story = this.gameState?.storyRun || {};
+        return Number(Boolean(story.latchboxRewardClaimed));
+    }
+    
+    gameWon() {
+        humanRunRecorder.finishAndDownload(this, 'victory', {
+            floor: this.gameState?.currentFloor ?? null,
+        });
+        if (!this.sandboxMode && !this.tutorialMode && this.metaManager) {
+            this.queueNextRunMonth();
+        }
+        return showVictoryResult(this);
+    }
+
+    /** Location pick replaced calendar rotation; next New Run always chooses. */
+    queueNextRunMonth() {
+        return;
+    }
+
+    grantCardSpentRelicBonus(card, x = this.playerAvatar.x, y = this.playerAvatar.y) {
+        const amount = this.gameState.relicEffects?.cardSpentMaxHP || 0;
+        if (!amount || !card) return;
+
+        this.gameState.maxHealth += amount;
+        this.gameState.playerHealth = Math.min(
+            this.gameState.maxHealth,
+            this.gameState.playerHealth + amount
+        );
+        this.createFloatingText(x, y - 18, `+${amount} Max HP (Camp)`, 0xffd78a);
+        this.updateUI();
+    }
+
+    recordCardDiscarded(card, x = this.playerAvatar.x, y = this.playerAvatar.y) {
+        if (!card) return;
+
+        this.gameState.discardedCardsThisRun = (this.gameState.discardedCardsThisRun || 0) + 1;
+
+        const coinBonus = this.amuletManager?.getDiscardCoinBonus?.() || 0;
+        if (coinBonus > 0) {
+            const scaledCoinBonus = scaleGoldReward(coinBonus);
+            this.gameState.coins = (this.gameState.coins || 0) + scaledCoinBonus;
+            this.createFloatingText(x, y - 18, `+${scaledCoinBonus} Coin (Ink Pen)`, 0xffd700);
+            this.playCoinAnimation?.();
+            this.updateUI();
+        }
+
+        const maxHpBonus = this.amuletManager?.getDiscardMaxHpBonus?.() || 0;
+        if (maxHpBonus > 0) {
+            this.gameState.maxHealth += maxHpBonus;
+            this.gameState.playerHealth += maxHpBonus;
+            this.createFloatingText(x, y - 32, `+${maxHpBonus} Max HP (Seed)`, 0x9dff7a);
+            this.updateUI();
+        }
+
+        // Refresh the relic pip display immediately so the Explorer Cape progress
+        // is visible right when the item is discarded, not on the next unrelated UI update.
+        this.updateRelicsUI();
+
+        const effects = this.gameState.relicEffects || {};
+        const perCards = effects.discardCritPerCards || 0;
+        const perStep = effects.discardCritPerStep || 0;
+        const maxCrit = effects.maxDiscardCritChance || 0;
+        if (!perCards || !perStep || !maxCrit) return;
+
+        const oldCrit = this.gameState.discardCritChance || 0;
+        const steps = Math.floor(this.gameState.discardedCardsThisRun / perCards);
+        const newCrit = Math.min(maxCrit, steps * perStep);
+        this.gameState.discardCritChance = newCrit;
+
+        if (newCrit > oldCrit) {
+            const percent = Math.round(newCrit * 100);
+            this.createFloatingText(x, y - 18, `Crit ${percent}%`, 0xffd700);
+        }
+    }
+    
+    pauseGame() {
+        // Don't allow pausing during transitions or game over
+        if (this._transitioning || this.gameState.playerHealth <= 0) return;
+        
+        // Pause the current scene
+        this.scene.pause();
+        this.scene.launch('PauseMenuScene', { pausedScene: 'GameScene' });
+        const pause = this.scene.get('PauseMenuScene');
+        if (pause?.input) pause.input.enabled = true;
+    }
+    
+    // Save current run method
+    saveCurrentRun() {
+        if (this.sandboxMode) return;
+        if (this.saveManager) {
+            const saved = this.saveManager.saveCurrentRun(
+                this.gameState,
+                this.inventorySystem,
+                this.cardSystem
+            );
+            
+            if (saved) {
+                this.createFloatingText(570, 320, 'Game Saved', 0x00ff00);
+            }
+        }
+    }
+    
+    // Load current run method
+    loadCurrentRun() {
+        if (!this.saveManager) return false;
+        const runData = this.saveManager.loadCurrentRun();
+        if (!runData) return false;
+        // Player stats
+        this.gameState.playerHealth = runData.player.health;
+        this.gameState.maxHealth = runData.player.maxHealth;
+        this.gameState.actionsLeft = runData.player.actionsLeft;
+        this.gameState.maxActions = runData.player.maxActions;
+        this.gameState.coins = runData.player.coins;
+        this.gameState.crystals = runData.player.crystals;
+        this.gameState.currentFloor = runData.player.currentFloor;
+        this.gameState.calendarMonthIndex = runData.player.calendarMonthIndex ?? 0;
+        this.gameState.actLocationIds = normalizeActLocationIds(
+            runData.player.actLocationIds,
+            runData.player.calendarMonthIndex ?? 0
+        );
+        this.gameState.bonusInventorySlots = runData.player.bonusInventorySlots;
+        this.gameState.firstActionUsed = runData.player.firstActionUsed;
+        this.gameState.baseMaxHealth = runData.player.baseMaxHealth;
+        this.gameState.bottomlessBagApplied = runData.player.bottomlessBagApplied;
+        this.gameState.discardedCardsThisRun = runData.player.discardedCardsThisRun || 0;
+        this.gameState.discardCritChance = runData.player.discardCritChance || 0;
+        this.gameState.characterId = normalizeCharacterId(runData.player.characterId);
+        this.gameState.journalBonusHP = runData.player.journalBonusHP || 0;
+        this.gameState.mapBonusAP = runData.player.mapBonusAP || 0;
+        this.gameState.mapFloorCount = runData.player.mapFloorCount || 0;
+        this.gameState.secondWindUsed = runData.player.secondWindUsed || 0;
+        this.gameState.strategyDetourUsedAct = runData.player.strategyDetourUsedAct || 0;
+        // Equipment
+        this.gameState.equippedWeapon = runData.equipment.equippedWeapon;
+        this.gameState.equippedArmor = runData.equipment.equippedArmor;
+        // Effects (properly restore objects)
+        this.gameState.activeAmulets = runData.effects.activeAmulets;
+        this.gameState.playerEffects = runData.effects.playerEffects;
+        this.gameState.shadowBlade = runData.effects.shadowBlade;
+        this.gameState.magicShield = runData.effects.magicShield;
+        this.gameState.boneWall = runData.effects.boneWall;
+        this.gameState.blockNextAttack = runData.effects.blockNextAttack;
+        // Damage tracking
+        this.gameState.damageTracking = runData.damageTracking;
+        this.gameState.companionHistory = runData.companions?.history || {};
+        this.gameState.companionRoomParticipants = runData.companions?.roomParticipants || {};
+        // Story consequence state
+        if (runData.story?.storyRun) {
+            this.gameState.storyRun = runData.story.storyRun;
+        }
+        if (runData.story?.heroMemory) {
+            const storedHeroMemory = loadHeroMemory() || {};
+            this.gameState.heroMemory = {
+                ...this.gameState.heroMemory,
+                ...runData.story.heroMemory
+            };
+            Object.keys(this.gameState.heroMemory).forEach(key => {
+                this.gameState.heroMemory[key] = Boolean(
+                    this.gameState.heroMemory[key] || storedHeroMemory[key]
+                );
+            });
+        }
+        // Keep the numerical floor and map position as one saved unit. Older
+        // saves only had currentFloor, which could resume at Floor 6 with a
+        // freshly generated Act 1 map cursor at its start node.
+        if (runData.navigation) {
+            this.gameState.roomType = runData.navigation.roomType || 'COMBAT';
+            this.gameState.mapCursor = runData.navigation.mapCursor || null;
+            this.gameState.dungeonMap = runData.navigation.dungeonMap || null;
+            this.gameState.pendingActShop = runData.navigation.pendingActShop || null;
+            this.roomType = this.gameState.roomType;
+        }
+        this._loadedBoardCards = Array.isArray(runData.board?.cards)
+            ? runData.board.cards
+            : [];
+        this._loadedBoardLayout = runData.board?.layout || null;
+        this._loadedWaveState = runData.board?.waves || null;
+        this._loadedEnemiesCleared = !!runData.board?.enemiesCleared;
+        this._loadedBoardAvailable = this._loadedBoardCards.some(Boolean)
+            || this._loadedEnemiesCleared;
+        // Inventory
+        if (this.inventorySystem && runData.equipment.inventory) {
+            this.inventorySystem.slots = runData.equipment.inventory;
+            this.gameState.inventory = this.inventorySystem.slots;
+            this.inventorySystem.createInventoryUI();
+            this.inventorySystem.rebuildInventorySprites();
+        }
+        // A loaded run already contains its starter swords in the saved
+        // inventory — never re-grant them on Continue/resume/restart.
+        this.gameState.startingCardsGranted = true;
+        // Re-apply village (and talents if the flag is on) on top of loaded state
+        if (this.metaManager) {
+            this.metaManager.applyRelicEffects(this.gameState, false);
+        }
+        return true;
+    }
+    
+    updateRoomTitle() {
+        if (!this.roomTitle) return;
+        let title = t(this, 'ui.room.combat');
+        if (this.roomType === 'ELITE') title = t(this, 'ui.room.elite');
+        if (this.roomType === 'BOSS') title = t(this, 'ui.room.boss');
+        if (this.roomType === 'BOSS_REWARD') title = t(this, 'ui.room.spoils');
+        this.roomTitle.setText(title);
+    }
+    
+    shutdown() {
+        this.tutorialManager?.destroy?.();
+        this.tutorialManager = null;
+        this.stopBossMusic();
+        this.clearEnemyTurnTimers();
+        this.clearFloatingTexts();
+        this.input.keyboard.off('keydown-ESC');
+        this.events.off('endPlayerTurn');  // Unbind to avoid doubles
+        this.events.off('wake', this.wake, this);
+        this.combatTurns?.resetBinding?.();
+    }
+    wake(sys, data) {
+        // A lethal hit schedules gameOver() via delayedCall (gameState.takeDamage);
+        // that timer pauses while the scene sleeps and fires right after wake.
+        // Don't rebuild combat state underneath the pending death screen —
+        // EventScene deaths also wake us first and then call gameOver() directly.
+        if (this.gameState?.playerHealth <= 0) return;
+
+        // Always sync inventory on wake
+        if (this.inventorySystem) {
+            this.inventorySystem.slots = this.gameState.inventory || this.inventorySystem.slots;
+            this.gameState.inventory = this.inventorySystem.slots;
+            this.inventorySystem.rebuildInventorySprites();
+            this.inventorySystem.setVisibility(true);
+        }
+        if (data?.bossNarrativeComplete) {
+            this.clearEnemyTurnTimers();
+            this.inventorySystem?.setDragOverlayScene?.(null);
+            this.inventorySystem?.clearDropZones?.();
+            this.inventorySystem?.setStationMode(false);
+            if (this._restoreBossRewardAfterNarrative) {
+                this._restoreBossRewardAfterNarrative = false;
+                this.restoreSavedBossRewardRoom();
+            } else {
+                this.setupBossRewardRoom();
+            }
+            // The pendant flag and the generated reward cards must land in the
+            // same save. Continue then restores the reward room without either
+            // replaying the vision or paying its currency a second time.
+            this.saveCurrentRun();
+            return;
+        }
+        if (data?.shopStation) {
+            // Arriving at the shop completes the floor-clear transition. Clear the
+            // flag or pauseGame()/ESC stay dead here (they bail while _transitioning
+            // is true) — the reported "pause button does nothing in the shop" bug.
+            this._transitioning = false;
+            this.inventorySystem?.setStationMode(true);
+            // Clear the previous floor's cards so they don't bleed through the shop UI.
+            this.cardSystem?.clearBoard?.();
+            // Also hide the room title (it would still say "Combat Room" from the prior floor).
+            if (this.roomTitle) this.roomTitle.setText('');
+            // The shop is a station inside the combat scene, so roomType is still
+            // 'COMBAT' here — hide the fight log explicitly.
+            this.setCombatLogVisible(false);
+            this.updateUI();
+            return;
+        }
+
+        // A sleeping scene can strand station/turn state when an event, shop,
+        // map transition, or companion timer stops before its cleanup callback.
+        // Normal gameplay wake-ups must always start from an interactive combat
+        // state or every weapon/spell drop silently bounces out of useAction().
+        this.clearEnemyTurnTimers();
+        this.inventorySystem?.setDragOverlayScene?.(null);
+        this.inventorySystem?.clearDropZones?.();
+        this.inventorySystem?.setStationMode(false);
+        this.stopScenesAboveCombat({ keepMap: true });
+
+        // Restore current room type from gameState
+        this.roomType = this.gameState.roomType || 'COMBAT';
+        this.updateRoomTitle();
+        this.refreshDebugVictoryButton?.();
+        // Show the log for combat rooms, hide it when we wake into loot/reward
+        // rooms; startNewFloor() below re-clears it only for genuinely new fights.
+        this.refreshCombatLogVisibility();
+        // Resume/stop boss drums to match the room we woke into (startBossMusic
+        // guards against double-play if startNewFloor also fires below).
+        if (this.roomType === 'BOSS') this.startBossMusic(); else this.stopBossMusic();
+
+        // Check if this is actually a new floor/room transition
+        const isNewRoom = data?.isNewRoom || false;
+        
+        if (['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType)) {
+            // Check if we need to spawn new enemies.
+            const hasEnemies = this.cardSystem.boardCards &&
+                this.cardSystem.boardCards.some(c => this.isEnemyCard(c));
+
+            if (!hasEnemies || isNewRoom) {
+                this.startNewFloor();
+            } else {
+                this.updateUI(); // Refresh UI without spawning
+                // Defensive: if the board genuinely has no live enemies on
+                // wake (e.g. we returned from a non-combat scene mid-room
+                // with everything already dead), make sure the Next button
+                // surfaces instead of leaving the player stuck.
+                this.cardSystem.checkFloorClear?.();
+            }
+        }
+    }
+}
+
+Object.assign(GameScene.prototype, CombatHud);

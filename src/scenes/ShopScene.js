@@ -1,0 +1,618 @@
+import { CardSystem } from '../systems/CardSystem.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { t, translateItemName } from '../i18n/i18n.js';
+import { createTitle } from '../ui/titleText.js';
+import { StationRoomBase } from './StationRoomBase.js';
+import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
+import { potionNameForHealAmount } from '../content/cards/index.js';
+import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
+import {
+    shopAmuletCrystalPrice,
+    shopItemBuyPrice,
+    shopItemSellPrice,
+} from '../content/economy/shop.js';
+import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
+
+export class ShopScene extends StationRoomBase {
+    constructor() {
+        super({ key: 'ShopScene' });
+    }
+    
+    create(data) {
+        this.gameState = data.gameState;
+        this.shopItems = [];
+        this.sellingMode = false;
+        this.selectedInventorySlot = -1;
+        
+        // Get reference to GameScene for inventory access
+        this.gameScene = this.scene.get('GameScene');
+        this.enableShopStation();
+        this.addOptionsCog();
+        
+        // Title
+        createTitle(this, 320, 20, t(this, 'ui.shop.title'), {
+            color: '#ffffff',
+            fallbackSize: '28px'
+        });
+        
+        // Mode toggle button
+        this.modeButton = this.add.text(480, 45, t(this, 'ui.shop.sellItems'), {
+            fontSize: '14px',
+            fill: '#ffffff',
+            backgroundColor: '#444444',
+            padding: { x: 8, y: 4 },
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        })
+        .setOrigin(0.5)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => {
+            SoundHelper.playVariant(this, 'button_click', 0.5);
+            this.toggleMode();
+        });
+        
+        // Generate and display shop items
+        this.generateShopItems();
+        this.displayShopItems();
+        this.createShopIllustrationBoard(1, 0, 164);
+        
+        // Create inventory display (initially hidden)
+        this.createInventoryDisplay();
+        
+        // Continue button
+        this.createStationContinueButton(595, 50, 'Next', () => this.closeStation());
+    }
+
+    // enableShopStation / closeStation now live on StationRoomBase
+
+    // Helper method to get current inventory
+    getCurrentInventory() {
+        if (this.gameScene && this.gameScene.inventorySystem) {
+            return this.gameScene.inventorySystem.slots;
+        }
+        // Fallback to gameState inventory for backward compatibility
+        return this.gameState.inventory || [];
+    }
+    
+    // Helper method to get inventory size
+    getInventorySize() {
+        if (this.gameScene && this.gameScene.inventorySystem) {
+            return this.gameScene.inventorySystem.slots.length;
+        }
+        return 5; // Default size
+    }
+    
+    generateShopItems() {
+        /*
+        // Hide game scene UI
+        if (this.gameScene && this.gameScene.inventorySystem) {
+            this.gameScene.inventorySystem.setVisibility(false);
+        }
+        */
+        
+        // Use a temporary CardSystem to generate card data
+        const cardGenerator = new CardSystem(this);
+        const floor = this.gameState.currentFloor;
+        
+        // Clear existing items
+        this.shopItems = [];
+        
+        // Slot 1: Healing Potion (guaranteed)
+        const potionData = cardGenerator.createCardData('potion', floor);
+        if (potionData) {
+            this.shopItems.push({
+                data: potionData,
+                price: this.calculateItemPrice(potionData),
+                currency: 'coins',
+                purchased: false 
+            });
+        }
+        
+        // Slot 2: Regular weapon (guaranteed)
+        const weaponData = cardGenerator.createCardData('weapon', floor);
+        if (weaponData) {
+            this.shopItems.push({
+                data: weaponData,
+                price: this.calculateItemPrice(weaponData),
+                currency: 'coins',
+                purchased: false 
+            });
+        }
+        
+        // Slot 3: Armor (guaranteed) - FIXED to use CardDataGenerator
+        const armorData = cardGenerator.createCardData('armor', floor, false, this.gameState);
+        if (armorData) {
+            const armorPrice = this.calculateItemPrice(armorData);
+            this.shopItems.push({ 
+                data: armorData, 
+                price: armorPrice,
+                currency: 'coins',
+                purchased: false 
+            });
+        }
+
+        // Slot 5: Thorns Card (guaranteed)
+        const thornsData = cardGenerator.createCardData('thorns', floor);
+        if (thornsData) {
+            const thornsPrice = this.calculateItemPrice(thornsData);
+            this.shopItems.push({
+                data: thornsData,
+                price: thornsPrice,
+                currency: 'coins',
+                purchased: false
+            });
+        }
+
+        // Slot 6: Magic Spell (guaranteed)
+        const magicData = cardGenerator.createCardData('magic', floor);
+        if (magicData) {
+            const magicPrice = this.calculateItemPrice(magicData);
+            this.shopItems.push({ 
+                data: magicData, 
+                price: magicPrice,
+                currency: 'coins',
+                purchased: false 
+            });
+        }
+        
+        // Slot 7: Random duplicate from available types (weighted toward weapons)
+        const duplicateTypes = ['weapon', 'weapon', 'weapon', 'magic', 'potion', 'thorns', 'armor', 'food'];
+        for (let i = 0; i < 1; i++) {
+            const randomType = duplicateTypes[Math.floor(Math.random() * duplicateTypes.length)];
+            const itemData = cardGenerator.createCardData(randomType, floor);
+            
+            if (itemData) {
+                const itemPrice = this.calculateItemPrice(itemData);
+                this.shopItems.push({ 
+                    data: itemData, 
+                    price: itemPrice,
+                    currency: 'coins',
+                    purchased: false 
+                });
+            }
+        }
+        
+        // Slot 8: Amulet offer (costs CRYSTALS) — rarity rolled, pick 1 of 3 on buy
+        const amuletData = cardGenerator.createCardData('amulet', floor, false, this.gameState, 'shop');
+        if (amuletData) {
+            const crystalPrice = this.calculateAmuletCrystalPrice(amuletData);
+            this.shopItems.push({
+                data: amuletData,
+                price: crystalPrice,
+                currency: 'crystals',
+                purchased: false
+            });
+        }
+
+        // Bonus slots from Merchant's Seal — one higher-quality item per amulet stack
+        const bonusSlots = this.gameScene?.amuletManager?.getBonusShopSlots?.() || 0;
+        for (let i = 0; i < bonusSlots; i++) {
+            const bonusItem = this.createMerchantBonusItem(cardGenerator, floor);
+            if (bonusItem) this.shopItems.push(bonusItem);
+        }
+
+        // A merchant robbed at the toll chain never made it here. Two of the
+        // ordinary coin-priced slots are simply missing for the rest of the run
+        // — the amulet slot is left alone so the crystal economy is untouched.
+        if (this.gameState?.storyRun?.merchantRobbed) {
+            this.shopItems = this.thinRobbedShopStock(this.shopItems, 2);
+        }
+    }
+
+    /**
+     * Removes up to `count` coin-priced, unpurchased items. Leaves crystal
+     * (amulet) slots and anything already bought alone, and never empties the
+     * shop completely — a stall with nothing in it reads as a bug, not a story.
+     */
+    thinRobbedShopStock(items, count = 2) {
+        const removable = items
+            .map((item, index) => ({ item, index }))
+            .filter(({ item }) => item && !item.purchased && item.currency !== 'crystals');
+        const keepAtLeast = 2;
+        const canRemove = Math.max(0, Math.min(count, removable.length - keepAtLeast));
+        if (canRemove <= 0) return items;
+
+        const doomed = new Set(
+            Phaser.Utils.Array.Shuffle(removable.slice()).slice(0, canRemove).map(entry => entry.index)
+        );
+        return items.filter((_, index) => !doomed.has(index));
+    }
+
+    // Creates a higher-rarity weapon or armor that appears as the Merchant's Seal
+    // bonus slot. The regular shop tops out at RARE — epics and legendaries are
+    // reserved for boss rewards and the rare shop's late-game tier so they stay
+    // a treat.
+    createMerchantBonusItem(cardGenerator, floor) {
+        let quality = floor >= 15 ? 'rare' : 'uncommon';
+        const type = Math.random() < 0.5 ? 'weapon' : 'armor';
+        let item = cardGenerator.createCardData(type, floor, false, null, quality);
+        if (!item) return null;
+        // Axe & plate are act-3 endgame gear: shops may stock them but never at
+        // epic/legendary. Re-roll those types down to rare at most.
+        if ((item.weaponType === 'axe' || item.armorType === 'plate') &&
+            (item.rarity === 'epic' || item.rarity === 'legendary')) {
+            item = cardGenerator.createCardData(type, floor, false, null, 'rare');
+            if (!item) return null;
+        }
+        const price = this.calculateItemPrice(item);
+        return { data: item, price, currency: 'coins', purchased: false };
+    }
+
+    calculateAmuletCrystalPrice(amulet) {
+        return shopAmuletCrystalPrice(amulet, this.gameState.activeAmulets?.length || 0);
+    }
+    
+    calculateItemPrice(item, isArtifact = false) {
+        return shopItemBuyPrice(item, this.gameState.currentFloor, { isArtifact });
+    }
+    
+    calculateSellPrice(item) {
+        return shopItemSellPrice(item, this.gameState.currentFloor);
+    }
+
+    getItemDisplayName(item) {
+        if (!item) return t(this, 'tooltip.item');
+        if (item.type === 'potion') {
+            return translateItemName(this, { ...item, name: this.getPotionDisplayName(item) });
+        }
+        return translateItemName(this, item) || item.name || t(this, 'tooltip.item');
+    }
+
+    getPotionDisplayName(item) {
+        return potionNameForHealAmount(item.healAmount || 0);
+    }
+
+    getCurrencyDisplay(currency) {
+        return currency === 'crystals'
+            ? t(this, 'ui.shop.currencyCrystals')
+            : t(this, 'ui.shop.currencyCoins');
+    }
+    
+    displayShopItems() {
+        // Combat-style board: cards fly in face-down, then flip open one by one.
+        this.displayItemsAsBoard();
+    }
+
+    // buildItemCard / createItemSprite / getRarityColor live on StationRoomBase
+
+    capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+    createInventoryDisplay() {
+        this.inventoryContainer = this.add.container(0, 0);
+        this.inventoryContainer.setVisible(false);
+        
+        // Title for sell mode
+        this.sellTitle = this.add.text(320, 70, t(this, 'ui.shop.selectSell'), {
+            fontSize: '14px',
+            fill: '#ffffff',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        }).setOrigin(0.5);
+        this.inventoryContainer.add(this.sellTitle);
+        
+        this.inventorySlots = [];
+        
+        // Get the current inventory size (supports dynamic sizes from Bottomless Bag)
+        const inventorySize = this.getInventorySize();
+        const slotsPerRow = Math.min(inventorySize, 5);
+        const rows = Math.ceil(inventorySize / slotsPerRow);
+        
+        // Display player's inventory with dynamic sizing
+        for (let i = 0; i < inventorySize; i++) {
+            const row = Math.floor(i / slotsPerRow);
+            const col = i % slotsPerRow;
+            
+            // Calculate position based on row and column
+            const totalWidth = slotsPerRow * 90;
+            const startX = 320 - (totalWidth / 2) + 45; // Center the inventory
+            const x = startX + col * 90;
+            const y = 180 + row * 120;
+            
+            const slot = this.add.container(x, y);
+            const bg = this.add.rectangle(0, 0, 80, 100, 0x333333)
+                .setStrokeStyle(2, i >= 5 ? 0xffd700 : 0x666666) // Gold border for bonus slots
+                .setInteractive({ useHandCursor: true })
+                .on('pointerdown', () => this.selectInventoryItem(i));
+            
+            const itemNameText = this.add.text(0, -35, '', {
+                fontSize: '10px',
+                fill: '#ffffff',
+                fontFamily: '"HoMM Pixel", Arial, sans-serif',
+                wordWrap: { width: 70 },
+                align: 'center'
+            }).setOrigin(0.5);
+            
+            const itemStatsText = this.add.text(0, -10, '', {
+                fontSize: '9px',
+                fill: '#cccccc',
+                fontFamily: '"HoMM Pixel", Arial, sans-serif',
+                align: 'center'
+            }).setOrigin(0.5);
+            
+            const sellPriceText = this.add.text(0, 15, '', {
+                fontSize: '10px',
+                fill: '#cf8834',
+                fontFamily: '"HoMM Pixel", Arial, sans-serif'
+            }).setOrigin(0.5);
+            
+            const sellButton = this.add.text(0, 35, t(this, 'ui.shop.sell'), {
+                fontSize: '12px',
+                fill: '#ff6666',
+                backgroundColor: '#333333',
+                padding: { x: 4, y: 2 },
+                fontFamily: '"HoMM Pixel", Arial, sans-serif'
+            })
+            .setOrigin(0.5)
+            .setVisible(false);
+            
+            slot.add([bg, itemNameText, itemStatsText, sellPriceText, sellButton]);
+            this.inventorySlots.push({
+                container: slot,
+                bg: bg,
+                nameText: itemNameText,
+                statsText: itemStatsText,
+                priceText: sellPriceText,
+                sellButton: sellButton
+            });
+            
+            this.inventoryContainer.add(slot);
+        }
+        
+        this.updateInventoryDisplay();
+    }
+    
+    updateInventoryDisplay() {
+        const currentInventory = this.getCurrentInventory();
+        const inventorySize = this.getInventorySize();
+        
+        // Make sure we have enough slots
+        if (this.inventorySlots.length < inventorySize) {
+            // Recreate inventory display if size changed
+            this.inventoryContainer.destroy(true);
+            this.createInventoryDisplay();
+            return;
+        }
+        
+        for (let i = 0; i < inventorySize; i++) {
+            const item = currentInventory[i];
+            const slot = this.inventorySlots[i];
+            
+            if (!slot) continue; // Safety check
+            
+            if (item) {
+                slot.nameText.setText(this.getItemDisplayName(item));
+                
+                // Show item stats
+                let statsText = '';
+                if (item.type === 'weapon') {
+                    statsText = t(this, 'tooltip.damageShort', {
+                        amount: getDisplayedWeaponDamage(
+                            this.gameState?.characterId,
+                            item,
+                            this.gameState?.talentEffects || null
+                        )
+                    });
+                } else if (item.type === 'armor') {
+                    statsText = t(this, 'tooltip.protectionShort', { amount: item.protection });
+                } else if (item.type === 'potion') {
+                    statsText = t(this, 'float.plusHp', { amount: item.healAmount });
+                } else if (item.type === 'food') {
+                    statsText = t(this, 'float.plusAp', { amount: item.actionAmount });
+                } else if (item.type === 'companion') {
+                    statsText = `${item.attack || 2} lightning damage`;
+                } else if (item.type === 'magic') {
+                    statsText = t(this, 'ui.shop.magic');
+                }
+                slot.statsText.setText(statsText);
+                
+                // Show sell price
+                const sellPrice = this.calculateSellPrice(item);
+                slot.priceText.setText(t(this, 'ui.shop.sellPrice', { price: sellPrice }));
+                
+                // Show sell button
+                slot.sellButton.setVisible(true)
+                    .removeAllListeners()
+                    .setInteractive({ useHandCursor: true })
+                    .on('pointerdown', () => this.sellItem(i));
+            } else {
+                slot.nameText.setText(t(this, 'ui.shop.empty'));
+                slot.statsText.setText('');
+                slot.priceText.setText('');
+                slot.sellButton.setVisible(false);
+            }
+        }
+    }
+    
+    toggleMode() {
+        this.sellingMode = !this.sellingMode;
+        
+        if (this.sellingMode) {
+            this.modeButton.setText(t(this, 'ui.shop.buyItems'));
+            this.setShopBoardVisible(false);
+            this.inventoryContainer.setVisible(true);
+            this.updateInventoryDisplay();
+        } else {
+            this.modeButton.setText(t(this, 'ui.shop.sellItems'));
+            this.setShopBoardVisible(true);
+            this.inventoryContainer.setVisible(false);
+        }
+    }
+    
+    selectInventoryItem(index) {
+        this.selectedInventorySlot = index;
+        const currentInventory = this.getCurrentInventory();
+        
+        // Update visual selection
+        this.inventorySlots.forEach((slot, i) => {
+            if (i === index && currentInventory[i]) {
+                slot.bg.setStrokeStyle(3, 0xffff00);
+            } else {
+                slot.bg.setStrokeStyle(2, i >= 5 ? 0xffd700 : 0x666666);
+            }
+        });
+    }
+    
+    sellItem(index) {
+        const currentInventory = this.getCurrentInventory();
+        const item = currentInventory[index];
+        if (!item) return;
+        
+        const sellPrice = this.calculateSellPrice(item);
+        const coinsBefore = this.gameState.coins;
+        this.gameState.coins += sellPrice;
+        
+        if (this.gameScene && this.gameScene.inventorySystem) {
+            this.gameScene.inventorySystem.removeCard(index, true, 'sold');
+        } else {
+            // Fallback for old system
+            this.gameState.inventory[index] = null;
+        }
+        
+        SoundHelper.playSound(this, 'coin_collect', 0.4);
+        this.showFeedback({
+            key: 'ui.shop.soldFeedback',
+            vars: { name: this.getItemDisplayName(item), price: sellPrice, before: coinsBefore, after: this.gameState.coins }
+        }, 0xffd700);
+        
+        this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+        this.updateInventoryDisplay();
+        this.refreshStationInventoryDisplay();
+        
+        // Update GameScene UI if it exists
+        if (this.gameScene && this.gameScene.updateUI) {
+            this.gameScene.updateUI();
+        }
+        recordHumanRunEvent(this, 'shop_item_sold', {
+            sourceSlot: index,
+            item: snapshotHumanRunCard(item),
+            price: sellPrice,
+            currency: 'coins',
+        });
+    }
+    
+    buyItem(item, button) {
+        if (item.purchased) return;
+        
+        // Check currency type
+        const hasEnoughCurrency = item.currency === 'crystals' 
+            ? this.gameState.crystals >= item.price
+            : this.gameState.coins >= item.price;
+            
+        if (!hasEnoughCurrency) {
+            this.showFeedback({ key: 'float.notEnoughCurrency', vars: { currency: this.getCurrencyDisplay(item.currency) } }, 0xff0000);
+            return;
+        }
+
+        if (item.data.type === 'gem') {
+            this.showFeedback({ key: 'float.dragGemOntoWeapon' }, 0xffe066);
+            return;
+        }
+        
+        // Check if it's an amulet - rarity offer opens a 3-pick overlay
+        if (item.data.type === 'amulet') {
+            if (this.gameScene && this.gameScene.amuletManager) {
+                const offer = item.data.pendingChoice && item.data.options?.length
+                    ? item.data
+                    : null;
+                // Never charge for a shelf of amulets the player already owns —
+                // the offer was rolled when the shop was built, not now.
+                const takeable = this.gameScene.amuletManager.takeableOptions?.(offer?.options)
+                    ?? offer?.options ?? [];
+                if (offer?.options?.length && !takeable.length) {
+                    this.showFeedback({ key: 'float.alreadyOwned' }, 0xff4444);
+                    return;
+                }
+                if (takeable.length) {
+                    // Charge first, then let the player pick.
+                    if (item.currency === 'crystals') {
+                        this.gameState.crystals -= item.price;
+                        this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
+                    } else {
+                        this.gameState.coins -= item.price;
+                        this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+                    }
+                    item.purchased = true;
+                    this.markButtonDone(button, t(this, 'ui.shop.sold'));
+                    SoundHelper.playSound(this, 'shop_buy', 0.5);
+
+                    openAmuletChoiceOverlay(this, {
+                        rarity: offer.rarity,
+                        options: takeable,
+                        amuletManager: this.gameScene.amuletManager,
+                        title: `Shop — ${offer.rarity} amulet`,
+                        onPicked: () => this.gameScene.updateUI?.(),
+                    });
+                    return;
+                }
+
+                if (item.data.id) {
+                    const success = this.gameScene.amuletManager.addAmulet(item.data.id);
+                    if (success) {
+                        SoundHelper.playSound(this, 'shop_buy', 0.5);
+                        if (item.currency === 'crystals') {
+                            this.gameState.crystals -= item.price;
+                            this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
+                        } else {
+                            this.gameState.coins -= item.price;
+                            this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+                        }
+                        this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x9932cc);
+                        item.purchased = true;
+                        this.markButtonDone(button, t(this, 'ui.shop.sold'));
+                        if (this.gameScene.updateUI) this.gameScene.updateUI();
+                    } else {
+                        this.showFeedback('Already owned!', 0xff0000);
+                    }
+                }
+            }
+            return;
+        }
+        
+        // For non-amulet items, add to inventory system
+        let destinationSlot = null;
+        if (this.gameScene && this.gameScene.inventorySystem) {
+            if (!this.gameScene.inventorySystem.addCard(item.data)) {
+                this.showFeedback('Inventory Full!', 0xff0000);
+                return;
+            }
+            destinationSlot = this.gameScene.inventorySystem.lastAddedSlot;
+        } else {
+            // Fallback for old system
+            const emptySlot = this.gameState.inventory.findIndex(slot => slot === null);
+            if (emptySlot === -1) {
+                this.showFeedback('Inventory Full!', 0xff0000);
+                return;
+            }
+            this.gameState.inventory[emptySlot] = item.data;
+            destinationSlot = emptySlot;
+        }
+        
+        SoundHelper.playSound(this, 'shop_buy', 0.5);
+        
+        // Deduct appropriate currency
+        if (item.currency === 'crystals') {
+            this.gameState.crystals -= item.price;
+            this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
+        } else {
+            this.gameState.coins -= item.price;
+            this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
+        }
+        
+        item.purchased = true;
+        recordHumanRunEvent(this, 'shop_item_bought', {
+            shop: 'regular',
+            destinationSlot,
+            item: snapshotHumanRunCard(item.data),
+            price: item.price,
+            currency: item.currency,
+        });
+        this.markButtonDone(button, t(this, 'ui.shop.sold'));
+        this.showFeedback('Purchased!', 0x00ff00);
+        this.refreshStationInventoryDisplay();
+        
+        // Update GameScene UI
+        if (this.gameScene && this.gameScene.updateUI) {
+            this.gameScene.updateUI();
+        }
+    }
+    
+    // showFeedback lives on StationRoomBase
+}

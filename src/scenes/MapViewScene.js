@@ -1,0 +1,778 @@
+// scenes/MapViewScene.js
+// Phaser is provided as a UMD global (see index.html) — no import needed.
+import { MapGenerator, MAP_VERSION } from '../map/MapGenerator.js';
+import {
+  getLocationIdForFloor,
+  getLocationNarrativeCheckpoints,
+  needsLocationPick,
+  pendingLocationCheckpoint,
+} from '../content/locations/index.js';
+import { isSandboxMode } from '../sandbox/SandboxMode.js';
+import { t } from '../i18n/i18n.js';
+import { createTitle } from '../ui/titleText.js';
+import { MusicManager } from '../audio/MusicManager.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { devToolsEnabled } from '../config/DevTools.js';
+import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
+import { createSelectionCorners, createTooltipPanel, TOOLTIP_TEXT_COLOR } from '../ui/NineSlicePanel.js';
+
+export class MapViewScene extends Phaser.Scene {
+  constructor() { super({ key: 'MapViewScene' }); }
+
+  static MAP_CENTER_X = 300;
+  static MAP_CENTER_Y = 190;
+
+  init(data) {
+    this.gameState = data.gameState;
+
+    // Derive current act from currentFloor (1..45), default to 1.
+    // Clamp to acts 1..3 (the generator only produces three) so a stray
+    // currentFloor >= 46 can't index a non-existent act and crash.
+    const cf = Math.max(1, this.gameState.currentFloor || 1);
+    this.currentAct = Math.min(3, Math.max(1, Math.floor((cf - 1) / 15) + 1));
+
+    const gameScene = this.scene.get('GameScene');
+    this._awaitingLocationPick = needsLocationPick(this.gameState, this.currentAct)
+      && !isSandboxMode(this)
+      && !gameScene?.tutorialMode;
+    if (this._awaitingLocationPick) return;
+
+    // Build/keep full map. Regenerate when shape changes or when new node types were added.
+    // MAP_VERSION is imported from MapGenerator so the two can never drift.
+    const hasCurrentMapShape =
+      this.gameState.dungeonMap?.act1?.floors?.length === 15 &&
+      this.gameState.dungeonMap?._version === MAP_VERSION;
+    if (!this.gameState.dungeonMap || !hasCurrentMapShape) {
+      const gen = new MapGenerator();
+      this.gameState.dungeonMap = gen.generateFullMap(this.gameState.actLocationIds);
+    }
+    this.actMap = this.gameState.dungeonMap[`act${this.currentAct}`];
+
+    // Safety net: if the act map is missing or malformed, rebuild the whole
+    // map so we never dereference an undefined act below.
+    if (!this.actMap?.floors?.length) {
+      const gen = new MapGenerator();
+      this.gameState.dungeonMap = gen.generateFullMap(this.gameState.actLocationIds);
+      this.actMap = this.gameState.dungeonMap[`act${this.currentAct}`]
+                 || this.gameState.dungeonMap.act1;
+    }
+
+    // Ensure a single authoritative cursor (act-local)
+    // floor: 0..14 (0 is the fixed start node, 14 is boss floor)
+    if (!this.gameState.mapCursor || this.gameState.mapCursor.act !== this.currentAct) {
+      this.gameState.mapCursor = {
+        act: this.currentAct,
+        floor: (cf - 1) % 15,
+        node: 0
+      };
+      // Mark the start as visited so connections from start are valid
+      this.actMap.floors[0][0].visited = true;
+    }
+    // Validate cursor against the (possibly freshly regenerated) map.
+    // If the saved node index no longer exists in this floor, clamp to 0.
+    const cur = this.gameState.mapCursor;
+    if (!Number.isInteger(cur.floor) || cur.floor < 0 || cur.floor >= this.actMap.floors.length) {
+      cur.floor = (cf - 1) % 15;
+    }
+    const curFloor = this.actMap.floors[cur.floor];
+    if (!curFloor || cur.node >= curFloor.length || !curFloor[cur.node]) {
+      cur.node = 0;
+    }
+    // A migrated legacy save may reconstruct its cursor without a saved map.
+    // Mark that reconstructed current node visited so map visuals and movement
+    // rules agree about where the player actually is.
+    const validatedFloor = this.actMap.floors[cur.floor];
+    if (validatedFloor?.[cur.node]) validatedFloor[cur.node].visited = true;
+
+    // Persist the run every time we land on the map — the authoritative
+    // "between rooms" checkpoint. Every path back to the map runs through here
+    // (floor-clear launch, treasure relaunch, and shop/rest/anvil/event wake ->
+    // restart), so this single save:
+    //   - records roomType 'MAP', so Continue reopens the map instead of
+    //     re-rolling the just-cleared floor (the old save kept roomType 'COMBAT'
+    //     with an emptied board), and
+    //   - captures coins/items/HP the player just gained in a shop, rest, anvil,
+    //     event or treasure room, none of which saved on their own.
+    if (gameScene?.gameState) {
+      gameScene.gameState.roomType = 'MAP';
+      gameScene.roomType = 'MAP';
+    }
+    gameScene?.saveCurrentRun?.();
+
+    // Dragging
+    this.isDragging = false;
+    this.dragStartX = 0; this.dragStartY = 0;
+    this.mapPanBounds = { minX: -200, maxX: 840, minY: -100, maxY: 460 };
+  }
+
+  create() {
+    // Wake handler installed FIRST so a post-shop wake re-runs create()
+    // even when we short-circuit the post-act-shop path below.
+    this.events.off('wake', this.handleWake, this);
+    this.events.on('wake', this.handleWake, this);
+    this.events.once('shutdown', () => {
+      this.events.off('wake', this.handleWake, this);
+      this.input.keyboard?.off('keydown-ESC', this._onManualPickEscape, this);
+    });
+    this._leavingMap = false;
+
+    // Post-act shop: the player just beat the act boss. Skip drawing the map
+    // entirely on this pass — sleep ourselves and launch the shop directly so
+    // there's no map flash. When the shop closes (closeStation → wake), the
+    // wake handler restarts create() and the map draws normally with the flag
+    // cleared.
+    if (this.gameState.pendingActShop) {
+      const shopKey = this.gameState.pendingActShop === 'RARE_SHOP' ? 'RareShopScene' : 'ShopScene';
+      this.gameState.pendingActShop = null;
+      this.scene.sleep();
+      this.scene.launch(shopKey, { gameState: this.gameState });
+      return;
+    }
+
+    // The inter-act shop belongs to the road just completed. Only after the
+    // player leaves it do they choose the next road.
+    if (this._awaitingLocationPick) {
+      this.scene.start('LocationPickScene', {
+        mode: 'nextAct',
+        act: this.currentAct,
+        gameState: this.gameState,
+        characterId: this.gameState?.characterId,
+      });
+      return;
+    }
+
+    // Background & title
+    this.add.rectangle(320, 180, 640, 360, 0x8b7355);
+    this.add.rectangle(320, 30, 640, 60, 0x6b5d4f);
+    createTitle(this, 320, 30, t(this, 'ui.map.title', { act: this.currentAct, floor: this.gameState.currentFloor || 1 }), {
+      color: '#f2d3aa', fallbackSize: '20px'
+    });
+
+    // Drag area sits BEHIND nodes so it won't eat clicks
+    this.dragArea = this.add.rectangle(320, 200, 600, 280, 0xffffff, 0)
+      .setInteractive({ draggable: true }).setDepth(-1000);
+    this.setupDragging();
+
+    // Map container
+    this.mapContainer = this.add.container(MapViewScene.MAP_CENTER_X, 180);
+
+    // Render structured map
+    this.drawStructuredMap();
+
+    // Close → save the run and quit to the main menu. (Waking GameScene here
+    // would drop the player back onto their already-cleared current floor, which
+    // is empty — this is a between-floors screen, so there is no room to return
+    // to.) The run persists so "Continue" from the menu resumes it.
+    const closeBtn = this.add.circle(600, 30, 15, 0xae5347).setInteractive({ useHandCursor: true });
+    this.add.text(600, 30, 'X', { fontSize: '16px', fill: '#f2d3aa' }).setOrigin(0.5);
+    closeBtn.on('pointerdown', () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
+      const gameScene = this.scene.get('GameScene');
+      if (gameScene?.gameState) {
+        gameScene.gameState.roomType = 'MAP';
+        gameScene.roomType = 'MAP';
+      }
+      gameScene?.saveCurrentRun?.();
+      this.scene.stop('GameScene');
+      this.scene.stop();
+      this.scene.start('MainMenuScene');
+    });
+
+    this._manualPick = false;
+    this._mapHint = this.add.text(320, 340, t(this, 'ui.map.instructions'), {
+      fontSize: '12px', fill: '#d4b896', fontFamily: '"HoMM Pixel", Arial, sans-serif'
+    }).setOrigin(0.5);
+    this._addManualPickButton();
+    this.input.keyboard?.on('keydown-ESC', this._onManualPickEscape, this);
+
+    // Peaceful theme fades in whenever the map is shown (create() re-runs on
+    // every wake because handleWake restarts the scene).
+    MusicManager.play(this, 'map_music', 0.5, 900);
+  }
+
+  handleWake() {
+      console.log('Map restarted on wake');
+      this.scene.restart({ gameState: this.gameState }); // Redraws with latest cursor/visited
+  }
+
+  setupDragging() {
+    this.dragArea.on('dragstart', (p) => {
+      this.isDragging = true;
+      this.dragStartX = p.worldX - (this.mapContainer?.x ?? 320);
+      this.dragStartY = p.worldY - (this.mapContainer?.y ?? 180);
+    });
+    this.dragArea.on('drag', (p) => {
+      if (!this.mapContainer) return;
+      this.mapContainer.x = Math.round(Phaser.Math.Clamp(p.worldX - this.dragStartX, this.mapPanBounds.minX, this.mapPanBounds.maxX));
+      this.mapContainer.y = Math.round(Phaser.Math.Clamp(p.worldY - this.dragStartY, this.mapPanBounds.minY, this.mapPanBounds.maxY));
+    });
+    this.dragArea.on('dragend', () => { this.isDragging = false; });
+  }
+
+  // ===== Clean lane layout like StS =====
+  drawStructuredMap() {
+    const lanes = 7;            // number of vertical lanes
+    const laneGap = 80;         // horizontal spacing between lanes
+    const floorGap = 60;        // vertical spacing
+    const cx = 0;               // container origin is centered already
+    const startY = -150;
+    this.narrativeCheckpoints = getLocationNarrativeCheckpoints(this.gameState)
+      .map(checkpoint => ({ ...checkpoint }));
+
+    // Assign positions per floor: nodes are centered symmetrically around x=0
+    this.actMap.floors.forEach((floorNodes, f) => {
+      const floorNumber = f + 1;
+      const insertedBefore = this.narrativeCheckpoints.filter(cp => cp.afterFloor < floorNumber).length;
+      const y = startY + f * floorGap + insertedBefore * 42;
+      const count = floorNodes.length;
+      floorNodes.forEach((node, i) => {
+        // Round to whole pixels: even node counts give half-integer offsets,
+        // which leave the pixel-art nodes on fractional positions and make them
+        // (and the whole map) shimmer/shift by a pixel on render-batch flushes.
+        node.__x = Math.round((i - (count - 1) / 2) * laneGap);
+        node.__y = Math.round(y);
+        node.__idx = i; // index within the floor
+      });
+    });
+
+    this.updatePanBounds();
+
+    // Draw links — baked into a RenderTexture (see drawLinks). A live Graphics
+    // object renders diagonal thick lines as anti-aliased quads whose vertices
+    // re-round by a pixel across render-batch flushes (e.g. when a tooltip's text
+    // texture is created), making the connections jitter. Baking them to a texture
+    // once turns them into a static image that snaps to the pixel grid like the nodes.
+    this.drawLinks();
+
+    // Draw nodes
+    this.nodeSprites = [];
+    this.actMap.floors.forEach((floorNodes, f) => {
+      floorNodes.forEach((node, i) => this.drawNode(node, f, i));
+    });
+    this.narrativeCheckpoints.forEach(checkpoint => this.drawNarrativeCheckpoint(checkpoint));
+
+    this.centerOnCurrentNode();
+  }
+
+  updatePanBounds() {
+    const nodes = this.actMap.floors.flat();
+    const minX = Math.min(...nodes.map(n => n.__x));
+    const maxX = Math.max(...nodes.map(n => n.__x));
+    const minY = Math.min(...nodes.map(n => n.__y));
+    const maxY = Math.max(...nodes.map(n => n.__y));
+    const pad = 70;
+    const visibleLeft = 50;
+    const visibleRight = 550;
+    const visibleTop = 70;
+    const visibleBottom = 320;
+    const mapWidth = maxX - minX;
+    const mapCenterX = (minX + maxX) / 2;
+    const visibleWidth = visibleRight - visibleLeft;
+    const visibleCenterX = (visibleLeft + visibleRight) / 2;
+    const centeredX = visibleCenterX - mapCenterX;
+
+    const xBounds = mapWidth + pad * 2 <= visibleWidth
+      ? { minX: centeredX, maxX: centeredX }
+      : {
+          minX: visibleRight - maxX - pad,
+          maxX: visibleLeft - minX + pad
+        };
+
+    this.mapPanBounds = {
+      minX: xBounds.minX,
+      maxX: xBounds.maxX,
+      minY: visibleBottom - maxY - pad,
+      maxY: visibleTop - minY + pad
+    };
+
+    this.mapContainer.x = Math.round(Phaser.Math.Clamp(this.mapContainer.x, this.mapPanBounds.minX, this.mapPanBounds.maxX));
+    this.mapContainer.y = Math.round(Phaser.Math.Clamp(this.mapContainer.y, this.mapPanBounds.minY, this.mapPanBounds.maxY));
+  }
+
+  centerOnCurrentNode() {
+    const cursor = this.gameState.mapCursor;
+    const node = this.actMap.floors?.[cursor.floor]?.[cursor.node];
+    if (!node || typeof node.__x !== 'number' || typeof node.__y !== 'number') return;
+
+    const nodes = this.actMap.floors.flat();
+    const minX = Math.min(...nodes.map(n => n.__x));
+    const maxX = Math.max(...nodes.map(n => n.__x));
+    const mapCenterX = (minX + maxX) / 2;
+    const targetScreenX = MapViewScene.MAP_CENTER_X;
+    const targetScreenY = MapViewScene.MAP_CENTER_Y;
+    this.mapContainer.x = Math.round(Phaser.Math.Clamp(targetScreenX - mapCenterX, this.mapPanBounds.minX, this.mapPanBounds.maxX));
+    this.mapContainer.y = Math.round(Phaser.Math.Clamp(targetScreenY - node.__y, this.mapPanBounds.minY, this.mapPanBounds.maxY));
+  }
+
+  drawLinks() {
+    // Draw all links into an off-display Graphics in node-coordinate space, then
+    // bake it into a RenderTexture so the connections become a static, pixel-snapped
+    // image instead of live geometry that jitters on render-batch flushes.
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    const drawCurve = (ax, ay, bx, by, color, width) => {
+      g.lineStyle(width, color, 1);
+      g.lineBetween(Math.round(ax), Math.round(ay), Math.round(bx), Math.round(by));
+    };
+
+    // dim base — every connection between adjacent floors
+    for (let f = 0; f < this.actMap.floors.length - 1; f++) {
+      const cur = this.actMap.floors[f];
+      const nxt = this.actMap.floors[f + 1];
+      cur.forEach(n => {
+        n.connections.forEach(t => {
+          const checkpoint = this.narrativeCheckpoints?.find(cp => cp.afterFloor === f + 1);
+          if (checkpoint) {
+            const checkpointY = Math.round((n.__y + nxt[t].__y) / 2);
+            checkpoint.__x = 0;
+            checkpoint.__y = checkpointY;
+            drawCurve(n.__x, n.__y, 0, checkpointY, 0x5e5146, 2);
+            drawCurve(0, checkpointY, nxt[t].__x, nxt[t].__y, 0x5e5146, 2);
+          } else {
+            drawCurve(n.__x, n.__y, nxt[t].__x, nxt[t].__y, 0x5e5146, 2);
+          }
+        });
+      });
+    }
+    // highlight from current node
+    const curF = this.gameState.mapCursor.floor;
+    const detourReady = this._detourReady();
+    if (curF < this.actMap.floors.length - 1) {
+      const from = this.actMap.floors[curF][this.gameState.mapCursor.node];
+      if (from) {
+        const nxt = this.actMap.floors[curF + 1];
+        const checkpoint = this.narrativeCheckpoints?.find(cp => cp.afterFloor === curF + 1);
+        const checkpointPending = checkpoint && !this.gameState.storyRun?.[checkpoint.seenFlag];
+        const highlightedTargets = checkpoint && !checkpointPending
+          ? nxt.map((_, index) => index)
+          : from.connections;
+        highlightedTargets.forEach(t => {
+          if (checkpointPending) drawCurve(from.__x, from.__y, checkpoint.__x, checkpoint.__y, 0xf2d3aa, 3);
+          else if (checkpoint) drawCurve(checkpoint.__x, checkpoint.__y, nxt[t].__x, nxt[t].__y, 0xf2d3aa, 3);
+          else drawCurve(from.__x, from.__y, nxt[t].__x, nxt[t].__y, 0xf2d3aa, 3);
+        });
+        if (detourReady) {
+          nxt.forEach((dest, destIdx) => {
+            if (!dest || from.connections.includes(destIdx)) return;
+            drawCurve(from.__x, from.__y, dest.__x, dest.__y, 0xc8b06a, 2);
+          });
+        }
+      }
+    }
+
+    // Bake into a RenderTexture sized to the node bounds (with padding for line width).
+    const nodes = this.actMap.floors.flat();
+    const minX = Math.min(...nodes.map(n => n.__x));
+    const maxX = Math.max(...nodes.map(n => n.__x));
+    const minY = Math.min(...nodes.map(n => n.__y));
+    const maxY = Math.max(...nodes.map(n => n.__y));
+    const pad = 6;
+    const w = Math.ceil(maxX - minX) + pad * 2;
+    const h = Math.ceil(maxY - minY) + pad * 2;
+
+    if (this.linkTexture) { this.linkTexture.destroy(); this.linkTexture = null; }
+    const rt = this.add.renderTexture(0, 0, w, h).setOrigin(0, 0);
+    // Offset the graphics so negative node coords land inside the texture.
+    rt.draw(g, -minX + pad, -minY + pad);
+    // Position the texture so its pixels line up with the node coordinates.
+    rt.x = minX - pad;
+    rt.y = minY - pad;
+    this.mapContainer.add(rt);
+    this.mapContainer.sendToBack(rt); // keep links behind the nodes
+    g.destroy();
+    this.linkTexture = rt;
+  }
+
+  _detourReady() {
+    // Strategy Detour only bends ordinary routes. Mandatory location-story
+    // checkpoints are gates in the act itself and can never be skipped.
+    if (pendingLocationCheckpoint(this.gameState)) return false;
+    return !!this.scene.get('GameScene')?.amuletManager?.canUseStrategyDetour?.();
+  }
+
+  getNodeVisualState(floorIdx, nodeIdx) {
+    const curF = this.gameState.mapCursor.floor;
+    const curN = this.gameState.mapCursor.node;
+
+    if (floorIdx < curF) return 'behind';
+    if (floorIdx === curF && nodeIdx === curN) return 'current';
+    if (floorIdx === curF + 1) {
+      if (this.narrativeCheckpoints?.length && pendingLocationCheckpoint(this.gameState)) return 'locked_next';
+      const completedCheckpoint = this.narrativeCheckpoints?.find(checkpoint => (
+        checkpoint.afterFloor === curF + 1
+        && this.gameState.storyRun?.[checkpoint.seenFlag]
+      ));
+      // A mandatory story stop merges the incoming roads into one node, then
+      // fans back out. Every road visibly leaving that node must be selectable.
+      if (completedCheckpoint) return 'available';
+      const curNode = this.actMap.floors[curF]?.[curN];
+      if (curNode?.connections?.includes(nodeIdx)) return 'available';
+      if (this._detourReady()) return 'detour';
+      return 'locked_next';
+    }
+    return 'locked';
+  }
+
+  drawNarrativeCheckpoint(checkpoint) {
+    const seen = Boolean(this.gameState.storyRun?.[checkpoint.seenFlag]);
+    const pending = pendingLocationCheckpoint(this.gameState);
+    const available = pending?.eventId === checkpoint.eventId;
+    const useSheet = this.textures.exists('mapNodes');
+    const frame = this.add.circle(checkpoint.__x, checkpoint.__y, 27, 0x2b1d3d, 0.92)
+      .setStrokeStyle(3, 0xd6ad5c, available ? 1 : 0.65);
+    this.mapContainer.add(frame);
+    const innerFrame = this.add.circle(checkpoint.__x, checkpoint.__y, 23, 0x000000, 0)
+      .setStrokeStyle(1, 0xb98ce0, 0.9);
+    this.mapContainer.add(innerFrame);
+    const sprite = useSheet
+      ? this.add.image(checkpoint.__x, checkpoint.__y, 'mapNodes', 8)
+      : this.add.circle(checkpoint.__x, checkpoint.__y, 18, 0x755b8d);
+    sprite.setAlpha(seen ? 0.35 : available ? 1 : 0.22);
+    sprite.setTint?.(available ? 0xe7c8ff : 0xffffff);
+    checkpoint.__sprite = sprite;
+    this.mapContainer.add(sprite);
+    if (!available) return;
+    this._bindNarrativeCheckpointClick(checkpoint);
+  }
+
+  _bindNarrativeCheckpointClick(checkpoint) {
+    const sprite = checkpoint?.__sprite;
+    if (!sprite || sprite.getData('clickBound')) return;
+    sprite.setData('clickBound', true);
+    sprite.setInteractive({ useHandCursor: true });
+    sprite.on('pointerover', () => this.showTooltip(t(this, 'map.tooltip.event'), checkpoint.__x, checkpoint.__y - 30));
+    sprite.on('pointerout', () => this.hideTooltip());
+    sprite.on('pointerdown', () => this.selectNarrativeCheckpoint(checkpoint));
+  }
+
+  selectNarrativeCheckpoint(checkpoint) {
+    if (this._leavingMap) return;
+    this._leavingMap = true;
+    SoundHelper.playVariant(this, 'map_select', 0.5);
+    this.gameState.roomType = 'EVENT';
+    MusicManager.stopIfPlaying(this, 'map_music', 300);
+    this.time.delayedCall(380, () => {
+      this.scene.sleep();
+      this.scene.launch('EventScene', { gameState: this.gameState, forcedEventId: checkpoint.eventId });
+    });
+  }
+
+  drawNode(node, floorIdx, nodeIdx) {
+    const state = this.getNodeVisualState(floorIdx, nodeIdx);
+
+    // Spritesheet frame per room type
+    // Frame order: 0=normal chest, 1=rest, 2=good chest, 3=shop, 4=rare shop,
+    //              5=fight, 6=elite fight, 7=boss, 8=event, 9=blacksmith
+    const frameByType = {
+      TREASURE: 0, REST: 1, TREASURE_GOOD: 2, SHOP: 3, RARE_SHOP: 4,
+      COMBAT: 5, ELITE: 6, BOSS: 7, EVENT: 8, ANVIL: 9
+    };
+    const frame = frameByType[node.type] ?? 5;
+
+    // Alpha by state — available/current are fully bright, others dimmed
+    let alpha = 1;
+    if (state === 'behind')                                   alpha = 0.35;
+    else if (state === 'locked' || state === 'locked_next')   alpha = 0.22;
+    else if (state === 'available' || state === 'detour')        alpha = 1;
+    else if (state === 'current')                             alpha = 1;
+
+    // Tint: lighten available and current nodes slightly so they stand out
+    const AVAILABLE_TINT = 0xddddff;
+    const DETOUR_TINT = 0xe8c96a;
+    const idleTint = state === 'detour'
+      ? DETOUR_TINT
+      : (state === 'available' || state === 'current') ? AVAILABLE_TINT : 0xffffff;
+
+    // Quiet "you are here" ring behind the current node (added before it).
+    // The selection brackets are a hover affordance now, so the ring stays as
+    // the only marker for where the player actually stands.
+    if (state === 'current') this._addCurrentRing(node);
+
+    // Node sprite
+    const useSheet = this.textures.exists('mapNodes');
+    let nodeSprite;
+    if (useSheet) {
+      nodeSprite = this.add.image(node.__x, node.__y, 'mapNodes', frame);
+    } else {
+      // Fallback: coloured circle if spritesheet hasn't loaded yet
+      const fallbackColors = {
+        COMBAT: 0x8b7355, ELITE: 0xae5347, SHOP: 0xd4b896, RARE_SHOP: 0xffd700,
+        REST: 0xa8c09a, ANVIL: 0x9a9a9a, EVENT: 0xc8a882, BOSS: 0x6b0000,
+        TREASURE: 0xdaa520, TREASURE_GOOD: 0xffd700
+      };
+      nodeSprite = this.add.circle(node.__x, node.__y, 18, fallbackColors[node.type] || 0x8b7355);
+    }
+    nodeSprite.setAlpha(alpha);
+    if (nodeSprite.setTint) nodeSprite.setTint(idleTint);
+    node.__sprite = nodeSprite;
+    nodeSprite.setData('floorIdx', floorIdx);
+    nodeSprite.setData('nodeIdx', nodeIdx);
+    this.nodeSprites.push(nodeSprite);
+    this.mapContainer.add(nodeSprite);
+
+    const canClick = state === 'available' || state === 'detour';
+    if (canClick) this._bindNodeClick(nodeSprite, node, floorIdx, nodeIdx, idleTint);
+  }
+
+  _bindNodeClick(nodeSprite, node, floorIdx, nodeIdx, idleTint) {
+    if (nodeSprite.getData('clickBound')) return;
+    nodeSprite.setData('clickBound', true);
+    nodeSprite.setInteractive({ useHandCursor: true });
+    nodeSprite.on('pointerover', () => {
+      if (this.isDragging) return;
+      SoundHelper.playSound(this, 'hover_node', 0.4);
+      nodeSprite.y = node.__y - 1;
+      if (nodeSprite.setTint) nodeSprite.setTint(0xffffff);
+      this.showHoverCorners(node);
+      this.showTooltip(t(this, this.getNodeTooltipKey(node.type)), node.__x, node.__y - 30);
+    });
+    nodeSprite.on('pointerout', () => {
+      nodeSprite.y = node.__y;
+      if (nodeSprite.setTint) nodeSprite.setTint(idleTint);
+      this.hideHoverCorners();
+      this.hideTooltip();
+    });
+    nodeSprite.on('pointerdown', () => {
+      if (!this.isDragging) this.selectNode(floorIdx, nodeIdx, node);
+    });
+  }
+
+  _addManualPickButton() {
+    // Jumping to an arbitrary room skips the run. Ours only.
+    if (!devToolsEnabled()) return;
+    const x = 92;
+    const y = 30;
+    const btn = this.add.rectangle(x, y, 148, 22, 0x3d3228)
+      .setStrokeStyle(1, 0xf2d3aa)
+      .setDepth(20)
+      .setInteractive({ useHandCursor: true });
+    const label = this.add.text(x, y, t(this, 'ui.map.chooseManually'), {
+      fontSize: '10px',
+      fill: '#f2d3aa',
+      fontFamily: '"HoMM Pixel", Arial, sans-serif',
+    }).setOrigin(0.5).setDepth(21);
+    this._manualPickBtn = btn;
+    this._manualPickLabel = label;
+    btn.on('pointerover', () => {
+      SoundHelper.playVariant(this, 'hover_button', 0.3);
+      btn.setFillStyle(0x524536);
+    });
+    btn.on('pointerout', () => {
+      btn.setFillStyle(this._manualPick ? 0x5a4630 : 0x3d3228);
+    });
+    btn.on('pointerdown', () => {
+      if (this._manualPick) this._cancelManualPick();
+      else this._enterManualPick();
+    });
+  }
+
+  _enterManualPick() {
+    if (this._leavingMap || this._manualPick) return;
+    this._manualPick = true;
+    this._manualPickBtn?.setFillStyle(0x5a4630);
+    this._manualPickLabel?.setText(t(this, 'ui.map.chooseManuallyCancel'));
+    this._mapHint?.setText(t(this, 'ui.map.chooseManuallyHint'));
+    const AVAILABLE_TINT = 0xddddff;
+    this.actMap.floors.forEach((floorNodes, floorIdx) => {
+      floorNodes.forEach((node, nodeIdx) => {
+        const sprite = node.__sprite;
+        if (!sprite) return;
+        sprite.setAlpha(1);
+        if (sprite.setTint) sprite.setTint(AVAILABLE_TINT);
+        this._bindNodeClick(sprite, node, floorIdx, nodeIdx, AVAILABLE_TINT);
+      });
+    });
+    this.narrativeCheckpoints.forEach(checkpoint => {
+      const sprite = checkpoint.__sprite;
+      if (!sprite) return;
+      sprite.setAlpha(1);
+      sprite.setTint?.(0xe7ddff);
+      this._bindNarrativeCheckpointClick(checkpoint);
+    });
+  }
+
+  _cancelManualPick() {
+    if (!this._manualPick || this._leavingMap) return;
+    this.scene.restart({ gameState: this.gameState });
+  }
+
+  _onManualPickEscape() {
+    if (this._manualPick) this._cancelManualPick();
+  }
+
+  // A soft, static gold ring marking the player's current node. Kept understated
+  // (no radar pulse) — just a faint outline that gently breathes.
+  _addCurrentRing(node) {
+    const ring = this.add.circle(node.__x, node.__y, 19, 0xf2d3aa, 0)
+      .setStrokeStyle(2, 0xf2d3aa, 0.4);
+    this.mapContainer.add(ring);
+    this.tweens.add({
+      targets: ring,
+      alpha: 0.65,
+      duration: 1100,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  // Selection brackets that frame the node under the cursor, marking the choice
+  // the player is about to make.
+  //
+  // Nodes are 42x42, so their edge is 21px out. The drawn elbow sits ~6px in
+  // from the sprite's centre, which puts it just clear of the node art and
+  // leaves each arm pointing back along the node's edge. The 1px lift matches
+  // the hovered node's own rise so the brackets stay attached to it.
+  showHoverCorners(node) {
+    this.hideHoverCorners();
+    const CORNER_OFFSET = 16;
+    this.hoverCorners = createSelectionCorners(this, node.__x, node.__y - 1, CORNER_OFFSET);
+    if (this.hoverCorners.length) this.mapContainer.add(this.hoverCorners);
+  }
+
+  hideHoverCorners() {
+    if (this.hoverCorners) {
+      this.hoverCorners.forEach(c => c.destroy());
+      this.hoverCorners = null;
+    }
+  }
+
+  getNodeTooltipKey(type) {
+    const keyByType = {
+      COMBAT: 'map.tooltip.combat',
+      ELITE: 'map.tooltip.elite',
+      SHOP: 'map.tooltip.shop',
+      RARE_SHOP: 'map.tooltip.rareShop',
+      REST: 'map.tooltip.rest',
+      ANVIL: 'map.tooltip.anvil',
+      EVENT: 'map.tooltip.event',
+      BOSS: 'map.tooltip.boss',
+      TREASURE: 'map.tooltip.treasure',
+      TREASURE_GOOD: 'map.tooltip.treasureGood'
+    };
+    return keyByType[type] || 'tooltip.item';
+  }
+
+  showTooltip(text, x, y) {
+    this.hideTooltip();
+    const label = this.add.text(0, 0, text, {
+      fontSize: '12px',
+      fill: TOOLTIP_TEXT_COLOR,
+      fontFamily: '"HoMM Pixel", Arial, sans-serif',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    // Asymmetric padding: the panel art's bottom edge is thicker than its top.
+    const padX = 8;
+    const padTop = 7;
+    const padBottom = 9;
+    const labelW = Math.ceil(label.width);
+    const labelH = Math.ceil(label.height);
+    const boxW = labelW + padX * 2;
+    const boxH = labelH + padTop + padBottom;
+
+    // The panel anchors top-left, so shift it to sit centred on the container
+    // and drop the label into the frame's inner area rather than the box centre.
+    const bg = createTooltipPanel(this, boxW, boxH, { fillColor: 0x2c1810, strokeColor: 0x3f2f28 })
+      .setPosition(Math.round(-boxW / 2), Math.round(-boxH / 2));
+    label.setPosition(0, Math.round(-boxH / 2 + padTop + labelH / 2));
+
+    this.tooltip = this.add.container(Math.round(x), Math.round(y), [bg, label]);
+    this.mapContainer.add(this.tooltip);
+  }
+  hideTooltip() { if (this.tooltip) { this.tooltip.destroy(); this.tooltip = null; } }
+
+  // Move from the current node to a chosen room. Normal travel only allows
+  // the next floor along connections (or General's Table). Manual pick
+  // (debug) can jump to any room in the act; after that room finishes the
+  // map continues from there as usual.
+  selectNode(targetFloorIdx, targetNodeIdx, node) {
+    if (this._leavingMap) return; // ignore extra clicks during the exit fade
+    const cur = this.gameState.mapCursor;
+    const fromNode = this.actMap.floors[cur.floor]?.[cur.node];
+    const manual = !!this._manualPick;
+    const completedCheckpoint = this.narrativeCheckpoints?.find(checkpoint => (
+      checkpoint.afterFloor === cur.floor + 1
+      && this.gameState.storyRun?.[checkpoint.seenFlag]
+    ));
+    if (!manual) {
+      if (targetFloorIdx !== cur.floor + 1) return;
+      if (!fromNode) return;
+      const connected = Boolean(completedCheckpoint) || fromNode.connections.includes(targetNodeIdx);
+      if (!connected && !this._detourReady()) return;
+      if (!connected) {
+        this.scene.get('GameScene')?.amuletManager?.consumeStrategyDetour?.();
+      }
+    }
+    // The click is going through — drop the hover decoration so it can't linger
+    // over the exit fade.
+    this.hideHoverCorners();
+    this.hideTooltip();
+    const nextRow = this.actMap.floors[targetFloorIdx] || [];
+    const connected = !manual && (Boolean(completedCheckpoint) || !!fromNode?.connections?.includes(targetNodeIdx));
+    const availableNodes = (manual
+      ? nextRow.map((_, nodeIndex) => nodeIndex)
+      : (completedCheckpoint
+          ? nextRow.map((_, nodeIndex) => nodeIndex)
+          : (connected ? fromNode.connections : nextRow.map((_, nodeIndex) => nodeIndex)))
+    ).map(nodeIndex => {
+      const option = nextRow[nodeIndex];
+      return {
+        floor: targetFloorIdx,
+        node: nodeIndex,
+        type: option?.type || null,
+      };
+    });
+    recordHumanRunEvent(this, 'route_selected', {
+      from: { act: this.currentAct, floor: cur.floor, node: cur.node, type: fromNode?.type || null },
+      chosen: { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx, type: node.type },
+      available: availableNodes,
+      debugJump: manual || undefined,
+    });
+    SoundHelper.playVariant(this, 'map_select', 0.5);
+    if (fromNode) fromNode.visited = true;
+    node.visited = true;
+    this.gameState.mapCursor = { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx };
+    this.gameState.currentFloor = manual
+      ? (this.currentAct - 1) * 15 + targetFloorIdx + 1
+      : (this.gameState.currentFloor || 1) + 1;
+    this.gameState.roomType = node.type;
+    this._manualPick = false;
+
+    // Route (deferred so the map theme can fade out first).
+    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE', 'TREASURE_GOOD'];
+    const proceed = () => {
+      if (nonCombat.includes(node.type)) {
+        // Tea Room Bell (and any future AP-on-non-battle amulet) triggers here.
+        this.scene.get('GameScene')?.amuletManager?.processNonBattleSceneEnter?.();
+        this.scene.sleep(); // Sleep map for overlay
+        const key =
+          node.type === 'SHOP'           ? 'ShopScene' :
+          node.type === 'RARE_SHOP'      ? 'RareShopScene' :
+          node.type === 'REST'           ? 'RestScene' :
+          node.type === 'ANVIL'          ? 'AnvilScene' :
+          node.type === 'TREASURE'       ? 'TreasureScene' :
+          node.type === 'TREASURE_GOOD'  ? 'TreasureScene' : 'EventScene';
+        const sceneData = { gameState: this.gameState };
+        if (node.type === 'TREASURE_GOOD') sceneData.rewardMode = 'good';
+        this.scene.launch(key, sceneData);
+        return;
+      }
+      // Combat-like
+      this.scene.stop();
+      // Pass a flag to indicate this is a new room transition
+      this.scene.wake('GameScene', {
+          roomType: node.type,
+          isNewRoom: true
+      });
+      console.log('Woke GameScene for type:', node.type);
+    };
+
+    // Fade the peaceful theme out, then hand off (scene stays alive during the
+    // fade so the tween actually runs).
+    this._leavingMap = true;
+    // Fade (300ms) finishes just before the handoff (380ms) so the track is
+    // fully stopped while the scene is still awake and the tween can run.
+    MusicManager.stopIfPlaying(this, 'map_music', 300);
+    this.time.delayedCall(380, proceed);
+  }
+}

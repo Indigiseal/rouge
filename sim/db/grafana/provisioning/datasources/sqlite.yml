@@ -1,0 +1,10 @@
+apiVersion: 1
+
+datasources:
+  - name: Sim SQLite
+    uid: sim-sqlite
+    type: frser-sqlite-datasource
+    access: proxy
+    isDefault: true
+    jsonData:
+      path: /var/lib/grafana/stats.sqlite

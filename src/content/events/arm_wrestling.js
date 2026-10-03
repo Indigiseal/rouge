@@ -1,0 +1,76 @@
+// Arm Wrestling. Two matches, and only winning earns the second one.
+//
+// The match itself is a click minigame (see ArmWrestlingMinigame). Weapon-based
+// "odds" still exist — never shown as a percentage — and feed ogre push /
+// click power. What the player reads is the CROWD: the more of them who fancy
+// the ogre, the worse the player's arm looks. See EventScene.armWrestleChance /
+// getArmWrestleCrowdLine / getArmWrestleMinigameTuning.
+//
+// Match one is for coins or a card. Win, and he wants his money back — a
+// rematch queues up, and that is the only time he stakes the gauntlet. Lose
+// either match and he is finished with you.
+
+export default {
+    id: 'arm_wrestling',
+    title: 'Arm Wrestling',
+    rematchHint: 'Drag a card onto the ogre (uncommon or better)',
+    description: (gs, scene) => {
+      const crowd = scene.getArmWrestleCrowdLine();
+      if (scene.isArmWrestleRematch()) {
+        return `The ogre is at the same table. He has not put his coins back out.\n\nInstead he has unbuckled the stone guard from his forearm and laid it on the slab between you. It is scaled, heavy, and clearly not his originally.\n\nThe crowd is bigger this time, and much quieter.\n\n${crowd}`;
+      }
+      return `An ogre sits at a stone table with one elbow planted on it. Coins are stacked by his hand — more than a goblin toll, less than he seems to think.\n\nA stool waits on your side. It is too small.\n\nMonsters have gathered to watch: a few goblins, something with too many legs, and a skeleton that keeps losing its place in the crowd.\n\n${crowd}`;
+    },
+    choices: (gs, scene) => {
+      const rematch = scene.isArmWrestleRematch();
+      const stake = scene.getArmWrestleCoinStake();
+
+      const cardBet = {
+        id: 'arm_bet_card',
+        text: rematch ? 'Bet an uncommon or better card against the guard' : 'Bet an uncommon or better card instead',
+        // The Test Site is a mechanics harness: always expose the stake flow
+        // there even if a generated loadout happens to carry legacy card data
+        // without a modern rarity field.
+        condition: (state, s) => s.hasArmWrestleCard() || Boolean(state?.sandboxMode),
+        action: (state, s) => s.beginArmWrestleCardBet(),
+        outcome: 'Drag an uncommon or better card onto the ogre. If he thinks it is junk, you can try another card or leave.',
+        next: {
+          choices: [
+            {
+              text: 'Take your hand back',
+              action: (state, s) => s.cancelArmWrestleCardBet(),
+              outcome: 'You take the card back. The ogre does not move, and neither does his elbow.'
+            }
+          ]
+        }
+      };
+
+      const decline = {
+        id: 'arm_decline',
+        text: 'Decline',
+        action: (state, s) => s.declineArmWrestle(),
+        outcome: rematch
+          ? 'You leave the guard where it is.\n\nThe ogre says something in Ogrish that the crowd finds funnier than you do, and buckles it back onto his arm.'
+          : 'He mutters something in Ogrish. The crowd loses interest in you immediately.\n\nThe stool stays empty.'
+      };
+
+      // He will not play for coin twice — the rematch is about the guard.
+      // The rematch opens directly in wager mode: the ogre itself is the drop
+      // target, so the only button needed is the way to leave.
+      if (rematch) return [decline];
+
+      return [
+        {
+          id: 'arm_bet_coins',
+          text: `Bet ${stake} coins`,
+          condition: () => (gs?.coins || 0) >= stake,
+          action: (state, s) => s.beginArmWrestleCoinBet(),
+          // Soft-paused while the click minigame runs; terminal copy is set on
+          // armWrestleOutcome when the match finishes.
+          outcome: 'You plant your elbow on the slab. The room goes quiet.'
+        },
+        cardBet,
+        decline,
+      ];
+    }
+  };

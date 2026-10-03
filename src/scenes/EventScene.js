@@ -1,0 +1,3094 @@
+// EventScene.js
+// Unknown encounter events. Each event has a title, description, and a list of choices.
+// Choices can have a condition (function returning bool) that hides them if not met.
+// After a choice is made, an optional outcome message is shown before returning to the map.
+// Event definitions live in src/content/events/.
+
+import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
+import { loadHeroMemory, saveHeroMemory, saveStoryProgress } from '../content/story/StoryProgress.js';
+import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
+import { createTitle } from '../ui/titleText.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
+import { EVENTS, getEvent } from '../content/events/index.js';
+import { getMagic } from '../content/cards/magic.js';
+import { getPlannedActBoss } from '../map/MapGenerator.js';
+import { createGauntletCard } from '../content/balance/Gauntlet.js';
+import { applyEnemyTier } from '../content/balance/EnemyTiers.js';
+import {
+  applyEnchantToWeapon,
+  describeWeaponEnchant,
+  getGlowCardFrame,
+  rollEnchantOffer,
+} from '../content/balance/WeaponEnchants.js';
+import { EventRunHelpers } from '../systems/events/EventRunHelpers.js';
+import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
+import { openArmWrestlingMinigame } from '../ui/ArmWrestlingMinigame.js';
+import { scaleGoldReward } from '../content/economy/gold.js';
+import { openMusicBoxLockMinigame } from '../ui/MusicBoxLockMinigame.js';
+import { openBirdNestMinigame } from '../ui/BirdNestMinigame.js';
+import {
+  MUSIC_BOX_EXPLODED,
+  MUSIC_BOX_OPENED_BY_FORCE,
+} from '../content/events/broken_music_box.js';
+import {
+  NEST_TIMEOUT,
+  NEST_TOOK_BOTH,
+  NEST_TOOK_COG,
+  NEST_TOOK_EGG,
+  NEST_LEFT,
+} from '../content/events/monster_bird_nest.js';
+import { getLocationIdForFloor } from '../content/locations/index.js';
+import { pickTollroadEventId } from '../content/location-packs/tollroad/index.js';
+import { tryLethalRevive } from '../systems/combat/PlayerDamageResolver.js';
+import { serifStyle } from '../ui/uiFont.js';
+import { setHoverLight } from '../ui/HoverLight.js';
+import { createExitDoor, EXIT_DOOR_X, EXIT_DOOR_Y } from '../ui/ExitDoor.js';
+import { createOptionsCog } from '../ui/OptionsCog.js';
+
+const EVENT_ILLUSTRATION_FRAMES = {
+  broken_music_box: 2,
+  monster_bird_nest: 9,
+  goblin_engineer: 12,
+  hatching_egg: 9,
+  quiet_crossroads: 7,
+  mirror: 11,
+  too_nice_room: 14,
+  almost_you_well: 15,
+  slimy_prison: 16,
+  book_worm: 19,
+  briar_room: 23,
+  old_drill_room: 26,
+  something_wicked: 7,
+  brass_wizard: 28,
+  toll_collectors: 29,
+  arm_wrestling: 30,
+  screaming_head: 26,
+  // TODO: swap to the Reliquary's own frame once its art lands. Frame 11
+  // (the Copying Mirror's glassy panel) is the closest stand-in for now.
+  reliquary: 11,
+  silk_cocoon_cache: 31,
+  goblin_mine: 29,
+  goblin_mine_return: 29,
+  royal_bridge: 29,
+};
+
+export class EventScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'EventScene' });
+  }
+
+  init(data = {}) {
+    this.gameState = data.gameState || {};
+    this.gameScene = this.scene?.get?.('GameScene');
+    // Test Site: play exactly this story, whatever the story rules would say.
+    this.forcedEventId = data.forcedEventId || null;
+    this.ensureStoryState();
+    this.event = this._pickEvent();
+    this.resolved = false;
+  }
+
+  _pickEvent() {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+
+    // A story chosen in the Test Site opens no matter what — including ones the
+    // ?event= allow-list below never covered, and ones already played. Falling
+    // through to the normal rules would silently hand back a different story
+    // than the one that was clicked, which is worse than a thin version of it.
+    if (this.forcedEventId && getEvent(this.forcedEventId)) {
+      return this.getEventById(this.forcedEventId);
+    }
+
+    const locationId = getLocationIdForFloor(
+      this.gameState,
+      this.gameState?.currentFloor || 1
+    );
+    // Tollroad owns its narrative pool. Global story chains and filler events
+    // must not displace the King's Mile encounters during a normal run.
+    if (locationId === 'tollroad') return this._pickTollroadEvent();
+
+    const forcedId = this._getForcedEventId();
+    if (forcedId && (forcedId !== 'hatching_egg' || this.canShowEggHatchingEvent())) {
+      return this.getEventById(forcedId);
+    }
+
+    if (story.pendingEvents.includes('monster_bird_nest')) return this.getEventById('monster_bird_nest');
+    if (
+      story.pendingEvents.includes('goblin_engineer')
+      && story.boxState !== 'unknown'
+      && !story.latchboxRewardClaimed
+    ) return this.getEventById('goblin_engineer');
+    if (story.pendingEvents.includes('hatching_egg')) {
+      if (this.canShowEggHatchingEvent()) return this.getEventById('hatching_egg');
+      story.pendingEvents = story.pendingEvents.filter(id => id !== 'hatching_egg');
+    }
+    if (story.pendingEvents.includes('brass_wizard')) return this.getEventById('brass_wizard');
+    // The ogre wants his money back. Queued only by winning the first match, so
+    // this is the rematch — and the only time the gauntlet is on the table.
+    if (story.pendingEvents.includes('arm_wrestling') && !story.armWrestleRematchDone) {
+      return this.getEventById('arm_wrestling');
+    }
+    // Music Box Event Sequence opener. Not month-gated: any-month, then nest
+    // and engineer via pendingEvents. (The donkey caravan + hermit thread was
+    // removed and no longer appears at all.)
+    if (story.boxState === 'unknown') return this.getEventById('broken_music_box');
+    // Once the main story beats are past, offer a special bonus room (copying
+    // mirror / too-nice room) once each per run, chosen at random, before
+    // falling back to the plain filler.
+    const bonusFillers = [];
+    if (!story.mirrorSeen) bonusFillers.push('mirror');
+    if (!story.tooNiceRoomSeen) bonusFillers.push('too_nice_room');
+    if (!story.wellSeen) bonusFillers.push('almost_you_well');
+    if (!story.slimyPrisonSeen) bonusFillers.push('slimy_prison');
+    if (!story.bookWormSeen) bonusFillers.push('book_worm');
+    if (!story.briarRoomSeen && locationId === 'thornwake') bonusFillers.push('briar_room');
+    // Silkdeep-only: cocoon chamber.
+    if (!story.silkCocoonCacheSeen && locationId === 'silkdeep') {
+      bonusFillers.push('silk_cocoon_cache');
+    }
+    // Boss-gated: the collectors only exist on runs where their King is the one
+    // waiting at the end of the act, so what you do here reaches floor 15.
+    if (!story.tollCollectorsSeen && getPlannedActBoss(this.gameState) === 'goblinKing') {
+      bonusFillers.push('toll_collectors');
+    }
+    // The Reliquary supplies the magic card itself, so it only needs the
+    // player to be carrying something worth enchanting.
+    if (!story.reliquarySeen && this.hasEnchantableWeapon()) bonusFillers.push('reliquary');
+    // Only worth offering if the player can actually put something up.
+    if (!story.armWrestlingSeen && ((this.gameState.coins || 0) >= this.getArmWrestleCoinStake() || this.hasArmWrestleCard())) {
+      bonusFillers.push('arm_wrestling');
+    }
+    if (locationId === 'spherefall' && !story.screamingHeadSeen
+      && (!this.hasAmulet('fireRuneStone') || !this.hasAmulet('lightningRune') || !this.hasAmulet('poisonRune'))) {
+      bonusFillers.push('screaming_head');
+    }
+    if (locationId === 'brassfair' && !story.carnivalVisited) bonusFillers.push('something_wicked');
+    if (locationId === 'brassfair' && story.carnivalVisited && !story.brassWizardSeen) bonusFillers.push('brass_wizard');
+    if (this.getQualifyingCompanions().length > 0) bonusFillers.push('old_drill_room');
+    if (bonusFillers.length > 0) {
+      return this.getEventById(bonusFillers[Math.floor(Math.random() * bonusFillers.length)]);
+    }
+    return this.getEventById('quiet_crossroads');
+  }
+
+  _pickTollroadEvent() {
+    const story = this.gameState.storyRun;
+    const canArmWrestle = (this.gameState.coins || 0) >= this.getArmWrestleCoinStake()
+      || this.hasArmWrestleCard();
+    const tollroadEventId = pickTollroadEventId({ story, canArmWrestle });
+    if (tollroadEventId) return this.getEventById(tollroadEventId);
+    return this._pickSharedTollroadEvent();
+  }
+
+  _pickSharedTollroadEvent() {
+    const story = this.gameState.storyRun;
+    const forcedId = this._getForcedEventId();
+    if (forcedId && (forcedId !== 'hatching_egg' || this.canShowEggHatchingEvent())) {
+      return this.getEventById(forcedId);
+    }
+    if (story.pendingEvents.includes('monster_bird_nest')) return this.getEventById('monster_bird_nest');
+    if (story.pendingEvents.includes('goblin_engineer') && story.boxState !== 'unknown' && !story.latchboxRewardClaimed) {
+      return this.getEventById('goblin_engineer');
+    }
+    if (story.pendingEvents.includes('hatching_egg') && this.canShowEggHatchingEvent()) {
+      return this.getEventById('hatching_egg');
+    }
+    if (story.pendingEvents.includes('brass_wizard')) return this.getEventById('brass_wizard');
+    if (story.boxState === 'unknown') return this.getEventById('broken_music_box');
+
+    const pool = [];
+    if (!story.mirrorSeen) pool.push('mirror');
+    if (!story.tooNiceRoomSeen) pool.push('too_nice_room');
+    if (!story.wellSeen) pool.push('almost_you_well');
+    if (!story.slimyPrisonSeen) pool.push('slimy_prison');
+    if (!story.bookWormSeen) pool.push('book_worm');
+    if (!story.reliquarySeen && this.hasEnchantableWeapon()) pool.push('reliquary');
+    if (this.getQualifyingCompanions().length > 0) pool.push('old_drill_room');
+    if (!pool.length) return this.getEventById('quiet_crossroads');
+    return this.getEventById(pool[Math.floor(Math.random() * pool.length)]);
+  }
+
+  getEventById(id) {
+    const resolvedId = id === 'singing_box' ? 'broken_music_box' : id;
+    return getEvent(resolvedId) || EVENTS[0];
+  }
+
+  _getForcedEventId() {
+    try {
+      if (typeof window === 'undefined') return null;
+      const requestedId = new URLSearchParams(window.location.search).get('event');
+      if (!requestedId) return null;
+      const resolvedId = requestedId === 'singing_box' ? 'broken_music_box' : requestedId;
+      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'toll_collectors', 'arm_wrestling', 'old_drill_room', 'something_wicked', 'brass_wizard', 'silk_cocoon_cache']);
+      return forceable.has(resolvedId) ? resolvedId : null;
+    } catch {
+      return null;
+    }
+  }
+
+  ensureStoryState() {
+    if (!this.gameState) this.gameState = {};
+
+    const defaultStoryRun = {
+      caravanSeen: false,
+      donkeySaved: false,
+      donkeyLost: false,
+      banditsStopped: false,
+      banditsEscaped: false,
+      merchantGrateful: false,
+      hermitState: 'unknown',
+      banditTrailFound: false,
+      cheerfulHermitVisited: false,
+      caravanResolved: false,
+      caravanEnding: 'unresolved',
+      caravanEpilogueSeen: false,
+      caravanEpilogueChoice: 'none',
+      boxState: 'unknown',
+      boxFollowing: false,
+      boxHasCog: false,
+      boxPrep: 'none',
+      boxRepairChance: 50,
+      birdAngry: false,
+      stoleBirdEgg: false,
+      nestRaidTimedOut: false,
+      latchboxRewardClaimed: false,
+      goblinEngineerResolved: false,
+      chickHatched: false,
+      skeletonCompanionObtained: false,
+      angryNestmotherRollFloor: null,
+      mirrorSeen: false,
+      tooNiceRoomSeen: false,
+      wellSeen: false,
+      slimyPrisonSeen: false,
+      bookWormSeen: false,
+      briarRoomSeen: false,
+      silkCocoonCacheSeen: false,
+      reliquarySeen: false,
+      tollCollectorsSeen: false,
+      armWrestlingSeen: false,
+      armWrestleWon: false,
+      armWrestleLost: false,
+      armWrestleRematchDone: false,
+      gauntletWon: false,
+      paidTheToll: false,
+      tollIntimidated: false,
+      tollFought: false,
+      tollKiller: false,
+      tollEscapeNoticeShown: false,
+      tollWatchFailed: false,
+      bridgeDestroyed: false,
+      tollGuardsEscaped: 0,
+      tollEscapeMode: null,
+      tollroadDetour: null,
+      jetpackFlightPending: false,
+      merchantRobbed: false,
+      screamingHeadSeen: false,
+      carnivalVisited: false,
+      carnivalHagMet: false,
+      brassWizardSeen: false,
+      tollroadAftermathSeen: false,
+      magusPendantObtained: false,
+      tollroadAftermathCompleteThisRun: false,
+      goblinMineSeen: false,
+      goblinMinersKilled: false,
+      goblinMinersAllied: false,
+      royalBridgeSeen: false,
+      tollroadThroneHallSeen: false,
+      goblinKingStartingHealthFraction: 1,
+      pendingPostCombatEventId: null,
+      pendingEvents: []
+    };
+
+    const defaultHeroMemory = {
+      learnedBanditsThreatenHermit: false,
+      learnedDonkeyCanBeSaved: false,
+      solvedCaravanPerfectly: false,
+      learnedMusicBoxExplodes: false,
+      learnedBirdNestHasCog: false,
+      learnedEngineerCanRepairBox: false,
+      chickRareShopUnlocked: false,
+      skeletonRareShopUnlocked: false
+    };
+
+    const existingStoryRun = this._isPlainObject(this.gameState.storyRun)
+      ? this.gameState.storyRun
+      : {};
+    const retiredEventIds = new Set([
+      'singing_box',
+      'masked_duelist',
+      'tiny_thief_bird',
+      'missing_bard_camp',
+      'last_refrain'
+    ]);
+    const pendingEvents = Array.isArray(existingStoryRun.pendingEvents)
+      ? [...new Set(existingStoryRun.pendingEvents.filter(id => (
+        typeof id === 'string' && !retiredEventIds.has(id)
+      )))]
+      : [];
+    const inferredCaravanResolved = Boolean(
+      existingStoryRun.caravanSeen
+      && ['robbed', 'comforted', 'friend'].includes(existingStoryRun.hermitState)
+    );
+    this.gameState.storyRun = {
+      ...defaultStoryRun,
+      ...existingStoryRun,
+      caravanResolved: typeof existingStoryRun.caravanResolved === 'boolean'
+        ? existingStoryRun.caravanResolved
+        : inferredCaravanResolved,
+      caravanEnding: typeof existingStoryRun.caravanEnding === 'string'
+        ? existingStoryRun.caravanEnding
+        : inferredCaravanResolved ? 'legacy_resolved' : defaultStoryRun.caravanEnding,
+      caravanEpilogueSeen: Boolean(existingStoryRun.caravanEpilogueSeen),
+      cheerfulHermitVisited: Boolean(existingStoryRun.cheerfulHermitVisited),
+      hermitState: typeof existingStoryRun.hermitState === 'string'
+        ? existingStoryRun.hermitState
+        : defaultStoryRun.hermitState,
+      boxState: typeof existingStoryRun.boxState === 'string'
+        ? existingStoryRun.boxState
+        : defaultStoryRun.boxState,
+      boxFollowing: Boolean(existingStoryRun.boxFollowing),
+      boxHasCog: Boolean(existingStoryRun.boxHasCog),
+      boxPrep: ['none', 'cheap', 'full'].includes(existingStoryRun.boxPrep)
+        ? existingStoryRun.boxPrep
+        : defaultStoryRun.boxPrep,
+      boxRepairChance: Number.isFinite(existingStoryRun.boxRepairChance)
+        ? existingStoryRun.boxRepairChance
+        : defaultStoryRun.boxRepairChance,
+      birdAngry: Boolean(existingStoryRun.birdAngry),
+      stoleBirdEgg: Boolean(existingStoryRun.stoleBirdEgg),
+      nestRaidTimedOut: Boolean(existingStoryRun.nestRaidTimedOut),
+      latchboxRewardClaimed: Boolean(existingStoryRun.latchboxRewardClaimed),
+      goblinEngineerResolved: typeof existingStoryRun.goblinEngineerResolved === 'boolean'
+        ? existingStoryRun.goblinEngineerResolved
+        : Boolean(existingStoryRun.latchboxRewardClaimed),
+      chickHatched: Boolean(existingStoryRun.chickHatched),
+      skeletonCompanionObtained: Boolean(existingStoryRun.skeletonCompanionObtained),
+      angryNestmotherRollFloor: Number.isFinite(existingStoryRun.angryNestmotherRollFloor)
+        ? existingStoryRun.angryNestmotherRollFloor
+        : null,
+      mirrorSeen: Boolean(existingStoryRun.mirrorSeen),
+      tooNiceRoomSeen: Boolean(existingStoryRun.tooNiceRoomSeen),
+      wellSeen: Boolean(existingStoryRun.wellSeen),
+      slimyPrisonSeen: Boolean(existingStoryRun.slimyPrisonSeen),
+      bookWormSeen: Boolean(existingStoryRun.bookWormSeen),
+      briarRoomSeen: Boolean(existingStoryRun.briarRoomSeen),
+      silkCocoonCacheSeen: Boolean(existingStoryRun.silkCocoonCacheSeen),
+      reliquarySeen: Boolean(existingStoryRun.reliquarySeen),
+      tollCollectorsSeen: Boolean(existingStoryRun.tollCollectorsSeen),
+      armWrestlingSeen: Boolean(existingStoryRun.armWrestlingSeen),
+      armWrestleWon: Boolean(existingStoryRun.armWrestleWon),
+      armWrestleLost: Boolean(existingStoryRun.armWrestleLost),
+      armWrestleRematchDone: Boolean(existingStoryRun.armWrestleRematchDone),
+      gauntletWon: Boolean(existingStoryRun.gauntletWon),
+      paidTheToll: Boolean(existingStoryRun.paidTheToll),
+      tollIntimidated: Boolean(existingStoryRun.tollIntimidated),
+      tollFought: Boolean(existingStoryRun.tollFought),
+      tollKiller: Boolean(existingStoryRun.tollKiller),
+      tollEscapeNoticeShown: Boolean(existingStoryRun.tollEscapeNoticeShown),
+      tollWatchFailed: Boolean(existingStoryRun.tollWatchFailed),
+      bridgeDestroyed: Boolean(existingStoryRun.bridgeDestroyed
+        || (existingStoryRun.goblinMinersAllied && existingStoryRun.royalBridgeSeen)),
+      tollGuardsEscaped: Math.max(0, Math.min(2, Number(existingStoryRun.tollGuardsEscaped) || 0)),
+      tollEscapeMode: typeof existingStoryRun.tollEscapeMode === 'string' ? existingStoryRun.tollEscapeMode : null,
+      tollroadDetour: existingStoryRun.tollroadDetour || null,
+      jetpackFlightPending: Boolean(existingStoryRun.jetpackFlightPending),
+      merchantRobbed: Boolean(existingStoryRun.merchantRobbed),
+      screamingHeadSeen: Boolean(existingStoryRun.screamingHeadSeen),
+      carnivalVisited: Boolean(existingStoryRun.carnivalVisited),
+      carnivalHagMet: Boolean(existingStoryRun.carnivalHagMet),
+      brassWizardSeen: Boolean(existingStoryRun.brassWizardSeen),
+      tollroadAftermathSeen: Boolean(existingStoryRun.tollroadAftermathSeen),
+      magusPendantObtained: Boolean(existingStoryRun.magusPendantObtained),
+      tollroadAftermathCompleteThisRun: Boolean(existingStoryRun.tollroadAftermathCompleteThisRun),
+      goblinMineSeen: Boolean(existingStoryRun.goblinMineSeen),
+      goblinMinersKilled: Boolean(existingStoryRun.goblinMinersKilled),
+      goblinMinersAllied: Boolean(existingStoryRun.goblinMinersAllied),
+      royalBridgeSeen: Boolean(existingStoryRun.royalBridgeSeen),
+      tollroadThroneHallSeen: Boolean(existingStoryRun.tollroadThroneHallSeen),
+      goblinKingStartingHealthFraction: Number.isFinite(existingStoryRun.goblinKingStartingHealthFraction)
+        ? existingStoryRun.goblinKingStartingHealthFraction
+        : 1,
+      pendingPostCombatEventId: typeof existingStoryRun.pendingPostCombatEventId === 'string'
+        ? existingStoryRun.pendingPostCombatEventId
+        : null,
+      pendingEvents
+    };
+
+    const storedMemory = this._loadStoredHeroMemory();
+    const existingMemory = this._isPlainObject(this.gameState.heroMemory)
+      ? this.gameState.heroMemory
+      : {};
+    const heroMemory = { ...defaultHeroMemory };
+    Object.keys(heroMemory).forEach(key => {
+      heroMemory[key] = Boolean(existingMemory[key] || storedMemory[key]);
+    });
+    this.gameState.heroMemory = heroMemory;
+  }
+
+  hasAmulet(id) {
+    const activeAmulets = Array.isArray(this.gameState?.activeAmulets)
+      ? this.gameState.activeAmulets
+      : [];
+    return activeAmulets.some(amulet => amulet === id || amulet?.id === id);
+  }
+
+  hasRelic(id) {
+    return Boolean(this.gameScene?.metaManager?.hasRelic?.(id));
+  }
+
+  // Raw HP mutation, no reward text — shared by heal() and fullHeal() so each
+  // can report its own wording without double-printing a reward line.
+  _applyHeal(amount) {
+    if (!this.gameState || !Number.isFinite(amount)) return 0;
+    const before = Number.isFinite(this.gameState.playerHealth) ? this.gameState.playerHealth : 0;
+    if (typeof this.gameState.heal === 'function') {
+      this.gameState.heal(amount);
+    } else {
+      const maxHealth = Number.isFinite(this.gameState.maxHealth)
+        ? this.gameState.maxHealth
+        : before + amount;
+      this.gameState.playerHealth = Math.min(maxHealth, before + amount);
+    }
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.updateUI?.();
+    return (this.gameState.playerHealth || 0) - before;
+  }
+
+  heal(amount) {
+    const gained = this._applyHeal(amount);
+    if (gained > 0) this._reward({ key: 'event.reward.hp', vars: { amount: `+${gained}` } });
+    return gained;
+  }
+
+  gainCoins(amount) {
+    if (!this.gameState || !Number.isFinite(amount) || amount === 0) return;
+    if (amount > 0) amount = scaleGoldReward(amount);
+    const currentCoins = Number.isFinite(this.gameState.coins) ? this.gameState.coins : 0;
+    this.gameState.coins = currentCoins + amount;
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.updateUI?.();
+    this._reward({ key: 'event.reward.coins', vars: { amount: `${amount > 0 ? '+' : ''}${amount}` } });
+  }
+
+  gainCrystals(amount) {
+    if (!this.gameState || !Number.isFinite(amount) || amount === 0) return;
+    const currentCrystals = Number.isFinite(this.gameState.crystals) ? this.gameState.crystals : 0;
+    this.gameState.crystals = currentCrystals + amount;
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.updateUI?.();
+    this._reward({ key: 'event.reward.crystals', vars: { amount: `${amount > 0 ? '+' : ''}${amount}` } });
+  }
+
+  damagePlayer(amount, deathCause = 'environmental', killedBy = 'Dungeon Event') {
+    if (!this.gameState || !Number.isFinite(amount) || amount <= 0) return;
+    const currentHealth = Number.isFinite(this.gameState.playerHealth)
+      ? this.gameState.playerHealth
+      : 0;
+    const actualDamage = Math.min(currentHealth, amount);
+    this.gameState.playerHealth = Math.max(0, currentHealth - amount);
+
+    if (actualDamage > 0 && typeof this.gameState.trackDamage === 'function') {
+      this.gameState.trackDamage(actualDamage, 'environmental');
+    }
+
+    if (this.gameState.playerHealth <= 0) {
+      const reviveScene = this.gameScene || this.scene?.get?.('GameScene') || this;
+      if (tryLethalRevive(this.gameState, reviveScene)) return;
+      this.gameState.lastDeathCause = deathCause;
+      if (typeof this.gameState.setDeathCause === 'function') {
+        this.gameState.setDeathCause(deathCause);
+      } else if (this.gameState.damageTracking) {
+        this.gameState.damageTracking.deathCause = deathCause;
+      }
+      this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+      if (this.gameScene) this.gameScene.killedBy = killedBy;
+    }
+  }
+
+  addPendingEvent(id) {
+    if (typeof id !== 'string') return;
+    this.ensureStoryState();
+    if (!this.gameState.storyRun.pendingEvents.includes(id)) {
+      this.gameState.storyRun.pendingEvents.push(id);
+    }
+  }
+
+  clearPendingEvent(id) {
+    if (typeof id !== 'string') return;
+    this.ensureStoryState();
+    this.gameState.storyRun.pendingEvents = this.gameState.storyRun.pendingEvents
+      .filter(eventId => eventId !== id);
+  }
+
+  markHeroMemory(key) {
+    this.ensureStoryState();
+    if (!(key in this.gameState.heroMemory)) return false;
+
+    this.gameState.heroMemory[key] = true;
+    this._saveStoredHeroMemory();
+    return true;
+  }
+
+  // The wizard's tray is now a physical drop target (_setupWizardTray): the
+  // player drags a card from their bag onto it. Only the "decline" option
+  // remains as a button; the junk-trade and reroll happen on drop.
+
+  logStoryKeyChoice(choiceId) {
+    if (typeof choiceId !== 'string') return;
+    console.log('[EventScene] Story key choice used:', choiceId);
+  }
+
+  _isChoiceVisible(choice) {
+    if (!choice?.condition) return true;
+    try {
+      return Boolean(choice.condition(this.gameState, this));
+    } catch (error) {
+      console.warn('Event choice condition failed', error);
+      return false;
+    }
+  }
+
+  _getVisibleChoices() {
+    const choices = typeof this.event.choices === 'function'
+      ? this.event.choices(this.gameState, this)
+      : this.event.choices;
+    return (Array.isArray(choices) ? choices : []).filter(choice => this._isChoiceVisible(choice));
+  }
+
+  _getEventDescription() {
+    const description = typeof this.event.description === 'function'
+      ? this.event.description(this.gameState, this)
+      : this.event.description;
+    return translateDescription(this, description);
+  }
+
+  _getChoiceOutcome(choice) {
+    const outcome = typeof choice.outcome === 'function'
+      ? choice.outcome(this.gameState, this)
+      : choice.outcome;
+    return translateDescription(this, outcome);
+  }
+
+  _getEventIllustrationFrame() {
+    return EVENT_ILLUSTRATION_FRAMES[this.event?.id] ?? 7;
+  }
+
+  _centerTextOnPixel(textObject, centerX) {
+    if (!textObject) return textObject;
+    // A centered origin can put an odd-width text texture on a half pixel,
+    // which makes the pixel font look soft (most visible in Book Worm's long
+    // scrolling paragraph). Anchor its top-left corner to whole pixels instead.
+    textObject.setOrigin(0, 0);
+    textObject.x = Math.round(centerX - textObject.width / 2);
+    textObject.y = Math.round(textObject.y);
+    return textObject;
+  }
+
+  _createEventPaper(x, y) {
+    // Grown upward (taller top, same bottom) so the parchment sits behind the
+    // title instead of the title floating at its top edge. The bottom is
+    // unchanged so it still clears the inventory strip shown during the event.
+    const paperWidth = 388;
+    const paperHeight = 244;
+    const startY = y + 34;
+    let paper = null;
+    if (this.textures.exists('eventPaper9Slice')) {
+      const addNineSlice = this.add.nineslice || this.add.nineSlice;
+      if (addNineSlice) {
+        try {
+          paper = addNineSlice.call(this.add, x, startY, 'eventPaper9Slice', null, paperWidth, paperHeight, 32, 32, 32, 32);
+        } catch {
+          paper = null;
+        }
+      }
+    }
+
+    if (paper) {
+      paper.setDepth(0).setAlpha(0);
+      this.tweens.add({
+        targets: paper,
+        y,
+        alpha: 1,
+        duration: 360,
+        delay: 70,
+        ease: 'Cubic.easeOut'
+      });
+      return;
+    }
+
+    // A flat 'eventPaper' image used to sit between the nine-slice above and
+    // the drawn rectangle below. assets/art/paper.png is gone — the nine-slice
+    // replaced it — so that branch could never be taken again, and its manifest
+    // entry existed only to 404 on every boot.
+
+    paper = this.add.rectangle(x, startY, paperWidth, paperHeight, 0xd9b98e)
+      .setStrokeStyle(2, 0x6c4f35)
+      .setDepth(0)
+      .setAlpha(0);
+    this.tweens.add({
+      targets: paper,
+      y,
+      alpha: 1,
+      duration: 360,
+      delay: 70,
+      ease: 'Cubic.easeOut'
+    });
+  }
+
+  _createEventBoardBase(x, y) {
+    const boardTexture = this.textures.exists('gamingBoard2') ? 'gamingBoard2' : 'gamingBoard';
+    if (!this.textures.exists(boardTexture)) return;
+    // Shortened to match the compressed paper so the decorative board doesn't
+    // spill over the inventory strip at the bottom of the screen.
+    const board = this.add.image(x, y + 34, boardTexture)
+      .setDisplaySize(456, 248)
+      .setDepth(-1)
+      .setAlpha(0);
+    this.tweens.add({
+      targets: board,
+      y,
+      alpha: 1,
+      duration: 360,
+      ease: 'Cubic.easeOut'
+    });
+  }
+
+  _createEventIllustrationBoard(frame) {
+    if (!this.textures.exists('gamingBoardSideSmall')) return;
+    // The Reliquary draws its three lit cases inline under the story text
+    // instead — three 70x108 cases will not fit the side panel.
+    if (this.event?.id === 'reliquary') return;
+
+    const targetX = 486;
+    const slideDistance = 56;
+    const container = this.add.container(targetX - slideDistance, 173).setDepth(-2).setAlpha(0);
+    const isScreamingHead = this.event?.id === 'screaming_head';
+    const panel = this.add.image(isScreamingHead ? 7 : 0, 0, 'gamingBoardSideSmall', 1).setOrigin(0.5);
+    if (isScreamingHead) {
+      // Keep the panel's left edge aligned with normal event art, then extend
+      // only its right edge by 14px for the statue's larger native sprite.
+      panel.setDisplaySize(222, 144);
+    }
+    container.add(panel);
+
+    if (isScreamingHead && this.textures.exists('statueHead')) {
+      // Keep the dedicated art at its native size; its anchor matches the usual
+      // event-art position even though it is larger than the 80px sheet frames.
+      this.eventIllustrationImage = this.add.image(23, -5, 'statueHead')
+        .setOrigin(0.5);
+      container.add(this.eventIllustrationImage);
+    } else if (this.textures.exists('eventsShops')) {
+      this.eventIllustrationImage = this.add.image(23, -5, 'eventsShops', frame)
+        .setOrigin(0.5)
+        .setScale(1);
+      container.add(this.eventIllustrationImage);
+    }
+
+    this.eventIllustrationBoard = container;
+    this.tweens.add({
+      targets: container,
+      x: targetX,
+      alpha: 1,
+      duration: 320,
+      ease: 'Cubic.easeOut'
+    });
+  }
+
+  _loadStoredHeroMemory() {
+    return loadHeroMemory() || {};
+  }
+
+  _saveStoredHeroMemory() {
+    // Testing a story must not count as having lived it. Without this, opening
+    // the music box in the Test Site would mark it resolved forever and take it
+    // out of real runs — the same trap that made it untestable to begin with.
+    if (isSandboxMode(this)) return;
+    saveHeroMemory(this.gameState.heroMemory);
+  }
+
+  _saveStoredStoryRun() {
+    if (isSandboxMode(this)) return;
+    this.ensureStoryState();
+    saveStoryProgress(this.gameState.storyRun);
+  }
+
+  _clearReadingScroll() {
+    const scroll = this._readingScroll;
+    if (!scroll) return;
+    scroll.targets?.forEach(entry => (entry?.target || entry)?.clearMask?.());
+    scroll.mask?.destroy?.();
+    scroll.maskShape?.destroy?.();
+    scroll.up?.destroy?.();
+    scroll.down?.destroy?.();
+    scroll.track?.destroy?.();
+    scroll.thumb?.destroy?.();
+    this._readingScroll = null;
+  }
+
+  _setReadingScroll(targets, top, bottom, contentBottom) {
+    this._clearReadingScroll();
+    const liveTargets = (targets || []).filter(target => target?.scene);
+    if (!liveTargets.length) return;
+
+    const maxOffset = Math.max(0, Math.ceil(contentBottom - bottom));
+    const maskShape = this.make.graphics({ add: false });
+    maskShape.fillStyle(0xffffff).fillRect(
+      this.eventLayout.centerX - 172,
+      top,
+      344,
+      bottom - top
+    );
+    const mask = maskShape.createGeometryMask();
+    liveTargets.forEach(target => target.setMask(mask));
+
+    const scroll = {
+      targets: liveTargets.map(target => ({ target, baseY: target.y })),
+      top,
+      bottom,
+      maxOffset,
+      offset: 0,
+      mask,
+      maskShape,
+      bounds: new Phaser.Geom.Rectangle(this.eventLayout.centerX - 172, top, 344, bottom - top)
+    };
+    this._readingScroll = scroll;
+
+    if (maxOffset <= 0) return;
+
+    const arrowX = this.eventLayout.centerX + 178;
+    const makeArrow = (label, y, delta) => {
+      const arrow = this.add.text(arrowX, y, label, {
+        fontSize: '11px', fill: '#6c4f35', fontFamily: '"HoMM Pixel"',
+        backgroundColor: '#ead2aa', padding: { x: 3, y: 1 }
+      }).setOrigin(0.5).setDepth(8).setInteractive({ useHandCursor: true });
+      arrow.on('pointerdown', () => {
+        SoundHelper.playVariant(this, 'button_click', 0.35);
+        this._scrollReading(delta);
+      });
+      return arrow;
+    };
+
+    scroll.up = makeArrow('^', top + 10, -24);
+    scroll.down = makeArrow('v', bottom - 10, 24);
+
+    // Regular scroll bar: a track rail between the arrows with a draggable thumb
+    // (replaces the old vertical "scroll" hint word). The thumb is the scroll.png
+    // pixel-art icon at native size — a fixed-size handle rather than one sized
+    // to the visible-content proportion, since stretching an 8x24 pixel-art
+    // sprite to arbitrary heights would smear it. Drag the thumb, or click the
+    // track, to scroll.
+    const trackTop = top + 20;
+    const trackBottom = bottom - 20;
+    const trackHeight = Math.max(10, trackBottom - trackTop);
+    scroll.track = this.add.rectangle(arrowX, (trackTop + trackBottom) / 2, 4, trackHeight, 0x8f6b45, 0.35)
+      .setDepth(8).setInteractive({ useHandCursor: true });
+
+    const hasHandleTexture = this.textures.exists('scrollHandle');
+    const thumbHeight = hasHandleTexture
+      ? Math.min(this.textures.get('scrollHandle').getSourceImage().height, trackHeight)
+      : Phaser.Math.Clamp(Math.round(trackHeight * (bottom - top) / ((bottom - top) + maxOffset)), 12, trackHeight);
+    scroll.thumbMinY = trackTop + thumbHeight / 2;
+    scroll.thumbMaxY = trackBottom - thumbHeight / 2;
+    scroll.thumbTravel = scroll.thumbMaxY - scroll.thumbMinY;
+    scroll.thumb = hasHandleTexture
+      ? this.add.image(arrowX, scroll.thumbMinY, 'scrollHandle').setOrigin(0.5)
+      : this.add.rectangle(arrowX, scroll.thumbMinY, 6, thumbHeight, 0x6c4f35, 1);
+    scroll.thumb.setDepth(9).setInteractive({ useHandCursor: true, draggable: true });
+    this.input.setDraggable(scroll.thumb);
+    scroll.thumb.on('drag', (pointer, dragX, dragY) => {
+      const clamped = Phaser.Math.Clamp(dragY, scroll.thumbMinY, scroll.thumbMaxY);
+      const frac = scroll.thumbTravel > 0 ? (clamped - scroll.thumbMinY) / scroll.thumbTravel : 0;
+      this._setScrollOffset(Math.round(frac * scroll.maxOffset));
+    });
+    scroll.track.on('pointerdown', (pointer) => {
+      const frac = scroll.thumbTravel > 0
+        ? Phaser.Math.Clamp((pointer.worldY - scroll.thumbMinY) / scroll.thumbTravel, 0, 1)
+        : 0;
+      this._setScrollOffset(Math.round(frac * scroll.maxOffset));
+    });
+
+    this._setScrollOffset(0);
+  }
+
+  _scrollReading(delta) {
+    const scroll = this._readingScroll;
+    if (!scroll?.maxOffset) return;
+    this._setScrollOffset(scroll.offset + delta);
+  }
+
+  _setScrollOffset(value) {
+    const scroll = this._readingScroll;
+    if (!scroll?.maxOffset) return;
+    scroll.offset = Phaser.Math.Clamp(value, 0, scroll.maxOffset);
+    scroll.targets.forEach(({ target, baseY }) => {
+      if (target?.scene) target.y = baseY - scroll.offset;
+    });
+    scroll.up?.setAlpha(scroll.offset > 0 ? 1 : 0.35);
+    scroll.down?.setAlpha(scroll.offset < scroll.maxOffset ? 1 : 0.35);
+    if (scroll.thumb) {
+      const frac = scroll.maxOffset > 0 ? scroll.offset / scroll.maxOffset : 0;
+      scroll.thumb.y = scroll.thumbMinY + frac * scroll.thumbTravel;
+    }
+  }
+
+  _enableReadingWheel() {
+    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+      const scroll = this._readingScroll;
+      if (!scroll?.maxOffset || !Phaser.Geom.Rectangle.Contains(scroll.bounds, pointer.worldX, pointer.worldY)) return;
+      this._scrollReading(deltaY > 0 ? 24 : -24);
+    });
+  }
+
+  _getChoiceBounds() {
+    const objects = (this._choiceBtns || [])
+      .flatMap(({ bg, label }) => [bg, label])
+      .filter(object => object?.scene && object.visible !== false);
+    if (!objects.length) return null;
+
+    let top = Infinity;
+    let bottom = -Infinity;
+    objects.forEach(object => {
+      const height = object.displayHeight || object.height || 0;
+      const originY = Number.isFinite(object.originY) ? object.originY : 0.5;
+      const objectTop = object.y - height * originY;
+      top = Math.min(top, objectTop);
+      bottom = Math.max(bottom, objectTop + height);
+    });
+
+    return Number.isFinite(top) && Number.isFinite(bottom)
+      ? { top: Math.floor(top), bottom: Math.ceil(bottom), height: Math.ceil(bottom - top) }
+      : null;
+  }
+
+  _fitDescriptionAboveChoices() {
+    if (!this.descText?.scene) return;
+
+    const top = 42;
+    const choiceBounds = this._getChoiceBounds();
+    const fallbackBottom = 132;
+    const gapAboveChoices = 6;
+    const bottom = choiceBounds
+      ? Math.max(top + 24, Math.floor(choiceBounds.top - gapAboveChoices))
+      : fallbackBottom;
+
+    this._descriptionViewportBottom = bottom;
+    const targets = [this.descText];
+    let contentBottom = this.descText.y + this.descText.height;
+    if (this.descriptionHintText?.scene) {
+      this.descriptionHintText.setY(contentBottom + 7);
+      targets.push(this.descriptionHintText);
+      contentBottom = this.descriptionHintText.y + this.descriptionHintText.height;
+    }
+    this._setReadingScroll(targets, top, bottom, contentBottom);
+  }
+
+  _isPlainObject(value) {
+    return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+  }
+
+  create() {
+    const W = 640, H = 360;
+    const PURPLE = '#9370db';
+    const INK = '#382615';
+    const WHITE = '#ffffff';
+
+    this.gameScene = this.scene.get('GameScene');
+    this._visibleChoices = this._getVisibleChoices();
+    this.eventLayout = {
+      centerX: 255,
+      textWidth: 312,
+      buttonWidth: 324,
+      buttonTextWidth: 300
+    };
+
+    // Keep the player's real inventory visible & interactive underneath the
+    // event (the same "station" the shops use) so bread/potions can be used and
+    // a slot freed mid-event — e.g. to actually receive the egg in the bird
+    // nest. The event panel is laid out in the top ~2/3; the inventory owns the
+    // bottom strip (below y≈250), so nothing opaque is drawn over it.
+    this._enableEventStation();
+    this._enableReadingWheel();
+    this.events.once('shutdown', () => {
+      // Also clean up abnormal exits (scene replacement, defeat, etc.). The
+      // normal Continue path already does this, making the call idempotent.
+      this._disableEventStation();
+    });
+
+    // Background — dim only the top region so the bottom inventory strip shows
+    // through on the dungeon floor (like combat) instead of being covered.
+    // 0x1a1a2e is also GameScene's event backdrop colour (EVENT_BACKDROP_COLOR),
+    // so the dim's lower edge does not show.
+    this.add.rectangle(W / 2, 124, W, 250, 0x1a1a2e, 0.92).setDepth(-10);
+    this._createEventIllustrationBoard(this._getEventIllustrationFrame());
+    this._createEventBoardBase(this.eventLayout.centerX, 126);
+    this._createEventPaper(this.eventLayout.centerX, 126);
+
+    // The copying mirror and the well use their illustration as a card drop target.
+    if (this.event?.id === 'mirror') this._setupMirrorDropZone();
+    if (this.event?.id === 'almost_you_well') this._setupWellDropZone();
+
+    // Title — dedicated crisp 16px bitmap font (1-bit rasterized from Able5.ttf),
+    // shared with the other screen titles via createTitle. The body bitmap font
+    // only has crisp 10px/20px steps and a scaled TTF was soft; this pre-
+    // rasterized font is pixel-sharp at 16px under the 2x zoom.
+    createTitle(this, this.eventLayout.centerX, 26, translateDescription(this, this.event.title), {
+      color: PURPLE, fallbackSize: '20px', depth: 2
+    });
+
+    // Description — top-anchored just under the title so a tall description
+    // grows downward instead of overlapping the title.
+    const eventDescription = this._getEventDescription();
+    this.descText = this.add.text(this.eventLayout.centerX, 42, eventDescription, {
+      ...serifStyle('13px', INK),
+      align: 'center', wordWrap: { width: 328 }
+    }).setDepth(2);
+    this._centerTextOnPixel(this.descText, this.eventLayout.centerX);
+
+    const armWrestleRematch = this.event?.id === 'arm_wrestling' && this.isArmWrestleRematch();
+    if (armWrestleRematch) {
+      this.descriptionHintText = this.add.text(
+        this.eventLayout.centerX,
+        this.descText.y + this.descText.height + 7,
+        this.event.rematchHint,
+        {
+          fontSize: '11px', fill: '#9b3f25', fontFamily: '"HoMM Pixel"',
+          align: 'center', wordWrap: { width: 310 },
+        }
+      ).setOrigin(0.5, 0).setDepth(3);
+    }
+
+    // The choices keep their own safe area above the inventory. Once they are
+    // rendered, their measured bounds determine how tall the description's
+    // reading viewport can be.
+    // The thin divider between the story text and the choices is intentionally
+    // omitted — the open gap between the two blocks separates them well enough.
+    // dividerY is kept only to anchor where the choice stack may begin.
+    const dividerY = 138;
+    this._choiceTopY = dividerY + 8;
+
+    // Choice buttons
+    this._choiceBtns = [];
+    // Two-across keeps the Reliquary's buttons to a single row, and pushing the
+    // row down to the inventory strip frees the panel's middle band for the
+    // 108px display cases — without it the cases ride up and squeeze the story
+    // text down to a single scrolling line.
+    if (this.event?.id === 'reliquary') {
+      this._choiceColumns = 2;
+      this._choiceTopY = 196;
+    }
+    if (armWrestleRematch) this._choiceTopY = 204;
+    this._buildChoices();
+    this._fitDescriptionAboveChoices();
+
+    // In the rematch the wager is the opening interaction, not a separate
+    // button: cards can be dropped on the ogre as soon as the scene appears.
+    if (armWrestleRematch) {
+      this.beginArmWrestleCardBet();
+    }
+
+    // Built after the choices so the cases can be seated directly above them.
+    if (this.event?.id === 'reliquary') this._setupReliquaryCases();
+
+    // The carnival hag presents her wares as a physical tray of trinkets the
+    // player drags into their bag, instead of a stack of text buttons.
+    if (this.event?.id === 'something_wicked') this._setupCarnivalTray();
+
+    // Outcome text (hidden until a choice is made). Positioned on resolve so it
+    // stays within the panel, above the inventory strip.
+    this.outcomeText = this.add.text(this.eventLayout.centerX, 150, '', {
+      ...serifStyle('13px', '#fff2d0'),
+      align: 'center',
+      wordWrap: { width: 330 }
+    }).setOrigin(0.5).setAlpha(0);
+    this.outcomeText.setDepth(4);
+
+    // Give terminal narration its own high-contrast reading surface instead of
+    // letting it compete with the event art and the consequences ledger.
+    this.outcomeBackdrop = this.add.rectangle(this.eventLayout.centerX, 145, 354, 184, 0x1b120c, 0.82)
+      .setStrokeStyle(1, 0x8f6b45)
+      .setAlpha(0)
+      .setDepth(3);
+    // Rewards summary (hidden until a choice is made) — a concrete "what you
+    // gained/lost" list shown under the outcome, so amulets/HP/crystals that
+    // otherwise land silently in the corners are actually announced.
+    this.rewardText = this.add.text(this.eventLayout.centerX, 200, '', {
+      ...serifStyle('13px', '#ffe066'),
+      align: 'center',
+      stroke: '#000000',
+      strokeThickness: 3,
+      wordWrap: { width: this.eventLayout.textWidth }
+    }).setOrigin(0.5, 0).setAlpha(0).setDepth(4);
+
+    // The way out is the location's door, in the spot every room keeps it:
+    // shut while the event is undecided, swinging open (openExit) once the
+    // player can move on. A location with no door art falls back to the old
+    // Continue plate, in the same spot.
+    this.exitDoor = createExitDoor(this, () => this.continueAdventure(), {
+      gameState: this.gameState,
+      shut: true,
+    });
+
+    // Options, in the corner every screen keeps them. It opens the pause menu,
+    // as the shops and rest rooms do; the pause menu already knows to pause an
+    // event and to tear it down on quit.
+    createOptionsCog(this, () => {
+      if (this.scene.isActive('PauseMenuScene')) return;
+      this.scene.launch('PauseMenuScene', { pausedScene: this.scene.key });
+      this.scene.pause();
+    });
+
+    if (!this.exitDoor) this._createContinuePlate(WHITE);
+  }
+
+  // Fallback exit for a location with no door art: the old Continue plate,
+  // hidden until the event resolves.
+  _createContinuePlate(WHITE) {
+    const continueX = EXIT_DOOR_X, continueY = EXIT_DOOR_Y;
+    if (this.textures.exists('nextTurnUp')) {
+      this.continueBtn = this.add.image(continueX, continueY, 'nextTurnUp')
+        .setInteractive({ useHandCursor: true })
+        .setAlpha(0)
+        .setDepth(2);
+    } else {
+      this.continueBtn = this.add.rectangle(continueX, continueY, 78, 28, 0x080808, 0.66)
+        .setInteractive({ useHandCursor: true })
+        .setAlpha(0)
+        .setDepth(2);
+    }
+    this.continueBtnText = this.add.text(continueX, continueY, t(this, 'ui.common.continue'), {
+      fontSize: '12px', fill: WHITE, fontFamily: '"HoMM Pixel"'
+    }).setOrigin(0.5).setAlpha(0).setDepth(3);
+
+    // The label rides the press. Swapping to the pressed plate without moving
+    // the text left the word floating a pixel above a button that had visibly
+    // gone down — every other plate in the game (PaintedButton, the station
+    // rooms, the main menu) drops its label the same 1px.
+    const pressLabel = (down) => {
+      if (this.continueBtnText?.scene) this.continueBtnText.y = continueY + (down ? 1 : 0);
+    };
+    this.continueBtn.on('pointerdown', () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
+      if (this.continueBtn.setTexture && this.textures.exists('nextTurnDown')) {
+        this.continueBtn.setTexture('nextTurnDown');
+      }
+      pressLabel(true);
+    });
+    this.continueBtn.on('pointerup', () => {
+      if (this.continueBtn.setTexture && this.textures.exists('nextTurnUp')) {
+        this.continueBtn.setTexture('nextTurnUp');
+      }
+      pressLabel(false);
+      this.continueAdventure();
+    });
+    this.continueBtn.on('pointerover', () => {
+      SoundHelper.playVariant(this, 'hover_button', 0.4);
+      if (this.continueBtn.setTint) setHoverLight(this.continueBtn, true);
+      else this.continueBtn.setFillStyle?.(0x151515, 0.78);
+    });
+    this.continueBtn.on('pointerout', () => {
+      setHoverLight(this.continueBtn, false);
+      if (this.continueBtn.clearTint) {
+        this.continueBtn.clearTint();
+        if (this.continueBtn.setTexture && this.textures.exists('nextTurnUp')) this.continueBtn.setTexture('nextTurnUp');
+      } else {
+        this.continueBtn.setFillStyle?.(0x080808, 0.66);
+      }
+      pressLabel(false);
+    });
+  }
+
+  _buildChoices() {
+    // The carnival hag renders her buy/refuse options as a draggable tray
+    // (_setupCarnivalTray), so skip the normal text-button stack entirely.
+    if (this.event?.id === 'something_wicked') return;
+
+    const choices = this._visibleChoices || this._getVisibleChoices();
+    const n = choices.length;
+    const layout = this.eventLayout || {
+      centerX: 255,
+      buttonWidth: 324,
+      buttonTextWidth: 300
+    };
+
+    // Choices are packed tightly and bottom-anchored low on the paper, so the
+    // stack reads as one grouped block near the inventory strip rather than a
+    // spread-out ladder starting right under the description. Dense events
+    // (>5 choices) still split into two columns; the gap compresses to fit
+    // when there are enough rows to need it.
+    const INV_TOP = 246;
+    // `_choiceColumns` lets an event force a side-by-side stack even with few
+    // choices — the Reliquary does this to free vertical room for its cases.
+    const columns = this._choiceColumns || (n > 5 ? 2 : 1);
+    const rows = Math.max(1, Math.ceil(n / columns));
+    const lastCenterY = INV_TOP - 19;                  // bottom-most row center (nudged up 3px)
+    const topLimit = (this._choiceTopY ?? 146) + 20;   // stay >=20px below the story text
+    const availSpan = lastCenterY - topLimit;
+    const gap = rows > 1
+      ? Math.max(16, Math.min(24, Math.floor(availSpan / (rows - 1))))
+      : 0;
+    // Anchor the block to the bottom; clamp so it never rides up into the text.
+    const startY = rows > 1
+      ? Math.max(topLimit, lastCenterY - (rows - 1) * gap)
+      : Math.round((topLimit + lastCenterY) / 2);
+    // buttonHeight = gap - 2 keeps a consistent ~2px gutter between buttons.
+    const buttonHeight = gap ? Math.max(12, gap - 2) : 22;
+    const smallFont = columns === 2 || buttonHeight < 16;
+    this._choiceStartY = startY;
+
+    choices.forEach((choice, i) => {
+      const row = columns === 2 ? Math.floor(i / 2) : i;
+      const col = columns === 2 ? i % 2 : 0;
+      const y = startY + row * gap;
+      const buttonWidth = columns === 2 ? 158 : layout.buttonWidth;
+      const textWidth = columns === 2 ? 146 : layout.buttonTextWidth;
+      const x = columns === 2
+        ? layout.centerX + (col === 0 ? -83 : 83)
+        : layout.centerX;
+
+      const bg = this.add.rectangle(x, y, buttonWidth, buttonHeight, 0x050505, 0.58)
+        .setDepth(2);
+
+      const choiceLabel = this._choiceLabel(choice);
+      const label = this.add.text(x, y, choiceLabel, {
+        fontSize: smallFont ? '10px' : (choiceLabel.length > 44 ? '11px' : '13px'),
+        fill: '#ffffff',
+        fontFamily: '"HoMM Pixel"',
+        align: 'center',
+        wordWrap: { width: textWidth }
+      }).setOrigin(0.5).setDepth(3);
+
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
+      bg.on('pointerout', () => { bg.setFillStyle(0x050505, 0.58); });
+      bg.on('pointerdown', () => {
+        SoundHelper.playVariant(this, 'button_click', 0.5);
+        this._resolve(choice, i);
+      });
+
+      this._choiceBtns.push({ bg, label });
+    });
+  }
+
+  // A choice's on-screen label. `text` stays English — the human-run recorder
+  // and the balance sim both key off it — so translated copy rides alongside in
+  // `textKey`, and anything without one still renders its English text.
+  _choiceLabel(choice) {
+    return choice?.textKey ? t(this, choice.textKey) : translateDescription(this, choice?.text ?? '');
+  }
+
+  _resolve(choice, choiceIdx, opts = {}) {
+    if (this.resolved) return;
+    this.resolved = true;
+    const availableChoices = (this._visibleChoices || this._getVisibleChoices()).map((option, index) => ({
+      index,
+      id: option.id || null,
+      text: option.text || null,
+    }));
+
+    // Effect helpers push concrete "gained/lost" lines (and amulet icons) here
+    // during the action. (The well trade fills these before calling _resolve,
+    // so keepRewards.)
+    if (!opts.keepRewards) { this._rewardLines = []; this._rewardIcons = []; }
+    choice.action?.(this.gameState, this);
+    recordHumanRunEvent(this, 'event_choice_selected', {
+      eventId: this.event?.id || null,
+      eventTitle: this.event?.title || null,
+      choiceIndex: choiceIdx,
+      choiceId: choice.id || null,
+      choiceText: choice.text || null,
+      availableChoices,
+    });
+
+    if (this.event?.id === 'brass_wizard' && this._brassWizardTrayOpen) {
+      this._brassWizardTrayOpen = false;
+      choice.next = { choices: this.getBrassWizardTrayChoices(), wizardTray: true };
+    }
+
+    // Coin bet / lock wafers / nest raid open an overlay minigame and must not
+    // terminal-resolve yet.
+    if (this._armWrestleAwaitingMatch || this._musicBoxForceAwaiting || this._birdNestAwaiting) {
+      this._armWrestleAwaitingMatch = false;
+      this._musicBoxForceAwaiting = false;
+      this._birdNestAwaiting = false;
+      const revealText = this._getChoiceOutcome(choice) || '';
+      if (this.descText) {
+        this.descText.setVisible(true).setAlpha(1).setText(revealText);
+        this.descText.setY(42);
+        this._centerTextOnPixel(this.descText, this.eventLayout.centerX);
+      }
+      (this._choiceBtns || []).forEach(({ bg, label }) => {
+        bg.removeInteractive();
+        bg.setAlpha(0);
+        label.setAlpha(0);
+      });
+      this.resolved = false;
+      return;
+    }
+
+    // A choice with `next` isn't terminal — it reveals more choices in place
+    // (e.g. Inspect → Confront/Fight) instead of ending the event.
+    if (choice.next && Array.isArray(choice.next.choices)) {
+      this._saveStoredStoryRun();
+      this._transitionToStage(choice);
+      return;
+    }
+
+    // Once-per-run bonus rooms are marked seen on any terminal resolution.
+    this._markBonusEventSeen();
+
+    // Persist story progress across deaths so this event (and its choices) is
+    // remembered on future runs and never repeats.
+    this._saveStoredStoryRun();
+    if (Number.isInteger(choice.outcomeFrame) && this.eventIllustrationImage?.setFrame) {
+      this.eventIllustrationImage.setFrame(choice.outcomeFrame);
+    }
+    const outcome = this._getChoiceOutcome(choice);
+    this._resolvedOutcome = outcome; // kept so a delayed reward can re-render the panel
+
+    // Terminal presentation: clear the situation text, divider and every choice
+    // button so the outcome owns the whole panel. Previously the outcome was
+    // squeezed below the collapsed button and overlapped the (still-visible)
+    // description — long outcomes like the fairy fight became an unreadable
+    // jumble. Top-anchor the outcome just under the title so even long text
+    // flows downward with room to spare above the inventory strip.
+    this.descText?.setVisible(false);
+    this.descriptionHintText?.setVisible(false);
+    this.dividerRect?.setVisible(false);
+    // The Reliquary's cases are inline art, so they must clear out of the way
+    // of the outcome panel just like the story text does.
+    this._hideReliquaryCases?.();
+    this._choiceBtns.forEach(({ bg, label }) => {
+      bg.removeInteractive();
+      bg.setAlpha(0);
+      label.setAlpha(0);
+    });
+    this._destroyCarnivalTray();
+    this._destroyWizardTray();
+
+    const rewards = this._rewardLines || [];
+    this._layoutResolvedOutcome(outcome, rewards);
+
+    // Show narration immediately. A short fade on a previously invisible text
+    // object made the reward animation easier to notice than the actual story.
+    this.outcomeBackdrop?.setAlpha(1);
+    if (outcome) this.outcomeText?.setAlpha(1);
+    if (rewards.length) this.rewardText?.setAlpha(1);
+
+    // The event scene may be launched above a paused GameScene, where a delayed
+    // tween can remain invisible. Make the exit control immediately available
+    // and keep it above the outcome reading surface.
+    this.exitDoor?.openExit?.();
+    this.continueBtn?.setAlpha(1).setDepth(6);
+    this.continueBtnText?.setAlpha(1).setDepth(7);
+  }
+
+  // Fits narration and consequences into one bounded panel. In particular, a
+  // long second-stage outcome can no longer be covered by a reward block that
+  // has been forcibly moved upward.
+  _layoutResolvedOutcome(outcome, rewards) {
+    this._clearReadingScroll();
+    this._hideRewardAmuletTooltip();
+    const story = typeof outcome === 'string' ? outcome : '';
+    const rewardLines = Array.isArray(rewards) ? rewards : [];
+    const top = 66;
+    const gap = story && rewardLines.length ? 8 : 0;
+
+    // Never shrink narrative copy below the normal UI reading size. Overflow
+    // is handled by the scroll window below.
+    const storyFont = story.length > 150 ? 12 : 13;
+    const rewardFont = 10;
+
+    // Recreate the narration object instead of resizing the hidden placeholder.
+    // Phaser clears that reused Text object's internal value on the nested
+    // Inspect -> Fight path, even though the outcome string is still present.
+    this.outcomeText?.destroy?.();
+    this.outcomeText = this.add.text(this.eventLayout.centerX, top, story, {
+      ...serifStyle(`${storyFont}px`, '#fff2d0'),
+      align: 'center',
+      wordWrap: { width: 330 }
+    }).setOrigin(0.5, 0).setAlpha(story ? 1 : 0).setDepth(4);
+
+    this.rewardText
+      ?.setFontSize(`${rewardFont}px`)
+      .setText(rewardLines.join('\n'));
+
+    const rewardY = top + (story ? this.outcomeText.height : 0) + gap;
+    this.rewardText?.setY(rewardY);
+    if (!story) this.outcomeText?.setAlpha(0);
+    if (!rewardLines.length) this.rewardText?.setAlpha(0).setText('');
+
+    this._layoutRewardIcons(rewardY, rewardLines.length ? this.rewardText?.height || 0 : 0);
+    const scrollTargets = [this.outcomeText, this.rewardText, ...(this._rewardIconSprites || [])];
+    const iconBottom = (this._rewardIconSprites || []).reduce(
+      (bottom, sprite) => Math.max(bottom, sprite.y + (sprite.displayHeight || 0)),
+      0
+    );
+    const contentBottom = Math.max(
+      story ? this.outcomeText.y + this.outcomeText.height : top,
+      rewardLines.length ? this.rewardText.y + this.rewardText.height : top,
+      iconBottom
+    );
+    this._setReadingScroll(scrollTargets, top, 238, contentBottom);
+  }
+
+  // Draws the sprite for any amulet(s) gained this resolution, centered under
+  // the reward text summary — so a "Gained amulet: X" line is immediately
+  // backed by the actual icon instead of just a name.
+  _layoutRewardIcons(rewardY, rewardTextHeight) {
+    this._rewardIconSprites?.forEach(sprite => sprite.destroy());
+    this._rewardIconSprites = [];
+
+    const icons = this._rewardIcons || [];
+    if (!icons.length) return;
+
+    const iconGap = 6;
+    const iconY = rewardY + rewardTextHeight + iconGap;
+    const spacing = 34;
+    const startX = this.eventLayout.centerX - ((icons.length - 1) * spacing) / 2;
+
+    icons.forEach((icon, i) => {
+      if (!icon?.sprite || !this.textures.exists(icon.sprite)) return;
+      const x = startX + i * spacing;
+      const sprite = this.add.image(x, iconY, icon.sprite, icon.spriteFrame)
+        .setOrigin(0.5, 0)
+        .setDepth(4);
+      if (icon.amuletId) {
+        sprite.setInteractive({ useHandCursor: true });
+        sprite.on('pointerover', () => this._showRewardAmuletTooltip(icon.amuletId, sprite));
+        sprite.on('pointerout', () => this._hideRewardAmuletTooltip());
+      }
+      this._rewardIconSprites.push(sprite);
+    });
+  }
+
+  _showRewardAmuletTooltip(amuletId, iconSprite) {
+    this._hideRewardAmuletTooltip();
+    const mgr = this.gameScene?.amuletManager;
+    const definition = mgr?.amuletDefinitions?.[amuletId];
+    if (!definition || !iconSprite?.scene) return;
+
+    const amulet = (this.gameState?.activeAmulets || []).find(item => item?.id === amuletId)
+      || { id: amuletId, name: definition.name };
+    let description = translateItemName(this, amulet) || translateItemName(this, definition) || t(this, 'tooltip.relic');
+    description += `\n${translateDescription(this, definition.description)}`;
+    if (amulet.level > 1) description += ` (${t(this, 'tooltip.level', { level: amulet.level })})`;
+    if (definition.cursed) description = `${t(this, 'tooltip.cursed')} ${description}`;
+
+    const text = this.add.text(6, 4, description, {
+      fontSize: '11px',
+      fill: definition.cursed ? '#ff7777' : '#ffffff',
+      fontFamily: '"HoMM Pixel", Arial, sans-serif',
+      wordWrap: { width: 190 }
+    }).setOrigin(0);
+    const width = Math.ceil(text.width + 12);
+    const height = Math.ceil(text.height + 8);
+    const bg = this.add.rectangle(0, 0, width, height, 0x080808, 0.96)
+      .setOrigin(0)
+      .setStrokeStyle(1, definition.cursed ? 0xff6666 : 0xf2d3aa);
+
+    const x = Phaser.Math.Clamp(iconSprite.x + 18, 6, 640 - width - 6);
+    const y = Phaser.Math.Clamp(iconSprite.y - height - 4, 6, 244 - height);
+    this.rewardAmuletTooltip = this.add.container(x, y, [bg, text]).setDepth(30);
+  }
+
+  _hideRewardAmuletTooltip() {
+    this.rewardAmuletTooltip?.destroy?.(true);
+    this.rewardAmuletTooltip = null;
+  }
+
+  // Records a concrete reward/loss line shown in the outcome's summary.
+  _reward(text) {
+    if (!text) return;
+    (this._rewardLines ||= []).push(t(this, text));
+  }
+
+  // Adds an awarded card to the inventory — but, crucially, never loses it when
+  // the bag is full. Instead the card is held as a "pending reward": the outcome
+  // tells the player to discard a card to claim it, and update() hands the held
+  // card over the instant a slot frees (station-mode discards are free during an
+  // event). Used by companion/card rewards so a full inventory only ever *delays*
+  // the reward, never silently deletes it.
+  _deliverCardReward(card, shortName, gainedLabel = null) {
+    if (!card) return false;
+    const localizedName = translateItemName(this, card) || translateItemName(this, shortName) || t(this, 'tooltip.card');
+    const localizedGainedLabel = t(this, gainedLabel || {
+      key: 'event.reward.gained',
+      vars: { name: localizedName },
+    });
+    if (this._addCardToInventory(card)) {
+      this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
+      this.gameScene?.updateUI?.();
+      this._reward(localizedGainedLabel);
+      return true;
+    }
+
+    const pending = { card, shortName, gainedLabel: localizedGainedLabel };
+    (this._pendingCardRewards ||= []).push(pending);
+    this._reward({ key: 'event.reward.inventoryFull', vars: { name: translateItemName(this, shortName) } });
+    pending.rewardLineIndex = (this._rewardLines || []).length - 1;
+    return false;
+  }
+
+  // Re-renders the resolved outcome + reward summary in place. Called when a
+  // held reward is finally delivered so its "discard to claim" line flips to
+  // "Gained:".
+  _refreshRewardText() {
+    if (!this.resolved) return;
+    this._layoutResolvedOutcome(this._resolvedOutcome, this._rewardLines || []);
+    this.outcomeBackdrop?.setAlpha(1);
+    if (this._resolvedOutcome) this.outcomeText?.setAlpha(1);
+    if ((this._rewardLines || []).length) this.rewardText?.setAlpha(1);
+  }
+
+  // Swaps the reveal narration into the description and replaces the choice
+  // buttons with the next stage's choices, in place (no Continue yet).
+  _transitionToStage(choice) {
+    const revealText = this._getChoiceOutcome(choice) || '';
+    if (this.descText) {
+      this.descText.setVisible(true).setAlpha(1).setText(revealText);
+      this.descText.setY(42);
+      this._centerTextOnPixel(this.descText, this.eventLayout.centerX);
+      const dividerY = 138;
+      this.dividerRect?.setY(dividerY);
+      this._choiceTopY = dividerY + 8;
+    }
+
+    (this._choiceBtns || []).forEach(({ bg, label }) => { bg.destroy(); label.destroy(); });
+    this._choiceBtns = [];
+
+    this._visibleChoices = choice.next.choices.filter(c => this._isChoiceVisible(c));
+
+    if (choice.next.wizardTray) {
+      // The brass wizard's tray is a drop target, not a button stack.
+      this._setupWizardTray(this._visibleChoices);
+    } else {
+      this._buildChoices();
+      this._fitDescriptionAboveChoices();
+    }
+
+    if (Number.isInteger(choice.outcomeFrame) && this.eventIllustrationImage?.setFrame) {
+      this.eventIllustrationImage.setFrame(choice.outcomeFrame);
+    }
+
+    this.resolved = false; // allow picking a sub-choice
+  }
+
+  // ─── Too-Nice Room effects ───────────────────────────────────────────────
+
+  fullHeal() {
+    // Heals up to the (amulet-capped) max via the shared raw-heal path — NOT
+    // heal(), which would push its own "+X HP" line and double-report
+    // alongside this method's "Fully healed" wording.
+    const gained = this._applyHeal(this.gameState?.maxHealth || 9999);
+    this._reward(gained > 0
+      ? { key: 'event.reward.fullyHealed', vars: { amount: gained } }
+      : 'event.reward.fullHealth');
+  }
+
+  // Removes a random inventory card that isn't a key or potion. Returns false
+  // if there's nothing safe to steal.
+  stealRandomCard() {
+    const slots = this.getInventorySlots();
+    if (!Array.isArray(slots)) return false;
+    const candidates = [];
+    for (let i = 0; i < slots.length; i++) {
+      const item = slots[i];
+      if (!item || this._isKeyCard(item) || this._isPotionCard(item)) continue;
+      candidates.push(i);
+    }
+    if (candidates.length === 0) return false;
+    const index = candidates[Math.floor(Math.random() * candidates.length)];
+    const name = slots[index]?.name || 'a card';
+    const removed = this._removeInventoryCard(index);
+    if (removed) this._reward({ key: 'event.reward.lost', vars: { name: translateItemName(this, name) } });
+    return removed;
+  }
+
+  // Deals damage that can't be lethal — the fairy fight always ends in victory.
+  loseHealthCapped(amount) {
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const current = Number.isFinite(this.gameState?.playerHealth) ? this.gameState.playerHealth : 1;
+    this.gameState.playerHealth = Math.max(1, current - amount);
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.updateUI?.();
+    const lost = current - this.gameState.playerHealth;
+    if (lost > 0) this._reward({ key: 'event.reward.hp', vars: { amount: `-${lost}` } });
+  }
+
+  loseActionPoints(amount) {
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const current = Number.isFinite(this.gameState?.actionsLeft) ? this.gameState.actionsLeft : 0;
+    this.gameState.actionsLeft = Math.max(0, current - amount);
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.updateActionPointUI?.();
+    this.gameScene?.updateUI?.();
+    const lost = current - this.gameState.actionsLeft;
+    if (lost > 0) this._reward({ key: 'event.reward.ap', vars: { amount: `-${lost}` } });
+  }
+
+  gainRandomAmulet() {
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    const mgr = this.gameScene?.amuletManager;
+    if (!mgr?.addAmulet) return false;
+    const amulet = new CardDataGenerator().createAmuletCard(this.gameState?.currentFloor || 1, this.gameState);
+    if (!amulet?.id) return false;
+    // Delegate to gainAmulet so both entry points share one reward-text +
+    // reward-icon path instead of duplicating the addAmulet/_reward calls.
+    return this.gainAmulet(amulet.id);
+  }
+
+  gainRandomCursedAmulet() {
+    // Cursed catalog is retired from shops; slimy_prison still pulls from old cursed defs.
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    const mgr = this.gameScene?.amuletManager;
+    if (!mgr?.addAmulet) return false;
+    const owned = new Set((this.gameState?.activeAmulets || []).map(amulet => amulet?.id));
+    const pool = Object.entries(mgr.amuletDefinitions || {})
+      .filter(([id, def]) => def?.cursed && def.rarity === 'old' && !owned.has(id))
+      .map(([id]) => id);
+    if (!pool.length) return false;
+    return this.gainAmulet(pool[Math.floor(Math.random() * pool.length)]);
+  }
+
+  gainRandomNonCursedAmulet() {
+    return this.gainRandomAmuletFromPool(amulet => amulet.rarity !== 'cursed');
+  }
+
+  gainRandomAmuletFromPool(predicate) {
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    const mgr = this.gameScene?.amuletManager;
+    if (!mgr?.addAmulet || typeof predicate !== 'function') return false;
+
+    const owned = new Set((this.gameState?.activeAmulets || []).map(amulet => amulet?.id));
+    const pool = new CardDataGenerator().amuletTypes.filter(amulet => (
+      predicate(amulet)
+      && (!owned.has(amulet.id) || mgr.amuletDefinitions?.[amulet.id]?.stackable)
+    ));
+    if (pool.length === 0) return false;
+
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+    return this.gainAmulet(chosen.id);
+  }
+
+  gainSkeletonWarriorCompanion() {
+    // Durable achievement flag: pulling the skeleton mage free is what unlocks
+    // the Skeleton Warrior in future heroes' rare shops (mirrors chickHatched).
+    // Recorded even if the bag is full, since the card is only *held*, not lost.
+    this.ensureStoryState();
+    this.gameState.storyRun.skeletonCompanionObtained = true;
+    this._saveStoredStoryRun();
+    const companion = new CardDataGenerator().createSkeletonWarriorCompanionCard();
+    return this._deliverCardReward(companion, 'Skeleton Warrior', {
+      key: 'event.reward.gainedCompanion', vars: { name: translateItemName(this, companion) },
+    });
+  }
+
+  getCompanionKey(companion) {
+    const raw = companion?.companionId
+      || companion?.id
+      || companion?.companionType
+      || companion?.name;
+    return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+  }
+
+  getQualifyingCompanions() {
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.syncCompanionHistory?.();
+    const history = this.gameState?.companionHistory || {};
+    return this.getInventorySlots()
+      .filter(companion => companion?.type === 'companion')
+      .map(companion => ({ companion, key: this.getCompanionKey(companion) }))
+      .filter(({ key }) => {
+        const entry = key ? history[key] : null;
+        return entry && (Number(entry.roomsFought) || 0) >= 3 && entry.upgraded !== true;
+      });
+  }
+
+  getCompanionTrainingChoiceLabel(companion) {
+    if (companion?.id === 'chickCompanion') return t(this, 'event.companion.trainStormChick');
+    if (companion?.id === 'skeletonWarriorCompanion') return t(this, 'event.companion.trainSkeletonWarrior');
+    return t(this, 'event.companion.train', {
+      name: translateItemName(this, companion) || t(this, 'event.companion.default'),
+    });
+  }
+
+  trainCompanion(key) {
+    const inventorySlots = this.getInventorySlots();
+    const companionSlotIndex = inventorySlots.findIndex(item => (
+      item?.type === 'companion' && this.getCompanionKey(item) === key
+    ));
+    const companion = companionSlotIndex >= 0 ? inventorySlots[companionSlotIndex] : null;
+    const history = this.gameState?.companionHistory?.[key];
+    if (!companion || !history || history.upgraded === true) return false;
+
+    if (companion.id === 'chickCompanion') {
+      companion.name = 'Storm Hatchling';
+      companion.shockChance = 0.20;
+      companion.upgradedForm = 'stormHatchling';
+      companion.sprite = 'chickCompanionUP'; // upgraded art: crackling storm chick
+      this.companionTrainingOutcome = 'You set the Storm Chick card down by the old lightning rods.\n\nThe rods start to hum. A bolt jumps between them and hits the card square on.\n\nIn the picture, the chick puffs up, feathers crackling.';
+      this._reward('event.reward.stormHatchling');
+    } else if (companion.id === 'skeletonWarriorCompanion') {
+      companion.name = 'Slimebone Guard';
+      companion.guardProtection = Math.max(1, Number(companion.guardProtection) || 0);
+      companion.upgradedForm = 'slimeboneGuard';
+      companion.sprite = 'skeletonCompanionUP'; // upgraded art: skeleton with a raised shield
+      this.companionTrainingOutcome = 'You set the Skeleton Warrior card down beside the broken shields.\n\nThe scraps rattle across the floor and stack themselves over it.\n\nIn the picture, the skeleton lowers its cracked sword and raises a battered shield.';
+      this._reward('event.reward.slimeboneGuard');
+    } else {
+      companion.attack = Math.max(0, Number(companion.attack) || 0) + 1;
+      companion.upgradedForm = 'trained';
+      this.companionTrainingOutcome = 'You set the card down in the middle of the drill room.\n\nThe old practice circles glow, faintly and briefly.\n\nIn the picture, something moves sharper than it did a minute ago.';
+      this._reward({ key: 'event.reward.companionDamage', vars: { name: translateItemName(this, companion) || t(this, 'event.companion.default') } });
+    }
+
+    companion.trained = true;
+    history.upgraded = true;
+    history.name = companion.name || history.name;
+    this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
+    this.gameScene?.inventorySystem?.playSlotStrikeAnimation?.(companionSlotIndex);
+    this.gameScene?.updateUI?.();
+    return true;
+  }
+
+  gainAmulet(id) {
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    const mgr = this.gameScene?.amuletManager;
+    if (!mgr?.addAmulet || typeof id !== 'string') return false;
+    const def = mgr.amuletDefinitions?.[id];
+    const name = translateItemName(this, def) || t(this, 'tooltip.relic');
+    const ok = mgr.addAmulet(id);
+    this.gameScene.updateUI?.();
+    if (ok) {
+      this._reward({ key: 'event.reward.gainedAmulet', vars: { name } });
+      this._pushRewardIcon(def?.sprite || 'relicsOthers', def?.spriteFrame ?? 0, id);
+    }
+    return ok;
+  }
+
+  // Records an icon to render under the reward text summary — currently only
+  // used for gained amulets, so the player can immediately see what they got
+  // instead of just reading its name.
+  _pushRewardIcon(sprite, spriteFrame, amuletId = null) {
+    if (!sprite) return;
+    (this._rewardIcons ||= []).push({ sprite, spriteFrame, amuletId });
+  }
+
+  // Brings the GameScene inventory forward, in station mode, beneath the event.
+  _enableEventStation() {
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv) return;
+    this.scene.wake('GameScene', { shopStation: true });
+    // The fight underneath may still have its door up; this event has its own
+    // in the same spot.
+    this.gameScene.hideExitUnderStation?.();
+    // Flat backdrop plus the separate inventory panel, so this screen's dim
+    // does not cut the dungeon painting in half.
+    this.gameScene.setEventBackdrop?.(true);
+    inv.setStationMode(true);
+    inv.setVisibility(true);
+    inv.setDragOverlayScene?.(this);
+    inv.clearDropZones?.(); // start clean; the mirror re-registers below if needed
+    this._stationActive = true;
+  }
+
+  // Restores the inventory to its normal (non-station) layer/visibility.
+  // setStationMode(false) re-applies the standard combat depths.
+  _disableEventStation() {
+    if (!this._stationActive) return;
+    const inv = this.gameScene?.inventorySystem;
+    if (inv) {
+      inv.setDragOverlayScene?.(null);
+      inv.clearDropZones?.();
+      inv.setStationMode(false);
+      inv.setVisibility(false);
+    }
+    this.gameScene?.setEventBackdrop?.(false);
+    this._stationActive = false;
+  }
+
+  // ─── Copying mirror ──────────────────────────────────────────────────────
+
+  _setupMirrorDropZone() {
+    const inv = this.gameScene?.inventorySystem;
+    const target = this.eventIllustrationImage;
+    if (!inv || !target?.getBounds) return;
+    this.mirrorUsed = false;
+    inv.clearDropZones();
+    inv.addDropZone(target, (slotIndex, cardData, cardSprite) =>
+      this._handleMirrorDrop(slotIndex, cardData, cardSprite));
+  }
+
+  _handleMirrorDrop(slotIndex, cardData, cardSprite) {
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv || !cardData) return false;
+
+    if (this.mirrorUsed) {
+      this._mirrorFloat('The mirror already copied a card', 0xffaa66, cardSprite);
+      return false; // let it bounce back to its slot
+    }
+    if (!this._isMirrorCopyable(cardData)) {
+      this._mirrorFloat("The mirror won't copy that", 0xff6666, cardSprite);
+      return false;
+    }
+    if (!inv.slots.some(slot => slot === null)) {
+      this._mirrorFloat('No empty slot for the copy', 0xff6666, cardSprite);
+      return false;
+    }
+
+    // Keep the original where it was; drop a fresh duplicate into an empty slot.
+    inv.returnCardToSlot(slotIndex, cardSprite);
+    inv.addCard(this._duplicateCardData(cardData));
+    this.mirrorUsed = true;
+    this._mirrorFloat('Copied!', 0x8ad6ff, cardSprite);
+    this.gameScene?.updateUI?.();
+    return true;
+  }
+
+  _isMirrorCopyable(card) {
+    if (!card) return false;
+    if (card.unique) return false;          // e.g. the Chick Companion
+    if (card.id === 'monsterEgg') return false; // story item
+    return true;
+  }
+
+  _duplicateCardData(card) {
+    try {
+      return JSON.parse(JSON.stringify(card));
+    } catch {
+      return { ...card };
+    }
+  }
+
+  _mirrorFloat(text, color, cardSprite) {
+    const x = cardSprite?.x ?? 320;
+    const y = cardSprite?.y ?? 300;
+    this.gameScene?.createFloatingText?.(x, y, text, color);
+  }
+
+  // ─── Briar Room (drag a weapon/armor in to grow a permanent thorn) ───────
+
+  // The Screaming Head accepts a draggable inventory offering, then rerolls it
+  // at the same rarity/type where possible.
+  beginScreamingHeadOffering() {
+    const inv = this.gameScene?.inventorySystem;
+    const target = this.eventIllustrationImage;
+    if (!inv || !target?.getBounds) return false;
+    this.screamingHeadOfferingActive = true;
+    inv.clearDropZones();
+    inv.addDropZone(target, (slotIndex, cardData, cardSprite) => (
+      this._handleScreamingHeadOffering(slotIndex, cardData, cardSprite)
+    ));
+    return true;
+  }
+
+  cancelScreamingHeadOffering() {
+    this.screamingHeadOfferingActive = false;
+    this.gameScene?.inventorySystem?.clearDropZones?.();
+  }
+
+  _handleScreamingHeadOffering(slotIndex, cardData, cardSprite) {
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv || !cardData || !this.screamingHeadOfferingActive || this.resolved) return false;
+    if (!this._isScreamingHeadOfferCard(cardData)) {
+      this._mirrorFloat('The stone teeth reject that offering', 0xff6666, cardSprite);
+      return false;
+    }
+
+    const rerolledCard = this.createSameTypeRerollCard(cardData);
+    if (!rerolledCard) return false;
+    const oldName = cardData.name || 'a card';
+
+    inv.cleanupCardSprites(slotIndex, cardSprite);
+    inv.cleanupBoardArtifacts?.(cardSprite);
+    inv.removeCard(slotIndex, false);
+    cardSprite.destroy();
+    inv.addCard(rerolledCard);
+    inv.clearDropZones();
+    this.screamingHeadOfferingActive = false;
+    this.gameScene?.updateUI?.();
+
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    this._reward({ key: 'event.reward.offered', vars: { name: translateItemName(this, cardData) } });
+    this._reward({ key: 'event.reward.received', vars: { name: translateItemName(this, rerolledCard) || t(this, 'tooltip.card') } });
+    this._resolve({
+      text: 'Offer card',
+      textKey: 'ui.event.choice.offerCard',
+      action: () => {},
+      outcome: 'You slide the card between the stone teeth.\n\nThe mouth closes. Stone grinds on stone, and for a few seconds the head chews.\n\nThen the jaw cracks open. A different card is lying on the tongue, damp with gray dust.'
+    }, -1, { keepRewards: true });
+    return true;
+  }
+
+  beginBriarOffering() {
+    const inv = this.gameScene?.inventorySystem;
+    const target = this.eventIllustrationImage;
+    if (!inv || !target?.getBounds) return false;
+    this.briarOfferingActive = true;
+    inv.clearDropZones();
+    inv.addDropZone(target, (slotIndex, cardData, cardSprite) => (
+      this._handleBriarOffering(slotIndex, cardData, cardSprite)
+    ));
+    return true;
+  }
+
+  cancelBriarOffering() {
+    this.briarOfferingActive = false;
+    this.gameScene?.inventorySystem?.clearDropZones?.();
+  }
+
+  _handleBriarOffering(slotIndex, cardData, cardSprite) {
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv || !cardData || !this.briarOfferingActive || this.resolved) return false;
+    if (cardData.type !== 'weapon' && cardData.type !== 'armor') {
+      this._mirrorFloat('The briars only want a weapon or armor card', 0xff6666, cardSprite);
+      return false;
+    }
+
+    cardData.briarDamageBonus = (cardData.briarDamageBonus || 0) + 1;
+    if (cardData.type === 'weapon') {
+      cardData.damage = (cardData.damage || 0) + 1;
+    } else {
+      cardData.thornDamage = (cardData.thornDamage || 0) + 1;
+    }
+
+    inv.returnCardToSlot(slotIndex, cardSprite);
+    inv.clearDropZones();
+    inv.rebuildInventorySprites?.();
+    this.briarOfferingActive = false;
+    this.gameScene?.updateUI?.();
+
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    this._reward({
+      key: cardData.type === 'weapon' ? 'event.reward.permanentDamage' : 'event.reward.thornDamage',
+      vars: { name: translateItemName(this, cardData) },
+    });
+    this._resolve({
+      text: 'Offer card',
+      textKey: 'ui.event.choice.offerCard',
+      action: () => {},
+      outcome: 'You hold the card out to the vines.\n\nThey wrap it carefully — almost gently — and sink a few black thorns into its edge.\n\nWhen they let go, the card is not the same.'
+    }, -1, { keepRewards: true });
+    return true;
+  }
+
+  // ─── Arm Wrestling (the ogre, and his gauntlet) ──────────────────────────
+
+  isArmWrestleRematch() {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    return Boolean(story.armWrestleWon && !story.armWrestleRematchDone);
+  }
+
+  getArmWrestleCoinStake() {
+    return 10;
+  }
+
+  getArmWrestlePot() {
+    return 25;
+  }
+
+  /**
+   * Hidden difficulty signal. NEVER shown as a number — the crowd's reaction is
+   * the only tell the player gets. Feeds minigame tuning (ogre push / click
+   * power) rather than a win/lose roll: a good weapon makes the click race
+   * fairer, but the player still has to win the match.
+   *
+   * It is not really about the weapon — it is about the arm. The ogre sizes you
+   * up by what he sees you are used to swinging.
+   */
+  armWrestleChance() {
+    const ranks = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const weapon = this.gameState?.equippedWeapon
+      || this.getInventorySlots().find(item => item?.type === 'weapon')
+      || null;
+
+    let base = 0.10; // empty hands: he is delighted
+    if (weapon) {
+      const name = `${weapon.name || ''} ${weapon.weaponType || ''}`.toLowerCase();
+      if (/axe|chain|hammer|maul/.test(name)) base = 0.70;
+      else if (/sword|mace|blade/.test(name)) base = 0.50;
+      else base = 0.35; // daggers, bows, anything light
+      const rarityStep = Math.max(0, ranks.indexOf(weapon.rarity));
+      base += rarityStep * 0.05;
+    }
+    // The rematch is harder: he stopped underestimating you the moment he lost.
+    if (this.isArmWrestleRematch()) base -= 0.15;
+    return Math.max(0.05, Math.min(0.90, base));
+  }
+
+  /** The odds display, in monsters rather than numbers. */
+  getArmWrestleCrowdLine() {
+    const chance = this.armWrestleChance();
+    if (chance >= 0.60) {
+      return 'A few of them stop chewing when they see what you are carrying. One goblin quietly moves round to your side of the table.';
+    }
+    if (chance >= 0.40) {
+      return 'Nobody moves. The thing with too many legs watches both of you and does not pick a side.';
+    }
+    return 'The whole room is already laughing. Someone starts collecting bets before you have sat down.';
+  }
+
+  _isArmWrestleStakeCard(item) {
+    const ranks = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    return Boolean(
+      item
+      && item.type !== 'companion'
+      && item.id !== 'monsterEgg'
+      && !this._isKeyCard(item)
+      && ranks.indexOf(item.rarity) >= 1 // uncommon or better
+    );
+  }
+
+  hasArmWrestleCard() {
+    return this.getInventorySlots().some(item => this._isArmWrestleStakeCard(item));
+  }
+
+  /** Shared consequence of losing: the stake is gone. No rematch after a loss. */
+  _loseArmWrestle() {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    story.armWrestleLost = true;
+    this.clearPendingEvent('arm_wrestling');
+  }
+
+  _winArmWrestleMatchOne() {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    story.armWrestleWon = true;
+    // He wants it back. This is the only route to the gauntlet.
+    this.addPendingEvent('arm_wrestling');
+  }
+
+  /**
+   * Map hidden weapon odds into minigame feel. High chance = weaker ogre.
+   * Click power is sized so 2 clicks ≈ 1.5s of *base* ogre drift; the live
+   * ogre push is then ×3.75, so the player must click faster than that baseline
+   * to pull ahead.
+   */
+  getArmWrestleMinigameTuning() {
+    const chance = this.armWrestleChance();
+    const t = Phaser.Math.Clamp(chance, 0.05, 0.90);
+    // Click power stays sized for the base drift; ogre push is then sped up.
+    const ogrePushBase = Phaser.Math.Linear(0.1, 0.06, (t - 0.05) / 0.85);
+    const clickPower = (ogrePushBase / 2) * 1.5;
+    // The rematch is the gauntlet gate: the ogre stops playing to the crowd
+    // and pushes twenty percent faster than he did in the first bout.
+    const rematchMultiplier = this._armWrestlePending?.rematch ? 1.2 : 1;
+    const ogrePush = ogrePushBase * 3.75 * rematchMultiplier;
+    return { ogrePush, clickPower };
+  }
+
+  beginArmWrestleCoinBet() {
+    this.ensureStoryState();
+    const stake = this.getArmWrestleCoinStake();
+    if (!this.spendCoins(stake)) return false;
+    this._armWrestlePending = { kind: 'coins', rematch: false };
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    this._armWrestleAwaitingMatch = true;
+    this._openArmWrestleMinigame();
+    return true;
+  }
+
+  // ─── the card bet (drag a card onto the table) ────────────────────────────
+
+  beginArmWrestleCardBet() {
+    const inv = this.gameScene?.inventorySystem;
+    // Use the whole illustration board, not only the ogre sprite's tight
+    // transparent bounds. Visually dropping onto the ogre/table should always
+    // intersect the wager target.
+    const target = this.eventIllustrationBoard || this.eventIllustrationImage;
+    if (!inv || !target?.getBounds) return false;
+    this.armWrestleBetActive = true;
+    inv.clearDropZones();
+    inv.addDropZone(target, (slotIndex, cardData, cardSprite) => (
+      this._handleArmWrestleCardBet(slotIndex, cardData, cardSprite)
+    ));
+    return true;
+  }
+
+  cancelArmWrestleCardBet() {
+    this.armWrestleBetActive = false;
+    this.gameScene?.inventorySystem?.clearDropZones?.();
+  }
+
+  _handleArmWrestleCardBet(slotIndex, cardData, cardSprite) {
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv || !cardData || !this.armWrestleBetActive || this.resolved) return false;
+    if (!this._isArmWrestleStakeCard(cardData)) {
+      this._mirrorFloat('He turns it over once and hands it back. "I do not fight for junk. Bring me something better (uncommon or better)."', 0xff6666, cardSprite);
+      return false;
+    }
+
+    // Park the stake card while the match runs; win keeps it, loss takes it.
+    inv.returnCardToSlot(slotIndex, cardSprite);
+    inv.clearDropZones();
+    inv.rebuildInventorySprites?.();
+    this.armWrestleBetActive = false;
+
+    this.ensureStoryState();
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    this._armWrestlePending = {
+      kind: 'card',
+      rematch: this.isArmWrestleRematch(),
+      slotIndex,
+      cardData,
+    };
+    this._openArmWrestleMinigame();
+    return true;
+  }
+
+  _openArmWrestleMinigame() {
+    if (this._armWrestleMinigameHandle) {
+      this._armWrestleMinigameHandle.close?.();
+      this._armWrestleMinigameHandle = null;
+    }
+    // Hide any leftover choice buttons (card-bet cancel) under the overlay.
+    (this._choiceBtns || []).forEach(({ bg, label }) => {
+      bg?.removeInteractive?.();
+      bg?.setAlpha?.(0);
+      label?.setAlpha?.(0);
+    });
+    const tuning = this.getArmWrestleMinigameTuning();
+    this._armWrestleMinigameHandle = openArmWrestlingMinigame(this, {
+      ogrePush: tuning.ogrePush,
+      clickPower: tuning.clickPower,
+      onDone: (won) => {
+        this._armWrestleMinigameHandle = null;
+        this._finishArmWrestleMatch(won);
+      },
+    });
+  }
+
+  _finishArmWrestleMatch(won) {
+    const pending = this._armWrestlePending;
+    this._armWrestlePending = null;
+    if (!pending) return;
+
+    this.ensureStoryState();
+    // Only the stake is at risk — never armor. Start clean so no stale
+    // "Armor -1 pip" line can linger from an older build/path.
+    this._rewardLines = [];
+    this._rewardIcons = [];
+
+    if (pending.kind === 'coins') {
+      if (won) {
+        this.gainCoins(this.getArmWrestlePot());
+        this._winArmWrestleMatchOne();
+        this.armWrestleOutcome = 'He is stronger than you and both of you know it, so you do not try to out-pull him. You wait until he leans, and then you stop being where he is pushing.\n\nHis own weight takes his hand down onto the slab.\n\nThe room goes very quiet. The ogre looks at his hand for a while, then at you, and pushes the whole stack of coins across the table without a word.';
+      } else {
+        this._loseArmWrestle();
+        this._reward({ key: 'event.reward.lostStake', vars: { name: t(this, 'event.reward.coins', { amount: this.getArmWrestleCoinStake() }) } });
+        this.armWrestleOutcome = 'You get about two seconds of holding him.\n\nThen your knuckles find the stone.\n\nHe takes the coins. That is all he takes.';
+      }
+    } else if (pending.kind === 'card') {
+      const stakeName = pending.cardData?.name || 'your card';
+      const rematch = pending.rematch;
+
+      if (won) {
+        this._reward({ key: 'event.reward.kept', vars: { name: translateItemName(this, stakeName) } });
+        if (rematch) {
+          this.gameState.storyRun.armWrestleRematchDone = true;
+          this.gameState.storyRun.gauntletWon = true;
+          this.clearPendingEvent('arm_wrestling');
+          const gauntlet = createGauntletCard();
+          this._deliverCardReward(gauntlet, "Ogre's Gauntlet", {
+            key: 'event.reward.gainedCard', vars: { name: translateItemName(this, gauntlet) },
+          });
+          this.armWrestleOutcome = `He goes at it properly this time, and it takes everything you have.\n\nWhen his hand finally goes down the crowd does not cheer. They just look at the ogre.\n\nHe unhooks the stone guard and pushes it across to you, then sits back with his arms folded and watches you take it, ${stakeName} and all.`;
+        } else {
+          this.gainCoins(this.getArmWrestlePot());
+          this._winArmWrestleMatchOne();
+          this.armWrestleOutcome = `He looks at ${stakeName} for a long moment, decides it is worth his time, and plants his elbow.\n\nYou win by not fighting him where he is strongest.\n\nHe pushes his coins over, keeps looking at his own hand, and says something short in Ogrish. The crowd stops laughing. You get the distinct impression this is not finished.`;
+        }
+      } else {
+        const inv = this.gameScene?.inventorySystem;
+        const slots = this.getInventorySlots() || [];
+        let idx = pending.slotIndex;
+        if (slots[idx] !== pending.cardData) {
+          idx = slots.findIndex((c) => c === pending.cardData);
+        }
+        if (inv && idx >= 0) {
+          inv.removeCard(idx, true);
+        }
+        this._reward({ key: 'event.reward.lostStake', vars: { name: translateItemName(this, stakeName) } });
+        if (rematch) this.gameState.storyRun.armWrestleRematchDone = true;
+        this._loseArmWrestle();
+        this.armWrestleOutcome = rematch
+          ? `He does not make the same mistake twice.\n\nYour hand is on the slab before you have finished bracing, and ${stakeName} goes into the pile beside his elbow.\n\nHe buckles the stone guard back onto his forearm and turns away from the table.`
+          : `He takes ${stakeName} off the table before your hand has finished going down.\n\nThe crowd is delighted, briefly, and then bored.`;
+      }
+    }
+
+    this.gameScene?.updateUI?.();
+    this._resolve({
+      text: 'Wrestle',
+      textKey: 'ui.event.choice.wrestle',
+      action: () => {},
+      outcome: (state, s) => s.armWrestleOutcome
+    }, -1, { keepRewards: true });
+  }
+
+  _openMusicBoxLockMinigame() {
+    if (this._musicBoxLockHandle) {
+      this._musicBoxLockHandle.close?.();
+      this._musicBoxLockHandle = null;
+    }
+    (this._choiceBtns || []).forEach(({ bg, label }) => {
+      bg?.removeInteractive?.();
+      bg?.setAlpha?.(0);
+      label?.setAlpha?.(0);
+    });
+    this._musicBoxLockHandle = openMusicBoxLockMinigame(this, {
+      onDone: (won) => {
+        this._musicBoxLockHandle = null;
+        this._finishMusicBoxForceOpen(won);
+      },
+    });
+    if (!this._musicBoxLockHandle) {
+      this.time?.delayedCall?.(0, () => this._finishMusicBoxForceOpen(false));
+    }
+  }
+
+  _finishMusicBoxForceOpen(won) {
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    if (won) {
+      this.resolveMusicBoxOpened('force');
+      this.musicBoxForceOutcome = MUSIC_BOX_OPENED_BY_FORCE;
+    } else {
+      this.resolveMusicBoxExploded();
+      this.musicBoxForceOutcome = MUSIC_BOX_EXPLODED;
+    }
+    this.gameScene?.updateUI?.();
+    this._resolve({
+      id: 'music_box_force',
+      text: 'Force it open',
+      textKey: 'ui.event.choice.forceOpen',
+      action: () => {},
+      outcome: (state, s) => s.musicBoxForceOutcome,
+    }, -1, { keepRewards: true });
+  }
+
+  _openBirdNestMinigame() {
+    if (this._birdNestHandle) {
+      this._birdNestHandle.close?.();
+      this._birdNestHandle = null;
+    }
+    (this._choiceBtns || []).forEach(({ bg, label }) => {
+      bg?.removeInteractive?.();
+      bg?.setAlpha?.(0);
+      label?.setAlpha?.(0);
+    });
+    const includeCog = this.gameState?.storyRun?.boxState !== 'exploded';
+    this._birdNestHandle = openBirdNestMinigame(this, {
+      includeCog,
+      onDone: (result) => {
+        this._birdNestHandle = null;
+        this._finishBirdNestSearch(result || {});
+      },
+    });
+    if (!this._birdNestHandle) {
+      this.time?.delayedCall?.(0, () => this._finishBirdNestSearch({
+        tookCog: false,
+        tookEgg: false,
+        timedOut: false,
+      }));
+    }
+  }
+
+  _finishBirdNestSearch(result = {}) {
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    this.resolveBirdNestRaid(result);
+    let outcome = NEST_LEFT;
+    if (result.timedOut) outcome = NEST_TIMEOUT;
+    else if (result.tookCog && result.tookEgg) outcome = NEST_TOOK_BOTH;
+    else if (result.tookCog) outcome = NEST_TOOK_COG;
+    else if (result.tookEgg) outcome = NEST_TOOK_EGG;
+    this.birdNestOutcome = outcome;
+    this.gameScene?.updateUI?.();
+    this._resolve({
+      id: 'nest_search',
+      text: 'Search the nest',
+      textKey: 'ui.event.choice.searchNest',
+      action: () => {},
+      outcome: (state, s) => s.birdNestOutcome,
+    }, -1, { keepRewards: true });
+  }
+
+  declineArmWrestle() {
+    this.ensureStoryState();
+    // Walking away from the rematch ends it — he does not offer a third time.
+    if (this.isArmWrestleRematch()) {
+      this.gameState.storyRun.armWrestleRematchDone = true;
+    }
+    this.clearPendingEvent('arm_wrestling');
+  }
+
+  // ─── Toll Collectors (the Goblin King's tax men) ─────────────────────────
+
+  /** Goblin stats for this depth, mirroring the goblin tiers in enemies.js. */
+  _tollGuardTier() {
+    const floor = this.gameState?.currentFloor || 1;
+    if (floor >= 11) return { attack: 8, health: 11 };
+    return { attack: 5, health: 9 };
+  }
+
+  /** Three clerks with knives. Tagged so the boss fight can recognise them. */
+  buildTollGuards() {
+    const tier = this._tollGuardTier();
+    return [true, false, false].map((veteran) => {
+      const guard = {
+        type: 'enemy',
+        name: veteran ? 'Veteran Toll Collector' : 'Toll Collector',
+        sprite: 'goblin_c',
+        role: 'MELEE',
+        health: tier.health,
+        maxHealth: tier.health,
+        attack: tier.attack,
+        armor: 0,
+        enemyTier: 'normal',
+        tollGuard: true,
+        tollVeteran: veteran,
+        abilities: [{ type: 'coin_steal', chance: 0.5, amount: 1 }],
+      };
+      return veteran ? applyEnemyTier(guard, 'veteran') : guard;
+    });
+  }
+
+  /** Goblins respect steel they can price. Rare or better does the job. */
+  hasIntimidatingWeapon() {
+    const ranks = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const scary = (item) => (
+      item?.type === 'weapon' && ranks.indexOf(item.rarity) >= ranks.indexOf('rare')
+    );
+    return scary(this.gameState?.equippedWeapon)
+      || this.getInventorySlots().some(scary);
+  }
+
+  payTheToll(amount) {
+    this.ensureStoryState();
+    this.spendCoins(amount);
+    this.gameState.storyRun.paidTheToll = true;
+  }
+
+  intimidateTollCollectors() {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    story.tollIntimidated = true;
+    // They sulk aside from the strongbox rather than hand it over, so you take
+    // the shiny things they never understood the value of.
+    const crystals = 2 + Math.floor((this.gameState.currentFloor || 1) / 6);
+    this.gainCrystals(crystals);
+    this.tollIntimidateOutcome = 'You do not say anything. You draw the weapon and rest it against the doors, in the light, where all three of them can see it properly.\n\nThe one with the tally board stops writing. The one with the shield finds something interesting on the floor.\n\nNobody stops you lifting the lid of the strongbox at the foot of the door, and nobody looks at you either. The bar is already off by the time you straighten up.';
+  }
+
+  attackTollCollectors() {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    story.tollFought = true;
+    story.tollKiller = true;
+    story.tollEscapeMode = story.bridgeDestroyed ? 'jetpack' : 'smoke';
+    this.gameState.pendingAmbush = {
+      id: 'toll_collectors',
+      enemies: this.buildTollGuards(),
+    };
+  }
+
+  // Silkdeep cocoon chamber → custom combat board (inspect shells / burn loot).
+  beginSilkCocoonCache(mode = 'inspect') {
+    this.ensureStoryState();
+    this.gameState.pendingAmbush = {
+      id: 'silk_cocoon_cache',
+      kind: 'silk_cocoons',
+      mode: mode === 'burn' ? 'burn' : 'inspect',
+    };
+  }
+
+  waitAtTheToll() {
+    this.ensureStoryState();
+    SoundHelper.playSound(this, 'dice_roll', 0.65);
+    const roll = 1 + Math.floor(Math.random() * 6);
+    if (roll <= 3) {
+      this.gameState.storyRun.tollWatchFailed = true;
+      this.tollWaitOutcome = `D6: ${roll}. The veteran spots you behind the roadside wall. The clerk crosses out the old price and writes 200 beneath it. All three now watch you too closely to try the same trick again.`;
+      return false;
+    }
+    this.gameState.storyRun.merchantRobbed = true;
+    this.tollWaitOutcome = `D6: ${roll}. A merchant wagon rattles up to the barrier. While the collectors surround the driver and begin valuing every axle, you catch the back rail, pull yourself among the covered crates, and ride across the bridge unnoticed.`;
+    return true;
+  }
+
+  buyGoblinJetpack(amount) {
+    this.ensureStoryState();
+    this.spendCoins(amount);
+    this.gameState.storyRun.jetpackFlightPending = true;
+  }
+
+  beginTollroadDetour() {
+    this.ensureStoryState();
+    const merchantAt = Math.random() < 0.5 ? 1 + Math.floor(Math.random() * 3) : 0;
+    this.gameState.storyRun.tollroadDetour = { index: 0, merchantAt, complete: false };
+  }
+
+  // ─── Tollroad crystal mine and royal bridge ─────────────────────────────
+
+  burnGoblinMine() {
+    this.ensureStoryState();
+    this.consumeFireballCard();
+    this.gameState.storyRun.goblinMinersKilled = true;
+    this.gainCrystals(3);
+  }
+
+  sneakPastGoblinMine() {
+    this.ensureStoryState();
+    SoundHelper.playSound(this, 'dice_roll', 0.65);
+    const roll = 1 + Math.floor(Math.random() * 6);
+    if (roll <= 3) {
+      this.gameState.storyRun.goblinMinersKilled = true;
+      this.gameState.pendingAmbush = {
+        id: 'goblin_mine_sneak',
+        normalCombatBoard: true,
+        enemyTypes: ['goblin', 'goblin_archer', 'tollBrute'],
+      };
+      this.goblinMineSneakOutcome = t(this, 'event.tollroad.mine.sneak.failure', { roll });
+      return;
+    }
+    this.goblinMineSneakOutcome = t(this, 'event.tollroad.mine.sneak.success', { roll });
+  }
+
+  enterGoblinMine() {
+    this.ensureStoryState();
+    this.gameState.storyRun.pendingPostCombatEventId = 'goblin_mine_return';
+    this.gameState.pendingAmbush = {
+      id: 'goblin_mine_spiders',
+      normalCombatBoard: true,
+      enemyTypes: ['spider'],
+    };
+  }
+
+  refuseGoblinMiners() {
+    this.ensureStoryState();
+    this.gameState.storyRun.goblinMinersAllied = false;
+  }
+
+  completeGoblinMineAlliance() {
+    this.ensureStoryState();
+    this.gameState.storyRun.goblinMinersAllied = true;
+  }
+
+  resolveMinerBridgeSabotage() {
+    this.ensureStoryState();
+    this.gameState.storyRun.bridgeDestroyed = true;
+    this.gameState.storyRun.goblinKingStartingHealthFraction = 0.75;
+  }
+
+  fireballRoyalProcession() {
+    this.ensureStoryState();
+    this.consumeFireballCard();
+    this.gameState.storyRun.goblinKingStartingHealthFraction = Math.min(
+      this.gameState.storyRun.goblinKingStartingHealthFraction || 1,
+      0.9,
+    );
+  }
+
+  attackRoyalProcession() {
+    this.ensureStoryState();
+    this.gameState.pendingAmbush = {
+      id: 'royal_procession',
+      normalCombatBoard: true,
+      enemyTypes: ['goblin', 'goblin_archer', 'tollBrute'],
+    };
+  }
+
+  letRoyalProcessionPass() {
+    this.ensureStoryState();
+  }
+
+  // ─── The Reliquary (the wall supplies the spell, the player supplies iron) ─
+
+  // Rolled once per visit and cached. _getVisibleChoices() re-runs on every
+  // render, so rolling inline would reshuffle the wall under the player's hand.
+  getReliquaryOffer() {
+    if (!Array.isArray(this._reliquaryOffer) || this._reliquaryOffer.length === 0) {
+      this._reliquaryOffer = rollEnchantOffer(this.gameState?.currentFloor || 1, 3);
+    }
+    return this._reliquaryOffer;
+  }
+
+  _isEnchantableWeapon(item) {
+    return Boolean(item && item.type === 'weapon' && !item.enchant);
+  }
+
+  hasEnchantableWeapon() {
+    return this.getInventorySlots().some(item => this._isEnchantableWeapon(item));
+  }
+
+  // Each case is its own drop target: the player drags a weapon straight onto
+  // the card they want, so no "choose the spell first" button is needed.
+  //
+  // Layout: the row is seated just above the choice buttons and the story text
+  // takes whatever room is left above it, so the band adapts to however many
+  // choices are showing.
+  _setupReliquaryCases() {
+    const inv = this.gameScene?.inventorySystem;
+    const offer = this.getReliquaryOffer();
+    if (!offer.length) return;
+    if (!this.textures.exists('glassCase') || !this.textures.exists('glowingMagicCards')) return;
+
+    const CASE_W = 70;
+    const CASE_H = 108;
+    const CARD_H = 70;
+    const CARD_LIFT = 20; // the card's bottom edge floats this far above the case's
+    const GAP = 10;
+
+    const choiceBounds = this._getChoiceBounds();
+    const rowBottom = (choiceBounds ? choiceBounds.top : 200) - 6;
+    const centerY = Math.round(rowBottom - CASE_H / 2);
+    const caseBottom = centerY + CASE_H / 2;
+    const cardCenterY = Math.round(caseBottom - CARD_LIFT - CARD_H / 2);
+
+    const totalW = offer.length * CASE_W + (offer.length - 1) * GAP;
+    const startX = Math.round(this.eventLayout.centerX - totalW / 2 + CASE_W / 2);
+
+    this._reliquaryCaseObjects = [];
+    this._reliquaryGlass = [];
+    inv?.clearDropZones();
+
+    offer.forEach((magicType, i) => {
+      const x = startX + i * (CASE_W + GAP);
+      const frame = getGlowCardFrame(magicType);
+
+      // Card first (behind), then the glass over it.
+      if (frame !== null) {
+        this._reliquaryCaseObjects.push(
+          this.add.image(x, cardCenterY, 'glowingMagicCards', frame).setDepth(2)
+        );
+      }
+      const glass = this.add.image(x, centerY, 'glassCase').setDepth(3);
+      this._reliquaryCaseObjects.push(glass);
+      this._reliquaryGlass.push(glass);
+
+      // NOTE: deliberately NOT setInteractive(). EventScene renders above
+      // GameScene, and Phaser's InputManager is globalTopOnly — an interactive
+      // object here swallows the pointer before GameScene sees it, so the
+      // dragged card never receives 'dragend' and sticks to the cursor. The
+      // mirror and well drop targets are plain images for the same reason.
+      // Hover feedback is done by polling the pointer in update() instead.
+      inv?.addDropZone(glass, (slotIndex, cardData, cardSprite) => (
+        this._handleReliquaryOffering(slotIndex, cardData, cardSprite, magicType)
+      ));
+    });
+
+    // The story text now has to clear the cases, not just the buttons.
+    if (this.descText?.scene) {
+      const top = 42;
+      const textBottom = Math.max(top + 24, Math.round(centerY - CASE_H / 2 - 6));
+      this._descriptionViewportBottom = textBottom;
+      this._setReadingScroll(
+        [this.descText], top, textBottom, this.descText.y + this.descText.height
+      );
+    }
+  }
+
+  _hideReliquaryCases() {
+    this._reliquaryCaseObjects?.forEach(obj => obj?.destroy?.());
+    this._reliquaryCaseObjects = null;
+    this._reliquaryGlass = null;
+  }
+
+  // Hover highlight without input capture: poll the pointer instead of making
+  // the cases interactive (see the note in _setupReliquaryCases).
+  _updateReliquaryHover() {
+    const glass = this._reliquaryGlass;
+    if (!glass?.length) return;
+    const pointer = this.input?.activePointer;
+    if (!pointer) return;
+    glass.forEach((obj) => {
+      if (!obj?.scene) return;
+      const b = obj.getBounds();
+      const over = pointer.isDown
+        && pointer.worldX >= b.left && pointer.worldX <= b.right
+        && pointer.worldY >= b.top && pointer.worldY <= b.bottom;
+      if (over) obj.setTint(0xffe9a8);
+      else obj.clearTint();
+    });
+  }
+
+  _handleReliquaryOffering(slotIndex, cardData, cardSprite, magicType) {
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv || !cardData || !magicType || this.resolved) return false;
+    if (cardData.type !== 'weapon') {
+      this._mirrorFloat('The case only opens for a weapon', 0xff6666, cardSprite);
+      return false;
+    }
+    if (cardData.enchant) {
+      this._mirrorFloat('That weapon already holds a spell', 0xff6666, cardSprite);
+      return false;
+    }
+
+    const magicName = getMagic(magicType)?.name || 'the card';
+    if (!applyEnchantToWeapon(cardData, magicType)) {
+      this._mirrorFloat('The glass does not open', 0xff6666, cardSprite);
+      return false;
+    }
+
+    // The weapon goes back to the player, changed — same shape as the briars.
+    inv.returnCardToSlot(slotIndex, cardSprite);
+    inv.clearDropZones();
+    inv.rebuildInventorySprites?.();
+    this._hideReliquaryCases();
+    this.gameScene?.updateUI?.();
+
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    this._reward(describeWeaponEnchant(this, cardData) || { key: 'event.reward.enchanted', vars: { name: translateItemName(this, cardData) } });
+    this._resolve({
+      text: 'Offer weapon',
+      textKey: 'ui.event.choice.offerWeapon',
+      action: () => {},
+      outcome: `You press the weapon flat against the glass.\n\nThe case opens from the inside. The ${magicName} settles against the metal and sinks in, and the glass closes over nothing.\n\nThe other cases go dark.\n\nWhat you are holding is called ${cardData.name} now.`
+    }, -1, { keepRewards: true });
+    return true;
+  }
+
+  // Greedy path: take a card raw instead of fusing it. Worth allowing — magic
+  // cards are rare enough that wanting the spell itself is a real preference.
+  breakReliquaryGlass() {
+    this.ensureStoryState();
+    this.gameState.storyRun.reliquarySeen = true;
+    this.gameScene?.inventorySystem?.clearDropZones?.();
+    this._hideReliquaryCases();
+
+    // You grab the best one you can see, not a random one.
+    const byValue = ['legendary', 'rare', 'uncommon', 'common'];
+    const magicType = [...this.getReliquaryOffer()].sort((a, b) => (
+      byValue.indexOf(getMagic(a)?.rarity) - byValue.indexOf(getMagic(b)?.rarity)
+    ))[0];
+    const magic = magicType ? getMagic(magicType) : null;
+
+    this.loseHealthCapped(8);
+
+    if (!magic) {
+      this.reliquaryBreakOutcome = 'You put your elbow through the nearest case.\n\nThe glass opens your arm. Whatever was inside is already gone.';
+      return false;
+    }
+
+    this._deliverCardReward({
+      type: 'magic',
+      magicType: magic.magicType,
+      name: magic.name,
+      description: magic.description,
+      rarity: magic.rarity,
+      sprite: magic.sprite,
+      damage: magic.damage,
+      healAmount: magic.healAmount,
+    }, magic.name, {
+      key: 'event.reward.gainedCard', vars: { name: translateItemName(this, magic) },
+    });
+
+    this.reliquaryBreakOutcome = `You put your elbow through the case holding the ${magic.name}.\n\nThe ward goes off late and shallow, opening a line across your forearm — but the card is in your fist and it stays there.\n\nThe other two cases go dark before the glass finishes falling.`;
+    return true;
+  }
+
+  searchReliquary() {
+    this.ensureStoryState();
+    this.gameState.storyRun.reliquarySeen = true;
+    this.gameScene?.inventorySystem?.clearDropZones?.();
+    this._hideReliquaryCases();
+    this.gainCrystals(2);
+  }
+
+  // ─── Well of Almost-You (drag a gear card in to trade it up a tier) ───────
+
+  _setupWellDropZone() {
+    const inv = this.gameScene?.inventorySystem;
+    const target = this.eventIllustrationImage;
+    if (!inv || !target?.getBounds) return;
+    inv.clearDropZones();
+    inv.addDropZone(target, (slotIndex, cardData, cardSprite) =>
+      this._handleWellDrop(slotIndex, cardData, cardSprite));
+  }
+
+  _handleWellDrop(slotIndex, cardData, cardSprite) {
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv || !cardData) return false;
+    if (this.resolved) return false; // event already ended — bounce back
+
+    if (!this._isWellTradeable(cardData)) {
+      this._mirrorFloat('The reflection only wants gear (weapon/armor/thorns)', 0xff6666, cardSprite);
+      return false;
+    }
+
+    const oldName = cardData.name || 'a card';
+    const newCard = this._wellReroll(cardData);
+    if (!newCard) {
+      this._mirrorFloat("The well won't take that", 0xff6666, cardSprite);
+      return false;
+    }
+
+    // Consume the dropped card (same cleanup path as a discard), then hand back
+    // the rerolled card.
+    inv.cleanupCardSprites(slotIndex, cardSprite);
+    // The well art sits in the board area (screen centre), so the card — and its
+    // merge "twinkle" — was dragged there. cleanupCardSprites clears the slot's
+    // own twinkle, but sweep the board area too so a stray sparkle can't hang in
+    // empty space over the well (the same orphan weapon attacks guard against).
+    inv.cleanupBoardArtifacts?.(cardSprite);
+    inv.removeCard(slotIndex, false);
+    cardSprite.destroy();
+    inv.addCard(newCard);
+    this.gameScene?.updateUI?.();
+
+    // The trade is one of the well's outcomes — resolve the event with it,
+    // carrying the reward line we just recorded.
+    this._rewardLines = [];
+    this._rewardIcons = [];
+    this._reward({ key: 'event.reward.traded', vars: { oldName: translateItemName(this, oldName), newName: translateItemName(this, newCard) || t(this, 'tooltip.card') } });
+    this._resolve({
+      text: 'Trade',
+      textKey: 'ui.event.choice.trade',
+      action: () => {},
+      outcome: 'You hold the card out over the water. Your reflection lifts the wrong hand.\n\nThe card sinks without a sound. A different one comes up, cold and dripping tar.\n\nFor a second it feels like you made a deal with yourself.'
+    }, -1, { keepRewards: true });
+    return true;
+  }
+
+  _isWellTradeable(card) {
+    return ['weapon', 'armor', 'thorns'].includes(card?.type);
+  }
+
+  // The well changes weapon/armor/thorns into one of the OTHER two categories,
+  // while preserving the exact rarity and the real stats/art for that tier.
+  _wellReroll(card) {
+    const cs = this.gameScene?.cardSystem;
+    if (!cs) return null;
+
+    const gearTypes = ['weapon', 'armor', 'thorns'];
+    const possibleTypes = gearTypes.filter(type => type !== card.type);
+    if (possibleTypes.length === 0) return null;
+
+    // The well changes the card category, not its tier.
+    const type = possibleTypes[Math.floor(Math.random() * possibleTypes.length)];
+    const validRarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const rarity = validRarities.includes(card.rarity) ? card.rarity : 'common';
+    const floor = this.gameState?.currentFloor || 1;
+
+    // Generate where this tier is fully unlocked across the selected category.
+    // At an earlier floor the normal generator can mix (for example) rare
+    // leather with common chain, even when rare was explicitly requested.
+    const generator = cs.cardDataGenerator;
+    let fullTierUnlockFloor = 1;
+    if (type === 'weapon') {
+      const spawn = generator?.weaponSpawnMinFloor || {};
+      const unlockFloors = Object.values(spawn)
+        .map((tiers) => tiers?.[rarity])
+        .filter(Number.isFinite);
+      if (unlockFloors.length > 0) fullTierUnlockFloor = Math.max(...unlockFloors);
+    } else if (type === 'armor') {
+      const spawn = generator?.armorSpawnMinFloor || {};
+      const unlockFloors = Object.values(spawn)
+        .map((tiers) => tiers?.[rarity])
+        .filter(Number.isFinite);
+      if (unlockFloors.length > 0) fullTierUnlockFloor = Math.max(...unlockFloors);
+    }
+
+    const generationFloor = Math.max(floor, fullTierUnlockFloor);
+    const chosen = cs.createCardData(type, generationFloor, false, null, rarity);
+    if (!chosen || chosen.type !== type || chosen.rarity !== rarity) return null;
+    return chosen;
+  }
+
+  // ─── Something Wicked (drag a trinket off the hag's tray into your bag) ───
+
+  // Renders the carnival hag's wares as a physical tray of draggable trinkets
+  // instead of a stack of text buttons. Each trinket maps to one of the event's
+  // buy choices; dropping it over the inventory resolves that choice. "Refuse"
+  // stays as a small button tucked below the tray.
+  _setupCarnivalTray() {
+    const visible = this._visibleChoices || this._getVisibleChoices();
+    const trayChoices = visible.filter(choice => choice.trayItem);
+    const refuseChoice = visible.find(choice => choice.trayRefuse);
+    const centerX = this.eventLayout.centerX;
+
+    // Pull the story text's reading window up so it clears the tray region.
+    this._setReadingScroll([this.descText], 42, 124, this.descText.y + this.descText.height);
+
+    this._carnivalItems = [];
+
+    this._carnivalHint = this.add.text(
+      centerX, 131,
+      trayChoices.length ? 'Drag a trinket into your bag   ·   1 coin each' : 'Nothing here you can afford.',
+      { fontSize: '10px', fill: '#ffe8b0', fontFamily: '"HoMM Pixel"', align: 'center' }
+    ).setOrigin(0.5).setDepth(5);
+
+    if (this.textures.exists('carnivalTray')) {
+      this._carnivalTray = this.add.image(centerX, 198, 'carnivalTray').setDepth(3);
+    }
+
+    const n = trayChoices.length;
+    const spacing = 62;
+    const startX = centerX - ((n - 1) * spacing) / 2;
+    const cardY = 176;
+
+    trayChoices.forEach((choice, i) => {
+      const x = Math.round(startX + i * spacing);
+      const card = this.add.image(x, cardY, choice.traySprite)
+        .setDepth(6)
+        .setInteractive({ useHandCursor: true, draggable: true });
+      card.setData('choice', choice);
+      card.setData('homeX', x);
+      card.setData('homeY', cardY);
+      this.input.setDraggable(card);
+
+      card.on('pointerover', () => {
+        if (this.resolved || card.getData('dragging')) return;
+        this.tweens.add({ targets: card, y: cardY - 7, scale: 1.06, duration: 110, ease: 'Cubic.easeOut' });
+      });
+      card.on('pointerout', () => {
+        if (this.resolved || card.getData('dragging')) return;
+        this.tweens.add({ targets: card, y: cardY, scale: 1, duration: 110, ease: 'Cubic.easeOut' });
+      });
+      card.on('dragstart', () => {
+        card.setData('dragging', true);
+        card.setDepth(30).setScale(1.06);
+      });
+      card.on('drag', (pointer, dragX, dragY) => {
+        card.x = dragX;
+        card.y = dragY;
+      });
+      card.on('dragend', (pointer) => this._handleCarnivalDrop(card, pointer));
+
+      this._carnivalItems.push(card);
+    });
+
+    if (refuseChoice) {
+      const y = 244;
+      const bg = this.add.rectangle(centerX, y, 130, 15, 0x050505, 0.58)
+        .setDepth(5)
+        .setInteractive({ useHandCursor: true });
+      const label = this.add.text(centerX, y, this._choiceLabel(refuseChoice), {
+        fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
+      }).setOrigin(0.5).setDepth(6);
+      bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
+      bg.on('pointerout', () => bg.setFillStyle(0x050505, 0.58));
+      bg.on('pointerdown', () => {
+        SoundHelper.playVariant(this, 'button_click', 0.5);
+        this._resolve(refuseChoice, -1);
+      });
+      this._carnivalRefuse = { bg, label };
+    }
+  }
+
+  _handleCarnivalDrop(card, pointer) {
+    card.setData('dragging', false);
+    if (this.resolved) { this._returnCarnivalCard(card); return; }
+
+    const choice = card.getData('choice');
+    const target = this._carnivalDropTarget(pointer);
+    const isAmulet = choice.trayItem === 'luckyClover';
+
+    if (!target.over) { this._returnCarnivalCard(card); return; }
+    if ((this.gameState?.coins || 0) < 1) {
+      this.gameScene?.createFloatingText?.(pointer.worldX, pointer.worldY, 'You need a coin', 0xff6666);
+      this._returnCarnivalCard(card);
+      return;
+    }
+    // Junk trinkets need an open slot; the clover becomes an amulet and doesn't.
+    if (!isAmulet && target.emptySlot < 0) {
+      this.gameScene?.createFloatingText?.(pointer.worldX, pointer.worldY, 'Your bag is full', 0xff6666);
+      this._returnCarnivalCard(card);
+      return;
+    }
+
+    card.disableInteractive();
+    this._resolve(choice, -1);
+  }
+
+  // Returns whether the pointer was released over the inventory strip and, if so,
+  // the first empty slot to receive a junk trinket.
+  _carnivalDropTarget(pointer) {
+    const inv = this.gameScene?.inventorySystem;
+    const slots = inv?.slotSprites || [];
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let midY = 309;
+    let halfH = 35;
+    slots.forEach(slot => {
+      const bg = slot?.background;
+      if (!bg) return;
+      const halfW = (bg.width || 50) / 2;
+      minX = Math.min(minX, bg.x - halfW);
+      maxX = Math.max(maxX, bg.x + halfW);
+      midY = bg.y;
+      halfH = (bg.height || 70) / 2;
+    });
+    if (minX === Infinity) return { over: false, emptySlot: -1 };
+
+    const pad = 14;
+    const over = pointer.worldX >= minX - pad && pointer.worldX <= maxX + pad
+      && pointer.worldY >= midY - halfH - pad && pointer.worldY <= midY + halfH + pad;
+    if (!over) return { over: false, emptySlot: -1 };
+
+    let emptySlot = -1;
+    slots.forEach((slot, i) => {
+      const bg = slot?.background;
+      if (!bg || inv.slots[i] != null || emptySlot >= 0) return;
+      if (Math.abs(pointer.worldX - bg.x) <= (bg.width || 50) / 2 + pad) emptySlot = i;
+    });
+    if (emptySlot < 0) emptySlot = inv.slots.findIndex(item => item == null);
+    return { over: true, emptySlot };
+  }
+
+  _returnCarnivalCard(card) {
+    if (!card?.scene) return;
+    card.setDepth(6);
+    this.tweens.add({
+      targets: card,
+      x: card.getData('homeX'),
+      y: card.getData('homeY'),
+      scale: 1,
+      duration: 200,
+      ease: 'Cubic.easeOut'
+    });
+  }
+
+  _destroyCarnivalTray() {
+    (this._carnivalItems || []).forEach(card => card?.destroy?.());
+    this._carnivalItems = [];
+    this._carnivalTray?.destroy?.();
+    this._carnivalTray = null;
+    this._carnivalHint?.destroy?.();
+    this._carnivalHint = null;
+    if (this._carnivalRefuse) {
+      this._carnivalRefuse.bg?.destroy?.();
+      this._carnivalRefuse.label?.destroy?.();
+      this._carnivalRefuse = null;
+    }
+  }
+
+  // ─── Brass Wizard tray (drag a card from the bag onto the wizard's tray) ──
+
+  // Presents the wizard's tray as a physical drop target. Dropping a carnival
+  // junk card trades it for the Holographic Omen; dropping a real card rerolls
+  // it into another of the same type. A "pull your hand back" button declines.
+  _setupWizardTray(choices) {
+    const inv = this.gameScene?.inventorySystem;
+    const declineChoice = (choices || []).find(c => c.trayDecline) || (choices || [])[0];
+    const centerX = this.eventLayout.centerX;
+
+    // Shorten the wizard's narration window so it clears the tray.
+    this._setReadingScroll([this.descText], 42, 120, this.descText.y + this.descText.height);
+
+    this._wizardHint = this.add.text(centerX, 128, t(this, 'ui.event.dragCardHint'), {
+      fontSize: '11px', fill: '#ffe8b0', fontFamily: '"HoMM Pixel"', align: 'center'
+    }).setOrigin(0.5).setDepth(5);
+
+    if (this.textures.exists('wizardTray')) {
+      this._wizardTray = this.add.image(centerX, 182, 'wizardTray').setDepth(3);
+    }
+
+    if (inv?.addDropZone && this._wizardTray) {
+      inv.clearDropZones();
+      inv.addDropZone(this._wizardTray, (slotIndex, cardData, cardSprite) =>
+        this._handleWizardTrayDrop(slotIndex, cardData, cardSprite));
+    }
+
+    if (declineChoice) {
+      const y = 244;
+      const bg = this.add.rectangle(centerX, y, 150, 15, 0x050505, 0.58)
+        .setDepth(5).setInteractive({ useHandCursor: true });
+      const label = this.add.text(centerX, y, this._choiceLabel(declineChoice), {
+        fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
+      }).setOrigin(0.5).setDepth(6);
+      bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
+      bg.on('pointerout', () => bg.setFillStyle(0x050505, 0.58));
+      bg.on('pointerdown', () => {
+        SoundHelper.playVariant(this, 'button_click', 0.5);
+        this._resolve(declineChoice, -1);
+      });
+      this._wizardDecline = { bg, label };
+    }
+  }
+
+  _handleWizardTrayDrop(slotIndex, cardData, cardSprite) {
+    const inv = this.gameScene?.inventorySystem;
+    if (!inv || !cardData || this.resolved) return false;
+
+    if (this.isCarnivalJunk(cardData)) {
+      inv.cleanupCardSprites?.(slotIndex, cardSprite);
+      inv.cleanupBoardArtifacts?.(cardSprite);
+      inv.removeCard(slotIndex, false);
+      cardSprite.destroy();
+      this._rewardLines = [];
+      this._rewardIcons = [];
+      this._reward({ key: 'event.reward.traded', vars: { oldName: translateItemName(this, cardData), newName: translateItemName(this, 'Holographic Omen') } });
+      const omen = this.createHolographicOmenCard();
+      this._deliverCardReward(omen, 'Holographic Omen', {
+        key: 'event.reward.gainedPassive', vars: { name: translateItemName(this, omen) },
+      });
+      this._resolve({
+        text: 'Trade junk',
+        textKey: 'ui.event.choice.tradeJunk',
+        action: () => {},
+        outcome: 'You put the trinket on the tray. It snaps back into the booth.\n\nThe glass goes dark. Then a rainbow sheen spreads across it from the inside — thin and oily, like light on spilled ink.\n\nA card slides out. It is far too bright for the machine that made it.'
+      }, -1, { keepRewards: true });
+      return true;
+    }
+
+    if (this.isBrassWizardRerollable(cardData)) {
+      const newCard = this.createSameTypeRerollCard(cardData);
+      if (!newCard) {
+        this._mirrorFloat("The wizard won't take that", 0xff6666, cardSprite);
+        return false;
+      }
+      const oldName = cardData.name || 'card';
+      inv.cleanupCardSprites?.(slotIndex, cardSprite);
+      inv.cleanupBoardArtifacts?.(cardSprite);
+      inv.removeCard(slotIndex, false);
+      cardSprite.destroy();
+      inv.addCard(newCard);
+      this.gameScene?.updateUI?.();
+      this._rewardLines = [];
+      this._rewardIcons = [];
+      this._reward({ key: 'event.reward.traded', vars: { oldName: translateItemName(this, oldName), newName: translateItemName(this, newCard) || t(this, 'tooltip.card') } });
+      this._resolve({
+        text: 'Reroll',
+        textKey: 'ui.event.choice.reroll',
+        action: () => {},
+        outcome: 'You put one of your cards on the tray. It snaps back before you can change your mind.\n\nBehind the glass, the wizard looks at the card for a long time. Then it taps the glass twice.\n\nA different card slides out.'
+      }, -1, { keepRewards: true });
+      return true;
+    }
+
+    this._mirrorFloat("The wizard doesn't want that", 0xff6666, cardSprite);
+    return false;
+  }
+
+  _destroyWizardTray() {
+    this.gameScene?.inventorySystem?.clearDropZones?.();
+    this._wizardTray?.destroy?.();
+    this._wizardTray = null;
+    this._wizardHint?.destroy?.();
+    this._wizardHint = null;
+    if (this._wizardDecline) {
+      this._wizardDecline.bg?.destroy?.();
+      this._wizardDecline.label?.destroy?.();
+      this._wizardDecline = null;
+    }
+  }
+
+  // Marks the once-per-run bonus rooms as seen when they resolve.
+  _markBonusEventSeen() {
+    const flagByEvent = {
+      mirror: 'mirrorSeen',
+      too_nice_room: 'tooNiceRoomSeen',
+      almost_you_well: 'wellSeen',
+      slimy_prison: 'slimyPrisonSeen',
+      book_worm: 'bookWormSeen',
+      briar_room: 'briarRoomSeen',
+      silk_cocoon_cache: 'silkCocoonCacheSeen',
+      screaming_head: 'screamingHeadSeen',
+      reliquary: 'reliquarySeen',
+      toll_collectors: 'tollCollectorsSeen',
+      arm_wrestling: 'armWrestlingSeen',
+      something_wicked: 'carnivalVisited',
+      brass_wizard: 'brassWizardSeen',
+      goblin_mine: 'goblinMineSeen',
+      royal_bridge: 'royalBridgeSeen',
+      tollroad_throne_hall: 'tollroadThroneHallSeen',
+    };
+    const flag = flagByEvent[this.event?.id];
+    if (!flag) return;
+    this.ensureStoryState();
+    this.gameState.storyRun[flag] = true;
+  }
+
+  // Delivers any card reward that was held back because the inventory was full,
+  // the moment the player frees a slot (e.g. by discarding a card). Only touches
+  // the inventory when a slot is actually open, so it never spams "Inventory
+  // Full!" while the player is still deciding.
+  update() {
+    this._updateReliquaryHover();
+
+    const pending = this._pendingCardRewards;
+    if (!pending || pending.length === 0) return;
+
+    const slots = this.getInventorySlots();
+    if (!Array.isArray(slots)) return;
+
+    let delivered = false;
+    while (pending.length > 0 && slots.some(slot => slot == null)) {
+      const reward = pending[0];
+      if (!this._addCardToInventory(reward.card)) break;
+      pending.shift();
+      if (Number.isInteger(reward.rewardLineIndex) && this._rewardLines) {
+        this._rewardLines[reward.rewardLineIndex] = reward.gainedLabel;
+      }
+      this.gameScene?.createFloatingText?.(512, 400, {
+        key: 'float.claimed',
+        vars: { name: translateItemName(this, reward.card || reward.shortName) },
+      }, 0x66ff66);
+      delivered = true;
+    }
+
+    if (delivered) {
+      this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
+      this.gameScene?.updateUI?.();
+      this._refreshRewardText();
+    }
+  }
+
+  continueAdventure() {
+    this._disableEventStation();
+
+    if ((this.gameState?.playerHealth || 0) <= 0) {
+      this.scene.stop('MapViewScene');
+      this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+      // Bring GameScene forward so its defeat screen renders, then hand off.
+      this.scene.wake('GameScene');
+      this.scene.stop();
+      this.gameScene?.gameOver?.();
+      return;
+    }
+    // Ambush handoff before the sandbox hub exit — otherwise Test Site stories
+    // that open into a fight (Silk Cache, Toll Collectors) never reach the board.
+    if (this.gameState?.pendingAmbush) {
+      this.gameState.roomType = 'COMBAT';
+      this.scene.stop('MapViewScene');
+      this.scene.wake('GameScene', { roomType: 'COMBAT', isNewRoom: true });
+      this.scene.stop();
+      return;
+    }
+    const detour = this.gameState?.storyRun?.tollroadDetour;
+    if (detour && !detour.complete) {
+      this.scene.sleep('GameScene');
+      this.scene.stop();
+      this.scene.stop('MapViewScene');
+      this.scene.launch('TollroadDetourScene', { gameState: this.gameState });
+      return;
+    }
+    if (isSandboxMode(this) || isSandboxMode(this.gameScene)) {
+      exitToSandboxHub(this);
+      return;
+    }
+    // Park GameScene back to sleep (we woke it for the station) and hard-relaunch
+    // the map. A post-combat story (the goblin mine return) arrives after its
+    // original MapViewScene was stopped for the ambush; wake() is a no-op for a
+    // stopped scene and used to leave a blank screen after returning the
+    // detonator. Stop + launch is safe for both stopped and sleeping maps.
+    this.scene.sleep('GameScene');
+    this.scene.stop();
+    this.scene.stop('MapViewScene');
+    this.scene.launch('MapViewScene', { gameState: this.gameState });
+  }
+}
+
+Object.assign(EventScene.prototype, EventRunHelpers);

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "source": "simulator-summary",
+  "createdAt": "2026-07-25T17:53:11.485Z",
+  "seed": 20260725,
+  "behaviorPreset": "balanced",
+  "characterId": "rogue",
+  "runs": 600,
+  "outcome": {
+    "wins": 91,
+    "winRate": 0.15166666666666667,
+    "finalFloorMean": 24.136666666666667
+  },
+  "durability": {
+    "weaponBreaksPerRun": 2.505,
+    "lastPipWeaponAttacksPerRun": 2.888333333333333,
+    "mergedLastPipWeaponAttacksPerRun": 2.12,
+    "avoidableLastPipWeaponAttacksPerRun": 2.61,
+    "weaponMergesPerRun": 11.238333333333333,
+    "daggerRefreshMergesPerRun": 0.9033333333333333,
+    "anvilRepairsPerRun": 6.24,
+    "repairedPipsPerRun": 19.863333333333333
+  },
+  "resources": {
+    "restorationUsesPerRun": 0.7016666666666667,
+    "usefulVisibleLootPerRun": 50.945,
+    "gemsSeenPerRun": 2.34
+  }
+}

@@ -1,0 +1,119 @@
+// One-shot character pick before a new run starts on floor 1.
+import { SoundHelper } from '../audio/SoundHelper.js';
+import { MusicManager } from '../audio/MusicManager.js';
+import { CHARACTER_CLASSES, CHARACTER_IDS } from '../content/characters/CharacterClasses.js';
+import { t, translateCharacterName } from '../i18n/i18n.js';
+import { FONT_SIZE, serifStyle } from '../ui/uiFont.js';
+
+export class CharacterSelectScene extends Phaser.Scene {
+  constructor() {
+    super({ key: 'CharacterSelectScene' });
+  }
+
+  create() {
+    if (this.textures.exists('mainBG')) {
+      this.add.image(320, 180, 'mainBG');
+    } else {
+      this.add.rectangle(320, 180, 640, 360, 0x1a1a1a);
+    }
+    this.add.rectangle(320, 180, 640, 360, 0x000000, 0.55);
+
+    this.add.text(320, 28, t(this, 'ui.character.title'), serifStyle('22px', '#e6edf3')).setOrigin(0.5);
+
+    this.add.text(320, 52, t(this, 'ui.character.subtitle'), serifStyle(FONT_SIZE.small, '#8b949e')).setOrigin(0.5);
+
+    const slots = [
+      { id: 'rogue', x: 170 },
+      { id: 'warrior', x: 470 },
+    ];
+    // Cards sit 5px higher than before and are 8px taller: the portrait needs
+    // 64px at the top that the old layout did not have. Bottom edge still
+    // clears the Back button at y 335.
+    slots.forEach((slot) => this.createCharacterCard(slot.x, 195, CHARACTER_CLASSES[slot.id]));
+
+    this.createBackButton();
+
+    MusicManager.play(this, 'menu_music', 0.45, 500);
+  }
+
+  createCharacterCard(x, y, def) {
+    const panel = this.add.rectangle(x, y, 260, 248, 0x2c1810, 0.94)
+      .setStrokeStyle(2, 0x8b6914)
+      .setInteractive({ useHandCursor: true });
+
+    // Portrait sits at the top of the card, above the name. 64x64 frame from
+    // the shared sheet — frame index comes from the class definition.
+    if (this.textures.exists('characterPortraits')) {
+      this.add.image(x, y - 85, 'characterPortraits', def.portraitFrame ?? 0);
+    }
+
+    this.add.text(x, y - 37, translateCharacterName(this, def.id), serifStyle('18px', '#f0d78c')).setOrigin(0.5);
+
+    const startLine = t(this, def.id === 'rogue' ? 'ui.character.rogueStart' : 'ui.character.warriorStart');
+    this.add.text(x, y - 15, startLine, serifStyle(FONT_SIZE.body, '#c9d1d9')).setOrigin(0.5);
+
+    const armorLine = t(this, def.id === 'rogue' ? 'ui.character.rogueArmor' : 'ui.character.warriorArmor');
+    this.add.text(x, y + 3, armorLine, serifStyle(FONT_SIZE.body, '#c9d1d9')).setOrigin(0.5);
+
+    const passive = t(this, def.id === 'rogue' ? 'ui.character.roguePassive' : 'ui.character.warriorPassive');
+    this.add.text(x, y + 37, passive, {
+      ...serifStyle(FONT_SIZE.small, '#8b949e'),
+      align: 'center',
+      lineSpacing: 4,
+    }).setOrigin(0.5);
+
+    const btn = this.add.rectangle(x, y + 90, 140, 28, 0x3d2418, 0.95)
+      .setStrokeStyle(1, 0xd4a017)
+      .setInteractive({ useHandCursor: true });
+    this.add.text(x, y + 90, t(this, 'ui.common.select'), serifStyle('14px', '#e6edf3')).setOrigin(0.5);
+
+    const hoverOn = () => {
+      SoundHelper.playVariant(this, 'hover_button', 0.35);
+      panel.setStrokeStyle(2, 0xd4a017);
+      btn.setFillStyle(0x5a3820, 0.98);
+    };
+    const hoverOff = () => {
+      panel.setStrokeStyle(2, 0x8b6914);
+      btn.setFillStyle(0x3d2418, 0.95);
+    };
+
+    panel.on('pointerover', hoverOn);
+    panel.on('pointerout', hoverOff);
+    btn.on('pointerover', hoverOn);
+    btn.on('pointerout', hoverOff);
+    const press = () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
+      this.selectCharacter(def.id);
+    };
+    panel.on('pointerdown', press);
+    btn.on('pointerdown', press);
+  }
+
+  createBackButton() {
+    const bg = this.add.rectangle(320, 335, 160, 26, 0x2c1810, 0.92)
+      .setStrokeStyle(1, 0x8b6914)
+      .setInteractive({ useHandCursor: true });
+    this.add.text(320, 335, t(this, 'ui.common.back'), serifStyle('14px', '#e6edf3')).setOrigin(0.5);
+
+    bg.on('pointerover', () => {
+      SoundHelper.playVariant(this, 'hover_button', 0.35);
+      bg.setStrokeStyle(1, 0xd4a017);
+    });
+    bg.on('pointerout', () => bg.setStrokeStyle(1, 0x8b6914));
+    bg.on('pointerdown', () => {
+      SoundHelper.playVariant(this, 'button_click', 0.5);
+      this.cameras.main.fadeOut(250, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.start('MainMenuScene');
+      });
+    });
+  }
+
+  selectCharacter(characterId) {
+    if (!CHARACTER_IDS.includes(characterId)) characterId = 'rogue';
+    this.cameras.main.fadeOut(350, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.start('VillageScene', { characterId });
+    });
+  }
+}

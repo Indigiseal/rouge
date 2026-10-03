@@ -8,6 +8,12 @@
 //   2. A MockScene that stubs every scene method the logic touches and runs
 //      tweens / timers synchronously so combat resolves in one call.
 
+import { getEnemyHitAttack } from '../src/content/combat/enemyAttack.js';
+import { CONTROL_HESITATION_CHANCE } from '../src/content/amulets/control.js';
+import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../src/content/location-packs/tollroad/index.js';
+
+const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
+
 // ── 1. Global Phaser shim ────────────────────────────────────────────────
 const rngInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 globalThis.Phaser = {
@@ -45,12 +51,15 @@ globalThis.localStorage = globalThis.localStorage || {
 // Any method call returns the stub itself (chainable). `once`/`on` store
 // callbacks; `play` fires the stored animationcomplete handler immediately so
 // CardSystem.revealCard finishes its flip synchronously.
-function makeGameObject() {
+//
+// `scene` must be set: BoardCombat.attackEnemy early-returns when
+// `!card.sprite?.scene` (guards death-drop loot stubs in the real game).
+function makeGameObject(scene = null) {
   let proxy;
   const t = {
     x: 0, y: 0, width: 10, height: 10, displayWidth: 10, displayHeight: 10,
     alpha: 1, scaleX: 1, scaleY: 1, depth: 0, active: true, visible: true,
-    scene: null, _once: {}, _data: {},
+    scene, _once: {}, _data: {},
     getBounds() { return { x: t.x, y: t.y, width: t.width, height: t.height }; },
     getData(k) { return t._data[k]; },
     setData(k, v) { t._data[k] = v; return proxy; },
@@ -76,20 +85,21 @@ function makeGameObject() {
   return proxy;
 }
 
-// add.* factory — every creator returns a fresh chainable GameObject.
-function makeAddFactory() {
+// add.* factory — every creator returns a fresh chainable GameObject owned by
+// the scene (so sprite.scene is truthy for combat guards).
+function makeAddFactory(scene) {
   return new Proxy({}, {
-    get() { return (...args) => makeGameObject(); },
+    get() { return (...args) => makeGameObject(scene); },
   });
 }
 
 export class MockScene {
   constructor() {
-    this.add = makeAddFactory();
+    this.add = makeAddFactory(this);
     this.tweens = {
-      add: (cfg) => { if (cfg && typeof cfg.onComplete === 'function') cfg.onComplete(); return makeGameObject(); },
+      add: (cfg) => { if (cfg && typeof cfg.onComplete === 'function') cfg.onComplete(); return makeGameObject(this); },
       killTweensOf: () => {},
-      chain: () => makeGameObject(),
+      chain: () => makeGameObject(this),
     };
     this.time = {
       // Run callbacks immediately; return a removable handle.
@@ -106,9 +116,18 @@ export class MockScene {
       })
     };
     this.anims = { exists: () => false, create: () => {} };
-    this.sound = { play: () => {}, add: () => makeGameObject(), get: () => null, stopByKey: () => {} };
+    this.sound = { play: () => {}, add: () => makeGameObject(this), get: () => null, stopByKey: () => {} };
     this.cache = { audio: { exists: () => false } };
     this.input = { keyboard: { on() {}, off() {} }, on() {}, off() {} };
+    // BoardCardFx boss bars use scene.make.image({ add: false }).
+    this.make = {
+      image: () => makeGameObject(this),
+      sprite: () => makeGameObject(this),
+      graphics: () => makeGameObject(this),
+      container: () => makeGameObject(this),
+      text: () => makeGameObject(this),
+      bitmapText: () => makeGameObject(this),
+    };
     this.events = (() => {
       const m = new Map();
       return {
@@ -124,7 +143,7 @@ export class MockScene {
       isSleeping: () => false,
     };
     this.game = { globalVolume: { master: 1, sfx: 1, music: 1 } };
-    this.playerAvatar = makeGameObject();
+    this.playerAvatar = makeGameObject(this);
 
     // Combat / turn state mirrored from GameScene
     this.isEnemyTurn = false;
@@ -168,7 +187,7 @@ export class MockScene {
   }
   saveCurrentRun() {}
   setupBossRewardRoom() {}
-  isEnemyCard(card) { return !!card && (card.data?.type === 'enemy' || card.data?.type === 'boss'); }
+  isEnemyCard(card) { return !!card && (card.data?.type === 'enemy' || card.data?.type === 'eliteEnemy' || card.data?.type === 'boss'); }
 
   gameOver() { this.dead = true; }
   gameWon() { this.won = true; }
@@ -179,6 +198,11 @@ export class MockScene {
   // current action resolves (the engine drains the queue each step).
   useAction() {
     if (this.isEnemyTurn) return false;
+    if ((this.gameState.playerStunnedTurns || 0) > 0) {
+      this.gameState.playerStunnedTurns--;
+      this._enemyTurnPending = true;
+      return false;
+    }
     // Track AP starvation: actions taken while "hungry" (out of AP).
     this._actionCount = (this._actionCount || 0) + 1;
     if ((this.gameState.actionsLeft || 0) <= 0) this._hungryActions = (this._hungryActions || 0) + 1;
@@ -196,6 +220,11 @@ export class MockScene {
     return true;
   }
 
+  // Reveals and board-food pickups schedule a response without spending AP.
+  scheduleEnemyTurn() {
+    this._enemyTurnPending = true;
+  }
+
   // ── Enemy turn (faithful subset of revealedEnemiesAttack) ─────────────
   // No shields/bonewall/mirror in baseline (no amulets). Each revealed,
   // alive, non-frozen enemy deals its attack to the player via the REAL
@@ -207,20 +236,18 @@ export class MockScene {
     // enemy sits out the action that revealed it, then joins the fight on the next
     // action. Snapshot who's eligible now, then clear the flag. This is per-enemy —
     // revealing a new enemy no longer cancels attacks from enemies already revealed.
-    const eligible = new Set();
+    const eligible = [];
     for (let i = 0; i < board.length; i++) {
       const c = board[i];
-      if (c && c.revealed && this.isEnemyCard(c) && !c.justRevealed) eligible.add(i);
+      if (c && c.revealed && this.isEnemyCard(c) && !c.justRevealed) eligible.push(i);
     }
     for (const c of board) { if (c && c.justRevealed) c.justRevealed = false; }
-    for (let i = 0; i < board.length; i++) {
-      if (!eligible.has(i)) continue;
-      const card = board[i];
-      if (!card || !card.revealed || !this.isEnemyCard(card)) continue;
-      if (card.data.health <= 0) continue;
 
-      // Boss summoning is independent of its attack, so freezing a boss does
-      // not suppress its scheduled minion command (matches GameScene).
+    // Boss summoning happens before any full-phase defense and still fires
+    // while the boss is frozen.
+    for (const i of eligible) {
+      const card = board[i];
+      if (!card || card.data.health <= 0) continue;
       if (card.data.type === 'boss' && card.data.abilities) {
         for (const ab of card.data.abilities) {
           if (ab.type === 'summon' && Math.random() < ab.chance) {
@@ -229,10 +256,118 @@ export class MockScene {
           }
         }
       }
+    }
 
-      if (card.data.frozen && card.data.frozen > 0) continue;
+    const firstAttacker = eligible
+      .map((i) => ({ i, card: board[i] }))
+      .find(({ card }) => (
+        card
+        && card.revealed
+        && this.isEnemyCard(card)
+        && card.data.health > 0
+        && !(card.data.frozen > 0)
+      ));
 
-      let damageDealt = card.data.attack;
+    // These effects stop the whole attack phase in the real controller. Its
+    // short-circuit path runs companions but does not tick poison/timed buffs.
+    if (this.gameState.blockNextAttack) {
+      this.gameState.blockNextAttack = false;
+      this._runCompanionTurns();
+      return;
+    }
+    if ((this.gameState.boneWall || 0) > 0 && firstAttacker) {
+      this.gameState.boneWall--;
+      this.cardSystem.attackEnemy(firstAttacker.i, firstAttacker.card.data.attack, true);
+      this._runCompanionTurns();
+      return;
+    }
+    if (eligible.length === 0) {
+      this._finishEnemyTurnEffects({ runCompanions: false });
+      return;
+    }
+
+    for (const i of eligible) {
+      const card = board[i];
+      if (!card || !card.revealed || !this.isEnemyCard(card)) continue;
+      if (card.data.health <= 0) continue;
+
+      // Frozen enemies thaw one step per eligible turn. Previously the mock
+      // skipped forever, making a single Frost Ring permanent.
+      if (card.data.frozen && card.data.frozen > 0) {
+        card.data.frozen--;
+        if ((card.data.shockedTurns || 0) > 0) {
+          card.data.shockedTurns--;
+          if (card.data.frozen <= 0) card.data.shockedTurns = 0;
+        }
+        continue;
+      }
+
+      if (card.data.isMimic) {
+        if (card.data.escapeTurnsLeft === undefined) {
+          card.data.escapeTurnsLeft = card.data.escapeTurns || 3;
+        }
+        card.data.escapeTurnsLeft--;
+        if (card.data.escapeTurnsLeft <= 0) {
+          this.cardSystem.mimicEscape?.(i);
+          continue;
+        }
+      }
+
+      if (
+        this.amuletManager?.hasCharmingTune?.()
+        && !this.gameState.charmingTuneUsed
+        && card.data.role === 'MELEE'
+      ) {
+        this.gameState.charmingTuneUsed = true;
+        continue;
+      }
+
+      if (card.data?.controlHesitation && Math.random() < CONTROL_HESITATION_CHANCE) {
+        continue;
+      }
+
+      if (card.data?.controlTreachery) {
+        const others = board
+          .map((target, index) => ({ target, index }))
+          .filter(({ target, index }) => (
+            index !== i
+            && target?.revealed
+            && this.isEnemyCard(target)
+            && target.data.health > 0
+          ));
+        if (others.length > 0) {
+          const target = others[Math.floor(Math.random() * others.length)];
+          this.cardSystem.attackEnemy(
+            target.index,
+            getEnemyHitAttack(card, board),
+            true
+          );
+          continue;
+        }
+      }
+
+      const charmChance = this.amuletManager?.getCharmChance?.() || 0;
+      if (charmChance > 0 && Math.random() < charmChance) {
+        const others = board
+          .map((target, index) => ({ target, index }))
+          .filter(({ target, index }) => (
+            index !== i
+            && target?.revealed
+            && this.isEnemyCard(target)
+            && target.data.health > 0
+          ));
+        if (others.length > 0) {
+          const target = others[Math.floor(Math.random() * others.length)];
+          this.cardSystem.attackEnemy(target.index, card.data.attack, true);
+          continue;
+        }
+      }
+
+      let damageDealt = getEnemyHitAttack(card, board);
+      const features = Array.isArray(card.data?.features) ? card.data.features : [];
+      if (features.includes('heavy_shot') && Math.random() < 0.2) {
+        damageDealt = Math.ceil(damageDealt * 1.5);
+      }
       const rage = card.data.abilities?.find((a) => a.type === 'rage');
       if (rage) {
         const maxHp = card.data.maxHealth || card.data.health;
@@ -253,22 +388,80 @@ export class MockScene {
         }
       });
 
+      if (features.includes('coin_steal')) {
+        const stolen = Math.min(10, Math.max(0, this.gameState.coins || 0));
+        if (stolen > 0) this.gameState.coins -= stolen;
+      }
+
       const armorBeforeHit = this.gameState.equippedArmor;
-      const { actualDamage } = this.gameState.takeDamage(damageDealt, i, 'enemy', armorPierce);
+      const damageOptions = features.includes('ignore_armor') ? { ignoreArmorChance: 0.1 } : {};
+      const { actualDamage, tookDamage, dodged, revived } = this.gameState.takeDamage(
+        damageDealt,
+        i,
+        'enemy',
+        armorPierce,
+        damageOptions,
+      );
       if (armorBeforeHit && !this.gameState.equippedArmor) {
         this._armorBreaks = (this._armorBreaks || 0) + 1;
       }
       if (this.gameState.playerHealth <= 0) { this._lastKiller = card.data.name || 'enemy'; return; }
-      // Thorns: reflect to MELEE attackers (mirrors GameScene.applyThornsDamage),
-      // consuming 1 durability per reflect; the bot's strongest thorns is active.
+      if (revived) { this._finishEnemyTurnEffects({ runCompanions: true, skipPlayerPoison: true }); return; }
+
+      if (!dodged && features.includes('club_stun') && Math.random() < 0.05) {
+        this.gameState.playerStunnedTurns = Math.max(this.gameState.playerStunnedTurns || 0, 1);
+      }
+
+      if (features.includes('goblin_rally') && Math.random() < 0.15) {
+        for (let j = 0; j < board.length; j++) {
+          if (j === i || this.gameState.playerHealth <= 0) continue;
+          const ally = board[j];
+          if (
+            ally?.revealed
+            && this.isEnemyCard(ally)
+            && (ally.data?.health || 0) > 0
+            && !(ally.data?.frozen > 0)
+            && GOBLIN_ALLY_TYPE_SET.has(ally.data?.enemyType)
+          ) {
+            // Inline one extra ally swing (no nested rally).
+            const allyFeatures = Array.isArray(ally.data?.features) ? ally.data.features : [];
+            let allyDmg = getEnemyHitAttack(ally, board);
+            if (allyFeatures.includes('heavy_shot') && Math.random() < 0.2) {
+              allyDmg = Math.ceil(allyDmg * 1.5);
+            }
+            if (allyFeatures.includes('coin_steal')) {
+              const stolen = Math.min(10, Math.max(0, this.gameState.coins || 0));
+              if (stolen > 0) this.gameState.coins -= stolen;
+            }
+            const allyOpts = allyFeatures.includes('ignore_armor') ? { ignoreArmorChance: 0.1 } : {};
+            const allyResult = this.gameState.takeDamage(allyDmg, j, 'enemy', 0, allyOpts);
+            if (!allyResult.dodged && allyFeatures.includes('club_stun') && Math.random() < 0.05) {
+              this.gameState.playerStunnedTurns = Math.max(this.gameState.playerStunnedTurns || 0, 1);
+            }
+            if (this.gameState.playerHealth <= 0) {
+              this._lastKiller = ally.data.name || 'enemy';
+              return;
+            }
+          }
+        }
+      }
+
+      // Card thorns retaliate against melee even on a dodge; armor Briar
+      // damage only applies when damage actually landed.
       const t = this.gameState.activeThorns;
       const isMeleeAttacker = card.data.type === 'boss' || (card.data.role === 'MELEE' && !card.data.isRangedType);
-      if (isMeleeAttacker && t && t.durability > 0 && card.data.health > 0) {
-        this.cardSystem.attackEnemy(i, t.thornDamage || 2, true);
-        t.durability -= 1;
-        if (t.durability <= 0) {
-          this.gameState.activeThorns = null;
-          this._thornBreaks = (this._thornBreaks || 0) + 1;
+      if (isMeleeAttacker && card.data.health > 0) {
+        const thornDamage = t && t.durability > 0 ? (t.thornDamage || 2) : 0;
+        const armorThorns = tookDamage ? (this.gameState.equippedArmor?.thornDamage || 0) : 0;
+        if (thornDamage + armorThorns > 0) {
+          this.cardSystem.attackEnemy(i, thornDamage + armorThorns, true);
+        }
+        if (thornDamage > 0) {
+          t.durability--;
+          if (t.durability <= 0) {
+            this.gameState.activeThorns = null;
+            this._thornBreaks = (this._thornBreaks || 0) + 1;
+          }
         }
       }
       // Boss abilities: leech (heal from damage ACTUALLY landed, after armor —
@@ -283,6 +476,12 @@ export class MockScene {
         }
       }
     }
+    this._finishEnemyTurnEffects();
+  }
+
+  _runCompanionTurns() {
+    if (this.gameState.playerHealth <= 0) return;
+    const board = this.cardSystem.boardCards;
     // Companions strike after the enemy phase in the live game. The simulator
     // keeps its inventory on the mock scene, so event-earned companions now
     // contribute their real card attack instead of being dead weight.
@@ -307,24 +506,37 @@ export class MockScene {
         this.cardSystem.applyShockStatus?.(shockedTarget, 1);
       }
     }
+  }
+
+  _finishEnemyTurnEffects({ runCompanions = true, skipPlayerPoison = false } = {}) {
+    if (this.gameState.shadowBlade) {
+      this.gameState.shadowBlade.turns--;
+      if (this.gameState.shadowBlade.turns <= 0) this.gameState.shadowBlade = null;
+    }
+    if (this.gameState.magicShield) {
+      this.gameState.magicShield.turns--;
+      if (this.gameState.magicShield.turns <= 0) this.gameState.magicShield = null;
+    }
+
     // End-of-enemy-turn effects: poison damage-over-time ticks on enemies
     // (mirrors GameScene.finishEnemyTurnEffects → processEnemyPoisonEffects).
     this.cardSystem.processEnemyPoisonEffects?.();
+    if (!skipPlayerPoison) {
     let effectDamage = 0;
-    let poisonKilledBy = null;
     for (let i = this.gameState.playerEffects.length - 1; i >= 0; i--) {
       const effect = this.gameState.playerEffects[i];
       if (effect.type === 'poison') {
         effectDamage += effect.damage || 0;
-        poisonKilledBy = effect.killedBy || poisonKilledBy;
       }
       effect.turns--;
       if (effect.turns <= 0) this.gameState.playerEffects.splice(i, 1);
     }
     if (effectDamage > 0) {
       this.gameState.takeDamage(effectDamage, -1, 'poison');
-      if (this.gameState.playerHealth <= 0) this._lastKiller = poisonKilledBy || 'Poison';
+      if (this.gameState.playerHealth <= 0) this._lastKiller = 'Poison';
     }
+    }
+    if (runCompanions && this.gameState.playerHealth > 0) this._runCompanionTurns();
   }
 
   // Inject a summoned minion (revealed enemy) onto the board — boss summon.
@@ -345,13 +557,10 @@ export class MockScene {
     // Summoned spiders carry the toned-down poison the real game gives them.
     if (enemyType === 'spider') e.abilities = [{ type: 'poison', damage: 1, turns: 2, stackable: true }];
     e.role = Math.random() < 0.5 ? 'MELEE' : 'RANGED';
-    const sprite = {
-      x: 0, y: 0, active: true, scene: this,
-      setTexture() { return this; }, setScale() { return this; }, setTint() { return this; },
-      clearTint() { return this; }, destroy() { this.active = false; return this; },
-      play() { return this; }, once() { return this; }, on() { return this; },
-      getBounds() { return { x: 0, y: 0, width: 1, height: 1 }; },
-    };
+    // Use the full GameObject stub (has off/on/play/once) so later
+    // revealCard / smokeScreen paths don't crash on missing Phaser APIs.
+    const sprite = makeGameObject(this);
+    sprite.scene = this;
     this.cardSystem.boardCards.push({ data: e, revealed: true, sprite });
   }
 

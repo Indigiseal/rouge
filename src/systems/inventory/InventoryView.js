@@ -1,0 +1,1342 @@
+import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
+import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from '../../ui/NineSlicePanel.js';
+import { DISCARD_X } from '../../ui/CombatHud.js';
+import { CardDataGenerator } from '../loot/CardDataGenerator.js';
+import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
+import { t, translateDescription, translateGemEffect, translateItemName, tCount } from '../../i18n/i18n.js';
+import { describeWeaponEnchant } from '../../content/balance/WeaponEnchants.js';
+import { effectiveArmorProtection } from '../combat/ArmorMath.js';
+import {
+    axeHeavyCleaveTargetIndices,
+    spearPierceTargetIndices,
+    swordCleaveTargetIndices,
+} from '../../content/cards/weapons.js';
+
+// Bag slot styling. The near-black ink is used for both the fill and the
+// hairline frame; writing the alpha as a fraction of 255 keeps it legible
+// against the value picked in the art tool.
+const SLOT_INK = 0x0e0b10;
+const SLOT_FILL_ALPHA = 136 / 255;
+
+// Bag tooltip. Frame, ink, type size and padding all come from the shared
+// tooltip skin; only the text column is local, narrower than the board's 200
+// because this box is pinned beside the pointer down in the bag rather than
+// floated over open board. The enchant line takes the rarity blue the shared
+// tooltip already uses for rare items.
+const TOOLTIP_TEXT_W = 138;
+// Bag entrance, as in the village: how far below its spot the panel starts,
+// how long the rise takes, and the Back ease strength. 2.5 runs ~19% of the
+// drop past the spot, about 4px, before it settles.
+const PANEL_INTRO_DROP = 20;
+const PANEL_INTRO_MS = 480;
+const PANEL_INTRO_OVERSHOOT = 2.5;
+const TOOLTIP_ENCHANT_COLOR = '#66aaff';
+
+export const InventoryView = {
+    setVisibility(isVisible) {
+        if (this.uiGroup) {
+            this.uiGroup.setVisible(isVisible);
+            if (isVisible) {
+                this.rebuildInventorySprites(); // Force redraw on show
+            }
+        }
+    },
+    setStationMode(isStationMode) {
+        this.stationMode = isStationMode;
+        this.applyInventoryVisualDepths();
+    },
+    getInventoryDepths() {
+        return this.stationMode
+            ? {
+                panel: 200,
+                background: 201,
+                shadow: 202,
+                card: 203,
+                info: 204,
+                hover: 205,
+                gemEffect: 206,
+                gemIndicator: 207,
+                briarFrame: 208,
+                webOverlay: 209,
+                twinkle: 208
+            }
+            : {
+                panel: 10,
+                background: 11,
+                shadow: 11,
+                card: 12,
+                info: 1001,
+                hover: 13,
+                gemEffect: 14,
+                gemIndicator: 15,
+                briarFrame: 16,
+                webOverlay: 17,
+                twinkle: 100
+            };
+    },
+    applyInventoryVisualDepths() {
+        const depths = this.getInventoryDepths();
+        this.inventoryPanelPieces?.forEach(piece => piece?.setDepth?.(depths.panel));
+        this.slotSprites?.forEach((slot, index) => this.applySlotVisualDepths(index));
+    },
+    applySlotVisualDepths(slotIndex) {
+        const slot = this.slotSprites?.[slotIndex];
+        if (!slot) return;
+        const depths = this.getInventoryDepths();
+
+        slot.background?.setDepth?.(depths.background);
+        slot.shadow?.setDepth?.(depths.shadow);
+        slot.card?.setDepth?.(depths.card);
+
+        const infoText = slot.card?.getData?.('infoText');
+        infoText?.setDepth?.(depths.info);
+
+        slot.hoverSprite?.setDepth?.(depths.hover);
+        slot.gemEffectSprite?.setDepth?.(depths.gemEffect);
+        slot.gemIndicator?.setDepth?.(depths.gemIndicator);
+        slot.briarFrame?.setDepth?.(depths.briarFrame);
+        slot.webOverlay?.setDepth?.(depths.webOverlay);
+        slot.twinkleSprite?.setDepth?.(depths.twinkle);
+    },
+    applyWebOverlay(slotIndex) {
+        const slot = this.slotSprites?.[slotIndex];
+        const cardSprite = slot?.card;
+        const cardData = this.slots?.[slotIndex];
+        if (!slot || !cardSprite?.scene || !(cardData?.webbedTurns > 0)) return;
+
+        if (slot.webOverlay?.scene) {
+            slot.webOverlay.x = cardSprite.x;
+            slot.webOverlay.y = cardSprite.y;
+            slot.webOverlay.setVisible(true);
+            slot.webOverlay.setDepth(this.getInventoryDepths().webOverlay);
+        } else {
+            const overlay = snapOriginToPixelGrid(
+                this.scene.add.image(cardSprite.x, cardSprite.y, 'webCardOverlay')
+            );
+            // Drawn at native size, NOT stretched to the card. web.png is 60x78
+            // against a 54x70 card because Taya drew the silk to overhang the
+            // edges; forcing it to the card's size squashed it by 0.90 across
+            // and 0.897 down — two different fractional scales, which is what
+            // smeared the pixels. Those numbers came from the generated
+            // placeholder this art replaced, which really was card-sized.
+            overlay.setDepth(this.getInventoryDepths().webOverlay);
+            this.uiGroup?.add?.(overlay);
+            slot.webOverlay = overlay;
+            cardSprite.setData('webOverlay', overlay);
+            cardSprite.once('destroy', () => {
+                overlay.destroy();
+                if (slot.webOverlay === overlay) slot.webOverlay = null;
+            });
+        }
+
+        // Webbed cards stay put — no drag (avoids orphaning the silk mask).
+        this.setCardWebbedInteractive(slotIndex, true);
+    },
+    clearWebOverlay(slotIndex) {
+        const slot = this.slotSprites?.[slotIndex];
+        if (!slot?.webOverlay) return;
+        slot.webOverlay.destroy();
+        slot.webOverlay = null;
+        slot.card?.setData?.('webOverlay', null);
+        this.setCardWebbedInteractive(slotIndex, false);
+    },
+    setCardWebbedInteractive(slotIndex, webbed) {
+        const cardSprite = this.slotSprites?.[slotIndex]?.card;
+        if (!cardSprite?.scene || !cardSprite.input) return;
+        if (webbed) {
+            this.scene.input.setDraggable(cardSprite, false);
+            cardSprite.setData('webbedLocked', true);
+        } else {
+            cardSprite.setData('webbedLocked', false);
+            if (cardSprite.input) this.scene.input.setDraggable(cardSprite, true);
+        }
+    },
+    clearAllHandWebs() {
+        const slots = this.slots || [];
+        for (let i = 0; i < slots.length; i++) {
+            const item = slots[i];
+            if (!item || !(item.webbedTurns > 0)) continue;
+            delete item.webbedTurns;
+            this.clearWebOverlay(i);
+        }
+    },
+    setDiscardArea(discardArea) {
+        this.discardArea = discardArea;
+    },
+    setArmorPanel(armorPanel) {
+        this.armorPanel = armorPanel;
+    },
+    // Custom drop targets a scene can register for the duration of an
+    // interaction (e.g. the copying-mirror event). Each handler is called with
+    // (slotIndex, cardData, cardSprite) when a dragged card is released over the
+    // zone, and returns true if it consumed the drop (taking responsibility for
+    // the dragged sprite). Cleared when the interaction ends.
+    addDropZone(zone, handler) {
+        if (!zone || typeof handler !== 'function') return;
+        (this.dropZones ||= []).push({ zone, handler });
+    },
+    clearDropZones() {
+        this.dropZones = [];
+    },
+    // A station may render above GameScene (EventScene does this for the mirror
+    // and well). Depth values cannot cross Phaser scene boundaries, so a card
+    // dragged out of the inventory needs a synchronized visual in that upper
+    // scene. The real card still moves and performs all drop detection.
+    setDragOverlayScene(scene = null) {
+        if (this.dragOverlayScene === scene) return;
+        this.destroyDragOverlay();
+        this.dragOverlayScene = scene;
+    },
+    createDragOverlay(cardSprite, slotIndex) {
+        this.destroyDragOverlay();
+        const overlayScene = this.dragOverlayScene;
+        if (!overlayScene?.add || !cardSprite?.texture?.key) return;
+
+        const slot = this.slotSprites?.[slotIndex];
+        const parts = [];
+        const cloneImage = (source, depth) => {
+            if (!source?.texture?.key) return null;
+            const clone = overlayScene.add.image(
+                source.x,
+                source.y,
+                source.texture.key,
+                source.frame?.name
+            )
+                .setOrigin(source.originX ?? 0.5, source.originY ?? 0.5)
+                .setScale(source.scaleX ?? 1, source.scaleY ?? 1)
+                .setRotation(source.rotation || 0)
+                .setAlpha(source.alpha ?? 1)
+                .setDepth(depth);
+            clone.setFlip?.(Boolean(source.flipX), Boolean(source.flipY));
+            if (source.isTinted) {
+                clone.setTint?.(
+                    source.tintTopLeft,
+                    source.tintTopRight,
+                    source.tintBottomLeft,
+                    source.tintBottomRight
+                );
+            }
+            parts.push({
+                clone,
+                offsetX: source.x - cardSprite.x,
+                offsetY: source.y - cardSprite.y
+            });
+            return clone;
+        };
+
+        // Clone in visual order. The real objects remain visible so Phaser's
+        // drag input cannot be interrupted by hiding its active game object.
+        cloneImage(slot?.shadow, 9998);
+        cloneImage(cardSprite, 10000);
+        cloneImage(slot?.gemIndicator?.shadow, 10001);
+        cloneImage(slot?.gemIndicator, 10002);
+        cloneImage(slot?.briarFrame, 10003);
+        cloneImage(slot?.webOverlay, 10004);
+        cloneImage(slot?.twinkleSprite, 10003);
+
+        this.dragOverlay = { cardSprite, parts };
+    },
+    updateDragOverlay(cardSprite) {
+        const overlay = this.dragOverlay;
+        if (!overlay || overlay.cardSprite !== cardSprite) return;
+        overlay.parts.forEach(({ clone, offsetX, offsetY }) => {
+            if (!clone?.scene) return;
+            clone.x = cardSprite.x + offsetX;
+            clone.y = cardSprite.y + offsetY;
+        });
+    },
+    destroyDragOverlay() {
+        const overlay = this.dragOverlay;
+        if (!overlay) return;
+        overlay.parts?.forEach(({ clone }) => clone?.destroy?.());
+        this.dragOverlay = null;
+    },
+    // Phaser's InputManager processes scenes from top to bottom. With
+    // globalTopOnly enabled, an interactive object in a scene above GameScene
+    // can consume pointerup before the inventory card receives dragend. Keep a
+    // DOM-level release fallback so one physical release always completes one
+    // inventory drop.
+    beginInventoryCardDrag(slotIndex, cardSprite) {
+        this._liveDrag = { slotIndex, cardSprite };
+        cardSprite?.setData?.('inventoryDragging', true);
+        this.freezeBoardInputForDrag();
+    },
+    finishStuckInventoryDrag(releasePoint = null, cancelled = false) {
+        const live = this._liveDrag;
+        if (!live) return false;
+
+        if (cancelled) {
+            const originalX = live.cardSprite.getData?.('originalX');
+            const originalY = live.cardSprite.getData?.('originalY');
+            const slot = this.slotSprites?.[live.slotIndex];
+            live.cardSprite.x = Number.isFinite(originalX) ? originalX : (slot?.originalX ?? live.cardSprite.x);
+            live.cardSprite.y = Number.isFinite(originalY) ? originalY : (slot?.originalY ?? live.cardSprite.y);
+        }
+
+        // ScaleManager converts browser coordinates into canvas coordinates,
+        // but the game renders its 640x360 world through a zoomed camera onto a
+        // 1280x720 canvas. Convert through the camera as well; using the canvas
+        // point directly makes a drop over an enemy look like a drop over the
+        // bottom-right discard area.
+        const scale = this.scene?.scale;
+        const camera = this.scene?.cameras?.main;
+        const clientX = releasePoint?.clientX;
+        const clientY = releasePoint?.clientY;
+        if (
+            !cancelled
+            && Number.isFinite(clientX)
+            && Number.isFinite(clientY)
+            && typeof scale?.transformX === 'function'
+            && typeof scale?.transformY === 'function'
+            && typeof camera?.getWorldPoint === 'function'
+        ) {
+            const canvasX = scale.transformX(clientX);
+            const canvasY = scale.transformY(clientY);
+            const worldPoint = camera.getWorldPoint(canvasX, canvasY);
+            if (Number.isFinite(worldPoint?.x) && Number.isFinite(worldPoint?.y)) {
+                live.cardSprite.x = Math.round(worldPoint.x);
+                live.cardSprite.y = Math.round(worldPoint.y);
+            }
+        }
+
+        return this.finishInventoryCardDrag(live.slotIndex, live.cardSprite, true);
+    },
+    finishInventoryCardDrag(slotIndex, cardSprite, forcePhaserReset = false) {
+        const live = this._liveDrag;
+        // Both Phaser and the DOM fallback can observe the same pointerup.
+        // Claim the drag once so damage/durability can never be applied twice.
+        if (!live || live.slotIndex !== slotIndex || live.cardSprite !== cardSprite) return false;
+        this._liveDrag = null;
+        this.destroyFireReachIndicator();
+        this.destroyWeaponAttackIndicator();
+
+        try {
+            if (!cardSprite?.scene) return false;
+
+            cardSprite.setData?.('inventoryDragging', false);
+            cardSprite.clearTint?.();
+            this.destroyDragOverlay();
+            this.applySlotVisualDepths(slotIndex);
+
+            const currentSlot = this.slotSprites[slotIndex];
+            currentSlot?.shadow?.setAlpha?.(0);
+            currentSlot?.twinkleSprite?.setDepth?.(this.getInventoryDepths().twinkle);
+
+            this.handleCardDrop(slotIndex, cardSprite);
+            return true;
+        } catch (err) {
+            console.error(err);
+            if (cardSprite?.scene) this.returnCardToSlot(slotIndex, cardSprite);
+            return false;
+        } finally {
+            this.restoreBoardInputAfterDrag();
+            // Never touch Phaser's private drag bookkeeping from inside its own
+            // dragend dispatch. It only needs repair when the DOM fallback ran
+            // precisely because Phaser missed that dispatch.
+            if (forcePhaserReset) this.resetPhaserInventoryDrag(cardSprite);
+        }
+    },
+    freezeBoardInputForDrag() {
+        this.restoreBoardInputAfterDrag();
+        this._boardInputFrozen = [];
+        const board = this.scene.cardSystem?.boardCards || [];
+        board.forEach((card) => {
+            const sprite = card?.sprite;
+            if (!sprite?.input?.enabled) return;
+            sprite.input.enabled = false;
+            this._boardInputFrozen.push(sprite);
+        });
+    },
+    restoreBoardInputAfterDrag() {
+        (this._boardInputFrozen || []).forEach((sprite) => {
+            if (sprite?.input) sprite.input.enabled = true;
+        });
+        this._boardInputFrozen = [];
+    },
+    resetPhaserInventoryDrag(cardSprite) {
+        const input = this.scene?.input;
+        if (cardSprite?.input) cardSprite.input.dragState = 0;
+        if (!input) return;
+
+        const pointer = input.activePointer;
+        if (!pointer) return;
+        if (input.getDragState?.(pointer) !== 0) input.setDragState?.(pointer, 0);
+        const dragList = input._drag?.[pointer.id];
+        if (Array.isArray(dragList)) dragList.length = 0;
+    },
+    bindInventoryDragRelease() {
+        if (this._onInventoryPointerUp) return;
+        const releaseTarget = this.scene?.game?.canvas?.ownerDocument?.defaultView
+            || (typeof window !== 'undefined' ? window : null);
+        if (!releaseTarget?.addEventListener) return;
+
+        this._inventoryDragReleaseTarget = releaseTarget;
+        this._onInventoryPointerUp = (event) => {
+            if (!this._liveDrag || this._inventoryDragReleaseQueued) return;
+            this._inventoryDragReleaseQueued = true;
+            const cancelled = event?.type === 'pointercancel';
+            const releasePoint = cancelled
+                ? null
+                : { clientX: event?.clientX, clientY: event?.clientY };
+
+            // Let every listener for this pointerup finish first. Phaser may
+            // still emit the normal dragend later in the same event dispatch;
+            // that path has the authoritative final drag coordinates. Only if
+            // the drag is still live afterwards do we invoke the fallback.
+            const finishAfterPhaser = () => {
+                this._inventoryDragReleaseQueued = false;
+                this.finishStuckInventoryDrag(releasePoint, cancelled);
+            };
+            if (typeof releaseTarget.queueMicrotask === 'function') {
+                releaseTarget.queueMicrotask(finishAfterPhaser);
+            } else {
+                Promise.resolve().then(finishAfterPhaser);
+            }
+        };
+        releaseTarget.addEventListener('pointerup', this._onInventoryPointerUp);
+        releaseTarget.addEventListener('pointercancel', this._onInventoryPointerUp);
+        this.scene.events.once('shutdown', () => {
+            releaseTarget.removeEventListener('pointerup', this._onInventoryPointerUp);
+            releaseTarget.removeEventListener('pointercancel', this._onInventoryPointerUp);
+            this._onInventoryPointerUp = null;
+            this._inventoryDragReleaseTarget = null;
+            this._inventoryDragReleaseQueued = false;
+            this._liveDrag = null;
+            this.restoreBoardInputAfterDrag();
+        });
+    },
+    // The enemy a swing would land on: closest revealed enemy within 150px of
+    // the dragged card. Mirrors the pick in useWeapon() so the ring previews the
+    // same target the drop will actually hit.
+    findWeaponTargetSprite(cardSprite) {
+        let closest = null;
+        let closestCard = null;
+        let closestDistance = Infinity;
+        this.scene.cardSystem?.boardCards?.forEach(card => {
+            if (!card?.revealed || !card.sprite || !this.isEnemyBoardCard(card)) return;
+            const distance = Phaser.Math.Distance.Between(
+                cardSprite.x, cardSprite.y, card.sprite.x, card.sprite.y
+            );
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closest = card.sprite;
+                closestCard = card;
+            }
+        });
+        if (closestDistance >= 150) return null;
+        const board = this.scene.cardSystem?.boardCards || [];
+        const activeTaunt = board.some(card => this.scene.cardSystem.isActiveBoardTaunter?.(card));
+        if (activeTaunt && !this.scene.cardSystem.isActiveBoardTaunter?.(closestCard)) return null;
+        return closest;
+    },
+    updateWeaponAttackIndicator(cardSprite, slotIndex) {
+        const weapon = this.slots[slotIndex];
+        if (this.stationMode || weapon?.type !== 'weapon') {
+            this.destroyWeaponAttackIndicator();
+            return;
+        }
+
+        const board = this.scene.cardSystem?.boardCards || [];
+        const targetSprite = this.findWeaponTargetSprite(cardSprite);
+        const primaryIndex = board.findIndex(card => card?.sprite === targetSprite);
+        if (primaryIndex < 0) {
+            this.destroyWeaponAttackIndicator();
+            return;
+        }
+
+        const affected = new Map([[primaryIndex, 1]]);
+        const hasAp = (this.scene.gameState?.actionsLeft || 0) > 0;
+        if (hasAp && weapon.special === 'cleave') {
+            for (const index of swordCleaveTargetIndices(board, primaryIndex)) affected.set(index, 0.5);
+        } else if (hasAp && (weapon.special === 'pierce' || weapon.special === 'reach')) {
+            for (const index of spearPierceTargetIndices(board, primaryIndex)) affected.set(index, 0.5);
+        } else if (weapon.special === 'specialAttack') {
+            const target = board[primaryIndex];
+            const hp = target?.data?.health || 0;
+            const maxHp = Math.max(1, target?.data?.maxHealth || hp || 1);
+            if (hp / maxHp > 0.2) {
+                const fan = axeHeavyCleaveTargetIndices(board, primaryIndex);
+                for (const index of fan.vertical) affected.set(index, 0.5);
+                for (const index of fan.sides) affected.set(index, 0.5);
+            }
+        }
+
+        if (!this.weaponAttackIndicator?.scene) {
+            this.weaponAttackIndicator = this.scene.add.graphics().setDepth(25);
+        }
+        const g = this.weaponAttackIndicator;
+        g.clear();
+        for (const [index, fraction] of affected) {
+            const sprite = board[index]?.sprite;
+            if (!sprite?.scene) continue;
+            const width = (sprite.displayWidth || sprite.width || 53) + 6;
+            const height = (sprite.displayHeight || sprite.height || 70) + 6;
+            const color = fraction >= 1 ? 0xffdd55 : fraction >= 0.5 ? 0xff8844 : 0xff4455;
+            const alpha = fraction >= 1 ? 0.28 : fraction >= 0.5 ? 0.22 : 0.16;
+            g.fillStyle(color, alpha);
+            g.fillRoundedRect(sprite.x - width / 2, sprite.y - height / 2, width, height, 4);
+            g.lineStyle(fraction >= 1 ? 2 : 1, color, 0.9);
+            g.strokeRoundedRect(sprite.x - width / 2, sprite.y - height / 2, width, height, 4);
+        }
+    },
+    destroyWeaponAttackIndicator() {
+        if (this.weaponAttackIndicator?.scene) this.weaponAttackIndicator.destroy();
+        this.weaponAttackIndicator = null;
+    },
+    // Translucent red ring showing how far a fire gem's splash would reach from
+    // the enemy this swing would strike. Because the splash tests centre-to-
+    // nearest-edge, the rule reads straight off the picture: any enemy card the
+    // ring touches burns. Drawn at depth 1 — above the board panel (0), below
+    // the cards (2) — so it looks like scorched ground, not an overlay.
+    updateFireReachIndicator(cardSprite, slotIndex) {
+        const weapon = this.slots[slotIndex];
+        if (this.stationMode || weapon?.type !== 'weapon' || weapon.gemEffect !== 'fire') {
+            this.destroyFireReachIndicator();
+            return;
+        }
+
+        const target = this.findWeaponTargetSprite(cardSprite);
+        if (!target?.scene) {
+            this.destroyFireReachIndicator();
+            return;
+        }
+
+        if (!this.fireReachIndicator?.scene) {
+            this.fireReachIndicator = this.scene.add.graphics().setDepth(1);
+        }
+
+        const radius = this.scene.cardSystem.getFireSplashRadius();
+        const g = this.fireReachIndicator;
+        g.clear();
+        g.fillStyle(0xff4020, 0.16);
+        g.fillCircle(target.x, target.y, radius);
+        g.lineStyle(1, 0xff6040, 0.5);
+        g.strokeCircle(target.x, target.y, radius);
+    },
+    destroyFireReachIndicator() {
+        if (this.fireReachIndicator?.scene) this.fireReachIndicator.destroy();
+        this.fireReachIndicator = null;
+    },
+    createInventoryUI() {
+        this.hideCardTooltip();
+
+        // COMPLETE cleanup of existing UI sprites
+        this.inventoryPanelPieces.forEach(piece => piece?.destroy());
+        this.inventoryPanelPieces = [];
+
+        this.slotSprites.forEach(slot => {
+            // Clean up background
+            if (slot.background) {
+                slot.background.destroy();
+                slot.background = null;
+            }
+            
+            // Clean up shadow
+            if (slot.shadow) {
+                slot.shadow.destroy();
+                slot.shadow = null;
+            }
+            
+            // Clean up hover sprite
+            if (slot.hoverSprite) {
+                slot.hoverSprite.destroy();
+                slot.hoverSprite = null;
+            }
+
+            if (slot.gemEffectSprite) {
+                slot.gemEffectSprite.destroy();
+                slot.gemEffectSprite = null;
+            }
+
+            if (slot.gemIndicator) {
+                slot.gemIndicator.destroy();
+                slot.gemIndicator = null;
+            }
+
+            if (slot.briarFrame) {
+                slot.briarFrame.destroy();
+                slot.briarFrame = null;
+            }
+
+            if (slot.webOverlay) {
+                slot.webOverlay.destroy();
+                slot.webOverlay = null;
+            }
+            
+            // Clean up twinkle sprite
+            if (slot.twinkleSprite) {
+                slot.twinkleSprite.destroy();
+                slot.twinkleSprite = null;
+            }
+            
+            // Clean up card and its info if it exists
+            if (slot.card) {
+                const infoText = slot.card.getData('infoText');
+                if (infoText) {
+                    if (infoText.list) {
+                        // Container with children (durability dots, etc.)
+                        infoText.list.forEach(child => {
+                            if (child && child.destroy) {
+                                child.destroy();
+                            }
+                        });
+                        infoText.destroy(true);
+                    } else {
+                        infoText.destroy();
+                    }
+                }
+                slot.card.destroy();
+                slot.card = null;
+            }
+        });
+        
+        // Clear the array
+        this.slotSprites = [];
+        
+        // Create inventory slots based on current count
+        const slotCount = this.slots.length;
+        
+        // Layout configuration
+        const slotWidth = 50;
+        const slotHeight = 70;
+        const spacing = 5;
+        const totalWidth = slotCount * slotWidth + (slotCount - 1) * spacing;
+        // 320, the screen's centre line (was 340), under the centred board.
+        const inventoryCenterX = 320;
+        // Round to a whole pixel: with bonus slots totalWidth can be odd, leaving
+        // the slots on a half-pixel. Fractional positions re-round (and shift 1px)
+        // whenever a board card's blend-mode hover sprite forces a render-batch flush.
+        const startX = Math.round(inventoryCenterX - (totalWidth / 2) + (slotWidth / 2));
+        // The panel drops 2px; the slots — and so every card sitting in one —
+        // drop 6. They used to share a single y, which is why the cards could
+        // not be nudged without taking the frame with them.
+        const panelY = 309 + 2;
+        const y = 309 + 6;
+        // The panel wraps the slots with generous padding, but is capped so its
+        // right edge never reaches the discard bin (~x 567) once the bag grows to
+        // many slots. The panel is centered on inventoryCenterX, so the cap is
+        // symmetric. 5–7 slots keep the roomy framing; only a near-full 8-slot bag
+        // tightens up (its slots already run close to the bin either way).
+        const desiredPanelWidth = Math.max(368, totalWidth + 90);
+        // The bin is on the LEFT now, so the clearance that caps the panel is
+        // measured leftward from the bag's centre instead of rightward.
+        const discardClearWidth = 2 * (inventoryCenterX - (DISCARD_X + 39));
+        this.createInventoryPanel(inventoryCenterX, panelY, Math.min(desiredPanelWidth, discardClearWidth));
+        
+        for (let i = 0; i < slotCount; i++) {
+            const x = startX + i * (slotWidth + spacing);
+            
+            // Slot background — near-black wash at 136/255 alpha, framed by a
+            // single pixel of the same colour so the slot reads as a recess in
+            // the board rather than a grey box drawn on top of it.
+            const slotBg = this.scene.add.rectangle(
+                x, y, slotWidth, slotHeight, SLOT_INK, SLOT_FILL_ALPHA
+            );
+            slotBg.setDepth(11);
+            
+            // Bonus slots keep their gold edge — it is the only thing marking
+            // slots 5+ as earned — but thinned to match the others.
+            if (i >= 5) {
+                slotBg.setStrokeStyle(1, 0xffd700);
+            } else {
+                slotBg.setStrokeStyle(1, SLOT_INK);
+            }
+            
+            this.uiGroup.add(slotBg);
+            
+            this.slotSprites[i] = {
+                background: slotBg,
+                card: null,
+                index: i,
+                twinkleSprite: null,
+                shadow: null,
+                hoverSprite: null,
+                gemEffectSprite: null,
+                gemIndicator: null,
+                briarFrame: null,
+                webOverlay: null,
+                originalY: y
+            };
+        }
+    },
+    // The bag rises into place when a fight opens: it starts a little low, runs
+    // a few pixels past its spot and settles back, the same move the village
+    // boards make. One counter moves everything in uiGroup — panel, slots,
+    // cards, their pips, gem markers, shadows — by the same whole-pixel offset,
+    // so nothing on the panel drifts against it.
+    //
+    // Card input is off for the length of it. Hovering a card starts a lift
+    // tween toward its absolute rest height, which would fight the offset and
+    // leave the card where the counter last put it.
+    playPanelIntro() {
+        if (typeof this.scene?.time?.now !== 'number' || !this.scene.tweens) return;
+        this._panelIntro?.stop?.();
+
+        const objs = this.uiGroup.getChildren().filter((o) => o?.scene);
+        if (!objs.length) return;
+        const rest = objs.map((o) => o.y);
+        const paused = objs.filter((o) => o.input?.enabled);
+        paused.forEach((o) => { o.input.enabled = false; });
+
+        const place = (offset) => {
+            objs.forEach((o, i) => {
+                if (o.scene) o.y = rest[i] + Math.round(offset);
+            });
+        };
+        const finish = () => {
+            place(0);
+            paused.forEach((o) => { if (o.input) o.input.enabled = true; });
+            this._panelIntro = null;
+        };
+
+        place(PANEL_INTRO_DROP);
+        this._panelIntro = this.scene.tweens.addCounter({
+            from: PANEL_INTRO_DROP,
+            to: 0,
+            duration: PANEL_INTRO_MS,
+            ease: 'Back.easeOut',
+            easeParams: [PANEL_INTRO_OVERSHOOT],
+            onUpdate: (tween) => place(tween.getValue()),
+            onComplete: finish,
+            onStop: finish,
+        });
+    },
+    createInventoryPanel(centerX, centerY, width) {
+        if (!this.scene.textures.exists('panelCards')) return;
+
+        const texture = this.scene.textures.get('panelCards');
+        const source = texture.getSourceImage();
+        const sourceWidth = source.width || 362;
+        const sourceHeight = source.height || 102;
+        const leftWidth = Math.floor(sourceWidth / 2);
+        const rightStart = leftWidth;
+        const rightWidth = sourceWidth - rightStart;
+        const tileX = Math.max(0, leftWidth - 1);
+
+        // Keep the complete artwork at native 1:1 scale. Only a plain 1px
+        // center column repeats when extra horizontal room is needed.
+        if (!texture.has('panelLeftHalf')) {
+            texture.add('panelLeftHalf', 0, 0, 0, leftWidth, sourceHeight);
+            texture.add('panelMiddleTile', 0, tileX, 0, 1, sourceHeight);
+            texture.add('panelRightHalf', 0, rightStart, 0, rightWidth, sourceHeight);
+        }
+
+        const panelWidth = Math.max(sourceWidth, Math.ceil(width));
+        const extraWidth = panelWidth - sourceWidth;
+        // Keep the outside edge on a whole pixel even when bonus-slot widths are odd.
+        const leftX = Math.round(centerX - panelWidth / 2);
+        const rightX = leftX + leftWidth + extraWidth;
+
+        // Whole-pixel edges and native-size pieces keep the pixel art crisp.
+        const left = this.scene.add.image(leftX, centerY, 'panelCards', 'panelLeftHalf').setOrigin(0, 0.5);
+        const middle = this.scene.add.tileSprite(
+            leftX + leftWidth,
+            centerY,
+            extraWidth,
+            sourceHeight,
+            'panelCards',
+            'panelMiddleTile'
+        ).setOrigin(0, 0.5);
+        const right = this.scene.add.image(rightX, centerY, 'panelCards', 'panelRightHalf').setOrigin(0, 0.5);
+
+        this.inventoryPanelPieces = [left, middle, right];
+        this.inventoryPanelPieces.forEach(piece => piece.setDepth(10));
+        this.inventoryPanelPieces.forEach(piece => this.uiGroup.add(piece));
+    },
+    // Add method to handle Bottomless Bag acquisition
+    expandInventory(additionalSlots) {
+        // Store current inventory items before expanding
+        const currentItems = [];
+        this.slots.forEach((item, index) => {
+            if (item) {
+                currentItems.push({ data: item, index: index });
+            }
+        });
+        
+        // Clean up ALL existing sprites before rebuilding
+        this.slotSprites.forEach(slot => {
+            if (slot.card) {
+                // Clean up info text completely
+                const infoText = slot.card.getData('infoText');
+                if (infoText) {
+                    if (infoText.list) {
+                        infoText.list.forEach(child => {
+                            if (child && child.destroy) {
+                                child.destroy();
+                            }
+                        });
+                        infoText.destroy(true);
+                    } else {
+                        infoText.destroy();
+                    }
+                }
+                slot.card.destroy();
+                slot.card = null;
+            }
+            
+            if (slot.twinkleSprite) {
+                slot.twinkleSprite.destroy();
+                slot.twinkleSprite = null;
+            }
+            
+            if (slot.hoverSprite) {
+                slot.hoverSprite.destroy();
+                slot.hoverSprite = null;
+            }
+
+            if (slot.gemEffectSprite) {
+                slot.gemEffectSprite.destroy();
+                slot.gemEffectSprite = null;
+            }
+
+            if (slot.gemIndicator) {
+                slot.gemIndicator.destroy();
+                slot.gemIndicator = null;
+            }
+            
+            if (slot.shadow) {
+                slot.shadow.destroy();
+                slot.shadow = null;
+            }
+            
+            if (slot.background) {
+                slot.background.destroy();
+                slot.background = null;
+            }
+        });
+        
+        // Expand slots array
+        const oldSize = this.slots.length;
+        const newSize = oldSize + additionalSlots;
+        
+        // Create new slots array
+        this.slots = new Array(newSize).fill(null);
+        
+        // Store the bonus slots count
+        this.scene.gameState.bonusInventorySlots = 
+            (this.scene.gameState.bonusInventorySlots || 0) + additionalSlots;
+        
+        // Rebuild the UI completely
+        this.createInventoryUI();
+        
+        // Re-add items to their original positions
+        currentItems.forEach(item => {
+            if (item.index < newSize) {
+                this.addCardDirect(item.data, item.index);
+            }
+        });
+        
+        // Update twinkle effects
+        this.updateTwinkleEffects();
+        
+        this.scene.createFloatingText(320, 300, `+${additionalSlots} Inventory Slots!`, 0xffd700);
+    },
+    // Special rebuild method that doesn't double-preserve items
+    rebuildSpritesAfterExpansion() {
+        // Clear existing sprites only (don't touch slots data)
+        this.slotSprites.forEach(slot => {
+            if (slot.card) {
+                const infoText = slot.card.getData('infoText');
+                if (infoText) {
+                    if (infoText.list) {
+                        infoText.destroy(true);
+                    } else {
+                        infoText.destroy();
+                    }
+                }
+                
+                if (slot.twinkleSprite) {
+                    slot.twinkleSprite.destroy();
+                    slot.twinkleSprite = null;
+                }
+                
+                if (slot.hoverSprite) {
+                    slot.hoverSprite.destroy();
+                    slot.hoverSprite = null;
+                }
+
+                if (slot.gemEffectSprite) {
+                    slot.gemEffectSprite.destroy();
+                    slot.gemEffectSprite = null;
+                }
+
+                if (slot.gemIndicator) {
+                    if (slot.gemIndicator.shadow) slot.gemIndicator.shadow.destroy();
+                    slot.gemIndicator.destroy();
+                    slot.gemIndicator = null;
+                }
+                
+                if (slot.shadow) {
+                    slot.shadow.destroy();
+                    slot.shadow = null;
+                }
+                
+                slot.card.destroy();
+                slot.card = null;
+            }
+        });
+        
+        // Re-add sprites for existing items (slots data unchanged)
+        this.slots.forEach((cardData, index) => {
+            if (cardData) {
+                this.addCardDirect(cardData, index);
+            }
+        });
+        
+        // Update twinkle effects
+        this.updateTwinkleEffects();
+    },
+    rebuildInventorySprites() {
+        // Store the current data before clearing sprites
+        const currentData = [...this.slots];
+        
+        // THOROUGHLY clear ALL existing sprites
+        this.slotSprites.forEach(slot => {
+            if (slot.card) {
+                // Clean up info text (including durability dots)
+                const infoText = slot.card.getData('infoText');
+                if (infoText) {
+                    // Check if it's a container (for weapon/armor durability display)
+                    if (infoText.list) {
+                        // Destroy all children in the container
+                        infoText.list.forEach(child => {
+                            if (child && child.destroy) {
+                                child.destroy();
+                            }
+                        });
+                        infoText.destroy(true); // Destroy container with children
+                    } else {
+                        infoText.destroy(); // Regular text
+                    }
+                }
+                
+                // Destroy the card sprite itself
+                slot.card.destroy();
+                slot.card = null;
+            }
+            
+            // Clean up twinkle sprite
+            if (slot.twinkleSprite) {
+                slot.twinkleSprite.destroy();
+                slot.twinkleSprite = null;
+            }
+            
+            // Clean up hover sprite
+            if (slot.hoverSprite) {
+                slot.hoverSprite.destroy();
+                slot.hoverSprite = null;
+            }
+
+            if (slot.gemEffectSprite) {
+                slot.gemEffectSprite.destroy();
+                slot.gemEffectSprite = null;
+            }
+
+            if (slot.gemIndicator) {
+                slot.gemIndicator.destroy();
+                slot.gemIndicator = null;
+            }
+            
+            // Clean up shadow
+            if (slot.shadow) {
+                slot.shadow.destroy();
+                slot.shadow = null;
+            }
+        });
+        
+        // Clear slots data
+        this.slots.fill(null);
+        
+        // Re-add cards without triggering rebuilds
+        currentData.forEach((cardData, index) => {
+            if (cardData && index < this.slots.length) {
+                this.addCardDirect(cardData, index);
+            }
+        });
+        
+        // Update twinkle effects only once at the end
+        this.updateTwinkleEffects();
+    },
+    showCardTooltip(cardData, slotIndex, pointerX, pointerY) {
+        this.hideCardTooltip();
+        if (!cardData) return;
+
+        const allLines = this.getCardTooltipLines(cardData, slotIndex);
+        // The enchant is split out into its own text object because a single
+        // Text can only carry one colour.
+        const enchantLine = describeWeaponEnchant(this.scene, cardData);
+        const lines = enchantLine ? allLines.filter(line => line !== enchantLine) : allLines;
+
+        // Same frame, ink, type size and padding as every other hover tooltip in
+        // the game — see renderTooltipBox in ui/ItemTooltip.js. The bag used to
+        // draw its own dark plate with white 8px text, so pointing at a card in
+        // your hand answered in a different visual language from pointing at the
+        // same card on the board.
+        const textStyle = {
+            fontSize: TOOLTIP_BODY_PX,
+            fontRole: 'reading',
+            fill: TOOLTIP_TEXT_COLOR,
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            lineSpacing: 2,
+            wordWrap: { width: TOOLTIP_TEXT_W }
+        };
+        const tooltipText = this.scene.add.text(0, 0, lines.join('\n'), textStyle).setOrigin(0, 0);
+        // The enchant keeps a colour of its own — it is why the player is
+        // hovering an enchanted weapon — but takes the rarity blue the shared
+        // tooltip already uses, which reads on the light panel.
+        const enchantText = enchantLine
+            ? this.scene.add.text(0, 0, enchantLine, { ...textStyle, fill: TOOLTIP_ENCHANT_COLOR }).setOrigin(0, 0)
+            : null;
+
+        const contentWidth = Math.max(tooltipText.width, enchantText?.width || 0);
+        const contentHeight = tooltipText.height + (enchantText ? enchantText.height + 2 : 0);
+        const width = Math.ceil(Math.min(TOOLTIP_TEXT_W, contentWidth) + TOOLTIP_PAD.x * 2);
+        const height = Math.ceil(contentHeight + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom);
+        const bg = createTooltipPanel(this.scene, width, height);
+
+        const pointerPixelX = Math.round(pointerX);
+        const pointerPixelY = Math.round(pointerY);
+        const preferLeft = pointerPixelX + width + 14 > 640;
+        const targetX = preferLeft ? pointerPixelX - width - 10 : pointerPixelX + 10;
+        const targetY = pointerPixelY - Math.round(Math.min(24, height / 2));
+        const clampedX = Math.round(Phaser.Math.Clamp(targetX, 6, 640 - width - 6));
+        const clampedY = Math.round(Phaser.Math.Clamp(targetY, 6, 360 - height - 6));
+        tooltipText.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top);
+        enchantText?.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top + tooltipText.height + 2);
+
+        const parts = enchantText ? [bg, tooltipText, enchantText] : [bg, tooltipText];
+        this.cardTooltip = this.scene.add.container(clampedX, clampedY, parts);
+        this.cardTooltip.setDepth(3000);
+        this.uiGroup.add(this.cardTooltip);
+    },
+    hideCardTooltip() {
+        if (this.cardTooltip?.scene) {
+            this.cardTooltip.destroy(true);
+        }
+        this.cardTooltip = null;
+    },
+    getCardTooltipLines(card, slotIndex) {
+        card = this.normalizeCardIdentity(card);
+        if (slotIndex >= 0 && this.slots[slotIndex] === card) this.syncGameStateInventory();
+
+        const type = this.getDisplayCardType(card);
+        const lines = [
+            translateItemName(this.scene, card) || type
+        ];
+
+        if (card.type === 'weapon') {
+            // No "Family:" line — the card name already says what kind of
+            // weapon it is, so it was pure duplication.
+            const characterId = this.scene?.gameState?.characterId;
+            const talentFx = this.scene?.gameState?.talentEffects || null;
+            const shownDmg = getDisplayedWeaponDamage(characterId, card, talentFx);
+            const baseDmg = card.damage || 0;
+            lines.push(t(this.scene, 'tooltip.damageShort', { amount: shownDmg }));
+            if (shownDmg !== baseDmg) {
+                lines.push(`Base ${baseDmg} + class/talents`);
+            }
+            const critChance = (this.scene?.gameState?.discardCritChance || 0)
+                + (this.scene?.amuletManager?.getCriticalChanceBonus?.() || 0);
+            if (critChance > 0) lines.push(`Crit: ${Math.round(critChance * 100)}%`);
+            lines.push(t(this.scene, 'tooltip.range', {
+                value: t(this.scene, (card.range || 'melee') === 'ranged' ? 'tooltip.ranged' : 'tooltip.melee')
+            }));
+            if (card.gemEffect) {
+                const stack = CardDataGenerator.weaponGemStack(card);
+                lines.push(t(this.scene, 'tooltip.gemLine', {
+                    effect: translateGemEffect(this.scene, card.gemEffect),
+                    stack: stack > 1 ? ` x${stack}` : ''
+                }));
+                if (card.gemEffect === 'fire') {
+                    const splashPct = [50, 75, 100, 110, 120][stack - 1] ?? 100;
+                    const splashDmg = Math.max(1, Math.floor(shownDmg * splashPct / 100));
+                    lines.push(t(this.scene, 'tooltip.fireSplash', { amount: splashDmg }));
+                } else if (card.gemEffect === 'lightning') {
+                    const zapPct = [40, 55, 70, 80, 90][stack - 1] ?? 70;
+                    const zapDmg = Math.max(1, Math.floor(shownDmg * zapPct / 100));
+                    lines.push(t(this.scene, 'tooltip.lightningZap', { amount: zapDmg }));
+                } else if (card.gemEffect === 'poison') {
+                    lines.push(tCount(this.scene, 'tooltip.poisonStacks', stack));
+                }
+            }
+            const enchantLine = describeWeaponEnchant(this.scene, card);
+            if (enchantLine) lines.push(enchantLine);
+            if (card.special) lines.push(t(this.scene, 'tooltip.special', { value: this.describeWeaponSpecial(card) }));
+            if (card.poisonDamage) lines.push(t(this.scene, 'tooltip.poisonTurns', { amount: card.poisonDamage, turns: card.poisonTurns || 0 }));
+            if (card.durability !== undefined) lines.push(t(this.scene, 'tooltip.pips', { value: `${card.durability}/${card.maxDurability || card.durability}` }));
+            this.addCanonicalDiffLines(lines, card, 'weapon');
+        } else if (card.type === 'armor') {
+            const armorType = translateItemName(this.scene, { type: 'armor', armorType: this.getArmorTypeFromCard(card) });
+            lines.push(t(this.scene, 'tooltip.family', { value: armorType }));
+            if ((card.protection || 0) > 0) {
+                // The worn armor reports its boosted value while Magic Shield /
+                // Warding is up, matching the number drawn on the card itself.
+                const gs = this.scene?.gameState;
+                const isWorn = Boolean(gs?.equippedArmor) && card === gs.equippedArmor;
+                const shown = isWorn
+                    ? effectiveArmorProtection(gs, card)
+                    : (card.protection || 0);
+                lines.push(t(this.scene, 'tooltip.protectionShort', { amount: shown }));
+            }
+            if (card.dodgeChance) lines.push(t(this.scene, 'tooltip.dodge', { percent: Math.round(card.dodgeChance * 100) }));
+            if (card.meleeCounterChance) {
+                lines.push(t(this.scene, 'tooltip.meleeCounterBlocked', { percent: Math.round(card.meleeCounterChance * 100) }));
+            }
+            if (card.rangedIgnoreChance) {
+                lines.push(t(this.scene, 'tooltip.ignoreRanged', { percent: Math.round(card.rangedIgnoreChance * 100) }));
+            }
+            if (card.reflection) lines.push(t(this.scene, 'tooltip.reflect', { value: card.reflection }));
+            if (card.thornDamage) lines.push(t(this.scene, 'tooltip.thornDamage', { amount: card.thornDamage }));
+            if (card.durability !== undefined) lines.push(t(this.scene, 'tooltip.pips', { value: `${card.durability}/${card.maxDurability || card.durability}` }));
+            this.addCanonicalDiffLines(lines, card, 'armor');
+        } else if (card.type === 'thorns') {
+            lines.push(t(this.scene, 'tooltip.thornDamage', { amount: card.thornDamage || 0 }));
+            lines.push(t(this.scene, 'tooltip.pips', { value: `${card.durability || 0}/${card.maxDurability || card.durability || 0}` }));
+            lines.push(t(this.scene, 'tooltip.meleeAttackers'));
+        } else if (card.type === 'potion') {
+            lines.push(t(this.scene, 'tooltip.healsColon', { amount: card.healAmount || 0 }));
+        } else if (card.type === 'food') {
+            lines.push(t(this.scene, 'tooltip.restoresColon', { amount: card.actionAmount || 0 }));
+        } else if (card.type === 'companion') {
+            const damageKey = card.damageType === 'physical' ? 'tooltip.damage.physical' : 'tooltip.damage.lightning';
+            const styleKey = card.attackStyle === 'melee' || card.range === 'melee'
+                ? 'tooltip.companion.melee'
+                : 'tooltip.companion.ranged';
+            lines.push(t(this.scene, damageKey, { amount: card.attack || 2 }));
+            lines.push(t(this.scene, styleKey));
+            lines.push(t(this.scene, 'tooltip.companion.actsAfter'));
+            if (card.boundThrall) lines.push(t(this.scene, 'tooltip.boundThrall'));
+            if (card.shockChance) lines.push(t(this.scene, 'tooltip.companion.shockChance', { amount: Math.round(card.shockChance * 100) }));
+            if (card.guardProtection) lines.push(t(this.scene, 'tooltip.companion.guard', { amount: card.guardProtection }));
+        } else if (card.type === 'magic') {
+            lines.push(card.description ? translateDescription(this.scene, card.description) : this.describeMagicCard(card));
+        } else if (card.type === 'passive') {
+            lines.push(card.description ? translateDescription(this.scene, card.description) : t(this.scene, 'tooltip.passiveEffect'));
+            if (card.flavor) lines.push(translateDescription(this.scene, card.flavor));
+        } else if (card.type === 'amulet' || card.type === 'amuletPickup') {
+            lines.push(this.describeAmuletCard(card));
+            if (card.type === 'amuletPickup') lines.push(t(this.scene, 'tooltip.tapEquipDiscard'));
+        } else if (card.type === 'key') {
+            lines.push(t(this.scene, 'tooltip.keySafe'));
+        } else if (card.type === 'gem') {
+            lines.push(t(this.scene, 'tooltip.effect', { effect: this.describeGemEffect(card.gemEffect) }));
+        } else if (card.type === 'junk') {
+            lines.push(card.description ? translateDescription(this.scene, card.description) : t(this.scene, 'tooltip.noEffect'));
+            if (card.carnivalToken) lines.push(t(this.scene, 'tooltip.carnivalToken'));
+        }
+
+        return lines;
+    },
+    addCanonicalDiffLines(lines, card, category) {
+        const canonical = category === 'weapon'
+            ? this.getCanonicalWeaponStats(card)
+            : this.getCanonicalArmorStats(card);
+        if (!canonical) return;
+
+        const differences = [];
+        if (category === 'weapon' && card.damage !== undefined && card.damage !== canonical.damage) {
+            differences.push(t(this.scene, 'tooltip.baseDamage', { amount: canonical.damage }));
+        }
+        if (category === 'armor' && card.protection !== undefined && card.protection !== canonical.protection) {
+            differences.push(t(this.scene, 'tooltip.baseProtection', { amount: canonical.protection }));
+        }
+        if (differences.length > 0) {
+            lines.push(t(this.scene, 'tooltip.noteUnusual', { details: differences.join(', ') }));
+        }
+    },
+    getMergeTooltipLine(card, slotIndex) {
+        if (card.type === 'magic' || card.type === 'coin' || card.type === 'crystal' || card.type === 'key') {
+            return t(this.scene, 'tooltip.noMerge');
+        }
+
+        const canCrossTier = !!(this.scene.amuletManager && this.scene.amuletManager.canCrossTierMerge());
+        const mergeableSlots = [];
+        const blockedReasons = new Set();
+        this.slots.forEach((otherCard, otherIndex) => {
+            if (!otherCard || otherIndex === slotIndex) return;
+            if (this.canCardsMerge(card, otherCard, canCrossTier)) {
+                mergeableSlots.push(otherIndex + 1);
+                return;
+            }
+
+            const reason = this.getMergeBlockReason(card, otherCard);
+            if (reason) blockedReasons.add(reason);
+        });
+
+        if (mergeableSlots.length > 0) {
+            return t(this.scene, 'tooltip.merges', { slots: mergeableSlots.join(', ') });
+        }
+        if (blockedReasons.size > 0) {
+            return t(this.scene, 'tooltip.noMergeReasons', { reasons: Array.from(blockedReasons).slice(0, 2).join('; ') });
+        }
+        return '';
+    },
+    getMergeBlockReason(cardA, cardB) {
+        if (!cardA || !cardB) return '';
+        if (cardA.type !== cardB.type) return '';
+        if (cardA.type === 'magic' || cardB.type === 'magic') return translateDescription(this.scene, 'magic cards cannot merge');
+        if (cardA.type === 'gem' || cardB.type === 'gem') return translateDescription(this.scene, 'gems socket into weapons');
+        if (this.getMergeKey(cardA) !== this.getMergeKey(cardB)) return translateDescription(this.scene, 'different family');
+        if (cardA.rarity !== cardB.rarity) return `rarity ${cardA.rarity || '?'} vs ${cardB.rarity || '?'}`;
+        if (this.getMergeStatsKey(cardA) !== this.getMergeStatsKey(cardB)) return translateDescription(this.scene, 'stats/effect differ');
+        return '';
+    },
+    getDisplayCardType(card) {
+        if (!card?.type) return 'Card';
+        const names = {
+            weapon: 'tooltip.weapon',
+            armor: 'tooltip.armor',
+            thorns: 'tooltip.thorns',
+            potion: 'tooltip.potion',
+            food: 'tooltip.food',
+            magic: 'tooltip.magic',
+            gem: 'tooltip.gem',
+            amulet: 'tooltip.relic',
+            amuletPickup: 'tooltip.relic',
+            key: 'tooltip.key',
+            coin: 'tooltip.coins',
+            crystal: 'tooltip.ruby'
+        };
+        return names[card.type] ? t(this.scene, names[card.type]) : this.capitalize(card.type);
+    },
+    describeWeaponSpecial(card) {
+        const special = card.special || '';
+        if (special === 'dualWield') return translateDescription(this.scene, 'dual wield');
+        if (special === 'cleave') return translateDescription(this.scene, 'cleave: half damage to adjacent enemies while AP remains');
+        if (special === 'pierce' || special === 'reach') return translateDescription(this.scene, 'piercing: half damage to enemies behind target while AP remains');
+        if (special === 'throwing') return translateDescription(this.scene, 'hits any enemy');
+        if (special === 'block' && card.weaponType !== 'bow') return translateDescription(this.scene, 'can block');
+        if (special === 'specialAttack') return translateDescription(this.scene, 'heavy cleave; executes wounded non-boss enemies');
+        return special;
+    },
+    describeMagicCard(card) {
+        if (card.magicType === 'fireball') return translateDescription(this.scene, 'Deals damage to one enemy.');
+        if (card.magicType === 'frostRing') return translateDescription(this.scene, 'Freezes all enemies.');
+        if (card.magicType === 'restoration') return translateDescription(this.scene, 'Fully restores HP and AP.');
+        if (card.magicType === 'soulDrain') return translateDescription(this.scene, 'Kills a non-boss enemy and heals.');
+        if (card.magicType === 'shadowBlade') return translateDescription(this.scene, 'Boosts weapon damage.');
+        if (card.magicType === 'weakness') return translateDescription(this.scene, 'Weakens enemies.');
+        if (card.magicType === 'boneWall') return translateDescription(this.scene, 'Reflects the next attacks.');
+        if (card.magicType === 'magicShield') return translateDescription(this.scene, 'Boosts armor.');
+        if (card.magicType === 'smokeScreen') return translateDescription(this.scene, 'Hides revealed enemies.');
+        return translateDescription(this.scene, 'Single-use magic.');
+    },
+    describeAmuletCard(card) {
+        const definitions = this.scene?.amuletManager?.amuletDefinitions;
+        const defId = card.amuletId || card.id;
+        if (defId && definitions?.[defId]) return translateDescription(this.scene, definitions[defId].description);
+        if (card.description) return translateDescription(this.scene, card.description);
+        return translateDescription(this.scene, 'A passive relic effect.');
+    },
+    describeGemEffect(effect) {
+        if (effect === 'fire') return translateDescription(this.scene, 'splash adjacent enemies');
+        if (effect === 'poison') return translateDescription(this.scene, 'stacking poison on hit');
+        if (effect === 'lightning') return translateDescription(this.scene, 'zaps up to 3 open enemies');
+        return translateDescription(this.scene, 'adds an effect to a weapon');
+    },
+    capitalize(value) {
+        const text = (value || '').toString();
+        return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+    },
+    updateTwinkleEffects() {
+        // First, clear all existing twinkle sprites (bag slots + worn armor)
+        this.slotSprites.forEach(slot => {
+            if (slot.twinkleSprite) {
+                slot.twinkleSprite.destroy();
+                slot.twinkleSprite = null;
+            }
+        });
+        if (this.armorTwinkleSprite) {
+            this.armorTwinkleSprite.destroy();
+            this.armorTwinkleSprite = null;
+        }
+
+        // Cross-tier merging (Golden Hammer) lets cards of different rarities
+        // combine, so the twinkle detection must use the same rule the real
+        // merge does — otherwise a freshly-merged higher-tier card that can
+        // still merge down with a lower-tier copy wouldn't sparkle.
+        const canCrossTier = !!(this.scene.amuletManager && this.scene.amuletManager.canCrossTierMerge());
+
+        // The worn armor takes part in merge detection too: a bag armor can be
+        // dragged onto the equipped armor to upgrade it (tryMergeWithEquippedArmor),
+        // so that pairing should sparkle just like two bag cards would — on the
+        // bag armor AND on the armor slot itself.
+        const equippedArmor = this.scene.gameState?.equippedArmor || null;
+        const mergesWithWornArmor = (card) => (
+            !!equippedArmor
+            && card.type === 'armor'
+            && this.canCardsMerge(card, equippedArmor, canCrossTier)
+        );
+        let wornArmorHasMatch = false;
+
+        // Find items that can be merged and apply twinkle animation.
+        this.slots.forEach((card, index) => {
+            if (card && card.type !== 'magic' && card.type !== 'gem') {
+                let hasMatch = this.slots.some((otherCard, otherIndex) => (
+                    otherIndex !== index && this.canCardsMerge(card, otherCard, canCrossTier)
+                ));
+
+                // A bag armor that can merge into the worn armor also sparkles,
+                // and flags the armor slot to sparkle in return.
+                if (mergesWithWornArmor(card)) {
+                    hasMatch = true;
+                    wornArmorHasMatch = true;
+                }
+
+                if (hasMatch) {
+                    const slotSprite = this.slotSprites[index];
+                    const cardSprite = slotSprite?.card;
+                    const slotBackground = slotSprite?.background;
+                    if (cardSprite?.scene && slotBackground?.scene) {
+                        // The slot is authoritative. During mirror copying the
+                        // original card is still tweening home when addCard()
+                        // refreshes twinkles; using cardSprite.x/y captures its
+                        // temporary mirror position and leaves a stray sparkle.
+                        // Use the mode-aware twinkle depth: in a shop (station mode)
+                        // the inventory sits at depths 200+, so a hardcoded 100 would
+                        // hide the twinkle behind the shop panel after a merge.
+                        const twinkleDepth = this.getInventoryDepths().twinkle;
+                        const twinkleSprite = snapOriginToPixelGrid(this.scene.add.sprite(
+                            slotBackground.x,
+                            slotBackground.y,
+                            'twinkle',
+                            0
+                        ));
+                        twinkleSprite.setScale(1.0);
+                        twinkleSprite.setDepth(twinkleDepth);
+                        twinkleSprite.play('twinkle_anim');
+                        
+                        // Make sure it's visible
+                        twinkleSprite.setVisible(true);
+                        twinkleSprite.setAlpha(1);
+                        
+                        this.uiGroup.add(twinkleSprite);
+                        slotSprite.twinkleSprite = twinkleSprite;
+                    }
+                }
+            }
+        });
+
+        // Sparkle the worn-armor slot when a bag armor can merge into it, so the
+        // pairing reads at a glance from either side.
+        if (wornArmorHasMatch && this.armorPanel?.scene) {
+            const anchor = this.scene.armorPanelEquippedSprite?.scene
+                ? this.scene.armorPanelEquippedSprite
+                : this.armorPanel;
+            const twinkleDepth = this.getInventoryDepths().twinkle;
+            const twinkleSprite = snapOriginToPixelGrid(this.scene.add.sprite(
+                anchor.x,
+                anchor.y,
+                'twinkle',
+                0
+            ));
+            twinkleSprite.setScale(1.0);
+            twinkleSprite.setDepth(twinkleDepth);
+            twinkleSprite.setVisible(true);
+            twinkleSprite.setAlpha(1);
+            twinkleSprite.play('twinkle_anim');
+            this.uiGroup.add(twinkleSprite);
+            this.armorTwinkleSprite = twinkleSprite;
+        }
+    },
+};

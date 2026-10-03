@@ -1,0 +1,288 @@
+
+=== Batch: origin ===
+Runs: 1000  Win: 0%  Avg floor: 14
+Deaths: weapon=595 hp=405
+Funnel linearity R²=0.922  Clear error (|pct-85| avg)=15.5
+
+Floor | pips | eHP | clear% | hpLost
+  F 1 |    92 | 18.8 |   100% | 26.4 HIGH
+  F 2 |  86.4 | 15.5 |   100% | 15.9 HIGH
+  F 3 |  82.2 | 17.6 |   100% | 18.7 HIGH
+  F 4 |  65.1 |   19 |  99.1% | 15.4 HIGH
+  F 5 |  62.9 | 20.8 |    97% | 15.9 HIGH
+  F 6 |  59.7 | 21.7 |  92.1% | 13 HIGH
+  F 7 |  46.3 | 23.2 |  80.9% | 15.5
+  F 8 |  41.9 | 28.8 |  63.1% | 22.4 LOW
+  F 9 |  40.1 | 27.7 |  65.9% | 22.7 LOW
+  F10 |  38.8 | 27.7 |  59.7% | 24.8 LOW
+  F11 |  44.7 | 33.2 |  64.1% | 29.6 LOW
+  F12 |  45.9 | 33.1 |  67.4% | 24.6 LOW
+  F13 |  54.7 | 31.5 |  73.6% | 24.3 LOW
+  F15 |  53.6 | 37.3 |  62.4% | 38.6 LOW
+  F16 |  35.3 |   41 |  35.4% | 59.5 LOW
+  F17 |  43.7 | 45.7 |    42% | 49.7 LOW
+  F18 |  55.3 | 45.8 |  56.6% | 53.6 LOW
+  F19 |  71.1 | 47.3 |  70.8% | 34.5 LOW
+  F20 |  75.4 | 47.1 |  80.9% | 39.4
+  F21 |  82.8 |   49 |  79.2% | 35.7 LOW
+  F22 | 109.2 | 47.8 |  90.9% | 27.6 HIGH
+  F23 | 105.2 |   58 |  78.3% | 32.1 LOW
+  F24 |  99.5 | 61.5 |  80.8% | 42.2
+  F25 | 128.5 | 64.1 |  92.9% | 38.5 HIGH
+  F26 | 114.6 | 62.2 |  90.9% | 33.7 HIGH
+  F27 | 115.4 | 63.8 |   100% | 44.6 HIGH
+  F28 |    70 | 48.7 |  66.7% | 24.7 LOW
+  F30 | 132.7 | 102.2 |  88.9% | 47.2
+
+Funnel cliff (Δ pct between floors):
+  F11→F12: -8.4%  *** cliff
+  F15→F16: -34.8%  *** cliff
+
+--- Tune iteration 1 knobs ---
+{
+  "label": "tune-iter-1",
+  "playerStartHp": 115,
+  "enemyHp": {
+    "act1": 1,
+    "act2": 0.9554607142857142,
+    "act3": 1
+  },
+  "enemyAtk": {
+    "act1": 1,
+    "act2": 0.97,
+    "act3": 1
+  },
+  "bossHp": 0.96,
+  "bossAtk": 0.98,
+  "globalScaleFloor": 18,
+  "globalHpMult": 1.05,
+  "globalAtkMult": 1.05,
+  "weaponWeightMult": 1.04,
+  "weaponMinBonus": 1,
+  "armorWeightMult": 1.05,
+  "armorProtectionBonus": 0.25,
+  "minEnemyRatio": {
+    "act1": 0.18,
+    "act2": 0.26,
+    "act3": 0.33
+  }
+}
+
+Running 300 balance sims → tune-iter-1...
+
+Stats DB: 300 runs → /Users/petrgorskin/Projects/dungeon_rogue/rouge/sim/db/stats.sqlite
+  label: tune-iter-1
+  mode: balance
+
+Batch saved:
+  batch_id=14  label=tune-iter-1
+  runs=300  floor_visits=4124
+  combat_visits=1787  weapon_rows=14425  enemy_rows=4691
+
+Elapsed 0.41s
+
+=== Batch: tune-iter-1 ===
+Runs: 300  Win: 0%  Avg floor: 14.3
+Deaths: weapon=168 hp=132
+Funnel linearity R²=0.927  Clear error (|pct-85| avg)=14.2
+
+Floor | pips | eHP | clear% | hpLost
+  F 1 |    92 |   19 |   100% | 27.4 HIGH
+  F 2 |  86.7 | 15.2 |   100% | 13.9 HIGH
+  F 3 |  81.4 | 17.1 |   100% | 18 HIGH
+  F 4 |  67.6 | 19.3 |  99.1% | 16 HIGH
+  F 5 |  65.4 | 21.6 |  98.3% | 16.7 HIGH
+  F 6 |  54.2 | 21.7 |  92.7% | 12.9 HIGH
+  F 7 |  50.1 | 23.7 |  82.5% | 15.5
+  F 8 |  41.5 | 28.6 |  70.1% | 26.7 LOW
+  F 9 |  36.3 | 28.9 |  54.8% | 22.9 LOW
+  F10 |  38.7 | 27.4 |  62.8% | 23 LOW
+  F11 |  44.5 | 32.7 |    60% | 29 LOW
+  F12 |  52.2 | 33.3 |  67.1% | 30.4 LOW
+  F13 |  58.9 | 31.8 |  82.1% | 20.2
+  F15 |  54.4 | 36.3 |  63.3% | 37.6 LOW
+  F16 |    42 | 37.5 |    55% | 40.8 LOW
+  F17 |  51.3 | 39.4 |  67.9% | 34.5 LOW
+  F18 |  62.9 | 48.2 |    60% | 50 LOW
+  F19 |  71.7 | 47.7 |  91.7% | 42.9 HIGH
+  F20 |  93.1 | 44.4 |  93.8% | 40.3 HIGH
+  F21 |    89 | 42.1 |  91.7% | 28.8 HIGH
+  F22 |    93 | 54.9 |    80% | 38.8
+  F23 | 117.5 |   78 |   100% | 47.9 HIGH
+  F24 | 100.5 | 53.5 |  83.3% | 33.6
+  F25 |  96.3 |   48 |   100% | 36.3 HIGH
+  F26 | 100.7 | 40.7 |   100% | 28.3 HIGH
+  F28 |   152 |   56 |   100% | 55 HIGH
+  F30 | 115.2 | 99.2 |    80% | 49.6
+
+Funnel cliff (Δ pct between floors):
+  F9→F10: -8.3%  *** cliff
+  F15→F16: -34.3%  *** cliff
+
+--- Tune iteration 2 knobs ---
+{
+  "label": "tune-iter-2",
+  "playerStartHp": 115,
+  "enemyHp": {
+    "act1": 1,
+    "act2": 0.97,
+    "act3": 1
+  },
+  "enemyAtk": {
+    "act1": 1,
+    "act2": 0.97,
+    "act3": 1
+  },
+  "bossHp": 0.96,
+  "bossAtk": 0.98,
+  "globalScaleFloor": 18,
+  "globalHpMult": 1.05,
+  "globalAtkMult": 1.05,
+  "weaponWeightMult": 1.04,
+  "weaponMinBonus": 1,
+  "armorWeightMult": 1.05,
+  "armorProtectionBonus": 0.25,
+  "minEnemyRatio": {
+    "act1": 0.18,
+    "act2": 0.26,
+    "act3": 0.33
+  }
+}
+
+Running 300 balance sims → tune-iter-2...
+
+Stats DB: 300 runs → /Users/petrgorskin/Projects/dungeon_rogue/rouge/sim/db/stats.sqlite
+  label: tune-iter-2
+  mode: balance
+
+Batch saved:
+  batch_id=15  label=tune-iter-2
+  runs=300  floor_visits=4196
+  combat_visits=1822  weapon_rows=14772  enemy_rows=4733
+
+Elapsed 0.42s
+
+=== Batch: tune-iter-2 ===
+Runs: 300  Win: 0%  Avg floor: 14.6
+Deaths: weapon=170 hp=130
+Funnel linearity R²=0.913  Clear error (|pct-85| avg)=18.0
+
+Floor | pips | eHP | clear% | hpLost
+  F 1 |    92 | 19.1 |   100% | 28 HIGH
+  F 2 |  84.4 | 15.5 |   100% | 14.5 HIGH
+  F 3 |  83.2 | 17.1 |   100% | 18.7 HIGH
+  F 4 |  66.7 |   19 |   100% | 15.6 HIGH
+  F 5 |  62.9 | 21.3 |  95.5% | 15.5 HIGH
+  F 6 |  64.2 | 21.5 |  95.9% | 12.2 HIGH
+  F 7 |  48.8 |   23 |  79.3% | 16.2 LOW
+  F 8 |  40.8 | 29.3 |  68.8% | 20.8 LOW
+  F 9 |  41.4 | 29.6 |  61.2% | 21.4 LOW
+  F10 |  41.2 |   27 |  57.4% | 22.7 LOW
+  F11 |  42.2 | 32.3 |  59.6% | 28.4 LOW
+  F12 |  49.8 | 31.2 |  69.6% | 25.9 LOW
+  F13 |  59.8 | 30.7 |  84.1% | 22
+  F15 |  56.5 | 36.3 |  64.6% | 36.6 LOW
+  F16 |  42.4 | 36.7 |    56% | 44.6 LOW
+  F17 |    55 | 36.7 |  66.7% | 41.5 LOW
+  F18 |  56.6 | 48.7 |  48.5% | 43 LOW
+  F19 |  75.9 | 44.3 |  78.6% | 38.9 LOW
+  F20 |  66.8 | 39.2 |  82.4% | 41.4
+  F21 |  91.9 | 50.6 |   100% | 26 HIGH
+  F22 |  91.9 | 47.7 |  93.3% | 26.5 HIGH
+  F23 | 107.9 | 45.7 |   100% | 23.4 HIGH
+  F24 | 106.3 | 55.6 |   100% | 32.3 HIGH
+  F25 |  93.6 |   48 |  83.3% | 23.4
+  F26 | 112.1 | 60.9 |  81.8% | 49.7
+  F27 | 112.3 | 40.3 |   100% | 26 HIGH
+  F28 |    99 |   50 |   100% | 9.5 HIGH
+  F30 | 123.7 | 105.1 |  45.5% | 40.4 LOW
+  F32 |    27 |   89 |     0% | 115 LOW
+
+Funnel cliff (Δ pct between floors):
+  F9→F10: -8.3%  *** cliff
+  F11→F12: -10.3%  *** cliff
+  F15→F16: -35.0%  *** cliff
+
+--- Tune iteration 3 knobs ---
+{
+  "label": "tune-iter-3",
+  "playerStartHp": 115,
+  "enemyHp": {
+    "act1": 1,
+    "act2": 0.97,
+    "act3": 0.8725
+  },
+  "enemyAtk": {
+    "act1": 1,
+    "act2": 0.97,
+    "act3": 0.97
+  },
+  "bossHp": 0.96,
+  "bossAtk": 0.98,
+  "globalScaleFloor": 18,
+  "globalHpMult": 1.05,
+  "globalAtkMult": 1.05,
+  "weaponWeightMult": 1.04,
+  "weaponMinBonus": 1,
+  "armorWeightMult": 1.05,
+  "armorProtectionBonus": 0.25,
+  "minEnemyRatio": {
+    "act1": 0.18,
+    "act2": 0.26,
+    "act3": 0.33
+  }
+}
+
+Running 300 balance sims → tune-iter-3...
+
+Stats DB: 300 runs → /Users/petrgorskin/Projects/dungeon_rogue/rouge/sim/db/stats.sqlite
+  label: tune-iter-3
+  mode: balance
+
+Batch saved:
+  batch_id=16  label=tune-iter-3
+  runs=300  floor_visits=4245
+  combat_visits=1839  weapon_rows=15128  enemy_rows=4844
+
+Elapsed 0.47s
+
+=== Batch: tune-iter-3 ===
+Runs: 300  Win: 0%  Avg floor: 14.8
+Deaths: weapon=174 hp=126
+Funnel linearity R²=0.925  Clear error (|pct-85| avg)=13.7
+
+Floor | pips | eHP | clear% | hpLost
+  F 1 |    92 | 18.8 |   100% | 26 HIGH
+  F 2 |  86.8 | 15.4 |   100% | 15.5 HIGH
+  F 3 |    83 | 16.9 |   100% | 17.9 HIGH
+  F 4 |  66.1 | 19.1 |  99.2% | 15.5 HIGH
+  F 5 |  67.1 | 20.8 |  99.1% | 15.4 HIGH
+  F 6 |  64.9 | 21.1 |  96.1% | 12.7 HIGH
+  F 7 |  48.2 | 23.2 |  85.3% | 13.9
+  F 8 |  45.1 | 30.1 |    64% | 22.9 LOW
+  F 9 |  40.1 | 29.3 |  62.2% | 24.6 LOW
+  F10 |  39.2 | 26.8 |  66.7% | 22.2 LOW
+  F11 |  45.4 | 33.1 |    68% | 26.4 LOW
+  F12 |    50 | 32.7 |  68.1% | 26.1 LOW
+  F13 |  58.5 | 30.7 |  79.4% | 27.6 LOW
+  F15 |  57.9 | 36.4 |  68.6% | 34.1 LOW
+  F16 |  38.1 | 27.7 |    60% | 29.1 LOW
+  F17 |  52.6 | 39.4 |  61.1% | 44.7 LOW
+  F18 |  67.6 |   50 |  62.2% | 49 LOW
+  F19 |  88.8 | 43.2 |  94.7% | 27.2 HIGH
+  F20 |    98 | 48.4 |    87% | 42.4
+  F21 |  90.3 | 47.1 |    85% | 42.8
+  F22 | 113.6 | 58.1 |   100% | 37.1 HIGH
+  F23 | 107.8 |   47 |  93.3% | 36.9 HIGH
+  F24 | 102.1 | 69.7 |  71.4% | 41.9 LOW
+  F25 | 118.8 | 60.5 |   100% | 36.3 HIGH
+  F26 | 146.9 | 57.3 |  85.7% | 38.9
+  F27 |   179 |   65 |   100% | 30.8 HIGH
+  F28 |   130 |  109 |   100% | 52.3 HIGH
+  F30 |   118 |  114 |   100% | 26 HIGH
+
+Funnel cliff (Δ pct between floors):
+  F11→F12: -9.0%  *** cliff
+  F15→F16: -38.3%  *** cliff
+
+Done. Compare batches in Grafana: origin vs tune-iter-N
