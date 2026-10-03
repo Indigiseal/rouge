@@ -1,4 +1,5 @@
 // scenes/MainMenuScene.js
+import { applyOverlayLight } from '../ui/OverlayLightPipeline.js';
 import {
     OptionsSkin,
     OPTIONS_BACKDROP,
@@ -63,6 +64,12 @@ export class MainMenuScene extends Phaser.Scene {
         } else {
             this.add.rectangle(320, 180, 640, 360, 0x1a1a1a);
         }
+
+        // Warm light sheet over the whole frame, in Aseprite's Overlay mode.
+        // It is a camera post-process, so it lands on top of the background,
+        // the buttons and every modal without competing for depth. Where in
+        // create() this sits does not matter for that reason.
+        applyOverlayLight(this);
 
         // Main menu buttons
         this.createMainMenuButtons();

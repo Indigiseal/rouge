@@ -39,6 +39,11 @@ export const ASSET_MANIFEST = [
     { key: 'uiPanelDark', path: 'assets/ui/paneDarkl9x9.png', type: 'image' },
     { key: 'uiBar', path: 'assets/ui/barSlice.png', type: 'image' },
     { key: 'uiBanner', path: 'assets/ui/bannerEvents.png', type: 'image' },
+
+    // Full-screen light sheet, laid over the finished frame in Aseprite's
+    // Overlay mode by ui/OverlayLightPipeline.js. Authored at the world size
+    // (640x360) so it maps 1:1 onto the world and scales with everything else.
+    { key: 'overLight', path: 'assets/ui/overLight.png', type: 'image' },
     { key: 'scrollHandle', path: 'assets/art/scroll.png', type: 'image' },
     { key: 'eventsShops', path: 'assets/art/eventsShops80x80.png', type: 'spritesheet', frameWidth: 80, frameHeight: 80 },
     // Arm Wrestling minigame art (human vs ogre locked hands).

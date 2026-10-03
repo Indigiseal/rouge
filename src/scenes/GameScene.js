@@ -1,4 +1,5 @@
 import { CardSystem } from '../systems/CardSystem.js';
+import { applyOverlayLight } from '../ui/OverlayLightPipeline.js';
 import { CombatFeedback } from '../ui/CombatFeedback.js';
 import { InventorySystem } from '../systems/InventorySystem.js';
 import { GameState, PLAYER_START_HP } from '../systems/GameState.js';
@@ -249,6 +250,11 @@ export class GameScene extends Phaser.Scene {
         
         // Create tiled stone background
         this.createBackground();
+
+        // Warm light sheet over the whole frame, in Aseprite's Overlay mode.
+        // A camera post-process, so it covers the board, the cards, the HUD
+        // and the bag together rather than needing to out-depth them.
+        applyOverlayLight(this);
         
         // Create animations
         this.createAnimations();
