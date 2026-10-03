@@ -6,8 +6,30 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { cameraWorldSize } from '../config/renderScale.js';
 import { t } from '../i18n/i18n.js';
+import {
+  createNineSlicePanel,
+  UI_BANNER_KEY,
+  UI_PANEL_KEY,
+  UI_PANEL_SLICE,
+} from './NineSlicePanel.js';
 
 const DEPTH = 3500;
+
+// Window furniture, shared with the nest raid so the two minigames read as the
+// same piece of UI. The offsets are the nest's, measured off its mock-up: the
+// ribbon straddles the panel's top edge, and the title sits above the ribbon's
+// middle rather than the image's, because the tails hang below the body.
+const BANNER_DY = 15;
+const TITLE_DY = 4;
+// Brief line in the brief phase, instructions in play — one row, two texts.
+const COPY_DY = 34;
+// Clear space the top chrome needs before content, and the footer needs after.
+//
+// The nest leaves 64 here because its timer bar sits between the copy and the
+// content. This lock has no clock and nothing to put in that space, so the
+// header stops just below the copy line instead of holding a gap open.
+const CONTENT_TOP = 52;
+const CONTENT_BOT = 52;
 const COLS = 5;
 const ROWS = 2;
 const TILE_W = 58;
@@ -109,15 +131,33 @@ export function openMusicBoxLockMinigame(scene, cfg) {
   const gridW = COLS * TILE_W + (COLS - 1) * GAP;
   const gridH = ROWS * TILE_H + (ROWS - 1) * GAP;
   const panelW = Math.max(440, gridW + 40);
-  const panelH = gridH + 128;
-  const panel = push(scene.add.rectangle(cx, cy - 4, panelW, panelH, 0x1a1420, 0.96));
-  panel.setStrokeStyle(2, 0xc9a227).setDepth(DEPTH + 1);
+  // The banner sits taller than the plain title did, so the panel grows with
+  // it and the wafer grid keeps the clear space it always had.
+  const panelH = gridH + CONTENT_TOP + CONTENT_BOT;
+  const panelTop = cy - panelH / 2;
+  const panelBot = cy + panelH / 2;
+  // Middle of the band between the header and the footer. Both phases centre
+  // their content on it, so the brief and the grid occupy the same space.
+  const contentCy = (panelTop + CONTENT_TOP + panelBot - CONTENT_BOT) / 2;
 
-  push(scene.add.text(cx, cy - panelH / 2 + 16, t(scene, 'ui.musicBox.title'), {
+  const panel = push(createNineSlicePanel(scene, panelW, panelH, {
+    key: UI_PANEL_KEY,
+    slice: UI_PANEL_SLICE,
+  }) || scene.add.rectangle(cx, cy, panelW, panelH, 0x1a1420, 0.96).setStrokeStyle(2, 0xc9a227));
+  panel.setPosition(cx, cy);
+  panel.setDepth(DEPTH + 1);
+
+  if (scene.textures?.exists?.(UI_BANNER_KEY)) {
+    const banner = push(scene.add.image(cx, panelTop + BANNER_DY, UI_BANNER_KEY));
+    snapOriginToPixelGrid(banner);
+    banner.setDepth(DEPTH + 2);
+  }
+
+  push(scene.add.text(cx, panelTop + TITLE_DY, t(scene, 'ui.musicBox.title'), {
     fontSize: '16px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#f0e6d2',
-  }).setOrigin(0.5).setDepth(DEPTH + 2));
+  }).setOrigin(0.5).setDepth(DEPTH + 3));
 
   const addBrief = (obj) => {
     briefNodes.push(obj);
@@ -138,7 +178,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
     return image;
   };
 
-  addBrief(scene.add.text(cx, cy - panelH / 2 + 38, t(scene, 'ui.musicBox.brief'), {
+  addBrief(scene.add.text(cx, panelTop + COPY_DY, t(scene, 'ui.musicBox.brief'), {
     fontSize: '11px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#ffe8b0',
@@ -149,13 +189,15 @@ export function openMusicBoxLockMinigame(scene, cfg) {
   // The movement you are picking, sitting in the empty column left of the
   // examples. Part of the brief, so it clears when the grid needs the room.
   if (scene.textures?.exists?.('musicBoxOpen')) {
-    const art = addBrief(scene.add.image(cx - 152, cy + 12, 'musicBoxOpen'));
+    const art = addBrief(scene.add.image(cx - 152, contentCy + 18, 'musicBoxOpen'));
     art.setDepth(DEPTH + 3);
     snapOriginToPixelGrid(art);
   }
 
-  const pairY = cy - 18;
-  const detY = cy + 48;
+  // Two example rows straddling the content band's middle, at the spacing
+  // they always had.
+  const pairY = contentCy - 12;
+  const detY = contentCy + 54;
   wafer(cx - 78, pairY, FRAME_FIT_A);
   wafer(cx - 28, pairY, FRAME_FIT_B);
   addBrief(scene.add.text(cx + 52, pairY, t(scene, 'ui.musicBox.safePairs'), {
@@ -174,10 +216,10 @@ export function openMusicBoxLockMinigame(scene, cfg) {
     align: 'left',
   }).setOrigin(0, 0.5).setDepth(DEPTH + 3));
 
-  const beginBg = addBrief(scene.add.rectangle(cx, cy + panelH / 2 - 22, 120, 24, 0x2a2030, 1));
+  const beginBg = addBrief(scene.add.rectangle(cx, panelBot - 22, 120, 24, 0x2a2030, 1));
   beginBg.setStrokeStyle(2, 0xc9a227).setDepth(DEPTH + 5);
   beginBg.setInteractive({ useHandCursor: true });
-  const beginLabel = addBrief(scene.add.text(cx, cy + panelH / 2 - 22, t(scene, 'ui.musicBox.begin'), {
+  const beginLabel = addBrief(scene.add.text(cx, panelBot - 22, t(scene, 'ui.musicBox.begin'), {
     fontSize: '12px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#f0e6d2',
@@ -196,7 +238,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
     clearBrief();
     SoundHelper.playVariant(scene, 'button_click', 0.5);
 
-    push(scene.add.text(cx, cy - panelH / 2 + 34, t(scene, 'ui.musicBox.instructions'), {
+    push(scene.add.text(cx, panelTop + COPY_DY, t(scene, 'ui.musicBox.instructions'), {
       fontSize: '10px',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
       color: '#c9b48a',
@@ -204,7 +246,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
       align: 'center',
     }).setOrigin(0.5).setDepth(DEPTH + 2));
 
-    statusText = push(scene.add.text(cx, cy + panelH / 2 - 16, t(scene, 'ui.musicBox.ready'), {
+    statusText = push(scene.add.text(cx, panelBot - 16, t(scene, 'ui.musicBox.ready'), {
       fontSize: '11px',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
       color: '#ffe8b0',
@@ -218,7 +260,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
     ])));
 
     const gridLeft = cx - gridW / 2 + TILE_W / 2;
-    const gridTop = cy - 6 - gridH / 2 + TILE_H / 2;
+    const gridTop = contentCy - gridH / 2 + TILE_H / 2;
 
     const slotXY = (index) => {
       const col = index % COLS;

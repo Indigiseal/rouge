@@ -6,9 +6,26 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { t } from '../i18n/i18n.js';
 import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { cameraWorldSize } from '../config/renderScale.js';
+import {
+  createNineSlicePanel,
+  createUiBar,
+  UI_BANNER_KEY,
+  UI_PANEL_KEY,
+  UI_PANEL_SLICE,
+} from './NineSlicePanel.js';
 
 const DEPTH = 3500;
 const TIME_LIMIT = 20;
+
+// Window furniture, measured off assets/ui/mockUpNestGame.png.
+//
+// bannerEvents.png is 256x48 and its ribbon is drawn in the top 39 rows, so
+// placing the image 15px below the panel's top edge lands the ribbon 9px above
+// it — overlapping the border the way the mock-up does. The title then sits
+// 11px higher still, which is the middle of the ribbon's body rather than the
+// middle of the image.
+const BANNER_DY = 15;
+const TITLE_DY = 4;
 // shadowBird.png is 276x122. At 0.85 the wingspan is 235 against the bowl's
 // 261 — big enough to read as a bird crossing the nest rather than a smear.
 // Matching the old blob's footprint was the wrong target: that was a blur
@@ -278,18 +295,40 @@ export function openBirdNestMinigame(scene, cfg) {
   const veil = push(scene.add.rectangle(cx, cy + 6, w + 4, h + 4, 0x000000, 0.78));
   veil.setDepth(DEPTH).setInteractive();
 
-  const panelW = 468;
-  const panelH = 292;
-  const panel = push(scene.add.rectangle(cx, cy, panelW, panelH, 0x1a1420, 0.96));
-  panel.setStrokeStyle(2, 0xc9a227).setDepth(DEPTH + 1);
+  // Window size and every anchor below are measured off assets/ui/mockUpNestGame.png.
+  const panelW = 470;
+  const panelH = 294;
+  const panelTop = cy - panelH / 2;
+  const panelBot = cy + panelH / 2;
 
-  push(scene.add.text(cx, cy - panelH / 2 + 14, t(scene, 'ui.birdNest.title'), {
+  // Sliced art when it loaded, the old flat rectangle when it did not — the
+  // minigame is still playable either way.
+  const panel = push(createNineSlicePanel(scene, panelW, panelH, {
+    key: UI_PANEL_KEY,
+    slice: UI_PANEL_SLICE,
+  }) || scene.add.rectangle(cx, cy, panelW, panelH, 0x1a1420, 0.96).setStrokeStyle(2, 0xc9a227));
+  panel.setPosition(cx, cy);
+  panel.setDepth(DEPTH + 1);
+
+  // The ribbon straddles the panel's top edge, hanging its tails over the
+  // border. It is drawn at its authored width and never sliced: the body
+  // carries painted highlights that stretching would smear.
+  if (scene.textures?.exists?.(UI_BANNER_KEY)) {
+    const banner = push(scene.add.image(cx, panelTop + BANNER_DY, UI_BANNER_KEY));
+    snapOriginToPixelGrid(banner);
+    banner.setDepth(DEPTH + 2);
+  }
+
+  // Title sits above the banner's middle, not on it: the ribbon's body is the
+  // top two thirds of the art and the tails hang below, so centring the text
+  // on the image would drop it onto the fold.
+  push(scene.add.text(cx, panelTop + TITLE_DY, t(scene, 'ui.birdNest.title'), {
     fontSize: '16px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#f0e6d2',
-  }).setOrigin(0.5).setDepth(DEPTH + 2));
+  }).setOrigin(0.5).setDepth(DEPTH + 3));
 
-  push(scene.add.text(cx, cy - panelH / 2 + 32, includeCog
+  push(scene.add.text(cx, panelTop + 34, includeCog
     ? t(scene, 'ui.birdNest.instructionsCog')
     : t(scene, 'ui.birdNest.instructionsEgg'), {
     fontSize: '10px',
@@ -297,17 +336,25 @@ export function openBirdNestMinigame(scene, cfg) {
     color: '#c9b48a',
     wordWrap: { width: panelW - 24 },
     align: 'center',
-  }).setOrigin(0.5).setDepth(DEPTH + 2));
+  }).setOrigin(0.5).setDepth(DEPTH + 3));
 
-  const barW = 280;
+  const barW = 296;
   const barH = 10;
-  const barY = cy - panelH / 2 + 48;
-  push(scene.add.rectangle(cx, barY, barW + 4, barH + 4, 0x000000, 0.9).setDepth(DEPTH + 2));
-  const barTrack = push(scene.add.rectangle(cx, barY, barW, barH, 0x2a2030, 1).setDepth(DEPTH + 3));
-  const barFill = push(scene.add.rectangle(cx - barW / 2, barY, barW, barH, 0xc9a227, 1));
-  barFill.setOrigin(0, 0.5).setDepth(DEPTH + 4);
+  const barY = panelTop + 49;
+  const bar = createUiBar(scene, barW);
+  let barFill = null;
+  if (bar) {
+    push(bar.container);
+    bar.container.setPosition(cx, barY).setDepth(DEPTH + 3);
+  } else {
+    push(scene.add.rectangle(cx, barY, barW + 4, barH + 4, 0x000000, 0.9).setDepth(DEPTH + 2));
+    push(scene.add.rectangle(cx, barY, barW, barH, 0x2a2030, 1).setDepth(DEPTH + 3));
+    barFill = push(scene.add.rectangle(cx - barW / 2, barY, barW, barH, 0xc9a227, 1));
+    barFill.setOrigin(0, 0.5).setDepth(DEPTH + 4);
+  }
 
-  const timeText = push(scene.add.text(cx + barW / 2 + 28, barY, String(TIME_LIMIT), {
+  // Clear of the bar's right cap by the same gap the mock-up leaves.
+  const timeText = push(scene.add.text(cx + barW / 2 + 20, barY, String(TIME_LIMIT), {
     fontSize: '12px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#ffe8b0',
@@ -322,7 +369,7 @@ export function openBirdNestMinigame(scene, cfg) {
   nest.setDepth(DEPTH + 5);
   snapOriginToPixelGrid(nest);
 
-  const statusText = push(scene.add.text(cx, cy + panelH / 2 - 36, t(scene, 'ui.birdNest.status'), {
+  const statusText = push(scene.add.text(cx, panelBot - 36, t(scene, 'ui.birdNest.status'), {
     fontSize: '10px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#ffe8b0',
@@ -330,10 +377,10 @@ export function openBirdNestMinigame(scene, cfg) {
     align: 'center',
   }).setOrigin(0.5).setDepth(DEPTH + 20));
 
-  const runBg = push(scene.add.rectangle(cx, cy + panelH / 2 - 16, 88, 20, 0x2a2030, 1));
+  const runBg = push(scene.add.rectangle(cx, panelBot - 16, 89, 21, 0x2a2030, 1));
   runBg.setStrokeStyle(1, 0xc9a227).setDepth(DEPTH + 20);
   runBg.setInteractive({ useHandCursor: true });
-  const runLabel = push(scene.add.text(cx, cy + panelH / 2 - 16, t(scene, 'ui.birdNest.run'), {
+  const runLabel = push(scene.add.text(cx, panelBot - 16, t(scene, 'ui.birdNest.run'), {
     fontSize: '11px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
     color: '#f0e6d2',
@@ -351,8 +398,8 @@ export function openBirdNestMinigame(scene, cfg) {
 
   const junkLeft = cx - panelW / 2 + 28;
   const junkRight = cx + panelW / 2 - 28;
-  const junkTop = cy - panelH / 2 + 64;
-  const junkBot = cy + panelH / 2 - 52;
+  const junkTop = panelTop + 64;
+  const junkBot = panelBot - 52;
 
   const clampJunk = (x, y) => ({
     x: Phaser.Math.Clamp(x, junkLeft, junkRight),
@@ -523,19 +570,30 @@ export function openBirdNestMinigame(scene, cfg) {
     SoundHelper.playVariant(scene, 'player_hurt', 0.55);
     statusText.setText(t(scene, 'ui.birdNest.caught'));
     statusText.setColor('#ff7b72');
-    barFill.setFillStyle(0xff7b72, 1);
+    setBarColor(0xff7b72);
     scene.tweens?.add?.({
-      targets: barFill,
+      targets: bar ? bar.container : barFill,
       scaleY: 1.6,
       duration: 80,
       yoyo: true,
     });
   };
 
+  // The sliced bar tints its filled pieces; the fallback rectangle restyles
+  // itself. Null means "back to the art's own colour", which only the sliced
+  // bar can express — the rectangle has no art, so it takes the old gold.
+  const setBarColor = (color) => {
+    if (bar) bar.setFillTint(color);
+    else barFill?.setFillStyle(color ?? 0xc9a227, 1);
+  };
+
   const layoutBar = () => {
     const t = Math.max(0, remaining) / TIME_LIMIT;
-    barFill.width = Math.max(1, barW * t);
-    barFill.setFillStyle(t < 0.22 ? 0xff7b72 : 0xc9a227, 1);
+    if (bar) bar.setFraction(t);
+    else barFill.width = Math.max(1, barW * t);
+    // Once the bird has caught the player the bar stays red for the rest of
+    // the pass; re-running the drain must not paint it gold again.
+    if (!caughtThisPass) setBarColor(t < 0.22 ? 0xff7b72 : null);
     timeText.setText(String(Math.ceil(Math.max(0, remaining))));
   };
 

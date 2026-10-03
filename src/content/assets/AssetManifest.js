@@ -28,6 +28,17 @@ export const ASSET_MANIFEST = [
     { key: 'panelText9Slice', path: 'assets/art/panelText9Slice.png', type: 'image' },
     // Top-left selection bracket; mirrored on both axes to make all 4 corners.
     { key: 'cornerSelect', path: 'assets/art/cornerSelect.png', type: 'image' },
+
+    // Shared minigame chrome, in assets/ui/ rather than assets/art/ because it
+    // is window furniture rather than anything the game world contains.
+    //
+    // uiPanelDark and uiBar are both sliced at runtime and drawn at whatever
+    // size the window needs — see ui/NineSlicePanel.js for the insets. The
+    // banner is not sliced: its ribbon carries painted highlights and drawn
+    // tails, so it rides at its authored 256px and the title sits on top.
+    { key: 'uiPanelDark', path: 'assets/ui/paneDarkl9x9.png', type: 'image' },
+    { key: 'uiBar', path: 'assets/ui/barSlice.png', type: 'image' },
+    { key: 'uiBanner', path: 'assets/ui/bannerEvents.png', type: 'image' },
     { key: 'scrollHandle', path: 'assets/art/scroll.png', type: 'image' },
     { key: 'eventsShops', path: 'assets/art/eventsShops80x80.png', type: 'spritesheet', frameWidth: 80, frameHeight: 80 },
     // Arm Wrestling minigame art (human vs ogre locked hands).

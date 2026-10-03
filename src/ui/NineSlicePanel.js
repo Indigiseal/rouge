@@ -191,6 +191,134 @@ export function createNineSlicePanel(scene, width, height, opts = {}) {
     return container;
 }
 
+// ---------------------------------------------------------------------------
+// Minigame window chrome (assets/ui/)
+// ---------------------------------------------------------------------------
+
+// paneDarkl9x9.png is 48x48 authored as a nine-slice on a 16x16 grid: three
+// cells across, three down. The drawn border only occupies the outer 2px of
+// each edge cell — bright orange across the top, mid brown down the sides, a
+// dark red lip along the bottom — but the SLICE is the full 16px cell.
+//
+// Slicing on the drawn border instead (2px) looks identical on a flat panel
+// and is still wrong: it drops everything from x2..x45 into the tiling centre
+// cell, including the faint speck the art carries near its top-right corner.
+// That speck is corner decoration meant to appear once; in the centre cell it
+// repeats with every tile — 77 copies at this window's size. On the 16px grid
+// it stays in the top-right corner where it was drawn.
+export const UI_PANEL_KEY = 'uiPanelDark';
+export const UI_PANEL_CELL = 16;
+export const UI_PANEL_SLICE = { left: 16, right: 16, top: 16, bottom: 16 };
+
+// barSlice.png is 48x64 holding the SAME lozenge twice: the empty track at
+// rows 9-22 and the filled state at rows 42-55, 14px tall each. Both have a
+// 7px chamfered cap at each end and 34 identical columns between them, so the
+// caps ride at native size and only the middle repeats.
+// bannerEvents.png is 256x48 and is NOT sliced: the ribbon body carries
+// painted highlights and the tails are drawn, so it rides at its authored
+// width and whatever sits on it is centred by the caller.
+export const UI_BANNER_KEY = 'uiBanner';
+
+export const UI_BAR_KEY = 'uiBar';
+export const UI_BAR = { h: 14, cap: 7, emptyY: 9, fillY: 42, srcW: 48 };
+
+const barFrame = (state, part) => `__uibar_${state}_${part}`;
+
+// Carve the two states into caps and middles once per texture.
+function ensureBarFrames(scene, key) {
+    const tex = scene.textures?.get?.(key);
+    if (!tex || !tex.source?.[0]) return false;
+    if (tex.has(barFrame('fill', 'm'))) return true;
+
+    const { h, cap, emptyY, fillY, srcW } = UI_BAR;
+    const midW = srcW - cap * 2;
+    [['empty', emptyY], ['fill', fillY]].forEach(([state, y]) => {
+        tex.add(barFrame(state, 'l'), 0, 0, y, cap, h);
+        tex.add(barFrame(state, 'm'), 0, cap, y, midW, h);
+        tex.add(barFrame(state, 'r'), 0, srcW - cap, y, cap, h);
+    });
+    return true;
+}
+
+// One state of the bar, sliced to `width`: two caps at their authored pixels
+// and a repeating middle. Pieces are returned with their local x ranges so the
+// fill can be cropped against them.
+function buildBarState(scene, key, state, width) {
+    const { h, cap } = UI_BAR;
+    const midW = width - cap * 2;
+    const left = scene.add.image(-width / 2, -h / 2, key, barFrame(state, 'l')).setOrigin(0, 0);
+    const mid = scene.add
+        .tileSprite(-width / 2 + cap, -h / 2, midW, h, key, barFrame(state, 'm'))
+        .setOrigin(0, 0);
+    const right = scene.add.image(width / 2 - cap, -h / 2, key, barFrame(state, 'r')).setOrigin(0, 0);
+    return [
+        { obj: left, x: 0, w: cap },
+        { obj: mid, x: cap, w: midW },
+        { obj: right, x: cap + midW, w: cap },
+    ];
+}
+
+/**
+ * Timer/progress bar built from the two states in barSlice.png.
+ *
+ * Returns { container, setFraction, destroy }, or null when the art is missing
+ * or the requested width cannot hold both caps — callers fall back to the plain
+ * rectangles they drew before.
+ *
+ * setFraction crops the filled pieces rather than resizing them, so the fill
+ * ends on a straight vertical edge and the track's chamfered right cap stays
+ * put as it drains. Resizing the fill instead would drag a second chamfer
+ * leftwards across the bar, which is not what the art draws.
+ */
+export function createUiBar(scene, width, opts = {}) {
+    const { key = UI_BAR_KEY } = opts;
+    const { h, cap } = UI_BAR;
+    // Even width, for the same half-pixel reason as createNineSlicePanel.
+    const w = Math.ceil(width / 2) * 2;
+    if (!scene?.add?.tileSprite || w < cap * 2 + 2) return null;
+    if (!ensureBarFrames(scene, key)) return null;
+
+    const track = buildBarState(scene, key, 'empty', w);
+    const fill = buildBarState(scene, key, 'fill', w);
+    const container = scene.add.container(0, 0, [...track, ...fill].map((p) => p.obj));
+    container.setSize(w, h);
+
+    const setFraction = (value) => {
+        const f = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
+        const edge = w * f;
+        fill.forEach(({ obj, x, w: pw }) => {
+            if (!obj.scene) return;
+            const visible = Math.round(Math.max(0, Math.min(pw, edge - x)));
+            if (visible <= 0) { obj.setVisible(false); return; }
+            obj.setVisible(true);
+            // A piece showing all of itself must carry no crop at all: a crop
+            // the exact width of a TileSprite still clips its last column on
+            // some drivers, which reads as a one-pixel gap mid-bar.
+            if (visible >= pw) obj.setCrop?.();
+            else obj.setCrop(0, 0, visible, h);
+        });
+    };
+    setFraction(1);
+
+    // Recolour the filled state only. The track underneath keeps its own
+    // colour, so a warning tint reads against it instead of staining the
+    // whole bar.
+    const setFillTint = (color) => {
+        fill.forEach(({ obj }) => {
+            if (!obj.scene) return;
+            if (color == null) obj.clearTint?.();
+            else obj.setTint?.(color);
+        });
+    };
+
+    return {
+        container,
+        setFraction,
+        setFillTint,
+        destroy: () => { try { container.destroy(); } catch (_) { /* gone */ } },
+    };
+}
+
 export const CORNER_SELECT_KEY = 'cornerSelect';
 
 /**
