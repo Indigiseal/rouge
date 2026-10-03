@@ -12,6 +12,18 @@ export const HEALER_RARITIES = Object.freeze([
   'legendary',
 ]);
 
+// Jeweler odds per rank, as percentages in HEALER_RARITIES order. There is no
+// fifth amulet tier, so five ranks cannot each unlock a rarity; instead every
+// rank shifts the odds toward the rare end. One roll picks the rarity for the
+// whole pick-1-of-3.
+export const HEALER_RARITY_ODDS = Object.freeze([
+  Object.freeze([100, 0, 0, 0]),
+  Object.freeze([50, 50, 0, 0]),
+  Object.freeze([30, 30, 40, 0]),
+  Object.freeze([10, 25, 45, 20]),
+  Object.freeze([0, 15, 45, 40]),
+]);
+
 export const COTTAGE_HP_PER_RANK = 15;
 
 /** @typedef {'forge'|'temple'|'armory'|'healer'|'cottage'} VillageBuildingId */
@@ -26,8 +38,8 @@ export const VILLAGE_BUILDINGS = Object.freeze({
   forge: Object.freeze({ id: 'forge', maxRank: 5 }),
   temple: Object.freeze({ id: 'temple', maxRank: 1 }),
   armory: Object.freeze({ id: 'armory', maxRank: 5 }),
-  healer: Object.freeze({ id: 'healer', maxRank: HEALER_RARITIES.length }),
-  cottage: Object.freeze({ id: 'cottage', maxRank: 4 }),
+  healer: Object.freeze({ id: 'healer', maxRank: HEALER_RARITY_ODDS.length }),
+  cottage: Object.freeze({ id: 'cottage', maxRank: 5 }),
 });
 
 export const VILLAGE_BUILDING_IDS = Object.freeze(Object.keys(VILLAGE_BUILDINGS));
@@ -74,9 +86,19 @@ export function costForVillageRank(currentRank) {
   return VILLAGE_RANK_COSTS[currentRank];
 }
 
-export function healerRarityForRank(rank) {
+/** Roll the jeweler's rarity for this rank; null when the jeweler is unbuilt. */
+export function healerRarityForRank(rank, rng = Math.random) {
   const n = Math.max(0, Math.floor(Number(rank) || 0));
-  return HEALER_RARITIES[n - 1] || null;
+  const odds = HEALER_RARITY_ODDS[Math.min(n, HEALER_RARITY_ODDS.length) - 1];
+  if (!odds) return null;
+  let roll = rng() * 100;
+  for (let i = 0; i < odds.length; i++) {
+    roll -= odds[i];
+    if (roll < 0) return HEALER_RARITIES[i];
+  }
+  // Float slack on a roll of ~100: take the rarest tier this rank can give.
+  const last = odds.reduce((best, pct, i) => (pct > 0 ? i : best), 0);
+  return HEALER_RARITIES[last];
 }
 
 /** Runtime bag merged onto talentEffects so existing combat/UI paths read it. */

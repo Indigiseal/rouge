@@ -1,5 +1,6 @@
 // scenes/MainMenuScene.js
 import { applyOverlayLight } from '../ui/OverlayLightPipeline.js';
+import { setHoverLight } from '../ui/HoverLight.js';
 import {
     OptionsSkin,
     OPTIONS_BACKDROP,
@@ -223,12 +224,12 @@ export class MainMenuScene extends Phaser.Scene {
             btn.setInteractive({ useHandCursor: true })
                 .on('pointerover', () => {
                     SoundHelper.playVariant(this, 'hover_button', 0.4);
-                    // Lighten on hover
-                    if (hasSprite) btn.setTint(0xdddddd);
+                    if (hasSprite) setHoverLight(btn, true);
                 })
                 .on('pointerout', () => {
                     pressedPointer = null;
                     btn.clearTint();
+                    setHoverLight(btn, false);
                     if (hasSprite) btn.setTexture('nextTurnUp');
                     txt.setY(y);
                 })
@@ -241,6 +242,9 @@ export class MainMenuScene extends Phaser.Scene {
                 .on('pointerup', (pointer) => {
                     const activated = pressedPointer !== null && pressedPointer === pointer;
                     pressedPointer = null;
+                    // Off on click too: Options hides these buttons, so no
+                    // pointerout comes to put the light out.
+                    setHoverLight(btn, false);
                     if (hasSprite) btn.setTexture('nextTurnUp');
                     txt.setY(y);
                     if (activated) callback();
@@ -280,10 +284,11 @@ export class MainMenuScene extends Phaser.Scene {
         btn.setInteractive({ useHandCursor: true })
             .on('pointerover', () => {
                 SoundHelper.playVariant(this, 'hover_button', 0.4);
-                if (hasSprite) btn.setTint(0xdddddd);
+                if (hasSprite) setHoverLight(btn, true);
             })
             .on('pointerout', () => {
                 pressedPointer = null;
+                setHoverLight(btn, false);
                 if (hasSprite) { btn.clearTint(); btn.setFrame(0); }
                 glyph?.setY(y);
             })
@@ -296,6 +301,7 @@ export class MainMenuScene extends Phaser.Scene {
             .on('pointerup', (pointer) => {
                 const activated = pressedPointer !== null && pressedPointer === pointer;
                 pressedPointer = null;
+                setHoverLight(btn, false);
                 if (hasSprite) btn.setFrame(0);
                 glyph?.setY(y);
                 if (activated) callback();
@@ -639,7 +645,11 @@ export class MainMenuScene extends Phaser.Scene {
         // Clear any existing run save
         this.saveManager.clearCurrentRun();
 
-        this.fadeOutMenuMusic();
+        // No fade-out here, unlike the other ways out of the menu: the village
+        // plays this same theme, and asking for a track that is already playing
+        // keeps it going. Fading it out first made the village start it again
+        // from the top on every New Game. The village fades it when the run
+        // actually starts.
         // There is one unrestricted hero now, so a new run goes straight to
         // the village instead of presenting a class choice.
         this.cameras.main.fadeOut(500, 0, 0, 0);

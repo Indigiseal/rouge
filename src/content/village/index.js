@@ -4,6 +4,7 @@ export {
   VILLAGE_PLOTS,
   VILLAGE_RANK_COSTS,
   HEALER_RARITIES,
+  HEALER_RARITY_ODDS,
   COTTAGE_HP_PER_RANK,
   getVillageBuilding,
   emptyVillageBuildings,

@@ -12,6 +12,8 @@ import { openConfirmModal } from '../ui/ConfirmModal.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { applyOverlayLight } from '../ui/OverlayLightPipeline.js';
 import { createSelectionCorners } from '../ui/NineSlicePanel.js';
+import { createOptionsCog } from '../ui/OptionsCog.js';
+import { setHoverLight } from '../ui/HoverLight.js';
 
 // Every number here is measured off assets/ui/mockUpVillage.png, which is
 // authored at the world size, so it transfers 1:1.
@@ -32,7 +34,7 @@ const LAYERS = Object.freeze([
 // and ~229; the columns are re-centred on the board (320) and the rows
 // levelled, because the mock was assembled by eye and says so.
 const CARD_COLS = Object.freeze([177, 320, 463]);
-const CARD_ROWS = Object.freeze([116, 230]);
+const CARD_ROWS = Object.freeze([116, 228]);
 // The slate plate tucks under the card by 11px, so the card sits on it.
 const PLATE_DY = 47;
 
@@ -51,6 +53,8 @@ const CARD_LIFT = 5;
 const CARD_LIFT_MS = 150;
 const VILLAGE_HOVER_ANIM = 'village_card_hover';
 const VILLAGE_FLIP_ANIM = 'village_card_flip';
+// Shared with GameScene's bag cards, so the same key and settings.
+const FACE_SHINE_ANIM = 'hover_cards_anim';
 
 // cardFlip54x86Sheet frame 0 is the card back, and the same sprite carries the
 // flip. The drawn card inside that 54x86 frame is 52x70 at x1..52 / y13..82 —
@@ -144,21 +148,13 @@ export class VillageScene extends Phaser.Scene {
       depth: 41,
     }));
 
-    // The strip between the ribbon and the top row of cards is the only clear
-    // space on the board, so support and the selected building's blurb share
-    // it. Anything taller would run under the cards.
-    this.supportText = this.add.text(320, 70, '', {
-      fontSize: '11px',
-      fill: '#f0d78c',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-      stroke: '#1b1418',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(41);
-    this.introGroups.wood.push(this.supportText);
+    // Same corner as the main menu's cog. It opens the in-run options (sound,
+    // quit to menu), the way the rest and anvil rooms do.
+    createOptionsCog(this, () => this.openOptions());
 
     VILLAGE_PLOTS.forEach((plot, index) => this.drawPlot(plot, index));
 
-    // The name and rank live on each card's own plate, so the only thing left
+    // The name lives on each card's plate and the rank in its stars, so the only thing left
     // to say here is what the selected building does. It goes in the thin band
     // between the bottom row and the footer rail — the one strip the art
     // leaves clear — and is outlined so it survives the thorns behind it.
@@ -202,7 +198,8 @@ export class VillageScene extends Phaser.Scene {
 
     this.refresh();
     this.playIntro();
-    MusicManager.play(this, 'menu_music', 0.45, 500);
+    // Same level as the main menu (0.6), whose theme this carries on.
+    MusicManager.play(this, 'menu_music', 0.6, 500);
   }
 
   // Slide the three board groups in, staggered. One counter per group drives
@@ -273,6 +270,16 @@ export class VillageScene extends Phaser.Scene {
         repeat: 0,
       });
     }
+    // The face-up shine the bag cards use. Same key and settings as
+    // GameScene's, which may not have run yet when the village opens first.
+    if (this.textures.exists('hoverCardsUpSheet') && !this.anims.exists(FACE_SHINE_ANIM)) {
+      this.anims.create({
+        key: FACE_SHINE_ANIM,
+        frames: this.anims.generateFrameNumbers('hoverCardsUpSheet', { start: 0, end: 4 }),
+        frameRate: 12,
+        repeat: 0,
+      });
+    }
   }
 
   // Where a plot's card sits. VILLAGE_PLOTS is ordered forge/temple/armory
@@ -325,14 +332,20 @@ export class VillageScene extends Phaser.Scene {
       shine.setVisible(false).setDepth(14);
     }
 
-    const name = this.add.text(x, y + PLATE_DY - 2, '', {
+    // Hover light for a built card: the light-only sheet the bag cards sweep
+    // in SCREEN. Over the face and its stars, under the back. Hidden until
+    // hover.
+    let faceShine = null;
+    if (this.textures.exists('hoverCardsUpSheet')) {
+      faceShine = snapOriginToPixelGrid(this.add.sprite(x, y, 'hoverCardsUpSheet', 0));
+      faceShine.setVisible(false).setDepth(13.5);
+      faceShine.setBlendMode(Phaser.BlendModes.SCREEN);
+    }
+
+    // The plate carries the name alone now that the stars show the rank.
+    const name = this.add.text(x, y + PLATE_DY, '', {
       fontSize: '10px',
       fill: '#f2d3aa',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5).setDepth(15);
-    const rank = this.add.text(x, y + PLATE_DY + 10, '', {
-      fontSize: '9px',
-      fill: '#c9d1d9',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5).setDepth(15);
 
@@ -355,18 +368,16 @@ export class VillageScene extends Phaser.Scene {
       }
     }
 
-    this.introGroups.metal.push(card, back, shadow, shine, name, rank, ...stars);
+    this.introGroups.metal.push(card, back, shadow, shine, faceShine, name, ...stars);
     const view = {
-      plot, card, back, shadow, shine, name, rank, stars,
+      plot, card, back, shadow, shine, faceShine, name, stars,
       restY: y, revealed: false, lifted: false,
     };
     this.plotViews.push(view);
 
     if (empty) {
       name.setText(t(this, 'ui.village.emptyLot'));
-      rank.setText(t(this, 'ui.village.future'));
       name.setColor('#6e7681');
-      rank.setColor('#555b63');
       // A lot with nothing planned for it stays face down for good.
       card.setVisible(false);
       zone.destroy();
@@ -400,11 +411,23 @@ export class VillageScene extends Phaser.Scene {
         onUpdate: () => { face.y = Math.round(face.y); },
       });
     });
-    if (shine?.scene) {
+    [shine, view.faceShine].forEach((light) => {
+      if (!light?.scene) return;
       this.tweens.add({
-        targets: shine, y: target, duration: CARD_LIFT_MS, ease: 'Power2',
-        onUpdate: () => { shine.y = Math.round(shine.y); },
+        targets: light, y: target, duration: CARD_LIFT_MS, ease: 'Power2',
+        onUpdate: () => { light.y = Math.round(light.y); },
       });
+    });
+    // A built card sweeps the face-up light across its art on hover.
+    const faceShine = view.faceShine;
+    if (faceShine?.scene) {
+      const flipping = back?.anims?.isPlaying;
+      if (lifted && view.revealed && !flipping && this.anims.exists(FACE_SHINE_ANIM)) {
+        faceShine.setVisible(true).play(FACE_SHINE_ANIM);
+      } else {
+        faceShine.stop();
+        faceShine.setVisible(false);
+      }
     }
     // The rank stars are painted onto the card, so they rise with it.
     view.stars.forEach((star) => {
@@ -497,6 +520,8 @@ export class VillageScene extends Phaser.Scene {
     }
     SoundHelper.playSound(this, 'card_flip', 0.45);
     this.setHoverSheet(view, false);
+    view.faceShine?.stop();
+    view.faceShine?.setVisible(false);
     card.setVisible(false);
     // The stars belong to the face, so they wait out the flip with it.
     this.layoutRankStars(view);
@@ -555,11 +580,18 @@ export class VillageScene extends Phaser.Scene {
     bg.setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => {
       SoundHelper.playVariant(this, 'hover_button', 0.3);
+      if (hasArt) setHoverLight(bg, true);
     });
-    bg.on('pointerout', () => { setFrame(false); });
+    bg.on('pointerout', () => {
+      setFrame(false);
+      setHoverLight(bg, false);
+    });
     bg.on('pointerdown', () => setFrame(true));
     bg.on('pointerup', () => {
       setFrame(false);
+      // Off on click too: a confirm modal or a scene change can take the
+      // pointer away without a pointerout.
+      setHoverLight(bg, false);
       SoundHelper.playVariant(this, 'button_click', 0.5);
       onClick();
     });
@@ -603,8 +635,17 @@ export class VillageScene extends Phaser.Scene {
     }
   }
 
+  // Pauses the village under the pause menu, as the rest room does.
+  openOptions() {
+    if (this.scene.isActive('PauseMenuScene')) return;
+    this.scene.launch('PauseMenuScene', { pausedScene: this.scene.key });
+    this.scene.pause();
+  }
+
   leave() {
-    MusicManager.stopIfPlaying(this, 'menu_music', 300);
+    // The music keeps going: Choose Your Road plays this same theme, and a
+    // fade-out here made it start again from the top. That screen fades it
+    // when the run actually begins.
     this.cameras.main.fadeOut(350, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       this.input.enabled = false;
@@ -617,20 +658,13 @@ export class VillageScene extends Phaser.Scene {
   }
 
   refresh() {
-    const support = this.meta.getCharacterXp(this.characterId);
-    this.supportText.setText(t(this, 'ui.village.support', { amount: support }));
-
     this.plotViews.forEach((view) => {
-      const { plot, card, name, rank } = view;
+      const { plot, card, name } = view;
       if (!plot.id) return;
-      const def = getVillageBuilding(plot.id);
-      const current = this.meta.getBuildingRank(plot.id);
-      const built = current > 0;
+      const built = this.meta.getBuildingRank(plot.id) > 0;
       name.setText(t(this, `village.${plot.id}.name`));
-      rank.setText(built
-        ? t(this, 'ui.village.rank', { rank: current, max: def.maxRank })
-        : t(this, 'ui.village.vacant'));
-      // "Not built yet" reads on the plate; selection is the brackets.
+      // An unbuilt lot greys its name; the rank reads off the stars and the
+      // selection off the brackets.
       name.setColor(built ? '#f2d3aa' : '#8b949e');
       if (!card?.scene) return;
 
@@ -650,7 +684,6 @@ export class VillageScene extends Phaser.Scene {
       return;
     }
 
-    const def = getVillageBuilding(this.selectedId);
     const current = this.meta.getBuildingRank(this.selectedId);
     const check = this.meta.canUpgradeBuilding(this.characterId, this.selectedId);
     this.detailTitle.setText(t(this, `village.${this.selectedId}.name`));
