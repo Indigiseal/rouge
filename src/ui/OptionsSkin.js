@@ -2,6 +2,7 @@
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { FONT_SIZE, fitLabel, serifStyle } from './uiFont.js';
+import { setHoverLight } from './HoverLight.js';
 // uiButtons.png stacks one 128x32 button per row.
 export const UI_BUTTON = { language: 0, barEmpty: 1, barFill: 2, back: 3, reset: 4 };
 export const UI_BUTTON_W = 128;
@@ -76,10 +77,11 @@ export const OptionsSkin = {
         btn.setInteractive({ useHandCursor: true })
             .on('pointerover', () => {
                 SoundHelper.playVariant(this, 'hover_button', 0.4);
-                if (hasSprite) btn.setTint(0xdddddd);
+                if (hasSprite) setHoverLight(btn, true);
             })
             .on('pointerout', () => {
                 pressedPointer = null;
+                setHoverLight(btn, false);
                 if (hasSprite) btn.clearTint();
                 txt.setY(labelY);
             })
@@ -93,6 +95,7 @@ export const OptionsSkin = {
                 const activated = pressedPointer !== null && pressedPointer === pointer;
                 pressedPointer = null;
                 if (hasSprite) btn.clearTint();
+                setHoverLight(btn, false);
                 txt.setY(labelY);
                 if (activated) callback?.();
             });

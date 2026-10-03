@@ -9,12 +9,12 @@
 
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { fitLabel, serifStyle } from './uiFont.js';
+import { setHoverLight } from './HoverLight.js';
 
 const PLATE_UP = 'nextTurnUp';
 const PLATE_DOWN = 'nextTurnDown';
 const LABEL_INK = '#fff0cc';
 const LABEL_INK_DISABLED = '#b6a994';
-const HOVER_TINT = 0xffe0a3;
 const DISABLED_TINT = 0x777777;
 // The label sits a hair above the plate's centre line at rest, and drops to
 // centre while held — that 1px is the whole press.
@@ -48,11 +48,12 @@ export function createPaintedButton(scene, x, y, text, action, opts = {}) {
     plate.setInteractive({ useHandCursor: true });
     plate.on('pointerover', () => {
         SoundHelper.playVariant(scene, 'hover_button', 0.4);
-        plate.setTint(HOVER_TINT);
+        setHoverLight(plate, true);
     });
     plate.on('pointerout', () => {
         plate.setTexture(PLATE_UP);
         plate.clearTint();
+        setHoverLight(plate, false);
         label.y = LABEL_Y;
     });
     plate.on('pointerdown', () => {
@@ -63,6 +64,7 @@ export function createPaintedButton(scene, x, y, text, action, opts = {}) {
     plate.on('pointerup', () => {
         plate.setTexture(PLATE_UP);
         plate.clearTint();
+        setHoverLight(plate, false);
         label.y = LABEL_Y;
         action();
     });

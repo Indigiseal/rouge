@@ -7,6 +7,7 @@
 // reports and everybody feels.
 
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { setHoverLight } from './HoverLight.js';
 
 export const COG_X = 618;
 export const COG_Y = 22;
@@ -34,10 +35,11 @@ export function createOptionsCog(scene, onOpen, opts = {}) {
 
     cog.on('pointerover', () => {
         SoundHelper.playVariant(scene, 'hover_button', 0.4);
-        cog.setTint(0xdddddd);
+        setHoverLight(cog, true);
     });
     cog.on('pointerout', () => {
         cog.clearTint();
+        setHoverLight(cog, false);
         cog.setFrame(FRAME_UP);
     });
     cog.on('pointerdown', () => {
@@ -45,7 +47,10 @@ export function createOptionsCog(scene, onOpen, opts = {}) {
         cog.setFrame(FRAME_DOWN);
     });
     cog.on('pointerup', () => {
+        // Off before opening: the menu pauses this scene, so no pointerout
+        // would come to put the light out.
         cog.clearTint();
+        setHoverLight(cog, false);
         cog.setFrame(FRAME_UP);
         onOpen();
     });
