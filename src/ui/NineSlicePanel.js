@@ -327,12 +327,15 @@ export const CORNER_SELECT_KEY = 'cornerSelect';
  *
  * `offset` is the distance from the centre to each corner's centre — pass a bit
  * under half the node's width so the brackets hug the art instead of floating.
+ * A non-square target (a card) passes `{ x, y }` to set each axis separately.
  * Returns the sprites (empty array if the texture is missing) so the caller can
  * add them to a container and tween them as a group.
  */
 export function createSelectionCorners(scene, x, y, offset, opts = {}) {
     const { key = CORNER_SELECT_KEY, tint = null, alpha = 1, depth = null } = opts;
     if (!scene?.add || !scene.textures?.exists(key)) return [];
+    const offX = typeof offset === 'number' ? offset : offset.x;
+    const offY = typeof offset === 'number' ? offset : offset.y;
 
     // flipX/flipY around the centred origin turn the one drawn corner into all
     // four: TL as authored, TR mirrored, BL flipped, BR both.
@@ -345,8 +348,8 @@ export function createSelectionCorners(scene, x, y, offset, opts = {}) {
 
     return corners.map(c => {
         const sprite = scene.add.image(
-            Math.round(x + c.dx * offset),
-            Math.round(y + c.dy * offset),
+            Math.round(x + c.dx * offX),
+            Math.round(y + c.dy * offY),
             key
         )
             .setOrigin(0.5)

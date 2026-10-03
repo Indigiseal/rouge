@@ -44,6 +44,29 @@ export const ASSET_MANIFEST = [
     // Overlay mode by ui/OverlayLightPipeline.js. Authored at the world size
     // (640x360) so it maps 1:1 onto the world and scales with everything else.
     { key: 'overLight', path: 'assets/ui/overLight.png', type: 'image' },
+
+    // Village screen. Four painted layers stacked back to front (wood board,
+    // metal plate, lower wood rail, thorns), then the ribbon, the slate name
+    // plate and the footer button. Sizes are deliberately larger than the
+    // 640x360 screen where the art runs off the bottom edge — see VillageScene.
+    { key: 'villageBoardWood', path: 'assets/ui/boardWoodVillage.png', type: 'image' },
+    { key: 'villageBoardMetal', path: 'assets/ui/boardMetalVillage.png', type: 'image' },
+    { key: 'villageBoardWood2', path: 'assets/ui/boardWoodVillage2.png', type: 'image' },
+    { key: 'villageThorn', path: 'assets/ui/villageThorn.png', type: 'image' },
+    { key: 'villageBanner', path: 'assets/ui/bannerVillage.png', type: 'image' },
+    { key: 'villagePlate', path: 'assets/ui/panelVillage.png', type: 'image' },
+    { key: 'villageRankStar', path: 'assets/ui/rankStar.png', type: 'image' },
+    { key: 'villageButtonUp', path: 'assets/ui/buttonUpReset.png', type: 'image' },
+    { key: 'villageButtonDown', path: 'assets/ui/buttonDownReset.png', type: 'image' },
+
+    // Six building cards, drawn card-sized so they can use the board's own
+    // hover and flip sheets. Frame order matches VILLAGE_FRAME in VillageScene.
+    { key: 'villageBuildings', path: 'assets/art/buildings.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
+
+    // The plain (non-location) hover shine and flip sheets, 5 frames each.
+    // The board uses the "All" variants; the village wants the base pair.
+    { key: 'villageCardHover', path: 'assets/art/cardHover52x72Sheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 72 },
+    { key: 'villageCardFlip', path: 'assets/art/cardFlip54x86Sheet.png', type: 'spritesheet', frameWidth: 54, frameHeight: 86 },
     { key: 'scrollHandle', path: 'assets/art/scroll.png', type: 'image' },
     { key: 'eventsShops', path: 'assets/art/eventsShops80x80.png', type: 'spritesheet', frameWidth: 80, frameHeight: 80 },
     // Arm Wrestling minigame art (human vs ogre locked hands).
