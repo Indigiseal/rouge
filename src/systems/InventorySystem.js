@@ -538,13 +538,30 @@ export class InventorySystem {
         const targetX = slotSprite.background.x;
         const targetY = slotSprite.background.y;
         
-        // Animate return to slot
+        // Animate return to slot.
+        //
+        // Round x and y every frame, the same way the hover lift and the drag
+        // handler do. This is the one path that moves a card and its pips
+        // together without rounding, and it is the path a drop takes.
+        //
+        // Fractional positions are what show up as the pips "following late".
+        // roundPixels rounds each rendered object on its own, so mid-tween the
+        // card art rounds one way and every pip rounds independently — the
+        // column of dots along the card's edge drifts a pixel off the art and
+        // catches up. The value never shows it: it is one glyph sitting in a
+        // slot painted near the card's middle, where a pixel of slack reads as
+        // nothing, while the pips are a tall high-contrast column against the
+        // card border where the same pixel is obvious.
         this.scene.tweens.add({
             targets: cardSprite,
             x: targetX,
             y: targetY,
             duration: 200,
             ease: 'Power2',
+            onUpdate: () => {
+                cardSprite.x = Math.round(cardSprite.x);
+                cardSprite.y = Math.round(cardSprite.y);
+            },
             onComplete: () => {
                 // Ensure final position is exact
                 cardSprite.x = targetX;
@@ -558,7 +575,10 @@ export class InventorySystem {
             }
         });
         
-        // Also move the info text
+        // Also move the info text — the container holding the pips and the
+        // value. Same duration, same ease and the same per-frame rounding as
+        // the card above, so the two land on identical whole pixels on every
+        // frame of the drop instead of only at the end.
         const infoText = cardSprite.getData('infoText');
         if (infoText && infoText.scene) {
             this.scene.tweens.add({
@@ -566,7 +586,11 @@ export class InventorySystem {
                 x: targetX,
                 y: targetY,
                 duration: 200,
-                ease: 'Power2'
+                ease: 'Power2',
+                onUpdate: () => {
+                    infoText.x = Math.round(infoText.x);
+                    infoText.y = Math.round(infoText.y);
+                }
             });
         }
         
