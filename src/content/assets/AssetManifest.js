@@ -44,6 +44,11 @@ export const ASSET_MANIFEST = [
     // Overlay mode by ui/OverlayLightPipeline.js. Authored at the world size
     // (640x360) so it maps 1:1 onto the world and scales with everything else.
     { key: 'overLight', path: 'assets/ui/overLight.png', type: 'image' },
+    // Choose Your Road's own light sheet, same Overlay blend.
+    { key: 'pathOverlayLight', path: 'assets/ui/pathOverlayLight.png', type: 'image' },
+    // The panel painted into the foot of dungeon.png, as its own 640x100 piece,
+    // laid under the inventory during events (GameScene.setEventBackdrop).
+    { key: 'panelUnderInventory', path: 'assets/ui/panelUnderInventory.png', type: 'image' },
 
     // Village screen. Four painted layers stacked back to front (wood board,
     // metal plate, lower wood rail, thorns), then the ribbon, the slate name
@@ -221,6 +226,9 @@ export const ASSET_MANIFEST = [
     // New Cards
     { key: 'amulet', path: 'assets/art/amulet.png', type: 'image' },
     { key: 'relicsOthers', path: 'assets/art/relicsOthers.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
+    // The same sheet redrawn at 28px, same 12x7 layout so frame numbers carry
+    // over. Only for equipped amulets in the battle HUD's corner strip.
+    { key: 'relicsOthersSmall', path: 'assets/art/relicsOthersSmall.png', type: 'spritesheet', frameWidth: 28, frameHeight: 28 },
     { key: 'shop_buy', path: 'assets/music/dropInBagStore.mp3', type: 'audio' },
     { key: 'card_flip', path: 'assets/music/flipcard-91468.mp3', type: 'audio' },
     // Load flip animation frames
@@ -315,6 +323,12 @@ export const ASSET_MANIFEST = [
     // The door you walk through to choose a road. One 64x64 frame per
     // location, in the order LOCATION_DOOR_FRAMES declares.
     { key: 'locationDoors', path: 'assets/art/paths.png', type: 'spritesheet', frameWidth: 64, frameHeight: 64 },
+    // Animated doors, one road per row, six frames each from shut to open:
+    // row 0 Boneflood's skull door, row 1 Mireturn's bog door, row 2
+    // Thornwake's briar door, row 3 Silkdeep's web door, row 4 Tollroad's
+    // goblin door. See
+    // LOCATION_DOOR_SHEETS in locationCards.js.
+    { key: 'locationDoorAnims', path: 'assets/ui/doorAnim68x70.png', type: 'spritesheet', frameWidth: 68, frameHeight: 70 },
     { key: 'Cerberus', path: 'assets/art/cerberus.png', type: 'image' },
     { key: 'AncientCerberus', path: 'assets/art/ancientCerberus.png', type: 'image' },
     // Magic Cards

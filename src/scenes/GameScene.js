@@ -6,17 +6,26 @@ import { GameState, PLAYER_START_HP } from '../systems/GameState.js';
 import { AmuletManager } from '../managers/AmuletManager.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { LOCATION_DOORS_KEY, locationDoorFrame, locationOpenDoorFrame } from '../content/assets/locationCards.js';
+import { ensureDoorOpenAnim, isLocationDoorTexture, locationDoorArt } from '../content/assets/locationCards.js';
 // Where the way out stands: the Next plate, the open door, and the shut door
 // that waits there during the fight all share this spot.
-const NEXT_EXIT_X = 560;
-const NEXT_EXIT_Y = 50;
+// Every other room's door stands here too (ui/ExitDoor.js).
+const NEXT_EXIT_X = EXIT_DOOR_X;
+const NEXT_EXIT_Y = EXIT_DOOR_Y;
+// Pause between the killing blow's last sound starting and the door opening,
+// so the death is heard as its own event before the room announces it's clear.
+const ROOM_CLEAR_ANNOUNCE_PAD_MS = 200;
+// Must match the event screen's dim (EventScene create), so where the dim ends
+// the backdrop carries on in the same colour.
+const EVENT_BACKDROP_COLOR = 0x1a1a2e;
 import { getLocationIdForFloor } from '../content/locations/index.js';
 import { devToolsEnabled } from '../config/DevTools.js';
 import { SaveManager } from '../managers/SaveManager.js';
 import { MetaProgressionManager } from '../managers/MetaProgressionManager.js';
 import { TutorialManager } from '../managers/TutorialManager.js';
 import { CombatHud } from '../ui/CombatHud.js';
+import { setHoverLight } from '../ui/HoverLight.js';
+import { EXIT_DOOR_X, EXIT_DOOR_Y } from '../ui/ExitDoor.js';
 import { scaleGoldReward } from '../content/economy/gold.js';
 import { normalizeCharacterId } from '../content/characters/CharacterClasses.js';
 import {
@@ -39,8 +48,9 @@ import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from '../content/st
 import { areAmuletsDisabled } from '../config/TestOptions.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { CombatTurnController } from '../systems/combat/CombatTurnController.js';
+import { CombatSequencer } from '../systems/combat/CombatSequencer.js';
 import { applyLocationChoice, emptyActLocationIds, normalizeActLocationIds } from '../content/locations/index.js';
-import { healerRarityForRank } from '../content/village/index.js';
+import { HEALER_RARITIES, healerRarityForRank } from '../content/village/index.js';
 import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
 import {
     applySandboxLoadout,
@@ -487,6 +497,27 @@ export class GameScene extends Phaser.Scene {
         background.setOrigin(0.5, 0.5);
         // Under the board frame and top HUD (month / floor / pause).
         background.setDepth(-10);
+        this.backgroundImage = background;
+    }
+
+    // An event dims the top of the screen and leaves the bottom strip to this
+    // scene's inventory and discard bin. With the dungeon painting behind them,
+    // the edge of the event's dim cut straight across the painting (vines and
+    // all) just above the panel painted into its foot. During an event the
+    // painting is swapped for a flat backdrop in the event's own dim colour, so
+    // the dim has no edge to show, and the panel is laid on separately, under
+    // the inventory and the bin.
+    setEventBackdrop(on) {
+        if (on && !this.eventBackdrop?.scene) {
+            this.eventBackdrop = this.add.rectangle(320, 180, 640, 360, EVENT_BACKDROP_COLOR)
+                .setDepth(-9);
+            this.underInventoryPanel = this.textures.exists('panelUnderInventory')
+                ? this.add.image(320, 360, 'panelUnderInventory').setOrigin(0.5, 1).setDepth(-8)
+                : null;
+        }
+        this.eventBackdrop?.setVisible(on);
+        this.underInventoryPanel?.setVisible(on);
+        this.backgroundImage?.setVisible(!on);
     }
 
     stopScenesAboveCombat({ keepMap = false } = {}) {
@@ -508,15 +539,23 @@ export class GameScene extends Phaser.Scene {
         if (this.shouldLoadSave || this.tutorialMode || this.sandboxMode) return;
         if (areAmuletsDisabled()) return;
         const rank = this.gameState?.talentEffects?.healerRank || 0;
-        const rarity = healerRarityForRank(rank);
-        if (!rarity) return;
-        const options = this.cardSystem?.cardDataGenerator?.createAmuletChoice(
-            this.gameState.currentFloor || 1,
-            rarity,
-            3,
-            this.gameState,
-            { ignoreMinFloor: true },
-        ) || [];
+        const rolled = healerRarityForRank(rank);
+        if (!rolled) return;
+        // The rarity is a roll now, so it can land on a tier with nothing
+        // left to offer. Step down a tier at a time rather than give nothing.
+        const tiers = HEALER_RARITIES.slice(0, HEALER_RARITIES.indexOf(rolled) + 1).reverse();
+        let rarity = null;
+        let options = [];
+        for (const tier of tiers) {
+            options = this.cardSystem?.cardDataGenerator?.createAmuletChoice(
+                this.gameState.currentFloor || 1,
+                tier,
+                3,
+                this.gameState,
+                { ignoreMinFloor: true },
+            ) || [];
+            if (options.length) { rarity = tier; break; }
+        }
         if (!options.length) return;
         this.time.delayedCall(350, () => {
             openAmuletChoiceOverlay(this, {
@@ -547,6 +586,9 @@ export class GameScene extends Phaser.Scene {
             // The road is visible from the first turn, shut. It opens when the
             // board is cleared. Rooms with no door drawn keep the old plate,
             // hidden until then.
+            // Stop a door that was still swinging, or it would keep writing
+            // its frames over the plate.
+            this.nextFloorButton.anims?.stop?.();
             this.nextFloorButton.setTexture('nextTurnUp');
             this.showClosedDoorExit();
         }
@@ -591,6 +633,8 @@ export class GameScene extends Phaser.Scene {
         // DON'T replenish action points here
         this.updateUI();
         this.cardSystem.checkFloorClear();
+        // Last, so the bag it lifts already holds this floor's starting cards.
+        this.inventorySystem?.playPanelIntro?.();
     }
 
     startBossMusic() {
@@ -658,21 +702,19 @@ export class GameScene extends Phaser.Scene {
      * A separate image can never be clicked, because it is never interactive.
      */
     showClosedDoorExit() {
-        if (!this.textures.exists(LOCATION_DOORS_KEY)) return;
-
-        const frame = locationDoorFrame(getLocationIdForFloor(this.gameState));
-        if (frame === null) {
+        const art = locationDoorArt(this, getLocationIdForFloor(this.gameState));
+        if (!art) {
             this.closedDoorMarker?.setVisible(false);
             return;
         }
 
         if (!this.closedDoorMarker?.scene) {
             this.closedDoorMarker = this.add
-                .image(NEXT_EXIT_X, NEXT_EXIT_Y, LOCATION_DOORS_KEY, frame)
+                .image(NEXT_EXIT_X, NEXT_EXIT_Y, art.key, art.shut)
                 .setDepth(4999);
         }
         this.closedDoorMarker
-            .setTexture(LOCATION_DOORS_KEY, frame)
+            .setTexture(art.key, art.shut)
             .setVisible(true)
             .setActive(true)
             .setAlpha(1)
@@ -685,25 +727,40 @@ export class GameScene extends Phaser.Scene {
         this.closedDoorMarker?.setVisible(false);
     }
 
+    // A shop, treasure room or chest opens over this scene with its own door
+    // in the same spot. Take this room's exit down so only one door shows;
+    // the next fight's startNewFloor() puts it back.
+    hideExitUnderStation() {
+        this.nextFloorButton?.disableInteractive?.();
+        this.nextFloorButton?.setVisible(false);
+        this.nextFloorButtonText?.setVisible(false);
+        this.hideClosedDoorExit();
+    }
+
     showOpenDoorExit() {
         const button = this.nextFloorButton;
-        if (!button?.scene || !this.textures.exists(LOCATION_DOORS_KEY)) return;
+        if (!button?.scene) return;
 
-        const locationId = getLocationIdForFloor(this.gameState);
-        const frame = locationOpenDoorFrame(locationId);
-        if (frame === null) return;
+        const art = locationDoorArt(this, getLocationIdForFloor(this.gameState));
+        if (!art) return;
 
         this.hideClosedDoorExit();
+        // The first time this floor's door opens, a door with its own sheet
+        // swings open from shut. Every later call (this runs again whenever
+        // the clear is re-checked) just shows it open, so it never swings twice.
+        const opening = !this._doorOpenSounded;
+        const anim = opening ? ensureDoorOpenAnim(this, art) : null;
         button
-            .setTexture(LOCATION_DOORS_KEY, frame)
+            .setTexture(art.key, anim ? art.shut : art.open)
             .setVisible(true)
             .setActive(true)
             .setAlpha(1)
             .setScale(1)
             .setDepth(5000);
+        if (anim && button.play) button.play(anim);
         // The plate's label would sit across the doorway.
         this.nextFloorButtonText?.setVisible(false);
-        if (!this._doorOpenSounded) {
+        if (opening) {
             this._doorOpenSounded = true;
             SoundHelper.playSound(this, 'door_open', 0.6);
         }
@@ -841,8 +898,13 @@ export class GameScene extends Phaser.Scene {
         this.combatTurns.runEnemyTurn();
     }
 
-    clearEnemyTurnTimers() {
+    // `keepNarration` leaves the sounds and numbers of blows already struck to
+    // play out. Only the room-clear wants that: it fires on the killing blow,
+    // and that blow should still be heard. Every other caller is leaving the
+    // room or the run, where leftover narration would bleed into what's next.
+    clearEnemyTurnTimers({ keepNarration = false } = {}) {
         this.combatTurns.clearEnemyTurnTimers();
+        if (!keepNarration) CombatSequencer.cancelAll(this);
     }
 
     isEnemyCard(card) {
@@ -1223,11 +1285,22 @@ export class GameScene extends Phaser.Scene {
         this._transitioning = true;
         this.refreshDebugVictoryButton?.();
         this.clearEnemyTurnTimers();
-        // Hard-disable AND hide the button so it can't be clicked again — and so
-        // the label and its skin vanish together, not just the "Next" text.
+        // Hard-disable the button so it can't be clicked again. The plate is
+        // hidden so its label and skin vanish together; an open door stays,
+        // because the player has just walked through it, not used it up.
         if (this.nextFloorButton) {
-            this.nextFloorButton.disableInteractive();
-            this.nextFloorButton.setVisible(false);
+            const button = this.nextFloorButton;
+            button.disableInteractive();
+            if (isLocationDoorTexture(button.texture?.key)) {
+                // Disabling it here swallows the pointerup and pointerout that
+                // would normally undo the press, so undo it now: no press
+                // shade, no hover light, back on its spot.
+                button.clearTint();
+                setHoverLight(button, false);
+                button.y = NEXT_EXIT_Y;
+            } else {
+                button.setVisible(false);
+            }
         }
         this.nextFloorButtonText?.setVisible(false);
         this.hideClosedDoorExit();
@@ -1453,7 +1526,9 @@ export class GameScene extends Phaser.Scene {
     }
     
     onEnemiesCleared() {
-        this.clearEnemyTurnTimers();
+        // The killing blow is what got us here, and its sounds and numbers are
+        // still on the narration timeline. Keep them.
+        this.clearEnemyTurnTimers({ keepNarration: true });
         this.finalizeCompanionCombatHistory();
         this.enemiesCleared = true;
         this.refreshDebugVictoryButton?.();
@@ -1481,23 +1556,36 @@ export class GameScene extends Phaser.Scene {
         // no act-3 coin hoarding" — see its "Shop affordability" report section.
         // Flattened from 20+floor*3: act 1 was coin-starved (2.7/6 affordable)
         // while acts 2-3 hoarded 500-750 unspent coins (4.5/6 affordable).
+        let reward = 0;
         if (!isBossFloor) {
             const base = Math.floor(24 + floor * 1.2);
-            const reward = this.amuletManager ? this.amuletManager.modifyGoldFound(base) : scaleGoldReward(base);
+            reward = this.amuletManager ? this.amuletManager.modifyGoldFound(base) : scaleGoldReward(base);
             this.gameState.coins += reward;
-            this.createFloatingText(320, 140, `+${reward} coins`, 0xffd700);
             this.updateUI?.();
         }
         const story = this.gameState?.storyRun;
         applyAmbushVictoryStory(this.gameState);
-        // Null-guard: if the button hasn't been (re)created yet, do NOT throw
-        // — that would leave enemiesCleared=true with a still-hidden button,
-        // and the next checkFloorClear would short-circuit on !enemiesCleared.
         this._silkCocoonLeaveOffer = false;
-        this.nextFloorButtonText?.setText(t(this, 'ui.hud.next'));
-        this.showNextFloorButton();
-        this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
-        this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
+
+        // The room is cleared as of now; it just isn't announced yet. The door,
+        // its sound and the victory text wait until the killing blow has been
+        // heard, so the fight ends on the enemy's death and then the door
+        // rather than the door opening under the last hit.
+        const announce = () => {
+            if (this._transitioning || !this.enemiesCleared) return;
+            if (reward > 0) this.createFloatingText(320, 140, `+${reward} coins`, 0xffd700);
+            // Null-guard: if the button hasn't been (re)created yet, do NOT
+            // throw — that would leave enemiesCleared=true with a still-hidden
+            // button, and the next checkFloorClear would short-circuit on
+            // !enemiesCleared.
+            this.nextFloorButtonText?.setText(t(this, 'ui.hud.next'));
+            this.showNextFloorButton();
+            this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
+            this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
+        };
+        const wait = CombatSequencer.remainingMs(this);
+        if (wait > 0) CombatSequencer.after(this, wait + ROOM_CLEAR_ANNOUNCE_PAD_MS, announce);
+        else announce();
     }
 
     handleTollVeteranDefeat(veteranIndex) {

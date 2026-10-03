@@ -5,6 +5,7 @@ import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { serifStyle } from './uiFont.js';
 import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
 import { createOptionsCog } from './OptionsCog.js';
+import { setHoverLight } from './HoverLight.js';
 import { looseGemCard } from '../content/cards/gems.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { devToolsEnabled } from '../config/DevTools.js';
@@ -25,21 +26,30 @@ import { MAGIC } from '../content/cards/magic.js';
 import { GEMS } from '../content/cards/gems.js';
 import { createGauntletCard } from '../content/balance/Gauntlet.js';
 import { AMULETS } from '../content/cards/amulets.js';
+import { hudAmuletTexture } from '../content/amulets/RelicsOthersAtlas.js';
+import { EXIT_DOOR_X, EXIT_DOOR_Y } from './ExitDoor.js';
 
 // The amulet strip owns the top-left corner, so the hero column starts below
 // it. Everything from the avatar down to the crystal counter is offset by this
 // much; change it here rather than re-typing every y.
-// 22, was 30: the whole hero column — avatar, orb, armour, AP, coins,
-// crystals — sits 8px higher. A guess at "scoot it up"; this is the one number
-// that moves all of it.
-const HUD_COLUMN_SHIFT = 22;
+// 15 (was 22, and 30 before that): the whole hero column — avatar, orb,
+// armour, AP, coins, crystals — sits 7px higher. This is the one number that
+// moves all of it; the amulet strip above moved up the same 7px with it.
+const HUD_COLUMN_SHIFT = 15;
 // The avatar frame shrank from 84x86 to 80x80, so everything below it — armor
 // slot, AP diamonds, coins, crystals — closes the 7px gap the old art left.
 const HUD_LOWER_SHIFT = HUD_COLUMN_SHIFT - 7;
+// Packing under the armour slot. The AP diamonds sit this much nearer the
+// slot, and the coins and crystals this much nearer it again, so each gap in
+// the stack shrinks by 2px (to about 1.5px and 1px).
+const AP_TUCK = 2;
+const CURRENCY_TUCK = 4;
 // Where the discard bin sits. Left of the bag now; the inventory panel is capped
-// so it never grows into it.
+// so it never grows into it. y 314 (was 305) puts the bin's top edge (69px
+// art, top at y-34) at 280, level with the top of the 70px bag cards centred
+// at 315.
 export const DISCARD_X = 39;
-export const DISCARD_Y = 305;
+export const DISCARD_Y = 314;
 
 // Stance plate colours. Sweep wears the HUD's own brown/tan so it reads as part
 // of the hero column; Focus goes warm so an active crit stance is obvious at a
@@ -101,15 +111,15 @@ export const CombatHud = {
         // (live positions come from updateCurrencyUILayout, which applies the
         // same column shift plus any extra AP row)
         // Each 1px up, closing the gap to the action points above them.
-        this.coinSprite = this.add.sprite(26, 209 + HUD_LOWER_SHIFT, 'coinUI').setScale(1);
-        this.coinsText = this.add.text(26, 226 + HUD_LOWER_SHIFT, '0', {
+        this.coinSprite = this.add.sprite(26, 209 + HUD_LOWER_SHIFT - CURRENCY_TUCK, 'coinUI').setScale(1);
+        this.coinsText = this.add.text(26, 226 + HUD_LOWER_SHIFT - CURRENCY_TUCK, '0', {
             fontSize: '12px',
             fill: '#cf8834',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5);
 
-        this.crystalSprite = this.add.sprite(54, 210 + HUD_LOWER_SHIFT, 'CrystalUI').setScale(1);
-        this.crystalsText = this.add.text(54, 227 + HUD_LOWER_SHIFT, '0', {
+        this.crystalSprite = this.add.sprite(54, 210 + HUD_LOWER_SHIFT - CURRENCY_TUCK, 'CrystalUI').setScale(1);
+        this.crystalsText = this.add.text(54, 227 + HUD_LOWER_SHIFT - CURRENCY_TUCK, '0', {
             fontSize: '12px',
             fill: '#a83c69',
             fontFamily: '"HoMM Pixel"'
@@ -393,28 +403,31 @@ export const CombatHud = {
         // showNextFloorButton, which swaps this to the open-door frame and
         // sounds it. Built on the plate so every other room keeps its Next
         // button unchanged.
-        this.nextFloorButton = snapOriginToPixelGrid(this.add.image(560, 50, 'nextTurnUp'))
+        // A sprite, not an image: a road whose door has its own sheet (Boneflood)
+        // plays the door swinging open here when the floor is cleared.
+        this.nextFloorButton = snapOriginToPixelGrid(this.add.sprite(EXIT_DOOR_X, EXIT_DOOR_Y, 'nextTurnUp'))
             .setDepth(5000)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); this.nextFloorButton.setTint(0xd4eaf7); })
+            .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); setHoverLight(this.nextFloorButton, true); })
             .on('pointerout', () => {
                 this.nextFloorButton.clearTint();
-                this.nextFloorButton.y = 50;
-                if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
+                setHoverLight(this.nextFloorButton, false);
+                this.nextFloorButton.y = EXIT_DOOR_Y;
+                if (this.nextFloorButtonText) this.nextFloorButtonText.y = EXIT_DOOR_Y;
             })
             .on('pointerdown', () => {
                 SoundHelper.playVariant(this, 'button_click', 0.5);
                 this.nextFloorButton.setTint(0x888888);
-                this.nextFloorButton.y = 51;
-                if (this.nextFloorButtonText) this.nextFloorButtonText.y = 51;
+                this.nextFloorButton.y = EXIT_DOOR_Y + 1;
+                if (this.nextFloorButtonText) this.nextFloorButtonText.y = EXIT_DOOR_Y + 1;
                 this.floorCleared();
             })
             .on('pointerup', () => {
                 this.nextFloorButton.clearTint();
-                this.nextFloorButton.y = 50;
-                if (this.nextFloorButtonText) this.nextFloorButtonText.y = 50;
+                this.nextFloorButton.y = EXIT_DOOR_Y;
+                if (this.nextFloorButtonText) this.nextFloorButtonText.y = EXIT_DOOR_Y;
             });
-        this.nextFloorButtonText = this.add.text(560, 50, t(this, 'ui.hud.next'), {
+        this.nextFloorButtonText = this.add.text(EXIT_DOOR_X, EXIT_DOOR_Y, t(this, 'ui.hud.next'), {
             fontSize: '12px',
             fill: '#e5bca4',
             fontFamily: '"HoMM Pixel"'
@@ -733,7 +746,7 @@ export const CombatHud = {
         const spacing = 16; // = diamond width, so nodes butt together into one strip
         const rowGap = 18; // vertical gap between the two rows of nodes
         const centerX = 41;
-        const baseY = 189 + HUD_LOWER_SHIFT;
+        const baseY = 189 + HUD_LOWER_SHIFT - AP_TUCK;
 
         for (let i = 0; i < nodeCount; i++) {
             const row = Math.floor(i / perRow);
@@ -762,10 +775,11 @@ export const CombatHud = {
         const hasExtraActionRow = nodeCount > 5;
         const yOffset = hasExtraActionRow ? 24 : 0;
 
-        this.coinSprite.setPosition(26, 210 + HUD_LOWER_SHIFT + yOffset);
-        this.coinsText.setPosition(26, 227 + HUD_LOWER_SHIFT + yOffset);
-        this.crystalSprite.setPosition(54, 211 + HUD_LOWER_SHIFT + yOffset);
-        this.crystalsText.setPosition(54, 228 + HUD_LOWER_SHIFT + yOffset);
+        const y = HUD_LOWER_SHIFT - CURRENCY_TUCK + yOffset;
+        this.coinSprite.setPosition(26, 210 + y);
+        this.coinsText.setPosition(26, 227 + y);
+        this.crystalSprite.setPosition(54, 211 + y);
+        this.crystalsText.setPosition(54, 228 + y);
     },
     updateActionPointUI() {
         const maxActions = Math.max(1, this.gameState.maxActions || 1);
@@ -932,21 +946,26 @@ export const CombatHud = {
             !this.amuletManager?.amuletDefinitions?.[amulet.id]?.activeAbility
         ));
         const MAX_VISIBLE = 10;
-        // Atlas icons are 32px frames with transparent padding around the art.
-        // A 29px step overlaps frames by 3px without crowding the visible item.
-        const SPACING = 29;
+        // Equipped amulets draw from the 28px sheet here (hudAmuletTexture), not
+        // the 32px one the choice screen and the board use. Its art is ~24px
+        // inside the cell, so a 25px step keeps the 1px of daylight between
+        // icons that the 32px sheet had at 29.
+        const SPACING = 25;
         // The strip owns the top-left corner now: the hero column below it was
-        // shifted down by HUD_COLUMN_SHIFT to clear this row. x 28 (nudged 6px
-        // left of the original 34) still leaves room for the left scroll arrow
-        // at x 12 once the bag holds more than 10.
-        const ROW_X = 28;
-        const ROW_Y = 20;
+        // shifted down by HUD_COLUMN_SHIFT to clear this row. x 18: 10px left of
+        // the previous 28 (and 34 before that), now the icons are the small
+        // 28px set. The left scroll arrow, shown once more than 10 are held,
+        // sits 16px left of this, at x 2.
+        const ROW_X = 18;
+        // 13, was 20: up 7px with the hero column. The same height the relic
+        // row already uses; the icons' transparent frame edge may sit off the top.
+        const ROW_Y = 13;
 
         // Active abilities use a one-item carousel: the arrows switch the live
         // button itself, so the dock never grows into the player HUD.
         if (activeAmulets.length > 0) {
             const ACTIVE_X = 103;
-            const ACTIVE_Y = 53;
+            const ACTIVE_Y = 46; // was 53: up 7px with the hero column
             this.activeAmuletIndex = Phaser.Math.Clamp(
                 this.activeAmuletIndex || 0, 0, activeAmulets.length - 1,
             );
@@ -979,7 +998,7 @@ export const CombatHud = {
 
             const def = this.amuletManager.amuletDefinitions[amulet.id];
             const sprite = this.add.image(
-                ACTIVE_X, ACTIVE_Y, def?.sprite ?? amulet.sprite ?? 'relicsOthers',
+                ACTIVE_X, ACTIVE_Y, hudAmuletTexture(this, def?.sprite ?? amulet.sprite ?? 'relicsOthers'),
                 def?.spriteFrame ?? amulet.spriteFrame ?? 0,
             ).setDepth(22).setInteractive({ useHandCursor: true });
             sprite.on('pointerdown', () => this.amuletManager.activateAmulet(amulet.id));
@@ -1030,7 +1049,7 @@ export const CombatHud = {
 
             // Always resolve sprite from the live definition
             const def = this.amuletManager?.amuletDefinitions?.[amulet.id];
-            const spriteKey   = def?.sprite       ?? amulet.sprite       ?? 'relicsOthers';
+            const spriteKey   = hudAmuletTexture(this, def?.sprite ?? amulet.sprite ?? 'relicsOthers');
             const spriteFrame = def?.spriteFrame  ?? amulet.spriteFrame  ?? 0;
 
             const amuletSprite = this.add.image(x, y, spriteKey, spriteFrame).setInteractive();
@@ -1329,7 +1348,8 @@ export const CombatHud = {
         entries.forEach((entry, i) => {
             // Statuses belong to the equipped hero kit, not to the discard
             // control. Place them in the open lane immediately right of armor.
-            const y = 132 + i * 14;
+            // 125, was 132: up 7px with the armour slot it sits beside.
+            const y = 125 + i * 14;
             const text = this.add.text(80, y, entry.text, {
                 fontSize: '10px',
                 fill: entry.color,

@@ -77,17 +77,48 @@ export class CombatSequencer {
             return null;
         }
 
-        const timer = scene.time.delayedCall(delay, () => {
-            // The room can end mid-timeline (a kill clears the board, a lethal
-            // hit triggers gameOver). Pending beats belong to a fight that is
-            // over, so drop them rather than narrate into the next scene.
+        const pending = this._pending(scene);
+        const entry = { at: scene.time.now + delay, timer: null };
+        entry.timer = scene.time.delayedCall(delay, () => {
+            const i = pending.indexOf(entry);
+            if (i !== -1) pending.splice(i, 1);
+            // A scene that stopped mid-timeline (a lethal hit triggers
+            // gameOver) belongs to a fight that is over, so drop the beat
+            // rather than narrate into the next scene.
             if (!scene.scene?.isActive?.()) return;
             try { fn(); } catch (err) { console.warn('Combat beat failed:', err); }
         });
-        // Ride the existing teardown: clearEnemyTurnTimers() already cancels
-        // these on room transition, death, and shutdown.
-        scene.enemyTurnTimers?.push(timer);
-        return timer;
+        pending.push(entry);
+        return entry.timer;
+    }
+
+    // Beats this scene still has to play. Kept here rather than in the turn
+    // controller's timer list: clearing the room cancels that list on the
+    // killing blow, and the killing blow's own narration must still play.
+    static _pending(scene) {
+        if (!scene._combatBeats) scene._combatBeats = [];
+        return scene._combatBeats;
+    }
+
+    /** Run `fn` after `delay` ms on the narration timeline, tracked like a beat. */
+    static after(scene, delay, fn) {
+        return this._at(scene, delay, fn);
+    }
+
+    /** Ms until the last beat already scheduled has played; 0 when none are left. */
+    static remainingMs(scene) {
+        const pending = scene?._combatBeats;
+        if (!pending?.length || typeof scene.time?.now !== 'number') return 0;
+        const last = Math.max(...pending.map((entry) => entry.at));
+        return Math.max(0, last - scene.time.now);
+    }
+
+    /** Drop every beat still waiting, for leaving the room or the run. */
+    static cancelAll(scene) {
+        const pending = scene?._combatBeats;
+        if (!pending) return;
+        pending.forEach((entry) => entry.timer?.remove?.(false));
+        pending.length = 0;
     }
 
     static playVariant(scene, beat, group, volume = 1.0) {

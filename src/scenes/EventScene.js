@@ -42,6 +42,9 @@ import { getLocationIdForFloor } from '../content/locations/index.js';
 import { pickTollroadEventId } from '../content/location-packs/tollroad/index.js';
 import { tryLethalRevive } from '../systems/combat/PlayerDamageResolver.js';
 import { serifStyle } from '../ui/uiFont.js';
+import { setHoverLight } from '../ui/HoverLight.js';
+import { createExitDoor, EXIT_DOOR_X, EXIT_DOOR_Y } from '../ui/ExitDoor.js';
+import { createOptionsCog } from '../ui/OptionsCog.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
@@ -914,6 +917,8 @@ export class EventScene extends Phaser.Scene {
 
     // Background — dim only the top region so the bottom inventory strip shows
     // through on the dungeon floor (like combat) instead of being covered.
+    // 0x1a1a2e is also GameScene's event backdrop colour (EVENT_BACKDROP_COLOR),
+    // so the dim's lower edge does not show.
     this.add.rectangle(W / 2, 124, W, 250, 0x1a1a2e, 0.92).setDepth(-10);
     this._createEventIllustrationBoard(this._getEventIllustrationFrame());
     this._createEventBoardBase(this.eventLayout.centerX, 126);
@@ -1015,9 +1020,31 @@ export class EventScene extends Phaser.Scene {
       wordWrap: { width: this.eventLayout.textWidth }
     }).setOrigin(0.5, 0).setAlpha(0).setDepth(4);
 
-    // Continue button (hidden until resolved). Lives in the top-right corner —
-    // like the shops' Next button — so it never overlaps the inventory strip.
-    const continueX = 595, continueY = 50;
+    // The way out is the location's door, in the spot every room keeps it:
+    // shut while the event is undecided, swinging open (openExit) once the
+    // player can move on. A location with no door art falls back to the old
+    // Continue plate, in the same spot.
+    this.exitDoor = createExitDoor(this, () => this.continueAdventure(), {
+      gameState: this.gameState,
+      shut: true,
+    });
+
+    // Options, in the corner every screen keeps them. It opens the pause menu,
+    // as the shops and rest rooms do; the pause menu already knows to pause an
+    // event and to tear it down on quit.
+    createOptionsCog(this, () => {
+      if (this.scene.isActive('PauseMenuScene')) return;
+      this.scene.launch('PauseMenuScene', { pausedScene: this.scene.key });
+      this.scene.pause();
+    });
+
+    if (!this.exitDoor) this._createContinuePlate(WHITE);
+  }
+
+  // Fallback exit for a location with no door art: the old Continue plate,
+  // hidden until the event resolves.
+  _createContinuePlate(WHITE) {
+    const continueX = EXIT_DOOR_X, continueY = EXIT_DOOR_Y;
     if (this.textures.exists('nextTurnUp')) {
       this.continueBtn = this.add.image(continueX, continueY, 'nextTurnUp')
         .setInteractive({ useHandCursor: true })
@@ -1056,10 +1083,11 @@ export class EventScene extends Phaser.Scene {
     });
     this.continueBtn.on('pointerover', () => {
       SoundHelper.playVariant(this, 'hover_button', 0.4);
-      if (this.continueBtn.setTint) this.continueBtn.setTint(0xfff2c8);
+      if (this.continueBtn.setTint) setHoverLight(this.continueBtn, true);
       else this.continueBtn.setFillStyle?.(0x151515, 0.78);
     });
     this.continueBtn.on('pointerout', () => {
+      setHoverLight(this.continueBtn, false);
       if (this.continueBtn.clearTint) {
         this.continueBtn.clearTint();
         if (this.continueBtn.setTexture && this.textures.exists('nextTurnUp')) this.continueBtn.setTexture('nextTurnUp');
@@ -1250,6 +1278,7 @@ export class EventScene extends Phaser.Scene {
     // The event scene may be launched above a paused GameScene, where a delayed
     // tween can remain invisible. Make the exit control immediately available
     // and keep it above the outcome reading surface.
+    this.exitDoor?.openExit?.();
     this.continueBtn?.setAlpha(1).setDepth(6);
     this.continueBtnText?.setAlpha(1).setDepth(7);
   }
@@ -1652,6 +1681,12 @@ export class EventScene extends Phaser.Scene {
     const inv = this.gameScene?.inventorySystem;
     if (!inv) return;
     this.scene.wake('GameScene', { shopStation: true });
+    // The fight underneath may still have its door up; this event has its own
+    // in the same spot.
+    this.gameScene.hideExitUnderStation?.();
+    // Flat backdrop plus the separate inventory panel, so this screen's dim
+    // does not cut the dungeon painting in half.
+    this.gameScene.setEventBackdrop?.(true);
     inv.setStationMode(true);
     inv.setVisibility(true);
     inv.setDragOverlayScene?.(this);
@@ -1670,6 +1705,7 @@ export class EventScene extends Phaser.Scene {
       inv.setStationMode(false);
       inv.setVisibility(false);
     }
+    this.gameScene?.setEventBackdrop?.(false);
     this._stationActive = false;
   }
 

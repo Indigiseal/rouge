@@ -219,9 +219,12 @@ function computePlacement(cells, opts = {}) {
   // same spot regardless of card count, while the extra width still feeds
   // HSTEP so the cards spread out instead of overlapping.
   const baseAreaW = areaW - extraRight - extraLeft;
-  // Keep the combat cluster clear of the hero column while retaining the new,
-  // shallow safe rect above the inventory panel.
-  const cx = areaLeft + extraLeft + baseAreaW / 2 + (opts.nudgeX ?? 20);
+  // The fight's play area runs x 122-505, centred at 313.5, so a 6.5px nudge
+  // puts the cluster on the screen's centre line (320), level with the bag
+  // below it. It used to be 20, which sat the cluster 13.5px right of centre
+  // and the board frame (once its own +10 was added) 23.5px right. Station
+  // boards pass their own nudge and are not moved by this default.
+  const cx = areaLeft + extraLeft + baseAreaW / 2 + (opts.nudgeX ?? 6.5);
   const cy = areaTop  + areaH / 2 + (opts.nudgeY ?? 0);
   const midXp = (minXp + maxXp) / 2;
   const midR  = (minR  + maxR ) / 2;
@@ -372,7 +375,8 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
   const cam = this.scene.cameras.main;
   // Viewport in world units, not device pixels — see cameraWorldSize.
   const { width: camW, height: camH } = cameraWorldSize(cam);
-  const x = ((minX + maxX) / 2) + 10;
+  // Centred on the cards it frames. It used to sit 10px right of them.
+  const x = (minX + maxX) / 2;
   // 8, not the 18 this sat at: the board art rode 10px high of the cards it is
   // supposed to be under. Taya's call, off the built screen.
   const y = Math.min(camH - 122, ((minY + maxY) / 2) + 8) - BOARD_PANEL_LIFT;
@@ -381,8 +385,8 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
   // being squeezed into a fixed plank.
   //
   // Measured out from the PANEL's centre, not the cluster's. The two are not
-  // the same point — x sits 10px right of the cards to clear the combat log,
-  // and y can be pushed up by the camH clamp above — so a width of
+  // always the same point — y can be pushed up by the camH clamp above, and x
+  // has been offset from the cards before — so a width of
   // "cluster + margin on each side" would quietly spend 10px of the left
   // margin and leave that edge tighter than asked. Taking the furthest reach
   // from the centre and doubling it gives the tighter side the full margin.

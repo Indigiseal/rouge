@@ -889,7 +889,9 @@ function applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
                 // Hops start from the gem beat, not from now, so the first
                 // hop follows the main target's zap instead of landing on it.
                 const hopDelay = CombatSequencer.BEATS.gem + (zapIndex + 1) * ZAP_STEP;
-                const hopTimer = this.scene.time.delayedCall(hopDelay, () => {
+                // On the narration timeline, so a hop counts as part of the
+                // blow that the room-clear waits for.
+                CombatSequencer.after(this.scene, hopDelay, () => {
                     if (arcFrom && toPos) {
                         this.playLightningArc(arcFrom.x, arcFrom.y, toPos.x, toPos.y);
                     }
@@ -897,7 +899,6 @@ function applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
                     // number lands on the hit beat a beat later.
                     this.damageGemTarget(i, zapDamage, 'Zap', 0xffe066, 'lightning', 'hit');
                 });
-                this.scene.enemyTurnTimers?.push(hopTimer);
                 if (toPos) fromPos = toPos; // next hop starts where this one landed
             });
         }

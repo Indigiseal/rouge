@@ -1,4 +1,18 @@
 export const RELICS_OTHERS_TEXTURE = 'relicsOthers';
+// 28px copy of the sheet, frame for frame, for the battle HUD's equipped strip.
+export const RELICS_OTHERS_SMALL_TEXTURE = 'relicsOthersSmall';
+
+/**
+ * The texture to draw an equipped amulet with in the battle HUD: the 28px
+ * sheet when the amulet comes from the shared atlas and the small sheet is
+ * loaded, otherwise whatever it is normally drawn with.
+ */
+export function hudAmuletTexture(scene, key) {
+    if (key === RELICS_OTHERS_TEXTURE && scene?.textures?.exists(RELICS_OTHERS_SMALL_TEXTURE)) {
+        return RELICS_OTHERS_SMALL_TEXTURE;
+    }
+    return key;
+}
 
 // Canonical names for every authored frame in assets/art/relicsOthers.png.
 // Keep the keys visual and stable so a renamed artifact does not require

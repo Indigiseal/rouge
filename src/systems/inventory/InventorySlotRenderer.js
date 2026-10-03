@@ -557,9 +557,49 @@ export const InventorySlotRenderer = {
             this.uiGroup.add(cardWithSprite.infoText);
             cardSprite.setData('infoText', cardWithSprite.infoText);
         }
+        this.bindInfoTextFollow(cardSprite);
         this.applySlotVisualDepths(slotIndex);
         if ((cardData.webbedTurns || 0) > 0) {
             this.applyWebOverlay(slotIndex);
         }
+    },
+
+    // Pin the card's pips-and-value container to the card, once per frame,
+    // after every tween has moved things.
+    //
+    // The container used to be animated alongside the card by a twin tween in
+    // every path that moves a card: hover lift, hover drop, drag, return to
+    // slot. Each pair matched on paper, but two tweens on two objects are two
+    // timelines — when a hover lift and the return-to-slot overlapped, or one
+    // path was killed and the other not, the pips trailed the card. Copying
+    // the card's position here, on postupdate, makes trailing impossible
+    // whatever moved the card. The twin tweens still run and are simply
+    // overwritten.
+    //
+    // Both are put on whole pixels: the pips are pixel art, and roundPixels
+    // rounds each child on its own, so a fractional container spreads them.
+    // The offset is read the first time a container is seen, which is the
+    // frame it was built in, so a gem's label keeps its place below the art.
+    // Reading infoText each frame also picks up a rebuilt container (a weapon
+    // after a swing) without rebinding.
+    bindInfoTextFollow(cardSprite) {
+        const scene = this.scene;
+        const follow = () => {
+            if (!cardSprite.scene) return;
+            const info = cardSprite.getData('infoText');
+            if (!info?.scene) return;
+            if (!info._followOffset) {
+                info._followOffset = {
+                    x: Math.round(info.x - cardSprite.x),
+                    y: Math.round(info.y - cardSprite.y),
+                };
+            }
+            cardSprite.x = Math.round(cardSprite.x);
+            cardSprite.y = Math.round(cardSprite.y);
+            info.x = cardSprite.x + info._followOffset.x;
+            info.y = cardSprite.y + info._followOffset.y;
+        };
+        scene.events.on('postupdate', follow);
+        cardSprite.once('destroy', () => scene.events.off('postupdate', follow));
     },
 };

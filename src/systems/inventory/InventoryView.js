@@ -24,6 +24,12 @@ const SLOT_FILL_ALPHA = 136 / 255;
 // floated over open board. The enchant line takes the rarity blue the shared
 // tooltip already uses for rare items.
 const TOOLTIP_TEXT_W = 138;
+// Bag entrance, as in the village: how far below its spot the panel starts,
+// how long the rise takes, and the Back ease strength. 2.5 runs ~19% of the
+// drop past the spot, about 4px, before it settles.
+const PANEL_INTRO_DROP = 20;
+const PANEL_INTRO_MS = 480;
+const PANEL_INTRO_OVERSHOOT = 2.5;
 const TOOLTIP_ENCHANT_COLOR = '#66aaff';
 
 export const InventoryView = {
@@ -595,7 +601,8 @@ export const InventoryView = {
         const slotHeight = 70;
         const spacing = 5;
         const totalWidth = slotCount * slotWidth + (slotCount - 1) * spacing;
-        const inventoryCenterX = 340;
+        // 320, the screen's centre line (was 340), under the centred board.
+        const inventoryCenterX = 320;
         // Round to a whole pixel: with bonus slots totalWidth can be odd, leaving
         // the slots on a half-pixel. Fractional positions re-round (and shift 1px)
         // whenever a board card's blend-mode hover sprite forces a render-batch flush.
@@ -651,6 +658,48 @@ export const InventoryView = {
                 originalY: y
             };
         }
+    },
+    // The bag rises into place when a fight opens: it starts a little low, runs
+    // a few pixels past its spot and settles back, the same move the village
+    // boards make. One counter moves everything in uiGroup — panel, slots,
+    // cards, their pips, gem markers, shadows — by the same whole-pixel offset,
+    // so nothing on the panel drifts against it.
+    //
+    // Card input is off for the length of it. Hovering a card starts a lift
+    // tween toward its absolute rest height, which would fight the offset and
+    // leave the card where the counter last put it.
+    playPanelIntro() {
+        if (typeof this.scene?.time?.now !== 'number' || !this.scene.tweens) return;
+        this._panelIntro?.stop?.();
+
+        const objs = this.uiGroup.getChildren().filter((o) => o?.scene);
+        if (!objs.length) return;
+        const rest = objs.map((o) => o.y);
+        const paused = objs.filter((o) => o.input?.enabled);
+        paused.forEach((o) => { o.input.enabled = false; });
+
+        const place = (offset) => {
+            objs.forEach((o, i) => {
+                if (o.scene) o.y = rest[i] + Math.round(offset);
+            });
+        };
+        const finish = () => {
+            place(0);
+            paused.forEach((o) => { if (o.input) o.input.enabled = true; });
+            this._panelIntro = null;
+        };
+
+        place(PANEL_INTRO_DROP);
+        this._panelIntro = this.scene.tweens.addCounter({
+            from: PANEL_INTRO_DROP,
+            to: 0,
+            duration: PANEL_INTRO_MS,
+            ease: 'Back.easeOut',
+            easeParams: [PANEL_INTRO_OVERSHOOT],
+            onUpdate: (tween) => place(tween.getValue()),
+            onComplete: finish,
+            onStop: finish,
+        });
     },
     createInventoryPanel(centerX, centerY, width) {
         if (!this.scene.textures.exists('panelCards')) return;
