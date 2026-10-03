@@ -71,6 +71,7 @@ import {
 } from './parse-sim-flags.js';
 import { getDefaultAmuletIds } from './sim-catalog.js';
 import { normalizeActLocationIds } from '../src/content/locations/index.js';
+import { totalRepairCost } from '../src/content/economy/repair.js';
 import {
   healerRarityForRank,
   maxVillageBuildings,
@@ -2250,6 +2251,8 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs
     for (let i = 0; i < board.length; i++) {
       if (i === targetIndex) continue;
       const card = board[i];
+      // Board slots go null once a card is cleared; skip the gaps.
+      if (!card) continue;
       if (!(card.data?.type === 'enemy' || card.data?.type === 'boss' || card.data?.type === 'eliteEnemy') || card.data.health <= 0) continue;
       const b = card.sprite?.getBounds?.();
       const nearestX = b ? Math.max(b.x, Math.min(tx, b.x + b.width)) : (card.sprite?.x ?? 0);
@@ -4203,21 +4206,20 @@ function runTreasure(mock, gs, inv, floor, good) {
 
 // Blacksmith: repair every affordable damaged inventory/equipment card.
 function runAnvil(gs, inv, metrics) {
-  // Use the live station's partial increments: weapons/thorns repair one pip
-  // per click (axes cost 4, others 2), while armor repairs five points for 2.
+  // Mirror the live anvil: an item is repaired in full or not at all, at the
+  // game's own price. This used to keep a private price list (and repair one
+  // pip a click), which had drifted from the game's — daggers cost 2 here and
+  // 1 there — and the live anvil has never sold partial repairs.
   const repairedItems = new Set();
   const repairOneStep = (item) => {
     const missing = Math.max(0, (item.maxDurability || 0) - (item.durability || 0));
     if (missing <= 0) return false;
-    const amount = item.type === 'armor' ? Math.min(5, missing) : 1;
-    const cost = item.type === 'armor'
-      ? 2
-      : (item.type === 'weapon' && item.weaponType === 'axe' ? 4 : 2);
+    const cost = totalRepairCost(item, missing, gs.currentFloor || 1);
     if (gs.coins < cost) return false;
     gs.coins -= cost;
-    item.durability = Math.min(item.maxDurability, (item.durability || 0) + amount);
+    item.durability = item.maxDurability;
     metrics.repairCoins += cost;
-    metrics.repairPips += amount;
+    metrics.repairPips += missing;
     repairedItems.add(item);
     return true;
   };

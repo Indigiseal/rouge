@@ -1,5 +1,8 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
+import { createArmorCardData } from '../content/cards/armor.js';
+import { createWeaponCardData } from '../content/cards/weapons.js';
+import { applyArmorTalentMods } from '../content/talents/index.js';
 import { createTitle } from '../ui/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
@@ -234,8 +237,31 @@ export class TreasureScene extends StationRoomBase {
     const gen = new CardDataGenerator();
     const roll = Math.random();
     const type = roll < 0.45 ? 'weapon' : roll < 0.85 ? 'armor' : 'magic';
-    const item = gen.createCardData(type, this.gameState.currentFloor, false, this.gameState, rarity);
-    item.rarity = rarity;
+    let item = gen.createCardData(type, this.gameState.currentFloor, false, this.gameState, rarity);
+
+    // The generator honours spawn floors, so it can hand back a lower rarity
+    // than the chest asked for: an act-1 elite chest asks for uncommon, but
+    // uncommon armor does not spawn before floor 10, so floors 1-9 got common
+    // armor. This used to just overwrite `rarity` on that card, leaving common
+    // art, stats and durability under an uncommon label — which merging then
+    // trusted. A chest is a reward, not a floor drop, so build the item at the
+    // rarity it promised instead.
+    if (item && item.rarity !== rarity) {
+      const rebuilt = item.type === 'armor'
+        ? createArmorCardData(item.armorType, rarity)
+        : item.type === 'weapon'
+          ? createWeaponCardData(item.weaponType, rarity)
+          : null;
+      if (rebuilt) {
+        if (rebuilt.type === 'armor' && this.gameState?.talentEffects) {
+          applyArmorTalentMods(rebuilt, this.gameState.talentEffects);
+        }
+        item = rebuilt;
+      } else if (item.type === 'magic') {
+        // Spells have no rarity tiers to build from; the label is all there is.
+        item.rarity = rarity;
+      }
+    }
     return item;
   }
 

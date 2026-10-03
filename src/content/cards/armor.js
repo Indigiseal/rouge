@@ -53,14 +53,18 @@ export const ARMOR_SPAWN_MIN_FLOOR = Object.freeze({
 // and ~60 damage prevented against ~15 — leather was roughly 4x the armour at
 // every tier, and the warrior wore the worse half.
 //
-// Doubling the DEF armours closes it: warrior reach F15 43.3% -> 52.6%, level
-// with the rogue's 52.9%. The effect saturates there (x3/x4/x5 measured no
-// better), which is what says durability was the binding constraint rather than
-// a general power shortfall.
+// Doubling the DEF armours closed it for the old warrior: reach F15 43.3% ->
+// 52.6%, level with the rogue's 52.9%.
+//
+// With one hero who wears every family, the doubling no longer earned its
+// keep: armour broke 0.06 times a run and died with 70% of its pips left.
+// Trimmed to ~1.33x leather (fresh, no amulets, 3000 runs, seed 777): reach
+// 29.7% -> 29.1%, within noise, while armour breaks ~3x as often (0.16 a
+// run) so the anvil and merges have something to do.
 export const ARMOR_DURABILITY_BY_TYPE = Object.freeze({
   leather: Object.freeze({ common: 15, uncommon: 20, rare: 25, epic: 28, legendary: 30 }),
-  chain: Object.freeze({ common: 30, uncommon: 40, rare: 50, epic: 56, legendary: 60 }),
-  plate: Object.freeze({ common: 30, uncommon: 40, rare: 50, epic: 56, legendary: 60 }),
+  chain: Object.freeze({ common: 20, uncommon: 27, rare: 34, epic: 38, legendary: 40 }),
+  plate: Object.freeze({ common: 20, uncommon: 27, rare: 34, epic: 38, legendary: 40 }),
 });
 
 export function armorDurability(armorType, rarity) {

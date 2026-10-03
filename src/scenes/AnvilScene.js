@@ -3,6 +3,7 @@ import { createOptionsCog } from '../ui/OptionsCog.js';
 import { createTitle } from '../ui/titleText.js';
 import { fitLabel, serifStyle } from '../ui/uiFont.js';
 import { createPaintedButton } from '../ui/PaintedButton.js';
+import { createExitDoor } from '../ui/ExitDoor.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { totalRepairCost } from '../content/economy/repair.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
@@ -65,14 +66,19 @@ export class AnvilScene extends Phaser.Scene {
 
         createOptionsCog(this, () => this.openOptions());
         this.displayRepairableItems();
-        this.createPaintedButton(568, 340, t(this, 'ui.hud.leave'), () => {
+        // Out through the location's door, top right, like every other room.
+        // The painted Leave plate is only for a location with no door art.
+        const leave = () => {
             if (isSandboxMode(this)) {
                 exitToSandboxHub(this);
                 return;
             }
             this.scene.stop();
             this.scene.wake('MapViewScene');
-        });
+        };
+        if (!createExitDoor(this, leave)) {
+            this.createPaintedButton(568, 340, t(this, 'ui.hud.leave'), leave);
+        }
     }
 
     // The cog reaches the pause menu, which is where a run finds sound, saving
@@ -221,7 +227,7 @@ export class AnvilScene extends Phaser.Scene {
             this.tweens.killTweensOf(container);
         });
         const missing = item.maxDurability - item.durability;
-        const totalCost = totalRepairCost(item, missing, this.getWeaponType(item.name));
+        const totalCost = totalRepairCost(item, missing, this.gameState.currentFloor);
         const tag = this.add.image(0, 40, 'anvilPriceTag');
         const cost = this.label(0, 40, String(totalCost), '11px', '#2a2325');
         container.add([tag, cost]);
@@ -275,15 +281,6 @@ export class AnvilScene extends Phaser.Scene {
         });
     }
 
-    getWeaponType(itemName) {
-        const name = itemName.toLowerCase();
-        if (name.includes('dagger')) return 'dagger';
-        if (name.includes('bow')) return 'bow';
-        if (name.includes('sword')) return 'sword';
-        if (name.includes('axe')) return 'axe';
-        return 'sword';
-    }
-
     repairItem(data, repairAmount, draggedCard = null) {
         if (this.repairInProgress) return;
         const { item, index, isEquipped } = data;
@@ -293,7 +290,7 @@ export class AnvilScene extends Phaser.Scene {
             return;
         }
         const before = snapshotHumanRunCard(item);
-        const totalCost = totalRepairCost(item, repairAmount, this.getWeaponType(item.name));
+        const totalCost = totalRepairCost(item, repairAmount, this.gameState.currentFloor);
 
         if (this.gameState.coins < totalCost) {
             this.showFeedback(t(this, 'ui.anvil.notEnoughCoins'), 0xff0000);
