@@ -819,6 +819,20 @@ export class CombatTurnController {
             return false;
         }
 
+        // A Silkslinger web holds a companion the same as it holds a weapon:
+        // it sits this turn out. The web lands in the enemy turn just before
+        // this and is cleared at the start of the next one, so a webbed
+        // companion loses exactly one attack.
+        if (entry.companion?.webbedTurns > 0) {
+            const slotSprite = scene.inventorySystem?.slotSprites?.[entry.index];
+            const x = slotSprite?.card?.x ?? scene.playerAvatar?.x ?? 320;
+            const y = slotSprite?.card?.y ?? scene.playerAvatar?.y ?? 300;
+            scene.createFloatingText(x, y - 18, 'Webbed!', 0xddeeff);
+            const skipTimer = scene.time.delayedCall(220, onComplete);
+            this.enemyTurnTimers.push(skipTimer);
+            return false;
+        }
+
         // Shared "acting" hop — lifts the card art, its value/pips, shadow and
         // shine together, same as the off-hand dagger and thorns.
         scene.inventorySystem?.playSlotStrikeAnimation(entry.index);
