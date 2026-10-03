@@ -96,3 +96,61 @@ export function locationOpenDoorFrame(id) {
   const shut = locationDoorFrame(id);
   return shut === null ? null : shut + LOCATION_DOOR_COLUMNS;
 }
+
+/**
+ * Roads whose door is animated instead of a pair of frames on paths.png.
+ * assets/ui/doorAnim68x70.png holds one road per row, six 68x70 frames each,
+ * shut on the left to open on the right; the frames between are the door
+ * swinging, played when a fight's door opens. A new row is a new line here.
+ */
+const LOCATION_DOOR_ANIMS_KEY = 'locationDoorAnims';
+const DOOR_ANIM_FRAMES_PER_ROW = 6;
+const doorAnimRow = (row) => Object.freeze({
+  key: LOCATION_DOOR_ANIMS_KEY,
+  shut: row * DOOR_ANIM_FRAMES_PER_ROW,
+  open: row * DOOR_ANIM_FRAMES_PER_ROW + DOOR_ANIM_FRAMES_PER_ROW - 1,
+});
+export const LOCATION_DOOR_SHEETS = Object.freeze({
+  boneflood: doorAnimRow(0), // the Ossuary Fields: skull-framed door
+  mireturn: doorAnimRow(1),  // the Mireturn Fens: moss-hung bog door
+  thornwake: doorAnimRow(2), // the Briar March: briar-wrapped door
+  silkdeep: doorAnimRow(3),  // the Silkdeep Caves: web-hung door
+  tollroad: doorAnimRow(4),  // the King's Mile: iron-banded goblin door
+});
+const DOOR_OPEN_FPS = 12;
+
+/**
+ * Everything needed to draw a road's door, from whichever sheet it lives on:
+ * `{ key, shut, open, openAnim }`. `openAnim` is the animation key for a door
+ * that swings open, or null for a paths.png door, which just swaps frames.
+ * Null when no door is drawn for the road (or its sheet is not loaded).
+ */
+export function locationDoorArt(scene, id) {
+  const sheet = LOCATION_DOOR_SHEETS[id];
+  if (sheet && scene?.textures?.exists(sheet.key)) {
+    return { key: sheet.key, shut: sheet.shut, open: sheet.open, openAnim: `door_open_${id}` };
+  }
+  const shut = locationDoorFrame(id);
+  if (shut === null || !scene?.textures?.exists(LOCATION_DOORS_KEY)) return null;
+  return { key: LOCATION_DOORS_KEY, shut, open: shut + LOCATION_DOOR_COLUMNS, openAnim: null };
+}
+
+/** True for any texture a door is drawn from, paths.png or a door's own sheet. */
+export function isLocationDoorTexture(key) {
+  return key === LOCATION_DOORS_KEY
+    || Object.values(LOCATION_DOOR_SHEETS).some((sheet) => sheet.key === key);
+}
+
+/** Register a door's opening animation once, so a sprite can play it. */
+export function ensureDoorOpenAnim(scene, art) {
+  if (!art?.openAnim || !scene?.anims) return null;
+  if (!scene.anims.exists(art.openAnim)) {
+    scene.anims.create({
+      key: art.openAnim,
+      frames: scene.anims.generateFrameNumbers(art.key, { start: art.shut, end: art.open }),
+      frameRate: DOOR_OPEN_FPS,
+      repeat: 0,
+    });
+  }
+  return art.openAnim;
+}

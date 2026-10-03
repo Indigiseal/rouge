@@ -6,6 +6,8 @@
 import { CardSystem } from '../systems/CardSystem.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
+import { setHoverLight } from '../ui/HoverLight.js';
+import { createExitDoor } from '../ui/ExitDoor.js';
 import { hideGemSockets, showGemSockets } from '../ui/GemSockets.js';
 import { attachGemShine } from '../ui/GemShine.js';
 import { showItemTooltip, hideItemTooltip, TOOLTIP_DEPTH, STATION_TOOLTIP_GAP } from '../ui/ItemTooltip.js';
@@ -34,6 +36,9 @@ export class StationRoomBase extends Phaser.Scene {
         this.gameScene = this.gameScene || this.scene.get('GameScene');
         if (!this.gameScene?.inventorySystem) return;
         this.scene.wake('GameScene', { shopStation: true });
+        // The fight underneath still has its own door up (it stays once used).
+        // This room puts its own door in the same spot; one is enough.
+        this.gameScene.hideExitUnderStation?.();
         this.gameScene.inventorySystem.setStationMode(true);
         this.gameScene.inventorySystem.setVisibility(true);
     }
@@ -617,7 +622,12 @@ export class StationRoomBase extends Phaser.Scene {
     // ─── Item tooltip (hover info) ───────────────────────────────────────────
     // Thin wrappers so legacy in-scene calls keep working; the actual render
     // lives in utils/ItemTooltip.js, shared with the gaming board.
+    // The room's way out. The location's door, in the spot a fight's door
+    // stands; the labelled plate below is only for a location with no door art.
     createStationContinueButton(x, y, label, onClick) {
+        const door = createExitDoor(this, onClick);
+        if (door) return { button: door, text: null };
+
         const baseY = y;
         let button;
         if (this.textures.exists('nextTurnUp')) {
@@ -644,16 +654,18 @@ export class StationRoomBase extends Phaser.Scene {
         });
         button.on('pointerup', () => {
             if (button.clearTint) button.clearTint();
+            setHoverLight(button, false);
             if (button.setTexture && this.textures.exists('nextTurnUp')) button.setTexture('nextTurnUp');
             button.y = baseY;
             text.y = baseY;
         });
         button.on('pointerover', () => {
             SoundHelper.playVariant(this, 'hover_button', 0.4);
-            if (button.setTint) button.setTint(0xd4eaf7);
+            if (button.setTint) setHoverLight(button, true);
             else button.setFillStyle?.(0x151515, 0.78);
         });
         button.on('pointerout', () => {
+            setHoverLight(button, false);
             if (button.clearTint) {
                 button.clearTint();
                 if (button.setTexture && this.textures.exists('nextTurnUp')) button.setTexture('nextTurnUp');

@@ -3,6 +3,7 @@ import { createOptionsCog } from '../ui/OptionsCog.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { REST_HEAL_AMOUNT } from '../content/economy/rest.js';
 import { createPaintedButton } from '../ui/PaintedButton.js';
+import { createExitDoor } from '../ui/ExitDoor.js';
 import { createTitle } from '../ui/titleText.js';
 import { OptionsSkin } from '../ui/OptionsSkin.js';
 import { serifStyle } from '../ui/uiFont.js';
@@ -36,8 +37,8 @@ const INSET_ALPHA = 0.5;
 const MESSAGE_Y = 68 + BANNER_CLEARANCE;
 const HEAL_LINE_Y = 98 + BANNER_CLEARANCE;
 const ACTION_LINE_Y = 120 + BANNER_CLEARANCE;
-// Same corner the anvil puts its Leave button in, so the two rooms are left the
-// same way.
+// Fallback Leave plate, for a location with no door art: same corner the
+// anvil's fallback uses.
 const LEAVE_X = 568;
 const LEAVE_Y = 340;
 
@@ -80,7 +81,11 @@ export class RestScene extends Phaser.Scene {
         this.label(PAPER_X, ACTION_LINE_Y, t(this, 'ui.rest.actionsRestored'), '14px');
 
         createOptionsCog(this, () => this.openOptions());
-        createPaintedButton(this, LEAVE_X, LEAVE_Y, t(this, 'ui.hud.leave'), () => this.leave());
+        // Out through the location's door, top right, like every other room.
+        // The painted Leave plate is only for a location with no door art.
+        if (!createExitDoor(this, () => this.leave())) {
+            createPaintedButton(this, LEAVE_X, LEAVE_Y, t(this, 'ui.hud.leave'), () => this.leave());
+        }
     }
 
     // The cog reaches the pause menu, which is where a run finds sound, saving

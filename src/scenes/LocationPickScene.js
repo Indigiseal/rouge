@@ -3,13 +3,15 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { applyLocationChoice, getLocationRule, roadsForAct } from '../content/locations/index.js';
 import { PATH_LOCATIONS } from '../content/locations/catalog.js';
 import {
-  LOCATION_DOORS_KEY,
+  ensureDoorOpenAnim,
   locationCardBackKey,
-  locationDoorFrame,
+  locationDoorArt,
 } from '../content/assets/locationCards.js';
 import { t } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
+import { applyOverlayLight } from '../ui/OverlayLightPipeline.js';
+import { setHoverLight } from '../ui/HoverLight.js';
 
 // 1, not 2. The doors are 64x64 pixel art and are drawn at native size — at
 // double they filled a third of the screen height each and stopped reading as
@@ -18,17 +20,15 @@ import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 const CARD_SCALE = 1;
 const CARD_Y = 168;
 const CARD_XS = [160, 320, 480];
-// The writing sits under art that is now roughly 64-70px tall, so it comes up
-// with it. Offsets from CARD_Y, keeping the old rhythm: name, place a line
-// under it, then the pitch a little clear of both.
 // The arrival: start this far above the resting line, drop for ARRIVE_MS, and
 // let the ease carry it past and back.
 const ARRIVE_LIFT = 28;
 const ARRIVE_MS = 420;
 const ARRIVE_STAGGER = 110;
-const NAME_DY = 46;
-const PLACE_DY = 60;
-const PITCH_DY = 82;
+// After the door has swung open (or, for a door without its own animation,
+// shown open), this long a beat before the screen fades out, so the opening
+// is seen rather than cut off.
+const OPEN_HOLD_MS = 180;
 
 export class LocationPickScene extends Phaser.Scene {
   constructor() {
@@ -75,7 +75,14 @@ export class LocationPickScene extends Phaser.Scene {
 
     roads.forEach((id, i) => this.dealCard(id, CARD_XS[i], i));
 
-    MusicManager.play(this, 'menu_music', 0.45, 500);
+    // This screen's own light sheet, laid over the finished frame in the same
+    // Overlay blend the main menu uses. A camera post-process, so it covers
+    // the doors and text without competing for depth.
+    applyOverlayLight(this, { key: 'pathOverlayLight' });
+
+    // Same level as the main menu and village (0.6): the one theme carries
+    // across all three screens, so a different level here would step.
+    MusicManager.play(this, 'menu_music', 0.6, 500);
   }
 
   dealCard(locationId, x, delayIndex) {
@@ -86,9 +93,9 @@ export class LocationPickScene extends Phaser.Scene {
     // door itself — 64x64 rather than a 52x70 card, so the sprite grows a
     // little as it turns over. Roads still waiting on a door fall back to the
     // composited card back with the boss portrait on it.
-    const doorFrame = this.textures.exists(LOCATION_DOORS_KEY)
-      ? locationDoorFrame(loc.id)
-      : null;
+    // Shut, from whichever sheet the road's door is drawn on (Boneflood has
+    // its own skull door; the rest share paths.png).
+    const door = locationDoorArt(this, loc.id);
     const backKey = this.textures.exists(locationCardBackKey(loc.id))
       ? locationCardBackKey(loc.id)
       : (this.textures.exists(loc.portrait) ? loc.portrait : 'cardBack');
@@ -96,42 +103,18 @@ export class LocationPickScene extends Phaser.Scene {
     // The door itself, straight away. There is no card and no flip: it drops in
     // from above, sinks past where it belongs, and rocks back up onto it.
     const sprite = snapOriginToPixelGrid(
-      doorFrame === null
+      door === null
         ? this.add.sprite(x, CARD_Y - ARRIVE_LIFT, backKey)
-        : this.add.sprite(x, CARD_Y - ARRIVE_LIFT, LOCATION_DOORS_KEY, doorFrame)
+        : this.add.sprite(x, CARD_Y - ARRIVE_LIFT, door.key, door.shut)
     );
     sprite.setScale(CARD_SCALE).setDepth(4).setAlpha(0);
 
-    const nameText = this.add.text(x, CARD_Y + NAME_DY, '', {
-      fontSize: '12px',
-      fill: '#f2d3aa',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    }).setOrigin(0.5).setAlpha(0).setDepth(6);
-
-    const placeText = this.add.text(x, CARD_Y + PLACE_DY, '', {
-      fontSize: '10px',
-      fill: '#8b949e',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-      align: 'center',
-      wordWrap: { width: 140 },
-    }).setOrigin(0.5).setAlpha(0).setDepth(6);
-
-    const pitchText = this.add.text(x, CARD_Y + PITCH_DY, '', {
-      fontSize: '10px',
-      fill: '#c9d1d9',
-      fontFamily: '"HoMM Pixel", Arial, sans-serif',
-      align: 'center',
-      wordWrap: { width: 150 },
-    }).setOrigin(0.5).setAlpha(0).setDepth(6);
-
+    // No writing under the doors: the door art is the road.
     const entry = {
       id: loc.id,
       sprite,
-      nameText,
-      placeText,
-      pitchText,
       backKey,
-      doorFrame,
+      door,
     };
     this._cards.push(entry);
 
@@ -150,7 +133,6 @@ export class LocationPickScene extends Phaser.Scene {
       onComplete: () => {
         snapOriginToPixelGrid(sprite);
         SoundHelper.playVariant(this, 'card_place', 0.4);
-        this.showCardDetails(entry);
         this.enableCard(entry);
       },
     });
@@ -163,41 +145,54 @@ export class LocationPickScene extends Phaser.Scene {
     });
   }
 
+  // Hover and press as the fight's exit door has them: the art lights up and
+  // the button hover sound plays, nothing moves.
   enableCard(entry) {
     const { sprite } = entry;
     sprite.setInteractive({ useHandCursor: true });
     sprite.on('pointerover', () => {
       if (this._locked) return;
-      SoundHelper.playVariant(this, 'hover_button', 0.3);
-      this.tweens.add({ targets: sprite, y: CARD_Y - 6, duration: 80 });
+      SoundHelper.playVariant(this, 'hover_button', 0.4);
+      setHoverLight(sprite, true);
     });
     sprite.on('pointerout', () => {
       if (this._locked) return;
-      this.tweens.add({ targets: sprite, y: CARD_Y, duration: 80 });
+      setHoverLight(sprite, false);
     });
-    sprite.on('pointerdown', () => this.confirm(entry.id));
+    sprite.on('pointerdown', () => this.confirm(entry));
   }
 
-  showCardDetails(entry) {
-    entry.nameText.setText(t(this, `location.${entry.id}.name`));
-    entry.placeText.setText(t(this, `location.${entry.id}.place`));
-    entry.pitchText.setText(t(this, `location.${entry.id}.pitch`));
-    this.tweens.add({
-      targets: [entry.nameText, entry.placeText, entry.pitchText],
-      alpha: 1,
-      duration: 160,
-    });
-  }
-
-  confirm(locationId) {
+  // The chosen door opens — swinging through its frames if it has its own
+  // sheet, or straight to its open frame on paths.png — with the door sound,
+  // and the screen fades out once it has.
+  confirm(entry) {
     if (this._locked) return;
     this._locked = true;
     this.input.enabled = false;
-    this._cards.forEach((entry) => entry.sprite?.disableInteractive?.());
+    this._cards.forEach((card) => {
+      card.sprite?.disableInteractive?.();
+      setHoverLight(card.sprite, false);
+    });
 
     MusicManager.stopIfPlaying(this, 'menu_music', 300);
-    this.cameras.main.fadeOut(350, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.leave(locationId));
+    SoundHelper.playSound(this, 'door_open', 0.6);
+
+    const fadeOut = () => {
+      this.time.delayedCall(OPEN_HOLD_MS, () => {
+        this.cameras.main.fadeOut(350, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => this.leave(entry.id));
+      });
+    };
+
+    const { sprite, door } = entry;
+    const anim = door ? ensureDoorOpenAnim(this, door) : null;
+    if (anim && sprite?.play) {
+      sprite.once('animationcomplete', fadeOut);
+      sprite.play(anim);
+    } else {
+      if (door) sprite?.setFrame?.(door.open);
+      fadeOut();
+    }
   }
 
   leave(locationId) {

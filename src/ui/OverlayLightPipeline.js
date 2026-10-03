@@ -90,6 +90,10 @@ function definePipeline(Phaser) {
             // Scene-settable, so a scene can dim the sheet or turn it off
             // without tearing the pipeline down.
             this.intensity = 1;
+            // Which light sheet to lay over the frame. Each camera gets its own
+            // instance, so a screen can bring its own sheet (the road screen
+            // has one) while the rest keep the shared one.
+            this.lightKey = OVERLAY_LIGHT_KEY;
         }
 
         onPreRender() {
@@ -97,7 +101,7 @@ function definePipeline(Phaser) {
         }
 
         onDraw(renderTarget) {
-            const source = this.game.textures.get(OVERLAY_LIGHT_KEY)?.source?.[0];
+            const source = this.game.textures.get(this.lightKey || OVERLAY_LIGHT_KEY)?.source?.[0];
             const glTexture = source?.glTexture;
 
             // No sheet loaded: pass the frame through untouched rather than
@@ -148,24 +152,28 @@ export function ensureOverlayLightPipeline(scene) {
 }
 
 /**
- * Hangs the light sheet over `scene`'s main camera.
+ * Hangs the light sheet over `scene`'s main camera. `opts.key` picks a
+ * screen's own sheet (any 640x360 image); it defaults to the shared one.
  *
  * Returns the pipeline instance, or null when it could not be applied — the
  * scene simply renders as it always did. Never throws: a light effect is not
  * worth taking a scene down for.
  */
 export function applyOverlayLight(scene, opts = {}) {
-    const { intensity = 1 } = opts;
+    const { intensity = 1, key = OVERLAY_LIGHT_KEY } = opts;
     const camera = scene?.cameras?.main;
     if (!camera?.setPostPipeline) return null;
-    if (!scene.textures?.exists?.(OVERLAY_LIGHT_KEY)) return null;
+    if (!scene.textures?.exists?.(key)) return null;
     if (!ensureOverlayLightPipeline(scene)) return null;
 
     try {
         camera.setPostPipeline(OVERLAY_LIGHT_PIPELINE);
         const instance = camera.getPostPipeline?.(OVERLAY_LIGHT_PIPELINE);
         const pipeline = Array.isArray(instance) ? instance[0] : instance;
-        if (pipeline) pipeline.intensity = intensity;
+        if (pipeline) {
+            pipeline.intensity = intensity;
+            pipeline.lightKey = key;
+        }
         return pipeline || null;
     } catch (error) {
         console.warn('Overlay light:', error);
