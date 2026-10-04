@@ -34,7 +34,10 @@ const TOOLTIP_ENCHANT_COLOR = '#66aaff';
 
 export const InventoryView = {
     setVisibility(isVisible) {
-        if (this.uiGroup) {
+        // A destroyed group has no children set, and Phaser's setVisible
+        // throws on it — which is what a late cleanup call hits when GameScene
+        // has already shut down.
+        if (this.uiGroup?.children) {
             this.uiGroup.setVisible(isVisible);
             if (isVisible) {
                 this.rebuildInventorySprites(); // Force redraw on show

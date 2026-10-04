@@ -1711,6 +1711,12 @@ export class EventScene extends Phaser.Scene {
   // setStationMode(false) re-applies the standard combat depths.
   _disableEventStation() {
     if (!this._stationActive) return;
+    this._stationActive = false;
+    // The Test Site's exit stops GameScene before this scene, so on that path
+    // the inventory and backdrop below are already destroyed — and Phaser
+    // throws on a destroyed group. Nothing left to restore: skip it.
+    // (Phaser scene status: SHUTDOWN is 8, DESTROYED 9.)
+    if ((this.gameScene?.sys?.settings?.status ?? 9) >= 8) return;
     const inv = this.gameScene?.inventorySystem;
     if (inv) {
       inv.setDragOverlayScene?.(null);
@@ -1719,7 +1725,6 @@ export class EventScene extends Phaser.Scene {
       inv.setVisibility(false);
     }
     this.gameScene?.setEventBackdrop?.(false);
-    this._stationActive = false;
   }
 
   // ─── Copying mirror ──────────────────────────────────────────────────────
