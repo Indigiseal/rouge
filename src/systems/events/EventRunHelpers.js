@@ -5,6 +5,7 @@ import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { isGauntlet } from '../../content/balance/Gauntlet.js';
 import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { t, translateItemName } from '../../i18n/i18n.js';
+import { revealHiddenPaths } from '../../map/HiddenPaths.js';
 
 // The card types a reroll (Screaming Head, brass wizard tray) can hand back.
 const REROLL_CARD_TYPES = ['weapon', 'armor', 'thorns', 'potion', 'food', 'magic'];
@@ -144,6 +145,91 @@ export const EventRunHelpers = {
     const index = this._findInventoryIndex(item => this._isPotionCard(item));
     if (index < 0) return false;
     return this._removeInventoryCard(index);
+  },
+
+  // --- The Lost Porter (Silkdeep) -----------------------------------------
+  // Armor only counts when it is a spare card in the bag: the porter asks for
+  // what you can do without, never the armor on your back.
+  hasSpareArmorCard() {
+    return this._findInventoryIndex(item => item?.type === 'armor') >= 0;
+  },
+
+  hasWeaponCard() {
+    return this._findInventoryIndex(item => item?.type === 'weapon') >= 0;
+  },
+
+  // Hands over the weakest card of a type: lowest rarity, then lowest value.
+  giveAwayWeakestCard(type) {
+    const order = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const value = (item) => Number(item?.damage ?? item?.protection ?? 0) || 0;
+    const slots = this.getInventorySlots();
+    let best = -1;
+    slots.forEach((item, i) => {
+      if (item?.type !== type) return;
+      if (best < 0) { best = i; return; }
+      const a = slots[best];
+      const ra = order.indexOf(a.rarity || 'common');
+      const ri = order.indexOf(item.rarity || 'common');
+      if (ri < ra || (ri === ra && value(item) < value(a))) best = i;
+    });
+    if (best < 0) return false;
+    const card = slots[best];
+    const removed = this._removeInventoryCard(best);
+    if (removed) {
+      this._reward({ key: 'event.reward.lost', vars: { name: translateItemName(this, card) || type } });
+      this.markPorterMet(true);
+    }
+    return removed;
+  },
+
+  giveAwayPotion() {
+    const index = this._findInventoryIndex(item => this._isPotionCard(item));
+    if (index < 0) return false;
+    const card = this.getInventorySlots()[index];
+    const removed = this._removeInventoryCard(index);
+    if (removed) {
+      this._reward({ key: 'event.reward.lost', vars: { name: translateItemName(this, card) || 'Potion' } });
+      this.markPorterMet(true);
+    }
+    return removed;
+  },
+
+  markPorterMet(helped) {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    story.lostPorterSeen = true;
+    if (helped) story.porterHelped = true;
+  },
+
+  // The map is an amulet. Taking it queues the party's argument a few floors on
+  // and opens the passage it marks: a secret room in this act and every act
+  // after, drawn in purple on the run map while the map is held.
+  givePorterMap() {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    const ok = this.gainAmulet('porterMap');
+    if (ok) {
+      story.porterMapFloor = this.gameState.currentFloor || 1;
+      this.addPendingEvent('porter_party_argument');
+      revealHiddenPaths(this.gameState, 'porterMap');
+    }
+    return ok;
+  },
+
+  resolvePorterParty(choice) {
+    this.ensureStoryState();
+    const story = this.gameState.storyRun;
+    story.porterPartySeen = true;
+    story.porterPartyChoice = choice;
+    this.clearPendingEvent('porter_party_argument');
+    if (choice !== 'return') return;
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    const mgr = this.gameScene?.amuletManager;
+    const def = mgr?.amuletDefinitions?.porterMap;
+    if (mgr?.removeAmulet?.('porterMap', { silent: true })) {
+      this._reward({ key: 'event.reward.lost', vars: { name: translateItemName(this, def) || "Porter's Map" } });
+      this.gameScene.updateUI?.();
+    }
   },
 
   hasFoodCard() {

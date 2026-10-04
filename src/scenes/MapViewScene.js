@@ -2,6 +2,12 @@
 // Phaser is provided as a UMD global (see index.html) — no import needed.
 import { MapGenerator, MAP_VERSION } from '../map/MapGenerator.js';
 import {
+  ensureHiddenPaths,
+  HIDDEN_PATH_TINT,
+  isMapNodeVisible,
+  openSecretLinks,
+} from '../map/HiddenPaths.js';
+import {
   getLocationIdForFloor,
   getLocationNarrativeCheckpoints,
   needsLocationPick,
@@ -218,18 +224,26 @@ export class MapViewScene extends Phaser.Scene {
     const startY = -150;
     this.narrativeCheckpoints = getLocationNarrativeCheckpoints(this.gameState)
       .map(checkpoint => ({ ...checkpoint }));
+    // A story may have opened a hidden path since this act was drawn, or this
+    // act's map may have been rebuilt since the reveal. Idempotent.
+    ensureHiddenPaths(this.gameState);
 
     // Assign positions per floor: nodes are centered symmetrically around x=0
     this.actMap.floors.forEach((floorNodes, f) => {
       const floorNumber = f + 1;
       const insertedBefore = this.narrativeCheckpoints.filter(cp => cp.afterFloor < floorNumber).length;
       const y = startY + f * floorGap + insertedBefore * 42;
-      const count = floorNodes.length;
+      // Secret rooms are appended to their row, so the ordinary nodes are
+      // centred on their own count and the secret one stands a lane beyond the
+      // row's right edge: the road visibly bends off the map's normal grid.
+      const count = floorNodes.filter(node => !node?.secret).length;
+      let secretSlot = 0;
       floorNodes.forEach((node, i) => {
         // Round to whole pixels: even node counts give half-integer offsets,
         // which leave the pixel-art nodes on fractional positions and make them
         // (and the whole map) shimmer/shift by a pixel on render-batch flushes.
-        node.__x = Math.round((i - (count - 1) / 2) * laneGap);
+        const slot = node?.secret ? (count - 1) / 2 + 1 + secretSlot++ : i - (count - 1) / 2;
+        node.__x = Math.round(slot * laneGap);
         node.__y = Math.round(y);
         node.__idx = i; // index within the floor
       });
@@ -319,6 +333,8 @@ export class MapViewScene extends Phaser.Scene {
       const cur = this.actMap.floors[f];
       const nxt = this.actMap.floors[f + 1];
       cur.forEach(n => {
+        // A secret room's roads are drawn in purple below, with the way in.
+        if (n.secret) return;
         n.connections.forEach(t => {
           const checkpoint = this.narrativeCheckpoints?.find(cp => cp.afterFloor === f + 1);
           if (checkpoint) {
@@ -333,6 +349,22 @@ export class MapViewScene extends Phaser.Scene {
         });
       });
     }
+    // Hidden paths: the way into each open secret room and the road back out,
+    // in the secret colour, under the brighter "from here" roads below.
+    for (let f = 0; f < this.actMap.floors.length - 2; f++) {
+      const nxt = this.actMap.floors[f + 1];
+      this.actMap.floors[f].forEach(n => {
+        openSecretLinks(this.gameState, n, nxt).forEach(s => {
+          const secret = nxt[s];
+          drawCurve(n.__x, n.__y, secret.__x, secret.__y, HIDDEN_PATH_TINT, 2);
+          secret.connections.forEach(t => {
+            const out = this.actMap.floors[f + 2]?.[t];
+            if (out) drawCurve(secret.__x, secret.__y, out.__x, out.__y, HIDDEN_PATH_TINT, 2);
+          });
+        });
+      });
+    }
+
     // highlight from current node
     const curF = this.gameState.mapCursor.floor;
     const detourReady = this._detourReady();
@@ -350,9 +382,16 @@ export class MapViewScene extends Phaser.Scene {
           else if (checkpoint) drawCurve(checkpoint.__x, checkpoint.__y, nxt[t].__x, nxt[t].__y, 0xf2d3aa, 3);
           else drawCurve(from.__x, from.__y, nxt[t].__x, nxt[t].__y, 0xf2d3aa, 3);
         });
+        // The way into a secret room from here, bright and purple.
+        if (!checkpoint) {
+          openSecretLinks(this.gameState, from, nxt).forEach(t => {
+            drawCurve(from.__x, from.__y, nxt[t].__x, nxt[t].__y, HIDDEN_PATH_TINT, 3);
+          });
+        }
         if (detourReady) {
           nxt.forEach((dest, destIdx) => {
             if (!dest || from.connections.includes(destIdx)) return;
+            if (!isMapNodeVisible(this.gameState, dest)) return;
             drawCurve(from.__x, from.__y, dest.__x, dest.__y, 0xc8b06a, 2);
           });
         }
@@ -392,6 +431,7 @@ export class MapViewScene extends Phaser.Scene {
   getNodeVisualState(floorIdx, nodeIdx) {
     const curF = this.gameState.mapCursor.floor;
     const curN = this.gameState.mapCursor.node;
+    if (!isMapNodeVisible(this.gameState, this.actMap.floors[floorIdx]?.[nodeIdx])) return 'hidden';
 
     if (floorIdx < curF) return 'behind';
     if (floorIdx === curF && nodeIdx === curN) return 'current';
@@ -406,6 +446,9 @@ export class MapViewScene extends Phaser.Scene {
       if (completedCheckpoint) return 'available';
       const curNode = this.actMap.floors[curF]?.[curN];
       if (curNode?.connections?.includes(nodeIdx)) return 'available';
+      if (openSecretLinks(this.gameState, curNode, this.actMap.floors[floorIdx]).includes(nodeIdx)) {
+        return 'available';
+      }
       if (this._detourReady()) return 'detour';
       return 'locked_next';
     }
@@ -458,6 +501,8 @@ export class MapViewScene extends Phaser.Scene {
 
   drawNode(node, floorIdx, nodeIdx) {
     const state = this.getNodeVisualState(floorIdx, nodeIdx);
+    // A secret room whose path is not open is not on the map at all.
+    if (state === 'hidden') return;
 
     // Spritesheet frame per room type
     // Frame order: 0=normal chest, 1=rest, 2=good chest, 3=shop, 4=rare shop,
@@ -478,9 +523,14 @@ export class MapViewScene extends Phaser.Scene {
     // Tint: lighten available and current nodes slightly so they stand out
     const AVAILABLE_TINT = 0xddddff;
     const DETOUR_TINT = 0xe8c96a;
-    const idleTint = state === 'detour'
-      ? DETOUR_TINT
-      : (state === 'available' || state === 'current') ? AVAILABLE_TINT : 0xffffff;
+    // A secret room wears the hidden path's purple in every state, so the
+    // branch reads as different from the rest of the map at a glance.
+    const idleTint = node.secret
+      ? HIDDEN_PATH_TINT
+      : state === 'detour'
+        ? DETOUR_TINT
+        : (state === 'available' || state === 'current') ? AVAILABLE_TINT : 0xffffff;
+    if (node.secret) this._addHiddenPathHalo(node, alpha);
 
     // Quiet "you are here" ring behind the current node (added before it).
     // The selection brackets are a hover affordance now, so the ring stays as
@@ -511,6 +561,14 @@ export class MapViewScene extends Phaser.Scene {
 
     const canClick = state === 'available' || state === 'detour';
     if (canClick) this._bindNodeClick(nodeSprite, node, floorIdx, nodeIdx, idleTint);
+  }
+
+  // Soft purple glow behind a secret room: the overlay that marks it as off
+  // the normal map. Added before the node so it sits underneath.
+  _addHiddenPathHalo(node, alpha) {
+    const halo = this.add.circle(node.__x, node.__y, 24, HIDDEN_PATH_TINT, 0.28 * alpha)
+      .setStrokeStyle(2, HIDDEN_PATH_TINT, 0.7 * alpha);
+    this.mapContainer.add(halo);
   }
 
   _bindNodeClick(nodeSprite, node, floorIdx, nodeIdx, idleTint) {
@@ -697,7 +755,11 @@ export class MapViewScene extends Phaser.Scene {
     if (!manual) {
       if (targetFloorIdx !== cur.floor + 1) return;
       if (!fromNode) return;
-      const connected = Boolean(completedCheckpoint) || fromNode.connections.includes(targetNodeIdx);
+      const nextRowForCheck = this.actMap.floors[targetFloorIdx];
+      if (!isMapNodeVisible(this.gameState, nextRowForCheck?.[targetNodeIdx])) return;
+      const connected = Boolean(completedCheckpoint)
+        || fromNode.connections.includes(targetNodeIdx)
+        || openSecretLinks(this.gameState, fromNode, nextRowForCheck).includes(targetNodeIdx);
       if (!connected && !this._detourReady()) return;
       if (!connected) {
         this.scene.get('GameScene')?.amuletManager?.consumeStrategyDetour?.();
@@ -708,7 +770,11 @@ export class MapViewScene extends Phaser.Scene {
     this.hideHoverCorners();
     this.hideTooltip();
     const nextRow = this.actMap.floors[targetFloorIdx] || [];
-    const connected = !manual && (Boolean(completedCheckpoint) || !!fromNode?.connections?.includes(targetNodeIdx));
+    const connected = !manual && (
+      Boolean(completedCheckpoint)
+      || !!fromNode?.connections?.includes(targetNodeIdx)
+      || openSecretLinks(this.gameState, fromNode, nextRow).includes(targetNodeIdx)
+    );
     const availableNodes = (manual
       ? nextRow.map((_, nodeIndex) => nodeIndex)
       : (completedCheckpoint

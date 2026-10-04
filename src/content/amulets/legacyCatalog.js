@@ -506,6 +506,16 @@ export function buildLegacyAmuletDefinitions(mgr) {
                 ...getAmuletAtlasPresentation('lightningRune'),
                 description: 'Zap hits one extra enemy.',
                 rarity: 'rare'
+            },
+
+            // Story amulet from The Lost Porter (Silkdeep). Never offered in
+            // shops or drops. While held, each act's map shows a secret room
+            // on a purple branch (map/HiddenPaths.js).
+            porterMap: {
+                ...getAmuletAtlasPresentation('porterMap'),
+                name: "Porter's Map",
+                description: 'Marks a secret floor in every act.',
+                rarity: 'rare'
             }
         
         };
