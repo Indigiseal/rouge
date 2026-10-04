@@ -41,6 +41,7 @@ rare shop `uncommon 25 / rare 60 / legendary 15`; босс `rare 30 / legendary 
 | 2 | Earring of Armor Durability | `earringOfArmorDurability` | common | 25% не тратить прочность брони при блоке/увороте | | survival |
 | 3 | Earring of Weapon Durability | `earringOfWeaponDurability` | common | 30% не тратить прочность оружия при атаке | | offense |
 | 4 | Tactician's Pin | `tacticiansPin` | common | В начале боя булавка на одной закрытой карте врага | | strategy |
+| 4b | Hand Mirror | `handMirror` | common | 5% шанс отразить атаку врага обратно в атакующего, без урона игроку. Событие The Mirror Twin превращает его в Twinned Mirror | | survival |
 | 5 | Ring of Greater Regeneration | `ringOfGreaterRegeneration` | uncommon | +12 HP в начале боевого этажа, +1 каждые 2 этажа (12 → 32) | `ringOfRegeneration` | survival |
 | 6 | Earring of Greater Armor Durability | `earringOfGreaterArmorDurability` | uncommon | 35% не тратить прочность брони | `earringOfArmorDurability` | survival |
 | 7 | Earring of Greater Weapon Durability | `earringOfGreaterWeaponDurability` | uncommon | 40% не тратить прочность оружия | `earringOfWeaponDurability` | offense |

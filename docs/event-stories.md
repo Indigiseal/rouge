@@ -699,3 +699,53 @@ Then he pats you on the shoulder. Twice. The way you pat a dog that brought back
 "Decent of you," he says. "Very decent. Off you go, then."
 
 They walk away arguing about whose turn it is to carry the pots.
+
+## The Mirror Twin
+
+At last, a quiet corner. You sit down and close your eyes.
+
+When you open them, someone is sitting across from you. You. Almost. His face is the wrong way round.
+
+You scratch your nose. He scratches his nose. You turn away. He is already there, two fingers from your face.
+
+"..." you say.
+
+"..." he says, louder.
+
+### Choice: Give him a shard
+
+He holds the shard up to the light. Another face looks back at him, and he forgets you completely.
+
+#### Choice: Sneak away
+
+You don't breathe. You lift your pack one finger at a time and step backward. Then again.
+
+One more step. The floor isn't there.
+
+You land on old rugs and a pack gone grey with dust. Decades old, maybe. A note: "Day 4. Mirror man STILL here. Going to try sneaking away. Don't look back."
+
+Under it lies an amulet. You take it, climb out the far side, and don't look back.
+
+### Choice: Give him the Gemseeker's Lens
+
+A magnifying glass is even better: his face, but enormous. He presses his nose to it and is lost.
+
+#### Choice: Sneak away
+
+Same ending as the shard: the pit, the old belongings, the note, the amulet.
+
+### Choice: Give him the Hand Mirror
+
+He looks into the mirror. Another him looks back. He leans closer. So does the other one.
+
+Closer.
+
+Shlup.
+
+You pick the mirror up. Your reflection isn't there. He is, pressed flat against the glass, looking delighted.
+
+### Choice: Try to out-stare him
+
+You lose. He wins so hard he does a little victory dance, which you also have to watch.
+
+Eventually he wanders off, still dancing. You do not get your rest.

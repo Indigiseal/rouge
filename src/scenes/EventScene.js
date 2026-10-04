@@ -155,6 +155,10 @@ export class EventScene extends Phaser.Scene {
     }
     // Silkdeep-only: the porter his party left hanging.
     if (!story.lostPorterSeen && locationId === 'silkdeep') bonusFillers.push('lost_porter');
+    // A lost reflection from Mirrorwane, far from home.
+    if (!story.mirrorTwinSeen && (locationId === 'silkdeep' || locationId === 'thornwake')) {
+      bonusFillers.push('mirror_twin');
+    }
     // Boss-gated: the collectors only exist on runs where their King is the one
     // waiting at the end of the act, so what you do here reaches floor 15.
     if (!story.tollCollectorsSeen && getPlannedActBoss(this.gameState) === 'goblinKing') {
@@ -277,6 +281,7 @@ export class EventScene extends Phaser.Scene {
       porterMapFloor: null,
       porterPartySeen: false,
       porterPartyChoice: null,
+      mirrorTwinSeen: false,
       reliquarySeen: false,
       tollCollectorsSeen: false,
       armWrestlingSeen: false,
@@ -3015,6 +3020,7 @@ export class EventScene extends Phaser.Scene {
       silk_cocoon_cache: 'silkCocoonCacheSeen',
       lost_porter: 'lostPorterSeen',
       porter_party_argument: 'porterPartySeen',
+      mirror_twin: 'mirrorTwinSeen',
       screaming_head: 'screamingHeadSeen',
       reliquary: 'reliquarySeen',
       toll_collectors: 'tollCollectorsSeen',

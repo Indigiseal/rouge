@@ -1054,6 +1054,8 @@ export const CombatHud = {
 
             const amuletSprite = this.add.image(x, y, spriteKey, spriteFrame).setInteractive();
             amuletSprite.setDepth(22);
+            // Once-per-fight amulets (Twinned Mirror) fade out after they fire.
+            if (def?.isSpent?.()) amuletSprite.setTint(0x6f6f6f).setAlpha(0.55);
             this.amuletUIGroup.add(amuletSprite);
 
             if (def?.activeAbility) {

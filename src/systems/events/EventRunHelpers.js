@@ -232,6 +232,53 @@ export const EventRunHelpers = {
     }
   },
 
+  // --- The Mirror Twin ------------------------------------------------------
+  hasLooseGem() {
+    return this._findInventoryIndex(item => item?.type === 'gem') >= 0;
+  },
+
+  giveLooseGem() {
+    const index = this._findInventoryIndex(item => item?.type === 'gem');
+    if (index < 0) return false;
+    const card = this.getInventorySlots()[index];
+    const removed = this._removeInventoryCard(index);
+    if (removed) {
+      this._reward({ key: 'event.reward.lost', vars: { name: translateItemName(this, card) || 'Shard' } });
+      this.markMirrorTwinSeen();
+    }
+    return removed;
+  },
+
+  giveAwayAmulet(id) {
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    const mgr = this.gameScene?.amuletManager;
+    const def = mgr?.amuletDefinitions?.[id];
+    if (!mgr?.removeAmulet?.(id, { silent: true })) return false;
+    this._reward({ key: 'event.reward.lost', vars: { name: translateItemName(this, def) || id } });
+    this.gameScene.updateUI?.();
+    this.markMirrorTwinSeen();
+    return true;
+  },
+
+  // The pit under the twin's corner: an old adventurer's amulet of at least
+  // the given rarities. Falls back to any amulet if that pool is exhausted.
+  mirrorTwinPitReward(rarities) {
+    const ok = this.gainRandomAmuletFromPool(amulet => rarities.includes(amulet.rarity));
+    return ok || this.gainRandomAmulet();
+  },
+
+  // The twin gets sucked into the Hand Mirror, which becomes the Twinned
+  // Mirror (it replaces the Hand Mirror on pickup).
+  absorbMirrorTwin() {
+    this.markMirrorTwinSeen();
+    return this.gainAmulet('twinnedMirror');
+  },
+
+  markMirrorTwinSeen() {
+    this.ensureStoryState();
+    this.gameState.storyRun.mirrorTwinSeen = true;
+  },
+
   hasFoodCard() {
     return this._findInventoryIndex(item => item?.type === 'food') >= 0;
   },

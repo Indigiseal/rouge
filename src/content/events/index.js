@@ -15,6 +15,7 @@ import slimyPrison from './slimy_prison.js';
 import quietCrossroads from './quiet_crossroads.js';
 import screamingHead from './screaming_head.js';
 import reliquary from './reliquary.js';
+import mirrorTwin from './mirror_twin.js';
 import { SILKDEEP_EVENTS } from '../location-packs/silkdeep/events/index.js';
 import { ALL_TOLLROAD_EVENTS } from '../location-packs/tollroad/events/index.js';
 
@@ -35,6 +36,7 @@ export const EVENTS = [
   quietCrossroads,
   screamingHead,
   reliquary,
+  mirrorTwin,
   ...ALL_TOLLROAD_EVENTS,
   ...SILKDEEP_EVENTS,
 ];

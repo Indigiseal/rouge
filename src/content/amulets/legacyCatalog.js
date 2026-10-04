@@ -516,6 +516,21 @@ export function buildLegacyAmuletDefinitions(mgr) {
                 name: "Porter's Map",
                 description: 'Marks a secret floor in every act.',
                 rarity: 'rare'
+            },
+
+            // Story upgrade of the common Hand Mirror (currentCatalog), from The
+            // Mirror Twin. Reflects the first damaging enemy attack of every fight back at
+            // the attacker: full damage, melee or ranged, bosses included, and
+            // the player takes none. Recharges at the start of the next fight.
+            twinnedMirror: {
+                ...getAmuletAtlasPresentation('twinnedMirror'),
+                name: 'Twinned Mirror',
+                description: 'Reflects the first enemy attack each fight back at the attacker. You take no damage.',
+                rarity: 'rare',
+                reflectFirstAttack: true,
+                replaces: ['handMirror'],
+                // The HUD greys the icon out once it has been used this fight.
+                isSpent: () => Boolean(this.gameState.twinnedMirrorUsed),
             }
         
         };

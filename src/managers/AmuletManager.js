@@ -722,6 +722,23 @@ export class AmuletManager {
     }
 
     // Lute of First Light — first melee attack per floor is no-damage
+    // Twinned Mirror: still charged this fight?
+    hasChargedTwinnedMirror() {
+        if (this.gameState.twinnedMirrorUsed) return false;
+        return this.gameState.activeAmulets.some(a =>
+            this.amuletDefinitions[a.id]?.reflectFirstAttack
+        );
+    }
+
+    // Hand Mirror: chance for any single enemy attack to bounce back.
+    getReflectChance() {
+        let chance = 0;
+        this.gameState.activeAmulets.forEach(amulet => {
+            chance += this.amuletDefinitions[amulet.id]?.reflectChance || 0;
+        });
+        return Math.min(1, chance);
+    }
+
     hasCharmingTune() {
         return this.gameState.activeAmulets.some(a =>
             this.amuletDefinitions[a.id]?.charmingTune

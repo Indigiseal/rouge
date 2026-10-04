@@ -375,6 +375,13 @@ export class MockScene {
           damageDealt = Math.ceil(damageDealt * (rage.damageBoost || 1.5));
         }
       }
+      // Hand Mirror glint — mirrors CombatTurnController: the hit bounces
+      // back in full and the player takes nothing.
+      const reflectChance = this.amuletManager?.getReflectChance?.() || 0;
+      if (damageDealt > 0 && reflectChance > 0 && Math.random() < reflectChance) {
+        this.cardSystem.attackEnemy(i, damageDealt, true);
+        continue;
+      }
       const armorBreak = card.data.abilities?.find((a) => a.type === 'armor_break');
       const armorPierce = armorBreak?.amount || 0;
 

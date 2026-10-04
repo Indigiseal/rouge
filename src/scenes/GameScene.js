@@ -615,6 +615,7 @@ export class GameScene extends Phaser.Scene {
         if (this.roomType === 'BOSS') this.startBossMusic(); else this.stopBossMusic();
         // Reset per-floor amulet flags
         this.gameState.charmingTuneUsed = false;
+        this.gameState.twinnedMirrorUsed = false;
         this.gameState.strategyMarchUsed = false;
         this.gameState.strategyClusterUsed = false;
         if (this.tutorialMode) {

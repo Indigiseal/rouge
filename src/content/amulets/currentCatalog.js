@@ -30,6 +30,15 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 strategyScout: true,
                 onEquip: () => this.applyStrategyScout(),
             },
+            // Common find. A small chance to bounce an enemy attack back, and
+            // the item the Mirror Twin event turns into the Twinned Mirror.
+            handMirror: {
+                ...getAmuletAtlasPresentation('handMirror'),
+                name: 'Hand Mirror',
+                description: '5% chance to reflect an enemy attack back at the attacker. You take no damage.',
+                rarity: 'common',
+                reflectChance: 0.05,
+            },
 
             ringOfGreaterRegeneration: {
                 ...getAmuletAtlasPresentation('ringOfGreaterRegeneration'),

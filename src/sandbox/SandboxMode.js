@@ -166,6 +166,12 @@ const SANDBOX_STORY_SETUP = {
     locationId: 'silkdeep',
     story: { lostPorterSeen: true, porterHelped: true },
   },
+  // Every way past the twin at once: a loose shard, the Gemseeker's Lens, and
+  // the Hand Mirror that turns into the Twinned Mirror.
+  mirror_twin: {
+    grant: ['gem', 'gemseekersLens', 'handMirror'],
+    locationId: 'silkdeep',
+  },
   // Expose the dynamite choice immediately when testing the new Tollroad arc.
   goblin_mine: {
     grant: ['fireball'],
@@ -238,8 +244,14 @@ function grantSandboxStoryItem(gameScene, grant) {
     return;
   }
 
-  if (grant === 'porterMap') {
-    gameScene.amuletManager?.addAmulet?.('porterMap', { force: true });
+  if (grant === 'porterMap' || grant === 'gemseekersLens' || grant === 'handMirror') {
+    gameScene.amuletManager?.addAmulet?.(grant, { force: true });
+    return;
+  }
+
+  if (grant === 'gem') {
+    const gem = gen.createGemCard?.(gs.currentFloor || 6);
+    if (gem) inv.addCard(gem);
     return;
   }
 

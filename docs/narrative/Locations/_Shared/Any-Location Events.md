@@ -15,6 +15,7 @@ Encounters that are not owned by a single location. They live under `Locations/_
 |---|---|
 | [[Quiet Crossroads]] | Fallback filler when nothing else is eligible |
 | [[The Old Drill Room]] | Companion-gated upgrade room |
+| [[The Mirror Twin]] | Lost Mirrorwane reflection in Silkdeep or Thornwake; source of the Twinned Mirror |
 | [[Event Sequences]] | Cross-location story lanes (see [[Music Box Chain\|Music Box]]) |
 
 Location notes may still list these as soft fits where tone overlaps.

@@ -435,6 +435,25 @@ export class CombatTurnController {
             }
         }
 
+        // Twinned Mirror — the first damaging attack of the fight goes back at
+        // the attacker in full: melee, ranged or boss. The player takes nothing,
+        // and none of the hit's riders (poison, theft, webbing) land either.
+        // Hand Mirror — same bounce, but only on a small chance per attack.
+        const twinnedMirror = damageDealt > 0 && scene.amuletManager?.hasChargedTwinnedMirror?.();
+        const handMirrorGlint = !twinnedMirror && damageDealt > 0
+            && Math.random() < (scene.amuletManager?.getReflectChance?.() || 0);
+        if (twinnedMirror || handMirrorGlint) {
+            if (twinnedMirror) scene.gameState.twinnedMirrorUsed = true;
+            const x = card.sprite?.x ?? scene.playerAvatar.x;
+            const y = card.sprite?.y ?? scene.playerAvatar.y;
+            CombatSequencer.floatingText(scene, 'reflect', scene.playerAvatar.x, scene.playerAvatar.y - 16, twinnedMirror ? 'Reflected!' : 'Glint!', 0xd9b8ff);
+            scene.cardSystem.attackEnemy(index, damageDealt, true);
+            CombatSequencer.playSound(scene, 'reflect', 'thorns_hit', 0.45);
+            CombatSequencer.floatingText(scene, 'reflect', x, y, `-${damageDealt} Mirror`, 0xd9b8ff);
+            scene.updateAmuletsUI?.();
+            return;
+        }
+
         // ARMOR BREAK — this hit pierces some of the player's protection.
         const armorBreak = card.data.abilities?.find(a => a.type === 'armor_break');
         const armorPierce = armorBreak?.amount || 0;
