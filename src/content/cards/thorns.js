@@ -4,8 +4,8 @@ export const THORN_STATS_BY_RARITY = {
   common:    { thornDamage: 1, durability: 6 },
   uncommon:  { thornDamage: 2, durability: 7 },
   rare:      { thornDamage: 3, durability: 9 },
-  epic:      { thornDamage: 4, durability: 10 },
-  legendary: { thornDamage: 5, durability: 11 }
+  epic:      { thornDamage: 4, durability: 11 },
+  legendary: { thornDamage: 5, durability: 14 }
 };
 
 // Per-rarity art. No legendary asset yet, so legendary borrows the

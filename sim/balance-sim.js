@@ -25,6 +25,7 @@ import { CardSystem } from '../src/systems/CardSystem.js';
 import { CardDataGenerator } from '../src/systems/loot/CardDataGenerator.js';
 import { installSeededRandom, beginSeededRun, parseSeedArg, isSeeded } from './rng.js';
 import { setTuningOverrides } from '../src/content/balance/Tuning.js';
+import { getThornStats } from '../src/content/cards/thorns.js';
 import { FIRE_GEM_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../src/content/cards/gems.js';
 import { xpForRun, estimateBossesKilled } from '../src/content/economy/metaXp.js';
 import { weaponCanDamageEnemy, canHurtEnemyAtAll } from '../src/systems/board/BoardCombat.js';
@@ -1299,10 +1300,11 @@ function mergeThornsList(list, tracker = null) {
       for (let j = i + 1; j < list.length; j++) {
         if ((list[i].thornDamage || 0) === (list[j].thornDamage || 0)) {
           const a = list[i], b = list[j];
-          const dmg = Math.max(a.thornDamage || 1, b.thornDamage || 1) + 2;
-          const dur = Math.max(a.maxDurability || 3, b.maxDurability || 3) + 1;
+          // Same canonical per-rarity table the game uses for merges.
+          const rarity = nextRarity(a.rarity || 'common');
+          const { thornDamage: dmg, durability: dur } = getThornStats(rarity);
           list.splice(j, 1); list.splice(i, 1);
-          list.push({ type: 'thorns', name: 'Thorns Card', thornDamage: dmg, durability: dur, maxDurability: dur, rarity: nextRarity(a.rarity || 'common') });
+          list.push({ type: 'thorns', name: 'Thorns Card', thornDamage: dmg, durability: dur, maxDurability: dur, rarity });
           if (tracker) tracker.mergeCounts.thorns++;
           changed = true; break;
         }
