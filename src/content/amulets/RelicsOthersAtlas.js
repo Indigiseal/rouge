@@ -135,6 +135,7 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     travelersJournal: 'travelersJournal',
     charmingTune: 'lute',
     wayfarersMap: 'wayfarersMap',
+    porterMap: 'wayfarersMap',
     sirensPendant: 'perfumeBottle',
     teaRoomBell: 'goldenBell',
     wormVenomCharm: 'wormVenomVial',

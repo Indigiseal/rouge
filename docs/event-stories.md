@@ -597,3 +597,105 @@ The nearest cocoon does not open when you cut it — it resists, tough as wet le
 The fireball takes the chamber in one breath.
 
 Silk blackens. Cocoons split and collapse. When the smoke thins, three scorched prizes lie open on the stone — and nothing moves to claim them.
+
+## The Lost Porter
+
+A side corridor of the palace has gone white with old web. Halfway along it, a man hangs upside down, wrapped to the armpits like a parcel nobody came back for.
+
+He is holding a frying pan. A full pack hangs from his shoulders, pots and rope and a rolled map sticking out of the top.
+
+"Oh! Hello!" he says. "Have you seen my party? We got separated. They told me to hold the rope while they scouted ahead. So I held it."
+
+He lifts the end of the rope for you to see. It has been cut clean through.
+
+"Must have snapped. Spiders, probably." He thinks about it. "Anyway, I think I'm lost."
+
+### Choice: Give him your armor
+
+You cut him down and help him into your spare armor. It is far too big for him. The helmet turns when he turns his head, a little after.
+
+"It's like wearing a house," he says happily, and knocks on his own chest.
+
+### Choice: Give him your weapon
+
+You cut him down and put a weapon in his hands. He holds it like a broom.
+
+"I'll just wave it if anything's scary," he says. "Things don't like being waved at. I bet."
+
+### Choice: Heal him
+
+You cut him down. The web has left a red rash up both arms, and he has been hanging long enough to go a little purple.
+
+You hand him a potion. He drinks it, blinks twice, and bounces on his toes.
+
+"Oh, that's much better. That's like breakfast."
+
+### Choice: Point the way and walk on
+
+You cut him down and point back down the corridor, the way you came.
+
+"That way's safe. I already cleared it."
+
+He shakes your hand with both of his. "You're very kind. Everyone in this place is so kind."
+
+### Shared result — The map
+
+He looks back down the corridor. Nothing moves in it. You made sure of that.
+
+"I don't think I'm cut out for adventuring," he says. "Ma said so. I'm going home."
+
+He pulls the rolled map out of his pack and presses it into your hands.
+
+"Here. I won't need this where I'm going. I only carried it because I carry everything."
+
+You unroll it. Most of it is what you have already walked. But in one corner, in faded ink, a passage is marked that you have never seen. It is drawn in a different hand from the rest.
+
+When you look up, he is already clanking away down the cleared corridor, humming, frying pan first.
+
+## Voices Around the Corner
+
+You hear them before you see them. Three voices, low and angry, somewhere just past the next turn.
+
+"You had the map."
+
+"No, HE had the map. He carries everything. That was the whole point of him."
+
+"So go back and get it."
+
+"Past the spider? You go back."
+
+"We didn't lose him. We left him. That's different."
+
+"Not to the map, it isn't."
+
+A pause. Somebody kicks a pebble.
+
+"...He'll be fine. He was always lucky. Lucky and stupid."
+
+"Mostly stupid."
+
+### Choice: Sneak past
+
+You keep to the far wall and step only on the silk, where it swallows the sound.
+
+They are still arguing when you reach the next room. They never look up.
+
+### Choice: Confront them
+
+You step around the corner. Three adventurers, three hands going to three weapons, and then, when they see you are alone, three shoulders relaxing.
+
+"Your porter is fine," you say. "He thinks he got lost."
+
+Nobody says anything for a moment. They look at their boots.
+
+"...Good," the leader mutters at last. "Good for him."
+
+### Choice: Give them back the map
+
+You hold out the map. The leader snatches it, checks it, and tucks it away in one smooth motion, as if it had never left.
+
+Then he pats you on the shoulder. Twice. The way you pat a dog that brought back a stick.
+
+"Decent of you," he says. "Very decent. Off you go, then."
+
+They walk away arguing about whose turn it is to carry the pots.
