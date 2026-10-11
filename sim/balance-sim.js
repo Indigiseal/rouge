@@ -73,6 +73,7 @@ import {
 import { getDefaultAmuletIds } from './sim-catalog.js';
 import { normalizeActLocationIds } from '../src/content/locations/index.js';
 import { totalRepairCost } from '../src/content/economy/repair.js';
+import { scaleGoldReward } from '../src/content/economy/gold.js';
 import {
   healerRarityForRank,
   maxVillageBuildings,
@@ -3343,7 +3344,7 @@ function runBossReward(mock, gs, inv, floor) {
   const gen = mock.cardSystem.cardDataGenerator;
   gs.playerHealth = gs.maxHealth;
   gs.actionsLeft = gs.maxActions;
-  gs.coins += 25 + floor;
+  gs.coins += scaleGoldReward(25 + floor);
   gs.crystals += 4 + Math.floor(floor / 6);
 
   const amulet = mock.cardSystem.createCardData('amulet', floor, false, gs, 'boss');
@@ -3381,7 +3382,7 @@ function runEventLegacy(mock, gs, inv, floor) {
   const st = mock._eventState || (mock._eventState = { story: 0, bonus: [] });
 
   // 1) Early story chain (music box → bird nest → goblin engineer).
-  if (st.story === 0) { st.story++; gs.coins += 18; gs.crystals += 1; return; }
+  if (st.story === 0) { st.story++; gs.coins += scaleGoldReward(18); gs.crystals += 1; return; }
   if (st.story === 1) {
     st.story++;
     // Bird nest raid: sim keeps a small heal stand-in (live game is a timed
@@ -3391,7 +3392,7 @@ function runEventLegacy(mock, gs, inv, floor) {
   }
   if (st.story === 2) {
     st.story++;
-    gs.coins += 12;
+    gs.coins += scaleGoldReward(12);
     gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 6);
     return;
   }
@@ -3399,7 +3400,7 @@ function runEventLegacy(mock, gs, inv, floor) {
     st.story++;
     // Goblin engineer: 50% music-box repair → +1 inventory slot, else consolation.
     if (Math.random() < 0.5) gs.bonusInventorySlots = (gs.bonusInventorySlots || 0) + 1;
-    else { gs.coins += 12; gs.crystals += 1; }
+    else { gs.coins += scaleGoldReward(12); gs.crystals += 1; }
     return;
   }
 
@@ -3440,7 +3441,7 @@ function runEventLegacy(mock, gs, inv, floor) {
   if (gs.playerHealth < gs.maxHealth * 0.6) {
     gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 5);
   } else {
-    gs.coins += 10;
+    gs.coins += scaleGoldReward(10);
   }
 }
 
@@ -3598,7 +3599,7 @@ function runEvent(mock, gs, inv, floor) {
       }
     }
     if (repaired) gs.scene.inventorySystem.expandInventory(1);
-    else { gs.coins += 12; gs.crystals += 1; }
+    else { gs.coins += scaleGoldReward(12); gs.crystals += 1; }
     story.stage = story.hasEgg && repaired ? 'hatch_egg' : 'bonus';
     return;
   }
@@ -3626,7 +3627,7 @@ function runEvent(mock, gs, inv, floor) {
   const remaining = choices.filter((id) => !story.seen.has(id));
   if (!remaining.length) {
     if (gs.playerHealth < gs.maxHealth * 0.6) gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 5);
-    else gs.coins += 10;
+    else gs.coins += scaleGoldReward(10);
     return;
   }
   const id = remaining[Math.floor(Math.random() * remaining.length)];
@@ -4198,8 +4199,8 @@ function runRareShop(mock, gs, inv, floor) {
 
 function runTreasure(mock, gs, inv, floor, good) {
   // Mirrors TreasureScene.getRewardValues (opened-with-key tier, cut hard).
-  if (good) { gs.coins += 12 + Math.floor(floor / 2); gs.crystals += 1 + Math.floor(floor / 12); }
-  else { gs.coins += 8 + Math.floor(floor / 3); gs.crystals += 1 + Math.floor(floor / 14); }
+  if (good) { gs.coins += scaleGoldReward(12 + Math.floor(floor / 2)); gs.crystals += 1 + Math.floor(floor / 12); }
+  else { gs.coins += scaleGoldReward(8 + Math.floor(floor / 3)); gs.crystals += 1 + Math.floor(floor / 14); }
   const item = mock.cardSystem.createCardData(Math.random() < 0.55 ? 'weapon' : 'armor', floor, false, null, good && floor >= 20 ? 'epic' : 'rare');
   if (item?.type === 'weapon' && gs._lootStats) recordWeapon(gs._lootStats, floor, item, 'treasure');
   if (item) tryCarry(gs, inv, item);
