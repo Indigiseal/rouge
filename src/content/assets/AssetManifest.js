@@ -217,6 +217,9 @@ export const ASSET_MANIFEST = [
     { key: 'crystal_collect', path: 'assets/music/crystal_pick_up.mp3', type: 'audio' },
     // Main menu
     { key: 'mainBG', path: 'assets/art/mainBG.png', type: 'image' },
+    // Path choice
+    { key: 'pathsBackground', path: 'assets/art/pathsBackground.png', type: 'image' },
+    { key: 'pathsBackgroundLight', path: 'assets/art/pathsBackgroundLight.png', type: 'image' },
     // Food
     { key: 'egg', path: 'assets/art/egg.png', type: 'image' },
     { key: 'chickCompanion', path: 'assets/art/chickCompanion.png', type: 'image' },

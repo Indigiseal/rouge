@@ -12,14 +12,18 @@ import { createTitle } from '../ui/titleText.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { applyOverlayLight } from '../ui/OverlayLightPipeline.js';
 import { setHoverLight } from '../ui/HoverLight.js';
+import { createOptionsCog } from '../ui/OptionsCog.js';
 
 // 1, not 2. The doors are 64x64 pixel art and are drawn at native size — at
 // double they filled a third of the screen height each and stopped reading as
 // objects you walk through. The card that turns into one is 52x70, so the two
 // are near enough in size that the flip no longer changes scale.
 const CARD_SCALE = 1;
-const CARD_Y = 168;
-const CARD_XS = [160, 320, 480];
+// Each door stands in one of the three arches of pathsBackground.png, its foot
+// on the arch floor. Move these with the arches if the backdrop is redrawn.
+// The middle arch is the tallest, so its door stands higher than the outer two.
+const CARD_XS = [176, 320, 464];
+const CARD_YS = [222, 212, 222];
 // The arrival: start this far above the resting line, drop for ARRIVE_MS, and
 // let the ease carry it past and back.
 const ARRIVE_LIFT = 28;
@@ -46,12 +50,18 @@ export class LocationPickScene extends Phaser.Scene {
   }
 
   create() {
-    if (this.textures.exists('mainBG')) {
-      this.add.image(320, 180, 'mainBG');
+    // This screen's own backdrop is drawn dark already, so it goes in undimmed;
+    // the main menu's art, if it is ever all there is, still gets the shade.
+    if (this.textures.exists('pathsBackground')) {
+      this.add.image(320, 180, 'pathsBackground');
     } else {
-      this.add.rectangle(320, 180, 640, 360, 0x1a1a1a);
+      if (this.textures.exists('mainBG')) {
+        this.add.image(320, 180, 'mainBG');
+      } else {
+        this.add.rectangle(320, 180, 640, 360, 0x1a1a1a);
+      }
+      this.add.rectangle(320, 180, 640, 360, 0x000000, 0.55);
     }
-    this.add.rectangle(320, 180, 640, 360, 0x000000, 0.55);
 
     createTitle(this, 320, 28, t(this, 'ui.locationPick.title'), {
       color: '#f2d3aa',
@@ -70,22 +80,40 @@ export class LocationPickScene extends Phaser.Scene {
       wordWrap: { width: 560 },
     }).setOrigin(0.5);
 
+    // Same corner as every other screen's cog. It opens the in-run options
+    // (sound, quit to menu), the way the village does.
+    createOptionsCog(this, () => this.openOptions());
+
     const roads = roadsForAct(this.pickAct);
     Phaser.Utils.Array.Shuffle(roads);
 
-    roads.forEach((id, i) => this.dealCard(id, CARD_XS[i], i));
+    roads.forEach((id, i) => this.dealCard(id, CARD_XS[i], CARD_YS[i], i));
+
+    // The backdrop's own light, painted in Lighten over pathsBackground.png
+    // and laid on the same way. It goes on first, so the Overlay sheet below
+    // is applied on top of it.
+    applyOverlayLight(this, { key: 'pathsBackgroundLight', mode: 'lighten' });
 
     // This screen's own light sheet, laid over the finished frame in the same
     // Overlay blend the main menu uses. A camera post-process, so it covers
     // the doors and text without competing for depth.
-    applyOverlayLight(this, { key: 'pathOverlayLight' });
+    // The sheet was painted for the doors' old line (y 168); they now stand in
+    // the backdrop's arches, so it is moved down to match.
+    applyOverlayLight(this, { key: 'pathOverlayLight', offsetY: 54 });
 
     // Same level as the main menu and village (0.6): the one theme carries
     // across all three screens, so a different level here would step.
     MusicManager.play(this, 'menu_music', 0.6, 500);
   }
 
-  dealCard(locationId, x, delayIndex) {
+  // Pauses this screen under the pause menu, as the village does.
+  openOptions() {
+    if (this._locked || this.scene.isActive('PauseMenuScene')) return;
+    this.scene.launch('PauseMenuScene', { pausedScene: this.scene.key });
+    this.scene.pause();
+  }
+
+  dealCard(locationId, x, y, delayIndex) {
     const loc = PATH_LOCATIONS[locationId];
     if (!loc) return;
 
@@ -104,8 +132,8 @@ export class LocationPickScene extends Phaser.Scene {
     // from above, sinks past where it belongs, and rocks back up onto it.
     const sprite = snapOriginToPixelGrid(
       door === null
-        ? this.add.sprite(x, CARD_Y - ARRIVE_LIFT, backKey)
-        : this.add.sprite(x, CARD_Y - ARRIVE_LIFT, door.key, door.shut)
+        ? this.add.sprite(x, y - ARRIVE_LIFT, backKey)
+        : this.add.sprite(x, y - ARRIVE_LIFT, door.key, door.shut)
     );
     sprite.setScale(CARD_SCALE).setDepth(4).setAlpha(0);
 
@@ -120,12 +148,12 @@ export class LocationPickScene extends Phaser.Scene {
 
     const delay = delayIndex * ARRIVE_STAGGER;
 
-    // Back.easeOut on a downward move is the dip: it travels past CARD_Y and
+    // Back.easeOut on a downward move is the dip: it travels past y and
     // eases back up onto it. The fade is a separate tween because a Back ease
     // would overshoot alpha past 1 as well.
     this.tweens.add({
       targets: sprite,
-      y: CARD_Y,
+      y,
       duration: ARRIVE_MS,
       delay,
       ease: 'Back.easeOut',
