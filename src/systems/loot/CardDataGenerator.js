@@ -778,7 +778,7 @@ export class CardDataGenerator {
             // Fallback - should not happen if configured correctly
             return {
                 type: 'food',
-                name: 'Bread',
+                name: 'Berries',
                 actionAmount: 10,
                 sprite: resourceCardKey('food', 'common'),
                 rarity: 'common',
