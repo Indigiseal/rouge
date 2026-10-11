@@ -227,10 +227,61 @@ export const InventoryView = {
             return clone;
         };
 
+        // The card's pips and value live in its infoText: a container of
+        // images and text (or, for a gem, a lone text). Copied piece by piece,
+        // since Phaser has no clone; without it the card crossed the event
+        // screen bare, its pips left behind under the event in GameScene.
+        const cloneDisplay = (source) => {
+            if (!source?.scene) return null;
+            let clone = null;
+            if (source.type === 'Container') {
+                clone = overlayScene.add.container(source.x, source.y);
+                (source.list || []).forEach((child) => {
+                    const childClone = cloneDisplay(child);
+                    if (childClone) clone.add(childClone);
+                });
+            } else if (source.type === 'Text') {
+                const s = source.style;
+                clone = overlayScene.add.text(source.x, source.y, source.text)
+                    .setStyle(s)
+                    .setShadow(s.shadowOffsetX, s.shadowOffsetY, s.shadowColor,
+                        s.shadowBlur, s.shadowStroke, s.shadowFill)
+                    .setPadding(source.padding)
+                    .setLineSpacing(source.lineSpacing || 0)
+                    .setOrigin(source.originX ?? 0.5, source.originY ?? 0.5);
+                if (s.wordWrapWidth) clone.setWordWrapWidth(s.wordWrapWidth, s.wordWrapUseAdvanced);
+            } else if (source.texture?.key) {
+                clone = overlayScene.add.image(source.x, source.y, source.texture.key, source.frame?.name)
+                    .setOrigin(source.originX ?? 0.5, source.originY ?? 0.5);
+                clone.setFlip?.(Boolean(source.flipX), Boolean(source.flipY));
+                if (source.isTinted) {
+                    clone.setTint?.(source.tintTopLeft, source.tintTopRight,
+                        source.tintBottomLeft, source.tintBottomRight);
+                }
+            }
+            if (!clone) return null;
+            clone.setScale(source.scaleX ?? 1, source.scaleY ?? 1)
+                .setRotation(source.rotation || 0)
+                .setAlpha(source.alpha ?? 1)
+                .setVisible(source.visible !== false);
+            return clone;
+        };
+        const cloneInfo = (source, depth) => {
+            const clone = cloneDisplay(source);
+            if (!clone) return;
+            clone.setDepth(depth);
+            parts.push({
+                clone,
+                offsetX: source.x - cardSprite.x,
+                offsetY: source.y - cardSprite.y
+            });
+        };
+
         // Clone in visual order. The real objects remain visible so Phaser's
         // drag input cannot be interrupted by hiding its active game object.
         cloneImage(slot?.shadow, 9998);
         cloneImage(cardSprite, 10000);
+        cloneInfo(cardSprite.getData?.('infoText'), 10000.5);
         cloneImage(slot?.gemIndicator?.shadow, 10001);
         cloneImage(slot?.gemIndicator, 10002);
         cloneImage(slot?.briarFrame, 10003);

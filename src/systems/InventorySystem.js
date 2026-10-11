@@ -414,13 +414,24 @@ export class InventorySystem {
         // Custom event drop zones (e.g. the copying mirror). Checked before the
         // station-mode bounce-back so events can react to a card dropped on them.
         // A handler returning true owns the dragged sprite from here on.
+        //
+        // A card dropped on a zone that refuses it goes home. The zones sit in
+        // the board area, so falling through let the board-cast rule below take
+        // it: a magic card offered to the well, or dropped there after the event
+        // had ended, was cast instead and vanished.
+        let refusedByZone = false;
         for (const entry of (this.dropZones || [])) {
             const zone = entry?.zone;
             if (!zone || !zone.scene || typeof zone.getBounds !== 'function') continue;
             const bounds = zone.getBounds();
             if (bounds && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), bounds)) {
                 if (entry.handler(slotIndex, cardData, cardSprite)) return;
+                refusedByZone = true;
             }
+        }
+        if (refusedByZone) {
+            this.returnCardToSlot(slotIndex, cardSprite);
+            return;
         }
 
         // Magic has historically been cast by dropping it on the gaming board.
