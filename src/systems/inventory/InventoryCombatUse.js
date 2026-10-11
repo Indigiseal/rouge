@@ -1,5 +1,4 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
-import { gemSpotPosition } from '../../ui/GemSockets.js';
 import { CombatSequencer } from '../combat/CombatSequencer.js';
 import {
     applyPermanentWeaponDamageBonuses,
@@ -694,45 +693,26 @@ export const InventoryCombatUse = {
             shadow.setAlpha(0.6);
         }
 
-        const lift = (target, baseY, round = false) => {
-            if (!target?.scene) return;
-            this.scene.tweens.add({
-                targets: target,
-                y: baseY - 5,
-                duration: 120,
-                ease: 'Power2',
-                yoyo: true,
-                onUpdate: round ? () => { target.y = Math.round(target.y); } : undefined,
-                onComplete: () => { if (target?.scene) target.y = baseY; }
-            });
-        };
-
-        lift(cardSprite, restY, true);
-        lift(cardSprite.getData?.('infoText'), restY, true);
-        if (slot.gemEffectSprite?.visible) lift(slot.gemEffectSprite, restY);
-        lift(slot.briarFrame, restY);
-        lift(slot.webOverlay, restY);
-        lift(slot.twinkleSprite, restY);
-        if (slot.gemIndicator) lift(slot.gemIndicator, slot.gemIndicator.restY ?? restY);
-
+        // Only the card hops: its pips, value, gem, briar frame and shine
+        // ride it (CardRiders).
         const hideShadow = () => { if (shadow?.scene) shadow.setAlpha(0); };
-        if (hoverSprite) {
-            this.scene.tweens.add({
-                targets: hoverSprite,
-                y: restY - 5,
-                duration: 120,
-                ease: 'Power2',
-                yoyo: true,
-                onComplete: () => {
-                    if (hoverSprite?.scene) {
-                        hoverSprite.stop();
-                        hoverSprite.setVisible(false);
-                        hoverSprite.y = restY;
-                    }
-                    hideShadow();
+        this.scene.tweens.add({
+            targets: cardSprite,
+            y: restY - 5,
+            duration: 120,
+            ease: 'Power2',
+            yoyo: true,
+            onUpdate: () => { cardSprite.y = Math.round(cardSprite.y); },
+            onComplete: () => {
+                if (cardSprite?.scene) cardSprite.y = restY;
+                if (hoverSprite?.scene) {
+                    hoverSprite.stop();
+                    hoverSprite.setVisible(false);
                 }
-            });
-        } else if (shadow?.scene) {
+                hideShadow();
+            }
+        });
+        if (!hoverSprite && shadow?.scene) {
             // No shine to hang the shadow fade off — drop it with the hop.
             this.scene.tweens.add({ targets: shadow, alpha: 0, duration: 120, delay: 120, onComplete: hideShadow });
         }
@@ -889,17 +869,16 @@ export const InventoryCombatUse = {
             cardSprite.setData('infoText', cardWithSprite.infoText);
         }
     },
-    // Helper method to return weapon to slot immediately
+    // Put the weapon back in its slot at once.
+    //
+    // The card is the only thing put back by hand; its pips, value, gem, briar
+    // frame, web and sparkle ride it (CardRiders). What is left below is
+    // showing and hiding them, and the shadow, which is not a rider.
     returnWeaponToSlot(slotIndex, cardSprite) {
         const slotSprite = this.slotSprites[slotIndex];
         if (slotSprite && cardSprite && cardSprite.scene) {
             cardSprite.x = slotSprite.background.x;
             cardSprite.y = slotSprite.background.y;
-            const infoText = cardSprite.getData('infoText');
-            if (infoText && infoText.scene) {
-                infoText.x = cardSprite.x;
-                infoText.y = cardSprite.y;
-            }
             if (slotSprite.shadow && slotSprite.shadow.scene) {
                 slotSprite.shadow.x = cardSprite.x;
                 slotSprite.shadow.y = cardSprite.y + 28;
@@ -907,44 +886,21 @@ export const InventoryCombatUse = {
                 slotSprite.shadow.setDepth(11);
             }
             if (slotSprite.hoverSprite && slotSprite.hoverSprite.scene) {
-                slotSprite.hoverSprite.x = cardSprite.x;
-                slotSprite.hoverSprite.y = cardSprite.y;
                 slotSprite.hoverSprite.setVisible(false);
                 slotSprite.hoverSprite.stop();
             }
             if (slotSprite.gemEffectSprite && slotSprite.gemEffectSprite.scene) {
-                slotSprite.gemEffectSprite.x = cardSprite.x;
-                slotSprite.gemEffectSprite.y = cardSprite.y;
                 slotSprite.gemEffectSprite.setVisible(false);
                 slotSprite.gemEffectSprite.stop();
             }
-            if (slotSprite.gemIndicator && slotSprite.gemIndicator.scene) {
-                const indicator = slotSprite.gemIndicator;
-                const spot = gemSpotPosition(cardSprite);
-                indicator.x = spot.x;
-                indicator.y = spot.y;
-                indicator.restX = indicator.x;
-                indicator.restY = indicator.y;
-                indicator.setVisible(true);
-            }
-            // Snap the thorn frame back onto the card — it's centered on the card
-            // like the art, so it tracks the card position (not a corner offset).
+            slotSprite.gemIndicator?.setVisible?.(true);
             if (slotSprite.briarFrame && slotSprite.briarFrame.scene) {
-                slotSprite.briarFrame.x = cardSprite.x;
-                slotSprite.briarFrame.y = cardSprite.y;
                 slotSprite.briarFrame.setVisible(true);
                 slotSprite.briarFrame.setDepth(this.getInventoryDepths().briarFrame);
             }
             if (slotSprite.webOverlay && slotSprite.webOverlay.scene) {
-                slotSprite.webOverlay.x = cardSprite.x;
-                slotSprite.webOverlay.y = cardSprite.y;
                 slotSprite.webOverlay.setVisible(true);
                 slotSprite.webOverlay.setDepth(this.getInventoryDepths().webOverlay);
-            }
-            // Move twinkle sprite back too
-            if (slotSprite.twinkleSprite && slotSprite.twinkleSprite.scene) {
-                slotSprite.twinkleSprite.x = cardSprite.x;
-                slotSprite.twinkleSprite.y = cardSprite.y;
             }
         }
     },
@@ -962,12 +918,6 @@ export const InventoryCombatUse = {
             if (weaponStillExists() && cardSprite && cardSprite.scene) {
                 cardSprite.x = originalSlot.background.x;
                 cardSprite.y = originalSlot.background.y;
-                
-                const infoText = cardSprite.getData('infoText');
-                if (infoText && infoText.scene) {
-                    infoText.x = cardSprite.x;
-                    infoText.y = cardSprite.y;
-                }
                 cardSprite.setScale(1);
 
                 if (originalSlot.shadow && originalSlot.shadow.scene) {
@@ -978,40 +928,17 @@ export const InventoryCombatUse = {
                 }
 
                 if (originalSlot.hoverSprite && originalSlot.hoverSprite.scene) {
-                    originalSlot.hoverSprite.x = cardSprite.x;
-                    originalSlot.hoverSprite.y = cardSprite.y;
                     originalSlot.hoverSprite.setVisible(false);
                     originalSlot.hoverSprite.stop();
                 }
-                
-                // Move twinkle sprite back too
-                if (originalSlot.twinkleSprite && originalSlot.twinkleSprite.scene) {
-                    originalSlot.twinkleSprite.x = cardSprite.x;
-                    originalSlot.twinkleSprite.y = cardSprite.y;
-                }
 
-                // Restore gem indicator — dragstart hid it when attacking
-                if (originalSlot.gemIndicator && originalSlot.gemIndicator.scene) {
-                    const indicator = originalSlot.gemIndicator;
-                    const spot = gemSpotPosition(cardSprite);
-                    indicator.x = spot.x;
-                    indicator.y = spot.y;
-                    indicator.restX = indicator.x;
-                    indicator.restY = indicator.y;
-                    indicator.setVisible(true);
-                }
-
-                // Snap the thorn frame back onto the card too, or it stays orphaned
-                // on the board where the weapon was dropped to attack.
+                // The riders came home with the card; this only shows them.
+                originalSlot.gemIndicator?.setVisible?.(true);
                 if (originalSlot.briarFrame && originalSlot.briarFrame.scene) {
-                    originalSlot.briarFrame.x = cardSprite.x;
-                    originalSlot.briarFrame.y = cardSprite.y;
                     originalSlot.briarFrame.setVisible(true);
                     originalSlot.briarFrame.setDepth(this.getInventoryDepths().briarFrame);
                 }
                 if (originalSlot.webOverlay && originalSlot.webOverlay.scene) {
-                    originalSlot.webOverlay.x = cardSprite.x;
-                    originalSlot.webOverlay.y = cardSprite.y;
                     originalSlot.webOverlay.setVisible(true);
                     originalSlot.webOverlay.setDepth(this.getInventoryDepths().webOverlay);
                 }

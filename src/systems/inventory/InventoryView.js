@@ -1,4 +1,5 @@
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
+import { cardRiders, pinRider, unpinRider } from '../../ui/CardRiders.js';
 import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from '../../ui/NineSlicePanel.js';
 import { DISCARD_X } from '../../ui/CombatHud.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
@@ -126,6 +127,7 @@ export const InventoryView = {
             this.uiGroup?.add?.(overlay);
             slot.webOverlay = overlay;
             cardSprite.setData('webOverlay', overlay);
+            pinRider(cardSprite, 'web', overlay);
             cardSprite.once('destroy', () => {
                 overlay.destroy();
                 if (slot.webOverlay === overlay) slot.webOverlay = null;
@@ -141,6 +143,7 @@ export const InventoryView = {
         slot.webOverlay.destroy();
         slot.webOverlay = null;
         slot.card?.setData?.('webOverlay', null);
+        if (slot.card) unpinRider(slot.card, 'web');
         this.setCardWebbedInteractive(slotIndex, false);
     },
     setCardWebbedInteractive(slotIndex, webbed) {
@@ -197,40 +200,10 @@ export const InventoryView = {
 
         const slot = this.slotSprites?.[slotIndex];
         const parts = [];
-        const cloneImage = (source, depth) => {
-            if (!source?.texture?.key) return null;
-            const clone = overlayScene.add.image(
-                source.x,
-                source.y,
-                source.texture.key,
-                source.frame?.name
-            )
-                .setOrigin(source.originX ?? 0.5, source.originY ?? 0.5)
-                .setScale(source.scaleX ?? 1, source.scaleY ?? 1)
-                .setRotation(source.rotation || 0)
-                .setAlpha(source.alpha ?? 1)
-                .setDepth(depth);
-            clone.setFlip?.(Boolean(source.flipX), Boolean(source.flipY));
-            if (source.isTinted) {
-                clone.setTint?.(
-                    source.tintTopLeft,
-                    source.tintTopRight,
-                    source.tintBottomLeft,
-                    source.tintBottomRight
-                );
-            }
-            parts.push({
-                clone,
-                offsetX: source.x - cardSprite.x,
-                offsetY: source.y - cardSprite.y
-            });
-            return clone;
-        };
 
-        // The card's pips and value live in its infoText: a container of
-        // images and text (or, for a gem, a lone text). Copied piece by piece,
-        // since Phaser has no clone; without it the card crossed the event
-        // screen bare, its pips left behind under the event in GameScene.
+        // Phaser has no clone, so each piece is rebuilt in the upper scene:
+        // images and sprites by texture and frame, text by its string and
+        // style, containers child by child.
         const cloneDisplay = (source) => {
             if (!source?.scene) return null;
             let clone = null;
@@ -266,7 +239,7 @@ export const InventoryView = {
                 .setVisible(source.visible !== false);
             return clone;
         };
-        const cloneInfo = (source, depth) => {
+        const addPart = (source, depth) => {
             const clone = cloneDisplay(source);
             if (!clone) return;
             clone.setDepth(depth);
@@ -277,16 +250,19 @@ export const InventoryView = {
             });
         };
 
-        // Clone in visual order. The real objects remain visible so Phaser's
-        // drag input cannot be interrupted by hiding its active game object.
-        cloneImage(slot?.shadow, 9998);
-        cloneImage(cardSprite, 10000);
-        cloneInfo(cardSprite.getData?.('infoText'), 10000.5);
-        cloneImage(slot?.gemIndicator?.shadow, 10001);
-        cloneImage(slot?.gemIndicator, 10002);
-        cloneImage(slot?.briarFrame, 10003);
-        cloneImage(slot?.webOverlay, 10004);
-        cloneImage(slot?.twinkleSprite, 10003);
+        // The shadow, the card, then everything riding the card (CardRiders)
+        // in the order it is drawn in the bag. Taking the riders from the card
+        // rather than from a list here is the point: a list was how the pips
+        // went missing over the well — whatever rides the card is copied.
+        // Hidden riders (the hover shine and gem glow are off mid-drag) are
+        // skipped. The real objects stay visible so Phaser's drag input cannot
+        // be interrupted by hiding its active game object.
+        addPart(slot?.shadow, 9998);
+        addPart(cardSprite, 10000);
+        cardRiders(cardSprite)
+            .filter((rider) => rider.visible !== false)
+            .sort((a, b) => (a.depth || 0) - (b.depth || 0))
+            .forEach((rider, i) => addPart(rider, 10001 + i * 0.01));
 
         this.dragOverlay = { cardSprite, parts };
     },
@@ -1366,6 +1342,13 @@ export const InventoryView = {
                         
                         this.uiGroup.add(twinkleSprite);
                         slotSprite.twinkleSprite = twinkleSprite;
+                        // Rides the card from here on, at the slot's centre:
+                        // placed from the slot above, not from a card that may
+                        // still be tweening home.
+                        pinRider(cardSprite, 'twinkle', twinkleSprite, {
+                            dx: slotBackground.x - (cardSprite.getData('originalX') ?? slotBackground.x),
+                            dy: slotBackground.y - (cardSprite.getData('originalY') ?? slotBackground.y),
+                        });
                     }
                 }
             }

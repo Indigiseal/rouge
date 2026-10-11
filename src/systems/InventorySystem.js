@@ -586,63 +586,22 @@ export class InventorySystem {
             }
         });
         
-        // Also move the info text — the container holding the pips and the
-        // value. Same duration, same ease and the same per-frame rounding as
-        // the card above, so the two land on identical whole pixels on every
-        // frame of the drop instead of only at the end.
-        const infoText = cardSprite.getData('infoText');
-        if (infoText && infoText.scene) {
-            this.scene.tweens.add({
-                targets: infoText,
-                x: targetX,
-                y: targetY,
-                duration: 200,
-                ease: 'Power2',
-                onUpdate: () => {
-                    infoText.x = Math.round(infoText.x);
-                    infoText.y = Math.round(infoText.y);
-                }
-            });
-        }
-        
-        // Move shadow back
+        // The pips, value, gem, briar frame and the rest ride the card
+        // (CardRiders), so they travel home with it on every frame of the
+        // tween. They used to be snapped to the slot here at once, so the gem
+        // and the briar frame sat home while the card was still sliding back.
+
+        // The shadow is not a rider: it goes straight back to the slot.
         if (slotSprite.shadow && slotSprite.shadow.scene) {
             slotSprite.shadow.x = targetX;
             slotSprite.shadow.y = targetY + 28;
             slotSprite.shadow.setAlpha(0);
         }
-        
-        // Move hover sprite back
-        if (slotSprite.hoverSprite && slotSprite.hoverSprite.scene) {
-            slotSprite.hoverSprite.x = targetX;
-            slotSprite.hoverSprite.y = targetY;
-        }
 
-        // Move gem effect sprite back
-        if (slotSprite.gemEffectSprite && slotSprite.gemEffectSprite.scene) {
-            slotSprite.gemEffectSprite.x = targetX;
-            slotSprite.gemEffectSprite.y = targetY;
-        }
-
-        // Return gem indicator to its corner
-        if (slotSprite.gemIndicator && slotSprite.gemIndicator.scene) {
-            const indicator = slotSprite.gemIndicator;
-            indicator.x = indicator.restX;
-            indicator.y = indicator.restY;
-            indicator.setVisible(true);
-        }
-
+        slotSprite.gemIndicator?.setVisible?.(true);
         if (slotSprite.briarFrame?.scene) {
-            slotSprite.briarFrame.x = targetX;
-            slotSprite.briarFrame.y = targetY;
             slotSprite.briarFrame.setVisible(true);
             slotSprite.briarFrame.setDepth(this.getInventoryDepths().briarFrame);
-        }
-        
-        // Move twinkle sprite back
-        if (slotSprite.twinkleSprite && slotSprite.twinkleSprite.scene) {
-            slotSprite.twinkleSprite.x = targetX;
-            slotSprite.twinkleSprite.y = targetY;
         }
     }
 
@@ -650,11 +609,9 @@ export class InventorySystem {
         const slotSprite = this.slotSprites?.[slotIndex];
         if (!slotSprite || !cardSprite?.scene) return;
 
-        const infoText = cardSprite.getData?.('infoText');
+        // Only the card hops; its pips, value and shine ride it (CardRiders).
         const hoverSprite = slotSprite.hoverSprite;
-        const parts = [cardSprite, infoText, hoverSprite]
-            .filter(part => part?.scene)
-            .map(part => ({ part, homeY: part.y }));
+        const homeY = cardSprite.y;
 
         if (hoverSprite?.scene) {
             hoverSprite.setVisible(true);
@@ -662,16 +619,14 @@ export class InventorySystem {
         }
 
         this.scene.tweens.add({
-            targets: parts.map(({ part }) => part),
+            targets: cardSprite,
             y: '-=8',
             duration: 120,
             ease: 'Sine.easeOut',
             yoyo: true,
             hold: 30,
             onComplete: () => {
-                parts.forEach(({ part, homeY }) => {
-                    if (part?.scene) part.y = homeY;
-                });
+                if (cardSprite?.scene) cardSprite.y = homeY;
                 if (hoverSprite?.scene) {
                     hoverSprite.stop();
                     hoverSprite.setVisible(false);
