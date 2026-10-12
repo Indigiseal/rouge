@@ -897,6 +897,14 @@ export const CombatHud = {
             if (overChute && this.inventorySystem?.discardEquippedArmor?.(sprite)) {
                 return;   // updateUI has rebuilt the panel; this sprite is gone
             }
+            // Dropped on the bag: take it off into the slot it landed on (or
+            // the first free one), the drag version of the tap below. Works in
+            // shops too, so worn armor can be taken off and sold.
+            const bagSlot = this.findBagSlotUnder(sprite);
+            if (bagSlot !== null && this.inventorySystem?.unequipArmor?.(bagSlot)) {
+                this.time.delayedCall(0, () => { dragging = false; });
+                return;   // updateUI has rebuilt the panel; this sprite is gone
+            }
             moveTo(restX, restY);
             sprite?.setDepth(6);
             riders().forEach((rider) => rider.setDepth(7));
@@ -930,6 +938,19 @@ export const CombatHud = {
             this.armorPanelInfoText = armorCard.infoText;
             this.armorPanelEquippedSprite.setData('infoText', armorCard.infoText);
         }
+    },
+    // The bag slot under a dragged sprite's centre, or -1 when it is over the
+    // bag panel but between slots, or null when it is not over the bag at all.
+    findBagSlotUnder(sprite) {
+        const inv = this.inventorySystem;
+        if (!sprite?.active || !inv?.slotSprites) return null;
+        const { centerX, centerY } = sprite.getBounds();
+        const index = inv.slotSprites.findIndex((slot) => slot?.background?.scene
+            && Phaser.Geom.Rectangle.Contains(slot.background.getBounds(), centerX, centerY));
+        if (index !== -1) return index;
+        const overPanel = (inv.inventoryPanelPieces || []).some((piece) => piece?.scene
+            && Phaser.Geom.Rectangle.Contains(piece.getBounds(), centerX, centerY));
+        return overPanel ? -1 : null;
     },
     updateAmuletsUI() {
         this.amuletUIGroup.clear(true, true);

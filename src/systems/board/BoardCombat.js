@@ -1450,8 +1450,22 @@ function tryApplyBoardGem(card, index) {
             break;
         }
         if (!targetCard) {
-            // Gems never land in an empty inventory slot — only onto a weapon.
-            continue;
+            // An empty slot carries the gem, to socket later. Free, like
+            // taking any other loot off the board; socketing costs the AP.
+            const gem = snapshotHumanRunCard(card.data);
+            if (inventory.addCard(card.data, i)) {
+                // The clink a gem made going into the bag before gems were
+                // socket-only (removed 2026-09-04 with that rule).
+                SoundHelper.playSound(this.scene, 'gem_pickup', 0.5);
+                this.removeCard(index);
+                recordHumanRunEvent(this.scene, 'board_gem_carried', {
+                    sourceBoardIndex: index,
+                    destinationSlot: i,
+                    gem,
+                });
+                return true;
+            }
+            break;
         }
     }
 

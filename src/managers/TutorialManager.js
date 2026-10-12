@@ -453,11 +453,10 @@ export class TutorialManager {
                 eventKey: 'revealed:lightningGem',
                 done: () => this.boardRevealed('lightningGem'),
             },
-            // One step, not two. Gems used to be tapped into the bag and then
-            // dragged out of it onto a weapon; they now go from the board
-            // straight onto the weapon, and tryApplyBoardGem refuses an empty
-            // slot outright — so the old "take it into your inventory" step
-            // could never complete and the tutorial stopped here.
+            // One step, not two: the gem goes from the board straight onto the
+            // sword. A gem dropped into an empty bag slot instead is carried,
+            // and dragging it from the bag onto the sword still completes the
+            // step — done() only checks that the sword holds the gem.
             {
                 textKey: 'ui.tutorial.socketGem',
                 target: () => this.boardSprite('lightningGem'),

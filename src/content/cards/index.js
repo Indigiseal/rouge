@@ -33,7 +33,7 @@ export {
   createArmorCardData,
 } from './armor.js';
 export { TRAPS } from './traps.js';
-export { POTIONS, potionNameForHealAmount } from './potions.js';
+export { POTIONS, potionCardForTier, potionNameForHealAmount, shopPotionCards } from './potions.js';
 export { FOOD, foodNameForActionAmount } from './food.js';
 export { MAGIC, getMagic } from './magic.js';
 export {

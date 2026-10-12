@@ -249,10 +249,8 @@ export class InventorySystem {
     // Modified addCard to use addCardDirect when appropriate
     addCard(cardData, preferredSlot = -1) {
         this.lastAddedSlot = -1;
-        if (cardData?.type === 'gem') {
-            this.scene.createFloatingText(512, 400, 'Drag onto a weapon to socket', 0xffe066);
-            return false;
-        }
+        // Gems can be carried: a gem in the bag is socketed later by dropping
+        // it on a weapon (handleCardDrop). They used to be refused here.
         let emptySlot = preferredSlot !== -1 && this.slots[preferredSlot] === null 
             ? preferredSlot 
             : this.slots.findIndex(slot => slot === null);
@@ -844,11 +842,15 @@ export class InventorySystem {
         return true;
     }
 
-    unequipArmor() {
+    // Take the worn armor off into the bag: into `preferredSlot` when that slot
+    // is empty (the one it was dragged onto), otherwise the first empty one.
+    unequipArmor(preferredSlot = -1) {
         const armor = this.scene.gameState.equippedArmor;
         if (!armor) return false;
 
-        const emptySlot = this.slots.findIndex(slot => slot === null);
+        const emptySlot = this.slots[preferredSlot] === null
+            ? preferredSlot
+            : this.slots.findIndex(slot => slot === null);
         if (emptySlot === -1) {
             this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Inventory Full!', 0xff0000);
             return false;

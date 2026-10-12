@@ -11,6 +11,7 @@ export const ASSET_MANIFEST = [
     { key: 'panelCards', path: 'assets/art/panelCards.png', type: 'image' },
     { key: 'gamingBoard', path: 'assets/art/gamingBoard.png', type: 'image' },
     { key: 'gamingBoard2', path: 'assets/art/gamingBoard2.png', type: 'image' },
+    { key: 'rareShopBoard', path: 'assets/art/rareShopBoard.png', type: 'image' },
     { key: 'gamingBoardSideExtra', path: 'assets/art/gamingBoardSIdewaysExtra.png', type: 'image' },
     { key: 'gamingBoardSideSmall', path: 'assets/art/gamingBoardSIdewaysSmall.png', type: 'spritesheet', frameWidth: 208, frameHeight: 144 },
     // Frame order: 0 rogue, 1 warrior — matches CHARACTER_PORTRAIT_FRAME.
@@ -74,6 +75,7 @@ export const ASSET_MANIFEST = [
     { key: 'villageCardFlip', path: 'assets/art/cardFlip54x86Sheet.png', type: 'spritesheet', frameWidth: 54, frameHeight: 86 },
     { key: 'scrollHandle', path: 'assets/art/scroll.png', type: 'image' },
     { key: 'eventsShops', path: 'assets/art/eventsShops80x80.png', type: 'spritesheet', frameWidth: 80, frameHeight: 80 },
+    { key: 'rareShopSeller', path: 'assets/art/rareShopSeller.png', type: 'image' },
     // Arm Wrestling minigame art (human vs ogre locked hands).
     { key: 'armWrestlingHands', path: 'assets/art/armWrestlingHands.png', type: 'image' },
     // Nest raid minigame. 12 frames of 32x32: frame 0 is the brass cog the

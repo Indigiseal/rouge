@@ -1,5 +1,6 @@
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { cardRiders, pinRider, unpinRider } from '../../ui/CardRiders.js';
+import { hideGemSockets } from '../../ui/GemSockets.js';
 import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from '../../ui/NineSlicePanel.js';
 import { DISCARD_X } from '../../ui/CombatHud.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
@@ -339,6 +340,9 @@ export const InventoryView = {
         this._liveDrag = null;
         this.destroyFireReachIndicator();
         this.destroyWeaponAttackIndicator();
+        // A carried gem's socket hint (see the dragstart in the slot renderer).
+        // Safe when none is up.
+        hideGemSockets(this.scene);
 
         try {
             if (!cardSprite?.scene) return false;

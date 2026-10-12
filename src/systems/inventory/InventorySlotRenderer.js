@@ -3,7 +3,7 @@ import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { gemTierFrame } from '../../content/cards/gems.js';
 import { attachGemShine } from '../../ui/GemShine.js';
-import { GEM_SPOT_KEY, gemSpotPosition } from '../../ui/GemSockets.js';
+import { GEM_SPOT_KEY, gemSpotPosition, showGemSockets } from '../../ui/GemSockets.js';
 import { bindCardRiders, cardRiders, pinRider } from '../../ui/CardRiders.js';
 
 export const InventorySlotRenderer = {
@@ -325,6 +325,13 @@ export const InventorySlotRenderer = {
             // Bring twinkle sprite to front if it exists (above the dragged card)
             if (currentSlot.twinkleSprite) {
                 currentSlot.twinkleSprite.setDepth(dragBaseDepth + 2);
+            }
+
+            // A carried gem lights the empty sockets on the weapons it can go
+            // into, the same hint a gem dragged off the board or the shelf
+            // shows. Taken down in finishInventoryCardDrag.
+            if (this.slots[slotIndex]?.type === 'gem') {
+                showGemSockets(this.scene, this.slots[slotIndex]);
             }
 
             this.createDragOverlay(cardSprite, slotIndex);

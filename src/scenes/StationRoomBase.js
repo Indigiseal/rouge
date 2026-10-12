@@ -14,9 +14,36 @@ import { showItemTooltip, hideItemTooltip, TOOLTIP_DEPTH, STATION_TOOLTIP_GAP } 
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { t } from '../i18n/i18n.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
-import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
+import { bindCardRiders, cardRiders, pinRider } from '../ui/CardRiders.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 import { cameraWorldSize } from '../config/renderScale.js';
+
+// The mark after a price: a coin for coins, a diamond for crystals. Both 7x7,
+// drawn row by row from Taya's assets/art/priceExample.png (one span of filled
+// pixels per row: [first x, width]) in the colours she painted them.
+const PRICE_MARKS = Object.freeze({
+    coins: {
+        key: 'priceMarkCoin',
+        color: 0xd38f34,
+        rows: [[2, 3], [1, 5], [0, 7], [0, 7], [0, 7], [1, 5], [2, 3]],
+    },
+    crystals: {
+        key: 'priceMarkCrystal',
+        color: 0xa83c69,
+        rows: [[3, 1], [2, 3], [1, 5], [0, 7], [1, 5], [2, 3], [3, 1]],
+    },
+});
+const PRICE_MARK_SIZE = 7;
+// Where a seller image stands in the side board's container: its bottom-centre
+// point. The figures on the eventsShops 80x80 frames sit at x 17 with their
+// feet on row 23; the rare shop's seller is placed 15px right and 10px lower
+// than that, by eye.
+const SELLER_X = 17 + 15;
+const SELLER_BOTTOM_Y = 25 + 10;
+// The price tag hangs off the bottom of its card. It sat at +31 from the card's
+// centre, covering 13 of its 18px with the card; PRICE_TAG_DROP lowers it.
+const PRICE_TAG_DROP = 6;
+const PRICE_TAG_Y = 31 + PRICE_TAG_DROP;
 
 export class StationRoomBase extends Phaser.Scene {
     // ─── Inventory station mode ──────────────────────────────────────────────
@@ -97,6 +124,9 @@ export class StationRoomBase extends Phaser.Scene {
         // the 30px art in several languages, and there's no price left to frame.
         button._priceTag?.destroy();
         button._priceTag = null;
+        button._priceCoin?.destroy();
+        button._priceCoin = null;
+        button.x = button._priceCentreX ?? button.x;
         button.setText(label).setStyle({ fill: '#888888' }).removeInteractive();
     }
 
@@ -122,7 +152,9 @@ export class StationRoomBase extends Phaser.Scene {
         // Keep buy cards clear of the inventory bar while the board art can tuck behind it.
         const SHOP_BOARD_BOTTOM = 336;
         const SHOP_BOARD_Y_OFFSET = -20;
-        const cells = boardHelper.buildCompactBrickCluster(n);
+        const cells = this.shopMaxPerRow
+            ? this.buildShopRows(n, this.shopMaxPerRow)
+            : boardHelper.buildCompactBrickCluster(n);
         // The shop owns its own play area and its own tuning. These values are
         // the combat board's former defaults, pinned here so the shop layout
         // stays exactly as drawn while the combat rect moves independently.
@@ -134,11 +166,24 @@ export class StationRoomBase extends Phaser.Scene {
         });
         place.cx -= 46;
         place.cy += SHOP_BOARD_Y_OFFSET;
+        // Room under each row for the price tag, which hangs below its card.
+        // Shared placement caps rows at 75px apart, where a tag's bottom met
+        // the top of the card below — so the tag could not move off its own
+        // card. Rows here are PRICE_TAG_DROP + 1 further apart, and the grid
+        // moves down half the gain so its top row stays put.
+        const rowGain = PRICE_TAG_DROP + 1;
+        const rows = new Set(cells.map(({ r }) => r)).size;
+        place.VSTEP += rowGain;
+        place.cy += (rowGain * (rows - 1)) / 2;
         const boardTexture = this.shopBoardTexture || 'gamingBoard';
         const panel = this.createStationFloorBoardPanel(boardHelper, cells, place, boardTexture);
         if (panel) {
             const panelBottom = panel.y + panel.displayHeight / 2;
             if (panelBottom > SHOP_BOARD_BOTTOM) panel.y -= (panelBottom - SHOP_BOARD_BOTTOM);
+            // A shop's own nudge for its board art, after the clamp so the clamp
+            // cannot undo it. Moves the board only, not the cards on it.
+            panel.y += this.shopBoardOffsetY || 0;
+            if (this.shopBoardBounce) this.playShopBoardBounce(panel);
         }
         this.refreshStationInventoryDisplay();
 
@@ -163,6 +208,76 @@ export class StationRoomBase extends Phaser.Scene {
                 this.syncStationInventoryLayering();
             });
         });
+    }
+
+    // The board rises into place the way the bag and the village boards do:
+    // from a little low, a few pixels past its spot, then settling back. Same
+    // drop, length and overshoot as the bag's entrance (InventoryView), on
+    // whole pixels so the art never smears. It lands before the cards flip
+    // (boardSettleMs above).
+    playShopBoardBounce(panel) {
+        const DROP = 20;
+        const MS = 480;
+        const OVERSHOOT = 2.5;
+        const restY = panel.y;
+        const scene = panel.scene;
+        panel.y = restY + DROP;
+        scene.tweens.addCounter({
+            from: DROP,
+            to: 0,
+            duration: MS,
+            ease: 'Back.easeOut',
+            easeParams: [OVERSHOOT],
+            onUpdate: (tween) => { if (panel.scene) panel.y = restY + Math.round(tween.getValue()); },
+            onComplete: () => { if (panel.scene) panel.y = restY; },
+        });
+    }
+
+    // The currency mark after a price (PRICE_MARKS), drawn once into a texture.
+    // The number and the mark are centred on the tag together, 1px apart; the
+    // label's own centre is kept so "Sold" can go back to it.
+    addPriceMark(scene, priceText, currency) {
+        const mark = PRICE_MARKS[currency === 'crystals' ? 'crystals' : 'coins'];
+        if (!scene.textures.exists(mark.key)) {
+            const g = scene.make.graphics({ x: 0, y: 0, add: false });
+            g.fillStyle(mark.color, 1);
+            mark.rows.forEach(([x, w], y) => g.fillRect(x, y, w, 1));
+            g.generateTexture(mark.key, PRICE_MARK_SIZE, PRICE_MARK_SIZE);
+            g.destroy();
+        }
+        const GAP = 1;
+        const centreX = priceText.x;
+        const textW = Math.round(priceText.width);
+        const left = Math.round(centreX - (textW + GAP + PRICE_MARK_SIZE) / 2);
+        priceText._priceCentreX = centreX;
+        priceText.x = left + Math.round(textW / 2);
+        // Top-left origin on whole pixels: centring an odd-sized image would
+        // put it on a half pixel and smear it.
+        const image = scene.add.image(
+            left + textW + GAP,
+            Math.round(priceText.y) - Math.floor(PRICE_MARK_SIZE / 2),
+            mark.key
+        ).setOrigin(0, 0).setDepth(priceText.depth);
+        priceText._priceCoin = image;
+        return image;
+    }
+
+    // A shop's own row layout: as few rows as `maxPerRow` allows (at least
+    // two), the items split as evenly as they go with any extra on top. Each
+    // row is centred exactly — a row of two sits under the middle of a row of
+    // three — by giving it half-step columns where it needs them. The combat
+    // cluster snaps rows to whole columns, which pushed short rows to the
+    // right. The rare shop uses it for two rows of up to four.
+    buildShopRows(n, maxPerRow) {
+        const rows = Math.max(2, Math.ceil(n / maxPerRow));
+        const base = Math.floor(n / rows);
+        const extra = n % rows;
+        const cells = [];
+        for (let r = 0; r < rows; r++) {
+            const cols = base + (r < extra ? 1 : 0);
+            for (let k = 0; k < cols; k++) cells.push({ r, c: k - (cols - 1) / 2 });
+        }
+        return cells;
     }
 
     createStationFloorBoardPanel(boardHelper, cells, place, textureKey = 'gamingBoard') {
@@ -210,51 +325,24 @@ export class StationRoomBase extends Phaser.Scene {
         }
         sprite.setScale(1);
 
-        // Stat value label — matches what the inventory shows on each card
-        let statValue = '';
-        let statColor = '#ffcf7f';
-        let statX = x + 17;
-        let statY = y + 22;
-        switch (data.type) {
-            case 'weapon':
-                statValue = `${getDisplayedWeaponDamage(
-                    this.gameState?.characterId,
-                    data,
-                    this.gameState?.talentEffects || null
-                )}`;
-                break;
-            case 'armor':
-                statValue = `${data.protection}`;
-                statX = x + 18; statY = y + 25;
-                break;
-            case 'thorns':
-                statValue = `${data.thornDamage}`;
-                statColor = '#9dff7a';
-                break;
-            case 'potion':
-                statValue = `+${data.healAmount}`;
-                statX = x; statY = y + 19;
-                statColor = '#a8e870';
-                break;
-            case 'food':
-                // Bare number, matching the potion above it — 'AP' is gone
-                // from the food cards on the board too.
-                statValue = `+${data.actionAmount}`;
-                statX = x; statY = y + 19;
-                statColor = '#a55119';
-                break;
+        // Pips and value, built by the same code that draws them on a bag
+        // card, so a card reads the same on the shelf as it will in the bag.
+        // The shop used to write its own number here — no pips, and its own
+        // positions and colours. It is drawn in the scene that holds the card
+        // (usually GameScene, under the bag), and rides the card from here on.
+        const cardFx = (renderScene === this.gameScene && this.gameScene.cardSystem) || this.boardHelper;
+        const infoCard = { sprite, data, infoText: null };
+        cardFx?.createCardInfoText?.(infoCard);
+        if (infoCard.infoText) {
+            // Above the price tag (9.5), whose footprint the value slot and the
+            // lower labels overlap.
+            infoCard.infoText.setDepth(10);
+            this.shopBoardObjects.push(infoCard.infoText);
         }
-        // Hoisted so the hover handlers below can lift it with the card face.
-        let statText = null;
-        if (statValue) {
-            statText = renderScene.add.text(statX, statY, statValue, {
-                fontSize: '11px', fill: statColor, fontFamily: '"HoMM Pixel", Arial, sans-serif'
-            }).setOrigin(0.5).setDepth(10);
-            this.shopBoardObjects.push(statText);
-        }
+        bindCardRiders(renderScene, sprite);
 
-        // Price label underneath the card, on a little banner.
-        const glyph = item.currency === 'crystals' ? '◆' : '¢';
+        // Price label underneath the card, on a little banner: the number and
+        // a pixel mark for its currency (it used to be a ¢ or ◆ character).
 
         // The banner is 30px wide — sized for a short numeric price. A sold item
         // has no price to frame, and the localized "Sold" (RU 'Продано') would
@@ -265,20 +353,24 @@ export class StationRoomBase extends Phaser.Scene {
         // this one — a potion's heal sits dead centre at y+19 and a weapon's
         // damage at x+17, so a tag drawn over them would hide the numbers.
         if (!item.purchased && renderScene.textures.exists('priceTag')) {
-            const tag = snapOriginToPixelGrid(renderScene.add.image(x, y + 31, 'priceTag'));
+            const tag = snapOriginToPixelGrid(renderScene.add.image(x, y + PRICE_TAG_Y, 'priceTag'));
             tag.setDepth(9.5);
             entry.priceTag = tag;
             this.shopBoardObjects.push(tag);
         }
 
-        // Tag sits at y+31; the number rides 3px higher so it sits on the tag's
+        // The number rides 3px above the tag's centre so it sits on the tag's
         // face rather than its bottom edge.
-        const priceText = renderScene.add.text(x, y + 28, item.purchased ? t(this, 'ui.shop.sold') : `${item.price}${glyph}`, {
+        const priceText = renderScene.add.text(x, y + PRICE_TAG_Y - 3, item.purchased ? t(this, 'ui.shop.sold') : `${item.price}`, {
             fontSize: '11px',
             fill: item.purchased ? '#888888' : (item.currency === 'crystals' ? '#a83c69' : '#cf8834'),
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         });
         priceText.setOrigin(0.5).setDepth(11);
+        if (!item.purchased) {
+            const mark = this.addPriceMark(renderScene, priceText, item.currency);
+            if (mark) this.shopBoardObjects.push(mark);
+        }
         // markButtonDone() only ever receives this text, so hang the tag off it
         // — that's the one choke point every shop routes a purchase through.
         priceText._priceTag = entry.priceTag || null;
@@ -310,6 +402,7 @@ export class StationRoomBase extends Phaser.Scene {
             // highlight on the card art, not something that washes over the tag.
             hoverSprite.setDepth(9.2);
             this.shopBoardObjects.push(hoverSprite);
+            pinRider(sprite, 'hoverShine', hoverSprite);
         }
 
         if (item.purchased) {
@@ -325,22 +418,18 @@ export class StationRoomBase extends Phaser.Scene {
                 showGemSockets(this, data);
                 sprite.gemShine?.start();
             }
-            // Float card up
+            // Float card up; its value, pips and shine ride it.
             renderScene.tweens.add({ targets: sprite, y: y - 5, duration: 150, ease: 'Power2' });
-            // Lift the on-card stat value with the card face
-            if (statText) renderScene.tweens.add({ targets: statText, y: statY - 5, duration: 150, ease: 'Power2' });
             // Show shadow at original position (card lifts above it)
             if (shadow) {
                 shadow.x = x;
                 shadow.y = y + 28;
                 shadow.setAlpha(0.6);
             }
-            // Show and play shine animation; tween it up with the card
             if (hoverSprite && renderScene.anims?.exists?.('hover_cards_anim')) {
                 hoverSprite.setVisible(true);
                 hoverSprite.setAlpha(1);
                 hoverSprite.play('hover_cards_anim');
-                renderScene.tweens.add({ targets: hoverSprite, y: y - 5, duration: 150, ease: 'Power2' });
             }
             this.showItemTooltip(item.data, sprite.x, sprite.y);
         });
@@ -350,11 +439,9 @@ export class StationRoomBase extends Phaser.Scene {
                 hideGemSockets(this);
                 sprite.gemShine?.stop();
             }
-            // Return card and shine to original position
+            // Return card to original position; its riders come with it.
             renderScene.tweens.add({ targets: sprite, y: y, duration: 150, ease: 'Power2' });
-            if (statText) renderScene.tweens.add({ targets: statText, y: statY, duration: 150, ease: 'Power2' });
             if (hoverSprite) {
-                renderScene.tweens.add({ targets: hoverSprite, y: y, duration: 150, ease: 'Power2' });
                 hoverSprite.setVisible(false);
                 hoverSprite.setAlpha(0);
                 hoverSprite.stop?.();
@@ -363,9 +450,7 @@ export class StationRoomBase extends Phaser.Scene {
             this.hideItemTooltip();
         });
         if (data.type === 'gem') {
-            this.enableShopGemDrag(entry, priceText, {
-                x, y, statText, statY, hoverSprite, shadow,
-            });
+            this.enableShopGemDrag(entry, priceText, { x, y, hoverSprite, shadow });
             return;
         }
         sprite.on('pointerdown', () => {
@@ -375,13 +460,7 @@ export class StationRoomBase extends Phaser.Scene {
             if (item.purchased && !wasPurchased) {
                 renderScene.tweens.killTweensOf(sprite);
                 sprite.y = y;
-                if (statText) {
-                    renderScene.tweens.killTweensOf(statText);
-                    statText.y = statY;
-                }
                 if (hoverSprite) {
-                    renderScene.tweens.killTweensOf(hoverSprite);
-                    hoverSprite.y = y;
                     hoverSprite.setVisible(false);
                     hoverSprite.setAlpha(0);
                     hoverSprite.stop?.();
@@ -396,7 +475,7 @@ export class StationRoomBase extends Phaser.Scene {
 
     enableShopGemDrag(entry, priceText, extras) {
         const { sprite, item } = entry;
-        const { x, y, statText, statY, hoverSprite, shadow } = extras;
+        const { x, y, hoverSprite, shadow } = extras;
         const renderScene = sprite.scene;
         let dragged = false;
 
@@ -434,13 +513,7 @@ export class StationRoomBase extends Phaser.Scene {
                 renderScene.tweens.killTweensOf(sprite);
                 sprite.x = x;
                 sprite.y = y;
-                if (statText) {
-                    renderScene.tweens.killTweensOf(statText);
-                    statText.y = statY;
-                }
                 if (hoverSprite) {
-                    renderScene.tweens.killTweensOf(hoverSprite);
-                    hoverSprite.y = y;
                     hoverSprite.setVisible(false);
                     hoverSprite.setAlpha(0);
                     hoverSprite.stop?.();
@@ -465,6 +538,8 @@ export class StationRoomBase extends Phaser.Scene {
         });
     }
 
+    // The bag slot a shop gem was dropped on: a weapon to socket it into, or
+    // an empty slot to carry it in. -1 for anywhere else.
     findShopGemWeaponSlot(sprite) {
         const inv = this.gameScene?.inventorySystem;
         if (!inv?.slotSprites || !sprite) return -1;
@@ -472,8 +547,9 @@ export class StationRoomBase extends Phaser.Scene {
         const cy = sprite.getBounds().centerY;
         for (let i = 0; i < inv.slotSprites.length; i++) {
             const slotSprite = inv.slotSprites[i];
-            const weapon = inv.slots[i];
-            if (weapon?.type !== 'weapon' || !slotSprite?.background) continue;
+            const target = inv.slots[i];
+            // A weapon socket, or an empty slot to carry the gem in.
+            if ((target && target.type !== 'weapon') || !slotSprite?.background) continue;
             if (Phaser.Geom.Rectangle.Contains(slotSprite.background.getBounds(), cx, cy)) {
                 return i;
             }
@@ -497,12 +573,19 @@ export class StationRoomBase extends Phaser.Scene {
 
         const inv = this.gameScene?.inventorySystem;
         if (!inv?.applyGemToWeapon) return false;
-        if (!inv.applyGemToWeapon(item.data, weaponSlotIndex)) return false;
+        // Onto a weapon it is socketed; into an empty slot it is carried.
+        const carried = inv.slots[weaponSlotIndex] === null;
+        const placed = carried
+            ? inv.addCard(item.data, weaponSlotIndex)
+            : inv.applyGemToWeapon(item.data, weaponSlotIndex);
+        if (!placed) return false;
 
         if (item.currency === 'coins') this.gameState.coins -= item.price;
         else this.gameState.crystals -= item.price;
 
         SoundHelper.playSound(this, 'shop_buy', 0.5);
+        // Carried, it also clinks into the bag, as a gem from the board does.
+        if (carried) SoundHelper.playSound(this, 'gem_pickup', 0.5);
         item.purchased = true;
         recordHumanRunEvent(this, 'shop_item_bought', {
             shop: this.sys?.settings?.key === 'RareShopScene' ? 'rare' : 'regular',
@@ -510,7 +593,7 @@ export class StationRoomBase extends Phaser.Scene {
             item: snapshotHumanRunCard(item.data),
             price: item.price,
             currency: item.currency,
-            socketed: true,
+            socketed: !carried,
         });
         this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
         this.crystalsText?.setText?.(t(this, 'ui.shop.crystals', { amount: this.gameState.crystals }));
@@ -520,7 +603,10 @@ export class StationRoomBase extends Phaser.Scene {
         return true;
     }
 
-    createShopIllustrationBoard(frame = 1, boardFrame = 0, y = 224) {
+    // `sellerKey` swaps the eventsShops frame for a seller drawn as his own
+    // image (the rare shop's). He stands on the frame art's baseline, so a
+    // taller figure grows upward rather than sinking into the board.
+    createShopIllustrationBoard(frame = 1, boardFrame = 0, y = 224, sellerKey = null) {
         if (!this.textures.exists('gamingBoardSideSmall')) return;
         if (this.shopIllustrationBoard) {
             this.shopIllustrationBoard.scene?.tweens?.killTweensOf?.(this.shopIllustrationBoard);
@@ -536,7 +622,10 @@ export class StationRoomBase extends Phaser.Scene {
         const container = targetScene.add.container(targetX - slideDistance, targetY).setDepth(4).setAlpha(0);
         container.add(targetScene.add.image(0, 0, 'gamingBoardSideSmall', boardFrame).setOrigin(0.5));
 
-        if (targetScene.textures.exists('eventsShops')) {
+        if (sellerKey && targetScene.textures.exists(sellerKey)) {
+            // Bottom-centre origin on whole pixels (the art is 56 wide).
+            container.add(targetScene.add.image(SELLER_X, SELLER_BOTTOM_Y, sellerKey).setOrigin(0.5, 1));
+        } else if (targetScene.textures.exists('eventsShops')) {
             container.add(targetScene.add.image(17, -5, 'eventsShops', frame).setOrigin(0.5));
         }
 
@@ -550,40 +639,30 @@ export class StationRoomBase extends Phaser.Scene {
         });
     }
 
+    // Keep the bag above the shop's board, which is drawn into GameScene with
+    // it. The depths come from the bag's own table (station mode: 200 and up);
+    // each piece is also raised in draw order so a tie can never put a shelf
+    // card over a bag card. The pieces riding each card are taken from the
+    // card (CardRiders) — this used to be its own list, and it had no briar
+    // frame or web on it.
     syncStationInventoryLayering() {
         if (!this.stationInventoryLayerActive) return;
         const inv = this.gameScene?.inventorySystem;
         if (!inv) return;
 
+        inv.applyInventoryVisualDepths?.();
         const raise = object => {
             if (!object?.scene) return;
             object.scene.children?.bringToTop?.(object);
         };
-
-        inv.inventoryPanelPieces?.forEach(piece => {
-            piece?.setDepth?.(200);
-            raise(piece);
-        });
+        inv.inventoryPanelPieces?.forEach(raise);
         inv.slotSprites?.forEach(slot => {
-            slot?.background?.setDepth?.(201);
             raise(slot?.background);
-            slot?.shadow?.setDepth?.(202);
             raise(slot?.shadow);
-            slot?.card?.setDepth?.(203);
             raise(slot?.card);
-
-            const infoText = slot?.card?.getData?.('infoText');
-            infoText?.setDepth?.(204);
-            raise(infoText);
-
-            slot?.hoverSprite?.setDepth?.(205);
-            raise(slot?.hoverSprite);
-            slot?.gemEffectSprite?.setDepth?.(206);
-            raise(slot?.gemEffectSprite);
-            slot?.gemIndicator?.setDepth?.(207);
-            raise(slot?.gemIndicator);
-            slot?.twinkleSprite?.setDepth?.(208);
-            raise(slot?.twinkleSprite);
+            cardRiders(slot?.card)
+                .sort((p, q) => (p.depth || 0) - (q.depth || 0))
+                .forEach(raise);
         });
     }
 
@@ -599,24 +678,9 @@ export class StationRoomBase extends Phaser.Scene {
         this.gameScene.time?.delayedCall?.(0, () => this.syncStationInventoryLayering());
     }
 
+    // Back to the combat depths, from the bag's own table.
     restoreGameInventoryLayering() {
-        const inv = this.gameScene?.inventorySystem;
-        if (!inv) return;
-
-        inv.inventoryPanelPieces?.forEach(piece => piece?.setDepth?.(10));
-        inv.slotSprites?.forEach(slot => {
-            slot?.background?.setDepth?.(11);
-            slot?.shadow?.setDepth?.(11);
-            slot?.card?.setDepth?.(12);
-
-            const infoText = slot?.card?.getData?.('infoText');
-            infoText?.setDepth?.(1001);
-
-            slot?.hoverSprite?.setDepth?.(13);
-            slot?.gemEffectSprite?.setDepth?.(14);
-            slot?.gemIndicator?.setDepth?.(15);
-            slot?.twinkleSprite?.setDepth?.(100);
-        });
+        this.gameScene?.inventorySystem?.applyInventoryVisualDepths?.();
     }
 
     // ─── Item tooltip (hover info) ───────────────────────────────────────────

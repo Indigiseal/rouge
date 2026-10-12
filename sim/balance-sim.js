@@ -106,6 +106,7 @@ import {
   createWeaponCardData,
   createArmorCardData,
   getMagic,
+  shopPotionCards,
   weaponDurability,
 } from '../src/content/cards/index.js';
 import {
@@ -2299,7 +2300,7 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs
       for (let i = 0; i < board.length; i++) {
         if (i === targetIndex) continue;
         const card = board[i];
-        if (!(card.data?.type === 'enemy' || card.data?.type === 'boss' || card.data?.type === 'eliteEnemy') || card.data.health <= 0) continue;
+        if (!(card?.data?.type === 'enemy' || card?.data?.type === 'boss' || card?.data?.type === 'eliteEnemy') || card.data.health <= 0) continue;
         const b = card.sprite?.getBounds?.();
         const nearestX = b ? Math.max(b.x, Math.min(tx, b.x + b.width)) : (card.sprite?.x ?? 0);
         const nearestY = b ? Math.max(b.y, Math.min(ty, b.y + b.height)) : (card.sprite?.y ?? 0);
@@ -4032,11 +4033,12 @@ function runShop(mock, gs, inv, floor) {
   const cs = mock.cardSystem;
   const metrics = shopPlanningMetrics(gs);
   if (metrics) metrics.regularVisits++;
-  // Match ShopScene's six coin-priced shelves.
+  // Match ShopScene's seven coin-priced shelves: two potions a tier apart,
+  // then the gear, the spell and the random extra.
   const duplicateTypes = ['weapon', 'weapon', 'weapon', 'magic', 'potion', 'thorns', 'armor', 'food'];
   const duplicateType = duplicateTypes[Math.floor(Math.random() * duplicateTypes.length)];
   const offers = [
-    cs.createCardData('potion', floor),
+    ...shopPotionCards(floor),
     cs.createCardData('weapon', floor),
     cs.createCardData('armor', floor, false, gs),
     cs.createCardData('thorns', floor),

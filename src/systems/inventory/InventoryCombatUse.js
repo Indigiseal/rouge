@@ -17,6 +17,10 @@ import {
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { playSmokeBurst } from '../../ui/SmokeBurst.js';
 import { translateItemName } from '../../i18n/i18n.js';
+import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
+
+// The painted Fireball burst: 4 frames in about a third of a second.
+const FIREBALL_BURST_FPS = 12;
 
 export const InventoryCombatUse = {
     isEnemyBoardCard(card, includeBoss = true) {
@@ -288,15 +292,31 @@ export const InventoryCombatUse = {
         }
     },
     // Visual effects for magic cards
+    // The Fireball spell bursting on its target: Taya's four hand-painted
+    // frames (fireBall1-4: the ball, the burst ring, the flying embers, the
+    // last sparks), played once at native size over the card. It used to be a
+    // plain orange circle drawn in code that grew and faded; the painted
+    // frames were loaded but never shown.
     createFireballEffect(targetSprite) {
-        const fireball = this.scene.add.circle(targetSprite.x, targetSprite.y, 20, 0xff6600);
-        this.scene.tweens.add({
-            targets: fireball,
-            scale: 2,
-            alpha: 0,
-            duration: 500,
-            onComplete: () => fireball.destroy()
-        });
+        const scene = this.scene;
+        const frames = ['fireBall1', 'fireBall2', 'fireBall3', 'fireBall4'];
+        if (!targetSprite?.scene || !frames.every((key) => scene.textures.exists(key))) return;
+        const animKey = 'fireball_spell_burst';
+        if (!scene.anims.exists(animKey)) {
+            scene.anims.create({
+                key: animKey,
+                frames: frames.map((key) => ({ key })),
+                frameRate: FIREBALL_BURST_FPS,
+                repeat: 0,
+            });
+        }
+        const burst = snapOriginToPixelGrid(
+            scene.add.sprite(Math.round(targetSprite.x), Math.round(targetSprite.y), frames[0])
+        ).setDepth((targetSprite.depth || 0) + 5);
+        burst.play(animKey);
+        burst.once('animationcomplete', () => burst.destroy());
+        // In case the complete event is missed (scene paused mid-burst).
+        scene.time.delayedCall(1000, () => burst.active && burst.destroy());
     },
     createSoulDrainEffect(fromSprite, toSprite) {
         const soul = this.scene.add.circle(fromSprite.x, fromSprite.y, 10, 0x9932cc);
