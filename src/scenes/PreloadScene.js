@@ -235,6 +235,8 @@ export class PreloadScene extends Phaser.Scene {
         buildEnemyCardTextures(this, LOCATION_PACK_LIST);
         buildLocationCardTextures(this);
 
+        // The mid-fight sounds load behind the menu (BackgroundAudioScene).
+        this.scene.launch('BackgroundAudioScene');
         this.scene.start('MainMenuScene');
     }
 

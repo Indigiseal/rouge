@@ -362,7 +362,7 @@ export const InventoryCombatUse = {
                 // Blocking does not spend AP; it still wakes the enemy response.
                 this.scene.gameState.blockNextAttack = true;
                 this.scene.scheduleEnemyTurn?.();
-                SoundHelper.playSound(this.scene, 'armor_equip', 0.5);
+                SoundHelper.playVariant(this.scene, 'block_ready', 0.5);
                 this.scene.createFloatingText(
                     this.scene.playerAvatar.x, 
                     this.scene.playerAvatar.y, 

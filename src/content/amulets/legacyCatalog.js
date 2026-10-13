@@ -1,6 +1,8 @@
 // Retired amulet catalog (rarity marked "old" at registry load).
 // Event grants and combat hooks still work; these ids are excluded from offers.
 import { getAmuletAtlasPresentation } from './RelicsOthersAtlas.js';
+import { SoundHelper } from '../../audio/SoundHelper.js';
+import { playRevivalEffect } from '../../ui/RevivalEffect.js';
 
 /** @param {object} mgr AmuletManager instance (bound as `this` for arrow hooks). */
 export function buildLegacyAmuletDefinitions(mgr) {
@@ -44,6 +46,8 @@ export function buildLegacyAmuletDefinitions(mgr) {
                 onLethalDamage: () => {
                     if (this.getAmuletData('invulnerability').usesLeft > 0) {
                         this.getAmuletData('invulnerability').usesLeft--;
+                        SoundHelper.playSound(this.scene, 'revival', 0.55);
+                        playRevivalEffect(this.scene);
                         this.scene.createFloatingText(
                             this.scene.playerAvatar.x,
                             this.scene.playerAvatar.y,

@@ -75,6 +75,17 @@ export function applyAmbushVictoryStory(gameState) {
     return true;
 }
 
+// Rooms that play the battle loop (boss rooms have their own drums).
+const FIGHT_ROOM_TYPES = new Set(['COMBAT', 'ELITE']);
+// The battle loop's track, or null for none. Off while a track that fits is
+// found: normal and elite fights then play nothing of their own, as before
+// the loop was added. Set it back to 'battle_music' (and restore that entry in
+// DEFERRED_AUDIO) to turn it on.
+const BATTLE_MUSIC_KEY = null;
+// Under the boss drums' 0.6: the loop runs every fight and sits beneath the
+// combat sounds rather than with them.
+const BATTLE_MUSIC_VOLUME = 0.45;
+
 export class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
@@ -612,7 +623,7 @@ export class GameScene extends Phaser.Scene {
         this.clearCombatLog();
         this.refreshCombatLogVisibility();
         // Boss floors get their own battle-drums track; everything else is silent.
-        if (this.roomType === 'BOSS') this.startBossMusic(); else this.stopBossMusic();
+        this.syncFightMusic();
         // Reset per-floor amulet flags
         this.gameState.charmingTuneUsed = false;
         this.gameState.twinnedMirrorUsed = false;
@@ -642,8 +653,24 @@ export class GameScene extends Phaser.Scene {
         MusicManager.play(this, 'boss_music', 0.6, 700);
     }
 
+    // The room's fight music: the boss drums in a boss room, the battle loop in
+    // a normal or elite fight, nothing anywhere else. Starting one crossfades
+    // out whatever was playing (MusicManager keeps a single track).
+    syncFightMusic() {
+        if (this.roomType === 'BOSS') {
+            this.startBossMusic();
+        } else if (BATTLE_MUSIC_KEY && FIGHT_ROOM_TYPES.has(this.roomType)) {
+            MusicManager.play(this, BATTLE_MUSIC_KEY, BATTLE_MUSIC_VOLUME, 700);
+        } else {
+            this.stopBossMusic();
+        }
+    }
+
+    // Ends the fight's music, boss drums or battle loop — the name is older
+    // than the battle loop. A no-op when neither is playing.
     stopBossMusic() {
         MusicManager.stopIfPlaying(this, 'boss_music', 600);
+        MusicManager.stopIfPlaying(this, 'battle_music', 600);
     }
 
     // The tutorial's own exit. showNextFloorButton stays shut in tutorial mode
@@ -1396,6 +1423,7 @@ export class GameScene extends Phaser.Scene {
             // keep the floor check as a fallback.
             const isFinalAct = (this.gameState.mapCursor?.act >= 3) || this.gameState.currentFloor >= 45;
             if (isFinalAct) {
+                this.lockInputForRunEnd();
                 this.saveCurrentRun();
                 this.time.delayedCall(1500, () => this.gameWon());
                 return;
@@ -1661,7 +1689,26 @@ export class GameScene extends Phaser.Scene {
         return Number(Boolean(story.latchboxRewardClaimed));
     }
     
+    // The run is won the moment the final boss falls, but the victory screen
+    // waits a beat for the death to play out. Nothing may be done in that beat:
+    // a weapon the boss dropped could be picked up and merged, a potion drunk.
+    // A card already in hand goes back to its slot, any hover tip closes, and
+    // every pointer and key in this scene goes dead until gameWon turns the
+    // pointer back on for the result screen's own buttons.
+    lockInputForRunEnd() {
+        if (this._runEndLocked) return;
+        this._runEndLocked = true;
+        this.inventorySystem?.finishStuckInventoryDrag?.(null, true);
+        this.inventorySystem?.hideCardTooltip?.();
+        this.hidePlayerEffectsTooltip?.();
+        if (this.input) this.input.enabled = false;
+        if (this.input?.keyboard) this.input.keyboard.enabled = false;
+    }
+
     gameWon() {
+        // The result screen is clickable; the rest of the board stays locked
+        // behind its full-screen shade.
+        if (this.input) this.input.enabled = true;
         humanRunRecorder.finishAndDownload(this, 'victory', {
             floor: this.gameState?.currentFloor ?? null,
         });
@@ -1941,7 +1988,7 @@ export class GameScene extends Phaser.Scene {
         this.refreshCombatLogVisibility();
         // Resume/stop boss drums to match the room we woke into (startBossMusic
         // guards against double-play if startNewFloor also fires below).
-        if (this.roomType === 'BOSS') this.startBossMusic(); else this.stopBossMusic();
+        this.syncFightMusic();
 
         // Check if this is actually a new floor/room transition
         const isNewRoom = data?.isNewRoom || false;

@@ -4,6 +4,7 @@ import { t, translateItemName } from '../../i18n/i18n.js';
 import { POISON_RUNE_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../../content/cards/gems.js';
 import { weaponIgnoresFrontline } from '../../content/cards/weapons.js';
 import { SoundHelper } from '../../audio/SoundHelper.js';
+import { enemyDeathSoundKeys } from '../../content/audio/enemyDeathSounds.js';
 import { CombatSequencer } from '../combat/CombatSequencer.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
@@ -645,7 +646,9 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     if (!isReflection && weapon && critChance > 0 && Math.random() < critChance) {
         finalDamage *= 2;
         feedbackCritical = true;
-        this.scene.cameras.main.shake(200, 0.012);
+        // Same shake as a sprung trap (CardSystem), so the board's two jolts
+        // match. It was 200ms at 0.012 — twice as strong and two-thirds longer.
+        this.scene.cameras.main.shake(120, 0.006);
         // Lucky Streak (Fortune Card): a crit can shake loose a coin or crystal.
         const luckyReward = this.scene.amuletManager?.rollLuckyStreakCritReward?.();
         if (luckyReward) this.playKillLootPickup(card.sprite.x, card.sprite.y, luckyReward, 'Lucky');
@@ -1233,7 +1236,15 @@ function removeDefeatedEnemy(index, card) {
         // keeps turning up "once in a while" for the rest of the run you
         // stole her egg (birdAngry stays set until the next run reseeds).
 
-        CombatSequencer.playVariant(this.scene, 'death', 'enemy_death', 0.5);
+        // The enemy's own death sound, else its family's, whichever is loaded
+        // (enemyDeathSounds), else the shared pair every enemy used to make.
+        const deathKey = enemyDeathSoundKeys(card.data)
+            .find((key) => this.scene.cache?.audio?.exists?.(key));
+        if (deathKey) {
+            CombatSequencer.playSound(this.scene, 'death', deathKey, 0.5);
+        } else {
+            CombatSequencer.playVariant(this.scene, 'death', 'enemy_death', 0.5);
+        }
 
         // Process amulet kill effects
         if (this.scene.amuletManager) {
@@ -1386,6 +1397,7 @@ function checkFloorClear() {
         if (bossFloors.includes(currentFloor)) {
             // Check if this is the final floor
             if (currentFloor === 45) {
+                this.scene.lockInputForRunEnd?.();
                 this.scene.time.delayedCall(2500, () => this.scene.gameWon());
             } else {
                 // Boss defeated, continue to next floor

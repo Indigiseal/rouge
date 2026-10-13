@@ -1,5 +1,15 @@
+import { SoundHelper } from '../../audio/SoundHelper.js';
+import { playRevivalEffect } from '../../ui/RevivalEffect.js';
 import { CombatSequencer } from './CombatSequencer.js';
 import { effectiveArmorDodge, effectiveArmorProtection } from './ArmorMath.js';
+
+// An enemy's attack missing the hero, whichever dodge saved them (talent,
+// village Armory, amulet, armour): the same whoosh a hero's swing makes when an
+// enemy slips it. The four dodges used to land in silence, text only.
+function playDodgeWhoosh(scene) {
+    SoundHelper.playVariant(scene, 'dodge_miss', 0.5);
+}
+
 
 /**
  * Rise after a killing blow (temple / Second Wind). Reads villageEffects as
@@ -24,6 +34,10 @@ export function tryLethalRevive(gameState, scene) {
         : (Number(talents.secondWindHealPct) || 0.25);
     gameState.playerHealth = Math.max(1, Math.ceil((gameState.maxHealth || 1) * healPct));
     gameState.revivedThisHit = true;
+    if (scene) {
+        SoundHelper.playSound(scene, 'revival', 0.55);
+        playRevivalEffect(scene);
+    }
     scene?.createFloatingText?.(
         scene.playerAvatar?.x ?? 0,
         scene.playerAvatar?.y ?? 0,
@@ -82,6 +96,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     if (!isPoison && talentDodge > 0 && Math.random() < talentDodge) {
         if (gameState.equippedArmor) gameState.tickEquippedArmorDurability();
         scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Shadow Step!', 0x88ffcc);
+        playDodgeWhoosh(scene);
         return {
             actualDamage: 0, tookDamage: false, blockedDamage: 0,
             dodgedDamage: Math.max(0, amount || 0), dodged: true,
@@ -92,6 +107,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     if (!isPoison && villageDodge > 0 && Math.random() < villageDodge) {
         if (gameState.equippedArmor) gameState.tickEquippedArmorDurability();
         scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Armory!', 0x88c0ff);
+        playDodgeWhoosh(scene);
         return {
             actualDamage: 0, tookDamage: false, blockedDamage: 0,
             dodgedDamage: Math.max(0, amount || 0), dodged: true,
@@ -102,6 +118,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     if (scene.amuletManager && scene.amuletManager.checkDodge()) {
         if (gameState.equippedArmor && !isPoison) gameState.tickEquippedArmorDurability();
         scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodged!', 0x00ff00);
+        playDodgeWhoosh(scene);
         return {
             actualDamage: 0,
             tookDamage: false,
@@ -130,6 +147,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         const armorDodge = effectiveArmorDodge(gameState, gameState.equippedArmor);
         if (armorDodge > 0 && Math.random() < armorDodge) {
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodge!', 0x00ff00);
+            playDodgeWhoosh(scene);
             if (!isPoison) gameState.tickEquippedArmorDurability();
             return {
                 actualDamage: 0,

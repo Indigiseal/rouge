@@ -27,3 +27,11 @@ assets/_masters/
 # Taya's personal art scratch folder. Sources, layer dumps, half-finished
 # sprites — never meant to ship or be reviewed.
 assets/art/wip/
+
+# ElevenLabs sound takes to audition (tools/generate-death-sounds.mjs). Only the
+# chosen ones are copied into assets/music/ and committed.
+assets/_sfx_takes/
+
+# Audio the game no longer loads, kept to reach for later: alternate music,
+# the old shared family death sounds, retired clicks. Not shipped, not loaded.
+assets/_archive/

@@ -1,4 +1,5 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { armorEquipSoundKey } from '../content/audio/armorSounds.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { buildStartingWeaponCards } from '../content/characters/CharacterClasses.js';
 import { CardDataGenerator } from './loot/CardDataGenerator.js';
@@ -729,7 +730,7 @@ export class InventorySystem {
             result: snapshotHumanRunCard(upgradedArmor),
         });
 
-        SoundHelper.playSound(this.scene, 'armor_equip', 0.6);
+        SoundHelper.playSound(this.scene, armorEquipSoundKey(this.scene, upgradedArmor), 0.6);
         this.scene.createFloatingText(
             this.scene.playerAvatar.x,
             this.scene.playerAvatar.y,
@@ -792,7 +793,7 @@ export class InventorySystem {
             armor: snapshotHumanRunCard(armorData),
             swappedToInventory: snapshotHumanRunCard(previouslyEquipped),
         });
-        SoundHelper.playSound(this.scene, 'armor_equip', 0.6);
+        SoundHelper.playSound(this.scene, armorEquipSoundKey(this.scene, armorData), 0.6);
         
         this.scene.createFloatingText(
             this.scene.playerAvatar.x, 
@@ -865,7 +866,7 @@ export class InventorySystem {
             armor: snapshotHumanRunCard(armor),
         });
 
-        SoundHelper.playSound(this.scene, 'armor_equip', 0.5);
+        SoundHelper.playSound(this.scene, armorEquipSoundKey(this.scene, armor), 0.5);
         this.scene.createFloatingText(
             this.scene.playerAvatar.x,
             this.scene.playerAvatar.y,

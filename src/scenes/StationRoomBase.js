@@ -44,6 +44,8 @@ const SELLER_BOTTOM_Y = 25 + 10;
 // centre, covering 13 of its 18px with the card; PRICE_TAG_DROP lowers it.
 const PRICE_TAG_DROP = 6;
 const PRICE_TAG_Y = 31 + PRICE_TAG_DROP;
+// Extra pixels between neighbouring shop cards, on top of the shared spacing.
+const SHOP_SPREAD_X = 8;
 
 export class StationRoomBase extends Phaser.Scene {
     // ─── Inventory station mode ──────────────────────────────────────────────
@@ -174,6 +176,13 @@ export class StationRoomBase extends Phaser.Scene {
         const rowGain = PRICE_TAG_DROP + 1;
         const rows = new Set(cells.map(({ r }) => r)).size;
         place.VSTEP += rowGain;
+        // And a little more air between cards in a row, in both shops: the
+        // shared placement packs them 62-65px apart, near touching. The grid
+        // grows to the left only — the rightmost card stays put, so the shelf
+        // does not spread further over the seller's board on the right.
+        const widest = Math.max(...cells.map(({ c }) => c)) - Math.min(...cells.map(({ c }) => c));
+        place.HSTEP += SHOP_SPREAD_X;
+        place.cx -= (SHOP_SPREAD_X * widest) / 2;
         place.cy += (rowGain * (rows - 1)) / 2;
         const boardTexture = this.shopBoardTexture || 'gamingBoard';
         const panel = this.createStationFloorBoardPanel(boardHelper, cells, place, boardTexture);

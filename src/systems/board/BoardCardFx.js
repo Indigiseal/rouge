@@ -1211,6 +1211,7 @@ function mimicEscape(index) {
     const x = card.sprite.x;
     const y = card.sprite.y;
     this.scene.createFloatingText(x, y - 20, 'Mimic Escaped!', 0xff6600);
+    SoundHelper.playSound(this.scene, 'mimic_escaped', 0.5);
 
     const splash = this.scene.add.sprite(x, y, 'splashSheet');
     if (this.scene.anims.exists('splash_anim')) splash.play('splash_anim');
