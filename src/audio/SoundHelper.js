@@ -1,4 +1,5 @@
 import { normalizeVolumeSettings } from './VolumeSettings.js';
+import { isEnemyDeathSoundKey } from '../content/audio/enemyDeathSounds.js';
 
 export class SoundHelper {
     // Named groups of interchangeable SFX variants. playVariant() picks one at
@@ -8,6 +9,9 @@ export class SoundHelper {
         card_place: ['card_place_1', 'card_place_2', 'card_place_3', 'card_place_4'],
         lightning_zap: ['lightning_zap_1', 'lightning_zap_2', 'lightning_zap_3'],
         enemy_death: ['enemy_death_1', 'enemy_death_2'],
+        block_hit: ['block_hit_1', 'block_hit_2'],
+        block_ready: ['block_ready_1', 'block_ready_2'],
+        thorns_retaliate: ['thorns_retaliate_1', 'thorns_retaliate_2'],
         hover_button: ['hover_button_1'],
         dodge_miss: ['dodge_miss_1', 'dodge_miss_2', 'dodge_miss_3'],
         map_select: ['map_select_3'],
@@ -237,7 +241,9 @@ export class SoundHelper {
             this._activeSfx.push({
                 sound,
                 key: soundKey,
-                protected: this.SFX_PROTECTED.has(soundKey)
+                // Every enemy death sound (death_*, see enemyDeathSounds) keeps
+                // its full tail, like the shared pair above.
+                protected: this.SFX_PROTECTED.has(soundKey) || isEnemyDeathSoundKey(soundKey)
             });
 
             sound.once?.('complete', cleanup);
@@ -325,17 +331,29 @@ export class SoundHelper {
         this.cancelFade(music);
 
         let fallbackTimer = null;
-        const hardStop = () => {
+        const hardStop = (fromTimer = false) => {
             if (fallbackTimer !== null) {
                 clearTimeout(fallbackTimer);
                 fallbackTimer = null;
+            }
+            // From the timer, the fade may still be alive: a scene that sleeps
+            // right after starting it (a fight handing over to the map) pauses
+            // its tweens, so the fade freezes mid-way while this timer, which
+            // is not a tween, still fires. Left alone, the frozen fade resumes
+            // when the scene wakes and writes volume to the sound destroyed
+            // below, and Phaser's volume setter throws on the null gain node.
+            // So it is killed first. From the fade's own onComplete it has
+            // already finished, and is left for the tween manager to retire.
+            if (fromTimer) {
+                this.cancelFade(music);
+                try { scene?.tweens?.killTweensOf?.(music); } catch (_) {}
             }
             music._rogueFadeTween = null;
             try { music.stop(); } catch (_) {}
             try { music.destroy(); } catch (_) {}
         };
 
-        fallbackTimer = setTimeout(hardStop, Math.max(0, fadeMs) + 120);
+        fallbackTimer = setTimeout(() => hardStop(true), Math.max(0, fadeMs) + 120);
 
         if (scene?.tweens && music.isPlaying) {
             music._rogueFadeTween = scene.tweens.add({
@@ -343,10 +361,10 @@ export class SoundHelper {
                 volume: 0,
                 duration: fadeMs,
                 ease: 'Linear',
-                onComplete: hardStop
+                onComplete: () => hardStop(false)
             });
         } else {
-            hardStop();
+            hardStop(false);
         }
     }
 }

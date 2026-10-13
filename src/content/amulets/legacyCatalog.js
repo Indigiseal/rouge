@@ -1,6 +1,8 @@
 // Retired amulet catalog (rarity marked "old" at registry load).
 // Event grants and combat hooks still work; these ids are excluded from offers.
 import { getAmuletAtlasPresentation } from './RelicsOthersAtlas.js';
+import { SoundHelper } from '../../audio/SoundHelper.js';
+import { playRevivalEffect } from '../../ui/RevivalEffect.js';
 
 /** @param {object} mgr AmuletManager instance (bound as `this` for arrow hooks). */
 export function buildLegacyAmuletDefinitions(mgr) {
@@ -44,6 +46,8 @@ export function buildLegacyAmuletDefinitions(mgr) {
                 onLethalDamage: () => {
                     if (this.getAmuletData('invulnerability').usesLeft > 0) {
                         this.getAmuletData('invulnerability').usesLeft--;
+                        SoundHelper.playSound(this.scene, 'revival', 0.55);
+                        playRevivalEffect(this.scene);
                         this.scene.createFloatingText(
                             this.scene.playerAvatar.x,
                             this.scene.playerAvatar.y,
@@ -506,6 +510,31 @@ export function buildLegacyAmuletDefinitions(mgr) {
                 ...getAmuletAtlasPresentation('lightningRune'),
                 description: 'Zap hits one extra enemy.',
                 rarity: 'rare'
+            },
+
+            // Story amulet from The Lost Porter (Silkdeep). Never offered in
+            // shops or drops. While held, each act's map shows a secret room
+            // on a purple branch (map/HiddenPaths.js).
+            porterMap: {
+                ...getAmuletAtlasPresentation('porterMap'),
+                name: "Porter's Map",
+                description: 'Marks a secret floor in every act.',
+                rarity: 'rare'
+            },
+
+            // Story upgrade of the common Hand Mirror (currentCatalog), from The
+            // Mirror Twin. Reflects the first damaging enemy attack of every fight back at
+            // the attacker: full damage, melee or ranged, bosses included, and
+            // the player takes none. Recharges at the start of the next fight.
+            twinnedMirror: {
+                ...getAmuletAtlasPresentation('twinnedMirror'),
+                name: 'Twinned Mirror',
+                description: 'Reflects the first enemy attack each fight back at the attacker. You take no damage.',
+                rarity: 'rare',
+                reflectFirstAttack: true,
+                replaces: ['handMirror'],
+                // The HUD greys the icon out once it has been used this fight.
+                isSpent: () => Boolean(this.gameState.twinnedMirrorUsed),
             }
         
         };

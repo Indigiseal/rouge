@@ -8,6 +8,10 @@ import { createOptionsCog } from './OptionsCog.js';
 import { setHoverLight } from './HoverLight.js';
 import { looseGemCard } from '../content/cards/gems.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+
+// The coin flying from the coin counter to a thief (playCoinStealFlight).
+const STEAL_FLIGHT_MS = 520;
+const STEAL_FLIGHT_ARC = 40;
 import { devToolsEnabled } from '../config/DevTools.js';
 import { t, tCount, translateDescription, translateItemName } from '../i18n/i18n.js';
 import {
@@ -75,6 +79,16 @@ export const CombatHud = {
             );
             this.playerPortrait.setDepth(3);
         }
+        // Hover the portrait for everything affecting the hero. Not while a
+        // card is being dragged across it to drink or eat: that is a drop,
+        // not a look.
+        const portraitHover = this.playerPortrait || this.playerAvatar;
+        portraitHover.setInteractive();
+        portraitHover.on('pointerover', () => {
+            if (this.inventorySystem?._liveDrag) return;
+            this.showPlayerEffectsTooltip();
+        });
+        portraitHover.on('pointerout', () => this.hidePlayerEffectsTooltip());
         // Health orb, overlapping the lower-right of the avatar frame. Depth 4/5
         // puts it above both the frame (2) and the portrait (3) — on default
         // depth it was drawing behind the portrait art.
@@ -722,6 +736,50 @@ export const CombatHud = {
         this.updateRelicsUI();
         this.updatePlayerEffectsUI();
     },
+    // A thief's take, shown: one spinning coin (coinAnimation20x24, the same
+    // coin as the HUD counter) leaves the coin counter, arcs up and over to the
+    // thief and vanishes into it, with the coin sound. One coin per steal,
+    // whatever the amount — the "-N coins stolen!" text says how many.
+    playCoinStealFlight(toSprite) {
+        const from = this.coinSprite;
+        if (!from?.scene || !toSprite?.scene || !this.textures.exists('coinAnimSheet')) return;
+        const SPIN = 'coin_steal_spin';
+        if (!this.anims.exists(SPIN)) {
+            this.anims.create({
+                key: SPIN,
+                frames: this.anims.generateFrameNumbers('coinAnimSheet', { start: 0, end: 5 }),
+                frameRate: 14,
+                repeat: -1,
+            });
+        }
+        SoundHelper.playVariant(this, 'coin_collect', 0.5);
+        const start = { x: Math.round(from.x), y: Math.round(from.y) };
+        const end = { x: Math.round(toSprite.x), y: Math.round(toSprite.y) };
+        // The arc's high point: above the higher end, halfway across.
+        const peak = {
+            x: (start.x + end.x) / 2,
+            y: Math.min(start.y, end.y) - STEAL_FLIGHT_ARC,
+        };
+        const coin = this.add.sprite(start.x, start.y, 'coinAnimSheet', 0).setDepth(1000);
+        coin.play(SPIN);
+        this.tweens.addCounter({
+            from: 0,
+            to: 1,
+            duration: STEAL_FLIGHT_MS,
+            ease: 'Sine.easeIn',
+            onUpdate: (tween) => {
+                const p = tween.getValue();
+                const q = 1 - p;
+                // Quadratic curve through the peak, on whole pixels.
+                coin.x = Math.round(q * q * start.x + 2 * q * p * peak.x + p * p * end.x);
+                coin.y = Math.round(q * q * start.y + 2 * q * p * peak.y + p * p * end.y);
+                // Fades into the thief over the last quarter.
+                coin.setAlpha(p < 0.75 ? 1 : (1 - p) * 4);
+            },
+            onComplete: () => coin.destroy(),
+        });
+    },
+
     playCoinAnimation() {
         // Play the coin spin animation only (no scaling effects)
         this.coinSprite.play('coin_spin_anim');
@@ -897,6 +955,14 @@ export const CombatHud = {
             if (overChute && this.inventorySystem?.discardEquippedArmor?.(sprite)) {
                 return;   // updateUI has rebuilt the panel; this sprite is gone
             }
+            // Dropped on the bag: take it off into the slot it landed on (or
+            // the first free one), the drag version of the tap below. Works in
+            // shops too, so worn armor can be taken off and sold.
+            const bagSlot = this.findBagSlotUnder(sprite);
+            if (bagSlot !== null && this.inventorySystem?.unequipArmor?.(bagSlot)) {
+                this.time.delayedCall(0, () => { dragging = false; });
+                return;   // updateUI has rebuilt the panel; this sprite is gone
+            }
             moveTo(restX, restY);
             sprite?.setDepth(6);
             riders().forEach((rider) => rider.setDepth(7));
@@ -930,6 +996,19 @@ export const CombatHud = {
             this.armorPanelInfoText = armorCard.infoText;
             this.armorPanelEquippedSprite.setData('infoText', armorCard.infoText);
         }
+    },
+    // The bag slot under a dragged sprite's centre, or -1 when it is over the
+    // bag panel but between slots, or null when it is not over the bag at all.
+    findBagSlotUnder(sprite) {
+        const inv = this.inventorySystem;
+        if (!sprite?.active || !inv?.slotSprites) return null;
+        const { centerX, centerY } = sprite.getBounds();
+        const index = inv.slotSprites.findIndex((slot) => slot?.background?.scene
+            && Phaser.Geom.Rectangle.Contains(slot.background.getBounds(), centerX, centerY));
+        if (index !== -1) return index;
+        const overPanel = (inv.inventoryPanelPieces || []).some((piece) => piece?.scene
+            && Phaser.Geom.Rectangle.Contains(piece.getBounds(), centerX, centerY));
+        return overPanel ? -1 : null;
     },
     updateAmuletsUI() {
         this.amuletUIGroup.clear(true, true);
@@ -1054,6 +1133,8 @@ export const CombatHud = {
 
             const amuletSprite = this.add.image(x, y, spriteKey, spriteFrame).setInteractive();
             amuletSprite.setDepth(22);
+            // Once-per-fight amulets (Twinned Mirror) fade out after they fire.
+            if (def?.isSpent?.()) amuletSprite.setTint(0x6f6f6f).setAlpha(0.55);
             this.amuletUIGroup.add(amuletSprite);
 
             if (def?.activeAbility) {
@@ -1248,10 +1329,50 @@ export const CombatHud = {
         this.armorTooltip = this.add.container(tooltipX, tooltipY, [bg, tooltipText]);
         this.armorTooltip.setDepth(1000);
     },
-    updatePlayerEffectsUI() {
-        this.playerEffectsUIGroup.clear(true, true);
-
-        // Build a unified list of effects to display (debuffs + buffs + relic counters)
+    // Hovering the hero's portrait lists every effect on them: a title, then
+    // one line per effect in its own colour (collectPlayerEffectEntries), or a
+    // quiet "No active effects". Same panel skin as the armour tooltip.
+    showPlayerEffectsTooltip() {
+        this.hidePlayerEffectsTooltip();
+        const anchor = this.playerAvatar;
+        if (!anchor?.scene) return;
+        const entries = this.collectPlayerEffectEntries();
+        const style = (fill) => ({
+            fontSize: TOOLTIP_BODY_PX,
+            fill,
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            wordWrap: { width: 150 },
+        });
+        const lines = [
+            this.add.text(0, 0, t(this, 'ui.hud.effectsTitle'), style(TOOLTIP_TEXT_COLOR)),
+            ...(entries.length
+                ? entries.map((entry) => this.add.text(0, 0, entry.text, style(entry.color)))
+                : [this.add.text(0, 0, t(this, 'ui.hud.noEffects'), style('#9a8f86'))]),
+        ];
+        const LINE_GAP = 2;
+        let y = TOOLTIP_PAD.top;
+        let textWidth = 0;
+        lines.forEach((line) => {
+            line.setOrigin(0, 0).setPosition(TOOLTIP_PAD.x, y);
+            y += Math.ceil(line.height) + LINE_GAP;
+            textWidth = Math.max(textWidth, Math.ceil(line.width));
+        });
+        const width = textWidth + TOOLTIP_PAD.x * 2;
+        const height = y - LINE_GAP + TOOLTIP_PAD.bottom;
+        const bg = createTooltipPanel(this, width, height);
+        // To the right of the portrait, level with its top.
+        const x = Math.round(anchor.x + anchor.displayWidth / 2 + 6);
+        const top = Math.round(anchor.y - anchor.displayHeight / 2);
+        this.playerEffectsTooltip = this.add.container(x, top, [bg, ...lines]).setDepth(1000);
+    },
+    hidePlayerEffectsTooltip() {
+        this.playerEffectsTooltip?.destroy();
+        this.playerEffectsTooltip = null;
+    },
+    // Every effect on the hero right now, as { text, color } lines: debuffs,
+    // spell buffs, relic counters. The strip beside the armour slot and the
+    // portrait's hover tooltip both draw from this, so they always agree.
+    collectPlayerEffectEntries() {
         const entries = [];
 
         // --- Debuffs / status effects from playerEffects array ---
@@ -1323,6 +1444,14 @@ export const CombatHud = {
             entries.push({ text: t(this.scene, 'ui.hud.blockNextAttack'), color: '#88ccff' });
         }
 
+        // --- Hits that linger as a flag rather than a playerEffects entry ---
+        if ((gs.playerStunnedTurns || 0) > 0) {
+            entries.push({ text: t(this.scene, 'ui.hud.stunned'), color: '#ffcc66' });
+        }
+        if (gs.playerSpored) {
+            entries.push({ text: t(this.scene, 'ui.hud.spored'), color: '#b8e986' });
+        }
+
         // --- Relic-driven counters ---
         if ((gs.discardCritChance || 0) > 0) {
             const percent = Math.round(gs.discardCritChance * 100);
@@ -1344,6 +1473,12 @@ export const CombatHud = {
                 }
             }
         }
+
+        return entries;
+    },
+    updatePlayerEffectsUI() {
+        this.playerEffectsUIGroup.clear(true, true);
+        const entries = this.collectPlayerEffectEntries();
 
         entries.forEach((entry, i) => {
             // Statuses belong to the equipped hero kit, not to the discard

@@ -91,7 +91,7 @@ const INTRO_STAGE_OF_LAYER = Object.freeze({
   villageThorn: 'rail',
 });
 const INTRO_DROP = 24;           // how far below the rest spot each group starts
-const INTRO_MS = 520;
+const INTRO_MS = 360;
 // Fade-in over the start of the rise, per group. The wood and the rail are
 // close in colour to the backdrop and get away with a quick fade; the grey
 // metal over brown, carrying every card, popped at that speed, so it fades
@@ -100,9 +100,11 @@ const INTRO_FADE_MS = Object.freeze({ wood: 100, metal: 220, rail: 160 });
 // Every group waits at this opacity, below its spot, until its start, then
 // fades the rest of the way up as it rises.
 const INTRO_FADE_FROM = 0.7;
-// When each group starts. The metal starts a touch early so it rises while the
-// wood is still arriving; the rail keeps its old 400ms start.
-const INTRO_START_MS = Object.freeze({ wood: 0, metal: 150, rail: 400 });
+// When each group starts: one even step apart, top to bottom, so each starts
+// rising while the one above is still arriving. The rail used to wait until
+// 400ms and came in visibly late.
+const INTRO_STEP_MS = 100;
+const INTRO_START_MS = Object.freeze({ wood: 0, metal: INTRO_STEP_MS, rail: INTRO_STEP_MS * 2 });
 // Back ease strength. Over a short drop Phaser's default (1.70158) overshoots
 // by only ~2px; 2.5 runs ~19% of the drop past the spot, about 4-5px.
 const INTRO_OVERSHOOT = 2.5;

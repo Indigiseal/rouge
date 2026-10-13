@@ -597,3 +597,155 @@ The nearest cocoon does not open when you cut it — it resists, tough as wet le
 The fireball takes the chamber in one breath.
 
 Silk blackens. Cocoons split and collapse. When the smoke thins, three scorched prizes lie open on the stone — and nothing moves to claim them.
+
+## The Lost Porter
+
+A side corridor of the palace has gone white with old web. Halfway along it, a man hangs upside down, wrapped to the armpits like a parcel nobody came back for.
+
+He is holding a frying pan. A full pack hangs from his shoulders, pots and rope and a rolled map sticking out of the top.
+
+"Oh! Hello!" he says. "Have you seen my party? We got separated. They told me to hold the rope while they scouted ahead. So I held it."
+
+He lifts the end of the rope for you to see. It has been cut clean through.
+
+"Must have snapped. Spiders, probably." He thinks about it. "Anyway, I think I'm lost."
+
+### Choice: Give him your armor
+
+You cut him down and help him into your spare armor. It is far too big for him. The helmet turns when he turns his head, a little after.
+
+"It's like wearing a house," he says happily, and knocks on his own chest.
+
+### Choice: Give him your weapon
+
+You cut him down and put a weapon in his hands. He holds it like a broom.
+
+"I'll just wave it if anything's scary," he says. "Things don't like being waved at. I bet."
+
+### Choice: Heal him
+
+You cut him down. The web has left a red rash up both arms, and he has been hanging long enough to go a little purple.
+
+You hand him a potion. He drinks it, blinks twice, and bounces on his toes.
+
+"Oh, that's much better. That's like breakfast."
+
+### Choice: Point the way and walk on
+
+You cut him down and point back down the corridor, the way you came.
+
+"That way's safe. I already cleared it."
+
+He shakes your hand with both of his. "You're very kind. Everyone in this place is so kind."
+
+### Shared result — The map
+
+He looks back down the corridor. Nothing moves in it. You made sure of that.
+
+"I don't think I'm cut out for adventuring," he says. "Ma said so. I'm going home."
+
+He pulls the rolled map out of his pack and presses it into your hands.
+
+"Here. I won't need this where I'm going. I only carried it because I carry everything."
+
+You unroll it. Most of it is what you have already walked. But in one corner, in faded ink, a passage is marked that you have never seen. It is drawn in a different hand from the rest.
+
+When you look up, he is already clanking away down the cleared corridor, humming, frying pan first.
+
+## Voices Around the Corner
+
+You hear them before you see them. Three voices, low and angry, somewhere just past the next turn.
+
+"You had the map."
+
+"No, HE had the map. He carries everything. That was the whole point of him."
+
+"So go back and get it."
+
+"Past the spider? You go back."
+
+"We didn't lose him. We left him. That's different."
+
+"Not to the map, it isn't."
+
+A pause. Somebody kicks a pebble.
+
+"...He'll be fine. He was always lucky. Lucky and stupid."
+
+"Mostly stupid."
+
+### Choice: Sneak past
+
+You keep to the far wall and step only on the silk, where it swallows the sound.
+
+They are still arguing when you reach the next room. They never look up.
+
+### Choice: Confront them
+
+You step around the corner. Three adventurers, three hands going to three weapons, and then, when they see you are alone, three shoulders relaxing.
+
+"Your porter is fine," you say. "He thinks he got lost."
+
+Nobody says anything for a moment. They look at their boots.
+
+"...Good," the leader mutters at last. "Good for him."
+
+### Choice: Give them back the map
+
+You hold out the map. The leader snatches it, checks it, and tucks it away in one smooth motion, as if it had never left.
+
+Then he pats you on the shoulder. Twice. The way you pat a dog that brought back a stick.
+
+"Decent of you," he says. "Very decent. Off you go, then."
+
+They walk away arguing about whose turn it is to carry the pots.
+
+## The Mirror Twin
+
+At last, a quiet corner. You sit down and close your eyes.
+
+When you open them, someone is sitting across from you. You. Almost. His face is the wrong way round.
+
+You scratch your nose. He scratches his nose. You turn away. He is already there, two fingers from your face.
+
+"..." you say.
+
+"..." he says, louder.
+
+### Choice: Give him a shard
+
+He holds the shard up to the light. Another face looks back at him, and he forgets you completely.
+
+#### Choice: Sneak away
+
+You don't breathe. You lift your pack one finger at a time and step backward. Then again.
+
+One more step. The floor isn't there.
+
+You land on old rugs and a pack gone grey with dust. Decades old, maybe. A note: "Day 4. Mirror man STILL here. Going to try sneaking away. Don't look back."
+
+Under it lies an amulet. You take it, climb out the far side, and don't look back.
+
+### Choice: Give him the Gemseeker's Lens
+
+A magnifying glass is even better: his face, but enormous. He presses his nose to it and is lost.
+
+#### Choice: Sneak away
+
+Same ending as the shard: the pit, the old belongings, the note, the amulet.
+
+### Choice: Give him the Hand Mirror
+
+He looks into the mirror. Another him looks back. He leans closer. So does the other one.
+
+Closer.
+
+Shlup.
+
+You pick the mirror up. Your reflection isn't there. He is, pressed flat against the glass, looking delighted.
+
+### Choice: Try to out-stare him
+
+You lose. He wins so hard he does a little victory dance, which you also have to watch.
+
+Eventually he wanders off, still dancing. You do not get your rest.

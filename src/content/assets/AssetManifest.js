@@ -4,6 +4,9 @@
 
 /** @typedef {{ key: string, path: string, type: 'image'|'spritesheet'|'audio'|'bitmapFont', frameWidth?: number, frameHeight?: number, xmlPath?: string }} AssetEntry */
 
+import { ENEMY_DEATH_SOUND_ASSETS } from '../audio/enemyDeathSounds.js';
+import { ARMOR_EQUIP_SOUND_ASSETS } from '../audio/armorSounds.js';
+
 /** @type {AssetEntry[]} */
 export const ASSET_MANIFEST = [
     { key: 'stoneFloor', path: 'assets/art/dungeon.png', type: 'image' },
@@ -11,6 +14,7 @@ export const ASSET_MANIFEST = [
     { key: 'panelCards', path: 'assets/art/panelCards.png', type: 'image' },
     { key: 'gamingBoard', path: 'assets/art/gamingBoard.png', type: 'image' },
     { key: 'gamingBoard2', path: 'assets/art/gamingBoard2.png', type: 'image' },
+    { key: 'rareShopBoard', path: 'assets/art/rareShopBoard.png', type: 'image' },
     { key: 'gamingBoardSideExtra', path: 'assets/art/gamingBoardSIdewaysExtra.png', type: 'image' },
     { key: 'gamingBoardSideSmall', path: 'assets/art/gamingBoardSIdewaysSmall.png', type: 'spritesheet', frameWidth: 208, frameHeight: 144 },
     // Frame order: 0 rogue, 1 warrior — matches CHARACTER_PORTRAIT_FRAME.
@@ -74,6 +78,7 @@ export const ASSET_MANIFEST = [
     { key: 'villageCardFlip', path: 'assets/art/cardFlip54x86Sheet.png', type: 'spritesheet', frameWidth: 54, frameHeight: 86 },
     { key: 'scrollHandle', path: 'assets/art/scroll.png', type: 'image' },
     { key: 'eventsShops', path: 'assets/art/eventsShops80x80.png', type: 'spritesheet', frameWidth: 80, frameHeight: 80 },
+    { key: 'rareShopSeller', path: 'assets/art/rareShopSeller.png', type: 'image' },
     // Arm Wrestling minigame art (human vs ogre locked hands).
     { key: 'armWrestlingHands', path: 'assets/art/armWrestlingHands.png', type: 'image' },
     // Nest raid minigame. 12 frames of 32x32: frame 0 is the brass cog the
@@ -214,9 +219,15 @@ export const ASSET_MANIFEST = [
     { key: 'trap_spring', path: 'assets/music/trap_spring1.mp3', type: 'audio' },
     { key: 'trap_woosh', path: 'assets/music/fast-woosh-230497.mp3', type: 'audio' },
     { key: 'armor_equip', path: 'assets/music/metal_clank.mp3', type: 'audio' },
+    // Raising a block (a block weapon dropped on the hero): two takes that rotate.
+    { key: 'block_ready_1', path: 'assets/music/Block_Ready_01.mp3', type: 'audio' },
+    { key: 'block_ready_2', path: 'assets/music/Block_Ready_02.mp3', type: 'audio' },
     { key: 'crystal_collect', path: 'assets/music/crystal_pick_up.mp3', type: 'audio' },
     // Main menu
     { key: 'mainBG', path: 'assets/art/mainBG.png', type: 'image' },
+    // Path choice
+    { key: 'pathsBackground', path: 'assets/art/pathsBackground.png', type: 'image' },
+    { key: 'pathsBackgroundLight', path: 'assets/art/pathsBackgroundLight.png', type: 'image' },
     // Food
     { key: 'egg', path: 'assets/art/egg.png', type: 'image' },
     { key: 'chickCompanion', path: 'assets/art/chickCompanion.png', type: 'image' },
@@ -432,7 +443,9 @@ export const ASSET_MANIFEST = [
     { key: 'gem_pickup', path: 'assets/music/Gem_Pickup_01.mp3', type: 'audio' },
     { key: 'gem_socket', path: 'assets/music/Gem_Socket_01.mp3', type: 'audio' },
     // Crystal card picked off the board. Distinct from 'crystal_collect', | which the amulet equip still uses.
-    { key: 'crystal_pickup', path: 'assets/music/Glass_Clink_03.mp3', type: 'audio' },
+    // A soft, warm crystal tone generated with ElevenLabs (tools/death-sounds.json,
+    // 'pickups' set); it replaced the brighter Glass_Clink_03.
+    { key: 'crystal_pickup', path: 'assets/music/Crystal_Pickup.mp3', type: 'audio' },
     // Hero drinks a potion dropped onto him (or drunk from inventory). | Swapped from the old Potion_Drink_01.mp3 gulp to this fuller swallow.
     { key: 'potion_drink', path: 'assets/music/Potion_Drink_02.mp3', type: 'audio' },
     // Key card dropped back into the inventory
@@ -453,6 +466,11 @@ export const ASSET_MANIFEST = [
     { key: 'enemy_death_2', path: 'assets/music/Enemy_Death_02.mp3', type: 'audio' },
     { key: 'heavy_swing', path: 'assets/music/Heavy_Attack_Swing_01.mp3', type: 'audio' },
     { key: 'thorns_hit', path: 'assets/music/Thorns_Retaliation_01.mp3', type: 'audio' },
+    // The thorns card hitting back: two takes that rotate, since it repeats
+    // every enemy turn (tools/death-sounds.json, 'combat' set). thorns_hit
+    // above stays for the Twinned Mirror's reflection.
+    { key: 'thorns_retaliate_1', path: 'assets/music/Thorns_Hit_01.mp3', type: 'audio' },
+    { key: 'thorns_retaliate_2', path: 'assets/music/Thorns_Hit_02.mp3', type: 'audio' },
     { key: 'card_merge', path: 'assets/music/Card_Merge_Success_01.mp3', type: 'audio' },
     // ---- New SFX drop (2026-07): multi-take groups ---- | Loaded under _vN keys; SoundHelper.SFX_VARIANTS maps the canonical | key (card_flip, coin_collect, â€¦) onto these so playSound rotates them | at random. Old single-file loads above stay put but go unused.
     { key: 'card_flip_v1', path: 'assets/music/Card_Flip_01.mp3', type: 'audio' },
@@ -494,7 +512,40 @@ export const ASSET_MANIFEST = [
     { key: 'dice_roll', path: 'assets/music/dice-throw-1.ogg', type: 'audio' },
     // Looping campfire ambience for the Rest room.
     { key: 'campfire_loop', path: 'assets/music/Campfire_Loop_01.mp3', type: 'audio' },
-    // The three looping music tracks are NOT here — see DEFERRED_AUDIO below.
+    // The looping music tracks are NOT here — see DEFERRED_AUDIO below.
+];
+
+/**
+ * Sounds only heard mid-fight, loaded in the background behind the main menu
+ * (scenes/BackgroundAudioScene.js) instead of before the first screen: every
+ * enemy's own death, the armor types, blocks, Bone Wall and the rarer combat
+ * moments — about fifty files the boot no longer waits to decode. Each falls
+ * back to an older sound until it lands.
+ *
+ * @type {AssetEntry[]}
+ */
+export const LATE_AUDIO = [
+    // Every enemy's own death (content/audio/enemyDeathSounds.js); until one
+    // lands, that death plays the shared enemy_death pair.
+    ...ENEMY_DEATH_SOUND_ASSETS,
+    // Equip sounds per armor type (content/audio/armorSounds.js); the shared
+    // clank, armor_equip, stands in until they land.
+    ...ARMOR_EQUIP_SOUND_ASSETS,
+    // A raised block stopping an attack ("Blocked!"), two takes that rotate,
+    // and Bone Wall catching a hit. Generated with ElevenLabs
+    // (tools/death-sounds.json, 'combat' set); both used to be the armor_equip
+    // clank, which stands in until they land.
+    { key: 'block_hit_1', path: 'assets/music/Block_Hit_01.mp3', type: 'audio' },
+    { key: 'block_hit_2', path: 'assets/music/Block_Hit_02.mp3', type: 'audio' },
+    { key: 'bone_wall_hit', path: 'assets/music/Bone_Wall_Hit.mp3', type: 'audio' },
+    // One-off combat moments (tools/death-sounds.json, 'events' set): a boss
+    // crossing its rage threshold, and a mimic getting away.
+    { key: 'boss_enraged', path: 'assets/music/Boss_Enraged.mp3', type: 'audio' },
+    { key: 'mimic_escaped', path: 'assets/music/Mimic_Escaped.mp3', type: 'audio' },
+    // An enemy's hit piercing the hero's armor ("Armor Broken!").
+    { key: 'armor_broken', path: 'assets/music/Armor_Broken.mp3', type: 'audio' },
+    // The hero rising again: Temple / Second Wind, and the Invulnerable amulet.
+    { key: 'revival', path: 'assets/music/Revival_Shimmer.mp3', type: 'audio' },
 ];
 
 /**
@@ -511,6 +562,7 @@ export const DEFERRED_AUDIO = [
     { key: 'menu_music', path: 'assets/music/TOE_Campfire.mp3', type: 'audio' },
     { key: 'boss_music', path: 'assets/music/TOE_BattleDrums.mp3', type: 'audio' },
     { key: 'map_music', path: 'assets/music/TOE_Peaceful.mp3', type: 'audio' },
+    // Regular and elite battle tracks await audition and approval.
 ];
 
 /** Path for a deferred track, or undefined if the key isn't deferred. */

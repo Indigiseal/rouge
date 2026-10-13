@@ -3,7 +3,8 @@ import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { gemTierFrame } from '../../content/cards/gems.js';
 import { attachGemShine } from '../../ui/GemShine.js';
-import { GEM_SPOT_KEY, gemSpotPosition } from '../../ui/GemSockets.js';
+import { GEM_SPOT_KEY, gemSpotPosition, showGemSockets } from '../../ui/GemSockets.js';
+import { bindCardRiders, cardRiders, pinRider } from '../../ui/CardRiders.js';
 
 export const InventorySlotRenderer = {
     // New method that doesn't trigger rebuilds
@@ -58,6 +59,7 @@ export const InventorySlotRenderer = {
             this.uiGroup.add(briarFrame);
             slotSprite.briarFrame = briarFrame;
             cardSprite.setData('briarFrame', briarFrame);
+            pinRider(cardSprite, 'briarFrame', briarFrame);
             cardSprite.once('destroy', () => {
                 briarFrame.destroy();
                 if (slotSprite.briarFrame === briarFrame) slotSprite.briarFrame = null;
@@ -92,6 +94,7 @@ export const InventorySlotRenderer = {
             hoverSprite.setDepth(13);
             this.uiGroup.add(hoverSprite);
             slotSprite.hoverSprite = hoverSprite;
+            pinRider(cardSprite, 'hoverShine', hoverSprite);
         }
 
         // Create gem effect overlay sprite for weapons with a socketed gem
@@ -103,6 +106,7 @@ export const InventorySlotRenderer = {
             this.uiGroup.add(gemEffectSprite);
             slotSprite.gemEffectSprite = gemEffectSprite;
             cardSprite.setData('gemEffectSprite', gemEffectSprite);
+            pinRider(cardSprite, 'gemEffect', gemEffectSprite);
 
             // One gem in the card's top-right corner, drawn at the size its
             // level earns: small shard, shard, small gem, medium gem, big gem.
@@ -133,6 +137,7 @@ export const InventorySlotRenderer = {
             gemContainer.restY = gemY;
             slotSprite.gemIndicator = gemContainer;
             cardSprite.setData('gemIndicator', gemContainer);
+            pinRider(cardSprite, 'gem', gemContainer, { dx: gemX - x, dy: gemY - y });
         }
 
         // Store original Y position for floating effect
@@ -169,8 +174,6 @@ export const InventorySlotRenderer = {
             // Play looped gem effect animation on hover (weapon with socketed gem)
             const hoveredCard = this.slots[slotIndex];
             if (currentSlot.gemEffectSprite && hoveredCard?.gemEffect) {
-                currentSlot.gemEffectSprite.x = cardSprite.x;
-                currentSlot.gemEffectSprite.y = cardSprite.y;
                 currentSlot.gemEffectSprite.setVisible(true);
                 currentSlot.gemEffectSprite.play(`gem_card_${hoveredCard.gemEffect}_loop`);
             }
@@ -183,8 +186,8 @@ export const InventorySlotRenderer = {
                 currentSlot.shadow.setAlpha(1);
             }
             
-            // Float card up (round each frame so the card art and its pips lift
-            // together on whole pixels — keeps the pips locked to the card)
+            // Float card up. Everything drawn on it rides along (CardRiders),
+            // so the card is the only thing that needs moving.
             this.scene.tweens.add({
                 targets: cardSprite,
                 y: currentSlot.originalY - 5,
@@ -192,79 +195,6 @@ export const InventorySlotRenderer = {
                 ease: 'Power2',
                 onUpdate: () => { cardSprite.y = Math.round(cardSprite.y); }
             });
-
-            // Move hover sprite with card
-            if (currentSlot.hoverSprite) {
-                this.scene.tweens.add({
-                    targets: currentSlot.hoverSprite,
-                    y: currentSlot.originalY - 5,
-                    duration: 150,
-                    ease: 'Power2'
-                });
-            }
-
-            // Move gem effect sprite with card
-            if (currentSlot.gemEffectSprite && currentSlot.gemEffectSprite.visible) {
-                this.scene.tweens.add({
-                    targets: currentSlot.gemEffectSprite,
-                    y: currentSlot.originalY - 5,
-                    duration: 150,
-                    ease: 'Power2'
-                });
-            }
-
-            // Move gem indicator (and its colored shadow) with card
-            if (currentSlot.gemIndicator) {
-                const indicator = currentSlot.gemIndicator;
-                this.scene.tweens.add({
-                    targets: indicator,
-                    y: indicator.restY - 5,
-                    duration: 150,
-                    ease: 'Power2'
-                });
-            }
-
-            if (currentSlot.briarFrame?.scene) {
-                this.scene.tweens.add({
-                    targets: currentSlot.briarFrame,
-                    y: currentSlot.originalY - 5,
-                    duration: 150,
-                    ease: 'Power2'
-                });
-            }
-
-            if (currentSlot.webOverlay?.scene) {
-                this.scene.tweens.add({
-                    targets: currentSlot.webOverlay,
-                    y: currentSlot.originalY - 5,
-                    duration: 150,
-                    ease: 'Power2'
-                });
-            }
-
-            // Move info text if it exists. Round y each frame so the pip
-            // container never sits on a fractional pixel during the lift —
-            // otherwise the pips visibly jitter as it animates.
-            const infoText = cardSprite.getData('infoText');
-            if (infoText && infoText.scene) {
-                this.scene.tweens.add({
-                    targets: infoText,
-                    y: currentSlot.originalY - 5,
-                    duration: 150,
-                    ease: 'Power2',
-                    onUpdate: () => { infoText.y = Math.round(infoText.y); }
-                });
-            }
-            
-            // Move twinkle sprite if it exists
-            if (currentSlot.twinkleSprite && currentSlot.twinkleSprite.scene) {
-                this.scene.tweens.add({
-                    targets: currentSlot.twinkleSprite,
-                    y: currentSlot.originalY - 5,
-                    duration: 150,
-                    ease: 'Power2'
-                });
-            }
 
             this.showCardTooltip(cardData, slotIndex, pointer.worldX, pointer.worldY);
         });
@@ -297,36 +227,6 @@ export const InventorySlotRenderer = {
             if (currentSlot.gemEffectSprite) {
                 currentSlot.gemEffectSprite.stop();
                 currentSlot.gemEffectSprite.setVisible(false);
-                currentSlot.gemEffectSprite.y = currentSlot.originalY;
-            }
-
-            // Return gem indicator (and shadow) to resting position
-            if (currentSlot.gemIndicator) {
-                const indicator = currentSlot.gemIndicator;
-                this.scene.tweens.add({
-                    targets: indicator,
-                    y: indicator.restY,
-                    duration: 150,
-                    ease: 'Power2'
-                });
-            }
-
-            if (currentSlot.briarFrame?.scene) {
-                this.scene.tweens.add({
-                    targets: currentSlot.briarFrame,
-                    y: currentSlot.originalY,
-                    duration: 150,
-                    ease: 'Power2'
-                });
-            }
-
-            if (currentSlot.webOverlay?.scene) {
-                this.scene.tweens.add({
-                    targets: currentSlot.webOverlay,
-                    y: currentSlot.originalY,
-                    duration: 150,
-                    ease: 'Power2'
-                });
             }
 
             // Hide shadow
@@ -337,8 +237,7 @@ export const InventorySlotRenderer = {
                 currentSlot.shadow.setAlpha(0);
             }
             
-            // Return card to original position (round each frame to keep the
-            // card and its pips on whole pixels during the drop)
+            // Return card to original position; its riders come with it.
             this.scene.tweens.add({
                 targets: cardSprite,
                 y: currentSlot.originalY,
@@ -346,39 +245,6 @@ export const InventorySlotRenderer = {
                 ease: 'Power2',
                 onUpdate: () => { cardSprite.y = Math.round(cardSprite.y); }
             });
-
-            // Return hover sprite to original position
-            if (currentSlot.hoverSprite) {
-                this.scene.tweens.add({
-                    targets: currentSlot.hoverSprite,
-                    y: currentSlot.originalY,
-                    duration: 150,
-                    ease: 'Power2'
-                });
-            }
-            
-            // Return info text to original position (round each frame so the
-            // pips stay on whole pixels during the drop).
-            const infoText = cardSprite.getData('infoText');
-            if (infoText && infoText.scene) {
-                this.scene.tweens.add({
-                    targets: infoText,
-                    y: currentSlot.originalY,
-                    duration: 150,
-                    ease: 'Power2',
-                    onUpdate: () => { infoText.y = Math.round(infoText.y); }
-                });
-            }
-            
-            // Return twinkle sprite to original position
-            if (currentSlot.twinkleSprite && currentSlot.twinkleSprite.scene) {
-                this.scene.tweens.add({
-                    targets: currentSlot.twinkleSprite,
-                    y: currentSlot.originalY,
-                    duration: 150,
-                    ease: 'Power2'
-                });
-            }
         });
         
         // Add drag events with proper position tracking
@@ -393,33 +259,13 @@ export const InventorySlotRenderer = {
             this.hideCardTooltip();
             SoundHelper.playVariant(this.scene, 'card_place', 0.4);
 
-            // Kill the hover lift before the drag starts writing positions.
-            //
-            // Hovering a card starts a 150ms tween on each thing that rides it.
-            // The drag handler then sets those positions directly every frame,
-            // so for the first 150ms of a drag the tween and the drag were both
-            // writing y, and the tween won often enough that the rider visibly
-            // trailed the card.
-            //
-            // infoText belongs in this list and was missing from it. It is the
-            // container holding the card's durability pips AND its value, and
-            // the hover lift tweens it like everything else — so the pips
-            // trailed the card exactly the way the gem used to. The pips show it
-            // worst because they are a tall column up the card's edge; the value
-            // is one glyph near the middle and lags just as far, invisibly.
-            const currentSlotAtDragStart = this.slotSprites[slotIndex];
-            if (currentSlotAtDragStart) {
-                this.scene.tweens.killTweensOf([
-                    cardSprite,
-                    cardSprite.getData('infoText'),
-                    currentSlotAtDragStart.gemIndicator,
-                    currentSlotAtDragStart.briarFrame,
-                    currentSlotAtDragStart.webOverlay,
-                    currentSlotAtDragStart.shadow,
-                    currentSlotAtDragStart.twinkleSprite,
-                    currentSlotAtDragStart.gemEffectSprite,
-                ].filter((target) => target?.scene));
-            }
+            // Kill the hover lift before the drag starts writing positions:
+            // for the first 150ms of a drag the tween and the drag were both
+            // writing y, and the tween won often enough that the card stuttered.
+            // The riders are pinned to the card, so the card's own tween is the
+            // only one that matters; theirs are killed in case anything else
+            // started one.
+            this.scene.tweens.killTweensOf([cardSprite, ...cardRiders(cardSprite)]);
 
             // Store the starting position
             cardSprite.setData('dragStartX', cardSprite.x);
@@ -481,6 +327,13 @@ export const InventorySlotRenderer = {
                 currentSlot.twinkleSprite.setDepth(dragBaseDepth + 2);
             }
 
+            // A carried gem lights the empty sockets on the weapons it can go
+            // into, the same hint a gem dragged off the board or the shelf
+            // shows. Taken down in finishInventoryCardDrag.
+            if (this.slots[slotIndex]?.type === 'gem') {
+                showGemSockets(this.scene, this.slots[slotIndex]);
+            }
+
             this.createDragOverlay(cardSprite, slotIndex);
             this.beginInventoryCardDrag(slotIndex, cardSprite);
         });
@@ -495,49 +348,14 @@ export const InventorySlotRenderer = {
             cardSprite.x = Math.round(Phaser.Math.Clamp(dragX, 0, 640));
             cardSprite.y = Math.round(Phaser.Math.Clamp(dragY, 0, 360));
 
-            const infoText = cardSprite.getData('infoText');
-            if (infoText && infoText.scene) {
-                infoText.x = cardSprite.x;
-                infoText.y = cardSprite.y;
-            }
-            
+            // Everything drawn on the card rides it (CardRiders). The shadow
+            // is not a rider — on hover it stays on the slot — so it follows
+            // the drag by hand.
             const currentSlot = this.slotSprites[slotIndex];
-            if (!currentSlot) return;
-            
-            // Move shadow with card while dragging
-            if (currentSlot.shadow && currentSlot.shadow.scene) {
+            if (currentSlot?.shadow?.scene) {
                 currentSlot.shadow.x = cardSprite.x;
                 currentSlot.shadow.y = cardSprite.y + 28;
             }
-            
-            // Move twinkle sprite with the card
-            if (currentSlot.twinkleSprite && currentSlot.twinkleSprite.scene) {
-                currentSlot.twinkleSprite.x = cardSprite.x;
-                currentSlot.twinkleSprite.y = cardSprite.y;
-            }
-
-            // Move the gem indicator with the card, preserving its corner offset.
-            if (currentSlot.gemIndicator && currentSlot.gemIndicator.scene) {
-                const indicator = currentSlot.gemIndicator;
-                const ox = cardSprite.getData('originalX');
-                const oy = cardSprite.getData('originalY');
-                indicator.x = cardSprite.x + (indicator.restX - ox);
-                indicator.y = cardSprite.y + (indicator.restY - oy);
-                if (indicator.shadow && indicator.shadow.scene) {
-                    indicator.shadow.x = indicator.x;
-                    indicator.shadow.y = indicator.y;
-                }
-            }
-
-            if (currentSlot.briarFrame?.scene) {
-                currentSlot.briarFrame.x = cardSprite.x;
-                currentSlot.briarFrame.y = cardSprite.y;
-            }
-            if (currentSlot.webOverlay?.scene) {
-                currentSlot.webOverlay.x = cardSprite.x;
-                currentSlot.webOverlay.y = cardSprite.y;
-            }
-
 
             this.updateDragOverlay(cardSprite);
             this.updateWeaponAttackIndicator(cardSprite, slotIndex);
@@ -564,42 +382,8 @@ export const InventorySlotRenderer = {
         }
     },
 
-    // Pin the card's pips-and-value container to the card, once per frame,
-    // after every tween has moved things.
-    //
-    // The container used to be animated alongside the card by a twin tween in
-    // every path that moves a card: hover lift, hover drop, drag, return to
-    // slot. Each pair matched on paper, but two tweens on two objects are two
-    // timelines — when a hover lift and the return-to-slot overlapped, or one
-    // path was killed and the other not, the pips trailed the card. Copying
-    // the card's position here, on postupdate, makes trailing impossible
-    // whatever moved the card. The twin tweens still run and are simply
-    // overwritten.
-    //
-    // Both are put on whole pixels: the pips are pixel art, and roundPixels
-    // rounds each child on its own, so a fractional container spreads them.
-    // The offset is read the first time a container is seen, which is the
-    // frame it was built in, so a gem's label keeps its place below the art.
-    // Reading infoText each frame also picks up a rebuilt container (a weapon
-    // after a swing) without rebinding.
+    // Pin everything drawn on the card to it, once per frame (see CardRiders).
     bindInfoTextFollow(cardSprite) {
-        const scene = this.scene;
-        const follow = () => {
-            if (!cardSprite.scene) return;
-            const info = cardSprite.getData('infoText');
-            if (!info?.scene) return;
-            if (!info._followOffset) {
-                info._followOffset = {
-                    x: Math.round(info.x - cardSprite.x),
-                    y: Math.round(info.y - cardSprite.y),
-                };
-            }
-            cardSprite.x = Math.round(cardSprite.x);
-            cardSprite.y = Math.round(cardSprite.y);
-            info.x = cardSprite.x + info._followOffset.x;
-            info.y = cardSprite.y + info._followOffset.y;
-        };
-        scene.events.on('postupdate', follow);
-        cardSprite.once('destroy', () => scene.events.off('postupdate', follow));
+        bindCardRiders(this.scene, cardSprite);
     },
 };

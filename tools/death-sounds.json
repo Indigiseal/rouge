@@ -1,0 +1,108 @@
+{
+  "_about": "Enemy death sound prompts. 'enemies' has one per enemy kind (card.data.enemyType) and is what the game plays; 'families' are the older shared sounds, kept as the fallback for a kind with no sound of its own. generate-death-sounds.mjs sends prompts to ElevenLabs Sound Effects and saves takes to assets/_sfx_takes/ to audition; the chosen take is copied to assets/music/Death_<name>.mp3. Edit a prompt and re-run with --enemy <kind> --force to re-roll it. 'armor' holds the equip sounds per armor type (--set armor), copied to assets/music/Armor_<Type>.mp3. 'pickups' holds pick-up sounds (--set pickups). 'reverb' is the room reverb mixed into each set's takes (0 = dry). 'tone' is an ffmpeg filter applied to a set before its reverb. Each take's untouched original is kept as *.raw.mp3; --reprocess redoes tone/reverb/loudness from it without spending credits. 'combat' holds block and Bone Wall sounds (--set combat). 'events' holds one-off combat moments: Armor Broken, ENRAGED, Mimic Escaped (--set events).",
+  "style": "realistic grounded foley for a dark fantasy game, layered and weighty with a full low end, short natural room reverb, serious and organic, not cartoonish, not retro, no music, no speech",
+  "durationSeconds": 0.8,
+  "promptInfluence": 0.5,
+  "families": {
+    "bones": {
+      "prompt": "Skeleton collapsing: dry bones clattering and scattering across a stone floor, brittle rattle"
+    },
+    "goblins": {
+      "prompt": "Small goblin dying: a short high-pitched squeal cut off, then a soft thud"
+    },
+    "beasts": {
+      "prompt": "Wolf-like beast dying: a short pained yelp fading into a low whimper"
+    },
+    "bugs": {
+      "prompt": "Giant insect dying: a wet crunch of cracking carapace, skittering legs going still"
+    },
+    "plants": {
+      "prompt": "Thorny plant creature dying: twigs and vines snapping, dry wood creaking, leaves rustling down"
+    },
+    "bog": {
+      "prompt": "Slime creature dying: a wet squelch and bubbling splat collapsing into mud"
+    },
+    "ghosts": {
+      "prompt": "Ghost dying: an eerie breathy wail dissolving into a whisper with a faint airy shimmer"
+    },
+    "fire": {
+      "prompt": "Fire creature dying: flames sputtering out with a hiss of steam and crackling embers"
+    }
+  },
+  "enemies": {
+    "skeleton": "Skeleton warrior collapsing: a rusty sword dropping and heavy old bones crumbling onto stone",
+    "skeleton_archer": "Skeleton archer falling apart: a bow snapping, light bones rattling down, a few arrows scattering",
+    "boneHeap": "Heap of bones caving in: a large pile of bones sliding and crashing down in a long brittle avalanche",
+    "cryptWarden": "Armored crypt guardian falling: heavy iron armor crashing onto stone, a deep hollow groan, bones grinding",
+    "skullLobber": "Undead skull thrower dying: a cracked skull hitting stone and bones crumbling",
+    "goblin": "Goblin dying: a pained choked grunt and gasp, its body and wooden club hitting the floor",
+    "goblin_archer": "Goblin archer dying: a short choked grunt, a small bow and quiver clattering onto stone",
+    "tollBrute": "Big brutish goblin dying: a deep angry grunt turning into a heavy body slam on the ground",
+    "highwayCutpurse": "Sneaky goblin thief dying: a startled gasp and coins jingling as a purse spills across the floor",
+    "roadSniper": "Goblin crossbowman dying: a sharp pained breath and a crossbow clattering on stones",
+    "wolf": "A wolf dying: a short mournful animal howl that rises, breaks and trails off into a whimper. A clear, full, easily heard sound",
+    "cerberusHead": "Hellhound head dying: a snarling growl choking into a fiery whimper with a puff of smoke",
+    "mireToad": "Giant toad dying: a deep croak bursting into a wet gurgle and a squelchy flop",
+    "spider": "Giant spider dying: a chitinous crunch and quick leg skittering curling up still",
+    "caveCrawler": "A large cave bug dying: a crunchy shell cracking open with a wet squish and legs scraping to a stop. A clear, full, easily heard sound lasting about half a second",
+    "stingerScorpion": "A giant scorpion dying: a heavy carapace cracking, claws clacking, a tail slumping onto stone. A clear, full, easily heard sound lasting about half a second",
+    "silkslinger": "Large web-spinning spider dying: a wet carapace crack and thick silk tearing",
+    "silkHusk": "Silk cocoon creature dying: a thick silk husk ripping open, a dry rustle, a hollow collapse",
+    "thornEnt": "Tree creature dying: heavy wood cracking and splitting, a deep groaning creak, branches crashing down",
+    "thornSprite": "A small thorny plant creature dying: a cluster of dry twigs and thorns snapping and crumbling down. A clear, full, easily heard sound lasting about half a second",
+    "thornFairy": "A tiny forest fairy dying: a sweet delicate magical chime breaking and fading into a soft sparkle. A clear, full, easily heard sound lasting about half a second, gentle, not piercing",
+    "sporeArcher": "Fungal archer dying: a soft wet mushroom burst and a muffled body fall",
+    "bogSlug": "Bog slug dying: a slow wet squelch deflating into a gloopy splat",
+    "drowned": "A drowned corpse dying: a gurgling watery choke and a soaked body collapsing with a big wet splash. A clear, full, easily heard sound lasting about half a second",
+    "mireBrute": "Huge swamp brute dying: a deep muddy roar sinking into a heavy wet splash in thick mud",
+    "fenSpitter": "Swamp spitter creature dying: a choking spit and bubbling gurgle collapsing into murky water",
+    "lavaSlime": "A slime monster dying: very wet and slimy, thick sticky goo squelching and slurping, wet slime splattering and dripping down. A clear, full, easily heard sound lasting about half a second",
+    "lostSoul": "Lost soul fading away: a cold breathy sigh dissolving into air",
+    "hollowMourner": "Mourning ghost dying: a long low weeping wail fading into echoing silence",
+    "veilRipper": "Shadow monster dying: a ripping tear through the air, a distorted screech sucked into a void",
+    "inkWraith": "Ink wraith dying: a liquid dark splash, a gurgling hiss, ink dripping away",
+    "graveCantor": "Ghostly choir singer dying: an eerie sung note breaking and fading in a hollow echo",
+    "emberMaw": "Fire beast with a burning mouth dying: a fiery roar choking off, embers scattering and sizzling out",
+    "cinderLizard": "Fire lizard dying: a short hissing screech, crackling flames dying down to smoke",
+    "cinderBrute": "Big fire brute dying: a heavy rocky body crashing down, flames bursting and then sputtering out",
+    "slagSpitter": "Molten slag creature dying: a bubbling spit of magma, a heavy sizzle as it cools and cracks"
+  },
+  "armor": {
+    "leather": "Leather armor put on: a soft padded thud of thick leather and a quiet creak. Soft, warm and rounded, slightly muffled, mellow and gentle, quiet and close, no sharp attack, no bright or piercing high frequencies, no hiss",
+    "chain": "Chainmail armor put on: a heavy muffled chainmail shuffle settling, dull and weighty rather than jingly. Soft, warm and rounded, slightly muffled, mellow and gentle, quiet and close, no sharp attack, no bright or piercing high frequencies, no hiss",
+    "plate": "A knight putting on steel plate armor: several heavy steel plates clanking together, a solid metallic clatter with a resonant clang and creaking leather straps. Full and warm metal, not shrill, not tinny"
+  },
+  "reverb": {
+    "death": 0,
+    "armor": 0,
+    "pickups": 0,
+    "combat": 0,
+    "events": 0
+  },
+  "pickups": {
+    "crystal": "Picking up a magic crystal: a soft low warm crystal tone, a gentle muted glassy note. Soft, warm and rounded, slightly muffled, mellow and gentle, quiet and close, no sharp attack, no bright or piercing high frequencies, no hiss"
+  },
+  "tone": {},
+  "setInfluence": {
+    "armor": 0.75,
+    "pickups": 0.75,
+    "combat": 0.7,
+    "events": 0.45
+  },
+  "combat": {
+    "block_ready": "A warrior bracing behind a raised sword: a quick firm swoosh as the blade snaps up into a guard, ending in a short solid metallic grip. Warm and full, not shrill, not tinny, no harsh high frequencies",
+    "block_hit": "A sword parrying a heavy blow: a solid metal clang of steel on steel with a short warm ring. Warm and full, not shrill, not tinny, no harsh high frequencies",
+    "bone_wall": "A wall of bones blocking a hit and striking back: a hard dry crack of bones knocking together and a hollow wooden-like clack. Warm and full, not shrill, not tinny, no harsh high frequencies",
+    "thorns_retaliate": "Thorny vines lashing out at an attacker: a quick woody whip-crack and a sharp stab of thorns, with dry leaves rustling. Warm and full, not shrill, not tinny, no harsh high frequencies"
+  },
+  "events": {
+    "enraged": "A large angry bear roaring close up: a deep throaty furious roar with a rough growl. Real recorded foley, natural and organic, not synthesized, not electronic, warm, not shrill",
+    "mimic_escaped": "A heavy cloth cape whipped fast through the air: one quick soft swish passing by. Real recorded foley, natural and organic, not synthesized, not electronic, warm, not shrill",
+    "armor_broken_a": "A steel knight's helmet struck hard by a wooden mace: one heavy dull metal bonk with a short dent. Real recorded foley, natural and organic, not synthesized, not electronic, warm, not shrill",
+    "armor_broken_d": "A steel knight's helmet struck hard by a wooden mace: one heavy dull metal bonk, then a short crunch of the metal giving way. Real recorded foley, natural and organic, not synthesized, not electronic, warm, not shrill",
+    "revival": "A sweet mystical chime for a hero coming back to life: a soft rising music box and celesta melody in a low warm register, round gentle tones with a magical glow. Soft and warm, not piercing, not shrill, no high sparkle",
+    "revival_harp": "A hero coming back to life: a soft rising harp glissando ending on one gentle warm bell. Sweet, mystical and pretty, soft and warm, not piercing, not shrill",
+    "revival_kalimba": "A hero coming back to life: a sweet rising kalimba melody, round plucked notes with a soft magical glow. Sweet, mystical and pretty, soft and warm, not piercing, not shrill",
+    "revival_chimes": "A hero coming back to life: a few low soft wooden and glass wind chimes ringing together, magical and calm. Sweet, mystical and pretty, soft and warm, not piercing, not shrill"
+  }
+}

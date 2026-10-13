@@ -99,7 +99,9 @@ export const RELICS_OTHERS_ATLAS = Object.freeze({
     bloodFang:            { frame: 72, name: 'Vampire Fang' },
     monocleLens:          { frame: 78, name: 'Monocle' },
     alchemistSatchel:     { frame: 80, name: 'Alchemist Bag' },
-    violetGauntlet:       { frame: 81, name: 'Gloves of the Hermit Wizard' }
+    violetGauntlet:       { frame: 81, name: 'Gloves of the Hermit Wizard' },
+    handMirror:           { frame: 82, name: 'Hand Mirror' },
+    twinnedMirror:        { frame: 83, name: 'Twinned Mirror' }
 });
 
 // Gameplay IDs stay stable for saves and balance code. These maps are the
@@ -135,6 +137,9 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     travelersJournal: 'travelersJournal',
     charmingTune: 'lute',
     wayfarersMap: 'wayfarersMap',
+    porterMap: 'wayfarersMap',
+    handMirror: 'handMirror',
+    twinnedMirror: 'twinnedMirror',
     sirensPendant: 'perfumeBottle',
     teaRoomBell: 'goldenBell',
     wormVenomCharm: 'wormVenomVial',

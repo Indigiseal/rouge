@@ -25,6 +25,7 @@ import { CardSystem } from '../src/systems/CardSystem.js';
 import { CardDataGenerator } from '../src/systems/loot/CardDataGenerator.js';
 import { installSeededRandom, beginSeededRun, parseSeedArg, isSeeded } from './rng.js';
 import { setTuningOverrides } from '../src/content/balance/Tuning.js';
+import { getThornStats } from '../src/content/cards/thorns.js';
 import { FIRE_GEM_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../src/content/cards/gems.js';
 import { xpForRun, estimateBossesKilled } from '../src/content/economy/metaXp.js';
 import { weaponCanDamageEnemy, canHurtEnemyAtAll } from '../src/systems/board/BoardCombat.js';
@@ -72,6 +73,7 @@ import {
 import { getDefaultAmuletIds } from './sim-catalog.js';
 import { normalizeActLocationIds } from '../src/content/locations/index.js';
 import { totalRepairCost } from '../src/content/economy/repair.js';
+import { scaleGoldReward } from '../src/content/economy/gold.js';
 import {
   healerRarityForRank,
   maxVillageBuildings,
@@ -104,6 +106,7 @@ import {
   createWeaponCardData,
   createArmorCardData,
   getMagic,
+  shopPotionCards,
   weaponDurability,
 } from '../src/content/cards/index.js';
 import {
@@ -1299,10 +1302,11 @@ function mergeThornsList(list, tracker = null) {
       for (let j = i + 1; j < list.length; j++) {
         if ((list[i].thornDamage || 0) === (list[j].thornDamage || 0)) {
           const a = list[i], b = list[j];
-          const dmg = Math.max(a.thornDamage || 1, b.thornDamage || 1) + 2;
-          const dur = Math.max(a.maxDurability || 3, b.maxDurability || 3) + 1;
+          // Same canonical per-rarity table the game uses for merges.
+          const rarity = nextRarity(a.rarity || 'common');
+          const { thornDamage: dmg, durability: dur } = getThornStats(rarity);
           list.splice(j, 1); list.splice(i, 1);
-          list.push({ type: 'thorns', name: 'Thorns Card', thornDamage: dmg, durability: dur, maxDurability: dur, rarity: nextRarity(a.rarity || 'common') });
+          list.push({ type: 'thorns', name: 'Thorns Card', thornDamage: dmg, durability: dur, maxDurability: dur, rarity });
           if (tracker) tracker.mergeCounts.thorns++;
           changed = true; break;
         }
@@ -2296,7 +2300,7 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs
       for (let i = 0; i < board.length; i++) {
         if (i === targetIndex) continue;
         const card = board[i];
-        if (!(card.data?.type === 'enemy' || card.data?.type === 'boss' || card.data?.type === 'eliteEnemy') || card.data.health <= 0) continue;
+        if (!(card?.data?.type === 'enemy' || card?.data?.type === 'boss' || card?.data?.type === 'eliteEnemy') || card.data.health <= 0) continue;
         const b = card.sprite?.getBounds?.();
         const nearestX = b ? Math.max(b.x, Math.min(tx, b.x + b.width)) : (card.sprite?.x ?? 0);
         const nearestY = b ? Math.max(b.y, Math.min(ty, b.y + b.height)) : (card.sprite?.y ?? 0);
@@ -3341,7 +3345,7 @@ function runBossReward(mock, gs, inv, floor) {
   const gen = mock.cardSystem.cardDataGenerator;
   gs.playerHealth = gs.maxHealth;
   gs.actionsLeft = gs.maxActions;
-  gs.coins += 25 + floor;
+  gs.coins += scaleGoldReward(25 + floor);
   gs.crystals += 4 + Math.floor(floor / 6);
 
   const amulet = mock.cardSystem.createCardData('amulet', floor, false, gs, 'boss');
@@ -3379,7 +3383,7 @@ function runEventLegacy(mock, gs, inv, floor) {
   const st = mock._eventState || (mock._eventState = { story: 0, bonus: [] });
 
   // 1) Early story chain (music box → bird nest → goblin engineer).
-  if (st.story === 0) { st.story++; gs.coins += 18; gs.crystals += 1; return; }
+  if (st.story === 0) { st.story++; gs.coins += scaleGoldReward(18); gs.crystals += 1; return; }
   if (st.story === 1) {
     st.story++;
     // Bird nest raid: sim keeps a small heal stand-in (live game is a timed
@@ -3389,7 +3393,7 @@ function runEventLegacy(mock, gs, inv, floor) {
   }
   if (st.story === 2) {
     st.story++;
-    gs.coins += 12;
+    gs.coins += scaleGoldReward(12);
     gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 6);
     return;
   }
@@ -3397,7 +3401,7 @@ function runEventLegacy(mock, gs, inv, floor) {
     st.story++;
     // Goblin engineer: 50% music-box repair → +1 inventory slot, else consolation.
     if (Math.random() < 0.5) gs.bonusInventorySlots = (gs.bonusInventorySlots || 0) + 1;
-    else { gs.coins += 12; gs.crystals += 1; }
+    else { gs.coins += scaleGoldReward(12); gs.crystals += 1; }
     return;
   }
 
@@ -3438,7 +3442,7 @@ function runEventLegacy(mock, gs, inv, floor) {
   if (gs.playerHealth < gs.maxHealth * 0.6) {
     gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 5);
   } else {
-    gs.coins += 10;
+    gs.coins += scaleGoldReward(10);
   }
 }
 
@@ -3596,7 +3600,7 @@ function runEvent(mock, gs, inv, floor) {
       }
     }
     if (repaired) gs.scene.inventorySystem.expandInventory(1);
-    else { gs.coins += 12; gs.crystals += 1; }
+    else { gs.coins += scaleGoldReward(12); gs.crystals += 1; }
     story.stage = story.hasEgg && repaired ? 'hatch_egg' : 'bonus';
     return;
   }
@@ -3624,7 +3628,7 @@ function runEvent(mock, gs, inv, floor) {
   const remaining = choices.filter((id) => !story.seen.has(id));
   if (!remaining.length) {
     if (gs.playerHealth < gs.maxHealth * 0.6) gs.playerHealth = Math.min(gs.maxHealth, gs.playerHealth + 5);
-    else gs.coins += 10;
+    else gs.coins += scaleGoldReward(10);
     return;
   }
   const id = remaining[Math.floor(Math.random() * remaining.length)];
@@ -4029,11 +4033,12 @@ function runShop(mock, gs, inv, floor) {
   const cs = mock.cardSystem;
   const metrics = shopPlanningMetrics(gs);
   if (metrics) metrics.regularVisits++;
-  // Match ShopScene's six coin-priced shelves.
+  // Match ShopScene's seven coin-priced shelves: two potions a tier apart,
+  // then the gear, the spell and the random extra.
   const duplicateTypes = ['weapon', 'weapon', 'weapon', 'magic', 'potion', 'thorns', 'armor', 'food'];
   const duplicateType = duplicateTypes[Math.floor(Math.random() * duplicateTypes.length)];
   const offers = [
-    cs.createCardData('potion', floor),
+    ...shopPotionCards(floor),
     cs.createCardData('weapon', floor),
     cs.createCardData('armor', floor, false, gs),
     cs.createCardData('thorns', floor),
@@ -4196,8 +4201,8 @@ function runRareShop(mock, gs, inv, floor) {
 
 function runTreasure(mock, gs, inv, floor, good) {
   // Mirrors TreasureScene.getRewardValues (opened-with-key tier, cut hard).
-  if (good) { gs.coins += 12 + Math.floor(floor / 2); gs.crystals += 1 + Math.floor(floor / 12); }
-  else { gs.coins += 8 + Math.floor(floor / 3); gs.crystals += 1 + Math.floor(floor / 14); }
+  if (good) { gs.coins += scaleGoldReward(12 + Math.floor(floor / 2)); gs.crystals += 1 + Math.floor(floor / 12); }
+  else { gs.coins += scaleGoldReward(8 + Math.floor(floor / 3)); gs.crystals += 1 + Math.floor(floor / 14); }
   const item = mock.cardSystem.createCardData(Math.random() < 0.55 ? 'weapon' : 'armor', floor, false, null, good && floor >= 20 ? 'epic' : 'rare');
   if (item?.type === 'weapon' && gs._lootStats) recordWeapon(gs._lootStats, floor, item, 'treasure');
   if (item) tryCarry(gs, inv, item);

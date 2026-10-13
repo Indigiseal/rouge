@@ -4,7 +4,7 @@ import { t, translateItemName } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
 import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
-import { potionNameForHealAmount } from '../content/cards/index.js';
+import { potionNameForHealAmount, shopPotionCards } from '../content/cards/index.js';
 import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
 import {
     shopAmuletCrystalPrice,
@@ -96,16 +96,15 @@ export class ShopScene extends StationRoomBase {
         // Clear existing items
         this.shopItems = [];
         
-        // Slot 1: Healing Potion (guaranteed)
-        const potionData = cardGenerator.createCardData('potion', floor);
-        if (potionData) {
+        // Slots 1-2: two healing potions a tier apart (shopPotionCards).
+        shopPotionCards(floor).forEach((potionData) => {
             this.shopItems.push({
                 data: potionData,
                 price: this.calculateItemPrice(potionData),
                 currency: 'coins',
-                purchased: false 
+                purchased: false
             });
-        }
+        });
         
         // Slot 2: Regular weapon (guaranteed)
         const weaponData = cardGenerator.createCardData('weapon', floor);

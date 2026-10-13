@@ -39,10 +39,17 @@ export class RareShopScene extends StationRoomBase {
             fallbackSize: '28px'
         });
 
-        this.shopBoardTexture = 'gamingBoard2';
+        // The rare shop's own board; the older one if it has not loaded.
+        this.shopBoardTexture = this.textures.exists('rareShopBoard') ? 'rareShopBoard' : 'gamingBoard2';
+        // rareShopBoard sits 40px lower than the clamp above the bag puts it,
+        // and rises into place with the bag's overshoot-and-settle.
+        this.shopBoardOffsetY = 40;
+        this.shopBoardBounce = true;
+        // Two rows of up to four, not the combat cluster's three.
+        this.shopMaxPerRow = 4;
         this.generateShopItems();
         this.displayShopItems();
-        this.createShopIllustrationBoard(0, 1, 174);
+        this.createShopIllustrationBoard(0, 1, 174, 'rareShopSeller');
 
         this.createStationContinueButton(595, 50, 'Next', () => this.closeStation());
     }

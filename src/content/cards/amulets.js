@@ -18,6 +18,7 @@ export const AMULET_DROP_DATA = [
   { id: 'ringOfRegeneration', minFloor: 0, weight: 10, rarity: 'common', group: 'survival' },
   { id: 'tacticiansPin', minFloor: 0, weight: 8, rarity: 'common', group: 'strategy' },
   { id: 'forcedMarch', minFloor: 0, weight: 6, rarity: 'common', group: 'strategy' },
+  { id: 'handMirror', minFloor: 0, weight: 6, rarity: 'common', group: 'survival' },
 
   // Uncommon (from floor 10)
   { id: 'ringOfGreaterRegeneration', minFloor: 10, weight: 7, rarity: 'uncommon', group: 'survival' },

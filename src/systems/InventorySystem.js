@@ -1,4 +1,5 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { armorEquipSoundKey } from '../content/audio/armorSounds.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { buildStartingWeaponCards } from '../content/characters/CharacterClasses.js';
 import { CardDataGenerator } from './loot/CardDataGenerator.js';
@@ -249,10 +250,8 @@ export class InventorySystem {
     // Modified addCard to use addCardDirect when appropriate
     addCard(cardData, preferredSlot = -1) {
         this.lastAddedSlot = -1;
-        if (cardData?.type === 'gem') {
-            this.scene.createFloatingText(512, 400, 'Drag onto a weapon to socket', 0xffe066);
-            return false;
-        }
+        // Gems can be carried: a gem in the bag is socketed later by dropping
+        // it on a weapon (handleCardDrop). They used to be refused here.
         let emptySlot = preferredSlot !== -1 && this.slots[preferredSlot] === null 
             ? preferredSlot 
             : this.slots.findIndex(slot => slot === null);
@@ -414,13 +413,24 @@ export class InventorySystem {
         // Custom event drop zones (e.g. the copying mirror). Checked before the
         // station-mode bounce-back so events can react to a card dropped on them.
         // A handler returning true owns the dragged sprite from here on.
+        //
+        // A card dropped on a zone that refuses it goes home. The zones sit in
+        // the board area, so falling through let the board-cast rule below take
+        // it: a magic card offered to the well, or dropped there after the event
+        // had ended, was cast instead and vanished.
+        let refusedByZone = false;
         for (const entry of (this.dropZones || [])) {
             const zone = entry?.zone;
             if (!zone || !zone.scene || typeof zone.getBounds !== 'function') continue;
             const bounds = zone.getBounds();
             if (bounds && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), bounds)) {
                 if (entry.handler(slotIndex, cardData, cardSprite)) return;
+                refusedByZone = true;
             }
+        }
+        if (refusedByZone) {
+            this.returnCardToSlot(slotIndex, cardSprite);
+            return;
         }
 
         // Magic has historically been cast by dropping it on the gaming board.
@@ -575,63 +585,22 @@ export class InventorySystem {
             }
         });
         
-        // Also move the info text — the container holding the pips and the
-        // value. Same duration, same ease and the same per-frame rounding as
-        // the card above, so the two land on identical whole pixels on every
-        // frame of the drop instead of only at the end.
-        const infoText = cardSprite.getData('infoText');
-        if (infoText && infoText.scene) {
-            this.scene.tweens.add({
-                targets: infoText,
-                x: targetX,
-                y: targetY,
-                duration: 200,
-                ease: 'Power2',
-                onUpdate: () => {
-                    infoText.x = Math.round(infoText.x);
-                    infoText.y = Math.round(infoText.y);
-                }
-            });
-        }
-        
-        // Move shadow back
+        // The pips, value, gem, briar frame and the rest ride the card
+        // (CardRiders), so they travel home with it on every frame of the
+        // tween. They used to be snapped to the slot here at once, so the gem
+        // and the briar frame sat home while the card was still sliding back.
+
+        // The shadow is not a rider: it goes straight back to the slot.
         if (slotSprite.shadow && slotSprite.shadow.scene) {
             slotSprite.shadow.x = targetX;
             slotSprite.shadow.y = targetY + 28;
             slotSprite.shadow.setAlpha(0);
         }
-        
-        // Move hover sprite back
-        if (slotSprite.hoverSprite && slotSprite.hoverSprite.scene) {
-            slotSprite.hoverSprite.x = targetX;
-            slotSprite.hoverSprite.y = targetY;
-        }
 
-        // Move gem effect sprite back
-        if (slotSprite.gemEffectSprite && slotSprite.gemEffectSprite.scene) {
-            slotSprite.gemEffectSprite.x = targetX;
-            slotSprite.gemEffectSprite.y = targetY;
-        }
-
-        // Return gem indicator to its corner
-        if (slotSprite.gemIndicator && slotSprite.gemIndicator.scene) {
-            const indicator = slotSprite.gemIndicator;
-            indicator.x = indicator.restX;
-            indicator.y = indicator.restY;
-            indicator.setVisible(true);
-        }
-
+        slotSprite.gemIndicator?.setVisible?.(true);
         if (slotSprite.briarFrame?.scene) {
-            slotSprite.briarFrame.x = targetX;
-            slotSprite.briarFrame.y = targetY;
             slotSprite.briarFrame.setVisible(true);
             slotSprite.briarFrame.setDepth(this.getInventoryDepths().briarFrame);
-        }
-        
-        // Move twinkle sprite back
-        if (slotSprite.twinkleSprite && slotSprite.twinkleSprite.scene) {
-            slotSprite.twinkleSprite.x = targetX;
-            slotSprite.twinkleSprite.y = targetY;
         }
     }
 
@@ -639,11 +608,9 @@ export class InventorySystem {
         const slotSprite = this.slotSprites?.[slotIndex];
         if (!slotSprite || !cardSprite?.scene) return;
 
-        const infoText = cardSprite.getData?.('infoText');
+        // Only the card hops; its pips, value and shine ride it (CardRiders).
         const hoverSprite = slotSprite.hoverSprite;
-        const parts = [cardSprite, infoText, hoverSprite]
-            .filter(part => part?.scene)
-            .map(part => ({ part, homeY: part.y }));
+        const homeY = cardSprite.y;
 
         if (hoverSprite?.scene) {
             hoverSprite.setVisible(true);
@@ -651,16 +618,14 @@ export class InventorySystem {
         }
 
         this.scene.tweens.add({
-            targets: parts.map(({ part }) => part),
+            targets: cardSprite,
             y: '-=8',
             duration: 120,
             ease: 'Sine.easeOut',
             yoyo: true,
             hold: 30,
             onComplete: () => {
-                parts.forEach(({ part, homeY }) => {
-                    if (part?.scene) part.y = homeY;
-                });
+                if (cardSprite?.scene) cardSprite.y = homeY;
                 if (hoverSprite?.scene) {
                     hoverSprite.stop();
                     hoverSprite.setVisible(false);
@@ -765,7 +730,7 @@ export class InventorySystem {
             result: snapshotHumanRunCard(upgradedArmor),
         });
 
-        SoundHelper.playSound(this.scene, 'armor_equip', 0.6);
+        SoundHelper.playSound(this.scene, armorEquipSoundKey(this.scene, upgradedArmor), 0.6);
         this.scene.createFloatingText(
             this.scene.playerAvatar.x,
             this.scene.playerAvatar.y,
@@ -828,7 +793,7 @@ export class InventorySystem {
             armor: snapshotHumanRunCard(armorData),
             swappedToInventory: snapshotHumanRunCard(previouslyEquipped),
         });
-        SoundHelper.playSound(this.scene, 'armor_equip', 0.6);
+        SoundHelper.playSound(this.scene, armorEquipSoundKey(this.scene, armorData), 0.6);
         
         this.scene.createFloatingText(
             this.scene.playerAvatar.x, 
@@ -878,11 +843,15 @@ export class InventorySystem {
         return true;
     }
 
-    unequipArmor() {
+    // Take the worn armor off into the bag: into `preferredSlot` when that slot
+    // is empty (the one it was dragged onto), otherwise the first empty one.
+    unequipArmor(preferredSlot = -1) {
         const armor = this.scene.gameState.equippedArmor;
         if (!armor) return false;
 
-        const emptySlot = this.slots.findIndex(slot => slot === null);
+        const emptySlot = this.slots[preferredSlot] === null
+            ? preferredSlot
+            : this.slots.findIndex(slot => slot === null);
         if (emptySlot === -1) {
             this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Inventory Full!', 0xff0000);
             return false;
@@ -897,7 +866,7 @@ export class InventorySystem {
             armor: snapshotHumanRunCard(armor),
         });
 
-        SoundHelper.playSound(this.scene, 'armor_equip', 0.5);
+        SoundHelper.playSound(this.scene, armorEquipSoundKey(this.scene, armor), 0.5);
         this.scene.createFloatingText(
             this.scene.playerAvatar.x,
             this.scene.playerAvatar.y,

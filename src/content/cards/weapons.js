@@ -174,6 +174,14 @@ export function weaponIgnoresFrontline(weapon) {
   return weapon.range === 'ranged' || weapon.isRanged === true;
 }
 
+// Every enemy type the board fights, the same three CardSystem.isEnemyType
+// knows. The pierce, cleave and cross used to list only 'enemy' and 'boss',
+// so an elite standing right behind the target was never pierced.
+const WEAPON_REACH_TYPES = new Set(['enemy', 'eliteEnemy', 'boss']);
+function isWeaponReachTarget(card) {
+  return WEAPON_REACH_TYPES.has(card?.data?.type);
+}
+
 /** Enemies behind the selected target in the spear's logical board column. */
 export function spearPierceTargetIndices(board, primaryIndex, primaryCard = null) {
   const primary = board?.[primaryIndex] || primaryCard;
@@ -189,7 +197,7 @@ export function spearPierceTargetIndices(board, primaryIndex, primaryCard = null
         const x = card?.restX ?? card?.sprite?.x;
         const y = card?.restY ?? card?.sprite?.y;
         return index !== primaryIndex && card?.revealed
-          && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+          && isWeaponReachTarget(card)
           && (card.data?.health ?? 0) > 0 && Number.isFinite(x) && Number.isFinite(y)
           && y < py && Math.abs(x - px) <= 35;
       })
@@ -202,7 +210,7 @@ export function spearPierceTargetIndices(board, primaryIndex, primaryCard = null
     .filter(({ card, index }) => (
       index !== primaryIndex
       && card?.revealed
-      && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+      && isWeaponReachTarget(card)
       && (card.data?.health ?? 0) > 0
       // A large boss owns the whole far row, so a spear driven through a
       // summon reaches it regardless of which foreground column was chosen.
@@ -228,7 +236,7 @@ export function swordCleaveTargetIndices(board, primaryIndex, primaryCard = null
     .filter(({ card, index }) => (
       index !== primaryIndex
       && card?.revealed
-      && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+      && isWeaponReachTarget(card)
       && (card.data?.health ?? 0) > 0
       && !card.data?.alwaysBackline
       && card.data?.brick?.r === row
@@ -252,7 +260,7 @@ export function axeHeavyCleaveTargetIndices(board, primaryIndex, primaryCard = n
     .filter(({ card, index }) => (
       index !== primaryIndex
       && card?.revealed
-      && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+      && isWeaponReachTarget(card)
       && (card.data?.health ?? 0) > 0
       && !card.data?.alwaysBackline
     ));
@@ -280,7 +288,7 @@ function spatialCrossTargets(board, primaryIndex, primary, { horizontalOnly = fa
   const enemies = board
     .map((card, index) => ({ card, index, x: card?.restX ?? card?.sprite?.x, y: card?.restY ?? card?.sprite?.y }))
     .filter(({ card, index, x, y }) => index !== primaryIndex && card?.revealed
-      && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+      && isWeaponReachTarget(card)
       && !card.data?.alwaysBackline
       && (card.data?.health ?? 0) > 0 && Number.isFinite(x) && Number.isFinite(y));
   const nearest = (items, distance) => items.sort((a, b) => distance(a) - distance(b))[0]?.index;

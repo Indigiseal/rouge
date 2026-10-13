@@ -1720,14 +1720,20 @@ function summonEnemy(enemyType, bossCard) {
     
     // Summons form one readable row below the boss, leaving the centre clear
     // for the boss HP/ATK strip. Reuse a vacated lane when a summon dies.
+    //
+    // A lane is taken by anything standing in it, not only a live summon: a
+    // summon killed with a loot amulet leaves its loot in the lane, and a new
+    // summon used to appear on top of it, hiding the loot for good.
     const lanes = [-1, 1, -2, 2, -3, 3];
-    const usedLanes = new Set(this.boardCards
-        .filter((card) => card?.data?.summonedByBoss)
-        .map((card) => card.data.summonLane));
-    const summonLane = lanes.find((lane) => !usedLanes.has(lane)) ?? lanes[lanes.length - 1];
     const { height: camH } = cameraWorldSize(this.scene.cameras.main);
-    const x = bossCard.sprite.x + summonLane * 76;
     const y = Math.min(camH - 125, bossCard.sprite.y + 102);
+    const laneX = (lane) => bossCard.sprite.x + lane * 76;
+    const LANE_HALF_WIDTH = 30;
+    const laneTaken = (lane) => this.boardCards.some((card) => card && card !== bossCard
+        && Math.abs((card.restX ?? card.sprite?.x ?? -999) - laneX(lane)) < LANE_HALF_WIDTH
+        && Math.abs((card.restY ?? card.sprite?.y ?? -999) - y) < LANE_HALF_WIDTH);
+    const summonLane = lanes.find((lane) => !laneTaken(lane)) ?? lanes[lanes.length - 1];
+    const x = laneX(summonLane);
     summonedEnemy.summonLane = summonLane;
     summonedEnemy.brick = { r: 1, c: summonLane };
     

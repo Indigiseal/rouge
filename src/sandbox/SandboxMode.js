@@ -154,6 +154,24 @@ const SANDBOX_STORY_SETUP = {
     grant: ['fireball'],
     locationId: 'silkdeep',
   },
+  // Every helping choice needs its item: a spare armor card and a potion (the
+  // loadout already carries two weapons).
+  lost_porter: {
+    grant: ['armor', 'potion'],
+    locationId: 'silkdeep',
+  },
+  // The party only argues about a map the player is actually holding.
+  porter_party_argument: {
+    grant: ['porterMap'],
+    locationId: 'silkdeep',
+    story: { lostPorterSeen: true, porterHelped: true },
+  },
+  // Every way past the twin at once: a loose shard, the Gemseeker's Lens, and
+  // the Hand Mirror that turns into the Twinned Mirror.
+  mirror_twin: {
+    grant: ['gem', 'gemseekersLens', 'handMirror'],
+    locationId: 'silkdeep',
+  },
   // Expose the dynamite choice immediately when testing the new Tollroad arc.
   goblin_mine: {
     grant: ['fireball'],
@@ -211,6 +229,29 @@ function grantSandboxStoryItem(gameScene, grant) {
   if (grant === 'key') {
     const key = gen.createKeyCard?.(gs.currentFloor || 1);
     if (key) inv.addCard(key);
+    return;
+  }
+
+  if (grant === 'armor') {
+    const armor = gen.createCardData('armor', gs.currentFloor || 6, false, null, 'common');
+    if (armor) inv.addCard(armor);
+    return;
+  }
+
+  if (grant === 'potion') {
+    const potion = gen.createPotionCard?.(gs.currentFloor || 6);
+    if (potion) inv.addCard(potion);
+    return;
+  }
+
+  if (grant === 'porterMap' || grant === 'gemseekersLens' || grant === 'handMirror') {
+    gameScene.amuletManager?.addAmulet?.(grant, { force: true });
+    return;
+  }
+
+  if (grant === 'gem') {
+    const gem = gen.createGemCard?.(gs.currentFloor || 6);
+    if (gem) inv.addCard(gem);
     return;
   }
 

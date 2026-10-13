@@ -16,12 +16,28 @@ import { scaleGoldReward } from '../../content/economy/gold.js';
 // These used to be four separate hand-typed offsets that had drifted apart
 // (18,23 / 19,26 / 17,22 / 17,22); they are one constant now so they can't.
 export const CARD_VALUE_SLOT = { x: 18, y: 24 };
+// Step between single durability dots, top to bottom. The dot art is 5px with
+// a clear row above it, so 5 sets them touching; 6 left a 1px gap, and a high
+// count ran off the bottom of the card. Thorns, weapons and armor share it.
+const DURABILITY_DOT_SPACING = 5;
+// Where the pip column starts, from the card's centre. A ten-marker's top
+// edge meets the card frame; a card with only single dots starts them on the
+// first row inside the frame. Weapons, armor and thorns all start here — armor
+// used to start 2px lower than the others.
+const PIP_TOP_TEN = -27;
+const PIP_TOP_DOT = -29;
+// The first dot under a ten-marker sits this much higher than the ten-marker
+// step would put it: 1px of gap below the marker instead of 4.
+const DOT_AFTER_TEN_TUCK = -3;
 
 // Where a resource card's name sits. Coins and crystals used to print it at
 // y=7 with the amount under it; the amount now lives in CARD_VALUE_SLOT like
 // every other card's single number, so the name drops into the lower band and
 // all of them line up.
 const RESOURCE_LABEL_Y = 19;
+// The name along a card's bottom ("Potion", "Food", "Soul Drain"...). 9px, the
+// size the gem label already used; these were 11-12px and crowded the art.
+const CARD_LABEL_SIZE = '9px';
 
 export class BoardCardFx {
     constructor(cs) {
@@ -169,7 +185,7 @@ function createCardInfoText(card) {
             // when the inventory sets infoText.x/y = cardSprite.x/y.
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
             const coinLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, t(this.scene, 'tooltip.coins'), {
-                fontSize: '11px', fill: '#f8ab2e', fontFamily: '"HoMM Pixel"'
+                fontSize: CARD_LABEL_SIZE, fill: '#f8ab2e', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             const coinAmount = this.scene.add.text(
                 CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.amount}`, {
@@ -184,7 +200,7 @@ function createCardInfoText(card) {
         case 'crystal': {
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
             const crystalLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, t(this.scene, 'ui.shop.currencyCrystals'), {
-                fontSize: '11px', fill: '#4e1e45', fontFamily: '"HoMM Pixel"'
+                fontSize: CARD_LABEL_SIZE, fill: '#4e1e45', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             const crystalAmount = this.scene.add.text(
                 CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.amount}`, {
@@ -228,7 +244,7 @@ function createCardInfoText(card) {
             // an "Egg" to the player rather than a +30 AP snack — label it so.
             const isEgg = card.data.id === 'monsterEgg' || card.data.name === 'Egg';
             const foodLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, t(this.scene, isEgg ? 'ui.card.egg' : 'tooltip.food'), {
-                fontSize: '12px', fill: '#a55119', fontFamily: '"HoMM Pixel"'
+                fontSize: CARD_LABEL_SIZE, fill: '#a55119', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             container.add(foodLabel);
             // The Egg is a story item, not a snack — it deliberately shows no
@@ -250,7 +266,7 @@ function createCardInfoText(card) {
             // category name low, the heal in the shared value slot.
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
             const potionLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, t(this.scene, 'tooltip.potion'), {
-                fontSize: '12px', fill: '#a8e870', fontFamily: '"HoMM Pixel"'
+                fontSize: CARD_LABEL_SIZE, fill: '#600f18', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             const potionAmount = this.scene.add.text(
                 CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.healAmount ?? 0}`, {
@@ -265,7 +281,7 @@ function createCardInfoText(card) {
         case 'key': {
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
             const keyLabel = this.scene.add.text(0, 18, t(this.scene, 'tooltip.key'), {
-                fontSize: '12px', fill: '#51484b', fontFamily: '"HoMM Pixel"'
+                fontSize: CARD_LABEL_SIZE, fill: '#51484b', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             container.add(keyLabel);
             attachInfoText(container);
@@ -279,7 +295,7 @@ function createCardInfoText(card) {
             // spells out what each spell does.
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
             const magicLabel = this.scene.add.text(0, 18, translateItemName(this.scene, card.data), {
-                fontSize: '11px',
+                fontSize: CARD_LABEL_SIZE,
                 fill: '#a9e5de',
                 fontFamily: '"HoMM Pixel"',
                 wordWrap: { width: 60 },
@@ -300,8 +316,8 @@ function createCardInfoText(card) {
             }).setOrigin(0.5);
             container.add(damageText);
 
-            const startY = -27;
-            const dotSpacing = 6;
+            const startY = PIP_TOP_TEN;
+            const dotSpacing = DURABILITY_DOT_SPACING;
             const tenDurabilitySpacing = 11;
             const tensCount = Math.floor(card.data.durability / 10);
             const remainingDots = card.data.durability % 10;
@@ -313,8 +329,9 @@ function createCardInfoText(card) {
                 currentY += tenDurabilitySpacing;
             }
 
+            const dotsAfterTens = tensCount > 0 ? DOT_AFTER_TEN_TUCK : PIP_TOP_DOT - PIP_TOP_TEN;
             for (let i = 0; i < remainingDots; i++) {
-                const dot = snapOriginToPixelGrid(this.scene.add.image(-19, currentY + (i * dotSpacing), 'durability_dot'));
+                const dot = snapOriginToPixelGrid(this.scene.add.image(-19, currentY + dotsAfterTens + (i * dotSpacing), 'durability_dot'));
                 container.add(dot);
             }
 
@@ -346,8 +363,8 @@ function createCardInfoText(card) {
             container.add(damageText);
 
             // Durability display with 10-point sprites and individual dots
-            const startY = -27;
-            const dotSpacing = 6;
+            const startY = PIP_TOP_TEN;
+            const dotSpacing = DURABILITY_DOT_SPACING;
             const tenDurabilitySpacing = 11; // Space between 10-point sprites
             
             const tensCount = Math.floor(card.data.durability / 10);
@@ -362,9 +379,11 @@ function createCardInfoText(card) {
                 currentY += tenDurabilitySpacing;
             }
             
-            // Add remaining individual dots
+            // Add remaining individual dots. Below a ten-marker they tuck up
+            // to the same 1px gap the ten-markers keep between themselves.
+            const dotsAfterTens = tensCount > 0 ? DOT_AFTER_TEN_TUCK : PIP_TOP_DOT - PIP_TOP_TEN;
             for (let i = 0; i < remainingDots; i++) {
-                const dot = snapOriginToPixelGrid(this.scene.add.image(-19, currentY + (i * dotSpacing), 'durability_dot'));
+                const dot = snapOriginToPixelGrid(this.scene.add.image(-19, currentY + dotsAfterTens + (i * dotSpacing), 'durability_dot'));
                 container.add(dot);
             }
             
@@ -393,8 +412,8 @@ function createCardInfoText(card) {
             container.add(protectionText);
             
             // Durability display with 10-point sprites and individual dots
-            const startY = -25;
-            const dotSpacing = 6;
+            const startY = PIP_TOP_TEN;
+            const dotSpacing = DURABILITY_DOT_SPACING;
             const tenDurabilitySpacing = 11; // Space between 10-point sprites
             
             const tensCount = Math.floor(card.data.durability / 10);
@@ -409,9 +428,11 @@ function createCardInfoText(card) {
                 currentY += tenDurabilitySpacing;
             }
             
-            // Add remaining individual dots
+            // Add remaining individual dots. Below a ten-marker they tuck up
+            // to the same 1px gap the ten-markers keep between themselves.
+            const dotsAfterTens = tensCount > 0 ? DOT_AFTER_TEN_TUCK : PIP_TOP_DOT - PIP_TOP_TEN;
             for (let i = 0; i < remainingDots; i++) {
-                const dot = snapOriginToPixelGrid(this.scene.add.image(-22, currentY + (i * dotSpacing), 'durability_dot'));
+                const dot = snapOriginToPixelGrid(this.scene.add.image(-22, currentY + dotsAfterTens + (i * dotSpacing), 'durability_dot'));
                 container.add(dot);
             }
             
@@ -1190,6 +1211,7 @@ function mimicEscape(index) {
     const x = card.sprite.x;
     const y = card.sprite.y;
     this.scene.createFloatingText(x, y - 20, 'Mimic Escaped!', 0xff6600);
+    SoundHelper.playSound(this.scene, 'mimic_escaped', 0.5);
 
     const splash = this.scene.add.sprite(x, y, 'splashSheet');
     if (this.scene.anims.exists('splash_anim')) splash.play('splash_anim');

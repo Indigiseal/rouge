@@ -1,4 +1,5 @@
 import { PreloadScene } from '../scenes/PreloadScene.js';
+import { BackgroundAudioScene } from '../scenes/BackgroundAudioScene.js';
 import { MainMenuScene } from '../scenes/MainMenuScene.js';
 import { GameScene } from '../scenes/GameScene.js';
 import { MapViewScene } from '../scenes/MapViewScene.js';
@@ -41,6 +42,7 @@ export function createGameConfig(Phaser) {
     },
     scene: [
       PreloadScene,
+      BackgroundAudioScene,
       MainMenuScene,
       GameScene,
       MapViewScene,

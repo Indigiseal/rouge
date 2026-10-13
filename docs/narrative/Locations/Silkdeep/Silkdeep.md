@@ -238,6 +238,7 @@ Required roster: **3 melee**, **2 ranged**, **1 boss**. Archetype multipliers: [
 
 - [[The Slimy Prison]] — A gelatinous cube holds a regenerating skeleton mage. Free him as companion, end him for an amulet, or steal the charm and leave him trapped.
 - [[The Silk Cache]] — A chamber of cocoons and abandoned arms. Leave, crack them open in a fight, or burn the nest with Fireball.
+- [[The Lost Porter]] — (proposed) A cheerful porter left behind by his party thinks he got lost. Give armor, a weapon or a potion and he walks home through your cleared path, leaving you the Porter's Map. Later you overhear his party arguing about it.
 
 ## Gaps
 

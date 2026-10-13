@@ -124,6 +124,12 @@ export class EventScene extends Phaser.Scene {
       story.pendingEvents = story.pendingEvents.filter(id => id !== 'hatching_egg');
     }
     if (story.pendingEvents.includes('brass_wizard')) return this.getEventById('brass_wizard');
+    // The Lost Porter's party, a couple of floors after the map changed hands.
+    if (
+      story.pendingEvents.includes('porter_party_argument')
+      && locationId === 'silkdeep'
+      && (this.gameState.currentFloor || 1) >= (story.porterMapFloor || 0) + 2
+    ) return this.getEventById('porter_party_argument');
     // The ogre wants his money back. Queued only by winning the first match, so
     // this is the rematch — and the only time the gauntlet is on the table.
     if (story.pendingEvents.includes('arm_wrestling') && !story.armWrestleRematchDone) {
@@ -146,6 +152,12 @@ export class EventScene extends Phaser.Scene {
     // Silkdeep-only: cocoon chamber.
     if (!story.silkCocoonCacheSeen && locationId === 'silkdeep') {
       bonusFillers.push('silk_cocoon_cache');
+    }
+    // Silkdeep-only: the porter his party left hanging.
+    if (!story.lostPorterSeen && locationId === 'silkdeep') bonusFillers.push('lost_porter');
+    // A lost reflection from Mirrorwane, far from home.
+    if (!story.mirrorTwinSeen && (locationId === 'silkdeep' || locationId === 'thornwake')) {
+      bonusFillers.push('mirror_twin');
     }
     // Boss-gated: the collectors only exist on runs where their King is the one
     // waiting at the end of the act, so what you do here reaches floor 15.
@@ -264,6 +276,12 @@ export class EventScene extends Phaser.Scene {
       bookWormSeen: false,
       briarRoomSeen: false,
       silkCocoonCacheSeen: false,
+      lostPorterSeen: false,
+      porterHelped: false,
+      porterMapFloor: null,
+      porterPartySeen: false,
+      porterPartyChoice: null,
+      mirrorTwinSeen: false,
       reliquarySeen: false,
       tollCollectorsSeen: false,
       armWrestlingSeen: false,
@@ -1698,6 +1716,12 @@ export class EventScene extends Phaser.Scene {
   // setStationMode(false) re-applies the standard combat depths.
   _disableEventStation() {
     if (!this._stationActive) return;
+    this._stationActive = false;
+    // The Test Site's exit stops GameScene before this scene, so on that path
+    // the inventory and backdrop below are already destroyed — and Phaser
+    // throws on a destroyed group. Nothing left to restore: skip it.
+    // (Phaser scene status: SHUTDOWN is 8, DESTROYED 9.)
+    if ((this.gameScene?.sys?.settings?.status ?? 9) >= 8) return;
     const inv = this.gameScene?.inventorySystem;
     if (inv) {
       inv.setDragOverlayScene?.(null);
@@ -1706,7 +1730,6 @@ export class EventScene extends Phaser.Scene {
       inv.setVisibility(false);
     }
     this.gameScene?.setEventBackdrop?.(false);
-    this._stationActive = false;
   }
 
   // ─── Copying mirror ──────────────────────────────────────────────────────
@@ -2995,6 +3018,9 @@ export class EventScene extends Phaser.Scene {
       book_worm: 'bookWormSeen',
       briar_room: 'briarRoomSeen',
       silk_cocoon_cache: 'silkCocoonCacheSeen',
+      lost_porter: 'lostPorterSeen',
+      porter_party_argument: 'porterPartySeen',
+      mirror_twin: 'mirrorTwinSeen',
       screaming_head: 'screamingHeadSeen',
       reliquary: 'reliquarySeen',
       toll_collectors: 'tollCollectorsSeen',
