@@ -42,7 +42,7 @@ export function tryLethalRevive(gameState, scene) {
         scene.playerAvatar?.x ?? 0,
         scene.playerAvatar?.y ?? 0,
         fromTemple ? 'Temple!' : 'Second Wind!',
-        0xffdd55
+        0xffcf7f
     );
     scene?.updateUI?.();
     return true;
@@ -78,7 +78,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         || scene?.amuletManager?.isPoisonImmune?.()
     )) {
         if (scene?.playerAvatar) {
-            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Poison Immune!', 0x66ff66);
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Poison Immune!', 0x71800b);
         }
         return {
             actualDamage: 0,
@@ -95,7 +95,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     const talentDodge = gameState.talentEffects?.shadowStepDodge || 0;
     if (!isPoison && talentDodge > 0 && Math.random() < talentDodge) {
         if (gameState.equippedArmor) gameState.tickEquippedArmorDurability();
-        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Shadow Step!', 0x88ffcc);
+        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Shadow Step!', 0x71b1ae);
         playDodgeWhoosh(scene);
         return {
             actualDamage: 0, tookDamage: false, blockedDamage: 0,
@@ -106,7 +106,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     const villageDodge = gameState.talentEffects?.villageDodge || 0;
     if (!isPoison && villageDodge > 0 && Math.random() < villageDodge) {
         if (gameState.equippedArmor) gameState.tickEquippedArmorDurability();
-        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Armory!', 0x88c0ff);
+        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Armory!', 0x3f818f);
         playDodgeWhoosh(scene);
         return {
             actualDamage: 0, tookDamage: false, blockedDamage: 0,
@@ -117,7 +117,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     // Check for dodge (from amulets)
     if (scene.amuletManager && scene.amuletManager.checkDodge()) {
         if (gameState.equippedArmor && !isPoison) gameState.tickEquippedArmorDurability();
-        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodged!', 0x00ff00);
+        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodged!', 0x71800b);
         playDodgeWhoosh(scene);
         return {
             actualDamage: 0,
@@ -146,7 +146,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         // Handle Dodge from equipped armor — durability ticks on dodge.
         const armorDodge = effectiveArmorDodge(gameState, gameState.equippedArmor);
         if (armorDodge > 0 && Math.random() < armorDodge) {
-            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodge!', 0x00ff00);
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodge!', 0x71800b);
             playDodgeWhoosh(scene);
             if (!isPoison) gameState.tickEquippedArmorDurability();
             return {
@@ -162,7 +162,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         const rangedIgnore = gameState.equippedArmor.rangedIgnoreChance || 0;
         if (rangedIgnore > 0 && attackIsRanged && amount > 0 && Math.random() < rangedIgnore) {
             scene.createFloatingText(
-                scene.playerAvatar.x, scene.playerAvatar.y, 'Deflect!', 0x88ccff
+                scene.playerAvatar.x, scene.playerAvatar.y, 'Deflect!', 0x71b1ae
             );
             gameState.tickEquippedArmorDurability();
             return {
@@ -190,7 +190,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
                 scene.playerAvatar.x,
                 scene.playerAvatar.y - 16,
                 'Armor ignored!',
-                0xffaa66
+                0xe89353
             );
         }
     }
@@ -217,7 +217,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
                 scene.cardSystem.attackEnemy(enemyIndex, reflectedDamage, true);
                 if (enemySprite) {
                     CombatSequencer.floatingText(scene, 'reflect',
-                        enemySprite.x, enemySprite.y - 20, `-${reflectedDamage} (Reflect)`, 0x00ffff);
+                        enemySprite.x, enemySprite.y - 20, `-${reflectedDamage} (Reflect)`, 0x71b1ae);
                 }
             }
         }
@@ -258,12 +258,12 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
                 scene.playerAvatar?.x || 0,
                 (scene.playerAvatar?.y || 0) - 18,
                 'Reprisal!',
-                0xaaccff
+                0xd6c2c1
             );
             scene.cardSystem?.attackEnemy?.(enemyIndex, reprisalDmg, true);
             if (enemySprite) {
                 CombatSequencer.floatingText(scene, 'reflect',
-                    enemySprite.x, enemySprite.y - 20, `-${reprisalDmg} (Reprisal)`, 0xaaccff);
+                    enemySprite.x, enemySprite.y - 20, `-${reprisalDmg} (Reprisal)`, 0xd6c2c1);
             }
         }
     }
@@ -284,12 +284,12 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
                 scene.playerAvatar?.x || 0,
                 (scene.playerAvatar?.y || 0) - 12,
                 'Counter!',
-                0xffaa44
+                0xef9629
             );
             scene.cardSystem?.attackEnemy?.(enemyIndex, counterDmg, true);
             if (enemySprite) {
                 CombatSequencer.floatingText(scene, 'reflect',
-                    enemySprite.x, enemySprite.y - 20, `-${counterDmg} (Counter)`, 0xffaa44);
+                    enemySprite.x, enemySprite.y - 20, `-${counterDmg} (Counter)`, 0xef9629);
             }
         }
     }

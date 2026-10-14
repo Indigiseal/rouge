@@ -13,7 +13,7 @@ import { t } from '../i18n/i18n.js';
 // half-dark inset to lift the writing off the grain, then the words. Every
 // number here is measured off that mockup — the paper's light border runs
 // x 176-467 and y 43-156, and the inset inside it x 188-446, y 52-144.
-const INK = '#f0cdaf';
+const INK = '#f2d3aa';
 // The title banner, at exactly the anvil's position and in its title style, so
 // the two rooms name themselves the same way.
 const BANNER_Y = 44;
@@ -66,12 +66,12 @@ export class RestScene extends Phaser.Scene {
         } else {
             // The old composite room art, kept as the fallback so a missing file
             // leaves a room rather than a black screen.
-            this.add.rectangle(320, 180, 640, 360, 0x1a1418);
+            this.add.rectangle(320, 180, 640, 360, 0x1e141b);
             this.add.image(320, 92, 'restRooms', 0).setOrigin(0.5);
         }
 
         this.add.image(320, BANNER_Y, 'restBanner');
-        createTitle(this, 320, BANNER_TITLE_Y, t(this, 'ui.sandbox.encounter.rest'), { color: '#f5e6c8' });
+        createTitle(this, 320, BANNER_TITLE_Y, t(this, 'ui.sandbox.encounter.rest'), { color: '#fef0cf' });
 
         OptionsSkin.createPaperPanel.call(this, PAPER_X, PAPER_Y, PAPER_W, PAPER_H);
         this.add.rectangle(PAPER_X, INSET_Y, INSET_W, INSET_H, INSET_FILL, INSET_ALPHA);

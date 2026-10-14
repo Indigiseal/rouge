@@ -1,0 +1,513 @@
+{
+ "frames": {
+  "dagger_C": {
+   "frame": {
+    "x": 2,
+    "y": 2,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "dagger_U": {
+   "frame": {
+    "x": 58,
+    "y": 2,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "dagger_R": {
+   "frame": {
+    "x": 114,
+    "y": 2,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "dagger_E": {
+   "frame": {
+    "x": 170,
+    "y": 2,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "dagger_L": {
+   "frame": {
+    "x": 226,
+    "y": 2,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "bow_c": {
+   "frame": {
+    "x": 2,
+    "y": 74,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "bow_U": {
+   "frame": {
+    "x": 58,
+    "y": 74,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "bow_R": {
+   "frame": {
+    "x": 114,
+    "y": 74,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "bow_E": {
+   "frame": {
+    "x": 170,
+    "y": 74,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "bow_L": {
+   "frame": {
+    "x": 226,
+    "y": 74,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "sword_C": {
+   "frame": {
+    "x": 2,
+    "y": 146,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "sword_U": {
+   "frame": {
+    "x": 58,
+    "y": 146,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "sword_R": {
+   "frame": {
+    "x": 114,
+    "y": 146,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "sword_E": {
+   "frame": {
+    "x": 170,
+    "y": 146,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "sword_L": {
+   "frame": {
+    "x": 226,
+    "y": 146,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "spear_C": {
+   "frame": {
+    "x": 2,
+    "y": 218,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "spear_U": {
+   "frame": {
+    "x": 58,
+    "y": 218,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "spear_R": {
+   "frame": {
+    "x": 114,
+    "y": 218,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "spear_E": {
+   "frame": {
+    "x": 170,
+    "y": 218,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "spear_L": {
+   "frame": {
+    "x": 226,
+    "y": 218,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "axe_C": {
+   "frame": {
+    "x": 2,
+    "y": 290,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "axe_U": {
+   "frame": {
+    "x": 58,
+    "y": 290,
+    "w": 54,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 70
+   }
+  },
+  "axe_R": {
+   "frame": {
+    "x": 114,
+    "y": 290,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "axe_E": {
+   "frame": {
+    "x": 170,
+    "y": 290,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "axe_L": {
+   "frame": {
+    "x": 226,
+    "y": 290,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  }
+ },
+ "meta": {
+  "image": "weaponsSheet.png",
+  "size": {
+   "w": 282,
+   "h": 362
+  },
+  "scale": "1",
+  "app": "tools/build-item-sheets.py"
+ }
+}

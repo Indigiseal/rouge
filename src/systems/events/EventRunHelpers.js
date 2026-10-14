@@ -2,6 +2,8 @@
 // Methods are assigned onto EventScene.prototype and keep `this` as the scene.
 
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
+import { SoundHelper } from '../../audio/SoundHelper.js';
+import { playCardDissolve } from '../../ui/CardDissolve.js';
 import { isGauntlet } from '../../content/balance/Gauntlet.js';
 import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { t, translateItemName } from '../../i18n/i18n.js';
@@ -364,6 +366,8 @@ export const EventRunHelpers = {
     const egg = new CardDataGenerator().createEggCard();
     if (this._addCardToInventory(egg)) {
       this._reward({ key: 'event.reward.gained', vars: { name: translateItemName(this, egg) || t(this, 'tooltip.card') } });
+      // The egg floats from the nest's picture into its bag slot.
+      this._flyCardFromPicture?.(this.gameScene?.inventorySystem?.lastAddedSlot);
       return true;
     }
     // A full bag used to swallow this silently: no egg, no card, and nothing in
@@ -423,7 +427,14 @@ export const EventRunHelpers = {
     if (!Number.isFinite(durability)) return false;
 
     armor.durability = Math.max(0, durability - amount);
-    if (armor.durability <= 0) this.gameState.equippedArmor = null;
+    // The fight's sounds: a pip knocked off is the "Armor Broken!" crack an
+    // armor-piercing hit makes; armor worn through is the break.
+    if (armor.durability <= 0) {
+      SoundHelper.playVariant(this, 'armor_break', 0.55);
+      this.gameState.equippedArmor = null;
+    } else {
+      SoundHelper.playSound(this, 'armor_broken', 0.5);
+    }
     this.gameScene?.updateEquippedArmorPanel?.();
     this.gameScene?.updateUI?.();
     return true;
@@ -789,12 +800,20 @@ export const EventRunHelpers = {
     return true;
   },
 
+  // An event taking a card from the bag: it dissolves where it sits, the way a
+  // spent weapon does, drawn on the event screen so it shows above the bag.
+  _dissolveBagCard(index) {
+    const card = this.gameScene?.inventorySystem?.slotSprites?.[index]?.card;
+    if (card?.scene) playCardDissolve(this, card);
+  },
+
   _removeInventoryCard(index) {
     const slots = this.getInventorySlots();
     if (!Array.isArray(slots) || index < 0 || index >= slots.length || !slots[index]) return false;
 
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     if (this.gameScene?.inventorySystem?.removeCard) {
+      this._dissolveBagCard(index);
       this.gameScene.inventorySystem.removeCard(index);
       return true;
     }
@@ -808,6 +827,7 @@ export const EventRunHelpers = {
     const slots = this.getStoryInventorySlots();
     if (!Array.isArray(slots) || index < 0 || index >= slots.length || !slots[index]) return false;
 
+    if (this.gameScene?.inventorySystem?.slots === slots) this._dissolveBagCard(index);
     slots[index] = null;
     this.gameState.inventory = slots;
     if (this.gameScene?.inventorySystem?.slots === slots) {

@@ -12,14 +12,19 @@ export class SoundHelper {
         block_hit: ['block_hit_1', 'block_hit_2'],
         block_ready: ['block_ready_1', 'block_ready_2'],
         thorns_retaliate: ['thorns_retaliate_1', 'thorns_retaliate_2'],
-        hover_button: ['hover_button_1'],
+        hover_button: ['hover_button_1', 'hover_button_2', 'hover_button_3', 'hover_button_4', 'hover_button_5'],
         dodge_miss: ['dodge_miss_1', 'dodge_miss_2', 'dodge_miss_3'],
         map_select: ['map_select_3'],
+        door_land: ['door_land_1'],
+        door_hover: ['door_hover_1', 'door_hover_2'],
+        chest_hover: ['chest_hover_1'],
+        poison_tick: ['poison_tick_1', 'poison_tick_2'],
+        nest_screech: ['nest_screech_1', 'nest_screech_2'],
+        mbox_tick: ['mbox_tick_1', 'mbox_tick_2'],
+        nest_rummage: ['nest_rummage_1', 'nest_rummage_2'],
         armor_break: ['armor_break_1', 'armor_break_2', 'armor_break_3'],
-        // One click for every button in the game. A group of one, so call sites
-        // keep passing 'button_click' and a second take can be dropped in here
-        // later without touching them.
-        button_click: ['ui_click'],
+        // One click for every button in the game, in three pitches.
+        button_click: ['ui_click', 'ui_click_hi', 'ui_click_lo'],
         // Two takes for a card answering the pointer, picked at random per
         // hover. Sweeping across a board fires this far more often than any
         // other UI sound, and one sample repeating that fast reads as a stutter.
@@ -162,6 +167,8 @@ export class SoundHelper {
     // collapse.
     static DEDUPE_MS = 40;
     static _lastPlayedAt = new Map();
+    // Last take played per variant group, so a group never repeats itself.
+    static _lastVariant = new Map();
     static PENDING_AUDIO_TTL_MS = 900;
     static MAX_ACTIVE_SFX = 32;
     static _activeSfx = [];
@@ -209,7 +216,7 @@ export class SoundHelper {
         // canonical key (e.g. 'card_flip') transparently rotates its takes.
         // Variant keys ('card_flip_v1', …) aren't group names, so no recursion.
         const variants = this.SFX_VARIANTS[soundKey];
-        if (variants) return this.playRandom(scene, variants, baseVolume);
+        if (variants) return this.playVariant(scene, soundKey, baseVolume);
 
         const gv = this.ensureGlobalVolume(scene);
 
@@ -270,8 +277,19 @@ export class SoundHelper {
         this.playSound(scene, key, baseVolume);
     }
 
+    // A random take from a group, never the same take twice in a row. Two
+    // plays of a group in the same instant (a sweep hitting two enemies) get
+    // two different takes and both sound; only an identical take repeated
+    // within DEDUPE_MS is swallowed, by playSound.
     static playVariant(scene, group, baseVolume = 1.0) {
-        this.playRandom(scene, this.SFX_VARIANTS[group], baseVolume);
+        const keys = this.SFX_VARIANTS[group];
+        if (!keys || !keys.length) return;
+
+        const previous = this._lastVariant.get(group);
+        const choices = keys.length > 1 ? keys.filter((k) => k !== previous) : keys;
+        const key = choices[Math.floor(Math.random() * choices.length)];
+        this._lastVariant.set(group, key);
+        this.playSound(scene, key, baseVolume);
     }
 
     // Stop whatever fade is currently animating this track's volume.

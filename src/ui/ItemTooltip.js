@@ -5,6 +5,7 @@
 import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from '../i18n/i18n.js';
 import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
 import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
+import { HAND_LOCKS, handLockKindOf } from '../content/combat/handLock.js';
 import { cameraWorldSize } from '../config/renderScale.js';
 
 // Default tooltip depth — above the board and its card FX, below the modal
@@ -31,11 +32,11 @@ export const STATION_TOOLTIP_GAP = 44;
 
 function rarityFill(rarity) {
     switch (rarity) {
-        case 'uncommon':  return '#66dd66';
-        case 'rare':      return '#66aaff';
-        case 'epic':      return '#cc88ff';
-        case 'legendary': return '#ffcc33';
-        case 'cursed':    return '#ff6666';
+        case 'uncommon':  return '#4a884f';
+        case 'rare':      return '#6c6885';
+        case 'epic':      return '#712a65';
+        case 'legendary': return '#fbad19';
+        case 'cursed':    return '#c45c45';
         // Commons have no rarity hue to carry, so they take the body ink.
         default:          return TOOLTIP_TEXT_COLOR;
     }
@@ -126,7 +127,7 @@ export function showItemTooltip(scene, data, anchorX, anchorY, depth = TOOLTIP_D
     if (!lines.name && !lines.body) return;
 
     const nameColor = data.type === 'amulet' && data.rarity === 'cursed'
-        ? '#ff8888'
+        ? '#c45c45'
         : rarityFill(data.rarity);
 
     renderTooltipBox(scene, lines.name, lines.body, nameColor, anchorX, anchorY, depth, gap);
@@ -198,7 +199,7 @@ export function showBossTooltip(scene, data, anchorX, anchorY, gap = TOOLTIP_GAP
         bodyParts.push(t(scene, 'boss.noAbilities'));
     }
 
-    renderTooltipBox(scene, name, bodyParts.join('\n'), '#ffcc33', anchorX, anchorY, TOOLTIP_DEPTH, gap);
+    renderTooltipBox(scene, name, bodyParts.join('\n'), '#fbad19', anchorX, anchorY, TOOLTIP_DEPTH, gap);
 }
 
 function getEnemyFeatureLines(scene, data) {
@@ -229,7 +230,7 @@ function getEnemyFeatureLines(scene, data) {
         lines.push(t(scene, 'tooltip.poisonAmp'));
     }
     if (features.includes('web_hand')) {
-        lines.push(t(scene, 'tooltip.webHand'));
+        lines.push(t(scene, HAND_LOCKS[handLockKindOf(data)].tooltipKey));
     }
     if (features.includes('club_stun')) {
         lines.push(t(scene, 'tooltip.clubStun'));
@@ -304,8 +305,8 @@ export function showEnemyTooltip(scene, card, gap = BOARD_TOOLTIP_GAP) {
         ...getBossAbilityLines(scene, data),
     ];
 
-    const nameColor = data.isEliteMiniBoss ? '#ffcc33'
-        : data.enemyTier === 'veteran' ? '#cc7722'
+    const nameColor = data.isEliteMiniBoss ? '#fbad19'
+        : data.enemyTier === 'veteran' ? '#c57309'
         : TOOLTIP_TEXT_COLOR;
     renderTooltipBox(
         scene,

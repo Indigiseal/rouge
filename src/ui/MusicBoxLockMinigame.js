@@ -116,7 +116,9 @@ export function openMusicBoxLockMinigame(scene, cfg) {
     phase = 'done';
     busy = true;
     statusText?.setText(t(scene, won ? 'ui.musicBox.success' : 'ui.musicBox.detonated'));
-    statusText?.setColor(won ? '#7ee787' : '#ff7b72');
+    // Opened, the box plays its tune; the last pin's chime leads into it.
+    if (won) scene.time?.delayedCall?.(450, () => SoundHelper.playSound(scene, 'mbox_solved', 0.5));
+    statusText?.setColor(won ? '#4a884f' : '#c45c45');
     scene.time?.delayedCall?.(FINISH_MS, () => {
       close();
       cfg.onDone(won);
@@ -143,7 +145,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
   const panel = push(createNineSlicePanel(scene, panelW, panelH, {
     key: UI_PANEL_KEY,
     slice: UI_PANEL_SLICE,
-  }) || scene.add.rectangle(cx, cy, panelW, panelH, 0x1a1420, 0.96).setStrokeStyle(2, 0xc9a227));
+  }) || scene.add.rectangle(cx, cy, panelW, panelH, 0x1e1421, 0.96).setStrokeStyle(2, 0xd5aa54));
   panel.setPosition(cx, cy);
   panel.setDepth(DEPTH + 1);
 
@@ -156,7 +158,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
   push(scene.add.text(cx, panelTop + TITLE_DY, t(scene, 'ui.musicBox.title'), {
     fontSize: '16px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#f0e6d2',
+    color: '#fef0cf',
   }).setOrigin(0.5).setDepth(DEPTH + 3));
 
   const addBrief = (obj) => {
@@ -166,8 +168,8 @@ export function openMusicBoxLockMinigame(scene, cfg) {
 
   const wafer = (x, y, frame, tint) => {
     if (!useSheet) {
-      const fallback = addBrief(scene.add.rectangle(x, y, 40, 50, 0x4a3424, 1));
-      fallback.setStrokeStyle(1, tint || 0xc9a227).setDepth(DEPTH + 4);
+      const fallback = addBrief(scene.add.rectangle(x, y, 40, 50, 0x4b3329, 1));
+      fallback.setStrokeStyle(1, tint || 0xd5aa54).setDepth(DEPTH + 4);
       return fallback;
     }
     const image = addBrief(scene.add.image(x, y, SHEET_KEY, frame));
@@ -181,7 +183,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
   addBrief(scene.add.text(cx, panelTop + COPY_DY, t(scene, 'ui.musicBox.brief'), {
     fontSize: '11px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#ffe8b0',
+    color: '#fee8b5',
     wordWrap: { width: panelW - 28 },
     align: 'center',
   }).setOrigin(0.5).setDepth(DEPTH + 2));
@@ -203,26 +205,26 @@ export function openMusicBoxLockMinigame(scene, cfg) {
   addBrief(scene.add.text(cx + 52, pairY, t(scene, 'ui.musicBox.safePairs'), {
     fontSize: '11px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#7ee787',
+    color: '#4a884f',
     align: 'left',
   }).setOrigin(0, 0.5).setDepth(DEPTH + 3));
 
-  wafer(cx - 78, detY, FRAME_CHARGE, 0xff8866);
-  wafer(cx - 28, detY, FRAME_CHARGE, 0xff8866);
+  wafer(cx - 78, detY, FRAME_CHARGE, 0xef7c4b);
+  wafer(cx - 28, detY, FRAME_CHARGE, 0xef7c4b);
   addBrief(scene.add.text(cx + 52, detY, t(scene, 'ui.musicBox.detonators'), {
     fontSize: '11px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#ff7b72',
+    color: '#c45c45',
     align: 'left',
   }).setOrigin(0, 0.5).setDepth(DEPTH + 3));
 
-  const beginBg = addBrief(scene.add.rectangle(cx, panelBot - 22, 120, 24, 0x2a2030, 1));
-  beginBg.setStrokeStyle(2, 0xc9a227).setDepth(DEPTH + 5);
+  const beginBg = addBrief(scene.add.rectangle(cx, panelBot - 22, 120, 24, 0x2b2332, 1));
+  beginBg.setStrokeStyle(2, 0xd5aa54).setDepth(DEPTH + 5);
   beginBg.setInteractive({ useHandCursor: true });
   const beginLabel = addBrief(scene.add.text(cx, panelBot - 22, t(scene, 'ui.musicBox.begin'), {
     fontSize: '12px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#f0e6d2',
+    color: '#fef0cf',
   }).setOrigin(0.5).setDepth(DEPTH + 6));
 
   const clearBrief = () => {
@@ -241,7 +243,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
     push(scene.add.text(cx, panelTop + COPY_DY, t(scene, 'ui.musicBox.instructions'), {
       fontSize: '10px',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
-      color: '#c9b48a',
+      color: '#c8b08a',
       wordWrap: { width: panelW - 28 },
       align: 'center',
     }).setOrigin(0.5).setDepth(DEPTH + 2));
@@ -249,7 +251,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
     statusText = push(scene.add.text(cx, panelBot - 16, t(scene, 'ui.musicBox.ready'), {
       fontSize: '11px',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
-      color: '#ffe8b0',
+      color: '#fee8b5',
       wordWrap: { width: panelW - 28 },
       align: 'center',
     }).setOrigin(0.5).setDepth(DEPTH + 3));
@@ -320,7 +322,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
       }
       const trio = shuffle(pool).slice(0, 3);
       const destSlots = [trio[1].slot, trio[2].slot, trio[0].slot];
-      SoundHelper.playVariant(scene, 'card_place', 0.4);
+      SoundHelper.playSound(scene, 'mbox_shuffle', 0.45);
       let left = 3;
       trio.forEach((tile, i) => {
         tile.image.clearTint();
@@ -378,7 +380,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
 
     const onTile = (tile) => {
       if (phase !== 'play' || busy || tile.seated || tile.faceUp) return;
-      SoundHelper.playVariant(scene, 'card_flip', 0.45);
+      SoundHelper.playVariant(scene, 'mbox_tick', 0.5);
 
       if (picked.length === 0) {
         busy = true;
@@ -395,9 +397,11 @@ export function openMusicBoxLockMinigame(scene, cfg) {
       flipTo(tile, true, () => {
         if (first.pairId === tile.pairId) {
           if (first.charge || tile.charge) {
-            SoundHelper.playVariant(scene, 'player_hurt', 0.7);
+            // The box blows apart, then the hero feels it.
+            SoundHelper.playSound(scene, 'mbox_detonate', 0.6);
+            scene.time?.delayedCall?.(140, () => SoundHelper.playVariant(scene, 'player_hurt', 0.6));
             statusText.setText(t(scene, 'ui.musicBox.detonated'));
-            statusText.setColor('#ff7b72');
+            statusText.setColor('#c45c45');
             first.image.setTint(0xff6644);
             tile.image.setTint(0xff6644);
             finish(false);
@@ -406,9 +410,10 @@ export function openMusicBoxLockMinigame(scene, cfg) {
           first.seated = true;
           tile.seated = true;
           seated += 1;
-          SoundHelper.playVariant(scene, 'anvil_upgrade', 0.5);
+          // Each pin rings a note higher than the last (mbox_pin_1..4).
+          SoundHelper.playSound(scene, `mbox_pin_${Math.min(seated, SAFE_PAIR_COUNT)}`, 0.5);
           statusText.setText(t(scene, 'ui.musicBox.pinSeated', { seated, total: SAFE_PAIR_COUNT }));
-          statusText.setColor('#7ee787');
+          statusText.setColor('#4a884f');
           if (seated >= SAFE_PAIR_COUNT) {
             finish(true);
             return;
@@ -417,9 +422,9 @@ export function openMusicBoxLockMinigame(scene, cfg) {
           return;
         }
 
-        SoundHelper.playVariant(scene, 'invalid_action', 0.45);
+        SoundHelper.playSound(scene, 'mbox_nofit', 0.5);
         statusText.setText(t(scene, 'ui.musicBox.noFit'));
-        statusText.setColor('#ffe8b0');
+        statusText.setColor('#fee8b5');
         scene.time?.delayedCall?.(MISMATCH_MS, () => {
           if (phase !== 'play') return;
           let pending = 2;
@@ -437,7 +442,7 @@ export function openMusicBoxLockMinigame(scene, cfg) {
       const { x, y } = slotXY(index);
       const image = useSheet
         ? push(scene.add.image(x, y, SHEET_KEY, FRAME_BACK))
-        : push(scene.add.rectangle(x, y, TILE_W, TILE_H, 0x4a3424, 1));
+        : push(scene.add.rectangle(x, y, TILE_W, TILE_H, 0x4b3329, 1));
       image.setDepth(DEPTH + 4);
       snapOriginToPixelGrid(image);
       image.setInteractive({ useHandCursor: true });
@@ -465,8 +470,11 @@ export function openMusicBoxLockMinigame(scene, cfg) {
     beginBg.disableInteractive();
     startPlay();
   };
-  beginBg.on('pointerover', () => beginBg.setFillStyle(0x3a3040, 1));
-  beginBg.on('pointerout', () => beginBg.setFillStyle(0x2a2030, 1));
+  beginBg.on('pointerover', () => {
+    SoundHelper.playVariant(scene, 'hover_button', 0.4);
+    beginBg.setFillStyle(0x383348, 1);
+  });
+  beginBg.on('pointerout', () => beginBg.setFillStyle(0x2b2332, 1));
   beginBg.on('pointerdown', onBegin);
   beginLabel.setInteractive({ useHandCursor: true });
   beginLabel.on('pointerdown', onBegin);

@@ -19,6 +19,15 @@ import { playSmokeBurst } from '../../ui/SmokeBurst.js';
 import { translateItemName } from '../../i18n/i18n.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 
+// The strike over a weapon card (playWeaponStrikeEffect): slash speed, and
+// how far the card shakes either way.
+const WEAPON_STRIKE_FPS = 14;
+// Soul Drain's soul flickering as it flies (soulAnim.png, 5 frames, looped).
+const SOUL_WISP_FPS = 12;
+const WEAPON_STRIKE_SHAKE_PX = 2;
+// The slash sits this many pixels above the card's centre.
+const WEAPON_STRIKE_LIFT_PX = 6;
+
 // The painted Fireball burst: 4 frames in about a third of a second.
 const FIREBALL_BURST_FPS = 12;
 
@@ -74,13 +83,13 @@ export const InventoryCombatUse = {
 
         // Pre-flight check: confirm there's a valid target before spending an action.
         if (!this.canMagicCardSucceed(magicCard, cardSprite)) {
-            this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'No valid target!', 0xff8844);
+            this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'No valid target!', 0xef7c4b);
             this.returnCardToSlot(slotIndex, cardSprite);
             return;
         }
 
         if (!this.stationMode && !this.scene.useAction()) {
-            this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Wait for the enemy turn!', 0xffaa66);
+            this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Wait for the enemy turn!', 0xe89353);
             this.returnCardToSlot(slotIndex, cardSprite);
             return;
         }
@@ -116,7 +125,7 @@ export const InventoryCombatUse = {
                     }
                     
                     this.scene.cardSystem.attackEnemy(closestEnemy, magicCard.damage);
-                    this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Fireball!', 0xff6600);
+                    this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Fireball!', 0xef7c4b);
                     used = true;
                 }
                 break;
@@ -133,7 +142,7 @@ export const InventoryCombatUse = {
                 });
                 if (frozeAny) {
                     SoundHelper.playSound(this.scene, 'frozenRing', 0.5);
-                    this.scene.createFloatingText(320, 180, 'Enemies Frozen!', 0x00ccff);
+                    this.scene.createFloatingText(320, 180, 'Enemies Frozen!', 0x71b1ae);
                     used = true;
                 }
                 break;
@@ -142,7 +151,7 @@ export const InventoryCombatUse = {
                 this.scene.gameState.playerHealth = this.scene.gameState.maxHealth;
                 this.scene.gameState.actionsLeft = this.scene.gameState.maxActions;
                 SoundHelper.playSound(this.scene, 'recovery', 0.5);
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `Full Restore!`, 0x00ff00);
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `Full Restore!`, 0x71800b);
                 this.scene.updateUI();
                 used = true;
                 break;
@@ -184,7 +193,7 @@ export const InventoryCombatUse = {
                         );
                         SoundHelper.playSound(this.scene, 'soulSucking', 0.5);
                         this.createSoulDrainEffect(enemy.sprite, this.scene.playerAvatar);
-                        this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${healAmount} HP`, 0x9932cc);
+                        this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${healAmount} HP`, 0x712a65);
 
                         // Route the kill through the standard defeat handler (not a
                         // bare removeCard) so every on-kill reward fires — normal
@@ -200,8 +209,8 @@ export const InventoryCombatUse = {
                 
             case 'shadowBlade':
                 this.scene.gameState.shadowBlade = { turns: 10, multiplier: 1.5 };
-                SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Shadow Blade Active!', 0x4b0082);
+                SoundHelper.playSound(this.scene, 'shadowDagger', 0.5);
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Shadow Blade Active!', 0x712a65);
                 used = true;
                 break;
                 
@@ -211,25 +220,25 @@ export const InventoryCombatUse = {
                     if (this.isEnemyBoardCard(card)) {
                         card.data.attack = Math.ceil(card.data.attack * 0.7);
                         if (card.revealed) {
-                            this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Weakened!', 0x9932cc);
+                            this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Weakened!', 0x712a65);
                         }
                     }
                 });
-                SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+                SoundHelper.playSound(this.scene, 'weakening', 0.5);
                 used = true;
                 break;
                 
             case 'boneWall':
                 this.scene.gameState.boneWall = 2; // Reflects next 2 attacks
                 SoundHelper.playSound(this.scene, 'boneWall', 0.5);
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Bone Shield Active!', 0xffffff);
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Bone Shield Active!', 0xfef0cf);
                 used = true;
                 break;
                 
             case 'magicShield':
                 this.scene.gameState.magicShield = { turns: 10, multiplier: 1.2 };
                 SoundHelper.playSound(this.scene, 'magicShield', 0.5);
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Magic Shield Active!', 0x00aaff);
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Magic Shield Active!', 0x3f818f);
                 used = true;
                 break;
                 
@@ -271,7 +280,7 @@ export const InventoryCombatUse = {
                 returnedByAmulet,
             });
             if (returnedByAmulet) {
-                this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Moth-Wing Dust returned it!', 0xd8d8ff);
+                this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Moth-Wing Dust returned it!', 0xd6c2c1);
                 this.returnCardToSlot(slotIndex, cardSprite, () => {
                     this.playMothWingReturnAnimation(slotIndex, cardSprite);
                 });
@@ -318,24 +327,60 @@ export const InventoryCombatUse = {
         // In case the complete event is missed (scene paused mid-burst).
         scene.time.delayedCall(1000, () => burst.active && burst.destroy());
     },
+    // The enemy's soul (soulAnim.png, looping) pulled out of it and into the hero. The art
+    // is drawn head-left, tail trailing right, so it is turned to fly head
+    // first: mirrored when it travels rightward, so it is never upside down.
+    // It shrinks a little and fades as the hero takes it in.
     createSoulDrainEffect(fromSprite, toSprite) {
-        const soul = this.scene.add.circle(fromSprite.x, fromSprite.y, 10, 0x9932cc);
-        this.scene.tweens.add({
+        const scene = this.scene;
+        if (!scene.textures?.exists?.('soulWisp')) {
+            const soul = scene.add.circle(fromSprite.x, fromSprite.y, 10, 0x712a65);
+            scene.tweens.add({
+                targets: soul, x: toSprite.x, y: toSprite.y, scale: 0.5,
+                duration: 1000, ease: 'Cubic.easeIn', onComplete: () => soul.destroy(),
+            });
+            return;
+        }
+        const dx = toSprite.x - fromSprite.x;
+        const dy = toSprite.y - fromSprite.y;
+        const heading = Math.atan2(dy, dx);
+        if (!scene.anims.exists('soul_wisp_anim')) {
+            scene.anims.create({
+                key: 'soul_wisp_anim',
+                frames: scene.anims.generateFrameNumbers('soulWisp', { start: 0, end: 4 }),
+                frameRate: SOUL_WISP_FPS,
+                repeat: -1,
+            });
+        }
+        const soul = scene.add.sprite(Math.round(fromSprite.x), Math.round(fromSprite.y), 'soulWisp', 0)
+            .setDepth((fromSprite.depth || 0) + 10)
+            .setAlpha(0);
+        soul.play('soul_wisp_anim');
+        if (dx < 0) {
+            soul.setRotation(heading + Math.PI);
+        } else {
+            soul.setFlipX(true).setRotation(heading);
+        }
+        // Rises out of the enemy, then is drawn in.
+        scene.tweens.add({ targets: soul, alpha: 1, duration: 160, ease: 'Quad.easeOut' });
+        scene.tweens.add({
             targets: soul,
             x: toSprite.x,
             y: toSprite.y,
-            scale: 0.5,
+            scale: 0.6,
             duration: 1000,
             ease: 'Cubic.easeIn',
-            onComplete: () => soul.destroy()
+            onUpdate: () => { soul.x = Math.round(soul.x); soul.y = Math.round(soul.y); },
+            onComplete: () => soul.destroy(),
         });
+        scene.tweens.add({ targets: soul, alpha: 0, delay: 820, duration: 180 });
     },
     createSmokeEffect() {
         // Animated burst on top of the old grey wash. The wash alone read as a
         // screen fade rather than a thrown bomb; it stays (thinner) so the board
         // still dims while the enemies are flipping back down.
         playSmokeBurst(this.scene, { x: 320, y: 180, sound: false });
-        const smoke = this.scene.add.rectangle(320, 180, 640, 360, 0x666666, 0.55);
+        const smoke = this.scene.add.rectangle(320, 180, 640, 360, 0x6e7470, 0.55);
         this.scene.tweens.add({
             targets: smoke,
             alpha: 0,
@@ -367,7 +412,7 @@ export const InventoryCombatUse = {
                     this.scene.playerAvatar.x, 
                     this.scene.playerAvatar.y, 
                     'Blocking next attack!', 
-                    0x00aaff
+                    0x3f818f
                 );
                 
                 // Reduce weapon durability for blocking (with amulet modifier)
@@ -435,7 +480,7 @@ export const InventoryCombatUse = {
                 board[closestEnemy]?.sprite?.x ?? cardSprite.x,
                 board[closestEnemy]?.sprite?.y ?? cardSprite.y,
                 'Must target Taunt!',
-                0x88aaff
+                0x6c6885
             );
             this.returnWeaponToSlot(slotIndex, cardSprite);
             return;
@@ -454,7 +499,7 @@ export const InventoryCombatUse = {
                 chosenTarget.sprite?.x ?? cardSprite.x,
                 chosenTarget.sprite?.y ?? cardSprite.y,
                 'Blocked by frontline!',
-                0xff6666,
+                0xc45c45,
             );
             this.returnWeaponToSlot(slotIndex, cardSprite);
             return;
@@ -476,13 +521,14 @@ export const InventoryCombatUse = {
             // it lets a dual-wield's off-hand swing slot in cleanly below.
             const swingKey = this.scene.cardSystem?.isRangedWeapon?.(weapon) ? 'bow_shot' : 'heavy_swing';
             CombatSequencer.playSound(this.scene, 'attack', swingKey, 0.5);
+            this.playWeaponStrikeEffect(cardSprite);
             let attackDamage = weapon.damage;
             const characterId = this.scene.gameState.characterId;
             
             // Apply weakness penalty when exhausted (out of action points)
             if (wasExhausted) {
                 attackDamage = Math.ceil(attackDamage * 0.8); // 20% weaker
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weakened Attack!', 0xffa500);
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weakened Attack!', 0xfbad19);
             }
 
             // Permanent class/talent damage (rogue +10%, Twin Fang).
@@ -497,7 +543,7 @@ export const InventoryCombatUse = {
             attackDamage = keen.damage;
             if (keen.applied) {
               this.scene.createFloatingText(
-                cardSprite.x, cardSprite.y - 36, `Keen Edge +${keen.bonus}!`, 0xa8e870
+                cardSprite.x, cardSprite.y - 36, `Keen Edge +${keen.bonus}!`, 0x71800b
               );
             }
 
@@ -505,7 +551,7 @@ export const InventoryCombatUse = {
             if (talentFx?.firstBloodFlat > 0 && !this.scene.gameState.firstAttackThisFloorUsed) {
                 attackDamage += talentFx.firstBloodFlat;
                 this.scene.gameState.firstAttackThisFloorUsed = true;
-                this.scene.createFloatingText(cardSprite.x, cardSprite.y - 48, 'First Blood!', 0xff88aa);
+                this.scene.createFloatingText(cardSprite.x, cardSprite.y - 48, 'First Blood!', 0xa83c69);
             }
 
             // Class passive: warrior crit replaces the hit (sword/axe only).
@@ -536,13 +582,15 @@ export const InventoryCombatUse = {
                     const item = this.slots[s];
                     if (!item || item === weapon || item.special !== 'dualWield') continue;
                     if (item.durability <= 0) continue;
+                    // A webbed dagger is held fast: it can't join the swing.
+                    if (item.webbedTurns > 0) continue;
                     secondaryDagger = item;
                     secondaryIndex = s;
                     break;
                 }
                 if (secondaryDagger) {
                     attackCount = 2;
-                    this.scene.createFloatingText(cardSprite.x, cardSprite.y - 20, 'Dual Wield!', 0xffff00);
+                    this.scene.createFloatingText(cardSprite.x, cardSprite.y - 20, 'Dual Wield!', 0xfbad19);
                 }
             }
             // AXE: healthy targets expose the formation to Heavy Cleave. At
@@ -564,7 +612,7 @@ export const InventoryCombatUse = {
                         // normal hit, gem, enchant, and death pipelines.
                         attackDamage = targetHP + armor;
                         weapon.durability--; // plus the normal pip = 2 total
-                        this.scene.createFloatingText(cardSprite.x, cardSprite.y - 20, 'Heavy Strike!', 0xff6600);
+                        this.scene.createFloatingText(cardSprite.x, cardSprite.y - 20, 'Heavy Strike!', 0xef7c4b);
                     }
                 }
             }
@@ -619,7 +667,7 @@ export const InventoryCombatUse = {
                     // before the second attackEnemy() claims its impact slot —
                     // so the two blades read as swing → hit → swing → hit rather
                     // than a single doubled-up frame.
-                    this.playSlotStrikeAnimation(secondaryIndex);
+                    this.playSlotStrikeAnimation(secondaryIndex, { slash: true });
                     CombatSequencer.playSound(this.scene, 'attack', swingKey, 0.4);
                 }
             }
@@ -691,12 +739,17 @@ export const InventoryCombatUse = {
     // the hover shine, then settles it all back. Purely cosmetic; callers apply
     // their own damage/sound. Round y each frame so pips never sit on a
     // fractional pixel and jitter.
-    playSlotStrikeAnimation(index) {
+    //
+    // `slash: true` also plays the weapon's slash arc over it, at its resting
+    // spot — for things that attack (off-hand dagger, companions), not for
+    // thorns retaliating.
+    playSlotStrikeAnimation(index, { slash = false } = {}) {
         const slot = this.slotSprites?.[index];
         const cardSprite = slot?.card;
         if (!cardSprite?.scene) return;
 
         const restY = Number.isFinite(slot?.originalY) ? slot.originalY : cardSprite.y;
+        if (slash) this.playStrikeSlash(cardSprite, cardSprite.x, restY);
         const hoverSprite = slot?.hoverSprite;
         const shadow = slot?.shadow;
 
@@ -753,7 +806,7 @@ export const InventoryCombatUse = {
         if (hp <= 0 || hp > maxHp * threshold) return;
         this.scene.cardSystem.attackEnemy(enemyIndex, hp, false, null, true);
         if (card.sprite) {
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 28, 'Assassinate!', 0xaa66ff);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 28, 'Assassinate!', 0x712a65);
         }
     },
     // Hit revealed enemies in the board cells immediately left and right of the
@@ -768,7 +821,7 @@ export const InventoryCombatUse = {
                 target, cleaveDmg, false, weapon, true, { bypassTargeting: true }
             );
             if (sprite) {
-                this.scene.createFloatingText(sprite.x, sprite.y - 24, 'Cleave!', 0xffcc66);
+                this.scene.createFloatingText(sprite.x, sprite.y - 24, 'Cleave!', 0xffcf7f);
             }
             this.applyAssassinateTalent(target);
         }
@@ -786,7 +839,7 @@ export const InventoryCombatUse = {
                 target, damage, false, weapon, true, { bypassTargeting: true }
             );
             if (Number.isFinite(x) && Number.isFinite(y)) {
-                this.scene.createFloatingText(x, y - 24, 'Pierce!', 0xffcc66);
+                this.scene.createFloatingText(x, y - 24, 'Pierce!', 0xffcf7f);
             }
             this.applyAssassinateTalent(target);
         }
@@ -805,7 +858,7 @@ export const InventoryCombatUse = {
                 target, damage, false, weapon, true, { bypassTargeting: true }
             );
             if (Number.isFinite(x) && Number.isFinite(y)) {
-                this.scene.createFloatingText(x, y - 24, label, 0xff9933);
+                this.scene.createFloatingText(x, y - 24, label, 0xef9629);
             }
             this.applyAssassinateTalent(target);
         };
@@ -845,10 +898,58 @@ export const InventoryCombatUse = {
         );
         const sprite = boards[target]?.sprite;
         if (sprite) {
-            this.scene.createFloatingText(sprite.x, sprite.y - 24, 'Volley!', 0x88ccff);
+            this.scene.createFloatingText(sprite.x, sprite.y - 24, 'Volley!', 0x71b1ae);
         }
         this.applyAssassinateTalent(target);
     },
+    // The weapon card at the moment it strikes: the slash arc
+    // (playerAttackAnim.png, 4 frames of 54x70) plays over it, and the card
+    // gives a short shake. Both finish inside the ~300ms the card stays on the
+    // enemy before it returns to its slot. Its pips and gem ride it.
+    playWeaponStrikeEffect(cardSprite) {
+        const scene = this.scene;
+        if (!cardSprite?.scene) return;
+        this.playStrikeSlash(cardSprite);
+        const baseX = cardSprite.x;
+        scene.tweens.add({
+            targets: cardSprite,
+            x: baseX + WEAPON_STRIKE_SHAKE_PX,
+            duration: 35,
+            yoyo: true,
+            repeat: 2,
+            ease: 'Sine.easeInOut',
+            onUpdate: () => { cardSprite.x = Math.round(cardSprite.x); },
+            // Settle it only if it is still at the strike: by now it may have
+            // been sent home, and this must not pull it back to the enemy.
+            onComplete: () => {
+                if (cardSprite.scene && Math.abs(cardSprite.x - baseX) <= WEAPON_STRIKE_SHAKE_PX + 1) {
+                    cardSprite.x = baseX;
+                }
+            },
+        });
+    },
+
+    // Just the slash arc over a card, at (x, y) or the card's own position:
+    // the main weapon's strike, and anything striking alongside it — an
+    // off-hand dagger, a companion (playSlotStrikeAnimation's `slash`).
+    playStrikeSlash(cardSprite, x = cardSprite?.x, y = cardSprite?.y) {
+        const scene = this.scene;
+        if (!cardSprite?.scene || !scene.textures?.exists?.('playerAttackAnim')) return;
+        if (!scene.anims.exists('player_attack_anim')) {
+            scene.anims.create({
+                key: 'player_attack_anim',
+                frames: scene.anims.generateFrameNumbers('playerAttackAnim', { start: 0, end: 3 }),
+                frameRate: WEAPON_STRIKE_FPS,
+                repeat: 0,
+            });
+        }
+        const slash = scene.add.sprite(Math.round(x), Math.round(y) - WEAPON_STRIKE_LIFT_PX, 'playerAttackAnim', 0)
+            .setDepth((cardSprite.depth || 0) + 3);
+        slash.play('player_attack_anim');
+        slash.once('animationcomplete', () => slash.destroy());
+        scene.time.delayedCall(800, () => slash.active && slash.destroy());
+    },
+
     handleWeaponBreak(weapon, cardSprite, slotIndex) {
         recordHumanRunEvent(this.scene, 'weapon_broke', {
             slot: slotIndex,
@@ -860,7 +961,7 @@ export const InventoryCombatUse = {
         SoundHelper.playSound(this.scene, 'item_discard', 0.7);
         this.scene.createFloatingText(cardSprite.x, cardSprite.y, {
             key: 'float.itemBroke', vars: { name: translateItemName(this.scene, weapon) },
-        }, 0xff0000);
+        }, 0xb51f1e);
         this.scene.grantCardSpentRelicBonus?.(weapon, cardSprite.x, cardSprite.y);
         
         // The spent weapon rises and burns out before it's removed.
@@ -1004,14 +1105,16 @@ export const InventoryCombatUse = {
             this.scene.playerAvatar.x,
             this.scene.playerAvatar.y,
             `+${healAmount} HP`,
-            0x00ff00
+            0x71800b
         );
 
         // Fire potion-use amulet hooks (e.g. Carrion Oath's poison purge).
         this.scene.amuletManager?.processPotionUse?.();
 
-        // Properly clean up all sprites
+        // The potion is spent: it dissolves the way a broken weapon does
+        // (the player-card animation), then its sprites go.
         if (cardSprite) {
+            this.scene.cardSystem?.playCardBreakEffect?.(cardSprite);
             this.cleanupCardSprites(slotIndex, cardSprite);
             cardSprite.destroy();
         }
@@ -1045,16 +1148,19 @@ export const InventoryCombatUse = {
             actionsAfter: this.scene.gameState.actionsLeft,
             actionGain,
         });
+        this.scene.playActionPointGain?.(actionsBefore, this.scene.gameState.actionsLeft);
         
         this.scene.createFloatingText(
             this.scene.playerAvatar.x,
             this.scene.playerAvatar.y,
             `+${actionGain} Actions`,
-            0x00ff00
+            0x71800b
         );
         
-        // Properly clean up all sprites
+        // The food is spent: it dissolves the way a broken weapon does
+        // (the player-card animation), then its sprites go.
         if (cardSprite) {
+            this.scene.cardSystem?.playCardBreakEffect?.(cardSprite);
             this.cleanupCardSprites(slotIndex, cardSprite);
             cardSprite.destroy();
         }

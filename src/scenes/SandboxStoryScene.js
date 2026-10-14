@@ -28,20 +28,20 @@ export class SandboxStoryScene extends Phaser.Scene {
     if (this.textures.exists('mainBG')) {
       this.add.image(320, 180, 'mainBG');
     } else {
-      this.add.rectangle(320, 180, 640, 360, 0x1a1a1a);
+      this.add.rectangle(320, 180, 640, 360, 0x0a1514);
     }
 
     this.add.rectangle(320, 180, 640, 360, 0x000000, 0.45);
 
     this.add.text(320, 18, t(this, 'ui.sandbox.storiesTitle'), {
       fontSize: '20px',
-      fill: '#e6edf3',
+      fill: '#d6c2c1',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5);
 
     this.add.text(320, 38, t(this, 'ui.sandbox.storiesSubtitle'), {
       fontSize: '10px',
-      fill: '#8b949e',
+      fill: '#869089',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5);
 
@@ -104,11 +104,11 @@ export class SandboxStoryScene extends Phaser.Scene {
   buildScrollBar() {
     if (this.scrollMax <= 0) return;
     const x = 632;
-    this.add.rectangle(x, LIST_TOP, 3, LIST_BOTTOM - LIST_TOP, 0x8b6914, 0.2)
+    this.add.rectangle(x, LIST_TOP, 3, LIST_BOTTOM - LIST_TOP, 0x9b6a1b, 0.2)
       .setOrigin(0.5, 0);
     const visible = LIST_BOTTOM - LIST_TOP;
     const thumbH = Math.max(18, Math.round(visible * (visible / (visible + this.scrollMax))));
-    this.scrollThumb = this.add.rectangle(x, LIST_TOP, 3, thumbH, 0xd4a017, 0.75)
+    this.scrollThumb = this.add.rectangle(x, LIST_TOP, 3, thumbH, 0xd48e17, 0.75)
       .setOrigin(0.5, 0);
   }
 
@@ -160,23 +160,23 @@ export class SandboxStoryScene extends Phaser.Scene {
   }
 
   createStoryButton(x, y, label, onClick, width = 280) {
-    const bg = this.add.rectangle(x, y, width, 20, 0x2c1810, 0.92)
-      .setStrokeStyle(1, 0x8b6914)
+    const bg = this.add.rectangle(x, y, width, 20, 0x28150c, 0.92)
+      .setStrokeStyle(1, 0x9b6a1b)
       .setInteractive({ useHandCursor: true });
     const text = this.add.text(x, y, label, {
       fontSize: '11px',
-      fill: '#e6edf3',
+      fill: '#d6c2c1',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5);
 
     bg.on('pointerover', () => {
       SoundHelper.playVariant(this, 'hover_button', 0.35);
-      bg.setFillStyle(0x3d2418, 0.95);
-      bg.setStrokeStyle(1, 0xd4a017);
+      bg.setFillStyle(0x46261b, 0.95);
+      bg.setStrokeStyle(1, 0xd48e17);
     });
     bg.on('pointerout', () => {
-      bg.setFillStyle(0x2c1810, 0.92);
-      bg.setStrokeStyle(1, 0x8b6914);
+      bg.setFillStyle(0x28150c, 0.92);
+      bg.setStrokeStyle(1, 0x9b6a1b);
     });
     // Fires on release, not press, and only if the pointer barely moved. The
     // list scrolls by dragging, and a row that launched on pointerdown made

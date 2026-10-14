@@ -31,8 +31,8 @@ export const TOOLTIP_PAD = { x: 8, top: 7, bottom: 9 };
 export const TOOLTIP_BODY_PX = '10px';
 
 // Colours for the fallback rectangle — the previous hand-drawn tooltip look.
-const FALLBACK_FILL = 0x1a120a;
-const FALLBACK_STROKE = 0xb89968;
+const FALLBACK_FILL = 0x1c130a;
+const FALLBACK_STROKE = 0xae8b57;
 
 // Frame names registered on the source texture, in layout order.
 const PIECES = ['tl', 'tm', 'tr', 'ml', 'mm', 'mr', 'bl', 'bm', 'br'];

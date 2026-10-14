@@ -51,7 +51,7 @@
     "thornEnt": "Tree creature dying: heavy wood cracking and splitting, a deep groaning creak, branches crashing down",
     "thornSprite": "A small thorny plant creature dying: a cluster of dry twigs and thorns snapping and crumbling down. A clear, full, easily heard sound lasting about half a second",
     "thornFairy": "A tiny forest fairy dying: a sweet delicate magical chime breaking and fading into a soft sparkle. A clear, full, easily heard sound lasting about half a second, gentle, not piercing",
-    "sporeArcher": "Fungal archer dying: a soft wet mushroom burst and a muffled body fall",
+    "sporeArcher": "Three small mushrooms bursting one after another: soft dry poofs of spore dust puffing out, a light fungal crumble, airy and gentle. No body, no creature, no voice, no fall",
     "bogSlug": "Bog slug dying: a slow wet squelch deflating into a gloopy splat",
     "drowned": "A drowned corpse dying: a gurgling watery choke and a soaked body collapsing with a big wet splash. A clear, full, easily heard sound lasting about half a second",
     "mireBrute": "Huge swamp brute dying: a deep muddy roar sinking into a heavy wet splash in thick mud",
@@ -93,7 +93,11 @@
     "block_ready": "A warrior bracing behind a raised sword: a quick firm swoosh as the blade snaps up into a guard, ending in a short solid metallic grip. Warm and full, not shrill, not tinny, no harsh high frequencies",
     "block_hit": "A sword parrying a heavy blow: a solid metal clang of steel on steel with a short warm ring. Warm and full, not shrill, not tinny, no harsh high frequencies",
     "bone_wall": "A wall of bones blocking a hit and striking back: a hard dry crack of bones knocking together and a hollow wooden-like clack. Warm and full, not shrill, not tinny, no harsh high frequencies",
-    "thorns_retaliate": "Thorny vines lashing out at an attacker: a quick woody whip-crack and a sharp stab of thorns, with dry leaves rustling. Warm and full, not shrill, not tinny, no harsh high frequencies"
+    "thorns_retaliate": "Thorny vines lashing out at an attacker: a quick woody whip-crack and a sharp stab of thorns, with dry leaves rustling. Warm and full, not shrill, not tinny, no harsh high frequencies",
+    "poison_tick": {
+      "prompt": "A single thick drop of liquid falling into a small puddle: one soft wet drip and a round bloop, like a blob of syrup or slime landing. Close, soft and clean. No sizzle, no hiss, no voice",
+      "durationSeconds": 0.5
+    }
   },
   "events": {
     "enraged": "A large angry bear roaring close up: a deep throaty furious roar with a rough growl. Real recorded foley, natural and organic, not synthesized, not electronic, warm, not shrill",
@@ -103,6 +107,51 @@
     "revival": "A sweet mystical chime for a hero coming back to life: a soft rising music box and celesta melody in a low warm register, round gentle tones with a magical glow. Soft and warm, not piercing, not shrill, no high sparkle",
     "revival_harp": "A hero coming back to life: a soft rising harp glissando ending on one gentle warm bell. Sweet, mystical and pretty, soft and warm, not piercing, not shrill",
     "revival_kalimba": "A hero coming back to life: a sweet rising kalimba melody, round plucked notes with a soft magical glow. Sweet, mystical and pretty, soft and warm, not piercing, not shrill",
-    "revival_chimes": "A hero coming back to life: a few low soft wooden and glass wind chimes ringing together, magical and calm. Sweet, mystical and pretty, soft and warm, not piercing, not shrill"
+    "revival_chimes": "A hero coming back to life: a few low soft wooden and glass wind chimes ringing together, magical and calm. Sweet, mystical and pretty, soft and warm, not piercing, not shrill",
+    "card_offered": "An object gently absorbed into an enchanted mirror: a soft deep warm magical swell, like a low muffled bell hum fading out, round and mellow. Natural and organic, soft, no hiss, no sparkle, not electronic",
+    "door_land": {
+      "prompt": "An old wooden door creaking as it settles: a short slow creak of aged wooden planks and an iron hinge, dry and woody, close up, soft. No thud, no slam, no knock",
+      "durationSeconds": 0.7
+    },
+    "door_hover": {
+      "prompt": "A very short quiet creak of an old wooden door leaning slightly on its hinge, a tiny dry wooden squeak, close up and soft. No thud, no knock",
+      "durationSeconds": 0.5
+    },
+    "chest_hover": {
+      "prompt": "A heavy old wooden treasure chest touched by a hand: its lid rattles softly against the iron latch, a small dull wooden knock and a faint jingle of coins inside. Very short, close, soft. No creak, no opening",
+      "durationSeconds": 0.5
+    },
+    "nest_screech": {
+      "prompt": "A large bird of prey screeching high overhead as it swoops past: one sharp hawk cry, a little distant, outdoors in open air. Natural animal call, no music",
+      "durationSeconds": 1.0
+    },
+    "nest_rummage": {
+      "prompt": "Small trinkets shifted in a bird nest: a wooden button, an acorn and a pebble clicking and clinking together among dry twigs, a light rustle. Close, soft, short",
+      "durationSeconds": 0.5
+    },
+    "mbox_tick": {
+      "prompt": "A small brass lock wafer flipped over inside an old music box lock: one tiny crisp metal tick. Close, soft, clean",
+      "durationSeconds": 0.5
+    },
+    "mbox_pin": {
+      "prompt": "A brass pin clicking into place inside a music box lock, followed by one soft clear music box chime note ringing out. Gentle and warm",
+      "durationSeconds": 0.8
+    },
+    "mbox_nofit": {
+      "prompt": "Two small brass lock pieces that do not fit, bumping together: a dull muted metal clunk. Close and soft, no ring",
+      "durationSeconds": 0.5
+    },
+    "mbox_shuffle": {
+      "prompt": "Small brass lock wafers sliding and shuffling across each other inside a wooden music box: a quick light metallic slide and click",
+      "durationSeconds": 0.6
+    },
+    "mbox_detonate": {
+      "prompt": "A small wooden music box bursting open: a muffled pop, a loose spring twanging, and broken comb teeth jangling as it falls apart",
+      "durationSeconds": 1.0
+    },
+    "mbox_solved": {
+      "prompt": "A tiny old music box comb plucking a short sweet descending melody of five notes, then stopping. Delicate tinkling metal tines, warm",
+      "durationSeconds": 2.0
+    }
   }
 }

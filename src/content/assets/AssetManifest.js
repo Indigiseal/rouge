@@ -1,14 +1,18 @@
 // Central asset load list for PreloadScene.
 // Paths resolve from site root (assets/...).
-// type: 'image' | 'spritesheet' | 'audio' | 'bitmapFont'
+// type: 'image' | 'spritesheet' | 'atlas' | 'audio' | 'bitmapFont'
 
 /** @typedef {{ key: string, path: string, type: 'image'|'spritesheet'|'audio'|'bitmapFont', frameWidth?: number, frameHeight?: number, xmlPath?: string }} AssetEntry */
 
 import { ENEMY_DEATH_SOUND_ASSETS } from '../audio/enemyDeathSounds.js';
+import { ITEM_SHEETS } from './itemSheets.js';
 import { ARMOR_EQUIP_SOUND_ASSETS } from '../audio/armorSounds.js';
 
 /** @type {AssetEntry[]} */
 export const ASSET_MANIFEST = [
+    // Weapon and armor card art: two sprite sheets, cut back into one texture
+    // per item (sword_C, chain_L...) at boot (content/assets/itemSheets.js).
+    ...ITEM_SHEETS.map((sheet) => ({ ...sheet, type: 'atlas' })),
     { key: 'stoneFloor', path: 'assets/art/dungeon.png', type: 'image' },
     { key: 'cardBack', path: 'assets/art/cardBack.png', type: 'image' },
     { key: 'panelCards', path: 'assets/art/panelCards.png', type: 'image' },
@@ -112,7 +116,17 @@ export const ASSET_MANIFEST = [
     { key: 'restBanner', path: 'assets/art/bannerRestl.png', type: 'image' },
     { key: 'anvilIllustration', path: 'assets/art/anvil1.png', type: 'image' },
     { key: 'anvilPriceTag', path: 'assets/art/priceTag.png', type: 'image' },
-    { key: 'webCardOverlay', path: 'assets/art/web.png', type: 'image' },
+    // Silkslinger's web, two 60x78 frames: 0 the silk over a webbed bag card,
+    // 1 the web in flight as it is thrown (CombatTurnController.applyWebHand).
+    // Soul Drain: the soul leaving the enemy for the hero, five 48x48 frames
+    // looping as it flies, drawn head to the left, tail trailing right
+    // (InventoryCombatUse.createSoulDrainEffect).
+    { key: 'soulWisp', path: 'assets/art/soulAnim.png', type: 'spritesheet', frameWidth: 48, frameHeight: 48 },
+    // Ink Wraith's lock on a bag card, two 48x32 frames like the web's:
+    // 0 the ink left on the card, 1 the blob in flight
+    // (content/combat/handLock.js).
+    { key: 'inkBlob', path: 'assets/art/inkBlob.png', type: 'spritesheet', frameWidth: 48, frameHeight: 32 },
+    { key: 'webCardOverlay', path: 'assets/art/web.png', type: 'spritesheet', frameWidth: 60, frameHeight: 78 },
     // Little banner behind each shop item's price (32x18)
     { key: 'priceTag', path: 'assets/art/priceTag.png', type: 'image' },
     { key: 'pixel-font', path: 'assets/fonts/minogram_6x10.png', xmlPath: 'assets/fonts/minogram_6x10.xml', type: 'bitmapFont' },
@@ -125,48 +139,8 @@ export const ASSET_MANIFEST = [
     { key: 'tutorialPointer', path: 'assets/art/pointer.png', type: 'image' },
     { key: 'angryNestmother', path: 'assets/art/bird.png', type: 'image' },
     // Load item sprites
-    { key: 'leather_C', path: 'assets/art/leatherCommon.png', type: 'image' },
-    { key: 'leather_U', path: 'assets/art/leather_U.png', type: 'image' },
-    { key: 'leather_R', path: 'assets/art/leather_R.png', type: 'image' },
-    { key: 'leather_E', path: 'assets/art/leather_E.png', type: 'image' },
-    { key: 'leather_L', path: 'assets/art/leather_L.png', type: 'image' },
-    { key: 'chain_C', path: 'assets/art/chain_C.png', type: 'image' },
-    { key: 'plate_C', path: 'assets/art/plate_C.png', type: 'image' },
     { key: 'boneArmor_U', path: 'assets/art/boneArmor_U.png', type: 'image' },
-    { key: 'sword_C', path: 'assets/art/sword_C.png', type: 'image' },
-    { key: 'dagger_C', path: 'assets/art/dagger_c.png', type: 'image' },
-    { key: 'axe_C', path: 'assets/art/axe_C.png', type: 'image' },
-    { key: 'bow_c', path: 'assets/art/bow_c.png', type: 'image' },
-    { key: 'spear_C', path: 'assets/art/spear_c.png', type: 'image' },
-    { key: 'spear_U', path: 'assets/art/spear_u.png', type: 'image' },
-    { key: 'spear_R', path: 'assets/art/spear_R.png', type: 'image' },
-    { key: 'spear_E', path: 'assets/art/spear_E.png', type: 'image' },
-    { key: 'spear_L', path: 'assets/art/spear_L.png', type: 'image' },
     // Load Uncommon / Rare / Epic / Legendary item sprites
-    { key: 'axe_U', path: 'assets/art/axe_U.png', type: 'image' },
-    { key: 'axe_R', path: 'assets/art/axe_R.png', type: 'image' },
-    { key: 'axe_E', path: 'assets/art/axe_E.png', type: 'image' },
-    { key: 'axe_L', path: 'assets/art/axe_L.png', type: 'image' },
-    { key: 'dagger_U', path: 'assets/art/dagger_u.png', type: 'image' },
-    { key: 'dagger_R', path: 'assets/art/dagger_r.png', type: 'image' },
-    { key: 'dagger_E', path: 'assets/art/dagger_e.png', type: 'image' },
-    { key: 'dagger_L', path: 'assets/art/dagger_l.png', type: 'image' },
-    { key: 'bow_U', path: 'assets/art/bow_U.png', type: 'image' },
-    { key: 'bow_R', path: 'assets/art/bow_R.png', type: 'image' },
-    { key: 'bow_E', path: 'assets/art/bow_E.png', type: 'image' },
-    { key: 'bow_L', path: 'assets/art/bow_L.png', type: 'image' },
-    { key: 'sword_U', path: 'assets/art/sword_u.png', type: 'image' },
-    { key: 'sword_R', path: 'assets/art/sword_R.png', type: 'image' },
-    { key: 'sword_E', path: 'assets/art/sword_E.png', type: 'image' },
-    { key: 'sword_L', path: 'assets/art/sword_L.png', type: 'image' },
-    { key: 'chain_U', path: 'assets/art/chain_U.png', type: 'image' },
-    { key: 'chain_R', path: 'assets/art/chain_R.png', type: 'image' },
-    { key: 'chain_E', path: 'assets/art/chain_E.png', type: 'image' },
-    { key: 'chain_L', path: 'assets/art/chain_L.png', type: 'image' },
-    { key: 'plate_U', path: 'assets/art/plate_U.png', type: 'image' },
-    { key: 'plate_R', path: 'assets/art/plate_R.png', type: 'image' },
-    { key: 'plate_E', path: 'assets/art/plate_E.png', type: 'image' },
-    { key: 'plate_L', path: 'assets/art/plate_L.png', type: 'image' },
     // Silk Cache cocoon shell. Loading this under the key ensureSilkCocoonTexture
     // uses means the drawn-in-code placeholder in CocoonCacheBoard.js never runs.
     { key: 'silkCocoon', path: 'assets/art/cocoon.png', type: 'image' },
@@ -237,6 +211,9 @@ export const ASSET_MANIFEST = [
     // New Cards
     { key: 'amulet', path: 'assets/art/amulet.png', type: 'image' },
     { key: 'relicsOthers', path: 'assets/art/relicsOthers.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
+    // Tactician's Pin stuck in the face-down enemy it marked (BoardCombat's
+    // syncControlMarkers): the pin's head, needle and shadow, 22x34.
+    { key: 'tacticianPin', path: 'assets/art/pin.png', type: 'image' },
     // The same sheet redrawn at 28px, same 12x7 layout so frame numbers carry
     // over. Only for equipped amulets in the battle HUD's corner strip.
     { key: 'relicsOthersSmall', path: 'assets/art/relicsOthersSmall.png', type: 'spritesheet', frameWidth: 28, frameHeight: 28 },
@@ -271,6 +248,8 @@ export const ASSET_MANIFEST = [
     // thorns card that spent its last pip. Played exactly like the enemy death
     // above; only the frames differ.
     { key: 'cardBreakSheet', path: 'assets/art/cardDissappear2Animation54x70.png', type: 'spritesheet', frameWidth: 54, frameHeight: 70 },
+    // A slash arc played over the player's weapon card as it strikes (4 frames).
+    { key: 'playerAttackAnim', path: 'assets/art/playerAttackAnim.png', type: 'spritesheet', frameWidth: 54, frameHeight: 70 },
     // Card merge flicker (2 frames, 54x70 each) â€” plays on top of the merged | card. `mergeLegendarySheet` is the legendary-tier variant.
     { key: 'mergeSheet', path: 'assets/art/merge.png', type: 'spritesheet', frameWidth: 54, frameHeight: 70 },
     { key: 'mergeLegendarySheet', path: 'assets/art/mergeLegendary.png', type: 'spritesheet', frameWidth: 54, frameHeight: 70 },
@@ -390,7 +369,6 @@ export const ASSET_MANIFEST = [
     // treasure
     { key: 'bigChestAnimation', path: 'assets/art/bigChestAnimation98x98.png', type: 'spritesheet', frameWidth: 98, frameHeight: 98 },
     { key: 'chest_open', path: 'assets/music/wooden-trunk-latch-1-183944.mp3', type: 'audio' },
-    { key: 'trap_trigger', path: 'assets/music/trap_spring1.mp3', type: 'audio' },
     { key: 'mimic', path: 'assets/art/mimic.png', type: 'image' },
     { key: 'treasure_explode', path: 'assets/music/coin-flip-37787.mp3', type: 'audio' },
     // Animation for MIMIC â€” merged 7-frame splash spritesheet (was splash1-7).
@@ -416,6 +394,10 @@ export const ASSET_MANIFEST = [
     // Button_Click_0*.mp3 takes are no longer loaded — nothing referenced them
     // but the button_click group, and that now points here.
     { key: 'ui_click', path: 'assets/music/UI_Click_01.mp3', type: 'audio' },
+    // The same click pitched a touch up and down, rotated at random so a run
+    // of button presses doesn't repeat one identical sample.
+    { key: 'ui_click_hi', path: 'assets/music/UI_Click_01_hi.mp3', type: 'audio' },
+    { key: 'ui_click_lo', path: 'assets/music/UI_Click_01_lo.mp3', type: 'audio' },
     // Tick under the volume sliders. Short on purpose: it fires once per step
     // while a slider is being dragged.
     { key: 'ui_slider_tick', path: 'assets/music/UI_Slider_Tick_01.mp3', type: 'audio' },
@@ -428,6 +410,14 @@ export const ASSET_MANIFEST = [
     { key: 'ui_card_hover_2', path: 'assets/music/UI_Card_Hover_02.mp3', type: 'audio' },
     // The road opening when a floor is cleared.
     { key: 'door_open', path: 'assets/music/Door_Open_01.mp3', type: 'audio' },
+    // The road doors creaking as they settle into their arches as "Choose the road" opens
+    // (LocationPickScene).
+    { key: 'door_land_1', path: 'assets/music/Door_Land_01.mp3', type: 'audio' },
+    // A road door under the pointer: a small creak of its hinge.
+    { key: 'door_hover_1', path: 'assets/music/Door_Hover_01.mp3', type: 'audio' },
+    { key: 'door_hover_2', path: 'assets/music/Door_Hover_02.mp3', type: 'audio' },
+    // The treasure chest under the pointer: its lid rattling on the latch.
+    { key: 'chest_hover_1', path: 'assets/music/Chest_Hover_01.mp3', type: 'audio' },
     { key: 'invalid_action_1', path: 'assets/music/Invalid_Action_01.mp3', type: 'audio' },
     { key: 'invalid_action_2', path: 'assets/music/Invalid_Action_02.mp3', type: 'audio' },
     { key: 'legendary_reveal_1', path: 'assets/music/Legendary_Relic_Reveal_01.mp3', type: 'audio' },
@@ -439,6 +429,10 @@ export const ASSET_MANIFEST = [
     { key: 'hover_node', path: 'assets/music/Hover_Click_01.mp3', type: 'audio' },
     { key: 'hover_button_1', path: 'assets/music/Hover_Click_01.mp3', type: 'audio' },
     { key: 'hover_button_2', path: 'assets/music/Hover_Click_03.mp3', type: 'audio' },
+    // Pitched copies of the two, for the same reason as the click's.
+    { key: 'hover_button_3', path: 'assets/music/Hover_Click_01_hi.mp3', type: 'audio' },
+    { key: 'hover_button_4', path: 'assets/music/Hover_Click_01_lo.mp3', type: 'audio' },
+    { key: 'hover_button_5', path: 'assets/music/Hover_Click_03_hi.mp3', type: 'audio' },
     // Gem picked off the board / socketed into a weapon
     { key: 'gem_pickup', path: 'assets/music/Gem_Pickup_01.mp3', type: 'audio' },
     { key: 'gem_socket', path: 'assets/music/Gem_Socket_01.mp3', type: 'audio' },
@@ -546,6 +540,33 @@ export const LATE_AUDIO = [
     { key: 'armor_broken', path: 'assets/music/Armor_Broken.mp3', type: 'audio' },
     // The hero rising again: Temple / Second Wind, and the Invulnerable amulet.
     { key: 'revival', path: 'assets/music/Revival_Shimmer.mp3', type: 'audio' },
+    // Venom in the hero: as it takes hold ("Poisoned!") and each turn it
+    // burns HP away. Two takes ('poison_tick' group).
+    { key: 'poison_tick_1', path: 'assets/music/Poison_Tick_01.mp3', type: 'audio' },
+    { key: 'poison_tick_2', path: 'assets/music/Poison_Tick_02.mp3', type: 'audio' },
+    // A card taken by something in an event: the mirror, the well, the
+    // screaming head... (InventorySystem's event drop zones).
+    { key: 'card_offered', path: 'assets/music/Card_Offered.mp3', type: 'audio' },
+    // The bird's nest minigame: the bird's cry as its shadow sweeps over, and
+    // the trinkets clicking as they are moved ('nest_screech'/'nest_rummage').
+    // The Broken Music Box lock: a wafer flipped, a pin seated (four chimes,
+    // each a note higher, so solving it climbs a scale), a pair that won't
+    // fit, the wafers shuffling, the box blowing apart, and its tune once it
+    // opens. tools/death-sounds.json, 'events' set, mbox_*.
+    { key: 'mbox_tick_1', path: 'assets/music/MusicBox_Tick_01.mp3', type: 'audio' },
+    { key: 'mbox_tick_2', path: 'assets/music/MusicBox_Tick_02.mp3', type: 'audio' },
+    { key: 'mbox_pin_1', path: 'assets/music/MusicBox_Pin_01.mp3', type: 'audio' },
+    { key: 'mbox_pin_2', path: 'assets/music/MusicBox_Pin_02.mp3', type: 'audio' },
+    { key: 'mbox_pin_3', path: 'assets/music/MusicBox_Pin_03.mp3', type: 'audio' },
+    { key: 'mbox_pin_4', path: 'assets/music/MusicBox_Pin_04.mp3', type: 'audio' },
+    { key: 'mbox_nofit', path: 'assets/music/MusicBox_NoFit.mp3', type: 'audio' },
+    { key: 'mbox_shuffle', path: 'assets/music/MusicBox_Shuffle.mp3', type: 'audio' },
+    { key: 'mbox_detonate', path: 'assets/music/MusicBox_Detonate.mp3', type: 'audio' },
+    { key: 'mbox_solved', path: 'assets/music/MusicBox_Solved.mp3', type: 'audio' },
+    { key: 'nest_screech_1', path: 'assets/music/Nest_Screech_01.mp3', type: 'audio' },
+    { key: 'nest_screech_2', path: 'assets/music/Nest_Screech_02.mp3', type: 'audio' },
+    { key: 'nest_rummage_1', path: 'assets/music/Nest_Rummage_01.mp3', type: 'audio' },
+    { key: 'nest_rummage_2', path: 'assets/music/Nest_Rummage_02.mp3', type: 'audio' },
 ];
 
 /**
@@ -597,6 +618,9 @@ export function loadAssetManifest(loader) {
                 break;
             case 'audio':
                 loader.audio(asset.key, asset.path);
+                break;
+            case 'atlas':
+                loader.atlas(asset.key, asset.path, asset.jsonPath);
                 break;
             case 'bitmapFont':
                 loader.bitmapFont(asset.key, asset.path, asset.xmlPath);

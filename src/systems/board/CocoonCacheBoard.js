@@ -50,15 +50,15 @@ function rollCocoonEnemy(generator, floor, gameState) {
 export function ensureSilkCocoonTexture(scene) {
   if (!scene?.textures || scene.textures.exists('silkCocoon')) return;
   const g = scene.make.graphics({ x: 0, y: 0, add: false });
-  g.fillStyle(0x1a1520, 1);
+  g.fillStyle(0x1e1421, 1);
   g.fillRoundedRect(0, 0, 54, 70, 4);
-  g.fillStyle(0x2a2433, 1);
+  g.fillStyle(0x2b2332, 1);
   g.fillRoundedRect(3, 3, 48, 64, 3);
-  g.fillStyle(0xd4c4a0, 1);
+  g.fillStyle(0xd3c294, 1);
   g.fillEllipse(27, 36, 30, 50);
-  g.fillStyle(0xb8a878, 1);
+  g.fillStyle(0xb9a57c, 1);
   g.fillEllipse(27, 36, 22, 40);
-  g.lineStyle(1, 0x8a7048, 0.9);
+  g.lineStyle(1, 0x926b4a, 0.9);
   for (let i = 0; i < 5; i++) {
     const y = 14 + i * 10;
     g.beginPath();
@@ -382,7 +382,7 @@ export function openSilkCocoon(cs, index, cocoonCard) {
         x,
         y - 24,
         hatchedEnemy ? `${label}!` : 'Opened!',
-        hatchedEnemy ? 0xff6666 : 0x66ff66
+        hatchedEnemy ? 0xc45c45 : 0x71800b
       );
     }
   );

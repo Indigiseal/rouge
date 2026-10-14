@@ -21,39 +21,39 @@ export class TollroadDetourScene extends Phaser.Scene {
       this.showCompletion();
       return;
     }
-    this.add.rectangle(320, 180, 640, 360, 0x26352d);
-    this.add.rectangle(320, 30, 640, 60, 0x18241e);
-    createTitle(this, 320, 28, t(this, 'ui.detour.title'), { color: '#d9e2b5', fallbackSize: '20px' });
-    this.add.text(320, 56, t(this, 'ui.detour.subtitle'), { fontSize: '11px', fill: '#aab99a', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+    this.add.rectangle(320, 180, 640, 360, 0x293129);
+    this.add.rectangle(320, 30, 640, 60, 0x1a241b);
+    createTitle(this, 320, 28, t(this, 'ui.detour.title'), { color: '#fef0cf', fallbackSize: '20px' });
+    this.add.text(320, 56, t(this, 'ui.detour.subtitle'), { fontSize: '11px', fill: '#9fa081', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
 
     const xs = [175, 320, 465];
     for (let i = 0; i < 3; i++) {
-      if (i > 0) this.add.rectangle((xs[i - 1] + xs[i]) / 2, 178, 112, 3, 0x84916e);
+      if (i > 0) this.add.rectangle((xs[i - 1] + xs[i]) / 2, 178, 112, 3, 0x9fa081);
       const done = i < detour.index;
       const current = i === detour.index;
       const merchant = detour.merchantAt === i + 1;
-      const node = this.add.circle(xs[i], 178, current ? 25 : 20, done ? 0x586650 : current ? 0xb38a45 : 0x3b493f)
-        .setStrokeStyle(2, current ? 0xf0cf7b : 0x85927b);
-      this.add.text(xs[i], 178, done ? '✓' : merchant ? '$' : '⚔', { fontSize: '18px', fill: '#f0ead0', fontFamily: 'Arial' }).setOrigin(0.5);
-      this.add.text(xs[i], 218, t(this, merchant ? 'ui.detour.merchant' : 'ui.detour.fight', { number: i + 1 }), { fontSize: '10px', fill: '#d8dfca', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+      const node = this.add.circle(xs[i], 178, current ? 25 : 20, done ? 0x4d6b57 : current ? 0xae8b57 : 0x37473a)
+        .setStrokeStyle(2, current ? 0xffcf7f : 0x738672);
+      this.add.text(xs[i], 178, done ? '✓' : merchant ? '$' : '⚔', { fontSize: '18px', fill: '#fef0cf', fontFamily: 'Arial' }).setOrigin(0.5);
+      this.add.text(xs[i], 218, t(this, merchant ? 'ui.detour.merchant' : 'ui.detour.fight', { number: i + 1 }), { fontSize: '10px', fill: '#d6c7b3', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
       if (current) node.setInteractive({ useHandCursor: true }).on('pointerdown', () => this.enterNext(merchant));
     }
   }
 
   showCompletion() {
-    this.add.rectangle(320, 180, 640, 360, 0x26352d);
-    this.add.rectangle(320, 180, 570, 282, 0x111a16, 0.94).setStrokeStyle(1, 0x91a27e);
-    createTitle(this, 320, 38, t(this, 'ui.detour.exitTitle'), { color: '#d9e2b5', fallbackSize: '20px' });
+    this.add.rectangle(320, 180, 640, 360, 0x293129);
+    this.add.rectangle(320, 180, 570, 282, 0x0a1514, 0.94).setStrokeStyle(1, 0x9fa081);
+    createTitle(this, 320, 38, t(this, 'ui.detour.exitTitle'), { color: '#fef0cf', fallbackSize: '20px' });
     this.add.text(320, 82, t(this, 'ui.detour.exitBody'), {
-      ...serifStyle('14px', '#eef0dc'),
+      ...serifStyle('14px', '#fef0cf'),
       align: 'left',
       wordWrap: { width: 500 },
       lineSpacing: 4,
     }).setOrigin(0.5, 0);
-    const button = this.add.rectangle(320, 309, 210, 28, 0x33432f, 1)
-      .setStrokeStyle(1, 0xb7c88e).setInteractive({ useHandCursor: true });
+    const button = this.add.rectangle(320, 309, 210, 28, 0x36442e, 1)
+      .setStrokeStyle(1, 0xd3c294).setInteractive({ useHandCursor: true });
     this.add.text(320, 309, t(this, 'ui.detour.return'), {
-      fontSize: '12px', fill: '#f3f0d2', fontFamily: '"HoMM Pixel"',
+      fontSize: '12px', fill: '#fef0cf', fontFamily: '"HoMM Pixel"',
     }).setOrigin(0.5);
     button.on('pointerdown', () => this.finishCompletion());
     this.input.keyboard?.on('keydown-ENTER', () => this.finishCompletion());

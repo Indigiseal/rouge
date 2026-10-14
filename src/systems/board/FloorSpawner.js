@@ -1,5 +1,6 @@
 // FloorSpawner — spawnFloorCards and spawn-related helpers
 import { SoundHelper } from '../../audio/SoundHelper.js';
+import { bagArrivalSoundKey } from '../../content/audio/armorSounds.js';
 import { showItemTooltip, hideItemTooltip, TOOLTIP_DEPTH, BOARD_TOOLTIP_GAP } from '../../ui/ItemTooltip.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { openAmuletChoiceOverlay } from '../../ui/AmuletChoiceOverlay.js';
@@ -13,6 +14,7 @@ import { looseGemCard } from '../../content/cards/gems.js';
 import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js';
 import { cameraWorldSize } from '../../config/renderScale.js';
 import { t, translateItemName, translateRarity } from '../../i18n/i18n.js';
+import { BOSSES } from '../../content/cards/bosses.js';
 
 // --- Opening deal -----------------------------------------------------------
 // Every card on a fresh floor falls into its slot from above, top rows first,
@@ -106,7 +108,7 @@ function spawnFloorCards() {
     this.scene.gameState.playerHealth = Math.min(this.scene.gameState.maxHealth, before + heal);
     const gained = this.scene.gameState.playerHealth - before;
     if (gained > 0 && this.scene.playerAvatar) {
-      this.scene.createFloatingText?.(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${gained} HP (Gravebloom)`, 0x66ff99);
+      this.scene.createFloatingText?.(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `+${gained} HP (Gravebloom)`, 0x4a884f);
     }
     this.scene.updateUI?.();
   }
@@ -670,6 +672,32 @@ function findTutorialCard(tag) {
   return index >= 0 ? { index, card: this.boardCards[index] } : null;
 }
 
+// A fight saved mid-boss keeps the boss's abilities as they were when it was
+// saved, so a balance change (the Lich's lifesteal 55% -> 20%) did not reach a
+// run already in that fight: the tooltip and the heal both kept the old number.
+// The boss's ability list is rebuilt from its current definition: each
+// ability takes the current tuning numbers, keeping anything the fight added
+// to its saved twin (the Nth saved ability of a type pairs with the Nth of
+// that type in the definition). Abilities added since come in; removed ones go.
+function refreshSavedBossAbilities(data) {
+  if (data?.type !== 'boss' || !Array.isArray(data.abilities)) return;
+  const def = Object.values(BOSSES).find((boss) => boss?.name === data.name);
+  if (!Array.isArray(def?.abilities)) return;
+  const savedByType = new Map();
+  data.abilities.forEach((ability) => {
+    if (!ability?.type) return;
+    if (!savedByType.has(ability.type)) savedByType.set(ability.type, []);
+    savedByType.get(ability.type).push(ability);
+  });
+  const seen = new Map();
+  data.abilities = def.abilities.map((current) => {
+    const nth = seen.get(current.type) || 0;
+    seen.set(current.type, nth + 1);
+    const saved = savedByType.get(current.type)?.[nth];
+    return { ...(saved || {}), ...current };
+  });
+}
+
 function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
   if (!Array.isArray(savedCards)) return false;
 
@@ -702,6 +730,7 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
   savedCards.forEach((saved, index) => {
     if (!saved?.data) return;
     const data = saved.data;
+    refreshSavedBossAbilities(data);
     const fallbackCell = layoutCells[index] || data.brick;
     const fallbackPosition = fallbackCell && place
       ? this.brickToPixel(fallbackCell.r, fallbackCell.c, place)
@@ -720,10 +749,10 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
       cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y, key, data.spriteFrame));
     } else {
       const colors = {
-        coin: 0xffd700, crystal: 0x00ffff, trap: 0xff4500,
-        armor: 0x888888, potion: 0xff69b4, gem: data.color || 0xffe066
+        coin: 0xfbad19, crystal: 0x71b1ae, trap: 0xb51f1e,
+        armor: 0x869089, potion: 0xa83c69, gem: data.color || 0xffcf7f
       };
-      cardSprite = this.scene.add.rectangle(x, y, 70, 90, colors[data.type] || 0x666666);
+      cardSprite = this.scene.add.rectangle(x, y, 70, 90, colors[data.type] || 0x6e7470);
     }
     cardSprite.setScale(this._boardPlace?.cardScale || 1).setDepth(2).setInteractive();
 
@@ -978,7 +1007,7 @@ function takeRewardCard(index) {
             card.sprite.x,
             card.sprite.y - 30,
             'Drag onto a weapon to socket',
-            0xffe066
+            0xffcf7f
         );
         return;
     }
@@ -997,7 +1026,7 @@ function takeRewardCard(index) {
                 ?? offer.options;
             if (!takeable.length) {
                 this.removeCard(index);
-                this.scene.createFloatingText?.(320, 180, 'Nothing new to offer', 0xaaaaaa);
+                this.scene.createFloatingText?.(320, 180, 'Nothing new to offer', 0xafafa2);
                 return;
             }
             this.removeCard(index);
@@ -1015,24 +1044,23 @@ function takeRewardCard(index) {
         if (this.scene.amuletManager && data.id) {
             success = this.scene.amuletManager.addAmulet(data.id);
             if (!success) {
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Already owned!', 0xff4444);
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Already owned!', 0xb51f1e);
                 return;
             }
             this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, {
                 key: 'float.equippedItem', vars: { name: translateItemName(this.scene, data) },
-            }, 0x9932cc);
+            }, 0x712a65);
         }
     } else if (this.scene.inventorySystem.addCard(data)) {
         success = true;
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Taken!', 0x00ff00);
     } else {
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Inventory Full!', 0xff4444);
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Inventory Full!', 0xb51f1e);
         return;
     }
 
     if (success) {
         const destinationSlot = this.scene.inventorySystem?.lastAddedSlot ?? null;
-        SoundHelper.playSound(this.scene, 'shop_buy', 0.5);
+        SoundHelper.playSound(this.scene, bagArrivalSoundKey(this.scene, data, 'shop_buy'), 0.5);
         this.removeCard(index);
         if (data.type !== 'amulet') {
             recordHumanRunEvent(this.scene, 'board_loot_collected', {
@@ -1166,7 +1194,6 @@ function spawnDeathDrop(index, originalCard) {
         ease: 'Back.easeOut'
     });
     SoundHelper.playSound(this.scene, 'card_flip', 0.5);
-    this.scene.createFloatingText(x, y - 24, 'Loot!', 0xffd700);
 }
 
 function previewTrapAt(index) {
@@ -1181,7 +1208,7 @@ function previewTrapAt(index) {
     snapOriginToPixelGrid(card.sprite);
     this.createCardInfoText(card);
     SoundHelper.playSound(this.scene, 'card_flip', 0.4);
-    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Trap! Remember…', 0xff6644);
+    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Trap! Remember…', 0xef7c4b);
 
     // Peek window — close back after a moment
     this.scene.time.delayedCall(2500, () => {
@@ -1757,7 +1784,7 @@ function summonEnemy(enemyType, bossCard) {
         duration: 500,
         ease: 'Back.easeOut',
         onComplete: () => {
-            const flash = this.scene.add.circle(x, y, 40, 0x9932cc, 0.8);
+            const flash = this.scene.add.circle(x, y, 40, 0x712a65, 0.8);
             this.scene.tweens.add({
                 targets: flash,
                 alpha: 0,
@@ -1782,8 +1809,8 @@ function summonEnemy(enemyType, bossCard) {
     this._attachEnemyBoardHover?.(this.boardCards[emptySlot]);
     
     // Visual feedback
-    this.scene.createFloatingText(bossCard.sprite.x, bossCard.sprite.y, 'Summoning!', 0x9932cc);
-    this.scene.createFloatingText(x, y - 30, 'Summoned!', 0xff00ff);
+    this.scene.createFloatingText(bossCard.sprite.x, bossCard.sprite.y, 'Summoning!', 0x712a65);
+    this.scene.createFloatingText(x, y - 30, 'Summoned!', 0x712a65);
     
     SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
 }
@@ -1833,13 +1860,13 @@ function respawnCardOnBoard(cardData, options = {}) {
         const endScale = this._boardPlace?.cardScale || 1;
         cardSprite.setScale(0.1);
         this.scene.tweens.add({ targets: cardSprite, scale: endScale, duration: 250, ease: 'Back.easeOut' });
-        const flash = this.scene.add.circle(x, y, 30, 0x66ddff, 0.7);
+        const flash = this.scene.add.circle(x, y, 30, 0x71b1ae, 0.7);
         this.scene.tweens.add({
             targets: flash, alpha: 0, scale: 2, duration: 400,
             onComplete: () => flash.destroy()
         });
         SoundHelper.playSound(this.scene, 'magic_cast', 0.4);
-        this.scene.createFloatingText(x, y - 30, 'Webwoven!', 0x66ddff);
+        this.scene.createFloatingText(x, y - 30, 'Webwoven!', 0x71b1ae);
     }
 
     // Card is face-down — player must reveal it like any other floor card.
@@ -1952,7 +1979,7 @@ function dropWaveCards() {
         });
     });
 
-    this.scene.createFloatingText?.(320, 70, 'Reinforcements!', 0xffcc66);
+    this.scene.createFloatingText?.(320, 70, 'Reinforcements!', 0xffcf7f);
 
     // After the last card lands, refresh adjacency/bands, release the lock,
     // and re-check clear (in case the wave was all loot and is already thin).

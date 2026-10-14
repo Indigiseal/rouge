@@ -343,6 +343,10 @@ export function applySandboxLoadout(gameScene, roomId) {
     spare.durability = spare.maxDurability || 12;
     inv.addCard(spare);
   }
+  // A key in every kit, so a locked chest can be opened with one (and the
+  // key's use tested) without hunting one down first.
+  const key = gen.createKeyCard?.(floor);
+  if (key) inv.addCard(key);
   if (armor) {
     armor.durability = Math.max(3, Math.floor((armor.maxDurability || 12) * 0.55));
     armor.maxDurability = armor.maxDurability || armor.durability;

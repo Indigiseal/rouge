@@ -166,8 +166,8 @@ function applyPoisonStacksToCard(card, poisonStacks) {
   });
   const totalDamage = poisonStacks.reduce((sum, stack) => sum + stack.damage, 0);
   if (card.sprite) {
-    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 16, 'Poisoned!', 0x44ff44);
-    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 32, `poison -${totalDamage}/turn`, 0x88dd88);
+    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 16, 'Poisoned!', 0x71800b);
+    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 32, `poison -${totalDamage}/turn`, 0x4a884f);
   }
 
   // Show looping poison icon at top-right corner of the enemy card
@@ -257,7 +257,7 @@ function applyShockStatus(card, turns = 1) {
 
   card.data.frozen = Math.max(1, turns);
   card.data.shockedTurns = Math.max(1, turns);
-  this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, 'Shocked!', 0x66ccff);
+  this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, 'Shocked!', 0x71b1ae);
 
   if (!card.shockMarker && this.scene.textures.exists('shockedStatus')) {
     const halfW = (card.sprite.displayWidth || 52) / 2;
@@ -326,7 +326,7 @@ function processEnemyPoisonEffects() {
 
     if (poisonDamage <= 0) continue;
     card.data.health -= poisonDamage;
-    this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${poisonDamage} Poison`, 0x66ff66);
+    this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${poisonDamage} Poison`, 0x71800b);
     this.scene.shakeCard(card.sprite);
 
     if (card.data.health <= 0) {
@@ -464,6 +464,10 @@ function bindScoutCardHover(card, scene) {
   });
 }
 
+// Where the pin's round head is in pin.png, from its top-left corner.
+const SCOUT_PIN_HEAD_X = 9;
+const SCOUT_PIN_HEAD_Y = 10;
+
 function syncControlMarkers(card) {
   if (!card?.sprite?.scene) {
     destroyControlMarkers(card);
@@ -489,7 +493,7 @@ function syncControlMarkers(card) {
     let marker = card[key];
     if (!marker?.scene) {
       marker = scene.add.circle(x, y, 5, color);
-      marker.setStrokeStyle?.(1, 0x111111, 0.85);
+      marker.setStrokeStyle?.(1, 0x0e0b10, 0.85);
       marker.setDepth?.(depth);
       // Visual only. Interactive dots on enemies swallow pointerup while a
       // weapon is dragged (Phaser globalTopOnly), so the card never gets
@@ -504,20 +508,28 @@ function syncControlMarkers(card) {
   };
 
   const hesitation = !!card.data?.controlHesitation;
-  placeDot('controlHesitationMarker', hesitation, 0x44c8ff, 0);
-  placeDot('controlTreacheryMarker', !!card.data?.controlTreachery, 0xff66aa, hesitation ? 1 : 0);
+  placeDot('controlHesitationMarker', hesitation, 0x71b1ae, 0);
+  placeDot('controlTreacheryMarker', !!card.data?.controlTreachery, 0xa83c69, hesitation ? 1 : 0);
 
+  // The pin is drawn from its top-left corner, placed so its round head sits
+  // at the card's top centre, with the needle and its shadow below.
   const scout = !!card.data?.strategyScout && !card.revealed;
-  const scoutX = Math.round(card.sprite.x);
-  const scoutY = Math.round(card.sprite.y - halfH + 7);
+  const hasPinArt = scene.textures?.exists?.('tacticianPin');
+  const scoutX = Math.round(card.sprite.x) - (hasPinArt ? SCOUT_PIN_HEAD_X : 0);
+  const scoutY = Math.round(card.sprite.y - halfH + 7) - (hasPinArt ? SCOUT_PIN_HEAD_Y : 0);
   if (!scout) {
     if (card.strategyScoutMarker) {
       card.strategyScoutMarker.destroy();
       card.strategyScoutMarker = null;
     }
   } else if (!card.strategyScoutMarker?.scene) {
-    const pin = scene.add.circle(scoutX, scoutY, 6, 0xc8b06a);
-    pin.setStrokeStyle?.(1, 0x111111, 0.85);
+    let pin;
+    if (hasPinArt) {
+      pin = scene.add.image(scoutX, scoutY, 'tacticianPin').setOrigin(0, 0);
+    } else {
+      pin = scene.add.circle(scoutX, scoutY, 6, 0xc8ab78);
+      pin.setStrokeStyle?.(1, 0x0e0b10, 0.85);
+    }
     pin.setDepth?.(depth);
     card.strategyScoutMarker = pin;
     bindScoutCardHover(card, scene);
@@ -535,7 +547,7 @@ function rollEvade(card) {
     const chance = Number(evadeAbility?.chance) || 0;
     if (chance <= 0 || Math.random() >= chance) return false;
     SoundHelper.playVariant(this.scene, 'dodge_miss', 0.5);
-    this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Miss!', 0xffffff);
+    this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Miss!', 0xfef0cf);
     return true;
 }
 
@@ -558,7 +570,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
             this.scene.playerAvatar.x,
             this.scene.playerAvatar.y,
             'Provoked!',
-            0x88aaff
+            0x6c6885
         );
         return;
     }
@@ -570,7 +582,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         // detector rejects the same swings this does.
         if (!weaponCanDamageEnemy(weapon, card)) {
             SoundHelper.playVariant(this.scene, 'dodge_miss', 0.5);
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Immune!', 0x88ff88);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Immune!', 0x4a884f);
             // The weapon is refused, the gem is not: it discharges as magic.
             // Costs the pip all the same — the swing was taken.
             if (weaponGemIsDamaging(weapon)) {
@@ -600,7 +612,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
                 this.scene.playerAvatar.x,
                 this.scene.playerAvatar.y,
                 'Blocked by frontline!',
-                0xff6666
+                0xc45c45
             );
             // Let the tutorial (or any listener) react to a blocked swing.
             this.scene.events.emit('frontlineBlocked', index);
@@ -636,7 +648,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         this.scene.gameState.playerSpored = false;
         if (Math.random() < 0.15) {
             SoundHelper.playVariant(this.scene, 'dodge_miss', 0.5);
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Miss!', 0xb8e986);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Miss!', 0xfee093);
             return;
         }
     }
@@ -778,7 +790,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // explicit label so the player's own hit is unmistakable in the combat
     // log next to gem "Zap"/"Fire" numbers (skipLog avoids double-logging).
     CombatSequencer.floatingText(this.scene, isReflection ? 'reflect_damage' : 'damage',
-        card.sprite.x, card.sprite.y, { key: 'float.damage', vars: { amount: finalDamage } }, 0xff0000, '15px', {
+        card.sprite.x, card.sprite.y, { key: 'float.damage', vars: { amount: finalDamage } }, 0xb51f1e, '15px', {
             skipLog: true, type: isReflection ? 'tick' : 'damage', amount: finalDamage,
             critical: feedbackCritical, lethal: card.data.health <= 0, label: feedbackLabel, target: card.sprite,
         });
@@ -805,7 +817,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
                 this.scene.playerAvatar.x,
                 this.scene.playerAvatar.y - 14,
                 `-${actualDamage} Thorns!`,
-                0x88cc66
+                0x4a884f
             );
         }
     }
@@ -865,7 +877,7 @@ function applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
             this.scene.tutorialManager?._handleProgress?.('gemEffect:lightning');
         }
         // Main target: bonus lightning damage on top of the weapon hit.
-        this.damageGemTarget(targetIndex, zapDamage, 'Zap', 0xffe066, 'lightning');
+        this.damageGemTarget(targetIndex, zapDamage, 'Zap', 0xffcf7f, 'lightning');
         if (extraZaps > 0) {
             const candidates = this.boardCards
                 .map((card, i) => ({ card, i }))
@@ -900,7 +912,7 @@ function applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
                     }
                     // Each hop opens its own moment: the arc flies, then the
                     // number lands on the hit beat a beat later.
-                    this.damageGemTarget(i, zapDamage, 'Zap', 0xffe066, 'lightning', 'hit');
+                    this.damageGemTarget(i, zapDamage, 'Zap', 0xffcf7f, 'lightning', 'hit');
                 });
                 if (toPos) fromPos = toPos; // next hop starts where this one landed
             });
@@ -936,7 +948,8 @@ function applyHolographicOmenStartEffect() {
         if (roll === 0) {
             card.data.frozen = Math.max(card.data.frozen || 0, 1);
             this.attachFrozenFrame(card);
-            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, 'Frozen!', 0x66ddff);
+            SoundHelper.playSound(this.scene, 'enemy_freeze', 0.5);
+            this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, 'Frozen!', 0x71b1ae);
         } else if (roll === 1) {
             this.applyWeaponPoison(card, { poisonDamage: 1, poisonTurns: 3 });
         } else if (roll === 2) {
@@ -952,12 +965,13 @@ function applyHolographicOmenStartEffect() {
     if (Math.random() < 0.10) {
         const before = this.scene.gameState?.actionsLeft || 0;
         this.scene.gameState.actionsLeft = Math.max(0, before - 2);
+        this.scene.playActionPointSpend?.(before, this.scene.gameState.actionsLeft);
         const lost = before - this.scene.gameState.actionsLeft;
         if (lost > 0) {
             const x = this.scene.playerAvatar?.x || 320;
             const y = this.scene.playerAvatar?.y || 300;
-            this.scene.createFloatingText?.(x, y, 'Omen Backfires!', 0xff66cc);
-            this.scene.createFloatingText?.(x, y - 16, `-${lost} AP`, 0xff99dd);
+            this.scene.createFloatingText?.(x, y, 'Omen Backfires!', 0xa83c69);
+            this.scene.createFloatingText?.(x, y - 16, `-${lost} AP`, 0xa83c69);
             this.scene.updateActionPointUI?.();
             this.scene.updateUI?.();
         }
@@ -999,7 +1013,7 @@ function burnEnemy(index, amount) {
         CombatSequencer.schedule(this.scene, 'gem', () => {
             if (card.sprite?.scene) this.playEnemyHitEffect(card, 'fire');
         });
-        CombatSequencer.floatingText(this.scene, 'gem', card.sprite.x, card.sprite.y - 18, `-${amount} Fire`, 0xff7040);
+        CombatSequencer.floatingText(this.scene, 'gem', card.sprite.x, card.sprite.y - 18, `-${amount} Fire`, 0xef7c4b);
         CombatSequencer.shakeCard(this.scene, 'gem', card.sprite);
         this.updateEnemyInfoText(card);
     }
@@ -1021,7 +1035,7 @@ function spendWeaponDurability() {
     if (gs.equippedWeapon.durability <= 0) {
         gs.equippedWeapon = null;
         CombatSequencer.floatingText(this.scene, 'break',
-            this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weapon Broke!', 0xff0000);
+            this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weapon Broke!', 0xb51f1e);
     }
     this.scene.updateUI();
 }
@@ -1057,14 +1071,14 @@ function explodePoisonedEnemy(card, amount) {
         const target = this.boardCards[index];
         if (target === card || !this.isOpenEnemyCard(target) || (target.data.health ?? 0) <= 0) continue;
         target.data.health -= amount;
-        CombatSequencer.floatingText(this.scene, 'gem', target.sprite.x, target.sprite.y - 18, `-${amount} Plague`, 0x88dd66);
+        CombatSequencer.floatingText(this.scene, 'gem', target.sprite.x, target.sprite.y - 18, `-${amount} Plague`, 0x71800b);
         CombatSequencer.shakeCard(this.scene, 'gem', target.sprite);
         hit = true;
         if (target.data.health <= 0) this.removeDefeatedEnemy(index, target);
         else this.updateEnemyInfoText(target);
     }
     if (hit && card.sprite) {
-        this.scene.createFloatingText?.(card.sprite.x, card.sprite.y - 28, 'Plague Burst!', 0x88dd66);
+        this.scene.createFloatingText?.(card.sprite.x, card.sprite.y - 28, 'Plague Burst!', 0x71800b);
     }
     return hit;
 }
@@ -1075,7 +1089,7 @@ function applyRelicSlow(card) {
     card.data.frozen = 1;
     if (card.sprite) {
         this.attachFrozenFrame(card);
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Slowed!', 0x99ccff);
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Slowed!', 0x71b1ae);
     }
 }
 
@@ -1125,7 +1139,8 @@ function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
             card.data.frozen = Math.max(card.data.frozen || 0, ENCHANT_FREEZE_TURNS);
             if (card.sprite) {
                 this.attachFrozenFrame(card);
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Frozen!', 0x66ddff);
+                SoundHelper.playSound(this.scene, 'enemy_freeze', 0.5);
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Frozen!', 0x71b1ae);
             }
             break;
         }
@@ -1135,7 +1150,7 @@ function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
             const before = card.data.attack || 0;
             card.data.attack = Math.ceil(before * ENCHANT_WEAKNESS_MULTIPLIER);
             if (card.sprite && card.data.attack < before) {
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Weakened!', 0x9932cc);
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Weakened!', 0x712a65);
             }
             this.updateEnemyInfoText(card);
             break;
@@ -1146,7 +1161,7 @@ function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
             gs.playerHealth = Math.min(gs.maxHealth || 0, before + ENCHANT_HEAL_AMOUNT);
             const healed = gs.playerHealth - before;
             if (healed > 0) {
-                this.scene.createFloatingText(px, py, `+${healed} HP`, 0x00ff66);
+                this.scene.createFloatingText(px, py, `+${healed} HP`, 0x4a884f);
                 this.scene.updateUI?.();
             }
             break;
@@ -1161,7 +1176,7 @@ function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
             this.scene.createFloatingText(
                 px, py,
                 base > 0 ? `Armor ${base} → ${boosted}` : 'Warded!',
-                0x88ddff
+                0x71b1ae
             );
             // Redraw the worn-armor card so its number updates immediately.
             this.scene.updateEquippedArmorPanel?.();
@@ -1172,7 +1187,7 @@ function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
         case 'boneWall': {
             // The spell reflects two attacks; the proc reflects one.
             gs.boneWall = Math.max(gs.boneWall || 0, 1);
-            this.scene.createFloatingText(px, py, 'Bulwark!', 0xffffff);
+            this.scene.createFloatingText(px, py, 'Bulwark!', 0xfef0cf);
             this.scene.updateUI?.();
             break;
         }
@@ -1199,7 +1214,7 @@ function applyWeaponEnchantOnKill(enchantId) {
             this.scene.playerAvatar?.x ?? 320,
             this.scene.playerAvatar?.y ?? 300,
             'Shrouded!',
-            0xbbbbbb
+            0xafafa2
         );
     }
 }
@@ -1261,7 +1276,7 @@ function removeDefeatedEnemy(index, card) {
                 this.scene.playerAvatar.x,
                 this.scene.playerAvatar.y,
                 `+${relicLifesteal} HP (Lich)`,
-                0x9932cc
+                0x712a65
             );
         }
         
@@ -1300,7 +1315,7 @@ function removeDefeatedEnemy(index, card) {
                         this.scene.playerAvatar.x, 
                         this.scene.playerAvatar.y, 
                         `+${ability.amount} Action`, 
-                        0x00ff00
+                        0x71800b
                     );
                     this.scene.updateUI();
                 }
@@ -1426,7 +1441,7 @@ function tryApplyBoardGem(card, index) {
     if (inventory.discardArea && Phaser.Geom.Intersects.RectangleToRectangle(card.sprite.getBounds(), inventory.discardArea.getBounds())) {
         const discarded = snapshotHumanRunCard(card.data);
         SoundHelper.playSound(this.scene, 'item_discard', 0.7);
-        this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Discarded!', 0xff0000);
+        this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Discarded!', 0xb51f1e);
         this.scene.recordCardDiscarded?.(card.data, card.sprite.x, card.sprite.y);
         // A gem dragged off the board falls down the same chute a bag card does.
         this.playCardDiscardEffect?.(card.sprite, inventory.discardArea);

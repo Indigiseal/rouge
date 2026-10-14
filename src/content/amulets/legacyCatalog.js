@@ -26,7 +26,7 @@ export function buildLegacyAmuletDefinitions(mgr) {
                         this.scene.playerAvatar.x,
                         this.scene.playerAvatar.y,
                         `+${healAmount} HP (Regen)`,
-                        0x00ff00
+                        0x71800b
                     );
                 }
             },
@@ -52,7 +52,7 @@ export function buildLegacyAmuletDefinitions(mgr) {
                             this.scene.playerAvatar.x,
                             this.scene.playerAvatar.y,
                             'INVULNERABLE!',
-                            0xffd700
+                            0xfbad19
                         );
                         return true; // Prevent death
                     }
@@ -120,7 +120,7 @@ export function buildLegacyAmuletDefinitions(mgr) {
                         this.scene.playerAvatar.x,
                         this.scene.playerAvatar.y,
                         '+2 AP (Moonwell)',
-                        0x00ffff
+                        0x71b1ae
                     );
                 }
             },
@@ -173,7 +173,7 @@ export function buildLegacyAmuletDefinitions(mgr) {
                         this.scene.playerAvatar.x,
                         this.scene.playerAvatar.y - 16,
                         `Poison Purged +${bonus} HP`,
-                        0x66ff66
+                        0x71800b
                     );
                 }
             },
@@ -200,7 +200,7 @@ export function buildLegacyAmuletDefinitions(mgr) {
                         this.scene.playerAvatar.x,
                         this.scene.playerAvatar.y,
                         `+${healAmount} HP (Blood)`,
-                        0xff0000
+                        0xb51f1e
                     );
                 }
             },
@@ -219,7 +219,7 @@ export function buildLegacyAmuletDefinitions(mgr) {
                         this.scene.playerAvatar.x,
                         this.scene.playerAvatar.y,
                         `+${healAmount} HP (Vampiric)`,
-                        0x8b0000
+                        0xb31f21
                     );
                 }
             },
@@ -251,7 +251,7 @@ export function buildLegacyAmuletDefinitions(mgr) {
                                 this.scene.playerAvatar.x,
                                 this.scene.playerAvatar.y - 20,
                                 '+1 AP (Soul)',
-                                0x9932cc
+                                0x712a65
                             );
                         }
                     }
@@ -260,7 +260,7 @@ export function buildLegacyAmuletDefinitions(mgr) {
                         this.scene.playerAvatar.x,
                         this.scene.playerAvatar.y,
                         '+1 HP (Soul)',
-                        0x9932cc
+                        0x712a65
                     );
                 }
             },
@@ -341,7 +341,7 @@ export function buildLegacyAmuletDefinitions(mgr) {
                             this.scene.playerAvatar.x,
                             this.scene.playerAvatar.y,
                             `+${remaining} Max HP (Sunstone)`,
-                            0xffe066
+                            0xffcf7f
                         );
                         // Refresh the HP bar immediately so the boost is visible
                         // (otherwise it only shows once the next floor renders).
@@ -403,7 +403,7 @@ export function buildLegacyAmuletDefinitions(mgr) {
                             this.scene.playerAvatar.x,
                             this.scene.playerAvatar.y - 14,
                             '+1 Max AP (Map)',
-                            0x66ddff
+                            0x71b1ae
                         );
                     }
                 }

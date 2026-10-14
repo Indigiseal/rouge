@@ -14,7 +14,7 @@ function createModalButton(scene, x, y, width, height, text, color, callback) {
 
     const buttonText = scene.add.text(x, y, text, {
         fontSize: '18px',
-        fill: '#ffffff',
+        fill: '#fef0cf',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(1002);
 
@@ -59,14 +59,14 @@ export function openConfirmModal(scene, {
     const dimmer = scene.add.rectangle(320, 180, 640, 360, 0x000000, 0.75)
         .setDepth(1000)
         .setInteractive();
-    const box = scene.add.rectangle(320, 180, 380, 170, 0x2c1810)
-        .setStrokeStyle(2, 0xff4444)
+    const box = scene.add.rectangle(320, 180, 380, 170, 0x28150c)
+        .setStrokeStyle(2, 0xb51f1e)
         .setDepth(1001);
     const titleText = scene.add.text(320, 130, title, {
-        fontSize: '20px', fill: '#ff8888', fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        fontSize: '20px', fill: '#c45c45', fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(1002);
     const bodyText = scene.add.text(320, 170, body, {
-        fontSize: '13px', fill: '#ffffff', fontFamily: '"HoMM Pixel", Arial, sans-serif', align: 'center'
+        fontSize: '13px', fill: '#fef0cf', fontFamily: '"HoMM Pixel", Arial, sans-serif', align: 'center'
     }).setOrigin(0.5).setDepth(1002);
 
     let closed = false;
@@ -78,11 +78,11 @@ export function openConfirmModal(scene, {
         scene.activeModal = null;
     };
 
-    const yes = createModalButton(scene, 265, 230, 90, 30, confirmLabel || t(scene, 'ui.common.ok'), 0xff4444, () => {
+    const yes = createModalButton(scene, 265, 230, 90, 30, confirmLabel || t(scene, 'ui.common.ok'), 0xb51f1e, () => {
         cleanup();
         onConfirm?.();
     });
-    const no = createModalButton(scene, 375, 230, 90, 30, cancelLabel || t(scene, 'ui.options.cancel'), 0x888888, () => {
+    const no = createModalButton(scene, 375, 230, 90, 30, cancelLabel || t(scene, 'ui.options.cancel'), 0x869089, () => {
         cleanup();
         onCancel?.();
     });
@@ -105,14 +105,14 @@ export function openNoticeModal(scene, {
     const dimmer = scene.add.rectangle(320, 180, 640, 360, 0x000000, 0.75)
         .setDepth(1000)
         .setInteractive();
-    const box = scene.add.rectangle(320, 180, 420, 180, 0x2c1810)
-        .setStrokeStyle(2, 0xffaa44)
+    const box = scene.add.rectangle(320, 180, 420, 180, 0x28150c)
+        .setStrokeStyle(2, 0xef9629)
         .setDepth(1001);
     const titleText = scene.add.text(320, 125, title, {
-        fontSize: '20px', fill: '#ffcc88', fontFamily: '"HoMM Pixel", Arial, sans-serif'
+        fontSize: '20px', fill: '#ffcf7f', fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(1002);
     const bodyText = scene.add.text(320, 170, body, {
-        fontSize: '13px', fill: '#ffffff', fontFamily: '"HoMM Pixel", Arial, sans-serif', align: 'center',
+        fontSize: '13px', fill: '#fef0cf', fontFamily: '"HoMM Pixel", Arial, sans-serif', align: 'center',
         wordWrap: { width: 360, useAdvancedWrap: true }
     }).setOrigin(0.5).setDepth(1002);
 
@@ -123,7 +123,7 @@ export function openNoticeModal(scene, {
         [dimmer, box, titleText, bodyText, button.button, button.text].forEach(o => o?.destroy());
         scene.activeModal = null;
     };
-    const button = createModalButton(scene, 320, 245, 110, 30, confirmLabel || t(scene, 'ui.common.continue'), 0xffaa44, () => {
+    const button = createModalButton(scene, 320, 245, 110, 30, confirmLabel || t(scene, 'ui.common.continue'), 0xef9629, () => {
         cleanup();
         onConfirm?.();
     });

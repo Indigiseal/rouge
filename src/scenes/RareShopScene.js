@@ -1,5 +1,6 @@
 import { CardSystem } from '../systems/CardSystem.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { bagArrivalSoundKey } from '../content/audio/armorSounds.js';
 import { looseGemCard } from '../content/cards/gems.js';
 import { t, translateItemName } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
@@ -35,7 +36,7 @@ export class RareShopScene extends StationRoomBase {
         this.addOptionsCog();
 
         createTitle(this, 320, 30, t(this, 'ui.shop.rareTitle'), {
-            color: '#DA70D6',
+            color: '#a83c69',
             fallbackSize: '28px'
         });
 
@@ -233,12 +234,13 @@ export class RareShopScene extends StationRoomBase {
             : this.gameState.crystals >= item.price;
 
         if (!hasEnoughCurrency) {
-            this.showFeedback({ key: 'float.notEnoughCurrency', vars: { currency: this.getCurrencyDisplay(item.currency) } }, 0xff0000, 100);
+            SoundHelper.playVariant(this, 'invalid_action', 0.5);
+            this.showFeedback({ key: 'float.notEnoughCurrency', vars: { currency: this.getCurrencyDisplay(item.currency) } }, 0xb51f1e, 100);
             return;
         }
 
         if (item.data.type === 'gem') {
-            this.showFeedback({ key: 'float.dragGemOntoWeapon' }, 0xffe066, 100);
+            this.showFeedback({ key: 'float.dragGemOntoWeapon' }, 0xffcf7f, 100);
             return;
         }
 
@@ -251,7 +253,7 @@ export class RareShopScene extends StationRoomBase {
                 const takeable = this.gameScene.amuletManager.takeableOptions?.(offer?.options)
                     ?? offer?.options ?? [];
                 if (offer?.options?.length && !takeable.length) {
-                    this.showFeedback({ key: 'float.alreadyOwned' }, 0xff0000, 100);
+                    this.showFeedback({ key: 'float.alreadyOwned' }, 0xb51f1e, 100);
                     return;
                 }
                 if (takeable.length) {
@@ -274,10 +276,10 @@ export class RareShopScene extends StationRoomBase {
                 }
                 if (item.data.id) {
                     if (!this.gameScene.amuletManager.addAmulet(item.data.id)) {
-                        this.showFeedback('Already owned!', 0xff0000, 100);
+                        this.showFeedback('Already owned!', 0xb51f1e, 100);
                         return;
                     }
-                    this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x9932cc, 100);
+                    this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x712a65, 100);
                 } else {
                     this.consumeAmulet(item.data);
                 }
@@ -288,27 +290,27 @@ export class RareShopScene extends StationRoomBase {
             // Inventory items
             if (this.gameScene?.inventorySystem) {
                 if (!this.gameScene.inventorySystem.addCard(item.data)) {
-                    this.showFeedback('Inventory Full!', 0xff0000, 100);
+                    this.showFeedback('Inventory Full!', 0xb51f1e, 100);
                     return;
                 }
                 destinationSlot = this.gameScene.inventorySystem.lastAddedSlot;
             } else {
                 const emptySlot = this.gameState.inventory.findIndex(slot => slot === null);
                 if (emptySlot === -1) {
-                    this.showFeedback('Inventory Full!', 0xff0000, 100);
+                    this.showFeedback('Inventory Full!', 0xb51f1e, 100);
                     return;
                 }
                 this.gameState.inventory[emptySlot] = item.data;
                 destinationSlot = emptySlot;
             }
-            this.showFeedback('Purchased!', 0x00ff00, 100);
+            this.showFeedback('Purchased!', 0x71800b, 100);
         }
 
         // Deduct (concrete amulet / non-amulet path)
         if (item.currency === 'coins') this.gameState.coins -= item.price;
         else this.gameState.crystals -= item.price;
 
-        SoundHelper.playSound(this, 'shop_buy', 0.5);
+        SoundHelper.playSound(this, bagArrivalSoundKey(this, item.data, 'shop_buy'), 0.5);
         item.purchased = true;
         recordHumanRunEvent(this, 'shop_item_bought', {
             shop: 'rare',
@@ -329,12 +331,12 @@ export class RareShopScene extends StationRoomBase {
         if (amulet.effect === 'health') {
             this.gameState.maxHealth += amulet.value;
             this.gameState.playerHealth += amulet.value;
-            this.showFeedback(`+${amulet.value} Max HP!`, 0x00ff00, 100);
+            this.showFeedback(`+${amulet.value} Max HP!`, 0x71800b, 100);
         } else if (amulet.effect === 'max_actions') {
             this.gameState.maxActions += amulet.value;
-            this.showFeedback(`+${amulet.value} Max Actions!`, 0x00ff00, 100);
+            this.showFeedback(`+${amulet.value} Max Actions!`, 0x71800b, 100);
         } else {
-            this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(amulet) } }, 0x9932cc, 100);
+            this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(amulet) } }, 0x712a65, 100);
         }
         this.gameState.activeAmulets.push(amulet);
     }

@@ -11,6 +11,15 @@ export const ARMOR_EQUIP_SOUND_ASSETS = Object.freeze(ARMOR_EQUIP_TYPES.map((typ
     type: 'audio',
 })));
 
+/**
+ * The sound for a card arriving in the bag: armor makes its own equip sound
+ * (picking a chain shirt up sounds like putting it on), anything else plays
+ * `fallback`, the sound that place already used.
+ */
+export function bagArrivalSoundKey(scene, card, fallback) {
+    return card?.type === 'armor' ? armorEquipSoundKey(scene, card) : fallback;
+}
+
 /** The sound for putting on (or taking off) this armor, loaded or not. */
 export function armorEquipSoundKey(scene, armor) {
     const key = `armor_equip_${armor?.armorType}`;

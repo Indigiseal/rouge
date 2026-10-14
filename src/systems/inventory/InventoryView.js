@@ -6,8 +6,9 @@ import { DISCARD_X } from '../../ui/CombatHud.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
 import { t, translateDescription, translateGemEffect, translateItemName, tCount } from '../../i18n/i18n.js';
-import { describeWeaponEnchant } from '../../content/balance/WeaponEnchants.js';
+import { describeWeaponEnchant, ENCHANT_FIRE_SPLASH_RADIUS } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
+import { handLockOf } from '../../content/combat/handLock.js';
 import {
     axeHeavyCleaveTargetIndices,
     spearPierceTargetIndices,
@@ -32,7 +33,7 @@ const TOOLTIP_TEXT_W = 138;
 const PANEL_INTRO_DROP = 20;
 const PANEL_INTRO_MS = 480;
 const PANEL_INTRO_OVERSHOOT = 2.5;
-const TOOLTIP_ENCHANT_COLOR = '#66aaff';
+const TOOLTIP_ENCHANT_COLOR = '#6c6885';
 
 export const InventoryView = {
     setVisibility(isVisible) {
@@ -109,6 +110,12 @@ export const InventoryView = {
         const cardData = this.slots?.[slotIndex];
         if (!slot || !cardSprite?.scene || !(cardData?.webbedTurns > 0)) return;
 
+        // The lock's own art: web, or the Ink Wraith's ink. An overlay of the
+        // other kind (a card re-locked by a different enemy) is replaced.
+        const lock = handLockOf(cardData);
+        if (slot.webOverlay?.scene && slot.webOverlay.texture?.key !== lock.overlayKey) {
+            this.clearWebOverlay(slotIndex);
+        }
         if (slot.webOverlay?.scene) {
             slot.webOverlay.x = cardSprite.x;
             slot.webOverlay.y = cardSprite.y;
@@ -116,7 +123,7 @@ export const InventoryView = {
             slot.webOverlay.setDepth(this.getInventoryDepths().webOverlay);
         } else {
             const overlay = snapOriginToPixelGrid(
-                this.scene.add.image(cardSprite.x, cardSprite.y, 'webCardOverlay')
+                this.scene.add.image(cardSprite.x, cardSprite.y, lock.overlayKey, lock.overlayFrame)
             );
             // Drawn at native size, NOT stretched to the card. web.png is 60x78
             // against a 54x70 card because Taya drew the silk to overhang the
@@ -164,6 +171,7 @@ export const InventoryView = {
             const item = slots[i];
             if (!item || !(item.webbedTurns > 0)) continue;
             delete item.webbedTurns;
+            delete item.webbedKind;
             this.clearWebOverlay(i);
         }
     },
@@ -505,7 +513,7 @@ export const InventoryView = {
             if (!sprite?.scene) continue;
             const width = (sprite.displayWidth || sprite.width || 53) + 6;
             const height = (sprite.displayHeight || sprite.height || 70) + 6;
-            const color = fraction >= 1 ? 0xffdd55 : fraction >= 0.5 ? 0xff8844 : 0xff4455;
+            const color = fraction >= 1 ? 0xffcf7f : fraction >= 0.5 ? 0xef7c4b : 0xb51f1e;
             const alpha = fraction >= 1 ? 0.28 : fraction >= 0.5 ? 0.22 : 0.16;
             g.fillStyle(color, alpha);
             g.fillRoundedRect(sprite.x - width / 2, sprite.y - height / 2, width, height, 4);
@@ -522,9 +530,15 @@ export const InventoryView = {
     // nearest-edge, the rule reads straight off the picture: any enemy card the
     // ring touches burns. Drawn at depth 1 — above the board panel (0), below
     // the cards (2) — so it looks like scorched ground, not an overlay.
+    //
+    // An Ember enchant (the 'fireball' enchant) splashes much further, but
+    // only when it procs, so its reach is a second, fainter ring around the
+    // gem's. A weapon with Ember and no fire gem shows just that ring.
     updateFireReachIndicator(cardSprite, slotIndex) {
         const weapon = this.slots[slotIndex];
-        if (this.stationMode || weapon?.type !== 'weapon' || weapon.gemEffect !== 'fire') {
+        const hasFireGem = weapon?.gemEffect === 'fire';
+        const hasEmber = weapon?.enchant === 'fireball';
+        if (this.stationMode || weapon?.type !== 'weapon' || (!hasFireGem && !hasEmber)) {
             this.destroyFireReachIndicator();
             return;
         }
@@ -539,13 +553,21 @@ export const InventoryView = {
             this.fireReachIndicator = this.scene.add.graphics().setDepth(1);
         }
 
-        const radius = this.scene.cardSystem.getFireSplashRadius();
         const g = this.fireReachIndicator;
         g.clear();
-        g.fillStyle(0xff4020, 0.16);
-        g.fillCircle(target.x, target.y, radius);
-        g.lineStyle(1, 0xff6040, 0.5);
-        g.strokeCircle(target.x, target.y, radius);
+        if (hasEmber) {
+            g.fillStyle(0xb51f1e, 0.07);
+            g.fillCircle(target.x, target.y, ENCHANT_FIRE_SPLASH_RADIUS);
+            g.lineStyle(1, 0xef7c4b, 0.3);
+            g.strokeCircle(target.x, target.y, ENCHANT_FIRE_SPLASH_RADIUS);
+        }
+        if (hasFireGem) {
+            const radius = this.scene.cardSystem.getFireSplashRadius();
+            g.fillStyle(0xb51f1e, 0.16);
+            g.fillCircle(target.x, target.y, radius);
+            g.lineStyle(1, 0xef7c4b, 0.5);
+            g.strokeCircle(target.x, target.y, radius);
+        }
     },
     destroyFireReachIndicator() {
         if (this.fireReachIndicator?.scene) this.fireReachIndicator.destroy();
@@ -671,7 +693,7 @@ export const InventoryView = {
             // Bonus slots keep their gold edge — it is the only thing marking
             // slots 5+ as earned — but thinned to match the others.
             if (i >= 5) {
-                slotBg.setStrokeStyle(1, 0xffd700);
+                slotBg.setStrokeStyle(1, 0xfbad19);
             } else {
                 slotBg.setStrokeStyle(1, SLOT_INK);
             }
@@ -863,7 +885,7 @@ export const InventoryView = {
         // Update twinkle effects
         this.updateTwinkleEffects();
         
-        this.scene.createFloatingText(320, 300, `+${additionalSlots} Inventory Slots!`, 0xffd700);
+        this.scene.createFloatingText(320, 300, `+${additionalSlots} Inventory Slots!`, 0xfbad19);
     },
     // Special rebuild method that doesn't double-preserve items
     rebuildSpritesAfterExpansion() {

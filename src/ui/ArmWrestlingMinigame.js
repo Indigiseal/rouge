@@ -58,7 +58,7 @@ export function openArmWrestlingMinigame(scene, cfg) {
     if (phase === 'done') return;
     phase = 'done';
     statusText.setText(t(scene, won ? 'ui.armWrestling.win' : 'ui.armWrestling.lose'));
-    statusText.setColor(won ? '#7ee787' : '#ff7b72');
+    statusText.setColor(won ? '#4a884f' : '#c45c45');
     clickZone.disableInteractive();
     clickHint.setVisible(false);
     scene.time?.delayedCall?.(550, () => {
@@ -73,13 +73,13 @@ export function openArmWrestlingMinigame(scene, cfg) {
 
   const panelW = 420;
   const panelH = 268;
-  const panel = push(scene.add.rectangle(cx, cy - 8, panelW, panelH, 0x1a1420, 0.96));
-  panel.setStrokeStyle(2, 0xc9a227).setDepth(DEPTH + 1);
+  const panel = push(scene.add.rectangle(cx, cy - 8, panelW, panelH, 0x1e1421, 0.96));
+  panel.setStrokeStyle(2, 0xd5aa54).setDepth(DEPTH + 1);
 
   push(scene.add.text(cx, cy - panelH / 2 + 16, t(scene, 'ui.armWrestling.title'), {
     fontSize: '16px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#f0e6d2',
+    color: '#fef0cf',
   }).setOrigin(0.5).setDepth(DEPTH + 2));
 
   const artY = cy - 28;
@@ -92,25 +92,25 @@ export function openArmWrestlingMinigame(scene, cfg) {
     baseArmScale = Math.min(maxW / arms.width, maxH / arms.height);
     arms.setScale(baseArmScale);
   } else {
-    arms = push(scene.add.rectangle(cx, artY, 220, 90, 0x3a2a1a, 1));
-    arms.setStrokeStyle(2, 0x8b6914).setDepth(DEPTH + 2);
+    arms = push(scene.add.rectangle(cx, artY, 220, 90, 0x4b3329, 1));
+    arms.setStrokeStyle(2, 0x9b6a1b).setDepth(DEPTH + 2);
     push(scene.add.text(cx, artY, t(scene, 'ui.armWrestling.lockedHands'), {
       fontSize: '12px',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
-      color: '#c9a227',
+      color: '#d5aa54',
     }).setOrigin(0.5).setDepth(DEPTH + 3));
   }
 
   const statusText = push(scene.add.text(cx, cy - panelH / 2 + 36, t(scene, 'ui.armWrestling.instructions'), {
     fontSize: '12px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#ffe8b0',
+    color: '#fee8b5',
   }).setOrigin(0.5).setDepth(DEPTH + 3));
 
   const countdownText = push(scene.add.text(cx, artY, String(COUNTDOWN_SECS), {
     fontSize: '42px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#ffffff',
+    color: '#fef0cf',
     stroke: '#000000',
     strokeThickness: 4,
   }).setOrigin(0.5).setDepth(DEPTH + 5));
@@ -119,32 +119,32 @@ export function openArmWrestlingMinigame(scene, cfg) {
   const meterW = 280;
   const meterH = 18;
   push(scene.add.rectangle(cx, meterY, meterW + 6, meterH + 6, 0x000000, 0.9).setDepth(DEPTH + 2));
-  const meterTrack = push(scene.add.rectangle(cx, meterY, meterW, meterH, 0x2a2030, 1).setDepth(DEPTH + 3));
-  meterTrack.setStrokeStyle(1, 0x6e5a3a);
+  const meterTrack = push(scene.add.rectangle(cx, meterY, meterW, meterH, 0x2b2332, 1).setDepth(DEPTH + 3));
+  meterTrack.setStrokeStyle(1, 0x6a5538);
 
   // Center-origin rope fills — setDisplaySize so Phaser actually redraws.
-  const playerFill = push(scene.add.rectangle(cx, meterY, 2, meterH - 2, 0x58a6ff, 1).setDepth(DEPTH + 4));
+  const playerFill = push(scene.add.rectangle(cx, meterY, 2, meterH - 2, 0x6c6885, 1).setDepth(DEPTH + 4));
   playerFill.setOrigin(0, 0.5);
-  const ogreFill = push(scene.add.rectangle(cx, meterY, 2, meterH - 2, 0xff7b72, 1).setDepth(DEPTH + 4));
+  const ogreFill = push(scene.add.rectangle(cx, meterY, 2, meterH - 2, 0xc45c45, 1).setDepth(DEPTH + 4));
   ogreFill.setOrigin(1, 0.5);
 
-  const marker = push(scene.add.rectangle(cx, meterY, 6, meterH + 12, 0xf0e6d2, 1).setDepth(DEPTH + 5));
-  marker.setStrokeStyle(1, 0xffffff);
+  const marker = push(scene.add.rectangle(cx, meterY, 6, meterH + 12, 0xfef0cf, 1).setDepth(DEPTH + 5));
+  marker.setStrokeStyle(1, 0xfef0cf);
 
   push(scene.add.text(cx - meterW / 2 - 8, meterY, t(scene, 'ui.armWrestling.ogre'), {
     fontSize: '10px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#ff7b72',
+    color: '#c45c45',
   }).setOrigin(1, 0.5).setDepth(DEPTH + 3));
 
   push(scene.add.text(cx + meterW / 2 + 8, meterY, t(scene, 'ui.armWrestling.you'), {
     fontSize: '10px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#58a6ff',
+    color: '#6c6885',
   }).setOrigin(0, 0.5).setDepth(DEPTH + 3));
 
   // Whole panel is the strike zone — near-invisible hit rects often miss clicks.
-  const clickZone = push(scene.add.rectangle(cx, cy - 8, panelW - 8, panelH - 8, 0x58a6ff, 0));
+  const clickZone = push(scene.add.rectangle(cx, cy - 8, panelW - 8, panelH - 8, 0x6c6885, 0));
   clickZone.setDepth(DEPTH + 6);
   clickZone.setInteractive({ useHandCursor: true });
   if (clickZone.input) clickZone.input.alwaysEnabled = true;
@@ -152,7 +152,7 @@ export function openArmWrestlingMinigame(scene, cfg) {
   const clickHint = push(scene.add.text(cx, meterY + 30, t(scene, 'ui.armWrestling.clickHint'), {
     fontSize: '11px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#8b949e',
+    color: '#869089',
   }).setOrigin(0.5).setDepth(DEPTH + 7));
   clickHint.setVisible(false);
 
@@ -196,15 +196,15 @@ export function openArmWrestlingMinigame(scene, cfg) {
 
   const punchClickFeedback = () => {
     // Flash the panel rim so every click reads immediately.
-    panel.setStrokeStyle(3, 0x58a6ff);
+    panel.setStrokeStyle(3, 0x6c6885);
     scene.time?.delayedCall?.(70, () => {
-      if (!closed) panel.setStrokeStyle(2, 0xc9a227);
+      if (!closed) panel.setStrokeStyle(2, 0xd5aa54);
     });
 
     const pop = push(scene.add.text(cx + Phaser.Math.Between(-40, 40), meterY - 18, '>', {
       fontSize: '18px',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
-      color: '#58a6ff',
+      color: '#6c6885',
       stroke: '#000000',
       strokeThickness: 3,
     }).setOrigin(0.5).setDepth(DEPTH + 8));
@@ -255,10 +255,10 @@ export function openArmWrestlingMinigame(scene, cfg) {
         phase = 'fight';
         countdownText.setVisible(false);
         statusText.setText(t(scene, 'ui.armWrestling.push'));
-        statusText.setColor('#ffe8b0');
+        statusText.setColor('#fee8b5');
         clickHint.setVisible(true);
         // Slight tint so the hit area is obvious without blocking the art.
-        clickZone.setFillStyle(0x58a6ff, 0.06);
+        clickZone.setFillStyle(0x6c6885, 0.06);
         SoundHelper.playSound(scene, 'hover_button', 0.35);
       }
       return;
@@ -276,7 +276,7 @@ export function openArmWrestlingMinigame(scene, cfg) {
     if (closed) return;
     if (phase === 'countdown') {
       statusText.setText(t(scene, 'ui.armWrestling.wait'));
-      statusText.setColor('#ff7b72');
+      statusText.setColor('#c45c45');
       return;
     }
     if (phase !== 'fight') return;

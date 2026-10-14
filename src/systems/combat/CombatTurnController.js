@@ -1,10 +1,12 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
+import { tweenAlongArc } from '../../ui/ArcFlight.js';
 import { CombatSequencer } from './CombatSequencer.js';
 import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
 import { CONTROL_HESITATION_CHANCE, pickControlTreacheryTarget } from '../../content/amulets/control.js';
 import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
 import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
 import { getEnemy } from '../../content/cards/enemies.js';
+import { HAND_LOCKS, handLockKindOf, handLockOf } from '../../content/combat/handLock.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 
 const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
@@ -19,6 +21,10 @@ const BOSS_SWARM_ATTACK_GAP = 220;
 // matched the hero it would compete with the swing the player actually chose.
 // Shared by melee and ranged so the two never drift apart on tuning.
 const COMPANION_SFX_VOLUME = 0.35;
+// A thrown web or ink blob (throwWebAt): flight time and arc height. Each
+// lock's art is in content/combat/handLock.js.
+const WEB_THROW_MS = 420;
+const WEB_THROW_ARC = 30;
 
 /**
  * Owns the enemy-turn queue and companion combat turn loop.
@@ -222,10 +228,10 @@ export class CombatTurnController {
         if (scene.gameState.blockNextAttack) {
             scene.gameState.blockNextAttack = false; // Reset block
             SoundHelper.playVariant(scene, 'block_hit', 0.5);
-            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Blocked!', 0x00aaff);
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Blocked!', 0x3f818f);
 
             // Visual effect for successful block
-            const blockEffect = scene.add.circle(scene.playerAvatar.x, scene.playerAvatar.y, 30, 0x00aaff, 0.5);
+            const blockEffect = scene.add.circle(scene.playerAvatar.x, scene.playerAvatar.y, 30, 0x3f818f, 0.5);
             scene.tweens.add({
                 targets: blockEffect,
                 alpha: 0,
@@ -250,8 +256,8 @@ export class CombatTurnController {
                 // Reflect damage back to enemy
                 const reflectedDamage = getEnemyHitAttack(firstAttacker.card, scene.cardSystem?.boardCards);
                 scene.cardSystem.attackEnemy(firstAttacker.index, reflectedDamage, true);
-                scene.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Reflected)`, 0xffffff);
-                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Bone Shield!', 0xffffff);
+                scene.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Reflected)`, 0xfef0cf);
+                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Bone Shield!', 0xfef0cf);
                 scene.updateUI(); // Refresh so the remaining Bone Shield charges update
                 this.finishEnemyTurnWithCompanion();
                 return; // Bone wall blocks all attacks this action
@@ -339,12 +345,12 @@ export class CombatTurnController {
                     card.shockMarker?.destroy?.();
                     card.shockMarker = null;
                     card.data.shockedTurns = 0;
-                    scene.createFloatingText(card.sprite.x, card.sprite.y, 'Shock Wore Off!', 0x99ddff);
+                    scene.createFloatingText(card.sprite.x, card.sprite.y, 'Shock Wore Off!', 0x71b1ae);
                 } else {
-                    scene.createFloatingText(card.sprite.x, card.sprite.y, 'Thawed!', 0xffffff);
+                    scene.createFloatingText(card.sprite.x, card.sprite.y, 'Thawed!', 0xfef0cf);
                 }
             } else {
-                scene.createFloatingText(card.sprite.x, card.sprite.y, `Frozen (${card.data.frozen})`, 0x00ccff);
+                scene.createFloatingText(card.sprite.x, card.sprite.y, `Frozen (${card.data.frozen})`, 0x71b1ae);
             }
             return;
         }
@@ -359,7 +365,7 @@ export class CombatTurnController {
                 scene.cardSystem.mimicEscape(index);
                 return; // gone — no attack this turn
             }
-            scene.createFloatingText(card.sprite.x, card.sprite.y - 28, `${card.data.escapeTurnsLeft} left!`, 0xffaa00);
+            scene.createFloatingText(card.sprite.x, card.sprite.y - 28, `${card.data.escapeTurnsLeft} left!`, 0xfbad19);
             // Mimic still takes its small bite below
         }
 
@@ -368,12 +374,12 @@ export class CombatTurnController {
             !scene.gameState.charmingTuneUsed &&
             card.data.role === 'MELEE') {
             scene.gameState.charmingTuneUsed = true;
-            scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed (Lute)', 0xff66ff);
+            scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed (Lute)', 0xa83c69);
             return;
         }
 
         if (card.data?.controlHesitation && Math.random() < CONTROL_HESITATION_CHANCE) {
-            scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Hesitates!', 0x44c8ff);
+            scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Hesitates!', 0x71b1ae);
             return;
         }
 
@@ -384,7 +390,7 @@ export class CombatTurnController {
                 (other) => scene.isEnemyCard(other)
             );
             if (target) {
-                scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Betrayal!', 0xff66aa);
+                scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Betrayal!', 0xa83c69);
                 scene.cardSystem.attackEnemy(
                     target.index,
                     getEnemyHitAttack(card, scene.cardSystem.boardCards),
@@ -404,7 +410,7 @@ export class CombatTurnController {
                 );
             if (others.length > 0) {
                 const target = others[Math.floor(Math.random() * others.length)];
-                scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xff66ff);
+                scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xa83c69);
                 scene.cardSystem.attackEnemy(target.index, getEnemyHitAttack(card, scene.cardSystem.boardCards), false);
                 return; // skip player damage
             }
@@ -417,7 +423,7 @@ export class CombatTurnController {
         if (features.includes('heavy_shot') && Math.random() < 0.2) {
             damageDealt = Math.ceil(damageDealt * 1.5);
             if (card.sprite) {
-                scene.createFloatingText(card.sprite.x, card.sprite.y - 24, 'Heavy shot!', 0xff8866);
+                scene.createFloatingText(card.sprite.x, card.sprite.y - 24, 'Heavy shot!', 0xef7c4b);
             }
         }
 
@@ -430,7 +436,7 @@ export class CombatTurnController {
                 damageDealt = Math.ceil(damageDealt * (rage.damageBoost || 1.5));
                 if (!card.data._rageShown) {
                     card.data._rageShown = true;
-                    scene.createFloatingText(card.sprite.x, card.sprite.y - 24, 'ENRAGED!', 0xff3333);
+                    scene.createFloatingText(card.sprite.x, card.sprite.y - 24, 'ENRAGED!', 0xb51f1e);
                     SoundHelper.playSound(scene, 'boss_enraged', 0.55);
                 }
             }
@@ -447,10 +453,10 @@ export class CombatTurnController {
             if (twinnedMirror) scene.gameState.twinnedMirrorUsed = true;
             const x = card.sprite?.x ?? scene.playerAvatar.x;
             const y = card.sprite?.y ?? scene.playerAvatar.y;
-            CombatSequencer.floatingText(scene, 'reflect', scene.playerAvatar.x, scene.playerAvatar.y - 16, twinnedMirror ? 'Reflected!' : 'Glint!', 0xd9b8ff);
+            CombatSequencer.floatingText(scene, 'reflect', scene.playerAvatar.x, scene.playerAvatar.y - 16, twinnedMirror ? 'Reflected!' : 'Glint!', 0xb697a3);
             scene.cardSystem.attackEnemy(index, damageDealt, true);
             CombatSequencer.playSound(scene, 'reflect', 'thorns_hit', 0.45);
-            CombatSequencer.floatingText(scene, 'reflect', x, y, `-${damageDealt} Mirror`, 0xd9b8ff);
+            CombatSequencer.floatingText(scene, 'reflect', x, y, `-${damageDealt} Mirror`, 0xb697a3);
             scene.updateAmuletsUI?.();
             return;
         }
@@ -459,7 +465,7 @@ export class CombatTurnController {
         const armorBreak = card.data.abilities?.find(a => a.type === 'armor_break');
         const armorPierce = armorBreak?.amount || 0;
         if (armorPierce > 0 && scene.gameState.equippedArmor) {
-            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 16, 'Armor Broken!', 0xffa500);
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 16, 'Armor Broken!', 0xfbad19);
             SoundHelper.playSound(scene, 'armor_broken', 0.5);
         }
 
@@ -470,15 +476,16 @@ export class CombatTurnController {
             if (ability.type === 'poison') {
                 const killedBy = card.data.name || card.data.type || 'Enemy';
                 if (scene.gameState.addPlayerEffect({ ...ability, killedBy })) {
-                    scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Poisoned!', 0x00ff00);
+                    SoundHelper.playVariant(scene, 'poison_tick', 0.45);
+                    scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Poisoned!', 0x71800b);
                 }
             } else if (ability.type === 'coin_steal') {
                 // Legacy goblin ability (chance + amount on the ability object).
                 if (Math.random() < ability.chance && scene.gameState.coins > 0) {
                     const stolenAmount = Math.min(ability.amount, scene.gameState.coins);
                     scene.gameState.coins -= stolenAmount;
-                    scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, `-${stolenAmount} coins stolen!`, 0xffd700);
-                    scene.createFloatingText(card.sprite.x, card.sprite.y, `+${stolenAmount}`, 0xffd700);
+                    scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, `-${stolenAmount} coins stolen!`, 0xfbad19);
+                    scene.createFloatingText(card.sprite.x, card.sprite.y, `+${stolenAmount}`, 0xfbad19);
                     scene.playCoinStealFlight?.(card.sprite);
                 }
             }
@@ -489,9 +496,9 @@ export class CombatTurnController {
             const stolenAmount = Math.min(10, Math.max(0, scene.gameState.coins || 0));
             if (stolenAmount > 0) {
                 scene.gameState.coins -= stolenAmount;
-                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, `-${stolenAmount} coins stolen!`, 0xffd700);
+                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, `-${stolenAmount} coins stolen!`, 0xfbad19);
                 if (card.sprite) {
-                    scene.createFloatingText(card.sprite.x, card.sprite.y, `+${stolenAmount}`, 0xffd700);
+                    scene.createFloatingText(card.sprite.x, card.sprite.y, `+${stolenAmount}`, 0xfbad19);
                     scene.playCoinStealFlight?.(card.sprite);
                 }
             }
@@ -512,7 +519,7 @@ export class CombatTurnController {
         if (tookDamage) {
             CombatSequencer.playVariant(scene, 'hurt', 'player_hurt', 0.5);
             CombatSequencer.floatingText(scene, 'hurt', scene.playerAvatar.x, scene.playerAvatar.y,
-                { key: 'float.damage', vars: { amount: actualDamage } }, 0xff0000, '15px',
+                { key: 'float.damage', vars: { amount: actualDamage } }, 0xb51f1e, '15px',
                 { type: 'damage', amount: actualDamage, lethal: scene.gameState.playerHealth <= 0, target: scene.playerAvatar });
 
             if (playerHealthBeforeDamage > 0 && scene.gameState.playerHealth <= 0) {
@@ -526,14 +533,14 @@ export class CombatTurnController {
                 scene.gameState.playerStunnedTurns || 0,
                 1,
             );
-            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 22, 'Stunned!', 0xffcc66);
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 22, 'Stunned!', 0xffcf7f);
         }
 
         // Cave Crawler — extra armor chew on a connecting hit (on top of block wear).
         if (!dodged && features.includes('gnaw') && scene.gameState.equippedArmor && Math.random() < 0.5) {
             scene.gameState.tickEquippedArmorDurability();
             if (scene.gameState.equippedArmor) {
-                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 28, 'Gnaw!', 0xc4a484);
+                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 28, 'Gnaw!', 0xc8b08a);
                 scene.updateUI?.();
             }
         }
@@ -547,7 +554,7 @@ export class CombatTurnController {
                     scene.playerAvatar.x,
                     scene.playerAvatar.y - 18,
                     `Venom +1! (${poison.damage}/tick)`,
-                    0x88ff66
+                    0x71800b
                 );
                 scene.updateUI?.();
             }
@@ -555,13 +562,13 @@ export class CombatTurnController {
 
         // Silkslinger — web a random hand card for one enemy turn.
         if (features.includes('web_hand')) {
-            this.applyWebHand();
+            this.applyWebHand(card);
         }
 
         // Spore Archer — spores cling even if armor/dodge softened the hit.
         if (features.includes('spore_on_hit')) {
             scene.gameState.playerSpored = true;
-            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18, 'Spored!', 0xb8e986);
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18, 'Spored!', 0xfee093);
         }
 
         // Toll Brute — chance to bark other goblins into an extra swing.
@@ -590,7 +597,7 @@ export class CombatTurnController {
             if (card.data.maxHealth === undefined) card.data.maxHealth = card.data.health;
             card.data.health = Math.min(card.data.maxHealth, card.data.health + heal);
             scene.cardSystem.updateEnemyInfoText?.(card);
-            if (card.sprite) scene.createFloatingText(card.sprite.x, card.sprite.y - 16, `+${heal} Leech`, 0x66ff66);
+            if (card.sprite) scene.createFloatingText(card.sprite.x, card.sprite.y - 16, `+${heal} Leech`, 0x71800b);
         }
 
         this.applyThornsDamage(card, index, tookDamage);
@@ -618,7 +625,7 @@ export class CombatTurnController {
                 board[sourceIndex].sprite.x,
                 board[sourceIndex].sprite.y - 28,
                 'Rally!',
-                0xffdd66
+                0xffcf7f
             );
         }
         for (const { card, index } of allies) {
@@ -664,12 +671,12 @@ export class CombatTurnController {
 
         scene.cardSystem.attackEnemy(index, damage, true);
         CombatSequencer.playVariant(scene, 'reflect', 'thorns_retaliate', 0.45);
-        CombatSequencer.floatingText(scene, 'reflect', x, y, `-${damage} Thorns`, 0x9dff7a);
+        CombatSequencer.floatingText(scene, 'reflect', x, y, `-${damage} Thorns`, 0x71800b);
 
         if (!thorns) return;
         thorns.item.durability = Math.max(0, thorns.item.durability - 1);
         if (thorns.item.durability <= 0) {
-            CombatSequencer.floatingText(scene, 'break', scene.playerAvatar.x, scene.playerAvatar.y + 20, 'Thorns broke!', 0x9dff7a);
+            CombatSequencer.floatingText(scene, 'break', scene.playerAvatar.x, scene.playerAvatar.y + 20, 'Thorns broke!', 0x71800b);
             scene.grantCardSpentRelicBonus(thorns.item, scene.playerAvatar.x, scene.playerAvatar.y);
             // Same destroyed-card effect as a weapon or armor, taken from the bag
             // sprite before removeCard tears it down.
@@ -696,7 +703,7 @@ export class CombatTurnController {
             scene.gameState.shadowBlade.turns--;
             if (scene.gameState.shadowBlade.turns <= 0) {
                 scene.gameState.shadowBlade = null;
-                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Shadow Blade faded', 0x666666);
+                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Shadow Blade faded', 0x6e7470);
             }
         }
 
@@ -704,7 +711,7 @@ export class CombatTurnController {
             scene.gameState.magicShield.turns--;
             if (scene.gameState.magicShield.turns <= 0) {
                 scene.gameState.magicShield = null;
-                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Magic Shield faded', 0x666666);
+                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Magic Shield faded', 0x6e7470);
             }
         }
 
@@ -722,7 +729,7 @@ export class CombatTurnController {
             effect.turns--;
             if (effect.turns <= 0) {
                 scene.gameState.playerEffects.splice(i, 1);
-                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y + 20, 'Poison Wore Off', 0xcccccc);
+                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y + 20, 'Poison Wore Off', 0xd6c2c1);
             }
         }
 
@@ -733,8 +740,10 @@ export class CombatTurnController {
             // "Poison Immune!") — don't stack a "-0 (Poison)" and a hurt grunt
             // on top of it.
             if (actualDamage > 0) {
+                // The venom's sizzle, then the hero feeling it.
+                CombatSequencer.playVariant(scene, 'hurt', 'poison_tick', 0.5);
                 CombatSequencer.playVariant(scene, 'hurt', 'player_hurt', 0.5);
-                CombatSequencer.floatingText(scene, 'hurt', scene.playerAvatar.x, scene.playerAvatar.y, `-${actualDamage} (Poison)`, 0x00ff00);
+                CombatSequencer.floatingText(scene, 'hurt', scene.playerAvatar.x, scene.playerAvatar.y, `-${actualDamage} (Poison)`, 0x71800b);
             }
 
             // Track poison death
@@ -850,7 +859,7 @@ export class CombatTurnController {
             const slotSprite = scene.inventorySystem?.slotSprites?.[entry.index];
             const x = slotSprite?.card?.x ?? scene.playerAvatar?.x ?? 320;
             const y = slotSprite?.card?.y ?? scene.playerAvatar?.y ?? 300;
-            scene.createFloatingText(x, y - 18, 'Webbed!', 0xddeeff);
+            scene.createFloatingText(x, y - 18, handLockOf(entry.companion).text, 0xd6c2c1);
             const skipTimer = scene.time.delayedCall(220, onComplete);
             this.enemyTurnTimers.push(skipTimer);
             return false;
@@ -858,7 +867,7 @@ export class CombatTurnController {
 
         // Shared "acting" hop — lifts the card art, its value/pips, shadow and
         // shine together, same as the off-hand dagger and thorns.
-        scene.inventorySystem?.playSlotStrikeAnimation(entry.index);
+        scene.inventorySystem?.playSlotStrikeAnimation(entry.index, { slash: true });
 
         const attackTimer = scene.time.delayedCall(120, () => {
             const currentTarget = scene.cardSystem.boardCards[target.index];
@@ -885,7 +894,7 @@ export class CombatTurnController {
                         target.index,
                         entry.companion.attack || 2,
                         isMelee ? 'Skeleton Slash' : 'Chick Zap',
-                        isMelee ? 0xd8d8c8 : 0xffe066,
+                        isMelee ? 0xd6c7b3 : 0xffcf7f,
                         isMelee ? null : 'lightning'
                     );
                     if ((entry.companion.shockChance || 0) > 0
@@ -914,6 +923,7 @@ export class CombatTurnController {
             item.webbedTurns -= 1;
             if (item.webbedTurns <= 0) {
                 delete item.webbedTurns;
+                delete item.webbedKind;
                 scene.inventorySystem?.clearWebOverlay?.(i);
                 cleared = true;
             }
@@ -921,7 +931,51 @@ export class CombatTurnController {
         if (cleared) this.queueStalemateEnemyTurn();
     }
 
-    applyWebHand() {
+    // The thrown lock flying from the enemy to the card it locks: the
+    // Silkslinger's web (web.png frame 1) spinning, or the Ink Wraith's ink
+    // blob. Its overlay lands on the card when it arrives; the card is locked
+    // (can't be used) from the throw on.
+    throwWebAt(fromSprite, toSprite, onArrive, kind = 'web') {
+        const scene = this.scene;
+        const lock = HAND_LOCKS[kind] || HAND_LOCKS.web;
+        const hasArt = scene.textures?.exists?.(lock.thrownKey)
+            && (lock.thrownFrame === undefined || scene.textures.get(lock.thrownKey).has(lock.thrownFrame));
+        if (!fromSprite?.scene || !toSprite?.scene || !hasArt) {
+            onArrive();
+            return;
+        }
+        const web = scene.add.sprite(0, 0, lock.thrownKey, lock.thrownFrame)
+            .setDepth((toSprite.depth || 0) + 20)
+            .setScale(0.6);
+        // A drawing that sits off-centre in its frame is aimed by its own
+        // middle, so the drawing itself lands on the card.
+        web.setOrigin(
+            (web.width / 2 + lock.thrownDrawingDX) / web.width,
+            (web.height / 2 + lock.thrownDrawingDY) / web.height
+        );
+        scene.tweens.add({
+            targets: web,
+            ...(lock.spins ? { angle: 360 } : {}),
+            scale: 1,
+            duration: WEB_THROW_MS,
+            ease: 'Sine.easeOut',
+        });
+        tweenAlongArc(scene, web, {
+            fromX: fromSprite.x,
+            fromY: fromSprite.y,
+            toX: toSprite.x,
+            toY: toSprite.y,
+            arc: WEB_THROW_ARC,
+            duration: WEB_THROW_MS,
+            ease: 'Sine.easeIn',
+            onComplete: () => {
+                web.destroy();
+                onArrive();
+            },
+        });
+    }
+
+    applyWebHand(fromCard = null) {
         const scene = this.scene;
         const slots = scene.inventorySystem?.slots || scene.gameState?.inventory || [];
         const candidates = [];
@@ -932,13 +986,20 @@ export class CombatTurnController {
 
         const slotIndex = candidates[Math.floor(Math.random() * candidates.length)];
         const item = slots[slotIndex];
+        const kind = handLockKindOf(fromCard?.data);
         item.webbedTurns = 1;
-        scene.inventorySystem?.applyWebOverlay?.(slotIndex);
+        item.webbedKind = kind;
 
         const slotSprite = scene.inventorySystem?.slotSprites?.[slotIndex];
-        const x = slotSprite?.card?.x ?? scene.playerAvatar?.x ?? 320;
-        const y = slotSprite?.card?.y ?? scene.playerAvatar?.y ?? 300;
-        scene.createFloatingText(x, y - 18, 'Webbed!', 0xddeeff);
+        this.throwWebAt(fromCard?.sprite, slotSprite?.card, () => {
+            // Gone already (cleared, or the card used/destroyed mid-flight).
+            if (!(slots[slotIndex] === item && item.webbedTurns > 0)) return;
+            scene.inventorySystem?.applyWebOverlay?.(slotIndex);
+            const landed = scene.inventorySystem?.slotSprites?.[slotIndex]?.card;
+            const x = landed?.x ?? scene.playerAvatar?.x ?? 320;
+            const y = landed?.y ?? scene.playerAvatar?.y ?? 300;
+            scene.createFloatingText(x, y - 18, handLockOf(item).text, 0xd6c2c1);
+        }, kind);
         this.queueStalemateEnemyTurn();
     }
 }

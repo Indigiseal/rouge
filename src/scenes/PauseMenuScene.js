@@ -62,7 +62,7 @@ export class PauseMenuScene extends Phaser.Scene {
     createPauseButton(x, y, label, callback, warning = false) {
         return OptionsSkin.createUiButton.call(this, x, y,
             warning ? UI_BUTTON.reset : UI_BUTTON.back, label, {
-                color: warning ? OPTIONS_RESET_INK : '#ffffff',
+                color: warning ? OPTIONS_RESET_INK : '#fef0cf',
                 labelOffsetX: warning ? RESET_LABEL_OFFSET_X : 0,
                 labelWidth: warning ? UI_BUTTON_W - 38 : UI_BUTTON_W - 12,
                 callback,

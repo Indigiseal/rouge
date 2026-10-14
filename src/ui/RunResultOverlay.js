@@ -10,19 +10,19 @@ export function showDefeatFallback(scene, deathStats) {
         .setInteractive();
     scene.add.text(320, 99, t(scene, 'ui.result.defeat'), {
         fontSize: '28px',
-        fill: '#ffffff',
+        fill: '#fef0cf',
         fontFamily: 'Arial, sans-serif'
     }).setOrigin(0.5).setDepth(depth + 1);
     scene.add.text(320, 160, `${t(scene, 'ui.result.killedBy', { enemy: deathStats.killedBy })}\n${t(scene, 'ui.result.reachedFloor', { floor: deathStats.floor })}`, {
         fontSize: '16px',
-        fill: '#d8d1d8',
+        fill: '#d6c2c1',
         fontFamily: 'Arial, sans-serif',
         align: 'center'
     }).setOrigin(0.5).setDepth(depth + 1);
     scene.add.text(320, 245, t(scene, 'ui.common.continue'), {
         fontSize: '18px',
-        fill: '#ffffff',
-        backgroundColor: '#513c2c',
+        fill: '#fef0cf',
+        backgroundColor: '#584339',
         padding: { x: 18, y: 10 },
         fontFamily: 'Arial, sans-serif'
     }).setOrigin(0.5).setDepth(depth + 1).setInteractive({ useHandCursor: true })
@@ -58,7 +58,7 @@ export function addResultButton(scene, x, y, label, onClick, depth) {
 
     scene.add.text(x, y - 1, label, {
         fontSize: '16px',
-        fill: '#ffffff',
+        fill: '#fef0cf',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(depth + 1);
 
@@ -73,34 +73,34 @@ export function showDefeatResult(scene, deathStats, xpResult) {
     scene.add.image(320, 36, 'resultBanners', 0).setOrigin(0.5).setDepth(resultDepth + 2);
     scene.add.text(320, 31, t(scene, 'ui.result.defeat'), {
         fontSize: '24px',
-        fill: '#948b9b',
+        fill: '#877c80',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 3).setScale(1, 0.75);
 
     addResultPanel(scene, 320, 154, 304, 188, 0, resultDepth + 1);
     scene.add.text(320, 86, t(scene, 'ui.death.fallen'), {
         fontSize: '20px',
-        fill: '#ffffff',
+        fill: '#fef0cf',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
     scene.add.text(320, 116, t(scene, 'ui.result.killedBy', { enemy: deathStats.killedBy }), {
         fontSize: '14px',
-        fill: '#d8d1d8',
+        fill: '#d6c2c1',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
     scene.add.text(320, 142, t(scene, 'ui.result.reachedFloor', { floor: deathStats.floor }), {
         fontSize: '14px',
-        fill: '#d8d1d8',
+        fill: '#d6c2c1',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
     scene.add.text(320, 177, t(scene, 'ui.death.totalDeaths', { amount: scene.metaManager?.totalDeaths ?? 0 }), {
         fontSize: '13px',
-        fill: '#b8b0b8',
+        fill: '#d6c2c1',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
     scene.add.text(320, 199, t(scene, 'ui.death.bestFloor', { floor: scene.metaManager?.bestFloor ?? deathStats.floor }), {
         fontSize: '13px',
-        fill: '#b8b0b8',
+        fill: '#d6c2c1',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
 
@@ -115,7 +115,7 @@ export function showDefeatResult(scene, deathStats, xpResult) {
     }).setOrigin(0.5).setDepth(resultDepth + 2);
     scene.add.text(320, 279, t(scene, 'ui.result.spendXp', { amount: total }), {
         fontSize: '11px',
-        fill: '#b8b0b8',
+        fill: '#d6c2c1',
         fontFamily: '"HoMM Pixel", Arial, sans-serif',
         wordWrap: { width: 236 },
         align: 'center'
@@ -125,7 +125,7 @@ export function showDefeatResult(scene, deathStats, xpResult) {
 }
 
 export function addRelicIcon(scene, relic, x, y, depth) {
-    scene.add.circle(x, y, 18, 0x2c1810, 0.75).setStrokeStyle(1, 0xfed991).setDepth(depth);
+    scene.add.circle(x, y, 18, 0x28150c, 0.75).setStrokeStyle(1, 0xfed991).setDepth(depth);
     const usesSheet = relic.iconSheet && scene.textures.exists(relic.iconSheet);
     if (usesSheet) {
         scene.add.image(x, y, relic.iconSheet, relic.iconFrame).setDepth(depth + 1);
@@ -183,12 +183,12 @@ export function gameWon(scene) {
     addResultPanel(scene, 320, 160, 304, 200, 2, resultDepth + 1);
     scene.add.text(320, 110, t(scene, 'ui.result.dungeonConquered'), {
         fontSize: '20px',
-        fill: '#ffffff',
+        fill: '#fef0cf',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
     scene.add.text(320, 156, scene.getVictoryStorySummary(), {
         fontSize: '11px',
-        fill: '#5b3b26',
+        fill: '#58341b',
         fontFamily: '"HoMM Pixel", Arial, sans-serif',
         wordWrap: { width: 260 },
         align: 'center'
@@ -200,14 +200,14 @@ export function gameWon(scene) {
         ?? scene.metaManager?.getCharacterXp?.(scene.gameState?.characterId) ?? 0;
     scene.add.text(320, 253, gained > 0 ? t(scene, 'ui.result.characterXp', { amount: gained }) : t(scene, 'ui.result.stories', { amount: scene.getResolvedStoryCount() }), {
         fontSize: '15px',
-        fill: '#ffffff',
+        fill: '#fef0cf',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
     scene.add.text(320, 279, gained > 0
         ? t(scene, 'ui.result.talentsPersist', { amount: total })
         : t(scene, 'ui.result.glory'), {
         fontSize: '11px',
-        fill: '#5b3b26',
+        fill: '#58341b',
         fontFamily: '"HoMM Pixel", Arial, sans-serif',
         wordWrap: { width: 236 },
         align: 'center'

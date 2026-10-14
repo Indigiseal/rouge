@@ -164,11 +164,11 @@ export class VillageScene extends Phaser.Scene {
       .setVisible(false).setActive(false);
     this.detailBody = this.add.text(320, 306, t(this, 'ui.village.pickPlot'), {
       fontSize: '9px',
-      fill: '#e6d6b8',
+      fill: '#f2d7c4',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
       align: 'center',
       wordWrap: { width: 470 },
-      stroke: '#17120f',
+      stroke: '#1c130a',
       strokeThickness: 3,
     }).setOrigin(0.5).setDepth(45);
     this.introGroups.metal.push(this.detailBody);
@@ -379,7 +379,7 @@ export class VillageScene extends Phaser.Scene {
 
     if (empty) {
       name.setText(t(this, 'ui.village.emptyLot'));
-      name.setColor('#6e7681');
+      name.setColor('#6e7470');
       // A lot with nothing planned for it stays face down for good.
       card.setVisible(false);
       zone.destroy();
@@ -558,12 +558,12 @@ export class VillageScene extends Phaser.Scene {
     const hasArt = this.textures.exists(upKey);
     const bg = hasArt
       ? snapOriginToPixelGrid(this.add.image(x, FOOTER_Y, upKey))
-      : this.add.rectangle(x, FOOTER_Y, 118, 30, 0x3d2418, 0.95).setStrokeStyle(1, 0xd4a017);
+      : this.add.rectangle(x, FOOTER_Y, 118, 30, 0x46261b, 0.95).setStrokeStyle(1, 0xd48e17);
     bg.setDepth(50);
 
     const text = this.add.text(x, FOOTER_Y, label, {
       fontSize,
-      fill: '#f4e2c2',
+      fill: '#fef0cf',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
       align: 'center',
       wordWrap: { width: 104 },
@@ -667,7 +667,7 @@ export class VillageScene extends Phaser.Scene {
       name.setText(t(this, `village.${plot.id}.name`));
       // An unbuilt lot greys its name; the rank reads off the stars and the
       // selection off the brackets.
-      name.setColor(built ? '#f2d3aa' : '#8b949e');
+      name.setColor(built ? '#f2d3aa' : '#869089');
       if (!card?.scene) return;
 
       // Unbuilt lots sit face down; built ones show their building.

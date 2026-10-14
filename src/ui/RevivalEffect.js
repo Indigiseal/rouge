@@ -4,7 +4,7 @@
 // two rings of light opening out from the portrait, and a very light jolt —
 // a third of the trap's shake, felt rather than seen.
 
-const GOLD = 0xffdd88;
+const GOLD = 0xfee093;
 const WASH_PEAK_ALPHA = 0.22;
 const WASH_MS = 520;
 const RING_MS = 700;

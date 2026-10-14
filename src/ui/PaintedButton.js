@@ -13,8 +13,8 @@ import { setHoverLight } from './HoverLight.js';
 
 const PLATE_UP = 'nextTurnUp';
 const PLATE_DOWN = 'nextTurnDown';
-const LABEL_INK = '#fff0cc';
-const LABEL_INK_DISABLED = '#b6a994';
+const LABEL_INK = '#fef0cf';
+const LABEL_INK_DISABLED = '#aba592';
 const DISABLED_TINT = 0x777777;
 // The label sits a hair above the plate's centre line at rest, and drops to
 // centre while held — that 1px is the whole press.

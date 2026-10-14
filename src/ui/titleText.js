@@ -3,7 +3,7 @@ import { FONT_SIZE, serifStyle } from './uiFont.js';
 
 export function createTitle(scene, x, y, text, options = {}) {
     const object = scene.add.text(x, y, String(text ?? ''),
-        serifStyle(FONT_SIZE.heading, options.color || '#ffffff')).setOrigin(0.5);
+        serifStyle(FONT_SIZE.heading, options.color || '#fef0cf')).setOrigin(0.5);
     if (options.depth !== undefined) object.setDepth(options.depth);
     return object;
 }

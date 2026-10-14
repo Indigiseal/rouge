@@ -17,7 +17,7 @@ const NEXT_EXIT_Y = EXIT_DOOR_Y;
 const ROOM_CLEAR_ANNOUNCE_PAD_MS = 200;
 // Must match the event screen's dim (EventScene create), so where the dim ends
 // the backdrop carries on in the same colour.
-const EVENT_BACKDROP_COLOR = 0x1a1a2e;
+const EVENT_BACKDROP_COLOR = 0x2b1f32;
 import { getLocationIdForFloor } from '../content/locations/index.js';
 import { devToolsEnabled } from '../config/DevTools.js';
 import { SaveManager } from '../managers/SaveManager.js';
@@ -836,7 +836,7 @@ export class GameScene extends Phaser.Scene {
         if ((this.gameState.playerStunnedTurns || 0) > 0) {
             this.gameState.playerStunnedTurns--;
             this.amuletManager?.processPlayerTurn?.();
-            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Stunned!', 0xffcc66);
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Stunned!', 0xffcf7f);
             this.updateUI();
             this.scheduleEnemyTurn();
             return false;
@@ -848,7 +848,7 @@ export class GameScene extends Phaser.Scene {
         // Check for Quickhand Gloves free first action
         if (this.gameState.shouldUseFreeAction()) {
             this.amuletManager?.processPlayerTurn?.();
-            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Free Action!', 0x00ff00);
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Free Action!', 0x71800b);
             this.updateUI();
             // After any action, revealed enemies attack
             this.scheduleEnemyTurn();
@@ -862,7 +862,7 @@ export class GameScene extends Phaser.Scene {
             const freeActionChance = this.amuletManager.getFreeActionChance();
             if (freeActionChance > 0 && Math.random() < freeActionChance) {
                 actionConsumed = false;
-                this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Free Action!', 0x00ff00);
+                this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Free Action!', 0x71800b);
             }
         }
         
@@ -870,12 +870,13 @@ export class GameScene extends Phaser.Scene {
         // Only show the weakened message when out of action points
         if (wasExhausted && actionConsumed) {
             // Just show weakened state, no damage. Empty stomach = out of energy.
-            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Weakened!', 0xff6600);
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, 'Weakened!', 0xef7c4b);
         }
         
         // Consume action point if not a free action and player has AP
         if (actionConsumed && this.gameState.actionsLeft > 0) {
             this.gameState.actionsLeft--;
+            this.playActionPointSpend(this.gameState.actionsLeft + 1, this.gameState.actionsLeft);
             if (this.gameState.actionsLeft <= 0) {
                 SoundHelper.playVariant(this, 'empty_stomach', 0.5);
             }
@@ -1080,7 +1081,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     createDamageEffect(x, y) {
-        const flash = this.add.circle(x, y, 50, 0xff0000, 0.5);
+        const flash = this.add.circle(x, y, 50, 0xb51f1e, 0.5);
         this.tweens.add({
             targets: flash,
             alpha: 0,
@@ -1096,14 +1097,30 @@ export class GameScene extends Phaser.Scene {
         const { actualDamage, tookDamage } = this.gameState.takeDamage(rawDamage, enemyIndex);
         if (tookDamage) {
             SoundHelper.playVariant(this, 'player_hurt', 0.5);
-            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xff0000);
+            this.createFloatingText(this.playerAvatar.x, this.playerAvatar.y, `-${actualDamage}`, 0xb51f1e);
         }
     }
     createFloatingText(x, y, text, color, fontSize = '15px', opts = {}) {
         this.showCombatFeedback({ x, y, message: text, ...opts });
     }
 
+    // A screen drawn above this one with its own panels (an event: dim,
+    // wooden frames) names itself here, and floating text is drawn in it, at
+    // the same world coordinates, instead of underneath. null = draw here.
+    setFeedbackScene(scene = null) {
+        this.feedbackScene = scene;
+    }
+
     showCombatFeedback({ x, y, message, ...options }) {
+        const above = this.feedbackScene;
+        if (above && above !== this && above.sys?.isActive?.()) {
+            if (!above._combatFeedback) {
+                above._combatFeedback = new CombatFeedback(above);
+                above.events.once('shutdown', () => { above._combatFeedback = null; });
+            }
+            above._combatFeedback.emit(x, y, message, options);
+            return;
+        }
         this.combatFeedback ||= new CombatFeedback(this);
         this.combatFeedback.emit(x, y, message, options);
     }
@@ -1114,7 +1131,7 @@ export class GameScene extends Phaser.Scene {
 
     createSlashEffect(x, y) {
         const slash = this.add.graphics();
-        slash.lineStyle(5, 0xffffff, 1);
+        slash.lineStyle(5, 0xfef0cf, 1);
         slash.beginPath();
         slash.moveTo(-25, -25);
         slash.lineTo(25, 25);
@@ -1542,7 +1559,7 @@ export class GameScene extends Phaser.Scene {
                 320,
                 145 + companions.indexOf(companion) * 14,
                 `${companion.name || 'Companion'} +1 ATK`,
-                0xffe066
+                0xffcf7f
             );
         });
 
@@ -1591,6 +1608,8 @@ export class GameScene extends Phaser.Scene {
             reward = this.amuletManager ? this.amuletManager.modifyGoldFound(base) : scaleGoldReward(base);
             this.gameState.coins += reward;
             this.updateUI?.();
+            // From the middle of the board, where the fight was won.
+            this.playCurrencyGainFlight?.(320, 160, 'coins');
         }
         const story = this.gameState?.storyRun;
         applyAmbushVictoryStory(this.gameState);
@@ -1602,15 +1621,15 @@ export class GameScene extends Phaser.Scene {
         // rather than the door opening under the last hit.
         const announce = () => {
             if (this._transitioning || !this.enemiesCleared) return;
-            if (reward > 0) this.createFloatingText(320, 140, `+${reward} coins`, 0xffd700);
+            if (reward > 0) this.createFloatingText(320, 140, `+${reward} coins`, 0xfbad19);
             // Null-guard: if the button hasn't been (re)created yet, do NOT
             // throw — that would leave enemiesCleared=true with a still-hidden
             // button, and the next checkFloorClear would short-circuit on
             // !enemiesCleared.
             this.nextFloorButtonText?.setText(t(this, 'ui.hud.next'));
             this.showNextFloorButton();
-            this.createFloatingText(320, 100, 'All enemies defeated!', 0x00ff00);
-            this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xffffff);
+            this.createFloatingText(320, 100, 'All enemies defeated!', 0x71800b);
+            this.createFloatingText(320, 120, 'Clear remaining cards or proceed.', 0xfef0cf);
         };
         const wait = CombatSequencer.remainingMs(this);
         if (wait > 0) CombatSequencer.after(this, wait + ROOM_CLEAR_ANNOUNCE_PAD_MS, announce);
@@ -1732,7 +1751,7 @@ export class GameScene extends Phaser.Scene {
             this.gameState.maxHealth,
             this.gameState.playerHealth + amount
         );
-        this.createFloatingText(x, y - 18, `+${amount} Max HP (Camp)`, 0xffd78a);
+        this.createFloatingText(x, y - 18, `+${amount} Max HP (Camp)`, 0xfed991);
         this.updateUI();
     }
 
@@ -1745,8 +1764,8 @@ export class GameScene extends Phaser.Scene {
         if (coinBonus > 0) {
             const scaledCoinBonus = scaleGoldReward(coinBonus);
             this.gameState.coins = (this.gameState.coins || 0) + scaledCoinBonus;
-            this.createFloatingText(x, y - 18, `+${scaledCoinBonus} Coin (Ink Pen)`, 0xffd700);
-            this.playCoinAnimation?.();
+            this.createFloatingText(x, y - 18, `+${scaledCoinBonus} Coin (Ink Pen)`, 0xfbad19);
+            this.playCurrencyGainFlight?.(x, y, 'coins');
             this.updateUI();
         }
 
@@ -1754,7 +1773,7 @@ export class GameScene extends Phaser.Scene {
         if (maxHpBonus > 0) {
             this.gameState.maxHealth += maxHpBonus;
             this.gameState.playerHealth += maxHpBonus;
-            this.createFloatingText(x, y - 32, `+${maxHpBonus} Max HP (Seed)`, 0x9dff7a);
+            this.createFloatingText(x, y - 32, `+${maxHpBonus} Max HP (Seed)`, 0x71800b);
             this.updateUI();
         }
 
@@ -1775,7 +1794,7 @@ export class GameScene extends Phaser.Scene {
 
         if (newCrit > oldCrit) {
             const percent = Math.round(newCrit * 100);
-            this.createFloatingText(x, y - 18, `Crit ${percent}%`, 0xffd700);
+            this.createFloatingText(x, y - 18, `Crit ${percent}%`, 0xfbad19);
         }
     }
     
@@ -1801,7 +1820,7 @@ export class GameScene extends Phaser.Scene {
             );
             
             if (saved) {
-                this.createFloatingText(570, 320, 'Game Saved', 0x00ff00);
+                this.createFloatingText(570, 320, 'Game Saved', 0x71800b);
             }
         }
     }
@@ -1938,6 +1957,7 @@ export class GameScene extends Phaser.Scene {
         if (data?.bossNarrativeComplete) {
             this.clearEnemyTurnTimers();
             this.inventorySystem?.setDragOverlayScene?.(null);
+            this.setFeedbackScene(null);
             this.inventorySystem?.clearDropZones?.();
             this.inventorySystem?.setStationMode(false);
             if (this._restoreBossRewardAfterNarrative) {
@@ -1975,6 +1995,7 @@ export class GameScene extends Phaser.Scene {
         // state or every weapon/spell drop silently bounces out of useAction().
         this.clearEnemyTurnTimers();
         this.inventorySystem?.setDragOverlayScene?.(null);
+        this.setFeedbackScene(null);
         this.inventorySystem?.clearDropZones?.();
         this.inventorySystem?.setStationMode(false);
         this.stopScenesAboveCombat({ keepMap: true });

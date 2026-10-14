@@ -19,33 +19,36 @@ export class TollroadIntroScene extends Phaser.Scene {
     if (this.textures.exists('mainBG')) {
       this.add.image(320, 180, 'mainBG').setTint(0x718568);
     } else {
-      this.add.rectangle(320, 180, 640, 360, 0x263525);
+      this.add.rectangle(320, 180, 640, 360, 0x27371e);
     }
-    this.add.rectangle(320, 180, 640, 360, 0x050806, 0.7);
+    this.add.rectangle(320, 180, 640, 360, 0x050505, 0.7);
 
     createTitle(this, 320, 25, t(this, 'ui.tollroadIntro.title'), {
-      color: '#e8d7af',
+      color: '#f2d3aa',
       fallbackSize: '20px',
     });
-    this.add.rectangle(320, 184, 574, 264, 0x100e0b, 0.88)
-      .setStrokeStyle(1, 0x8e7957, 0.8);
+    this.add.rectangle(320, 184, 574, 264, 0x050505, 0.88)
+      .setStrokeStyle(1, 0x99865c, 0.8);
 
     this.body = this.add.text(320, 64, '', {
-      ...serifStyle('14px', '#eee4d0'),
+      ...serifStyle('14px', '#f2d7c4'),
       align: 'left',
       wordWrap: { width: 520 },
       lineSpacing: 3,
     }).setOrigin(0.5, 0);
 
-    this.button = this.add.rectangle(320, 329, 190, 28, 0x2b2118, 0.98)
-      .setStrokeStyle(1, 0xb99a68)
+    this.button = this.add.rectangle(320, 329, 190, 28, 0x29221b, 0.98)
+      .setStrokeStyle(1, 0xae8b57)
       .setInteractive({ useHandCursor: true });
     this.buttonLabel = this.add.text(320, 329, '', {
-      ...serifStyle('14px', '#f4ead9'),
+      ...serifStyle('14px', '#fef0cf'),
     }).setOrigin(0.5);
 
-    this.button.on('pointerover', () => this.button.setFillStyle(0x493924, 1));
-    this.button.on('pointerout', () => this.button.setFillStyle(0x2b2118, 0.98));
+    this.button.on('pointerover', () => {
+      SoundHelper.playVariant(this, 'hover_button', 0.4);
+      this.button.setFillStyle(0x4c311b, 1);
+    });
+    this.button.on('pointerout', () => this.button.setFillStyle(0x29221b, 0.98));
     this.button.on('pointerdown', () => this.advance());
     this.input.keyboard?.on('keydown-ENTER', () => this.advance());
     this.input.keyboard?.on('keydown-SPACE', () => this.advance());

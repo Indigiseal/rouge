@@ -37,33 +37,33 @@ export class TalentTreeScene extends Phaser.Scene {
     if (this.textures.exists('mainBG')) {
       this.add.image(320, 180, 'mainBG');
     } else {
-      this.add.rectangle(320, 180, 640, 360, 0x1a1a1a);
+      this.add.rectangle(320, 180, 640, 360, 0x0a1514);
     }
     this.add.rectangle(320, 180, 640, 360, 0x000000, 0.62);
 
     const title = t(this, 'ui.talents.rogueTitle');
-    this.add.text(320, 16, title, serifStyle(FONT_SIZE.heading, '#e6edf3')).setOrigin(0.5);
+    this.add.text(320, 16, title, serifStyle(FONT_SIZE.heading, '#d6c2c1')).setOrigin(0.5);
 
-    this.xpText = this.add.text(320, 34, '', serifStyle('14px', '#f0d78c')).setOrigin(0.5);
+    this.xpText = this.add.text(320, 34, '', serifStyle('14px', '#fee093')).setOrigin(0.5);
 
     // Detail panel owns the right half — a fixed home means the description can
     // never land on top of the nodes the way the old floating one did.
-    this.detailBg = this.add.rectangle(466, 176, 332, 232, 0x2c1810, 0.95)
-      .setStrokeStyle(1, 0x8b6914);
+    this.detailBg = this.add.rectangle(466, 176, 332, 232, 0x28150c, 0.95)
+      .setStrokeStyle(1, 0x9b6a1b);
     this.detailTitle = this.add.text(312, 70, '', {
-      ...serifStyle(FONT_SIZE.body, '#f0d78c'),
+      ...serifStyle(FONT_SIZE.body, '#fee093'),
       wordWrap: { width: 308 },
     });
     this.detailBody = this.add.text(312, 92, t(this, 'ui.talents.selectTalent'), {
-      ...serifStyle('13px', '#c9d1d9'),
+      ...serifStyle('13px', '#d6c2c1'),
       lineSpacing: 3,
       wordWrap: { width: 308 },
     });
 
-    this.buyBtn = this.add.rectangle(466, 262, 120, 26, 0x3d2418, 0.95)
-      .setStrokeStyle(1, 0xd4a017)
+    this.buyBtn = this.add.rectangle(466, 262, 120, 26, 0x46261b, 0.95)
+      .setStrokeStyle(1, 0xd48e17)
       .setInteractive({ useHandCursor: true });
-    this.buyLabel = this.add.text(466, 262, t(this, 'ui.talents.buy'), serifStyle('14px', '#e6edf3')).setOrigin(0.5);
+    this.buyLabel = this.add.text(466, 262, t(this, 'ui.talents.buy'), serifStyle('14px', '#d6c2c1')).setOrigin(0.5);
     this.buyBtn.on('pointerdown', () => {
       SoundHelper.playVariant(this, 'button_click', 0.5);
       this.tryBuy();
@@ -82,7 +82,7 @@ export class TalentTreeScene extends Phaser.Scene {
     if (!branch) return;
 
     const branchName = t(this, `ui.talents.branch.${branch.id}`);
-    this.add.text(150, 50, branchName, serifStyle('14px', '#f0d78c')).setOrigin(0.5);
+    this.add.text(150, 50, branchName, serifStyle('14px', '#fee093')).setOrigin(0.5);
 
     // Two columns of five: read down the left, then down the right. A single
     // column of ten does not fit between the header and the footer.
@@ -99,15 +99,15 @@ export class TalentTreeScene extends Phaser.Scene {
       const descriptionRanks = [...(display?.descriptionRanks || [])];
       const displayName = display?.name || node?.name || talentId;
 
-      const bg = this.add.rectangle(x, y, 128, 26, 0x2c1810, 0.92)
-        .setStrokeStyle(1, 0x8b6914)
+      const bg = this.add.rectangle(x, y, 128, 26, 0x28150c, 0.92)
+        .setStrokeStyle(1, 0x9b6a1b)
         .setInteractive({ useHandCursor: true });
       // Order number doubles as the prerequisite hint: the chain is walked in
       // this order, so "3" reads as "third purchase along the branch".
-      const index = this.add.text(x - 58, y, String(ni + 1), serifStyle('9px', '#8b6914')).setOrigin(0, 0.5);
-      const label = this.add.text(x - 44, y, displayName, serifStyle('9px', '#e6edf3'))
+      const index = this.add.text(x - 58, y, String(ni + 1), serifStyle('9px', '#9b6a1b')).setOrigin(0, 0.5);
+      const label = this.add.text(x - 44, y, displayName, serifStyle('9px', '#d6c2c1'))
         .setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
-      const rankText = this.add.text(x + 58, y, '', serifStyle('9px', '#c9d1d9')).setOrigin(1, 0.5);
+      const rankText = this.add.text(x + 58, y, '', serifStyle('9px', '#d6c2c1')).setOrigin(1, 0.5);
 
       const select = () => {
         SoundHelper.playVariant(this, 'button_click', 0.45);
@@ -115,10 +115,10 @@ export class TalentTreeScene extends Phaser.Scene {
       };
       bg.on('pointerover', () => {
         SoundHelper.playVariant(this, 'hover_button', 0.3);
-        bg.setStrokeStyle(1, 0xd4a017);
+        bg.setStrokeStyle(1, 0xd48e17);
       });
       bg.on('pointerout', () => {
-        bg.setStrokeStyle(1, this.selectedTalentId === talentId ? 0xd4a017 : 0x8b6914);
+        bg.setStrokeStyle(1, this.selectedTalentId === talentId ? 0xd48e17 : 0x9b6a1b);
       });
       bg.on('pointerdown', select);
       label.on('pointerdown', select);
@@ -138,10 +138,10 @@ export class TalentTreeScene extends Phaser.Scene {
       const btn = this.add.rectangle(x, 340, w, 24, fill, 0.95)
         .setStrokeStyle(1, stroke)
         .setInteractive({ useHandCursor: true });
-      const text = this.add.text(x, 340, label, serifStyle('14px', '#e6edf3')).setOrigin(0.5);
+      const text = this.add.text(x, 340, label, serifStyle('14px', '#d6c2c1')).setOrigin(0.5);
       btn.on('pointerover', () => {
         SoundHelper.playVariant(this, 'hover_button', 0.35);
-        btn.setStrokeStyle(1, 0xd4a017);
+        btn.setStrokeStyle(1, 0xd48e17);
       });
       btn.on('pointerout', () => btn.setStrokeStyle(1, stroke));
       btn.on('pointerdown', (...args) => {
@@ -151,19 +151,19 @@ export class TalentTreeScene extends Phaser.Scene {
       return { btn, text };
     };
 
-    mkButton(70, 110, t(this, 'ui.common.back'), 0x2c1810, 0x8b6914, () => {
+    mkButton(70, 110, t(this, 'ui.common.back'), 0x28150c, 0x9b6a1b, () => {
       this.cameras.main.fadeOut(250, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('CharacterSelectScene');
       });
     });
 
-    mkButton(200, 130, t(this, 'ui.talents.startRun'), 0x3d2418, 0xd4a017, () => this.startRun());
+    mkButton(200, 130, t(this, 'ui.talents.startRun'), 0x46261b, 0xd48e17, () => this.startRun());
 
     // Test build only: the meta ladder is 300 XP long and earning it honestly
     // takes ~40 runs, which is not a way to check the screen or tune numbers.
     // Distinct colour so it is obvious this is not shipping UI.
-    mkButton(560, 120, '+25 XP  (debug)', 0x1f3d2b, 0x4a9e6a, () => {
+    mkButton(560, 120, '+25 XP  (debug)', 0x13352a, 0x4a884f, () => {
       this.meta.grantDebugXp(this.characterId, 25);
       this.refresh();
     });
@@ -189,11 +189,11 @@ export class TalentTreeScene extends Phaser.Scene {
       row.label.setText(row.name || row.talentId);
       row.rankText.setText(`${rank}/${max}`);
       const selected = this.selectedTalentId === row.talentId;
-      row.bg.setStrokeStyle(1, selected ? 0xd4a017 : (locked ? 0x444c56 : 0x8b6914));
-      row.bg.setFillStyle(rank > 0 ? 0x3d2a18 : 0x2c1810, rank > 0 ? 0.95 : 0.92);
-      row.label.setColor(locked ? '#6e7681' : '#e6edf3');
-      row.rankText.setColor(maxed ? '#7bc47f' : (locked ? '#6e7681' : '#c9d1d9'));
-      row.index.setColor(locked ? '#4a3a12' : '#8b6914');
+      row.bg.setStrokeStyle(1, selected ? 0xd48e17 : (locked ? 0x51484b : 0x9b6a1b));
+      row.bg.setFillStyle(rank > 0 ? 0x3a220b : 0x28150c, rank > 0 ? 0.95 : 0.92);
+      row.label.setColor(locked ? '#6e7470' : '#d6c2c1');
+      row.rankText.setColor(maxed ? '#4a884f' : (locked ? '#6e7470' : '#d6c2c1'));
+      row.index.setColor(locked ? '#4a451a' : '#9b6a1b');
     });
 
     // Always resolve copy fresh by selected id (do not trust row snapshots for body text).

@@ -15,6 +15,7 @@ import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { t } from '../i18n/i18n.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { bindCardRiders, cardRiders, pinRider } from '../ui/CardRiders.js';
+import { flyCurrencyGain } from '../ui/CurrencyFlight.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 import { cameraWorldSize } from '../config/renderScale.js';
 
@@ -24,7 +25,7 @@ import { cameraWorldSize } from '../config/renderScale.js';
 const PRICE_MARKS = Object.freeze({
     coins: {
         key: 'priceMarkCoin',
-        color: 0xd38f34,
+        color: 0xcf8834,
         rows: [[2, 3], [1, 5], [0, 7], [0, 7], [0, 7], [1, 5], [2, 3]],
     },
     crystals: {
@@ -129,7 +130,7 @@ export class StationRoomBase extends Phaser.Scene {
         button._priceCoin?.destroy();
         button._priceCoin = null;
         button.x = button._priceCentreX ?? button.x;
-        button.setText(label).setStyle({ fill: '#888888' }).removeInteractive();
+        button.setText(label).setStyle({ fill: '#869089' }).removeInteractive();
     }
 
     // ─── Combat-style item board ───────────────────────────────────────────────
@@ -372,7 +373,7 @@ export class StationRoomBase extends Phaser.Scene {
         // face rather than its bottom edge.
         const priceText = renderScene.add.text(x, y + PRICE_TAG_Y - 3, item.purchased ? t(this, 'ui.shop.sold') : `${item.price}`, {
             fontSize: '11px',
-            fill: item.purchased ? '#888888' : (item.currency === 'crystals' ? '#a83c69' : '#cf8834'),
+            fill: item.purchased ? '#869089' : (item.currency === 'crystals' ? '#a83c69' : '#cf8834'),
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         });
         priceText.setOrigin(0.5).setDepth(11);
@@ -543,7 +544,7 @@ export class StationRoomBase extends Phaser.Scene {
         });
         sprite.on('pointerup', () => {
             if (dragged || item.purchased) return;
-            this.showFeedback({ key: 'float.dragGemOntoWeapon' }, 0xffe066);
+            this.showFeedback({ key: 'float.dragGemOntoWeapon' }, 0xffcf7f);
         });
     }
 
@@ -573,10 +574,11 @@ export class StationRoomBase extends Phaser.Scene {
             ? this.gameState.coins >= item.price
             : this.gameState.crystals >= item.price;
         if (!hasEnoughCurrency) {
+            SoundHelper.playVariant(this, 'invalid_action', 0.5);
             this.showFeedback({
                 key: 'float.notEnoughCurrency',
                 vars: { currency: this.getCurrencyDisplay?.(item.currency) || item.currency },
-            }, 0xff0000);
+            }, 0xb51f1e);
             return false;
         }
 
@@ -707,7 +709,7 @@ export class StationRoomBase extends Phaser.Scene {
             button = this.add.image(x, y, 'nextTurnUp')
                 .setInteractive({ useHandCursor: true });
         } else {
-            button = this.add.rectangle(x, y, 78, 30, 0x080808, 0.66)
+            button = this.add.rectangle(x, y, 78, 30, 0x050505, 0.66)
                 .setInteractive({ useHandCursor: true });
         }
 
@@ -735,7 +737,7 @@ export class StationRoomBase extends Phaser.Scene {
         button.on('pointerover', () => {
             SoundHelper.playVariant(this, 'hover_button', 0.4);
             if (button.setTint) setHoverLight(button, true);
-            else button.setFillStyle?.(0x151515, 0.78);
+            else button.setFillStyle?.(0x0a1514, 0.78);
         });
         button.on('pointerout', () => {
             setHoverLight(button, false);
@@ -743,7 +745,7 @@ export class StationRoomBase extends Phaser.Scene {
                 button.clearTint();
                 if (button.setTexture && this.textures.exists('nextTurnUp')) button.setTexture('nextTurnUp');
             } else {
-                button.setFillStyle?.(0x080808, 0.66);
+                button.setFillStyle?.(0x050505, 0.66);
             }
             button.y = baseY;
             text.y = baseY;
@@ -799,16 +801,16 @@ export class StationRoomBase extends Phaser.Scene {
     // ─── Colour & feedback ───────────────────────────────────────────────────
 
     getRarityColor(rarity, currency) {
-        if (currency === 'crystals') return 0x00ffff;
+        if (currency === 'crystals') return 0x71b1ae;
         const colors = {
-            common: 0xb8b8b8,
-            uncommon: 0x66dd66,
-            rare: 0x66aaff,
-            epic: 0xa040ff,
-            legendary: 0xffcc33,
-            cursed: 0xff6666
+            common: 0xafafa2,
+            uncommon: 0x4a884f,
+            rare: 0x6c6885,
+            epic: 0x712a65,
+            legendary: 0xfbad19,
+            cursed: 0xc45c45
         };
-        return colors[rarity] || 0xb8b8b8;
+        return colors[rarity] || 0xafafa2;
     }
 
     showFeedback(message, color, y = 300) {
@@ -854,11 +856,15 @@ export class StationRoomBase extends Phaser.Scene {
         const coinCount = Math.min(6, Math.max(2, Math.ceil(coins / 15)));
         const crystalCount = Math.min(4, Math.max(1, crystals));
         for (let i = 0; i < coinCount; i++) {
-            this.scatterLootSprite(x, y, 'coinUI', 0xffd36b);
+            this.scatterLootSprite(x, y, 'coinUI', 0xffcf7f);
         }
         for (let i = 0; i < crystalCount; i++) {
-            this.scatterLootSprite(x, y, 'CrystalUI', 0x66ffff);
+            this.scatterLootSprite(x, y, 'CrystalUI', 0x71b1ae);
         }
+        // Then one coin and one crystal leave the burst for their counters on
+        // the HUD, so the haul is seen landing where it is counted.
+        if (coins > 0) this.time.delayedCall(160, () => flyCurrencyGain(this, x, y, 'coins'));
+        if (crystals > 0) this.time.delayedCall(240, () => flyCurrencyGain(this, x, y, 'crystals'));
     }
 
     scatterLootSprite(x, y, texture, tint) {

@@ -23,12 +23,13 @@ const CARD_SCALE = 1;
 // on the arch floor. Move these with the arches if the backdrop is redrawn.
 // The middle arch is the tallest, so its door stands higher than the outer two.
 const CARD_XS = [176, 320, 464];
-const CARD_YS = [222, 212, 222];
+const CARD_YS = [208, 196, 205];
 // The arrival: start this far above the resting line, drop for ARRIVE_MS, and
 // let the ease carry it past and back.
 const ARRIVE_LIFT = 28;
 const ARRIVE_MS = 420;
-const ARRIVE_STAGGER = 110;
+// Far enough apart that each door's creak is heard on its own.
+const ARRIVE_STAGGER = 240;
 // After the door has swung open (or, for a door without its own animation,
 // shown open), this long a beat before the screen fades out, so the opening
 // is seen rather than cut off.
@@ -58,23 +59,24 @@ export class LocationPickScene extends Phaser.Scene {
       if (this.textures.exists('mainBG')) {
         this.add.image(320, 180, 'mainBG');
       } else {
-        this.add.rectangle(320, 180, 640, 360, 0x1a1a1a);
+        this.add.rectangle(320, 180, 640, 360, 0x0a1514);
       }
       this.add.rectangle(320, 180, 640, 360, 0x000000, 0.55);
     }
 
-    createTitle(this, 320, 28, t(this, 'ui.locationPick.title'), {
+    // Centred in the banner painted across the top of pathsBackground.png.
+    createTitle(this, 320, 23, t(this, 'ui.locationPick.title'), {
       color: '#f2d3aa',
       fallbackSize: '20px',
     });
-    this.add.text(320, 48, t(this, 'ui.locationPick.subtitle', { act: this.pickAct }), {
+    this.add.text(320, 54, t(this, 'ui.locationPick.subtitle', { act: this.pickAct }), {
       fontSize: '11px',
-      fill: '#8b949e',
+      fill: '#869089',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5);
     this.add.text(320, 338, t(this, 'ui.locationPick.hint'), {
       fontSize: '10px',
-      fill: '#d4b896',
+      fill: '#c8b08a',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
       align: 'center',
       wordWrap: { width: 560 },
@@ -99,7 +101,7 @@ export class LocationPickScene extends Phaser.Scene {
     // the doors and text without competing for depth.
     // The sheet was painted for the doors' old line (y 168); they now stand in
     // the backdrop's arches, so it is moved down to match.
-    applyOverlayLight(this, { key: 'pathOverlayLight', offsetY: 54 });
+    applyOverlayLight(this, { key: 'pathOverlayLight', offsetY: 36 });
 
     // Same level as the main menu and village (0.6): the one theme carries
     // across all three screens, so a different level here would step.
@@ -160,7 +162,7 @@ export class LocationPickScene extends Phaser.Scene {
       onUpdate: () => { sprite.y = Math.round(sprite.y); },
       onComplete: () => {
         snapOriginToPixelGrid(sprite);
-        SoundHelper.playVariant(this, 'card_place', 0.4);
+        SoundHelper.playVariant(this, 'door_land', 0.5);
         this.enableCard(entry);
       },
     });
@@ -174,13 +176,13 @@ export class LocationPickScene extends Phaser.Scene {
   }
 
   // Hover and press as the fight's exit door has them: the art lights up and
-  // the button hover sound plays, nothing moves.
+  // the door creaks on its hinge, nothing moves.
   enableCard(entry) {
     const { sprite } = entry;
     sprite.setInteractive({ useHandCursor: true });
     sprite.on('pointerover', () => {
       if (this._locked) return;
-      SoundHelper.playVariant(this, 'hover_button', 0.4);
+      SoundHelper.playVariant(this, 'door_hover', 0.4);
       setHoverLight(sprite, true);
     });
     sprite.on('pointerout', () => {

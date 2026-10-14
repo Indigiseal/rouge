@@ -13,8 +13,8 @@ export const MINOR_PX = 10;
 export const CAPTION_PX = 9;
 
 export const FEEDBACK_COLORS = Object.freeze({
-    damage: '#ff9a88', heal: '#9ee8ad', defense: '#9ddcff',
-    bonus: '#ffda7a', neutral: '#f6efe1', magic: '#d5afff', minor: '#d0c7b8',
+    damage: '#e69465', heal: '#d3c294', defense: '#71b1ae',
+    bonus: '#ffcf7f', neutral: '#fef0cf', magic: '#b697a3', minor: '#d6c7b3',
 });
 
 // Raw damage alone controls number size. No target-health or critical multiplier.
@@ -44,7 +44,7 @@ export function describeFeedback(message, options = {}) {
         else if (/crit|double damage|war horn|heavy strike|first blood|keen edge|dual wield|cleave|volley|pierce|lucky/i.test(english)) type = 'bonus';
         else if (/wore off|faded|thawed|left!|^frozen \(/i.test(english)) type = 'minor';
         else if (/block|immune|shield|frozen|shock|bulwark|armory/i.test(english)) type = 'defense';
-        else if (/poison|spored|curse|weak|slow|stun|charm|web|shadow/i.test(english)) type = 'magic';
+        else if (/poison|spored|curse|weak|slow|stun|charm|web|\binked\b|shadow/i.test(english)) type = 'magic';
         else type = 'status';
     }
     const critical = Boolean(options.critical);
@@ -178,7 +178,7 @@ export class CombatFeedback {
         const style = {
             ...feedbackStyle(`${Math.round(event.size)}px`, event.color),
             fontStyle: event.priority === 2 ? '700' : '600',
-            stroke: '#201715', strokeThickness: event.priority === 2 ? 3 : 2,
+            stroke: '#1c130a', strokeThickness: event.priority === 2 ? 3 : 2,
             align: 'center', padding: { x: 3, y: 2 },
             wordWrap: { width: 126, useAdvancedWrap: true },
         };

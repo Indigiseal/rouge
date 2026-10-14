@@ -63,7 +63,7 @@ export class MainMenuScene extends Phaser.Scene {
         if (this.textures.exists('mainBG')) {
             this.add.image(320, 180, 'mainBG');
         } else {
-            this.add.rectangle(320, 180, 640, 360, 0x1a1a1a);
+            this.add.rectangle(320, 180, 640, 360, 0x0a1514);
         }
 
         // Warm light sheet over the whole frame, in Aseprite's Overlay mode.
@@ -78,7 +78,7 @@ export class MainMenuScene extends Phaser.Scene {
         // Version text
         this.add.text(10, 350, 'v1.0.0', {
             fontSize: '12px',
-            fill: '#888888',
+            fill: '#869089',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         });
 
@@ -101,7 +101,7 @@ export class MainMenuScene extends Phaser.Scene {
             .setInteractive({ useHandCursor: true });
         const label = this.add.text(320, 180, t(this, 'ui.menu.clickToPlay'), {
             fontSize: '20px',
-            fill: '#f5e6c8',
+            fill: '#fef0cf',
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
         }).setOrigin(0.5).setDepth(9001);
 
@@ -206,12 +206,12 @@ export class MainMenuScene extends Phaser.Scene {
             btn = this.add.image(x, y, 'nextTurnUp').setOrigin(0.5);
             if (disabled) btn.setAlpha(0.35);
         } else {
-            btn = this.add.rectangle(x, y, 120, 29, disabled ? 0x444444 : 0x888888)
-                .setStrokeStyle(1, 0xffffff);
+            btn = this.add.rectangle(x, y, 120, 29, disabled ? 0x51484b : 0x869089)
+                .setStrokeStyle(1, 0xfef0cf);
         }
 
         const txt = this.add
-            .text(x, y, label, serifStyle(MENU_LABEL_PX, disabled ? '#888888' : '#ffffff'))
+            .text(x, y, label, serifStyle(MENU_LABEL_PX, disabled ? '#869089' : '#fef0cf'))
             .setOrigin(0.5);
         // The plate is 90px, drawn when these labels were in the much narrower
         // pixel font. Translated labels are wider, so let them shrink to fit.
@@ -272,11 +272,11 @@ export class MainMenuScene extends Phaser.Scene {
 
         const btn = hasSprite
             ? this.add.image(x, y, sheet, 0).setOrigin(0.5)
-            : this.add.rectangle(x, y, 32, 32, 0x888888).setStrokeStyle(1, 0xffffff).setOrigin(0.5);
+            : this.add.rectangle(x, y, 32, 32, 0x869089).setStrokeStyle(1, 0xfef0cf).setOrigin(0.5);
 
         const glyph = hasSprite ? null : this.add.text(x, y, '⚙', {
             fontSize: '18px',
-            fill: '#ffffff',
+            fill: '#fef0cf',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
 
@@ -317,7 +317,7 @@ export class MainMenuScene extends Phaser.Scene {
 
         const buttonText = this.add.text(x, y, text, {
             fontSize: '18px',
-            fill: disabled ? '#666666' : '#ffffff',
+            fill: disabled ? '#6e7470' : '#fef0cf',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
 
@@ -352,20 +352,20 @@ export class MainMenuScene extends Phaser.Scene {
         const elements = [];
         const optionRows = [];
 
-        const panel = this.add.rectangle(320, 180, 520, 300, 0x2c1810)
-            .setStrokeStyle(3, 0xffffff);
+        const panel = this.add.rectangle(320, 180, 520, 300, 0x28150c)
+            .setStrokeStyle(3, 0xfef0cf);
         elements.push(panel);
 
         const title = this.add.text(320, 45, t(this, 'ui.testOptions.title'), {
             fontSize: '28px',
-            fill: '#ffffff',
+            fill: '#fef0cf',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
         elements.push(title);
 
         const subtitle = this.add.text(320, 68, t(this, 'ui.testOptions.subtitle'), {
             fontSize: '11px',
-            fill: '#bbbbbb',
+            fill: '#afafa2',
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             align: 'center'
         }).setOrigin(0.5);
@@ -373,20 +373,20 @@ export class MainMenuScene extends Phaser.Scene {
 
         TEST_OPTION_DEFS.forEach((def, index) => {
             const y = 110 + index * 72;
-            const rowBg = this.add.rectangle(320, y + 8, 470, 58, 0x1a120c)
-                .setStrokeStyle(1, 0x666666);
+            const rowBg = this.add.rectangle(320, y + 8, 470, 58, 0x1c130a)
+                .setStrokeStyle(1, 0x6e7470);
             elements.push(rowBg);
 
             const label = this.add.text(70, y - 6, t(this, def.labelKey), {
                 fontSize: '14px',
-                fill: '#ffffff',
+                fill: '#fef0cf',
                 fontFamily: '"HoMM Pixel", Arial, sans-serif'
             }).setOrigin(0, 0.5);
             elements.push(label);
 
             const description = this.add.text(70, y + 12, t(this, def.descriptionKey), {
                 fontSize: '10px',
-                fill: '#aaaaaa',
+                fill: '#afafa2',
                 fontFamily: '"HoMM Pixel", Arial, sans-serif',
                 wordWrap: { width: 330 }
             }).setOrigin(0, 0.5);
@@ -399,7 +399,7 @@ export class MainMenuScene extends Phaser.Scene {
             optionRows.push({ def, toggle });
         });
 
-        const backButton = this.createButton(320, 305, 150, 30, t(this, 'ui.testOptions.back'), 0x888888, () => {
+        const backButton = this.createButton(320, 305, 150, 30, t(this, 'ui.testOptions.back'), 0x869089, () => {
             elements.forEach(item => item?.destroy?.());
             this.children.list.forEach(child => child.setVisible(true));
             Object.values(this.mainMenuButtons || {}).forEach(entry => {
@@ -411,14 +411,14 @@ export class MainMenuScene extends Phaser.Scene {
 
     createToggleButton(x, y, optionId, onChange) {
         const enabled = isTestOptionEnabled(optionId);
-        const color = enabled ? 0x228822 : 0x664444;
+        const color = enabled ? 0x3c7a3e : 0x623a35;
         const button = this.add.rectangle(x, y, 72, 28, color, 0.85)
-            .setStrokeStyle(2, enabled ? 0x66ff66 : 0xff6666)
+            .setStrokeStyle(2, enabled ? 0x71800b : 0xc45c45)
             .setInteractive({ useHandCursor: true });
 
         const text = this.add.text(x, y, enabled ? t(this, 'ui.testOptions.on') : t(this, 'ui.testOptions.off'), {
             fontSize: '13px',
-            fill: '#ffffff',
+            fill: '#fef0cf',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
 
@@ -429,8 +429,8 @@ export class MainMenuScene extends Phaser.Scene {
             invalidateTestOptionsCache();
             onChange?.();
             const on = isTestOptionEnabled(optionId);
-            button.setFillStyle(on ? 0x228822 : 0x664444, 0.85);
-            button.setStrokeStyle(2, on ? 0x66ff66 : 0xff6666);
+            button.setFillStyle(on ? 0x3c7a3e : 0x623a35, 0.85);
+            button.setStrokeStyle(2, on ? 0x71800b : 0xc45c45);
             text.setText(on ? t(this, 'ui.testOptions.on') : t(this, 'ui.testOptions.off'));
         });
 
@@ -440,8 +440,8 @@ export class MainMenuScene extends Phaser.Scene {
     refreshTestOptionsMenu(optionRows) {
         optionRows.forEach(({ def, toggle }) => {
             const on = isTestOptionEnabled(def.id);
-            toggle.button.setFillStyle(on ? 0x228822 : 0x664444, 0.85);
-            toggle.button.setStrokeStyle(2, on ? 0x66ff66 : 0xff6666);
+            toggle.button.setFillStyle(on ? 0x3c7a3e : 0x623a35, 0.85);
+            toggle.button.setStrokeStyle(2, on ? 0x71800b : 0xc45c45);
             toggle.text.setText(on ? t(this, 'ui.testOptions.on') : t(this, 'ui.testOptions.off'));
         });
     }

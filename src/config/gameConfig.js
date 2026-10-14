@@ -29,7 +29,7 @@ export function createGameConfig(Phaser) {
     width: WORLD_WIDTH * PIXEL_SCALE,
     height: WORLD_HEIGHT * PIXEL_SCALE,
     parent: 'phaser-game-container',
-    backgroundColor: '#2c1810',
+    backgroundColor: '#28150c',
     pixelArt: true,
     roundPixels: true,
     antialias: false,

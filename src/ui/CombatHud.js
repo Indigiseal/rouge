@@ -8,10 +8,8 @@ import { createOptionsCog } from './OptionsCog.js';
 import { setHoverLight } from './HoverLight.js';
 import { looseGemCard } from '../content/cards/gems.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { flyCurrencyIcon } from './CurrencyFlight.js';
 
-// The coin flying from the coin counter to a thief (playCoinStealFlight).
-const STEAL_FLIGHT_MS = 520;
-const STEAL_FLIGHT_ARC = 40;
 import { devToolsEnabled } from '../config/DevTools.js';
 import { t, tCount, translateDescription, translateItemName } from '../i18n/i18n.js';
 import {
@@ -32,6 +30,7 @@ import { createGauntletCard } from '../content/balance/Gauntlet.js';
 import { AMULETS } from '../content/cards/amulets.js';
 import { hudAmuletTexture } from '../content/amulets/RelicsOthersAtlas.js';
 import { EXIT_DOOR_X, EXIT_DOOR_Y } from './ExitDoor.js';
+import { isLocationDoorTexture } from '../content/assets/locationCards.js';
 
 // The amulet strip owns the top-left corner, so the hero column starts below
 // it. Everything from the avatar down to the crystal counter is offset by this
@@ -48,6 +47,16 @@ const HUD_LOWER_SHIFT = HUD_COLUMN_SHIFT - 7;
 // the stack shrinks by 2px (to about 1.5px and 1px).
 const AP_TUCK = 2;
 const CURRENCY_TUCK = 4;
+// Action points arriving from food (playActionPointGain): a short wait so the
+// eye has left the food, then one point every AP_GAIN_STEP_MS.
+const AP_GAIN_DELAY_MS = 120;
+const AP_GAIN_STEP_MS = 110;
+const AP_GAIN_FLASH_COLOR = 0xfef0cf;
+const AP_GAIN_FLASH_MS = 320;
+const AP_GAIN_LIFT_PX = 4;
+const AP_GAIN_HOP_PX = 2;
+const AP_GAIN_HOP_MS = 80;
+const AP_SPEND_STEP_MS = 70;
 // Where the discard bin sits. Left of the bag now; the inventory panel is capped
 // so it never grows into it. y 314 (was 305) puts the bin's top edge (69px
 // art, top at y-34) at 280, level with the top of the 70px bag cards centred
@@ -59,8 +68,8 @@ export const DISCARD_Y = 314;
 // of the hero column; Focus goes warm so an active crit stance is obvious at a
 // glance without needing an icon.
 const STANCE_COLORS = Object.freeze({
-    sweep: Object.freeze({ fill: 0x2b2118, hover: 0x3a2d20, border: 0x8a6a3f, text: '#e5bca4' }),
-    focus: Object.freeze({ fill: 0x4a2418, hover: 0x5c2e1f, border: 0xcf8834, text: '#ffcc66' }),
+    sweep: Object.freeze({ fill: 0x29221b, hover: 0x363329, border: 0x926b4a, text: '#e5bca4' }),
+    focus: Object.freeze({ fill: 0x46261b, hover: 0x552a1b, border: 0xcf8834, text: '#ffcf7f' }),
 });
 
 export const CombatHud = {
@@ -98,7 +107,7 @@ export const CombatHud = {
             .setOrigin(0.5, 1).setDepth(5);
         this.healthText = this.add.text(87, 105 + HUD_COLUMN_SHIFT, '50/50', {
             fontSize: '10px',
-            fill: '#ffffff',
+            fill: '#fef0cf',
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             stroke: '#000000',
             strokeThickness: 2
@@ -146,7 +155,7 @@ export const CombatHud = {
         
         this.actionsText = this.add.text(125, 45, '', {
             fontSize: '12px',
-            fill: '#00ff00',
+            fill: '#71800b',
             fontFamily: '"HoMM Pixel"'
         }).setVisible(false);
         // Amulets displayed horizontally above armor info
@@ -162,7 +171,7 @@ export const CombatHud = {
             month: 'Thornwake', act: 1, floor: 1,
         }), {
             fontSize: '13px',
-            fill: '#f5e6c8',
+            fill: '#fef0cf',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH);
         this.locationText = null;
@@ -187,32 +196,32 @@ export const CombatHud = {
     },
 
     createDebugVictoryButton(TOP_HUD_DEPTH) {
-        this.debugVictoryButton = this.add.rectangle(288, 20, 58, 18, 0x713737, 0.9)
-            .setStrokeStyle(1, 0xd89772)
+        this.debugVictoryButton = this.add.rectangle(288, 20, 58, 18, 0x773a35, 0.9)
+            .setStrokeStyle(1, 0xd3946a)
             .setDepth(TOP_HUD_DEPTH)
-            .on('pointerover', () => this.debugVictoryButton.setFillStyle(0x934646, 1))
-            .on('pointerout', () => this.debugVictoryButton.setFillStyle(0x713737, 0.9))
+            .on('pointerover', () => this.debugVictoryButton.setFillStyle(0x963847, 1))
+            .on('pointerout', () => this.debugVictoryButton.setFillStyle(0x773a35, 0.9))
             .on('pointerdown', () => {
                 SoundHelper.playVariant(this, 'button_click', 0.5);
                 this.debugDefeatAllEnemies?.();
             });
         this.debugVictoryButtonText = this.add.text(288, 20, t(this, 'ui.hud.debugWin'), {
             fontSize: '9px',
-            fill: '#f5e6c8',
+            fill: '#fef0cf',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
     },
 
     createDebugItemButton(TOP_HUD_DEPTH) {
-        const button = this.add.rectangle(352, 20, 62, 18, 0x374f71, 0.9)
-            .setStrokeStyle(1, 0x72a7d8)
+        const button = this.add.rectangle(352, 20, 62, 18, 0x594c74, 0.9)
+            .setStrokeStyle(1, 0x3f818f)
             .setDepth(TOP_HUD_DEPTH)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => button.setFillStyle(0x466d93, 1))
-            .on('pointerout', () => button.setFillStyle(0x374f71, 0.9))
+            .on('pointerover', () => button.setFillStyle(0x6c6885, 1))
+            .on('pointerout', () => button.setFillStyle(0x594c74, 0.9))
             .on('pointerdown', () => this.openDebugItemGrant());
         const label = this.add.text(352, 20, 'ITEM', {
-            fontSize: '9px', fill: '#f5e6c8', fontFamily: '"HoMM Pixel"'
+            fontSize: '9px', fill: '#fef0cf', fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
         this.debugItemButton = button;
         this.debugItemButtonText = label;
@@ -290,14 +299,14 @@ export const CombatHud = {
         }
         const slot = this.inventorySystem.slots.findIndex(item => item == null);
         if (slot < 0) {
-            this.createFloatingText(320, 330, 'Inventory Full!', 0xff7777);
+            this.createFloatingText(320, 330, 'Inventory Full!', 0xc45c45);
             this.closeDebugItemOverlay();
             return;
         }
         this.inventorySystem.addCardDirect({ ...entry.card }, slot);
         this.inventorySystem.syncGameStateInventory?.();
         this.saveCurrentRun?.();
-        this.createFloatingText(320, 330, `Added: ${entry.card.name}`, 0x66ff99);
+        this.createFloatingText(320, 330, `Added: ${entry.card.name}`, 0x4a884f);
         this.closeDebugItemOverlay();
     },
 
@@ -311,13 +320,13 @@ export const CombatHud = {
         const root = this.add.container(0, 0).setDepth(depth);
         this.debugItemOverlay = root;
         const add = object => { root.add(object); return object; };
-        add(this.add.rectangle(320, 180, 640, 360, 0x08070a, 0.78).setInteractive());
-        add(this.add.rectangle(320, 180, 548, 316, 0x241c22, 0.98).setStrokeStyle(2, 0xc89b62));
+        add(this.add.rectangle(320, 180, 640, 360, 0x050505, 0.78).setInteractive());
+        add(this.add.rectangle(320, 180, 548, 316, 0x1e141b, 0.98).setStrokeStyle(2, 0xae8b57));
         add(this.add.text(320, 35, 'DEBUG ITEM VAULT', {
-            fontSize: '16px', fill: '#f4d49b', fontFamily: '"HoMM Pixel"'
+            fontSize: '16px', fill: '#fed991', fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5));
         const close = add(this.add.text(572, 34, '×', {
-            fontSize: '22px', fill: '#ffb0a0', fontFamily: '"HoMM Pixel"'
+            fontSize: '22px', fill: '#e5bca4', fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setInteractive({ useHandCursor: true }));
         close.on('pointerdown', () => this.closeDebugItemOverlay());
 
@@ -341,9 +350,9 @@ export const CombatHud = {
         const tabs = {};
         Object.keys(tabLabels).forEach((key, i) => {
             const x = 124 + i * 98;
-            const plate = add(this.add.rectangle(x, 63, 91, 22, 0x493741).setStrokeStyle(1, 0x967353).setInteractive({ useHandCursor: true }));
+            const plate = add(this.add.rectangle(x, 63, 91, 22, 0x44353b).setStrokeStyle(1, 0x926b4a).setInteractive({ useHandCursor: true }));
             const text = add(this.add.text(x, 63, tabLabels[key], {
-                fontSize: '9px', fill: '#ead6b9', fontFamily: '"HoMM Pixel"'
+                fontSize: '9px', fill: '#f2d7c4', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5));
             plate.on('pointerdown', () => {
                 activeCategory = key;
@@ -355,7 +364,7 @@ export const CombatHud = {
 
         const render = () => {
             content.removeAll(true);
-            Object.entries(tabs).forEach(([key, tab]) => tab.setFillStyle(key === activeCategory ? 0x7a5538 : 0x493741));
+            Object.entries(tabs).forEach(([key, tab]) => tab.setFillStyle(key === activeCategory ? 0x7a5238 : 0x44353b));
             const list = categories[activeCategory] || [];
             const perPage = 18;
             const pages = Math.max(1, Math.ceil(list.length / perPage));
@@ -365,8 +374,8 @@ export const CombatHud = {
                 const row = Math.floor(i / 6);
                 const x = 112 + col * 83;
                 const y = 108 + row * 72;
-                const hit = this.add.rectangle(x, y, 72, 64, 0x332932, 0.9)
-                    .setStrokeStyle(1, 0x6e5961).setInteractive({ useHandCursor: true });
+                const hit = this.add.rectangle(x, y, 72, 64, 0x392a36, 0.9)
+                    .setStrokeStyle(1, 0x6f5452).setInteractive({ useHandCursor: true });
                 const spriteKey = entry.amuletId ? entry.sprite : entry.card?.sprite;
                 const frame = entry.amuletId ? entry.spriteFrame : entry.card?.spriteFrame;
                 const icon = this.add.image(x, y - 8, spriteKey, frame);
@@ -376,17 +385,17 @@ export const CombatHud = {
                 const scale = Math.min(maxW / Math.max(1, icon.width), maxH / Math.max(1, icon.height), 1);
                 icon.setScale(scale);
                 const label = this.add.text(x, y + 23, entry.label, {
-                    fontSize: '7px', fill: '#eadcc8', fontFamily: '"HoMM Pixel"',
+                    fontSize: '7px', fill: '#f2d7c4', fontFamily: '"HoMM Pixel"',
                     align: 'center', wordWrap: { width: 68 }
                 }).setOrigin(0.5);
-                hit.on('pointerover', () => hit.setFillStyle(0x58404b, 1));
-                hit.on('pointerout', () => hit.setFillStyle(0x332932, 0.9));
+                hit.on('pointerover', () => hit.setFillStyle(0x44353b, 1));
+                hit.on('pointerout', () => hit.setFillStyle(0x392a36, 0.9));
                 hit.on('pointerdown', () => this.grantDebugItem(entry));
                 content.add([hit, icon, label]);
             });
             const navY = 326;
-            const prev = this.add.text(265, navY, '◄', { fontSize: '14px', fill: page > 0 ? '#f4d49b' : '#665b55', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
-            const next = this.add.text(375, navY, '►', { fontSize: '14px', fill: page + 1 < pages ? '#f4d49b' : '#665b55', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+            const prev = this.add.text(265, navY, '◄', { fontSize: '14px', fill: page > 0 ? '#fed991' : '#6f5452', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
+            const next = this.add.text(375, navY, '►', { fontSize: '14px', fill: page + 1 < pages ? '#fed991' : '#6f5452', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
             if (page > 0) prev.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
                 page--;
                 queueRender();
@@ -395,7 +404,7 @@ export const CombatHud = {
                 page++;
                 queueRender();
             });
-            content.add([prev, next, this.add.text(320, navY, `${page + 1}/${pages}`, { fontSize: '9px', fill: '#cdbb9e', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5)]);
+            content.add([prev, next, this.add.text(320, navY, `${page + 1}/${pages}`, { fontSize: '9px', fill: '#d6c7b3', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5)]);
         };
         render();
     },
@@ -422,7 +431,13 @@ export const CombatHud = {
         this.nextFloorButton = snapOriginToPixelGrid(this.add.sprite(EXIT_DOOR_X, EXIT_DOOR_Y, 'nextTurnUp'))
             .setDepth(5000)
             .setInteractive({ useHandCursor: true })
-            .on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); setHoverLight(this.nextFloorButton, true); })
+            .on('pointerover', () => {
+                // A door creaks like every door; the plain Next plate (a road
+                // with no door art) keeps the button hover.
+                const isDoor = isLocationDoorTexture(this.nextFloorButton.texture?.key);
+                SoundHelper.playVariant(this, isDoor ? 'door_hover' : 'hover_button', 0.4);
+                setHoverLight(this.nextFloorButton, true);
+            })
             .on('pointerout', () => {
                 this.nextFloorButton.clearTint();
                 setHoverLight(this.nextFloorButton, false);
@@ -495,19 +510,19 @@ export const CombatHud = {
         }
         if (!panel) {
             // Fallback if the art/nine-slice helper is unavailable.
-            panel = this.add.rectangle(CX, CY, W, H, 0xe8d6ad, 0.96).setStrokeStyle(2, 0x6f5452, 0.6);
+            panel = this.add.rectangle(CX, CY, W, H, 0xf2d3aa, 0.96).setStrokeStyle(2, 0x6f5452, 0.6);
         }
         panel.setDepth(40);
 
         const top = CY - H / 2;
         const title = this.add.text(CX, top + 8, t(this, 'ui.hud.combatLog'), {
-            ...serifStyle('13px', '#513d35')
+            ...serifStyle('13px', '#584339')
         }).setOrigin(0.5, 0).setDepth(42);
         const rule = this.add.rectangle(CX, top + 22, W - 18, 1, 0x6f5452, 0.4).setDepth(42);
 
         const bodyTop = top + 27;
         const body = this.add.text(CX - W / 2 + 7, bodyTop, '', {
-            ...serifStyle('12px', '#513d35'),
+            ...serifStyle('12px', '#584339'),
             lineSpacing: 3, wordWrap: { width: W - 22, useAdvancedWrap: true }
         }).setOrigin(0, 0).setDepth(42);
 
@@ -736,48 +751,46 @@ export const CombatHud = {
         this.updateRelicsUI();
         this.updatePlayerEffectsUI();
     },
-    // A thief's take, shown: one spinning coin (coinAnimation20x24, the same
-    // coin as the HUD counter) leaves the coin counter, arcs up and over to the
-    // thief and vanishes into it, with the coin sound. One coin per steal,
-    // whatever the amount — the "-N coins stolen!" text says how many.
+    // The shared coin/crystal flight (ui/CurrencyFlight.js), drawn in this scene.
+    flyCurrencyIcon(options) {
+        flyCurrencyIcon(this, options);
+    },
+
+    // A thief's take, shown: one coin leaves the coin counter for the thief,
+    // with the coin sound. One coin per steal, whatever the amount — the
+    // "-N coins stolen!" text says how many.
     playCoinStealFlight(toSprite) {
         const from = this.coinSprite;
-        if (!from?.scene || !toSprite?.scene || !this.textures.exists('coinAnimSheet')) return;
-        const SPIN = 'coin_steal_spin';
-        if (!this.anims.exists(SPIN)) {
-            this.anims.create({
-                key: SPIN,
-                frames: this.anims.generateFrameNumbers('coinAnimSheet', { start: 0, end: 5 }),
-                frameRate: 14,
-                repeat: -1,
-            });
-        }
+        if (!from?.scene || !toSprite?.scene) return;
         SoundHelper.playVariant(this, 'coin_collect', 0.5);
-        const start = { x: Math.round(from.x), y: Math.round(from.y) };
-        const end = { x: Math.round(toSprite.x), y: Math.round(toSprite.y) };
-        // The arc's high point: above the higher end, halfway across.
-        const peak = {
-            x: (start.x + end.x) / 2,
-            y: Math.min(start.y, end.y) - STEAL_FLIGHT_ARC,
-        };
-        const coin = this.add.sprite(start.x, start.y, 'coinAnimSheet', 0).setDepth(1000);
-        coin.play(SPIN);
-        this.tweens.addCounter({
-            from: 0,
-            to: 1,
-            duration: STEAL_FLIGHT_MS,
-            ease: 'Sine.easeIn',
-            onUpdate: (tween) => {
-                const p = tween.getValue();
-                const q = 1 - p;
-                // Quadratic curve through the peak, on whole pixels.
-                coin.x = Math.round(q * q * start.x + 2 * q * p * peak.x + p * p * end.x);
-                coin.y = Math.round(q * q * start.y + 2 * q * p * peak.y + p * p * end.y);
-                // Fades into the thief over the last quarter.
-                coin.setAlpha(p < 0.75 ? 1 : (1 - p) * 4);
+        this.flyCurrencyIcon({ currency: 'coins', fromX: from.x, fromY: from.y, toX: toSprite.x, toY: toSprite.y });
+    },
+
+    // The other way: coins or crystals gained at (x, y) fly to their counter,
+    // which spins (coins) or glows (crystals) as the icon lands. One icon per
+    // gain; the floating "+N" text says how many. Sound is the caller's.
+    playCurrencyGainFlight(x, y, currency = 'coins') {
+        const isCrystal = currency === 'crystals';
+        const target = isCrystal ? this.crystalSprite : this.coinSprite;
+        if (!target?.scene || !Number.isFinite(x) || !Number.isFinite(y)) return;
+        this.flyCurrencyIcon({
+            currency,
+            fromX: x,
+            fromY: y,
+            toX: target.x,
+            toY: target.y,
+            onArrive: () => {
+                if (!target.scene) return;
+                if (isCrystal) this.playCrystalAnimation?.();
+                else this.playCoinAnimation?.();
             },
-            onComplete: () => coin.destroy(),
         });
+    },
+
+    // The bar icon showing amulet `id`, if it is on screen (not scrolled off).
+    findAmuletIcon(id) {
+        return this.amuletUIGroup?.getChildren?.()
+            .find((child) => child?.getData?.('amuletId') === id && child.scene) || null;
     },
 
     playCoinAnimation() {
@@ -841,7 +854,13 @@ export const CombatHud = {
     },
     updateActionPointUI() {
         const maxActions = Math.max(1, this.gameState.maxActions || 1);
-        const actionsLeft = Phaser.Math.Clamp(this.gameState.actionsLeft || 0, 0, maxActions);
+        // While food's points are cascading in (playActionPointGain), the
+        // quarters not reached yet stay dark.
+        // The cap expires on its own, so a cascade cut short (the scene
+        // closing mid-way) can never leave points hidden.
+        const capLive = this._apShownCap != null && performance.now() < (this._apShownCapUntil || 0);
+        const shownCap = capLive ? this._apShownCap : Infinity;
+        const actionsLeft = Phaser.Math.Clamp(Math.min(this.gameState.actionsLeft || 0, shownCap), 0, maxActions);
         const nodeCount = Math.ceil(maxActions / 4);
 
         if (this.actionPointSprites.length !== nodeCount) {
@@ -859,9 +878,87 @@ export const CombatHud = {
                 const actionIndex = nodeIndex * 4 + section;
                 const unavailable = actionIndex >= maxActions || actionIndex >= actionsLeft;
                 if (unavailable) {
-                    this.drawActionPointSection(overlay, sprite.x, sprite.y, section);
+                    // From the diamond's resting place: a redraw that lands
+                    // mid-hop (playActionPointGain) would otherwise bake the
+                    // lifted position into the shadow and leave it floating.
+                    const restY = sprite.getData('apBaseY') ?? sprite.y;
+                    this.drawActionPointSection(overlay, sprite.x, restY, section);
                 }
             }
+        });
+    },
+    // Food just gave action points: they light up one after another, each
+    // quarter of the diamond flashing and lifting off as it fills, and its
+    // diamond giving a little hop — so the eye follows the food to the AP.
+    playActionPointGain(before, after) {
+        const maxActions = Math.max(1, this.gameState?.maxActions || 1);
+        const from = Phaser.Math.Clamp(Math.floor(before), 0, maxActions);
+        const to = Phaser.Math.Clamp(Math.floor(after), 0, maxActions);
+        if (to <= from || !this.time) return;
+
+        this._apGainToken = (this._apGainToken || 0) + 1;
+        const token = this._apGainToken;
+        this._apShownCap = from;
+        this._apShownCapUntil = performance.now() + AP_GAIN_DELAY_MS + (to - from) * AP_GAIN_STEP_MS + 500;
+
+        for (let i = from; i < to; i++) {
+            this.time.delayedCall(AP_GAIN_DELAY_MS + (i - from) * AP_GAIN_STEP_MS, () => {
+                if (token !== this._apGainToken) return;
+                this._apShownCap = i + 1;
+                if (i + 1 >= to) this._apShownCap = null;
+                this.updateActionPointUI();
+                this.flashActionPointSection(i);
+            });
+        }
+    },
+    // Points spent: the same flash and hop as a gain, played on each quarter
+    // as it goes dark — the light lifts off the diamond and is gone. No
+    // cascade wait; the rare multi-point loss (stance, Omen) staggers a touch.
+    playActionPointSpend(before, after) {
+        const maxActions = Math.max(1, this.gameState?.maxActions || 1);
+        const from = Phaser.Math.Clamp(Math.floor(after), 0, maxActions);
+        const to = Phaser.Math.Clamp(Math.floor(before), 0, maxActions);
+        if (to <= from || !this.time) return;
+        for (let i = to - 1; i >= from; i--) {
+            const step = to - 1 - i;
+            if (step === 0) this.flashActionPointSection(i);
+            else this.time.delayedCall(step * AP_SPEND_STEP_MS, () => this.flashActionPointSection(i));
+        }
+    },
+    flashActionPointSection(actionIndex) {
+        const nodeIndex = Math.floor(actionIndex / 4);
+        const sprite = this.actionPointSprites?.[nodeIndex];
+        const overlay = this.actionPointOverlays?.[nodeIndex];
+        if (!sprite?.scene) return;
+
+        const flash = this.add.graphics().setDepth(10);
+        flash.fillStyle(AP_GAIN_FLASH_COLOR, 1);
+        this.drawActionPointSection(flash, sprite.x, sprite.getData('apBaseY') ?? sprite.y, actionIndex % 4);
+        this.tweens.add({
+            targets: flash,
+            y: -AP_GAIN_LIFT_PX,
+            alpha: 0,
+            duration: AP_GAIN_FLASH_MS,
+            ease: 'Quad.easeOut',
+            onComplete: () => flash.destroy(),
+        });
+
+        // The diamond and its dark overlay hop together. Always from the
+        // diamond's resting place, so overlapping hops can't walk it upward.
+        const baseY = sprite.getData('apBaseY') ?? sprite.y;
+        sprite.setData('apBaseY', baseY);
+        const hopped = [sprite, overlay].filter(Boolean);
+        this.tweens.killTweensOf(hopped);
+        sprite.y = baseY;
+        if (overlay) overlay.y = 0;
+        this.tweens.add({
+            targets: sprite,
+            y: baseY - AP_GAIN_HOP_PX,
+            duration: AP_GAIN_HOP_MS,
+            ease: 'Quad.easeOut',
+            yoyo: true,
+            onUpdate: () => { if (overlay?.scene) overlay.y = sprite.y - baseY; },
+            onComplete: () => { sprite.y = baseY; if (overlay?.scene) overlay.y = 0; },
         });
     },
     drawActionPointSection(graphics, x, y, section) {
@@ -1059,10 +1156,10 @@ export const CombatHud = {
                 // One glyph, mirrored for the left side: both arrows now have
                 // exactly the same silhouette and hit size in the pixel font.
                 const left = this.add.text(ACTIVE_X - 25, ACTIVE_Y, '►', {
-                    fontSize: '12px', fill: '#ffd700', fontFamily: '"HoMM Pixel"',
+                    fontSize: '12px', fill: '#fbad19', fontFamily: '"HoMM Pixel"',
                 }).setOrigin(0.5).setDepth(22).setInteractive({ useHandCursor: true });
                 const right = this.add.text(ACTIVE_X + 25, ACTIVE_Y, '►', {
-                    fontSize: '12px', fill: '#ffd700', fontFamily: '"HoMM Pixel"',
+                    fontSize: '12px', fill: '#fbad19', fontFamily: '"HoMM Pixel"',
                 }).setOrigin(0.5).setDepth(22).setInteractive({ useHandCursor: true });
                 left.setRotation(Math.PI);
                 left.on('pointerdown', () => turn(-1));
@@ -1070,7 +1167,7 @@ export const CombatHud = {
                 this.amuletUIGroup.add(left);
                 this.amuletUIGroup.add(right);
                 const page = this.add.text(ACTIVE_X + 47, ACTIVE_Y, `${this.activeAmuletIndex + 1}/${activeAmulets.length}`, {
-                    fontSize: '7px', fill: '#9f9484', fontFamily: '"HoMM Pixel"',
+                    fontSize: '7px', fill: '#a49a8b', fontFamily: '"HoMM Pixel"',
                 }).setOrigin(0.5).setDepth(22);
                 this.amuletUIGroup.add(page);
             }
@@ -1089,9 +1186,9 @@ export const CombatHud = {
             this.amuletUIGroup.add(sprite);
 
             const cooldown = Math.max(0, Math.floor(amulet.cooldownLeft || 0));
-            const plate = this.add.circle(ACTIVE_X + 9, ACTIVE_Y + 9, 8, cooldown > 0 ? 0x221a18 : 0x27452e, 0.94).setDepth(23);
+            const plate = this.add.circle(ACTIVE_X + 9, ACTIVE_Y + 9, 8, cooldown > 0 ? 0x1c130a : 0x294a33, 0.94).setDepth(23);
             const badge = this.add.text(ACTIVE_X + 9, ACTIVE_Y + 9, cooldown > 0 ? String(cooldown) : '✓', {
-                fontSize: '8px', fill: cooldown > 0 ? '#ffcc88' : '#9cffad', fontFamily: '"HoMM Pixel"',
+                fontSize: '8px', fill: cooldown > 0 ? '#ffcf7f' : '#4a884f', fontFamily: '"HoMM Pixel"',
             }).setOrigin(0.5).setDepth(24);
             this.amuletUIGroup.add(plate);
             this.amuletUIGroup.add(badge);
@@ -1107,7 +1204,7 @@ export const CombatHud = {
         if (needsScroll) {
             const leftArrow = this.add.text(ROW_X - 16, ROW_Y, '◄', {
                 fontSize: '11px',
-                fill: this.amuletScrollOffset > 0 ? '#ffd700' : '#554433',
+                fill: this.amuletScrollOffset > 0 ? '#fbad19' : '#584339',
                 fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5).setDepth(22);
             if (this.amuletScrollOffset > 0) {
@@ -1133,6 +1230,8 @@ export const CombatHud = {
 
             const amuletSprite = this.add.image(x, y, spriteKey, spriteFrame).setInteractive();
             amuletSprite.setDepth(22);
+            // Lets a reward flying in (ui/RewardFlight.js) find its landing spot.
+            amuletSprite.setData('amuletId', amulet.id);
             // Once-per-fight amulets (Twinned Mirror) fade out after they fire.
             if (def?.isSpent?.()) amuletSprite.setTint(0x6f6f6f).setAlpha(0.55);
             this.amuletUIGroup.add(amuletSprite);
@@ -1142,10 +1241,10 @@ export const CombatHud = {
                 amuletSprite.on('pointerdown', () => this.amuletManager.activateAmulet(amulet.id));
                 const cooldown = Math.max(0, Math.floor(amulet.cooldownLeft || 0));
                 if (cooldown > 0) {
-                    const cooldownPlate = this.add.circle(x + 8, y + 8, 8, 0x221a18, 0.92).setDepth(23);
+                    const cooldownPlate = this.add.circle(x + 8, y + 8, 8, 0x1c130a, 0.92).setDepth(23);
                     const cooldownText = this.add.text(x + 8, y + 8, String(cooldown), {
                         fontSize: '8px',
-                        fill: '#ffcc88',
+                        fill: '#ffcf7f',
                         fontFamily: '"HoMM Pixel"',
                     }).setOrigin(0.5).setDepth(24);
                     this.amuletUIGroup.add(cooldownPlate);
@@ -1157,7 +1256,7 @@ export const CombatHud = {
             if (amulet.level && amulet.level > 1) {
                 const levelText = this.add.text(x + 8, y + 8, amulet.level.toString(), {
                     fontSize: '10px',
-                    fill: '#ffffff',
+                    fill: '#fef0cf',
                     fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5).setDepth(23);
                 this.amuletUIGroup.add(levelText);
@@ -1178,7 +1277,7 @@ export const CombatHud = {
         if (needsScroll) {
             const rightArrow = this.add.text(ROW_X + MAX_VISIBLE * SPACING, ROW_Y, '►', {
                 fontSize: '11px',
-                fill: this.amuletScrollOffset < maxOffset ? '#ffd700' : '#554433',
+                fill: this.amuletScrollOffset < maxOffset ? '#fbad19' : '#584339',
                 fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5).setDepth(22);
             if (this.amuletScrollOffset < maxOffset) {
@@ -1195,7 +1294,7 @@ export const CombatHud = {
                 ROW_X + MAX_VISIBLE * SPACING,
                 ROW_Y + 12,
                 `${this.amuletScrollOffset + 1}-${Math.min(this.amuletScrollOffset + MAX_VISIBLE, amulets.length)}/${amulets.length}`,
-                { fontSize: '8px', fill: '#aaaaaa', fontFamily: '"HoMM Pixel"' }
+                { fontSize: '8px', fill: '#afafa2', fontFamily: '"HoMM Pixel"' }
             ).setOrigin(0.5).setDepth(22);
             this.amuletUIGroup.add(countText);
         }
@@ -1248,7 +1347,7 @@ export const CombatHud = {
                 for (let p = 0; p < perCards; p++) {
                     const pipX = x - totalWidth / 2 + p * pipSpacing;
                     const filled = p < progress;
-                    const color = atMax ? 0xffd700 : (filled ? 0xffd700 : 0x554433);
+                    const color = atMax ? 0xfbad19 : (filled ? 0xfbad19 : 0x584339);
                     const pip = this.add.rectangle(pipX, pipY, pipSize, pipSize, color);
                     pip.setDepth(21);
                     this.relicUIGroup.add(pip);
@@ -1268,7 +1367,7 @@ export const CombatHud = {
         const tooltipText = this.add.text(0, 0, description, {
             fontSize: TOOLTIP_BODY_PX,
             fontRole: 'reading',
-            fill: relic.cursed ? '#ff6666' : TOOLTIP_TEXT_COLOR,
+            fill: relic.cursed ? '#c45c45' : TOOLTIP_TEXT_COLOR,
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             align: 'left',
             wordWrap: { width: 190 }
@@ -1347,7 +1446,7 @@ export const CombatHud = {
             this.add.text(0, 0, t(this, 'ui.hud.effectsTitle'), style(TOOLTIP_TEXT_COLOR)),
             ...(entries.length
                 ? entries.map((entry) => this.add.text(0, 0, entry.text, style(entry.color)))
-                : [this.add.text(0, 0, t(this, 'ui.hud.noEffects'), style('#9a8f86'))]),
+                : [this.add.text(0, 0, t(this, 'ui.hud.noEffects'), style('#a49a8b'))]),
         ];
         const LINE_GAP = 2;
         let y = TOOLTIP_PAD.top;
@@ -1386,16 +1485,16 @@ export const CombatHud = {
         this.gameState.playerEffects.forEach((effect) => {
             switch (effect.type) {
                 case 'poison':
-                    entries.push({ text: t(this.scene, 'ui.hud.poison', { count: effect.turns }), color: '#66ff66' });
+                    entries.push({ text: t(this.scene, 'ui.hud.poison', { count: effect.turns }), color: '#71800b' });
                     break;
                 case 'burn':
-                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.burn'), effect.turns), color: '#ff7040' });
+                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.burn'), effect.turns), color: '#ef7c4b' });
                     break;
                 case 'stun':
-                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.stun'), effect.turns), color: '#ffd700' });
+                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.stun'), effect.turns), color: '#fbad19' });
                     break;
                 case 'weakness':
-                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.weakness'), effect.turns), color: '#aa66ff' });
+                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.weakness'), effect.turns), color: '#712a65' });
                     break;
                 default:
                     // An effect with no key of its own still shows, in English.
@@ -1403,7 +1502,7 @@ export const CombatHud = {
                         text: effect.turns != null
                             ? withTurns(this.capitalizeEffect(effect.type), effect.turns)
                             : this.capitalizeEffect(effect.type),
-                        color: '#cccccc'
+                        color: '#d6c2c1'
                     });
             }
         });
@@ -1417,7 +1516,7 @@ export const CombatHud = {
             const mult = gs.shadowBlade.multiplier
                 ? t(this.scene, 'ui.hud.dmgBonus', { percent: Math.round((gs.shadowBlade.multiplier - 1) * 100) })
                 : '';
-            entries.push({ text: buffTurns('ui.hud.shadowBlade', mult, gs.shadowBlade.turns), color: '#b266ff' });
+            entries.push({ text: buffTurns('ui.hud.shadowBlade', mult, gs.shadowBlade.turns), color: '#712a65' });
         }
         if (gs.magicShield && gs.magicShield.turns > 0) {
             // Leather has no DEF to multiply, so the buff reads as dodge there.
@@ -1428,7 +1527,7 @@ export const CombatHud = {
                 : (gs.magicShield.multiplier
                     ? t(this.scene, 'ui.hud.defBonus', { percent: Math.round((gs.magicShield.multiplier - 1) * 100) })
                     : '');
-            entries.push({ text: buffTurns('ui.hud.magicShield', mult, gs.magicShield.turns), color: '#33aaff' });
+            entries.push({ text: buffTurns('ui.hud.magicShield', mult, gs.magicShield.turns), color: '#3f818f' });
         }
         if (gs.boneWall && gs.boneWall > 0) {
             entries.push({
@@ -1437,25 +1536,25 @@ export const CombatHud = {
                     count: gs.boneWall,
                     unit: tCount(this.scene, 'ui.hud.chargeUnit', gs.boneWall),
                 }),
-                color: '#ffffff'
+                color: '#fef0cf'
             });
         }
         if (gs.blockNextAttack) {
-            entries.push({ text: t(this.scene, 'ui.hud.blockNextAttack'), color: '#88ccff' });
+            entries.push({ text: t(this.scene, 'ui.hud.blockNextAttack'), color: '#71b1ae' });
         }
 
         // --- Hits that linger as a flag rather than a playerEffects entry ---
         if ((gs.playerStunnedTurns || 0) > 0) {
-            entries.push({ text: t(this.scene, 'ui.hud.stunned'), color: '#ffcc66' });
+            entries.push({ text: t(this.scene, 'ui.hud.stunned'), color: '#ffcf7f' });
         }
         if (gs.playerSpored) {
-            entries.push({ text: t(this.scene, 'ui.hud.spored'), color: '#b8e986' });
+            entries.push({ text: t(this.scene, 'ui.hud.spored'), color: '#fee093' });
         }
 
         // --- Relic-driven counters ---
         if ((gs.discardCritChance || 0) > 0) {
             const percent = Math.round(gs.discardCritChance * 100);
-            entries.push({ text: t(this.scene, 'ui.hud.discardCrit', { percent }), color: '#ffd700' });
+            entries.push({ text: t(this.scene, 'ui.hud.discardCrit', { percent }), color: '#fbad19' });
         } else {
             // Show progress toward first crit step if the relic is equipped but not yet earned
             const relic = gs.relicEffects || {};
@@ -1468,7 +1567,7 @@ export const CombatHud = {
                             cards: next,
                             percent: Math.round(relic.discardCritPerStep * 100),
                         }),
-                        color: '#ddaa66'
+                        color: '#e7a366'
                     });
                 }
             }
@@ -1552,19 +1651,21 @@ export const CombatHud = {
         if (this.gameState.actionsLeft < WARRIOR_STANCE_AP_COST) {
             SoundHelper.playVariant(this, 'invalid_action', 0.5);
             this.createFloatingText(
-                this.playerAvatar.x, this.playerAvatar.y, t(this, 'stance.noAp'), 0xff6666
+                this.playerAvatar.x, this.playerAvatar.y, t(this, 'stance.noAp'), 0xc45c45
             );
             return;
         }
         // Costs AP but does not hand the enemies a turn: changing your grip is
         // not an attack. The sim's stance policy spends it the same way, so bot
         // and player pay the same price.
+        const apBeforeStance = this.gameState.actionsLeft;
         this.gameState.actionsLeft -= WARRIOR_STANCE_AP_COST;
+        this.playActionPointSpend(apBeforeStance, this.gameState.actionsLeft);
         this.gameState.warriorStance = next;
         SoundHelper.playVariant(this, 'button_click', 0.5);
         this.createFloatingText(
             this.playerAvatar.x, this.playerAvatar.y - 12,
-            t(this, `stance.${next}`), 0xffcc66
+            t(this, `stance.${next}`), 0xffcf7f
         );
         this.updateStanceButton();
         this.updateUI?.();
@@ -1632,7 +1733,7 @@ export const CombatHud = {
         // colour; everything else takes the body ink.
         const tooltipText = this.add.text(0, 0, description, {
             fontSize: TOOLTIP_BODY_PX,
-            fill: definition && definition.cursed ? '#ff6666' : TOOLTIP_TEXT_COLOR,
+            fill: definition && definition.cursed ? '#c45c45' : TOOLTIP_TEXT_COLOR,
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
             wordWrap: { width: 200 }
         }).setOrigin(0, 0);

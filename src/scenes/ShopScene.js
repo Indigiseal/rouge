@@ -1,8 +1,10 @@
 import { CardSystem } from '../systems/CardSystem.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { bagArrivalSoundKey } from '../content/audio/armorSounds.js';
 import { t, translateItemName } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
+import { flyCurrencyGain } from '../ui/CurrencyFlight.js';
 import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
 import { potionNameForHealAmount, shopPotionCards } from '../content/cards/index.js';
 import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
@@ -31,15 +33,15 @@ export class ShopScene extends StationRoomBase {
         
         // Title
         createTitle(this, 320, 20, t(this, 'ui.shop.title'), {
-            color: '#ffffff',
+            color: '#fef0cf',
             fallbackSize: '28px'
         });
         
         // Mode toggle button
         this.modeButton = this.add.text(480, 45, t(this, 'ui.shop.sellItems'), {
             fontSize: '14px',
-            fill: '#ffffff',
-            backgroundColor: '#444444',
+            fill: '#fef0cf',
+            backgroundColor: '#51484b',
             padding: { x: 8, y: 4 },
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         })
@@ -282,7 +284,7 @@ export class ShopScene extends StationRoomBase {
         // Title for sell mode
         this.sellTitle = this.add.text(320, 70, t(this, 'ui.shop.selectSell'), {
             fontSize: '14px',
-            fill: '#ffffff',
+            fill: '#fef0cf',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
         this.inventoryContainer.add(this.sellTitle);
@@ -306,14 +308,14 @@ export class ShopScene extends StationRoomBase {
             const y = 180 + row * 120;
             
             const slot = this.add.container(x, y);
-            const bg = this.add.rectangle(0, 0, 80, 100, 0x333333)
-                .setStrokeStyle(2, i >= 5 ? 0xffd700 : 0x666666) // Gold border for bonus slots
+            const bg = this.add.rectangle(0, 0, 80, 100, 0x342e2e)
+                .setStrokeStyle(2, i >= 5 ? 0xfbad19 : 0x6e7470) // Gold border for bonus slots
                 .setInteractive({ useHandCursor: true })
                 .on('pointerdown', () => this.selectInventoryItem(i));
             
             const itemNameText = this.add.text(0, -35, '', {
                 fontSize: '10px',
-                fill: '#ffffff',
+                fill: '#fef0cf',
                 fontFamily: '"HoMM Pixel", Arial, sans-serif',
                 wordWrap: { width: 70 },
                 align: 'center'
@@ -321,7 +323,7 @@ export class ShopScene extends StationRoomBase {
             
             const itemStatsText = this.add.text(0, -10, '', {
                 fontSize: '9px',
-                fill: '#cccccc',
+                fill: '#d6c2c1',
                 fontFamily: '"HoMM Pixel", Arial, sans-serif',
                 align: 'center'
             }).setOrigin(0.5);
@@ -334,8 +336,8 @@ export class ShopScene extends StationRoomBase {
             
             const sellButton = this.add.text(0, 35, t(this, 'ui.shop.sell'), {
                 fontSize: '12px',
-                fill: '#ff6666',
-                backgroundColor: '#333333',
+                fill: '#c45c45',
+                backgroundColor: '#342e2e',
                 padding: { x: 4, y: 2 },
                 fontFamily: '"HoMM Pixel", Arial, sans-serif'
             })
@@ -442,9 +444,9 @@ export class ShopScene extends StationRoomBase {
         // Update visual selection
         this.inventorySlots.forEach((slot, i) => {
             if (i === index && currentInventory[i]) {
-                slot.bg.setStrokeStyle(3, 0xffff00);
+                slot.bg.setStrokeStyle(3, 0xfbad19);
             } else {
-                slot.bg.setStrokeStyle(2, i >= 5 ? 0xffd700 : 0x666666);
+                slot.bg.setStrokeStyle(2, i >= 5 ? 0xfbad19 : 0x6e7470);
             }
         });
     }
@@ -466,10 +468,13 @@ export class ShopScene extends StationRoomBase {
         }
         
         SoundHelper.playSound(this, 'coin_collect', 0.4);
+        // The sale's coin flies from the sold item's slot to the coin counter.
+        const soldSlot = this.inventorySlots?.[index];
+        if (soldSlot) flyCurrencyGain(this, soldSlot.x, soldSlot.y, 'coins');
         this.showFeedback({
             key: 'ui.shop.soldFeedback',
             vars: { name: this.getItemDisplayName(item), price: sellPrice, before: coinsBefore, after: this.gameState.coins }
-        }, 0xffd700);
+        }, 0xfbad19);
         
         this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
         this.updateInventoryDisplay();
@@ -496,12 +501,13 @@ export class ShopScene extends StationRoomBase {
             : this.gameState.coins >= item.price;
             
         if (!hasEnoughCurrency) {
-            this.showFeedback({ key: 'float.notEnoughCurrency', vars: { currency: this.getCurrencyDisplay(item.currency) } }, 0xff0000);
+            SoundHelper.playVariant(this, 'invalid_action', 0.5);
+            this.showFeedback({ key: 'float.notEnoughCurrency', vars: { currency: this.getCurrencyDisplay(item.currency) } }, 0xb51f1e);
             return;
         }
 
         if (item.data.type === 'gem') {
-            this.showFeedback({ key: 'float.dragGemOntoWeapon' }, 0xffe066);
+            this.showFeedback({ key: 'float.dragGemOntoWeapon' }, 0xffcf7f);
             return;
         }
         
@@ -516,7 +522,7 @@ export class ShopScene extends StationRoomBase {
                 const takeable = this.gameScene.amuletManager.takeableOptions?.(offer?.options)
                     ?? offer?.options ?? [];
                 if (offer?.options?.length && !takeable.length) {
-                    this.showFeedback({ key: 'float.alreadyOwned' }, 0xff4444);
+                    this.showFeedback({ key: 'float.alreadyOwned' }, 0xb51f1e);
                     return;
                 }
                 if (takeable.length) {
@@ -553,12 +559,12 @@ export class ShopScene extends StationRoomBase {
                             this.gameState.coins -= item.price;
                             this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
                         }
-                        this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x9932cc);
+                        this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x712a65);
                         item.purchased = true;
                         this.markButtonDone(button, t(this, 'ui.shop.sold'));
                         if (this.gameScene.updateUI) this.gameScene.updateUI();
                     } else {
-                        this.showFeedback('Already owned!', 0xff0000);
+                        this.showFeedback('Already owned!', 0xb51f1e);
                     }
                 }
             }
@@ -569,7 +575,7 @@ export class ShopScene extends StationRoomBase {
         let destinationSlot = null;
         if (this.gameScene && this.gameScene.inventorySystem) {
             if (!this.gameScene.inventorySystem.addCard(item.data)) {
-                this.showFeedback('Inventory Full!', 0xff0000);
+                this.showFeedback('Inventory Full!', 0xb51f1e);
                 return;
             }
             destinationSlot = this.gameScene.inventorySystem.lastAddedSlot;
@@ -577,14 +583,14 @@ export class ShopScene extends StationRoomBase {
             // Fallback for old system
             const emptySlot = this.gameState.inventory.findIndex(slot => slot === null);
             if (emptySlot === -1) {
-                this.showFeedback('Inventory Full!', 0xff0000);
+                this.showFeedback('Inventory Full!', 0xb51f1e);
                 return;
             }
             this.gameState.inventory[emptySlot] = item.data;
             destinationSlot = emptySlot;
         }
         
-        SoundHelper.playSound(this, 'shop_buy', 0.5);
+        SoundHelper.playSound(this, bagArrivalSoundKey(this, item.data, 'shop_buy'), 0.5);
         
         // Deduct appropriate currency
         if (item.currency === 'crystals') {
@@ -604,7 +610,7 @@ export class ShopScene extends StationRoomBase {
             currency: item.currency,
         });
         this.markButtonDone(button, t(this, 'ui.shop.sold'));
-        this.showFeedback('Purchased!', 0x00ff00);
+        this.showFeedback('Purchased!', 0x71800b);
         this.refreshStationInventoryDisplay();
         
         // Update GameScene UI

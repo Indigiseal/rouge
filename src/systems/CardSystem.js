@@ -1,6 +1,7 @@
 // CardSystem — board orchestration; layout/spawn/combat/fx live in ./board/
 import { CardDataGenerator } from './loot/CardDataGenerator.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { bagArrivalSoundKey } from '../content/audio/armorSounds.js';
 import { showItemTooltip, hideItemTooltip, showBossTooltip, showEnemyTooltip, TOOLTIP_DEPTH, BOARD_TOOLTIP_GAP } from '../ui/ItemTooltip.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
@@ -278,16 +279,16 @@ export class CardSystem {
             } else {
                 card.sprite.destroy();
                 const colors = {
-                    coin: 0xffd700,
-                    crystal: 0x00ffff,
-                    trap: 0xff4500,
-                    armor: 0x888888,
-                    potion: 0xff69b4,
-                    gem: card.data.color || 0xffe066
+                    coin: 0xfbad19,
+                    crystal: 0x71b1ae,
+                    trap: 0xb51f1e,
+                    armor: 0x869089,
+                    potion: 0xa83c69,
+                    gem: card.data.color || 0xffcf7f
                 };
                 card.sprite = this.scene.add.rectangle(
                     card.sprite.x, card.sprite.y, 70, 90,
-                    colors[card.data.type] || 0x666666
+                    colors[card.data.type] || 0x6e7470
                 );
             }
             card.sprite.setScale(1);
@@ -316,7 +317,7 @@ export class CardSystem {
                 this.scene.createFloatingText(
                     card.sprite.x, card.sprite.y - 32,
                     `Mimic! Kill in ${card.data.escapeTurnsLeft} turns`,
-                    0xffaa00
+                    0xfbad19
                 );
             }
 
@@ -339,7 +340,7 @@ export class CardSystem {
                 SoundHelper.playVariant(this.scene, 'player_hurt', 0.5);
             }
             if (actualDamage > 0) {
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${actualDamage}`, 0xff0000);
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${actualDamage}`, 0xb51f1e);
             }
         } else if (card.data.subType === 'poison') {
             // Acid trap opens with its smoke-poof SFX (paired with the poof anim below).
@@ -353,7 +354,7 @@ export class CardSystem {
                     SoundHelper.playVariant(this.scene, 'player_hurt', 0.5);
                 }
                 if (actualDamage > 0) {
-                    this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${actualDamage}`, 0xff0000);
+                    this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${actualDamage}`, 0xb51f1e);
                 }
             }
             if (this.scene.anims.exists('poison_poof_anim')) {
@@ -362,7 +363,7 @@ export class CardSystem {
                 poof.once('animationcomplete', () => poof.destroy());
             }
             if (this.scene.gameState.addPlayerEffect({ ...card.data.abilities[0], killedBy: trapName })) {
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poisoned!', 0x00ff00);
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poisoned!', 0x71800b);
             }
         } else if (card.data.subType === 'reveal') {
             SoundHelper.playSound(this.scene, 'trap_spring', 0.6);
@@ -375,13 +376,21 @@ export class CardSystem {
                     SoundHelper.playVariant(this.scene, 'player_hurt', 0.5);
                 }
                 if (actualDamage > 0) {
-                    this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${actualDamage}`, 0xff0000);
+                    this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${actualDamage}`, 0xb51f1e);
                 }
             }
             this.revealAdjacentCards(index);
         }
         this.scene.updateUI();
-        this.scene.time.delayedCall(1000, () => this.removeCard(index));
+        // A sprung trap is spent: after its beat on the board it dissolves the
+        // way a defeated enemy does, instead of just blinking out. Only if the
+        // slot still holds this trap — something may have replaced it.
+        this.scene.time.delayedCall(1000, () => {
+            if (this.boardCards[index] === card && card.sprite?.scene) {
+                this.playCardDisappearEffect(card.sprite);
+            }
+            this.removeCard(index);
+        });
     }
 
     revealAdjacentCards(index) {
@@ -524,7 +533,8 @@ export class CardSystem {
                     this.scene.amuletManager.modifyGoldFound(card.data.amount) : scaleGoldReward(card.data.amount);
                 
                 this.scene.gameState.coins += coinAmount;
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${coinAmount}`, 0xffd700);
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${coinAmount}`, 0xfbad19);
+                this.scene.playCurrencyGainFlight?.(card.sprite.x, card.sprite.y, 'coins');
                 this.removeCard(index);
                 recordHumanRunEvent(this.scene, 'board_resource_collected', {
                     sourceBoardIndex: index,
@@ -539,7 +549,8 @@ export class CardSystem {
                     ? this.scene.amuletManager.modifyCrystalFound(card.data.amount)
                     : card.data.amount;
                 this.scene.gameState.crystals += crystalAmount;
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${crystalAmount}`, 0x00ffff);
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${crystalAmount}`, 0x71b1ae);
+                this.scene.playCurrencyGainFlight?.(card.sprite.x, card.sprite.y, 'crystals');
                 this.removeCard(index);
                 recordHumanRunEvent(this.scene, 'board_resource_collected', {
                     sourceBoardIndex: index,
@@ -553,11 +564,15 @@ export class CardSystem {
             case 'weapon':
             case 'armor':
             case 'key':
-                SoundHelper.playSound(this.scene, 'key_pickup', 0.5);
-                // falls through to the shared pickup handling below
             case 'magic':
             case 'thorns':
                 if (this.scene.inventorySystem.addCard(card.data)) {
+                    // Only once it is really in the bag: armor makes its own
+                    // equip sound, the others the pickup chime. (Magic and
+                    // thorns never had one.)
+                    if (card.data.type !== 'magic' && card.data.type !== 'thorns') {
+                        SoundHelper.playSound(this.scene, bagArrivalSoundKey(this.scene, card.data, 'key_pickup'), 0.5);
+                    }
                     const destinationSlot = this.scene.inventorySystem.lastAddedSlot;
                     this.removeCard(index);
                     recordHumanRunEvent(this.scene, 'board_loot_collected', {
@@ -582,11 +597,16 @@ export class CardSystem {
                 const modifiedAP = this.scene.amuletManager ?
                     this.scene.amuletManager.modifyFoodAP(baseAP) : baseAP;
 
+                const apBefore = this.scene.gameState.actionsLeft;
                 this.scene.gameState.actionsLeft = Math.min(
                     this.scene.gameState.maxActions,
                     this.scene.gameState.actionsLeft + modifiedAP
                 );
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${modifiedAP} AP`, 0x00ff00);
+                this.scene.playActionPointGain?.(apBefore, this.scene.gameState.actionsLeft);
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${modifiedAP} AP`, 0x71800b);
+                // Eaten straight off the board: it dissolves the way food eaten
+                // from the bag does (the player-card break animation).
+                this.playCardBreakEffect(card.sprite);
                 this.removeCard(index);
                 recordHumanRunEvent(this.scene, 'board_food_consumed', {
                     sourceBoardIndex: index,
@@ -604,14 +624,14 @@ export class CardSystem {
 
             case 'empty':
                 // Nothing here — clear the card, no reward.
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Nothing...', 0x999999);
+                this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Nothing...', 0x869089);
                 this.removeCard(index);
                 break;
 
             case 'enemy':
             case 'eliteEnemy':
                 if (card.data?.isCocoon || (Array.isArray(card.data?.features) && card.data.features.includes('cocoon_shell'))) {
-                    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, 'Deal 1 damage to open', 0xc8b890);
+                    this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, 'Deal 1 damage to open', 0xc8b08a);
                 }
                 break;
         }
@@ -644,7 +664,7 @@ export class CardSystem {
                 ?? offer.options;
             if (!takeable.length) {
                 this.removeCard(index);
-                this.scene.createFloatingText?.(320, 180, 'Nothing new to offer', 0xaaaaaa);
+                this.scene.createFloatingText?.(320, 180, 'Nothing new to offer', 0xafafa2);
                 return;
             }
             // Remove the board token first so it can't be double-clicked.
@@ -673,7 +693,7 @@ export class CardSystem {
                     this.scene.playerAvatar.x, 
                     this.scene.playerAvatar.y, 
                     `+${amulet.value} Max HP`, 
-                    0x00ff00
+                    0x71800b
                 );
             } else if (amulet.effect === 'max_actions') {
                 this.scene.gameState.maxActions += amulet.value;
@@ -681,7 +701,7 @@ export class CardSystem {
                     this.scene.playerAvatar.x, 
                     this.scene.playerAvatar.y, 
                     `+${amulet.value} Max Actions`, 
-                    0x00ff00
+                    0x71800b
                 );
             }
             

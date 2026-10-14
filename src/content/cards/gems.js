@@ -11,9 +11,9 @@ export const GEM_SLOTS_BY_RARITY = {
 };
 
 export const GEMS = [
-  { effect: 'fire', name: 'Fire Gem', frame: 0, color: 0xff7040 },
-  { effect: 'poison', name: 'Poison Gem', frame: 6, color: 0x66ff66 },
-  { effect: 'lightning', name: 'Lightning Gem', frame: 12, color: 0xffe066 }
+  { effect: 'fire', name: 'Fire Gem', frame: 0, color: 0xef7c4b },
+  { effect: 'poison', name: 'Poison Gem', frame: 6, color: 0x71800b },
+  { effect: 'lightning', name: 'Lightning Gem', frame: 12, color: 0xffcf7f }
 ];
 
 export function gemSlotsForRarity(rarity) {

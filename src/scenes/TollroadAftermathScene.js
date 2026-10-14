@@ -22,9 +22,9 @@ export class TollroadAftermathScene extends Phaser.Scene {
     if (this.textures.exists('stoneFloor')) {
       this.add.image(320, 180, 'stoneFloor').setDisplaySize(640, 360);
     } else {
-      this.add.rectangle(320, 180, 640, 360, 0x160f0b);
+      this.add.rectangle(320, 180, 640, 360, 0x1c130a);
     }
-    this.add.rectangle(320, 180, 640, 360, 0x05070b, 0.72);
+    this.add.rectangle(320, 180, 640, 360, 0x050505, 0.72);
 
     // The dead king remains at the edge of the composition while the pendant
     // and the apparition take over the visual focus.
@@ -34,7 +34,7 @@ export class TollroadAftermathScene extends Phaser.Scene {
       .setTint(0x77706a)
       .setAlpha(0.78);
 
-    this.glow = this.add.circle(153, 224, 21, 0x76dfff, 0.12)
+    this.glow = this.add.circle(153, 224, 21, 0x71b1ae, 0.12)
       .setBlendMode(Phaser.BlendModes.ADD);
     // Last Light Pendant is the clearest stone-on-a-chain silhouette already
     // present in the relic atlas; the story item itself remains a separate id.
@@ -57,34 +57,34 @@ export class TollroadAftermathScene extends Phaser.Scene {
       .setBlendMode(Phaser.BlendModes.ADD)
       .setAlpha(0);
 
-    this.add.rectangle(421, 180, 414, 330, 0x100d12, 0.9)
-      .setStrokeStyle(1, 0x7399aa, 0.7);
+    this.add.rectangle(421, 180, 414, 330, 0x0e0b10, 0.9)
+      .setStrokeStyle(1, 0x548990, 0.7);
     createTitle(this, 421, 28, t(this, 'ui.tollroadAftermath.title'), {
-      color: '#bcecff',
+      color: '#71b1ae',
       depth: 3,
     });
 
     this.body = this.add.text(421, 56, '', {
-      ...serifStyle('14px', '#e8dfcf'),
+      ...serifStyle('14px', '#f2d7c4'),
       align: 'left',
       wordWrap: { width: 366 },
       lineSpacing: 2,
     }).setOrigin(0.5, 0).setDepth(3);
 
-    this.button = this.add.rectangle(421, 329, 196, 28, 0x241a18, 0.96)
-      .setStrokeStyle(1, 0x9bc7d8)
+    this.button = this.add.rectangle(421, 329, 196, 28, 0x1c130a, 0.96)
+      .setStrokeStyle(1, 0x71b1ae)
       .setInteractive({ useHandCursor: true })
       .setDepth(4);
     this.buttonLabel = this.add.text(421, 329, '', {
-      ...serifStyle('14px', '#f4ead9'),
+      ...serifStyle('14px', '#fef0cf'),
       align: 'center',
     }).setOrigin(0.5).setDepth(5);
 
     this.button.on('pointerover', () => {
       SoundHelper.playVariant(this, 'hover_button', 0.35);
-      this.button.setFillStyle(0x31414b, 1);
+      this.button.setFillStyle(0x1b3645, 1);
     });
-    this.button.on('pointerout', () => this.button.setFillStyle(0x241a18, 0.96));
+    this.button.on('pointerout', () => this.button.setFillStyle(0x1c130a, 0.96));
     this.button.on('pointerdown', () => this.advance());
     this.input.keyboard?.on('keydown-ENTER', () => this.advance());
     this.input.keyboard?.on('keydown-SPACE', () => this.advance());

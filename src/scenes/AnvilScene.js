@@ -34,17 +34,17 @@ export class AnvilScene extends Phaser.Scene {
         this.input.enabled = true;
         this.cardFx = new BoardCardFx({ scene: this });
 
-        this.add.rectangle(320, 180, 640, 360, 0x2a2325);
+        this.add.rectangle(320, 180, 640, 360, 0x2b2428);
         this.add.image(320, 0, 'anvilIllustration').setOrigin(0.5, 0);
         this.add.image(320, 44, 'anvilBanner');
-        createTitle(this, 320, 42, t(this, 'ui.sandbox.encounter.anvil'), { color: '#f5e6c8' });
+        createTitle(this, 320, 42, t(this, 'ui.sandbox.encounter.anvil'), { color: '#fef0cf' });
 
         this.add.image(22, 19, 'coinUI');
         this.coinsText = this.label(64, 19,
-            t(this, 'ui.anvil.coins', { amount: this.gameState.coins }), '16px', '#f5e6c8');
+            t(this, 'ui.anvil.coins', { amount: this.gameState.coins }), '16px', '#fef0cf');
 
         this.anvilDropZone = this.add.rectangle(320, 140, 68, 88, 0x000000, 0.58)
-            .setStrokeStyle(1, 0x9f7c63);
+            .setStrokeStyle(1, 0xa78f70);
         if (!this.anims.exists('anvil_drop_loop')) {
             this.anims.create({
                 key: 'anvil_drop_loop',
@@ -89,7 +89,7 @@ export class AnvilScene extends Phaser.Scene {
         this.scene.pause();
     }
 
-    label(x, y, value, size = '14px', color = '#f0dfbb') {
+    label(x, y, value, size = '14px', color = '#fef0cf') {
         return this.add.text(x, y, value, serifStyle(size, color)).setOrigin(0.5);
     }
 
@@ -180,7 +180,7 @@ export class AnvilScene extends Phaser.Scene {
             if (card.infoText) face.add(card.infoText);
             container.setData('card', card);
             const light = snapOriginToPixelGrid(this.add.image(0, 0, item.sprite, item.spriteFrame ?? 0))
-                .setTintFill(0xffe9b0).setAlpha(0);
+                .setTintFill(0xfee8b5).setAlpha(0);
             face.add(light);
             container.setData('repairLight', light);
         }
@@ -229,7 +229,7 @@ export class AnvilScene extends Phaser.Scene {
         const missing = item.maxDurability - item.durability;
         const totalCost = totalRepairCost(item, missing, this.gameState.currentFloor);
         const tag = this.add.image(0, 40, 'anvilPriceTag');
-        const cost = this.label(0, 40, String(totalCost), '11px', '#2a2325');
+        const cost = this.label(0, 40, String(totalCost), '11px', '#2b2428');
         container.add([tag, cost]);
         container.setData({ face, cost, tag });
 
@@ -293,7 +293,9 @@ export class AnvilScene extends Phaser.Scene {
         const totalCost = totalRepairCost(item, repairAmount, this.gameState.currentFloor);
 
         if (this.gameState.coins < totalCost) {
-            this.showFeedback(t(this, 'ui.anvil.notEnoughCoins'), 0xff0000);
+            // The same refusal the bag plays for a move it won't take.
+            SoundHelper.playVariant(this, 'invalid_action', 0.5);
+            this.showFeedback(t(this, 'ui.anvil.notEnoughCoins'), 0xb51f1e);
             if (draggedCard?.scene) this.returnRepairCard(draggedCard);
             return;
         }
@@ -340,7 +342,7 @@ export class AnvilScene extends Phaser.Scene {
                 this.showFeedback({
                     key: 'float.repairedItem',
                     vars: { name: translateItemName(this, item) },
-                }, 0xffd700);
+                }, 0xfbad19);
             });
         };
         const strike = (remaining) => {
@@ -386,7 +388,7 @@ export class AnvilScene extends Phaser.Scene {
             this.feedbackText.destroy();
         }
         const feedbackText = this.feedbackText = this.label(320, 88, t(this, message), '12px',
-            color === 0xff0000 ? '#8b3025' : '#614019');
+            color === 0xb51f1e ? '#8a302e' : '#5f411b'); // the error red callers pass
         fitLabel(feedbackText, 500, '12px');
         // Above everything on this screen: the drop plate, the card being carried
         // (depth 10) and the hammer sparks (11). It was drawn at depth 0 and so

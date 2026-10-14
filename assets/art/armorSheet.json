@@ -1,0 +1,313 @@
+{
+ "frames": {
+  "leather_C": {
+   "frame": {
+    "x": 2,
+    "y": 2,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "leather_U": {
+   "frame": {
+    "x": 58,
+    "y": 2,
+    "w": 54,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 54,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 54,
+    "h": 70
+   }
+  },
+  "leather_R": {
+   "frame": {
+    "x": 114,
+    "y": 2,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "leather_E": {
+   "frame": {
+    "x": 170,
+    "y": 2,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "leather_L": {
+   "frame": {
+    "x": 226,
+    "y": 2,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "chain_C": {
+   "frame": {
+    "x": 2,
+    "y": 74,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "chain_U": {
+   "frame": {
+    "x": 58,
+    "y": 74,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "chain_R": {
+   "frame": {
+    "x": 114,
+    "y": 74,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "chain_E": {
+   "frame": {
+    "x": 170,
+    "y": 74,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "chain_L": {
+   "frame": {
+    "x": 226,
+    "y": 74,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "plate_C": {
+   "frame": {
+    "x": 2,
+    "y": 146,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "plate_U": {
+   "frame": {
+    "x": 58,
+    "y": 146,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "plate_R": {
+   "frame": {
+    "x": 114,
+    "y": 146,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "plate_E": {
+   "frame": {
+    "x": 170,
+    "y": 146,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "plate_L": {
+   "frame": {
+    "x": 226,
+    "y": 146,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  }
+ },
+ "meta": {
+  "image": "armorSheet.png",
+  "size": {
+   "w": 282,
+   "h": 218
+  },
+  "scale": "1",
+  "app": "tools/build-item-sheets.py"
+ }
+}

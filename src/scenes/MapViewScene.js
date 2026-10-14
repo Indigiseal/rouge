@@ -21,6 +21,10 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { devToolsEnabled } from '../config/DevTools.js';
 import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 import { createSelectionCorners, createTooltipPanel, TOOLTIP_TEXT_COLOR } from '../ui/NineSlicePanel.js';
+import { setHoverLight } from '../ui/HoverLight.js';
+
+// The header band and title, above the scrolling map nodes (see create()).
+const MAP_HEADER_DEPTH = 18;
 
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
@@ -148,14 +152,17 @@ export class MapViewScene extends Phaser.Scene {
     }
 
     // Background & title
-    this.add.rectangle(320, 180, 640, 360, 0x8b7355);
-    this.add.rectangle(320, 30, 640, 60, 0x6b5d4f);
+    this.add.rectangle(320, 180, 640, 360, 0x776c4f);
+    // The header band and its "Act / Floor" title sit above the map: dragging
+    // the map scrolls the nodes up under them, and at the default depth the
+    // nodes (drawn later) covered the title. Below the dev pick button (20).
+    this.add.rectangle(320, 30, 640, 60, 0x6f5452).setDepth(MAP_HEADER_DEPTH);
     createTitle(this, 320, 30, t(this, 'ui.map.title', { act: this.currentAct, floor: this.gameState.currentFloor || 1 }), {
-      color: '#f2d3aa', fallbackSize: '20px'
+      color: '#f2d3aa', fallbackSize: '20px', depth: MAP_HEADER_DEPTH + 1
     });
 
     // Drag area sits BEHIND nodes so it won't eat clicks
-    this.dragArea = this.add.rectangle(320, 200, 600, 280, 0xffffff, 0)
+    this.dragArea = this.add.rectangle(320, 200, 600, 280, 0xfef0cf, 0)
       .setInteractive({ draggable: true }).setDepth(-1000);
     this.setupDragging();
 
@@ -186,7 +193,7 @@ export class MapViewScene extends Phaser.Scene {
 
     this._manualPick = false;
     this._mapHint = this.add.text(320, 340, t(this, 'ui.map.instructions'), {
-      fontSize: '12px', fill: '#d4b896', fontFamily: '"HoMM Pixel", Arial, sans-serif'
+      fontSize: '12px', fill: '#c8b08a', fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5);
     this._addManualPickButton();
     this.input.keyboard?.on('keydown-ESC', this._onManualPickEscape, this);
@@ -341,10 +348,10 @@ export class MapViewScene extends Phaser.Scene {
             const checkpointY = Math.round((n.__y + nxt[t].__y) / 2);
             checkpoint.__x = 0;
             checkpoint.__y = checkpointY;
-            drawCurve(n.__x, n.__y, 0, checkpointY, 0x5e5146, 2);
-            drawCurve(0, checkpointY, nxt[t].__x, nxt[t].__y, 0x5e5146, 2);
+            drawCurve(n.__x, n.__y, 0, checkpointY, 0x584339, 2);
+            drawCurve(0, checkpointY, nxt[t].__x, nxt[t].__y, 0x584339, 2);
           } else {
-            drawCurve(n.__x, n.__y, nxt[t].__x, nxt[t].__y, 0x5e5146, 2);
+            drawCurve(n.__x, n.__y, nxt[t].__x, nxt[t].__y, 0x584339, 2);
           }
         });
       });
@@ -392,7 +399,7 @@ export class MapViewScene extends Phaser.Scene {
           nxt.forEach((dest, destIdx) => {
             if (!dest || from.connections.includes(destIdx)) return;
             if (!isMapNodeVisible(this.gameState, dest)) return;
-            drawCurve(from.__x, from.__y, dest.__x, dest.__y, 0xc8b06a, 2);
+            drawCurve(from.__x, from.__y, dest.__x, dest.__y, 0xc8ab78, 2);
           });
         }
       }
@@ -460,17 +467,17 @@ export class MapViewScene extends Phaser.Scene {
     const pending = pendingLocationCheckpoint(this.gameState);
     const available = pending?.eventId === checkpoint.eventId;
     const useSheet = this.textures.exists('mapNodes');
-    const frame = this.add.circle(checkpoint.__x, checkpoint.__y, 27, 0x2b1d3d, 0.92)
-      .setStrokeStyle(3, 0xd6ad5c, available ? 1 : 0.65);
+    const frame = this.add.circle(checkpoint.__x, checkpoint.__y, 27, 0x2b1f32, 0.92)
+      .setStrokeStyle(3, 0xd5aa54, available ? 1 : 0.65);
     this.mapContainer.add(frame);
     const innerFrame = this.add.circle(checkpoint.__x, checkpoint.__y, 23, 0x000000, 0)
-      .setStrokeStyle(1, 0xb98ce0, 0.9);
+      .setStrokeStyle(1, 0x675681, 0.9);
     this.mapContainer.add(innerFrame);
     const sprite = useSheet
       ? this.add.image(checkpoint.__x, checkpoint.__y, 'mapNodes', 8)
-      : this.add.circle(checkpoint.__x, checkpoint.__y, 18, 0x755b8d);
+      : this.add.circle(checkpoint.__x, checkpoint.__y, 18, 0x675681);
     sprite.setAlpha(seen ? 0.35 : available ? 1 : 0.22);
-    sprite.setTint?.(available ? 0xe7c8ff : 0xffffff);
+    sprite.setTint?.(available ? 0xb697a3 : 0xfef0cf);
     checkpoint.__sprite = sprite;
     this.mapContainer.add(sprite);
     if (!available) return;
@@ -520,8 +527,11 @@ export class MapViewScene extends Phaser.Scene {
     else if (state === 'available' || state === 'detour')        alpha = 1;
     else if (state === 'current')                             alpha = 1;
 
-    // Tint: lighten available and current nodes slightly so they stand out
-    const AVAILABLE_TINT = 0xddddff;
+    // Nodes show mapNodes42x42.png's own colours. They used to be tinted a
+    // pale blue (0xddddff) when available or current, which shifted every
+    // colour drawn into the sheet; state now reads from alpha alone. Detours
+    // and secret rooms keep their marker tints.
+    const AVAILABLE_TINT = 0xffffff;
     const DETOUR_TINT = 0xe8c96a;
     // A secret room wears the hidden path's purple in every state, so the
     // branch reads as different from the rest of the map at a glance.
@@ -545,11 +555,11 @@ export class MapViewScene extends Phaser.Scene {
     } else {
       // Fallback: coloured circle if spritesheet hasn't loaded yet
       const fallbackColors = {
-        COMBAT: 0x8b7355, ELITE: 0xae5347, SHOP: 0xd4b896, RARE_SHOP: 0xffd700,
-        REST: 0xa8c09a, ANVIL: 0x9a9a9a, EVENT: 0xc8a882, BOSS: 0x6b0000,
-        TREASURE: 0xdaa520, TREASURE_GOOD: 0xffd700
+        COMBAT: 0x776c4f, ELITE: 0xae5347, SHOP: 0xc8b08a, RARE_SHOP: 0xfbad19,
+        REST: 0x9fa081, ANVIL: 0x869089, EVENT: 0xc8b08a, BOSS: 0x8b161e,
+        TREASURE: 0xf8ab2e, TREASURE_GOOD: 0xfbad19
       };
-      nodeSprite = this.add.circle(node.__x, node.__y, 18, fallbackColors[node.type] || 0x8b7355);
+      nodeSprite = this.add.circle(node.__x, node.__y, 18, fallbackColors[node.type] || 0x776c4f);
     }
     nodeSprite.setAlpha(alpha);
     if (nodeSprite.setTint) nodeSprite.setTint(idleTint);
@@ -580,12 +590,15 @@ export class MapViewScene extends Phaser.Scene {
       SoundHelper.playSound(this, 'hover_node', 0.4);
       nodeSprite.y = node.__y - 1;
       if (nodeSprite.setTint) nodeSprite.setTint(0xffffff);
+      // Lit like every button, now that idle nodes show their own colours.
+      setHoverLight(nodeSprite, true);
       this.showHoverCorners(node);
       this.showTooltip(t(this, this.getNodeTooltipKey(node.type)), node.__x, node.__y - 30);
     });
     nodeSprite.on('pointerout', () => {
       nodeSprite.y = node.__y;
       if (nodeSprite.setTint) nodeSprite.setTint(idleTint);
+      setHoverLight(nodeSprite, false);
       this.hideHoverCorners();
       this.hideTooltip();
     });
@@ -599,7 +612,7 @@ export class MapViewScene extends Phaser.Scene {
     if (!devToolsEnabled()) return;
     const x = 92;
     const y = 30;
-    const btn = this.add.rectangle(x, y, 148, 22, 0x3d3228)
+    const btn = this.add.rectangle(x, y, 148, 22, 0x363329)
       .setStrokeStyle(1, 0xf2d3aa)
       .setDepth(20)
       .setInteractive({ useHandCursor: true });
@@ -612,10 +625,10 @@ export class MapViewScene extends Phaser.Scene {
     this._manualPickLabel = label;
     btn.on('pointerover', () => {
       SoundHelper.playVariant(this, 'hover_button', 0.3);
-      btn.setFillStyle(0x524536);
+      btn.setFillStyle(0x584339);
     });
     btn.on('pointerout', () => {
-      btn.setFillStyle(this._manualPick ? 0x5a4630 : 0x3d3228);
+      btn.setFillStyle(this._manualPick ? 0x5c432a : 0x363329);
     });
     btn.on('pointerdown', () => {
       if (this._manualPick) this._cancelManualPick();
@@ -626,10 +639,10 @@ export class MapViewScene extends Phaser.Scene {
   _enterManualPick() {
     if (this._leavingMap || this._manualPick) return;
     this._manualPick = true;
-    this._manualPickBtn?.setFillStyle(0x5a4630);
+    this._manualPickBtn?.setFillStyle(0x5c432a);
     this._manualPickLabel?.setText(t(this, 'ui.map.chooseManuallyCancel'));
     this._mapHint?.setText(t(this, 'ui.map.chooseManuallyHint'));
-    const AVAILABLE_TINT = 0xddddff;
+    const AVAILABLE_TINT = 0xffffff;
     this.actMap.floors.forEach((floorNodes, floorIdx) => {
       floorNodes.forEach((node, nodeIdx) => {
         const sprite = node.__sprite;
@@ -643,7 +656,7 @@ export class MapViewScene extends Phaser.Scene {
       const sprite = checkpoint.__sprite;
       if (!sprite) return;
       sprite.setAlpha(1);
-      sprite.setTint?.(0xe7ddff);
+      sprite.setTint?.(0xd6c2c1);
       this._bindNarrativeCheckpointClick(checkpoint);
     });
   }
@@ -730,7 +743,7 @@ export class MapViewScene extends Phaser.Scene {
 
     // The panel anchors top-left, so shift it to sit centred on the container
     // and drop the label into the frame's inner area rather than the box centre.
-    const bg = createTooltipPanel(this, boxW, boxH, { fillColor: 0x2c1810, strokeColor: 0x3f2f28 })
+    const bg = createTooltipPanel(this, boxW, boxH, { fillColor: 0x28150c, strokeColor: 0x4b3329 })
       .setPosition(Math.round(-boxW / 2), Math.round(-boxH / 2));
     label.setPosition(0, Math.round(-boxH / 2 + padTop + labelH / 2));
 

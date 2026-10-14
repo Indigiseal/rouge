@@ -8,11 +8,11 @@ import { cameraWorldSize } from '../config/renderScale.js';
 import { t, translateItemName, translateRarity } from '../i18n/i18n.js';
 
 const RARITY_COLOR = {
-  common: 0xb0b0b0,
-  uncommon: 0x3fb950,
-  rare: 0x58a6ff,
-  legendary: 0xffd700,
-  cursed: 0xff4444,
+  common: 0xafafa2,
+  uncommon: 0x4a884f,
+  rare: 0x6c6885,
+  legendary: 0xfbad19,
+  cursed: 0xb51f1e,
 };
 
 /**
@@ -59,16 +59,16 @@ export function openAmuletChoiceOverlay(scene, cfg) {
   const title = push(scene.add.text(w / 2, 48, titleText, {
     fontSize: '18px',
     fontFamily: 'monospace',
-    color: '#e6edf3',
+    color: '#d6c2c1',
   }).setOrigin(0.5).setDepth(depth + 1));
 
   const subtitle = push(scene.add.text(w / 2, 72, t(scene, 'ui.amulet.pickOne'), {
     fontSize: '12px',
     fontFamily: 'monospace',
-    color: '#8b949e',
+    color: '#869089',
   }).setOrigin(0.5).setDepth(depth + 1));
 
-  const accent = RARITY_COLOR[rarity] || 0x58a6ff;
+  const accent = RARITY_COLOR[rarity] || 0x6c6885;
   push(scene.add.rectangle(w / 2, 88, 120, 3, accent, 1).setDepth(depth + 1));
 
   const spacing = 110;
@@ -91,7 +91,7 @@ export function openAmuletChoiceOverlay(scene, cfg) {
     const name = push(scene.add.text(x, cardY + 48, translateItemName(scene, item) || item.id, {
       fontSize: '10px',
       fontFamily: 'monospace',
-      color: '#e6edf3',
+      color: '#d6c2c1',
       wordWrap: { width: 100 },
       align: 'center',
     }).setOrigin(0.5, 0).setDepth(depth + 2));
@@ -116,7 +116,7 @@ export function openAmuletChoiceOverlay(scene, cfg) {
         // addAmulet already floated its own reason. This overlay has no cancel
         // button, so leaving it open on a refused pick strands the player with
         // no way out — close instead of trapping them.
-        scene.createFloatingText?.(x, cardY - 36, 'Already owned!', 0xff4444);
+        scene.createFloatingText?.(x, cardY - 36, 'Already owned!', 0xb51f1e);
         close();
         cfg.onCancel?.();
         return;
@@ -125,9 +125,9 @@ export function openAmuletChoiceOverlay(scene, cfg) {
       if (typeof scene.createFloatingText === 'function') {
         scene.createFloatingText(x, cardY - 36, {
           key: 'float.equippedItem', vars: { name: translateItemName(scene, item) },
-        }, 0x9932cc);
+        }, 0x712a65);
       } else if (typeof scene.showFeedback === 'function') {
-        scene.showFeedback({ key: 'float.equippedItem', vars: { name: translateItemName(scene, item) } }, 0x9932cc);
+        scene.showFeedback({ key: 'float.equippedItem', vars: { name: translateItemName(scene, item) } }, 0x712a65);
       }
       recordHumanRunEvent(scene, 'amulet_chosen', {
         title: titleText,

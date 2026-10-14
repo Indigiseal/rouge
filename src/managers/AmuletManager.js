@@ -90,7 +90,7 @@ export class AmuletManager {
             this.scene.createFloatingText(320, 160, {
                 key: 'float.itemReplaced',
                 vars: { name: translateItemName(this.scene, definition?.name || amuletId) },
-            }, 0xffaa66);
+            }, 0xe89353);
         }
         return true;
     }
@@ -134,13 +134,13 @@ export class AmuletManager {
 
         // Already have a stronger version that replaces this one.
         if (this.isReplacedByOwned(amuletId)) {
-            this.scene.createFloatingText(320, 180, 'Already upgraded!', 0xffa500);
+            this.scene.createFloatingText(320, 180, 'Already upgraded!', 0xfbad19);
             return false;
         }
         
         // Check if stackable or already owned
         if (this.hasAmulet(amuletId) && !definition.stackable) {
-            this.scene.createFloatingText(320, 180, 'Already owned!', 0xff0000);
+            this.scene.createFloatingText(320, 180, 'Already owned!', 0xb51f1e);
             return false;
         }
 
@@ -174,9 +174,9 @@ export class AmuletManager {
                 this.scene.createFloatingText(320, 180, {
                     key: 'float.upgradedItem',
                     vars: { name: translateItemName(this.scene, definition.name) },
-                }, 0x00ff00);
+                }, 0x71800b);
             } else {
-                this.scene.createFloatingText(320, 180, 'Max level reached!', 0xffa500);
+                this.scene.createFloatingText(320, 180, 'Max level reached!', 0xfbad19);
                 return false;
             }
         } else {
@@ -225,7 +225,7 @@ export class AmuletManager {
                 this.scene.playerAvatar.x,
                 this.scene.playerAvatar.y,
                 `+${gained} HP (Regen)`,
-                0x00ff00
+                0x71800b
             );
         }
     }
@@ -254,7 +254,7 @@ export class AmuletManager {
         const definition = this.amuletDefinitions[amuletId];
         if (!amulet || !definition?.activeAbility) return false;
         if ((amulet.cooldownLeft || 0) > 0) {
-            this.scene.createFloatingText(320, 42, `Cooldown: ${amulet.cooldownLeft}`, 0xffaa66);
+            this.scene.createFloatingText(320, 42, `Cooldown: ${amulet.cooldownLeft}`, 0xe89353);
             return false;
         }
 
@@ -264,12 +264,12 @@ export class AmuletManager {
                 .map((card, index) => ({ card, index }))
                 .filter(({ card }) => card && !card.revealed && card.data?.type === 'food');
             if (targets.length === 0) {
-                this.scene.createFloatingText(320, 42, 'No hidden food', 0xcccccc);
+                this.scene.createFloatingText(320, 42, 'No hidden food', 0xd6c2c1);
                 return false;
             }
             for (const { index } of targets) this.scene.cardSystem.revealCard(index, true);
             this.startCooldown(amulet, definition);
-            this.scene.createFloatingText(320, 42, `Food revealed: ${targets.length}`, 0x66ff99);
+            this.scene.createFloatingText(320, 42, `Food revealed: ${targets.length}`, 0x4a884f);
             return true;
         }
 
@@ -285,30 +285,30 @@ export class AmuletManager {
                 .map((card, index) => ({ card, index }))
                 .filter(({ card }) => card && !card.revealed && card.data?.type === reveal.type);
             if (targets.length === 0) {
-                this.scene.createFloatingText(320, 42, reveal.empty, 0xcccccc);
+                this.scene.createFloatingText(320, 42, reveal.empty, 0xd6c2c1);
                 return false;
             }
             const target = targets[Math.floor(Math.random() * targets.length)];
             this.scene.cardSystem.revealCard(target.index, true);
             this.startCooldown(amulet, definition);
-            this.scene.createFloatingText(320, 42, reveal.success, 0x66ff99);
+            this.scene.createFloatingText(320, 42, reveal.success, 0x4a884f);
             return true;
         }
 
         if (definition.activeAbility === 'swapCards') {
             const available = (this.scene.cardSystem?.boardCards || []).filter(Boolean);
             if (available.length < 2) {
-                this.scene.createFloatingText(320, 42, 'Not enough cards', 0xcccccc);
+                this.scene.createFloatingText(320, 42, 'Not enough cards', 0xd6c2c1);
                 return false;
             }
             if (this.activeAbility?.amuletId === amuletId) {
                 this.cancelActiveAbility();
-                this.scene.createFloatingText(320, 42, 'Swap cancelled', 0xcccccc);
+                this.scene.createFloatingText(320, 42, 'Swap cancelled', 0xd6c2c1);
                 return false;
             }
             this.cancelActiveAbility();
             this.activeAbility = { amuletId, firstIndex: null };
-            this.scene.createFloatingText(320, 42, 'Choose the first card', 0x66ccff);
+            this.scene.createFloatingText(320, 42, 'Choose the first card', 0x71b1ae);
             return true;
         }
         return false;
@@ -324,11 +324,11 @@ export class AmuletManager {
         if (active.firstIndex == null) {
             active.firstIndex = index;
             this.drawSwapSelection(card);
-            this.scene.createFloatingText(card.sprite?.x || 320, (card.sprite?.y || 80) - 30, 'First', 0x66ccff);
+            this.scene.createFloatingText(card.sprite?.x || 320, (card.sprite?.y || 80) - 30, 'First', 0x71b1ae);
             return true;
         }
         if (active.firstIndex === index) {
-            this.scene.createFloatingText(card.sprite?.x || 320, (card.sprite?.y || 80) - 30, 'Choose another card', 0xffaa66);
+            this.scene.createFloatingText(card.sprite?.x || 320, (card.sprite?.y || 80) - 30, 'Choose another card', 0xe89353);
             return true;
         }
 
@@ -338,7 +338,7 @@ export class AmuletManager {
         const swapped = this.scene.cardSystem?.swapCardSeats?.(first, card, { animate: true });
         if (swapped) {
             this.startCooldown(amulet, definition);
-            this.scene.createFloatingText(320, 42, 'Cards swapped', 0x66ff99);
+            this.scene.createFloatingText(320, 42, 'Cards swapped', 0x4a884f);
         }
         this.cancelActiveAbility();
         return true;
@@ -358,7 +358,7 @@ export class AmuletManager {
         const width = (sprite.displayWidth || sprite.width || 53) + 8;
         const height = (sprite.displayHeight || sprite.height || 70) + 8;
         this.swapSelectionMarker = this.scene.add.graphics().setDepth(30);
-        this.swapSelectionMarker.lineStyle(2, 0x66ccff, 1);
+        this.swapSelectionMarker.lineStyle(2, 0x71b1ae, 1);
         this.swapSelectionMarker.strokeRoundedRect(sprite.x - width / 2, sprite.y - height / 2, width, height, 4);
     }
 
@@ -479,7 +479,7 @@ export class AmuletManager {
                 this.scene.playerAvatar.x,
                 this.scene.playerAvatar.y - 20,
                 `+${gained} AP (Bell)`,
-                0x66ddff
+                0x71b1ae
             );
         }
     }
@@ -521,7 +521,7 @@ export class AmuletManager {
                 this.scene.playerAvatar.x,
                 this.scene.playerAvatar.y - 12,
                 `+${gained} HP (Life)`,
-                0xff6688
+                0xa83c69
             );
         }
         return gained;
@@ -711,7 +711,9 @@ export class AmuletManager {
         this.gameState.fortuneCardRewardFloor = floor;
         this.gameState.crystals = (this.gameState.crystals || 0) + bonus;
         this.scene.updateUI?.();
-        this.scene.createFloatingText?.(512, 382, `+${bonus} crystal (Fortune)`, 0x66ddff);
+        this.scene.createFloatingText?.(512, 382, `+${bonus} crystal (Fortune)`, 0x71b1ae);
+        const hero = this.scene.playerAvatar;
+        if (hero) this.scene.playCurrencyGainFlight?.(hero.x, hero.y, 'crystals');
     }
 
     // Watcher's Lamp — wants one trap revealed at floor start
@@ -819,7 +821,7 @@ export class AmuletManager {
                         pair[0].restX ?? pair[0].sprite.x,
                         (pair[0].restY ?? pair[0].sprite.y) - 16,
                         'March!',
-                        0xc8b06a
+                        0xc8ab78
                     );
                 }
             }
@@ -855,7 +857,7 @@ export class AmuletManager {
                 avatar?.x ?? 320,
                 (avatar?.y ?? 180) - 16,
                 'Close ranks!',
-                0xc8b06a
+                0xc8ab78
             );
         }
     }
@@ -901,7 +903,7 @@ export class AmuletManager {
                 this.scene.playerAvatar.x,
                 this.scene.playerAvatar.y - 18,
                 'Bound!',
-                0xff66aa
+                0xa83c69
             );
         }
         return true;
@@ -932,7 +934,7 @@ export class AmuletManager {
                 this.scene.playerAvatar.x,
                 this.scene.playerAvatar.y - 14,
                 `+${delta} Max HP (Journal)`,
-                0x66ff88
+                0x4a884f
             );
         }
     }

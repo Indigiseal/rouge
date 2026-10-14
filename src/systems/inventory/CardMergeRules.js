@@ -194,7 +194,6 @@ export const CardMergeRules = {
         // already get below. This is what lets a mirror-duplicated pair climb.
         if (isGauntlet(baseCard) && isGauntlet(secondCard)) {
             const upgraded = createGauntletCard(nextGauntletRarity(baseCard.rarity) || 'legendary');
-            this.scene.createFloatingText(512, 380, `Refreshed: ${upgraded.maxDurability} pips`, 0x00ff00);
             return upgraded;
         }
 
@@ -253,7 +252,6 @@ export const CardMergeRules = {
         // which meant two beat-up daggers gave a weak uncommon dagger.)
         if (baseCard.type === 'weapon' || baseCard.type === 'armor' || baseCard.type === 'thorns') {
             upgradedCard.durability = upgradedCard.maxDurability;
-            this.scene.createFloatingText(512, 380, `Refreshed: ${upgradedCard.maxDurability} pips`, 0x00ff00);
         }
 
         // Briar upgrades belong to the card, not its current rarity. Carry the

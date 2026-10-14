@@ -16,10 +16,10 @@ export function setupBossRewardRoom(scene) {
     scene.gameState.playerHealth = scene.gameState.maxHealth;
     scene.gameState.actionsLeft = scene.gameState.maxActions;
     if (healedHP > 0) {
-        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, `+${healedHP} HP`, 0x66ff88);
+        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, `+${healedHP} HP`, 0x4a884f);
     }
     if (refilledAP > 0) {
-        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y + 14, `+${refilledAP} AP`, 0x66ddff);
+        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y + 14, `+${refilledAP} AP`, 0x71b1ae);
     }
 
     // Currency reward — scales with floor
@@ -28,7 +28,9 @@ export function setupBossRewardRoom(scene) {
     const crystalBonus = 4 + Math.floor(floor / 6);
     scene.gameState.coins += coinBonus;
     scene.gameState.crystals += crystalBonus;
-    scene.createFloatingText(320, 140, `+${coinBonus} Coins  +${crystalBonus} Crystals`, 0xffd700);
+    scene.createFloatingText(320, 140, `+${coinBonus} Coins  +${crystalBonus} Crystals`, 0xfbad19);
+    scene.playCurrencyGainFlight?.(320, 140, 'coins');
+    scene.time?.delayedCall?.(120, () => scene.playCurrencyGainFlight?.(320, 140, 'crystals'));
 
     // Generate 3 reward items: amulet, weapon/armor (boss-quality), gem.
     // Quality is the "natural" boss-act tier, then run through capRewardRarity
@@ -73,9 +75,9 @@ export function restoreSavedBossRewardRoom(scene) {
 
 export function makeBossRewardGem(scene) {
     const gems = [
-        { effect: 'fire',      name: 'Fire Gem',      frame: 0,  color: 0xff7040 },
-        { effect: 'poison',    name: 'Poison Gem',    frame: 6,  color: 0x66ff66 },
-        { effect: 'lightning', name: 'Lightning Gem', frame: 12, color: 0xffe066 }
+        { effect: 'fire',      name: 'Fire Gem',      frame: 0,  color: 0xef7c4b },
+        { effect: 'poison',    name: 'Poison Gem',    frame: 6,  color: 0x71800b },
+        { effect: 'lightning', name: 'Lightning Gem', frame: 12, color: 0xffcf7f }
     ];
     const gem = gems[Math.floor(Math.random() * gems.length)];
     return {

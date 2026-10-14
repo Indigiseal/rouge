@@ -1,6 +1,7 @@
 // BoardCardFx — VFX/FX helpers, info text, kill loot presentation
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
+import { playCardDissolve } from '../../ui/CardDissolve.js';
 import { hideGemSockets, showGemSockets } from '../../ui/GemSockets.js';
 import { attachGemShine } from '../../ui/GemShine.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
@@ -38,6 +39,9 @@ const RESOURCE_LABEL_Y = 19;
 // The name along a card's bottom ("Potion", "Food", "Soul Drain"...). 9px, the
 // size the gem label already used; these were 11-12px and crowded the art.
 const CARD_LABEL_SIZE = '9px';
+// The number on a card (damage, protection, heal, HP/ATK on enemies...): one
+// size for every card type, on the board, in the bag and in the shops.
+export const CARD_VALUE_SIZE = '10px';
 
 export class BoardCardFx {
     constructor(cs) {
@@ -189,7 +193,7 @@ function createCardInfoText(card) {
             }).setOrigin(0.5);
             const coinAmount = this.scene.add.text(
                 CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.amount}`, {
-                    fontSize: '12px', fill: '#ffcf7f', fontFamily: '"HoMM Pixel"'
+                    fontSize: CARD_VALUE_SIZE, fill: '#ffcf7f', fontFamily: '"HoMM Pixel"'
                 }
             ).setOrigin(0.5);
             container.add([coinLabel, coinAmount]);
@@ -204,7 +208,7 @@ function createCardInfoText(card) {
             }).setOrigin(0.5);
             const crystalAmount = this.scene.add.text(
                 CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.amount}`, {
-                    fontSize: '12px', fill: '#a83c69', fontFamily: '"HoMM Pixel"'
+                    fontSize: CARD_VALUE_SIZE, fill: '#a83c69', fontFamily: '"HoMM Pixel"'
                 }
             ).setOrigin(0.5);
             container.add([crystalLabel, crystalAmount]);
@@ -226,7 +230,7 @@ function createCardInfoText(card) {
             if (trapDamage != null) {
                 const container = this.scene.add.container(card.sprite.x, card.sprite.y);
                 const damageText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${trapDamage}`, {
-                    fontSize: '11px',
+                    fontSize: CARD_VALUE_SIZE,
                     fill: '#ffcf7f',
                     fontFamily: '"HoMM Pixel"'
                 }).setOrigin(0.5);
@@ -252,7 +256,7 @@ function createCardInfoText(card) {
             if (!isEgg) {
                 container.add(this.scene.add.text(
                     CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.actionAmount}`, {
-                        fontSize: '12px', fill: '#a55119', fontFamily: '"HoMM Pixel"'
+                        fontSize: CARD_VALUE_SIZE, fill: '#a55119', fontFamily: '"HoMM Pixel"'
                     }
                 ).setOrigin(0.5));
             }
@@ -270,7 +274,7 @@ function createCardInfoText(card) {
             }).setOrigin(0.5);
             const potionAmount = this.scene.add.text(
                 CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.healAmount ?? 0}`, {
-                    fontSize: '12px', fill: '#a8e870', fontFamily: '"HoMM Pixel"'
+                    fontSize: CARD_VALUE_SIZE, fill: '#71800b', fontFamily: '"HoMM Pixel"'
                 }
             ).setOrigin(0.5);
             container.add([potionLabel, potionAmount]);
@@ -296,7 +300,7 @@ function createCardInfoText(card) {
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
             const magicLabel = this.scene.add.text(0, 18, translateItemName(this.scene, card.data), {
                 fontSize: CARD_LABEL_SIZE,
-                fill: '#a9e5de',
+                fill: '#71b1ae',
                 fontFamily: '"HoMM Pixel"',
                 wordWrap: { width: 60 },
                 align: 'center'
@@ -310,8 +314,8 @@ function createCardInfoText(card) {
         case 'thorns': {
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
             const damageText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.thornDamage}`, {
-                fontSize: '11px',
-                fill: '#9dff7a',
+                fontSize: CARD_VALUE_SIZE,
+                fill: '#71800b',
                 fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             container.add(damageText);
@@ -343,7 +347,7 @@ function createCardInfoText(card) {
         case 'gem': {
             const label = this.scene.add.text(card.sprite.x, card.sprite.y + 22, this.getGemLabel(card.data), {
                 fontSize: '9px',
-                fill: '#ffe8b0',
+                fill: '#fee8b5',
                 fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             attachInfoText(label);
@@ -356,7 +360,7 @@ function createCardInfoText(card) {
             const talentFx = this.scene.gameState?.talentEffects || null;
             const damageLabel = `${getDisplayedWeaponDamage(characterId, card.data, talentFx)}`;
             const damageText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, damageLabel, {
-                fontSize: '11px',
+                fontSize: CARD_VALUE_SIZE,
                 fill: '#ffcf7f',
                 fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
@@ -405,8 +409,8 @@ function createCardInfoText(card) {
                 : card.data.protection;
             const protectionText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${shownProtection}`, {
                 // 11px to match weapon/thorns/trap — armor was the odd one out.
-                fontSize: '11px',
-                fill: warded ? '#88ddff' : '#ffcf7f',
+                fontSize: CARD_VALUE_SIZE,
+                fill: warded ? '#71b1ae' : '#ffcf7f',
                 fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             container.add(protectionText);
@@ -454,7 +458,7 @@ function createCardInfoText(card) {
             this.scene.amuletManager && 
             card.data.id && 
             this.scene.amuletManager.amuletDefinitions[card.data.id]?.cursed 
-            ? '#ff6666' : '#ffffff';
+            ? '#c45c45' : '#fef0cf';
             
         attachInfoText(this.scene.add.text(x, y, infoText, {
             fontSize: '10px',
@@ -490,7 +494,7 @@ function _buildEnemyCornerStats(card) {
     // Warm parchment cream, shared by both stats.
     const STAT_FILL = '#fef0cf';
     const style = {
-        fontSize: '11px',
+        fontSize: CARD_VALUE_SIZE,
         fill: STAT_FILL,
         fontFamily: '"HoMM Pixel"',
     };
@@ -514,7 +518,7 @@ function _buildEnemyCornerStats(card) {
             fontFamily: '"HoMM Pixel"',
             align: 'center',
             wordWrap: { width: 44 },
-            stroke: '#1a1210',
+            stroke: '#1b0b09',
             strokeThickness: 3,
         });
         children.push(nameText);
@@ -557,16 +561,16 @@ function _buildBossStats(card) {
     const fillBar = this.scene.make.image({ x: -barWidth / 2, y: 0, key: 'healthBar', add: false }).setOrigin(0, 0.5);
     const hpText = _makeCornerText(this.scene, 0, -1, '', {
         fontSize: '9px',
-        fill: '#ffffff',
+        fill: '#fef0cf',
         fontFamily: '"HoMM Pixel"',
-        stroke: '#230000',
+        stroke: '#250d08',
         strokeThickness: 2
     });
     const atkText = _makeCornerText(this.scene, 0, 14, '', {
         fontSize: '10px',
         fill: '#ffcf7f',
         fontFamily: '"HoMM Pixel"',
-        stroke: '#2b1600',
+        stroke: '#361808',
         strokeThickness: 2
     });
 
@@ -739,7 +743,7 @@ function enableGemDrag(card, index) {
                 card.sprite.x,
                 card.sprite.y - 30,
                 'Drag onto a weapon to socket',
-                0xffe066
+                0xffcf7f
             );
         }
         dragged = false;
@@ -804,7 +808,7 @@ function playLightningShine(x, y, targetSprite) {
     const depth = (targetSprite?.depth || 0) + 6;
 
     // Bright electric burst.
-    const glow = scene.add.circle(x, y, 24, 0xfff6a0, 0.9)
+    const glow = scene.add.circle(x, y, 24, 0xfee093, 0.9)
         .setBlendMode(Phaser.BlendModes.SCREEN)
         .setDepth(depth)
         .setScale(0.4);
@@ -834,8 +838,8 @@ function playLightningShine(x, y, targetSprite) {
             for (let k = 1; k < pts.length; k++) bolts.lineTo(pts[k].x, pts[k].y);
             bolts.strokePath();
         };
-        stroke(4, 0xffe066, 0.6);
-        stroke(2, 0xffffff, 1);
+        stroke(4, 0xffcf7f, 0.6);
+        stroke(2, 0xfef0cf, 1);
     };
     drawBolt(x - 6);
     drawBolt(x + 8);
@@ -888,8 +892,8 @@ function playLightningArc(fromX, fromY, toX, toY) {
         for (let k = 1; k < pts.length; k++) bolts.lineTo(pts[k].x, pts[k].y);
         bolts.strokePath();
     };
-    stroke(5, 0xffe066, 0.5);
-    stroke(2, 0xffffff, 1);
+    stroke(5, 0xffcf7f, 0.5);
+    stroke(2, 0xfef0cf, 1);
 
     scene.tweens.add({
         targets: bolts, alpha: 0, duration: 180, ease: 'Cubic.easeIn', delay: 60,
@@ -975,9 +979,10 @@ function playKillLootPickup(x, y, reward, sourceLabel = 'Pick') {
     this.scene.createFloatingText(
         x, y - 18,
         isCoin ? `+${amount} Coin (${sourceLabel})` : `+${amount} Crystal (${sourceLabel})`,
-        isCoin ? 0xffd700 : 0x00ffff
+        isCoin ? 0xfbad19 : 0x71b1ae
     );
     this.scene.updateUI?.();
+    this.scene.playCurrencyGainFlight?.(x, y, isCoin ? 'coins' : 'crystals');
 
     // Visual flourish (skipped headlessly in the sim, where textures are absent).
     const sheetKey = isCoin ? 'coinJumpSheet' : 'crystalScatterSheet';
@@ -1041,71 +1046,18 @@ function playBossDeathEffect(sprite) {
     }
 }
 
-function playCardDisappearEffect(cardSprite, options = {}) {
-    const sheetKey = options.sheetKey ?? 'cardDisappearSheet';
-    const animKey = options.animKey ?? 'card_disappear_anim';
-    if (!cardSprite || !this.scene.textures?.exists?.(sheetKey)) return;
-    const x = cardSprite.x;
-    const y = cardSprite.y;
-    const depth = options.depth ?? ((cardSprite.depth || 0) + 5);
-    const lift = options.lift ?? 4;
-    const liftDuration = options.liftDuration ?? 220;
-    // Short beat where the card hovers (lifted) before the dissolve plays.
-    const holdDuration = options.hold ?? 100;
-
-    // Ghost clone that lifts as it dissolves, so the player sees the actual
-    // card rise while the dissolve plays over it. Skipped for placeholder
-    // textures (rectangles, missing art) which have nothing meaningful to copy.
-    let ghost = null;
-    const texKey = cardSprite.texture?.key;
-    if (texKey && texKey !== '__MISSING' && texKey !== '__DEFAULT') {
-        ghost = this.scene.add.sprite(x, y, texKey, cardSprite.frame?.name);
-        ghost.setScale(cardSprite.scaleX, cardSprite.scaleY);
-        ghost.setOrigin(cardSprite.originX, cardSprite.originY);
-        ghost.setDepth(depth);
-        this.scene.tweens.add({ targets: ghost, y: y - lift, duration: liftDuration, ease: 'Sine.easeOut' });
-    }
-
-    const fx = snapOriginToPixelGrid(this.scene.add.sprite(x, y, sheetKey, 0));
-    fx.setDepth(depth + 1);
-    this.scene.tweens.add({ targets: fx, y: y - lift, duration: liftDuration, ease: 'Sine.easeOut' });
-
-    const cleanup = () => {
-        if (fx.active) fx.destroy();
-        if (ghost && ghost.active) ghost.destroy();
-    };
-    // Let the card hover for the hold beat, then dissolve. The dissolve
-    // frames depict the card vanishing on their own, so the ghost is removed
-    // the instant it starts — otherwise the intact card underneath shows
-    // through the later (near-transparent) frames and flickers back in.
-    this.scene.time.delayedCall(holdDuration, () => {
-        if (!fx.active) return;
-        if (ghost && ghost.active) ghost.destroy();
-        if (this.scene.anims.exists(animKey)) {
-            fx.play(animKey);
-            fx.once('animationcomplete', cleanup);
-        } else {
-            cleanup();
-        }
-    });
-    // Safety net in case the animation event is missed (e.g. anim missing).
-    this.scene.time.delayedCall(holdDuration + 1000, cleanup);
-    return fx;
+function playCardDisappearEffect(cardSprite) {
+    if (!cardSprite) return null;
+    return playCardDissolve(this.scene, cardSprite, 'enemy', { depth: (cardSprite.depth || 0) + 5 });
 }
 
 // A player's card that spent its last pip — weapon, armor or thorns. Exactly
 // the enemy death (same lift, same hold, same depth rule); only the animation
 // differs, drawn for the player's own cards so a breaking item never reads as
 // an enemy dying.
-function playCardBreakEffect(cardSprite, options = {}) {
-    const hasBreakSheet = this.scene.textures?.exists?.('cardBreakSheet');
-    return this.playCardDisappearEffect(cardSprite, {
-        // Falls back to the enemy dissolve rather than to nothing if the
-        // player-card sheet is missing.
-        sheetKey: hasBreakSheet ? 'cardBreakSheet' : 'cardDisappearSheet',
-        animKey: hasBreakSheet ? 'card_break_anim' : 'card_disappear_anim',
-        ...options,
-    });
+function playCardBreakEffect(cardSprite) {
+    if (!cardSprite) return null;
+    return playCardDissolve(this.scene, cardSprite, 'break', { depth: (cardSprite.depth || 0) + 5 });
 }
 
 // A card dropped into the discard chute. It is pulled to the chute's mouth
@@ -1194,8 +1146,10 @@ function mimicTreasureExplosion(x, y) {
         SoundHelper.playSound(this.scene, 'treasure_explode', 0.5);
         this.scene.gameState.coins += coinReward;
         this.scene.gameState.crystals += crystalReward;
-        this.scene.createFloatingText(x, y - 20, `+${coinReward} Coins +${crystalReward} Crystals!`, 0xffd700);
+        this.scene.createFloatingText(x, y - 20, `+${coinReward} Coins +${crystalReward} Crystals!`, 0xfbad19);
         this.scene.updateUI?.();
+        this.scene.playCurrencyGainFlight?.(x, y, 'coins');
+        this.scene.time?.delayedCall?.(120, () => this.scene.playCurrencyGainFlight?.(x, y, 'crystals'));
     });
     // Safety: ensure the splash clears even if the anim event misses
     this.scene.time.delayedCall(900, () => splashSprite.active && splashSprite.destroy());
@@ -1210,7 +1164,7 @@ function mimicEscape(index) {
     }
     const x = card.sprite.x;
     const y = card.sprite.y;
-    this.scene.createFloatingText(x, y - 20, 'Mimic Escaped!', 0xff6600);
+    this.scene.createFloatingText(x, y - 20, 'Mimic Escaped!', 0xef7c4b);
     SoundHelper.playSound(this.scene, 'mimic_escaped', 0.5);
 
     const splash = this.scene.add.sprite(x, y, 'splashSheet');

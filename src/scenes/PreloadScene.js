@@ -1,4 +1,5 @@
 import { loadAssetManifest } from '../content/assets/AssetManifest.js';
+import { splitItemSheets } from '../content/assets/itemSheets.js';
 import { fontFamily } from '../ui/fontFamilies.js';
 import { PIXEL_SCALE } from '../config/renderScale.js';
 import { wrapUiText } from '../ui/wrapText.js';
@@ -85,6 +86,10 @@ export class PreloadScene extends Phaser.Scene {
         // Assets are in — take the loading overlay down before anything draws.
         this.removeBootLoader();
         this.installCrispTextFactory();
+
+        // Weapon and armor art arrives as two sheets; give every item its own
+        // texture under the key the cards use, before anything draws one.
+        splitItemSheets(this);
 
         // Each location's back, flip and hover, off the shared sheets. Built
         // before the fallbacks below so a missing row falls back to them.

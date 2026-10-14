@@ -24,9 +24,9 @@ export const OPTIONS_PANEL_H = 292;
 // headings and rules of their own, and a second copy of these numbers is how
 // the two drift apart.
 export const OPTIONS_INK = '#050505';        // headings and control labels
-export const OPTIONS_RESET_INK = '#ffc2a2';  // label on the red plate
+export const OPTIONS_RESET_INK = '#e4bc9b';  // label on the red plate
 export const OPTIONS_BACKDROP = 0x4a433c;    // flat ground behind the paper
-const OPTIONS_RULE = 0x8e7352;               // hairline between control groups
+const OPTIONS_RULE = 0x926b4a;               // hairline between control groups
 const OPTIONS_RULE_W = 156;
 
 const SERIF_BODY_PX = FONT_SIZE.body;
@@ -45,8 +45,8 @@ export const OptionsSkin = {
                 }
             }
         }
-        return this.add.rectangle(x, y, width, height, 0xd8b98c)
-            .setStrokeStyle(2, 0x5a3a24);
+        return this.add.rectangle(x, y, width, height, 0xc8b08a)
+            .setStrokeStyle(2, 0x58341b);
     },
     createOptionsPanel(x, y) {
         return OptionsSkin.createPaperPanel.call(this, x, y);
@@ -55,7 +55,7 @@ export const OptionsSkin = {
     createDivider(x, y, width = OPTIONS_RULE_W) {
         return this.add.rectangle(x, y, width, 1, OPTIONS_RULE, 0.48);
     },
-    createUiButton(x, y, frame, label, { color = '#ffffff', labelOffsetX = 0, labelOffsetY = 0,
+    createUiButton(x, y, frame, label, { color = '#fef0cf', labelOffsetX = 0, labelOffsetY = 0,
         labelSize = SERIF_BODY_PX, labelWidth = UI_BUTTON_W - 12, callback } = {}) {
         const hasSprite = this.textures.exists('uiButtons');
         const labelY = y + labelOffsetY;
@@ -66,7 +66,7 @@ export const OptionsSkin = {
 
         const btn = hasSprite
             ? this.add.image(x, y, 'uiButtons', frame).setOrigin(0.5)
-            : this.add.rectangle(x, y, UI_BUTTON_W, 26, 0x8a5a32).setStrokeStyle(1, 0x2a1a10).setOrigin(0.5);
+            : this.add.rectangle(x, y, UI_BUTTON_W, 26, 0x8a5131).setStrokeStyle(1, 0x28150c).setOrigin(0.5);
 
         const txt = this.add
             .text(x + labelOffsetX, labelY, label, serifStyle(labelSize, color))
@@ -123,11 +123,11 @@ export const OptionsSkin = {
 
         const sliderBg = hasSprite
             ? this.add.image(barX, barY, 'uiButtons', UI_BUTTON.barEmpty).setOrigin(0.5)
-            : this.add.rectangle(barX, barY, BAR_TRACK_W, 12, 0x4a3526).setStrokeStyle(1, 0x2a1a10);
+            : this.add.rectangle(barX, barY, BAR_TRACK_W, 12, 0x4b3329).setStrokeStyle(1, 0x28150c);
 
         const sliderFill = hasSprite
             ? this.add.image(barX, barY, 'uiButtons', UI_BUTTON.barFill).setOrigin(0.5)
-            : this.add.rectangle(trackX, barY, BAR_TRACK_W * currentVolume, 12, 0x8a9a7a).setOrigin(0, 0.5);
+            : this.add.rectangle(trackX, barY, BAR_TRACK_W * currentVolume, 12, 0x9fa081).setOrigin(0, 0.5);
 
         // The diamond sits a pixel above the bar's centre line: the bar art is
         // drawn slightly low in its 32px cell, and centring the knob on the cell
@@ -135,7 +135,7 @@ export const OptionsSkin = {
         const knobY = barY + KNOB_OFFSET_Y;
         const handle = (this.textures.exists('volumeKnob')
             ? this.add.image(trackX, knobY, 'volumeKnob').setOrigin(0.5)
-            : this.add.circle(trackX, knobY, 6, 0xffc2a2).setStrokeStyle(1, 0x050505))
+            : this.add.circle(trackX, knobY, 6, 0xe4bc9b).setStrokeStyle(1, 0x050505))
             .setInteractive({ draggable: true, useHandCursor: true });
 
         const volumeText = this.add.text(barX, readingY, '', {

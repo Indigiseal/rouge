@@ -14,13 +14,13 @@ export class CharacterSelectScene extends Phaser.Scene {
     if (this.textures.exists('mainBG')) {
       this.add.image(320, 180, 'mainBG');
     } else {
-      this.add.rectangle(320, 180, 640, 360, 0x1a1a1a);
+      this.add.rectangle(320, 180, 640, 360, 0x0a1514);
     }
     this.add.rectangle(320, 180, 640, 360, 0x000000, 0.55);
 
-    this.add.text(320, 28, t(this, 'ui.character.title'), serifStyle('22px', '#e6edf3')).setOrigin(0.5);
+    this.add.text(320, 28, t(this, 'ui.character.title'), serifStyle('22px', '#d6c2c1')).setOrigin(0.5);
 
-    this.add.text(320, 52, t(this, 'ui.character.subtitle'), serifStyle(FONT_SIZE.small, '#8b949e')).setOrigin(0.5);
+    this.add.text(320, 52, t(this, 'ui.character.subtitle'), serifStyle(FONT_SIZE.small, '#869089')).setOrigin(0.5);
 
     const slots = [
       { id: 'rogue', x: 170 },
@@ -37,8 +37,8 @@ export class CharacterSelectScene extends Phaser.Scene {
   }
 
   createCharacterCard(x, y, def) {
-    const panel = this.add.rectangle(x, y, 260, 248, 0x2c1810, 0.94)
-      .setStrokeStyle(2, 0x8b6914)
+    const panel = this.add.rectangle(x, y, 260, 248, 0x28150c, 0.94)
+      .setStrokeStyle(2, 0x9b6a1b)
       .setInteractive({ useHandCursor: true });
 
     // Portrait sits at the top of the card, above the name. 64x64 frame from
@@ -47,34 +47,34 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.add.image(x, y - 85, 'characterPortraits', def.portraitFrame ?? 0);
     }
 
-    this.add.text(x, y - 37, translateCharacterName(this, def.id), serifStyle('18px', '#f0d78c')).setOrigin(0.5);
+    this.add.text(x, y - 37, translateCharacterName(this, def.id), serifStyle('18px', '#fee093')).setOrigin(0.5);
 
     const startLine = t(this, def.id === 'rogue' ? 'ui.character.rogueStart' : 'ui.character.warriorStart');
-    this.add.text(x, y - 15, startLine, serifStyle(FONT_SIZE.body, '#c9d1d9')).setOrigin(0.5);
+    this.add.text(x, y - 15, startLine, serifStyle(FONT_SIZE.body, '#d6c2c1')).setOrigin(0.5);
 
     const armorLine = t(this, def.id === 'rogue' ? 'ui.character.rogueArmor' : 'ui.character.warriorArmor');
-    this.add.text(x, y + 3, armorLine, serifStyle(FONT_SIZE.body, '#c9d1d9')).setOrigin(0.5);
+    this.add.text(x, y + 3, armorLine, serifStyle(FONT_SIZE.body, '#d6c2c1')).setOrigin(0.5);
 
     const passive = t(this, def.id === 'rogue' ? 'ui.character.roguePassive' : 'ui.character.warriorPassive');
     this.add.text(x, y + 37, passive, {
-      ...serifStyle(FONT_SIZE.small, '#8b949e'),
+      ...serifStyle(FONT_SIZE.small, '#869089'),
       align: 'center',
       lineSpacing: 4,
     }).setOrigin(0.5);
 
-    const btn = this.add.rectangle(x, y + 90, 140, 28, 0x3d2418, 0.95)
-      .setStrokeStyle(1, 0xd4a017)
+    const btn = this.add.rectangle(x, y + 90, 140, 28, 0x46261b, 0.95)
+      .setStrokeStyle(1, 0xd48e17)
       .setInteractive({ useHandCursor: true });
-    this.add.text(x, y + 90, t(this, 'ui.common.select'), serifStyle('14px', '#e6edf3')).setOrigin(0.5);
+    this.add.text(x, y + 90, t(this, 'ui.common.select'), serifStyle('14px', '#d6c2c1')).setOrigin(0.5);
 
     const hoverOn = () => {
       SoundHelper.playVariant(this, 'hover_button', 0.35);
-      panel.setStrokeStyle(2, 0xd4a017);
-      btn.setFillStyle(0x5a3820, 0.98);
+      panel.setStrokeStyle(2, 0xd48e17);
+      btn.setFillStyle(0x58341b, 0.98);
     };
     const hoverOff = () => {
-      panel.setStrokeStyle(2, 0x8b6914);
-      btn.setFillStyle(0x3d2418, 0.95);
+      panel.setStrokeStyle(2, 0x9b6a1b);
+      btn.setFillStyle(0x46261b, 0.95);
     };
 
     panel.on('pointerover', hoverOn);
@@ -90,16 +90,16 @@ export class CharacterSelectScene extends Phaser.Scene {
   }
 
   createBackButton() {
-    const bg = this.add.rectangle(320, 335, 160, 26, 0x2c1810, 0.92)
-      .setStrokeStyle(1, 0x8b6914)
+    const bg = this.add.rectangle(320, 335, 160, 26, 0x28150c, 0.92)
+      .setStrokeStyle(1, 0x9b6a1b)
       .setInteractive({ useHandCursor: true });
-    this.add.text(320, 335, t(this, 'ui.common.back'), serifStyle('14px', '#e6edf3')).setOrigin(0.5);
+    this.add.text(320, 335, t(this, 'ui.common.back'), serifStyle('14px', '#d6c2c1')).setOrigin(0.5);
 
     bg.on('pointerover', () => {
       SoundHelper.playVariant(this, 'hover_button', 0.35);
-      bg.setStrokeStyle(1, 0xd4a017);
+      bg.setStrokeStyle(1, 0xd48e17);
     });
-    bg.on('pointerout', () => bg.setStrokeStyle(1, 0x8b6914));
+    bg.on('pointerout', () => bg.setStrokeStyle(1, 0x9b6a1b));
     bg.on('pointerdown', () => {
       SoundHelper.playVariant(this, 'button_click', 0.5);
       this.cameras.main.fadeOut(250, 0, 0, 0);

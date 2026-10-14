@@ -107,13 +107,13 @@ export class TutorialOverlay {
 
     _buildSkip() {
         const W = WORLD_WIDTH;
-        this.skipBg = this.scene.add.rectangle(W - 6, 6, 54, 16, 0x1a1a1a, 0.85)
+        this.skipBg = this.scene.add.rectangle(W - 6, 6, 54, 16, 0x0a1514, 0.85)
             .setOrigin(1, 0)
             .setDepth(this.ART_DEPTH)
-            .setStrokeStyle(1, 0x888888)
+            .setStrokeStyle(1, 0x869089)
             .setInteractive({ useHandCursor: true });
         this.skipText = this.scene.add.text(W - 33, 14, t(this.scene, 'ui.tutorial.skip'), {
-            fontSize: '9px', fill: '#dddddd', fontFamily: '"HoMM Pixel"'
+            fontSize: '9px', fill: '#d6c2c1', fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(this.ART_DEPTH + 1);
         this.skipBg.on('pointerdown', (p, x, y, event) => {
             SoundHelper.playVariant(this.scene, 'button_click', 0.5);
@@ -370,7 +370,7 @@ export class TutorialOverlay {
         this.bubbleValue = text;
         if (!this.bubbleText) {
             this.bubbleText = this.scene.add.text(0, 0, text, {
-                fontSize: '9px', fill: '#ffffff', fontFamily: '"HoMM Pixel"',
+                fontSize: '9px', fill: '#fef0cf', fontFamily: '"HoMM Pixel"',
                 align: 'left', wordWrap: { width: maxW }
             }).setOrigin(0, 0).setDepth(this.ART_DEPTH + 4);
         } else {
@@ -388,7 +388,7 @@ export class TutorialOverlay {
         by = Math.max(4, Math.min(H - bh - 4, by));
 
         if (!this.bubbleBg) {
-            this.bubbleBg = this.scene.add.rectangle(0, 0, bw, bh, 0x101018, 0.94)
+            this.bubbleBg = this.scene.add.rectangle(0, 0, bw, bh, 0x0e0b10, 0.94)
                 .setOrigin(0, 0).setDepth(this.ART_DEPTH + 3);
             this.bubbleBorder = this.scene.add.rectangle(0, 0, bw, bh)
                 .setOrigin(0, 0).setDepth(this.ART_DEPTH + 3)

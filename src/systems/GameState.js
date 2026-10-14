@@ -188,7 +188,7 @@ export class GameState {
                     this.scene.playerAvatar.x,
                     this.scene.playerAvatar.y + 16,
                     'Rivets!',
-                    0xc0c0c0
+                    0xd6c2c1
                 );
             }
             return;
@@ -198,7 +198,7 @@ export class GameState {
         if (this.equippedArmor.durability <= 0) {
             CombatSequencer.playVariant(this.scene, 'break', 'armor_break', 0.55);
             CombatSequencer.floatingText(this.scene, 'break',
-                this.scene.playerAvatar.x, this.scene.playerAvatar.y + 20, `${this.equippedArmor.name} broke!`, 0xffa500);
+                this.scene.playerAvatar.x, this.scene.playerAvatar.y + 20, `${this.equippedArmor.name} broke!`, 0xfbad19);
             this.scene.grantCardSpentRelicBonus?.(this.equippedArmor, this.scene.playerAvatar.x, this.scene.playerAvatar.y);
             // Armor used to vanish outright: updateUI rebuilds the armor slot and
             // the worn card is simply not redrawn. The effect runs on a clone, so
@@ -225,7 +225,7 @@ export class GameState {
             || this.scene?.amuletManager?.isPoisonImmune?.()
         )) {
             if (this.scene?.playerAvatar) {
-                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poison Immune!', 0x66ff66);
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poison Immune!', 0x71800b);
             }
             return false;
         }

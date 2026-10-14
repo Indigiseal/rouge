@@ -8,6 +8,7 @@ import { InventoryCombatUse } from './inventory/InventoryCombatUse.js';
 import { InventoryView } from './inventory/InventoryView.js';
 import { InventorySlotRenderer } from './inventory/InventorySlotRenderer.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from './HumanRunRecorder.js';
+import { handLockOf } from '../content/combat/handLock.js';
 import { translateItemName } from '../i18n/i18n.js';
 
 export class InventorySystem {
@@ -55,6 +56,12 @@ export class InventorySystem {
         return t !== 'gem' && t !== 'amulet' && t !== 'relic' && t !== 'amuletPickup';
     }
 
+    // An event has the bag (the one station that hands it a drag overlay):
+    // magic is not cast there by dropping it on the board or the hero.
+    isEventStation() {
+        return !!(this.stationMode && this.dragOverlayScene);
+    }
+
     syncGameStateInventory() {
         if (this.scene.gameState) {
             this.scene.gameState.inventory = this.slots;
@@ -94,14 +101,14 @@ export class InventorySystem {
         // Reject mismatched gem types
         if (weapon.gemEffect && weapon.gemEffect !== gem.gemEffect) {
             SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
-            this.scene.createFloatingText(512, 380, 'Different gem already socketed!', 0xff4444);
+            this.scene.createFloatingText(512, 380, 'Different gem already socketed!', 0xb51f1e);
             return false;
         }
 
         // Reject if already at max
         if (currentCount >= maxSlots) {
             SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
-            this.scene.createFloatingText(512, 380, 'Gem slots full!', 0xff4444);
+            this.scene.createFloatingText(512, 380, 'Gem slots full!', 0xb51f1e);
             return false;
         }
 
@@ -120,7 +127,7 @@ export class InventorySystem {
         this.scene.createFloatingText(512, 380, {
             key: 'float.gemSocketed',
             vars: { name: translateItemName(this.scene, gem), stack: stackLabel },
-        }, gem.color || 0xffe066);
+        }, gem.color || 0xffcf7f);
         SoundHelper.playSound(this.scene, 'gem_socket', 0.5);
         return true;
     }
@@ -139,7 +146,7 @@ export class InventorySystem {
 
         const def = mgr.amuletDefinitions?.[amuletId];
         if (mgr.hasAmulet(amuletId) && !def?.stackable) {
-            this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Already equipped!', 0xffa500);
+            this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Already equipped!', 0xfbad19);
             this.returnCardToSlot(slotIndex, cardSprite);
             return false;
         }
@@ -152,7 +159,7 @@ export class InventorySystem {
         this.scene.createFloatingText(cardSprite.x, cardSprite.y - 8, {
             key: 'float.equippedItem',
             vars: { name: translateItemName(this.scene, cardData) },
-        }, 0x88ff88);
+        }, 0x4a884f);
         SoundHelper.playSound(this.scene, 'crystal_collect', 0.5);
         this.cleanupCardSprites(slotIndex, cardSprite);
         this.removeCard(slotIndex, false, 'amulet_equipped');
@@ -256,7 +263,7 @@ export class InventorySystem {
             ? preferredSlot 
             : this.slots.findIndex(slot => slot === null);
         if (emptySlot === -1) {
-            this.scene.createFloatingText(512, 400, 'Inventory Full!', 0xff0000);
+            this.scene.createFloatingText(512, 400, 'Inventory Full!', 0xb51f1e);
             return false;
         }
 
@@ -285,8 +292,8 @@ export class InventorySystem {
             this.scene.createFloatingText(
                 cardSprite.x,
                 cardSprite.y - 18,
-                'Webbed!',
-                0xddeeff
+                handLockOf(cardData).text,
+                0xd6c2c1
             );
             this.returnCardToSlot(slotIndex, cardSprite);
             return;
@@ -300,7 +307,7 @@ export class InventorySystem {
                 card: snapshotHumanRunCard(cardData),
             });
             SoundHelper.playSound(this.scene, 'item_discard', 0.7);
-            this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Discarded!', 0xff0000);
+            this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Discarded!', 0xb51f1e);
             this.scene.recordCardDiscarded?.(cardData, cardSprite.x, cardSprite.y);
 
             // Falls down the chute on a clone, before the real sprite goes.
@@ -360,14 +367,14 @@ export class InventorySystem {
                 if (this.canCardsMerge(cardData, targetCardData, canCrossTier)) {
                     // Magic cards cannot be merged
                     if (cardData.type === 'magic') {
-                        this.scene.createFloatingText(512, 400, 'Magic cards cannot be merged!', 0xff0000);
+                        this.scene.createFloatingText(512, 400, 'Magic cards cannot be merged!', 0xb51f1e);
                         this.returnCardToSlot(slotIndex, cardSprite);
                         return;
                     }
 
                     // Only weapon merges spend AP (armor/potion/food/thorns are free).
                     if (cardData.type === 'weapon' && !this.stationMode && !this.scene.useAction()) {
-                        this.scene.createFloatingText(512, 400, 'Not enough actions!', 0xff0000);
+                        this.scene.createFloatingText(512, 400, 'Not enough actions!', 0xb51f1e);
                         this.returnCardToSlot(slotIndex, cardSprite);
                         return;
                     }
@@ -400,7 +407,10 @@ export class InventorySystem {
                     if (this.usePotion(slotIndex, cardSprite)) return;
                 } else if (cardData.type === 'food') {
                     if (this.useFood(slotIndex, cardSprite)) return;
-                } else if (cardData.type === 'magic') {
+                } else if (cardData.type === 'magic' && !this.isEventStation()) {
+                    // Not in an event: the hero's portrait sits hidden under
+                    // the event screen there, and a spell let go in that corner
+                    // was cast by accident (see the board-cast guard below).
                     const selfTarget = ['restoration', 'shadowBlade', 'magicShield', 'boneWall'];
                     if (selfTarget.includes(cardData.magicType)) {
                         this.useMagicCard(slotIndex, cardSprite);
@@ -424,7 +434,10 @@ export class InventorySystem {
             if (!zone || !zone.scene || typeof zone.getBounds !== 'function') continue;
             const bounds = zone.getBounds();
             if (bounds && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), bounds)) {
-                if (entry.handler(slotIndex, cardData, cardSprite)) return;
+                if (entry.handler(slotIndex, cardData, cardSprite)) {
+                    SoundHelper.playSound(this.scene, 'card_offered', 0.6);
+                    return;
+                }
                 refusedByZone = true;
             }
         }
@@ -433,11 +446,19 @@ export class InventorySystem {
             return;
         }
 
-        // Magic has historically been cast by dropping it on the gaming board.
-        // Keep that interaction in stations/events too; their special drop zones
-        // were checked above and therefore still take priority.
+        // Magic is cast by dropping it on the board — in a fight, a shop, or
+        // any other room. Not in an event (the one station that hands the bag
+        // a drag overlay): there the board area is the event's picture, and a
+        // card let go near the well or the mirror was being cast by accident,
+        // so it goes home with a refusal. (Drop zones above still take their
+        // cards first.)
         const onBoard = cardSprite.y < 280;
         if (onBoard && cardData.type === 'magic') {
+            if (this.isEventStation()) {
+                SoundHelper.playVariant(this.scene, 'invalid_action', 0.45);
+                this.returnCardToSlot(slotIndex, cardSprite);
+                return;
+            }
             this.useMagicCard(slotIndex, cardSprite);
             return;
         }
@@ -447,8 +468,7 @@ export class InventorySystem {
             return;
         }
 
-        // Check if dropped on board to use a weapon. Magic was handled above so
-        // its board-cast behavior is identical in combat and station scenes.
+        // Check if dropped on board to use a weapon (magic was handled above).
         if (onBoard) {
             if (cardData.type === 'weapon') {
                 this.useWeapon(slotIndex, cardSprite);
@@ -735,7 +755,7 @@ export class InventorySystem {
             this.scene.playerAvatar.x,
             this.scene.playerAvatar.y,
             `Merged → ${upgradedArmor.name}`,
-            0x00ff00
+            0x71800b
         );
 
         // Merge flicker on the worn-armor slot (legendary variant when applicable).
@@ -799,7 +819,7 @@ export class InventorySystem {
             this.scene.playerAvatar.x, 
             this.scene.playerAvatar.y, 
             `Equipped ${armorData.name}`,
-            0xaaaaaa
+            0xafafa2
         );
         this.scene.updateUI();
         // Refresh AFTER equippedArmor is set and the armor-panel sprite is
@@ -827,7 +847,7 @@ export class InventorySystem {
             armor: snapshotHumanRunCard(armor),
         });
         SoundHelper.playSound(this.scene, 'item_discard', 0.7);
-        this.scene.createFloatingText(x, y, 'Discarded!', 0xff0000);
+        this.scene.createFloatingText(x, y, 'Discarded!', 0xb51f1e);
         // Counts toward the same discard tally as a bag card, so relics and
         // amulets that pay out per discard cannot tell the two apart.
         this.scene.recordCardDiscarded?.(armor, x, y);
@@ -853,7 +873,7 @@ export class InventorySystem {
             ? preferredSlot
             : this.slots.findIndex(slot => slot === null);
         if (emptySlot === -1) {
-            this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Inventory Full!', 0xff0000);
+            this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Inventory Full!', 0xb51f1e);
             return false;
         }
 
@@ -871,7 +891,7 @@ export class InventorySystem {
             this.scene.playerAvatar.x,
             this.scene.playerAvatar.y,
             `Unequipped ${armor.name}`,
-            0xaaaaaa
+            0xafafa2
         );
         this.scene.updateUI();
         return true;
@@ -888,7 +908,7 @@ export class InventorySystem {
         if (!canCrossTier) {
             // Normal merge - must be same rarity
             if (cardA.rarity !== cardB.rarity) {
-                this.scene.createFloatingText(512, 400, 'Items must be same tier!', 0xff0000);
+                this.scene.createFloatingText(512, 400, 'Items must be same tier!', 0xb51f1e);
                 this.returnCardToSlot(indexA, draggedSprite);
                 return;
             }
@@ -958,7 +978,7 @@ export class InventorySystem {
             );
         }
 
-        this.scene.createFloatingText(512, 400, 'Cards Merged!', 0x00ff00);
+        this.scene.createFloatingText(512, 400, 'Merged!', 0x71800b);
         SoundHelper.playSound(this.scene, 'card_merge', 0.55);
 
         // Webweaver's Thread relic: small chance one of the two consumed cards reappears

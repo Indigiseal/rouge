@@ -306,7 +306,7 @@ export function openBirdNestMinigame(scene, cfg) {
   const panel = push(createNineSlicePanel(scene, panelW, panelH, {
     key: UI_PANEL_KEY,
     slice: UI_PANEL_SLICE,
-  }) || scene.add.rectangle(cx, cy, panelW, panelH, 0x1a1420, 0.96).setStrokeStyle(2, 0xc9a227));
+  }) || scene.add.rectangle(cx, cy, panelW, panelH, 0x1e1421, 0.96).setStrokeStyle(2, 0xd5aa54));
   panel.setPosition(cx, cy);
   panel.setDepth(DEPTH + 1);
 
@@ -325,7 +325,7 @@ export function openBirdNestMinigame(scene, cfg) {
   push(scene.add.text(cx, panelTop + TITLE_DY, t(scene, 'ui.birdNest.title'), {
     fontSize: '16px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#f0e6d2',
+    color: '#fef0cf',
   }).setOrigin(0.5).setDepth(DEPTH + 3));
 
   push(scene.add.text(cx, panelTop + 34, includeCog
@@ -333,7 +333,7 @@ export function openBirdNestMinigame(scene, cfg) {
     : t(scene, 'ui.birdNest.instructionsEgg'), {
     fontSize: '10px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#c9b48a',
+    color: '#c8b08a',
     wordWrap: { width: panelW - 24 },
     align: 'center',
   }).setOrigin(0.5).setDepth(DEPTH + 3));
@@ -348,8 +348,8 @@ export function openBirdNestMinigame(scene, cfg) {
     bar.container.setPosition(cx, barY).setDepth(DEPTH + 3);
   } else {
     push(scene.add.rectangle(cx, barY, barW + 4, barH + 4, 0x000000, 0.9).setDepth(DEPTH + 2));
-    push(scene.add.rectangle(cx, barY, barW, barH, 0x2a2030, 1).setDepth(DEPTH + 3));
-    barFill = push(scene.add.rectangle(cx - barW / 2, barY, barW, barH, 0xc9a227, 1));
+    push(scene.add.rectangle(cx, barY, barW, barH, 0x2b2332, 1).setDepth(DEPTH + 3));
+    barFill = push(scene.add.rectangle(cx - barW / 2, barY, barW, barH, 0xd5aa54, 1));
     barFill.setOrigin(0, 0.5).setDepth(DEPTH + 4);
   }
 
@@ -357,7 +357,7 @@ export function openBirdNestMinigame(scene, cfg) {
   const timeText = push(scene.add.text(cx + barW / 2 + 20, barY, String(TIME_LIMIT), {
     fontSize: '12px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#ffe8b0',
+    color: '#fee8b5',
   }).setOrigin(0.5).setDepth(DEPTH + 4));
 
   const nestY = cy + NEST_OFFSET_Y;
@@ -372,26 +372,29 @@ export function openBirdNestMinigame(scene, cfg) {
   const statusText = push(scene.add.text(cx, panelBot - 36, t(scene, 'ui.birdNest.status'), {
     fontSize: '10px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#ffe8b0',
+    color: '#fee8b5',
     wordWrap: { width: panelW - 24 },
     align: 'center',
   }).setOrigin(0.5).setDepth(DEPTH + 20));
 
-  const runBg = push(scene.add.rectangle(cx, panelBot - 16, 89, 21, 0x2a2030, 1));
-  runBg.setStrokeStyle(1, 0xc9a227).setDepth(DEPTH + 20);
+  const runBg = push(scene.add.rectangle(cx, panelBot - 16, 89, 21, 0x2b2332, 1));
+  runBg.setStrokeStyle(1, 0xd5aa54).setDepth(DEPTH + 20);
   runBg.setInteractive({ useHandCursor: true });
   const runLabel = push(scene.add.text(cx, panelBot - 16, t(scene, 'ui.birdNest.run'), {
     fontSize: '11px',
     fontFamily: '"HoMM Pixel", Arial, sans-serif',
-    color: '#f0e6d2',
+    color: '#fef0cf',
   }).setOrigin(0.5).setDepth(DEPTH + 21));
   const onRun = () => {
     if (phase !== 'play') return;
     SoundHelper.playVariant(scene, 'button_click', 0.5);
     finish(false);
   };
-  runBg.on('pointerover', () => runBg.setFillStyle(0x3a3040, 1));
-  runBg.on('pointerout', () => runBg.setFillStyle(0x2a2030, 1));
+  runBg.on('pointerover', () => {
+    SoundHelper.playVariant(scene, 'hover_button', 0.4);
+    runBg.setFillStyle(0x383348, 1);
+  });
+  runBg.on('pointerout', () => runBg.setFillStyle(0x2b2332, 1));
   runBg.on('pointerdown', onRun);
   runLabel.setInteractive({ useHandCursor: true });
   runLabel.on('pointerdown', onRun);
@@ -431,6 +434,7 @@ export function openBirdNestMinigame(scene, cfg) {
         piece.depth = DEPTH + nextDepth;
         image.setDepth(piece.depth);
         held = piece;
+        SoundHelper.playVariant(scene, 'nest_rummage', 0.4);
       });
       image.on('drag', (pointer, dragX, dragY) => {
         if (phase !== 'play' || held !== piece) return;
@@ -441,6 +445,7 @@ export function openBirdNestMinigame(scene, cfg) {
       });
       image.on('dragend', () => {
         if (held === piece) held = null;
+        if (phase === 'play' && !piece.taken) SoundHelper.playVariant(scene, 'nest_rummage', 0.3);
       });
     } else {
       image.setInteractive({ useHandCursor: true });
@@ -569,8 +574,8 @@ export function openBirdNestMinigame(scene, cfg) {
     remaining = Math.max(0, remaining - CATCH_PENALTY);
     SoundHelper.playVariant(scene, 'player_hurt', 0.55);
     statusText.setText(t(scene, 'ui.birdNest.caught'));
-    statusText.setColor('#ff7b72');
-    setBarColor(0xff7b72);
+    statusText.setColor('#c45c45');
+    setBarColor(0xc45c45);
     scene.tweens?.add?.({
       targets: bar ? bar.container : barFill,
       scaleY: 1.6,
@@ -584,7 +589,7 @@ export function openBirdNestMinigame(scene, cfg) {
   // bar can express — the rectangle has no art, so it takes the old gold.
   const setBarColor = (color) => {
     if (bar) bar.setFillTint(color);
-    else barFill?.setFillStyle(color ?? 0xc9a227, 1);
+    else barFill?.setFillStyle(color ?? 0xd5aa54, 1);
   };
 
   const layoutBar = () => {
@@ -593,7 +598,7 @@ export function openBirdNestMinigame(scene, cfg) {
     else barFill.width = Math.max(1, barW * t);
     // Once the bird has caught the player the bar stays red for the rest of
     // the pass; re-running the drain must not paint it gold again.
-    if (!caughtThisPass) setBarColor(t < 0.22 ? 0xff7b72 : null);
+    if (!caughtThisPass) setBarColor(t < 0.22 ? 0xc45c45 : null);
     timeText.setText(String(Math.ceil(Math.max(0, remaining))));
   };
 
@@ -635,6 +640,8 @@ export function openBirdNestMinigame(scene, cfg) {
     // slight diagonal instead of one flying sideways.
     shadow.rotation = Math.atan2(toY - fromY, toX - fromX) + Math.PI / 2;
     shadow.setAlpha(1);
+    // The bird's cry as its shadow comes over.
+    SoundHelper.playVariant(scene, 'nest_screech', 0.35);
     // Timed by speed, not by a flat duration: the vertical run is much shorter
     // than the horizontal one, and a fixed duration would have made the bird
     // crawl across one axis and bolt across the other.

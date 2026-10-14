@@ -62,7 +62,7 @@ export function buildCurrentAmuletDefinitions(mgr) {
                         this.scene.playerAvatar.x,
                         this.scene.playerAvatar.y - 16,
                         'Poison Cured',
-                        0x66ff66
+                        0x71800b
                     );
                 },
             },

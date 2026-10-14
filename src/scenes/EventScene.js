@@ -41,6 +41,9 @@ import {
 import { getLocationIdForFloor } from '../content/locations/index.js';
 import { pickTollroadEventId } from '../content/location-packs/tollroad/index.js';
 import { tryLethalRevive } from '../systems/combat/PlayerDamageResolver.js';
+import { flyCurrencyGain } from '../ui/CurrencyFlight.js';
+import { flyAmuletToBar, flyCardToBag } from '../ui/RewardFlight.js';
+import { playCardDissolve } from '../ui/CardDissolve.js';
 import { serifStyle } from '../ui/uiFont.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { createExitDoor, EXIT_DOOR_X, EXIT_DOOR_Y } from '../ui/ExitDoor.js';
@@ -72,6 +75,9 @@ const EVENT_ILLUSTRATION_FRAMES = {
   goblin_mine_return: 29,
   royal_bridge: 29,
 };
+
+// How far the Screaming Head statue sits right of the usual event-art spot.
+const SCREAMING_HEAD_NUDGE_X = 6;
 
 export class EventScene extends Phaser.Scene {
   constructor() {
@@ -479,6 +485,33 @@ export class EventScene extends Phaser.Scene {
     return gained;
   }
 
+  // Where an event's rewards set off from: the middle of its picture on the
+  // side panel, on screen. The picture sits inside a sliding container, so
+  // its own x/y are local to that; its bounds are in world coordinates.
+  _rewardSourcePoint() {
+    const art = this.eventIllustrationImage;
+    if (art?.scene && art.getBounds) {
+      const b = art.getBounds();
+      return { x: b.centerX, y: b.centerY };
+    }
+    return { x: 486, y: 168 };
+  }
+
+  // A coin or crystal an event hands over flies from the event's picture to
+  // its counter on the HUD (ui/CurrencyFlight.js).
+  _flyRewardToCounter(currency) {
+    const from = this._rewardSourcePoint();
+    flyCurrencyGain(this, from.x, from.y, currency);
+  }
+
+  // A card an event hands over floats from its picture into bag slot `slot`
+  // (ui/RewardFlight.js). Call after the bag has been redrawn.
+  _flyCardFromPicture(slot) {
+    if (!Number.isInteger(slot) || slot < 0) return;
+    const from = this._rewardSourcePoint();
+    flyCardToBag(this, slot, from.x, from.y);
+  }
+
   gainCoins(amount) {
     if (!this.gameState || !Number.isFinite(amount) || amount === 0) return;
     if (amount > 0) amount = scaleGoldReward(amount);
@@ -486,6 +519,7 @@ export class EventScene extends Phaser.Scene {
     this.gameState.coins = currentCoins + amount;
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     this.gameScene?.updateUI?.();
+    if (amount > 0) this._flyRewardToCounter('coins');
     this._reward({ key: 'event.reward.coins', vars: { amount: `${amount > 0 ? '+' : ''}${amount}` } });
   }
 
@@ -495,6 +529,7 @@ export class EventScene extends Phaser.Scene {
     this.gameState.crystals = currentCrystals + amount;
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     this.gameScene?.updateUI?.();
+    if (amount > 0) this._flyRewardToCounter('crystals');
     this._reward({ key: 'event.reward.crystals', vars: { amount: `${amount > 0 ? '+' : ''}${amount}` } });
   }
 
@@ -505,6 +540,8 @@ export class EventScene extends Phaser.Scene {
       : 0;
     const actualDamage = Math.min(currentHealth, amount);
     this.gameState.playerHealth = Math.max(0, currentHealth - amount);
+    // The same grunt a hit in a fight makes.
+    if (actualDamage > 0) SoundHelper.playVariant(this, 'player_hurt', 0.5);
 
     if (actualDamage > 0 && typeof this.gameState.trackDamage === 'function') {
       this.gameState.trackDamage(actualDamage, 'environmental');
@@ -640,8 +677,8 @@ export class EventScene extends Phaser.Scene {
     // replaced it — so that branch could never be taken again, and its manifest
     // entry existed only to 404 on every boot.
 
-    paper = this.add.rectangle(x, startY, paperWidth, paperHeight, 0xd9b98e)
-      .setStrokeStyle(2, 0x6c4f35)
+    paper = this.add.rectangle(x, startY, paperWidth, paperHeight, 0xc8b08a)
+      .setStrokeStyle(2, 0x6a5538)
       .setDepth(0)
       .setAlpha(0);
     this.tweens.add({
@@ -693,7 +730,9 @@ export class EventScene extends Phaser.Scene {
     if (isScreamingHead && this.textures.exists('statueHead')) {
       // Keep the dedicated art at its native size; its anchor matches the usual
       // event-art position even though it is larger than the 80px sheet frames.
-      this.eventIllustrationImage = this.add.image(23, -5, 'statueHead')
+      // Nudged 6px right of the usual event-art spot (23) to sit better on
+      // its widened panel.
+      this.eventIllustrationImage = this.add.image(23 + SCREAMING_HEAD_NUDGE_X, -5, 'statueHead')
         .setOrigin(0.5);
       container.add(this.eventIllustrationImage);
     } else if (this.textures.exists('eventsShops')) {
@@ -751,7 +790,7 @@ export class EventScene extends Phaser.Scene {
 
     const maxOffset = Math.max(0, Math.ceil(contentBottom - bottom));
     const maskShape = this.make.graphics({ add: false });
-    maskShape.fillStyle(0xffffff).fillRect(
+    maskShape.fillStyle(0xfef0cf).fillRect(
       this.eventLayout.centerX - 172,
       top,
       344,
@@ -777,8 +816,8 @@ export class EventScene extends Phaser.Scene {
     const arrowX = this.eventLayout.centerX + 178;
     const makeArrow = (label, y, delta) => {
       const arrow = this.add.text(arrowX, y, label, {
-        fontSize: '11px', fill: '#6c4f35', fontFamily: '"HoMM Pixel"',
-        backgroundColor: '#ead2aa', padding: { x: 3, y: 1 }
+        fontSize: '11px', fill: '#6a5538', fontFamily: '"HoMM Pixel"',
+        backgroundColor: '#f2d3aa', padding: { x: 3, y: 1 }
       }).setOrigin(0.5).setDepth(8).setInteractive({ useHandCursor: true });
       arrow.on('pointerdown', () => {
         SoundHelper.playVariant(this, 'button_click', 0.35);
@@ -799,7 +838,7 @@ export class EventScene extends Phaser.Scene {
     const trackTop = top + 20;
     const trackBottom = bottom - 20;
     const trackHeight = Math.max(10, trackBottom - trackTop);
-    scroll.track = this.add.rectangle(arrowX, (trackTop + trackBottom) / 2, 4, trackHeight, 0x8f6b45, 0.35)
+    scroll.track = this.add.rectangle(arrowX, (trackTop + trackBottom) / 2, 4, trackHeight, 0x926b4a, 0.35)
       .setDepth(8).setInteractive({ useHandCursor: true });
 
     const hasHandleTexture = this.textures.exists('scrollHandle');
@@ -811,7 +850,7 @@ export class EventScene extends Phaser.Scene {
     scroll.thumbTravel = scroll.thumbMaxY - scroll.thumbMinY;
     scroll.thumb = hasHandleTexture
       ? this.add.image(arrowX, scroll.thumbMinY, 'scrollHandle').setOrigin(0.5)
-      : this.add.rectangle(arrowX, scroll.thumbMinY, 6, thumbHeight, 0x6c4f35, 1);
+      : this.add.rectangle(arrowX, scroll.thumbMinY, 6, thumbHeight, 0x6a5538, 1);
     scroll.thumb.setDepth(9).setInteractive({ useHandCursor: true, draggable: true });
     this.input.setDraggable(scroll.thumb);
     scroll.thumb.on('drag', (pointer, dragX, dragY) => {
@@ -907,9 +946,9 @@ export class EventScene extends Phaser.Scene {
 
   create() {
     const W = 640, H = 360;
-    const PURPLE = '#9370db';
-    const INK = '#382615';
-    const WHITE = '#ffffff';
+    const PURPLE = '#675681';
+    const INK = '#3a220b';
+    const WHITE = '#fef0cf';
 
     this.gameScene = this.scene.get('GameScene');
     this._visibleChoices = this._getVisibleChoices();
@@ -937,7 +976,7 @@ export class EventScene extends Phaser.Scene {
     // through on the dungeon floor (like combat) instead of being covered.
     // 0x1a1a2e is also GameScene's event backdrop colour (EVENT_BACKDROP_COLOR),
     // so the dim's lower edge does not show.
-    this.add.rectangle(W / 2, 124, W, 250, 0x1a1a2e, 0.92).setDepth(-10);
+    this.add.rectangle(W / 2, 124, W, 250, 0x2b1f32, 0.92).setDepth(-10);
     this._createEventIllustrationBoard(this._getEventIllustrationFrame());
     this._createEventBoardBase(this.eventLayout.centerX, 126);
     this._createEventPaper(this.eventLayout.centerX, 126);
@@ -970,7 +1009,7 @@ export class EventScene extends Phaser.Scene {
         this.descText.y + this.descText.height + 7,
         this.event.rematchHint,
         {
-          fontSize: '11px', fill: '#9b3f25', fontFamily: '"HoMM Pixel"',
+          fontSize: '11px', fill: '#883110', fontFamily: '"HoMM Pixel"',
           align: 'center', wordWrap: { width: 310 },
         }
       ).setOrigin(0.5, 0).setDepth(3);
@@ -1015,7 +1054,7 @@ export class EventScene extends Phaser.Scene {
     // Outcome text (hidden until a choice is made). Positioned on resolve so it
     // stays within the panel, above the inventory strip.
     this.outcomeText = this.add.text(this.eventLayout.centerX, 150, '', {
-      ...serifStyle('13px', '#fff2d0'),
+      ...serifStyle('13px', '#fef0cf'),
       align: 'center',
       wordWrap: { width: 330 }
     }).setOrigin(0.5).setAlpha(0);
@@ -1023,15 +1062,15 @@ export class EventScene extends Phaser.Scene {
 
     // Give terminal narration its own high-contrast reading surface instead of
     // letting it compete with the event art and the consequences ledger.
-    this.outcomeBackdrop = this.add.rectangle(this.eventLayout.centerX, 145, 354, 184, 0x1b120c, 0.82)
-      .setStrokeStyle(1, 0x8f6b45)
+    this.outcomeBackdrop = this.add.rectangle(this.eventLayout.centerX, 145, 354, 184, 0x1c130a, 0.82)
+      .setStrokeStyle(1, 0x926b4a)
       .setAlpha(0)
       .setDepth(3);
     // Rewards summary (hidden until a choice is made) — a concrete "what you
     // gained/lost" list shown under the outcome, so amulets/HP/crystals that
     // otherwise land silently in the corners are actually announced.
     this.rewardText = this.add.text(this.eventLayout.centerX, 200, '', {
-      ...serifStyle('13px', '#ffe066'),
+      ...serifStyle('13px', '#ffcf7f'),
       align: 'center',
       stroke: '#000000',
       strokeThickness: 3,
@@ -1069,7 +1108,7 @@ export class EventScene extends Phaser.Scene {
         .setAlpha(0)
         .setDepth(2);
     } else {
-      this.continueBtn = this.add.rectangle(continueX, continueY, 78, 28, 0x080808, 0.66)
+      this.continueBtn = this.add.rectangle(continueX, continueY, 78, 28, 0x050505, 0.66)
         .setInteractive({ useHandCursor: true })
         .setAlpha(0)
         .setDepth(2);
@@ -1102,7 +1141,7 @@ export class EventScene extends Phaser.Scene {
     this.continueBtn.on('pointerover', () => {
       SoundHelper.playVariant(this, 'hover_button', 0.4);
       if (this.continueBtn.setTint) setHoverLight(this.continueBtn, true);
-      else this.continueBtn.setFillStyle?.(0x151515, 0.78);
+      else this.continueBtn.setFillStyle?.(0x0a1514, 0.78);
     });
     this.continueBtn.on('pointerout', () => {
       setHoverLight(this.continueBtn, false);
@@ -1110,7 +1149,7 @@ export class EventScene extends Phaser.Scene {
         this.continueBtn.clearTint();
         if (this.continueBtn.setTexture && this.textures.exists('nextTurnUp')) this.continueBtn.setTexture('nextTurnUp');
       } else {
-        this.continueBtn.setFillStyle?.(0x080808, 0.66);
+        this.continueBtn.setFillStyle?.(0x050505, 0.66);
       }
       pressLabel(false);
     });
@@ -1170,14 +1209,14 @@ export class EventScene extends Phaser.Scene {
       const choiceLabel = this._choiceLabel(choice);
       const label = this.add.text(x, y, choiceLabel, {
         fontSize: smallFont ? '10px' : (choiceLabel.length > 44 ? '11px' : '13px'),
-        fill: '#ffffff',
+        fill: '#fef0cf',
         fontFamily: '"HoMM Pixel"',
         align: 'center',
         wordWrap: { width: textWidth }
       }).setOrigin(0.5).setDepth(3);
 
       bg.setInteractive({ useHandCursor: true });
-      bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
+      bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x0e0b10, 0.78); });
       bg.on('pointerout', () => { bg.setFillStyle(0x050505, 0.58); });
       bg.on('pointerdown', () => {
         SoundHelper.playVariant(this, 'button_click', 0.5);
@@ -1322,7 +1361,7 @@ export class EventScene extends Phaser.Scene {
     // Inspect -> Fight path, even though the outcome string is still present.
     this.outcomeText?.destroy?.();
     this.outcomeText = this.add.text(this.eventLayout.centerX, top, story, {
-      ...serifStyle(`${storyFont}px`, '#fff2d0'),
+      ...serifStyle(`${storyFont}px`, '#fef0cf'),
       align: 'center',
       wordWrap: { width: 330 }
     }).setOrigin(0.5, 0).setAlpha(story ? 1 : 0).setDepth(4);
@@ -1395,15 +1434,15 @@ export class EventScene extends Phaser.Scene {
 
     const text = this.add.text(6, 4, description, {
       fontSize: '11px',
-      fill: definition.cursed ? '#ff7777' : '#ffffff',
+      fill: definition.cursed ? '#c45c45' : '#fef0cf',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
       wordWrap: { width: 190 }
     }).setOrigin(0);
     const width = Math.ceil(text.width + 12);
     const height = Math.ceil(text.height + 8);
-    const bg = this.add.rectangle(0, 0, width, height, 0x080808, 0.96)
+    const bg = this.add.rectangle(0, 0, width, height, 0x050505, 0.96)
       .setOrigin(0)
-      .setStrokeStyle(1, definition.cursed ? 0xff6666 : 0xf2d3aa);
+      .setStrokeStyle(1, definition.cursed ? 0xc45c45 : 0xf2d3aa);
 
     const x = Phaser.Math.Clamp(iconSprite.x + 18, 6, 640 - width - 6);
     const y = Phaser.Math.Clamp(iconSprite.y - height - 4, 6, 244 - height);
@@ -1438,6 +1477,8 @@ export class EventScene extends Phaser.Scene {
       this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
       this.gameScene?.updateUI?.();
       this._reward(localizedGainedLabel);
+      // It floats from the event's picture into the slot it landed in.
+      this._flyCardFromPicture(this.gameScene?.inventorySystem?.lastAddedSlot);
       return true;
     }
 
@@ -1531,7 +1572,10 @@ export class EventScene extends Phaser.Scene {
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     this.gameScene?.updateUI?.();
     const lost = current - this.gameState.playerHealth;
-    if (lost > 0) this._reward({ key: 'event.reward.hp', vars: { amount: `-${lost}` } });
+    if (lost > 0) {
+      SoundHelper.playVariant(this, 'player_hurt', 0.5);
+      this._reward({ key: 'event.reward.hp', vars: { amount: `-${lost}` } });
+    }
   }
 
   loseActionPoints(amount) {
@@ -1540,6 +1584,7 @@ export class EventScene extends Phaser.Scene {
     this.gameState.actionsLeft = Math.max(0, current - amount);
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     this.gameScene?.updateActionPointUI?.();
+    this.gameScene?.playActionPointSpend?.(current, this.gameState.actionsLeft);
     this.gameScene?.updateUI?.();
     const lost = current - this.gameState.actionsLeft;
     if (lost > 0) this._reward({ key: 'event.reward.ap', vars: { amount: `-${lost}` } });
@@ -1681,6 +1726,9 @@ export class EventScene extends Phaser.Scene {
     if (ok) {
       this._reward({ key: 'event.reward.gainedAmulet', vars: { name } });
       this._pushRewardIcon(def?.sprite || 'relicsOthers', def?.spriteFrame ?? 0, id);
+      // It floats from the event's picture to its spot on the amulet bar.
+      const from = this._rewardSourcePoint();
+      flyAmuletToBar(this, id, from.x, from.y);
     }
     return ok;
   }
@@ -1708,6 +1756,8 @@ export class EventScene extends Phaser.Scene {
     inv.setStationMode(true);
     inv.setVisibility(true);
     inv.setDragOverlayScene?.(this);
+    // Floating text from the fight scene draws here, over this screen's panels.
+    this.gameScene.setFeedbackScene?.(this);
     inv.clearDropZones?.(); // start clean; the mirror re-registers below if needed
     this._stationActive = true;
   }
@@ -1723,6 +1773,7 @@ export class EventScene extends Phaser.Scene {
     // (Phaser scene status: SHUTDOWN is 8, DESTROYED 9.)
     if ((this.gameScene?.sys?.settings?.status ?? 9) >= 8) return;
     const inv = this.gameScene?.inventorySystem;
+    this.gameScene?.setFeedbackScene?.(null);
     if (inv) {
       inv.setDragOverlayScene?.(null);
       inv.clearDropZones?.();
@@ -1749,15 +1800,15 @@ export class EventScene extends Phaser.Scene {
     if (!inv || !cardData) return false;
 
     if (this.mirrorUsed) {
-      this._mirrorFloat('The mirror already copied a card', 0xffaa66, cardSprite);
+      this._mirrorFloat('The mirror already copied a card', 0xe89353, cardSprite);
       return false; // let it bounce back to its slot
     }
     if (!this._isMirrorCopyable(cardData)) {
-      this._mirrorFloat("The mirror won't copy that", 0xff6666, cardSprite);
+      this._mirrorFloat("The mirror won't copy that", 0xc45c45, cardSprite);
       return false;
     }
     if (!inv.slots.some(slot => slot === null)) {
-      this._mirrorFloat('No empty slot for the copy', 0xff6666, cardSprite);
+      this._mirrorFloat('No empty slot for the copy', 0xc45c45, cardSprite);
       return false;
     }
 
@@ -1765,7 +1816,7 @@ export class EventScene extends Phaser.Scene {
     inv.returnCardToSlot(slotIndex, cardSprite);
     inv.addCard(this._duplicateCardData(cardData));
     this.mirrorUsed = true;
-    this._mirrorFloat('Copied!', 0x8ad6ff, cardSprite);
+    this._mirrorFloat('Copied!', 0x71b1ae, cardSprite);
     this.gameScene?.updateUI?.();
     return true;
   }
@@ -1816,7 +1867,7 @@ export class EventScene extends Phaser.Scene {
     const inv = this.gameScene?.inventorySystem;
     if (!inv || !cardData || !this.screamingHeadOfferingActive || this.resolved) return false;
     if (!this._isScreamingHeadOfferCard(cardData)) {
-      this._mirrorFloat('The stone teeth reject that offering', 0xff6666, cardSprite);
+      this._mirrorFloat('The stone teeth reject that offering', 0xc45c45, cardSprite);
       return false;
     }
 
@@ -1824,6 +1875,7 @@ export class EventScene extends Phaser.Scene {
     if (!rerolledCard) return false;
     const oldName = cardData.name || 'a card';
 
+    playCardDissolve(this, cardSprite);
     inv.cleanupCardSprites(slotIndex, cardSprite);
     inv.cleanupBoardArtifacts?.(cardSprite);
     inv.removeCard(slotIndex, false);
@@ -1832,6 +1884,8 @@ export class EventScene extends Phaser.Scene {
     inv.clearDropZones();
     this.screamingHeadOfferingActive = false;
     this.gameScene?.updateUI?.();
+    // The head's answer floats out of it into the bag.
+    this._flyCardFromPicture(inv.lastAddedSlot);
 
     this._rewardLines = [];
     this._rewardIcons = [];
@@ -1867,7 +1921,7 @@ export class EventScene extends Phaser.Scene {
     const inv = this.gameScene?.inventorySystem;
     if (!inv || !cardData || !this.briarOfferingActive || this.resolved) return false;
     if (cardData.type !== 'weapon' && cardData.type !== 'armor') {
-      this._mirrorFloat('The briars only want a weapon or armor card', 0xff6666, cardSprite);
+      this._mirrorFloat('The briars only want a weapon or armor card', 0xc45c45, cardSprite);
       return false;
     }
 
@@ -2044,7 +2098,7 @@ export class EventScene extends Phaser.Scene {
     const inv = this.gameScene?.inventorySystem;
     if (!inv || !cardData || !this.armWrestleBetActive || this.resolved) return false;
     if (!this._isArmWrestleStakeCard(cardData)) {
-      this._mirrorFloat('He turns it over once and hands it back. "I do not fight for junk. Bring me something better (uncommon or better)."', 0xff6666, cardSprite);
+      this._mirrorFloat('He turns it over once and hands it back. "I do not fight for junk. Bring me something better (uncommon or better)."', 0xc45c45, cardSprite);
       return false;
     }
 
@@ -2138,6 +2192,7 @@ export class EventScene extends Phaser.Scene {
           idx = slots.findIndex((c) => c === pending.cardData);
         }
         if (inv && idx >= 0) {
+          this._dissolveBagCard(idx); // the lost stake dissolves in its slot
           inv.removeCard(idx, true);
         }
         this._reward({ key: 'event.reward.lostStake', vars: { name: translateItemName(this, stakeName) } });
@@ -2549,17 +2604,17 @@ export class EventScene extends Phaser.Scene {
     const inv = this.gameScene?.inventorySystem;
     if (!inv || !cardData || !magicType || this.resolved) return false;
     if (cardData.type !== 'weapon') {
-      this._mirrorFloat('The case only opens for a weapon', 0xff6666, cardSprite);
+      this._mirrorFloat('The case only opens for a weapon', 0xc45c45, cardSprite);
       return false;
     }
     if (cardData.enchant) {
-      this._mirrorFloat('That weapon already holds a spell', 0xff6666, cardSprite);
+      this._mirrorFloat('That weapon already holds a spell', 0xc45c45, cardSprite);
       return false;
     }
 
     const magicName = getMagic(magicType)?.name || 'the card';
     if (!applyEnchantToWeapon(cardData, magicType)) {
-      this._mirrorFloat('The glass does not open', 0xff6666, cardSprite);
+      this._mirrorFloat('The glass does not open', 0xc45c45, cardSprite);
       return false;
     }
 
@@ -2646,19 +2701,20 @@ export class EventScene extends Phaser.Scene {
     if (this.resolved) return false; // event already ended — bounce back
 
     if (!this._isWellTradeable(cardData)) {
-      this._mirrorFloat('The reflection only wants gear (weapon/armor/thorns)', 0xff6666, cardSprite);
+      this._mirrorFloat('The reflection only wants gear (weapon/armor/thorns)', 0xc45c45, cardSprite);
       return false;
     }
 
     const oldName = cardData.name || 'a card';
     const newCard = this._wellReroll(cardData);
     if (!newCard) {
-      this._mirrorFloat("The well won't take that", 0xff6666, cardSprite);
+      this._mirrorFloat("The well won't take that", 0xc45c45, cardSprite);
       return false;
     }
 
     // Consume the dropped card (same cleanup path as a discard), then hand back
     // the rerolled card.
+    playCardDissolve(this, cardSprite); // the offered card dissolves where it was dropped
     inv.cleanupCardSprites(slotIndex, cardSprite);
     // The well art sits in the board area (screen centre), so the card — and its
     // merge "twinkle" — was dragged there. cleanupCardSprites clears the slot's
@@ -2749,7 +2805,7 @@ export class EventScene extends Phaser.Scene {
     this._carnivalHint = this.add.text(
       centerX, 131,
       trayChoices.length ? 'Drag a trinket into your bag   ·   1 coin each' : 'Nothing here you can afford.',
-      { fontSize: '10px', fill: '#ffe8b0', fontFamily: '"HoMM Pixel"', align: 'center' }
+      { fontSize: '10px', fill: '#fee8b5', fontFamily: '"HoMM Pixel"', align: 'center' }
     ).setOrigin(0.5).setDepth(5);
 
     if (this.textures.exists('carnivalTray')) {
@@ -2798,9 +2854,9 @@ export class EventScene extends Phaser.Scene {
         .setDepth(5)
         .setInteractive({ useHandCursor: true });
       const label = this.add.text(centerX, y, this._choiceLabel(refuseChoice), {
-        fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
+        fontSize: '11px', fill: '#fef0cf', fontFamily: '"HoMM Pixel"'
       }).setOrigin(0.5).setDepth(6);
-      bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
+      bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x0e0b10, 0.78); });
       bg.on('pointerout', () => bg.setFillStyle(0x050505, 0.58));
       bg.on('pointerdown', () => {
         SoundHelper.playVariant(this, 'button_click', 0.5);
@@ -2820,13 +2876,13 @@ export class EventScene extends Phaser.Scene {
 
     if (!target.over) { this._returnCarnivalCard(card); return; }
     if ((this.gameState?.coins || 0) < 1) {
-      this.gameScene?.createFloatingText?.(pointer.worldX, pointer.worldY, 'You need a coin', 0xff6666);
+      this.gameScene?.createFloatingText?.(pointer.worldX, pointer.worldY, 'You need a coin', 0xc45c45);
       this._returnCarnivalCard(card);
       return;
     }
     // Junk trinkets need an open slot; the clover becomes an amulet and doesn't.
     if (!isAmulet && target.emptySlot < 0) {
-      this.gameScene?.createFloatingText?.(pointer.worldX, pointer.worldY, 'Your bag is full', 0xff6666);
+      this.gameScene?.createFloatingText?.(pointer.worldX, pointer.worldY, 'Your bag is full', 0xc45c45);
       this._returnCarnivalCard(card);
       return;
     }
@@ -2911,7 +2967,7 @@ export class EventScene extends Phaser.Scene {
     this._setReadingScroll([this.descText], 42, 120, this.descText.y + this.descText.height);
 
     this._wizardHint = this.add.text(centerX, 128, t(this, 'ui.event.dragCardHint'), {
-      fontSize: '11px', fill: '#ffe8b0', fontFamily: '"HoMM Pixel"', align: 'center'
+      fontSize: '11px', fill: '#fee8b5', fontFamily: '"HoMM Pixel"', align: 'center'
     }).setOrigin(0.5).setDepth(5);
 
     if (this.textures.exists('wizardTray')) {
@@ -2929,9 +2985,9 @@ export class EventScene extends Phaser.Scene {
       const bg = this.add.rectangle(centerX, y, 150, 15, 0x050505, 0.58)
         .setDepth(5).setInteractive({ useHandCursor: true });
       const label = this.add.text(centerX, y, this._choiceLabel(declineChoice), {
-        fontSize: '11px', fill: '#ffffff', fontFamily: '"HoMM Pixel"'
+        fontSize: '11px', fill: '#fef0cf', fontFamily: '"HoMM Pixel"'
       }).setOrigin(0.5).setDepth(6);
-      bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x111111, 0.78); });
+      bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x0e0b10, 0.78); });
       bg.on('pointerout', () => bg.setFillStyle(0x050505, 0.58));
       bg.on('pointerdown', () => {
         SoundHelper.playVariant(this, 'button_click', 0.5);
@@ -2946,6 +3002,7 @@ export class EventScene extends Phaser.Scene {
     if (!inv || !cardData || this.resolved) return false;
 
     if (this.isCarnivalJunk(cardData)) {
+      playCardDissolve(this, cardSprite); // the offered card dissolves where it was dropped
       inv.cleanupCardSprites?.(slotIndex, cardSprite);
       inv.cleanupBoardArtifacts?.(cardSprite);
       inv.removeCard(slotIndex, false);
@@ -2969,10 +3026,11 @@ export class EventScene extends Phaser.Scene {
     if (this.isBrassWizardRerollable(cardData)) {
       const newCard = this.createSameTypeRerollCard(cardData);
       if (!newCard) {
-        this._mirrorFloat("The wizard won't take that", 0xff6666, cardSprite);
+        this._mirrorFloat("The wizard won't take that", 0xc45c45, cardSprite);
         return false;
       }
       const oldName = cardData.name || 'card';
+      playCardDissolve(this, cardSprite); // the offered card dissolves where it was dropped
       inv.cleanupCardSprites?.(slotIndex, cardSprite);
       inv.cleanupBoardArtifacts?.(cardSprite);
       inv.removeCard(slotIndex, false);
@@ -2991,7 +3049,7 @@ export class EventScene extends Phaser.Scene {
       return true;
     }
 
-    this._mirrorFloat("The wizard doesn't want that", 0xff6666, cardSprite);
+    this._mirrorFloat("The wizard doesn't want that", 0xc45c45, cardSprite);
     return false;
   }
 
@@ -3054,6 +3112,7 @@ export class EventScene extends Phaser.Scene {
     while (pending.length > 0 && slots.some(slot => slot == null)) {
       const reward = pending[0];
       if (!this._addCardToInventory(reward.card)) break;
+      this._flyCardFromPicture(this.gameScene?.inventorySystem?.lastAddedSlot);
       pending.shift();
       if (Number.isInteger(reward.rewardLineIndex) && this._rewardLines) {
         this._rewardLines[reward.rewardLineIndex] = reward.gainedLabel;
@@ -3061,7 +3120,7 @@ export class EventScene extends Phaser.Scene {
       this.gameScene?.createFloatingText?.(512, 400, {
         key: 'float.claimed',
         vars: { name: translateItemName(this, reward.card || reward.shortName) },
-      }, 0x66ff66);
+      }, 0x71800b);
       delivered = true;
     }
 

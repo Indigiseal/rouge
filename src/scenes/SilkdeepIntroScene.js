@@ -21,33 +21,36 @@ export class SilkdeepIntroScene extends Phaser.Scene {
     if (this.textures.exists('mainBG')) {
       this.add.image(320, 180, 'mainBG').setTint(0x686873);
     } else {
-      this.add.rectangle(320, 180, 640, 360, 0x202028);
+      this.add.rectangle(320, 180, 640, 360, 0x2b2428);
     }
-    this.add.rectangle(320, 180, 640, 360, 0x050507, 0.76);
+    this.add.rectangle(320, 180, 640, 360, 0x050505, 0.76);
 
     createTitle(this, 320, 25, t(this, 'ui.silkdeepIntro.title'), {
-      color: '#ded9e8',
+      color: '#d6c2c1',
       fallbackSize: '20px',
     });
-    this.add.rectangle(320, 184, 574, 264, 0x0e0d12, 0.9)
-      .setStrokeStyle(1, 0x777184, 0.85);
+    this.add.rectangle(320, 184, 574, 264, 0x0e0b10, 0.9)
+      .setStrokeStyle(1, 0x6c6885, 0.85);
 
     this.body = this.add.text(320, 64, '', {
-      ...serifStyle('14px', '#e8e3ed'),
+      ...serifStyle('14px', '#d6c2c1'),
       align: 'left',
       wordWrap: { width: 520 },
       lineSpacing: 3,
     }).setOrigin(0.5, 0);
 
-    this.button = this.add.rectangle(320, 329, 190, 28, 0x24212b, 0.98)
-      .setStrokeStyle(1, 0x9188a0)
+    this.button = this.add.rectangle(320, 329, 190, 28, 0x2b2332, 0.98)
+      .setStrokeStyle(1, 0x877c80)
       .setInteractive({ useHandCursor: true });
     this.buttonLabel = this.add.text(320, 329, '', {
-      ...serifStyle('14px', '#f1edf5'),
+      ...serifStyle('14px', '#d6c2c1'),
     }).setOrigin(0.5);
 
-    this.button.on('pointerover', () => this.button.setFillStyle(0x3a3545, 1));
-    this.button.on('pointerout', () => this.button.setFillStyle(0x24212b, 0.98));
+    this.button.on('pointerover', () => {
+      SoundHelper.playVariant(this, 'hover_button', 0.4);
+      this.button.setFillStyle(0x383348, 1);
+    });
+    this.button.on('pointerout', () => this.button.setFillStyle(0x2b2332, 0.98));
     this.button.on('pointerdown', () => this.advance());
     this.input.keyboard?.on('keydown-ENTER', () => this.advance());
     this.input.keyboard?.on('keydown-SPACE', () => this.advance());

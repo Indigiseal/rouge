@@ -4,6 +4,7 @@ import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { gemTierFrame } from '../../content/cards/gems.js';
 import { attachGemShine } from '../../ui/GemShine.js';
 import { GEM_SPOT_KEY, gemSpotPosition, showGemSockets } from '../../ui/GemSockets.js';
+import { handLockOf } from '../../content/combat/handLock.js';
 import { bindCardRiders, cardRiders, pinRider } from '../../ui/CardRiders.js';
 
 export const InventorySlotRenderer = {
@@ -29,11 +30,11 @@ export const InventorySlotRenderer = {
             cardSprite = snapOriginToPixelGrid(this.scene.add.image(x, y, cardData.sprite, cardData.spriteFrame));
         } else {
             const colors = {
-                armor: 0x888888,
-                magic: 0x9932cc,
-                gem: cardData.color || 0xffe066
+                armor: 0x869089,
+                magic: 0x712a65,
+                gem: cardData.color || 0xffcf7f
             };
-            cardSprite = this.scene.add.rectangle(x, y, 45, 65, colors[cardData.type] || 0x666666);
+            cardSprite = this.scene.add.rectangle(x, y, 45, 65, colors[cardData.type] || 0x6e7470);
         }
         
         this.uiGroup.add(cardSprite);
@@ -253,7 +254,7 @@ export const InventorySlotRenderer = {
             // Silkslinger web: card cannot be dragged while locked.
             if (cardSprite.getData('webbedLocked') || (this.slots[slotIndex]?.webbedTurns > 0)) {
                 this.scene.input?.setDraggable?.(cardSprite, false);
-                this.scene.createFloatingText?.(cardSprite.x, cardSprite.y - 18, 'Webbed!', 0xddeeff);
+                this.scene.createFloatingText?.(cardSprite.x, cardSprite.y - 18, handLockOf(this.slots[slotIndex]).text, 0xd6c2c1);
                 return;
             }
             this.hideCardTooltip();

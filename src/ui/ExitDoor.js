@@ -47,7 +47,8 @@ export function createExitDoor(scene, onClick, opts = {}) {
     };
 
     door.on('pointerover', () => {
-        SoundHelper.playVariant(scene, 'hover_button', 0.4);
+        // The same hinge creak the road doors make (LocationPickScene).
+        SoundHelper.playVariant(scene, 'door_hover', 0.4);
         setHoverLight(door, true);
     });
     door.on('pointerout', rest);

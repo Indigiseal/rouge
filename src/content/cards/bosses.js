@@ -108,7 +108,7 @@ export const BOSSES = {
     attack: 17,
     sprite: 'Lich',
     abilities: [
-      { type: 'lifesteal', percentage: 0.55 },
+      { type: 'lifesteal', percentage: 0.2 },
       { type: 'summon', enemyType: 'skeleton', chance: 0.22, count: 1 }
     ]
   },

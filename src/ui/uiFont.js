@@ -17,7 +17,7 @@ import { fontFamily } from './fontFamilies.js';
 export const UI_SERIF_FAMILY = 'UI Serif';
 export const UI_SERIF = `"${UI_SERIF_FAMILY}", Georgia, serif`;
 
-export function feedbackStyle(size = '16px', color = '#f6efe1') {
+export function feedbackStyle(size = '16px', color = '#fef0cf') {
     return { fontSize: size, fill: color, fontFamily: fontFamily('feedback'),
         fontRole: 'feedback', fontStyle: '600', resolution: PIXEL_SCALE, useCanvasText: true };
 }
@@ -57,7 +57,7 @@ export function serifStyle(size, color) {
 }
 
 /** Add reading text. The factory preserves this role when languages change. */
-export function serifText(scene, x, y, text, { size = FONT_SIZE.body, color = '#ffffff', origin = 0.5 } = {}) {
+export function serifText(scene, x, y, text, { size = FONT_SIZE.body, color = '#fef0cf', origin = 0.5 } = {}) {
     const obj = scene.add.text(x, y, text, serifStyle(size, color));
     return Array.isArray(origin) ? obj.setOrigin(origin[0], origin[1]) : obj.setOrigin(origin);
 }
