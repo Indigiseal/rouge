@@ -54,7 +54,7 @@ export const SIGILS = Object.freeze({
     rally:       { name: 'Rally',       frame: 46, side: 'enemy',  enemy: 'goblins attack more often' },
     // A buffer: it never acts twice itself, its side does. Frame 47 is its
     // own icon slot; until that is drawn it wears Rally's horn.
-    warcry:      { name: 'Warcry',      frame: 46, side: 'both',   enemy: 'other enemies: 10% chance per level to act twice', player: 'carried: your companions get 10% chance to act twice', works: true },
+    warcry:      { name: 'Warcry',      frame: 46, side: 'both',   enemy: 'other enemies: 10% chance to act twice', player: 'carried: your companions get 10% chance to act twice', works: true },
     // The four looks of Arrest: same rule, each with its own source.
     zap:         { name: 'Zap',         frame: 56, side: 'both',   enemy: 'locks one of your cards for a turn', player: 'the enemy hit skips its next turn (shock)' },
     frost:       { name: 'Frost',       frame: 57, side: 'both',   enemy: 'locks one of your cards for a turn', player: 'the enemy hit skips its next turn (freeze)' },
@@ -124,16 +124,11 @@ export function storedSigils(card) {
  */
 export function cardSigils(card) {
     if (!card) return [];
-    // The player's cards have no sigil levels: each sigil once, at its base
-    // rule (older saves' levelled sigils read as level 1). Enemies keep theirs
-    // — a boss's Regenerate 3 — since this also reads enemy data.
-    const playerCard = card.type === 'weapon' || card.type === 'armor';
-    const levelOf = (s) => (playerCard ? 1 : Math.max(1, s.level || 1));
-    const out = storedSigils(card).map((s) => ({ id: s.id, level: levelOf(s) }));
+    // Sigils have no levels: each one once, at its rule as written. (Older
+    // saves' levelled sigils read as plain ones.)
+    const out = storedSigils(card).map((s) => ({ id: s.id, level: 1 }));
     const has = (id) => out.some((s) => s.id === id);
-    if ((card.briarDamageBonus || 0) > 0 && !has('thorns')) {
-        out.push({ id: 'thorns', level: playerCard ? 1 : card.briarDamageBonus });
-    }
+    if ((card.briarDamageBonus || 0) > 0 && !has('thorns')) out.push({ id: 'thorns', level: 1 });
     const fromEnchant = ENCHANT_SIGIL[card.enchant];
     if (fromEnchant && !has(fromEnchant)) out.push({ id: fromEnchant, level: 1 });
     if ((card.shockChance || 0) > 0 && !has('zap')) out.push({ id: 'zap', level: 1 });
@@ -144,22 +139,18 @@ export function cardSigils(card) {
 export function enemySigils(data, { lockKind = null } = {}) {
     if (!data) return [];
     const ids = [];
-    const levels = {};
     const add = (id) => { if (id && SIGILS[id] && !ids.includes(id)) ids.push(id); };
     // Sigils the enemy carries in its own right (a boss's), then its traits.
-    for (const s of storedSigils(data)) {
-        add(s.id);
-        levels[s.id] = Math.max(1, s.level || 1);
-    }
+    for (const s of storedSigils(data)) add(s.id);
     for (const f of Array.isArray(data.features) ? data.features : []) {
         if (f === 'web_hand') add(lockKind === 'ink' ? 'ink' : 'web');
         else add(FEATURE_SIGIL[f]);
     }
     for (const a of Array.isArray(data.abilities) ? data.abilities : []) add(ABILITY_SIGIL[a?.type]);
-    return ids.map((id) => ({ id, level: levels[id] || 1 }));
+    return ids.map((id) => ({ id, level: 1 }));
 }
 
-/** Level of one stored sigil on a card (0 if it has none). */
+/** 1 if the card carries sigil `id`, else 0 (sigils have no levels). */
 export function sigilLevel(card, id) {
     return cardSigils(card).find((s) => s.id === id)?.level || 0;
 }
@@ -173,9 +164,9 @@ export function addSigil(card, id) {
     if (!card || !SIGILS[id]) return false;
     if (cardSigils(card).some((s) => s.id === id)) return false;
     if (id === 'thorns') {
-        card.briarDamageBonus = (card.briarDamageBonus || 0) + 1;
+        card.briarDamageBonus = 1;
         if (card.type === 'weapon') card.damage = (card.damage || 0) + 1;
-        else if (card.type === 'armor') card.thornDamage = card.briarDamageBonus;
+        else if (card.type === 'armor') card.thornDamage = 1;
         return true;
     }
     const list = storedSigils(card).map((s) => ({ ...s }));
@@ -215,4 +206,23 @@ export function sigilLine(id, level = 1, side = 'player') {
     const rule = (side === 'enemy' ? s.enemy : s.player) || s.player || s.enemy || '';
     const lvl = level > 1 ? ` ${level}` : '';
     return `${s.name}${lvl}: ${rule}`;
+}
+
+// --- The run's sigils ---------------------------------------------------
+// Gaining a sigil is rare, and none comes twice in a run: every sigil the
+// player takes (a chest, the Briar Room's Thorns) is noted on the run's story
+// state, which the save already keeps, and is never offered again.
+
+/** Ids of the sigils taken this run. */
+export function takenSigils(gameState) {
+    const list = gameState?.storyRun?.sigilsTaken;
+    return Array.isArray(list) ? list : [];
+}
+
+/** Note that the player took sigil `id` this run. */
+export function noteSigilTaken(gameState, id) {
+    if (!gameState || !SIGILS[id]) return;
+    if (!gameState.storyRun) gameState.storyRun = {};
+    const list = takenSigils(gameState);
+    if (!list.includes(id)) gameState.storyRun.sigilsTaken = [...list, id];
 }

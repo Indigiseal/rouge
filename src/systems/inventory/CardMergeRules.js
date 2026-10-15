@@ -268,10 +268,11 @@ export const CardMergeRules = {
             upgradedCard.durability = upgradedCard.maxDurability;
         }
 
-        // Briar upgrades belong to the card, not its current rarity. Carry the
-        // permanent bonus through merging, combining it when both inputs were blessed.
+        // Briar thorns belong to the card, not its current rarity: carried
+        // through merging. Thorns is a sigil, so it never adds up — two
+        // thorned cards make one thorned card.
         if (baseCard.type === 'weapon' || baseCard.type === 'armor') {
-            const briarBonus = (baseCard.briarDamageBonus || 0) + (secondCard.briarDamageBonus || 0);
+            const briarBonus = Math.min(1, Math.max(baseCard.briarDamageBonus || 0, secondCard.briarDamageBonus || 0));
             if (briarBonus > 0) {
                 upgradedCard.briarDamageBonus = briarBonus;
                 if (baseCard.type === 'weapon') {

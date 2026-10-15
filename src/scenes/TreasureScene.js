@@ -14,6 +14,9 @@ import { scaleGoldReward } from '../content/economy/gold.js';
 import { createSelectionCorners } from '../ui/NineSlicePanel.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { playCardDissolve } from '../ui/CardDissolve.js';
+
+// Chance an elite's chest also holds a sigil (a secret room's always does).
+const ELITE_CHEST_SIGIL_CHANCE = 0.3;
 import { openSigilOffer, rollOfferableSigil } from '../ui/SigilOffer.js';
 
 // The chest stands in the middle of the room and is opened by clicking it;
@@ -196,11 +199,11 @@ export class TreasureScene extends StationRoomBase {
     this.gameScene?.updateUI?.();
     this.darkenOpenedChest(chest);
 
-    // An elite or secret-room chest also holds a sigil, put on a card the
-    // player picks now.
-    if (this.rewardMode === 'elite' || this.rewardMode === 'secret') {
-      this.time.delayedCall(450, () => this.offerChestSigil());
-    }
+    // A secret room's chest always holds a sigil; an elite's only sometimes —
+    // gaining one is meant to be rare. Put on a card the player picks now.
+    const sigilHere = this.rewardMode === 'secret'
+      || (this.rewardMode === 'elite' && Math.random() < ELITE_CHEST_SIGIL_CHANCE);
+    if (sigilHere) this.time.delayedCall(450, () => this.offerChestSigil());
   }
 
   offerChestSigil() {

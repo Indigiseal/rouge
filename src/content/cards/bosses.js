@@ -20,7 +20,7 @@ export const BOSSES = {
   // ---- Tier 1 (Act 1 finale, floor 15) ----
   giantSkeleton: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'honed', level: 1 }],
+    sigils: [{ id: 'honed' }],
     type: 'boss', tier: 1,
     name: 'Giant Skeleton',
     health: 89,
@@ -33,7 +33,7 @@ export const BOSSES = {
   },
   goblinKing: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'outnumbered', level: 1 }, { id: 'warcry', level: 1 }],
+    sigils: [{ id: 'outnumbered' }, { id: 'warcry' }],
     type: 'boss', tier: 1,
     name: 'Goblin King',
     health: 84,
@@ -46,7 +46,7 @@ export const BOSSES = {
   },
   greenWarden: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'regenerate', level: 3 }],
+    sigils: [{ id: 'regenerate' }],
     type: 'boss', tier: 1,
     name: 'The Green Warden',
     health: 86,
@@ -58,7 +58,7 @@ export const BOSSES = {
   },
   spiderQueen: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'ambush', level: 1 }],
+    sigils: [{ id: 'ambush' }],
     type: 'boss', tier: 1,
     name: 'Spider Queen',
     health: 81,
@@ -76,7 +76,7 @@ export const BOSSES = {
   // ---- Tier 2 (Act 2 finale, floor 30) ----
   soulEater: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'merciless', level: 1 }],
+    sigils: [{ id: 'merciless' }],
     type: 'boss', tier: 2,
     name: 'Soul Eater',
     health: 162,
@@ -95,7 +95,7 @@ export const BOSSES = {
   },
   mireBride: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'regenerate', level: 2 }],
+    sigils: [{ id: 'regenerate' }],
     type: 'boss', tier: 2,
     name: 'The Mire Bride',
     // Base stats sit under the tier-2 median on purpose. She carries a
@@ -114,7 +114,7 @@ export const BOSSES = {
   },
   lich: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'unscathed', level: 1 }],
+    sigils: [{ id: 'unscathed' }],
     type: 'boss', tier: 2,
     name: 'Lich',
     // +20% HP vs prior 110 (act-2 boss HP pass).
@@ -128,7 +128,7 @@ export const BOSSES = {
   },
   cerberus: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'outnumbered', level: 1 }],
+    sigils: [{ id: 'outnumbered' }],
     type: 'boss', tier: 2,
     name: 'Cerberus',
     // +20% HP vs prior 105 (act-2 boss HP pass).
@@ -145,7 +145,7 @@ export const BOSSES = {
   // ---- Tier 3 (Act 3 finale, floor 45) ----
   ancientCerberus: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'outnumbered', level: 1 }, { id: 'merciless', level: 1 }],
+    sigils: [{ id: 'outnumbered' }, { id: 'merciless' }],
     type: 'boss', tier: 3,
     name: 'Ancient Cerberus',
     health: 272,

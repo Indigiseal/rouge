@@ -48,6 +48,7 @@ import { serifStyle } from '../ui/uiFont.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { createExitDoor, EXIT_DOOR_X, EXIT_DOOR_Y } from '../ui/ExitDoor.js';
 import { ENEMIES } from '../content/cards/enemies.js';
+import { addSigil, cardSigils, noteSigilTaken } from '../content/sigils/sigils.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
@@ -1926,12 +1927,14 @@ export class EventScene extends Phaser.Scene {
       return false;
     }
 
-    cardData.briarDamageBonus = (cardData.briarDamageBonus || 0) + 1;
-    if (cardData.type === 'weapon') {
-      cardData.damage = (cardData.damage || 0) + 1;
-    } else {
-      cardData.thornDamage = (cardData.thornDamage || 0) + 1;
+    // The briars give the Thorns sigil — once: a card already wrapped is
+    // turned away (sigils never repeat).
+    if (cardSigils(cardData).some((s) => s.id === 'thorns')) {
+      this._mirrorFloat('This card already has thorns', 0xc45c45, cardSprite);
+      return false;
     }
+    addSigil(cardData, 'thorns');
+    noteSigilTaken(this.gameState, 'thorns');
 
     inv.returnCardToSlot(slotIndex, cardSprite);
     inv.clearDropZones();

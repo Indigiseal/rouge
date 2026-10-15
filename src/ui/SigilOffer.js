@@ -8,7 +8,9 @@
 // scene's bag, so the bag is rebuilt afterwards to show the new icon.
 
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { SIGIL_ICONS_KEY, WORKING_PLAYER_SIGILS, addSigil, canTakeSigil, getSigil, sigilLine } from '../content/sigils/sigils.js';
+import {
+    SIGIL_ICONS_KEY, WORKING_PLAYER_SIGILS, addSigil, canTakeSigil, cardSigils, getSigil, noteSigilTaken, sigilLine, takenSigils,
+} from '../content/sigils/sigils.js';
 import { setHoverLight } from './HoverLight.js';
 
 const DEPTH = 600;
@@ -27,7 +29,11 @@ export function rollOfferableSigil(gameScene) {
     const cards = candidateCards(gameScene);
     // Warcry only helps companions: not offered to a hero who has none.
     const hasCompanion = (gameScene?.getCompanionEntries?.() || []).length > 0;
-    const options = WORKING_PLAYER_SIGILS.filter((id) => (id !== 'warcry' || hasCompanion)
+    // Never one taken earlier this run, nor one a card already shows.
+    const taken = new Set(takenSigils(gameScene?.gameState));
+    cards.forEach((card) => cardSigils(card).forEach((s) => taken.add(s.id)));
+    const options = WORKING_PLAYER_SIGILS.filter((id) => !taken.has(id)
+        && (id !== 'warcry' || hasCompanion)
         && cards.some((card) => canTakeSigil(card, id)));
     return options.length ? options[Math.floor(Math.random() * options.length)] : null;
 }
@@ -67,6 +73,7 @@ export function openSigilOffer(scene, gameScene, sigilId, onDone = () => {}) {
     const rowY = PANEL.y + 32;
     const choose = (card) => {
         addSigil(card, sigilId);
+        noteSigilTaken(gameScene?.gameState, sigilId);
         SoundHelper.playSound(scene, 'gem_socket', 0.5);
         gameScene?.inventorySystem?.rebuildInventorySprites?.();
         gameScene?.updateEquippedArmorPanel?.();

@@ -1,7 +1,6 @@
 // ui/SigilIcons.js
 // A card's sigils drawn in its top-right corner: one 16x16 icon per sigil,
-// stacked downward, with a small level number when a sigil is above level 1
-// (Thorns 2). The same look on the player's cards and on enemies.
+// stacked downward. The same look on the player's cards and on enemies.
 //
 // Returns the objects, positioned and unparented: the caller adds them to its
 // own container (enemy stats, an anvil card face) or pins them to the card
@@ -86,15 +85,6 @@ export function buildSigilIcons(scene, sigils, x, y) {
         if (!def) return;
         const iy = Math.round(y + i * STEP);
         out.push(scene.add.image(Math.round(x), iy, SIGIL_ICONS_KEY, def.frame));
-        if ((s.level || 1) > 1) {
-            out.push(scene.add.text(Math.round(x) + 5, iy + 4, String(s.level), {
-                fontSize: '8px',
-                fill: '#fef0cf',
-                fontFamily: '"HoMM Pixel"',
-                stroke: '#1b0b09',
-                strokeThickness: 2,
-            }).setOrigin(0.5));
-        }
     });
     return out;
 }
