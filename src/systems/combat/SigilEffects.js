@@ -21,6 +21,8 @@ const VENOM_DAMAGE = 1;           // poison per tick
 const VENOM_TURNS = 3;
 const CUTPURSE_COINS = 1;         // coins per hit
 const ARREST_CHANCE = 0.25;       // flat; levels add 0.1 each
+const DEVOURING_CHANCE = 0.08;    // per level, non-bosses only
+const TEMPERED_SAVE = 0.3;        // per level, chance a pip is kept (max 0.9)
 
 const multiply = (damage) => Math.floor(damage * SIGIL_MULTIPLIER);
 
@@ -82,6 +84,15 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage) {
     if (packrat > 0) {
         const bonus = emptyBagSlots(scene) * PACKRAT_PER_SLOT * packrat;
         if (bonus > 0) { out += bonus; triggered.push('packrat'); }
+    }
+
+    // Devouring: a chance to end a non-boss outright. HP + armor guarantees
+    // the kill while it still goes through the normal hit and death pipeline.
+    const devouring = sigilLevel(weapon, 'devouring');
+    if (devouring > 0 && targetCard.data.type !== 'boss' && Math.random() < DEVOURING_CHANCE * devouring) {
+        out = Math.max(out, hp + Math.max(0, targetCard.data.armor || 0));
+        triggered.push('devouring');
+        return { damage: out, baseDamage: damage, triggered };
     }
 
     // Then the x1.5 conditions.
@@ -150,6 +161,12 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         fired.push('arrest');
     }
 
+    // Smoke: a kill hides another standing enemy (the Smoke Screen enchant's move).
+    if (sigilLevel(weapon, 'smoke') > 0 && targetCard?.data && (targetCard.data.health || 0) <= 0) {
+        cs?.applyWeaponEnchantOnKill?.('smokeScreen');
+        fired.push('smoke');
+    }
+
     // Remember this swing for the sequencing sigils.
     scene._sigilLastTarget = targetCard || null;
     scene._sigilLastWeaponHadCombo = sigilLevel(weapon, 'combo') > 0;
@@ -159,6 +176,29 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         weapon.honedFloor = gs?.currentFloor ?? 0;
     }
     return fired;
+}
+
+/** Chance, from Tempered, that `card` keeps the pip it would spend. */
+export function temperedSaveChance(card) {
+    return Math.min(0.9, sigilLevel(card, 'tempered') * TEMPERED_SAVE);
+}
+
+/**
+ * Mirror on the worn armor: reflects the first enemy attack each fight, one
+ * more per level. Returns true (and uses a charge) when this attack bounces.
+ */
+export function consumeMirrorSigil(scene) {
+    const gs = scene?.gameState;
+    const level = sigilLevel(gs?.equippedArmor, 'mirror');
+    if (!gs || level <= 0) return false;
+    const floor = gs.currentFloor ?? 0;
+    if (gs.mirrorSigilFloor !== floor) {
+        gs.mirrorSigilFloor = floor;
+        gs.mirrorSigilUses = 0;
+    }
+    if ((gs.mirrorSigilUses || 0) >= level) return false;
+    gs.mirrorSigilUses = (gs.mirrorSigilUses || 0) + 1;
+    return true;
 }
 
 /** HP Regenerate gives at the end of an enemy turn: every carried card plus worn armor. */

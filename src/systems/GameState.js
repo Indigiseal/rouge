@@ -6,6 +6,7 @@ import {
     isEnemyRangedAttack as isEnemyRangedAttackResolved,
     resolvePlayerDamage,
 } from './combat/PlayerDamageResolver.js';
+import { temperedSaveChance } from './combat/SigilEffects.js';
 import {
     createDefaultHeroMemory,
     createDefaultStoryRun,
@@ -181,7 +182,9 @@ export class GameState {
         const relicSave = this.relicEffects?.armorDurabilitySave || 0;
         const amuletSave = this.scene?.amuletManager?.getArmorDurabilitySaveChance?.() || 0;
         const rivets = this.talentEffects?.rivetsChance || 0;
-        const durabilitySave = Math.min(0.95, relicSave + amuletSave + rivets);
+        // Tempered sigil on the worn armor adds to the same save.
+        const temperedSave = temperedSaveChance(this.equippedArmor);
+        const durabilitySave = Math.min(0.95, relicSave + amuletSave + rivets + temperedSave);
         if (durabilitySave > 0 && Math.random() < durabilitySave) {
             if (rivets > 0 && this.scene?.playerAvatar) {
                 this.scene.createFloatingText(

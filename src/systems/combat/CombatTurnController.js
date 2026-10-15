@@ -8,7 +8,7 @@ import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
 import { getEnemy } from '../../content/cards/enemies.js';
 import { HAND_LOCKS, handLockKindOf, handLockOf } from '../../content/combat/handLock.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
-import { regenerateAmount } from './SigilEffects.js';
+import { consumeMirrorSigil, regenerateAmount } from './SigilEffects.js';
 import { SIGIL_MULTIPLIER, getSigil, sigilLevel } from '../../content/sigils/sigils.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 
@@ -495,9 +495,11 @@ export class CombatTurnController {
         // and none of the hit's riders (poison, theft, webbing) land either.
         // Hand Mirror — same bounce, but only on a small chance per attack.
         const twinnedMirror = damageDealt > 0 && scene.amuletManager?.hasChargedTwinnedMirror?.();
-        const handMirrorGlint = !twinnedMirror && damageDealt > 0
+        // Mirror sigil on the worn armor: the first attack(s) each fight.
+        const mirrorSigil = !twinnedMirror && damageDealt > 0 && consumeMirrorSigil(scene);
+        const handMirrorGlint = !twinnedMirror && !mirrorSigil && damageDealt > 0
             && Math.random() < (scene.amuletManager?.getReflectChance?.() || 0);
-        if (twinnedMirror || handMirrorGlint) {
+        if (twinnedMirror || mirrorSigil || handMirrorGlint) {
             if (twinnedMirror) scene.gameState.twinnedMirrorUsed = true;
             const x = card.sprite?.x ?? scene.playerAvatar.x;
             const y = card.sprite?.y ?? scene.playerAvatar.y;

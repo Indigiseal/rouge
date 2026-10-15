@@ -38,11 +38,11 @@ export const SIGILS = Object.freeze({
     ember:       { name: 'Ember',       frame: 30, side: 'both',   enemy: 'its hits burn you next turn', player: 'fire splash to nearby enemies' },
     sapping:     { name: 'Sapping',     frame: 31, side: 'both',   enemy: 'your weapons deal less for a turn', player: 'the struck enemy deals less' },
     warding:     { name: 'Warding',     frame: 32, side: 'both',   enemy: 'gains armor after it attacks', player: 'your armor is stronger for a turn' },
-    mirror:      { name: 'Mirror',      frame: 33, side: 'both',   enemy: 'sends your next hit back', player: 'sends the next enemy attack back' },
+    mirror:      { name: 'Mirror',      frame: 33, side: 'both',   enemy: 'sends your next hit back', player: 'on armor: sends the first enemy attack each fight back (one more per level)', works: true },
     regenerate:  { name: 'Regenerate',  frame: 34, side: 'both',   enemy: 'heals at the end of each turn', player: 'heals you 1 per level each enemy turn', works: true },
-    devouring:   { name: 'Devouring',   frame: 35, side: 'player', player: 'chance to kill a non-boss outright' },
-    smoke:       { name: 'Smoke',       frame: 36, side: 'player', player: 'a kill hides another enemy' },
-    tempered:    { name: 'Tempered',    frame: 37, side: 'player', player: 'this card sometimes keeps its pip' },
+    devouring:   { name: 'Devouring',   frame: 35, side: 'player', player: '8% chance per level to kill a non-boss outright', works: true },
+    smoke:       { name: 'Smoke',       frame: 36, side: 'player', player: 'a kill hides another enemy', works: true },
+    tempered:    { name: 'Tempered',    frame: 37, side: 'player', player: '30% chance per level this card keeps its pip', works: true },
     hunter:      { name: 'Hunter',      frame: 38, side: 'player', player: 'x1.5 against the enemy you hit last', works: true },
     combo:       { name: 'Combo',       frame: 39, side: 'player', player: 'x1.5 if your previous weapon also had Combo', works: true },
     tandem:      { name: 'Tandem',      frame: 40, side: 'player', player: 'x1.5 if your previous attack hit for the same damage', works: true },
@@ -65,11 +65,12 @@ export const WORKING_PLAYER_SIGILS = Object.freeze(
 );
 
 // Which card types a sigil can go on. Most act when a weapon strikes;
-// Regenerate and Thorns also work from armor.
-const ARMOR_SIGILS = new Set(['regenerate', 'thorns']);
+// Regenerate, Thorns and Tempered also work from armor, and Mirror only does.
+const ARMOR_SIGILS = new Set(['regenerate', 'thorns', 'tempered', 'mirror']);
+const ARMOR_ONLY_SIGILS = new Set(['mirror']);
 export function sigilFitsCardType(id, card) {
     if (!card || !SIGILS[id]) return false;
-    if (card.type === 'weapon') return true;
+    if (card.type === 'weapon') return !ARMOR_ONLY_SIGILS.has(id);
     if (card.type === 'armor') return ARMOR_SIGILS.has(id);
     return false;
 }

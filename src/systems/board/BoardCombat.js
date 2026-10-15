@@ -24,6 +24,7 @@ import {
 } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 import { playSmokePuff } from '../../ui/SmokeBurst.js';
+import { temperedSaveChance } from '../combat/SigilEffects.js';
 import { hideItemTooltip, showControlMarkTooltip } from '../../ui/ItemTooltip.js';
 
 export class BoardCombat {
@@ -1028,9 +1029,15 @@ function burnEnemy(index, amount) {
 function spendWeaponDurability() {
     const gs = this.scene.gameState;
     if (!gs.equippedWeapon) return;
-    const durabilityLoss = this.scene.amuletManager
+    let durabilityLoss = this.scene.amuletManager
         ? (Math.random() < this.scene.amuletManager.getWeaponDurabilityRate() ? 1 : 0)
         : 1;
+    // Tempered sigil: this weapon sometimes keeps its pip.
+    if (durabilityLoss > 0 && Math.random() < temperedSaveChance(gs.equippedWeapon)) {
+        durabilityLoss = 0;
+        CombatSequencer.floatingText(this.scene, 'break',
+            this.scene.playerAvatar.x, this.scene.playerAvatar.y + 18, 'Tempered!', 0xd6c2c1);
+    }
     gs.equippedWeapon.durability -= durabilityLoss;
     if (gs.equippedWeapon.durability <= 0) {
         gs.equippedWeapon = null;
