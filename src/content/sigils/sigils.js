@@ -7,10 +7,9 @@
 // Icons live in enemyIcons.png (16x16 frames): frames 14-46 are the sigils in
 // the design doc's order, 56-59 the four Arrest looks (Zap, Frost, Web, Ink).
 //
-// FIRST PASS (sigils branch): every sigil has an icon and a rule text; only
-// these work on the player's cards so far — Merciless, Hunter, Honed,
-// Regenerate (stored on the card) and Thorns (the Briar Room's thorn wrap,
-// shown as a sigil). Enemy sigils are read off the traits enemies already
+// Every sigil has an icon and a rule text; `works: true` marks the ones whose
+// player-side rule is built (systems/combat/SigilEffects.js). Thorns is the
+// Briar Room's thorn wrap, shown as a sigil. Enemy sigils are read off the traits enemies already
 // have, so they show without changing how any enemy plays.
 
 export const SIGIL_ICONS_KEY = 'enemyIcons';
@@ -20,22 +19,22 @@ export const SIGIL_MULTIPLIER = 1.5;   // never x2 — rounds down, both sides
 // side: 'both' | 'player' | 'enemy'. `player` / `enemy`: the rule as it reads
 // on that side. `works`: true once the player-side rule is built.
 export const SIGILS = Object.freeze({
-    arrest:      { name: 'Arrest',      frame: 14, side: 'both',   enemy: 'locks one of your cards for a turn', player: 'the enemy hit skips its next turn' },
-    venom:       { name: 'Venom',       frame: 15, side: 'both',   enemy: 'poisons you on hit', player: 'poisons the enemy on hit' },
+    arrest:      { name: 'Arrest',      frame: 14, side: 'both',   enemy: 'locks one of your cards for a turn', player: '25% chance the enemy hit skips its next turn', works: true },
+    venom:       { name: 'Venom',       frame: 15, side: 'both',   enemy: 'poisons you on hit', player: 'poisons the enemy hit: 1 per level for 3 turns', works: true },
     thorns:      { name: 'Thorns',      frame: 16, side: 'both',   enemy: 'damages whoever hits it', player: '+1 damage per level (Briar Room)', works: true },
     sunder:      { name: 'Sunder',      frame: 17, side: 'both',   enemy: 'wears down your armor', player: 'strips armor from the enemy' },
     daze:        { name: 'Daze',        frame: 18, side: 'both',   enemy: 'can make you lose an action or miss', player: 'can make the enemy miss its next attack' },
     crushing:    { name: 'Crushing',    frame: 19, side: 'both',   enemy: 'can hit harder or ignore armor', player: 'chance of a heavy hit' },
-    cutpurse:    { name: 'Cutpurse',    frame: 20, side: 'both',   enemy: 'steals coins on hit', player: 'gains coins on hit' },
-    leech:       { name: 'Leech',       frame: 21, side: 'both',   enemy: 'heals when it hits you', player: 'heals you on hit' },
+    cutpurse:    { name: 'Cutpurse',    frame: 20, side: 'both',   enemy: 'steals coins on hit', player: '+1 coin per level on each hit', works: true },
+    leech:       { name: 'Leech',       frame: 21, side: 'both',   enemy: 'heals when it hits you', player: 'heals you 15% of the damage dealt', works: true },
     fleetfoot:   { name: 'Fleetfoot',   frame: 22, side: 'both',   enemy: 'your attacks can miss it', player: 'chance to dodge' },
-    desperate:   { name: 'Desperate',   frame: 23, side: 'both',   enemy: 'hits x1.5 harder near death', player: 'x1.5 while you are below a quarter health' },
-    outnumbered: { name: 'Outnumbered', frame: 24, side: 'both',   enemy: '+1 attack per other enemy on the board', player: '+1 damage per enemy on the board' },
+    desperate:   { name: 'Desperate',   frame: 23, side: 'both',   enemy: 'hits x1.5 harder near death', player: 'x1.5 while you are below a quarter health', works: true },
+    outnumbered: { name: 'Outnumbered', frame: 24, side: 'both',   enemy: '+1 attack per other enemy on the board', player: '+1 damage per enemy on the board', works: true },
     merciless:   { name: 'Merciless',   frame: 25, side: 'both',   enemy: 'x1.5 once you are below half health', player: 'x1.5 against enemies at half health or less', works: true },
-    ambush:      { name: 'Ambush',      frame: 26, side: 'both',   enemy: 'x1.5 while you are unhurt', player: 'x1.5 against unhurt enemies' },
-    unscathed:   { name: 'Unscathed',   frame: 27, side: 'both',   enemy: 'x1.5 until you chip it once', player: 'x1.5 while you are unhurt' },
+    ambush:      { name: 'Ambush',      frame: 26, side: 'both',   enemy: 'x1.5 while you are unhurt', player: 'x1.5 against unhurt enemies', works: true },
+    unscathed:   { name: 'Unscathed',   frame: 27, side: 'both',   enemy: 'x1.5 until you chip it once', player: 'x1.5 while you are at full health', works: true },
     honed:       { name: 'Honed',       frame: 28, side: 'both',   enemy: '+1 attack after each attack this fight', player: '+1 damage after each use this fight', works: true },
-    ironclad:    { name: 'Ironclad',    frame: 29, side: 'both',   enemy: 'its armor adds to its damage', player: 'your armor adds to damage' },
+    ironclad:    { name: 'Ironclad',    frame: 29, side: 'both',   enemy: 'its armor adds to its damage', player: 'your worn armor protection adds to damage', works: true },
     ember:       { name: 'Ember',       frame: 30, side: 'both',   enemy: 'its hits burn you next turn', player: 'fire splash to nearby enemies' },
     sapping:     { name: 'Sapping',     frame: 31, side: 'both',   enemy: 'your weapons deal less for a turn', player: 'the struck enemy deals less' },
     warding:     { name: 'Warding',     frame: 32, side: 'both',   enemy: 'gains armor after it attacks', player: 'your armor is stronger for a turn' },
@@ -45,9 +44,9 @@ export const SIGILS = Object.freeze({
     smoke:       { name: 'Smoke',       frame: 36, side: 'player', player: 'a kill hides another enemy' },
     tempered:    { name: 'Tempered',    frame: 37, side: 'player', player: 'this card sometimes keeps its pip' },
     hunter:      { name: 'Hunter',      frame: 38, side: 'player', player: 'x1.5 against the enemy you hit last', works: true },
-    combo:       { name: 'Combo',       frame: 39, side: 'player', player: 'x1.5 if your previous card had the same sigil' },
-    tandem:      { name: 'Tandem',      frame: 40, side: 'player', player: 'x1.5 if your previous attack did the same damage' },
-    packrat:     { name: 'Packrat',     frame: 41, side: 'player', player: '+1 damage per empty bag slot' },
+    combo:       { name: 'Combo',       frame: 39, side: 'player', player: 'x1.5 if your previous weapon also had Combo', works: true },
+    tandem:      { name: 'Tandem',      frame: 40, side: 'player', player: 'x1.5 if your previous attack hit for the same damage', works: true },
+    packrat:     { name: 'Packrat',     frame: 41, side: 'player', player: '+1 damage per empty bag slot', works: true },
     summon:      { name: 'Summon',      frame: 42, side: 'enemy',  enemy: 'calls a minion to fight beside it' },
     taunt:       { name: 'Taunt',       frame: 43, side: 'enemy',  enemy: 'must be attacked first' },
     veil:        { name: 'Veil',        frame: 44, side: 'enemy',  enemy: 'flips face-down each turn' },
@@ -60,8 +59,28 @@ export const SIGILS = Object.freeze({
     ink:         { name: 'Ink',         frame: 59, side: 'both',   enemy: 'locks one of your cards for a turn', player: 'the enemy hit skips its next turn' },
 });
 
-// Player sigils that can be placed on cards today (the Test Site vault).
-export const WORKING_PLAYER_SIGILS = Object.freeze(['merciless', 'hunter', 'honed', 'regenerate', 'thorns']);
+// Player sigils that work today: the ones the vault and elite chests hand out.
+export const WORKING_PLAYER_SIGILS = Object.freeze(
+    Object.keys(SIGILS).filter((id) => SIGILS[id].works && SIGILS[id].side !== 'enemy')
+);
+
+// Which card types a sigil can go on. Most act when a weapon strikes;
+// Regenerate and Thorns also work from armor.
+const ARMOR_SIGILS = new Set(['regenerate', 'thorns']);
+export function sigilFitsCardType(id, card) {
+    if (!card || !SIGILS[id]) return false;
+    if (card.type === 'weapon') return true;
+    if (card.type === 'armor') return ARMOR_SIGILS.has(id);
+    return false;
+}
+
+/** Whether `card` can take `id` now: right type, and room (or the same sigil to level up). */
+export function canTakeSigil(card, id) {
+    if (!sigilFitsCardType(id, card)) return false;
+    if (id === 'thorns') return true;
+    const list = storedSigils(card);
+    return list.some((s) => s.id === id) || list.length < SIGIL_CAP;
+}
 
 // A Reliquary enchant shows as the sigil it becomes (design doc table).
 const ENCHANT_SIGIL = Object.freeze({

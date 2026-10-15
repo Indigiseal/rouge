@@ -18,7 +18,7 @@ import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.j
 import { playSmokeBurst } from '../../ui/SmokeBurst.js';
 import { translateItemName } from '../../i18n/i18n.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
-import { applyWeaponSigils, recordWeaponSigilUse } from '../combat/SigilEffects.js';
+import { applyWeaponSigils, onWeaponSigilHit } from '../combat/SigilEffects.js';
 import { getSigil } from '../../content/sigils/sigils.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 
@@ -656,7 +656,13 @@ export const InventoryCombatUse = {
                     // First hit: the dragged weapon. skipDurability=false so its
                     // pip is spent normally inside attackEnemy.
                     this.scene.cardSystem.attackEnemy(closestEnemy, attackDamage, false, weapon, false, { critical: didCrit });
-                    recordWeaponSigilUse(this.scene, weapon, currentEnemy);
+                    // On-hit sigils (Leech, Venom, Cutpurse, Arrest), and the
+                    // swing remembered for Hunter, Combo, Tandem and Honed.
+                    const healthAfter = currentEnemy.data?.health ?? 0;
+                    onWeaponSigilHit(this.scene, weapon, currentEnemy, {
+                        damageDealt: Math.max(0, (targetHealthBefore ?? 0) - Math.max(0, healthAfter)),
+                        swingDamage: sigilHit.baseDamage,
+                    });
                     this.applyAssassinateTalent(closestEnemy);
                 } else {
                     // Second dual-wield hit: use the OTHER dagger's stats — its

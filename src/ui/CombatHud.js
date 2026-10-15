@@ -30,7 +30,7 @@ import { createGauntletCard } from '../content/balance/Gauntlet.js';
 import { AMULETS } from '../content/cards/amulets.js';
 import { hudAmuletTexture } from '../content/amulets/RelicsOthersAtlas.js';
 import { EXIT_DOOR_X, EXIT_DOOR_Y } from './ExitDoor.js';
-import { SIGIL_ICONS_KEY, WORKING_PLAYER_SIGILS, addSigil, cardSigils, getSigil } from '../content/sigils/sigils.js';
+import { SIGIL_ICONS_KEY, WORKING_PLAYER_SIGILS, addSigil, canTakeSigil, cardSigils, getSigil } from '../content/sigils/sigils.js';
 import { buildSigilIcons, sigilCornerOffset } from './SigilIcons.js';
 import { SHOW_BRIAR_FRAME } from './CardDecorations.js';
 import { isLocationDoorTexture } from '../content/assets/locationCards.js';
@@ -331,8 +331,8 @@ export const CombatHud = {
         const armors = slots.filter((card) => card?.type === 'armor');
         const targets = id === 'regenerate'
             ? [this.gameState.equippedArmor, ...armors, ...weapons]
-            : weapons;
-        const target = targets.find((card) => card && addSigil(card, id));
+            : [...weapons, this.gameState.equippedArmor, ...armors];
+        const target = targets.find((card) => canTakeSigil(card, id) && addSigil(card, id));
         if (!target) {
             this.createFloatingText(320, 330, 'No card can take that sigil', 0xc45c45);
             return;

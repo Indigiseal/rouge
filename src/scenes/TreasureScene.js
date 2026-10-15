@@ -14,6 +14,7 @@ import { scaleGoldReward } from '../content/economy/gold.js';
 import { createSelectionCorners } from '../ui/NineSlicePanel.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { playCardDissolve } from '../ui/CardDissolve.js';
+import { openSigilOffer, rollOfferableSigil } from '../ui/SigilOffer.js';
 
 // The chest stands in the middle of the room and is opened by clicking it;
 // what it gives sits on top of it, with the take hint underneath.
@@ -192,6 +193,17 @@ export class TreasureScene extends StationRoomBase {
 
     this.gameScene?.updateUI?.();
     this.darkenOpenedChest(chest);
+
+    // An elite chest also holds a sigil, put on a card the player picks now.
+    if (this.rewardMode === 'elite') this.time.delayedCall(450, () => this.offerChestSigil());
+  }
+
+  offerChestSigil() {
+    const sigilId = rollOfferableSigil(this.gameScene);
+    if (!sigilId) return;
+    openSigilOffer(this, this.gameScene, sigilId, (card) => {
+      recordHumanRunEvent(this, 'sigil_taken', { source: 'elite_chest', sigil: sigilId, card: card ? snapshotHumanRunCard(card) : null });
+    });
   }
 
   // Reward values bumped — they now scale with floor depth so deeper chests feel meaningful.
