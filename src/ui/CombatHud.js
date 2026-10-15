@@ -899,6 +899,8 @@ export const CombatHud = {
         this._apGainToken = (this._apGainToken || 0) + 1;
         const token = this._apGainToken;
         this._apShownCap = from;
+        // The points coming back, with the first one to light up.
+        this.time.delayedCall(AP_GAIN_DELAY_MS, () => SoundHelper.playSound(this, 'ap_restore', 0.45));
         this._apShownCapUntil = performance.now() + AP_GAIN_DELAY_MS + (to - from) * AP_GAIN_STEP_MS + 500;
 
         for (let i = from; i < to; i++) {
@@ -1123,10 +1125,9 @@ export const CombatHud = {
         ));
         const MAX_VISIBLE = 10;
         // Equipped amulets draw from the 28px sheet here (hudAmuletTexture), not
-        // the 32px one the choice screen and the board use. Its art is ~24px
-        // inside the cell, so a 25px step keeps the 1px of daylight between
-        // icons that the 32px sheet had at 29.
-        const SPACING = 25;
+        // the 32px one the choice screen and the board use. Taya drew the icons
+        // smaller inside that cell, so they sit 2px closer than the old 25px step.
+        const SPACING = 23;
         // The strip owns the top-left corner now: the hero column below it was
         // shifted down by HUD_COLUMN_SHIFT to clear this row. x 18: 10px left of
         // the previous 28 (and 34 before that), now the icons are the small

@@ -56,7 +56,9 @@ export class RestScene extends Phaser.Scene {
         } else {
             this.gameState.playerHealth = Math.min(this.gameState.maxHealth, this.gameState.playerHealth + REST_HEAL_AMOUNT);
         }
+        const apRefilled = (this.gameState.actionsLeft || 0) < this.gameState.maxActions;
         this.gameState.actionsLeft = this.gameState.maxActions;
+        if (apRefilled) this.time.delayedCall(350, () => SoundHelper.playSound(this, 'ap_restore', 0.45));
         // Looping campfire crackle while resting; faded out when leaving.
         this.campfireLoop = SoundHelper.fadeInMusic(this, 'campfire_loop', 0.5, 600, true);
         this.events.once('shutdown', () => this.stopCampfireLoop(450));

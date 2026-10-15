@@ -17,16 +17,14 @@ import {
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { playSmokeBurst } from '../../ui/SmokeBurst.js';
 import { translateItemName } from '../../i18n/i18n.js';
+import { playStrikeSlash } from '../../ui/StrikeSlash.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 
-// The strike over a weapon card (playWeaponStrikeEffect): slash speed, and
-// how far the card shakes either way.
-const WEAPON_STRIKE_FPS = 14;
+// The strike over a weapon card (playWeaponStrikeEffect): how far the card
+// shakes either way. The slash itself is ui/StrikeSlash.js.
 // Soul Drain's soul flickering as it flies (soulAnim.png, 5 frames, looped).
 const SOUL_WISP_FPS = 12;
 const WEAPON_STRIKE_SHAKE_PX = 2;
-// The slash sits this many pixels above the card's centre.
-const WEAPON_STRIKE_LIFT_PX = 6;
 
 // The painted Fireball burst: 4 frames in about a third of a second.
 const FIREBALL_BURST_FPS = 12;
@@ -147,14 +145,17 @@ export const InventoryCombatUse = {
                 }
                 break;
                 
-            case 'restoration':
+            case 'restoration': {
                 this.scene.gameState.playerHealth = this.scene.gameState.maxHealth;
+                const apBeforeRestore = this.scene.gameState.actionsLeft;
                 this.scene.gameState.actionsLeft = this.scene.gameState.maxActions;
+                this.scene.playActionPointGain?.(apBeforeRestore, this.scene.gameState.actionsLeft);
                 SoundHelper.playSound(this.scene, 'recovery', 0.5);
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, `Full Restore!`, 0x71800b);
                 this.scene.updateUI();
                 used = true;
                 break;
+            }
                 
             case 'soulDrain':
                 // Find closest non-boss enemy
@@ -933,21 +934,7 @@ export const InventoryCombatUse = {
     // the main weapon's strike, and anything striking alongside it — an
     // off-hand dagger, a companion (playSlotStrikeAnimation's `slash`).
     playStrikeSlash(cardSprite, x = cardSprite?.x, y = cardSprite?.y) {
-        const scene = this.scene;
-        if (!cardSprite?.scene || !scene.textures?.exists?.('playerAttackAnim')) return;
-        if (!scene.anims.exists('player_attack_anim')) {
-            scene.anims.create({
-                key: 'player_attack_anim',
-                frames: scene.anims.generateFrameNumbers('playerAttackAnim', { start: 0, end: 3 }),
-                frameRate: WEAPON_STRIKE_FPS,
-                repeat: 0,
-            });
-        }
-        const slash = scene.add.sprite(Math.round(x), Math.round(y) - WEAPON_STRIKE_LIFT_PX, 'playerAttackAnim', 0)
-            .setDepth((cardSprite.depth || 0) + 3);
-        slash.play('player_attack_anim');
-        slash.once('animationcomplete', () => slash.destroy());
-        scene.time.delayedCall(800, () => slash.active && slash.destroy());
+        playStrikeSlash(this.scene, cardSprite, { x, y });
     },
 
     handleWeaponBreak(weapon, cardSprite, slotIndex) {

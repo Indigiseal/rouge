@@ -9,6 +9,7 @@ import { totalRepairCost } from '../content/economy/repair.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 import { t, translateItemName } from '../i18n/i18n.js';
 import { BoardCardFx } from '../systems/board/BoardCardFx.js';
+import { buildCardDecorations } from '../ui/CardDecorations.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 
 // Floating "repaired" / "not enough coins" message. Sits above the carried card
@@ -174,6 +175,13 @@ export class AnvilScene extends Phaser.Scene {
         if (item.sprite && this.textures.exists(item.sprite)) {
             const icon = snapOriginToPixelGrid(this.add.image(0, 0, item.sprite, item.spriteFrame ?? 0));
             face.add(icon);
+            // The same enchant glow, thorn frame and socketed gem the bag
+            // shows (ui/CardDecorations.js), under the value and pips. The
+            // gem's hover streak is left off: its mask is unreliable two
+            // containers deep, and nothing here is hovered for the gem.
+            const decor = buildCardDecorations(this, icon, item, { gemShine: false });
+            if (decor.briarFrame) face.add(decor.briarFrame);
+            if (decor.gemIndicator) face.add(decor.gemIndicator);
             // Use the combat inventory's exact value and durability rendering.
             const card = { sprite: icon, data: item, infoText: null };
             this.cardFx.createCardInfoText(card);

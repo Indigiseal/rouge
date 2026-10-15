@@ -107,7 +107,6 @@ export const ASSET_MANIFEST = [
     { key: 'musicBoxOpen', path: 'assets/art/musicBoxOpen.png', type: 'image' },
     { key: 'statueHead', path: 'assets/art/statueHead.png', type: 'image' },
     { key: 'panelArmor', path: 'assets/art/panelArmor.png', type: 'image' },
-    { key: 'anvilSlot', path: 'assets/art/blackRectangle1.png', type: 'image' },
     { key: 'anvilDropAnim', path: 'assets/art/anvilDropAnim.png', type: 'spritesheet', frameWidth: 69, frameHeight: 89 },
     { key: 'anvilClankAnim', path: 'assets/art/anvilClanckAnim80x86.png', type: 'spritesheet', frameWidth: 80, frameHeight: 86 },
     { key: 'anvilBanner', path: 'assets/art/bannerAnvil.png', type: 'image' },
@@ -129,17 +128,11 @@ export const ASSET_MANIFEST = [
     { key: 'webCardOverlay', path: 'assets/art/web.png', type: 'spritesheet', frameWidth: 60, frameHeight: 78 },
     // Little banner behind each shop item's price (32x18)
     { key: 'priceTag', path: 'assets/art/priceTag.png', type: 'image' },
-    { key: 'pixel-font', path: 'assets/fonts/minogram_6x10.png', xmlPath: 'assets/fonts/minogram_6x10.xml', type: 'bitmapFont' },
-    { key: 'cyrillic-ui-font', path: 'assets/fonts/probly12NEW_crisp.png', xmlPath: 'assets/fonts/probly12NEW_crisp.xml', type: 'bitmapFont' },
     // Dedicated crisp 16px title font (rasterized 1-bit from Able5.ttf).
-    { key: 'title-font', path: 'assets/fonts/title16.png', xmlPath: 'assets/fonts/title16.xml', type: 'bitmapFont' },
-    { key: 'goblin_c', path: 'assets/art/goblin_c.png', type: 'image' },
-    { key: 'skeletonSprite', path: 'assets/art/skeleton_c.png', type: 'image' },
     // Tutorial coach-mark pointer (16x16 cursor-style arrow).
     { key: 'tutorialPointer', path: 'assets/art/pointer.png', type: 'image' },
     { key: 'angryNestmother', path: 'assets/art/bird.png', type: 'image' },
     // Load item sprites
-    { key: 'boneArmor_U', path: 'assets/art/boneArmor_U.png', type: 'image' },
     // Load Uncommon / Rare / Epic / Legendary item sprites
     // Silk Cache cocoon shell. Loading this under the key ensureSilkCocoonTexture
     // uses means the drawn-in-code placeholder in CocoonCacheBoard.js never runs.
@@ -173,7 +166,6 @@ export const ASSET_MANIFEST = [
     { key: 'holographicOmen', path: 'assets/art/omen.png', type: 'image' },
     { key: 'luckyClover', path: 'assets/art/clover.png', type: 'spritesheet', frameWidth: 53, frameHeight: 70 },
     { key: 'mapNodes', path: 'assets/art/mapNodes42x42.png', type: 'spritesheet', frameWidth: 42, frameHeight: 42 },
-    { key: 'gemsRGY', path: 'assets/art/gemsRGY-Sheet.png', type: 'spritesheet', frameWidth: 16, frameHeight: 16 },
     // A gem's size IS its level: 5 tiers across, 3 colours down — see
     // gemTierFrame in content/cards/gems.js.
     { key: 'gemsTiered', path: 'assets/art/gemsTiered.png', type: 'spritesheet', frameWidth: 18, frameHeight: 18 },
@@ -186,9 +178,7 @@ export const ASSET_MANIFEST = [
     { key: 'gemEffectsOnCards', path: 'assets/art/gemEffectsOnCards64x80.png', type: 'spritesheet', frameWidth: 64, frameHeight: 80 },
     { key: 'enemiesHitEffects', path: 'assets/art/enemiesHitEffects64x80.png', type: 'spritesheet', frameWidth: 64, frameHeight: 80 },
     { key: 'shadowsGems', path: 'assets/art/shadowsGems.png', type: 'spritesheet', frameWidth: 16, frameHeight: 20 },
-    { key: 'coin_collect', path: 'assets/music/coin-recieved.mp3', type: 'audio' },
     // player_hurt now rotates through 3 male-hurt variants (loaded in the SFX batch below)
-    { key: 'anvil_upgrade', path: 'assets/music/anvil-hit-2-14845.mp3', type: 'audio' },
     { key: 'item_discard', path: 'assets/music/discard-sound-effect-221455.mp3', type: 'audio' },
     { key: 'trap_spring', path: 'assets/music/trap_spring1.mp3', type: 'audio' },
     { key: 'trap_woosh', path: 'assets/music/fast-woosh-230497.mp3', type: 'audio' },
@@ -217,27 +207,15 @@ export const ASSET_MANIFEST = [
     // The same sheet redrawn at 28px, same 12x7 layout so frame numbers carry
     // over. Only for equipped amulets in the battle HUD's corner strip.
     { key: 'relicsOthersSmall', path: 'assets/art/relicsOthersSmall.png', type: 'spritesheet', frameWidth: 28, frameHeight: 28 },
-    { key: 'shop_buy', path: 'assets/music/dropInBagStore.mp3', type: 'audio' },
-    { key: 'card_flip', path: 'assets/music/flipcard-91468.mp3', type: 'audio' },
     // Load flip animation frames
     // Per-location card art: 5 columns by 7 rows, one row per location in the
     // same order as enemiesSpriteSheet. See content/assets/locationCardArt.js,
     // which also cuts each location's resting card back out of flip column 0.
     { key: 'cardFlipSheet', path: 'assets/art/cardFlip54x86SheetAll.png', type: 'spritesheet', frameWidth: 54, frameHeight: 86 },
     { key: 'cardHoverSheet', path: 'assets/art/cardHover52x72SheetAll.png', type: 'spritesheet', frameWidth: 52, frameHeight: 72 },
-    // The single-colour originals. Still the fallback for a room with no
-    // location resolved, and for a location whose row is not drawn yet.
-    { key: 'cardFlip1', path: 'assets/art/cardFlip1.png', type: 'image' },
-    { key: 'cardFlip2', path: 'assets/art/cardFlip2.png', type: 'image' },
-    { key: 'cardFlip3', path: 'assets/art/cardFlip3.png', type: 'image' },
-    { key: 'cardFlip4', path: 'assets/art/cardFlip4.png', type: 'image' },
-    { key: 'cardFlip5', path: 'assets/art/cardFlip5.png', type: 'image' },
-    // Load card hover animation frames
-    { key: 'cardHover1', path: 'assets/art/cardHover1.png', type: 'image' },
-    { key: 'cardHover2', path: 'assets/art/cardHover2.png', type: 'image' },
-    { key: 'cardHover3', path: 'assets/art/cardHover3.png', type: 'image' },
-    { key: 'cardHover4', path: 'assets/art/cardHover4.png', type: 'image' },
-    { key: 'cardHover5', path: 'assets/art/cardHover5.png', type: 'image' },
+    // The standard flip and hover (a room with no location resolved, or a
+    // location whose row is not drawn yet) play off villageCardFlip and
+    // villageCardHover above: the same five frames the old single images held.
     { key: 'discardSprite', path: 'assets/art/discard.png', type: 'image' },
     { key: 'thornFrame', path: 'assets/art/thornFrame.png', type: 'image' },
     // Card hover when in inventory effects (5 frames, 54x70 each)
@@ -280,11 +258,7 @@ export const ASSET_MANIFEST = [
     { key: 'MainPlayerAvatar', path: 'assets/art/MainPlayerAvatar.png', type: 'image' },
     { key: 'coinUI', path: 'assets/art/coinUI.png', type: 'image' },
     { key: 'CrystalUI', path: 'assets/art/CrystalUI.png', type: 'image' },
-    { key: 'skeleton_c', path: 'assets/art/skeleton_c.png', type: 'image' },
-    { key: 'spider_c', path: 'assets/art/spider_c.png', type: 'image' },
-    { key: 'lostSoul', path: 'assets/art/ghostlyEnemy.png', type: 'image' },
     // Silkdeep roster. Silkslinger is still on the placeholder face.
-    { key: 'scorpion', path: 'assets/art/scorpion.png', type: 'image' },
     { key: 'caveCrawler', path: 'assets/art/caveCrawler.png', type: 'image' },
     { key: 'silkHusk', path: 'assets/art/silkHusk.png', type: 'image' },
     // Temporary face for month enemies without dedicated card art (53×70).
@@ -292,10 +266,7 @@ export const ASSET_MANIFEST = [
     { key: 'cerberusHead', path: 'assets/art/dogHead.png', type: 'image' },
     // Elite mini-boss portraits â€” same 53x70 footprint as the base art they
     // replace. Only some enemies have one; see ELITE_SPRITE_KEYS below.
-    { key: 'spider_c_elite', path: 'assets/art/spiderElite.png', type: 'image' },
-    { key: 'lostSoul_elite', path: 'assets/art/ghostlyEnemyElite.png', type: 'image' },
     { key: 'cerberusHead_elite', path: 'assets/art/dogHeadElite.png', type: 'image' },
-    { key: 'sword_c_reworked', path: 'assets/art/sword_c_r.png', type: 'image' },
     { key: 'durability_dot', path: 'assets/art/durability_dot.png', type: 'image' },
     { key: 'ten_durability', path: 'assets/art/ten_durability.png', type: 'image' },
     // Load twinkle animation frames
@@ -305,7 +276,6 @@ export const ASSET_MANIFEST = [
     { key: 'giantSkeleton', path: 'assets/art/giantSkeleton.png', type: 'image' },
     { key: 'GoblinKingSprite', path: 'assets/art/goblinKing.png', type: 'image' },
     { key: 'SpiderQween', path: 'assets/art/spiderBoss.png', type: 'image' },
-    { key: 'goblin_archer', path: 'assets/art/goblinArcher_c.png', type: 'image' },
     { key: 'skeleton_archer', path: 'assets/art/skeletonArcher_c.png', type: 'image' },
     { key: 'Lich', path: 'assets/art/lich.png', type: 'image' },
     { key: 'SoulEater', path: 'assets/art/soulEater.png', type: 'image' },
@@ -342,16 +312,6 @@ export const ASSET_MANIFEST = [
     // content/balance/WeaponEnchants.js â€” GLOW_CARD_FRAMES.
     { key: 'glowingMagicCards', path: 'assets/art/glowingMagicCardsSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
     { key: 'glassCase', path: 'assets/art/glassCase.png', type: 'image' },
-    { key: 'magic_cast', path: 'assets/music/fast-woosh-230497.mp3', type: 'audio' },
-    { key: 'recovery', path: 'assets/music/recovery.mp3', type: 'audio' },
-    { key: 'boneWall', path: 'assets/music/Bone_Wall_01.mp3', type: 'audio' },
-    { key: 'fireball_whoosh', path: 'assets/music/fireball-whoosh-1-179125.mp3', type: 'audio' },
-    { key: 'smoke_bomb', path: 'assets/music/Smoke_Screen_02.mp3', type: 'audio' },
-    { key: 'frozenRing', path: 'assets/music/Ice_Cast_01.mp3', type: 'audio' },
-    { key: 'shadowDagger', path: 'assets/music/shadowDagger.mp3', type: 'audio' },
-    { key: 'soulSucking', path: 'assets/music/Soul_Drain_01.mp3', type: 'audio' },
-    { key: 'magicShield', path: 'assets/music/Magic_Shield_01.mp3', type: 'audio' },
-    { key: 'weakening', path: 'assets/music/weakening.mp3', type: 'audio' },
     { key: 'trap_spring1', path: 'assets/music/trap_spring1.mp3', type: 'audio' },
     // UI currency animations â€” the little coin/crystal flip shown when the | value changes. Now single spritesheets (6 frames each) instead of the | old crystalAnimation1-6 / coinAnimation1-6 individual PNGs.
     { key: 'coinAnimSheet', path: 'assets/art/coinAnimation20x24.png', type: 'spritesheet', frameWidth: 20, frameHeight: 24 },
@@ -368,9 +328,7 @@ export const ASSET_MANIFEST = [
     { key: 'fireBall4', path: 'assets/art/fireBall4.png', type: 'image' },
     // treasure
     { key: 'bigChestAnimation', path: 'assets/art/bigChestAnimation98x98.png', type: 'spritesheet', frameWidth: 98, frameHeight: 98 },
-    { key: 'chest_open', path: 'assets/music/wooden-trunk-latch-1-183944.mp3', type: 'audio' },
     { key: 'mimic', path: 'assets/art/mimic.png', type: 'image' },
-    { key: 'treasure_explode', path: 'assets/music/coin-flip-37787.mp3', type: 'audio' },
     // Animation for MIMIC â€” merged 7-frame splash spritesheet (was splash1-7).
     { key: 'splashSheet', path: 'assets/art/splashShee118x62t.png', type: 'spritesheet', frameWidth: 118, frameHeight: 62 },
     // ---- New SFX batch (variants rotate via SoundHelper.playVariant) ---- | Multi-variant groups
@@ -410,6 +368,12 @@ export const ASSET_MANIFEST = [
     { key: 'ui_card_hover_2', path: 'assets/music/UI_Card_Hover_02.mp3', type: 'audio' },
     // The road opening when a floor is cleared.
     { key: 'door_open', path: 'assets/music/Door_Open_01.mp3', type: 'audio' },
+    // Stays at boot: it plays the moment the first fight starts.
+    { key: 'new_level_1', path: 'assets/music/New_Level_01.mp3', type: 'audio' },
+    { key: 'new_level_3', path: 'assets/music/New_Level_03.mp3', type: 'audio' },
+    // Action points coming back: food, rest, a full restore, the boss reward
+    // (CombatHud.playActionPointGain, and the campfire).
+    { key: 'ap_restore', path: 'assets/music/AP_Restore.mp3', type: 'audio' },
     // The road doors creaking as they settle into their arches as "Choose the road" opens
     // (LocationPickScene).
     { key: 'door_land_1', path: 'assets/music/Door_Land_01.mp3', type: 'audio' },
@@ -420,8 +384,6 @@ export const ASSET_MANIFEST = [
     { key: 'chest_hover_1', path: 'assets/music/Chest_Hover_01.mp3', type: 'audio' },
     { key: 'invalid_action_1', path: 'assets/music/Invalid_Action_01.mp3', type: 'audio' },
     { key: 'invalid_action_2', path: 'assets/music/Invalid_Action_02.mp3', type: 'audio' },
-    { key: 'legendary_reveal_1', path: 'assets/music/Legendary_Relic_Reveal_01.mp3', type: 'audio' },
-    { key: 'legendary_reveal_2', path: 'assets/music/Legendary_Relic_Reveal_02.mp3', type: 'audio' },
     { key: 'player_hurt_1', path: 'assets/music/Player_Hurt_01.mp3', type: 'audio' },
     { key: 'player_hurt_2', path: 'assets/music/Player_Hurt_02.mp3', type: 'audio' },
     { key: 'player_hurt_3', path: 'assets/music/Player_Hurt_03.mp3', type: 'audio' },
@@ -434,7 +396,6 @@ export const ASSET_MANIFEST = [
     { key: 'hover_button_4', path: 'assets/music/Hover_Click_01_lo.mp3', type: 'audio' },
     { key: 'hover_button_5', path: 'assets/music/Hover_Click_03_hi.mp3', type: 'audio' },
     // Gem picked off the board / socketed into a weapon
-    { key: 'gem_pickup', path: 'assets/music/Gem_Pickup_01.mp3', type: 'audio' },
     { key: 'gem_socket', path: 'assets/music/Gem_Socket_01.mp3', type: 'audio' },
     // Crystal card picked off the board. Distinct from 'crystal_collect', | which the amulet equip still uses.
     // A soft, warm crystal tone generated with ElevenLabs (tools/death-sounds.json,
@@ -448,12 +409,8 @@ export const ASSET_MANIFEST = [
     { key: 'lightning_zap_1', path: 'assets/music/Lightning_Zap_01.mp3', type: 'audio' },
     { key: 'lightning_zap_2', path: 'assets/music/Lightning_Zap_02.mp3', type: 'audio' },
     { key: 'lightning_zap_3', path: 'assets/music/Lightning_Zap_03.mp3', type: 'audio' },
-    // Acid/poison trap
-    { key: 'poison_trap', path: 'assets/music/Poison_Trap_01.mp3', type: 'audio' },
     // "Nothing" card revealed â€” empty-slot whoosh
     { key: 'empty_whoosh', path: 'assets/music/Folder_Whoosh_01.mp3', type: 'audio' },
-    // Enemies frozen (Frost Ring) â€” icy magic cast
-    { key: 'enemy_freeze', path: 'assets/music/Enemy_Freeze_01.mp3', type: 'audio' },
     // Single-shot effects
     { key: 'bow_shot', path: 'assets/music/Bow_Shot_01.mp3', type: 'audio' },
     { key: 'enemy_death_1', path: 'assets/music/Enemy_Death_01.mp3', type: 'audio' },
@@ -475,14 +432,6 @@ export const ASSET_MANIFEST = [
     { key: 'coin_collect_v2', path: 'assets/music/Coin_Pickup_02.mp3', type: 'audio' },
     { key: 'shop_buy_v1', path: 'assets/music/Purchase_01.mp3', type: 'audio' },
     { key: 'shop_buy_v2', path: 'assets/music/Purchase_02.mp3', type: 'audio' },
-    { key: 'chest_open_v1', path: 'assets/music/Chest_Open_01.mp3', type: 'audio' },
-    { key: 'chest_open_v2', path: 'assets/music/Chest_Open_02.mp3', type: 'audio' },
-    { key: 'anvil_upgrade_v1', path: 'assets/music/Anvil_Strike_01.mp3', type: 'audio' },
-    { key: 'anvil_upgrade_v2', path: 'assets/music/Anvil_Strike_02.mp3', type: 'audio' },
-    { key: 'fireball_whoosh_v1', path: 'assets/music/Fireball_01.mp3', type: 'audio' },
-    { key: 'fireball_whoosh_v2', path: 'assets/music/Fireball_02.mp3', type: 'audio' },
-    { key: 'recovery_v1', path: 'assets/music/Heal_01.mp3', type: 'audio' },
-    { key: 'recovery_v2', path: 'assets/music/Heal_02.mp3', type: 'audio' },
     { key: 'gem_pickup_v1', path: 'assets/music/Gem_01.mp3', type: 'audio' },
     { key: 'gem_pickup_v2', path: 'assets/music/Gem_02.mp3', type: 'audio' },
     { key: 'gem_pickup_v3', path: 'assets/music/Gem_03.mp3', type: 'audio' },
@@ -495,17 +444,6 @@ export const ASSET_MANIFEST = [
     { key: 'empty_stomach_1', path: 'assets/music/Empty_Stomach_01.mp3', type: 'audio' },
     { key: 'empty_stomach_2', path: 'assets/music/Empty_Stomach_02.mp3', type: 'audio' },
     // Arriving on a fresh combat floor. 3 variants rotate.
-    { key: 'new_level_1', path: 'assets/music/New_Level_01.mp3', type: 'audio' },
-    { key: 'new_level_3', path: 'assets/music/New_Level_03.mp3', type: 'audio' },
-    // Hero death / defeat screen. 3 variants rotate.
-    { key: 'hero_death_1', path: 'assets/music/Death_01.mp3', type: 'audio' },
-    { key: 'hero_death_2', path: 'assets/music/Death_02.mp3', type: 'audio' },
-    { key: 'hero_death_3', path: 'assets/music/Death_03.mp3', type: 'audio' },
-    // Act boss defeated â€” plays over the bespoke boss death animation.
-    { key: 'boss_defeated', path: 'assets/music/Boss_Defeated_01.mp3', type: 'audio' },
-    { key: 'dice_roll', path: 'assets/music/dice-throw-1.ogg', type: 'audio' },
-    // Looping campfire ambience for the Rest room.
-    { key: 'campfire_loop', path: 'assets/music/Campfire_Loop_01.mp3', type: 'audio' },
     // The looping music tracks are NOT here — see DEFERRED_AUDIO below.
 ];
 
@@ -567,6 +505,36 @@ export const LATE_AUDIO = [
     { key: 'nest_screech_2', path: 'assets/music/Nest_Screech_02.mp3', type: 'audio' },
     { key: 'nest_rummage_1', path: 'assets/music/Nest_Rummage_01.mp3', type: 'audio' },
     { key: 'nest_rummage_2', path: 'assets/music/Nest_Rummage_02.mp3', type: 'audio' },
+    // Moved from boot: heard only well into a run (spells, chests, the anvil,
+    // boss and death stings, the campfire), so the menu does not wait
+    // on them.
+    { key: 'magic_cast', path: 'assets/music/fast-woosh-230497.mp3', type: 'audio' },
+    { key: 'boneWall', path: 'assets/music/Bone_Wall_01.mp3', type: 'audio' },
+    { key: 'smoke_bomb', path: 'assets/music/Smoke_Screen_02.mp3', type: 'audio' },
+    { key: 'frozenRing', path: 'assets/music/Ice_Cast_01.mp3', type: 'audio' },
+    { key: 'shadowDagger', path: 'assets/music/shadowDagger.mp3', type: 'audio' },
+    { key: 'soulSucking', path: 'assets/music/Soul_Drain_01.mp3', type: 'audio' },
+    { key: 'magicShield', path: 'assets/music/Magic_Shield_01.mp3', type: 'audio' },
+    { key: 'weakening', path: 'assets/music/weakening.mp3', type: 'audio' },
+    { key: 'fireball_whoosh_v1', path: 'assets/music/Fireball_01.mp3', type: 'audio' },
+    { key: 'fireball_whoosh_v2', path: 'assets/music/Fireball_02.mp3', type: 'audio' },
+    { key: 'recovery_v1', path: 'assets/music/Heal_01.mp3', type: 'audio' },
+    { key: 'recovery_v2', path: 'assets/music/Heal_02.mp3', type: 'audio' },
+    { key: 'legendary_reveal_1', path: 'assets/music/Legendary_Relic_Reveal_01.mp3', type: 'audio' },
+    { key: 'legendary_reveal_2', path: 'assets/music/Legendary_Relic_Reveal_02.mp3', type: 'audio' },
+    { key: 'boss_defeated', path: 'assets/music/Boss_Defeated_01.mp3', type: 'audio' },
+    { key: 'hero_death_1', path: 'assets/music/Death_01.mp3', type: 'audio' },
+    { key: 'hero_death_2', path: 'assets/music/Death_02.mp3', type: 'audio' },
+    { key: 'hero_death_3', path: 'assets/music/Death_03.mp3', type: 'audio' },
+    { key: 'campfire_loop', path: 'assets/music/Campfire_Loop_01.mp3', type: 'audio' },
+    { key: 'dice_roll', path: 'assets/music/dice-throw-1.ogg', type: 'audio' },
+    { key: 'treasure_explode', path: 'assets/music/coin-flip-37787.mp3', type: 'audio' },
+    { key: 'chest_open_v1', path: 'assets/music/Chest_Open_01.mp3', type: 'audio' },
+    { key: 'chest_open_v2', path: 'assets/music/Chest_Open_02.mp3', type: 'audio' },
+    { key: 'anvil_upgrade_v1', path: 'assets/music/Anvil_Strike_01.mp3', type: 'audio' },
+    { key: 'anvil_upgrade_v2', path: 'assets/music/Anvil_Strike_02.mp3', type: 'audio' },
+    { key: 'enemy_freeze', path: 'assets/music/Enemy_Freeze_01.mp3', type: 'audio' },
+    { key: 'poison_trap', path: 'assets/music/Poison_Trap_01.mp3', type: 'audio' },
 ];
 
 /**
@@ -598,8 +566,6 @@ export function deferredAudioPath(key) {
  * @type {Record<string, string>}
  */
 export const ELITE_SPRITE_KEYS = {
-    spider_c: 'spider_c_elite',
-    lostSoul: 'lostSoul_elite',
     cerberusHead: 'cerberusHead_elite',
 };
 

@@ -472,6 +472,7 @@ export class AmuletManager {
         const gained = this.gameState.actionsLeft - before;
         if (gained <= 0) return;
 
+        this.scene.playActionPointGain?.(before, this.gameState.actionsLeft);
         this.scene.updateActionPointUI?.();
         this.scene.updateUI?.();
         if (this.scene.playerAvatar) {

@@ -3,6 +3,7 @@
 // three hide loot (1 amulet + 2 weapon/armor), five hide month enemies.
 // Burn: no enemies — three loot cards already revealed.
 
+import { ENEMIES } from '../../content/cards/enemies.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 
 const COCOON_COUNT = 8;
@@ -328,7 +329,7 @@ export function openSilkCocoon(cs, index, cocoonCard) {
   ensureSilkCocoonTexture(cs.scene);
   const spriteKey = cs.scene.textures.exists(newData.sprite)
     ? newData.sprite
-    : (hatchedEnemy && cs.scene.textures.exists('spider_c') ? 'spider_c' : 'cardBack');
+    : (hatchedEnemy && cs.scene.textures.exists(ENEMIES.spider?.sprite) ? ENEMIES.spider.sprite : 'cardBack');
   const newSprite = snapOriginToPixelGrid(
     newData.spriteFrame !== undefined
       ? cs.scene.add.sprite(x, y, spriteKey, newData.spriteFrame)

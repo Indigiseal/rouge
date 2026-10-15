@@ -110,5 +110,7 @@ export function isCardBackTexture(textureKey, variant) {
         // outlive a location change, and a card whose art says "face down" must
         // read as face down wherever that art came from.
         || key.startsWith('cardBack_')
-        || key.startsWith('cardFlip');
+        || key.startsWith('cardFlip')
+        // The standard flip plays off the village's flip sheet.
+        || key === 'villageCardFlip';
 }

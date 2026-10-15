@@ -14,6 +14,7 @@ import { looseGemCard } from '../../content/cards/gems.js';
 import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js';
 import { cameraWorldSize } from '../../config/renderScale.js';
 import { t, translateItemName, translateRarity } from '../../i18n/i18n.js';
+import { ENEMIES } from '../../content/cards/enemies.js';
 import { BOSSES } from '../../content/cards/bosses.js';
 
 // --- Opening deal -----------------------------------------------------------
@@ -33,6 +34,14 @@ const DEAL_START_DELAY = 200;
 // the same length rather than three times as long.
 const DEAL_STAGGER_MAX = 45;
 const DEAL_CASCADE_BUDGET_MS = 520;
+
+
+// The regular Goblin's art on the Tollroad sheet: its card key plus the sheet
+// position, so applyEnemyTier can swap in the veteran or elite face too.
+function tollGoblinArt() {
+  const goblin = ENEMIES.goblin || {};
+  return { sprite: goblin.sprite, monthId: goblin.monthId, sheetColumn: goblin.sheetColumn };
+}
 
 function dealStaggerFor(count) {
     if (count <= 1) return 0;
@@ -1631,7 +1640,9 @@ function injectTollGuards(bossX, bossY) {
     // "you picked a fight with his clerks" into the hardest fight in the act.
     // They arrive beaten and half-hearted: still a real cost, not a wall.
     const GUARD_ATTACK_AT_BOSS = 5;
-    const spriteKey = this.scene.textures.exists('goblin_c') ? 'goblin_c' : 'cardBack';
+    // The regular Goblin's Tollroad card (goblin_c.png was the old art).
+    const goblinArt = tollGoblinArt();
+    const spriteKey = this.scene.textures.exists(goblinArt.sprite) ? goblinArt.sprite : 'cardBack';
     const places = [
         { dx: -112, dy: 102, c: -1 },
         { dx: 112, dy: 102, c: 1 },
@@ -1642,7 +1653,8 @@ function injectTollGuards(bossX, bossY) {
         const data = {
             type: 'enemy',
             name: 'Toll Collector',
-            sprite: 'goblin_c',
+            ...goblinArt,
+            sprite: spriteKey,
             role: 'MELEE',
             health: half,
             maxHealth: half,
@@ -1716,20 +1728,20 @@ function summonEnemy(enemyType, bossCard) {
     // stats (way more HP & damage than a real spider).
     summonedEnemy = this.cardDataGenerator.createTieredEnemy(enemyType, floor);
 
-    // Cosmetic overrides for the summoned variant.
+    // Cosmetic overrides for the summoned variant. The art stays what
+    // createTieredEnemy gave it: the creature's own month-sheet card, the
+    // same as one met on the board (these used to force the old single
+    // pictures, spider_c / goblin_c / skeleton_c).
     switch(enemyType) {
         case 'spider':
             summonedEnemy.name = 'Spider';
-            summonedEnemy.sprite = 'spider_c';
             summonedEnemy.abilities = [{ type: 'poison', damage: 1, turns: 2, stackable: true }];
             break;
         case 'goblin':
             summonedEnemy.name = 'Goblin';
-            summonedEnemy.sprite = 'goblin_c';
             break;
         case 'skeleton':
             summonedEnemy.name = 'Skeleton';
-            summonedEnemy.sprite = 'skeleton_c';
             break;
     }
     

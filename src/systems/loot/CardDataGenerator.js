@@ -250,7 +250,8 @@ export class CardDataGenerator {
             name: 'Unknown Enemy',
             health: 5 + floor,
             attack: 2 + Math.floor(floor / 2),
-            sprite: 'goblin_c',
+            // The placeholder ghost, the art any undrawn enemy wears.
+            sprite: 'enemyPlaceholder',
             role: 'MELEE'
         };
     }

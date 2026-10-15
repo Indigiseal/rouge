@@ -730,7 +730,7 @@ export class GameScene extends Phaser.Scene {
      * A separate image can never be clicked, because it is never interactive.
      */
     showClosedDoorExit() {
-        const art = locationDoorArt(this, getLocationIdForFloor(this.gameState));
+        const art = locationDoorArt(this, getLocationIdForFloor(this.gameState), { fallback: true });
         if (!art) {
             this.closedDoorMarker?.setVisible(false);
             return;
@@ -769,7 +769,7 @@ export class GameScene extends Phaser.Scene {
         const button = this.nextFloorButton;
         if (!button?.scene) return;
 
-        const art = locationDoorArt(this, getLocationIdForFloor(this.gameState));
+        const art = locationDoorArt(this, getLocationIdForFloor(this.gameState), { fallback: true });
         if (!art) return;
 
         this.hideClosedDoorExit();

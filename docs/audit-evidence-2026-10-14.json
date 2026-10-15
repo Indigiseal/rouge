@@ -1,0 +1,84 @@
+{
+  "sourceFiles": 274,
+  "syntaxErrors": [],
+  "missingImports": [],
+  "assets": 365,
+  "missingAssets": [],
+  "sameCacheDuplicateAssetKeys": [],
+  "assetBytes": {
+    "atlas": 17689,
+    "image": 684133,
+    "spritesheet": 593144,
+    "audio": 8668675
+  },
+  "combatStatusSave": {
+    "before": {
+      "spored": true,
+      "stunned": 1
+    },
+    "saved": {
+      "activeAmulets": [],
+      "playerEffects": [],
+      "shadowBlade": null,
+      "magicShield": null,
+      "boneWall": 0,
+      "blockNextAttack": false
+    }
+  },
+  "stationSaveQuit": {
+    "saveCount": 0,
+    "stopsGameScene": false,
+    "stopped": [
+      "RestScene",
+      "MapViewScene",
+      "ShopScene",
+      "RareShopScene",
+      "RestScene",
+      "AnvilScene",
+      "TreasureScene",
+      "EventScene",
+      "TollroadAftermathScene",
+      "LocationPickScene",
+      "TollroadDetourScene",
+      "VillageScene",
+      "TalentTreeScene",
+      "ArmorerPickScene",
+      "PauseMenuScene"
+    ]
+  },
+  "deferredMusicTransition": {
+    "plays": [],
+    "wanted": null,
+    "pending": []
+  },
+  "deferredMusicWithoutStop": {
+    "plays": [],
+    "wanted": "menu_music"
+  },
+  "pendingTurnsSave": {
+    "queuedBeforeSave": 2,
+    "serializedHasTurnState": false
+  },
+  "completedTimerRetention": 100,
+  "lastArmorPipCounter": [
+    {
+      "durabilityBefore": 2,
+      "blockedDamage": 2,
+      "counterHits": [
+        1
+      ]
+    },
+    {
+      "durabilityBefore": 1,
+      "blockedDamage": 2,
+      "counterHits": []
+    }
+  ],
+  "storageDenied": "SecurityError: storage denied",
+  "procedural": {
+    "mapsChecked": 900,
+    "cardsChecked": 2700,
+    "errors": []
+  },
+  "moduleImportErrors": []
+}

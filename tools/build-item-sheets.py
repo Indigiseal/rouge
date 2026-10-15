@@ -10,7 +10,9 @@
 # key (sword_C, chain_L...), the keys the card data already uses; the game
 # cuts the sheets back into those textures at boot (content/assets/itemSheets.js).
 #
-# The single images stay the source to draw in. After editing one, rebuild:
+# The single images are the source to draw in. They live in
+# assets/_masters/items/ (kept out of git and the itch zip, like the .aseprite
+# files); the game only ever loads the two sheets. After editing one, rebuild:
 #   python tools/build-item-sheets.py
 #
 # Each image keeps its own size (most are 53x70, a few 54x70) in a 54x70 cell,
@@ -21,7 +23,8 @@ import os
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ART = os.path.join(ROOT, 'assets', 'art')
+ART = os.path.join(ROOT, 'assets', 'art')                 # where the sheets go
+SOURCES = os.path.join(ROOT, 'assets', '_masters', 'items')  # the single images
 CELL_W, CELL_H, GUTTER = 54, 70, 2
 RARITIES = ['C', 'U', 'R', 'E', 'L']
 
@@ -52,7 +55,7 @@ def build(name, rows):
     for r, row in enumerate(rows):
         for c, entry in enumerate(row):
             key, file = entry.split(':')
-            img = Image.open(os.path.join(ART, file + '.png')).convert('RGBA')
+            img = Image.open(os.path.join(SOURCES, file + '.png')).convert('RGBA')
             if img.width > CELL_W or img.height > CELL_H:
                 raise SystemExit(f'{file}.png is {img.size}, bigger than the {CELL_W}x{CELL_H} cell')
             x = GUTTER + c * (CELL_W + GUTTER)

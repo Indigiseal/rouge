@@ -47,6 +47,7 @@ import { playCardDissolve } from '../ui/CardDissolve.js';
 import { serifStyle } from '../ui/uiFont.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { createExitDoor, EXIT_DOOR_X, EXIT_DOOR_Y } from '../ui/ExitDoor.js';
+import { ENEMIES } from '../content/cards/enemies.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
 
 const EVENT_ILLUSTRATION_FRAMES = {
@@ -2326,7 +2327,11 @@ export class EventScene extends Phaser.Scene {
       const guard = {
         type: 'enemy',
         name: veteran ? 'Veteran Toll Collector' : 'Toll Collector',
-        sprite: 'goblin_c',
+        // The regular Goblin's Tollroad card; applyEnemyTier below swaps the
+        // veteran's face off the same sheet position.
+        sprite: ENEMIES.goblin?.sprite,
+        monthId: ENEMIES.goblin?.monthId,
+        sheetColumn: ENEMIES.goblin?.sheetColumn,
         role: 'MELEE',
         health: tier.health,
         maxHealth: tier.health,

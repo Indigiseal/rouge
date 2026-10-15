@@ -13,8 +13,10 @@ export function setupBossRewardRoom(scene) {
     // Full restore as the act boss bonus
     const healedHP = scene.gameState.maxHealth - scene.gameState.playerHealth;
     const refilledAP = scene.gameState.maxActions - scene.gameState.actionsLeft;
+    const apBefore = scene.gameState.actionsLeft;
     scene.gameState.playerHealth = scene.gameState.maxHealth;
     scene.gameState.actionsLeft = scene.gameState.maxActions;
+    scene.playActionPointGain?.(apBefore, scene.gameState.actionsLeft);
     if (healedHP > 0) {
         scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, `+${healedHP} HP`, 0x4a884f);
     }

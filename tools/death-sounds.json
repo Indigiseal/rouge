@@ -152,6 +152,10 @@
     "mbox_solved": {
       "prompt": "A tiny old music box comb plucking a short sweet descending melody of five notes, then stopping. Delicate tinkling metal tines, warm",
       "durationSeconds": 2.0
+    },
+    "ap_restore": {
+      "prompt": "Strength returning to a tired traveller: a short soft rising shimmer of small warm bells, gentle and bright, quickly settling. Close, delicate, no voice",
+      "durationSeconds": 0.8
     }
   }
 }

@@ -13,6 +13,7 @@
 // more credits than a sound effect.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +23,83 @@ const OUT_DIR = path.join(ROOT, 'assets', '_sfx_takes');
 const API = 'https://api.elevenlabs.io/v1/music';
 
 const TRACKS = {
+    // Classic dungeon synth (Taya named the genre, 2026-10): the raw early-90s
+    // tape sound rather than the polished 16-bit RPG take of the battle_ds_*
+    // tries below. Cheap keyboard presets, hiss, simple repeating melodies,
+    // little or no percussion.
+    ds_classic_map: {
+        lengthMs: 60000,
+        prompt: 'Classic dungeon synth instrumental in the raw early 1990s home-recorded style. Lo-fi cassette '
+            + 'tape sound with soft hiss and slight warble. A cheap vintage keyboard organ and a soft synth choir '
+            + 'preset playing a slow, simple, repeating medieval melody in a minor mode over a long low drone, '
+            + 'with an occasional plucked synth harpsichord answer. Lonely, wistful, ancient and atmospheric, '
+            + 'like wandering forgotten castle halls by candlelight. Minimal and hypnotic, no drums, no guitars, '
+            + 'no vocals. Seamless loop with no fade out.',
+    },
+    ds_classic_battle: {
+        lengthMs: 60000,
+        prompt: 'Classic dungeon synth instrumental for a turn-based battle, raw early 1990s home-recorded style. '
+            + 'Lo-fi cassette tape hiss. A cheap vintage keyboard playing a repeating minor-mode ostinato on synth '
+            + 'harpsichord, a stern synth brass melody, a soft synth choir pad and a deep drone, with a slow, '
+            + 'quiet, steady timpani-like pulse. Grim, determined and medieval but restrained and hypnotic, '
+            + 'never epic or loud, sitting under game sound effects. No guitars, no vocals. '
+            + 'Seamless loop with no fade out.',
+    },
+    ds_classic_battle_drive: {
+        lengthMs: 60000,
+        prompt: 'Classic dungeon synth battle instrumental with more forward drive, raw early 1990s home-recorded '
+            + 'style. Lo-fi cassette tape hiss. A brisk repeating synth harpsichord arpeggio in a minor mode, a '
+            + 'bold but low-volume synth brass and organ melody, a soft synth choir pad, a deep drone and a steady '
+            + 'mid tempo marching timpani-like pulse with light synth war drums. Determined, medieval and '
+            + 'adventurous, focused rather than epic, hypnotic and repetitive. No guitars, no vocals. '
+            + 'Seamless loop with no fade out.',
+    },
+    ds_classic_battle_grim: {
+        lengthMs: 60000,
+        prompt: 'Grim, dark classic dungeon synth battle instrumental, raw early 1990s home-recorded style. Lo-fi '
+            + 'cassette tape hiss and warble. A slow heavy repeating minor-mode figure on a cheap keyboard organ '
+            + 'and synth harpsichord, a menacing low synth brass line, a cold synth choir pad, a deep rumbling '
+            + 'drone and a slow, quiet, heartbeat-like timpani pulse. Ominous and brooding like facing a monster '
+            + 'deep in a crypt, but restrained and hypnotic, never loud or epic. No guitars, no vocals. '
+            + 'Seamless loop with no fade out.',
+    },
+    // Taya liked ds_classic_menu best of the first three and wants it as the
+    // fight music: its sound kept, a fight's pulse added, in three steps.
+    ds_menu_battle_pulse: {
+        lengthMs: 60000,
+        prompt: 'Classic dungeon synth instrumental, raw early 1990s home-recorded style with lo-fi cassette tape '
+            + 'hiss and warmth. A solemn melody on a vintage keyboard flute preset over a warm organ and a soft '
+            + 'synth choir, a deep drone and a gentle bell-like synth note now and then, mysterious and nostalgic. '
+            + 'Add a slow, steady, quiet timpani-like pulse underneath so it works as calm turn-based battle '
+            + 'music, focused and a little tense. Simple and hypnotic. No guitars, no vocals. '
+            + 'Seamless loop with no fade out.',
+    },
+    ds_menu_battle_motion: {
+        lengthMs: 60000,
+        prompt: 'Classic dungeon synth battle instrumental, raw early 1990s home-recorded style with lo-fi '
+            + 'cassette tape hiss. A solemn vintage keyboard flute melody over a warm organ and a soft synth '
+            + 'choir, with a repeating synth harpsichord arpeggio underneath giving steady forward motion, a deep '
+            + 'drone, occasional bell-like synth notes and a quiet steady drum-like pulse. Mysterious, nostalgic '
+            + 'and quietly determined, like an old fantasy tale turning into a fight. Hypnotic, never epic. '
+            + 'No guitars, no vocals. Seamless loop with no fade out.',
+    },
+    ds_menu_battle_tense: {
+        lengthMs: 60000,
+        prompt: 'Tense classic dungeon synth battle instrumental, raw early 1990s home-recorded style with lo-fi '
+            + 'cassette tape hiss. A minor-mode vintage keyboard flute melody over a warm organ and a soft synth '
+            + 'choir, a repeating low synth harpsichord figure, a deep drone, bell-like synth notes, and a steady '
+            + 'marching timpani-like pulse at a moderate tempo. Mysterious and nostalgic but with clear danger and '
+            + 'resolve, restrained and hypnotic, never loud or epic, sitting under game sound effects. '
+            + 'No guitars, no vocals. Seamless loop with no fade out.',
+    },
+    ds_classic_menu: {
+        lengthMs: 60000,
+        prompt: 'Classic dungeon synth instrumental title theme, raw early 1990s home-recorded style. Lo-fi '
+            + 'cassette tape hiss and warmth. A slow solemn melody on a vintage keyboard flute preset over a '
+            + 'warm organ and a soft synth choir, with a deep drone and a gentle bell-like synth note now and '
+            + 'then. Mysterious, nostalgic and inviting, like an old fantasy tale about to begin. Very simple, '
+            + 'spacious and hypnotic. No drums, no guitars, no vocals. Seamless loop with no fade out.',
+    },
     // Fight loop, dungeon synth: the genre behind Slice & Dice's soundtrack
     // (its credited artists include the dungeon synth act Ziggurath). Lo-fi,
     // minimal, medieval-fantasy keyboards; earnest and calm with a little
@@ -179,7 +257,11 @@ async function main() {
             throw new Error(`ElevenLabs answered ${response.status}: ${detail}`);
         }
         const audio = Buffer.from(await response.arrayBuffer());
-        const file = path.join(OUT_DIR, `music_${name}_${take}.mp3`);
+        // Never over an earlier take: asking for more takes of a track used to
+        // restart at _1 and replace the one already auditioned.
+        let number = take;
+        while (existsSync(path.join(OUT_DIR, `music_${name}_${number}.mp3`))) number += 1;
+        const file = path.join(OUT_DIR, `music_${name}_${number}.mp3`);
         await writeFile(file, audio);
         console.log(`saved  ${path.basename(file)}  (${Math.round(audio.length / 1024)} KB)`);
     }

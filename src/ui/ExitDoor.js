@@ -33,7 +33,7 @@ export function createExitDoor(scene, onClick, opts = {}) {
     if (!gameState) return null;
     // Open by default: a shop or rest room was entered through this door. An
     // animated door (Boneflood and friends) shows its last frame.
-    const art = locationDoorArt(scene, getLocationIdForFloor(gameState));
+    const art = locationDoorArt(scene, getLocationIdForFloor(gameState), { fallback: true });
     if (!art) return null;
 
     // A sprite so an animated door can swing open in place.

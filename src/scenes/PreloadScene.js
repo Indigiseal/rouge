@@ -95,27 +95,18 @@ export class PreloadScene extends Phaser.Scene {
         // before the fallbacks below so a missing row falls back to them.
         buildLocationCardArt(this);
 
+        // The standard (no location) flip and hover: the village's sheets,
+        // whose five frames are the same art the old cardFlip1-5 and
+        // cardHover1-5 single images held.
         this.anims.create({
             key: 'card_flip_anim',
-            frames: [
-                { key: 'cardFlip1' },
-                { key: 'cardFlip2' },
-                { key: 'cardFlip3' },
-                { key: 'cardFlip4' },
-                { key: 'cardFlip5' },
-            ],
+            frames: this.anims.generateFrameNumbers('villageCardFlip', { start: 0, end: 4 }),
             frameRate: 24,
             repeat: 0
         });
         this.anims.create({
             key: 'card_hover_anim',
-            frames: [
-                { key: 'cardHover1' },
-                { key: 'cardHover2' },
-                { key: 'cardHover3' },
-                { key: 'cardHover4' },
-                { key: 'cardHover5' },
-            ],
+            frames: this.anims.generateFrameNumbers('villageCardHover', { start: 0, end: 4 }),
             frameRate: 24,
             repeat: 0
         });

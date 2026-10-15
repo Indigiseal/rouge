@@ -7,6 +7,7 @@ import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
 import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
 import { getEnemy } from '../../content/cards/enemies.js';
 import { HAND_LOCKS, handLockKindOf, handLockOf } from '../../content/combat/handLock.js';
+import { playStrikeSlash } from '../../ui/StrikeSlash.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 
 const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
@@ -470,6 +471,9 @@ export class CombatTurnController {
         }
 
         scene.createDamageEffect(card.sprite.x, card.sprite.y);
+        // The enemy's blow: the player's weapon slash, upside down, so it
+        // reads as a strike coming back down at the hero.
+        playStrikeSlash(scene, card.sprite, { flipY: true });
 
         // Apply abilities like poison on hit
         card.data.abilities?.forEach(ability => {

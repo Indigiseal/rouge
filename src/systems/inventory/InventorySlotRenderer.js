@@ -1,9 +1,7 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
-import { CardDataGenerator } from '../loot/CardDataGenerator.js';
-import { gemTierFrame } from '../../content/cards/gems.js';
-import { attachGemShine } from '../../ui/GemShine.js';
-import { GEM_SPOT_KEY, gemSpotPosition, showGemSockets } from '../../ui/GemSockets.js';
+import { showGemSockets } from '../../ui/GemSockets.js';
+import { buildCardDecorations } from '../../ui/CardDecorations.js';
 import { handLockOf } from '../../content/combat/handLock.js';
 import { bindCardRiders, cardRiders, pinRider } from '../../ui/CardRiders.js';
 
@@ -40,22 +38,14 @@ export const InventorySlotRenderer = {
         this.uiGroup.add(cardSprite);
         cardSprite.setScale(1);
 
-        // A Reliquary-enchanted weapon renders brighter than an ordinary card.
-        // This rides on the sprite itself rather than being a separate overlay
-        // (like briarFrame), so it follows the card through drags, hovers and
-        // rebuilds for free — and unlike a tint it survives the clearTint()
-        // that the drag handler runs on dragend. WebGL-only; on the Canvas
-        // renderer the optional chaining just leaves the card as it was.
-        if (cardData.enchant) {
-            cardSprite.preFX?.addColorMatrix()?.brightness(1.35);
-        }
         cardSprite.setDepth(12);
 
-        // Use the gameplay property as the single source of truth: saved and
-        // merged Briar Room cards automatically regain their authored border.
-            if ((cardData.briarDamageBonus || 0) > 0 && this.scene.textures.exists('thornFrame')) {
-            const briarFrame = snapOriginToPixelGrid(this.scene.add.image(x, y, 'thornFrame'));
-            briarFrame.setDisplaySize(cardSprite.displayWidth || 54, cardSprite.displayHeight || 70);
+        // Enchant glow, Briar Room thorn frame and socketed gem: shared with
+        // the anvil (ui/CardDecorations.js). Read off the card's own data, so
+        // saved and merged cards regain them automatically.
+        const decor = buildCardDecorations(this.scene, cardSprite, cardData);
+        if (decor.briarFrame) {
+            const briarFrame = decor.briarFrame;
             briarFrame.setDepth(16);
             this.uiGroup.add(briarFrame);
             slotSprite.briarFrame = briarFrame;
@@ -108,37 +98,17 @@ export const InventorySlotRenderer = {
             slotSprite.gemEffectSprite = gemEffectSprite;
             cardSprite.setData('gemEffectSprite', gemEffectSprite);
             pinRider(cardSprite, 'gemEffect', gemEffectSprite);
+        }
 
-            // One gem in the card's top-right corner, drawn at the size its
-            // level earns: small shard, shard, small gem, medium gem, big gem.
-            // It used to be a column of identical 16px icons, one per level,
-            // which said the same thing in more pixels.
-            const gemTier = CardDataGenerator.weaponGemStack(cardData);
-            const gemFrame = gemTierFrame(cardData.gemEffect, gemTier);
-
-            // Top middle, tucked inside the card's top edge — the gem sets
-            // into a socket there rather than perching on the corner. Rounded
-            // to whole pixels so it cannot jitter when a neighbouring card's
-            // blend-mode hover sprite forces a render-batch flush.
-            const spotAt = gemSpotPosition(cardSprite);
-            const gemX = spotAt.x;
-            const gemY = spotAt.y;
-
-            const gemContainer = this.scene.add.container(gemX, gemY);
-            // The socket first, then the stone on top of it: set in, not stuck on.
-            if (this.scene.textures.exists(GEM_SPOT_KEY)) {
-                gemContainer.add(this.scene.add.image(0, 0, GEM_SPOT_KEY));
-            }
-            const gemSprite = this.scene.add.sprite(0, 0, 'gemsTiered', gemFrame);
-            gemContainer.add(gemSprite);
-            attachGemShine(this.scene, gemSprite, { container: gemContainer });
+        // The stone in its socket at the top (from buildCardDecorations above),
+        // sized by gem level: small shard up to big gem.
+        if (decor.gemIndicator) {
+            const gemContainer = decor.gemIndicator;
             gemContainer.setDepth(15);
             this.uiGroup.add(gemContainer);
-            gemContainer.restX = gemX;
-            gemContainer.restY = gemY;
             slotSprite.gemIndicator = gemContainer;
             cardSprite.setData('gemIndicator', gemContainer);
-            pinRider(cardSprite, 'gem', gemContainer, { dx: gemX - x, dy: gemY - y });
+            pinRider(cardSprite, 'gem', gemContainer, { dx: gemContainer.restX - x, dy: gemContainer.restY - y });
         }
 
         // Store original Y position for floating effect

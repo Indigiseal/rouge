@@ -61,8 +61,10 @@ export function buildLocationCardTextures(scene) {
  * The eleventh frame is a runic portal with no location behind it yet — it is
  * deliberately unlisted, so nothing can pick it by accident.
  *
- * Four roads have no door drawn (Duskhold, Frosthollow, Stormhatch, Starfold);
- * they fall back to the boss-portrait card back above.
+ * Four roads have no door drawn (Duskhold, Frosthollow, Stormhatch, Starfold).
+ * On the road-choice screen they fall back to the boss-portrait card back
+ * above; as a room's way out they borrow the runic portal (FALLBACK_DOOR_FRAME,
+ * see locationDoorArt), so every room still has a door.
  */
 export const LOCATION_DOORS_KEY = 'locationDoors';
 export const LOCATION_DOOR_SIZE = 64;
@@ -78,6 +80,10 @@ export const LOCATION_DOOR_FRAMES = Object.freeze({
   mirrorwane: 8,
   spherefall: 9,
 });
+
+// The runic portal: frame 10, drawn but belonging to no road. The way out of
+// a room on a road with no door of its own.
+const FALLBACK_DOOR_FRAME = 10;
 
 /** Door frame for a location, or null if none is drawn for it. */
 export function locationDoorFrame(id) {
@@ -125,14 +131,53 @@ const DOOR_OPEN_FPS = 12;
  * that swings open, or null for a paths.png door, which just swaps frames.
  * Null when no door is drawn for the road (or its sheet is not loaded).
  */
-export function locationDoorArt(scene, id) {
+//
+// `fallback: true` (a room's exit) gives a road with no door the runic portal
+// instead of null. The road-choice screen leaves it off: there the portrait
+// card tells such roads apart, and four identical portals would not.
+//
+// A road whose OPEN frame is not drawn yet (row 1 of paths.png left empty)
+// stays shut-looking when its fight is cleared, rather than swapping to an
+// empty frame and vanishing. Checked off the pixels, so drawing the frame is
+// all it takes to start using it.
+export function locationDoorArt(scene, id, { fallback = false } = {}) {
   const sheet = LOCATION_DOOR_SHEETS[id];
   if (sheet && scene?.textures?.exists(sheet.key)) {
     return { key: sheet.key, shut: sheet.shut, open: sheet.open, openAnim: `door_open_${id}` };
   }
-  const shut = locationDoorFrame(id);
-  if (shut === null || !scene?.textures?.exists(LOCATION_DOORS_KEY)) return null;
-  return { key: LOCATION_DOORS_KEY, shut, open: shut + LOCATION_DOOR_COLUMNS, openAnim: null };
+  if (!scene?.textures?.exists(LOCATION_DOORS_KEY)) return null;
+  let shut = locationDoorFrame(id);
+  if (shut === null) {
+    if (!fallback) return null;
+    shut = FALLBACK_DOOR_FRAME;
+  }
+  const open = shut + LOCATION_DOOR_COLUMNS;
+  return {
+    key: LOCATION_DOORS_KEY,
+    shut,
+    open: doorFrameIsDrawn(scene, open) ? open : shut,
+    openAnim: null,
+  };
+}
+
+// Whether a paths.png frame has any art in it: a coarse grid of alpha samples,
+// enough to tell a drawn door from an empty cell. Cached per frame.
+const drawnDoorFrames = new Map();
+function doorFrameIsDrawn(scene, frame) {
+  if (drawnDoorFrames.has(frame)) return drawnDoorFrames.get(frame);
+  const textures = scene?.textures;
+  if (!textures?.get(LOCATION_DOORS_KEY)?.has?.(frame) || typeof textures.getPixelAlpha !== 'function') {
+    return false;
+  }
+  let drawn = false;
+  const step = 4;
+  for (let y = 0; y < LOCATION_DOOR_SIZE && !drawn; y += step) {
+    for (let x = 0; x < LOCATION_DOOR_SIZE && !drawn; x += step) {
+      if ((textures.getPixelAlpha(x, y, LOCATION_DOORS_KEY, frame) || 0) > 0) drawn = true;
+    }
+  }
+  drawnDoorFrames.set(frame, drawn);
+  return drawn;
 }
 
 /** True for any texture a door is drawn from, paths.png or a door's own sheet. */
