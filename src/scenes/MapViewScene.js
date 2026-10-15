@@ -1,5 +1,6 @@
 // scenes/MapViewScene.js
 // Phaser is provided as a UMD global (see index.html) — no import needed.
+import { createOptionsCog } from '../ui/OptionsCog.js';
 import { MapGenerator, MAP_VERSION } from '../map/MapGenerator.js';
 import {
   ensureHiddenPaths,
@@ -172,10 +173,35 @@ export class MapViewScene extends Phaser.Scene {
     // Render structured map
     this.drawStructuredMap();
 
-    // Close → save the run and quit to the main menu. (Waking GameScene here
-    // would drop the player back onto their already-cleared current floor, which
-    // is empty — this is a between-floors screen, so there is no room to return
-    // to.) The run persists so "Continue" from the menu resumes it.
+    // Options, in the corner every screen keeps them: the pause menu, with
+    // sound and Save & Quit (which saves the run through the sleeping
+    // GameScene). Only if the cog's art is missing does the old X stand in.
+    if (!createOptionsCog(this, () => this.openOptions())) this._addQuitButton();
+
+    this._manualPick = false;
+    this._mapHint = this.add.text(320, 340, t(this, 'ui.map.instructions'), {
+      fontSize: '12px', fill: '#c8b08a', fontFamily: '"HoMM Pixel", Arial, sans-serif'
+    }).setOrigin(0.5);
+    this._addManualPickButton();
+    this.input.keyboard?.on('keydown-ESC', this._onManualPickEscape, this);
+
+    // Peaceful theme fades in whenever the map is shown (create() re-runs on
+    // every wake because handleWake restarts the scene).
+    MusicManager.play(this, 'map_music', 0.5, 900);
+  }
+
+  openOptions() {
+    if (this.scene.isActive('PauseMenuScene')) return;
+    this.scene.launch('PauseMenuScene', { pausedScene: this.scene.key });
+    this.scene.pause();
+  }
+
+  // Fallback when the options cog's art is missing. Close → save the run and
+  // quit to the main menu. (Waking GameScene here would drop the player back
+  // onto their already-cleared current floor, which is empty — this is a
+  // between-floors screen, so there is no room to return to.) The run
+  // persists so "Continue" from the menu resumes it.
+  _addQuitButton() {
     const closeBtn = this.add.circle(600, 30, 15, 0xae5347).setInteractive({ useHandCursor: true });
     this.add.text(600, 30, 'X', { fontSize: '16px', fill: '#f2d3aa' }).setOrigin(0.5);
     closeBtn.on('pointerdown', () => {
@@ -190,17 +216,6 @@ export class MapViewScene extends Phaser.Scene {
       this.scene.stop();
       this.scene.start('MainMenuScene');
     });
-
-    this._manualPick = false;
-    this._mapHint = this.add.text(320, 340, t(this, 'ui.map.instructions'), {
-      fontSize: '12px', fill: '#c8b08a', fontFamily: '"HoMM Pixel", Arial, sans-serif'
-    }).setOrigin(0.5);
-    this._addManualPickButton();
-    this.input.keyboard?.on('keydown-ESC', this._onManualPickEscape, this);
-
-    // Peaceful theme fades in whenever the map is shown (create() re-runs on
-    // every wake because handleWake restarts the scene).
-    MusicManager.play(this, 'map_music', 0.5, 900);
   }
 
   handleWake() {
