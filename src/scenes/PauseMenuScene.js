@@ -144,14 +144,29 @@ export class PauseMenuScene extends Phaser.Scene {
             return;
         }
 
-        if (gameScene && typeof gameScene.saveCurrentRun === 'function') {
-            gameScene.saveCurrentRun();
+        // The run's state lives on GameScene. A station room (event, anvil,
+        // rest) has no saveCurrentRun of its own, so quitting from one used to
+        // save nothing; it saves through GameScene instead.
+        // Only a GameScene that is live (running, paused or asleep — Phaser
+        // status 5–7): a stopped one still holds the last run's state, and
+        // saving that would overwrite the real save.
+        const runScene = typeof gameScene?.saveCurrentRun === 'function'
+            ? gameScene
+            : this.scene.get('GameScene');
+        const runStatus = runScene?.sys?.settings?.status ?? 0;
+        if (typeof runScene?.saveCurrentRun === 'function' && runScene.gameState
+            && runStatus >= 5 && runStatus <= 7) {
+            runScene.saveCurrentRun();
         }
 
         // Stop active gameplay scenes, then go to the main menu. Include the
         // station scenes: pausing is now possible from a shop, and leaving one
-        // running would leak its board over the main menu.
+        // running would leak its board over the main menu. GameScene too: an
+        // event, shop or anvil keeps it awake under the room for the bag, and
+        // it draws above the main menu — left running, it covered the menu
+        // with an empty room.
         this.scene.stop(this.pausedScene);
+        this.scene.stop('GameScene');
         this.scene.stop('MapViewScene');
         ['ShopScene', 'RareShopScene', 'RestScene', 'AnvilScene', 'TreasureScene', 'EventScene', 'TollroadAftermathScene',
             'LocationPickScene', 'TollroadDetourScene', 'VillageScene', 'TalentTreeScene', 'ArmorerPickScene']
