@@ -2046,27 +2046,40 @@ function summonForElite(eliteCard) {
     if (!elite || !this._boardCells || !this._boardPlace) return false;
     if ((elite.summonsMade || 0) >= ELITE_SUMMON_CAP) return false;
 
+    // It calls its own kind: a wolf calls a wolf. Only an elite with no
+    // buildable type of its own falls back to a random floor enemy.
+    const cf = this.scene.gameState?.currentFloor || 1;
+    const own = elite.enemyType
+        ? this.cardDataGenerator.createTieredEnemy(elite.enemyType, cf, false)
+        : null;
+    const ownKind = own && own.enemyType === elite.enemyType && this.isEnemyType(own.type) ? own : null;
+
+    // The empty spot nearest the elite, preferring a row that suits the
+    // minion's role (front rows melee, the back row ranged).
     const from = elite.brick || { r: 0, c: 0 };
+    const wantRole = ownKind ? (ownKind.role || 'MELEE') : null;
     let slot = -1;
     let best = Infinity;
     for (let i = 0; i < this.boardCards.length; i++) {
         const cell = this._boardCells[i];
         if (this.boardCards[i] || !cell) continue;
-        const d = Math.abs(cell.r - from.r) * 2 + Math.abs(cell.c - from.c);
+        const rowRole = cell.r > 0 ? 'MELEE' : 'RANGED';
+        const d = Math.abs(cell.r - from.r) * 2 + Math.abs(cell.c - from.c)
+            + (wantRole && rowRole !== wantRole ? 100 : 0);
         if (d < best) { best = d; slot = i; }
     }
     if (slot < 0) return false;
 
-    const cf = this.scene.gameState?.currentFloor || 1;
     const cell = this._boardCells[slot];
     const role = cell.r > 0 ? 'MELEE' : 'RANGED';
-    const minion = this.createCardData('enemy', cf, false, this.scene.gameState, null, role);
+    const minion = ownKind || this.createCardData('enemy', cf, false, this.scene.gameState, null, role);
     if (!minion || !this.isEnemyType(minion.type)) return false;
     // Weaker than one dealt normally, like a boss's summons.
     minion.attack = Math.max(1, Math.round((minion.attack || 1) * 0.6));
     minion.health = Math.max(1, Math.round((minion.health || 1) * 0.65));
     minion.maxHealth = minion.health;
-    minion.role = role;
+    // Its own kind keeps its own role (no ranged wolves); a random pick fits the row.
+    if (!ownKind) minion.role = role;
     minion.summonedByElite = true;
     minion.name = 'Summoned ' + (minion.name || 'Enemy');
 
