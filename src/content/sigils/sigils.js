@@ -130,13 +130,19 @@ export function cardSigils(card) {
 export function enemySigils(data, { lockKind = null } = {}) {
     if (!data) return [];
     const ids = [];
+    const levels = {};
     const add = (id) => { if (id && SIGILS[id] && !ids.includes(id)) ids.push(id); };
+    // Sigils the enemy carries in its own right (a boss's), then its traits.
+    for (const s of storedSigils(data)) {
+        add(s.id);
+        levels[s.id] = Math.max(1, s.level || 1);
+    }
     for (const f of Array.isArray(data.features) ? data.features : []) {
         if (f === 'web_hand') add(lockKind === 'ink' ? 'ink' : 'web');
         else add(FEATURE_SIGIL[f]);
     }
     for (const a of Array.isArray(data.abilities) ? data.abilities : []) add(ABILITY_SIGIL[a?.type]);
-    return ids.map((id) => ({ id, level: 1 }));
+    return ids.map((id) => ({ id, level: levels[id] || 1 }));
 }
 
 /** Level of one stored sigil on a card (0 if it has none). */

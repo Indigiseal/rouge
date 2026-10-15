@@ -6,6 +6,7 @@ import { t, translateCardType, translateDescription, translateGemEffect, transla
 import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
 import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
 import { HAND_LOCKS, handLockKindOf } from '../content/combat/handLock.js';
+import { sigilLine, storedSigils } from '../content/sigils/sigils.js';
 import { cameraWorldSize } from '../config/renderScale.js';
 
 // Default tooltip depth — above the board and its card FX, below the modal
@@ -169,6 +170,7 @@ export function getBossAbilityLines(scene, data) {
                 break;
         }
     });
+    for (const sigil of storedSigils(data)) lines.push(sigilLine(sigil.id, sigil.level || 1, 'enemy'));
     return lines;
 }
 
@@ -265,6 +267,7 @@ function getEnemyFeatureLines(scene, data) {
     if (data?.controlTreachery) {
         lines.push(t(scene, 'tooltip.markTreachery'));
     }
+    for (const sigil of storedSigils(data)) lines.push(sigilLine(sigil.id, sigil.level || 1, 'enemy'));
     return lines;
 }
 

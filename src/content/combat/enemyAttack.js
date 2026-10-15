@@ -4,14 +4,36 @@
  * Example: Thornwake Wolf pack bonus lives next to the wolf def.
  */
 
+import { sigilLevel } from '../sigils/sigils.js';
 import { getEnemy } from '../cards/enemies.js';
 
 export function getEnemyHitAttack(card, boardCards) {
   const base = Math.max(0, Number(card?.data?.attack) || 0);
   const def = getEnemy(card?.data?.enemyType);
+  let attack = base;
   if (typeof def?.modifyHitAttack === 'function') {
-    const next = def.modifyHitAttack(card, boardCards, base);
-    return Math.max(0, Number(next) || 0);
+    attack = Math.max(0, Number(def.modifyHitAttack(card, boardCards, base)) || 0);
   }
-  return base;
+  return attack + enemyFlatSigilBonus(card, boardCards);
+}
+
+// An enemy's flat sigils, part of its attack number so the card shows them:
+// Honed (+1 per attack it has made this fight), Outnumbered (+1 per other
+// living enemy in view), Ironclad (its armor). Per sigil level.
+function enemyFlatSigilBonus(card, boardCards) {
+  const data = card?.data;
+  if (!data || !Array.isArray(data.sigils) || !data.sigils.length) return 0;
+  let bonus = 0;
+  const honed = sigilLevel(data, 'honed');
+  if (honed > 0) bonus += (data.honedUses || 0) * honed;
+  const outnumbered = sigilLevel(data, 'outnumbered');
+  if (outnumbered > 0) {
+    const others = (boardCards || []).filter((other) => other && other !== card && other.revealed
+      && (other.data?.type === 'enemy' || other.data?.type === 'eliteEnemy' || other.data?.type === 'boss')
+      && (other.data.health || 0) > 0).length;
+    bonus += others * outnumbered;
+  }
+  const ironclad = sigilLevel(data, 'ironclad');
+  if (ironclad > 0) bonus += Math.max(0, Number(data.armor) || 0) * ironclad;
+  return bonus;
 }

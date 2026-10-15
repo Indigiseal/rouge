@@ -9,6 +9,7 @@ import { getEnemy } from '../../content/cards/enemies.js';
 import { HAND_LOCKS, handLockKindOf, handLockOf } from '../../content/combat/handLock.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
 import { regenerateAmount } from './SigilEffects.js';
+import { SIGIL_MULTIPLIER, getSigil, sigilLevel } from '../../content/sigils/sigils.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 
 const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
@@ -32,6 +33,39 @@ const WEB_THROW_ARC = 30;
  * Owns the enemy-turn queue and companion combat turn loop.
  * Scene keeps VFX / inventory / card-system APIs; this controller drives timing.
  */
+
+// The x1.5 sigils an enemy's strike earns right now.
+function enemyStrikeSigils(card, gameState) {
+    const data = card?.data;
+    if (!data || !Array.isArray(data.sigils) || !data.sigils.length) return [];
+    const heroHp = gameState?.playerHealth ?? 0;
+    const heroMax = Math.max(1, gameState?.maxHealth || 1);
+    const hp = data.health ?? 0;
+    const maxHp = Math.max(1, data.maxHealth || hp || 1);
+    const out = [];
+    if (sigilLevel(data, 'merciless') > 0 && heroHp <= heroMax / 2) out.push('merciless');
+    if (sigilLevel(data, 'ambush') > 0 && heroHp >= heroMax) out.push('ambush');
+    if (sigilLevel(data, 'unscathed') > 0 && hp >= maxHp) out.push('unscathed');
+    return out;
+}
+
+// Enemies with Regenerate heal 1 per level at the end of the enemy turn.
+function regenerateEnemies(scene) {
+    const cs = scene?.cardSystem;
+    (cs?.boardCards || []).forEach((card) => {
+        const data = card?.data;
+        if (!card?.revealed || !data || (data.health || 0) <= 0) return;
+        const level = sigilLevel(data, 'regenerate');
+        if (level <= 0) return;
+        const max = Math.max(1, data.maxHealth || data.health);
+        const healed = Math.min(level, max - data.health);
+        if (healed <= 0) return;
+        data.health += healed;
+        cs.updateEnemyInfoText?.(card);
+        if (card.sprite) scene.createFloatingText(card.sprite.x, card.sprite.y - 18, `+${healed}`, 0x4a884f);
+    });
+}
+
 export class CombatTurnController {
     constructor(scene) {
         this.scene = scene;
@@ -421,6 +455,18 @@ export class CombatTurnController {
         const features = Array.isArray(card.data?.features) ? card.data.features : [];
         let damageDealt = getEnemyHitAttack(card, scene.cardSystem?.boardCards);
 
+        // The enemy's own x1.5 sigils (a boss's): Merciless once the hero is
+        // at half health or less, Ambush while the hero is unhurt, Unscathed
+        // while it is unhurt itself. Rounded down, like the player's.
+        const enemySigilHits = enemyStrikeSigils(card, scene.gameState);
+        enemySigilHits.forEach(() => { damageDealt = Math.floor(damageDealt * SIGIL_MULTIPLIER); });
+        if (enemySigilHits.length && card.sprite) {
+            scene.createFloatingText(card.sprite.x, card.sprite.y - 30,
+                enemySigilHits.map((id) => getSigil(id)?.name).join(' + ') + '!', 0xc45c45);
+        }
+        // Honed: every attack it makes adds to the next one this fight.
+        if (sigilLevel(card.data, 'honed') > 0) card.data.honedUses = (card.data.honedUses || 0) + 1;
+
         // Road Sniper — occasional heavy bolt.
         if (features.includes('heavy_shot') && Math.random() < 0.2) {
             damageDealt = Math.ceil(damageDealt * 1.5);
@@ -765,6 +811,9 @@ export class CombatTurnController {
             }
         }
         }
+
+        // Enemies' Regenerate sigil: each heals at the end of the enemy turn.
+        regenerateEnemies(scene);
 
         // Regenerate sigils: carried cards and worn armor heal the hero a
         // little at the end of every enemy turn.
