@@ -42,7 +42,29 @@ export const HIDDEN_PATH_SOURCES = Object.freeze({
         roomType: 'TREASURE_GOOD',
         isOpen: (gameState) => hasAmulet(gameState, 'porterMap'),
     }),
+    // The sigil vault (sigils branch): one secret room in every act, always
+    // there, but only drawn once the player stands on the floor right before
+    // it (revealNear). Its chest holds a sigil — as does every secret room's.
+    sigilVault: Object.freeze({
+        roomType: 'TREASURE_GOOD',
+        alwaysPresent: true,
+        revealNear: true,
+    }),
 });
+
+// Sources that place their room without a story revealing them first.
+const ALWAYS_PRESENT = Object.keys(HIDDEN_PATH_SOURCES).filter((source) => HIDDEN_PATH_SOURCES[source].alwaysPresent);
+
+// A revealNear room shows once the player is on the floor that leads into it
+// (or any later point in the run).
+function isNearSecretRoom(gameState, node) {
+    const cursor = gameState?.mapCursor;
+    if (!cursor) return false;
+    const act = node.secretAct || Number(String(node.id || '').match(/^act(\d+)/)?.[1]) || 1;
+    const curAct = cursor.act || 1;
+    if (curAct !== act) return curAct > act;
+    return (cursor.floor ?? 0) >= (node.y ?? 0) - 1;
+}
 
 export function isHiddenPathOpen(gameState, source) {
     if (!source) return false;
@@ -54,7 +76,9 @@ export function isHiddenPathOpen(gameState, source) {
 /** False only for a secret node whose path is closed and was never walked. */
 export function isMapNodeVisible(gameState, node) {
     if (!node?.secret) return true;
-    return Boolean(node.visited) || isHiddenPathOpen(gameState, node.secretSource);
+    if (node.visited) return true;
+    if (HIDDEN_PATH_SOURCES[node.secretSource]?.revealNear) return isNearSecretRoom(gameState, node);
+    return isHiddenPathOpen(gameState, node.secretSource);
 }
 
 /**
@@ -87,8 +111,9 @@ export function revealHiddenPaths(gameState, source) {
 export function ensureHiddenPaths(gameState) {
     const map = gameState?.dungeonMap;
     if (!map) return 0;
-    const sources = Object.keys(gameState.storyRun?.hiddenPaths || {})
+    const revealed = Object.keys(gameState.storyRun?.hiddenPaths || {})
         .filter((source) => HIDDEN_PATH_SOURCES[source] && isHiddenPathOpen(gameState, source));
+    const sources = [...new Set([...revealed, ...ALWAYS_PRESENT])];
     if (!sources.length) return 0;
 
     const cursor = gameState.mapCursor || { act: 1, floor: 0, node: 0 };
@@ -167,6 +192,7 @@ function addSecretRoom(gameState, actMap, act, source, cursor) {
         visited: false,
         secret: true,
         secretSource: source,
+        secretAct: act,
     };
     row.push(secret);
     parent.secretLinks = [...(parent.secretLinks || []), row.length - 1];

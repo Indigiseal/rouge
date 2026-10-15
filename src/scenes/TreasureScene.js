@@ -61,6 +61,8 @@ export class TreasureScene extends StationRoomBase {
     // NOTE: no full-screen background here — that would cover the GameScene
     // inventory station underneath. The dungeon backdrop shows through instead.
     const title = this.rewardMode === 'elite' ? t(this, 'ui.treasure.eliteTitle') : t(this, 'ui.treasure.title');
+    // (A secret room's chest reads as a treasure; what sets it apart is the
+    // sigil it also holds, offered once it opens.)
     createTitle(this, 320, 20, title, {
       color: '#fbad19',
       fallbackSize: '24px'
@@ -194,15 +196,22 @@ export class TreasureScene extends StationRoomBase {
     this.gameScene?.updateUI?.();
     this.darkenOpenedChest(chest);
 
-    // An elite chest also holds a sigil, put on a card the player picks now.
-    if (this.rewardMode === 'elite') this.time.delayedCall(450, () => this.offerChestSigil());
+    // An elite or secret-room chest also holds a sigil, put on a card the
+    // player picks now.
+    if (this.rewardMode === 'elite' || this.rewardMode === 'secret') {
+      this.time.delayedCall(450, () => this.offerChestSigil());
+    }
   }
 
   offerChestSigil() {
     const sigilId = rollOfferableSigil(this.gameScene);
     if (!sigilId) return;
     openSigilOffer(this, this.gameScene, sigilId, (card) => {
-      recordHumanRunEvent(this, 'sigil_taken', { source: 'elite_chest', sigil: sigilId, card: card ? snapshotHumanRunCard(card) : null });
+      recordHumanRunEvent(this, 'sigil_taken', {
+        source: this.rewardMode === 'secret' ? 'secret_room' : 'elite_chest',
+        sigil: sigilId,
+        card: card ? snapshotHumanRunCard(card) : null,
+      });
     });
   }
 
@@ -218,6 +227,12 @@ export class TreasureScene extends StationRoomBase {
         coins: 8 + Math.floor(floor / 3),
         crystals: 1 + Math.floor(floor / 14),
         rarity: gen.capRewardRarity('uncommon', floor)
+      },
+      // A secret room's chest: as rich as a good chest, no key, plus a sigil.
+      secret: {
+        coins: 12 + Math.floor(floor / 2),
+        crystals: 1 + Math.floor(floor / 12),
+        rarity: gen.capRewardRarity(floor >= 38 ? 'epic' : 'rare', floor)
       },
       good: {
         coins: 12 + Math.floor(floor / 2),

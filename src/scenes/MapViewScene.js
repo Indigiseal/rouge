@@ -242,14 +242,19 @@ export class MapViewScene extends Phaser.Scene {
       const y = startY + f * floorGap + insertedBefore * 42;
       // Secret rooms are appended to their row, so the ordinary nodes are
       // centred on their own count and the secret one stands a lane beyond the
-      // row's right edge: the road visibly bends off the map's normal grid.
+      // row's edge — on the side of the room that leads into it (and of the
+      // room it rejoins), so its road never crosses the map's other roads.
       const count = floorNodes.filter(node => !node?.secret).length;
-      let secretSlot = 0;
+      const secretsOnSide = { '-1': 0, '1': 0 };
       floorNodes.forEach((node, i) => {
         // Round to whole pixels: even node counts give half-integer offsets,
         // which leave the pixel-art nodes on fractional positions and make them
         // (and the whole map) shimmer/shift by a pixel on render-batch flushes.
-        const slot = node?.secret ? (count - 1) / 2 + 1 + secretSlot++ : i - (count - 1) / 2;
+        let slot = i - (count - 1) / 2;
+        if (node?.secret) {
+          const side = this._secretRoomSide(f, i);
+          slot = side * ((count - 1) / 2 + 1 + secretsOnSide[side]++);
+        }
         node.__x = Math.round(slot * laneGap);
         node.__y = Math.round(y);
         node.__idx = i; // index within the floor
@@ -573,6 +578,24 @@ export class MapViewScene extends Phaser.Scene {
     if (canClick) this._bindNodeClick(nodeSprite, node, floorIdx, nodeIdx, idleTint);
   }
 
+  // Which side of its row a secret room stands on: -1 left, 1 right. The side
+  // of the room leading into it (on the floor above), weighed with the room it
+  // rejoins (two floors on), so neither road has to cross the row. Ties go right.
+  _secretRoomSide(f, i) {
+    const floors = this.actMap.floors;
+    const slotOf = (row, idx) => {
+      const nodes = floors[row] || [];
+      const ordinary = nodes.filter(n => !n?.secret).length;
+      return idx - (ordinary - 1) / 2;
+    };
+    const parentIdx = (floors[f - 1] || []).findIndex(n => Array.isArray(n?.secretLinks) && n.secretLinks.includes(i));
+    const rejoinIdx = floors[f]?.[i]?.connections?.[0];
+    let lean = 0;
+    if (parentIdx >= 0) lean += slotOf(f - 1, parentIdx) * 2;
+    if (Number.isInteger(rejoinIdx)) lean += slotOf(f + 1, rejoinIdx);
+    return lean < 0 ? -1 : 1;
+  }
+
   // Soft purple glow behind a secret room: the overlay that marks it as off
   // the normal map. Added before the node so it sits underneath.
   _addHiddenPathHalo(node, alpha) {
@@ -833,6 +856,8 @@ export class MapViewScene extends Phaser.Scene {
           node.type === 'TREASURE_GOOD'  ? 'TreasureScene' : 'EventScene';
         const sceneData = { gameState: this.gameState };
         if (node.type === 'TREASURE_GOOD') sceneData.rewardMode = 'good';
+        // A secret room's chest: no key needed, and it holds a sigil too.
+        if (node.secret && (node.type === 'TREASURE' || node.type === 'TREASURE_GOOD')) sceneData.rewardMode = 'secret';
         this.scene.launch(key, sceneData);
         return;
       }
