@@ -133,7 +133,7 @@ export const EventRunHelpers = {
     if (canTakeEgg) {
       story.stoleBirdEgg = true;
       story.birdAngry = true;
-      this.addEggOrFallback();
+      this.addEgg();
     }
     if (canTakeCog) this._reward('event.reward.brassCog');
     this.addPendingEvent('goblin_engineer');
@@ -362,21 +362,13 @@ export const EventRunHelpers = {
     return this._removeStoryInventoryCard(index);
   },
 
-  addEggOrFallback() {
+  // The stolen egg goes in the bag like any event card: with a full bag it is
+  // held, the outcome says to discard a card for it, and it arrives the moment
+  // a slot frees (EventScene._deliverCardReward). It floats from the nest's
+  // picture into its slot either way.
+  addEgg() {
     const egg = new CardDataGenerator().createEggCard();
-    if (this._addCardToInventory(egg)) {
-      this._reward({ key: 'event.reward.gained', vars: { name: translateItemName(this, egg) || t(this, 'tooltip.card') } });
-      // The egg floats from the nest's picture into its bag slot.
-      this._flyCardFromPicture?.(this.gameScene?.inventorySystem?.lastAddedSlot);
-      return true;
-    }
-    // A full bag used to swallow this silently: no egg, no card, and nothing in
-    // the outcome text to say why — you had raided the nest and come away with
-    // an unexplained 5 HP. The fallback says so now.
-    const healed = 5;
-    this.heal(healed);
-    this._reward({ key: 'event.reward.eggNoRoom', vars: { amount: healed } });
-    return false;
+    return this._deliverCardReward(egg, egg);
   },
 
   hasEggCard() {
