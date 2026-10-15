@@ -182,6 +182,7 @@ export class AnvilScene extends Phaser.Scene {
             const decor = buildCardDecorations(this, icon, item, { gemShine: false });
             if (decor.briarFrame) face.add(decor.briarFrame);
             if (decor.gemIndicator) face.add(decor.gemIndicator);
+            decor.sigilIcons.forEach((sigilIcon) => face.add(sigilIcon));
             // Use the combat inventory's exact value and durability rendering.
             const card = { sprite: icon, data: item, infoText: null };
             this.cardFx.createCardInfoText(card);

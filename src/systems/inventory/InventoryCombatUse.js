@@ -18,6 +18,8 @@ import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.j
 import { playSmokeBurst } from '../../ui/SmokeBurst.js';
 import { translateItemName } from '../../i18n/i18n.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
+import { applyWeaponSigils, recordWeaponSigilUse } from '../combat/SigilEffects.js';
+import { getSigil } from '../../content/sigils/sigils.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 
 // The strike over a weapon card (playWeaponStrikeEffect): how far the card
@@ -537,6 +539,15 @@ export const InventoryCombatUse = {
             const talentFx = this.scene.gameState.talentEffects || null;
             attackDamage = applyPermanentWeaponDamageBonuses(characterId, weapon, attackDamage, talentFx);
 
+            // The weapon's sigils (Merciless, Hunter, Honed) against this target.
+            const sigilTarget = this.scene.cardSystem.boardCards[closestEnemy];
+            const sigilHit = applyWeaponSigils(this.scene, weapon, sigilTarget, attackDamage);
+            attackDamage = sigilHit.damage;
+            if (sigilHit.triggered.length && sigilTarget?.sprite) {
+                this.scene.createFloatingText(sigilTarget.sprite.x, sigilTarget.sprite.y - 30,
+                    sigilHit.triggered.map((id) => getSigil(id)?.name).join(' + ') + '!', 0xffcf7f);
+            }
+
             // Keen Edge: first dagger/bow attack each floor gets flat +N.
             const keen = applyKeenEdgeFirstStrike(
               characterId, weapon, attackDamage, talentFx, this.scene.gameState
@@ -645,6 +656,7 @@ export const InventoryCombatUse = {
                     // First hit: the dragged weapon. skipDurability=false so its
                     // pip is spent normally inside attackEnemy.
                     this.scene.cardSystem.attackEnemy(closestEnemy, attackDamage, false, weapon, false, { critical: didCrit });
+                    recordWeaponSigilUse(this.scene, weapon, currentEnemy);
                     this.applyAssassinateTalent(closestEnemy);
                 } else {
                     // Second dual-wield hit: use the OTHER dagger's stats — its

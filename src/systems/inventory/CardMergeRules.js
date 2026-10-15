@@ -8,6 +8,7 @@ import {
 } from '../../content/cards/index.js';
 import { carryEnchantToWeapon } from '../../content/balance/WeaponEnchants.js';
 import { resourceCardKey } from '../../content/assets/resourceCards.js';
+import { mergeSigils, sigilsFitOnMerge } from '../../content/sigils/sigils.js';
 import { createGauntletCard, isGauntlet, nextGauntletRarity } from '../../content/balance/Gauntlet.js';
 
 export const CardMergeRules = {
@@ -23,6 +24,9 @@ export const CardMergeRules = {
         if (!canCrossTier && cardA.rarity !== cardB.rarity) return false;
         if (this.getMergeKey(cardA) !== this.getMergeKey(cardB)) return false;
         if (!canCrossTier && this.getMergeStatsKey(cardA) !== this.getMergeStatsKey(cardB)) return false;
+        // A merge that would push the card past two different sigils would
+        // lose one, and sigils are never lost to an upgrade — so it isn't offered.
+        if (!sigilsFitOnMerge(cardA, cardB)) return false;
         return true;
     },
     getMergeKey(card) {
@@ -175,7 +179,17 @@ export const CardMergeRules = {
 
         return card.sprite || card.name || '';
     },
+    // Sigils ride every kind of merge (the Gauntlet's own path included): the
+    // merged card keeps both cards' sigils, the same sigil's levels added up
+    // (content/sigils/sigils.js mergeSigils). They are lost only when the card
+    // itself is destroyed.
     createMergedCard(baseCard, secondCard) {
+        const merged = this.createMergedCardCore(baseCard, secondCard);
+        const sigils = mergeSigils(baseCard, secondCard);
+        if (merged && sigils.length) merged.sigils = sigils;
+        return merged;
+    },
+    createMergedCardCore(baseCard, secondCard) {
         // Get the next rarity tier
         const rarityMap = {
             common: 'uncommon',

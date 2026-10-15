@@ -8,6 +8,8 @@
 //   briar    — a Briar Room card wears the thorn frame (thornFrame.png).
 //   gem      — a socketed weapon shows its stone in the socket at the top,
 //              drawn at the size its gem level earns.
+//   sigils   — the card's sigils, small icons stacked down its top-right
+//              corner (content/sigils/sigils.js, ui/SigilIcons.js).
 //
 // The frame and the gem are returned, not placed: the caller adds them to its
 // own group or container and pins or orders them as that screen needs.
@@ -16,9 +18,14 @@ import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { attachGemShine } from './GemShine.js';
 import { GEM_SPOT_KEY, gemSpotPosition } from './GemSockets.js';
 import { gemTierFrame } from '../content/cards/gems.js';
+import { cardSigils } from '../content/sigils/sigils.js';
+import { buildSigilIcons, sigilCornerOffset } from './SigilIcons.js';
 import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
 
 const ENCHANT_BRIGHTNESS = 1.35;
+// Sigils branch: the Briar Room's thorns show as the Thorns sigil icon, so the
+// full thorn frame over the art is off. true brings it back.
+export const SHOW_BRIAR_FRAME = false;
 
 /**
  * Decorate `cardSprite` for `cardData`. Positions are in the sprite's own
@@ -28,14 +35,14 @@ const ENCHANT_BRIGHTNESS = 1.35;
  * @returns {{ briarFrame: Phaser.GameObjects.Image|null, gemIndicator: Phaser.GameObjects.Container|null, gemSprite: Phaser.GameObjects.Sprite|null }}
  */
 export function buildCardDecorations(scene, cardSprite, cardData, { gemShine = true } = {}) {
-    const out = { briarFrame: null, gemIndicator: null, gemSprite: null };
+    const out = { briarFrame: null, gemIndicator: null, gemSprite: null, sigilIcons: [] };
     if (!scene?.add || !cardSprite || !cardData) return out;
 
     if (cardData.enchant) {
         cardSprite.preFX?.addColorMatrix()?.brightness(ENCHANT_BRIGHTNESS);
     }
 
-    if ((cardData.briarDamageBonus || 0) > 0 && scene.textures.exists('thornFrame')) {
+    if (SHOW_BRIAR_FRAME && (cardData.briarDamageBonus || 0) > 0 && scene.textures.exists('thornFrame')) {
         const briarFrame = snapOriginToPixelGrid(scene.add.image(cardSprite.x, cardSprite.y, 'thornFrame'));
         briarFrame.setDisplaySize(cardSprite.displayWidth || 54, cardSprite.displayHeight || 70);
         out.briarFrame = briarFrame;
@@ -58,6 +65,12 @@ export function buildCardDecorations(scene, cardSprite, cardData, { gemShine = t
         gemIndicator.restY = spotAt.y;
         out.gemIndicator = gemIndicator;
         out.gemSprite = gemSprite;
+    }
+
+    const sigils = cardSigils(cardData);
+    if (sigils.length) {
+        const corner = sigilCornerOffset(cardSprite.displayWidth || 52, cardSprite.displayHeight || 70);
+        out.sigilIcons = buildSigilIcons(scene, sigils, cardSprite.x + corner.x, cardSprite.y + corner.y);
     }
     return out;
 }

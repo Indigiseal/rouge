@@ -8,6 +8,7 @@ import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
 import { getEnemy } from '../../content/cards/enemies.js';
 import { HAND_LOCKS, handLockKindOf, handLockOf } from '../../content/combat/handLock.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
+import { regenerateAmount } from './SigilEffects.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 
 const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
@@ -763,6 +764,21 @@ export class CombatTurnController {
                 return;
             }
         }
+        }
+
+        // Regenerate sigils: carried cards and worn armor heal the hero a
+        // little at the end of every enemy turn.
+        const regen = regenerateAmount(scene);
+        if (regen > 0 && scene.gameState.playerHealth > 0
+            && scene.gameState.playerHealth < scene.gameState.maxHealth) {
+            const before = scene.gameState.playerHealth;
+            scene.gameState.heal?.(regen);
+            const healed = scene.gameState.playerHealth - before;
+            if (healed > 0) {
+                CombatSequencer.floatingText(scene, 'hurt', scene.playerAvatar.x, scene.playerAvatar.y - 14,
+                    `+${healed} Regenerate`, 0x4a884f);
+                scene.updateUI?.();
+            }
         }
 
         scene.updateUI();

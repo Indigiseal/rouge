@@ -30,6 +30,9 @@ import { createGauntletCard } from '../content/balance/Gauntlet.js';
 import { AMULETS } from '../content/cards/amulets.js';
 import { hudAmuletTexture } from '../content/amulets/RelicsOthersAtlas.js';
 import { EXIT_DOOR_X, EXIT_DOOR_Y } from './ExitDoor.js';
+import { SIGIL_ICONS_KEY, WORKING_PLAYER_SIGILS, addSigil, cardSigils, getSigil } from '../content/sigils/sigils.js';
+import { buildSigilIcons, sigilCornerOffset } from './SigilIcons.js';
+import { SHOW_BRIAR_FRAME } from './CardDecorations.js';
 import { isLocationDoorTexture } from '../content/assets/locationCards.js';
 
 // The amulet strip owns the top-left corner, so the hero column starts below
@@ -234,7 +237,12 @@ export const CombatHud = {
             return;
         }
         const rarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-        const categories = { weapon: [], armor: [], amulet: [], amuletNonSpawn: [], other: [] };
+        const categories = { weapon: [], armor: [], amulet: [], amuletNonSpawn: [], other: [], sigil: [] };
+        // Sigils (sigils branch): the ones that work so far, put on a card in the bag.
+        for (const id of WORKING_PLAYER_SIGILS) {
+            const def = getSigil(id);
+            categories.sigil.push({ label: def.name, sigilId: id, sprite: SIGIL_ICONS_KEY, spriteFrame: def.frame });
+        }
         for (const type of Object.keys(WEAPONS)) {
             for (const rarity of rarities) {
                 const card = createWeaponCardData(type, rarity);
@@ -292,6 +300,11 @@ export const CombatHud = {
     },
 
     grantDebugItem(entry) {
+        if (entry.sigilId) {
+            this.grantDebugSigil(entry.sigilId);
+            this.closeDebugItemOverlay();
+            return;
+        }
         if (entry.amuletId) {
             this.amuletManager.addAmulet(entry.amuletId, { force: true });
             this.closeDebugItemOverlay();
@@ -308,6 +321,26 @@ export const CombatHud = {
         this.saveCurrentRun?.();
         this.createFloatingText(320, 330, `Added: ${entry.card.name}`, 0x4a884f);
         this.closeDebugItemOverlay();
+    },
+
+    // Put a sigil on a card for testing: Regenerate on the worn armor (else an
+    // armor or weapon in the bag), the rest on the first bag weapon with room.
+    grantDebugSigil(id) {
+        const slots = this.inventorySystem?.slots || [];
+        const weapons = slots.filter((card) => card?.type === 'weapon');
+        const armors = slots.filter((card) => card?.type === 'armor');
+        const targets = id === 'regenerate'
+            ? [this.gameState.equippedArmor, ...armors, ...weapons]
+            : weapons;
+        const target = targets.find((card) => card && addSigil(card, id));
+        if (!target) {
+            this.createFloatingText(320, 330, 'No card can take that sigil', 0xc45c45);
+            return;
+        }
+        this.inventorySystem.rebuildInventorySprites?.();
+        this.updateEquippedArmorPanel?.();
+        this.saveCurrentRun?.();
+        this.createFloatingText(320, 330, `${getSigil(id).name} on ${target.name}`, 0x4a884f);
     },
 
     closeDebugItemOverlay() {
@@ -345,12 +378,12 @@ export const CombatHud = {
         };
         const tabLabels = {
             weapon: 'WEAPONS', armor: 'ARMOR', amulet: 'AMULETS',
-            amuletNonSpawn: 'NON-SPAWN', other: 'OTHER',
+            amuletNonSpawn: 'NON-SPAWN', other: 'OTHER', sigil: 'SIGILS',
         };
         const tabs = {};
         Object.keys(tabLabels).forEach((key, i) => {
-            const x = 124 + i * 98;
-            const plate = add(this.add.rectangle(x, 63, 91, 22, 0x44353b).setStrokeStyle(1, 0x926b4a).setInteractive({ useHandCursor: true }));
+            const x = 106 + i * 86;
+            const plate = add(this.add.rectangle(x, 63, 80, 22, 0x44353b).setStrokeStyle(1, 0x926b4a).setInteractive({ useHandCursor: true }));
             const text = add(this.add.text(x, 63, tabLabels[key], {
                 fontSize: '9px', fill: '#f2d7c4', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5));
@@ -376,13 +409,16 @@ export const CombatHud = {
                 const y = 108 + row * 72;
                 const hit = this.add.rectangle(x, y, 72, 64, 0x392a36, 0.9)
                     .setStrokeStyle(1, 0x6f5452).setInteractive({ useHandCursor: true });
-                const spriteKey = entry.amuletId ? entry.sprite : entry.card?.sprite;
-                const frame = entry.amuletId ? entry.spriteFrame : entry.card?.spriteFrame;
+                const ownIcon = entry.amuletId || entry.sigilId;
+                const spriteKey = ownIcon ? entry.sprite : entry.card?.sprite;
+                const frame = ownIcon ? entry.spriteFrame : entry.card?.spriteFrame;
                 const icon = this.add.image(x, y - 8, spriteKey, frame);
                 const isAmulet = activeCategory === 'amulet' || activeCategory === 'amuletNonSpawn';
                 const maxW = isAmulet ? 28 : 38;
                 const maxH = isAmulet ? 28 : 43;
-                const scale = Math.min(maxW / Math.max(1, icon.width), maxH / Math.max(1, icon.height), 1);
+                const scale = activeCategory === 'sigil'
+                    ? 2  // 16px sigil icons, shown at double size to read them
+                    : Math.min(maxW / Math.max(1, icon.width), maxH / Math.max(1, icon.height), 1);
                 icon.setScale(scale);
                 const label = this.add.text(x, y + 23, entry.label, {
                     fontSize: '7px', fill: '#f2d7c4', fontFamily: '"HoMM Pixel"',
@@ -986,6 +1022,8 @@ export const CombatHud = {
             this.armorPanelBriarFrame.destroy();
             this.armorPanelBriarFrame = null;
         }
+        (this.armorPanelSigilIcons || []).forEach((icon) => icon?.scene && icon.destroy());
+        this.armorPanelSigilIcons = null;
         if (this.armorPanelInfoText) {
             if (this.armorPanelInfoText.list) {
                 this.armorPanelInfoText.destroy(true);
@@ -1001,7 +1039,16 @@ export const CombatHud = {
         this.armorPanelEquippedSprite = snapOriginToPixelGrid(this.add.image(this.armorPanel.x, this.armorPanel.y - 6, armor.sprite));
         this.armorPanelEquippedSprite.setDepth(6);
         this.armorPanelEquippedSprite.setInteractive({ useHandCursor: true });
-        if ((armor.briarDamageBonus || 0) > 0 && this.textures.exists('thornFrame')) {
+        // The worn armor's sigils, in its top-right corner like any card.
+        const wornSigils = cardSigils(armor);
+        if (wornSigils.length) {
+            const corner = sigilCornerOffset(this.armorPanelEquippedSprite.displayWidth || 52,
+                this.armorPanelEquippedSprite.displayHeight || 70);
+            this.armorPanelSigilIcons = buildSigilIcons(this, wornSigils,
+                this.armorPanelEquippedSprite.x + corner.x, this.armorPanelEquippedSprite.y + corner.y);
+            this.armorPanelSigilIcons.forEach((icon) => icon.setDepth(6.6));
+        }
+        if (SHOW_BRIAR_FRAME && (armor.briarDamageBonus || 0) > 0 && this.textures.exists('thornFrame')) {
             this.armorPanelBriarFrame = snapOriginToPixelGrid(
                 this.add.image(this.armorPanelEquippedSprite.x, this.armorPanelEquippedSprite.y, 'thornFrame')
             );

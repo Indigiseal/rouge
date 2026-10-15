@@ -100,6 +100,21 @@ export const InventorySlotRenderer = {
             pinRider(cardSprite, 'gemEffect', gemEffectSprite);
         }
 
+        // The card's sigils, down its top-right corner (buildCardDecorations).
+        if (decor.sigilIcons.length) {
+            const icons = decor.sigilIcons;
+            icons.forEach((icon, i) => {
+                icon.setDepth(this.getInventoryDepths().sigils);
+                this.uiGroup.add(icon);
+                pinRider(cardSprite, `sigil${i}`, icon, { dx: icon.x - x, dy: icon.y - y });
+            });
+            slotSprite.sigilIcons = icons;
+            cardSprite.once('destroy', () => {
+                icons.forEach((icon) => icon?.scene && icon.destroy());
+                if (slotSprite.sigilIcons === icons) slotSprite.sigilIcons = null;
+            });
+        }
+
         // The stone in its socket at the top (from buildCardDecorations above),
         // sized by gem level: small shard up to big gem.
         if (decor.gemIndicator) {

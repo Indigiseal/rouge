@@ -10,6 +10,9 @@ import { effectiveArmorProtection, isArmorWarded } from '../combat/ArmorMath.js'
 import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
 import { isSilkCocoonCard } from './CocoonCacheBoard.js';
 import { t, translateItemName } from '../../i18n/i18n.js';
+import { enemySigils } from '../../content/sigils/sigils.js';
+import { buildSigilIcons, sigilCornerOffset } from '../../ui/SigilIcons.js';
+import { handLockKindOf } from '../../content/combat/handLock.js';
 import { scaleGoldReward } from '../../content/economy/gold.js';
 
 // The one value slot painted into the bottom-right of every card that shows a
@@ -39,6 +42,9 @@ const RESOURCE_LABEL_Y = 19;
 // The name along a card's bottom ("Potion", "Food", "Soul Drain"...). 9px, the
 // size the gem label already used; these were 11-12px and crowded the art.
 const CARD_LABEL_SIZE = '9px';
+// An enemy card's size before board scaling (the stats container scales with it).
+const ENEMY_CARD_W = 52;
+const ENEMY_CARD_H = 70;
 // The number on a card (damage, protection, heal, HP/ATK on enemies...): one
 // size for every card type, on the board, in the bag and in the shops.
 export const CARD_VALUE_SIZE = '10px';
@@ -474,6 +480,11 @@ function createCardInfoText(card) {
     // now live in the card corners — so nothing extra to stamp here.
 }
 
+// An enemy's sigils, with the Arrest look matching what it throws (web or ink).
+function boardEnemySigils(data) {
+    return enemySigils(data, { lockKind: handLockKindOf(data) });
+}
+
 function _buildEnemyCornerStats(card) {
     if (!card?.sprite || !card.data) return;
     if (card.data.type === 'boss') {
@@ -523,6 +534,10 @@ function _buildEnemyCornerStats(card) {
         });
         children.push(nameText);
     }
+
+    // The enemy's sigils (its traits), down the card's top-right corner.
+    const corner = sigilCornerOffset(ENEMY_CARD_W, ENEMY_CARD_H);
+    children.push(...buildSigilIcons(this.scene, boardEnemySigils(card.data), corner.x, corner.y));
 
     const container = this.scene.add.container(
         Math.round(card.sprite.x),
@@ -574,7 +589,15 @@ function _buildBossStats(card) {
         strokeThickness: 2
     });
 
-    const container = this.scene.add.container(card.sprite.x, y, [emptyBar, fillBar, hpText, atkText]);
+    // The boss's sigils in the top-right corner of its art. The container sits
+    // under the art (at y), so the corner is measured back up from there.
+    const bossW = card.sprite.displayWidth || card.sprite.width || 100;
+    const bossH = card.sprite.displayHeight || card.sprite.height || 100;
+    const bossCorner = sigilCornerOffset(bossW, bossH);
+    const sigilIcons = buildSigilIcons(this.scene, boardEnemySigils(card.data),
+        bossCorner.x, bossCorner.y + (card.sprite.y - y));
+
+    const container = this.scene.add.container(card.sprite.x, y, [emptyBar, fillBar, hpText, atkText, ...sigilIcons]);
     container.setDepth((card.sprite.depth || 1) + 8);
     container._bossEmptyBar = emptyBar;
     container._bossHpFill = fillBar;

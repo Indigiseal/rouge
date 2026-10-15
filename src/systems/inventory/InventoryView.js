@@ -9,6 +9,7 @@ import { t, translateDescription, translateGemEffect, translateItemName, tCount 
 import { describeWeaponEnchant, ENCHANT_FIRE_SPLASH_RADIUS } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 import { handLockOf } from '../../content/combat/handLock.js';
+import { sigilLine, storedSigils } from '../../content/sigils/sigils.js';
 import {
     axeHeavyCleaveTargetIndices,
     spearPierceTargetIndices,
@@ -63,6 +64,7 @@ export const InventoryView = {
                 gemEffect: 206,
                 gemIndicator: 207,
                 briarFrame: 208,
+                sigils: 208.5,
                 webOverlay: 209,
                 twinkle: 208
             }
@@ -76,6 +78,7 @@ export const InventoryView = {
                 gemEffect: 14,
                 gemIndicator: 15,
                 briarFrame: 16,
+                sigils: 16.5,
                 webOverlay: 17,
                 twinkle: 100
             };
@@ -101,6 +104,7 @@ export const InventoryView = {
         slot.gemEffectSprite?.setDepth?.(depths.gemEffect);
         slot.gemIndicator?.setDepth?.(depths.gemIndicator);
         slot.briarFrame?.setDepth?.(depths.briarFrame);
+        slot.sigilIcons?.forEach?.((icon) => icon?.setDepth?.(depths.sigils));
         slot.webOverlay?.setDepth?.(depths.webOverlay);
         slot.twinkleSprite?.setDepth?.(depths.twinkle);
     },
@@ -1180,6 +1184,10 @@ export const InventoryView = {
             lines.push(card.description ? translateDescription(this.scene, card.description) : t(this.scene, 'tooltip.noEffect'));
             if (card.carnivalToken) lines.push(t(this.scene, 'tooltip.carnivalToken'));
         }
+
+        // The card's sigils, one line each ("Merciless: x1.5 against ...").
+        // The Thorns and enchant sigils already have their own lines above.
+        for (const sigil of storedSigils(card)) lines.push(sigilLine(sigil.id, sigil.level || 1, 'player'));
 
         return lines;
     },
