@@ -20,12 +20,12 @@ export const SIGIL_MULTIPLIER = 1.5;   // never x2 — rounds down, both sides
 // on that side. `works`: true once the player-side rule is built.
 export const SIGILS = Object.freeze({
     arrest:      { name: 'Arrest',      frame: 14, side: 'both',   enemy: 'locks one of your cards for a turn', player: '25% chance the enemy hit skips its next turn', works: true },
-    venom:       { name: 'Venom',       frame: 15, side: 'both',   enemy: 'poisons you on hit', player: 'poisons the enemy hit: 1 per level for 3 turns', works: true },
-    thorns:      { name: 'Thorns',      frame: 16, side: 'both',   enemy: 'damages whoever hits it', player: '+1 damage per level (Briar Room)', works: true },
+    venom:       { name: 'Venom',       frame: 15, side: 'both',   enemy: 'poisons you on hit', player: 'poisons the enemy hit: 1 for 3 turns', works: true },
+    thorns:      { name: 'Thorns',      frame: 16, side: 'both',   enemy: 'damages whoever hits it', player: '+1 damage (Briar Room)', works: true },
     sunder:      { name: 'Sunder',      frame: 17, side: 'both',   enemy: 'wears down your armor', player: 'strips armor from the enemy' },
     daze:        { name: 'Daze',        frame: 18, side: 'both',   enemy: 'can make you lose an action or miss', player: 'can make the enemy miss its next attack' },
     crushing:    { name: 'Crushing',    frame: 19, side: 'both',   enemy: 'can hit harder or ignore armor', player: 'chance of a heavy hit' },
-    cutpurse:    { name: 'Cutpurse',    frame: 20, side: 'both',   enemy: 'steals coins on hit', player: '+1 coin per level on each hit', works: true },
+    cutpurse:    { name: 'Cutpurse',    frame: 20, side: 'both',   enemy: 'steals coins on hit', player: '+1 coin on each hit', works: true },
     leech:       { name: 'Leech',       frame: 21, side: 'both',   enemy: 'heals when it hits you', player: 'heals you 15% of the damage dealt', works: true },
     fleetfoot:   { name: 'Fleetfoot',   frame: 22, side: 'both',   enemy: 'your attacks can miss it', player: 'chance to dodge' },
     desperate:   { name: 'Desperate',   frame: 23, side: 'both',   enemy: 'hits x1.5 harder near death', player: 'x1.5 while you are below a quarter health', works: true },
@@ -38,11 +38,11 @@ export const SIGILS = Object.freeze({
     ember:       { name: 'Ember',       frame: 30, side: 'both',   enemy: 'its hits burn you next turn', player: 'fire splash to nearby enemies' },
     sapping:     { name: 'Sapping',     frame: 31, side: 'both',   enemy: 'your weapons deal less for a turn', player: 'the struck enemy deals less' },
     warding:     { name: 'Warding',     frame: 32, side: 'both',   enemy: 'gains armor after it attacks', player: 'your armor is stronger for a turn' },
-    mirror:      { name: 'Mirror',      frame: 33, side: 'both',   enemy: 'sends your next hit back', player: 'on armor: sends the first enemy attack each fight back (one more per level)', works: true },
-    regenerate:  { name: 'Regenerate',  frame: 34, side: 'both',   enemy: 'heals at the end of each turn', player: 'heals you 1 per level each enemy turn', works: true },
-    devouring:   { name: 'Devouring',   frame: 35, side: 'player', player: '8% chance per level to kill a non-boss outright', works: true },
+    mirror:      { name: 'Mirror',      frame: 33, side: 'both',   enemy: 'sends your next hit back', player: 'on armor: sends the first enemy attack each fight back', works: true },
+    regenerate:  { name: 'Regenerate',  frame: 34, side: 'both',   enemy: 'heals at the end of each turn', player: 'heals you 1 each enemy turn', works: true },
+    devouring:   { name: 'Devouring',   frame: 35, side: 'player', player: '8% chance to kill a non-boss outright', works: true },
     smoke:       { name: 'Smoke',       frame: 36, side: 'player', player: 'a kill hides another enemy', works: true },
-    tempered:    { name: 'Tempered',    frame: 37, side: 'player', player: '30% chance per level this card keeps its pip', works: true },
+    tempered:    { name: 'Tempered',    frame: 37, side: 'player', player: '30% chance this card keeps its pip', works: true },
     hunter:      { name: 'Hunter',      frame: 38, side: 'player', player: 'x1.5 against the enemy you hit last', works: true },
     combo:       { name: 'Combo',       frame: 39, side: 'player', player: 'x1.5 if your previous weapon also had Combo', works: true },
     tandem:      { name: 'Tandem',      frame: 40, side: 'player', player: 'x1.5 if your previous attack hit for the same damage', works: true },
@@ -54,7 +54,7 @@ export const SIGILS = Object.freeze({
     rally:       { name: 'Rally',       frame: 46, side: 'enemy',  enemy: 'goblins attack more often' },
     // A buffer: it never acts twice itself, its side does. Frame 47 is its
     // own icon slot; until that is drawn it wears Rally's horn.
-    warcry:      { name: 'Warcry',      frame: 46, side: 'both',   enemy: 'other enemies: 10% chance per level to act twice', player: 'carried: your companions get 10% chance per level to act twice', works: true },
+    warcry:      { name: 'Warcry',      frame: 46, side: 'both',   enemy: 'other enemies: 10% chance per level to act twice', player: 'carried: your companions get 10% chance to act twice', works: true },
     // The four looks of Arrest: same rule, each with its own source.
     zap:         { name: 'Zap',         frame: 56, side: 'both',   enemy: 'locks one of your cards for a turn', player: 'the enemy hit skips its next turn (shock)' },
     frost:       { name: 'Frost',       frame: 57, side: 'both',   enemy: 'locks one of your cards for a turn', player: 'the enemy hit skips its next turn (freeze)' },
@@ -78,12 +78,15 @@ export function sigilFitsCardType(id, card) {
     return false;
 }
 
-/** Whether `card` can take `id` now: right type, and room (or the same sigil to level up). */
+/**
+ * Whether `card` can take `id` now: the right type, room for it, and not one
+ * it already carries — a sigil is never repeated on a card.
+ */
 export function canTakeSigil(card, id) {
     if (!sigilFitsCardType(id, card)) return false;
+    if (cardSigils(card).some((s) => s.id === id)) return false;
     if (id === 'thorns') return true;
-    const list = storedSigils(card);
-    return list.some((s) => s.id === id) || list.length < SIGIL_CAP;
+    return storedSigils(card).length < SIGIL_CAP;
 }
 
 // A Reliquary enchant shows as the sigil it becomes (design doc table).
@@ -121,9 +124,16 @@ export function storedSigils(card) {
  */
 export function cardSigils(card) {
     if (!card) return [];
-    const out = storedSigils(card).map((s) => ({ id: s.id, level: Math.max(1, s.level || 1) }));
+    // The player's cards have no sigil levels: each sigil once, at its base
+    // rule (older saves' levelled sigils read as level 1). Enemies keep theirs
+    // — a boss's Regenerate 3 — since this also reads enemy data.
+    const playerCard = card.type === 'weapon' || card.type === 'armor';
+    const levelOf = (s) => (playerCard ? 1 : Math.max(1, s.level || 1));
+    const out = storedSigils(card).map((s) => ({ id: s.id, level: levelOf(s) }));
     const has = (id) => out.some((s) => s.id === id);
-    if ((card.briarDamageBonus || 0) > 0 && !has('thorns')) out.push({ id: 'thorns', level: card.briarDamageBonus });
+    if ((card.briarDamageBonus || 0) > 0 && !has('thorns')) {
+        out.push({ id: 'thorns', level: playerCard ? 1 : card.briarDamageBonus });
+    }
     const fromEnchant = ENCHANT_SIGIL[card.enchant];
     if (fromEnchant && !has(fromEnchant)) out.push({ id: fromEnchant, level: 1 });
     if ((card.shockChance || 0) > 0 && !has('zap')) out.push({ id: 'zap', level: 1 });
@@ -155,12 +165,13 @@ export function sigilLevel(card, id) {
 }
 
 /**
- * Put a sigil on a card. The same sigil again goes up a level; a different one
- * takes a free slot, up to SIGIL_CAP. Returns false when the card is full.
- * Thorns is the Briar Room's wrap, so it raises that bonus instead.
+ * Put a sigil on a card: it takes a free slot, up to SIGIL_CAP. Returns false
+ * when the card is full or already carries it (sigils never repeat). Thorns
+ * is the Briar Room's wrap, so it sets that bonus instead.
  */
 export function addSigil(card, id) {
     if (!card || !SIGILS[id]) return false;
+    if (cardSigils(card).some((s) => s.id === id)) return false;
     if (id === 'thorns') {
         card.briarDamageBonus = (card.briarDamageBonus || 0) + 1;
         if (card.type === 'weapon') card.damage = (card.damage || 0) + 1;
@@ -168,35 +179,29 @@ export function addSigil(card, id) {
         return true;
     }
     const list = storedSigils(card).map((s) => ({ ...s }));
-    const existing = list.find((s) => s.id === id);
-    if (existing) {
-        existing.level = (existing.level || 1) + 1;
-    } else {
-        if (list.length >= SIGIL_CAP) return false;
-        list.push({ id, level: 1 });
-    }
+    if (list.length >= SIGIL_CAP) return false;
+    list.push({ id, level: 1 });
     card.sigils = list;
     return true;
 }
 
 /**
- * The sigils a merged card carries: both cards' sigils, the same sigil's
- * levels added together, different ones up to SIGIL_CAP (the base card's
- * first). Sigils are never lost to an upgrade, only to the card's destruction.
+ * The sigils a merged card carries: both cards' sigils, each once (the same
+ * sigil on both cards stays one sigil — they never add up, so a mirror copy
+ * merged back gains nothing), up to SIGIL_CAP, the base card's first.
+ * Sigils are never lost to an upgrade, only to the card's destruction.
  */
 export function mergeSigils(baseCard, secondCard) {
     const out = [];
     for (const s of [...storedSigils(baseCard), ...storedSigils(secondCard)]) {
-        const same = out.find((o) => o.id === s.id);
-        if (same) same.level += Math.max(1, s.level || 1);
-        else if (out.length < SIGIL_CAP) out.push({ id: s.id, level: Math.max(1, s.level || 1) });
+        if (!out.some((o) => o.id === s.id) && out.length < SIGIL_CAP) out.push({ id: s.id, level: 1 });
     }
     return out;
 }
 
 /**
  * Whether two cards can merge without losing a sigil: their different sigils
- * together fit the cap (the same sigil on both just levels up).
+ * together fit the cap (the same sigil on both counts once).
  */
 export function sigilsFitOnMerge(cardA, cardB) {
     const ids = new Set([...storedSigils(cardA), ...storedSigils(cardB)].map((s) => s.id));
