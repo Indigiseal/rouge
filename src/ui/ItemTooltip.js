@@ -146,7 +146,10 @@ export function getBossAbilityLines(scene, data) {
                 lines.push(t(scene, 'boss.lifesteal', { pct: Math.round((ab.percentage || 0) * 100) }));
                 break;
             case 'summon':
-                lines.push(t(scene, 'boss.summon', { enemy: translateEnemyName(scene, ab.enemyType) }));
+                // An elite's summon calls whatever fits the floor: no fixed enemy.
+                lines.push(ab.enemyType
+                    ? t(scene, 'boss.summon', { enemy: translateEnemyName(scene, ab.enemyType) })
+                    : sigilLine('summon', 1, 'enemy'));
                 break;
             case 'poison':
                 lines.push(t(scene, 'boss.poison', { dmg: ab.damage || 0, turns: ab.turns || 0 }));

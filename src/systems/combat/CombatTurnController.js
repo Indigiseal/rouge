@@ -251,11 +251,18 @@ export class CombatTurnController {
         // denies its damage and other on-hit effects, but cannot turn a boss
         // fight into three completely free turns.
         eligible.forEach(({ card }) => {
-            if (card.data?.type !== 'boss' || !card.data?.abilities || (card.data.health || 0) <= 0) return;
+            const isBoss = card.data?.type === 'boss';
+            const isElite = !!card.data?.isEliteMiniBoss;
+            if ((!isBoss && !isElite) || !card.data?.abilities || (card.data.health || 0) <= 0) return;
             card.data.abilities.forEach(ability => {
                 if (ability.type === 'summon' && Math.random() < ability.chance) {
                     const n = ability.count || 1;
-                    for (let k = 0; k < n; k++) scene.cardSystem.summonEnemy(ability.enemyType, card);
+                    for (let k = 0; k < n; k++) {
+                        // A boss lines its minions up under it; an elite calls
+                        // one into the empty board spot nearest it.
+                        if (isBoss) scene.cardSystem.summonEnemy(ability.enemyType, card);
+                        else scene.cardSystem.summonForElite?.(card);
+                    }
                 }
             });
         });

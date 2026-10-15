@@ -1,3 +1,6 @@
+
+// Chance an elite calls a minion on each of its turns (cap: FloorSpawner).
+const ELITE_SUMMON_CHANCE = 0.25;
 import { enemyCardKey } from '../assets/enemyCards.js';
 
 // Enemy tiers — the danger step above a plain enemy, below a boss.
@@ -109,6 +112,14 @@ export function applyEnemyTier(data, tier) {
     data.attack = attack;
     // Kept in step for the existing elite art, tint and tooltip checks.
     data.isEliteMiniBoss = tier === 'elite';
+    // Elites command too: a Summon ability (shown as the Summon sigil) that
+    // calls a weaker floor enemy onto the board (FloorSpawner.summonForElite).
+    if (tier === 'elite') {
+        const abilities = Array.isArray(data.abilities) ? data.abilities : [];
+        if (!abilities.some((a) => a?.type === 'summon')) {
+            data.abilities = [...abilities, { type: 'summon', chance: ELITE_SUMMON_CHANCE, count: 1 }];
+        }
+    }
     return data;
 }
 

@@ -711,6 +711,8 @@ export class CardSystem {
     }
 
     summonEnemy(...args) { return this.spawner.summonEnemy(...args); }
+    summonForElite(...args) { return this.spawner.summonForElite(...args); }
+    dropCardIntoSlot(...args) { return this.spawner.dropCardIntoSlot(...args); }
     respawnCardOnBoard(...args) { return this.spawner.respawnCardOnBoard(...args); }
     _rebuildBrickNeighbors(...args) { return this.layout._rebuildBrickNeighbors(...args); }
     dropWaveCards(...args) { return this.spawner.dropWaveCards(...args); }

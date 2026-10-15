@@ -38,6 +38,12 @@ const DEAL_CASCADE_BUDGET_MS = 520;
 
 // The regular Goblin's art on the Tollroad sheet: its card key plus the sheet
 // position, so applyEnemyTier can swap in the veteran or elite face too.
+// A card dropped onto the board mid-fight (reinforcements, an elite's summon).
+const DROP_STAGGER_MS = 90;
+const DROP_FALL_MS = 430;
+// How many minions one elite may call in a fight.
+const ELITE_SUMMON_CAP = 2;
+
 function tollGoblinArt() {
   const goblin = ENEMIES.goblin || {};
   return { sprite: goblin.sprite, monthId: goblin.monthId, sheetColumn: goblin.sheetColumn };
@@ -86,6 +92,8 @@ export class FloorSpawner {
         this.summonEnemy = summonEnemy.bind(cs);
         this.respawnCardOnBoard = respawnCardOnBoard.bind(cs);
         this.dropWaveCards = dropWaveCards.bind(cs);
+        this.dropCardIntoSlot = dropCardIntoSlot.bind(cs);
+        this.summonForElite = summonForElite.bind(cs);
         this.createCardData = createCardData.bind(cs);
         this.capRewardRarity = capRewardRarity.bind(cs);
     }
@@ -1932,11 +1940,54 @@ function dropWaveCards() {
     ));
     this._waveState.cardsPending -= waveSlots.length;
 
-    const STAGGER = 90, FALL_MS = 430, DROP_HEIGHT = 280;
+    const STAGGER = DROP_STAGGER_MS, FALL_MS = DROP_FALL_MS;
     waveSlots.forEach((slot, order) => {
         const cell = this._boardCells[slot];
-        const { x, y } = this.brickToPixel(cell.r, cell.c, this._boardPlace);
 
+        // Fresh floor-appropriate card (mostly enemies, via pickCardType).
+        const desiredRole = cell.r > 0 ? 'MELEE' : 'RANGED';
+        const type = this.pickCardType(cf);
+        let data = this.createCardData(type, cf, roomType === 'ELITE', this.scene.gameState, null, desiredRole);
+        if (!data) {
+            data = this.createCardData('coin', cf) || {
+                type: 'coin', name: 'Coin', value: 1, rarity: 'common',
+                sprite: resourceCardKey('coin', 'common'),
+            };
+        }
+        if (data) {
+            // See spawnFloorCards for why mimics are exempt from the row-based
+            // role reassignment.
+            if (this.isEnemyType(data.type) && !data.isMimic) data.role = desiredRole;
+        }
+        this.dropCardIntoSlot(slot, data, order * STAGGER);
+    });
+
+    this.scene.createFloatingText?.(320, 70, 'Reinforcements!', 0xffcf7f);
+
+    // After the last card lands, refresh adjacency/bands, release the lock,
+    // and re-check clear (in case the wave was all loot and is already thin).
+    const settleMs = (waveSlots.length - 1) * STAGGER + FALL_MS + 60;
+    this.scene.time.delayedCall(settleMs, () => {
+        this._rebuildBrickNeighbors();
+        if (this._boardPlace?.VSTEP) this.computeRowBands(this.boardCards, this._boardPlace.VSTEP);
+        if (this._waveState) this._waveState.dropping = false;
+        this.checkFloorClear();
+    });
+    return true;
+}
+
+/**
+ * Drop `data` face-down into empty board slot `slot` (one with a cached cell):
+ * the card falls from above the board and bounces into place, then behaves
+ * like any card dealt there. Reinforcement waves and elite summons both use
+ * it. `onLanded` runs once it has settled.
+ */
+function dropCardIntoSlot(slot, data, delay = 0, onLanded = null) {
+    const cell = this._boardCells?.[slot];
+    if (!cell || !this._boardPlace) return null;
+    const { x, y } = this.brickToPixel(cell.r, cell.c, this._boardPlace);
+    const FALL_MS = DROP_FALL_MS, DROP_HEIGHT = 280;
+    {
         const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6).setAlpha(0);
         const cardSprite = snapOriginToPixelGrid(this.scene.add.sprite(x, y - DROP_HEIGHT, this._cardBackKey()));
         cardSprite.setScale(1).setInteractive();
@@ -1963,44 +2014,67 @@ function dropWaveCards() {
             }
         });
 
-        // Fresh floor-appropriate card (mostly enemies, via pickCardType).
-        const desiredRole = cell.r > 0 ? 'MELEE' : 'RANGED';
-        const type = this.pickCardType(cf);
-        let data = this.createCardData(type, cf, roomType === 'ELITE', this.scene.gameState, null, desiredRole);
-        if (!data) {
-            data = this.createCardData('coin', cf) || {
-                type: 'coin', name: 'Coin', value: 1, rarity: 'common',
-                sprite: resourceCardKey('coin', 'common'),
-            };
-        }
-        if (data) {
-            data.brick = { r: cell.r, c: cell.c };
-            // See spawnFloorCards for why mimics are exempt from the row-based
-            // role reassignment.
-            if (this.isEnemyType(data.type) && !data.isMimic) data.role = desiredRole;
-        }
-        this.boardCards[slot] = { sprite: cardSprite, shadow, revealed: false, data, restX: x, restY: y };
+        if (data) data.brick = { r: cell.r, c: cell.c };
+        const card = { sprite: cardSprite, shadow, revealed: false, data, restX: x, restY: y };
+        this.boardCards[slot] = card;
 
         this.scene.tweens.add({
             targets: cardSprite,
             y,
-            delay: order * STAGGER,
+            delay,
             duration: FALL_MS,
             ease: 'Bounce.easeOut',
-            onComplete: () => { if (cardSprite.active) SoundHelper.playVariant(this.scene, 'card_place', 0.35); }
+            onComplete: () => {
+                if (cardSprite.active) SoundHelper.playVariant(this.scene, 'card_place', 0.35);
+                onLanded?.(card);
+            }
         });
-    });
+        return card;
+    }
+}
 
-    this.scene.createFloatingText?.(320, 70, 'Reinforcements!', 0xffcf7f);
+/**
+ * An elite calls a minion (its Summon sigil): a weaker floor enemy drops into
+ * the empty board spot nearest the elite, through the same drop as a
+ * reinforcement wave, and turns face-up as it lands — it was called in for
+ * everyone to see. At most ELITE_SUMMON_CAP per elite per fight.
+ */
+function summonForElite(eliteCard) {
+    const elite = eliteCard?.data;
+    if (!elite || !this._boardCells || !this._boardPlace) return false;
+    if ((elite.summonsMade || 0) >= ELITE_SUMMON_CAP) return false;
 
-    // After the last card lands, refresh adjacency/bands, release the lock,
-    // and re-check clear (in case the wave was all loot and is already thin).
-    const settleMs = (waveSlots.length - 1) * STAGGER + FALL_MS + 60;
-    this.scene.time.delayedCall(settleMs, () => {
+    const from = elite.brick || { r: 0, c: 0 };
+    let slot = -1;
+    let best = Infinity;
+    for (let i = 0; i < this.boardCards.length; i++) {
+        const cell = this._boardCells[i];
+        if (this.boardCards[i] || !cell) continue;
+        const d = Math.abs(cell.r - from.r) * 2 + Math.abs(cell.c - from.c);
+        if (d < best) { best = d; slot = i; }
+    }
+    if (slot < 0) return false;
+
+    const cf = this.scene.gameState?.currentFloor || 1;
+    const cell = this._boardCells[slot];
+    const role = cell.r > 0 ? 'MELEE' : 'RANGED';
+    const minion = this.createCardData('enemy', cf, false, this.scene.gameState, null, role);
+    if (!minion || !this.isEnemyType(minion.type)) return false;
+    // Weaker than one dealt normally, like a boss's summons.
+    minion.attack = Math.max(1, Math.round((minion.attack || 1) * 0.6));
+    minion.health = Math.max(1, Math.round((minion.health || 1) * 0.65));
+    minion.maxHealth = minion.health;
+    minion.role = role;
+    minion.summonedByElite = true;
+    minion.name = 'Summoned ' + (minion.name || 'Enemy');
+
+    elite.summonsMade = (elite.summonsMade || 0) + 1;
+    if (eliteCard.sprite) this.scene.createFloatingText?.(eliteCard.sprite.x, eliteCard.sprite.y - 30, 'Summoning!', 0x712a65);
+    SoundHelper.playSound(this.scene, 'magic_cast', 0.45);
+    this.dropCardIntoSlot(slot, minion, 120, () => {
         this._rebuildBrickNeighbors();
         if (this._boardPlace?.VSTEP) this.computeRowBands(this.boardCards, this._boardPlace.VSTEP);
-        if (this._waveState) this._waveState.dropping = false;
-        this.checkFloorClear();
+        this.revealCard(slot, true);
     });
     return true;
 }
