@@ -11,7 +11,7 @@ import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
 import { isSilkCocoonCard } from './CocoonCacheBoard.js';
 import { t, translateItemName } from '../../i18n/i18n.js';
 import { enemySigils } from '../../content/sigils/sigils.js';
-import { buildSigilIcons, sigilCornerOffset } from '../../ui/SigilIcons.js';
+import { artBodyTop, buildSigilIcons, sigilCornerOffset } from '../../ui/SigilIcons.js';
 import { handLockKindOf } from '../../content/combat/handLock.js';
 import { scaleGoldReward } from '../../content/economy/gold.js';
 
@@ -590,12 +590,15 @@ function _buildBossStats(card) {
     });
 
     // The boss's sigils in the top-right corner of its art. The container sits
-    // under the art (at y), so the corner is measured back up from there.
+    // under the art (at y), so the corner is measured back up from there —
+    // and down past any thread the art hangs from (the Spider Queen).
     const bossW = card.sprite.displayWidth || card.sprite.width || 100;
     const bossH = card.sprite.displayHeight || card.sprite.height || 100;
     const bossCorner = sigilCornerOffset(bossW, bossH);
+    const bodyTop = artBodyTop(this.scene, card.sprite.texture?.key, card.sprite.frame?.name)
+        * (card.sprite.scaleY || 1);
     const sigilIcons = buildSigilIcons(this.scene, boardEnemySigils(card.data),
-        bossCorner.x, bossCorner.y + (card.sprite.y - y));
+        bossCorner.x, bossCorner.y + bodyTop + (card.sprite.y - y));
 
     const container = this.scene.add.container(card.sprite.x, y, [emptyBar, fillBar, hpText, atkText, ...sigilIcons]);
     container.setDepth((card.sprite.depth || 1) + 8);
