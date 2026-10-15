@@ -8,7 +8,7 @@ import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
 import { getEnemy } from '../../content/cards/enemies.js';
 import { HAND_LOCKS, handLockKindOf, handLockOf } from '../../content/combat/handLock.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
-import { consumeMirrorSigil, regenerateAmount } from './SigilEffects.js';
+import { consumeMirrorSigil, enemyWarcryChance, playerWarcryChance, regenerateAmount } from './SigilEffects.js';
 import { SIGIL_MULTIPLIER, getSigil, sigilLevel } from '../../content/sigils/sigils.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 
@@ -319,7 +319,7 @@ export class CombatTurnController {
                 return;
             }
 
-            const { index } = attackers[attackerIndex++];
+            const { index, extra } = attackers[attackerIndex++];
             const card = scene.cardSystem.boardCards[index];
             const veilFaceDown = card
                 && !card.revealed
@@ -331,6 +331,17 @@ export class CombatTurnController {
                 if (scene.gameState.revivedThisHit) {
                     this.finishEnemyTurnEffects({ skipPlayerPoison: true });
                     return;
+                }
+                // Warcry: another enemy's shout can send this one in again.
+                // The extra action never rolls for a third.
+                if (!extra && card.revealed && (card.data?.health || 0) > 0 && !(card.data?.frozen > 0)) {
+                    const { chance, source } = enemyWarcryChance(
+                        scene.cardSystem.boardCards, card, (c) => scene.isEnemyCard(c));
+                    if (chance > 0 && Math.random() < chance) {
+                        attackers.splice(attackerIndex, 0, { card, index, extra: true });
+                        const shout = source?.sprite || card.sprite;
+                        if (shout) scene.createFloatingText(shout.x, shout.y - 30, 'Warcry!', 0xc45c45);
+                    }
                 }
             }
 
@@ -918,7 +929,22 @@ export class CombatTurnController {
                 onComplete();
                 return;
             }
-            this.runCompanionTurn(entries[position], () => runNext(position + 1));
+            const entry = entries[position];
+            let attacked = false;
+            attacked = this.runCompanionTurn(entry, () => {
+                // Warcry carried by the player: a companion that attacked may
+                // attack again. (No target or webbed: no second try.)
+                const chance = attacked ? playerWarcryChance(scene) : 0;
+                if (chance > 0 && !scene._transitioning && Math.random() < chance) {
+                    const card = scene.inventorySystem?.slotSprites?.[entry.index]?.card;
+                    const x = card?.x ?? scene.playerAvatar?.x ?? 320;
+                    const y = card?.y ?? scene.playerAvatar?.y ?? 300;
+                    scene.createFloatingText(x, y - 18, 'Warcry!', 0xffcf7f);
+                    this.runCompanionTurn(entry, () => runNext(position + 1));
+                    return;
+                }
+                runNext(position + 1);
+            });
         };
         runNext(0);
     }

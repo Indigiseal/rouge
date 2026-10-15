@@ -23,6 +23,7 @@ const CUTPURSE_COINS = 1;         // coins per hit
 const ARREST_CHANCE = 0.25;       // flat; levels add 0.1 each
 const DEVOURING_CHANCE = 0.08;    // per level, non-bosses only
 const TEMPERED_SAVE = 0.3;        // per level, chance a pip is kept (max 0.9)
+const WARCRY_CHANCE = 0.1;        // per level, an ally acts twice (max 0.5)
 
 const multiply = (damage) => Math.floor(damage * SIGIL_MULTIPLIER);
 
@@ -199,6 +200,35 @@ export function consumeMirrorSigil(scene) {
     if ((gs.mirrorSigilUses || 0) >= level) return false;
     gs.mirrorSigilUses = (gs.mirrorSigilUses || 0) + 1;
     return true;
+}
+
+/**
+ * Warcry on the player's side: carried in the bag or worn, it gives each
+ * companion that attacked this chance to attack again.
+ */
+export function playerWarcryChance(scene) {
+    const gs = scene?.gameState;
+    if (!gs) return 0;
+    const cards = [...(scene.inventorySystem?.slots || gs.inventory || []), gs.equippedArmor];
+    const level = cards.reduce((sum, card) => sum + sigilLevel(card, 'warcry'), 0);
+    return Math.min(0.5, level * WARCRY_CHANCE);
+}
+
+/**
+ * Warcry on the enemy side: every other living, face-up enemy carrying it adds
+ * to the chance that `card` acts twice. Returns { chance, source } — source is
+ * a carrier, for the shout's float.
+ */
+export function enemyWarcryChance(boardCards, card, isEnemyCard) {
+    let level = 0;
+    let source = null;
+    (boardCards || []).forEach((other) => {
+        if (!other || other === card || !other.revealed || (other.data?.health || 0) <= 0) return;
+        if (isEnemyCard && !isEnemyCard(other)) return;
+        const l = sigilLevel(other.data, 'warcry');
+        if (l > 0) { level += l; source = source || other; }
+    });
+    return { chance: Math.min(0.5, level * WARCRY_CHANCE), source };
 }
 
 /** HP Regenerate gives at the end of an enemy turn: every carried card plus worn armor. */

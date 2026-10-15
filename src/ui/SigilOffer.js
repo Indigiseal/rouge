@@ -25,7 +25,10 @@ function candidateCards(gameScene) {
 /** A random working sigil that at least one of the player's cards can take, or null. */
 export function rollOfferableSigil(gameScene) {
     const cards = candidateCards(gameScene);
-    const options = WORKING_PLAYER_SIGILS.filter((id) => cards.some((card) => canTakeSigil(card, id)));
+    // Warcry only helps companions: not offered to a hero who has none.
+    const hasCompanion = (gameScene?.getCompanionEntries?.() || []).length > 0;
+    const options = WORKING_PLAYER_SIGILS.filter((id) => (id !== 'warcry' || hasCompanion)
+        && cards.some((card) => canTakeSigil(card, id)));
     return options.length ? options[Math.floor(Math.random() * options.length)] : null;
 }
 

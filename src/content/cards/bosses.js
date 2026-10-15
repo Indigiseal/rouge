@@ -33,7 +33,7 @@ export const BOSSES = {
   },
   goblinKing: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'outnumbered', level: 1 }],
+    sigils: [{ id: 'outnumbered', level: 1 }, { id: 'warcry', level: 1 }],
     type: 'boss', tier: 1,
     name: 'Goblin King',
     health: 84,

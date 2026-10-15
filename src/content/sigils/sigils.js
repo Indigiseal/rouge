@@ -52,6 +52,9 @@ export const SIGILS = Object.freeze({
     veil:        { name: 'Veil',        frame: 44, side: 'enemy',  enemy: 'flips face-down each turn' },
     barkskin:    { name: 'Barkskin',    frame: 45, side: 'enemy',  enemy: 'immune to ranged attacks' },
     rally:       { name: 'Rally',       frame: 46, side: 'enemy',  enemy: 'goblins attack more often' },
+    // A buffer: it never acts twice itself, its side does. Frame 47 is its
+    // own icon slot; until that is drawn it wears Rally's horn.
+    warcry:      { name: 'Warcry',      frame: 46, side: 'both',   enemy: 'other enemies: 10% chance per level to act twice', player: 'carried: your companions get 10% chance per level to act twice', works: true },
     // The four looks of Arrest: same rule, each with its own source.
     zap:         { name: 'Zap',         frame: 56, side: 'both',   enemy: 'locks one of your cards for a turn', player: 'the enemy hit skips its next turn (shock)' },
     frost:       { name: 'Frost',       frame: 57, side: 'both',   enemy: 'locks one of your cards for a turn', player: 'the enemy hit skips its next turn (freeze)' },
@@ -65,8 +68,8 @@ export const WORKING_PLAYER_SIGILS = Object.freeze(
 );
 
 // Which card types a sigil can go on. Most act when a weapon strikes;
-// Regenerate, Thorns and Tempered also work from armor, and Mirror only does.
-const ARMOR_SIGILS = new Set(['regenerate', 'thorns', 'tempered', 'mirror']);
+// Regenerate, Thorns, Tempered and Warcry also work from armor, and Mirror only does.
+const ARMOR_SIGILS = new Set(['regenerate', 'thorns', 'tempered', 'mirror', 'warcry']);
 const ARMOR_ONLY_SIGILS = new Set(['mirror']);
 export function sigilFitsCardType(id, card) {
     if (!card || !SIGILS[id]) return false;
