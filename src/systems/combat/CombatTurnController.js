@@ -254,6 +254,8 @@ export class CombatTurnController {
             const isBoss = card.data?.type === 'boss';
             const isElite = !!card.data?.isEliteMiniBoss;
             if ((!isBoss && !isElite) || !card.data?.abilities || (card.data.health || 0) <= 0) return;
+            // Unlike a boss, a frozen (Frost, Arrest) elite cannot summon.
+            if (isElite && card.data.frozen > 0) return;
             card.data.abilities.forEach(ability => {
                 if (ability.type === 'summon' && Math.random() < ability.chance) {
                     const n = ability.count || 1;

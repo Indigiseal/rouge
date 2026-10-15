@@ -2025,7 +2025,9 @@ function dropCardIntoSlot(slot, data, delay = 0, onLanded = null) {
             duration: FALL_MS,
             ease: 'Bounce.easeOut',
             onComplete: () => {
-                if (cardSprite.active) SoundHelper.playVariant(this.scene, 'card_place', 0.35);
+                // The floor may have ended (or the card been taken) mid-fall.
+                if (!cardSprite.active || this.boardCards[slot] !== card) return;
+                SoundHelper.playVariant(this.scene, 'card_place', 0.35);
                 onLanded?.(card);
             }
         });
@@ -2071,12 +2073,16 @@ function summonForElite(eliteCard) {
     elite.summonsMade = (elite.summonsMade || 0) + 1;
     if (eliteCard.sprite) this.scene.createFloatingText?.(eliteCard.sprite.x, eliteCard.sprite.y - 30, 'Summoning!', 0x712a65);
     SoundHelper.playSound(this.scene, 'magic_cast', 0.45);
-    this.dropCardIntoSlot(slot, minion, 120, () => {
+    const dropped = this.dropCardIntoSlot(slot, minion, 120, () => {
+        dropped.sprite.setInteractive();
         this._rebuildBrickNeighbors();
         if (this._boardPlace?.VSTEP) this.computeRowBands(this.boardCards, this._boardPlace.VSTEP);
         this.revealCard(slot, true);
     });
-    return true;
+    // It turns face-up on landing: no clicking it over mid-fall, which
+    // would spend the player's action on a reveal that happens anyway.
+    dropped?.sprite.disableInteractive();
+    return !!dropped;
 }
 
 function createCardData(type, floor, isElite = false, gameState = null, targetRarity = null, preferredRole = null) {
