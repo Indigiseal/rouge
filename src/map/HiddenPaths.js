@@ -43,8 +43,8 @@ export const HIDDEN_PATH_SOURCES = Object.freeze({
         isOpen: (gameState) => hasAmulet(gameState, 'porterMap'),
     }),
     // The sigil vault (sigils branch): one secret room in every act, always
-    // there, but only drawn once the player stands on the floor right before
-    // it (revealNear). Its chest holds a sigil — as does every secret room's.
+    // there, but only drawn while the player stands in the room that leads
+    // into it (revealNear). Its chest holds a sigil — as does every secret room's.
     sigilVault: Object.freeze({
         roomType: 'TREASURE_GOOD',
         alwaysPresent: true,
@@ -55,15 +55,25 @@ export const HIDDEN_PATH_SOURCES = Object.freeze({
 // Sources that place their room without a story revealing them first.
 const ALWAYS_PRESENT = Object.keys(HIDDEN_PATH_SOURCES).filter((source) => HIDDEN_PATH_SOURCES[source].alwaysPresent);
 
-// A revealNear room shows once the player is on the floor that leads into it
-// (or any later point in the run).
+// A revealNear room shows only while the player stands in the room that leads
+// into it — when it is a door they can actually take. (Once walked, `visited`
+// keeps it drawn.)
 function isNearSecretRoom(gameState, node) {
     const cursor = gameState?.mapCursor;
     if (!cursor) return false;
     const act = node.secretAct || Number(String(node.id || '').match(/^act(\d+)/)?.[1]) || 1;
-    const curAct = cursor.act || 1;
-    if (curAct !== act) return curAct > act;
-    return (cursor.floor ?? 0) >= (node.y ?? 0) - 1;
+    if ((cursor.act || 1) !== act || (cursor.floor ?? -1) !== (node.y ?? 0) - 1) return false;
+    return cursor.node === secretParentIndex(gameState, act, node);
+}
+
+// Index, on the floor before it, of the room whose secretLinks lead to `node`.
+function secretParentIndex(gameState, act, node) {
+    if (Number.isInteger(node.secretParent)) return node.secretParent;
+    const floors = gameState?.dungeonMap?.[`act${act}`]?.floors;
+    const row = floors?.[node.y];
+    const idx = row ? row.indexOf(node) : -1;
+    if (idx < 0) return -1;
+    return (floors[node.y - 1] || []).findIndex((n) => Array.isArray(n?.secretLinks) && n.secretLinks.includes(idx));
 }
 
 export function isHiddenPathOpen(gameState, source) {
@@ -193,6 +203,7 @@ function addSecretRoom(gameState, actMap, act, source, cursor) {
         secret: true,
         secretSource: source,
         secretAct: act,
+        secretParent: parentIdx,
     };
     row.push(secret);
     parent.secretLinks = [...(parent.secretLinks || []), row.length - 1];
