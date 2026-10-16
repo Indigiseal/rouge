@@ -113,7 +113,8 @@ export const RELICS_OTHERS_ATLAS = Object.freeze({
     blueTeapot:           { frame: 89, name: 'Blue Teapot' },
     lookingGlass:         { frame: 90, name: 'Looking Glass' },
     pocketWatch:          { frame: 91, name: 'Pocket Watch' },
-    goldenLeaf:           { frame: 92, name: 'Gilded Leaf' }
+    goldenLeaf:           { frame: 92, name: 'Gilded Leaf' },
+    burningMask:          { frame: 93, name: 'Mask of Embers' }
 });
 
 // Gameplay IDs stay stable for saves and balance code. These maps are the
