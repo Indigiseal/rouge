@@ -1,6 +1,6 @@
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { applyLocationChoice, getLocationRule, roadsForAct } from '../content/locations/index.js';
+import { applyLocationChoice, roadsForAct } from '../content/locations/index.js';
 import { PATH_LOCATIONS } from '../content/locations/catalog.js';
 import {
   ensureDoorOpenAnim,
@@ -256,11 +256,9 @@ export class LocationPickScene extends Phaser.Scene {
       armorerArmorType: this.armorerArmorType,
       locationId,
     };
-    const introSceneKey = getLocationRule(locationId)?.introSceneKey;
-    if (introSceneKey) {
-      this.scene.start(introSceneKey, { runData });
-      return;
-    }
+    // The first door goes straight into the run. (A location's intro text
+    // screen — Silkdeep's, the Tollroad's — used to play here first; it is
+    // switched off. The scenes and each location's introSceneKey are kept.)
     this.scene.start('GameScene', runData);
   }
 }
