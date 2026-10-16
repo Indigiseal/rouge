@@ -275,7 +275,8 @@ function createCardInfoText(card) {
             // every other resource carried both. Same shape as the rest: the
             // category name low, the heal in the shared value slot.
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const potionLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, t(this.scene, 'tooltip.potion'), {
+            // The Antidote is labelled a Cure, not a Potion.
+            const potionLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, t(this.scene, card.data.curesPoison ? 'tooltip.cure' : 'tooltip.potion'), {
                 fontSize: CARD_LABEL_SIZE, fill: '#600f18', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             // The Antidote heals nothing: no number on it.

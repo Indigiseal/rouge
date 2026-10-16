@@ -1302,6 +1302,7 @@ export const InventoryView = {
     },
     getDisplayCardType(card) {
         if (!card?.type) return 'Card';
+        if (card.curesPoison) return t(this.scene, 'tooltip.cure');
         const names = {
             weapon: 'tooltip.weapon',
             armor: 'tooltip.armor',
