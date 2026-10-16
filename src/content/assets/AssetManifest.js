@@ -380,8 +380,6 @@ export const ASSET_MANIFEST = [
     // A road door under the pointer: a small creak of its hinge.
     { key: 'door_hover_1', path: 'assets/music/Door_Hover_01.mp3', type: 'audio' },
     { key: 'door_hover_2', path: 'assets/music/Door_Hover_02.mp3', type: 'audio' },
-    { key: 'door_hover_3', path: 'assets/music/Door_Hover_03.mp3', type: 'audio' },
-    { key: 'door_hover_4', path: 'assets/music/Door_Hover_04.mp3', type: 'audio' },
     // The treasure chest under the pointer: its lid rattling on the latch.
     { key: 'chest_hover_1', path: 'assets/music/Chest_Hover_01.mp3', type: 'audio' },
     { key: 'invalid_action_1', path: 'assets/music/Invalid_Action_01.mp3', type: 'audio' },
