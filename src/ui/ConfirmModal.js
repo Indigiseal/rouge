@@ -6,6 +6,36 @@
 
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { t } from '../i18n/i18n.js';
+import { serifStyle } from './uiFont.js';
+
+// The confirm window's look, matched to the main menu: the menu's serif in its
+// cream for the question, its grey-beige for the line under it, all on one
+// plain dark see-through panel (the bag slots' ink) instead of a framed box.
+const CONFIRM_INK = 0x0e0b10;
+const CONFIRM_TITLE = { size: '14px', color: '#fef0cf' };
+const CONFIRM_BODY = { size: '12px', color: '#afafa2' };
+const CONFIRM_BUTTON = { w: 88, h: 22, size: '12px', color: '#fef0cf', line: 0x6e7470, hover: 0xffcf7f };
+
+// A small plain button in the confirm window's style: a dark see-through
+// plate with a thin line that warms on hover.
+function createConfirmButton(scene, x, y, text, callback) {
+    const button = scene.add.rectangle(x, y, CONFIRM_BUTTON.w, CONFIRM_BUTTON.h, CONFIRM_INK, 0.6)
+        .setStrokeStyle(1, CONFIRM_BUTTON.line)
+        .setDepth(1002);
+    const buttonText = scene.add.text(x, y, text, serifStyle(CONFIRM_BUTTON.size, CONFIRM_BUTTON.color))
+        .setOrigin(0.5).setDepth(1003);
+    button.setInteractive({ useHandCursor: true })
+        .on('pointerover', () => {
+            SoundHelper.playVariant(scene, 'hover_button', 0.4);
+            button.setFillStyle(CONFIRM_INK, 0.9).setStrokeStyle(1, CONFIRM_BUTTON.hover);
+        })
+        .on('pointerout', () => button.setFillStyle(CONFIRM_INK, 0.6).setStrokeStyle(1, CONFIRM_BUTTON.line))
+        .on('pointerdown', () => {
+            SoundHelper.playVariant(scene, 'button_click', 0.5);
+            callback();
+        });
+    return { button, text: buttonText };
+}
 
 function createModalButton(scene, x, y, width, height, text, color, callback) {
     const button = scene.add.rectangle(x, y, width, height, color, 0.3)
@@ -56,18 +86,20 @@ export function openConfirmModal(scene, {
 
     // The full-screen interactive dimmer consumes input outside the dialog,
     // preventing clicks from falling through to hidden menu controls.
-    const dimmer = scene.add.rectangle(320, 180, 640, 360, 0x000000, 0.75)
+    const dimmer = scene.add.rectangle(320, 180, 640, 360, 0x000000, 0.45)
         .setDepth(1000)
         .setInteractive();
-    const box = scene.add.rectangle(320, 180, 380, 170, 0x28150c)
-        .setStrokeStyle(2, 0xb51f1e)
+    const titleText = scene.add.text(320, 156, title, serifStyle(CONFIRM_TITLE.size, CONFIRM_TITLE.color))
+        .setOrigin(0.5).setDepth(1002);
+    const bodyText = scene.add.text(320, 178, body, {
+        ...serifStyle(CONFIRM_BODY.size, CONFIRM_BODY.color), align: 'center', wordWrap: { width: 300, useAdvancedWrap: true },
+    }).setOrigin(0.5).setDepth(1002);
+    // The panel fits the words, with room for the two buttons under them.
+    const boxW = Math.round(Math.max(titleText.width, bodyText.width, CONFIRM_BUTTON.w * 2 + 16) + 32);
+    const boxTop = 156 - titleText.height / 2 - 12;
+    const boxBottom = 210 + CONFIRM_BUTTON.h / 2 + 12;
+    const box = scene.add.rectangle(320, Math.round((boxTop + boxBottom) / 2), boxW, Math.round(boxBottom - boxTop), CONFIRM_INK, 0.8)
         .setDepth(1001);
-    const titleText = scene.add.text(320, 130, title, {
-        fontSize: '20px', fill: '#c45c45', fontFamily: '"HoMM Pixel", Arial, sans-serif'
-    }).setOrigin(0.5).setDepth(1002);
-    const bodyText = scene.add.text(320, 170, body, {
-        fontSize: '13px', fill: '#fef0cf', fontFamily: '"HoMM Pixel", Arial, sans-serif', align: 'center'
-    }).setOrigin(0.5).setDepth(1002);
 
     let closed = false;
     const cleanup = () => {
@@ -78,11 +110,11 @@ export function openConfirmModal(scene, {
         scene.activeModal = null;
     };
 
-    const yes = createModalButton(scene, 265, 230, 90, 30, confirmLabel || t(scene, 'ui.common.ok'), 0xb51f1e, () => {
+    const yes = createConfirmButton(scene, 272, 210, confirmLabel || t(scene, 'ui.common.ok'), () => {
         cleanup();
         onConfirm?.();
     });
-    const no = createModalButton(scene, 375, 230, 90, 30, cancelLabel || t(scene, 'ui.options.cancel'), 0x869089, () => {
+    const no = createConfirmButton(scene, 368, 210, cancelLabel || t(scene, 'ui.options.cancel'), () => {
         cleanup();
         onCancel?.();
     });
