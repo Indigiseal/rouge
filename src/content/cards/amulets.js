@@ -49,12 +49,21 @@ export const AMULET_DROP_DATA = [
   { id: 'plagueHeart', minFloor: 0, weight: 2, rarity: 'legendary', group: 'magic' },
 ];
 
-/** Drop catalog with atlas presentation merged in. */
-export const AMULETS = AMULET_DROP_DATA.map((amulet) => ({
+// No active amulets on the sigils branch: the five "Active: ..." ones (click
+// to use, with a cooldown) are never handed out — not by the board, a boss, a
+// shop, the healer or a story. An old save that already holds one keeps it.
+export const RETIRED_ACTIVE_AMULETS = new Set([
+  'provisionersBell', 'shiftingMedallion', 'armsfindersCharm', 'apothecarysEye', 'gemseekersLens',
+]);
+
+const ALL_DROP_AMULETS = AMULET_DROP_DATA.map((amulet) => ({
   ...amulet,
   ...getAmuletAtlasPresentation(amulet.id)
 }));
 
+/** Drop catalog with atlas presentation merged in. */
+export const AMULETS = ALL_DROP_AMULETS.filter((amulet) => !RETIRED_ACTIVE_AMULETS.has(amulet.id));
+
 export function getAmulet(id) {
-  return AMULETS.find((a) => a.id === id) || null;
+  return ALL_DROP_AMULETS.find((a) => a.id === id) || null;
 }

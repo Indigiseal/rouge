@@ -80,8 +80,10 @@ function eventTypes() {
         AMULETS.find(amulet => amulet.id === 'forcedMarch'),
         { ...AMULETS.find(amulet => amulet.id === 'forcedMarch'), minFloor: 0, rarity: 'common' },
     );
-    for (const id of ['armsfindersCharm', 'apothecarysEye', 'gemseekersLens', 'plagueHeart']) {
-        assert.equal(AMULETS.some(amulet => amulet.id === id), true, `${id} must be in the drop catalog`);
+    assert.equal(AMULETS.some(amulet => amulet.id === 'plagueHeart'), true, 'plagueHeart must be in the drop catalog');
+    // Sigils branch: no active (click-to-use) amulets are handed out.
+    for (const id of ['provisionersBell', 'shiftingMedallion', 'armsfindersCharm', 'apothecarysEye', 'gemseekersLens']) {
+        assert.equal(AMULETS.some(amulet => amulet.id === id), false, `${id} is an active amulet, not dropped`);
     }
 }
 
