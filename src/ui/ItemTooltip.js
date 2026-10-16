@@ -7,6 +7,7 @@ import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses
 import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
 import { HAND_LOCKS, handLockKindOf } from '../content/combat/handLock.js';
 import { sigilLine, storedSigils } from '../content/sigils/sigils.js';
+import { SINGLE_AMULET, offerFaceAmulet } from '../content/cards/amulets.js';
 import { cameraWorldSize } from '../config/renderScale.js';
 
 // Default tooltip depth — above the board and its card FX, below the modal
@@ -54,6 +55,11 @@ function describeWeaponKindKey(data) {
 // Returns { name, body } strings for the tooltip. Body may be empty.
 export function getTooltipLines(scene, data) {
     if (!data) return { name: '', body: '' };
+    // An amulet offer stands for one amulet (SINGLE_AMULET): show that one,
+    // not "Rare Amulet" with no description.
+    if (SINGLE_AMULET && data.type === 'amulet' && !data.id && offerFaceAmulet(data)) {
+        return getTooltipLines(scene, offerFaceAmulet(data));
+    }
     const name = translateItemName(scene, data) || translateCardType(scene, data.type) || t(scene, 'tooltip.item');
     let body = '';
 

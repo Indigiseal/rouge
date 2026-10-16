@@ -6,6 +6,7 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 import { cameraWorldSize } from '../config/renderScale.js';
 import { t, translateItemName, translateRarity } from '../i18n/i18n.js';
+import { SINGLE_AMULET } from '../content/cards/amulets.js';
 
 const RARITY_COLOR = {
   common: 0xafafa2,
@@ -15,13 +16,12 @@ const RARITY_COLOR = {
   cursed: 0xb51f1e,
 };
 
-// One amulet, no choice (sigils branch): wherever an amulet is found — a board
-// card, a boss, a shop, the healer — it is one of the offer's amulets at
-// random, taken straight away. False brings the pick-one-of-three window back.
-const SINGLE_AMULET = true;
-
+// One amulet, no choice (SINGLE_AMULET, content/cards/amulets.js): the
+// player gets the amulet the offer shows — its first option — straight away.
+// (It used to be a random one of the three, so a shop that showed a Vampire
+// Fang could hand over Close Order.)
 function grantOneAmulet(scene, cfg, options) {
-  const item = options[Math.floor(Math.random() * options.length)];
+  const item = options[0];
   if (!cfg.amuletManager.addAmulet(item.id)) {
     cfg.onCancel?.();
     return null;

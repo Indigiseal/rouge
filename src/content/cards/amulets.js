@@ -49,6 +49,17 @@ export const AMULET_DROP_DATA = [
   { id: 'plagueHeart', minFloor: 0, weight: 2, rarity: 'legendary', group: 'magic' },
 ];
 
+// One amulet, no choice (sigils branch): wherever an amulet is found — a board
+// card, a boss, a shop, the healer — the player gets the amulet the offer
+// shows (its first option, already a weighted random pick), straight away.
+// False brings back the pick-one-of-three window (AmuletChoiceOverlay).
+export const SINGLE_AMULET = true;
+
+/** The one amulet an offer stands for: what it shows, and what it gives. */
+export function offerFaceAmulet(offer) {
+  return Array.isArray(offer?.options) && offer.options.length ? offer.options[0] : null;
+}
+
 // No active amulets on the sigils branch: the five "Active: ..." ones (click
 // to use, with a cooldown) are never handed out — not by the board, a boss, a
 // shop, the healer or a story. An old save that already holds one keeps it.
