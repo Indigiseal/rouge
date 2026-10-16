@@ -6,7 +6,7 @@ import {
   actOffsetForFloor,
 } from '../location-packs/calendar.js';
 import { LOCATION_PACK_LIST, getLocationPack } from '../location-packs/registry.js';
-import { ACT_ROADS, PATH_LOCATIONS, TRUE_PATH } from './catalog.js';
+import { ACT_ROADS, ACT_SIDE_ROADS, PATH_LOCATIONS, SIDE_ROADS_DEALT, TRUE_PATH, allRoadsForAct } from './catalog.js';
 export {
   getLocationRule,
   getLocationNarrativeCheckpoints,
@@ -14,15 +14,24 @@ export {
   pendingLocationAftermath,
 } from './rules.js';
 
-export { ACT_ROADS, PATH_LOCATIONS, TRUE_PATH };
+export { ACT_ROADS, ACT_SIDE_ROADS, PATH_LOCATIONS, TRUE_PATH, allRoadsForAct };
 
 export function getLocation(id) {
   return PATH_LOCATIONS[id] || null;
 }
 
+// The three roads the pick screen deals for an act. An act with a side-road
+// pool offers its true road plus SIDE_ROADS_DEALT of the pool at random.
 export function roadsForAct(act) {
   const n = Math.max(1, Math.min(3, Math.floor(Number(act) || 1)));
-  return [...(ACT_ROADS[n] || ACT_ROADS[1])];
+  const pool = ACT_SIDE_ROADS[n];
+  if (!pool?.length) return [...(ACT_ROADS[n] || ACT_ROADS[1])];
+  const sides = [...pool];
+  for (let i = sides.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [sides[i], sides[j]] = [sides[j], sides[i]];
+  }
+  return [TRUE_PATH[n - 1], ...sides.slice(0, SIDE_ROADS_DEALT)];
 }
 
 export function emptyActLocationIds() {

@@ -110,15 +110,16 @@ try { new MetaProgressionManager({}); report.storageDenied = 'no failure'; }
 catch (error) { report.storageDenied = error.message; }
 globalThis.localStorage = normalStorage;
 const { MapGenerator } = await moduleAt('src/map/MapGenerator.js');
-const { ACT_ROADS } = await moduleAt('src/content/locations/catalog.js');
+const { ACT_ROADS, allRoadsForAct } = await moduleAt('src/content/locations/catalog.js');
 const { CardDataGenerator } = await moduleAt('src/systems/loot/CardDataGenerator.js');
 report.procedural = { mapsChecked: 0, cardsChecked: 0, errors: [] };
 let randomState = 20261014;
 Math.random = () => ((randomState = (Math.imul(randomState, 1664525) + 1013904223) >>> 0) / 4294967296);
 const mapGen = new MapGenerator();
 const cardGen = new CardDataGenerator();
-for (const [actString, roads] of Object.entries(ACT_ROADS)) {
+for (const actString of Object.keys(ACT_ROADS)) {
     const act = Number(actString);
+    const roads = allRoadsForAct(act);
     for (const road of roads) {
         for (let sample = 0; sample < 100; sample++) {
             const map = mapGen.generateAct(act, road);

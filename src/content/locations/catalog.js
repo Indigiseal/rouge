@@ -10,6 +10,19 @@ export const ACT_ROADS = Object.freeze({
   3: Object.freeze(['mirrorwane', 'spherefall', 'starfold']),
 });
 
+// Acts with more side roads than the pick screen's three cards: each run the
+// act offers its true road plus SIDE_ROADS_DEALT of these, at random. Act 2
+// rotates the restored roads in (the Mireturn bog, Veilbleed, Ashhowl).
+export const ACT_SIDE_ROADS = Object.freeze({
+  2: Object.freeze(['boneflood', 'duskhold', 'mireturn', 'veilbleed', 'ashhowl']),
+});
+export const SIDE_ROADS_DEALT = 2;
+
+// Every road an act can offer, dealt or not (ACT_ROADS plus its side pool).
+export function allRoadsForAct(act) {
+  return [...new Set([...(ACT_ROADS[act] || []), ...(ACT_SIDE_ROADS[act] || [])])];
+}
+
 /**
  * @typedef {{
  *   id: string,
@@ -66,10 +79,9 @@ export const PATH_LOCATIONS = Object.freeze({
   // docs/narrative and now a coded roster; Mireturn and Veilbleed wear real
   // art from rows 4 and 5 of the enemy sheet, Ashhowl waits on a row 6.
   //
-  // They are deliberately absent from ACT_ROADS: the pick screen deals exactly
-  // three cards (LocationPickScene's CARD_XS), so a fourth road in an act
-  // would be dealt to an undefined x. Choosing which three an act offers — or
-  // rolling three of the five — is a design call, not a wiring one.
+  // They are absent from ACT_ROADS (the pick screen deals exactly three cards,
+  // LocationPickScene's CARD_XS) but in act 2's ACT_SIDE_ROADS: each run act 2
+  // offers Brassfair plus two of its five side roads.
   mireturn: Object.freeze({
     id: 'mireturn',
     name: 'Mireturn',
