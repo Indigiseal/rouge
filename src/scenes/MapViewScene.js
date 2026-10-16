@@ -22,7 +22,7 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { devToolsEnabled } from '../config/DevTools.js';
 import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 import { createSelectionCorners, createTooltipPanel, TOOLTIP_TEXT_COLOR } from '../ui/NineSlicePanel.js';
-import { drawMapFog, fogFloorsAhead, fogLineY, puffFogBand } from '../map/MapFog.js';
+import { CHOICE_SIGHT, computeFogGrid, drawMapFog, mapSightRadius, puffNewlyCleared } from '../map/MapFog.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 
 // The header band and title, above the scrolling map nodes (see create()).
@@ -297,29 +297,52 @@ export class MapViewScene extends Phaser.Scene {
     this.centerOnCurrentNode();
   }
 
-  // Fog of war over the floors past what the player can see (map/MapFog.js).
-  // When the line has moved down since the map was last drawn, the band that
-  // came out of the fog dissolves in cloud puffs.
+  // Fog of war (map/MapFog.js): clear in a circle of sight around every room
+  // the player has stood in this act and around the rooms they can pick next;
+  // everything else is under cloud. Tiles cleared since the last time the map
+  // was drawn after a move dissolve in puffs, rippling out from the player.
   drawFog() {
     const floors = this.actMap.floors;
     const nodes = floors.flat().filter(n => typeof n?.__y === 'number');
     if (!nodes.length) return;
-    const cursorFloor = this.gameState.mapCursor?.floor ?? 0;
-    const lineY = fogLineY(floors, cursorFloor, fogFloorsAhead(this.gameState));
+    const sight = mapSightRadius(this.gameState);
+    if (!Number.isFinite(sight)) return;   // Oracle's Eye: no fog
+    const cursor = this.gameState.mapCursor || { floor: 0, node: 0 };
+    const here = floors[cursor.floor]?.[cursor.node];
+
+    // Sight points: rooms walked this act (and the one stood in), then the
+    // rooms that can be picked next.
+    const walked = [];
+    const choices = [];
+    floors.forEach((row, f) => row.forEach((node, i) => {
+      if (typeof node?.__y !== 'number') return;
+      if (node.visited || node === here) walked.push(node);
+      const state = this.getNodeVisualState(f, i);
+      if (state === 'available' || state === 'detour') choices.push(node);
+    }));
+    const point = (n, r) => ({ x: n.__x, y: n.__y, r });
+    const points = [...walked.map(n => point(n, sight)), ...choices.map(n => point(n, CHOICE_SIGHT))];
+
+    // Wide and tall enough to cover the screen however the map is panned.
     const minX = Math.min(...nodes.map(n => n.__x));
     const maxX = Math.max(...nodes.map(n => n.__x));
-    const bottomY = Math.max(...nodes.map(n => n.__y)) + 120;
-    // Wide enough to cover the screen however the map is panned.
-    const bounds = { left: minX - 360, right: maxX + 360 };
-    drawMapFog(this, this.mapContainer, { lineY, bottomY, ...bounds });
+    const minY = Math.min(...nodes.map(n => n.__y));
+    const maxY = Math.max(...nodes.map(n => n.__y));
+    const bounds = { left: minX - 360, right: maxX + 360, top: minY - 200, bottom: maxY + 200 };
+    const grid = computeFogGrid(points, bounds);
+    drawMapFog(this, this.mapContainer, grid);
 
+    // The fog lifting: once per arrival in a room, compare with the sight the
+    // player had before it (every walked room but this one, at the same radius).
     const act = this.currentAct;
-    const seen = this.gameState.mapFogLine;
-    const nowY = lineY ?? bottomY;
-    if (seen?.act === act && Number.isFinite(seen.y) && seen.y < nowY) {
-      puffFogBand(this, this.mapContainer, { fromY: seen.y, toY: nowY, ...bounds });
+    const arrivedAt = here ? `${act}:${cursor.floor}:${cursor.node}` : null;
+    if (here && this.gameState.mapFogPuffedAt !== arrivedAt) {
+      const earlier = walked.filter(n => n !== here).map(n => point(n, sight));
+      if (earlier.length) {
+        puffNewlyCleared(this, this.mapContainer, computeFogGrid(earlier, bounds), grid, { x: here.__x, y: here.__y });
+      }
+      this.gameState.mapFogPuffedAt = arrivedAt;
     }
-    this.gameState.mapFogLine = { act, y: nowY };
   }
 
   updatePanBounds() {

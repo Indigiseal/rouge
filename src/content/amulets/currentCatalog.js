@@ -276,7 +276,7 @@ export function buildCurrentAmuletDefinitions(mgr) {
             cartographersInk: {
                 ...getAmuletAtlasPresentation('cartographersInk'),
                 name: "Cartographer's Ink",
-                description: 'The map shows 3 more floors through the fog.',
+                description: "Your sight through the map's fog reaches much further.",
                 rarity: 'uncommon',
             },
             oraclesFishbowl: {

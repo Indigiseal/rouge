@@ -1,70 +1,85 @@
 // map/MapFog.js
-// Fog of war over the run map, in the HoMM in Pixel Art style (its fog atlas,
-// assets/art/mapFog.png: 32x32 tiles). The player sees the floor they choose
-// from and a little past it; every floor below that is under cloud. When the
-// line moves down after a room, the cleared band dissolves in cloud puffs.
+// Fog of war over the run map, the way HoMM in Pixel Art does it (its fog
+// atlas, assets/art/mapFog.png, and its FogOfWarSystem): a grid of 32x32 fog
+// tiles, cleared in a circle of sight around every room the player has stood
+// in this act — the explored road stays clear behind them — and around every
+// room they can pick next. Each fogged tile picks its art from which of its
+// four neighbours are fogged too, so the edge follows the circles in cloud.
+// Newly cleared tiles dissolve in cloud puffs, rippling out from the player.
 //
 // The fog is baked into one RenderTexture inside the map container, so it pans
-// with the map and costs one draw. Fogged rooms are never hoverable anyway:
-// only the next floor's rooms take the pointer, and they are always in sight.
+// with the map and costs one draw. Fogged rooms never take the pointer: only
+// the rooms the player can pick next do, and those are always cleared.
 //
-// Amulets: Cartographer's Ink sees further ahead; Oracle's Eye lifts the
-// fog entirely.
+// Amulets: Cartographer's Ink widens the sight; Oracle's Eye lifts the fog.
 
 export const MAP_FOG_KEY = 'mapFog';
 const TILE = 32;
-// Atlas frames (4-neighbour autotile, N=1 E=2 S=4 W=8): the fog's top edge is
-// frame 14 (fog to the east, south and west, open to the north). The inside of
-// the fog is a 6x4 block of big texture starting at frame 32 (16 per row).
-// Frames 16-27 are loose cloud puffs.
-const EDGE_FRAME = 14;
+// Atlas frames, 4-neighbour autotile (N=1 E=2 S=4 W=8, set when that
+// neighbour is fogged): frames 0-14 are the edge pieces by that mask; a tile
+// fogged all round (15) takes the big interior texture, a 6x4 block from
+// frame 32 (16 frames to a row). Frames 16-27 are loose cloud puffs.
 const interiorFrame = (col, row) => 32 + (row % 4) * 16 + (col % 6);
+const PUFF_FIRST = 16;
 const PUFF_FRAMES = 12;
 
-// Floors in sight past the one the player stands on: the floor they choose
-// from, and one more.
-export const BASE_FOG_AHEAD = 2;
-// Cartographer's Ink: this many more.
-export const INK_FOG_AHEAD = 3;
+// Sight around a visited room, in map pixels. Floors are 60 apart and lanes
+// 80, so this clears the next floor or two ahead and a lane or two aside.
+export const BASE_SIGHT = 130;
+// Cartographer's Ink: this much further.
+export const INK_SIGHT = 150;
+// Around a room the player can pick next, so it is never picked blind.
+export const CHOICE_SIGHT = 40;
 
-/** How many floors past the current one the player can see; Infinity: no fog. */
-export function fogFloorsAhead(gameState) {
+/** The player's sight radius on the map; Infinity: no fog (Oracle's Eye). */
+export function mapSightRadius(gameState) {
     const owned = (id) => (gameState?.activeAmulets || []).some((a) => a?.id === id);
     if (owned('oraclesFishbowl')) return Infinity;
-    return BASE_FOG_AHEAD + (owned('cartographersInk') ? INK_FOG_AHEAD : 0);
+    return BASE_SIGHT + (owned('cartographersInk') ? INK_SIGHT : 0);
 }
 
 /**
- * The map-space y below which the fog lies, for an act's floors (each node
- * carries __y), or null when nothing is fogged.
+ * The fog grid: which tiles are clear, for these sight points
+ * ([{ x, y, r }] in map space) over the area `bounds` covers.
  */
-export function fogLineY(floors, cursorFloor, ahead) {
-    if (!Number.isFinite(ahead)) return null;
-    const last = cursorFloor + ahead;
-    const rowY = (f) => floors[f]?.find((n) => typeof n?.__y === 'number')?.__y;
-    const lastY = rowY(last);
-    const nextY = rowY(last + 1);
-    if (typeof nextY !== 'number') return null;          // the end of the act is in sight
-    if (typeof lastY !== 'number') return null;
-    return Math.round((lastY + nextY) / 2);
-}
-
-/**
- * Draw the fog into `container` (the map container): solid from `lineY` down
- * to `bottomY`, `left`..`right` wide (map space). Returns the RenderTexture.
- */
-export function drawMapFog(scene, container, { lineY, bottomY, left, right }) {
-    if (lineY == null || !scene.textures.exists(MAP_FOG_KEY)) return null;
+export function computeFogGrid(points, { left, top, right, bottom }) {
     const cols = Math.ceil((right - left) / TILE);
-    const rows = Math.max(1, Math.ceil((bottomY - lineY) / TILE));
-    const x0 = Math.round(left);
-    // The edge tile's cloud tops stand a little above the tile's centre; the
-    // first row starts half a tile above the line so the line sits in it.
-    const y0 = Math.round(lineY - TILE / 2);
-    const rt = scene.add.renderTexture(x0, y0, cols * TILE, rows * TILE).setOrigin(0, 0);
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            rt.drawFrame(MAP_FOG_KEY, r === 0 ? EDGE_FRAME : interiorFrame(c, r), c * TILE, r * TILE);
+    const rows = Math.ceil((bottom - top) / TILE);
+    const clear = new Uint8Array(cols * rows);
+    for (let row = 0; row < rows; row++) {
+        const cy = top + row * TILE + TILE / 2;
+        for (let col = 0; col < cols; col++) {
+            const cx = left + col * TILE + TILE / 2;
+            for (const p of points) {
+                const dx = cx - p.x;
+                const dy = cy - p.y;
+                if (dx * dx + dy * dy <= p.r * p.r) { clear[row * cols + col] = 1; break; }
+            }
+        }
+    }
+    return { cols, rows, left: Math.round(left), top: Math.round(top), clear };
+}
+
+const isFogged = (grid, col, row) => (
+    col < 0 || row < 0 || col >= grid.cols || row >= grid.rows   // past the edge counts as fog
+        ? true
+        : !grid.clear[row * grid.cols + col]
+);
+
+/** Draw the fog for `grid` into `container`. Returns the RenderTexture. */
+export function drawMapFog(scene, container, grid) {
+    if (!grid || !scene.textures.exists(MAP_FOG_KEY)) return null;
+    const rt = scene.add.renderTexture(grid.left, grid.top, grid.cols * TILE, grid.rows * TILE).setOrigin(0, 0);
+    for (let row = 0; row < grid.rows; row++) {
+        for (let col = 0; col < grid.cols; col++) {
+            if (!isFogged(grid, col, row)) continue;
+            let mask = 0;
+            if (isFogged(grid, col, row - 1)) mask |= 1;
+            if (isFogged(grid, col + 1, row)) mask |= 2;
+            if (isFogged(grid, col, row + 1)) mask |= 4;
+            if (isFogged(grid, col - 1, row)) mask |= 8;
+            const frame = mask === 15 ? interiorFrame(col, row) : mask;
+            rt.drawFrame(MAP_FOG_KEY, frame, col * TILE, row * TILE);
         }
     }
     container.add(rt);
@@ -72,32 +87,38 @@ export function drawMapFog(scene, container, { lineY, bottomY, left, right }) {
 }
 
 /**
- * Cloud puffs over a band that just came out of the fog (map space, inside
- * `container`), drifting up and fading: the fog lifting.
+ * Cloud puffs over the tiles clear in `after` but fogged in `before` (same
+ * bounds), rippling out from `from` (map space): the fog lifting.
  */
-export function puffFogBand(scene, container, { fromY, toY, left, right }) {
-    if (!scene.textures.exists(MAP_FOG_KEY) || !(toY > fromY)) return;
-    const MS_PER_ROW = 70;
-    for (let y = fromY; y < toY + TILE / 2; y += TILE * 0.75) {
-        const rowDelay = ((y - fromY) / TILE) * MS_PER_ROW;
-        for (let x = left; x < right; x += TILE * 0.8) {
-            const puff = scene.add.image(
-                x + (Math.random() - 0.5) * TILE,
-                y + (Math.random() - 0.5) * TILE,
-                MAP_FOG_KEY, 16 + Math.floor(Math.random() * PUFF_FRAMES),
-            );
-            const scale = 0.7 + Math.random() * 0.5;
-            puff.setScale(scale).setAlpha(0.75 + Math.random() * 0.25);
-            container.add(puff);
-            scene.tweens.add({
-                targets: puff,
-                alpha: 0,
-                y: puff.y - (6 + Math.random() * 8),
-                scale: scale * 0.6,
-                duration: 420 + Math.random() * 260,
-                delay: rowDelay + Math.random() * 120,
-                onComplete: () => puff.destroy(),
-            });
+export function puffNewlyCleared(scene, container, before, after, from) {
+    if (!scene.textures.exists(MAP_FOG_KEY) || !before || !after) return;
+    const MS_PER_TILE = 45;
+    for (let row = 0; row < after.rows; row++) {
+        for (let col = 0; col < after.cols; col++) {
+            const i = row * after.cols + col;
+            if (!after.clear[i] || before.clear[i]) continue;
+            const cx = after.left + col * TILE + TILE / 2;
+            const cy = after.top + row * TILE + TILE / 2;
+            const wave = from ? (Math.hypot(cx - from.x, cy - from.y) / TILE) * MS_PER_TILE : 0;
+            for (let k = 0; k < 2; k++) {
+                const puff = scene.add.image(
+                    cx + (Math.random() - 0.5) * TILE,
+                    cy + (Math.random() - 0.5) * TILE,
+                    MAP_FOG_KEY, PUFF_FIRST + Math.floor(Math.random() * PUFF_FRAMES),
+                );
+                const scale = 0.7 + Math.random() * 0.5;
+                puff.setScale(scale).setAlpha(0.75 + Math.random() * 0.25);
+                container.add(puff);
+                scene.tweens.add({
+                    targets: puff,
+                    alpha: 0,
+                    y: puff.y - (4 + Math.random() * 6),
+                    scale: scale * 0.6,
+                    duration: 320 + Math.random() * 220,
+                    delay: wave + Math.random() * 90,
+                    onComplete: () => puff.destroy(),
+                });
+            }
         }
     }
 }
