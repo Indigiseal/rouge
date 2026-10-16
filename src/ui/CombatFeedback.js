@@ -65,6 +65,11 @@ export function describeFeedback(message, options = {}) {
     };
 }
 
+// How long a label may wait for room before it is skipped on screen, by
+// priority (minor, normal, major). Counted from when it was due, so labels
+// deliberately timed to a later beat (delayMs) still get their full wait.
+const MAX_WAIT_MS = Object.freeze([1800, 1500, 2400]);
+
 const overlap = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 
 export class CombatFeedback {
@@ -125,7 +130,10 @@ export class CombatFeedback {
         const now = this.scene.time.now;
         this.live = this.live.filter(entry => entry.object.active);
         for (const event of [...this.queue].sort((a, b) => b.priority - a.priority || a.readyAt - b.readyAt)) {
-            if (event.priority === 0 && now - event.createdAt > 1800) {
+            // A busy lane (the hero's) shows three at a time, so a backlog used
+            // to drain for seconds after the fight was over. Past its wait, a
+            // label is dropped from the screen; it is already in the log.
+            if (now - event.readyAt > MAX_WAIT_MS[event.priority]) {
                 this.queue.splice(this.queue.indexOf(event), 1);
                 continue;
             }
