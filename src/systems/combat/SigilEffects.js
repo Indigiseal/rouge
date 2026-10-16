@@ -8,7 +8,7 @@
 // bonuses (Honed, Outnumbered, Ironclad, Packrat) are added before the
 // multipliers, so a multiplier also lifts them.
 
-import { SIGIL_MULTIPLIER, sigilLevel } from '../../content/sigils/sigils.js';
+import { SIGIL_MULTIPLIER, hasStoredSigil, sigilLevel } from '../../content/sigils/sigils.js';
 
 // Tuning, all per sigil level unless noted.
 const HONED_PER_USE = 1;          // +damage per earlier use this fight
@@ -20,7 +20,7 @@ const LEECH_SHARE = 0.15;         // of the damage dealt, rounded up
 const VENOM_DAMAGE = 1;           // poison per tick
 const VENOM_TURNS = 3;
 const CUTPURSE_COINS = 1;         // coins per hit
-const ARREST_CHANCE = 0.25;       // flat; levels add 0.1 each
+const FROST_CHANCE = 0.25;        // non-bosses
 const DEVOURING_CHANCE = 0.08;    // per level, non-bosses only
 const TEMPERED_SAVE = 0.3;        // per level, chance a pip is kept (max 0.9)
 const WARCRY_CHANCE = 0.1;        // per level, an ally acts twice (max 0.5)
@@ -153,17 +153,20 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         scene.updateUI?.();
         fired.push('cutpurse');
     }
-    const arrest = sigilLevel(weapon, 'arrest');
-    if (arrest > 0 && alive && targetCard.data.type !== 'boss'
-        && Math.random() < ARREST_CHANCE + 0.1 * (arrest - 1)) {
-        targetCard.data.frozen = Math.max(targetCard.data.frozen || 0, 1);
+    // Frost: a chance to freeze the enemy hit for its next turn. Only the
+    // sigil put on the card — a Frost Ring enchant freezes by its own rule.
+    if (hasStoredSigil(weapon, 'frost') && alive && targetCard.data.type !== 'boss'
+        && !(targetCard.data.frozen > 0) && Math.random() < FROST_CHANCE) {
+        targetCard.data.frozen = 1;
         cs?.attachFrozenFrame?.(targetCard);
-        scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 18, 'Arrested!', 0x71b1ae);
-        fired.push('arrest');
+        scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 18, 'Frozen!', 0x71b1ae);
+        fired.push('frost');
     }
 
-    // Smoke: a kill hides another standing enemy (the Smoke Screen enchant's move).
-    if (sigilLevel(weapon, 'smoke') > 0 && targetCard?.data && (targetCard.data.health || 0) <= 0) {
+    // Smoke: a kill hides another standing enemy (the Smoke Screen enchant's
+    // move). Only the sigil put on the card: a Smoke Screen enchant already
+    // does this itself, and counting it here hid two enemies per kill.
+    if (hasStoredSigil(weapon, 'smoke') && targetCard?.data && (targetCard.data.health || 0) <= 0) {
         cs?.applyWeaponEnchantOnKill?.('smokeScreen');
         fired.push('smoke');
     }

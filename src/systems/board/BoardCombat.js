@@ -25,6 +25,9 @@ import {
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 import { playSmokePuff } from '../../ui/SmokeBurst.js';
 import { temperedSaveChance } from '../combat/SigilEffects.js';
+
+// Zap sigil: chance a lightning-gem (yellow stone) hit paralyses its target.
+const LIGHTNING_PARALYSE_CHANCE = 0.1;
 import { hideItemTooltip, showControlMarkTooltip } from '../../ui/ItemTooltip.js';
 
 export class BoardCombat {
@@ -879,6 +882,14 @@ function applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
         }
         // Main target: bonus lightning damage on top of the weapon hit.
         this.damageGemTarget(targetIndex, zapDamage, 'Zap', 0xffcf7f, 'lightning');
+        // Zap sigil: the yellow stone can also paralyse the enemy it struck —
+        // a shock, like the Storm Hatchling's: it skips its next turn.
+        if (Math.random() < LIGHTNING_PARALYSE_CHANCE) {
+            CombatSequencer.after(this.scene, CombatSequencer.BEATS.gem, () => {
+                const struck = this.boardCards[targetIndex];
+                if (struck?.data && (struck.data.health || 0) > 0) this.applyShockStatus(struck, 1);
+            });
+        }
         if (extraZaps > 0) {
             const candidates = this.boardCards
                 .map((card, i) => ({ card, i }))

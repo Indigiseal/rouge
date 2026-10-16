@@ -4,8 +4,10 @@
 // corner plus a one-line rule. Enemy traits are sigils too — an enemy that
 // poisons wears the same Venom icon a poisoned dagger would.
 //
-// Icons live in enemyIcons.png (16x16 frames): frames 14-46 are the sigils in
-// the design doc's order, 56-59 the four Arrest looks (Zap, Frost, Web, Ink).
+// Icons live in enemyIcons.png (16x16 frames): frames 15-46 are the sigils in
+// the design doc's order, 56-59 the four card-stopping ones (Zap, Frost, Web,
+// Ink), each its own sigil with its own source. (Frame 14, the old Arrest
+// cuffs, is no longer used.)
 //
 // Every sigil has an icon and a rule text; `works: true` marks the ones whose
 // player-side rule is built (systems/combat/SigilEffects.js). Thorns is the
@@ -19,7 +21,6 @@ export const SIGIL_MULTIPLIER = 1.5;   // never x2 — rounds down, both sides
 // side: 'both' | 'player' | 'enemy'. `player` / `enemy`: the rule as it reads
 // on that side. `works`: true once the player-side rule is built.
 export const SIGILS = Object.freeze({
-    arrest:      { name: 'Arrest',      frame: 14, side: 'both',   enemy: 'locks one of your cards for a turn', player: '25% chance the enemy hit skips its next turn', works: true },
     venom:       { name: 'Venom',       frame: 15, side: 'both',   enemy: 'poisons you on hit', player: 'poisons the enemy hit: 1 for 3 turns', works: true },
     thorns:      { name: 'Thorns',      frame: 16, side: 'both',   enemy: 'damages whoever hits it', player: '+1 damage (Briar Room)', works: true },
     sunder:      { name: 'Sunder',      frame: 17, side: 'both',   enemy: 'wears down your armor', player: 'strips armor from the enemy' },
@@ -55,11 +56,15 @@ export const SIGILS = Object.freeze({
     // A buffer: it never acts twice itself, its side does. Frame 47 is its
     // own icon slot; until that is drawn it wears Rally's horn.
     warcry:      { name: 'Warcry',      frame: 46, side: 'both',   enemy: 'other enemies: 10% chance to act twice', player: 'carried: your companions get 10% chance to act twice', works: true },
-    // The four looks of Arrest: same rule, each with its own source.
-    zap:         { name: 'Zap',         frame: 56, side: 'both',   enemy: 'locks one of your cards for a turn', player: 'the enemy hit skips its next turn (shock)' },
-    frost:       { name: 'Frost',       frame: 57, side: 'both',   enemy: 'locks one of your cards for a turn', player: 'the enemy hit skips its next turn (freeze)' },
-    web:         { name: 'Web',         frame: 58, side: 'both',   enemy: 'locks one of your cards for a turn', player: 'the enemy hit skips its next turn' },
-    ink:         { name: 'Ink',         frame: 59, side: 'both',   enemy: 'locks one of your cards for a turn', player: 'the enemy hit skips its next turn' },
+    // Four sigils that stop a card or an enemy for a turn, each its own.
+    // Zap is never handed out: a card shows it while it can shock — the
+    // yellow stone (lightning gem) socketed in a weapon, or the Storm
+    // Hatchling. Frost is offered like any sigil (and shown by Frost Ring).
+    // Web and Ink are the Silkslinger's and the Ink Wraith's.
+    zap:         { name: 'Zap',         frame: 56, side: 'player', player: 'small chance to paralyse the enemy hit: it skips its next turn' },
+    frost:       { name: 'Frost',       frame: 57, side: 'player', player: '25% chance to freeze the enemy hit: it skips its next turn (not bosses)', works: true },
+    web:         { name: 'Web',         frame: 58, side: 'enemy',  enemy: 'webs one of your cards: it can\'t be used next turn' },
+    ink:         { name: 'Ink',         frame: 59, side: 'enemy',  enemy: 'inks one of your cards: it can\'t be used next turn' },
 });
 
 // Player sigils that work today: the ones the vault and elite chests hand out.
@@ -112,9 +117,20 @@ export function getSigil(id) {
     return SIGILS[id] || null;
 }
 
+// Sigils renamed since a save was written: Arrest became Frost.
+const RENAMED_SIGILS = Object.freeze({ arrest: 'frost' });
+
 /** The sigils stored on a card: [{ id, level }], never undefined. */
 export function storedSigils(card) {
-    return Array.isArray(card?.sigils) ? card.sigils.filter((s) => s && SIGILS[s.id]) : [];
+    if (!Array.isArray(card?.sigils)) return [];
+    return card.sigils
+        .map((s) => (s && RENAMED_SIGILS[s.id] ? { ...s, id: RENAMED_SIGILS[s.id] } : s))
+        .filter((s) => s && SIGILS[s.id]);
+}
+
+/** Whether `id` was put on the card itself (not shown from an enchant or gem). */
+export function hasStoredSigil(card, id) {
+    return storedSigils(card).some((s) => s.id === id);
 }
 
 /**
@@ -131,7 +147,10 @@ export function cardSigils(card) {
     if ((card.briarDamageBonus || 0) > 0 && !has('thorns')) out.push({ id: 'thorns', level: 1 });
     const fromEnchant = ENCHANT_SIGIL[card.enchant];
     if (fromEnchant && !has(fromEnchant)) out.push({ id: fromEnchant, level: 1 });
-    if ((card.shockChance || 0) > 0 && !has('zap')) out.push({ id: 'zap', level: 1 });
+    // Zap: whatever can shock — the Storm Hatchling, or a weapon carrying the
+    // yellow stone (lightning gem).
+    const shocks = (card.shockChance || 0) > 0 || (card.type === 'weapon' && card.gemEffect === 'lightning');
+    if (shocks && !has('zap')) out.push({ id: 'zap', level: 1 });
     return out;
 }
 
