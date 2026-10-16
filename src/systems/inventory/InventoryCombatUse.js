@@ -675,7 +675,21 @@ export const InventoryCombatUse = {
                     secondaryDamage = applyPermanentWeaponDamageBonuses(
                         characterId, secondaryDagger, secondaryDamage, talentFx
                     );
+                    // The off-hand dagger's own sigils count on its hit, the
+                    // same as the dragged one's (Outnumbered on the off-hand
+                    // used to do nothing).
+                    const offhandSigils = applyWeaponSigils(this.scene, secondaryDagger, currentEnemy, secondaryDamage);
+                    secondaryDamage = offhandSigils.damage;
+                    if (offhandSigils.triggered.length && currentEnemy?.sprite) {
+                        this.scene.createFloatingText(currentEnemy.sprite.x, currentEnemy.sprite.y - 42,
+                            offhandSigils.triggered.map((id) => getSigil(id)?.name).join(' + ') + '!', 0xffcf7f);
+                    }
+                    const offhandHealthBefore = currentEnemy.data?.health ?? 0;
                     this.scene.cardSystem.attackEnemy(closestEnemy, secondaryDamage, false, secondaryDagger, true);
+                    onWeaponSigilHit(this.scene, secondaryDagger, currentEnemy, {
+                        damageDealt: Math.max(0, offhandHealthBefore - Math.max(0, currentEnemy.data?.health ?? 0)),
+                        swingDamage: offhandSigils.baseDamage,
+                    });
                     this.applyAssassinateTalent(closestEnemy);
                     this.scene.updateUI?.();
                 }
