@@ -36,7 +36,8 @@ export const SIGILS = Object.freeze({
     unscathed:   { name: 'Unscathed',   frame: 27, side: 'both',   enemy: 'x1.5 until you chip it once', player: 'x1.5 while you are at full health', works: true },
     honed:       { name: 'Honed',       frame: 28, side: 'both',   enemy: '+1 attack after each attack this fight', player: '+1 damage after each use this fight', works: true },
     ironclad:    { name: 'Ironclad',    frame: 29, side: 'both',   enemy: 'its armor adds to its damage', player: 'your worn armor protection adds to damage', works: true },
-    ember:       { name: 'Ember',       frame: 30, side: 'both',   enemy: 'its hits burn you next turn', player: 'fire splash to nearby enemies' },
+    // Ripple (was Ember): no fire in it, so it isn't mistaken for the fire gem.
+    ripple:      { name: 'Ripple',      frame: 30, side: 'both',   enemy: 'its hits ripple on to hurt you next turn', player: 'a ripple may spread from the hit to nearby enemies' },
     sapping:     { name: 'Sapping',     frame: 31, side: 'both',   enemy: 'your weapons deal less for a turn', player: 'the struck enemy deals less' },
     warding:     { name: 'Warding',     frame: 32, side: 'both',   enemy: 'gains armor after it attacks', player: 'your armor is stronger for a turn' },
     mirror:      { name: 'Mirror',      frame: 33, side: 'both',   enemy: 'sends your next hit back', player: 'on armor: sends the first enemy attack each fight back', works: true },
@@ -107,7 +108,7 @@ export function canTakeSigil(card, id) {
 
 // A Reliquary enchant shows as the sigil it becomes (design doc table).
 const ENCHANT_SIGIL = Object.freeze({
-    frostRing: 'frost', shadowBlade: 'crushing', restoration: 'leech', fireball: 'ember',
+    frostRing: 'frost', shadowBlade: 'crushing', restoration: 'leech', fireball: 'ripple',
     weakness: 'sapping', magicShield: 'warding', boneWall: 'mirror', soulDrain: 'devouring',
     smokeScreen: 'smoke',
 });
@@ -128,8 +129,8 @@ export function getSigil(id) {
     return SIGILS[id] || null;
 }
 
-// Sigils renamed since a save was written: Arrest became Frost.
-const RENAMED_SIGILS = Object.freeze({ arrest: 'frost' });
+// Sigils renamed since a save was written: Arrest became Frost, Ember Ripple.
+const RENAMED_SIGILS = Object.freeze({ arrest: 'frost', ember: 'ripple' });
 
 /** The sigils stored on a card: [{ id, level }], never undefined. */
 export function storedSigils(card) {

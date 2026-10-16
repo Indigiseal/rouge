@@ -52,7 +52,7 @@ export const ENCHANT_SHIELD_MULTIPLIER = 1.2;
 //               a killing blow cannot swallow the effect (same reason gems do)
 //   onKill    — only meaningful once the target is actually dead
 export const WEAPON_ENCHANTS = Object.freeze({
-  fireball: { title: 'Ember', titleKey: 'enchant.fireball.title', summary: 'fire splash to nearby enemies', summaryKey: 'enchant.fireball.summary', timing: 'onHit' },
+  fireball: { title: 'Ripple', titleKey: 'enchant.fireball.title', summary: 'a ripple may spread to nearby enemies', summaryKey: 'enchant.fireball.summary', timing: 'onHit' },
   frostRing: { title: 'Frostbound', titleKey: 'enchant.frostRing.title', summary: 'freeze the enemy for 1 turn', summaryKey: 'enchant.frostRing.summary', timing: 'onHit' },
   restoration: { title: 'Mending', titleKey: 'enchant.restoration.title', summary: `heal ${ENCHANT_HEAL_AMOUNT} HP on hit`, summaryKey: 'enchant.restoration.summary', timing: 'onHit' },
   soulDrain: { title: 'Devouring', titleKey: 'enchant.soulDrain.title', summary: 'slay a non-boss enemy outright', summaryKey: 'enchant.soulDrain.summary', timing: 'preDamage' },

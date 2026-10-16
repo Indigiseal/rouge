@@ -544,14 +544,14 @@ export const InventoryView = {
     // ring touches burns. Drawn at depth 1 — above the board panel (0), below
     // the cards (2) — so it looks like scorched ground, not an overlay.
     //
-    // An Ember enchant (the 'fireball' enchant) splashes much further, but
+    // A Ripple enchant (the 'fireball' enchant) splashes much further, but
     // only when it procs, so its reach is a second, fainter ring around the
-    // gem's. A weapon with Ember and no fire gem shows just that ring.
+    // gem's. A weapon with Ripple and no fire gem shows just that ring.
     updateFireReachIndicator(cardSprite, slotIndex) {
         const weapon = this.slots[slotIndex];
         const hasFireGem = weapon?.gemEffect === 'fire' || weapon?.gem2Effect === 'fire';
-        const hasEmber = weapon?.enchant === 'fireball';
-        if (this.stationMode || weapon?.type !== 'weapon' || (!hasFireGem && !hasEmber)) {
+        const hasRipple = weapon?.enchant === 'fireball';
+        if (this.stationMode || weapon?.type !== 'weapon' || (!hasFireGem && !hasRipple)) {
             this.destroyFireReachIndicator();
             return;
         }
@@ -568,7 +568,7 @@ export const InventoryView = {
 
         const g = this.fireReachIndicator;
         g.clear();
-        if (hasEmber) {
+        if (hasRipple) {
             g.fillStyle(0xb51f1e, 0.07);
             g.fillCircle(target.x, target.y, ENCHANT_FIRE_SPLASH_RADIUS);
             g.lineStyle(1, 0xef7c4b, 0.3);

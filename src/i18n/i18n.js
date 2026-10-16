@@ -1876,7 +1876,7 @@ for (const [language, additions] of Object.entries(DEBUG_VICTORY_TEXT)) {
 
 const ENCHANT_TEXT_ADDITIONS = {
     en: {
-        'enchant.fireball.title': 'Ember', 'enchant.fireball.summary': 'fire splash to nearby enemies',
+        'enchant.fireball.title': 'Ripple', 'enchant.fireball.summary': 'a ripple may spread to nearby enemies',
         'enchant.frostRing.title': 'Frostbound', 'enchant.frostRing.summary': 'freeze the enemy for 1 turn',
         'enchant.restoration.title': 'Mending', 'enchant.restoration.summary': 'heal 3 HP on hit',
         'enchant.soulDrain.title': 'Devouring', 'enchant.soulDrain.summary': 'slay a non-boss enemy outright',
@@ -1887,7 +1887,7 @@ const ENCHANT_TEXT_ADDITIONS = {
         'enchant.smokeScreen.title': 'Shrouding', 'enchant.smokeScreen.summary': 'hide an enemy on a kill',
     },
     es: {
-        'enchant.fireball.title': 'Brasa', 'enchant.fireball.summary': 'salpica fuego a enemigos cercanos',
+        'enchant.fireball.title': 'Onda', 'enchant.fireball.summary': 'una onda puede alcanzar a enemigos cercanos',
         'enchant.frostRing.title': 'Helado', 'enchant.frostRing.summary': 'congela al enemigo 1 turno',
         'enchant.restoration.title': 'Reparador', 'enchant.restoration.summary': 'cura 3 PV al golpear',
         'enchant.soulDrain.title': 'Devorador', 'enchant.soulDrain.summary': 'mata de inmediato a un enemigo que no sea jefe',
@@ -1898,7 +1898,7 @@ const ENCHANT_TEXT_ADDITIONS = {
         'enchant.smokeScreen.title': 'Velado', 'enchant.smokeScreen.summary': 'oculta un enemigo al matar',
     },
     fr: {
-        'enchant.fireball.title': 'Braise', 'enchant.fireball.summary': 'eclabousse de feu les ennemis proches',
+        'enchant.fireball.title': 'Onde', 'enchant.fireball.summary': 'une onde peut atteindre les ennemis proches',
         'enchant.frostRing.title': 'Givre', 'enchant.frostRing.summary': 'gele l ennemi pendant 1 tour',
         'enchant.restoration.title': 'Reparation', 'enchant.restoration.summary': 'rend 3 PV a l impact',
         'enchant.soulDrain.title': 'Devoration', 'enchant.soulDrain.summary': 'tue directement un ennemi non-boss',
@@ -1909,7 +1909,7 @@ const ENCHANT_TEXT_ADDITIONS = {
         'enchant.smokeScreen.title': 'Voile', 'enchant.smokeScreen.summary': 'cache un ennemi en le tuant',
     },
     ru: {
-        'enchant.fireball.title': 'Уголь', 'enchant.fireball.summary': 'огненный всплеск по соседним врагам',
+        'enchant.fireball.title': 'Рябь', 'enchant.fireball.summary': 'волна может задеть соседних врагов',
         'enchant.frostRing.title': 'Ледяной', 'enchant.frostRing.summary': 'замораживает врага на 1 ход',
         'enchant.restoration.title': 'Исцеляющий', 'enchant.restoration.summary': 'лечит 3 ОЗ при ударе',
         'enchant.soulDrain.title': 'Пожиратель', 'enchant.soulDrain.summary': 'сразу убивает врага не-босса',
@@ -2584,8 +2584,8 @@ const GERMAN_STRINGS = {
 
     // --- Weapon enchants ----------------------------------------------------
     // Title is a name, summary is the clause that follows it on the card.
-    'enchant.fireball.title': 'Glut',
-    'enchant.fireball.summary': 'Feuerfunken auf nahe Gegner',
+    'enchant.fireball.title': 'Welle',
+    'enchant.fireball.summary': 'eine Welle kann nahe Gegner treffen',
     'enchant.frostRing.title': 'Frostbann',
     'enchant.frostRing.summary': 'friert den Gegner 1 Zug lang ein',
     'enchant.restoration.title': 'Heilung',
