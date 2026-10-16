@@ -642,6 +642,22 @@ export class MainMenuScene extends Phaser.Scene {
     }
     
     startNewGame() {
+        // A saved run would be overwritten: ask first.
+        if (this.saveManager.hasCurrentRun()) {
+            openConfirmModal(this, {
+                title: t(this, 'ui.menu.newRunTitle'),
+                body: t(this, 'ui.menu.newRunBody'),
+                confirmLabel: t(this, 'ui.menu.newRun'),
+                cancelLabel: t(this, 'ui.options.cancel'),
+                // Next tick, so the confirming click cannot also hit a menu button.
+                onConfirm: () => this.time.delayedCall(0, () => this.beginNewRun()),
+            });
+            return;
+        }
+        this.beginNewRun();
+    }
+
+    beginNewRun() {
         // Clear any existing run save
         this.saveManager.clearCurrentRun();
 

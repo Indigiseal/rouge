@@ -11,7 +11,7 @@ const LANGUAGE_OPTIONS = [
 const STRINGS = {
     en: {
         'ui.combat.you': 'You',
-        'ui.menu.newRun': 'New Run',
+        'ui.menu.newRun': 'New Run', 'ui.menu.newRunTitle': 'Start a new run?', 'ui.menu.newRunBody': 'Your saved run will be lost.',
         'ui.menu.continue': 'Continue',
         'ui.menu.options': 'Options',
         'ui.menu.testOptions': 'Test Options',
@@ -528,7 +528,7 @@ const STRINGS = {
     },
     es: {
         'ui.combat.you': 'Tú',
-        'ui.menu.newRun': 'Nueva partida',
+        'ui.menu.newRun': 'Nueva partida', 'ui.menu.newRunTitle': '¿Empezar una nueva partida?', 'ui.menu.newRunBody': 'Se perderá tu partida guardada.',
         'ui.menu.continue': 'Continuar',
         'ui.menu.options': 'Opciones',
         'ui.menu.testOptions': 'Opciones de prueba',
@@ -1113,7 +1113,7 @@ const STRINGS = {
         'tooltip.markTreachery': 'Trahison : attaque un autre ennemi révélé au lieu de vous',
         'tooltip.strategyScout': 'Un ennemi caché se trouve ici',
         'float.dragGemOntoWeapon': 'Glissez sur une arme ou un emplacement libre du sac',
-        'ui.menu.newRun': 'Nouvelle partie', 'ui.menu.continue': 'Continuer', 'ui.menu.options': 'Options', 'ui.menu.testOptions': 'Options de test', 'ui.menu.tutorial': 'Tutoriel', 'ui.menu.testSite': 'Zone de test', 'ui.menu.exit': 'Quitter le jeu',
+        'ui.menu.newRun': 'Nouvelle partie', 'ui.menu.newRunTitle': 'Commencer une nouvelle partie ?', 'ui.menu.newRunBody': 'Votre partie sauvegardée sera perdue.', 'ui.menu.continue': 'Continuer', 'ui.menu.options': 'Options', 'ui.menu.testOptions': 'Options de test', 'ui.menu.tutorial': 'Tutoriel', 'ui.menu.testSite': 'Zone de test', 'ui.menu.exit': 'Quitter le jeu',
         'ui.testOptions.title': 'OPTIONS DE TEST', 'ui.testOptions.subtitle': 'Réglages d’équilibrage — conservés entre les sessions', 'ui.testOptions.back': 'Retour', 'ui.testOptions.on': 'OUI', 'ui.testOptions.off': 'NON', 'ui.testOptions.disableAmulets': 'Désactiver les amulettes', 'ui.testOptions.disableAmuletsDesc': 'Aucune amulette dans le butin, les boutiques, les événements ou l’équipement.', 'ui.testOptions.disableMetaProgression': 'Désactiver la méta-progression', 'ui.testOptions.disableMetaProgressionDesc': 'Aucune relique, PV de vétéran ou bonus de mort.',
         'ui.options.title': 'Options', 'ui.options.language': 'Langue : {language}', 'ui.options.languageLabel': 'Langue', 'ui.options.musicVolume': 'Volume de la musique', 'ui.options.soundEffects': 'Effets sonores', 'ui.options.resetAll': 'Réinitialiser toute la progression', 'ui.options.back': 'Retour', 'ui.options.resetTitle': 'Réinitialiser toute la progression ?', 'ui.options.resetBody': 'Efface les reliques débloquées, les statistiques et\ntoute partie sauvegardée. Les réglages sont conservés.', 'ui.options.reset': 'Réinitialiser', 'ui.options.cancel': 'Annuler',
         'ui.death.fallen': 'VOUS ÊTES TOMBÉ', 'ui.death.killedBy': 'Tué par {enemy} à l’étage {floor}', 'ui.death.newRelic': 'NOUVELLE RELIQUE DÉBLOQUÉE !', 'ui.death.noRelic': 'Aucune nouvelle relique cette fois', 'ui.death.tryDifferent': 'Mourez face à différents ennemis pour débloquer plus de reliques !', 'ui.death.totalDeaths': 'Morts totales : {amount}', 'ui.death.bestFloor': 'Meilleur étage : {floor}', 'ui.death.relicsUnlocked': 'Reliques débloquées : {amount}', 'ui.common.continue': 'Continuer',
@@ -1137,7 +1137,7 @@ const STRINGS = {
         'ui.birdNest.title': 'Le nid', 'ui.birdNest.instructionsCog': 'Dégagez les déchets. Prenez l’engrenage et l’oeuf si vous le pouvez. Surveillez l’ombre.', 'ui.birdNest.instructionsEgg': 'Dégagez les déchets. Prenez l’oeuf si vous le pouvez. Surveillez l’ombre.', 'ui.birdNest.status': 'Écartez les déchets. Cliquez sur une récompense libre pour la prendre.', 'ui.birdNest.run': 'Fuir', 'ui.birdNest.buried': 'Toujours enfoui. Déplacez d’abord les déchets.', 'ui.birdNest.cogTaken': 'L’engrenage en laiton est à vous.', 'ui.birdNest.eggTaken': 'L’oeuf est chaud dans votre main.', 'ui.birdNest.caught': 'L’ombre vous a trouvé.',
     },
     de: {
-        'ui.menu.newRun': 'Neuer Lauf',
+        'ui.menu.newRun': 'Neuer Lauf', 'ui.menu.newRunTitle': 'Neuen Lauf starten?', 'ui.menu.newRunBody': 'Dein gespeicherter Lauf geht verloren.',
         'ui.menu.continue': 'Weiter',
         'ui.menu.options': 'Optionen',
         'ui.menu.exit': 'Beenden',
@@ -1154,7 +1154,7 @@ const STRINGS = {
         'ui.options.cancel': 'Abbrechen',
     },
     ja: {
-        'ui.menu.newRun': '\u65b0\u898f\u30e9\u30f3',
+        'ui.menu.newRun': '\u65b0\u898f\u30e9\u30f3', 'ui.menu.newRunTitle': '新しいランを始めますか？', 'ui.menu.newRunBody': '保存中のランは失われます。',
         'ui.menu.continue': '\u7d9a\u304d\u304b\u3089',
         'ui.menu.options': '\u8a2d\u5b9a',
         'ui.menu.exit': '\u7d42\u4e86',
@@ -1171,7 +1171,7 @@ const STRINGS = {
         'ui.options.cancel': '\u30ad\u30e3\u30f3\u30bb\u30eb',
     },
     zh: {
-        'ui.menu.newRun': '\u65b0\u6e38\u620f',
+        'ui.menu.newRun': '\u65b0\u6e38\u620f', 'ui.menu.newRunTitle': '开始新游戏？', 'ui.menu.newRunBody': '已保存的进度将会丢失。',
         'ui.menu.continue': '\u7ee7\u7eed',
         'ui.menu.options': '\u9009\u9879',
         'ui.menu.exit': '\u9000\u51fa',
@@ -1189,7 +1189,7 @@ const STRINGS = {
     },
     ru: {
         'ui.combat.you': 'Ты',
-        'ui.menu.newRun': 'Новый забег',
+        'ui.menu.newRun': 'Новый забег', 'ui.menu.newRunTitle': 'Начать новый забег?', 'ui.menu.newRunBody': 'Сохраненный забег будет потерян.',
         'ui.menu.continue': 'Продолжить',
         'ui.menu.options': 'Настройки',
         'ui.menu.testOptions': 'Test Options',
