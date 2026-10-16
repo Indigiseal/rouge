@@ -121,6 +121,10 @@
       "prompt": "A single playing card dropped into a narrow wooden chute: a quick soft whoosh of the card sliding and falling away down the chute, airy, fading into the distance. No thud, no impact, no paper rustle",
       "durationSeconds": 0.6
     },
+    "fog_poof": {
+      "prompt": "A single soft magical poof: a small cloud of smoke puffing out and vanishing, short, round and airy, cartoon-soft but natural, close up. No whoosh tail, no wind, no music",
+      "durationSeconds": 0.5
+    },
     "fog_lift": {
       "prompt": "Soft magical fog dispersing: a gentle airy whoosh of mist breaking into small clouds and drifting away, a few faint soft puffs, calm and mysterious, quiet. No wind howl, no thunder, no music",
       "durationSeconds": 1.2
