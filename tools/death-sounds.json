@@ -121,6 +121,10 @@
       "prompt": "A single playing card dropped into a narrow wooden chute: a quick soft whoosh of the card sliding and falling away down the chute, airy, fading into the distance. No thud, no impact, no paper rustle",
       "durationSeconds": 0.6
     },
+    "card_fall": {
+      "prompt": "A small card dropped down a deep stone shaft: a quick soft flutter as it tumbles, the sound falling away and fading into the depth below, ending in a faint distant soft settle. Airy, light, no loud impact",
+      "durationSeconds": 0.9
+    },
     "map_select": {
       "prompt": "Marking a route on an old parchment map: one quick quill tap and a short dry scratch of ink on thick paper, close up and soft. No music, no voice",
       "durationSeconds": 0.5
