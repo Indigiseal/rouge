@@ -117,6 +117,10 @@
       "prompt": "A very short quiet creak of an old wooden door leaning slightly on its hinge, a tiny dry wooden squeak, close up and soft. No thud, no knock",
       "durationSeconds": 0.5
     },
+    "door_tap": {
+      "prompt": "Two light knuckle taps on a thick old wooden door, testing it: dull, soft, woody knocks, close up. No creak, no squeak, no hinge, no metal",
+      "durationSeconds": 0.5
+    },
     "chest_hover": {
       "prompt": "A heavy old wooden treasure chest touched by a hand: its lid rattles softly against the iron latch, a small dull wooden knock and a faint jingle of coins inside. Very short, close, soft. No creak, no opening",
       "durationSeconds": 0.5
