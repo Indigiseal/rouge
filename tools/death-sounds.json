@@ -117,6 +117,14 @@
       "prompt": "A very short quiet creak of an old wooden door leaning slightly on its hinge, a tiny dry wooden squeak, close up and soft. No thud, no knock",
       "durationSeconds": 0.5
     },
+    "card_discard": {
+      "prompt": "A single playing card dropped into a narrow wooden chute: a quick soft whoosh of the card sliding and falling away down the chute, airy, fading into the distance. No thud, no impact, no paper rustle",
+      "durationSeconds": 0.6
+    },
+    "map_select": {
+      "prompt": "Marking a route on an old parchment map: one quick quill tap and a short dry scratch of ink on thick paper, close up and soft. No music, no voice",
+      "durationSeconds": 0.5
+    },
     "door_tap": {
       "prompt": "Two light knuckle taps on a thick old wooden door, testing it: dull, soft, woody knocks, close up. No creak, no squeak, no hinge, no metal",
       "durationSeconds": 0.5
