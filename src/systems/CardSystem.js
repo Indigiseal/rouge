@@ -560,6 +560,9 @@ export class CardSystem {
                 break;
             }
                 
+            // Food is carried like a potion: tapped into the bag, where it can
+            // be merged, and eaten by dropping it on the hero.
+            case 'food':
             case 'potion':
             case 'weapon':
             case 'armor':
@@ -589,33 +592,6 @@ export class CardSystem {
                     });
                 }
                 break;
-
-            case 'food': {
-                SoundHelper.playVariant(this.scene, 'bread_eaten', 0.5);
-                // Apply amulet food AP modifiers
-                const baseAP = card.data.actionAmount;
-                const modifiedAP = this.scene.amuletManager ?
-                    this.scene.amuletManager.modifyFoodAP(baseAP) : baseAP;
-
-                const apBefore = this.scene.gameState.actionsLeft;
-                this.scene.gameState.actionsLeft = Math.min(
-                    this.scene.gameState.maxActions,
-                    this.scene.gameState.actionsLeft + modifiedAP
-                );
-                this.scene.playActionPointGain?.(apBefore, this.scene.gameState.actionsLeft);
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y, `+${modifiedAP} AP`, 0x71800b);
-                // Eaten straight off the board: it dissolves the way food eaten
-                // from the bag does (the player-card break animation).
-                this.playCardBreakEffect(card.sprite);
-                this.removeCard(index);
-                recordHumanRunEvent(this.scene, 'board_food_consumed', {
-                    sourceBoardIndex: index,
-                    card: snapshotHumanRunCard(card.data),
-                    actionGain: modifiedAP,
-                });
-                this.scene.scheduleEnemyTurn?.();
-                break;
-            }
 
             case 'amulet':
                 this.consumeAmulet(card.data, index);

@@ -331,14 +331,22 @@ export class TutorialManager {
                 eventKey: 'revealed:food',
                 done: () => this.boardRevealed('food'),
             },
-            // 5 — explain hunger/AP, then eat the food
+            // 5 — explain hunger/AP, then pick the food up...
             {
                 textKey: 'ui.tutorial.actionPoints',
                 target: () => this.actionPointArea(),
                 hintTarget: () => this.boardSprite('food'),
                 interactiveTarget: () => this.boardSprite('food'),
-                eventKey: 'removed:food',
-                done: () => !this.boardCard('food'),
+                eventKey: 'inventory:food',
+                done: () => this.invSlot('food') >= 0,
+            },
+            // ...and eat it on the portrait, the way the potion is drunk.
+            {
+                textKey: 'ui.tutorial.eatFood',
+                target: () => this.invSprite('food'),
+                hintTarget: () => avatar(),
+                eventKey: 'inventoryRemoved:food',
+                done: () => this.invSlot('food') < 0,
             },
             // Armor, in three steps: found on the board, carried in the bag, worn
             // from the bag. It sits between the food and the archer ambush on
