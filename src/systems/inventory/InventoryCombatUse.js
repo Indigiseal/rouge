@@ -1159,7 +1159,7 @@ export const InventoryCombatUse = {
         SoundHelper.playSound(this.scene, 'potion_drink', 0.5);
         gs.playerEffects = effects.filter((e) => e.type !== 'poison');
         recordHumanRunEvent(this.scene, 'antidote_used', { slot: slotIndex, card: snapshotHumanRunCard(this.slots[slotIndex]) });
-        this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poison cured!', 0x71800b);
+        this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Cured!', 0x71800b);
         if (cardSprite) {
             this.scene.cardSystem?.playCardBreakEffect?.(cardSprite);
             this.cleanupCardSprites(slotIndex, cardSprite);

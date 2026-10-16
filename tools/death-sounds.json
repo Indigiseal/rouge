@@ -121,6 +121,10 @@
       "prompt": "A single playing card dropped into a narrow wooden chute: a quick soft whoosh of the card sliding and falling away down the chute, airy, fading into the distance. No thud, no impact, no paper rustle",
       "durationSeconds": 0.6
     },
+    "poison_cure": {
+      "prompt": "A hero drinks a small antidote vial and the poison leaves: one quick soft gulp of liquid, then a light clean rising shimmer like a breath of fresh air, gentle and soothing. No music, no voice",
+      "durationSeconds": 1.0
+    },
     "chute_whoosh": {
       "prompt": "A quick airy whoosh falling downward through a long narrow chute: the swoosh drops in pitch as it travels down and away, fading into the depth below. Soft and smooth, no impact, no thud, no paper rustle",
       "durationSeconds": 0.7
