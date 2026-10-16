@@ -2,6 +2,7 @@
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { t } from '../i18n/i18n.js';
+import { OptionsSkin, UI_BUTTON } from './OptionsSkin.js';
 
 export function showDefeatFallback(scene, deathStats) {
     const depth = 12000;
@@ -46,22 +47,17 @@ export function addResultPanel(scene, x, y, width, height, frame, depth) {
         .setDepth(depth);
 }
 
+// The result screens' button (Main Menu after a win, Continue after a
+// death) is the same plate the pause and options menus use: hover sound and
+// light, a pressed look, and a click that counts on release over it. It used
+// to be the old Next plate with only a click sound, and looked unfinished.
 export function addResultButton(scene, x, y, label, onClick, depth) {
-    const button = scene.add.image(x, y, 'nextTurnUp')
-        .setOrigin(0.5)
-        .setDepth(depth)
-        .setInteractive({ useHandCursor: true })
-        .on('pointerdown', (...args) => {
-            SoundHelper.playVariant(scene, 'button_click', 0.5);
-            onClick?.(...args);
-        });
-
-    scene.add.text(x, y - 1, label, {
-        fontSize: '16px',
-        fill: '#fef0cf',
-        fontFamily: '"HoMM Pixel", Arial, sans-serif'
-    }).setOrigin(0.5).setDepth(depth + 1);
-
+    const { button, shadow, text } = OptionsSkin.createUiButton.call(scene, x, y, UI_BUTTON.back, label, {
+        callback: () => onClick?.(),
+    });
+    shadow.setDepth(depth);
+    button.setDepth(depth + 0.5);
+    text.setDepth(depth + 1);
     return button;
 }
 
