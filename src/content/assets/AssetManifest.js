@@ -182,6 +182,8 @@ export const ASSET_MANIFEST = [
     { key: 'shadowsGems', path: 'assets/art/shadowsGems.png', type: 'spritesheet', frameWidth: 16, frameHeight: 20 },
     // player_hurt now rotates through 3 male-hurt variants (loaded in the SFX batch below)
     { key: 'item_discard_1', path: 'assets/music/Card_Discard_01.mp3', type: 'audio' },
+    // The Cure (Antidote) drunk: a gulp and a clean shimmer (ElevenLabs events poison_cure 1).
+    { key: 'poison_cure', path: 'assets/music/Poison_Cure_01.mp3', type: 'audio' },
     { key: 'item_discard_2', path: 'assets/music/Card_Discard_02.mp3', type: 'audio' },
     { key: 'trap_spring', path: 'assets/music/trap_spring1.mp3', type: 'audio' },
     { key: 'trap_woosh', path: 'assets/music/fast-woosh-230497.mp3', type: 'audio' },

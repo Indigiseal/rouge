@@ -7,12 +7,16 @@ import { StationRoomBase } from './StationRoomBase.js';
 import { flyCurrencyGain } from '../ui/CurrencyFlight.js';
 import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
 import { potionNameForHealAmount, shopPotionCards } from '../content/cards/index.js';
+import { antidoteCard } from '../content/cards/potions.js';
 import {
     shopAmuletCrystalPrice,
     shopItemBuyPrice,
     shopItemSellPrice,
 } from '../content/economy/shop.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
+
+// Chance the regular shop stocks a Cure (Antidote) next to its potions.
+const SHOP_CURE_CHANCE = 0.35;
 
 // The sell box: the discard box's mirror on the right of the bag, same size.
 const SELL_ZONE = Object.freeze({ x: 601, y: 314, w: 64, h: 76 });
@@ -93,6 +97,12 @@ export class ShopScene extends StationRoomBase {
                 purchased: false
             });
         });
+
+        // Now and then a Cure (Antidote) beside them, for a poisoned run.
+        if (Math.random() < SHOP_CURE_CHANCE) {
+            const cure = antidoteCard();
+            this.shopItems.push({ data: cure, price: this.calculateItemPrice(cure), currency: 'coins', purchased: false });
+        }
 
         // Slot 2: Regular weapon (guaranteed)
         const weaponData = cardGenerator.createCardData('weapon', floor);
