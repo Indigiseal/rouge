@@ -1458,7 +1458,7 @@ function tryApplyBoardGem(card, index) {
 
     if (inventory.discardArea && Phaser.Geom.Intersects.RectangleToRectangle(card.sprite.getBounds(), inventory.discardArea.getBounds())) {
         const discarded = snapshotHumanRunCard(card.data);
-        SoundHelper.playSound(this.scene, 'item_discard', 0.7);
+        SoundHelper.playVariant(this.scene, 'item_discard', 0.7);
         this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Discarded!', 0xb51f1e);
         this.scene.recordCardDiscarded?.(card.data, card.sprite.x, card.sprite.y);
         // A gem dragged off the board falls down the same chute a bag card does.

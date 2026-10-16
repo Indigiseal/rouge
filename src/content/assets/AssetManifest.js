@@ -179,7 +179,9 @@ export const ASSET_MANIFEST = [
     { key: 'enemiesHitEffects', path: 'assets/art/enemiesHitEffects64x80.png', type: 'spritesheet', frameWidth: 64, frameHeight: 80 },
     { key: 'shadowsGems', path: 'assets/art/shadowsGems.png', type: 'spritesheet', frameWidth: 16, frameHeight: 20 },
     // player_hurt now rotates through 3 male-hurt variants (loaded in the SFX batch below)
-    { key: 'item_discard', path: 'assets/music/discard-sound-effect-221455.mp3', type: 'audio' },
+    { key: 'item_discard_1', path: 'assets/music/Card_Discard_01.mp3', type: 'audio' },
+    { key: 'item_discard_2', path: 'assets/music/Card_Discard_02.mp3', type: 'audio' },
+    { key: 'item_discard_3', path: 'assets/music/Card_Discard_03.mp3', type: 'audio' },
     { key: 'trap_spring', path: 'assets/music/trap_spring1.mp3', type: 'audio' },
     { key: 'trap_woosh', path: 'assets/music/fast-woosh-230497.mp3', type: 'audio' },
     { key: 'armor_equip', path: 'assets/music/metal_clank.mp3', type: 'audio' },

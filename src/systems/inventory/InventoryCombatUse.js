@@ -977,7 +977,7 @@ export const InventoryCombatUse = {
         // Clean up board artifacts before destroying
         this.cleanupBoardArtifacts(cardSprite);
         
-        SoundHelper.playSound(this.scene, 'item_discard', 0.7);
+        SoundHelper.playVariant(this.scene, 'item_discard', 0.7);
         this.scene.createFloatingText(cardSprite.x, cardSprite.y, {
             key: 'float.itemBroke', vars: { name: translateItemName(this.scene, weapon) },
         }, 0xb51f1e);

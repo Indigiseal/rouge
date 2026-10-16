@@ -306,7 +306,7 @@ export class InventorySystem {
                 slot: slotIndex,
                 card: snapshotHumanRunCard(cardData),
             });
-            SoundHelper.playSound(this.scene, 'item_discard', 0.7);
+            SoundHelper.playVariant(this.scene, 'item_discard', 0.7);
             this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Discarded!', 0xb51f1e);
             this.scene.recordCardDiscarded?.(cardData, cardSprite.x, cardSprite.y);
 
@@ -846,7 +846,7 @@ export class InventorySystem {
         recordHumanRunEvent(this.scene, 'equipped_armor_discarded', {
             armor: snapshotHumanRunCard(armor),
         });
-        SoundHelper.playSound(this.scene, 'item_discard', 0.7);
+        SoundHelper.playVariant(this.scene, 'item_discard', 0.7);
         this.scene.createFloatingText(x, y, 'Discarded!', 0xb51f1e);
         // Counts toward the same discard tally as a bag card, so relics and
         // amulets that pay out per discard cannot tell the two apart.
