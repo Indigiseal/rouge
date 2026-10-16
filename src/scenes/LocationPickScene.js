@@ -162,7 +162,8 @@ export class LocationPickScene extends Phaser.Scene {
       onUpdate: () => { sprite.y = Math.round(sprite.y); },
       onComplete: () => {
         snapOriginToPixelGrid(sprite);
-        SoundHelper.playVariant(this, 'door_land', 0.5);
+        // A door landing makes one of the door sounds, at random.
+        SoundHelper.playVariant(this, 'door_hover', 0.5);
         this.enableCard(entry);
       },
     });

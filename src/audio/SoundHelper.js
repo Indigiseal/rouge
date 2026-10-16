@@ -15,10 +15,10 @@ export class SoundHelper {
         hover_button: ['hover_button_1', 'hover_button_2', 'hover_button_3', 'hover_button_4', 'hover_button_5'],
         dodge_miss: ['dodge_miss_1', 'dodge_miss_2', 'dodge_miss_3'],
         map_select: ['map_select_3'],
-        door_land: ['door_land_1'],
-        // Two knuckle taps on wood (ElevenLabs events door_tap, takes 3 and 1):
-        // hovering a door tests it, it doesn't open it.
-        door_hover: ['door_hover_1', 'door_hover_2'],
+        // Any door, hovered or landing on the path screen: the four knuckle
+        // taps on wood (ElevenLabs events door_tap 3, 1, 2, 4) and the two
+        // soft creaks it used before (events door_hover 2, 3).
+        door_hover: ['door_hover_1', 'door_hover_2', 'door_hover_3', 'door_hover_4', 'door_hover_5', 'door_hover_6'],
         chest_hover: ['chest_hover_1'],
         poison_tick: ['poison_tick_1', 'poison_tick_2'],
         nest_screech: ['nest_screech_1', 'nest_screech_2'],
