@@ -18,6 +18,10 @@ const TILE = 32;
 // the fog is a 6x4 block of big texture starting at frame 32 (16 per row).
 // Frames 16-27 are loose cloud puffs.
 const EDGE_FRAME = 14;
+// The fog's bottom edge (open to the south) and a single row open both ways,
+// for when the boss's floor shows below the fog (Looking Glass).
+const BOTTOM_EDGE_FRAME = 11;
+const BAND_FRAME = 10;
 const interiorFrame = (col, row) => 32 + (row % 4) * 16 + (col % 6);
 const PUFF_FRAMES = 12;
 
@@ -53,7 +57,7 @@ export function fogLineY(floors, cursorFloor, ahead) {
  * Draw the fog into `container` (the map container): solid from `lineY` down
  * to `bottomY`, `left`..`right` wide (map space). Returns the RenderTexture.
  */
-export function drawMapFog(scene, container, { lineY, bottomY, left, right }) {
+export function drawMapFog(scene, container, { lineY, bottomY, left, right, openBottom = false }) {
     if (lineY == null || !scene.textures.exists(MAP_FOG_KEY)) return null;
     const cols = Math.ceil((right - left) / TILE);
     const rows = Math.max(1, Math.ceil((bottomY - lineY) / TILE));
@@ -64,7 +68,10 @@ export function drawMapFog(scene, container, { lineY, bottomY, left, right }) {
     const rt = scene.add.renderTexture(x0, y0, cols * TILE, rows * TILE).setOrigin(0, 0);
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-            rt.drawFrame(MAP_FOG_KEY, r === 0 ? EDGE_FRAME : interiorFrame(c, r), c * TILE, r * TILE);
+            const top = r === 0;
+            const bottom = openBottom && r === rows - 1;
+            const frame = top && bottom ? BAND_FRAME : top ? EDGE_FRAME : bottom ? BOTTOM_EDGE_FRAME : interiorFrame(c, r);
+            rt.drawFrame(MAP_FOG_KEY, frame, c * TILE, r * TILE);
         }
     }
     container.add(rt);

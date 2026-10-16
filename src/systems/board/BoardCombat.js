@@ -954,12 +954,31 @@ function isOpenEnemyCard(card) {
     return !!card?.revealed && !!card.sprite && this.isEnemyType(card.data?.type);
 }
 
+// Wayfarer's Lamp: a random face-down card (not a hidden mimic) turns over
+// at the start of a fight. Free: no AP, no enemy turn.
+function revealForWayfarersLamp() {
+    const count = this.scene.amuletManager?.getFightStartReveals?.() || 0;
+    if (count <= 0) return;
+    const roomType = this.scene.gameState?.roomType || this.scene.roomType || 'COMBAT';
+    if (!['COMBAT', 'ELITE', 'BOSS'].includes(roomType)) return;
+    for (let n = 0; n < count; n++) {
+        const hidden = this.boardCards
+            .map((card, index) => ({ card, index }))
+            .filter(({ card }) => card && !card.revealed && card.data && !card.data.isMimic);
+        if (!hidden.length) return;
+        const { card, index } = hidden[Math.floor(Math.random() * hidden.length)];
+        this.revealCard(index, true);
+        if (card.sprite) this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Lamp!', 0xffcf7f);
+    }
+}
+
 function hasHolographicOmen() {
     const slots = this.scene.inventorySystem?.slots || this.scene.gameState?.inventory || [];
     return slots.some(item => item?.id === 'holographicOmen' || item?.passiveEffect === 'holographicOmen');
 }
 
 function applyHolographicOmenStartEffect() {
+    revealForWayfarersLamp.call(this);
     if (!this.hasHolographicOmen()) return false;
     const roomType = this.scene.gameState?.roomType || this.scene.roomType || 'COMBAT';
     if (!['COMBAT', 'ELITE', 'BOSS'].includes(roomType)) return false;

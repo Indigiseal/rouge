@@ -218,6 +218,13 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     gluttonsCharm: 'blueTeapot',
     veteransCarryall: 'basket',
     tollWrit: 'merchantSeal',
+    heartbloodVial: 'heartVial',
+    starfallPendant: 'starryPendant',
+    wayfarersLamp: 'lamp',
+    sapphireBrooch: 'sapphireBrooch',
+    gildedLeaf: 'goldenLeaf',
+    lookingGlass: 'lookingGlass',
+    maskOfEmbers: 'burningMask',
 });
 
 export const RELIC_ATLAS_KEYS = Object.freeze({

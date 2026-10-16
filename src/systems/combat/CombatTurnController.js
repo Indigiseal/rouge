@@ -613,6 +613,12 @@ export class CombatTurnController {
             }
         }
 
+        // Mask of Embers: an enemy that hurt the hero catches fire.
+        const embers = scene.amuletManager?.getEmberRetaliation?.() || 0;
+        if (tookDamage && embers > 0 && card.data && (card.data.health || 0) > 0) {
+            scene.cardSystem.damageGemTarget(index, embers, 'Embers', 0xef7c4b, 'fire', 'hit');
+        }
+
         // Goblin — club stun on a connecting hit.
         if (!dodged && features.includes('club_stun') && Math.random() < 0.05) {
             scene.gameState.playerStunnedTurns = Math.max(

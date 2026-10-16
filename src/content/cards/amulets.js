@@ -19,6 +19,7 @@ export const AMULET_DROP_DATA = [
   { id: 'tacticiansPin', minFloor: 0, weight: 8, rarity: 'common', group: 'strategy' },
   { id: 'forcedMarch', minFloor: 0, weight: 6, rarity: 'common', group: 'strategy' },
   { id: 'handMirror', minFloor: 0, weight: 6, rarity: 'common', group: 'survival' },
+  { id: 'lookingGlass', minFloor: 0, weight: 5, rarity: 'common', group: 'utility' },
 
   // Uncommon (from floor 10)
   { id: 'ringOfGreaterRegeneration', minFloor: 10, weight: 7, rarity: 'uncommon', group: 'survival' },
@@ -29,6 +30,9 @@ export const AMULET_DROP_DATA = [
   { id: 'runeOfPoison', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'magic' },
   { id: 'cartographersInk', minFloor: 0, weight: 6, rarity: 'uncommon', group: 'utility' },
   { id: 'quickstepCharm', minFloor: 0, weight: 6, rarity: 'uncommon', group: 'magic' },
+  { id: 'heartbloodVial', minFloor: 0, weight: 6, rarity: 'uncommon', group: 'survival' },
+  { id: 'wayfarersLamp', minFloor: 0, weight: 5, rarity: 'uncommon', group: 'strategy' },
+  { id: 'gildedLeaf', minFloor: 0, weight: 5, rarity: 'uncommon', group: 'utility' },
 
   // Rare (from floor 16 = act 2 start; boss can still roll rare earlier — see createAmuletOffer)
   { id: 'vampireFang', minFloor: 16, weight: 4, rarity: 'rare', group: 'offense' },
@@ -48,6 +52,9 @@ export const AMULET_DROP_DATA = [
   { id: 'heartOfHours', minFloor: 16, weight: 3, rarity: 'rare', group: 'magic' },
   { id: 'gluttonsCharm', minFloor: 16, weight: 3, rarity: 'rare', group: 'survival' },
   { id: 'veteransCarryall', minFloor: 16, weight: 3, rarity: 'rare', group: 'utility' },
+  { id: 'starfallPendant', minFloor: 16, weight: 4, rarity: 'rare', group: 'offense' },
+  { id: 'sapphireBrooch', minFloor: 16, weight: 3, rarity: 'rare', group: 'utility' },
+  { id: 'maskOfEmbers', minFloor: 16, weight: 4, rarity: 'rare', group: 'survival' },
 
   // Legendary (shops / boss until boss-only set exists)
   { id: 'glovesOfHermitWizard', minFloor: 0, weight: 2, rarity: 'legendary', group: 'magic' },

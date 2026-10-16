@@ -243,7 +243,9 @@ export class ShopScene extends StationRoomBase {
     }
 
     calculateSellPrice(item) {
-        return shopItemSellPrice(item, this.gameState.currentFloor);
+        const base = shopItemSellPrice(item, this.gameState.currentFloor);
+        const mult = this.gameScene?.amuletManager?.getSellPriceMultiplier?.() || 1;
+        return Math.floor(base * mult);
     }
 
     getItemDisplayName(item) {

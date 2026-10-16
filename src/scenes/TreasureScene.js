@@ -201,8 +201,9 @@ export class TreasureScene extends StationRoomBase {
 
     // A secret room's chest always holds a sigil; an elite's only sometimes —
     // gaining one is meant to be rare. Put on a card the player picks now.
+    const brooch = this.gameScene?.amuletManager?.hasEliteChestSigil?.();
     const sigilHere = this.rewardMode === 'secret'
-      || (this.rewardMode === 'elite' && Math.random() < ELITE_CHEST_SIGIL_CHANCE);
+      || (this.rewardMode === 'elite' && (brooch || Math.random() < ELITE_CHEST_SIGIL_CHANCE));
     if (sigilHere) this.time.delayedCall(450, () => this.offerChestSigil());
   }
 

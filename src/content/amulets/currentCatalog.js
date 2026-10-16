@@ -322,6 +322,56 @@ export function buildCurrentAmuletDefinitions(mgr) {
                     else this.gameState.bonusInventorySlots = (this.gameState.bonusInventorySlots || 0) + 1;
                 },
             },
+            // Taya's new art (sigils branch).
+            heartbloodVial: {
+                ...getAmuletAtlasPresentation('heartbloodVial'),
+                name: 'Heartblood Vial',
+                description: 'Healing potions heal 25% more.',
+                rarity: 'uncommon',
+                modifyPotionHealing: (amount) => Math.ceil(amount * 1.25),
+            },
+            starfallPendant: {
+                ...getAmuletAtlasPresentation('starfallPendant'),
+                name: 'Starfall Pendant',
+                description: '+5% chance of a critical hit (x2) with every weapon.',
+                rarity: 'rare',
+                critChanceBonus: 0.05,
+            },
+            wayfarersLamp: {
+                ...getAmuletAtlasPresentation('wayfarersLamp'),
+                name: "Wayfarer's Lamp",
+                description: 'At the start of each fight, one random face-down card turns over.',
+                rarity: 'uncommon',
+                revealsAtFightStart: 1,
+            },
+            sapphireBrooch: {
+                ...getAmuletAtlasPresentation('sapphireBrooch'),
+                name: 'Sapphire Brooch',
+                description: 'Elite chests always hold a sigil.',
+                rarity: 'rare',
+                eliteChestSigil: true,
+            },
+            gildedLeaf: {
+                ...getAmuletAtlasPresentation('gildedLeaf'),
+                name: 'Gilded Leaf',
+                description: 'The shop pays 50% more for what you sell.',
+                rarity: 'uncommon',
+                sellPriceMultiplier: 1.5,
+            },
+            lookingGlass: {
+                ...getAmuletAtlasPresentation('lookingGlass'),
+                name: 'Looking Glass',
+                description: "The boss's floor is never hidden by the map's fog.",
+                rarity: 'common',
+            },
+            maskOfEmbers: {
+                ...getAmuletAtlasPresentation('maskOfEmbers'),
+                name: 'Mask of Embers',
+                description: 'An enemy that hurts you catches fire and takes 2 damage.',
+                rarity: 'rare',
+                emberRetaliation: 2,
+            },
+
             // Not in the drop catalog: a Tollroad story will hand it out.
             tollWrit: {
                 ...getAmuletAtlasPresentation('tollWrit'),

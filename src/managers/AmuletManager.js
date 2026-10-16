@@ -634,6 +634,21 @@ export class AmuletManager {
         ), 0);
     }
 
+    // Wayfarer's Lamp: face-down cards turned over at the start of a fight.
+    getFightStartReveals() { return this.sumAmuletProperty('revealsAtFightStart'); }
+    // Sapphire Brooch: every elite chest holds a sigil.
+    hasEliteChestSigil() {
+        return this.gameState.activeAmulets.some((amulet) => this.amuletDefinitions[amulet.id]?.eliteChestSigil);
+    }
+    // Gilded Leaf: the shop's buying price for the player's cards.
+    getSellPriceMultiplier() {
+        return this.gameState.activeAmulets.reduce((mult, amulet) => (
+            mult * (this.amuletDefinitions[amulet.id]?.sellPriceMultiplier || 1)
+        ), 1);
+    }
+    // Mask of Embers: damage an attacker takes for hurting the hero.
+    getEmberRetaliation() { return this.sumAmuletProperty('emberRetaliation'); }
+
     // Toll Writ: goblins (anything that steals coins) can't.
     blocksCoinTheft() {
         return this.gameState.activeAmulets.some((amulet) => this.amuletDefinitions[amulet.id]?.blocksCoinTheft);
