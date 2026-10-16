@@ -55,6 +55,8 @@ export const SIGILS = Object.freeze({
     rally:       { name: 'Rally',       frame: 46, side: 'enemy',  enemy: 'goblins attack more often' },
     // Placeholder icons (frames of similar sigils) until their own are drawn:
     // Twin Socket 48, Keen 49, Ransom 50, Bounty 51, Tsunami 52.
+    // Kinship buffs its neighbours, not itself (placeholder icon; frame 53 is its own).
+    kinship:     { name: 'Kinship',     frame: 24, side: 'player', player: 'weapons in the bag slots next to this card hit +1', works: true },
     twinSocket:  { name: 'Twin Socket', frame: 56, side: 'player', player: 'a second gem socket: this weapon can hold two kinds of gem', works: true },
     keen:        { name: 'Keen',        frame: 19, side: 'player', player: '+5% chance of a critical hit (x2)', works: true },
     ransom:      { name: 'Ransom',      frame: 20, side: 'player', player: 'a kill has a 10% chance to drop a crystal', works: true },
@@ -81,7 +83,7 @@ export const WORKING_PLAYER_SIGILS = Object.freeze(
 
 // Which card types a sigil can go on. Most act when a weapon strikes;
 // Regenerate, Thorns, Tempered and Warcry also work from armor, and Mirror only does.
-const ARMOR_SIGILS = new Set(['regenerate', 'thorns', 'tempered', 'mirror', 'warcry']);
+const ARMOR_SIGILS = new Set(['regenerate', 'thorns', 'tempered', 'mirror', 'warcry', 'kinship']);
 const ARMOR_ONLY_SIGILS = new Set(['mirror']);
 export function sigilFitsCardType(id, card) {
     if (!card || !SIGILS[id]) return false;

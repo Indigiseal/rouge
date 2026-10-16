@@ -15,6 +15,7 @@ import { SIGIL_MULTIPLIER, hasStoredSigil, sigilLevel } from '../../content/sigi
 const HONED_PER_USE = 1;          // +damage per earlier use this fight
 const OUTNUMBERED_PER_ENEMY = 1;  // +damage per open enemy on the board
 const PACKRAT_PER_SLOT = 1;       // +damage per empty bag slot
+const KINSHIP_BONUS = 1;          // +damage from each Kinship card beside the weapon
 const DESPERATE_BELOW = 0.25;     // share of max HP
 const REGENERATE_PER_LEVEL = 1;   // HP at the end of each enemy turn
 const LEECH_SHARE = 0.15;         // of the damage dealt, rounded up
@@ -50,6 +51,14 @@ function emptyBagSlots(scene) {
     return slots.filter((card) => !card).length;
 }
 
+// Kinship: the cards in the bag slots right beside `weapon` that carry it.
+function kinshipNeighbours(scene, weapon) {
+    const slots = scene?.inventorySystem?.slots || scene?.gameState?.inventory || [];
+    const at = slots.indexOf(weapon);
+    if (at < 0) return 0;
+    return [slots[at - 1], slots[at + 1]].filter((card) => card && sigilLevel(card, 'kinship') > 0).length;
+}
+
 function wornArmorProtection(scene) {
     const armor = scene?.gameState?.equippedArmor;
     return Math.max(0, Number(armor?.protection) || 0);
@@ -82,6 +91,8 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage) {
         const bonus = openEnemyCount(scene) * OUTNUMBERED_PER_ENEMY * outnumbered;
         if (bonus > 0) { out += bonus; triggered.push('outnumbered'); }
     }
+    const kin = kinshipNeighbours(scene, weapon);
+    if (kin > 0) { out += kin * KINSHIP_BONUS; triggered.push('kinship'); }
     const ironclad = sigilLevel(weapon, 'ironclad');
     if (ironclad > 0) {
         const bonus = wornArmorProtection(scene) * ironclad;
