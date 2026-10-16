@@ -33,6 +33,7 @@ import { EXIT_DOOR_X, EXIT_DOOR_Y } from './ExitDoor.js';
 import { SIGIL_ICONS_KEY, WORKING_PLAYER_SIGILS, addSigil, canTakeSigil, cardSigils, getSigil } from '../content/sigils/sigils.js';
 import { buildSigilIcons, sigilCornerOffset } from './SigilIcons.js';
 import { SHOW_BRIAR_FRAME } from './CardDecorations.js';
+import { TOOLTIP_DEPTH } from './ItemTooltip.js';
 import { isLocationDoorTexture } from '../content/assets/locationCards.js';
 
 // The amulet strip owns the top-left corner, so the hero column starts below
@@ -1430,7 +1431,7 @@ export const CombatHud = {
         const clampedY = Phaser.Math.Clamp(Math.round(y), 4, 360 - height - 4);
 
         this.relicTooltip = this.add.container(clampedX, clampedY, [bg, tooltipText]);
-        this.relicTooltip.setDepth(1000);
+        this.relicTooltip.setDepth(TOOLTIP_DEPTH);
     },
     showArmorTooltip(armor) {
         if (this.armorTooltip) {
@@ -1474,7 +1475,7 @@ export const CombatHud = {
         );
 
         this.armorTooltip = this.add.container(tooltipX, tooltipY, [bg, tooltipText]);
-        this.armorTooltip.setDepth(1000);
+        this.armorTooltip.setDepth(TOOLTIP_DEPTH);
     },
     // Hovering the hero's portrait lists every effect on them: a title, then
     // one line per effect in its own colour (collectPlayerEffectEntries), or a
@@ -1510,7 +1511,7 @@ export const CombatHud = {
         // To the right of the portrait, level with its top.
         const x = Math.round(anchor.x + anchor.displayWidth / 2 + 6);
         const top = Math.round(anchor.y - anchor.displayHeight / 2);
-        this.playerEffectsTooltip = this.add.container(x, top, [bg, ...lines]).setDepth(1000);
+        this.playerEffectsTooltip = this.add.container(x, top, [bg, ...lines]).setDepth(TOOLTIP_DEPTH);
     },
     hidePlayerEffectsTooltip() {
         this.playerEffectsTooltip?.destroy();
