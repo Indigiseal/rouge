@@ -101,7 +101,19 @@ export const RELICS_OTHERS_ATLAS = Object.freeze({
     alchemistSatchel:     { frame: 80, name: 'Alchemist Bag' },
     violetGauntlet:       { frame: 81, name: 'Gloves of the Hermit Wizard' },
     handMirror:           { frame: 82, name: 'Hand Mirror' },
-    twinnedMirror:        { frame: 83, name: 'Twinned Mirror' }
+    twinnedMirror:        { frame: 83, name: 'Twinned Mirror' },
+
+    // Taya's new art (sigils branch). Names are working titles.
+    stormPouch:           { frame: 74, name: 'Storm Pouch' },
+    lamp:                 { frame: 84, name: "Wayfarer's Lamp" },
+    heartVial:            { frame: 85, name: 'Heartblood Vial' },
+    starryPendant:        { frame: 86, name: 'Starfall Pendant' },
+    eyePendant:           { frame: 87, name: "Oracle's Eye" },
+    sapphireBrooch:       { frame: 88, name: 'Sapphire Brooch' },
+    blueTeapot:           { frame: 89, name: 'Blue Teapot' },
+    lookingGlass:         { frame: 90, name: 'Looking Glass' },
+    pocketWatch:          { frame: 91, name: 'Pocket Watch' },
+    goldenLeaf:           { frame: 92, name: 'Gilded Leaf' }
 });
 
 // Gameplay IDs stay stable for saves and balance code. These maps are the
@@ -199,10 +211,10 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     plagueHeart: 'wormVenomVial',
     // Sigils branch (placeholder art from frames already in the sheet).
     cartographersInk: 'featherQuill',
-    oraclesFishbowl: 'fishbowl',
+    oraclesFishbowl: 'eyePendant',
     quickstepCharm: 'fingerlessGloves',
-    heartOfHours: 'chronosHeart',
-    gluttonsCharm: 'breadLoaf',
+    heartOfHours: 'pocketWatch',
+    gluttonsCharm: 'blueTeapot',
     veteransCarryall: 'basket',
     tollWrit: 'merchantSeal',
 });

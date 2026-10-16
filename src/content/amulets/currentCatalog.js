@@ -281,7 +281,7 @@ export function buildCurrentAmuletDefinitions(mgr) {
             },
             oraclesFishbowl: {
                 ...getAmuletAtlasPresentation('oraclesFishbowl'),
-                name: "Oracle's Fishbowl",
+                name: "Oracle's Eye",
                 description: 'The map has no fog: every floor is in sight.',
                 rarity: 'rare',
                 replaces: ['cartographersInk'],

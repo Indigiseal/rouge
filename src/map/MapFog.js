@@ -8,7 +8,7 @@
 // with the map and costs one draw. Fogged rooms are never hoverable anyway:
 // only the next floor's rooms take the pointer, and they are always in sight.
 //
-// Amulets: Cartographer's Ink sees further ahead; Oracle's Fishbowl lifts the
+// Amulets: Cartographer's Ink sees further ahead; Oracle's Eye lifts the
 // fog entirely.
 
 export const MAP_FOG_KEY = 'mapFog';
