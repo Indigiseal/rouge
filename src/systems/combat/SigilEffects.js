@@ -13,6 +13,7 @@ import { SIGIL_MULTIPLIER, hasStoredSigil, sigilLevel } from '../../content/sigi
 
 // Tuning, all per sigil level unless noted.
 const HONED_PER_USE = 1;          // +damage per earlier use this fight
+const BLOODLUST_PER_KILL = 1;     // +damage per kill this weapon made this fight
 const OUTNUMBERED_PER_ENEMY = 1;  // +damage per open enemy on the board
 const PACKRAT_PER_SLOT = 1;       // +damage per empty bag slot
 const KINSHIP_BONUS = 1;          // +damage from each Kinship card beside the weapon
@@ -35,6 +36,13 @@ const WARCRY_CHANCE = 0.1;        // per level, an ally acts twice (max 0.5)
 const multiply = (damage) => Math.floor(damage * SIGIL_MULTIPLIER);
 
 // Honed counts uses per fight; a new floor is a new fight.
+// Bloodlust counts this weapon's kills per fight, the same way.
+function bloodlustKills(scene, weapon) {
+    const floor = scene?.gameState?.currentFloor ?? 0;
+    if (weapon.bloodlustFloor !== floor) return 0;
+    return weapon.bloodlustKills || 0;
+}
+
 function honedUses(scene, weapon) {
     const floor = scene?.gameState?.currentFloor ?? 0;
     if (weapon.honedFloor !== floor) return 0;
@@ -81,6 +89,10 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage) {
     let out = damage;
 
     // Flat bonuses first.
+    if (sigilLevel(weapon, 'bloodlust') > 0) {
+        const bonus = bloodlustKills(scene, weapon) * BLOODLUST_PER_KILL;
+        if (bonus > 0) { out += bonus; triggered.push('bloodlust'); }
+    }
     const honed = sigilLevel(weapon, 'honed');
     if (honed > 0) {
         const bonus = honedUses(scene, weapon) * HONED_PER_USE * honed;
@@ -180,8 +192,15 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         fired.push('frost');
     }
 
-    // Kill rewards: Ransom (a chance of a crystal), Bounty (coins).
+    // Kill rewards: Ransom (a chance of a crystal), Bounty (coins), and
+    // Bloodlust's count for this fight.
     const killed = targetCard?.data && (targetCard.data.health || 0) <= 0;
+    if (killed && sigilLevel(weapon, 'bloodlust') > 0) {
+        weapon.bloodlustKills = bloodlustKills(scene, weapon) + 1;
+        weapon.bloodlustFloor = gs?.currentFloor ?? 0;
+        if (targetCard.sprite) scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 42, `Bloodlust +${weapon.bloodlustKills}`, 0xb51f1e);
+        fired.push('bloodlust');
+    }
     if (killed && gs && sigilLevel(weapon, 'ransom') > 0 && Math.random() < RANSOM_CHANCE) {
         gs.crystals = (gs.crystals || 0) + 1;
         if (targetCard.sprite) scene.playCurrencyGainFlight?.(targetCard.sprite.x, targetCard.sprite.y, 'crystals');

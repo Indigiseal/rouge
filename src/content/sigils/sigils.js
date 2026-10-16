@@ -53,14 +53,16 @@ export const SIGILS = Object.freeze({
     veil:        { name: 'Veil',        frame: 44, side: 'enemy',  enemy: 'flips face-down each turn' },
     barkskin:    { name: 'Barkskin',    frame: 45, side: 'enemy',  enemy: 'immune to ranged attacks' },
     rally:       { name: 'Rally',       frame: 46, side: 'enemy',  enemy: 'goblins attack more often' },
-    // Placeholder icons (frames of similar sigils) until their own are drawn:
-    // Twin Socket 48, Keen 49, Ransom 50, Bounty 51, Tsunami 52.
+    // Placeholder icons (frames of similar sigils) until their own are drawn
+    // (Twin Socket, Keen, Bounty, Tsunami). Ransom wears Taya's red crystal
+    // (47), Bloodlust her +1 (48).
     // Kinship buffs its neighbours, not itself (placeholder icon; frame 53 is its own).
     kinship:     { name: 'Kinship',     frame: 24, side: 'player', player: 'weapons in the bag slots next to this card hit +1', works: true },
     twinSocket:  { name: 'Twin Socket', frame: 56, side: 'player', player: 'a second gem socket: this weapon can hold two kinds of gem', works: true },
     keen:        { name: 'Keen',        frame: 19, side: 'player', player: '+5% chance of a critical hit (x2)', works: true },
-    ransom:      { name: 'Ransom',      frame: 20, side: 'player', player: 'a kill has a 10% chance to drop a crystal', works: true },
+    ransom:      { name: 'Ransom',      frame: 47, side: 'player', player: 'a kill has a 10% chance to drop a crystal', works: true },
     bounty:      { name: 'Bounty',      frame: 20, side: 'player', player: 'a kill gives +2 coins', works: true },
+    bloodlust:   { name: 'Bloodlust',   frame: 48, side: 'player', player: '+1 damage for each kill this weapon makes this fight', works: true },
     tsunami:     { name: 'Tsunami',     frame: 30, side: 'player', player: '10% chance on hit: a wave crashes over the board, 3 damage to every face-up enemy', works: true },
     // A buffer: it never acts twice itself, its side does. Frame 47 is its
     // own icon slot; until that is drawn it wears Rally's horn.
