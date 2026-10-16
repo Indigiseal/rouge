@@ -333,7 +333,10 @@ export class MapViewScene extends Phaser.Scene {
     drawMapFog(this, this.mapContainer, grid);
 
     // The fog drawing back as the map opens, cascading out from the player.
-    if (here) puffFogCascade(this, this.mapContainer, grid, { x: here.__x, y: here.__y });
+    if (here) {
+      puffFogCascade(this, this.mapContainer, grid, { x: here.__x, y: here.__y });
+      SoundHelper.playSound(this, 'fog_lift', 0.45);
+    }
   }
 
   updatePanBounds() {
