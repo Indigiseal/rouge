@@ -194,13 +194,19 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
     }
 
     // Kill rewards: Ransom (a chance of a crystal), Bounty (coins), and
-    // Bloodlust's count for this fight.
+    // Bloodlust's streak: each kill in a row adds one; a hit that doesn't
+    // kill breaks it.
     const killed = targetCard?.data && (targetCard.data.health || 0) <= 0;
-    if (killed && sigilLevel(weapon, 'bloodlust') > 0) {
-        weapon.bloodlustKills = bloodlustKills(scene, weapon) + 1;
+    if (sigilLevel(weapon, 'bloodlust') > 0) {
+        const before = bloodlustKills(scene, weapon);
+        weapon.bloodlustKills = killed ? before + 1 : 0;
         weapon.bloodlustFloor = gs?.currentFloor ?? 0;
-        if (targetCard.sprite) scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 42, `Bloodlust +${weapon.bloodlustKills}`, 0xb51f1e);
-        fired.push('bloodlust');
+        if (killed) {
+            if (targetCard.sprite) scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 42, `Bloodlust +${weapon.bloodlustKills}`, 0xb51f1e);
+            fired.push('bloodlust');
+        } else if (before > 0) {
+            streakBroken(scene, targetCard, 'Bloodlust');
+        }
     }
     if (killed && gs && sigilLevel(weapon, 'ransom') > 0 && Math.random() < RANSOM_CHANCE) {
         gs.crystals = (gs.crystals || 0) + 1;
@@ -233,11 +239,22 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
     scene._sigilLastTarget = targetCard || null;
     scene._sigilLastWeaponHadCombo = sigilLevel(weapon, 'combo') > 0;
     scene._sigilLastDamage = swingDamage;
+    // Honed's streak: each hit that lands adds one; a miss (evaded, immune,
+    // or no damage through) breaks it.
     if (sigilLevel(weapon, 'honed') > 0) {
-        weapon.honedUses = honedUses(scene, weapon) + 1;
+        const before = honedUses(scene, weapon);
+        weapon.honedUses = damageDealt > 0 ? before + 1 : 0;
         weapon.honedFloor = gs?.currentFloor ?? 0;
+        if (damageDealt <= 0 && before > 0) streakBroken(scene, targetCard, 'Honed');
     }
     return fired;
+}
+
+// A Honed or Bloodlust streak just ended: say so over the enemy.
+function streakBroken(scene, targetCard, name) {
+    const sprite = targetCard?.sprite;
+    if (!sprite) return;
+    scene.createFloatingText?.(sprite.x, sprite.y - 54, `${name} lost`, 0xafafa2);
 }
 
 /** Keen: the crit chance a weapon adds to the shared crit roll. */

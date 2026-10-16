@@ -34,7 +34,7 @@ export const SIGILS = Object.freeze({
     merciless:   { name: 'Merciless',   frame: 25, side: 'both',   enemy: 'x1.5 once you are below half health', player: 'x1.5 against enemies at half health or less', works: true },
     ambush:      { name: 'Ambush',      frame: 26, side: 'both',   enemy: 'x1.5 while you are unhurt', player: 'x1.5 against unhurt enemies', works: true },
     unscathed:   { name: 'Unscathed',   frame: 27, side: 'both',   enemy: 'x1.5 until you chip it once', player: 'x1.5 while you are at full health', works: true },
-    honed:       { name: 'Honed',       frame: 28, side: 'both',   enemy: '+1 attack after each attack this fight', player: '+1 damage after each use this fight', works: true },
+    honed:       { name: 'Honed',       frame: 28, side: 'both',   enemy: '+1 attack after each attack this fight', player: '+1 damage for each hit in a row this fight; a miss resets it', works: true },
     ironclad:    { name: 'Ironclad',    frame: 29, side: 'both',   enemy: 'its armor adds to its damage', player: 'your worn armor protection adds to damage', works: true },
     // Ripple (was Ember): no fire in it, so it isn't mistaken for the fire gem.
     ripple:      { name: 'Ripple',      frame: 30, side: 'both',   enemy: 'its hits ripple on to hurt you next turn', player: 'a ripple may spread from the hit to nearby enemies' },
@@ -63,7 +63,7 @@ export const SIGILS = Object.freeze({
     keen:        { name: 'Keen',        frame: 19, side: 'player', player: '+5% chance of a critical hit (x2)', works: true },
     ransom:      { name: 'Ransom',      frame: 47, side: 'player', player: 'a kill has a 10% chance to drop a crystal', works: true },
     bounty:      { name: 'Bounty',      frame: 20, side: 'player', player: 'a kill gives +2 coins', works: true },
-    bloodlust:   { name: 'Bloodlust',   frame: 48, side: 'player', player: '+1 damage for each kill this weapon makes this fight', works: true },
+    bloodlust:   { name: 'Bloodlust',   frame: 48, side: 'player', player: '+1 damage for each kill in a row this fight; a hit that does not kill resets it', works: true },
     tsunami:     { name: 'Tsunami',     frame: 30, side: 'player', player: '10% chance on hit: a wave crashes over the board, 3 damage to every face-up enemy', works: true },
     // A buffer: it never acts twice itself, its side does. Frame 47 is its
     // own icon slot; until that is drawn it wears Rally's horn.
