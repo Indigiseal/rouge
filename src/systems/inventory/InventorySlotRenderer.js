@@ -348,6 +348,7 @@ export const InventorySlotRenderer = {
             this.onCardDrag?.(slotIndex, cardSprite);
             this.updateWeaponAttackIndicator(cardSprite, slotIndex);
             this.updateFireReachIndicator(cardSprite, slotIndex);
+            this.updateAvatarDropTarget(cardSprite, slotIndex);
         });
 
         cardSprite.on('dragend', () => {

@@ -1,7 +1,8 @@
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { cardRiders, pinRider, unpinRider } from '../../ui/CardRiders.js';
 import { hideGemSockets } from '../../ui/GemSockets.js';
-import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from '../../ui/NineSlicePanel.js';
+import { createSelectionCorners, createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from '../../ui/NineSlicePanel.js';
+import { setHoverLight } from '../../ui/HoverLight.js';
 import { DISCARD_X } from '../../ui/CombatHud.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
@@ -15,6 +16,11 @@ import {
     spearPierceTargetIndices,
     swordCleaveTargetIndices,
 } from '../../content/cards/weapons.js';
+
+// Dragging a potion or food: corners frame the hero's portrait (80x80).
+const AVATAR_DROP_TYPES = new Set(['potion', 'food']);
+const AVATAR_DROP_OFFSET = 38;
+const AVATAR_DROP_DEPTH = 1500;   // above the board's pips, under tooltips
 
 // Bag slot styling. The near-black ink is used for both the fill and the
 // hairline frame; writing the alpha as a fraction of 255 keeps it legible
@@ -353,6 +359,7 @@ export const InventoryView = {
         if (!live || live.slotIndex !== slotIndex || live.cardSprite !== cardSprite) return false;
         this._liveDrag = null;
         this.destroyFireReachIndicator();
+        this.destroyAvatarDropTarget();
         this.destroyWeaponAttackIndicator();
         // A carried gem's socket hint (see the dragstart in the slot renderer).
         // Safe when none is up.
@@ -578,6 +585,43 @@ export const InventoryView = {
     destroyFireReachIndicator() {
         if (this.fireReachIndicator?.scene) this.fireReachIndicator.destroy();
         this.fireReachIndicator = null;
+    },
+    // Carrying a potion or food: the selection corners frame the hero's
+    // portrait, where it is used, gently breathing. Over the portrait they
+    // close in and the portrait lights up.
+    updateAvatarDropTarget(cardSprite, slotIndex) {
+        const card = this.slots[slotIndex];
+        const avatar = this.scene.playerAvatar;
+        if (!avatar?.visible || !AVATAR_DROP_TYPES.has(card?.type) || this.isEventStation?.()) {
+            this.destroyAvatarDropTarget();
+            return;
+        }
+        if (!this.avatarDropTarget) {
+            const corners = createSelectionCorners(this.scene, avatar.x, avatar.y,
+                AVATAR_DROP_OFFSET, { depth: AVATAR_DROP_DEPTH });
+            if (!corners.length) return;
+            const pulse = this.scene.tweens.add({
+                targets: corners, alpha: { from: 1, to: 0.45 }, duration: 520, yoyo: true, repeat: -1,
+            });
+            this.avatarDropTarget = { corners, pulse, over: null };
+        }
+        const target = this.avatarDropTarget;
+        const over = Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), avatar.getBounds());
+        if (over === target.over) return;
+        target.over = over;
+        const offset = over ? AVATAR_DROP_OFFSET - 4 : AVATAR_DROP_OFFSET;
+        const signs = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+        target.corners.forEach((corner, i) => corner.setPosition(
+            Math.round(avatar.x + signs[i][0] * offset), Math.round(avatar.y + signs[i][1] * offset)));
+        setHoverLight(avatar, over);
+    },
+    destroyAvatarDropTarget() {
+        const target = this.avatarDropTarget;
+        if (!target) return;
+        target.pulse?.remove?.();
+        target.corners.forEach((corner) => corner?.destroy?.());
+        if (target.over) setHoverLight(this.scene.playerAvatar, false);
+        this.avatarDropTarget = null;
     },
     createInventoryUI() {
         this.hideCardTooltip();
