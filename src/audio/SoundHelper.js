@@ -14,7 +14,8 @@ export class SoundHelper {
         thorns_retaliate: ['thorns_retaliate_1', 'thorns_retaliate_2'],
         hover_button: ['hover_button_1', 'hover_button_2', 'hover_button_3', 'hover_button_4', 'hover_button_5'],
         dodge_miss: ['dodge_miss_1', 'dodge_miss_2', 'dodge_miss_3'],
-        map_select: ['map_select_3'],
+        // A quill tap on the parchment map (ElevenLabs events map_select 1, 2).
+        map_select: ['map_select_1', 'map_select_2'],
         // Any door, hovered or landing on the path screen: the four knuckle
         // taps on wood (ElevenLabs events door_tap 3, 1, 2, 4) and the two
         // soft creaks it used before (events door_hover 2, 3).
