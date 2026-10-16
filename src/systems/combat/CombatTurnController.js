@@ -554,7 +554,8 @@ export class CombatTurnController {
                 }
             } else if (ability.type === 'coin_steal') {
                 // Legacy goblin ability (chance + amount on the ability object).
-                if (Math.random() < ability.chance && scene.gameState.coins > 0) {
+                if (Math.random() < ability.chance && scene.gameState.coins > 0
+                    && !scene.amuletManager?.blocksCoinTheft?.()) {
                     const stolenAmount = Math.min(ability.amount, scene.gameState.coins);
                     scene.gameState.coins -= stolenAmount;
                     scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, `-${stolenAmount} coins stolen!`, 0xfbad19);
@@ -565,7 +566,7 @@ export class CombatTurnController {
         });
 
         // Highway Cutpurse — always lifts a flat purse cut on the swing.
-        if (features.includes('coin_steal')) {
+        if (features.includes('coin_steal') && !scene.amuletManager?.blocksCoinTheft?.()) {
             const stolenAmount = Math.min(10, Math.max(0, scene.gameState.coins || 0));
             if (stolenAmount > 0) {
                 scene.gameState.coins -= stolenAmount;

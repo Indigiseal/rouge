@@ -20,6 +20,7 @@ import { translateItemName } from '../../i18n/i18n.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
 import { applyWeaponSigils, onWeaponSigilHit } from '../combat/SigilEffects.js';
 import { getSigil } from '../../content/sigils/sigils.js';
+import { GLUTTON_MAX_AP } from '../../content/amulets/currentCatalog.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 
 // The strike over a weapon card (playWeaponStrikeEffect): how far the card
@@ -101,7 +102,7 @@ export const InventoryCombatUse = {
                 // Find closest enemy to where card was dropped
                 let closestEnemy = -1;
                 let closestDistance = Infinity;
-                
+
                 this.scene.cardSystem.boardCards.forEach((card, index) => {
                     if (card?.revealed && this.isEnemyBoardCard(card)) {
                         const distance = Phaser.Math.Distance.Between(
@@ -114,22 +115,22 @@ export const InventoryCombatUse = {
                         }
                     }
                 });
-                
+
                 if (closestEnemy !== -1 && closestDistance < 150) {
                     SoundHelper.playSound(this.scene, 'fireball_whoosh', 0.5);
-                    
+
                     // Get enemy reference before attacking (in case it gets destroyed)
                     const enemyCard = this.scene.cardSystem.boardCards[closestEnemy];
                     if (enemyCard && enemyCard.sprite) {
                         this.createFireballEffect(enemyCard.sprite);
                     }
-                    
+
                     this.scene.cardSystem.attackEnemy(closestEnemy, magicCard.damage);
                     this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Fireball!', 0xef7c4b);
                     used = true;
                 }
                 break;
-                
+
             case 'frostRing':
                 // Freeze all revealed enemies
                 let frozeAny = false;
@@ -146,7 +147,7 @@ export const InventoryCombatUse = {
                     used = true;
                 }
                 break;
-                
+
             case 'restoration': {
                 this.scene.gameState.playerHealth = this.scene.gameState.maxHealth;
                 const apBeforeRestore = this.scene.gameState.actionsLeft;
@@ -158,12 +159,12 @@ export const InventoryCombatUse = {
                 used = true;
                 break;
             }
-                
+
             case 'soulDrain':
                 // Find closest non-boss enemy
                 let drainTarget = -1;
                 let drainDistance = Infinity;
-                
+
                 this.scene.cardSystem.boardCards.forEach((card, index) => {
                     if (card?.revealed && this.isEnemyBoardCard(card, false)) { // Only non-boss
                         const distance = Phaser.Math.Distance.Between(
@@ -176,20 +177,20 @@ export const InventoryCombatUse = {
                         }
                     }
                 });
-                
+
                 if (drainTarget !== -1 && drainDistance < 150) {
                     const enemy = this.scene.cardSystem.boardCards[drainTarget];
-                    
+
                     // Check if enemy sprite exists before using it
                     if (enemy && enemy.sprite) {
                         enemy.data.health = 0;
-                        
+
                         // Apply healing modifiers from amulets
                         let healAmount = getMagic('soulDrain')?.healAmount ?? 30;
                         if (this.scene.amuletManager) {
                             healAmount = this.scene.amuletManager.modifySpellHealing(healAmount);
                         }
-                        
+
                         this.scene.gameState.playerHealth = Math.min(
                             this.scene.gameState.maxHealth,
                             this.scene.gameState.playerHealth + healAmount
@@ -209,14 +210,14 @@ export const InventoryCombatUse = {
                     }
                 }
                 break;
-                
+
             case 'shadowBlade':
                 this.scene.gameState.shadowBlade = { turns: 10, multiplier: 1.5 };
                 SoundHelper.playSound(this.scene, 'shadowDagger', 0.5);
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Shadow Blade Active!', 0x712a65);
                 used = true;
                 break;
-                
+
             case 'weakness':
                 // Reduce all enemies' damage
                 this.scene.cardSystem.boardCards.forEach((card) => {
@@ -230,21 +231,21 @@ export const InventoryCombatUse = {
                 SoundHelper.playSound(this.scene, 'weakening', 0.5);
                 used = true;
                 break;
-                
+
             case 'boneWall':
                 this.scene.gameState.boneWall = 2; // Reflects next 2 attacks
                 SoundHelper.playSound(this.scene, 'boneWall', 0.5);
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Bone Shield Active!', 0xfef0cf);
                 used = true;
                 break;
-                
+
             case 'magicShield':
                 this.scene.gameState.magicShield = { turns: 10, multiplier: 1.2 };
                 SoundHelper.playSound(this.scene, 'magicShield', 0.5);
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Magic Shield Active!', 0x3f818f);
                 used = true;
                 break;
-                
+
             case 'smokeScreen':
                 // Flip all face-up non-boss enemy cards back down.
                 // Boss is intentionally excluded — it cannot be hidden.
@@ -274,7 +275,7 @@ export const InventoryCombatUse = {
                 }
                 break;
         }
-        
+
         if (used) {
             const returnedByAmulet = Boolean(this.scene.amuletManager?.shouldReturnMagicCard?.());
             recordHumanRunEvent(this.scene, 'magic_used', {
@@ -395,7 +396,7 @@ export const InventoryCombatUse = {
         const weapon = this.slots[slotIndex];
         if (!weapon) return;
         const weaponBeforeUse = snapshotHumanRunCard(weapon);
-        
+
         // Generic defensive weapon hook. Bows deliberately cannot use it;
         // the type guard also protects runs loaded from pre-removal saves.
         if (weapon.special === 'block' && weapon.weaponType !== 'bow') {
@@ -412,15 +413,15 @@ export const InventoryCombatUse = {
                 this.scene.scheduleEnemyTurn?.();
                 SoundHelper.playVariant(this.scene, 'block_ready', 0.5);
                 this.scene.createFloatingText(
-                    this.scene.playerAvatar.x, 
-                    this.scene.playerAvatar.y, 
-                    'Blocking next attack!', 
+                    this.scene.playerAvatar.x,
+                    this.scene.playerAvatar.y,
+                    'Blocking next attack!',
                     0x3f818f
                 );
-                
+
                 // Reduce weapon durability for blocking (with amulet modifier)
-                const durabilityLoss = this.scene.amuletManager ? 
-                    Math.random() < this.scene.amuletManager.getWeaponDurabilityRate() ? 1 : 0 
+                const durabilityLoss = this.scene.amuletManager ?
+                    Math.random() < this.scene.amuletManager.getWeaponDurabilityRate() ? 1 : 0
                     : 1;
                 weapon.durability -= durabilityLoss;
                 recordHumanRunEvent(this.scene, 'weapon_blocked', {
@@ -429,26 +430,26 @@ export const InventoryCombatUse = {
                     before: weaponBeforeUse,
                     after: snapshotHumanRunCard(weapon),
                 });
-                
+
                 // Check if weapon breaks
                 if (weapon.durability <= 0) {
                     this.handleWeaponBreak(weapon, cardSprite, slotIndex);
                     return;
                 }
-                
+
                 // Update info text and return to slot
                 this.updateWeaponInfoText(cardSprite, weapon);
                 this.returnWeaponToSlotDelayed(slotIndex, cardSprite);
                 return;
             }
         }
-        
+
         // Resolve and validate the intended primary target before spending AP.
         // Taunt constrains target selection; it must not turn an invalid drop
         // into an attack that consumes the player's turn and hits nothing.
         let closestEnemy = -1;
         let closestDistance = Infinity;
-        
+
         this.scene.cardSystem.boardCards.forEach((card, index) => {
             if (card && card.revealed && this.isEnemyBoardCard(card)) {
                 const distance = Phaser.Math.Distance.Between(
@@ -527,7 +528,7 @@ export const InventoryCombatUse = {
             this.playWeaponStrikeEffect(cardSprite);
             let attackDamage = weapon.damage;
             const characterId = this.scene.gameState.characterId;
-            
+
             // Apply weakness penalty when exhausted (out of action points)
             if (wasExhausted) {
                 attackDamage = Math.ceil(attackDamage * 0.8); // 20% weaker
@@ -577,11 +578,11 @@ export const InventoryCombatUse = {
                 if (wasExhausted) attackDamage = Math.ceil(attackDamage * 0.8);
                 didCrit = true;
             }
-            
+
             // Handle special abilities
             let attackCount = 1;
             let heavyCleave = false;
-            
+
             // DAGGER: Dual Wield - Attack twice. The SECOND hit uses the OTHER
             // dagger's stats (damage AND gem), so two socketed daggers contribute
             // both gems on a dual-wield swing — matching what players intuitively
@@ -642,7 +643,7 @@ export const InventoryCombatUse = {
                 targetIndex: closestEnemy,
                 target: snapshotHumanRunCard(targetBefore?.data),
             });
-            
+
             // Perform attacks
             for (let i = 0; i < attackCount; i++) {
                 // Check if enemy still exists for subsequent attacks
@@ -732,7 +733,7 @@ export const InventoryCombatUse = {
             ) {
                 this.applyFrontVolleyTalent(closestEnemy, weapon, talentFx.frontVolleyFlat);
             }
-            
+
             // Un-equip the weapon after the attack sequence
             this.scene.gameState.equippedWeapon = null;
             recordHumanRunEvent(this.scene, 'weapon_attack_result', {
@@ -742,14 +743,14 @@ export const InventoryCombatUse = {
                 targetIndex: closestEnemy,
                 targetAfter: snapshotHumanRunCard(this.scene.cardSystem.boardCards[closestEnemy]?.data),
             });
-            
+
             // Durability is now reduced inside attackEnemy, so we don't need to do it here.
             // We just need to check if the weapon broke.
             if (weapon.durability <= 0) {
                 this.handleWeaponBreak(weapon, cardSprite, slotIndex);
                 return;
             }
-            
+
             // Update weapon info text
             this.updateWeaponInfoText(cardSprite, weapon);
         } else {
@@ -760,7 +761,7 @@ export const InventoryCombatUse = {
                 nearestEnemyDistance: Number.isFinite(closestDistance) ? closestDistance : null,
             });
         }
-        
+
         // Return weapon to slot after use
         this.returnWeaponToSlotDelayed(slotIndex, cardSprite);
     },
@@ -976,13 +977,13 @@ export const InventoryCombatUse = {
         });
         // Clean up board artifacts before destroying
         this.cleanupBoardArtifacts(cardSprite);
-        
+
         SoundHelper.playVariant(this.scene, 'item_discard', 0.7);
         this.scene.createFloatingText(cardSprite.x, cardSprite.y, {
             key: 'float.itemBroke', vars: { name: translateItemName(this.scene, weapon) },
         }, 0xb51f1e);
         this.scene.grantCardSpentRelicBonus?.(weapon, cardSprite.x, cardSprite.y);
-        
+
         // The spent weapon rises and burns out before it's removed.
         this.scene.cardSystem?.playCardBreakEffect?.(cardSprite);
 
@@ -1001,7 +1002,7 @@ export const InventoryCombatUse = {
                 oldInfoText.destroy();
             }
         }
-        
+
         const cardWithSprite = { sprite: cardSprite, data: weapon, infoText: null };
         this.scene.cardSystem.createCardInfoText(cardWithSprite);
         if (cardWithSprite.infoText) {
@@ -1048,10 +1049,10 @@ export const InventoryCombatUse = {
     returnWeaponToSlotDelayed(slotIndex, cardSprite) {
         const originalSlot = this.slotSprites[slotIndex];
         const weaponStillExists = () => this.slots[slotIndex] && originalSlot && originalSlot.card;
-        
+
         // Clean up any board artifacts immediately
         this.cleanupBoardArtifacts(cardSprite);
-        
+
         // Use a small delay to ensure the attack animation completes
         this.scene.time.delayedCall(300, () => {
             // Only return card if it still exists and wasn't destroyed
@@ -1108,7 +1109,7 @@ export const InventoryCombatUse = {
         if (this.scene.amuletManager) {
             healAmount = this.scene.amuletManager.modifyPotionHealing(healAmount);
         }
-        
+
         // Potions are the ONLY heal source subject to amulet caps (e.g. the
         // Berserker's Warbelt's 50% ceiling). Rest/events/spells use heal().
         this.scene.gameState.healCapped(healAmount);
@@ -1137,10 +1138,10 @@ export const InventoryCombatUse = {
             this.cleanupCardSprites(slotIndex, cardSprite);
             cardSprite.destroy();
         }
-        
+
         this.removeCard(slotIndex, true, 'potion_used');
         this.scene.updateUI();
-        
+
     return true;
     },
     useFood(slotIndex, cardSprite) {
@@ -1155,9 +1156,21 @@ export const InventoryCombatUse = {
         if (this.scene.amuletManager) {
             actionGain = this.scene.amuletManager.modifyFoodAP(actionGain);
         }
-        
+
+        // Glutton's Charm: each meal also raises max AP (capped per run),
+        // before the AP gain so the meal can fill the new point.
+        const gs = this.scene.gameState;
+        const mealMaxGain = this.scene.amuletManager?.getFoodMaxActionGain?.() || 0;
+        if (mealMaxGain > 0 && (gs.gluttonMaxApGained || 0) < GLUTTON_MAX_AP) {
+            const gain = Math.min(mealMaxGain, GLUTTON_MAX_AP - (gs.gluttonMaxApGained || 0));
+            gs.maxActions += gain;
+            gs.gluttonMaxApGained = (gs.gluttonMaxApGained || 0) + gain;
+            this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y - 16,
+                `+${gain} Max AP`, 0x71b1ae);
+        }
+
         this.scene.gameState.actionsLeft = Math.min(
-            this.scene.gameState.maxActions, 
+            this.scene.gameState.maxActions,
             this.scene.gameState.actionsLeft + actionGain
         );
         recordHumanRunEvent(this.scene, 'food_used', {
@@ -1168,14 +1181,14 @@ export const InventoryCombatUse = {
             actionGain,
         });
         this.scene.playActionPointGain?.(actionsBefore, this.scene.gameState.actionsLeft);
-        
+
         this.scene.createFloatingText(
             this.scene.playerAvatar.x,
             this.scene.playerAvatar.y,
             `+${actionGain} Actions`,
             0x71800b
         );
-        
+
         // The food is spent: it dissolves the way a broken weapon does
         // (the player-card animation), then its sprites go.
         if (cardSprite) {
@@ -1183,7 +1196,7 @@ export const InventoryCombatUse = {
             this.cleanupCardSprites(slotIndex, cardSprite);
             cardSprite.destroy();
         }
-        
+
         this.removeCard(slotIndex, true, 'food_used');
         this.scene.updateUI();
         return true;

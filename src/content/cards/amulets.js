@@ -27,6 +27,8 @@ export const AMULET_DROP_DATA = [
   { id: 'runeOfFire', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'magic' },
   { id: 'runeOfZap', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'magic' },
   { id: 'runeOfPoison', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'magic' },
+  { id: 'cartographersInk', minFloor: 0, weight: 6, rarity: 'uncommon', group: 'utility' },
+  { id: 'quickstepCharm', minFloor: 0, weight: 6, rarity: 'uncommon', group: 'magic' },
 
   // Rare (from floor 16 = act 2 start; boss can still roll rare earlier — see createAmuletOffer)
   { id: 'vampireFang', minFloor: 16, weight: 4, rarity: 'rare', group: 'offense' },
@@ -42,6 +44,10 @@ export const AMULET_DROP_DATA = [
   { id: 'armsfindersCharm', minFloor: 16, weight: 4, rarity: 'rare', group: 'utility' },
   { id: 'apothecarysEye', minFloor: 16, weight: 4, rarity: 'rare', group: 'utility' },
   { id: 'gemseekersLens', minFloor: 16, weight: 4, rarity: 'rare', group: 'magic' },
+  { id: 'oraclesFishbowl', minFloor: 16, weight: 3, rarity: 'rare', group: 'utility' },
+  { id: 'heartOfHours', minFloor: 16, weight: 3, rarity: 'rare', group: 'magic' },
+  { id: 'gluttonsCharm', minFloor: 16, weight: 3, rarity: 'rare', group: 'survival' },
+  { id: 'veteransCarryall', minFloor: 16, weight: 3, rarity: 'rare', group: 'utility' },
 
   // Legendary (shops / boss until boss-only set exists)
   { id: 'glovesOfHermitWizard', minFloor: 0, weight: 2, rarity: 'legendary', group: 'magic' },

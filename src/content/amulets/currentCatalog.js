@@ -2,6 +2,17 @@
 import { getAmuletAtlasPresentation } from './RelicsOthersAtlas.js';
 
 /** @param {object} mgr AmuletManager instance (bound as `this` for arrow hooks). */
+// Max action points from an amulet, both the cap and the points in hand.
+function raiseMaxActions(mgr, amount) {
+    const gs = mgr.gameState;
+    gs.maxActions = Math.max(1, (gs.maxActions || 0) + amount);
+    gs.actionsLeft = Math.max(0, Math.min(gs.maxActions, (gs.actionsLeft || 0) + amount));
+    mgr.scene?.updateUI?.();
+}
+
+// Glutton's Charm: how much max AP food can add in one run.
+export const GLUTTON_MAX_AP = 5;
+
 export function buildCurrentAmuletDefinitions(mgr) {
     return (function () {
         return {
@@ -258,6 +269,66 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 description: 'A poisoned enemy explodes on death, dealing 10 damage to every adjacent enemy.',
                 rarity: 'legendary',
                 poisonDeathExplosionDamage: 10,
+            },
+
+            // ── Sigils branch ──────────────────────────────────────────────
+            // The map's fog of war (map/MapFog.js reads these by id).
+            cartographersInk: {
+                ...getAmuletAtlasPresentation('cartographersInk'),
+                name: "Cartographer's Ink",
+                description: 'The map shows 3 more floors through the fog.',
+                rarity: 'uncommon',
+            },
+            oraclesFishbowl: {
+                ...getAmuletAtlasPresentation('oraclesFishbowl'),
+                name: "Oracle's Fishbowl",
+                description: 'The map has no fog: every floor is in sight.',
+                rarity: 'rare',
+                replaces: ['cartographersInk'],
+            },
+            // Max action points. onEquip runs once, when the amulet is taken
+            // (a loaded save already holds the raised maximum).
+            quickstepCharm: {
+                ...getAmuletAtlasPresentation('quickstepCharm'),
+                name: 'Quickstep Charm',
+                description: '+1 max action point.',
+                rarity: 'uncommon',
+                onEquip: function() { raiseMaxActions(this, 1); },
+                onUnequip: function() { raiseMaxActions(this, -1); },
+            },
+            heartOfHours: {
+                ...getAmuletAtlasPresentation('heartOfHours'),
+                name: 'Heart of Hours',
+                description: '+2 max action points.',
+                rarity: 'rare',
+                onEquip: function() { raiseMaxActions(this, 2); },
+                onUnequip: function() { raiseMaxActions(this, -2); },
+            },
+            gluttonsCharm: {
+                ...getAmuletAtlasPresentation('gluttonsCharm'),
+                name: "Glutton's Charm",
+                description: `Each food you eat gives +1 max action point (up to +${GLUTTON_MAX_AP} a run).`,
+                rarity: 'rare',
+                foodMaxActionGain: 1,
+            },
+            // One more bag slot: slots are scarce, so it is a rare find.
+            veteransCarryall: {
+                ...getAmuletAtlasPresentation('veteransCarryall'),
+                name: "Veteran's Carryall",
+                description: '+1 bag slot.',
+                rarity: 'rare',
+                onEquip: function() {
+                    if (this.scene.inventorySystem) this.scene.inventorySystem.expandInventory(1);
+                    else this.gameState.bonusInventorySlots = (this.gameState.bonusInventorySlots || 0) + 1;
+                },
+            },
+            // Not in the drop catalog: a Tollroad story will hand it out.
+            tollWrit: {
+                ...getAmuletAtlasPresentation('tollWrit'),
+                name: 'Toll Writ',
+                description: "Goblins can't steal your coins.",
+                rarity: 'rare',
+                blocksCoinTheft: true,
             },
         
         };

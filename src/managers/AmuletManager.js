@@ -627,6 +627,18 @@ export class AmuletManager {
     }
     
     // Modify food AP
+    // Glutton's Charm: max AP each meal adds.
+    getFoodMaxActionGain() {
+        return this.gameState.activeAmulets.reduce((sum, amulet) => (
+            sum + (this.amuletDefinitions[amulet.id]?.foodMaxActionGain || 0)
+        ), 0);
+    }
+
+    // Toll Writ: goblins (anything that steals coins) can't.
+    blocksCoinTheft() {
+        return this.gameState.activeAmulets.some((amulet) => this.amuletDefinitions[amulet.id]?.blocksCoinTheft);
+    }
+
     modifyFoodAP(baseAmount) {
         let amount = baseAmount;
         this.gameState.activeAmulets.forEach(amulet => {

@@ -197,6 +197,14 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     apothecarysEye: 'moonPotion',
     gemseekersLens: 'magnifyingGlass',
     plagueHeart: 'wormVenomVial',
+    // Sigils branch (placeholder art from frames already in the sheet).
+    cartographersInk: 'featherQuill',
+    oraclesFishbowl: 'fishbowl',
+    quickstepCharm: 'fingerlessGloves',
+    heartOfHours: 'chronosHeart',
+    gluttonsCharm: 'breadLoaf',
+    veteransCarryall: 'basket',
+    tollWrit: 'merchantSeal',
 });
 
 export const RELIC_ATLAS_KEYS = Object.freeze({

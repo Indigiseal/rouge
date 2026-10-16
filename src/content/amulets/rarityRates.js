@@ -62,4 +62,5 @@ export const AMULET_UPGRADE_REPLACES = {
   markOfTreachery: ['markOfHesitation'],
   twinMarks: ['markOfHesitation', 'markOfTreachery'],
   collarOfBinding: ['markOfHesitation', 'markOfTreachery', 'twinMarks'],
+  oraclesFishbowl: ['cartographersInk'],
 };
