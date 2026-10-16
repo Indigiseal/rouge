@@ -22,7 +22,7 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { devToolsEnabled } from '../config/DevTools.js';
 import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 import { createSelectionCorners, createTooltipPanel, TOOLTIP_TEXT_COLOR } from '../ui/NineSlicePanel.js';
-import { CHOICE_SIGHT, computeFogGrid, drawMapFog, mapSightRadius, puffNewlyCleared } from '../map/MapFog.js';
+import { CHOICE_SIGHT, computeFogGrid, drawMapFog, mapSightRadius, puffFogCascade } from '../map/MapFog.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 
 // The header band and title, above the scrolling map nodes (see create()).
@@ -299,8 +299,8 @@ export class MapViewScene extends Phaser.Scene {
 
   // Fog of war (map/MapFog.js): clear in a circle of sight around every room
   // the player has stood in this act and around the rooms they can pick next;
-  // everything else is under cloud. Tiles cleared since the last time the map
-  // was drawn after a move dissolve in puffs, rippling out from the player.
+  // everything else is under cloud. As the map opens, cloud puffs cascade out
+  // from the player over the cleared area.
   drawFog() {
     const floors = this.actMap.floors;
     const nodes = floors.flat().filter(n => typeof n?.__y === 'number');
@@ -332,17 +332,8 @@ export class MapViewScene extends Phaser.Scene {
     const grid = computeFogGrid(points, bounds);
     drawMapFog(this, this.mapContainer, grid);
 
-    // The fog lifting: once per arrival in a room, compare with the sight the
-    // player had before it (every walked room but this one, at the same radius).
-    const act = this.currentAct;
-    const arrivedAt = here ? `${act}:${cursor.floor}:${cursor.node}` : null;
-    if (here && this.gameState.mapFogPuffedAt !== arrivedAt) {
-      const earlier = walked.filter(n => n !== here).map(n => point(n, sight));
-      if (earlier.length) {
-        puffNewlyCleared(this, this.mapContainer, computeFogGrid(earlier, bounds), grid, { x: here.__x, y: here.__y });
-      }
-      this.gameState.mapFogPuffedAt = arrivedAt;
-    }
+    // The fog drawing back as the map opens, cascading out from the player.
+    if (here) puffFogCascade(this, this.mapContainer, grid, { x: here.__x, y: here.__y });
   }
 
   updatePanBounds() {
