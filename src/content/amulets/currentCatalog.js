@@ -361,8 +361,8 @@ export function buildCurrentAmuletDefinitions(mgr) {
             lookingGlass: {
                 ...getAmuletAtlasPresentation('lookingGlass'),
                 name: 'Looking Glass',
-                description: "The boss's floor is never hidden by the map's fog.",
-                rarity: 'common',
+                description: 'Secret rooms show one floor earlier on the map.',
+                rarity: 'uncommon',
             },
             maskOfEmbers: {
                 ...getAmuletAtlasPresentation('maskOfEmbers'),

@@ -308,21 +308,10 @@ export class MapViewScene extends Phaser.Scene {
     const lineY = fogLineY(floors, cursorFloor, fogFloorsAhead(this.gameState));
     const minX = Math.min(...nodes.map(n => n.__x));
     const maxX = Math.max(...nodes.map(n => n.__x));
-    let bottomY = Math.max(...nodes.map(n => n.__y)) + 120;
+    const bottomY = Math.max(...nodes.map(n => n.__y)) + 120;
     // Wide enough to cover the screen however the map is panned.
     const bounds = { left: minX - 360, right: maxX + 360 };
-    // Looking Glass: the fog stops above the boss's floor, which stays in sight.
-    let openBottom = false;
-    const owns = (id) => (this.gameState.activeAmulets || []).some((a) => a?.id === id);
-    if (owns('lookingGlass') && floors.length >= 2) {
-      const bossY = floors[floors.length - 1].find((n) => typeof n?.__y === 'number')?.__y;
-      const beforeY = floors[floors.length - 2].find((n) => typeof n?.__y === 'number')?.__y;
-      if (typeof bossY === 'number' && typeof beforeY === 'number') {
-        bottomY = Math.round((bossY + beforeY) / 2);
-        openBottom = true;
-      }
-    }
-    if (lineY != null && lineY < bottomY) drawMapFog(this, this.mapContainer, { lineY, bottomY, openBottom, ...bounds });
+    drawMapFog(this, this.mapContainer, { lineY, bottomY, ...bounds });
 
     const act = this.currentAct;
     const seen = this.gameState.mapFogLine;

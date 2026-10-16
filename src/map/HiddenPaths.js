@@ -57,14 +57,24 @@ const ALWAYS_PRESENT = Object.keys(HIDDEN_PATH_SOURCES).filter((source) => HIDDE
 
 // A revealNear room shows only while the player stands in the room that leads
 // into it — when it is a door they can actually take. (Once walked, `visited`
-// keeps it drawn.)
+// keeps it drawn.) With the Looking Glass it shows one floor earlier too:
+// from a room with a road to that entrance, so the route can be planned.
 function isNearSecretRoom(gameState, node) {
     const cursor = gameState?.mapCursor;
     if (!cursor) return false;
     const act = node.secretAct || Number(String(node.id || '').match(/^act(\d+)/)?.[1]) || 1;
-    if ((cursor.act || 1) !== act || (cursor.floor ?? -1) !== (node.y ?? 0) - 1) return false;
-    return cursor.node === secretParentIndex(gameState, act, node);
+    if ((cursor.act || 1) !== act) return false;
+    const parent = secretParentIndex(gameState, act, node);
+    const floor = cursor.floor ?? -1;
+    if (floor === (node.y ?? 0) - 1) return cursor.node === parent;
+    if (floor === (node.y ?? 0) - 2 && ownsAmulet(gameState, 'lookingGlass')) {
+        const here = gameState?.dungeonMap?.[`act${act}`]?.floors?.[floor]?.[cursor.node];
+        return Array.isArray(here?.connections) && here.connections.includes(parent);
+    }
+    return false;
 }
+
+const ownsAmulet = (gameState, id) => (gameState?.activeAmulets || []).some((a) => a?.id === id);
 
 // Index, on the floor before it, of the room whose secretLinks lead to `node`.
 function secretParentIndex(gameState, act, node) {
