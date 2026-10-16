@@ -9,20 +9,21 @@ import { InventoryView } from './inventory/InventoryView.js';
 import { InventorySlotRenderer } from './inventory/InventorySlotRenderer.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from './HumanRunRecorder.js';
 import { handLockOf } from '../content/combat/handLock.js';
+import { sigilLevel } from '../content/sigils/sigils.js';
 import { translateItemName } from '../i18n/i18n.js';
 
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
         this.scene = scene;
-        
+
         // Check for Bottomless Bag bonus slots
         const baseSlots = 5;
         const bonusSlots = this.scene.gameState.bonusInventorySlots || 0;
         const totalSlots = baseSlots + bonusSlots;
-        
+
         // Initialize slots array with proper size
         this.slots = new Array(totalSlots).fill(null);
-        
+
         // If we have existing inventory, copy it properly
         if (existingInventory && Array.isArray(existingInventory)) {
             existingInventory.forEach((item, i) => {
@@ -31,7 +32,7 @@ export class InventorySystem {
                 }
             });
         }
-        
+
         this.slotSprites = [];
         this.discardArea = null;
         this.armorPanel = null;
@@ -97,6 +98,36 @@ export class InventorySystem {
 
         const maxSlots = CardDataGenerator.weaponGemSlots(weapon);
         const currentCount = weapon.gemEffect ? (weapon.gemCount || 1) : 0;
+
+        // Twin Socket: a different gem (or more of the second one) goes in
+        // the second socket, which stacks the same way.
+        if (weapon.gemEffect && weapon.gemEffect !== gem.gemEffect && sigilLevel(weapon, 'twinSocket') > 0
+            && (!weapon.gem2Effect || weapon.gem2Effect === gem.gemEffect)) {
+            const count2 = weapon.gem2Effect ? (weapon.gem2Count || 1) : 0;
+            if (count2 >= maxSlots) {
+                SoundHelper.playVariant(this.scene, 'invalid_action', 0.5);
+                this.scene.createFloatingText(512, 380, 'Gem slots full!', 0xb51f1e);
+                return false;
+            }
+            weapon.gem2Effect = gem.gemEffect;
+            weapon.gem2Name = gem.name;
+            weapon.gem2Color = gem.color;
+            weapon.gem2Count = count2 + 1;
+            recordHumanRunEvent(this.scene, 'gem_socketed', {
+                weaponSlot: weaponSlotIndex,
+                gem: snapshotHumanRunCard(gem),
+                weapon: snapshotHumanRunCard(weapon),
+                socket: 2,
+            });
+            this.syncGameStateInventory();
+            if (rebuild) this.rebuildInventorySprites();
+            this.scene.createFloatingText(512, 380, {
+                key: 'float.gemSocketed',
+                vars: { name: translateItemName(this.scene, gem), stack: weapon.gem2Count > 1 ? ` (x${weapon.gem2Count})` : '' },
+            }, gem.color || 0xffcf7f);
+            SoundHelper.playSound(this.scene, 'gem_socket', 0.5);
+            return true;
+        }
 
         // Reject mismatched gem types
         if (weapon.gemEffect && weapon.gemEffect !== gem.gemEffect) {
@@ -259,8 +290,8 @@ export class InventorySystem {
         this.lastAddedSlot = -1;
         // Gems can be carried: a gem in the bag is socketed later by dropping
         // it on a weapon (handleCardDrop). They used to be refused here.
-        let emptySlot = preferredSlot !== -1 && this.slots[preferredSlot] === null 
-            ? preferredSlot 
+        let emptySlot = preferredSlot !== -1 && this.slots[preferredSlot] === null
+            ? preferredSlot
             : this.slots.findIndex(slot => slot === null);
         if (emptySlot === -1) {
             this.scene.createFloatingText(512, 400, 'Inventory Full!', 0xb51f1e);
@@ -298,7 +329,7 @@ export class InventorySystem {
             this.returnCardToSlot(slotIndex, cardSprite);
             return;
         }
-        
+
         // Check for drop on discard area FIRST to prevent conflicts with other drop zones
         // (allowed inside shop stations too, so players can free inventory space)
         if (this.discardArea && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.discardArea.getBounds())) {
@@ -361,9 +392,9 @@ export class InventorySystem {
                 }
 
                 // Check if cross-tier merge is allowed (Golden Hammer)
-                const canCrossTier = this.scene.amuletManager && 
+                const canCrossTier = this.scene.amuletManager &&
                     this.scene.amuletManager.canCrossTierMerge();
-                
+
                 if (this.canCardsMerge(cardData, targetCardData, canCrossTier)) {
                     // Magic cards cannot be merged
                     if (cardData.type === 'magic') {
@@ -495,7 +526,7 @@ export class InventorySystem {
                 }
             }
         }
-        
+
         // If drop was not on a valid target, or action failed, return to slot
         this.returnCardToSlot(slotIndex, cardSprite);
     }
@@ -504,7 +535,7 @@ export class InventorySystem {
     cleanupCardSprites(slotIndex, cardSprite) {
         this.hideCardTooltip();
         const slot = this.slotSprites[slotIndex];
-        
+
         // Clean up info text
         const infoText = cardSprite.getData('infoText');
         if (infoText) {
@@ -514,14 +545,14 @@ export class InventorySystem {
                 infoText.destroy();
             }
         }
-        
+
         // Clean up slot sprites
         if (slot) {
             if (slot.twinkleSprite) {
                 slot.twinkleSprite.destroy();
                 slot.twinkleSprite = null;
             }
-            
+
             if (slot.hoverSprite) {
                 slot.hoverSprite.destroy();
                 slot.hoverSprite = null;
@@ -536,7 +567,7 @@ export class InventorySystem {
                 slot.gemIndicator.destroy();
                 slot.gemIndicator = null;
             }
-            
+
             if (slot.shadow) {
                 slot.shadow.destroy();
                 slot.shadow = null;
@@ -567,7 +598,7 @@ export class InventorySystem {
         // Use the slot background position as the authoritative position
         const targetX = slotSprite.background.x;
         const targetY = slotSprite.background.y;
-        
+
         // Animate return to slot.
         //
         // Round x and y every frame, the same way the hover lift and the drag
@@ -597,14 +628,14 @@ export class InventorySystem {
                 cardSprite.x = targetX;
                 cardSprite.y = targetY;
                 this.applySlotVisualDepths(slotIndex);
-                
+
                 // Update stored position data
                 cardSprite.setData('originalX', targetX);
                 cardSprite.setData('originalY', targetY);
                 onComplete?.();
             }
         });
-        
+
         // The pips, value, gem, briar frame and the rest ride the card
         // (CardRiders), so they travel home with it on every frame of the
         // tween. They used to be snapped to the slot here at once, so the gem
@@ -666,23 +697,23 @@ export class InventorySystem {
     cleanupBoardArtifacts(cardSprite) {
         // Clean up any stray visual elements that might be on the board
         const boardArea = { x1: 220, x2: 460, y1: 145, y2: 240 };
-        
+
         // Check all sprites in the scene for orphaned elements
         this.scene.children.list.forEach(child => {
             // Check if it's a durability dot or twinkle animation in the board area
             if (child && child.texture) {
-                const isInBoardArea = child.x >= boardArea.x1 && child.x <= boardArea.x2 && 
+                const isInBoardArea = child.x >= boardArea.x1 && child.x <= boardArea.x2 &&
                                       child.y >= boardArea.y1 && child.y <= boardArea.y2;
-                
+
                 if (isInBoardArea) {
                 // Check if it's an orphaned durability dot or twinkle
                 if (child.texture.key && (
-                    child.texture.key === 'durability_dot' || 
+                    child.texture.key === 'durability_dot' ||
                     child.texture.key === 'ten_durability' ||
                     child.texture.key.includes('twinkle'))) {
                         // Check if this sprite is orphaned (not attached to any card)
                         let isOrphaned = true;
-                        
+
                         // Check inventory slots
                         this.slotSprites.forEach(slot => {
                             if (slot.card && slot.card.getData('infoText')) {
@@ -692,7 +723,7 @@ export class InventorySystem {
                                 }
                             }
                         });
-                        
+
                         // If orphaned, destroy it
                         if (isOrphaned) {
                             child.destroy();
@@ -788,13 +819,13 @@ export class InventorySystem {
         const armorData = this.slots[slotIndex];
         if (!armorData) return false;
         const previouslyEquipped = this.scene.gameState.equippedArmor;
-        
+
         // Clean up the dragged sprite and ALL its associated sprites immediately
         if (draggedSprite) {
             this.cleanupCardSprites(slotIndex, draggedSprite);
             draggedSprite.destroy();
         }
-        
+
         // If there's already armor equipped, swap it back to inventory
         if (this.scene.gameState.equippedArmor) {
             const oldArmor = this.scene.gameState.equippedArmor;
@@ -805,7 +836,7 @@ export class InventorySystem {
         } else {
             this.removeCard(slotIndex, true, 'armor_equipped');
         }
-        
+
         // Equip the new armor
         this.scene.gameState.equippedArmor = armorData;
         recordHumanRunEvent(this.scene, 'armor_equipped', {
@@ -814,10 +845,10 @@ export class InventorySystem {
             swappedToInventory: snapshotHumanRunCard(previouslyEquipped),
         });
         SoundHelper.playSound(this.scene, armorEquipSoundKey(this.scene, armorData), 0.6);
-        
+
         this.scene.createFloatingText(
-            this.scene.playerAvatar.x, 
-            this.scene.playerAvatar.y, 
+            this.scene.playerAvatar.x,
+            this.scene.playerAvatar.y,
             `Equipped ${armorData.name}`,
             0xafafa2
         );
@@ -900,11 +931,11 @@ export class InventorySystem {
     mergeCards(indexA, indexB, draggedSprite) {
         const cardA = this.slots[indexA];
         const cardB = this.slots[indexB];
-        
+
         // Check if cross-tier merge is allowed (Golden Hammer)
-        const canCrossTier = this.scene.amuletManager && 
+        const canCrossTier = this.scene.amuletManager &&
             this.scene.amuletManager.canCrossTierMerge();
-        
+
         if (!canCrossTier) {
             // Normal merge - must be same rarity
             if (cardA.rarity !== cardB.rarity) {
@@ -913,12 +944,12 @@ export class InventorySystem {
                 return;
             }
         }
-        
+
         // Determine which card is higher tier for upgrade
         const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
         const indexA_tier = rarityOrder.indexOf(cardA.rarity);
         const indexB_tier = rarityOrder.indexOf(cardB.rarity);
-        
+
         let baseCard = cardA;
         let secondCard = cardB;
         if (canCrossTier && indexA_tier !== indexB_tier) {
@@ -938,19 +969,19 @@ export class InventorySystem {
             { slot: indexA, card: snapshotHumanRunCard(cardA) },
             { slot: indexB, card: snapshotHumanRunCard(cardB) },
         ];
-        
+
         // Clean up dragged sprite and its info text
         if (draggedSprite) {
             this.cleanupCardSprites(indexA, draggedSprite);
             draggedSprite.destroy();
         }
-        
+
         // Remove cards (higher index first to avoid index shifting)
         const firstIndex = Math.max(indexA, indexB);
         const secondIndex = Math.min(indexA, indexB);
         this.removeCard(firstIndex, true, 'merge_source');
         this.removeCard(secondIndex, true, 'merge_source');
-        
+
         // Add upgraded card. Target the slot it will land in (first free one)
         // up front so we can play the merge flicker on top of it afterward.
         const mergedSlot = this.slots.findIndex(slot => slot === null);
@@ -1012,12 +1043,12 @@ export class InventorySystem {
                 }
                 slotSprite.card.destroy();
             }
-            
+
             if (slotSprite.twinkleSprite) {
                 slotSprite.twinkleSprite.destroy();
                 slotSprite.twinkleSprite = null;
             }
-            
+
             if (slotSprite.hoverSprite) {
                 slotSprite.hoverSprite.destroy();
                 slotSprite.hoverSprite = null;
@@ -1032,12 +1063,12 @@ export class InventorySystem {
                 slotSprite.gemIndicator.destroy();
                 slotSprite.gemIndicator = null;
             }
-            
+
             if (slotSprite.shadow) {
                 slotSprite.shadow.destroy();
                 slotSprite.shadow = null;
             }
-            
+
             slotSprite.card = null;
         }
 

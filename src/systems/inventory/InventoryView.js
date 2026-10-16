@@ -542,7 +542,7 @@ export const InventoryView = {
     // gem's. A weapon with Ember and no fire gem shows just that ring.
     updateFireReachIndicator(cardSprite, slotIndex) {
         const weapon = this.slots[slotIndex];
-        const hasFireGem = weapon?.gemEffect === 'fire';
+        const hasFireGem = weapon?.gemEffect === 'fire' || weapon?.gem2Effect === 'fire';
         const hasEmber = weapon?.enchant === 'fireball';
         if (this.stationMode || weapon?.type !== 'weapon' || (!hasFireGem && !hasEmber)) {
             this.destroyFireReachIndicator();
@@ -592,13 +592,13 @@ export const InventoryView = {
                 slot.background.destroy();
                 slot.background = null;
             }
-            
+
             // Clean up shadow
             if (slot.shadow) {
                 slot.shadow.destroy();
                 slot.shadow = null;
             }
-            
+
             // Clean up hover sprite
             if (slot.hoverSprite) {
                 slot.hoverSprite.destroy();
@@ -624,13 +624,13 @@ export const InventoryView = {
                 slot.webOverlay.destroy();
                 slot.webOverlay = null;
             }
-            
+
             // Clean up twinkle sprite
             if (slot.twinkleSprite) {
                 slot.twinkleSprite.destroy();
                 slot.twinkleSprite = null;
             }
-            
+
             // Clean up card and its info if it exists
             if (slot.card) {
                 const infoText = slot.card.getData('infoText');
@@ -651,13 +651,13 @@ export const InventoryView = {
                 slot.card = null;
             }
         });
-        
+
         // Clear the array
         this.slotSprites = [];
-        
+
         // Create inventory slots based on current count
         const slotCount = this.slots.length;
-        
+
         // Layout configuration
         const slotWidth = 50;
         const slotHeight = 70;
@@ -684,10 +684,10 @@ export const InventoryView = {
         // measured leftward from the bag's centre instead of rightward.
         const discardClearWidth = 2 * (inventoryCenterX - (DISCARD_X + 39));
         this.createInventoryPanel(inventoryCenterX, panelY, Math.min(desiredPanelWidth, discardClearWidth));
-        
+
         for (let i = 0; i < slotCount; i++) {
             const x = startX + i * (slotWidth + spacing);
-            
+
             // Slot background — near-black wash at 136/255 alpha, framed by a
             // single pixel of the same colour so the slot reads as a recess in
             // the board rather than a grey box drawn on top of it.
@@ -695,7 +695,7 @@ export const InventoryView = {
                 x, y, slotWidth, slotHeight, SLOT_INK, SLOT_FILL_ALPHA
             );
             slotBg.setDepth(11);
-            
+
             // Bonus slots keep their gold edge — it is the only thing marking
             // slots 5+ as earned — but thinned to match the others.
             if (i >= 5) {
@@ -703,9 +703,9 @@ export const InventoryView = {
             } else {
                 slotBg.setStrokeStyle(1, SLOT_INK);
             }
-            
+
             this.uiGroup.add(slotBg);
-            
+
             this.slotSprites[i] = {
                 background: slotBg,
                 card: null,
@@ -814,7 +814,7 @@ export const InventoryView = {
                 currentItems.push({ data: item, index: index });
             }
         });
-        
+
         // Clean up ALL existing sprites before rebuilding
         this.slotSprites.forEach(slot => {
             if (slot.card) {
@@ -835,12 +835,12 @@ export const InventoryView = {
                 slot.card.destroy();
                 slot.card = null;
             }
-            
+
             if (slot.twinkleSprite) {
                 slot.twinkleSprite.destroy();
                 slot.twinkleSprite = null;
             }
-            
+
             if (slot.hoverSprite) {
                 slot.hoverSprite.destroy();
                 slot.hoverSprite = null;
@@ -855,42 +855,42 @@ export const InventoryView = {
                 slot.gemIndicator.destroy();
                 slot.gemIndicator = null;
             }
-            
+
             if (slot.shadow) {
                 slot.shadow.destroy();
                 slot.shadow = null;
             }
-            
+
             if (slot.background) {
                 slot.background.destroy();
                 slot.background = null;
             }
         });
-        
+
         // Expand slots array
         const oldSize = this.slots.length;
         const newSize = oldSize + additionalSlots;
-        
+
         // Create new slots array
         this.slots = new Array(newSize).fill(null);
-        
+
         // Store the bonus slots count
-        this.scene.gameState.bonusInventorySlots = 
+        this.scene.gameState.bonusInventorySlots =
             (this.scene.gameState.bonusInventorySlots || 0) + additionalSlots;
-        
+
         // Rebuild the UI completely
         this.createInventoryUI();
-        
+
         // Re-add items to their original positions
         currentItems.forEach(item => {
             if (item.index < newSize) {
                 this.addCardDirect(item.data, item.index);
             }
         });
-        
+
         // Update twinkle effects
         this.updateTwinkleEffects();
-        
+
         this.scene.createFloatingText(320, 300, `+${additionalSlots} Inventory Slots!`, 0xfbad19);
     },
     // Special rebuild method that doesn't double-preserve items
@@ -906,12 +906,12 @@ export const InventoryView = {
                         infoText.destroy();
                     }
                 }
-                
+
                 if (slot.twinkleSprite) {
                     slot.twinkleSprite.destroy();
                     slot.twinkleSprite = null;
                 }
-                
+
                 if (slot.hoverSprite) {
                     slot.hoverSprite.destroy();
                     slot.hoverSprite = null;
@@ -927,31 +927,31 @@ export const InventoryView = {
                     slot.gemIndicator.destroy();
                     slot.gemIndicator = null;
                 }
-                
+
                 if (slot.shadow) {
                     slot.shadow.destroy();
                     slot.shadow = null;
                 }
-                
+
                 slot.card.destroy();
                 slot.card = null;
             }
         });
-        
+
         // Re-add sprites for existing items (slots data unchanged)
         this.slots.forEach((cardData, index) => {
             if (cardData) {
                 this.addCardDirect(cardData, index);
             }
         });
-        
+
         // Update twinkle effects
         this.updateTwinkleEffects();
     },
     rebuildInventorySprites() {
         // Store the current data before clearing sprites
         const currentData = [...this.slots];
-        
+
         // THOROUGHLY clear ALL existing sprites
         this.slotSprites.forEach(slot => {
             if (slot.card) {
@@ -971,18 +971,18 @@ export const InventoryView = {
                         infoText.destroy(); // Regular text
                     }
                 }
-                
+
                 // Destroy the card sprite itself
                 slot.card.destroy();
                 slot.card = null;
             }
-            
+
             // Clean up twinkle sprite
             if (slot.twinkleSprite) {
                 slot.twinkleSprite.destroy();
                 slot.twinkleSprite = null;
             }
-            
+
             // Clean up hover sprite
             if (slot.hoverSprite) {
                 slot.hoverSprite.destroy();
@@ -998,24 +998,24 @@ export const InventoryView = {
                 slot.gemIndicator.destroy();
                 slot.gemIndicator = null;
             }
-            
+
             // Clean up shadow
             if (slot.shadow) {
                 slot.shadow.destroy();
                 slot.shadow = null;
             }
         });
-        
+
         // Clear slots data
         this.slots.fill(null);
-        
+
         // Re-add cards without triggering rebuilds
         currentData.forEach((cardData, index) => {
             if (cardData && index < this.slots.length) {
                 this.addCardDirect(cardData, index);
             }
         });
-        
+
         // Update twinkle effects only once at the end
         this.updateTwinkleEffects();
     },
@@ -1120,6 +1120,13 @@ export const InventoryView = {
                 } else if (card.gemEffect === 'poison') {
                     lines.push(tCount(this.scene, 'tooltip.poisonStacks', stack));
                 }
+            }
+            if (card.gem2Effect) {
+                const stack2 = Math.max(1, card.gem2Count || 1);
+                lines.push(t(this.scene, 'tooltip.gemLine', {
+                    effect: translateGemEffect(this.scene, card.gem2Effect),
+                    stack: stack2 > 1 ? ` x${stack2}` : ''
+                }));
             }
             const enchantLine = describeWeaponEnchant(this.scene, card);
             if (enchantLine) lines.push(enchantLine);
@@ -1371,11 +1378,11 @@ export const InventoryView = {
                         twinkleSprite.setScale(1.0);
                         twinkleSprite.setDepth(twinkleDepth);
                         twinkleSprite.play('twinkle_anim');
-                        
+
                         // Make sure it's visible
                         twinkleSprite.setVisible(true);
                         twinkleSprite.setAlpha(1);
-                        
+
                         this.uiGroup.add(twinkleSprite);
                         slotSprite.twinkleSprite = twinkleSprite;
                         // Rides the card from here on, at the slot's centre:

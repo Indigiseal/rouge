@@ -16,6 +16,7 @@
 // uses (canSocketGem below, which mirrors InventorySystem.applyGemToWeapon).
 // A hint that lit up cards the drop would refuse would be worse than none.
 
+import { sigilLevel } from '../content/sigils/sigils.js';
 import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
 
 export const GEM_SPOT_KEY = 'gemSpot';
@@ -36,8 +37,13 @@ const SPOT_DEPTH_FALLBACK = 14;
 export function canSocketGem(weapon, gem) {
     if (!gem || gem.type !== 'gem') return false;
     if (!weapon || weapon.type !== 'weapon') return false;
-    if (weapon.gemEffect && weapon.gemEffect !== gem.gemEffect) return false;
     const maxSlots = CardDataGenerator.weaponGemSlots(weapon);
+    // Twin Socket: a different gem fits the second socket.
+    if (weapon.gemEffect && weapon.gemEffect !== gem.gemEffect && sigilLevel(weapon, 'twinSocket') > 0) {
+        if (weapon.gem2Effect && weapon.gem2Effect !== gem.gemEffect) return false;
+        return (weapon.gem2Effect ? (weapon.gem2Count || 1) : 0) < maxSlots;
+    }
+    if (weapon.gemEffect && weapon.gemEffect !== gem.gemEffect) return false;
     const currentCount = weapon.gemEffect ? (weapon.gemCount || 1) : 0;
     return currentCount < maxSlots;
 }

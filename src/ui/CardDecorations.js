@@ -24,6 +24,8 @@ import { buildSigilIcons, sigilCornerOffset } from './SigilIcons.js';
 import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
 
 const ENCHANT_BRIGHTNESS = 1.35;
+// Twin Socket: how far apart the two stones sit.
+const SECOND_GEM_GAP = 18;
 // Sigils branch: a Reliquary enchant shows as its sigil icon (Frost Ring as
 // Frost...), so the brighter card art is off. true brings it back.
 export const SHOW_ENCHANT_GLOW = false;
@@ -65,6 +67,13 @@ export function buildCardDecorations(scene, cardSprite, cardData, { gemShine = t
         const gemSprite = scene.add.sprite(0, 0, 'gemsTiered', gemFrame);
         gemIndicator.add(gemSprite);
         if (gemShine) attachGemShine(scene, gemSprite, { container: gemIndicator });
+        // Twin Socket: the second stone sits beside the first.
+        if (cardData.gem2Effect) {
+            gemIndicator.each((part) => part.setX(-SECOND_GEM_GAP / 2));
+            if (scene.textures.exists(GEM_SPOT_KEY)) gemIndicator.add(scene.add.image(SECOND_GEM_GAP / 2, 0, GEM_SPOT_KEY));
+            const gem2Frame = gemTierFrame(cardData.gem2Effect, Math.max(1, cardData.gem2Count || 1));
+            gemIndicator.add(scene.add.sprite(SECOND_GEM_GAP / 2, 0, 'gemsTiered', gem2Frame));
+        }
         gemIndicator.restX = spotAt.x;
         gemIndicator.restY = spotAt.y;
         out.gemIndicator = gemIndicator;

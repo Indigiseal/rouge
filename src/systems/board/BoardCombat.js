@@ -28,6 +28,8 @@ import { temperedSaveChance } from '../combat/SigilEffects.js';
 
 // Zap sigil: chance a lightning-gem (yellow stone) hit paralyses its target.
 const LIGHTNING_PARALYSE_CHANCE = 0.1;
+import { secondGemView } from '../../content/cards/gems.js';
+import { keenCritChance } from '../combat/SigilEffects.js';
 import { hideItemTooltip, showControlMarkTooltip } from '../../ui/ItemTooltip.js';
 
 export class BoardCombat {
@@ -558,7 +560,7 @@ function rollEvade(card) {
 function attackEnemy(index, damage, isReflection = false, weaponUsed = null, skipDurability = false, options = {}) {
     const card = this.boardCards[index];
     if (!card || !card.revealed || !this.isEnemyType(card.data.type)) return;
-    
+
     // === front/back gating ===
     // Weapon attacks pass their weapon explicitly from InventoryCombatUse.
     // Do not fall back to the equipped weapon here: non-weapon callers such as
@@ -578,7 +580,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         );
         return;
     }
-    
+
     if (!isReflection && weapon && !options.bypassTargeting) {
         const isRanged = this.isRangedWeapon(weapon);
 
@@ -591,6 +593,8 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
             // Costs the pip all the same — the swing was taken.
             if (weaponGemIsDamaging(weapon)) {
                 this.applyWeaponGemEffect(index, weapon, 0);
+                const gem2 = secondGemView(weapon);
+                if (gem2 && weaponGemIsDamaging(gem2)) this.applyWeaponGemEffect(index, gem2, 0);
                 if (!skipDurability) spendWeaponDurability.call(this);
             }
             return;
@@ -625,7 +629,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
             return;
         }
     }
-    
+
     // Apply amulet damage modifiers to weapon damage (not reflection)
     let finalDamage = damage;
     let feedbackCritical = Boolean(options.critical);
@@ -658,7 +662,8 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     }
 
     const critChance = (this.scene.gameState?.discardCritChance || 0)
-        + (this.scene.amuletManager?.getCriticalChanceBonus?.() || 0);
+        + (this.scene.amuletManager?.getCriticalChanceBonus?.() || 0)
+        + keenCritChance(weapon);
     if (!isReflection && weapon && critChance > 0 && Math.random() < critChance) {
         finalDamage *= 2;
         feedbackCritical = true;
@@ -703,7 +708,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // Reflected damage is the answer to a blow, not a blow of its own, so it
     // shakes on the reflect beat rather than crowding the enemy's own hit.
     CombatSequencer.shakeCard(this.scene, isReflection ? 'reflect' : 'hit', card.sprite);
-    
+
     // Gem effects fire BEFORE the weapon damage lands. If we waited until
     // after, a killing weapon hit would knock the target's health to ≤ 0
     // and burnEnemy / damageGemTarget would short-circuit, silently
@@ -712,6 +717,9 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // weren't touched by the weapon yet.
     if (!isReflection && weapon?.gemEffect && card.sprite?.scene) {
         this.applyWeaponGemEffect(index, weapon, finalDamage);
+        // Twin Socket: the second gem's effect too.
+        const gem2 = secondGemView(weapon);
+        if (gem2 && card.sprite?.scene) this.applyWeaponGemEffect(index, gem2, finalDamage);
     }
 
     // Gem/enchant splash can already defeat (and replace) this slot — do not
@@ -756,14 +764,14 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     if (!isReflection && weapon && finalDamage > 0) {
         this.scene.amuletManager?.processLifesteal?.(finalDamage);
     }
-    
+
     // Reduce weapon durability on attack (only if not reflection damage).
     // Tempered Ingot: halves the rate at which durability is lost.
     // skipDurability=true for the second hit of a dual-wield so it costs only 1 pip total.
     if (!isReflection && !skipDurability) {
         spendWeaponDurability.call(this);
     }
-    
+
     // Elemental hit animation on the struck enemy (fire / poison / lightning)
     if (!isReflection && weapon) {
         let hitFx = null;
@@ -783,6 +791,12 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
             this.applyRelicSlow(card);
         }
         this.splashPoisonGem(index, weapon);
+        // Twin Socket: a poison gem in the second socket poisons as well.
+        const gem2 = secondGemView(weapon);
+        if (gem2?.gemEffect === 'poison') {
+            if (card.data.health > 0) this.applyPoisonGemStacks(card, gem2);
+            this.splashPoisonGem(index, gem2);
+        }
     }
 
     // (Gem effect ran above, before the weapon damage was applied, so we
@@ -1297,7 +1311,7 @@ function removeDefeatedEnemy(index, card) {
                 0x712a65
             );
         }
-        
+
         // Mimic explosion
         if (card.data.name === 'Mimic') {
             this.mimicTreasureExplosion(card.sprite.x, card.sprite.y);
@@ -1326,20 +1340,20 @@ function removeDefeatedEnemy(index, card) {
             amulet.abilities?.forEach(ability => {
                 if (ability.type === 'action_on_kill') {
                     this.scene.gameState.actionsLeft = Math.min(
-                        this.scene.gameState.maxActions, 
+                        this.scene.gameState.maxActions,
                         this.scene.gameState.actionsLeft + ability.amount
                     );
                     this.scene.createFloatingText(
-                        this.scene.playerAvatar.x, 
-                        this.scene.playerAvatar.y, 
-                        `+${ability.amount} Action`, 
+                        this.scene.playerAvatar.x,
+                        this.scene.playerAvatar.y,
+                        `+${ability.amount} Action`,
                         0x71800b
                     );
                     this.scene.updateUI();
                 }
             });
         });
-        
+
         // The collectors react the instant their veteran falls, before a relic
         // can replace his board slot with a death drop.
         const tollVeteranDefeated = Boolean(card.data?.tollVeteran);
@@ -1421,12 +1435,12 @@ function checkFloorClear() {
             c && !c.revealed && this.isEnemyType(c.data?.type)
             && (c.data?.health ?? 1) > 0 && !c.data?.isMimic
         );
-        
+
         if (potentialEnemies) return;
-        
+
         const currentFloor = this.scene.gameState.currentFloor;
         const bossFloors = [15, 30, 45];
-        
+
         if (bossFloors.includes(currentFloor)) {
             // Check if this is the final floor
             if (currentFloor === 45) {

@@ -8,6 +8,7 @@
 // bonuses (Honed, Outnumbered, Ironclad, Packrat) are added before the
 // multipliers, so a multiplier also lifts them.
 
+import { SoundHelper } from '../../audio/SoundHelper.js';
 import { SIGIL_MULTIPLIER, hasStoredSigil, sigilLevel } from '../../content/sigils/sigils.js';
 
 // Tuning, all per sigil level unless noted.
@@ -21,6 +22,11 @@ const VENOM_DAMAGE = 1;           // poison per tick
 const VENOM_TURNS = 3;
 const CUTPURSE_COINS = 1;         // coins per hit
 const FROST_CHANCE = 0.25;        // non-bosses
+const KEEN_CRIT = 0.05;           // added to the crit roll (a crit is x2)
+const RANSOM_CHANCE = 0.1;        // a crystal on a kill
+const BOUNTY_COINS = 2;           // coins on a kill
+const TSUNAMI_CHANCE = 0.1;       // on hit
+const TSUNAMI_DAMAGE = 3;         // to every face-up enemy
 const DEVOURING_CHANCE = 0.08;    // per level, non-bosses only
 const TEMPERED_SAVE = 0.3;        // per level, chance a pip is kept (max 0.9)
 const WARCRY_CHANCE = 0.1;        // per level, an ally acts twice (max 0.5)
@@ -163,6 +169,27 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         fired.push('frost');
     }
 
+    // Kill rewards: Ransom (a chance of a crystal), Bounty (coins).
+    const killed = targetCard?.data && (targetCard.data.health || 0) <= 0;
+    if (killed && gs && sigilLevel(weapon, 'ransom') > 0 && Math.random() < RANSOM_CHANCE) {
+        gs.crystals = (gs.crystals || 0) + 1;
+        if (targetCard.sprite) scene.playCurrencyGainFlight?.(targetCard.sprite.x, targetCard.sprite.y, 'crystals');
+        scene.updateUI?.();
+        fired.push('ransom');
+    }
+    if (killed && gs && sigilLevel(weapon, 'bounty') > 0) {
+        gs.coins = (gs.coins || 0) + BOUNTY_COINS;
+        if (targetCard.sprite) scene.playCurrencyGainFlight?.(targetCard.sprite.x, targetCard.sprite.y, 'coins');
+        scene.updateUI?.();
+        fired.push('bounty');
+    }
+
+    // Tsunami: a chance that a wave crashes over the whole board.
+    if (sigilLevel(weapon, 'tsunami') > 0 && Math.random() < TSUNAMI_CHANCE) {
+        crashTsunami(scene);
+        fired.push('tsunami');
+    }
+
     // Smoke: a kill hides another standing enemy (the Smoke Screen enchant's
     // move). Only the sigil put on the card: a Smoke Screen enchant already
     // does this itself, and counting it here hid two enemies per kill.
@@ -180,6 +207,33 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         weapon.honedFloor = gs?.currentFloor ?? 0;
     }
     return fired;
+}
+
+/** Keen: the crit chance a weapon adds to the shared crit roll. */
+export function keenCritChance(weapon) {
+    return sigilLevel(weapon, 'keen') > 0 ? KEEN_CRIT : 0;
+}
+
+// Tsunami: a wave sweeps the board left to right (placeholder look: a
+// see-through band of water until its art exists), hitting every face-up
+// enemy as it passes.
+function crashTsunami(scene) {
+    const cs = scene?.cardSystem;
+    if (!cs || !scene.add) return;
+    SoundHelper.playSound(scene, 'magic_cast', 0.5);
+    scene.createFloatingText?.(320, 70, 'Tsunami!', 0x71b1ae);
+    const wave = scene.add.rectangle(-80, 150, 120, 250, 0x71b1ae, 0.35).setDepth(2400);
+    scene.tweens.add({ targets: wave, x: 720, duration: 650, ease: 'Sine.easeIn', onComplete: () => wave.destroy() });
+    (cs.boardCards || []).forEach((card, i) => {
+        if (!cs.isOpenEnemyCard?.(card) || (card.data?.health || 0) <= 0 || !card.sprite) return;
+        // Each enemy is hit as the wave reaches it.
+        const delay = Math.max(0, ((card.sprite.x + 80) / 800) * 650);
+        scene.time.delayedCall(delay, () => {
+            if (cs.boardCards[i] === card && (card.data?.health || 0) > 0) {
+                cs.damageGemTarget(i, TSUNAMI_DAMAGE, 'Wave', 0x71b1ae, null, 'hit');
+            }
+        });
+    });
 }
 
 /** Chance, from Tempered, that `card` keeps the pip it would spend. */

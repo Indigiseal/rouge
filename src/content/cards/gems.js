@@ -16,6 +16,23 @@ export const GEMS = [
   { effect: 'lightning', name: 'Lightning Gem', frame: 12, color: 0xffcf7f }
 ];
 
+/**
+ * Twin Socket: a weapon's second gem (gem2Effect, gem2Count...) seen as a
+ * weapon carrying that gem, so every gem rule can run on it unchanged.
+ * null when there is no second gem.
+ */
+export function secondGemView(weapon) {
+  if (!weapon?.gem2Effect) return null;
+  return {
+    ...weapon,
+    gemEffect: weapon.gem2Effect,
+    gemCount: weapon.gem2Count || 1,
+    gemName: weapon.gem2Name,
+    gemColor: weapon.gem2Color,
+    gem2Effect: null,
+  };
+}
+
 export function gemSlotsForRarity(rarity) {
   return GEM_SLOTS_BY_RARITY[rarity] || 1;
 }

@@ -53,6 +53,13 @@ export const SIGILS = Object.freeze({
     veil:        { name: 'Veil',        frame: 44, side: 'enemy',  enemy: 'flips face-down each turn' },
     barkskin:    { name: 'Barkskin',    frame: 45, side: 'enemy',  enemy: 'immune to ranged attacks' },
     rally:       { name: 'Rally',       frame: 46, side: 'enemy',  enemy: 'goblins attack more often' },
+    // Placeholder icons (frames of similar sigils) until their own are drawn:
+    // Twin Socket 48, Keen 49, Ransom 50, Bounty 51, Tsunami 52.
+    twinSocket:  { name: 'Twin Socket', frame: 56, side: 'player', player: 'a second gem socket: this weapon can hold two kinds of gem', works: true },
+    keen:        { name: 'Keen',        frame: 19, side: 'player', player: '+5% chance of a critical hit (x2)', works: true },
+    ransom:      { name: 'Ransom',      frame: 20, side: 'player', player: 'a kill has a 10% chance to drop a crystal', works: true },
+    bounty:      { name: 'Bounty',      frame: 20, side: 'player', player: 'a kill gives +2 coins', works: true },
+    tsunami:     { name: 'Tsunami',     frame: 30, side: 'player', player: '10% chance on hit: a wave crashes over the board, 3 damage to every face-up enemy', works: true },
     // A buffer: it never acts twice itself, its side does. Frame 47 is its
     // own icon slot; until that is drawn it wears Rally's horn.
     warcry:      { name: 'Warcry',      frame: 46, side: 'both',   enemy: 'other enemies: 10% chance to act twice', player: 'carried: your companions get 10% chance to act twice', works: true },

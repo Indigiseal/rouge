@@ -198,7 +198,7 @@ export const CardMergeRules = {
             epic: 'legendary'
         };
         const newRarity = rarityMap[baseCard.rarity] || 'legendary';
-        
+
         // Use CardDataGenerator to create the proper upgraded card
         let upgradedCard;
 
@@ -217,7 +217,7 @@ export const CardMergeRules = {
             upgradedCard = this.forceWeaponTypeAndRarity(upgradedCard, baseCard, newRarity);
         } else if (baseCard.type === 'armor') {
             upgradedCard = this.scene.cardSystem.createCardData('armor', this.scene.gameState.currentFloor);
-            // Override with specific armor type and rarity  
+            // Override with specific armor type and rarity
             upgradedCard = this.forceArmorTypeAndRarity(upgradedCard, baseCard, newRarity);
         } else if (baseCard.type === 'thorns') {
             // Rebuild from the canonical per-rarity table (createThornsCard) so a
@@ -259,7 +259,7 @@ export const CardMergeRules = {
                     : baseCard.sprite
             };
         }
-        
+
         // Merging fully refreshes durability — the upgraded card already
         // comes out at maxDurability from forceWeaponTypeAndRarity/forceArmor...
         // (Previous behavior summed the two worn-down cards' remaining pips,
@@ -308,6 +308,20 @@ export const CardMergeRules = {
                     const slots = CardDataGenerator.weaponGemSlots(upgradedCard);
                     upgradedCard.gemCount = Math.min(slots, gemSource.gemCount || 1);
                 }
+            }
+            // Twin Socket: the second gem is carried through (the base card's
+            // first, the same kind on both adds up, like the first socket).
+            const gem2Base = baseCard.gem2Effect ? baseCard : null;
+            const gem2Second = secondCard.gem2Effect ? secondCard : null;
+            const gem2Source = gem2Base || gem2Second;
+            if (gem2Source) {
+                const slots = CardDataGenerator.weaponGemSlots(upgradedCard);
+                const sameKind = gem2Base && gem2Second && gem2Base.gem2Effect === gem2Second.gem2Effect;
+                upgradedCard.gem2Effect = gem2Source.gem2Effect;
+                upgradedCard.gem2Name = gem2Source.gem2Name;
+                upgradedCard.gem2Color = gem2Source.gem2Color;
+                upgradedCard.gem2Count = Math.min(slots,
+                    (gem2Source.gem2Count || 1) + (sameKind ? (gem2Second.gem2Count || 1) : 0));
             }
         }
 
