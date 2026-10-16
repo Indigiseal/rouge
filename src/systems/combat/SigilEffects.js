@@ -73,6 +73,30 @@ function wornArmorProtection(scene) {
 }
 
 /**
+ * The weapon's flat sigil bonuses right now, which don't depend on the enemy
+ * hit: Bloodlust, Honed, Outnumbered, Kinship, Ironclad, Packrat. The swing
+ * adds them, and the card's damage number shows them, so the two agree.
+ * Returns { bonus, ids }.
+ */
+export function weaponFlatSigilBonus(scene, weapon) {
+    const ids = [];
+    let bonus = 0;
+    if (!weapon) return { bonus, ids };
+    const add = (id, amount) => { if (amount > 0) { bonus += amount; ids.push(id); } };
+    if (sigilLevel(weapon, 'bloodlust') > 0) add('bloodlust', bloodlustKills(scene, weapon) * BLOODLUST_PER_KILL);
+    const honed = sigilLevel(weapon, 'honed');
+    if (honed > 0) add('honed', honedUses(scene, weapon) * HONED_PER_USE * honed);
+    const outnumbered = sigilLevel(weapon, 'outnumbered');
+    if (outnumbered > 0) add('outnumbered', openEnemyCount(scene) * OUTNUMBERED_PER_ENEMY * outnumbered);
+    add('kinship', kinshipNeighbours(scene, weapon) * KINSHIP_BONUS);
+    const ironclad = sigilLevel(weapon, 'ironclad');
+    if (ironclad > 0) add('ironclad', wornArmorProtection(scene) * ironclad);
+    const packrat = sigilLevel(weapon, 'packrat');
+    if (packrat > 0) add('packrat', emptyBagSlots(scene) * PACKRAT_PER_SLOT * packrat);
+    return { bonus, ids };
+}
+
+/**
  * The swing's damage after the weapon's sigils, against `targetCard` (a board
  * card). Returns { damage, baseDamage, triggered: ['merciless', ...] } —
  * baseDamage is the swing before sigils (what Tandem compares next time),
@@ -88,33 +112,10 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage) {
     const heroMax = Math.max(1, gs?.maxHealth || 1);
     let out = damage;
 
-    // Flat bonuses first.
-    if (sigilLevel(weapon, 'bloodlust') > 0) {
-        const bonus = bloodlustKills(scene, weapon) * BLOODLUST_PER_KILL;
-        if (bonus > 0) { out += bonus; triggered.push('bloodlust'); }
-    }
-    const honed = sigilLevel(weapon, 'honed');
-    if (honed > 0) {
-        const bonus = honedUses(scene, weapon) * HONED_PER_USE * honed;
-        if (bonus > 0) { out += bonus; triggered.push('honed'); }
-    }
-    const outnumbered = sigilLevel(weapon, 'outnumbered');
-    if (outnumbered > 0) {
-        const bonus = openEnemyCount(scene) * OUTNUMBERED_PER_ENEMY * outnumbered;
-        if (bonus > 0) { out += bonus; triggered.push('outnumbered'); }
-    }
-    const kin = kinshipNeighbours(scene, weapon);
-    if (kin > 0) { out += kin * KINSHIP_BONUS; triggered.push('kinship'); }
-    const ironclad = sigilLevel(weapon, 'ironclad');
-    if (ironclad > 0) {
-        const bonus = wornArmorProtection(scene) * ironclad;
-        if (bonus > 0) { out += bonus; triggered.push('ironclad'); }
-    }
-    const packrat = sigilLevel(weapon, 'packrat');
-    if (packrat > 0) {
-        const bonus = emptyBagSlots(scene) * PACKRAT_PER_SLOT * packrat;
-        if (bonus > 0) { out += bonus; triggered.push('packrat'); }
-    }
+    // Flat bonuses first (the same ones the card's number shows).
+    const flat = weaponFlatSigilBonus(scene, weapon);
+    out += flat.bonus;
+    triggered.push(...flat.ids);
 
     // Devouring: a chance to end a non-boss outright. HP + armor guarantees
     // the kill while it still goes through the normal hit and death pipeline.

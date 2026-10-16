@@ -744,6 +744,7 @@ export const CombatHud = {
         return best?.data ? translateItemName(this, best.data) : null;
     },
     updateUI() {
+        this.inventorySystem?.refreshWeaponSigilValues?.();
         // Force sync inventory EVERY time UI updates
         if (this.inventorySystem && this.inventorySystem.slots) {
             this.gameState.inventory = [...this.inventorySystem.slots];

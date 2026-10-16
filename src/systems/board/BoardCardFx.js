@@ -13,6 +13,7 @@ import { t, translateItemName } from '../../i18n/i18n.js';
 import { enemySigils } from '../../content/sigils/sigils.js';
 import { artBodyTop, buildSigilIcons, sigilCornerOffset } from '../../ui/SigilIcons.js';
 import { handLockKindOf } from '../../content/combat/handLock.js';
+import { weaponFlatSigilBonus } from '../combat/SigilEffects.js';
 import { scaleGoldReward } from '../../content/economy/gold.js';
 
 // The one value slot painted into the bottom-right of every card that shows a
@@ -76,6 +77,24 @@ export class BoardCardFx {
         this.mimicTreasureExplosion = mimicTreasureExplosion.bind(cs);
         this.mimicEscape = mimicEscape.bind(cs);
     }
+}
+
+// A weapon's damage number, live: its printed damage (class and talent
+// bonuses included) plus the flat sigil bonuses it has right now (Honed,
+// Bloodlust, Kinship...) while it sits in the bag, in green when raised.
+const WEAPON_VALUE_COLOR = '#ffcf7f';
+const WEAPON_VALUE_BOOSTED = '#a8e07a';
+export function refreshWeaponValueText(scene, container) {
+    const text = container?._weaponDamageText;
+    const weapon = container?._weaponData;
+    if (!text?.scene || !weapon) return;
+    const gs = scene?.gameState;
+    const base = getDisplayedWeaponDamage(gs?.characterId, weapon, gs?.talentEffects || null);
+    const inBag = (scene?.inventorySystem?.slots || []).includes(weapon);
+    const bonus = inBag ? weaponFlatSigilBonus(scene, weapon).bonus : 0;
+    const label = `${base + bonus}`;
+    if (text.text !== label) text.setText(label);
+    text.setColor(bonus > 0 ? WEAPON_VALUE_BOOSTED : WEAPON_VALUE_COLOR);
 }
 
 function playBossEntrance(cardSprite, bossData) {
@@ -364,15 +383,15 @@ function createCardInfoText(card) {
             
         case 'weapon': {
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const characterId = this.scene.gameState?.characterId;
-            const talentFx = this.scene.gameState?.talentEffects || null;
-            const damageLabel = `${getDisplayedWeaponDamage(characterId, card.data, talentFx)}`;
-            const damageText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, damageLabel, {
+            const damageText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, '', {
                 fontSize: CARD_VALUE_SIZE,
-                fill: '#ffcf7f',
+                fill: WEAPON_VALUE_COLOR,
                 fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
             container.add(damageText);
+            container._weaponDamageText = damageText;
+            container._weaponData = card.data;
+            refreshWeaponValueText(this.scene, container);
 
             // Durability display with 10-point sprites and individual dots
             const startY = PIP_TOP_TEN;

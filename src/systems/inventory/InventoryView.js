@@ -11,6 +11,7 @@ import { describeWeaponEnchant, ENCHANT_FIRE_SPLASH_RADIUS } from '../../content
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 import { handLockOf } from '../../content/combat/handLock.js';
 import { sigilLine, storedSigils } from '../../content/sigils/sigils.js';
+import { refreshWeaponValueText } from '../board/BoardCardFx.js';
 import {
     axeHeavyCleaveTargetIndices,
     spearPierceTargetIndices,
@@ -581,6 +582,14 @@ export const InventoryView = {
             g.lineStyle(1, 0xef7c4b, 0.5);
             g.strokeCircle(target.x, target.y, radius);
         }
+    },
+    // Live weapon numbers: the flat sigil bonuses (Honed, Bloodlust, Kinship,
+    // Packrat, Outnumbered, Ironclad) change during a fight.
+    refreshWeaponSigilValues() {
+        (this.slotSprites || []).forEach((slot) => {
+            const info = slot?.card?.getData?.('infoText');
+            if (info?._weaponDamageText) refreshWeaponValueText(this.scene, info);
+        });
     },
     destroyFireReachIndicator() {
         if (this.fireReachIndicator?.scene) this.fireReachIndicator.destroy();
