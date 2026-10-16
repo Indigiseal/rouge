@@ -61,7 +61,7 @@ rare shop `uncommon 25 / rare 60 / legendary 15`; босс `rare 30 / legendary 
 | 21 | Close Order | `vacancyStep` | rare | Когда впервые открыты двое+ врагов, они встают рядом (свап с рубашками по ряду или столбцу) | | strategy |
 | 22 | Legendary Whetstone | `legendaryWhetstone` | legendary | 40% не тратить прочность оружия, +10% урона оружия | Weapon Durability earrings | offense |
 | 23 | Gloves of the Hermit Wizard | `glovesOfHermitWizard` | legendary | +35% урона всех камней (ceil) | Fire/Zap/Poison runes (включая Greater) | magic |
-| 24 | General's Table | `generalsTable` | legendary | Раз за акт на карте можно выбрать любой узел следующей линии, не только по веткам | | strategy |
+| 24 | General's Glasses | `generalsTable` | legendary | Раз за акт на карте можно выбрать любой узел следующей линии, не только по веткам | | strategy |
 
 ## Старые амулеты, привязанные к ивентам / боссу
 

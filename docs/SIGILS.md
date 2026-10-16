@@ -117,7 +117,7 @@ They stay amulets:
 |---|---|
 | Board and card placement | Forced March, Close Order, Shifting Medallion, Tactician's Pin |
 | Finding things | Provisioner's Bell, Armsfinder's Charm, Apothecary's Eye, Gemseeker's Lens, Mask of Hollow Whispers |
-| Map | General's Table, Porter's Map |
+| Map | General's Glasses, Porter's Map |
 | Economy | Pouch of Greed, Monocle, Fortune Card |
 | Healing and potions | Ring of Regeneration, Ring of Greater Regeneration, Alchemist Bag |
 | Gems | Runes of Fire / Zap / Poison, their Greater versions, Gloves of the Hermit Wizard, Plague Heart |

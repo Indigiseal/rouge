@@ -247,7 +247,7 @@ export function buildCurrentAmuletDefinitions(mgr) {
             },
             generalsTable: {
                 ...getAmuletAtlasPresentation('generalsTable'),
-                name: "General's Table",
+                name: "General's Glasses",
                 description: 'Once per act, on the map, you may pick any room on the next floor instead of following the branches.',
                 rarity: 'legendary',
                 strategyDetour: true,

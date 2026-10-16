@@ -791,7 +791,7 @@ export class MapViewScene extends Phaser.Scene {
   hideTooltip() { if (this.tooltip) { this.tooltip.destroy(); this.tooltip = null; } }
 
   // Move from the current node to a chosen room. Normal travel only allows
-  // the next floor along connections (or General's Table). Manual pick
+  // the next floor along connections (or General's Glasses). Manual pick
   // (debug) can jump to any room in the act; after that room finishes the
   // map continues from there as usual.
   selectNode(targetFloorIdx, targetNodeIdx, node) {
