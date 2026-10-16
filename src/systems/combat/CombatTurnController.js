@@ -10,6 +10,9 @@ import { HAND_LOCKS, handLockKindOf, handLockOf } from '../../content/combat/han
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
 import { consumeMirrorSigil, enemyWarcryChance, playerWarcryChance, regenerateAmount } from './SigilEffects.js';
 import { SIGIL_MULTIPLIER, getSigil, sigilLevel } from '../../content/sigils/sigils.js';
+
+// A boss summons for sure once it has gone this many turns without one.
+const BOSS_SUMMON_PITY = 4;
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 
 const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
@@ -257,15 +260,24 @@ export class CombatTurnController {
             // Unlike a boss, a frozen (Frost, Arrest) elite cannot summon.
             if (isElite && card.data.frozen > 0) return;
             card.data.abilities.forEach(ability => {
-                if (ability.type === 'summon' && Math.random() < ability.chance) {
+                if (ability.type !== 'summon') return;
+                // A boss that has gone BOSS_SUMMON_PITY turns without a
+                // summon calls one for sure, so a low chance (Soul Eater
+                // 15%) can't leave a whole fight without one.
+                const overdue = isBoss && (card.data.turnsSinceSummon || 0) >= BOSS_SUMMON_PITY;
+                let summoned = false;
+                if (overdue || Math.random() < ability.chance) {
                     const n = ability.count || 1;
                     for (let k = 0; k < n; k++) {
                         // A boss lines its minions up under it; an elite calls
                         // one into the empty board spot nearest it.
-                        if (isBoss) scene.cardSystem.summonEnemy(ability.enemyType, card);
+                        if (isBoss) summoned = scene.cardSystem.summonEnemy(ability.enemyType, card) || summoned;
                         else scene.cardSystem.summonForElite?.(card);
                     }
                 }
+                // The count only resets on a summon that happened (a full
+                // board refuses one, and the boss stays due).
+                if (isBoss) card.data.turnsSinceSummon = summoned ? 0 : (card.data.turnsSinceSummon || 0) + 1;
             });
         });
 

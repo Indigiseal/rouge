@@ -1725,7 +1725,7 @@ function summonEnemy(enemyType, bossCard) {
         }
     }
     
-    if (emptySlot === -1) return;
+    if (emptySlot === -1) return false;
     
     // Create the appropriate enemy based on what the boss summons
     const floor = this.scene.gameState.currentFloor;
@@ -1834,6 +1834,7 @@ function summonEnemy(enemyType, bossCard) {
     this.scene.createFloatingText(x, y - 30, 'Summoned!', 0x712a65);
     
     SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+    return true;
 }
 
 /**
