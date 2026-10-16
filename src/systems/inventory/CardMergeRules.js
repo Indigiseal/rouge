@@ -20,6 +20,8 @@ export const CardMergeRules = {
         if (cardA.type === 'magic' || cardB.type === 'magic') return false;
         if (cardA.type === 'gem' || cardB.type === 'gem') return false;
         if (cardA.type === 'key' || cardB.type === 'key') return false;
+        // The Antidote is one vial: it never combines.
+        if (cardA.curesPoison || cardB.curesPoison) return false;
         if (cardA.type !== cardB.type) return false;
         if (!canCrossTier && cardA.rarity !== cardB.rarity) return false;
         if (this.getMergeKey(cardA) !== this.getMergeKey(cardB)) return false;

@@ -95,7 +95,9 @@ export function getTooltipLines(scene, data) {
         }
         body = lines.join('\n');
     } else if (data.type === 'potion') {
-        body = t(scene, 'tooltip.heals', { amount: data.healAmount ?? 0 });
+        body = data.curesPoison
+            ? t(scene, 'tooltip.curesPoison')
+            : t(scene, 'tooltip.heals', { amount: data.healAmount ?? 0 });
     } else if (data.type === 'food') {
         body = t(scene, 'tooltip.restores', { amount: data.actionAmount ?? 0 });
     } else if (data.type === 'companion') {

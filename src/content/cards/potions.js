@@ -33,6 +33,25 @@ export const POTIONS = [
   }
 ];
 
+// The Antidote: one vial that cures all poison and heals nothing. It never
+// merges (CardMergeRules) and has no tiers.
+export function antidoteCard() {
+  return {
+    type: 'potion',
+    id: 'antidote',
+    name: 'Antidote',
+    curesPoison: true,
+    healAmount: 0,
+    rarity: 'uncommon',
+    sprite: resourceCardKey('antidote', 'uncommon'),
+  };
+}
+// From this floor on, this share of the potions dealt on the board are an
+// Antidote instead (floor 1 and 2 stay plain healing: the tutorial's potion
+// lesson drinks one to heal).
+export const ANTIDOTE_MIN_FLOOR = 3;
+export const ANTIDOTE_CHANCE = 0.2;
+
 // The regular shop's two potions: a cheaper one and a better one, a tier
 // apart. Act 1 (floors 1-15) sells Minor and Healing; from act 2 on, Healing
 // and Greater, so the full heal only reaches the shelf once floors hit hard.

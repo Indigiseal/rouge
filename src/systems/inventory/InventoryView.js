@@ -1207,7 +1207,9 @@ export const InventoryView = {
             lines.push(t(this.scene, 'tooltip.pips', { value: `${card.durability || 0}/${card.maxDurability || card.durability || 0}` }));
             lines.push(t(this.scene, 'tooltip.meleeAttackers'));
         } else if (card.type === 'potion') {
-            lines.push(t(this.scene, 'tooltip.healsColon', { amount: card.healAmount || 0 }));
+            lines.push(card.curesPoison
+                ? t(this.scene, 'tooltip.curesPoison')
+                : t(this.scene, 'tooltip.healsColon', { amount: card.healAmount || 0 }));
         } else if (card.type === 'food') {
             lines.push(t(this.scene, 'tooltip.restoresColon', { amount: card.actionAmount || 0 }));
         } else if (card.type === 'companion') {

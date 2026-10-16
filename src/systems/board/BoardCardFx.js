@@ -278,8 +278,9 @@ function createCardInfoText(card) {
             const potionLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, t(this.scene, 'tooltip.potion'), {
                 fontSize: CARD_LABEL_SIZE, fill: '#600f18', fontFamily: '"HoMM Pixel"'
             }).setOrigin(0.5);
+            // The Antidote heals nothing: no number on it.
             const potionAmount = this.scene.add.text(
-                CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${card.data.healAmount ?? 0}`, {
+                CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, card.data.curesPoison ? '' : `${card.data.healAmount ?? 0}`, {
                     fontSize: CARD_VALUE_SIZE, fill: '#71800b', fontFamily: '"HoMM Pixel"'
                 }
             ).setOrigin(0.5);

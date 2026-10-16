@@ -1093,11 +1093,14 @@ export const InventoryCombatUse = {
         });
     },
     usePotion(slotIndex, cardSprite) {
+        const potionData = this.slots[slotIndex];
+        if (!potionData) return false;
+        // The Antidote cures poison and nothing else: with no poison to cure
+        // it stays in the bag (before the action is spent).
+        if (potionData.curesPoison) return this.useAntidote(slotIndex, cardSprite);
         // In a shop (station mode) there are no enemy turns or action economy,
         // so healing shouldn't spend an action or schedule an enemy turn.
         if (!this.stationMode && !this.scene.useAction()) return false;
-        const potionData = this.slots[slotIndex];
-        if (!potionData) return false;
         const healthBefore = this.scene.gameState.playerHealth;
 
         // Below both guards above: the gulp should only sound once the hero is
@@ -1144,6 +1147,30 @@ export const InventoryCombatUse = {
 
     return true;
     },
+    useAntidote(slotIndex, cardSprite) {
+        const gs = this.scene.gameState;
+        const effects = gs.playerEffects || [];
+        if (!effects.some((e) => e.type === 'poison')) {
+            SoundHelper.playVariant(this.scene, 'invalid_action', 0.45);
+            this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y - 16, 'Not poisoned', 0xafafa2);
+            return false;
+        }
+        if (!this.stationMode && !this.scene.useAction()) return false;
+        SoundHelper.playSound(this.scene, 'potion_drink', 0.5);
+        gs.playerEffects = effects.filter((e) => e.type !== 'poison');
+        recordHumanRunEvent(this.scene, 'antidote_used', { slot: slotIndex, card: snapshotHumanRunCard(this.slots[slotIndex]) });
+        this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poison cured!', 0x71800b);
+        if (cardSprite) {
+            this.scene.cardSystem?.playCardBreakEffect?.(cardSprite);
+            this.cleanupCardSprites(slotIndex, cardSprite);
+            cardSprite.destroy();
+        }
+        this.removeCard(slotIndex, true, 'antidote_used');
+        this.scene.updateUI?.();
+        if (!this.stationMode) this.scene.scheduleEnemyTurn?.();
+        return true;
+    },
+
     useFood(slotIndex, cardSprite) {
         const foodData = this.slots[slotIndex];
         if (!foodData) return false;

@@ -44,6 +44,7 @@ import {
     THORNS_SPRITE_BY_RARITY,
     buildEnemyCardFromDef,
 } from '../../content/cards/index.js';
+import { ANTIDOTE_CHANCE, ANTIDOTE_MIN_FLOOR, antidoteCard } from '../../content/cards/potions.js';
 import { getLocationContent } from '../../content/locations/index.js';
 
 export class CardDataGenerator {
@@ -707,6 +708,8 @@ export class CardDataGenerator {
     }
 
     createPotionCard(floor) {
+        // Now and then the potion is an Antidote (cures poison, never merges).
+        if (floor >= ANTIDOTE_MIN_FLOOR && Math.random() < ANTIDOTE_CHANCE) return antidoteCard();
         // Generated potions stay at base tier. Merging is what creates stronger versions.
         const selectedPotion = this.potionTiers[0];
         

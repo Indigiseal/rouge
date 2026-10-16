@@ -7,7 +7,7 @@
 //   0    coins      coins      coins
 //   1    potion     potion     potion
 //   2    food       food       food
-//   3    key        -          -           <- one key only; it has no tiers
+//   3    key        antidote   -           <- single-face cards, no tiers
 //   4    crystal    crystal    crystal
 //   5    backing    backing    backing     <- the empty card face, per rarity
 //
@@ -98,6 +98,8 @@ export function buildResourceCardTextures(scene) {
     // The key has one icon but still wants a card face behind it. It is loot
     // worth a locked door, so it takes the rare backing.
     draw('key', 'rare', RESOURCE_ROWS.key, 0);
+    // The Antidote: one vial, no tiers, in the key's row on the uncommon backing.
+    draw('antidote', 'uncommon', RESOURCE_ROWS.key, 1);
 
     return true;
 }
