@@ -121,6 +121,10 @@
       "prompt": "A single playing card dropped into a narrow wooden chute: a quick soft whoosh of the card sliding and falling away down the chute, airy, fading into the distance. No thud, no impact, no paper rustle",
       "durationSeconds": 0.6
     },
+    "fog_lift": {
+      "prompt": "Soft magical fog dispersing: a gentle airy whoosh of mist breaking into small clouds and drifting away, a few faint soft puffs, calm and mysterious, quiet. No wind howl, no thunder, no music",
+      "durationSeconds": 1.2
+    },
     "poison_cure": {
       "prompt": "A hero drinks a small antidote vial and the poison leaves: one quick soft gulp of liquid, then a light clean rising shimmer like a breath of fresh air, gentle and soothing. No music, no voice",
       "durationSeconds": 1.0
