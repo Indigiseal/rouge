@@ -93,6 +93,7 @@ export class FloorSpawner {
         this.respawnCardOnBoard = respawnCardOnBoard.bind(cs);
         this.dropWaveCards = dropWaveCards.bind(cs);
         this.dropCardIntoSlot = dropCardIntoSlot.bind(cs);
+        this.freeBoardSpots = freeBoardSpots.bind(cs);
         this.summonForElite = summonForElite.bind(cs);
         this.createCardData = createCardData.bind(cs);
         this.capRewardRarity = capRewardRarity.bind(cs);
@@ -1835,16 +1836,63 @@ function summonEnemy(enemyType, bossCard) {
     SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
 }
 
+/**
+ * The board's free spots: [{ slot, cell }], a cell no card stands on, paired
+ * with an empty boardCards index to keep the card in.
+ *
+ * A slot's index and its cell drift apart once cards trade seats (Close
+ * Order, Forced March and the other strategy amulets move a card's seat but
+ * leave it at its index). An empty index can then name a cell another card
+ * now stands on, and a card dropped there landed on top of it. So a spot is
+ * free by what stands on it: a card's seat (data.brick) or, without one, its
+ * resting position.
+ */
+function freeBoardSpots() {
+    if (!this._boardCells || !this._boardPlace) return [];
+    const taken = new Set();
+    const takenAt = [];
+    this.boardCards.forEach((card) => {
+        if (!card) return;
+        const brick = card.data?.brick;
+        if (brick && Number.isFinite(brick.r) && Number.isFinite(brick.c)) taken.add(`${brick.r},${brick.c}`);
+        else if (Number.isFinite(card.restX) && Number.isFinite(card.restY)) takenAt.push({ x: card.restX, y: card.restY });
+    });
+    const isFree = (cell) => {
+        if (taken.has(`${cell.r},${cell.c}`)) return false;
+        const { x, y } = this.brickToPixel(cell.r, cell.c, this._boardPlace);
+        return !takenAt.some((p) => Math.abs(p.x - x) < 6 && Math.abs(p.y - y) < 6);
+    };
+    const freeCells = [];
+    const seen = new Set();
+    this._boardCells.forEach((cell) => {
+        if (!cell || seen.has(`${cell.r},${cell.c}`)) return;
+        seen.add(`${cell.r},${cell.c}`);
+        if (isFree(cell)) freeCells.push(cell);
+    });
+    const freeSlots = [];
+    for (let i = 0; i < this.boardCards.length; i++) if (!this.boardCards[i]) freeSlots.push(i);
+    // A free cell keeps its own index when that is free too; the rest share
+    // the remaining empty indices.
+    const spots = [];
+    const leftovers = [];
+    freeCells.forEach((cell) => {
+        const own = this._boardCells.findIndex((c) => c && c.r === cell.r && c.c === cell.c);
+        const at = freeSlots.indexOf(own);
+        if (own >= 0 && at >= 0) { spots.push({ slot: own, cell }); freeSlots.splice(at, 1); }
+        else leftovers.push(cell);
+    });
+    leftovers.forEach((cell) => {
+        if (freeSlots.length) spots.push({ slot: freeSlots.shift(), cell });
+    });
+    return spots;
+}
+
 function respawnCardOnBoard(cardData, options = {}) {
     if (!cardData) return false;
-    // Find a slot that's currently empty (a previously-cleared brick cell).
-    let slot = -1;
-    for (let i = 0; i < this.boardCards.length; i++) {
-        if (!this.boardCards[i]) { slot = i; break; }
-    }
-    if (slot === -1 || !this._boardCells || !this._boardPlace) return false;
-    const cell = this._boardCells[slot];
-    if (!cell) return false;
+    // A free spot: a cleared cell no card stands on (see freeBoardSpots).
+    const spot = this.freeBoardSpots()[0];
+    if (!spot) return false;
+    const { slot, cell } = spot;
     const { x, y } = this.brickToPixel(cell.r, cell.c, this._boardPlace);
 
     const shadow = this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6);
@@ -1892,6 +1940,7 @@ function respawnCardOnBoard(cardData, options = {}) {
     // Card is face-down — player must reveal it like any other floor card.
     // Deep-copy the data so it's independent from the merged source object.
     const respawnedData = JSON.parse(JSON.stringify(cardData));
+    respawnedData.brick = { r: cell.r, c: cell.c };
     // The source card was consumed mid-merge and may have been worn down, so
     // restore its pips to full — a respawned card should arrive at full durability.
     if (respawnedData.maxDurability) {
@@ -1911,11 +1960,8 @@ function respawnCardOnBoard(cardData, options = {}) {
 function dropWaveCards() {
     if (!this._boardCells || !this._boardPlace) { if (this._waveState) this._waveState.dropping = false; return false; }
 
-    // Every empty slot that still has a cached cell to drop into.
-    const emptySlots = [];
-    for (let i = 0; i < this.boardCards.length; i++) {
-        if (!this.boardCards[i] && this._boardCells[i]) emptySlots.push(i);
-    }
+    // Every free spot (a cell no card stands on, see freeBoardSpots).
+    const emptySlots = this.freeBoardSpots();
     if (!emptySlots.length || !(this._waveState?.cardsPending > 0)) {
         if (this._waveState) this._waveState.dropping = false;
         return false;
@@ -1926,10 +1972,7 @@ function dropWaveCards() {
     const roomType = this.scene.gameState?.roomType || this.scene.roomType || 'COMBAT';
 
     // Cascade order: top rows first, then left→right, so it reads as a pour.
-    emptySlots.sort((a, b) => {
-        const ca = this._boardCells[a], cb = this._boardCells[b];
-        return (ca.r - cb.r) || (ca.c - cb.c);
-    });
+    emptySlots.sort((a, b) => (a.cell.r - b.cell.r) || (a.cell.c - b.cell.c));
 
     // A wave is a bounded refill, not every empty board cell. This is what
     // keeps a 26-card floor readable at native pixel size.
@@ -1941,8 +1984,7 @@ function dropWaveCards() {
     this._waveState.cardsPending -= waveSlots.length;
 
     const STAGGER = DROP_STAGGER_MS, FALL_MS = DROP_FALL_MS;
-    waveSlots.forEach((slot, order) => {
-        const cell = this._boardCells[slot];
+    waveSlots.forEach(({ slot, cell }, order) => {
 
         // Fresh floor-appropriate card (mostly enemies, via pickCardType).
         const desiredRole = cell.r > 0 ? 'MELEE' : 'RANGED';
@@ -1959,7 +2001,7 @@ function dropWaveCards() {
             // role reassignment.
             if (this.isEnemyType(data.type) && !data.isMimic) data.role = desiredRole;
         }
-        this.dropCardIntoSlot(slot, data, order * STAGGER);
+        this.dropCardIntoSlot(slot, data, order * STAGGER, null, cell);
     });
 
     this.scene.createFloatingText?.(320, 70, 'Reinforcements!', 0xffcf7f);
@@ -1982,8 +2024,9 @@ function dropWaveCards() {
  * like any card dealt there. Reinforcement waves and elite summons both use
  * it. `onLanded` runs once it has settled.
  */
-function dropCardIntoSlot(slot, data, delay = 0, onLanded = null) {
-    const cell = this._boardCells?.[slot];
+function dropCardIntoSlot(slot, data, delay = 0, onLanded = null, atCell = null) {
+    // The cell to land on: the free spot's (freeBoardSpots), else the slot's own.
+    const cell = atCell || this._boardCells?.[slot];
     if (!cell || !this._boardPlace) return null;
     const { x, y } = this.brickToPixel(cell.r, cell.c, this._boardPlace);
     const FALL_MS = DROP_FALL_MS, DROP_HEIGHT = 280;
@@ -2058,19 +2101,17 @@ function summonForElite(eliteCard) {
     // minion's role (front rows melee, the back row ranged).
     const from = elite.brick || { r: 0, c: 0 };
     const wantRole = ownKind ? (ownKind.role || 'MELEE') : null;
-    let slot = -1;
+    let pick = null;
     let best = Infinity;
-    for (let i = 0; i < this.boardCards.length; i++) {
-        const cell = this._boardCells[i];
-        if (this.boardCards[i] || !cell) continue;
-        const rowRole = cell.r > 0 ? 'MELEE' : 'RANGED';
-        const d = Math.abs(cell.r - from.r) * 2 + Math.abs(cell.c - from.c)
+    for (const spot of this.freeBoardSpots()) {
+        const rowRole = spot.cell.r > 0 ? 'MELEE' : 'RANGED';
+        const d = Math.abs(spot.cell.r - from.r) * 2 + Math.abs(spot.cell.c - from.c)
             + (wantRole && rowRole !== wantRole ? 100 : 0);
-        if (d < best) { best = d; slot = i; }
+        if (d < best) { best = d; pick = spot; }
     }
-    if (slot < 0) return false;
+    if (!pick) return false;
 
-    const cell = this._boardCells[slot];
+    const { slot, cell } = pick;
     const role = cell.r > 0 ? 'MELEE' : 'RANGED';
     const minion = ownKind || this.createCardData('enemy', cf, false, this.scene.gameState, null, role);
     if (!minion || !this.isEnemyType(minion.type)) return false;
@@ -2091,7 +2132,7 @@ function summonForElite(eliteCard) {
         this._rebuildBrickNeighbors();
         if (this._boardPlace?.VSTEP) this.computeRowBands(this.boardCards, this._boardPlace.VSTEP);
         this.revealCard(slot, true);
-    });
+    }, cell);
     // It turns face-up on landing: no clicking it over mid-fall, which
     // would spend the player's action on a reveal that happens anyway.
     dropped?.sprite.disableInteractive();
