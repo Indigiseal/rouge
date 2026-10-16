@@ -1794,6 +1794,6 @@ export const CombatHud = {
         const tooltipX = Phaser.Math.Clamp(x, 4, Math.max(4, 636 - width));
         const tooltipY = Phaser.Math.Clamp(y + 18, 36, Math.max(36, 356 - height));
         this.amuletTooltip = this.add.container(tooltipX, tooltipY, [tooltipBg, tooltipText]);
-        this.amuletTooltip.setDepth(100);
+        this.amuletTooltip.setDepth(TOOLTIP_DEPTH);
     },
 };
