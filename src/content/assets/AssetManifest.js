@@ -166,6 +166,8 @@ export const ASSET_MANIFEST = [
     { key: 'holographicOmen', path: 'assets/art/omen.png', type: 'image' },
     { key: 'luckyClover', path: 'assets/art/clover.png', type: 'spritesheet', frameWidth: 53, frameHeight: 70 },
     { key: 'mapNodes', path: 'assets/art/mapNodes42x42.png', type: 'spritesheet', frameWidth: 42, frameHeight: 42 },
+    // Fog of war over the map (the HoMM in Pixel Art fog atlas; map/MapFog.js).
+    { key: 'mapFog', path: 'assets/art/mapFog.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
     // A gem's size IS its level: 5 tiers across, 3 colours down — see
     // gemTierFrame in content/cards/gems.js.
     { key: 'gemsTiered', path: 'assets/art/gemsTiered.png', type: 'spritesheet', frameWidth: 18, frameHeight: 18 },

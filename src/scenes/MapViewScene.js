@@ -22,6 +22,7 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { devToolsEnabled } from '../config/DevTools.js';
 import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 import { createSelectionCorners, createTooltipPanel, TOOLTIP_TEXT_COLOR } from '../ui/NineSlicePanel.js';
+import { drawMapFog, fogFloorsAhead, fogLineY, puffFogBand } from '../map/MapFog.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 
 // The header band and title, above the scrolling map nodes (see create()).
@@ -292,7 +293,33 @@ export class MapViewScene extends Phaser.Scene {
     });
     this.narrativeCheckpoints.forEach(checkpoint => this.drawNarrativeCheckpoint(checkpoint));
 
+    this.drawFog();
     this.centerOnCurrentNode();
+  }
+
+  // Fog of war over the floors past what the player can see (map/MapFog.js).
+  // When the line has moved down since the map was last drawn, the band that
+  // came out of the fog dissolves in cloud puffs.
+  drawFog() {
+    const floors = this.actMap.floors;
+    const nodes = floors.flat().filter(n => typeof n?.__y === 'number');
+    if (!nodes.length) return;
+    const cursorFloor = this.gameState.mapCursor?.floor ?? 0;
+    const lineY = fogLineY(floors, cursorFloor, fogFloorsAhead(this.gameState));
+    const minX = Math.min(...nodes.map(n => n.__x));
+    const maxX = Math.max(...nodes.map(n => n.__x));
+    const bottomY = Math.max(...nodes.map(n => n.__y)) + 120;
+    // Wide enough to cover the screen however the map is panned.
+    const bounds = { left: minX - 360, right: maxX + 360 };
+    drawMapFog(this, this.mapContainer, { lineY, bottomY, ...bounds });
+
+    const act = this.currentAct;
+    const seen = this.gameState.mapFogLine;
+    const nowY = lineY ?? bottomY;
+    if (seen?.act === act && Number.isFinite(seen.y) && seen.y < nowY) {
+      puffFogBand(this, this.mapContainer, { fromY: seen.y, toY: nowY, ...bounds });
+    }
+    this.gameState.mapFogLine = { act, y: nowY };
   }
 
   updatePanBounds() {
