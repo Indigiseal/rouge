@@ -435,7 +435,7 @@ export class InventorySystem {
             const bounds = zone.getBounds();
             if (bounds && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), bounds)) {
                 if (entry.handler(slotIndex, cardData, cardSprite)) {
-                    SoundHelper.playSound(this.scene, 'card_offered', 0.6);
+                    if (entry.sound) SoundHelper.playSound(this.scene, entry.sound, 0.6);
                     return;
                 }
                 refusedByZone = true;

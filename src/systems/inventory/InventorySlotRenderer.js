@@ -344,11 +344,14 @@ export const InventorySlotRenderer = {
             }
 
             this.updateDragOverlay(cardSprite);
+            // A room can follow the drag (the shop's sell box shows a price).
+            this.onCardDrag?.(slotIndex, cardSprite);
             this.updateWeaponAttackIndicator(cardSprite, slotIndex);
             this.updateFireReachIndicator(cardSprite, slotIndex);
         });
 
         cardSprite.on('dragend', () => {
+            this.onCardDrag?.(-1, null);
             this.finishInventoryCardDrag(slotIndex, cardSprite);
         });
         

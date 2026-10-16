@@ -7,7 +7,6 @@ import { StationRoomBase } from './StationRoomBase.js';
 import { flyCurrencyGain } from '../ui/CurrencyFlight.js';
 import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
 import { potionNameForHealAmount, shopPotionCards } from '../content/cards/index.js';
-import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
 import {
     shopAmuletCrystalPrice,
     shopItemBuyPrice,
@@ -15,51 +14,38 @@ import {
 } from '../content/economy/shop.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 
+// The sell box: the discard box's mirror on the right of the bag, same size.
+const SELL_ZONE = Object.freeze({ x: 601, y: 314, w: 64, h: 76 });
+
 export class ShopScene extends StationRoomBase {
     constructor() {
         super({ key: 'ShopScene' });
     }
-    
+
     create(data) {
         this.gameState = data.gameState;
         this.shopItems = [];
-        this.sellingMode = false;
-        this.selectedInventorySlot = -1;
-        
+
         // Get reference to GameScene for inventory access
         this.gameScene = this.scene.get('GameScene');
         this.enableShopStation();
         this.addOptionsCog();
-        
+
         // Title
         createTitle(this, 320, 20, t(this, 'ui.shop.title'), {
             color: '#fef0cf',
             fallbackSize: '28px'
         });
-        
-        // Mode toggle button
-        this.modeButton = this.add.text(480, 45, t(this, 'ui.shop.sellItems'), {
-            fontSize: '14px',
-            fill: '#fef0cf',
-            backgroundColor: '#51484b',
-            padding: { x: 8, y: 4 },
-            fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        })
-        .setOrigin(0.5)
-        .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => {
-            SoundHelper.playVariant(this, 'button_click', 0.5);
-            this.toggleMode();
-        });
-        
+
         // Generate and display shop items
         this.generateShopItems();
         this.displayShopItems();
         this.createShopIllustrationBoard(1, 0, 164);
-        
-        // Create inventory display (initially hidden)
-        this.createInventoryDisplay();
-        
+
+        // Selling: drag a bag card onto the sell box.
+        this.createSellZone();
+        this.events.once('shutdown', () => this.destroySellZone());
+
         // Continue button
         this.createStationContinueButton(595, 50, 'Next', () => this.closeStation());
     }
@@ -74,7 +60,7 @@ export class ShopScene extends StationRoomBase {
         // Fallback to gameState inventory for backward compatibility
         return this.gameState.inventory || [];
     }
-    
+
     // Helper method to get inventory size
     getInventorySize() {
         if (this.gameScene && this.gameScene.inventorySystem) {
@@ -82,7 +68,7 @@ export class ShopScene extends StationRoomBase {
         }
         return 5; // Default size
     }
-    
+
     generateShopItems() {
         /*
         // Hide game scene UI
@@ -90,14 +76,14 @@ export class ShopScene extends StationRoomBase {
             this.gameScene.inventorySystem.setVisibility(false);
         }
         */
-        
+
         // Use a temporary CardSystem to generate card data
         const cardGenerator = new CardSystem(this);
         const floor = this.gameState.currentFloor;
-        
+
         // Clear existing items
         this.shopItems = [];
-        
+
         // Slots 1-2: two healing potions a tier apart (shopPotionCards).
         shopPotionCards(floor).forEach((potionData) => {
             this.shopItems.push({
@@ -107,7 +93,7 @@ export class ShopScene extends StationRoomBase {
                 purchased: false
             });
         });
-        
+
         // Slot 2: Regular weapon (guaranteed)
         const weaponData = cardGenerator.createCardData('weapon', floor);
         if (weaponData) {
@@ -115,19 +101,19 @@ export class ShopScene extends StationRoomBase {
                 data: weaponData,
                 price: this.calculateItemPrice(weaponData),
                 currency: 'coins',
-                purchased: false 
+                purchased: false
             });
         }
-        
+
         // Slot 3: Armor (guaranteed) - FIXED to use CardDataGenerator
         const armorData = cardGenerator.createCardData('armor', floor, false, this.gameState);
         if (armorData) {
             const armorPrice = this.calculateItemPrice(armorData);
-            this.shopItems.push({ 
-                data: armorData, 
+            this.shopItems.push({
+                data: armorData,
                 price: armorPrice,
                 currency: 'coins',
-                purchased: false 
+                purchased: false
             });
         }
 
@@ -147,31 +133,31 @@ export class ShopScene extends StationRoomBase {
         const magicData = cardGenerator.createCardData('magic', floor);
         if (magicData) {
             const magicPrice = this.calculateItemPrice(magicData);
-            this.shopItems.push({ 
-                data: magicData, 
+            this.shopItems.push({
+                data: magicData,
                 price: magicPrice,
                 currency: 'coins',
-                purchased: false 
+                purchased: false
             });
         }
-        
+
         // Slot 7: Random duplicate from available types (weighted toward weapons)
         const duplicateTypes = ['weapon', 'weapon', 'weapon', 'magic', 'potion', 'thorns', 'armor', 'food'];
         for (let i = 0; i < 1; i++) {
             const randomType = duplicateTypes[Math.floor(Math.random() * duplicateTypes.length)];
             const itemData = cardGenerator.createCardData(randomType, floor);
-            
+
             if (itemData) {
                 const itemPrice = this.calculateItemPrice(itemData);
-                this.shopItems.push({ 
-                    data: itemData, 
+                this.shopItems.push({
+                    data: itemData,
                     price: itemPrice,
                     currency: 'coins',
-                    purchased: false 
+                    purchased: false
                 });
             }
         }
-        
+
         // Slot 8: Amulet offer (costs CRYSTALS) — rarity rolled, pick 1 of 3 on buy
         const amuletData = cardGenerator.createCardData('amulet', floor, false, this.gameState, 'shop');
         if (amuletData) {
@@ -241,11 +227,11 @@ export class ShopScene extends StationRoomBase {
     calculateAmuletCrystalPrice(amulet) {
         return shopAmuletCrystalPrice(amulet, this.gameState.activeAmulets?.length || 0);
     }
-    
+
     calculateItemPrice(item, isArtifact = false) {
         return shopItemBuyPrice(item, this.gameState.currentFloor, { isArtifact });
     }
-    
+
     calculateSellPrice(item) {
         return shopItemSellPrice(item, this.gameState.currentFloor);
     }
@@ -267,7 +253,7 @@ export class ShopScene extends StationRoomBase {
             ? t(this, 'ui.shop.currencyCrystals')
             : t(this, 'ui.shop.currencyCoins');
     }
-    
+
     displayShopItems() {
         // Combat-style board: cards fly in face-down, then flip open one by one.
         this.displayItemsAsBoard();
@@ -277,209 +263,95 @@ export class ShopScene extends StationRoomBase {
 
     capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 
-    createInventoryDisplay() {
-        this.inventoryContainer = this.add.container(0, 0);
-        this.inventoryContainer.setVisible(false);
-        
-        // Title for sell mode
-        this.sellTitle = this.add.text(320, 70, t(this, 'ui.shop.selectSell'), {
-            fontSize: '14px',
-            fill: '#fef0cf',
-            fontFamily: '"HoMM Pixel", Arial, sans-serif'
-        }).setOrigin(0.5);
-        this.inventoryContainer.add(this.sellTitle);
-        
-        this.inventorySlots = [];
-        
-        // Get the current inventory size (supports dynamic sizes from Bottomless Bag)
-        const inventorySize = this.getInventorySize();
-        const slotsPerRow = Math.min(inventorySize, 5);
-        const rows = Math.ceil(inventorySize / slotsPerRow);
-        
-        // Display player's inventory with dynamic sizing
-        for (let i = 0; i < inventorySize; i++) {
-            const row = Math.floor(i / slotsPerRow);
-            const col = i % slotsPerRow;
-            
-            // Calculate position based on row and column
-            const totalWidth = slotsPerRow * 90;
-            const startX = 320 - (totalWidth / 2) + 45; // Center the inventory
-            const x = startX + col * 90;
-            const y = 180 + row * 120;
-            
-            const slot = this.add.container(x, y);
-            const bg = this.add.rectangle(0, 0, 80, 100, 0x342e2e)
-                .setStrokeStyle(2, i >= 5 ? 0xfbad19 : 0x6e7470) // Gold border for bonus slots
-                .setInteractive({ useHandCursor: true })
-                .on('pointerdown', () => this.selectInventoryItem(i));
-            
-            const itemNameText = this.add.text(0, -35, '', {
-                fontSize: '10px',
-                fill: '#fef0cf',
-                fontFamily: '"HoMM Pixel", Arial, sans-serif',
-                wordWrap: { width: 70 },
-                align: 'center'
-            }).setOrigin(0.5);
-            
-            const itemStatsText = this.add.text(0, -10, '', {
-                fontSize: '9px',
-                fill: '#d6c2c1',
-                fontFamily: '"HoMM Pixel", Arial, sans-serif',
-                align: 'center'
-            }).setOrigin(0.5);
-            
-            const sellPriceText = this.add.text(0, 15, '', {
-                fontSize: '10px',
-                fill: '#cf8834',
-                fontFamily: '"HoMM Pixel", Arial, sans-serif'
-            }).setOrigin(0.5);
-            
-            const sellButton = this.add.text(0, 35, t(this, 'ui.shop.sell'), {
-                fontSize: '12px',
-                fill: '#c45c45',
-                backgroundColor: '#342e2e',
-                padding: { x: 4, y: 2 },
-                fontFamily: '"HoMM Pixel", Arial, sans-serif'
-            })
-            .setOrigin(0.5)
-            .setVisible(false);
-            
-            slot.add([bg, itemNameText, itemStatsText, sellPriceText, sellButton]);
-            this.inventorySlots.push({
-                container: slot,
-                bg: bg,
-                nameText: itemNameText,
-                statsText: itemStatsText,
-                priceText: sellPriceText,
-                sellButton: sellButton
-            });
-            
-            this.inventoryContainer.add(slot);
-        }
-        
-        this.updateInventoryDisplay();
+    // ─── Selling ─────────────────────────────────────────────────────────────
+    // A box beside the bag, the mirror of the discard box on its other side:
+    // drag a bag card onto it to sell it. While a card is over it, the price
+    // shows above it. (Placeholder look — a dark see-through panel — until
+    // its art is drawn.) Drawn in GameScene, with the bag, so a dragged card
+    // passes over it instead of under it.
+    createSellZone() {
+        const inv = this.gameScene?.inventorySystem;
+        const host = this.gameScene;
+        if (!inv || !host?.add) return;
+        this.sellZone = host.add.rectangle(SELL_ZONE.x, SELL_ZONE.y, SELL_ZONE.w, SELL_ZONE.h, 0x0e0b10, 0.55)
+            .setStrokeStyle(1, 0x6e7470)
+            .setDepth(199);
+        this.sellZoneLabel = host.add.text(SELL_ZONE.x, SELL_ZONE.y, t(this, 'ui.shop.sell'), {
+            fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel", Arial, sans-serif',
+        }).setOrigin(0.5).setDepth(199.5);
+        this.sellPriceLabel = host.add.text(SELL_ZONE.x, SELL_ZONE.y - SELL_ZONE.h / 2 - 10, '', {
+            fontSize: '12px', fill: '#ffcf7f', fontFamily: '"HoMM Pixel", Arial, sans-serif',
+            stroke: '#1c130a', strokeThickness: 3,
+        }).setOrigin(0.5, 1).setDepth(3000).setVisible(false);
+
+        inv.addDropZone(this.sellZone, (slotIndex, cardData, cardSprite) => (
+            this.sellDroppedCard(slotIndex, cardSprite)
+        ), { sound: null });
+        inv.onCardDrag = (slotIndex, cardSprite) => this.updateSellPreview(slotIndex, cardSprite);
     }
-    
-    updateInventoryDisplay() {
-        const currentInventory = this.getCurrentInventory();
-        const inventorySize = this.getInventorySize();
-        
-        // Make sure we have enough slots
-        if (this.inventorySlots.length < inventorySize) {
-            // Recreate inventory display if size changed
-            this.inventoryContainer.destroy(true);
-            this.createInventoryDisplay();
+
+    destroySellZone() {
+        const inv = this.gameScene?.inventorySystem;
+        if (inv) {
+            inv.clearDropZones?.();
+            inv.onCardDrag = null;
+        }
+        [this.sellZone, this.sellZoneLabel, this.sellPriceLabel].forEach((o) => o?.destroy?.());
+        this.sellZone = this.sellZoneLabel = this.sellPriceLabel = null;
+    }
+
+    closeStation() {
+        this.destroySellZone();
+        super.closeStation();
+    }
+
+    // The price, shown while a card is held over the box.
+    updateSellPreview(slotIndex, cardSprite) {
+        if (!this.sellZone?.scene || !this.sellPriceLabel) return;
+        const item = slotIndex >= 0 ? this.getCurrentInventory()[slotIndex] : null;
+        const over = Boolean(item && cardSprite?.getBounds
+            && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.sellZone.getBounds()));
+        this.sellZone.setFillStyle(0x0e0b10, over ? 0.8 : 0.55).setStrokeStyle(1, over ? 0xffcf7f : 0x6e7470);
+        if (!over) {
+            this.sellPriceLabel.setVisible(false);
             return;
         }
-        
-        for (let i = 0; i < inventorySize; i++) {
-            const item = currentInventory[i];
-            const slot = this.inventorySlots[i];
-            
-            if (!slot) continue; // Safety check
-            
-            if (item) {
-                slot.nameText.setText(this.getItemDisplayName(item));
-                
-                // Show item stats
-                let statsText = '';
-                if (item.type === 'weapon') {
-                    statsText = t(this, 'tooltip.damageShort', {
-                        amount: getDisplayedWeaponDamage(
-                            this.gameState?.characterId,
-                            item,
-                            this.gameState?.talentEffects || null
-                        )
-                    });
-                } else if (item.type === 'armor') {
-                    statsText = t(this, 'tooltip.protectionShort', { amount: item.protection });
-                } else if (item.type === 'potion') {
-                    statsText = t(this, 'float.plusHp', { amount: item.healAmount });
-                } else if (item.type === 'food') {
-                    statsText = t(this, 'float.plusAp', { amount: item.actionAmount });
-                } else if (item.type === 'companion') {
-                    statsText = `${item.attack || 2} lightning damage`;
-                } else if (item.type === 'magic') {
-                    statsText = t(this, 'ui.shop.magic');
-                }
-                slot.statsText.setText(statsText);
-                
-                // Show sell price
-                const sellPrice = this.calculateSellPrice(item);
-                slot.priceText.setText(t(this, 'ui.shop.sellPrice', { price: sellPrice }));
-                
-                // Show sell button
-                slot.sellButton.setVisible(true)
-                    .removeAllListeners()
-                    .setInteractive({ useHandCursor: true })
-                    .on('pointerdown', () => this.sellItem(i));
-            } else {
-                slot.nameText.setText(t(this, 'ui.shop.empty'));
-                slot.statsText.setText('');
-                slot.priceText.setText('');
-                slot.sellButton.setVisible(false);
-            }
-        }
+        this.sellPriceLabel
+            .setText(t(this, 'ui.shop.sellPrice', { price: this.calculateSellPrice(item) }))
+            .setVisible(true);
     }
-    
-    toggleMode() {
-        this.sellingMode = !this.sellingMode;
-        
-        if (this.sellingMode) {
-            this.modeButton.setText(t(this, 'ui.shop.buyItems'));
-            this.setShopBoardVisible(false);
-            this.inventoryContainer.setVisible(true);
-            this.updateInventoryDisplay();
-        } else {
-            this.modeButton.setText(t(this, 'ui.shop.sellItems'));
-            this.setShopBoardVisible(true);
-            this.inventoryContainer.setVisible(false);
-        }
+
+    // A card let go over the box is sold: it leaves the bag the way a
+    // discarded one does, and the coins come to the counter.
+    sellDroppedCard(slotIndex, cardSprite) {
+        const inv = this.gameScene?.inventorySystem;
+        const item = inv?.slots?.[slotIndex];
+        if (!item) return false;
+        this.updateSellPreview(-1, null);
+        inv.cleanupCardSprites(slotIndex, cardSprite);
+        inv.removeCard(slotIndex, false, 'sold');
+        cardSprite?.destroy?.();
+        this.completeSale(slotIndex, item, SELL_ZONE.x, SELL_ZONE.y);
+        return true;
     }
-    
-    selectInventoryItem(index) {
-        this.selectedInventorySlot = index;
-        const currentInventory = this.getCurrentInventory();
-        
-        // Update visual selection
-        this.inventorySlots.forEach((slot, i) => {
-            if (i === index && currentInventory[i]) {
-                slot.bg.setStrokeStyle(3, 0xfbad19);
-            } else {
-                slot.bg.setStrokeStyle(2, i >= 5 ? 0xfbad19 : 0x6e7470);
-            }
-        });
-    }
-    
-    sellItem(index) {
-        const currentInventory = this.getCurrentInventory();
-        const item = currentInventory[index];
-        if (!item) return;
-        
+
+    // The coins for a card already taken out of the bag (from slot `index`).
+    completeSale(index, item, x, y) {
         const sellPrice = this.calculateSellPrice(item);
         const coinsBefore = this.gameState.coins;
         this.gameState.coins += sellPrice;
-        
-        if (this.gameScene && this.gameScene.inventorySystem) {
-            this.gameScene.inventorySystem.removeCard(index, true, 'sold');
-        } else {
-            // Fallback for old system
-            this.gameState.inventory[index] = null;
-        }
-        
+
         SoundHelper.playSound(this, 'coin_collect', 0.4);
-        // The sale's coin flies from the sold item's slot to the coin counter.
-        const soldSlot = this.inventorySlots?.[index];
-        if (soldSlot) flyCurrencyGain(this, soldSlot.x, soldSlot.y, 'coins');
+        // The sale's coin flies from the sell box to the coin counter.
+        flyCurrencyGain(this, x, y, 'coins');
         this.showFeedback({
             key: 'ui.shop.soldFeedback',
             vars: { name: this.getItemDisplayName(item), price: sellPrice, before: coinsBefore, after: this.gameState.coins }
         }, 0xfbad19);
-        
+
         this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
-        this.updateInventoryDisplay();
         this.refreshStationInventoryDisplay();
-        
+
         // Update GameScene UI if it exists
         if (this.gameScene && this.gameScene.updateUI) {
             this.gameScene.updateUI();
@@ -491,15 +363,15 @@ export class ShopScene extends StationRoomBase {
             currency: 'coins',
         });
     }
-    
+
     buyItem(item, button) {
         if (item.purchased) return;
-        
+
         // Check currency type
-        const hasEnoughCurrency = item.currency === 'crystals' 
+        const hasEnoughCurrency = item.currency === 'crystals'
             ? this.gameState.crystals >= item.price
             : this.gameState.coins >= item.price;
-            
+
         if (!hasEnoughCurrency) {
             SoundHelper.playVariant(this, 'invalid_action', 0.5);
             this.showFeedback({ key: 'float.notEnoughCurrency', vars: { currency: this.getCurrencyDisplay(item.currency) } }, 0xb51f1e);
@@ -510,7 +382,7 @@ export class ShopScene extends StationRoomBase {
             this.showFeedback({ key: 'float.dragGemOntoWeapon' }, 0xffcf7f);
             return;
         }
-        
+
         // Check if it's an amulet - rarity offer opens a 3-pick overlay
         if (item.data.type === 'amulet') {
             if (this.gameScene && this.gameScene.amuletManager) {
@@ -570,7 +442,7 @@ export class ShopScene extends StationRoomBase {
             }
             return;
         }
-        
+
         // For non-amulet items, add to inventory system
         let destinationSlot = null;
         if (this.gameScene && this.gameScene.inventorySystem) {
@@ -589,9 +461,9 @@ export class ShopScene extends StationRoomBase {
             this.gameState.inventory[emptySlot] = item.data;
             destinationSlot = emptySlot;
         }
-        
+
         SoundHelper.playSound(this, bagArrivalSoundKey(this, item.data, 'shop_buy'), 0.5);
-        
+
         // Deduct appropriate currency
         if (item.currency === 'crystals') {
             this.gameState.crystals -= item.price;
@@ -600,7 +472,7 @@ export class ShopScene extends StationRoomBase {
             this.gameState.coins -= item.price;
             this.coinsText?.setText?.(t(this, 'ui.shop.coins', { amount: this.gameState.coins }));
         }
-        
+
         item.purchased = true;
         recordHumanRunEvent(this, 'shop_item_bought', {
             shop: 'regular',
@@ -612,12 +484,12 @@ export class ShopScene extends StationRoomBase {
         this.markButtonDone(button, t(this, 'ui.shop.sold'));
         this.showFeedback('Purchased!', 0x71800b);
         this.refreshStationInventoryDisplay();
-        
+
         // Update GameScene UI
         if (this.gameScene && this.gameScene.updateUI) {
             this.gameScene.updateUI();
         }
     }
-    
+
     // showFeedback lives on StationRoomBase
 }

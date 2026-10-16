@@ -190,9 +190,11 @@ export const InventoryView = {
     // (slotIndex, cardData, cardSprite) when a dragged card is released over the
     // zone, and returns true if it consumed the drop (taking responsibility for
     // the dragged sprite). Cleared when the interaction ends.
-    addDropZone(zone, handler) {
+    // `sound`: played when the zone takes a card (null for none — a zone
+    // that plays its own, like the shop's sell box).
+    addDropZone(zone, handler, { sound = 'card_offered' } = {}) {
         if (!zone || typeof handler !== 'function') return;
-        (this.dropZones ||= []).push({ zone, handler });
+        (this.dropZones ||= []).push({ zone, handler, sound });
     },
     clearDropZones() {
         this.dropZones = [];
