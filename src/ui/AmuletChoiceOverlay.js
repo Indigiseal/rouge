@@ -15,6 +15,31 @@ const RARITY_COLOR = {
   cursed: 0xb51f1e,
 };
 
+// One amulet, no choice (sigils branch): wherever an amulet is found — a board
+// card, a boss, a shop, the healer — it is one of the offer's amulets at
+// random, taken straight away. False brings the pick-one-of-three window back.
+const SINGLE_AMULET = true;
+
+function grantOneAmulet(scene, cfg, options) {
+  const item = options[Math.floor(Math.random() * options.length)];
+  if (!cfg.amuletManager.addAmulet(item.id)) {
+    cfg.onCancel?.();
+    return null;
+  }
+  SoundHelper.playSound(scene, 'shop_buy', 0.5);
+  const label = { key: 'float.equippedItem', vars: { name: translateItemName(scene, item) } };
+  if (typeof scene.createFloatingText === 'function') scene.createFloatingText(320, 150, label, 0x712a65);
+  else if (typeof scene.showFeedback === 'function') scene.showFeedback(label, 0x712a65);
+  recordHumanRunEvent(scene, 'amulet_chosen', {
+    title: cfg.title || null,
+    rarity: cfg.rarity || item.rarity || null,
+    options: options.map((option) => snapshotHumanRunCard(option)),
+    chosen: snapshotHumanRunCard(item),
+  });
+  cfg.onPicked?.(item.id, item);
+  return { close: () => {} };
+}
+
 /**
  * @param {Phaser.Scene} scene
  * @param {{ rarity: string, options: object[], amuletManager: object, onPicked?: (id: string) => void, onCancel?: () => void, title?: string }} cfg
@@ -30,6 +55,7 @@ export function openAmuletChoiceOverlay(scene, cfg) {
     : (cfg.options || []).filter((o) => o?.id);
   if (!options.length) return null;
   if (scene._amuletChoiceOpen) return null;
+  if (SINGLE_AMULET) return grantOneAmulet(scene, cfg, options);
   scene._amuletChoiceOpen = true;
 
   const depth = 4000;
