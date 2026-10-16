@@ -2,9 +2,10 @@
 // What marks a player card as special, drawn the same wherever the card is
 // shown (the bag, the anvil):
 //
-//   enchant  — a Reliquary-enchanted weapon renders brighter. It rides on the
-//              card sprite itself (a colour matrix), so it follows the card
-//              through drags and survives clearTint(). WebGL only.
+//   enchant  — a Reliquary-enchanted weapon renders brighter (off on the
+//              sigils branch: the enchant shows as its sigil icon). It rides
+//              on the card sprite itself (a colour matrix), so it follows the
+//              card through drags and survives clearTint(). WebGL only.
 //   briar    — a Briar Room card wears the thorn frame (thornFrame.png).
 //   gem      — a socketed weapon shows its stone in the socket at the top,
 //              drawn at the size its gem level earns.
@@ -23,6 +24,9 @@ import { buildSigilIcons, sigilCornerOffset } from './SigilIcons.js';
 import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
 
 const ENCHANT_BRIGHTNESS = 1.35;
+// Sigils branch: a Reliquary enchant shows as its sigil icon (Frost Ring as
+// Frost...), so the brighter card art is off. true brings it back.
+export const SHOW_ENCHANT_GLOW = false;
 // Sigils branch: the Briar Room's thorns show as the Thorns sigil icon, so the
 // full thorn frame over the art is off. true brings it back.
 export const SHOW_BRIAR_FRAME = false;
@@ -38,7 +42,7 @@ export function buildCardDecorations(scene, cardSprite, cardData, { gemShine = t
     const out = { briarFrame: null, gemIndicator: null, gemSprite: null, sigilIcons: [] };
     if (!scene?.add || !cardSprite || !cardData) return out;
 
-    if (cardData.enchant) {
+    if (SHOW_ENCHANT_GLOW && cardData.enchant) {
         cardSprite.preFX?.addColorMatrix()?.brightness(ENCHANT_BRIGHTNESS);
     }
 
