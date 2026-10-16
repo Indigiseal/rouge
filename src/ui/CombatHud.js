@@ -1433,49 +1433,20 @@ export const CombatHud = {
         this.relicTooltip = this.add.container(clampedX, clampedY, [bg, tooltipText]);
         this.relicTooltip.setDepth(TOOLTIP_DEPTH);
     },
+    // The worn armor answers a hover with the same tooltip the bag gives the
+    // same card (InventoryView.showCardTooltip): same frame and type, and the
+    // same lines, sigils included. It used to build a box of its own that
+    // left them out.
     showArmorTooltip(armor) {
         if (this.armorTooltip) {
             this.armorTooltip.destroy();
             this.armorTooltip = null;
         }
-        let lines = `${translateItemName(this, armor)}\n${t(this, 'tooltip.protectionShort', { amount: armor.protection })}`;
-        if (armor.dodgeChance) {
-            lines += `\n${t(this, 'tooltip.dodge', { percent: Math.round(armor.dodgeChance * 100) })}`;
-        }
-        if (armor.meleeCounterChance) {
-            lines += `\n${t(this, 'tooltip.meleeCounter', { percent: Math.round(armor.meleeCounterChance * 100) })}`;
-        }
-        if (armor.rangedIgnoreChance) {
-            lines += `\n${t(this, 'tooltip.ignoreRanged', { percent: Math.round(armor.rangedIgnoreChance * 100) })}`;
-        }
-        if (armor.reflection) {
-            lines += `\n${t(this, 'tooltip.reflect', { value: `${armor.reflection}%` })}`;
-        }
-        lines += `\n${t(this, 'tooltip.pips', { value: `${armor.durability}/${armor.maxDurability}` })}`;
-
-        const tooltipX = Math.round(this.armorPanel.x + 50);
-        const tooltipY = Math.round(this.armorPanel.y - 20);
-        // Same frame, ink, type size and padding as every other hover tooltip —
-        // this panel used to answer with a black box and blue text of its own.
-        const tooltipText = this.add.text(0, 0, lines, {
-            fontSize: TOOLTIP_BODY_PX,
-            fill: TOOLTIP_TEXT_COLOR,
-            fontFamily: '"HoMM Pixel", Arial, sans-serif',
-            align: 'center',
-            lineSpacing: 2
-        }).setOrigin(0, 0);
-        // Auto-size the background to fit however many lines we have
-        const textWidth = Math.ceil(tooltipText.width);
-        const width = textWidth + TOOLTIP_PAD.x * 2;
-        const height = Math.ceil(tooltipText.height) + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom;
-        const bg = createTooltipPanel(this, width, height);
-        tooltipText.setPosition(
-            Math.round((width - textWidth) / 2),
-            TOOLTIP_PAD.top
-        );
-
-        this.armorTooltip = this.add.container(tooltipX, tooltipY, [bg, tooltipText]);
-        this.armorTooltip.setDepth(TOOLTIP_DEPTH);
+        const inv = this.inventorySystem;
+        if (!inv?.showCardTooltip || !armor) return;
+        inv.showCardTooltip(armor, -1, Math.round(this.armorPanel.x + 30), Math.round(this.armorPanel.y));
+        this.armorTooltip = inv.cardTooltip || null;
+        this.armorTooltip?.setDepth?.(TOOLTIP_DEPTH);
     },
     // Hovering the hero's portrait lists every effect on them: a title, then
     // one line per effect in its own colour (collectPlayerEffectEntries), or a
