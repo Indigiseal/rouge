@@ -30,6 +30,7 @@ import { temperedSaveChance } from '../combat/SigilEffects.js';
 const LIGHTNING_PARALYSE_CHANCE = 0.1;
 import { secondGemView } from '../../content/cards/gems.js';
 import { keenCritChance } from '../combat/SigilEffects.js';
+import { ENEMY_BASE_BLOCK, ENEMY_BASE_EVADE, PLAYER_BASE_CRIT } from '../../content/balance/CombatChance.js';
 import { hideItemTooltip, showControlMarkTooltip } from '../../ui/ItemTooltip.js';
 
 export class BoardCombat {
@@ -550,7 +551,9 @@ function syncControlMarkers(card) {
 function rollEvade(card) {
     if (!card?.data || !card.sprite?.scene) return false;
     const evadeAbility = card.data.abilities?.find(a => a.type === 'evade');
-    const chance = Number(evadeAbility?.chance) || 0;
+    // Every enemy can evade a little (CombatChance); an evasive one, more.
+    const base = this.scene.tutorialMode ? 0 : ENEMY_BASE_EVADE;
+    const chance = Math.max(base, Number(evadeAbility?.chance) || 0);
     if (chance <= 0 || Math.random() >= chance) return false;
     SoundHelper.playVariant(this.scene, 'dodge_miss', 0.5);
     this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Miss!', 0xfef0cf);
@@ -663,7 +666,8 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
 
     const critChance = (this.scene.gameState?.discardCritChance || 0)
         + (this.scene.amuletManager?.getCriticalChanceBonus?.() || 0)
-        + keenCritChance(weapon);
+        + keenCritChance(weapon)
+        + (this.scene.tutorialMode ? 0 : PLAYER_BASE_CRIT);
     if (!isReflection && weapon && critChance > 0 && Math.random() < critChance) {
         finalDamage *= 2;
         feedbackCritical = true;
@@ -673,6 +677,13 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         // Lucky Streak (Fortune Card): a crit can shake loose a coin or crystal.
         const luckyReward = this.scene.amuletManager?.rollLuckyStreakCritReward?.();
         if (luckyReward) this.playKillLootPickup(card.sprite.x, card.sprite.y, luckyReward, 'Lucky');
+    }
+
+    // The enemy blocks now and then: the hero's hit is halved (CombatChance).
+    if (!isReflection && weapon && !this.scene.tutorialMode && finalDamage > 1
+        && Math.random() < ENEMY_BASE_BLOCK) {
+        finalDamage = Math.ceil(finalDamage / 2);
+        CombatSequencer.floatingText(this.scene, 'damage', card.sprite.x, card.sprite.y - 30, 'Blocked!', 0xd6c2c1);
     }
 
     // Goblin War Horn relic: the first attack each floor deals double damage.

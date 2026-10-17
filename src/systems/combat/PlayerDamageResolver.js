@@ -1,6 +1,7 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { playRevivalEffect } from '../../ui/RevivalEffect.js';
 import { CombatSequencer } from './CombatSequencer.js';
+import { PLAYER_BASE_BLOCK, PLAYER_BASE_DODGE } from '../../content/balance/CombatChance.js';
 import { effectiveArmorDodge, effectiveArmorProtection } from './ArmorMath.js';
 
 // An enemy's attack missing the hero, whichever dodge saved them (talent,
@@ -126,6 +127,23 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
             dodgedDamage: Math.max(0, amount || 0),
             dodged: true
         };
+    }
+
+    // The hero's own luck against an enemy hit (CombatChance): a dodge takes
+    // nothing (no armor pip — the armor didn't do it), a block halves it.
+    if (source === 'enemy' && !scene?.tutorialMode && amount > 0) {
+        if (Math.random() < PLAYER_BASE_DODGE) {
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodged!', 0x71800b);
+            playDodgeWhoosh(scene);
+            return {
+                actualDamage: 0, tookDamage: false, blockedDamage: 0,
+                dodgedDamage: Math.max(0, amount || 0), dodged: true,
+            };
+        }
+        if (amount > 1 && Math.random() < PLAYER_BASE_BLOCK) {
+            amount = Math.ceil(amount / 2);
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 16, 'Blocked!', 0xd6c2c1);
+        }
     }
 
     // Modify damage taken (cursed amulets, protection amulets, …)

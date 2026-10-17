@@ -13,6 +13,7 @@ import { SIGIL_MULTIPLIER, getSigil, sigilLevel } from '../../content/sigils/sig
 
 // A boss summons for sure once it has gone this many turns without one.
 const BOSS_SUMMON_PITY = 4;
+import { ENEMY_BASE_CRIT, ENEMY_CRIT_MULT } from '../../content/balance/CombatChance.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 
 const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
@@ -495,6 +496,11 @@ export class CombatTurnController {
         if (enemySigilHits.length && card.sprite) {
             scene.createFloatingText(card.sprite.x, card.sprite.y - 30,
                 enemySigilHits.map((id) => getSigil(id)?.name).join(' + ') + '!', 0xc45c45);
+        }
+        // Every enemy can crit a little (CombatChance): x1.5, rounded down.
+        if (damageDealt > 0 && !scene.tutorialMode && Math.random() < ENEMY_BASE_CRIT) {
+            damageDealt = Math.floor(damageDealt * ENEMY_CRIT_MULT);
+            if (card.sprite) scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Crit!', 0xb51f1e);
         }
         // Honed: every attack it makes adds to the next one this fight.
         if (sigilLevel(card.data, 'honed') > 0) card.data.honedUses = (card.data.honedUses || 0) + 1;
