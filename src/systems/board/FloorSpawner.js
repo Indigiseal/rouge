@@ -154,7 +154,15 @@ function spawnFloorCards() {
     this.spawnAmbushBoard(this.scene.gameState.pendingAmbush);
     return;
   }
-  if (!this._spawningAmbush) this._boardVariant = null;
+  if (!this._spawningAmbush) {
+    this._boardVariant = null;
+    // A regular room is no ambush. The last ambush's id used to outlive its
+    // fight when it ended in a full clear: after the Silk Cocoon Cache, every
+    // later fight opened its 'Leave' door as soon as no face-up enemy was
+    // left, with hidden enemies still on the board. (After-fight checks read
+    // the id before the next room is dealt, so they still see it.)
+    if (this.scene.gameState) this.scene.gameState.ambushId = null;
+  }
   // === boss shortcut ===
   // Spawn the act boss when ANY of these say "this is the boss room":
   //   1. the floor number lines up with a boss floor (15/30/45),
