@@ -18,9 +18,11 @@ import {
     swordCleaveTargetIndices,
 } from '../../content/cards/weapons.js';
 
-// Dragging a potion or food: corners frame the hero's portrait (80x80).
+// Dragging a potion or food: corners frame the hero's portrait (80x80);
+// dragging armor with none worn: the armor slot (68x90).
 const AVATAR_DROP_TYPES = new Set(['potion', 'food']);
 const AVATAR_DROP_OFFSET = 38;
+const ARMOR_DROP_OFFSET = Object.freeze({ x: 30, y: 41 });
 const AVATAR_DROP_DEPTH = 1500;   // above the board's pips, under tooltips
 
 // Bag slot styling. The near-black ink is used for both the fill and the
@@ -595,41 +597,54 @@ export const InventoryView = {
         if (this.fireReachIndicator?.scene) this.fireReachIndicator.destroy();
         this.fireReachIndicator = null;
     },
-    // Carrying a potion or food: the selection corners frame the hero's
-    // portrait, where it is used, gently breathing. Over the portrait they
-    // close in and the portrait lights up.
-    updateAvatarDropTarget(cardSprite, slotIndex) {
-        const card = this.slots[slotIndex];
+    // Where a carried card is used, framed by the selection corners, gently
+    // breathing: a potion or food on the hero's portrait; armor on the armor
+    // slot while none is worn. Over it, the corners close in and it lights up.
+    dropTargetFor(card) {
+        if (!card || this.isEventStation?.()) return null;
         const avatar = this.scene.playerAvatar;
-        if (!avatar?.visible || !AVATAR_DROP_TYPES.has(card?.type) || this.isEventStation?.()) {
+        if (AVATAR_DROP_TYPES.has(card.type) && avatar?.visible) {
+            return { sprite: avatar, offset: { x: AVATAR_DROP_OFFSET, y: AVATAR_DROP_OFFSET } };
+        }
+        const panel = this.armorPanel;
+        if (card.type === 'armor' && !this.scene.gameState?.equippedArmor && panel?.visible) {
+            return { sprite: panel, offset: ARMOR_DROP_OFFSET };
+        }
+        return null;
+    },
+    updateAvatarDropTarget(cardSprite, slotIndex) {
+        const goal = this.dropTargetFor(this.slots[slotIndex]);
+        if (!goal) {
             this.destroyAvatarDropTarget();
             return;
         }
+        if (this.avatarDropTarget && this.avatarDropTarget.sprite !== goal.sprite) this.destroyAvatarDropTarget();
+        const { sprite, offset } = goal;
         if (!this.avatarDropTarget) {
-            const corners = createSelectionCorners(this.scene, avatar.x, avatar.y,
-                AVATAR_DROP_OFFSET, { depth: AVATAR_DROP_DEPTH });
+            const corners = createSelectionCorners(this.scene, sprite.x, sprite.y, offset, { depth: AVATAR_DROP_DEPTH });
             if (!corners.length) return;
             const pulse = this.scene.tweens.add({
                 targets: corners, alpha: { from: 1, to: 0.45 }, duration: 520, yoyo: true, repeat: -1,
             });
-            this.avatarDropTarget = { corners, pulse, over: null };
+            this.avatarDropTarget = { sprite, corners, pulse, over: null };
         }
         const target = this.avatarDropTarget;
-        const over = Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), avatar.getBounds());
+        const over = Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), sprite.getBounds());
         if (over === target.over) return;
         target.over = over;
-        const offset = over ? AVATAR_DROP_OFFSET - 4 : AVATAR_DROP_OFFSET;
+        const pull = over ? 4 : 0;
         const signs = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
         target.corners.forEach((corner, i) => corner.setPosition(
-            Math.round(avatar.x + signs[i][0] * offset), Math.round(avatar.y + signs[i][1] * offset)));
-        setHoverLight(avatar, over);
+            Math.round(sprite.x + signs[i][0] * (offset.x - pull)),
+            Math.round(sprite.y + signs[i][1] * (offset.y - pull))));
+        setHoverLight(sprite, over);
     },
     destroyAvatarDropTarget() {
         const target = this.avatarDropTarget;
         if (!target) return;
         target.pulse?.remove?.();
         target.corners.forEach((corner) => corner?.destroy?.());
-        if (target.over) setHoverLight(this.scene.playerAvatar, false);
+        if (target.over) setHoverLight(target.sprite, false);
         this.avatarDropTarget = null;
     },
     createInventoryUI() {
