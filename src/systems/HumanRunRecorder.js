@@ -4,6 +4,8 @@ const TRACE_VERSION = 1;
 // ceiling avoids exhausting the browser's localStorage quota on unusually long
 // sessions while still retaining the run start and the newest decisions.
 const MAX_EVENTS = 1200;
+// How often an active recording is written to storage (see saveSoon).
+const SAVE_EVERY_MS = 3000;
 
 function getStorage() {
     try {
@@ -35,6 +37,14 @@ function cardLabel(card) {
 
 export class HumanRunRecorder {
     constructor() {
+        this._saveTimer = null;
+        // A pending write is not lost when the tab is hidden or closed.
+        if (typeof window !== 'undefined') {
+            window.addEventListener?.('pagehide', () => { if (this._saveTimer) this.save(); });
+            document?.addEventListener?.('visibilitychange', () => {
+                if (document.visibilityState === 'hidden' && this._saveTimer) this.save();
+            });
+        }
         this.trace = null;
         this.cardIds = new WeakMap();
         this.nextCardId = 1;
@@ -59,7 +69,24 @@ export class HumanRunRecorder {
         }
     }
 
+    // The whole trace (up to MAX_EVENTS, each with a state snapshot) is
+    // rewritten on a save, synchronously. Saving it after every event froze
+    // the game on busy moments (several events per click); now it is written
+    // at most every SAVE_EVERY_MS, and at once when recording stops or the
+    // page is hidden.
+    saveSoon() {
+        if (this._saveTimer) return;
+        this._saveTimer = setTimeout(() => {
+            this._saveTimer = null;
+            this.save();
+        }, SAVE_EVERY_MS);
+    }
+
     save() {
+        if (this._saveTimer) {
+            clearTimeout(this._saveTimer);
+            this._saveTimer = null;
+        }
         const storage = getStorage();
         if (!storage || !this.trace) return;
         try {
@@ -286,7 +313,7 @@ export class HumanRunRecorder {
             this.trace.events.splice(1, this.trace.events.length - MAX_EVENTS);
             this.trace.truncated = true;
         }
-        this.save();
+        this.saveSoon();
         return event;
     }
 

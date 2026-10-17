@@ -1454,8 +1454,10 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
-        // AUTO-SAVE the current run
-        this.saveCurrentRun();
+        // AUTO-SAVE the current run — only on the way to an elite's chest. On
+        // the way to the map it would be the first of two saves (the map saves
+        // as it opens), both run before the map is drawn.
+        if (rewardChestMode) this.saveCurrentRun();
 
         // A short beat after the door is clicked (it was 500ms, which read as
         // the game hanging), then the map or the elite's chest.

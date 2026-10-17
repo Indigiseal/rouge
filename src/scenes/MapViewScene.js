@@ -30,6 +30,8 @@ const MAP_HEADER_DEPTH = 18;
 
 // The fog's three poofs sit at least this far apart.
 const FOG_POOF_GAP_MS = 160;
+// The map's save waits this long, so the map is drawn first.
+const MAP_SAVE_DELAY_MS = 60;
 
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
@@ -112,7 +114,9 @@ export class MapViewScene extends Phaser.Scene {
       gameScene.gameState.roomType = 'MAP';
       gameScene.roomType = 'MAP';
     }
-    gameScene?.saveCurrentRun?.();
+    // A few frames after the map is first drawn: the save writes to storage
+    // synchronously, and before the draw it held the old screen up.
+    this.time.delayedCall(MAP_SAVE_DELAY_MS, () => gameScene?.saveCurrentRun?.());
 
     // Dragging
     this.isDragging = false;
