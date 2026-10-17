@@ -41,6 +41,10 @@
     "highwayCutpurse": "Sneaky goblin thief dying: a startled gasp and coins jingling as a purse spills across the floor",
     "roadSniper": "Goblin crossbowman dying: a sharp pained breath and a crossbow clattering on stones",
     "wolf": "A wolf dying: a short mournful animal howl that rises, breaks and trails off into a whimper. A clear, full, easily heard sound",
+    "wolf_howl": {
+      "prompt": "A wounded wolf's last howl: one long mournful wolf howl that rises, wavers and slowly fades away into the distance, lonely and sad. Natural animal call, no music",
+      "durationSeconds": 1.6
+    },
     "cerberusHead": "Hellhound head dying: a snarling growl choking into a fiery whimper with a puff of smoke",
     "mireToad": "Giant toad dying: a deep croak bursting into a wet gurgle and a squelchy flop",
     "spider": "Giant spider dying: a chitinous crunch and quick leg skittering curling up still",
