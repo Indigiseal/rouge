@@ -670,7 +670,9 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         + (this.scene.tutorialMode ? 0 : PLAYER_BASE_CRIT);
     if (!isReflection && weapon && critChance > 0 && Math.random() < critChance) {
         // x1.5, rounded down, but always at least one more than the hit.
-        finalDamage = Math.max(finalDamage + 1, Math.floor(finalDamage * PLAYER_CRIT_MULT));
+        // (Blood Signet raises the multiplier.)
+        const critMult = this.scene.amuletManager?.getCritMultiplier?.(PLAYER_CRIT_MULT) ?? PLAYER_CRIT_MULT;
+        finalDamage = Math.max(finalDamage + 1, Math.floor(finalDamage * critMult));
         feedbackCritical = true;
         // Same shake as a sprung trap (CardSystem), so the board's two jolts
         // match. It was 200ms at 0.012 — twice as strong and two-thirds longer.

@@ -225,6 +225,7 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     gildedLeaf: 'goldenLeaf',
     lookingGlass: 'lookingGlass',
     maskOfEmbers: 'burningMask',
+    bloodSignet: 'signetRing',
 });
 
 export const RELIC_ATLAS_KEYS = Object.freeze({

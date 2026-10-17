@@ -55,6 +55,7 @@ export const AMULET_DROP_DATA = [
   { id: 'starfallPendant', minFloor: 16, weight: 4, rarity: 'rare', group: 'offense' },
   { id: 'sapphireBrooch', minFloor: 16, weight: 3, rarity: 'rare', group: 'utility' },
   { id: 'maskOfEmbers', minFloor: 16, weight: 4, rarity: 'rare', group: 'survival' },
+  { id: 'bloodSignet', minFloor: 16, weight: 4, rarity: 'rare', group: 'offense' },
 
   // Legendary (shops / boss until boss-only set exists)
   { id: 'glovesOfHermitWizard', minFloor: 0, weight: 2, rarity: 'legendary', group: 'magic' },

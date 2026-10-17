@@ -372,6 +372,14 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 emberRetaliation: 2,
             },
 
+            bloodSignet: {
+                ...getAmuletAtlasPresentation('bloodSignet'),
+                name: 'Blood Signet',
+                description: 'Your critical hits deal x1.8 instead of x1.5.',
+                rarity: 'rare',
+                critMultiplier: 1.8,
+            },
+
             // Not in the drop catalog: a Tollroad story will hand it out.
             tollWrit: {
                 ...getAmuletAtlasPresentation('tollWrit'),

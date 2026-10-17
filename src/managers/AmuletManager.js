@@ -646,6 +646,12 @@ export class AmuletManager {
             mult * (this.amuletDefinitions[amulet.id]?.sellPriceMultiplier || 1)
         ), 1);
     }
+    // Blood Signet: a crit's multiplier (the highest owned, else the base).
+    getCritMultiplier(base) {
+        return this.gameState.activeAmulets.reduce((best, amulet) => (
+            Math.max(best, this.amuletDefinitions[amulet.id]?.critMultiplier || 0)
+        ), base);
+    }
     // Mask of Embers: damage an attacker takes for hurting the hero.
     getEmberRetaliation() { return this.sumAmuletProperty('emberRetaliation'); }
 
