@@ -31,6 +31,10 @@ const LIGHTNING_PARALYSE_CHANCE = 0.1;
 import { secondGemView } from '../../content/cards/gems.js';
 import { keenCritChance } from '../combat/SigilEffects.js';
 import { ENEMY_BASE_BLOCK, ENEMY_BASE_EVADE, PLAYER_BASE_CRIT, PLAYER_CRIT_MULT } from '../../content/balance/CombatChance.js';
+
+// The screen jolt on a crit.
+const CRIT_SHAKE_MS = 80;
+const CRIT_SHAKE_INTENSITY = 0.0025;
 import { hideItemTooltip, showControlMarkTooltip } from '../../ui/ItemTooltip.js';
 
 export class BoardCombat {
@@ -674,9 +678,9 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         const critMult = this.scene.amuletManager?.getCritMultiplier?.(PLAYER_CRIT_MULT) ?? PLAYER_CRIT_MULT;
         finalDamage = Math.max(finalDamage + 1, Math.floor(finalDamage * critMult));
         feedbackCritical = true;
-        // Same shake as a sprung trap (CardSystem), so the board's two jolts
-        // match. It was 200ms at 0.012 — twice as strong and two-thirds longer.
-        this.scene.cameras.main.shake(120, 0.006);
+        // A light jolt: crits are common now (5% base), so it is well under
+        // a sprung trap's shake (120ms at 0.006), which read as too strong.
+        this.scene.cameras.main.shake(CRIT_SHAKE_MS, CRIT_SHAKE_INTENSITY);
         // Lucky Streak (Fortune Card): a crit can shake loose a coin or crystal.
         const luckyReward = this.scene.amuletManager?.rollLuckyStreakCritReward?.();
         if (luckyReward) this.playKillLootPickup(card.sprite.x, card.sprite.y, luckyReward, 'Lucky');
