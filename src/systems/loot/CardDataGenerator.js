@@ -138,7 +138,7 @@ export class CardDataGenerator {
                 }
                 return this.createAmuletOffer('floor', floor, gameState);
             case 'potion':
-                return this.createPotionCard(floor);
+                return this.createPotionCard(floor, gameState);
             case 'food':
                 return this.createFoodCard(floor);
             case 'magic':
@@ -707,9 +707,14 @@ export class CardDataGenerator {
         return pick;
     }
 
-    createPotionCard(floor) {
-        // Now and then the potion is an Antidote (cures poison, never merges).
-        if (floor >= ANTIDOTE_MIN_FLOOR && Math.random() < ANTIDOTE_CHANCE) return antidoteCard();
+    createPotionCard(floor, gameState = null) {
+        // Now and then the potion is an Antidote (cures poison, never merges),
+        // at most one per floor: the floor that dealt one is noted on the run.
+        if (floor >= ANTIDOTE_MIN_FLOOR && Math.random() < ANTIDOTE_CHANCE
+            && gameState?.antidoteFloor !== floor) {
+            if (gameState) gameState.antidoteFloor = floor;
+            return antidoteCard();
+        }
         // Generated potions stay at base tier. Merging is what creates stronger versions.
         const selectedPotion = this.potionTiers[0];
         
