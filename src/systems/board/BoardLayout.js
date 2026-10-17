@@ -586,8 +586,12 @@ function syncMovedCardVisuals(card) {
         card.shadow.y = (Number.isFinite(card.restY) ? card.restY : y) + 28;
     }
     if (card.infoText?.scene) {
+        // Every card's numbers are centred on it (an enemy's HP and ATK sit in
+        // its corner plates from there); only a gem's label hangs 22px below.
+        // This used to put every card's at +22, so an enemy moved by Close
+        // Order or Forced March had its numbers drop below the card.
         card.infoText.x = x;
-        card.infoText.y = y + 22;
+        card.infoText.y = y + (card.data?.type === 'gem' ? 22 : 0);
     }
     if (card.frozenFrame?.scene) {
         card.frozenFrame.setPosition?.(Math.round(x), Math.round(y));
