@@ -416,20 +416,25 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
     });
   }
   if (!panel) panel = this.scene.add.image(0, 0, textureKey);
-  panel.x = x;
+  // A board grown to the whole screen width sits on the screen's centre, not
+  // the cluster's: off-centre, one edge ran off the screen and the other left
+  // a strip of floor showing.
+  panel.x = panelW >= camW ? Math.round(camW / 2) : x;
   panel.y = animate ? y + BOARD_ENTRANCE_DROP : y;
   panel.setDepth(0);
   panel.setData('restY', y);
   this.floorBoardPanel = panel;
 
-  // Preserve native card scale. A formation wide enough to reach past even the
-  // grown board — which now means past the viewport — still gets the backdrop
-  // extended under it rather than the cards shrunk.
+  // The side wings are the older way to fit a wide formation, a fixed 200x206
+  // picture. A grown (nine-slice) board already fits the formation up to the
+  // whole screen, and a wing behind it only peeked out as a sliver of a
+  // different height at the screen edge — so wings stay for the plain board.
+  const grown = panelW > nativeW || panelH > nativeH;
   const halfPanelW = (panel.displayWidth || panel.width || nativeW) / 2;
-  if (minX - halfCardW < x - halfPanelW + 8) {
+  if (!grown && minX - halfCardW < panel.x - halfPanelW + 8) {
     this.createSideExtraPanel('left', { animate, delayMs: 120 });
   }
-  if (maxX + halfCardW > x + halfPanelW - 8) {
+  if (!grown && maxX + halfCardW > panel.x + halfPanelW - 8) {
     this.createSideExtraPanel('right', { animate, delayMs: 120 });
   }
 
