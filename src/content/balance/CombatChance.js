@@ -4,7 +4,8 @@
 // 5%. Amulets, armor, sigils and enemy traits stack on top of these.
 
 // The hero.
-export const PLAYER_BASE_CRIT = 0.05;   // a hit does double (the shared crit roll)
+export const PLAYER_BASE_CRIT = 0.05;   // a hit crits (the shared crit roll)
+export const PLAYER_CRIT_MULT = 1.5;    // a crit's damage (rounded down, at least +1)
 export const PLAYER_BASE_DODGE = 0.04;  // an enemy hit misses the hero entirely
 export const PLAYER_BASE_BLOCK = 0.04;  // an enemy hit is halved (rounded up)
 

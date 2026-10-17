@@ -30,7 +30,7 @@ import { temperedSaveChance } from '../combat/SigilEffects.js';
 const LIGHTNING_PARALYSE_CHANCE = 0.1;
 import { secondGemView } from '../../content/cards/gems.js';
 import { keenCritChance } from '../combat/SigilEffects.js';
-import { ENEMY_BASE_BLOCK, ENEMY_BASE_EVADE, PLAYER_BASE_CRIT } from '../../content/balance/CombatChance.js';
+import { ENEMY_BASE_BLOCK, ENEMY_BASE_EVADE, PLAYER_BASE_CRIT, PLAYER_CRIT_MULT } from '../../content/balance/CombatChance.js';
 import { hideItemTooltip, showControlMarkTooltip } from '../../ui/ItemTooltip.js';
 
 export class BoardCombat {
@@ -669,7 +669,8 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         + keenCritChance(weapon)
         + (this.scene.tutorialMode ? 0 : PLAYER_BASE_CRIT);
     if (!isReflection && weapon && critChance > 0 && Math.random() < critChance) {
-        finalDamage *= 2;
+        // x1.5, rounded down, but always at least one more than the hit.
+        finalDamage = Math.max(finalDamage + 1, Math.floor(finalDamage * PLAYER_CRIT_MULT));
         feedbackCritical = true;
         // Same shake as a sprung trap (CardSystem), so the board's two jolts
         // match. It was 200ms at 0.012 — twice as strong and two-thirds longer.

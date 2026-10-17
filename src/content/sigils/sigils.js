@@ -60,7 +60,7 @@ export const SIGILS = Object.freeze({
     // Kinship buffs its neighbours, not itself (placeholder icon; frame 53 is its own).
     kinship:     { name: 'Kinship',     frame: 24, side: 'player', player: 'weapons in the bag slots next to this card hit +1', works: true },
     twinSocket:  { name: 'Twin Socket', frame: 56, side: 'player', player: 'a second gem socket: this weapon can hold two kinds of gem', works: true },
-    keen:        { name: 'Keen',        frame: 19, side: 'player', player: '+5% chance of a critical hit (x2)', works: true },
+    keen:        { name: 'Keen',        frame: 19, side: 'player', player: '+5% chance of a critical hit (x1.5)', works: true },
     ransom:      { name: 'Ransom',      frame: 47, side: 'player', player: 'a kill has a 10% chance to drop a crystal', works: true },
     bounty:      { name: 'Bounty',      frame: 20, side: 'player', player: 'a kill gives +2 coins', works: true },
     bloodlust:   { name: 'Bloodlust',   frame: 48, side: 'player', player: '+1 damage for each kill in a row this fight; a hit that does not kill resets it', works: true },

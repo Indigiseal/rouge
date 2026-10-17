@@ -333,7 +333,7 @@ export function buildCurrentAmuletDefinitions(mgr) {
             starfallPendant: {
                 ...getAmuletAtlasPresentation('starfallPendant'),
                 name: 'Starfall Pendant',
-                description: '+5% chance of a critical hit (x2) with every weapon.',
+                description: '+5% chance of a critical hit (x1.5) with every weapon.',
                 rarity: 'rare',
                 critChanceBonus: 0.05,
             },
