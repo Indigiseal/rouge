@@ -601,7 +601,16 @@ export const InventoryView = {
     // breathing: a potion or food on the hero's portrait; armor on the armor
     // slot while none is worn. Over it, the corners close in and it lights up.
     dropTargetFor(card) {
-        if (!card || this.isEventStation?.()) return null;
+        if (!card) return null;
+        // An event that takes an offering (the Screaming Head) names its own
+        // target and which cards it takes.
+        const offering = this.eventDropTarget;
+        if (offering?.sprite?.scene && offering.accepts?.(card)) {
+            const w = offering.sprite.displayWidth || 80;
+            const h = offering.sprite.displayHeight || 80;
+            return { sprite: offering.sprite, offset: { x: Math.round(w / 2) - 6, y: Math.round(h / 2) - 6 } };
+        }
+        if (this.isEventStation?.()) return null;
         const avatar = this.scene.playerAvatar;
         if (AVATAR_DROP_TYPES.has(card.type) && avatar?.visible) {
             return { sprite: avatar, offset: { x: AVATAR_DROP_OFFSET, y: AVATAR_DROP_OFFSET } };
@@ -621,9 +630,12 @@ export const InventoryView = {
         if (this.avatarDropTarget && this.avatarDropTarget.sprite !== goal.sprite) this.destroyAvatarDropTarget();
         const { sprite, offset } = goal;
         if (!this.avatarDropTarget) {
-            const corners = createSelectionCorners(this.scene, sprite.x, sprite.y, offset, { depth: AVATAR_DROP_DEPTH });
+            // In the target's own scene, so an event's target is framed above
+            // the event screen rather than under it.
+            const host = sprite.scene || this.scene;
+            const corners = createSelectionCorners(host, sprite.x, sprite.y, offset, { depth: AVATAR_DROP_DEPTH });
             if (!corners.length) return;
-            const pulse = this.scene.tweens.add({
+            const pulse = host.tweens.add({
                 targets: corners, alpha: { from: 1, to: 0.45 }, duration: 520, yoyo: true, repeat: -1,
             });
             this.avatarDropTarget = { sprite, corners, pulse, over: null };

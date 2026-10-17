@@ -7,6 +7,9 @@ import { playCardDissolve } from '../../ui/CardDissolve.js';
 import { isGauntlet } from '../../content/balance/Gauntlet.js';
 import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { t, translateItemName } from '../../i18n/i18n.js';
+import { WEAPONS, createWeaponCardData } from '../../content/cards/weapons.js';
+import { ARMORS, createArmorCardData } from '../../content/cards/armor.js';
+import { applyArmorTalentMods } from '../../content/talents/index.js';
 import { revealHiddenPaths } from '../../map/HiddenPaths.js';
 
 // The card types a reroll (Screaming Head, brass wizard tray) can hand back.
@@ -695,6 +698,15 @@ export const EventRunHelpers = {
     // offered. Reroll the type instead and keep the rarity.
     if (type === 'thorns') return this.createOtherTypeRerollCard(oldCard);
 
+    // Weapons and armor: another kind at exactly the offered rarity. Built
+    // straight from the tables, the way a merge builds its card — the floor's
+    // rarity caps used to refuse an epic, and after twelve misses the reroll
+    // fell back to a healing potion.
+    if (type === 'weapon' || type === 'armor') {
+        const sameRarity = this.createOtherKindSameRarity(oldCard);
+        if (sameRarity) return sameRarity;
+    }
+
     const targetRarity = RARITY_TYPES.includes(type) ? rarity : null;
 
     for (let tries = 0; tries < 12; tries++) {
@@ -706,6 +718,31 @@ export const EventRunHelpers = {
       return card;
     }
     return this.createRespectableCarnivalCard();
+  },
+
+  // A weapon or armor of a different kind (sword for a dagger, plate for
+  // leather) at the offered card's rarity; null if none exists at it.
+  createOtherKindSameRarity(oldCard) {
+    const isWeapon = oldCard?.type === 'weapon';
+    const table = isWeapon ? WEAPONS : ARMORS;
+    const rarity = oldCard?.rarity || 'common';
+    const inv = this.gameScene?.inventorySystem;
+    const oldKind = isWeapon
+      ? (oldCard.weaponType || inv?.getWeaponTypeFromCard?.(oldCard))
+      : (oldCard.armorType || inv?.getArmorTypeFromCard?.(oldCard));
+    const kinds = Object.keys(table).filter((kind) => kind !== oldKind && table[kind]?.[rarity]);
+    for (let i = kinds.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [kinds[i], kinds[j]] = [kinds[j], kinds[i]];
+    }
+    for (const kind of kinds) {
+      const card = isWeapon ? createWeaponCardData(kind, rarity) : createArmorCardData(kind, rarity);
+      if (!card) continue;
+      if (!isWeapon) applyArmorTalentMods(card, this.gameState?.talentEffects);
+      card.carnivalTouched = true;
+      return card;
+    }
+    return null;
   },
 
   // Reroll into a card of a *different* type, keeping the offering's rarity

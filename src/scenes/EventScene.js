@@ -81,6 +81,23 @@ const EVENT_ILLUSTRATION_FRAMES = {
 // How far the Screaming Head statue sits right of the usual event-art spot.
 const SCREAMING_HEAD_NUDGE_X = 6;
 
+// The Screaming Head's eye sockets: a gem put in its mouth gives its rune the
+// first time (the three choices it used to take, folded into one offering).
+const SCREAMING_HEAD_RUNES = Object.freeze({
+  fire: {
+    amuletId: 'fireRuneStone',
+    outcome: 'You push the gem past the teeth. It rolls up into an eye socket and fits exactly.\n\nRed light spreads through the cracks in the face. The head exhales one slow cloud of dust — and when it clears, a Fire Rune is resting on the stone tongue.',
+  },
+  lightning: {
+    amuletId: 'lightningRune',
+    outcome: 'You push the gem past the teeth. It clicks into an eye socket.\n\nA thin bolt skips across the cracked forehead, and the teeth chatter once. The head exhales dust — and a Lightning Rune flickers between its teeth.',
+  },
+  poison: {
+    amuletId: 'poisonRune',
+    outcome: 'You push the gem past the teeth. It settles into an eye socket.\n\nGreen light seeps through the cracks, and the mouth curls — almost like remembering pain. The head exhales a bitter cloud. Behind it, a dark green rune rests on the stone tongue.',
+  },
+});
+
 export class EventScene extends Phaser.Scene {
   constructor() {
     super({ key: 'EventScene' });
@@ -1857,12 +1874,22 @@ export class EventScene extends Phaser.Scene {
     inv.addDropZone(target, (slotIndex, cardData, cardSprite) => (
       this._handleScreamingHeadOffering(slotIndex, cardData, cardSprite)
     ));
+    // Carrying an item that fits, the head is framed like the portrait is
+    // for a potion.
+    inv.eventDropTarget = { sprite: target, accepts: (card) => this._isScreamingHeadOfferCard(card) };
+    this.events.once('shutdown', () => { if (inv.eventDropTarget?.sprite === target) inv.eventDropTarget = null; });
     return true;
   }
 
   cancelScreamingHeadOffering() {
+    this.endScreamingHeadOffering();
+  }
+
+  endScreamingHeadOffering() {
     this.screamingHeadOfferingActive = false;
-    this.gameScene?.inventorySystem?.clearDropZones?.();
+    const inv = this.gameScene?.inventorySystem;
+    inv?.clearDropZones?.();
+    if (inv) inv.eventDropTarget = null;
   }
 
   _handleScreamingHeadOffering(slotIndex, cardData, cardSprite) {
@@ -1871,6 +1898,21 @@ export class EventScene extends Phaser.Scene {
     if (!this._isScreamingHeadOfferCard(cardData)) {
       this._mirrorFloat('The stone teeth reject that offering', 0xc45c45, cardSprite);
       return false;
+    }
+
+    // A gem gives its rune (the fire, lightning or poison one) the first time.
+    const rune = cardData.type === 'gem' ? SCREAMING_HEAD_RUNES[cardData.gemEffect] : null;
+    if (rune && !this.hasAmulet(rune.amuletId)) {
+      playCardDissolve(this, cardSprite);
+      inv.cleanupCardSprites(slotIndex, cardSprite);
+      inv.removeCard(slotIndex, false);
+      cardSprite.destroy();
+      this.endScreamingHeadOffering();
+      this._rewardLines = [];
+      this._rewardIcons = [];
+      this.gainAmulet(rune.amuletId);
+      this._resolve({ text: 'Offer gem', action: () => {}, outcome: rune.outcome }, -1, { keepRewards: true });
+      return true;
     }
 
     const rerolledCard = this.createSameTypeRerollCard(cardData);
@@ -1883,8 +1925,7 @@ export class EventScene extends Phaser.Scene {
     inv.removeCard(slotIndex, false);
     cardSprite.destroy();
     inv.addCard(rerolledCard);
-    inv.clearDropZones();
-    this.screamingHeadOfferingActive = false;
+    this.endScreamingHeadOffering();
     this.gameScene?.updateUI?.();
     // The head's answer floats out of it into the bag.
     this._flyCardFromPicture(inv.lastAddedSlot);
