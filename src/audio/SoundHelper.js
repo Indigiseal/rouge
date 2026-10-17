@@ -18,6 +18,7 @@ export class SoundHelper {
         map_select: ['map_select_1', 'map_select_2'],
         // A card whooshing down the discard chute (ElevenLabs events chute_whoosh 4, 6).
         item_discard: ['item_discard_1', 'item_discard_2'],
+        fog_poof: ['fog_poof_1', 'fog_poof_2'],
         // Any door, hovered or landing on the path screen: the four knuckle
         // taps on wood (ElevenLabs events door_tap 3, 1, 2, 4) and the two
         // soft creaks it used before (events door_hover 2, 3).

@@ -184,8 +184,9 @@ export const ASSET_MANIFEST = [
     { key: 'item_discard_1', path: 'assets/music/Card_Discard_01.mp3', type: 'audio' },
     // The Cure (Antidote) drunk: a gulp and a clean shimmer (ElevenLabs events poison_cure 1).
     { key: 'poison_cure', path: 'assets/music/Poison_Cure_01.mp3', type: 'audio' },
-    // The map's fog drawing back as it opens (ElevenLabs events fog_lift 3).
-    { key: 'fog_lift', path: 'assets/music/Fog_Lift_01.mp3', type: 'audio' },
+    // The map's fog drawing back as it opens: a soft poof (ElevenLabs events fog_poof 4, 5).
+    { key: 'fog_poof_1', path: 'assets/music/Fog_Poof_01.mp3', type: 'audio' },
+    { key: 'fog_poof_2', path: 'assets/music/Fog_Poof_02.mp3', type: 'audio' },
     { key: 'item_discard_2', path: 'assets/music/Card_Discard_02.mp3', type: 'audio' },
     { key: 'trap_spring', path: 'assets/music/trap_spring1.mp3', type: 'audio' },
     { key: 'trap_woosh', path: 'assets/music/fast-woosh-230497.mp3', type: 'audio' },
