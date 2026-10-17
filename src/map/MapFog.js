@@ -88,47 +88,52 @@ export function drawMapFog(scene, container, grid) {
 }
 
 /**
- * The fog drawing back as the map opens: cloud puffs along the fog's edge
- * only (the HoMM look), rippling out from `from` (the player's room, map
- * space). A puff drifts up and fades. Returns when the first puff shows (ms),
- * so a sound can land with it; null when there is no edge.
+ * The fog drawing back as the map opens, the way HoMM in Pixel Art's
+ * FogOfWarSystem._spawnPuffs does it: cloud puffs cover the fog's edge at
+ * once, then dissolve in a ripple out from `from` (the player's room, map
+ * space), each drifting up a little and shrinking as it fades.
+ * Returns { first, last }: when the first and the last puff start to go (ms),
+ * so sounds can land with them; null when there is no edge.
  */
 export function puffFogCascade(scene, container, grid, from) {
     if (!grid || !scene.textures.exists(MAP_FOG_KEY)) return null;
+    const PUFFS_PER_EDGE_TILE = 4;
+    const MS_PER_TILE = 35;     // ripple delay per tile of distance
     let first = null;
-    const MS_PER_TILE = 60;   // how fast the cascade ripples outward
+    let last = null;
     for (let row = 0; row < grid.rows; row++) {
         for (let col = 0; col < grid.cols; col++) {
             if (isFogged(grid, col, row)) continue;
             const edge = isFogged(grid, col, row - 1) || isFogged(grid, col + 1, row)
                 || isFogged(grid, col, row + 1) || isFogged(grid, col - 1, row);
             if (!edge) continue;
-            const count = 3;
             const cx = grid.left + col * TILE + TILE / 2;
             const cy = grid.top + row * TILE + TILE / 2;
             const wave = from ? (Math.hypot(cx - from.x, cy - from.y) / TILE) * MS_PER_TILE : 0;
-            if (first === null || wave < first) first = wave;
-            for (let k = 0; k < count; k++) {
+            for (let k = 0; k < PUFFS_PER_EDGE_TILE; k++) {
+                // Random cloud frame, scattered within about a tile.
                 const puff = scene.add.image(
-                    cx + (Math.random() - 0.5) * TILE,
-                    cy + (Math.random() - 0.5) * TILE,
+                    cx + (Math.random() - 0.5) * TILE * 1.2,
+                    cy + (Math.random() - 0.5) * TILE * 1.2,
                     MAP_FOG_KEY, PUFF_FIRST + Math.floor(Math.random() * PUFF_FRAMES),
                 );
-                const scale = 0.7 + Math.random() * 0.5;
-                puff.setScale(scale).setAlpha(0);
+                const scale = 0.6 + Math.random() * 0.5;
+                puff.setOrigin(0.5).setAlpha(0.7 + Math.random() * 0.3).setScale(scale);
                 container.add(puff);
-                // Pops in on its beat, then drifts up and fades.
+                const delay = wave + Math.random() * 80;
+                if (first === null || delay < first) first = delay;
+                if (last === null || delay > last) last = delay;
                 scene.tweens.add({
                     targets: puff,
-                    alpha: { from: 0.9, to: 0 },
+                    alpha: 0,
                     y: puff.y - (4 + Math.random() * 6),
-                    scale: { from: scale, to: scale * 0.6 },
-                    duration: 360 + Math.random() * 220,
-                    delay: wave + Math.random() * 90,
+                    scale: scale * 0.6,
+                    duration: 300 + Math.random() * 200,
+                    delay,
                     onComplete: () => puff.destroy(),
                 });
             }
         }
     }
-    return first;
+    return first === null ? null : { first, last };
 }

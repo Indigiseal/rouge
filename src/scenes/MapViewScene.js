@@ -28,6 +28,9 @@ import { setHoverLight } from '../ui/HoverLight.js';
 // The header band and title, above the scrolling map nodes (see create()).
 const MAP_HEADER_DEPTH = 18;
 
+// The fog's three poofs sit at least this far apart.
+const FOG_POOF_GAP_MS = 160;
+
 export class MapViewScene extends Phaser.Scene {
   constructor() { super({ key: 'MapViewScene' }); }
 
@@ -334,11 +337,15 @@ export class MapViewScene extends Phaser.Scene {
 
     // The fog drawing back as the map opens, cascading out from the player.
     if (here) {
-      // Puffs along the fog's edge, rippling out from the player; the poof
-      // lands with the first of them.
-      const firstPuffMs = puffFogCascade(this, this.mapContainer, grid, { x: here.__x, y: here.__y });
-      if (firstPuffMs !== null) {
-        this.time.delayedCall(firstPuffMs, () => SoundHelper.playVariant(this, 'fog_poof', 0.6));
+      // Puffs cover the fog's edge, then dissolve rippling out from the
+      // player; three poofs, one after another, ride the ripple: as the
+      // first puffs go, midway, and as the last go.
+      const timing = puffFogCascade(this, this.mapContainer, grid, { x: here.__x, y: here.__y });
+      if (timing) {
+        const span = Math.max(FOG_POOF_GAP_MS * 2, timing.last - timing.first);
+        [0, span / 2, span].forEach((offset) => {
+          this.time.delayedCall(timing.first + offset, () => SoundHelper.playVariant(this, 'fog_poof', 0.6));
+        });
       }
     }
   }
