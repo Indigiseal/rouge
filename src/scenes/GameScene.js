@@ -86,6 +86,9 @@ const BATTLE_MUSIC_KEY = null;
 // combat sounds rather than with them.
 const BATTLE_MUSIC_VOLUME = 0.45;
 
+// The pause between clicking a cleared room's door and the next screen.
+const LEAVE_ROOM_DELAY_MS = 150;
+
 export class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
@@ -1454,7 +1457,9 @@ export class GameScene extends Phaser.Scene {
         // AUTO-SAVE the current run
         this.saveCurrentRun();
 
-        this.time.delayedCall(500, () => {
+        // A short beat after the door is clicked (it was 500ms, which read as
+        // the game hanging), then the map or the elite's chest.
+        this.time.delayedCall(LEAVE_ROOM_DELAY_MS, () => {
             this.scene.sleep();
             if (rewardChestMode) {
                 this.scene.launch('TreasureScene', {

@@ -71,6 +71,10 @@ const isFogged = (grid, col, row) => (
 export function drawMapFog(scene, container, grid) {
     if (!grid || !scene.textures.exists(MAP_FOG_KEY)) return null;
     const rt = scene.add.renderTexture(grid.left, grid.top, grid.cols * TILE, grid.rows * TILE).setOrigin(0, 0);
+    // About a thousand tiles: stamped in one batch, not one draw call each,
+    // which is what made the map slow to open.
+    const batch = typeof rt.beginDraw === 'function' && typeof rt.batchDrawFrame === 'function';
+    if (batch) rt.beginDraw();
     for (let row = 0; row < grid.rows; row++) {
         for (let col = 0; col < grid.cols; col++) {
             if (!isFogged(grid, col, row)) continue;
@@ -80,9 +84,11 @@ export function drawMapFog(scene, container, grid) {
             if (isFogged(grid, col, row + 1)) mask |= 4;
             if (isFogged(grid, col - 1, row)) mask |= 8;
             const frame = mask === 15 ? interiorFrame(col, row) : mask;
-            rt.drawFrame(MAP_FOG_KEY, frame, col * TILE, row * TILE);
+            if (batch) rt.batchDrawFrame(MAP_FOG_KEY, frame, col * TILE, row * TILE);
+            else rt.drawFrame(MAP_FOG_KEY, frame, col * TILE, row * TILE);
         }
     }
+    if (batch) rt.endDraw();
     container.add(rt);
     return rt;
 }
