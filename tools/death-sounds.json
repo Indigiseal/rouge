@@ -45,6 +45,10 @@
       "prompt": "A wounded wolf's last howl: one long mournful wolf howl that rises, wavers and slowly fades away into the distance, lonely and sad. Natural animal call, no music",
       "durationSeconds": 1.6
     },
+    "wolf_howl_short": {
+      "prompt": "A wolf's dying howl, short: one quick sharp howl that rises and breaks off at the end, close and clear, under one second. Natural animal call, no music",
+      "durationSeconds": 0.9
+    },
     "cerberusHead": "Hellhound head dying: a snarling growl choking into a fiery whimper with a puff of smoke",
     "mireToad": "Giant toad dying: a deep croak bursting into a wet gurgle and a squelchy flop",
     "spider": "Giant spider dying: a chitinous crunch and quick leg skittering curling up still",
