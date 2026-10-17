@@ -334,8 +334,12 @@ export class MapViewScene extends Phaser.Scene {
 
     // The fog drawing back as the map opens, cascading out from the player.
     if (here) {
-      puffFogCascade(this, this.mapContainer, grid, { x: here.__x, y: here.__y });
-      SoundHelper.playVariant(this, 'fog_poof', 0.5);
+      // Puffs along the fog's edge, rippling out from the player; the poof
+      // lands with the first of them.
+      const firstPuffMs = puffFogCascade(this, this.mapContainer, grid, { x: here.__x, y: here.__y });
+      if (firstPuffMs !== null) {
+        this.time.delayedCall(firstPuffMs, () => SoundHelper.playVariant(this, 'fog_poof', 0.6));
+      }
     }
   }
 

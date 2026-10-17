@@ -88,23 +88,26 @@ export function drawMapFog(scene, container, grid) {
 }
 
 /**
- * The fog drawing back as the map opens: cloud puffs over the cleared area,
- * thick along the fog's edge and scattered inside, cascading out from `from`
- * (the player's room, map space). A puff drifts up and fades.
+ * The fog drawing back as the map opens: cloud puffs along the fog's edge
+ * only (the HoMM look), rippling out from `from` (the player's room, map
+ * space). A puff drifts up and fades. Returns when the first puff shows (ms),
+ * so a sound can land with it; null when there is no edge.
  */
 export function puffFogCascade(scene, container, grid, from) {
-    if (!grid || !scene.textures.exists(MAP_FOG_KEY)) return;
+    if (!grid || !scene.textures.exists(MAP_FOG_KEY)) return null;
+    let first = null;
     const MS_PER_TILE = 60;   // how fast the cascade ripples outward
     for (let row = 0; row < grid.rows; row++) {
         for (let col = 0; col < grid.cols; col++) {
             if (isFogged(grid, col, row)) continue;
             const edge = isFogged(grid, col, row - 1) || isFogged(grid, col + 1, row)
                 || isFogged(grid, col, row + 1) || isFogged(grid, col - 1, row);
-            const count = edge ? 3 : (Math.random() < 0.5 ? 1 : 0);
-            if (!count) continue;
+            if (!edge) continue;
+            const count = 3;
             const cx = grid.left + col * TILE + TILE / 2;
             const cy = grid.top + row * TILE + TILE / 2;
             const wave = from ? (Math.hypot(cx - from.x, cy - from.y) / TILE) * MS_PER_TILE : 0;
+            if (first === null || wave < first) first = wave;
             for (let k = 0; k < count; k++) {
                 const puff = scene.add.image(
                     cx + (Math.random() - 0.5) * TILE,
@@ -127,4 +130,5 @@ export function puffFogCascade(scene, container, grid, from) {
             }
         }
     }
+    return first;
 }
