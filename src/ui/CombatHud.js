@@ -1571,6 +1571,9 @@ export const CombatHud = {
         if (gs.playerSpored) {
             entries.push({ text: t(this.scene, 'ui.hud.spored'), color: '#fee093' });
         }
+        if (gs.playerSapped) {
+            entries.push({ text: t(this.scene, 'ui.hud.sapped'), color: '#712a65' });
+        }
 
         // --- Relic-driven counters ---
         if ((gs.discardCritChance || 0) > 0) {

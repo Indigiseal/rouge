@@ -2,6 +2,7 @@ import { SoundHelper } from '../../audio/SoundHelper.js';
 import { tweenAlongArc } from '../../ui/ArcFlight.js';
 import { CombatSequencer } from './CombatSequencer.js';
 import { getEnemyHitAttack, spendSapping } from '../../content/combat/enemyAttack.js';
+import { ENCHANT_SAPPING_CHANCE } from '../../content/balance/WeaponEnchants.js';
 import { CONTROL_HESITATION_CHANCE, pickControlTreacheryTarget } from '../../content/amulets/control.js';
 import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
 import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
@@ -670,6 +671,13 @@ export class CombatTurnController {
         if (features.includes('spore_on_hit')) {
             scene.gameState.playerSpored = true;
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18, 'Spored!', 0xfee093);
+        }
+
+        // Sapping (an enemy's sigil): a connecting hit may weaken the hero's
+        // next weapon hit. The same 20% as the hero's own Sapping.
+        if (!dodged && sigilLevel(card.data, 'sapping') > 0 && Math.random() < ENCHANT_SAPPING_CHANCE) {
+            scene.gameState.playerSapped = true;
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 26, 'Sapped!', 0x712a65);
         }
 
         // Toll Brute — chance to bark other goblins into an extra swing.

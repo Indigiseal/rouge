@@ -64,6 +64,8 @@ export class GameState {
         this.blockNextAttack = false;
         // Spore Archer: next player weapon attack has 15% miss, then clears.
         this.playerSpored = false;
+        // An enemy's Sapping sigil: the next player weapon hit deals 30% less.
+        this.playerSapped = false;
         // Goblin club_stun: number of player actions to skip (usually 1).
         this.playerStunnedTurns = 0;
         

@@ -12,6 +12,7 @@ import { isSilkCocoonCard } from './CocoonCacheBoard.js';
 import {
     ENCHANT_FREEZE_TURNS,
     ENCHANT_HEAL_AMOUNT,
+    ENCHANT_SAPPING_MULTIPLIER,
     ENCHANT_SHADOW_MULTIPLIER,
     ENCHANT_SHIELD_MULTIPLIER,
     ENCHANT_SHIELD_TURNS,
@@ -663,6 +664,14 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
             this.scene.createFloatingText(card.sprite.x, card.sprite.y, 'Miss!', 0xfee093);
             return;
         }
+    }
+
+    // An enemy's Sapping: the hero's next weapon hit that lands deals 30%
+    // less (rounded down), then it clears — the mirror of the hero's sigil.
+    if (!isReflection && weapon && this.scene.gameState?.playerSapped) {
+        this.scene.gameState.playerSapped = false;
+        finalDamage = Math.floor(finalDamage * ENCHANT_SAPPING_MULTIPLIER);
+        feedbackLabel = 'Sapped';
     }
 
     const critChance = (this.scene.gameState?.discardCritChance || 0)

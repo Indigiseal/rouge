@@ -40,7 +40,7 @@ export const SIGILS = Object.freeze({
     // repeatable. It flies at another enemy rather than splashing round the
     // one hit, so it never reads as the fire gem.
     fireball:    { name: 'Fireball',    frame: 30, side: 'player', player: '10% chance on hit: a fireball flies at another random face-up enemy for half the hit', works: true },
-    sapping:     { name: 'Sapping',     frame: 31, side: 'both',   enemy: 'your weapons deal less for a turn', player: '20% chance on hit: the enemy hit deals 30% less on its next attack', works: true },
+    sapping:     { name: 'Sapping',     frame: 31, side: 'both',   enemy: '20% chance on hit: your next weapon hit deals 30% less', player: '20% chance on hit: the enemy hit deals 30% less on its next attack', works: true },
     warding:     { name: 'Warding',     frame: 32, side: 'both',   enemy: 'gains armor after it attacks', player: 'your armor is stronger for a turn' },
     mirror:      { name: 'Mirror',      frame: 33, side: 'both',   enemy: 'sends your next hit back', player: 'on armor: sends the first enemy attack each fight back', works: true },
     regenerate:  { name: 'Regenerate',  frame: 34, side: 'both',   enemy: 'heals at the end of each turn', player: 'heals you 1 each enemy turn', works: true },
