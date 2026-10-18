@@ -170,6 +170,8 @@ export function buildEnemyCardFromDef(enemyType, floor, isElite = false) {
     monthId: enemy.monthId || null,
     sheetColumn: Number.isInteger(enemy.sheetColumn) ? enemy.sheetColumn : null,
     features: enemy.features ? [...enemy.features] : undefined,
+    // An enemy's own sigils (docs/SIGILS.md), as bosses carry them.
+    sigils: enemy.sigils ? enemy.sigils.map((s) => ({ ...s })) : undefined,
   };
 
   if (Number.isInteger(enemy.spriteFrame)) {

@@ -95,7 +95,8 @@ export const BOSSES = {
   },
   mireBride: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'regenerate' }],
+    // Sapping, not Regenerate: she is dead, and what she does is drain.
+    sigils: [{ id: 'sapping' }],
     type: 'boss', tier: 2,
     name: 'The Mire Bride',
     // Base stats sit under the tier-2 median on purpose. She carries a

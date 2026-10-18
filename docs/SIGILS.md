@@ -78,7 +78,7 @@ onto sigils already listed above; five are new.
 | Shadow Blade | Shadowed: +50% damage on the hit | **Crushing** | (as above) | (as above) |
 | Restoration | Mending: heal 3 HP on hit | **Leech** | (as above) | (as above) |
 | Fireball | Ember, then Ripple: fire splash to nearby enemies | **Fireball** (built, player only) | — | 10% on hit: a fireball flies at another random face-up enemy (bosses too) for half the hit, at least 3. It flies away rather than splashing, so it never reads as the fire gem |
-| Weakness | Sapping: the enemy deals 30% less (was permanent) | **Sapping** (built, both sides) | 20% on a connecting hit: the player's next weapon hit deals 30% less (rounded down); no enemy carries it yet | 20% on hit: the enemy hit deals 30% less (rounded down) on its next attack only |
+| Weakness | Sapping: the enemy deals 30% less (was permanent) | **Sapping** (built, both sides) | 20% on a connecting hit: the player's next weapon hit deals 30% less (rounded down); carried by The Mire Bride and the Drowned | 20% on hit: the enemy hit deals 30% less (rounded down) on its next attack only |
 | Magic Shield | Warding: +20% armor for 1 turn | **Warding** (new) | gains armor after it attacks | the player's armor is stronger for a turn |
 | Bone Wall | Bulwark: reflect the next attack | **Rebuke** (new) | sends the player's next hit back at them | sends the next enemy attack back |
 | Soul Drain | Devouring: slay a non-boss outright | **Devouring** (new, player only) | — | chance to kill a non-boss outright |
@@ -170,6 +170,7 @@ Also shown as text today, could get marks: **Veteran** (+15% HP/ATK),
 | Veil | Lost Soul, Thorn Fairy |
 | Bark | Thorn Sprite, Crypt Warden |
 | Rally | Toll Brute |
+| Sapping | Drowned, The Mire Bride |
 
 Merging changes some numbers: Daze, Crushing and Sunder each fold two traits
 whose odds differ today, so each needs one tuned strength (per side).
