@@ -1,6 +1,6 @@
 // systems/combat/StatusOverlay.js
 // A see-through colour over an enemy card or the hero's portrait while an
-// effect is on it: charmed pink, frozen ice blue, shocked yellow, stunned
+// effect is on it: charmed pink, frozen ice blue, shocked yellow, stunned or dazed
 // grey, sapped purple, spored dusty orange, poisoned green. It is a copy
 // of the sprite filled with the colour at low opacity (a translucent layer,
 // as in Aseprite), not a tint, so it never fights the elite tint or the hit
@@ -18,7 +18,7 @@ export const STATUS_COLORS = Object.freeze([
     { id: 'charmed',  color: 0xa83c69, enemy: (d) => !!d.charmed },
     { id: 'frozen',   color: 0x71b1ae, enemy: (d) => (d.frozen || 0) > 0 },
     { id: 'shocked',  color: 0xfbad19, enemy: (d) => (d.shockedTurns || 0) > 0 },
-    { id: 'stunned',  color: 0xafafa2, player: (gs) => (gs.playerStunnedTurns || 0) > 0 },
+    { id: 'stunned',  color: 0xafafa2, enemy: (d) => !!d.dazed, player: (gs) => (gs.playerStunnedTurns || 0) > 0 },
     { id: 'sapped',   color: 0x712a65, enemy: (d) => !!d.sapped, player: (gs) => !!gs.playerSapped },
     { id: 'spored',   color: 0xe89353, player: (gs) => !!gs.playerSpored },
     { id: 'poisoned', color: 0x71800b,

@@ -449,6 +449,13 @@ export class CombatTurnController {
             return;
         }
 
+        // Daze sigil: this attack misses, then it wears off.
+        if (card.data?.dazed) {
+            card.data.dazed = false;
+            scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Dazed, misses!', 0xafafa2);
+            return;
+        }
+
         // Charm sigil: this attack goes to another face-up enemy; with no one
         // else to hit, the charmed enemy loses it. Either way it wears off.
         if (card.data?.charmed) {

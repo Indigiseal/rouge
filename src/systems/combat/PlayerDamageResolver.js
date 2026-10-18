@@ -3,6 +3,7 @@ import { playRevivalEffect } from '../../ui/RevivalEffect.js';
 import { CombatSequencer } from './CombatSequencer.js';
 import { PLAYER_BASE_BLOCK, PLAYER_BASE_DODGE } from '../../content/balance/CombatChance.js';
 import { effectiveArmorDodge, effectiveArmorProtection } from './ArmorMath.js';
+import { fleetfootDodgeChance } from './SigilEffects.js';
 
 // An enemy's attack missing the hero, whichever dodge saved them (talent,
 // village Armory, amulet, armour): the same whoosh a hero's swing makes when an
@@ -126,6 +127,17 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
             blockedDamage: 0,
             dodgedDamage: Math.max(0, amount || 0),
             dodged: true
+        };
+    }
+
+    // Fleetfoot (armor sigil): a dodge, worn like the armor's own.
+    if (!isPoison && Math.random() < fleetfootDodgeChance(gameState)) {
+        gameState.tickEquippedArmorDurability();
+        scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Fleetfoot!', 0x71800b);
+        playDodgeWhoosh(scene);
+        return {
+            actualDamage: 0, tookDamage: false, blockedDamage: 0,
+            dodgedDamage: Math.max(0, amount || 0), dodged: true,
         };
     }
 

@@ -41,12 +41,12 @@ fold into a dozen or so sigils.
 | **Arrest** | Web, Ink, the chick's Shock, freezing | locks one of the player's cards for a turn | the enemy hit skips its next turn (the player throws something at it) |
 | **Venom** | Poison, Venom Amp, Spider poison | poisons the player on hit | poisons the enemy on hit |
 | **Thorns** | Thorns reflect (+ the research's Spiky) | damages whoever hits it | damages enemies that hit the player |
-| **Sunder** | Gnaw, Armor Break | wears down the player's armor | strips armor from the enemy |
-| **Daze** | Club stun, Spore | chance the player loses an action or misses | chance the enemy misses its next attack |
-| **Crushing** | Heavy shot, Pierce | chance of a hit that ignores armor or hits harder | chance of a heavy hit |
+| **Sunder** | Gnaw, Armor Break | wears down the player's armor | each hit that lands strips 1 armor from the enemy hit, for good |
+| **Daze** | Club stun, Spore | chance the player loses an action or misses | 20% on hit, not bosses: the enemy misses its next attack (grey overlay until then) |
+| **Crushing** | Heavy shot, Pierce | chance of a hit that ignores armor or hits harder | 15%: x1.5 and ignores the enemy's armor (only the sigil itself, not Shadow Blade) |
 | **Cutpurse** | Coin steal (enemy and boss) | steals coins on hit | gains coins on hit |
 | **Leech** | Lifesteal | heals when it hits the player | heals the player on hit |
-| **Elusive** | Evasion | chance the player's attack misses it | chance to dodge (on armor) |
+| **Elusive** | Evasion | chance the player's attack misses it | armor only: 10% chance to dodge a hit (Fleetfoot in the code) |
 | **Desperate** | Rage | ×1.5 near death | ×1.5 while the player is below a quarter health |
 | **Outnumbered** | Wolf Pack | +1 per other enemy on the board | +1 per enemy on the board |
 | **Merciless** | (new) | ×1.5 once the player is below half health | ×1.5 against enemies at half health or less |
@@ -79,7 +79,7 @@ onto sigils already listed above; five are new.
 | Restoration | Mending: heal 3 HP on hit | **Leech** | (as above) | (as above) |
 | Fireball | Ember, then Ripple: fire splash to nearby enemies | **Fireball** (built, player only) | — | 10% on hit: a fireball flies at another random face-up enemy (bosses too) for half the hit, at least 3. It flies away rather than splashing, so it never reads as the fire gem |
 | Weakness | Sapping: the enemy deals 30% less (was permanent) | **Sapping** (built, both sides) | 20% on a connecting hit: the player's next weapon hit deals 30% less (rounded down); carried by The Mire Bride and the Drowned | 20% on hit: the enemy hit deals 30% less (rounded down) on its next attack only |
-| Magic Shield | Warding: +20% armor for 1 turn | **Warding** (new) | gains armor after it attacks | the player's armor is stronger for a turn |
+| Magic Shield | Warding: +20% armor for 1 turn | **Warding** (new) | gains armor after it attacks | 20% on hit: the Magic Shield buff, armor +20% for a turn (only the sigil itself, not the enchant) |
 | Bone Wall | Bulwark: reflect the next attack | **Rebuke** (new) | sends the player's next hit back at them | sends the next enemy attack back |
 | Soul Drain | Devouring: slay a non-boss outright | **Devouring** (new, player only) | — | chance to kill a non-boss outright |
 | Smoke Screen | Shrouding: hide an enemy on a kill | **Shrouding** (new, player only) | — | a kill hides another enemy |

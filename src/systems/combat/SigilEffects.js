@@ -43,6 +43,11 @@ const SECOND_WIND_CHANCE = 0.1;   // on hit
 const SECOND_WIND_AP = 2;         // after the swing's own AP, so it reads +2
 const SCOUT_CHANCE = 0.15;        // on hit
 const CHARM_CHANCE = 0.15;        // on hit, non-bosses
+const SUNDER_ARMOR = 1;           // armor off the enemy hit, every hit
+const DAZE_CHANCE = 0.2;          // on hit, non-bosses: misses its next attack
+const CRUSHING_CHANCE = 0.15;     // x1.5 and through armor
+const FLEETFOOT_DODGE = 0.1;      // on the worn armor
+const WARDING_CHANCE = 0.2;       // on hit: the Magic Shield buff
 
 const multiply = (damage) => Math.floor(damage * SIGIL_MULTIPLIER);
 
@@ -156,6 +161,15 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage) {
             triggered.push(id);
         }
     }
+
+    // Crushing: a chance of a heavy hit, x1.5 and straight through armor
+    // (adding the armor back, as Devouring does, keeps the normal hit
+    // pipeline). Only the sigil put on the card: a Shadow Blade enchant
+    // shows Crushing but hits by its own rule.
+    if (hasStoredSigil(weapon, 'crushing') && Math.random() < CRUSHING_CHANCE) {
+        out = multiply(out) + Math.max(0, targetCard.data.armor || 0);
+        triggered.push('crushing');
+    }
     return { damage: out, baseDamage: damage, triggered };
 }
 
@@ -214,6 +228,30 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         cs?.updateEnemyInfoText?.(targetCard);
         scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 30, 'Sapped!', 0x712a65);
         fired.push('sapping');
+    }
+
+    // Sunder: every hit that lands takes armor off the enemy hit, for good.
+    if (sigilLevel(weapon, 'sunder') > 0 && alive && damageDealt > 0 && (targetCard.data.armor || 0) > 0) {
+        targetCard.data.armor = Math.max(0, targetCard.data.armor - SUNDER_ARMOR);
+        cs?.updateEnemyInfoText?.(targetCard);
+        scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 42, `-${SUNDER_ARMOR} armor`, 0xafafa2);
+        fired.push('sunder');
+    }
+    // Daze: a chance the enemy hit (not a boss) misses its next attack
+    // (CombatTurnController spends it). Shown grey until then.
+    if (sigilLevel(weapon, 'daze') > 0 && alive && targetCard.data.type !== 'boss'
+        && !targetCard.data.dazed && Math.random() < DAZE_CHANCE) {
+        targetCard.data.dazed = true;
+        scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 30, 'Dazed!', 0xafafa2);
+        fired.push('daze');
+    }
+    // Warding: a chance to raise the hero's armor for a turn, the Magic
+    // Shield enchant's buff. Only the sigil put on the card: the enchant
+    // rolls its own.
+    if (hasStoredSigil(weapon, 'warding') && damageDealt > 0 && cs?.applyWeaponEnchantOnHit
+        && Math.random() < WARDING_CHANCE) {
+        cs.applyWeaponEnchantOnHit(Math.max(0, (cs.boardCards || []).indexOf(targetCard)), 'magicShield', swingDamage);
+        fired.push('warding');
     }
 
     // Charm: a chance the enemy hit (not a boss) turns on its own side for
@@ -344,6 +382,11 @@ function scoutOneCard(scene) {
     cs.revealCard(index, true);
     if (card.sprite) scene.createFloatingText?.(card.sprite.x, card.sprite.y - 30, 'Scout!', 0xffcf7f);
     return true;
+}
+
+/** Fleetfoot on the worn armor: the chance it dodges a hit outright. */
+export function fleetfootDodgeChance(gameState) {
+    return sigilLevel(gameState?.equippedArmor, 'fleetfoot') > 0 ? FLEETFOOT_DODGE : 0;
 }
 
 /** Keen: the crit chance a weapon adds to the shared crit roll. */

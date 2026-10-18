@@ -23,12 +23,12 @@ export const SIGIL_MULTIPLIER = 1.5;   // never x2 — rounds down, both sides
 export const SIGILS = Object.freeze({
     venom:       { name: 'Venom',       frame: 15, side: 'both',   enemy: 'poisons you on hit', player: 'poisons the enemy hit: 1 for 3 turns', works: true },
     thorns:      { name: 'Thorns',      frame: 16, side: 'both',   enemy: 'damages whoever hits it', player: '+1 damage (Briar Room)', works: true },
-    sunder:      { name: 'Sunder',      frame: 17, side: 'both',   enemy: 'wears down your armor', player: 'strips armor from the enemy' },
-    daze:        { name: 'Daze',        frame: 18, side: 'both',   enemy: 'can make you lose an action or miss', player: 'can make the enemy miss its next attack' },
-    crushing:    { name: 'Crushing',    frame: 19, side: 'both',   enemy: 'can hit harder or ignore armor', player: 'chance of a heavy hit' },
+    sunder:      { name: 'Sunder',      frame: 17, side: 'both',   enemy: 'wears down your armor', player: 'each hit strips 1 armor from the enemy hit', works: true },
+    daze:        { name: 'Daze',        frame: 18, side: 'both',   enemy: 'can make you lose an action or miss', player: '20% chance on hit: the enemy hit (not a boss) misses its next attack', works: true },
+    crushing:    { name: 'Crushing',    frame: 19, side: 'both',   enemy: 'can hit harder or ignore armor', player: '15% chance of a heavy hit: x1.5 and ignores enemy armor', works: true },
     cutpurse:    { name: 'Cutpurse',    frame: 20, side: 'both',   enemy: 'steals coins on hit', player: '+1 coin on each hit', works: true },
     leech:       { name: 'Leech',       frame: 21, side: 'both',   enemy: 'heals when it hits you', player: 'heals you 15% of the damage dealt', works: true },
-    fleetfoot:   { name: 'Fleetfoot',   frame: 22, side: 'both',   enemy: 'your attacks can miss it', player: 'chance to dodge' },
+    fleetfoot:   { name: 'Fleetfoot',   frame: 22, side: 'both',   enemy: 'your attacks can miss it', player: 'on armor: 10% chance to dodge a hit', works: true },
     desperate:   { name: 'Desperate',   frame: 23, side: 'both',   enemy: 'hits x1.5 harder near death', player: 'x1.5 while you are below a quarter health', works: true },
     outnumbered: { name: 'Outnumbered', frame: 24, side: 'both',   enemy: '+1 attack per other enemy on the board', player: '+1 damage per enemy on the board', works: true },
     merciless:   { name: 'Merciless',   frame: 25, side: 'both',   enemy: 'x1.5 once you are below half health', player: 'x1.5 against enemies at half health or less', works: true },
@@ -41,7 +41,7 @@ export const SIGILS = Object.freeze({
     // one hit, so it never reads as the fire gem.
     fireball:    { name: 'Fireball',    frame: 30, side: 'player', player: '10% chance on hit: a fireball flies at another random face-up enemy for half the hit', works: true },
     sapping:     { name: 'Sapping',     frame: 31, side: 'both',   enemy: '20% chance on hit: your next weapon hit deals 30% less', player: '20% chance on hit: the enemy hit deals 30% less on its next attack', works: true },
-    warding:     { name: 'Warding',     frame: 32, side: 'both',   enemy: 'gains armor after it attacks', player: 'your armor is stronger for a turn' },
+    warding:     { name: 'Warding',     frame: 32, side: 'both',   enemy: 'gains armor after it attacks', player: '20% chance on hit: your armor is 20% stronger for a turn', works: true },
     mirror:      { name: 'Mirror',      frame: 33, side: 'both',   enemy: 'sends your next hit back', player: 'on armor: sends the first enemy attack each fight back', works: true },
     regenerate:  { name: 'Regenerate',  frame: 34, side: 'both',   enemy: 'heals at the end of each turn', player: 'heals you 1 each enemy turn', works: true },
     devouring:   { name: 'Devouring',   frame: 35, side: 'player', player: '8% chance to kill a non-boss outright', works: true },
@@ -93,9 +93,10 @@ export const WORKING_PLAYER_SIGILS = Object.freeze(
 );
 
 // Which card types a sigil can go on. Most act when a weapon strikes;
-// Regenerate, Thorns, Tempered and Warcry also work from armor, and Mirror only does.
-const ARMOR_SIGILS = new Set(['regenerate', 'thorns', 'tempered', 'mirror', 'warcry', 'kinship']);
-const ARMOR_ONLY_SIGILS = new Set(['mirror']);
+// Regenerate, Thorns, Tempered and Warcry also work from armor; Mirror and
+// Fleetfoot only do.
+const ARMOR_SIGILS = new Set(['regenerate', 'thorns', 'tempered', 'mirror', 'warcry', 'kinship', 'fleetfoot']);
+const ARMOR_ONLY_SIGILS = new Set(['mirror', 'fleetfoot']);
 export function sigilFitsCardType(id, card) {
     if (!card || !SIGILS[id]) return false;
     if (card.type === 'weapon') return !ARMOR_ONLY_SIGILS.has(id);
