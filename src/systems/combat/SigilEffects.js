@@ -42,6 +42,7 @@ const MENDING_PIPS = 2;           // after the swing's own pip, so it reads +2
 const SECOND_WIND_CHANCE = 0.1;   // on hit
 const SECOND_WIND_AP = 2;         // after the swing's own AP, so it reads +2
 const SCOUT_CHANCE = 0.15;        // on hit
+const CHARM_CHANCE = 0.15;        // on hit, non-bosses
 
 const multiply = (damage) => Math.floor(damage * SIGIL_MULTIPLIER);
 
@@ -213,6 +214,16 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         cs?.updateEnemyInfoText?.(targetCard);
         scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 30, 'Sapped!', 0x712a65);
         fired.push('sapping');
+    }
+
+    // Charm: a chance the enemy hit (not a boss) turns on its own side for
+    // its next attack (CombatTurnController spends it). StatusOverlay
+    // shows it pink until then.
+    if (sigilLevel(weapon, 'charm') > 0 && alive && targetCard.data.type !== 'boss'
+        && !targetCard.data.charmed && Math.random() < CHARM_CHANCE) {
+        targetCard.data.charmed = true;
+        scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 30, 'Charmed!', 0xa83c69);
+        fired.push('charm');
     }
 
     // Kill rewards: Ransom (a chance of a crystal), Bounty (coins), and

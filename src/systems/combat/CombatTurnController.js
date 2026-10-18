@@ -449,6 +449,26 @@ export class CombatTurnController {
             return;
         }
 
+        // Charm sigil: this attack goes to another face-up enemy; with no one
+        // else to hit, the charmed enemy loses it. Either way it wears off.
+        if (card.data?.charmed) {
+            card.data.charmed = false;
+            const target = pickControlTreacheryTarget(
+                scene.cardSystem.boardCards,
+                index,
+                (other) => scene.isEnemyCard(other)
+            );
+            if (target) {
+                scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xa83c69);
+                const charmed = getEnemyHitAttack(card, scene.cardSystem.boardCards);
+                spendSapping(card);
+                scene.cardSystem.attackEnemy(target.index, charmed, false);
+            } else {
+                scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed, no one to hit', 0xa83c69);
+            }
+            return;
+        }
+
         if (card.data?.controlHesitation && Math.random() < CONTROL_HESITATION_CHANCE) {
             scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Hesitates!', 0x71b1ae);
             return;

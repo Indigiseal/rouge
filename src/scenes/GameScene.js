@@ -49,6 +49,7 @@ import { areAmuletsDisabled } from '../config/TestOptions.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { CombatTurnController } from '../systems/combat/CombatTurnController.js';
 import { CombatSequencer } from '../systems/combat/CombatSequencer.js';
+import { installStatusOverlays } from '../systems/combat/StatusOverlay.js';
 import { applyLocationChoice, emptyActLocationIds, normalizeActLocationIds } from '../content/locations/index.js';
 import { HEALER_RARITIES, healerRarityForRank } from '../content/village/index.js';
 import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
@@ -306,6 +307,8 @@ export class GameScene extends Phaser.Scene {
         
         // Create UI
         this.createUI();
+        // Effect colours over enemies and the hero (poisoned, charmed, shocked).
+        installStatusOverlays(this);
         
         // Room title
         this.roomTitle = null;

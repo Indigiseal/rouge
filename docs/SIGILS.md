@@ -153,8 +153,9 @@ Also shown as text today, could get marks: **Veteran** (+15% HP/ATK),
 | **Mending** | 10% on hit: +2 pips on this weapon, after the swing's own pip, up to its max |
 | **Second Wind** | 10% on hit: +2 AP, after the swing's own AP, up to max |
 | **Scout** | 15% on hit: a free reveal of one face-down card that is not an enemy, trap or mimic |
+| **Charm** | 15% on hit, not bosses: the enemy's next attack hits a random other face-up enemy; with no one else, it loses that attack. Shown pink (StatusOverlay) until spent |
 
-All four are weapon-only and wear Taya's numbered placeholder icons (frames 60–63) until drawn.
+All five are weapon-only and wear Taya's numbered placeholder icons (frames 60–64) until drawn.
 
 ## Which enemies carry what today
 
