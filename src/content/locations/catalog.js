@@ -58,7 +58,7 @@ export const PATH_LOCATIONS = Object.freeze({
   tollroad: Object.freeze({
     id: 'tollroad',
     name: 'Tollroad',
-    place: "The King's Mile",
+    place: '', // Taya's wording pending; Petr's "King's Mile" was removed.
     act: 1,
     truePath: true,
     bossId: 'goblinKing',

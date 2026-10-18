@@ -19,7 +19,6 @@ export const SANDBOX_ENCOUNTERS = [
   { id: 'REST', label: 'Rest', labelKey: 'ui.sandbox.encounter.rest', kind: 'station', sceneKey: 'RestScene' },
   { id: 'ANVIL', label: 'Anvil', labelKey: 'ui.sandbox.encounter.anvil', kind: 'station', sceneKey: 'AnvilScene' },
   { id: 'EVENT', label: 'Event (random)', labelKey: 'ui.sandbox.encounter.event', kind: 'station', sceneKey: 'EventScene' },
-  { id: 'TOLLROAD_AFTERMATH', label: 'Tollroad Aftermath', labelKey: 'ui.sandbox.encounter.tollroadAftermath', kind: 'station', sceneKey: 'TollroadAftermathScene' },
   { id: 'TREASURE', label: 'Treasure', labelKey: 'ui.sandbox.encounter.treasure', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'treasure' },
   { id: 'TREASURE_GOOD', label: 'Treasure (Good)', labelKey: 'ui.sandbox.encounter.treasureGood', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'good' },
   { id: 'TREASURE_ELITE', label: 'Elite Chest', labelKey: 'ui.sandbox.encounter.eliteChest', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'elite' },
@@ -35,7 +34,6 @@ const SANDBOX_FLOORS = {
   REST: 8,
   ANVIL: 10,
   EVENT: 6,
-  TOLLROAD_AFTERMATH: 15,
   TREASURE: 8,
   TREASURE_GOOD: 12,
   TREASURE_ELITE: 12,
@@ -50,8 +48,6 @@ const SCENE_KEYS_TO_STOP = [
   'AnvilScene',
   'TreasureScene',
   'EventScene',
-  'TollroadAftermathScene',
-  'TollroadDetourScene',
   'PauseMenuScene',
   'LocationPickScene',
   SANDBOX_HUB_KEY,
@@ -104,13 +100,6 @@ export function getSandboxStories() {
   if (armIndex >= 0) {
     stories.splice(armIndex + 1, 0,
       entry('arm_wrestling_rematch', 'arm_wrestling', 'Arm Wrestling — Rematch'));
-  }
-  const tollIndex = stories.findIndex((story) => story.id === 'toll_collectors');
-  if (tollIndex >= 0) {
-    stories.splice(tollIndex, 1,
-      entry('toll_collectors_intact', 'toll_collectors', 'Toll Collectors — Intact Bridge'),
-      entry('toll_collectors_destroyed', 'toll_collectors', 'Toll Collectors — Destroyed Bridge'),
-    );
   }
   return stories;
 }
@@ -172,26 +161,13 @@ const SANDBOX_STORY_SETUP = {
     grant: ['gem', 'gemseekersLens', 'handMirror'],
     locationId: 'silkdeep',
   },
-  // Expose the dynamite choice immediately when testing the new Tollroad arc.
-  goblin_mine: {
-    grant: ['fireball'],
-    locationId: 'tollroad',
-  },
-  royal_bridge: {
-    locationId: 'tollroad',
-  },
   arm_wrestling_rematch: {
     locationId: 'tollroad',
     story: { armWrestlingSeen: true, armWrestleWon: true, armWrestleRematchDone: false },
     grant: ['armWrestleCommonStake', 'armWrestleUncommonStake'],
   },
-  toll_collectors_intact: {
+  toll_collectors: {
     locationId: 'tollroad',
-    story: { bridgeDestroyed: false, goblinMinersAllied: false, royalBridgeSeen: true },
-  },
-  toll_collectors_destroyed: {
-    locationId: 'tollroad',
-    story: { bridgeDestroyed: true, goblinMinersAllied: true, royalBridgeSeen: true },
   },
 };
 

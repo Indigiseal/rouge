@@ -6,11 +6,7 @@ globalThis.Phaser = { Scene: class {} };
 // that this is a developer context.
 const { setDevToolsEnabled } = await import('../src/config/DevTools.js');
 setDevToolsEnabled(true);
-const { GameScene, applyAmbushVictoryStory } = await import('../src/scenes/GameScene.js');
-const {
-  completeTollroadAftermath,
-  shouldShowTollroadAftermath,
-} = await import('../src/content/story/TollroadAftermath.js');
+const { GameScene } = await import('../src/scenes/GameScene.js');
 
 function makeScene(roomType = 'BOSS') {
   const hiddenEnemy = { revealed: false, data: { type: 'enemy', health: 8 }, sprite: { disableInteractive() {} } };
@@ -70,42 +66,5 @@ const eventRoom = makeScene('EVENT');
 assert.equal(GameScene.prototype.debugDefeatAllEnemies.call(eventRoom.scene), 0);
 assert.equal(eventRoom.scene.cardSystem.boardCards[0], eventRoom.hiddenEnemy);
 assert.equal(eventRoom.clearChecks, 0, 'the shortcut must be inert outside combat');
-
-const processionState = {
-  ambushId: 'royal_procession',
-  storyRun: { goblinKingStartingHealthFraction: 1 },
-};
-assert.equal(applyAmbushVictoryStory(processionState), true);
-assert.equal(processionState.storyRun.goblinKingStartingHealthFraction, 0.75,
-  'winning the procession ambush must carry a wounded Goblin King into the boss fight');
-
-assert.equal(
-  shouldShowTollroadAftermath({
-    currentFloor: 15,
-    actLocationIds: ['tollroad', null, null],
-    storyRun: { tollroadAftermathSeen: true },
-  }),
-  true,
-  'a prior viewing must not skip the Tollroad boss scene on a later victory',
-);
-assert.equal(
-  shouldShowTollroadAftermath({
-    currentFloor: 15,
-    actLocationIds: ['thornwake', null, null],
-    storyRun: { tollroadAftermathSeen: false },
-  }),
-  false,
-  'other act-one bosses must still go straight to their reward',
-);
-
-const completedTollroadRun = {
-  currentFloor: 15,
-  actLocationIds: ['tollroad', null, null],
-  storyRun: {},
-};
-completeTollroadAftermath(completedTollroadRun);
-assert.equal(shouldShowTollroadAftermath(completedTollroadRun), false,
-  'Continue must not replay a scene already completed in this run');
-assert.equal(completedTollroadRun.storyRun.magusPendantObtained, true);
 
 console.log('Debug victory clears hidden enemies, bosses, and reinforcements through the normal win path.');

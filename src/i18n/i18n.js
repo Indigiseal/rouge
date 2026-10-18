@@ -87,8 +87,6 @@ const STRINGS = {
         'location.silkdeep.place': 'The Silkdeep Caves',
         'location.silkdeep.pitch': 'Cocoons in the dark. Something in the silk is still counting you.',
         'location.tollroad.name': 'Tollroad',
-        'location.tollroad.place': "The King's Mile",
-        'location.tollroad.pitch': 'A tax in a new god\'s name. Pay, or the King takes the rest.',
         'location.boneflood.name': 'Boneflood',
         'location.boneflood.place': 'The Ossuary Fields',
         'location.boneflood.pitch': 'Water that remembers the dead. The fields do not stay buried.',
@@ -607,8 +605,6 @@ const STRINGS = {
         'location.silkdeep.place': 'Las Cuevas de Seda',
         'location.silkdeep.pitch': 'Capullos en la oscuridad. Algo en la seda sigue contandote.',
         'location.tollroad.name': 'Tollroad',
-        'location.tollroad.place': 'La Milla del Rey',
-        'location.tollroad.pitch': 'Un impuesto en nombre de un dios nuevo. Paga, o el Rey se lleva el resto.',
         'location.boneflood.name': 'Boneflood',
         'location.boneflood.place': 'Los Campos Osario',
         'location.boneflood.pitch': 'Agua que recuerda a los muertos. Los campos no se quedan enterrados.',
@@ -1088,8 +1084,6 @@ const STRINGS = {
         'location.silkdeep.place': 'Les Grottes de Soie',
         'location.silkdeep.pitch': 'Des cocons dans le noir. Quelque chose dans la soie vous compte encore.',
         'location.tollroad.name': 'Tollroad',
-        'location.tollroad.place': 'Le Mille du Roi',
-        'location.tollroad.pitch': 'Une taxe au nom d’un dieu nouveau. Payez, ou le Roi prend le reste.',
         'location.boneflood.name': 'Boneflood',
         'location.boneflood.place': 'Les Champs Ossuaire',
         'location.boneflood.pitch': 'Une eau qui se souvient des morts. Les champs ne restent pas enterrés.',
@@ -1271,8 +1265,6 @@ const STRINGS = {
         'location.silkdeep.place': 'Пещеры шёлка',
         'location.silkdeep.pitch': 'Коконы в темноте. Что-то в шёлке всё ещё считает тебя.',
         'location.tollroad.name': 'Tollroad',
-        'location.tollroad.place': 'Королевская миля',
-        'location.tollroad.pitch': 'Пошлина во имя нового бога. Плати, или Король заберёт остальное.',
         'location.boneflood.name': 'Boneflood',
         'location.boneflood.place': 'Поля оссуария',
         'location.boneflood.pitch': 'Вода, которая помнит мёртвых. Поля не остаются закопанными.',
@@ -1817,40 +1809,12 @@ for (const [language, additions] of Object.entries(UI_TEXT_ADDITIONS)) {
 
 const TOLLROAD_AFTERMATH_TEXT = {
     en: {
-        'ui.tollroadAftermath.title': "The King's Last Tribute",
-        'ui.tollroadAftermath.page1': "The Goblin King sags against his broken throne, one hand clenched around his crown and the other pressed to his chest. His lips move around one last, ragged whisper: \"Magus... you promised...\"\n\nWhen the final breath leaves him, something beneath his layers of gold begins to shine. You pull aside chains and stolen medals. Against his skin hangs a small dark stone in a plain metal setting — too plain for a king who gilded even his teeth. Pale light gathers inside it, pulsing as though it has only now awakened.",
-        'ui.tollroadAftermath.page2': "The moment your fingers meet the stone, the throne room falls away. A tall figure resolves before you, woven from the pendant's cold light. Its face refuses to stay in focus. Only its eyes are clear.\n\n\"The pawn has fallen. But not every piece upon the board of your world has value.\n\nThe gold that gleams in his vaults is nothing but toys fashioned for ignorant children. True treasures lie hidden from the sight of the creatures who inhabit your world.\n\nAnd I will bring into this world those who can put them to far higher purpose.\"",
-        'ui.tollroadAftermath.page3': "The figure scatters into pale sparks, and the throne room rushes back: smoke, blood, overturned tribute. The stone is dark again, but it remains warm in your palm.\n\nIf the King's dying whisper was meant for the figure, then this was probably the Magus. For now, the name is all you know. You keep the pendant, unable to shake the feeling that its purpose has not yet been spent.",
-        'ui.tollroadAftermath.touch': 'Touch the pendant',
-        'ui.tollroadAftermath.keep': 'Keep the pendant',
-        'ui.sandbox.encounter.tollroadAftermath': 'Tollroad Aftermath',
     },
     es: {
-        'ui.tollroadAftermath.title': 'El último tributo del rey',
-        'ui.tollroadAftermath.page1': 'El Rey Goblin se desploma contra su trono roto, con una mano aferrada a la corona y la otra sobre el pecho. Sus labios forman un último susurro entrecortado: «Magus... lo prometiste...».\n\nCuando exhala su último aliento, algo bajo sus capas de oro empieza a brillar. Apartas cadenas y medallas robadas. Contra su piel cuelga una pequeña piedra oscura en un engaste de metal sencillo, demasiado sencillo para un rey que doraba hasta sus dientes. Una luz pálida se acumula en su interior, latiendo como si acabara de despertar.',
-        'ui.tollroadAftermath.page2': 'En cuanto tus dedos tocan la piedra, la sala del trono desaparece. Una figura alta surge ante ti, tejida con la luz fría del colgante. Su rostro se niega a permanecer enfocado. Solo sus ojos se ven con claridad.\n\n«El peón ha caído. Pero no todas las piezas del tablero de vuestro mundo tienen valor.\n\nEl oro que brilla en sus cámaras no es más que juguetes creados para niños ignorantes. Los verdaderos tesoros están ocultos a la vista de las criaturas que habitan vuestro mundo.\n\nY traeré a este mundo a quienes puedan destinarlos a fines mucho más elevados».',
-        'ui.tollroadAftermath.page3': 'La figura se deshace en chispas pálidas y la sala del trono regresa de golpe: humo, sangre, tributos volcados. La piedra vuelve a estar oscura, pero sigue cálida en tu palma.\n\nSi el último susurro del Rey iba dirigido a esa figura, probablemente era Magus. Por ahora, el nombre es todo lo que sabes. Conservas el colgante, incapaz de librarte de la sensación de que su propósito aún no se ha cumplido.',
-        'ui.tollroadAftermath.touch': 'Tocar el colgante',
-        'ui.tollroadAftermath.keep': 'Conservar el colgante',
-        'ui.sandbox.encounter.tollroadAftermath': 'Epílogo de Tollroad',
     },
     fr: {
-        'ui.tollroadAftermath.title': 'Le dernier tribut du roi',
-        'ui.tollroadAftermath.page1': "Le Roi gobelin s'affaisse contre son trône brisé, une main crispée sur sa couronne et l'autre plaquée contre sa poitrine. Ses lèvres forment un dernier murmure rauque : « Magus... tu avais promis... »\n\nLorsque son dernier souffle le quitte, quelque chose se met à briller sous ses couches d'or. Vous écartez chaînes et médailles volées. Contre sa peau pend une petite pierre sombre dans une monture de métal ordinaire, bien trop simple pour un roi qui dorait jusqu'à ses dents. Une pâle lumière s'y rassemble et palpite, comme si elle venait seulement de s'éveiller.",
-        'ui.tollroadAftermath.page2': "Dès que vos doigts touchent la pierre, la salle du trône disparaît. Une haute silhouette se dessine devant vous, tissée dans la lumière froide du pendentif. Son visage refuse de rester net. Seuls ses yeux sont clairs.\n\n« Le pion est tombé. Mais toutes les pièces sur l'échiquier de votre monde n'ont pas de valeur.\n\nL'or qui brille dans ses trésors n'est rien d'autre que des jouets façonnés pour des enfants ignorants. Les vrais trésors demeurent cachés au regard des créatures qui peuplent votre monde.\n\nEt je ferai venir dans ce monde ceux qui sauront les vouer à des desseins bien plus élevés. »",
-        'ui.tollroadAftermath.page3': "La silhouette se disperse en étincelles pâles et la salle du trône revient d'un seul coup : fumée, sang, tributs renversés. La pierre est de nouveau sombre, mais elle reste chaude dans votre paume.\n\nSi le dernier murmure du Roi s'adressait à cette silhouette, il s'agissait probablement de Magus. Pour l'instant, ce nom est tout ce que vous savez. Vous gardez le pendentif, incapable de chasser le sentiment que son dessein n'est pas encore accompli.",
-        'ui.tollroadAftermath.touch': 'Toucher le pendentif',
-        'ui.tollroadAftermath.keep': 'Garder le pendentif',
-        'ui.sandbox.encounter.tollroadAftermath': 'Épilogue de Tollroad',
     },
     ru: {
-        'ui.tollroadAftermath.title': 'Последняя дань короля',
-        'ui.tollroadAftermath.page1': 'Король гоблинов оседает на разбитый трон, одной рукой вцепившись в корону, а другую прижав к груди. Его губы шевелятся в последнем хриплом шёпоте: «Магус... ты обещал...»\n\nКогда последний вздох покидает его тело, что-то под слоями золота начинает светиться. Вы отводите в сторону цепи и краденые медали. На его груди висит маленький тёмный камень в простой металлической оправе — слишком скромной для короля, который золотил даже собственные зубы. Внутри камня собирается бледный свет, пульсируя так, словно подвеска пробудилась лишь сейчас.',
-        'ui.tollroadAftermath.page2': 'Стоит вам коснуться камня, как тронный зал исчезает. Перед вами возникает высокая фигура, сотканная из холодного света подвески. Её лицо невозможно удержать в фокусе. Ясными остаются лишь глаза.\n\n«Пешка пала. Но не все фигуры на доске вашего мира имеют ценность.\n\nЗолото, что блестит в его сокровищницах, — лишь игрушки, созданные для несведущих детей. Настоящие сокровища сокрыты от взора существ, населяющих ваш мир.\n\nИ я приведу в этот мир тех, кто сможет использовать их для куда более высоких целей».',
-        'ui.tollroadAftermath.page3': 'Образ рассыпается бледными искрами, и тронный зал возвращается: дым, кровь, опрокинутые подношения. Камень снова погас, но в вашей ладони он остаётся тёплым.\n\nЕсли предсмертный шёпот короля был обращён к этой фигуре, то перед вами, вероятно, был Магус. Пока имя — всё, что вам о нём известно. Вы оставляете подвеску у себя, не в силах отделаться от чувства, что предназначение камня ещё не исполнено.',
-        'ui.tollroadAftermath.touch': 'Коснуться подвески',
-        'ui.tollroadAftermath.keep': 'Оставить подвеску',
-        'ui.sandbox.encounter.tollroadAftermath': 'Финал Tollroad',
     },
 };
 
@@ -3724,132 +3688,12 @@ Object.assign(EVENT_NARRATIVE_TRANSLATIONS.ru, {
 // story picker resolve narrative through translateDescription().
 const TOLLROAD_STORY_STRINGS = {
     "en": {
-        "event.tollroad.mine.title": "The Crystal Mine",
-        "event.tollroad.mine.description": "A mine mouth cuts into the rock beside the road. Goblins in dusty miners' clothes crowd around wagons of dynamite and rough crystals. Their foreman stalks between them, waving a tally sheet and cursing everyone in reach.",
-        "event.tollroad.mine.fireball.choice": "Cast Fireball at the dynamite",
-        "event.tollroad.mine.fireball.outcome": "The scroll crumbles and fire crosses the road in a single bright arc. The dynamite answers all at once.\n\nWhen stones finally stop falling, you search the smoking crater. Most of the crystal wagons are splinters, but three crystals survived beneath an overturned axle.",
-        "event.tollroad.mine.sneak.choice": "Try to slip away unnoticed",
-        "event.tollroad.mine.talk.choice": "Put away your weapon and approach",
-        "event.tollroad.mine.talk.outcome": "Every weapon in the work gang points at you. The foreman pushes through the line and demands to know your business.\n\n\"Only a traveller,\" you say. \"I am exploring these lands.\"\n\nThe foreman spits into the dust. Since the Goblin King took the road, he explains, ordinary workers have paid impossible tribute. Crystal miners now work three shifts and still fall behind. This shipment will be late because one fool abandoned the detonator inside the mine after seeing spiders.",
-        "event.tollroad.mine.help.choice": "Offer to recover the detonator",
-        "event.tollroad.mine.help.outcome": "You follow twisting galleries deep beneath the road. In the next cavern the missing detonator lies beside a drilled charge.\n\nAs you reach for it, pale legs unfold from cracks in the walls. Spiders begin dropping onto the mine floor.",
-        "event.tollroad.mine.refuse.choice": "Refuse and leave",
-        "event.tollroad.mine.refuse.outcome": "The foreman watches you back away. Behind him, the tally sheet flaps against an empty crystal wagon. Nobody lowers a weapon until the mine is out of sight.",
-        "event.tollroad.mine.sneak.failure": "D6: {roll}. A miner looks up just as your boot sends gravel across the road. The foreman shouts, and the work gang reaches for weapons.",
-        "event.tollroad.mine.sneak.success": "D6: {roll}. The foreman's shouting covers your steps. You reach the next bend without a single miner looking your way.",
-        "event.tollroad.return.title": "The Foreman’s Promise",
-        "event.tollroad.return.description": "You emerge from the mine with the detonator. The foreman takes it in both hands, checks the brass contacts, and finally lets himself breathe.\n\nThe miners can make their quota now—but instead of thanking the King, they gather close around their foreman.",
-        "event.tollroad.return.choice": "Return the detonator",
-        "event.tollroad.return.outcome": "The foreman hides the detonator beneath his coat.\n\n\"You helped working goblins when you could have taken our carts,\" he says. \"When you go for the King, watch the old bridge. We know where its stones are weakest.\"\n\nOne by one, the miners nod. The next explosion they set will not be for crystal.",
-        "event.tollroad.bridge.title": "The Royal Procession",
-        "event.tollroad.bridge.description.allied": "Far ahead, a royal procession crosses an old stone bridge. Goblin soldiers surround a palanquin carrying a richly dressed goblin.\n\nMiners burst from beneath the bridge and sprint for cover. A fuse spits sparks between the foundation stones, trailing after them.",
-        "event.tollroad.bridge.description.killed": "Far ahead, a royal procession crosses an old stone bridge. Goblin soldiers surround a palanquin carrying the Goblin King.\n\nNo miners wait beneath the span. The dynamite wagons you left burning—or the workers who caught you near them—will set no charge today. The bridge is narrow, but the procession is intact.",
-        "event.tollroad.bridge.description.default": "Far ahead, a royal procession crosses an old stone bridge. Goblin soldiers surround a palanquin carrying a richly dressed goblin—the King, travelling behind a wall of hired steel.\n\nThe bridge is narrow. For a few moments, the whole procession is exposed.",
-        "event.tollroad.bridge.watch.choice": "Watch the fuse burn",
-        "event.tollroad.bridge.sabotage.outcome": "The bridge erupts. Stone folds into the ravine and most of the escort vanishes with it. The Goblin King claws his way out of the palanquin and runs for solid ground.\n\nA final miner turns, hurls a stick of dynamite, and dives behind the ridge. The blast catches the King before he clears the span. He survives—but he will carry the wound into your battle.",
-        "event.tollroad.bridge.preview.choice": "[Test Site] Preview the miners’ sabotage",
-        "event.tollroad.bridge.fireball.choice": "Cast Fireball at the palanquin",
-        "event.tollroad.bridge.fireball.outcome": "Fire bursts against the palanquin. The bearers scatter and the King reaches cover, scorched and furious. You have wounded him—but without the miners' charges, the bridge and most of his escort remain intact.",
-        "event.tollroad.bridge.attack.choice": "Ambush the rearguard",
-        "event.tollroad.bridge.attack.outcome": "You strike the rear of the column before the alarm reaches the palanquin. The King's guards turn back as one, buying their master time to flee across the bridge.",
-        "event.tollroad.bridge.hide.choice": "Stay hidden and let them pass",
-        "event.tollroad.bridge.hide.outcome": "You remain among the rocks until the last spear disappears down the road. The King reaches his fortress unwounded and unaware of how close you were."
     },
     "es": {
-        "event.tollroad.mine.title": "La mina de cristales",
-        "event.tollroad.mine.description": "La boca de una mina se abre en la roca junto al camino. Goblins con ropa de minero cubierta de polvo se apiñan alrededor de vagonetas cargadas de dinamita y cristales en bruto. Su capataz va de un lado a otro, agitando una hoja de cuentas y maldiciendo a todo el que se le acerca.",
-        "event.tollroad.mine.fireball.choice": "Lanzar Bola de fuego a la dinamita",
-        "event.tollroad.mine.fireball.outcome": "El pergamino se deshace y el fuego cruza el camino en un único arco brillante. Toda la dinamita responde a la vez.\n\nCuando por fin dejan de caer piedras, registras el cráter humeante. Casi todas las vagonetas han quedado hechas astillas, pero tres cristales se han salvado bajo un eje volcado.",
-        "event.tollroad.mine.sneak.choice": "Intentar escabullirte sin que te vean",
-        "event.tollroad.mine.talk.choice": "Guardar el arma y acercarte",
-        "event.tollroad.mine.talk.outcome": "Todas las armas de la cuadrilla te apuntan. El capataz se abre paso entre los mineros y exige saber qué buscas.\n\n«Solo soy un viajero», dices. «Estoy explorando estas tierras».\n\nEl capataz escupe en el polvo. Desde que el Rey Goblin se apoderó del camino, explica, los trabajadores pagan un tributo imposible. Los mineros de cristales trabajan ahora en tres turnos y aun así no dan abasto. Este cargamento se retrasará porque un idiota dejó el detonador dentro de la mina al ver unas arañas.",
-        "event.tollroad.mine.help.choice": "Ofrecerte a recuperar el detonador",
-        "event.tollroad.mine.help.outcome": "Sigues galerías sinuosas muy por debajo del camino. En la siguiente caverna, el detonador perdido yace junto a una carga colocada en la roca.\n\nCuando alargas la mano, unas patas pálidas se despliegan desde las grietas de las paredes. Las arañas empiezan a caer al suelo de la mina.",
-        "event.tollroad.mine.refuse.choice": "Negarte y marcharte",
-        "event.tollroad.mine.refuse.outcome": "El capataz te observa mientras retrocedes. A su espalda, la hoja de cuentas aletea contra una vagoneta vacía. Nadie baja el arma hasta que la mina desaparece de tu vista.",
-        "event.tollroad.mine.sneak.failure": "D6: {roll}. Un minero levanta la vista justo cuando tu bota esparce grava por el camino. El capataz grita y la cuadrilla echa mano de las armas.",
-        "event.tollroad.mine.sneak.success": "D6: {roll}. Los gritos del capataz ahogan tus pasos. Llegas a la siguiente curva sin que un solo minero mire en tu dirección.",
-        "event.tollroad.return.title": "La promesa del capataz",
-        "event.tollroad.return.description": "Sales de la mina con el detonador. El capataz lo toma con ambas manos, comprueba los contactos de latón y por fin se permite respirar.\n\nLos mineros ya pueden cumplir su cuota, pero en vez de dar las gracias al Rey, se reúnen en torno a su capataz.",
-        "event.tollroad.return.choice": "Devolver el detonador",
-        "event.tollroad.return.outcome": "El capataz esconde el detonador bajo el abrigo.\n\n«Ayudaste a unos goblins trabajadores cuando podrías haberte llevado nuestros carros», dice. «Cuando vayas a por el Rey, fíjate en el puente viejo. Sabemos dónde están sus piedras más débiles».\n\nUno tras otro, los mineros asienten. La próxima explosión que preparen no será para extraer cristales.",
-        "event.tollroad.bridge.title": "La comitiva real",
-        "event.tollroad.bridge.description.allied": "A lo lejos, una comitiva real cruza un viejo puente de piedra. Soldados goblin rodean un palanquín que transporta a un goblin ricamente vestido.\n\nUnos mineros salen de debajo del puente y corren a ponerse a cubierto. Una mecha chisporrotea entre las piedras de los cimientos, extendida tras ellos.",
-        "event.tollroad.bridge.description.killed": "A lo lejos, una comitiva real cruza un viejo puente de piedra. Soldados goblin rodean un palanquín que transporta al Rey Goblin.\n\nNo hay mineros esperando bajo el puente. Ni las vagonetas de dinamita que dejaste ardiendo ni los trabajadores que te sorprendieron junto a ellas colocarán hoy ninguna carga. El puente es estrecho, pero la comitiva está intacta.",
-        "event.tollroad.bridge.description.default": "A lo lejos, una comitiva real cruza un viejo puente de piedra. Soldados goblin rodean un palanquín que transporta a un goblin ricamente vestido: el Rey, que viaja tras un muro de acero a sueldo.\n\nEl puente es estrecho. Durante unos instantes, toda la comitiva queda expuesta.",
-        "event.tollroad.bridge.watch.choice": "Observar cómo arde la mecha",
-        "event.tollroad.bridge.sabotage.outcome": "El puente estalla. La piedra se desploma en el barranco y la mayor parte de la escolta desaparece con ella. El Rey Goblin sale a rastras del palanquín y corre hacia tierra firme.\n\nUn último minero se vuelve, lanza un cartucho de dinamita y se arroja tras la cresta. La explosión alcanza al Rey antes de que salga del puente. Sobrevive, pero llevará esa herida a vuestro combate.",
-        "event.tollroad.bridge.preview.choice": "[Zona de pruebas] Ver el sabotaje minero",
-        "event.tollroad.bridge.fireball.choice": "Lanzar Bola de fuego al palanquín",
-        "event.tollroad.bridge.fireball.outcome": "El fuego estalla contra el palanquín. Los porteadores se dispersan y el Rey llega a cubierto, chamuscado y furioso. Lo has herido, pero sin las cargas de los mineros, el puente y la mayor parte de su escolta siguen intactos.",
-        "event.tollroad.bridge.attack.choice": "Tender una emboscada a la retaguardia",
-        "event.tollroad.bridge.attack.outcome": "Atacas la retaguardia antes de que la alarma llegue al palanquín. Los guardias del Rey se vuelven al unísono, dando a su señor tiempo para huir al otro lado del puente.",
-        "event.tollroad.bridge.hide.choice": "Seguir oculto y dejar que pasen",
-        "event.tollroad.bridge.hide.outcome": "Permaneces entre las rocas hasta que la última lanza desaparece por el camino. El Rey llega a su fortaleza ileso, sin saber lo cerca que estuviste."
     },
     "fr": {
-        "event.tollroad.mine.title": "La mine de cristaux",
-        "event.tollroad.mine.description": "Une entrée de mine entaille la roche au bord de la route. Des gobelins en habits de mineurs poussiéreux se pressent autour de wagonnets chargés de dynamite et de cristaux bruts. Leur contremaître va et vient parmi eux, agitant une feuille de comptes et maudissant tous ceux qui passent à sa portée.",
-        "event.tollroad.mine.fireball.choice": "Lancer une Boule de feu sur la dynamite",
-        "event.tollroad.mine.fireball.outcome": "Le parchemin tombe en poussière et le feu traverse la route en un seul arc lumineux. Toute la dynamite répond à la fois.\n\nQuand les pierres cessent enfin de tomber, vous fouillez le cratère fumant. La plupart des wagonnets ne sont plus que des éclats de bois, mais trois cristaux ont survécu sous un essieu renversé.",
-        "event.tollroad.mine.sneak.choice": "Tenter de partir sans se faire remarquer",
-        "event.tollroad.mine.talk.choice": "Ranger votre arme et vous approcher",
-        "event.tollroad.mine.talk.outcome": "Toutes les armes de la brigade se pointent sur vous. Le contremaître se fraie un passage et exige de savoir ce qui vous amène.\n\n« Un simple voyageur, dites-vous. Je parcours ces terres. »\n\nLe contremaître crache dans la poussière. Depuis que le Roi gobelin a pris la route, explique-t-il, les ouvriers paient un tribut impossible. Les mineurs de cristaux travaillent désormais en trois équipes et prennent malgré tout du retard. Cette livraison sera en retard parce qu’un imbécile a abandonné le détonateur dans la mine en voyant des araignées.",
-        "event.tollroad.mine.help.choice": "Proposer de récupérer le détonateur",
-        "event.tollroad.mine.help.outcome": "Vous suivez des galeries sinueuses loin sous la route. Dans la caverne suivante, le détonateur disparu repose près d’une charge placée dans un trou de forage.\n\nAlors que vous tendez la main, des pattes pâles se déplient dans les fissures des parois. Des araignées commencent à tomber sur le sol de la mine.",
-        "event.tollroad.mine.refuse.choice": "Refuser et partir",
-        "event.tollroad.mine.refuse.outcome": "Le contremaître vous regarde reculer. Derrière lui, la feuille de comptes bat contre un wagonnet vide. Personne ne baisse son arme avant que la mine ne disparaisse de votre vue.",
-        "event.tollroad.mine.sneak.failure": "D6 : {roll}. Un mineur lève les yeux au moment où votre botte fait rouler des graviers sur la route. Le contremaître crie et la brigade saisit ses armes.",
-        "event.tollroad.mine.sneak.success": "D6 : {roll}. Les cris du contremaître couvrent vos pas. Vous atteignez le prochain tournant sans qu’un seul mineur regarde dans votre direction.",
-        "event.tollroad.return.title": "La promesse du contremaître",
-        "event.tollroad.return.description": "Vous sortez de la mine avec le détonateur. Le contremaître le prend à deux mains, vérifie les contacts en laiton et se permet enfin de respirer.\n\nLes mineurs peuvent désormais remplir leur quota, mais au lieu de remercier le Roi, ils se rassemblent autour de leur contremaître.",
-        "event.tollroad.return.choice": "Rendre le détonateur",
-        "event.tollroad.return.outcome": "Le contremaître cache le détonateur sous son manteau.\n\n« Vous avez aidé des gobelins qui travaillent alors que vous auriez pu prendre nos chariots, dit-il. Quand vous vous en prendrez au Roi, surveillez le vieux pont. Nous savons où ses pierres sont les plus fragiles. »\n\nUn à un, les mineurs acquiescent. La prochaine explosion qu’ils prépareront ne servira pas à extraire des cristaux.",
-        "event.tollroad.bridge.title": "Le cortège royal",
-        "event.tollroad.bridge.description.allied": "Au loin, un cortège royal traverse un vieux pont de pierre. Des soldats gobelins entourent un palanquin portant un gobelin richement vêtu.\n\nDes mineurs surgissent de sous le pont et courent se mettre à couvert. Une mèche crache des étincelles entre les pierres des fondations, dans leur sillage.",
-        "event.tollroad.bridge.description.killed": "Au loin, un cortège royal traverse un vieux pont de pierre. Des soldats gobelins entourent un palanquin portant le Roi gobelin.\n\nAucun mineur n’attend sous le pont. Ni les wagonnets de dynamite que vous avez laissés en flammes, ni les ouvriers qui vous ont surpris à côté ne poseront de charge aujourd’hui. Le pont est étroit, mais le cortège est intact.",
-        "event.tollroad.bridge.description.default": "Au loin, un cortège royal traverse un vieux pont de pierre. Des soldats gobelins entourent un palanquin portant un gobelin richement vêtu : le Roi, voyageant derrière un mur de lames à sa solde.\n\nLe pont est étroit. Pendant quelques instants, tout le cortège est à découvert.",
-        "event.tollroad.bridge.watch.choice": "Regarder la mèche se consumer",
-        "event.tollroad.bridge.sabotage.outcome": "Le pont explose. La pierre s’effondre dans le ravin et la majeure partie de l’escorte disparaît avec elle. Le Roi gobelin s’extirpe du palanquin et court vers la terre ferme.\n\nUn dernier mineur se retourne, lance un bâton de dynamite et plonge derrière la crête. Le souffle atteint le Roi avant qu’il ne quitte le pont. Il survit, mais portera cette blessure lors de votre combat.",
-        "event.tollroad.bridge.preview.choice": "[Zone de test] Voir le sabotage des mineurs",
-        "event.tollroad.bridge.fireball.choice": "Lancer une Boule de feu sur le palanquin",
-        "event.tollroad.bridge.fireball.outcome": "Le feu éclate contre le palanquin. Les porteurs se dispersent et le Roi se met à couvert, brûlé et furieux. Vous l’avez blessé, mais sans les charges des mineurs, le pont et la majeure partie de son escorte restent intacts.",
-        "event.tollroad.bridge.attack.choice": "Prendre l’arrière-garde en embuscade",
-        "event.tollroad.bridge.attack.outcome": "Vous frappez l’arrière de la colonne avant que l’alarme n’atteigne le palanquin. Les gardes du Roi font volte-face comme un seul homme, laissant à leur maître le temps de fuir de l’autre côté du pont.",
-        "event.tollroad.bridge.hide.choice": "Rester à couvert et les laisser passer",
-        "event.tollroad.bridge.hide.outcome": "Vous restez parmi les rochers jusqu’à ce que la dernière lance disparaisse sur la route. Le Roi atteint sa forteresse indemne, sans savoir à quel point vous étiez proche."
     },
     "ru": {
-        "event.tollroad.mine.title": "Кристальная шахта",
-        "event.tollroad.mine.description": "У дороги в скале зияет вход в шахту. Гоблины в пыльной шахтёрской одежде толпятся вокруг вагонеток с динамитом и необработанными кристаллами. Бригадир мечется между ними, размахивая ведомостью и ругая всех, кто попадётся под руку.",
-        "event.tollroad.mine.fireball.choice": "Бросить огненный шар в динамит",
-        "event.tollroad.mine.fireball.outcome": "Свиток рассыпается, и огонь пересекает дорогу яркой дугой. Весь динамит откликается разом.\n\nКогда камни наконец перестают падать, вы обыскиваете дымящуюся воронку. От большинства вагонеток остались щепки, но под перевёрнутой осью уцелели три кристалла.",
-        "event.tollroad.mine.sneak.choice": "Попытаться уйти незаметно",
-        "event.tollroad.mine.talk.choice": "Убрать оружие и подойти",
-        "event.tollroad.mine.talk.outcome": "Вся бригада направляет на вас оружие. Бригадир протискивается вперёд и требует объяснить, что вам нужно.\n\n«Я просто путник, — говорите вы. — Изучаю эти земли».\n\nБригадир сплёвывает в пыль. С тех пор как Король гоблинов захватил дорогу, объясняет он, с простых рабочих дерут непосильную дань. Шахтёры теперь работают в три смены и всё равно не успевают. Эта партия задержится: какой-то болван увидел пауков и бросил детонатор внутри шахты.",
-        "event.tollroad.mine.help.choice": "Предложить вернуть детонатор",
-        "event.tollroad.mine.help.outcome": "Извилистые штольни уводят вас глубоко под дорогу. В следующей пещере пропавший детонатор лежит рядом с зарядом, заложенным в скалу.\n\nСтоит протянуть руку, как из трещин в стенах разворачиваются бледные лапы. На пол шахты начинают падать пауки.",
-        "event.tollroad.mine.refuse.choice": "Отказаться и уйти",
-        "event.tollroad.mine.refuse.outcome": "Бригадир смотрит, как вы отступаете. За его спиной ведомость хлопает о пустую вагонетку. Никто не опускает оружие, пока шахта не скрывается из виду.",
-        "event.tollroad.mine.sneak.failure": "К6: {roll}. Шахтёр поднимает голову как раз в тот миг, когда ваш сапог сдвигает гравий на дороге. Бригадир кричит, и рабочие хватаются за оружие.",
-        "event.tollroad.mine.sneak.success": "К6: {roll}. Крики бригадира заглушают ваши шаги. Вы добираетесь до следующего поворота, и ни один шахтёр не смотрит в вашу сторону.",
-        "event.tollroad.return.title": "Обещание бригадира",
-        "event.tollroad.return.description": "Вы выходите из шахты с детонатором. Бригадир берёт его обеими руками, проверяет латунные контакты и наконец позволяет себе выдохнуть.\n\nТеперь шахтёры смогут выполнить норму. Но вместо того чтобы благодарить Короля, они тесным кругом собираются вокруг бригадира.",
-        "event.tollroad.return.choice": "Вернуть детонатор",
-        "event.tollroad.return.outcome": "Бригадир прячет детонатор под куртку.\n\n«Вы помогли работягам-гоблинам, хотя могли просто забрать наши повозки, — говорит он. — Когда пойдёте за Королём, приглядитесь к старому мосту. Мы знаем, где кладка слабее всего».\n\nОдин за другим шахтёры кивают. Следующий взрыв они устроят не ради кристаллов.",
-        "event.tollroad.bridge.title": "Королевская процессия",
-        "event.tollroad.bridge.description.allied": "Вдалеке королевская процессия пересекает старый каменный мост. Гоблины-солдаты окружают паланкин с богато одетым гоблином.\n\nИз-под моста выскакивают шахтёры и бегут в укрытие. За ними, между камнями фундамента, тянется шипящий искрами фитиль.",
-        "event.tollroad.bridge.description.killed": "Вдалеке королевская процессия пересекает старый каменный мост. Гоблины-солдаты окружают паланкин с Королём гоблинов.\n\nПод мостом не ждут шахтёры. Ни вагонетки с динамитом, оставленные вами в огне, ни рабочие, застигшие вас рядом с ними, сегодня не помогут заложить заряд. Мост узкий, но процессия цела.",
-        "event.tollroad.bridge.description.default": "Вдалеке королевская процессия пересекает старый каменный мост. Гоблины-солдаты окружают паланкин с богато одетым гоблином — Королём, который путешествует за стеной наёмных клинков.\n\nМост узкий. На несколько мгновений вся процессия оказывается как на ладони.",
-        "event.tollroad.bridge.watch.choice": "Смотреть, как догорает фитиль",
-        "event.tollroad.bridge.sabotage.outcome": "Мост взрывается. Каменная кладка рушится в овраг, увлекая за собой большую часть охраны. Король гоблинов выбирается из паланкина и бежит к твёрдой земле.\n\nПоследний шахтёр оборачивается, бросает динамитную шашку и ныряет за гребень. Взрыв настигает Короля прежде, чем тот покидает мост. Он выживет, но в бой с вами вступит раненым.",
-        "event.tollroad.bridge.preview.choice": "[Полигон] Посмотреть диверсию шахтёров",
-        "event.tollroad.bridge.fireball.choice": "Бросить огненный шар в паланкин",
-        "event.tollroad.bridge.fireball.outcome": "Огонь взрывается у паланкина. Носильщики разбегаются, а Король добирается до укрытия — обожжённый и разъярённый. Вы ранили его, но без шахтёрских зарядов мост и большая часть охраны остаются целы.",
-        "event.tollroad.bridge.attack.choice": "Напасть на арьергард из засады",
-        "event.tollroad.bridge.attack.outcome": "Вы ударяете по хвосту колонны прежде, чем тревога доходит до паланкина. Королевские стражники разом поворачивают назад, выигрывая своему хозяину время для бегства через мост.",
-        "event.tollroad.bridge.hide.choice": "Остаться в укрытии и пропустить их",
-        "event.tollroad.bridge.hide.outcome": "Вы остаётесь среди скал, пока последнее копьё не скрывается за поворотом. Король добирается до крепости невредимым, даже не подозревая, как близко вы были."
     }
 };
 
@@ -4071,34 +3915,6 @@ export function normalizeLanguageCode(language) {
 }
 
 Object.assign(STRINGS.en, {
-    'ui.tollroadIntro.title': "The King's Mile",
-    'ui.tollroadIntro.page1': 'You step into a forest clearing. Behind you, the heavy door slams into a crooked wooden frame with a deep, timbered boom. It looks as though a forester\'s cottage ought to stand here, but someone has rubbed away the walls, floor, roof, and everything they held, leaving only the doorway hanging in the air.\n\nThen the door thins into nothing. There will be no going back that way. You set off through the trees.',
-    'ui.tollroadIntro.page2': 'Before long the ground rises beneath your feet. From the hilltop, a broad valley opens below. Roads web every field, and every road narrows through a gate. Little green figures wait beside striped barriers with ledgers, scales, and open palms.\n\nToll boards have been nailed to trees, wells, bridges—even to a scarecrow. Carts stand stripped beside the road while goblins argue over their contents. Above it all, green-and-gold banners mark each stolen roof for the Goblin King.\n\nNothing moves through this valley without paying. The goblins own the roads, and greed appears to be their only law.',
-    'ui.tollroadIntro.goOn': 'Enter the valley',
-});
-
-Object.assign(STRINGS.ru, {
-    'ui.tollroadIntro.title': 'Королевская миля',
-    'ui.tollroadIntro.page1': 'Ты оказываешься посреди лесной поляны. За спиной тяжёлая дверь с гулким стуком захлопывается в немного покосившейся деревянной раме. Кажется, здесь должна стоять избушка лесника, но кто-то словно ластиком стёр стены, пол, крышу и всё её содержимое, оставив лишь дверной проём, висящий в воздухе.\n\nЗатем дверь растворяется вместе с проёмом. Этим путём уже не вернуться. Ты углубляешься в лес.',
-    'ui.tollroadIntro.page2': 'Вскоре дорога выводит тебя на холм, и внизу открывается широкая долина. Поля опутаны дорогами, и каждая дорога сужается у заставы. Возле полосатых шлагбаумов суетятся маленькие зелёные фигуры — со счётными книгами, весами и протянутыми ладонями.\n\nТаблички с пошлинами прибиты к деревьям, колодцам, мостам и даже к пугалу. На обочинах стоят обобранные телеги, пока гоблины ссорятся из-за их содержимого. Над каждой отнятой крышей висит зелёно-золотое знамя Короля гоблинов.\n\nНичто в этой долине не сдвинется с места, не заплатив. Гоблины владеют дорогами, а жадность здесь — единственный закон.',
-    'ui.tollroadIntro.goOn': 'Спуститься в долину',
-});
-
-Object.assign(STRINGS.es, {
-    'ui.tollroadIntro.title': 'La Milla del Rey',
-    'ui.tollroadIntro.page1': 'Apareces en medio de un claro del bosque. A tu espalda, la pesada puerta se cierra contra un marco de madera algo torcido con un golpe profundo. Parece que aquí debería haber una cabaña de guardabosques, pero alguien ha borrado las paredes, el suelo, el tejado y todo cuanto contenían, dejando solo el umbral suspendido en el aire.\n\nEntonces también la puerta se desvanece. Ya no podrás volver por allí. Te adentras entre los árboles.',
-    'ui.tollroadIntro.page2': 'Poco después, el terreno asciende hasta una colina. Desde la cima se abre un amplio valle. Los caminos cubren los campos como una red, y cada uno se estrecha al llegar a una barrera. Pequeñas figuras verdes aguardan junto a los postes rayados con libros de cuentas, balanzas y las palmas extendidas.\n\nHay tablones de peaje clavados en árboles, pozos, puentes e incluso en un espantapájaros. Carros desvalijados descansan junto al camino mientras los goblins se disputan su contenido. Sobre cada tejado robado ondea el estandarte verde y dorado del Rey Goblin.\n\nNada cruza este valle sin pagar. Los goblins son dueños de los caminos, y la codicia parece ser su única ley.',
-    'ui.tollroadIntro.goOn': 'Entrar en el valle',
-});
-
-Object.assign(STRINGS.fr, {
-    'ui.tollroadIntro.title': 'Le Mille du Roi',
-    'ui.tollroadIntro.page1': 'Vous vous retrouvez au milieu d’une clairière. Derrière vous, la lourde porte se referme contre un chambranle de bois un peu de travers dans un grondement sourd. Une cabane de forestier devrait se dresser ici, mais quelqu’un semble en avoir gommé les murs, le sol, le toit et tout ce qu’ils abritaient, ne laissant que cette ouverture suspendue dans les airs.\n\nPuis la porte se dissout à son tour. Impossible de revenir par là. Vous vous enfoncez entre les arbres.',
-    'ui.tollroadIntro.page2': 'Bientôt, le terrain monte jusqu’à une colline. Du sommet, une vaste vallée s’ouvre devant vous. Les routes quadrillent chaque champ et chacune se resserre devant une barrière. De petites silhouettes vertes attendent près des poteaux rayés, registres, balances et paumes ouvertes à la main.\n\nDes écriteaux de péage sont cloués aux arbres, aux puits, aux ponts et même à un épouvantail. Des charrettes dépouillées bordent la route tandis que des gobelins se disputent leur contenu. Au-dessus de chaque toit volé flotte la bannière verte et or du Roi gobelin.\n\nRien ne traverse cette vallée sans payer. Les gobelins possèdent les routes, et l’avidité semble être leur seule loi.',
-    'ui.tollroadIntro.goOn': 'Entrer dans la vallée',
-});
-
-Object.assign(STRINGS.en, {
     'ui.silkdeepIntro.title': 'The Palace of the Last Feast',
     'ui.silkdeepIntro.page1': 'You pass through a heavy stone door draped in old webbing—and find yourself walking out of a crypt.\n\nThe small tomb stands alone among dead hedges and weather-worn statues, in the neglected grounds behind a vast palace. The doorway at your back is already dark. It offers no road home.',
     'ui.silkdeepIntro.page2': 'You walk around the crypt, and the palace reveals itself. Pale silk covers the roofs, bridges the windows, and hangs from the towers in heavy sheets.\n\nThere is enough web here for an army of spiders. Yet the grounds are silent. You do not see a single one.\n\nAcross the abandoned courtyard, the massive doors of the main entrance stand slightly ajar.',
@@ -4128,35 +3944,6 @@ Object.assign(STRINGS.fr, {
     'ui.silkdeepIntro.page2': 'Vous contournez le caveau et le palais se révèle. Une soie pâle couvre les toits, relie les fenêtres et pend des tours en lourds rideaux.\n\nIl y a là assez de toile pour une armée d’araignées. Pourtant, les jardins restent silencieux. Vous n’en voyez aucune.\n\nDe l’autre côté de la cour abandonnée, les portes massives de l’entrée principale sont restées entrouvertes.',
     'ui.silkdeepIntro.page3': 'Les portes sont trop lourdes pour être déplacées, mais l’espace entre elles suffit. Vous vous tournez de côté et vous glissez à l’intérieur.\n\nUn vaste hall s’ouvre devant vous, abandonné sous des couches de toile. Deux escaliers monumentaux en demi-cercle montent vers l’étage.\n\nUn bruit remue dans un coin sombre. Un autre lui répond. Au-dessus des marches, de petites paires d’yeux s’ouvrent dans l’ombre.',
     'ui.silkdeepIntro.goOn': 'Entrer dans le palais',
-});
-
-Object.assign(STRINGS.en, {
-    'ui.detour.title': 'The Marsh Detour', 'ui.detour.subtitle': 'Three stops stand between you and the King’s road.',
-    'ui.detour.fight': 'Danger {number}', 'ui.detour.merchant': 'Merchant',
-    'ui.detour.exitTitle': 'Beyond the Broken Bridge',
-    'ui.detour.exitBody': 'At last the reeds thin and the ground rises beneath your boots. You climb out of the marsh onto the King’s road—and find yourself on the far side of the ruined bridge.\n\nAcross the gap, the tax collectors’ abandoned barrier is little more than a stripe of color in the distance. Ahead, the road winds toward the Goblin King’s castle. The detour is over.',
-    'ui.detour.return': 'Return to the King’s road',
-});
-Object.assign(STRINGS.es, {
-    'ui.detour.title': 'El desvío del pantano', 'ui.detour.subtitle': 'Tres etapas te separan del camino del Rey.',
-    'ui.detour.fight': 'Peligro {number}', 'ui.detour.merchant': 'Mercader',
-    'ui.detour.exitTitle': 'Más allá del puente derruido',
-    'ui.detour.exitBody': 'Por fin los juncos se dispersan y el terreno se eleva bajo tus botas. Sales del pantano al camino del Rey, al otro lado del puente derruido.\n\nAl otro lado del vacío, la barrera abandonada de los recaudadores apenas es una franja de color. Delante, el camino serpentea hacia el castillo del Rey Goblin. El desvío ha terminado.',
-    'ui.detour.return': 'Volver al camino del Rey',
-});
-Object.assign(STRINGS.fr, {
-    'ui.detour.title': 'Le détour des marais', 'ui.detour.subtitle': 'Trois étapes vous séparent de la route du Roi.',
-    'ui.detour.fight': 'Danger {number}', 'ui.detour.merchant': 'Marchand',
-    'ui.detour.exitTitle': 'Au-delà du pont détruit',
-    'ui.detour.exitBody': 'Enfin, les roseaux s’éclaircissent et le sol remonte sous vos bottes. Vous quittez le marais pour retrouver la route du Roi, de l’autre côté du pont détruit.\n\nAu-delà du gouffre, la barrière abandonnée des collecteurs n’est plus qu’une tache de couleur. Devant vous, la route serpente vers le château du Roi gobelin. Le détour est terminé.',
-    'ui.detour.return': 'Reprendre la route du Roi',
-});
-Object.assign(STRINGS.ru, {
-    'ui.detour.title': 'Обход через болото', 'ui.detour.subtitle': 'Три остановки отделяют тебя от королевской дороги.',
-    'ui.detour.fight': 'Опасность {number}', 'ui.detour.merchant': 'Торговец',
-    'ui.detour.exitTitle': 'По ту сторону моста',
-    'ui.detour.exitBody': 'Наконец камыш редеет, а земля под ногами идёт вверх. Ты выбираешься из болота на королевскую дорогу — по другую сторону разрушенного моста.\n\nЗа провалом брошенный шлагбаум поборников кажется лишь цветной полоской вдали. Впереди дорога вьётся к замку Короля гоблинов. Обход окончен.',
-    'ui.detour.return': 'Вернуться на королевскую дорогу',
 });
 
 export function getLanguageName(code) {

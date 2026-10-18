@@ -37,6 +37,7 @@ import {
   NEST_TOOK_COG,
   NEST_TOOK_EGG,
   NEST_LEFT,
+  NEST_LEFT_NO_BOX,
 } from '../content/events/monster_bird_nest.js';
 import { getLocationIdForFloor } from '../content/locations/index.js';
 import { pickTollroadEventId } from '../content/location-packs/tollroad/index.js';
@@ -73,9 +74,6 @@ const EVENT_ILLUSTRATION_FRAMES = {
   // (the Copying Mirror's glassy panel) is the closest stand-in for now.
   reliquary: 11,
   silk_cocoon_cache: 31,
-  goblin_mine: 29,
-  goblin_mine_return: 29,
-  royal_bridge: 29,
 };
 
 // How far the Screaming Head statue sits right of the usual event-art spot.
@@ -130,7 +128,7 @@ export class EventScene extends Phaser.Scene {
       this.gameState?.currentFloor || 1
     );
     // Tollroad owns its narrative pool. Global story chains and filler events
-    // must not displace the King's Mile encounters during a normal run.
+    // must not displace the Tollroad's own encounters during a normal run.
     if (locationId === 'tollroad') return this._pickTollroadEvent();
 
     const forcedId = this._getForcedEventId();
@@ -235,6 +233,7 @@ export class EventScene extends Phaser.Scene {
     if (story.boxState === 'unknown') return this.getEventById('broken_music_box');
 
     const pool = [];
+    if (!story.tollCollectorsSeen) pool.push('toll_collectors');
     if (!story.mirrorSeen) pool.push('mirror');
     if (!story.tooNiceRoomSeen) pool.push('too_nice_room');
     if (!story.wellSeen) pool.push('almost_you_well');
@@ -319,27 +318,12 @@ export class EventScene extends Phaser.Scene {
       tollFought: false,
       tollKiller: false,
       tollEscapeNoticeShown: false,
-      tollWatchFailed: false,
-      bridgeDestroyed: false,
       tollGuardsEscaped: 0,
-      tollEscapeMode: null,
-      tollroadDetour: null,
-      jetpackFlightPending: false,
       merchantRobbed: false,
       screamingHeadSeen: false,
       carnivalVisited: false,
       carnivalHagMet: false,
       brassWizardSeen: false,
-      tollroadAftermathSeen: false,
-      magusPendantObtained: false,
-      tollroadAftermathCompleteThisRun: false,
-      goblinMineSeen: false,
-      goblinMinersKilled: false,
-      goblinMinersAllied: false,
-      royalBridgeSeen: false,
-      tollroadThroneHallSeen: false,
-      goblinKingStartingHealthFraction: 1,
-      pendingPostCombatEventId: null,
       pendingEvents: []
     };
 
@@ -429,32 +413,12 @@ export class EventScene extends Phaser.Scene {
       tollFought: Boolean(existingStoryRun.tollFought),
       tollKiller: Boolean(existingStoryRun.tollKiller),
       tollEscapeNoticeShown: Boolean(existingStoryRun.tollEscapeNoticeShown),
-      tollWatchFailed: Boolean(existingStoryRun.tollWatchFailed),
-      bridgeDestroyed: Boolean(existingStoryRun.bridgeDestroyed
-        || (existingStoryRun.goblinMinersAllied && existingStoryRun.royalBridgeSeen)),
       tollGuardsEscaped: Math.max(0, Math.min(2, Number(existingStoryRun.tollGuardsEscaped) || 0)),
-      tollEscapeMode: typeof existingStoryRun.tollEscapeMode === 'string' ? existingStoryRun.tollEscapeMode : null,
-      tollroadDetour: existingStoryRun.tollroadDetour || null,
-      jetpackFlightPending: Boolean(existingStoryRun.jetpackFlightPending),
       merchantRobbed: Boolean(existingStoryRun.merchantRobbed),
       screamingHeadSeen: Boolean(existingStoryRun.screamingHeadSeen),
       carnivalVisited: Boolean(existingStoryRun.carnivalVisited),
       carnivalHagMet: Boolean(existingStoryRun.carnivalHagMet),
       brassWizardSeen: Boolean(existingStoryRun.brassWizardSeen),
-      tollroadAftermathSeen: Boolean(existingStoryRun.tollroadAftermathSeen),
-      magusPendantObtained: Boolean(existingStoryRun.magusPendantObtained),
-      tollroadAftermathCompleteThisRun: Boolean(existingStoryRun.tollroadAftermathCompleteThisRun),
-      goblinMineSeen: Boolean(existingStoryRun.goblinMineSeen),
-      goblinMinersKilled: Boolean(existingStoryRun.goblinMinersKilled),
-      goblinMinersAllied: Boolean(existingStoryRun.goblinMinersAllied),
-      royalBridgeSeen: Boolean(existingStoryRun.royalBridgeSeen),
-      tollroadThroneHallSeen: Boolean(existingStoryRun.tollroadThroneHallSeen),
-      goblinKingStartingHealthFraction: Number.isFinite(existingStoryRun.goblinKingStartingHealthFraction)
-        ? existingStoryRun.goblinKingStartingHealthFraction
-        : 1,
-      pendingPostCombatEventId: typeof existingStoryRun.pendingPostCombatEventId === 'string'
-        ? existingStoryRun.pendingPostCombatEventId
-        : null,
       pendingEvents
     };
 
@@ -2330,7 +2294,7 @@ export class EventScene extends Phaser.Scene {
     this._rewardLines = [];
     this._rewardIcons = [];
     this.resolveBirdNestRaid(result);
-    let outcome = NEST_LEFT;
+    let outcome = this.isMusicBoxExploded() ? NEST_LEFT_NO_BOX : NEST_LEFT;
     if (result.timedOut) outcome = NEST_TIMEOUT;
     else if (result.tookCog && result.tookEgg) outcome = NEST_TOOK_BOTH;
     else if (result.tookCog) outcome = NEST_TOOK_COG;
@@ -2421,8 +2385,7 @@ export class EventScene extends Phaser.Scene {
     this.ensureStoryState();
     const story = this.gameState.storyRun;
     story.tollFought = true;
-    story.tollKiller = true;
-    story.tollEscapeMode = story.bridgeDestroyed ? 'jetpack' : 'smoke';
+    story.tollKiller = true; // they will absolutely mention this to the King
     this.gameState.pendingAmbush = {
       id: 'toll_collectors',
       enemies: this.buildTollGuards(),
@@ -2441,102 +2404,8 @@ export class EventScene extends Phaser.Scene {
 
   waitAtTheToll() {
     this.ensureStoryState();
-    SoundHelper.playSound(this, 'dice_roll', 0.65);
-    const roll = 1 + Math.floor(Math.random() * 6);
-    if (roll <= 3) {
-      this.gameState.storyRun.tollWatchFailed = true;
-      this.tollWaitOutcome = `D6: ${roll}. The veteran spots you behind the roadside wall. The clerk crosses out the old price and writes 200 beneath it. All three now watch you too closely to try the same trick again.`;
-      return false;
-    }
+    // The merchant never reaches this act's shop.
     this.gameState.storyRun.merchantRobbed = true;
-    this.tollWaitOutcome = `D6: ${roll}. A merchant wagon rattles up to the barrier. While the collectors surround the driver and begin valuing every axle, you catch the back rail, pull yourself among the covered crates, and ride across the bridge unnoticed.`;
-    return true;
-  }
-
-  buyGoblinJetpack(amount) {
-    this.ensureStoryState();
-    this.spendCoins(amount);
-    this.gameState.storyRun.jetpackFlightPending = true;
-  }
-
-  beginTollroadDetour() {
-    this.ensureStoryState();
-    const merchantAt = Math.random() < 0.5 ? 1 + Math.floor(Math.random() * 3) : 0;
-    this.gameState.storyRun.tollroadDetour = { index: 0, merchantAt, complete: false };
-  }
-
-  // ─── Tollroad crystal mine and royal bridge ─────────────────────────────
-
-  burnGoblinMine() {
-    this.ensureStoryState();
-    this.consumeFireballCard();
-    this.gameState.storyRun.goblinMinersKilled = true;
-    this.gainCrystals(3);
-  }
-
-  sneakPastGoblinMine() {
-    this.ensureStoryState();
-    SoundHelper.playSound(this, 'dice_roll', 0.65);
-    const roll = 1 + Math.floor(Math.random() * 6);
-    if (roll <= 3) {
-      this.gameState.storyRun.goblinMinersKilled = true;
-      this.gameState.pendingAmbush = {
-        id: 'goblin_mine_sneak',
-        normalCombatBoard: true,
-        enemyTypes: ['goblin', 'goblin_archer', 'tollBrute'],
-      };
-      this.goblinMineSneakOutcome = t(this, 'event.tollroad.mine.sneak.failure', { roll });
-      return;
-    }
-    this.goblinMineSneakOutcome = t(this, 'event.tollroad.mine.sneak.success', { roll });
-  }
-
-  enterGoblinMine() {
-    this.ensureStoryState();
-    this.gameState.storyRun.pendingPostCombatEventId = 'goblin_mine_return';
-    this.gameState.pendingAmbush = {
-      id: 'goblin_mine_spiders',
-      normalCombatBoard: true,
-      enemyTypes: ['spider'],
-    };
-  }
-
-  refuseGoblinMiners() {
-    this.ensureStoryState();
-    this.gameState.storyRun.goblinMinersAllied = false;
-  }
-
-  completeGoblinMineAlliance() {
-    this.ensureStoryState();
-    this.gameState.storyRun.goblinMinersAllied = true;
-  }
-
-  resolveMinerBridgeSabotage() {
-    this.ensureStoryState();
-    this.gameState.storyRun.bridgeDestroyed = true;
-    this.gameState.storyRun.goblinKingStartingHealthFraction = 0.75;
-  }
-
-  fireballRoyalProcession() {
-    this.ensureStoryState();
-    this.consumeFireballCard();
-    this.gameState.storyRun.goblinKingStartingHealthFraction = Math.min(
-      this.gameState.storyRun.goblinKingStartingHealthFraction || 1,
-      0.9,
-    );
-  }
-
-  attackRoyalProcession() {
-    this.ensureStoryState();
-    this.gameState.pendingAmbush = {
-      id: 'royal_procession',
-      normalCombatBoard: true,
-      enemyTypes: ['goblin', 'goblin_archer', 'tollBrute'],
-    };
-  }
-
-  letRoyalProcessionPass() {
-    this.ensureStoryState();
   }
 
   // ─── The Reliquary (the wall supplies the spell, the player supplies iron) ─
@@ -3134,9 +3003,6 @@ export class EventScene extends Phaser.Scene {
       arm_wrestling: 'armWrestlingSeen',
       something_wicked: 'carnivalVisited',
       brass_wizard: 'brassWizardSeen',
-      goblin_mine: 'goblinMineSeen',
-      royal_bridge: 'royalBridgeSeen',
-      tollroad_throne_hall: 'tollroadThroneHallSeen',
     };
     const flag = flagByEvent[this.event?.id];
     if (!flag) return;
@@ -3201,23 +3067,13 @@ export class EventScene extends Phaser.Scene {
       this.scene.stop();
       return;
     }
-    const detour = this.gameState?.storyRun?.tollroadDetour;
-    if (detour && !detour.complete) {
-      this.scene.sleep('GameScene');
-      this.scene.stop();
-      this.scene.stop('MapViewScene');
-      this.scene.launch('TollroadDetourScene', { gameState: this.gameState });
-      return;
-    }
     if (isSandboxMode(this) || isSandboxMode(this.gameScene)) {
       exitToSandboxHub(this);
       return;
     }
     // Park GameScene back to sleep (we woke it for the station) and hard-relaunch
-    // the map. A post-combat story (the goblin mine return) arrives after its
-    // original MapViewScene was stopped for the ambush; wake() is a no-op for a
-    // stopped scene and used to leave a blank screen after returning the
-    // detonator. Stop + launch is safe for both stopped and sleeping maps.
+    // the map. wake() is a no-op for a stopped MapViewScene and used to leave a
+    // blank screen; stop + launch is safe for both stopped and sleeping maps.
     this.scene.sleep('GameScene');
     this.scene.stop();
     this.scene.stop('MapViewScene');

@@ -49,29 +49,8 @@ export const DEFAULT_STORY_RUN = Object.freeze({
   tollFought: false,
   tollKiller: false,
   tollEscapeNoticeShown: false,
-  tollWatchFailed: false,
-  bridgeDestroyed: false,
   tollGuardsEscaped: 0,
-  tollEscapeMode: null,
-  tollroadDetour: null,
-  jetpackFlightPending: false,
   merchantRobbed: false,
-  // Durable Tollroad story progression. The pendant is a key item rather than
-  // an inventory card, so it never consumes a slot and can be used by later
-  // narrative beats.
-  tollroadAftermathSeen: false,
-  magusPendantObtained: false,
-  // Unlike the knowledge above, this is reset for every new run. It prevents
-  // Continue from replaying the scene after it has already opened this run's
-  // boss reward, while still letting later Tollroad runs see the scene again.
-  tollroadAftermathCompleteThisRun: false,
-  goblinMineSeen: false,
-  goblinMinersKilled: false,
-  goblinMinersAllied: false,
-  royalBridgeSeen: false,
-  tollroadThroneHallSeen: false,
-  goblinKingStartingHealthFraction: 1,
-  pendingPostCombatEventId: null,
   pendingEvents: Object.freeze([]),
 });
 

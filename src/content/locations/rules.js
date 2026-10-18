@@ -2,24 +2,15 @@
 //
 // A location owns its presentation, enemy/event pack, mandatory story stops,
 // arrival scene and post-boss scene. Consumers ask this module for the active
-// rule instead of branching on a location id. Tollroad is the reference
-// implementation; unfinished locations can leave optional fields empty.
+// rule instead of branching on a location id. Locations without a story
+// leave the optional fields empty.
 
 import { PATH_LOCATIONS } from './catalog.js';
 import { LOCATION_PACKS } from '../location-packs/registry.js';
-import { TOLLROAD_NARRATIVE_CHECKPOINTS } from '../story/TollroadNarrative.js';
 
 const LOCATION_STORY = Object.freeze({
   silkdeep: Object.freeze({
     introSceneKey: 'SilkdeepIntroScene',
-  }),
-  tollroad: Object.freeze({
-    introSceneKey: 'TollroadIntroScene',
-    narrativeCheckpoints: TOLLROAD_NARRATIVE_CHECKPOINTS,
-    aftermath: Object.freeze({
-      sceneKey: 'TollroadAftermathScene',
-      completeFlag: 'tollroadAftermathCompleteThisRun',
-    }),
   }),
 });
 

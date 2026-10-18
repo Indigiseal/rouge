@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { CardSystem } from '../src/systems/CardSystem.js';
 import { BoardCombat, weaponCanDamageEnemy } from '../src/systems/board/BoardCombat.js';
-import { FloorSpawner, ambushRequiresVeteran } from '../src/systems/board/FloorSpawner.js';
+import { FloorSpawner } from '../src/systems/board/FloorSpawner.js';
 import { CombatTurnController } from '../src/systems/combat/CombatTurnController.js';
 import {
   CHARACTER_IDS,
@@ -36,24 +36,6 @@ const wolf = (revealed = true) => ({
 assert.deepEqual(CHARACTER_IDS, ['rogue']);
 assert.equal(normalizeCharacterId('warrior'), 'rogue');
 assert.deepEqual(resolveArmorSpawnTypes('rogue'), ['leather', 'chain', 'plate']);
-for (const id of ['goblin_mine_sneak', 'goblin_mine_spiders', 'royal_procession']) {
-  assert.equal(ambushRequiresVeteran(id), true, `${id} must guarantee a veteran`);
-}
-assert.equal(ambushRequiresVeteran('toll_collectors'), false);
-{
-  const enemies = [
-    { data: { type: 'enemy', name: 'Goblin', health: 10, maxHealth: 10, attack: 4 } },
-    { data: { type: 'enemy', name: 'Goblin Archer', health: 8, maxHealth: 8, attack: 5 } },
-  ];
-  const cs = {
-    scene: { gameState: { ambushId: 'royal_procession' } },
-    boardCards: enemies,
-    isEnemyType: (type) => type === 'enemy' || type === 'boss',
-  };
-  new FloorSpawner(cs).assignVeterans('COMBAT', 3);
-  assert.equal(enemies.filter(({ data }) => data.enemyTier === 'veteran').length, 1,
-    'a required event ambush gets one veteran even before random veteran floors');
-}
 
 // BoardCombat's functions are bound to the CardSystem facade. Every internal
 // helper called through `this` therefore needs a facade method too; without

@@ -1381,35 +1381,15 @@ function ensureEnemyMinimum(floor, roomType) {
 // none, one or several. Runs before assignEliteMiniBoss, which may then promote
 // one of them the rest of the way up — applyEnemyTier recomputes from the
 // untiered stats, so that costs 1.3x total rather than compounding.
-export const GUARANTEED_VETERAN_AMBUSH_IDS = Object.freeze([
-  'goblin_mine_sneak',
-  'goblin_mine_spiders',
-  'royal_procession',
-]);
-
-export function ambushRequiresVeteran(ambushId) {
-  return GUARANTEED_VETERAN_AMBUSH_IDS.includes(ambushId);
-}
-
 function assignVeterans(roomType, floor) {
   if (!this.boardCards?.length) return;
   const chance = veteranChanceFor(floor, roomType);
-  const eligible = [];
 
   for (const card of this.boardCards) {
     const data = card?.data;
     if (!data || !this.isEnemyType(data.type) || !canTierEnemy(data)) continue;
-    eligible.push(data);
     if (data.enemyTier && data.enemyTier !== 'normal') continue;
     if (chance > 0 && Math.random() < chance) applyEnemyTier(data, 'veteran');
-  }
-
-  if (ambushRequiresVeteran(this.scene.gameState?.ambushId)
-      && eligible.length > 0
-      && !eligible.some((data) => data.enemyTier === 'veteran' || data.enemyTier === 'elite')) {
-    const candidates = eligible.filter((data) => !data.enemyTier || data.enemyTier === 'normal');
-    const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-    if (chosen) applyEnemyTier(chosen, 'veteran');
   }
 }
 
@@ -1612,12 +1592,6 @@ function spawnBoss() {
     // logical columns, but melee still has to clear the creatures in front.
     bossData.alwaysBackline = true;
     bossData.brick = { r: 0, c: 0 };
-    if (bossData.name === 'Goblin King') {
-        const fraction = Number(this.scene.gameState?.storyRun?.goblinKingStartingHealthFraction);
-        if (Number.isFinite(fraction) && fraction > 0 && fraction < 1) {
-            bossData.health = Math.max(1, Math.ceil(bossData.maxHealth * fraction));
-        }
-    }
     const cam = this.scene.cameras.main;
     // Viewport in world units, not device pixels — see cameraWorldSize.
     const { width: camW, height: camH } = cameraWorldSize(cam);
