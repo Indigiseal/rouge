@@ -10,6 +10,7 @@
 
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { SIGIL_MULTIPLIER, hasStoredSigil, sigilLevel } from '../../content/sigils/sigils.js';
+import { ENCHANT_FIREBALL_CHANCE } from '../../content/balance/WeaponEnchants.js';
 
 // Tuning, all per sigil level unless noted.
 const HONED_PER_USE = 1;          // +damage per earlier use this fight
@@ -27,6 +28,9 @@ const FROST_CHANCE = 0.25;        // non-bosses
 const KEEN_CRIT = 0.05;           // added to the crit roll (a crit is x1.5)
 const RANSOM_CHANCE = 0.1;        // a crystal on a kill
 const BOUNTY_COINS = 2;           // coins on a kill
+const FIREBALL_SHARE = 0.5;       // of the swing, rounded down
+const FIREBALL_MINIMUM = 3;
+const FIREBALL_FLIGHT_MS = 320;
 const TSUNAMI_CHANCE = 0.1;       // on hit
 const TSUNAMI_DAMAGE = 3;         // to every face-up enemy
 const DEVOURING_CHANCE = 0.08;    // per level, non-bosses only
@@ -221,6 +225,14 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         fired.push('bounty');
     }
 
+    // Fireball: a chance to throw one at another random face-up enemy
+    // (bosses too). The sigil and the Reliquary's Fireball enchant are the
+    // same rule, rolled here once.
+    if (sigilLevel(weapon, 'fireball') > 0 && Math.random() < ENCHANT_FIREBALL_CHANCE
+        && throwFireball(scene, targetCard, swingDamage)) {
+        fired.push('fireball');
+    }
+
     // Tsunami: a chance that a wave crashes over the whole board.
     if (sigilLevel(weapon, 'tsunami') > 0 && Math.random() < TSUNAMI_CHANCE) {
         crashTsunami(scene);
@@ -260,6 +272,40 @@ function streakBroken(scene, targetCard, name) {
 /** Keen: the crit chance a weapon adds to the shared crit roll. */
 export function keenCritChance(weapon) {
     return sigilLevel(weapon, 'keen') > 0 ? KEEN_CRIT : 0;
+}
+
+// Fireball: picks a random face-up enemy other than the one just hit (a
+// taunting enemy, while one stands, is the only fair pick), flies there and
+// bursts for half the swing. Returns false when there is no one to throw at.
+function throwFireball(scene, struckCard, swingDamage) {
+    const cs = scene?.cardSystem;
+    if (!cs || !scene.add) return false;
+    const targets = (cs.boardCards || [])
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => card !== struckCard && cs.isOpenEnemyCard?.(card)
+            && (card.data?.health || 0) > 0 && card.sprite?.scene
+            && !cs.isTauntBlockingTarget?.(card));
+    if (targets.length === 0) return false;
+    const { card, index } = targets[Math.floor(Math.random() * targets.length)];
+    const damage = Math.max(FIREBALL_MINIMUM, Math.floor((swingDamage || 0) * FIREBALL_SHARE));
+    const fromX = struckCard?.sprite?.x ?? scene.playerAvatar?.x ?? 320;
+    const fromY = struckCard?.sprite?.y ?? scene.playerAvatar?.y ?? 300;
+    SoundHelper.playSound(scene, 'fireball_whoosh', 0.5);
+    const land = () => {
+        if (cs.boardCards[index] !== card || (card.data?.health || 0) <= 0 || !card.sprite?.scene) return;
+        scene.inventorySystem?.createFireballEffect?.(card.sprite);
+        cs.damageGemTarget(index, damage, 'Fireball', 0xef7c4b, null, 'hit');
+    };
+    if (!scene.textures?.exists?.('fireBall1')) {
+        scene.time.delayedCall(FIREBALL_FLIGHT_MS, land);
+        return true;
+    }
+    const ball = scene.add.image(fromX, fromY, 'fireBall1').setDepth(2400);
+    scene.tweens.add({
+        targets: ball, x: card.sprite.x, y: card.sprite.y, duration: FIREBALL_FLIGHT_MS, ease: 'Quad.easeIn',
+        onComplete: () => { ball.destroy(); land(); },
+    });
+    return true;
 }
 
 // Tsunami: a wave sweeps the board left to right (placeholder look: a

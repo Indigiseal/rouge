@@ -28,16 +28,9 @@ export const ENCHANT_OFFER_WEIGHT = Object.freeze({
   legendary: 2,
 });
 
-// A fire GEM splashes 65px (BoardCombat.getFireSplashRadius). The Fireball
-// enchant is a one-off event reward rather than something you can buy, so its
-// splash reaches much further — and it stacks with a fire gem on the same
-// weapon rather than replacing it.
-export const ENCHANT_FIRE_SPLASH_RADIUS = 120;
-
-// Splash damage is a fraction of the swing that triggered it, so the enchant
-// keeps scaling with the weapon instead of going stale like a flat gem value.
-export const ENCHANT_FIRE_SPLASH_FRACTION = 0.5;
-export const ENCHANT_FIRE_SPLASH_MINIMUM = 3;
+// The Fireball enchant is the Fireball sigil (systems/combat/SigilEffects.js),
+// which rolls its own fixed chance instead of the spell's rarity's.
+export const ENCHANT_FIREBALL_CHANCE = 0.1;
 
 export const ENCHANT_HEAL_AMOUNT = 3;
 export const ENCHANT_SHADOW_MULTIPLIER = 1.5;
@@ -52,7 +45,7 @@ export const ENCHANT_SHIELD_MULTIPLIER = 1.2;
 //               a killing blow cannot swallow the effect (same reason gems do)
 //   onKill    — only meaningful once the target is actually dead
 export const WEAPON_ENCHANTS = Object.freeze({
-  fireball: { title: 'Ripple', titleKey: 'enchant.fireball.title', summary: 'a ripple may spread to nearby enemies', summaryKey: 'enchant.fireball.summary', timing: 'onHit' },
+  fireball: { title: 'Fireball', titleKey: 'enchant.fireball.title', summary: 'throws a fireball at another random face-up enemy', summaryKey: 'enchant.fireball.summary', timing: 'sigil' },
   frostRing: { title: 'Frostbound', titleKey: 'enchant.frostRing.title', summary: 'freeze the enemy for 1 turn', summaryKey: 'enchant.frostRing.summary', timing: 'onHit' },
   restoration: { title: 'Mending', titleKey: 'enchant.restoration.title', summary: `heal ${ENCHANT_HEAL_AMOUNT} HP on hit`, summaryKey: 'enchant.restoration.summary', timing: 'onHit' },
   soulDrain: { title: 'Devouring', titleKey: 'enchant.soulDrain.title', summary: 'slay a non-boss enemy outright', summaryKey: 'enchant.soulDrain.summary', timing: 'preDamage' },
@@ -88,6 +81,7 @@ export function getWeaponEnchant(magicType) {
 }
 
 export function getEnchantChance(magicType) {
+  if (magicType === 'fireball') return ENCHANT_FIREBALL_CHANCE;
   const rarity = getMagic(magicType)?.rarity;
   return ENCHANT_CHANCE_BY_RARITY[rarity] ?? 0.15;
 }
@@ -156,14 +150,23 @@ export function carryEnchantToWeapon(weapon, magicType) {
   return applyEnchantToWeapon(weapon, magicType);
 }
 
+/**
+ * A weapon's proc chance: the one stored when it was fused, except Fireball,
+ * whose chance is fixed (weapons fused before it changed stored 20%).
+ */
+export function enchantChanceOf(weapon) {
+  if (weapon?.enchant === 'fireball') return ENCHANT_FIREBALL_CHANCE;
+  return Number.isFinite(weapon?.enchantChance)
+    ? weapon.enchantChance
+    : getEnchantChance(weapon?.enchant);
+}
+
 export function describeWeaponEnchant(sceneOrWeapon, maybeWeapon) {
   const scene = maybeWeapon ? sceneOrWeapon : null;
   const weapon = maybeWeapon || sceneOrWeapon;
   const enchant = getWeaponEnchant(weapon?.enchant);
   if (!enchant) return null;
-  const chance = Number.isFinite(weapon.enchantChance)
-    ? weapon.enchantChance
-    : getEnchantChance(weapon.enchant);
+  const chance = enchantChanceOf(weapon);
   // "Warding 20%: +20% armor for 1 turn" — the proc chance stays attached to
   // the name so it never collides with a percentage inside the summary.
   const title = scene ? t(scene, enchant.titleKey) : enchant.title;

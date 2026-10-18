@@ -77,7 +77,7 @@ onto sigils already listed above; five are new.
 | Frost Ring | Frostbound: freeze the struck enemy 1 turn | **Arrest** | (as above) | (as above) |
 | Shadow Blade | Shadowed: +50% damage on the hit | **Crushing** | (as above) | (as above) |
 | Restoration | Mending: heal 3 HP on hit | **Leech** | (as above) | (as above) |
-| Fireball | Ember: fire splash to nearby enemies | **Ember** (new) | its hits also burn the player next turn | splash to the enemies around the target |
+| Fireball | Ember, then Ripple: fire splash to nearby enemies | **Fireball** (built, player only) | — | 10% on hit: a fireball flies at another random face-up enemy (bosses too) for half the hit, at least 3. It flies away rather than splashing, so it never reads as the fire gem |
 | Weakness | Sapping: the enemy deals 30% less | **Sapping** (new) | the player's weapons deal less for a turn — a natural boss debuffer | the struck enemy deals less |
 | Magic Shield | Warding: +20% armor for 1 turn | **Warding** (new) | gains armor after it attacks | the player's armor is stronger for a turn |
 | Bone Wall | Bulwark: reflect the next attack | **Rebuke** (new) | sends the player's next hit back at them | sends the next enemy attack back |
