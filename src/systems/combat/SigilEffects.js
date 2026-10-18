@@ -10,7 +10,7 @@
 
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { SIGIL_MULTIPLIER, hasStoredSigil, sigilLevel } from '../../content/sigils/sigils.js';
-import { ENCHANT_FIREBALL_CHANCE } from '../../content/balance/WeaponEnchants.js';
+import { ENCHANT_FIREBALL_CHANCE, ENCHANT_SAPPING_CHANCE } from '../../content/balance/WeaponEnchants.js';
 
 // Tuning, all per sigil level unless noted.
 const HONED_PER_USE = 1;          // +damage per earlier use this fight
@@ -195,6 +195,17 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         cs?.attachFrozenFrame?.(targetCard);
         scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 18, 'Frozen!', 0x71b1ae);
         fired.push('frost');
+    }
+
+    // Sapping: a chance the enemy hit is weaker for its next attack only
+    // (enemyAttack.js applies it, the turn controller spends it). The sigil
+    // and the Reliquary's Weakness enchant are the same rule.
+    if (sigilLevel(weapon, 'sapping') > 0 && alive && !targetCard.data.sapped
+        && Math.random() < ENCHANT_SAPPING_CHANCE) {
+        targetCard.data.sapped = true;
+        cs?.updateEnemyInfoText?.(targetCard);
+        scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 30, 'Sapped!', 0x712a65);
+        fired.push('sapping');
     }
 
     // Kill rewards: Ransom (a chance of a crystal), Bounty (coins), and

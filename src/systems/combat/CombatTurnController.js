@@ -1,7 +1,7 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { tweenAlongArc } from '../../ui/ArcFlight.js';
 import { CombatSequencer } from './CombatSequencer.js';
-import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
+import { getEnemyHitAttack, spendSapping } from '../../content/combat/enemyAttack.js';
 import { CONTROL_HESITATION_CHANCE, pickControlTreacheryTarget } from '../../content/amulets/control.js';
 import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
 import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
@@ -313,6 +313,7 @@ export class CombatTurnController {
 
                 // Reflect damage back to enemy
                 const reflectedDamage = getEnemyHitAttack(firstAttacker.card, scene.cardSystem?.boardCards);
+                spendSapping(firstAttacker.card);
                 scene.cardSystem.attackEnemy(firstAttacker.index, reflectedDamage, true);
                 scene.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Reflected)`, 0xfef0cf);
                 scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Bone Shield!', 0xfef0cf);
@@ -460,11 +461,9 @@ export class CombatTurnController {
             );
             if (target) {
                 scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Betrayal!', 0xa83c69);
-                scene.cardSystem.attackEnemy(
-                    target.index,
-                    getEnemyHitAttack(card, scene.cardSystem.boardCards),
-                    false
-                );
+                const betrayal = getEnemyHitAttack(card, scene.cardSystem.boardCards);
+                spendSapping(card);
+                scene.cardSystem.attackEnemy(target.index, betrayal, false);
                 return;
             }
         }
@@ -480,13 +479,17 @@ export class CombatTurnController {
             if (others.length > 0) {
                 const target = others[Math.floor(Math.random() * others.length)];
                 scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xa83c69);
-                scene.cardSystem.attackEnemy(target.index, getEnemyHitAttack(card, scene.cardSystem.boardCards), false);
+                const charmed = getEnemyHitAttack(card, scene.cardSystem.boardCards);
+                spendSapping(card);
+                scene.cardSystem.attackEnemy(target.index, charmed, false);
                 return; // skip player damage
             }
         }
 
         const features = Array.isArray(card.data?.features) ? card.data.features : [];
         let damageDealt = getEnemyHitAttack(card, scene.cardSystem?.boardCards);
+        spendSapping(card);
+        scene.cardSystem?.updateEnemyInfoText?.(card);
 
         // The enemy's own x1.5 sigils (a boss's): Merciless once the hero is
         // at half health or less, Ambush while the hero is unhurt, Unscathed

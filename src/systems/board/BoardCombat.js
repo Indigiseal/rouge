@@ -15,7 +15,6 @@ import {
     ENCHANT_SHADOW_MULTIPLIER,
     ENCHANT_SHIELD_MULTIPLIER,
     ENCHANT_SHIELD_TURNS,
-    ENCHANT_WEAKNESS_MULTIPLIER,
     enchantChanceOf,
     getWeaponEnchant,
 } from '../../content/balance/WeaponEnchants.js';
@@ -1164,7 +1163,7 @@ function applyRelicSlow(card) {
 
 function rollWeaponEnchant(weapon) {
     const enchant = getWeaponEnchant(weapon?.enchant);
-    // A 'sigil' enchant (Fireball) is rolled by its sigil in SigilEffects.
+    // A 'sigil' enchant (Fireball, Sapping) is rolled by its sigil in SigilEffects.
     if (!enchant || enchant.timing === 'sigil') return null;
     const chance = enchantChanceOf(weapon);
     return Math.random() < chance ? weapon.enchant : null;
@@ -1187,17 +1186,6 @@ function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
                 SoundHelper.playSound(this.scene, 'enemy_freeze', 0.5);
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Frozen!', 0x71b1ae);
             }
-            break;
-        }
-
-        case 'weakness': {
-            if (!this.isAnyEnemyCard(card)) break;
-            const before = card.data.attack || 0;
-            card.data.attack = Math.ceil(before * ENCHANT_WEAKNESS_MULTIPLIER);
-            if (card.sprite && card.data.attack < before) {
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Weakened!', 0x712a65);
-            }
-            this.updateEnemyInfoText(card);
             break;
         }
 

@@ -28,13 +28,16 @@ export const ENCHANT_OFFER_WEIGHT = Object.freeze({
   legendary: 2,
 });
 
-// The Fireball enchant is the Fireball sigil (systems/combat/SigilEffects.js),
-// which rolls its own fixed chance instead of the spell's rarity's.
+// Enchants that are sigils (timing 'sigil'): SigilEffects rolls them at a
+// fixed chance instead of the spell's rarity's. Fireball throws a fireball at
+// another enemy; Sapping weakens the enemy hit for its next attack only.
 export const ENCHANT_FIREBALL_CHANCE = 0.1;
+export const ENCHANT_SAPPING_CHANCE = 0.2;
+const SIGIL_ENCHANT_CHANCE = Object.freeze({ fireball: ENCHANT_FIREBALL_CHANCE, weakness: ENCHANT_SAPPING_CHANCE });
 
 export const ENCHANT_HEAL_AMOUNT = 3;
 export const ENCHANT_SHADOW_MULTIPLIER = 1.5;
-export const ENCHANT_WEAKNESS_MULTIPLIER = 0.7;
+export const ENCHANT_SAPPING_MULTIPLIER = 0.7; // its next attack, rounded down
 export const ENCHANT_FREEZE_TURNS = 1;
 export const ENCHANT_SHIELD_TURNS = 1;
 export const ENCHANT_SHIELD_MULTIPLIER = 1.2;
@@ -50,7 +53,7 @@ export const WEAPON_ENCHANTS = Object.freeze({
   restoration: { title: 'Mending', titleKey: 'enchant.restoration.title', summary: `heal ${ENCHANT_HEAL_AMOUNT} HP on hit`, summaryKey: 'enchant.restoration.summary', timing: 'onHit' },
   soulDrain: { title: 'Devouring', titleKey: 'enchant.soulDrain.title', summary: 'slay a non-boss enemy outright', summaryKey: 'enchant.soulDrain.summary', timing: 'preDamage' },
   shadowBlade: { title: 'Shadowed', titleKey: 'enchant.shadowBlade.title', summary: '+50% damage on the hit', summaryKey: 'enchant.shadowBlade.summary', timing: 'preDamage' },
-  weakness: { title: 'Sapping', titleKey: 'enchant.weakness.title', summary: 'the enemy deals 30% less damage', summaryKey: 'enchant.weakness.summary', timing: 'onHit' },
+  weakness: { title: 'Sapping', titleKey: 'enchant.weakness.title', summary: 'the enemy hit deals 30% less on its next attack', summaryKey: 'enchant.weakness.summary', timing: 'sigil' },
   boneWall: { title: 'Bulwark', titleKey: 'enchant.boneWall.title', summary: 'reflect the next attack', summaryKey: 'enchant.boneWall.summary', timing: 'onHit' },
   magicShield: { title: 'Warding', titleKey: 'enchant.magicShield.title', summary: '+20% armor for 1 turn', summaryKey: 'enchant.magicShield.summary', timing: 'onHit' },
   smokeScreen: { title: 'Shrouding', titleKey: 'enchant.smokeScreen.title', summary: 'hide an enemy on a kill', summaryKey: 'enchant.smokeScreen.summary', timing: 'onKill' },
@@ -81,7 +84,7 @@ export function getWeaponEnchant(magicType) {
 }
 
 export function getEnchantChance(magicType) {
-  if (magicType === 'fireball') return ENCHANT_FIREBALL_CHANCE;
+  if (SIGIL_ENCHANT_CHANCE[magicType]) return SIGIL_ENCHANT_CHANCE[magicType];
   const rarity = getMagic(magicType)?.rarity;
   return ENCHANT_CHANCE_BY_RARITY[rarity] ?? 0.15;
 }
@@ -151,11 +154,11 @@ export function carryEnchantToWeapon(weapon, magicType) {
 }
 
 /**
- * A weapon's proc chance: the one stored when it was fused, except Fireball,
- * whose chance is fixed (weapons fused before it changed stored 20%).
+ * A weapon's proc chance: the one stored when it was fused, except the
+ * sigil enchants, whose chance is fixed (weapons fused before kept the old one).
  */
 export function enchantChanceOf(weapon) {
-  if (weapon?.enchant === 'fireball') return ENCHANT_FIREBALL_CHANCE;
+  if (SIGIL_ENCHANT_CHANCE[weapon?.enchant]) return SIGIL_ENCHANT_CHANCE[weapon.enchant];
   return Number.isFinite(weapon?.enchantChance)
     ? weapon.enchantChance
     : getEnchantChance(weapon?.enchant);

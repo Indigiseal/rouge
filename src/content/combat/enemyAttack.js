@@ -6,6 +6,7 @@
 
 import { sigilLevel } from '../sigils/sigils.js';
 import { getEnemy } from '../cards/enemies.js';
+import { ENCHANT_SAPPING_MULTIPLIER } from '../balance/WeaponEnchants.js';
 
 export function getEnemyHitAttack(card, boardCards) {
   const base = Math.max(0, Number(card?.data?.attack) || 0);
@@ -14,7 +15,14 @@ export function getEnemyHitAttack(card, boardCards) {
   if (typeof def?.modifyHitAttack === 'function') {
     attack = Math.max(0, Number(def.modifyHitAttack(card, boardCards, base)) || 0);
   }
-  return attack + enemyFlatSigilBonus(card, boardCards);
+  const total = attack + enemyFlatSigilBonus(card, boardCards);
+  // Sapping (the hero's sigil): weaker for its next attack only.
+  return card?.data?.sapped ? Math.floor(total * ENCHANT_SAPPING_MULTIPLIER) : total;
+}
+
+/** An enemy has made its attack: a Sapping it carried is spent. */
+export function spendSapping(card) {
+  if (card?.data?.sapped) card.data.sapped = false;
 }
 
 // An enemy's flat sigils, part of its attack number so the card shows them:
