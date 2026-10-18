@@ -131,6 +131,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
 
     // The hero's own luck against an enemy hit (CombatChance): a dodge takes
     // nothing (no armor pip — the armor didn't do it), a block halves it.
+    let luckBlocked = false;
     if (source === 'enemy' && !scene?.tutorialMode && amount > 0) {
         if (Math.random() < PLAYER_BASE_DODGE) {
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodged!', 0x71800b);
@@ -142,6 +143,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         }
         if (amount > 1 && Math.random() < PLAYER_BASE_BLOCK) {
             amount = Math.ceil(amount / 2);
+            luckBlocked = true;
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 16, 'Blocked!', 0xd6c2c1);
         }
     }
@@ -259,6 +261,12 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         : Math.max(0, protection - Math.max(0, armorPierce));
     const actualDamage = Math.max(0, amount - effectiveProtection);
     const blockedDamage = Math.max(0, amount - actualDamage);
+
+    // Riposte (weapon sigil): any block of an enemy hit, by armor or by luck,
+    // readies +2 on the next swing of a Riposte weapon (SigilEffects).
+    if (source === 'enemy' && (blockedDamage > 0 || luckBlocked)) {
+        gameState.riposteReady = true;
+    }
 
     // Reprisal (Iron): always reflect a % of DEF-blocked damage; can kill.
     const reprisalFlat = gameState.talentEffects?.reprisalFlat || 0;

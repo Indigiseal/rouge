@@ -222,6 +222,7 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     starfallPendant: 'starryPendant',
     wayfarersLamp: 'lamp',
     sapphireBrooch: 'sapphireBrooch',
+    trapwiseBoots: 'evasionBoots',
     gildedLeaf: 'goldenLeaf',
     lookingGlass: 'lookingGlass',
     maskOfEmbers: 'burningMask',

@@ -70,6 +70,11 @@ export const SIGILS = Object.freeze({
     // A buffer: it never acts twice itself, its side does. Frame 47 is its
     // own icon slot; until that is drawn it wears Rally's horn.
     warcry:      { name: 'Warcry',      frame: 46, side: 'both',   enemy: 'other enemies: 10% chance to act twice', player: 'carried: your companions get 10% chance to act twice', works: true },
+    // Taya's numbered placeholder icons until the real ones are drawn.
+    riposte:     { name: 'Riposte',     frame: 60, side: 'player', player: 'after you block a hit, this weapon\'s next hit deals +2', works: true },
+    mending:     { name: 'Mending',     frame: 61, side: 'player', player: '10% chance on hit: replenishes 2 pips on this weapon', works: true },
+    secondWind:  { name: 'Second Wind', frame: 62, side: 'player', player: '10% chance on hit: replenishes 2 action points', works: true },
+    scout:       { name: 'Scout',       frame: 63, side: 'player', player: '15% chance on hit: opens a face-down card that is not an enemy or a trap', works: true },
     // Four sigils that stop a card or an enemy for a turn, each its own.
     // Zap is never handed out: a card shows it while it can shock — the
     // yellow stone (lightning gem) socketed in a weapon, or the Storm

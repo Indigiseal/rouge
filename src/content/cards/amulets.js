@@ -33,6 +33,7 @@ export const AMULET_DROP_DATA = [
   { id: 'wayfarersLamp', minFloor: 0, weight: 5, rarity: 'uncommon', group: 'strategy' },
   { id: 'gildedLeaf', minFloor: 0, weight: 5, rarity: 'uncommon', group: 'utility' },
   { id: 'lookingGlass', minFloor: 0, weight: 5, rarity: 'uncommon', group: 'utility' },
+  { id: 'trapwiseBoots', minFloor: 0, weight: 5, rarity: 'uncommon', group: 'survival' },
 
   // Rare (from floor 16 = act 2 start; boss can still roll rare earlier — see createAmuletOffer)
   { id: 'vampireFang', minFloor: 16, weight: 4, rarity: 'rare', group: 'offense' },

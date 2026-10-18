@@ -45,6 +45,14 @@ export class AmuletManager {
         ), 0);
     }
 
+    // Trapwise Boots: a sprung trap's hit and poison, scaled and rounded down.
+    scaleTrapDamage(amount) {
+        const share = this.gameState.activeAmulets.reduce((s, amulet) => (
+            Math.min(s, this.amuletDefinitions[amulet.id]?.trapDamageShare ?? 1)
+        ), 1);
+        return share < 1 ? Math.floor((amount || 0) * share) : (amount || 0);
+    }
+
     shouldReturnMagicCard() {
         const chance = this.sumAmuletProperty('magicCardReturnChance');
         return chance > 0 && Math.random() < Math.min(1, chance);

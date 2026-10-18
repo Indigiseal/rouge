@@ -36,6 +36,12 @@ const TSUNAMI_DAMAGE = 3;         // to every face-up enemy
 const DEVOURING_CHANCE = 0.08;    // per level, non-bosses only
 const TEMPERED_SAVE = 0.3;        // per level, chance a pip is kept (max 0.9)
 const WARCRY_CHANCE = 0.1;        // per level, an ally acts twice (max 0.5)
+const RIPOSTE_BONUS = 2;          // next hit after a block
+const MENDING_CHANCE = 0.1;       // on hit
+const MENDING_PIPS = 2;           // after the swing's own pip, so it reads +2
+const SECOND_WIND_CHANCE = 0.1;   // on hit
+const SECOND_WIND_AP = 2;         // after the swing's own AP, so it reads +2
+const SCOUT_CHANCE = 0.15;        // on hit
 
 const multiply = (damage) => Math.floor(damage * SIGIL_MULTIPLIER);
 
@@ -97,6 +103,7 @@ export function weaponFlatSigilBonus(scene, weapon) {
     if (ironclad > 0) add('ironclad', wornArmorProtection(scene) * ironclad);
     const packrat = sigilLevel(weapon, 'packrat');
     if (packrat > 0) add('packrat', emptyBagSlots(scene) * PACKRAT_PER_SLOT * packrat);
+    if (sigilLevel(weapon, 'riposte') > 0 && scene?.gameState?.riposteReady) add('riposte', RIPOSTE_BONUS);
     return { bonus, ids };
 }
 
@@ -258,6 +265,36 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         fired.push('smoke');
     }
 
+    // Mending and Second Wind: the swing has already spent its pip and its
+    // AP, so +2 shows as +2 and leaves the hero one up. Neither goes past
+    // the cap, and a weapon that just broke stays broken.
+    if (damageDealt > 0 && sigilLevel(weapon, 'mending') > 0 && weapon.durability > 0
+        && Math.random() < MENDING_CHANCE) {
+        const max = weapon.maxDurability || weapon.durability;
+        const gained = Math.max(0, Math.min(max, weapon.durability + MENDING_PIPS) - weapon.durability);
+        if (gained > 0) {
+            weapon.durability += gained;
+            scene.createFloatingText?.(scene.playerAvatar.x, scene.playerAvatar.y + 18, `+${gained} pips (Mending)`, 0xd6c2c1);
+            scene.updateUI?.();
+            fired.push('mending');
+        }
+    }
+    if (damageDealt > 0 && gs && sigilLevel(weapon, 'secondWind') > 0 && Math.random() < SECOND_WIND_CHANCE) {
+        const before = gs.actionsLeft || 0;
+        gs.actionsLeft = Math.min(gs.maxActions, before + SECOND_WIND_AP);
+        if (gs.actionsLeft > before) {
+            scene.createFloatingText?.(scene.playerAvatar.x, scene.playerAvatar.y - 28, `+${gs.actionsLeft - before} AP (Second Wind)`, 0x71b1ae);
+            scene.updateUI?.();
+            fired.push('secondWind');
+        }
+    }
+    // Scout: opens one face-down card that is neither an enemy nor a trap.
+    if (damageDealt > 0 && sigilLevel(weapon, 'scout') > 0 && Math.random() < SCOUT_CHANCE && scoutOneCard(scene)) {
+        fired.push('scout');
+    }
+    // Riposte: the block's +2 is spent on this swing, hit or miss.
+    if (gs?.riposteReady && sigilLevel(weapon, 'riposte') > 0) gs.riposteReady = false;
+
     // Remember this swing for the sequencing sigils.
     scene._sigilLastTarget = targetCard || null;
     scene._sigilLastWeaponHadCombo = sigilLevel(weapon, 'combo') > 0;
@@ -278,6 +315,24 @@ function streakBroken(scene, targetCard, name) {
     const sprite = targetCard?.sprite;
     if (!sprite) return;
     scene.createFloatingText?.(sprite.x, sprite.y - 54, `${name} lost`, 0xafafa2);
+}
+
+// Scout: turns over one random face-down card that is not an enemy, a boss,
+// a trap or a mimic, as a free reveal (no enemy turn, nothing sprung).
+// Returns false when there is none left to open.
+function scoutOneCard(scene) {
+    const cs = scene?.cardSystem;
+    if (!cs?.revealCard) return false;
+    const hidden = (cs.boardCards || [])
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => card && !card.revealed && card.data && !card.data.isMimic
+            && !card.data.tutorialDormant && card.data.type !== 'trap'
+            && !cs.isEnemyType?.(card.data.type));
+    if (hidden.length === 0) return false;
+    const { card, index } = hidden[Math.floor(Math.random() * hidden.length)];
+    cs.revealCard(index, true);
+    if (card.sprite) scene.createFloatingText?.(card.sprite.x, card.sprite.y - 30, 'Scout!', 0xffcf7f);
+    return true;
 }
 
 /** Keen: the crit chance a weapon adds to the shared crit roll. */

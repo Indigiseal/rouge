@@ -149,6 +149,12 @@ Also shown as text today, could get marks: **Veteran** (+15% HP/ATK),
 | **Combo** | ×1.5 if your previous card carried the same sigil |
 | **Tandem** | ×1.5 if your previous attack did the same damage |
 | **Packrat** | +1 damage per empty bag slot |
+| **Riposte** | After you block a hit (armor or luck), this weapon's next hit +2; spent on that swing, cleared each floor |
+| **Mending** | 10% on hit: +2 pips on this weapon, after the swing's own pip, up to its max |
+| **Second Wind** | 10% on hit: +2 AP, after the swing's own AP, up to max |
+| **Scout** | 15% on hit: a free reveal of one face-down card that is not an enemy, trap or mimic |
+
+All four are weapon-only and wear Taya's numbered placeholder icons (frames 60–63) until drawn.
 
 ## Which enemies carry what today
 
