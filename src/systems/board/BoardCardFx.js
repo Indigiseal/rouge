@@ -253,6 +253,7 @@ function createCardInfoText(card) {
             }
 
             if (trapDamage != null) {
+                trapDamage = this.trapDamage?.(trapDamage) ?? trapDamage;
                 const container = this.scene.add.container(card.sprite.x, card.sprite.y);
                 const damageText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, `${trapDamage}`, {
                     fontSize: CARD_VALUE_SIZE,

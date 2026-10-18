@@ -10,16 +10,13 @@ import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { isSilkCocoonCard } from './CocoonCacheBoard.js';
 import {
-    ENCHANT_FIRE_SPLASH_FRACTION,
-    ENCHANT_FIRE_SPLASH_MINIMUM,
-    ENCHANT_FIRE_SPLASH_RADIUS,
     ENCHANT_FREEZE_TURNS,
     ENCHANT_HEAL_AMOUNT,
+    ENCHANT_SAPPING_MULTIPLIER,
     ENCHANT_SHADOW_MULTIPLIER,
     ENCHANT_SHIELD_MULTIPLIER,
     ENCHANT_SHIELD_TURNS,
-    ENCHANT_WEAKNESS_MULTIPLIER,
-    getEnchantChance,
+    enchantChanceOf,
     getWeaponEnchant,
 } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
@@ -68,6 +65,7 @@ export class BoardCombat {
         this.applyHolographicOmenStartEffect = applyHolographicOmenStartEffect.bind(cs);
         this.isAnyEnemyCard = isAnyEnemyCard.bind(cs);
         this.isActiveBoardTaunter = isActiveBoardTaunter.bind(cs);
+        this.isTauntBlockingTarget = isTauntBlockingTarget.bind(cs);
         this.burnEnemy = burnEnemy.bind(cs);
         this.damageGemTarget = damageGemTarget.bind(cs);
         this.explodePoisonedEnemy = explodePoisonedEnemy.bind(cs);
@@ -668,6 +666,14 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         }
     }
 
+    // An enemy's Sapping: the hero's next weapon hit that lands deals 30%
+    // less (rounded down), then it clears — the mirror of the hero's sigil.
+    if (!isReflection && weapon && this.scene.gameState?.playerSapped) {
+        this.scene.gameState.playerSapped = false;
+        finalDamage = Math.floor(finalDamage * ENCHANT_SAPPING_MULTIPLIER);
+        feedbackLabel = 'Sapped';
+    }
+
     const critChance = (this.scene.gameState?.discardCritChance || 0)
         + (this.scene.amuletManager?.getCriticalChanceBonus?.() || 0)
         + keenCritChance(weapon)
@@ -1165,10 +1171,10 @@ function applyRelicSlow(card) {
 // ─── Reliquary weapon enchants ───────────────────────────────────────────────
 
 function rollWeaponEnchant(weapon) {
-    if (!weapon?.enchant || !getWeaponEnchant(weapon.enchant)) return null;
-    const chance = Number.isFinite(weapon.enchantChance)
-        ? weapon.enchantChance
-        : getEnchantChance(weapon.enchant);
+    const enchant = getWeaponEnchant(weapon?.enchant);
+    // A 'sigil' enchant (Fireball, Sapping) is rolled by its sigil in SigilEffects.
+    if (!enchant || enchant.timing === 'sigil') return null;
+    const chance = enchantChanceOf(weapon);
     return Math.random() < chance ? weapon.enchant : null;
 }
 
@@ -1181,28 +1187,6 @@ function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
     const py = this.scene.playerAvatar?.y ?? 300;
 
     switch (enchantId) {
-        case 'fireball': {
-            // Reaches much further than a fire gem's 65px splash, and scales
-            // off the swing so it keeps pace with the weapon instead of going
-            // stale. Stacks with a fire gem — the gem already resolved above.
-            const splash = Math.max(
-                ENCHANT_FIRE_SPLASH_MINIMUM,
-                Math.floor(swingDamage * ENCHANT_FIRE_SPLASH_FRACTION)
-            );
-            const tx = card?.sprite?.x;
-            const ty = card?.sprite?.y;
-            if (tx == null || ty == null) break;
-            // Measure to the nearest EDGE of each sprite, matching the gem
-            // splash: a boss's centre is far away but its body is not.
-            this.boardCards.forEach((other, i) => {
-                if (i === index || !other?.sprite) return;
-                if (nearestEdgeDistSq(tx, ty, other.sprite) <= ENCHANT_FIRE_SPLASH_RADIUS * ENCHANT_FIRE_SPLASH_RADIUS) {
-                    this.burnEnemy(i, splash);
-                }
-            });
-            break;
-        }
-
         case 'frostRing': {
             if (!this.isAnyEnemyCard(card)) break;
             card.data.frozen = Math.max(card.data.frozen || 0, ENCHANT_FREEZE_TURNS);
@@ -1211,17 +1195,6 @@ function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
                 SoundHelper.playSound(this.scene, 'enemy_freeze', 0.5);
                 this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Frozen!', 0x71b1ae);
             }
-            break;
-        }
-
-        case 'weakness': {
-            if (!this.isAnyEnemyCard(card)) break;
-            const before = card.data.attack || 0;
-            card.data.attack = Math.ceil(before * ENCHANT_WEAKNESS_MULTIPLIER);
-            if (card.sprite && card.data.attack < before) {
-                this.scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Weakened!', 0x712a65);
-            }
-            this.updateEnemyInfoText(card);
             break;
         }
 

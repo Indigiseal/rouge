@@ -36,9 +36,11 @@ export const SIGILS = Object.freeze({
     unscathed:   { name: 'Unscathed',   frame: 27, side: 'both',   enemy: 'x1.5 until you chip it once', player: 'x1.5 while you are at full health', works: true },
     honed:       { name: 'Honed',       frame: 28, side: 'both',   enemy: '+1 attack after each attack this fight', player: '+1 damage for each hit in a row this fight; a miss resets it', works: true },
     ironclad:    { name: 'Ironclad',    frame: 29, side: 'both',   enemy: 'its armor adds to its damage', player: 'your worn armor protection adds to damage', works: true },
-    // Ripple (was Ember): no fire in it, so it isn't mistaken for the fire gem.
-    ripple:      { name: 'Ripple',      frame: 30, side: 'both',   enemy: 'its hits ripple on to hurt you next turn', player: 'a ripple may spread from the hit to nearby enemies' },
-    sapping:     { name: 'Sapping',     frame: 31, side: 'both',   enemy: 'your weapons deal less for a turn', player: 'the struck enemy deals less' },
+    // Fireball (was Ember, then Ripple): the Fireball spell, small and
+    // repeatable. It flies at another enemy rather than splashing round the
+    // one hit, so it never reads as the fire gem.
+    fireball:    { name: 'Fireball',    frame: 30, side: 'player', player: '10% chance on hit: a fireball flies at another random face-up enemy for half the hit', works: true },
+    sapping:     { name: 'Sapping',     frame: 31, side: 'both',   enemy: '20% chance on hit: your next weapon hit deals 30% less', player: '20% chance on hit: the enemy hit deals 30% less on its next attack', works: true },
     warding:     { name: 'Warding',     frame: 32, side: 'both',   enemy: 'gains armor after it attacks', player: 'your armor is stronger for a turn' },
     mirror:      { name: 'Mirror',      frame: 33, side: 'both',   enemy: 'sends your next hit back', player: 'on armor: sends the first enemy attack each fight back', works: true },
     regenerate:  { name: 'Regenerate',  frame: 34, side: 'both',   enemy: 'heals at the end of each turn', player: 'heals you 1 each enemy turn', works: true },
@@ -68,6 +70,12 @@ export const SIGILS = Object.freeze({
     // A buffer: it never acts twice itself, its side does. Frame 47 is its
     // own icon slot; until that is drawn it wears Rally's horn.
     warcry:      { name: 'Warcry',      frame: 46, side: 'both',   enemy: 'other enemies: 10% chance to act twice', player: 'carried: your companions get 10% chance to act twice', works: true },
+    // Taya's numbered placeholder icons until the real ones are drawn.
+    riposte:     { name: 'Riposte',     frame: 60, side: 'player', player: 'after you block a hit, this weapon\'s next hit deals +2', works: true },
+    mending:     { name: 'Mending',     frame: 61, side: 'player', player: '10% chance on hit: replenishes 2 pips on this weapon', works: true },
+    secondWind:  { name: 'Second Wind', frame: 62, side: 'player', player: '10% chance on hit: replenishes 2 action points', works: true },
+    charm:       { name: 'Charm',       frame: 64, side: 'player', player: '15% chance on hit: the enemy hit (not a boss) attacks another enemy instead of you on its next attack', works: true },
+    scout:       { name: 'Scout',       frame: 63, side: 'player', player: '15% chance on hit: opens a face-down card that is not an enemy or a trap', works: true },
     // Four sigils that stop a card or an enemy for a turn, each its own.
     // Zap is never handed out: a card shows it while it can shock — the
     // yellow stone (lightning gem) socketed in a weapon, or the Storm
@@ -108,7 +116,7 @@ export function canTakeSigil(card, id) {
 
 // A Reliquary enchant shows as the sigil it becomes (design doc table).
 const ENCHANT_SIGIL = Object.freeze({
-    frostRing: 'frost', shadowBlade: 'crushing', restoration: 'leech', fireball: 'ripple',
+    frostRing: 'frost', shadowBlade: 'crushing', restoration: 'leech', fireball: 'fireball',
     weakness: 'sapping', magicShield: 'warding', boneWall: 'mirror', soulDrain: 'devouring',
     smokeScreen: 'smoke',
 });
@@ -129,8 +137,9 @@ export function getSigil(id) {
     return SIGILS[id] || null;
 }
 
-// Sigils renamed since a save was written: Arrest became Frost, Ember Ripple.
-const RENAMED_SIGILS = Object.freeze({ arrest: 'frost', ember: 'ripple' });
+// Sigils renamed since a save was written: Arrest became Frost; Ember became
+// Ripple, then Fireball.
+const RENAMED_SIGILS = Object.freeze({ arrest: 'frost', ember: 'fireball', ripple: 'fireball' });
 
 /** The sigils stored on a card: [{ id, level }], never undefined. */
 export function storedSigils(card) {

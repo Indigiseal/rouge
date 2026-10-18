@@ -344,6 +344,13 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 rarity: 'uncommon',
                 revealsAtFightStart: 1,
             },
+            trapwiseBoots: {
+                ...getAmuletAtlasPresentation('trapwiseBoots'),
+                name: 'Trapwise Boots',
+                description: 'Traps deal half damage, rounded down. Poison traps poison for half as much.',
+                rarity: 'uncommon',
+                trapDamageShare: 0.5,
+            },
             sapphireBrooch: {
                 ...getAmuletAtlasPresentation('sapphireBrooch'),
                 name: 'Sapphire Brooch',

@@ -10,6 +10,7 @@
 
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { SIGIL_MULTIPLIER, hasStoredSigil, sigilLevel } from '../../content/sigils/sigils.js';
+import { ENCHANT_FIREBALL_CHANCE, ENCHANT_SAPPING_CHANCE } from '../../content/balance/WeaponEnchants.js';
 
 // Tuning, all per sigil level unless noted.
 const HONED_PER_USE = 1;          // +damage per earlier use this fight
@@ -27,11 +28,21 @@ const FROST_CHANCE = 0.25;        // non-bosses
 const KEEN_CRIT = 0.05;           // added to the crit roll (a crit is x1.5)
 const RANSOM_CHANCE = 0.1;        // a crystal on a kill
 const BOUNTY_COINS = 2;           // coins on a kill
+const FIREBALL_SHARE = 0.5;       // of the swing, rounded down
+const FIREBALL_MINIMUM = 3;
+const FIREBALL_FLIGHT_MS = 320;
 const TSUNAMI_CHANCE = 0.1;       // on hit
 const TSUNAMI_DAMAGE = 3;         // to every face-up enemy
 const DEVOURING_CHANCE = 0.08;    // per level, non-bosses only
 const TEMPERED_SAVE = 0.3;        // per level, chance a pip is kept (max 0.9)
 const WARCRY_CHANCE = 0.1;        // per level, an ally acts twice (max 0.5)
+const RIPOSTE_BONUS = 2;          // next hit after a block
+const MENDING_CHANCE = 0.1;       // on hit
+const MENDING_PIPS = 2;           // after the swing's own pip, so it reads +2
+const SECOND_WIND_CHANCE = 0.1;   // on hit
+const SECOND_WIND_AP = 2;         // after the swing's own AP, so it reads +2
+const SCOUT_CHANCE = 0.15;        // on hit
+const CHARM_CHANCE = 0.15;        // on hit, non-bosses
 
 const multiply = (damage) => Math.floor(damage * SIGIL_MULTIPLIER);
 
@@ -93,6 +104,7 @@ export function weaponFlatSigilBonus(scene, weapon) {
     if (ironclad > 0) add('ironclad', wornArmorProtection(scene) * ironclad);
     const packrat = sigilLevel(weapon, 'packrat');
     if (packrat > 0) add('packrat', emptyBagSlots(scene) * PACKRAT_PER_SLOT * packrat);
+    if (sigilLevel(weapon, 'riposte') > 0 && scene?.gameState?.riposteReady) add('riposte', RIPOSTE_BONUS);
     return { bonus, ids };
 }
 
@@ -193,6 +205,27 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         fired.push('frost');
     }
 
+    // Sapping: a chance the enemy hit is weaker for its next attack only
+    // (enemyAttack.js applies it, the turn controller spends it). The sigil
+    // and the Reliquary's Weakness enchant are the same rule.
+    if (sigilLevel(weapon, 'sapping') > 0 && alive && !targetCard.data.sapped
+        && Math.random() < ENCHANT_SAPPING_CHANCE) {
+        targetCard.data.sapped = true;
+        cs?.updateEnemyInfoText?.(targetCard);
+        scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 30, 'Sapped!', 0x712a65);
+        fired.push('sapping');
+    }
+
+    // Charm: a chance the enemy hit (not a boss) turns on its own side for
+    // its next attack (CombatTurnController spends it). StatusOverlay
+    // shows it pink until then.
+    if (sigilLevel(weapon, 'charm') > 0 && alive && targetCard.data.type !== 'boss'
+        && !targetCard.data.charmed && Math.random() < CHARM_CHANCE) {
+        targetCard.data.charmed = true;
+        scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 30, 'Charmed!', 0xa83c69);
+        fired.push('charm');
+    }
+
     // Kill rewards: Ransom (a chance of a crystal), Bounty (coins), and
     // Bloodlust's streak: each kill in a row adds one; a hit that doesn't
     // kill breaks it.
@@ -221,6 +254,14 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         fired.push('bounty');
     }
 
+    // Fireball: a chance to throw one at another random face-up enemy
+    // (bosses too). The sigil and the Reliquary's Fireball enchant are the
+    // same rule, rolled here once.
+    if (sigilLevel(weapon, 'fireball') > 0 && Math.random() < ENCHANT_FIREBALL_CHANCE
+        && throwFireball(scene, targetCard, swingDamage)) {
+        fired.push('fireball');
+    }
+
     // Tsunami: a chance that a wave crashes over the whole board.
     if (sigilLevel(weapon, 'tsunami') > 0 && Math.random() < TSUNAMI_CHANCE) {
         crashTsunami(scene);
@@ -234,6 +275,36 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         cs?.applyWeaponEnchantOnKill?.('smokeScreen');
         fired.push('smoke');
     }
+
+    // Mending and Second Wind: the swing has already spent its pip and its
+    // AP, so +2 shows as +2 and leaves the hero one up. Neither goes past
+    // the cap, and a weapon that just broke stays broken.
+    if (damageDealt > 0 && sigilLevel(weapon, 'mending') > 0 && weapon.durability > 0
+        && Math.random() < MENDING_CHANCE) {
+        const max = weapon.maxDurability || weapon.durability;
+        const gained = Math.max(0, Math.min(max, weapon.durability + MENDING_PIPS) - weapon.durability);
+        if (gained > 0) {
+            weapon.durability += gained;
+            scene.createFloatingText?.(scene.playerAvatar.x, scene.playerAvatar.y + 18, `+${gained} pips (Mending)`, 0xd6c2c1);
+            scene.updateUI?.();
+            fired.push('mending');
+        }
+    }
+    if (damageDealt > 0 && gs && sigilLevel(weapon, 'secondWind') > 0 && Math.random() < SECOND_WIND_CHANCE) {
+        const before = gs.actionsLeft || 0;
+        gs.actionsLeft = Math.min(gs.maxActions, before + SECOND_WIND_AP);
+        if (gs.actionsLeft > before) {
+            scene.createFloatingText?.(scene.playerAvatar.x, scene.playerAvatar.y - 28, `+${gs.actionsLeft - before} AP (Second Wind)`, 0x71b1ae);
+            scene.updateUI?.();
+            fired.push('secondWind');
+        }
+    }
+    // Scout: opens one face-down card that is neither an enemy nor a trap.
+    if (damageDealt > 0 && sigilLevel(weapon, 'scout') > 0 && Math.random() < SCOUT_CHANCE && scoutOneCard(scene)) {
+        fired.push('scout');
+    }
+    // Riposte: the block's +2 is spent on this swing, hit or miss.
+    if (gs?.riposteReady && sigilLevel(weapon, 'riposte') > 0) gs.riposteReady = false;
 
     // Remember this swing for the sequencing sigils.
     scene._sigilLastTarget = targetCard || null;
@@ -257,9 +328,61 @@ function streakBroken(scene, targetCard, name) {
     scene.createFloatingText?.(sprite.x, sprite.y - 54, `${name} lost`, 0xafafa2);
 }
 
+// Scout: turns over one random face-down card that is not an enemy, a boss,
+// a trap or a mimic, as a free reveal (no enemy turn, nothing sprung).
+// Returns false when there is none left to open.
+function scoutOneCard(scene) {
+    const cs = scene?.cardSystem;
+    if (!cs?.revealCard) return false;
+    const hidden = (cs.boardCards || [])
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => card && !card.revealed && card.data && !card.data.isMimic
+            && !card.data.tutorialDormant && card.data.type !== 'trap'
+            && !cs.isEnemyType?.(card.data.type));
+    if (hidden.length === 0) return false;
+    const { card, index } = hidden[Math.floor(Math.random() * hidden.length)];
+    cs.revealCard(index, true);
+    if (card.sprite) scene.createFloatingText?.(card.sprite.x, card.sprite.y - 30, 'Scout!', 0xffcf7f);
+    return true;
+}
+
 /** Keen: the crit chance a weapon adds to the shared crit roll. */
 export function keenCritChance(weapon) {
     return sigilLevel(weapon, 'keen') > 0 ? KEEN_CRIT : 0;
+}
+
+// Fireball: picks a random face-up enemy other than the one just hit (a
+// taunting enemy, while one stands, is the only fair pick), flies there and
+// bursts for half the swing. Returns false when there is no one to throw at.
+function throwFireball(scene, struckCard, swingDamage) {
+    const cs = scene?.cardSystem;
+    if (!cs || !scene.add) return false;
+    const targets = (cs.boardCards || [])
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => card !== struckCard && cs.isOpenEnemyCard?.(card)
+            && (card.data?.health || 0) > 0 && card.sprite?.scene
+            && !cs.isTauntBlockingTarget?.(card));
+    if (targets.length === 0) return false;
+    const { card, index } = targets[Math.floor(Math.random() * targets.length)];
+    const damage = Math.max(FIREBALL_MINIMUM, Math.floor((swingDamage || 0) * FIREBALL_SHARE));
+    const fromX = struckCard?.sprite?.x ?? scene.playerAvatar?.x ?? 320;
+    const fromY = struckCard?.sprite?.y ?? scene.playerAvatar?.y ?? 300;
+    SoundHelper.playSound(scene, 'fireball_whoosh', 0.5);
+    const land = () => {
+        if (cs.boardCards[index] !== card || (card.data?.health || 0) <= 0 || !card.sprite?.scene) return;
+        scene.inventorySystem?.createFireballEffect?.(card.sprite);
+        cs.damageGemTarget(index, damage, 'Fireball', 0xef7c4b, null, 'hit');
+    };
+    if (!scene.textures?.exists?.('fireBall1')) {
+        scene.time.delayedCall(FIREBALL_FLIGHT_MS, land);
+        return true;
+    }
+    const ball = scene.add.image(fromX, fromY, 'fireBall1').setDepth(2400);
+    scene.tweens.add({
+        targets: ball, x: card.sprite.x, y: card.sprite.y, duration: FIREBALL_FLIGHT_MS, ease: 'Quad.easeIn',
+        onComplete: () => { ball.destroy(); land(); },
+    });
+    return true;
 }
 
 // Tsunami: a wave sweeps the board left to right (placeholder look: a

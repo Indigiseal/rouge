@@ -7,7 +7,7 @@ import { DISCARD_X } from '../../ui/CombatHud.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
 import { t, translateDescription, translateGemEffect, translateItemName, tCount } from '../../i18n/i18n.js';
-import { describeWeaponEnchant, ENCHANT_FIRE_SPLASH_RADIUS } from '../../content/balance/WeaponEnchants.js';
+import { describeWeaponEnchant } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 import { handLockOf } from '../../content/combat/handLock.js';
 import { sigilLine, storedSigils } from '../../content/sigils/sigils.js';
@@ -546,15 +546,10 @@ export const InventoryView = {
     // nearest-edge, the rule reads straight off the picture: any enemy card the
     // ring touches burns. Drawn at depth 1 — above the board panel (0), below
     // the cards (2) — so it looks like scorched ground, not an overlay.
-    //
-    // A Ripple enchant (the 'fireball' enchant) splashes much further, but
-    // only when it procs, so its reach is a second, fainter ring around the
-    // gem's. A weapon with Ripple and no fire gem shows just that ring.
     updateFireReachIndicator(cardSprite, slotIndex) {
         const weapon = this.slots[slotIndex];
         const hasFireGem = weapon?.gemEffect === 'fire' || weapon?.gem2Effect === 'fire';
-        const hasRipple = weapon?.enchant === 'fireball';
-        if (this.stationMode || weapon?.type !== 'weapon' || (!hasFireGem && !hasRipple)) {
+        if (this.stationMode || weapon?.type !== 'weapon' || !hasFireGem) {
             this.destroyFireReachIndicator();
             return;
         }
@@ -571,19 +566,11 @@ export const InventoryView = {
 
         const g = this.fireReachIndicator;
         g.clear();
-        if (hasRipple) {
-            g.fillStyle(0xb51f1e, 0.07);
-            g.fillCircle(target.x, target.y, ENCHANT_FIRE_SPLASH_RADIUS);
-            g.lineStyle(1, 0xef7c4b, 0.3);
-            g.strokeCircle(target.x, target.y, ENCHANT_FIRE_SPLASH_RADIUS);
-        }
-        if (hasFireGem) {
-            const radius = this.scene.cardSystem.getFireSplashRadius();
-            g.fillStyle(0xb51f1e, 0.16);
-            g.fillCircle(target.x, target.y, radius);
-            g.lineStyle(1, 0xef7c4b, 0.5);
-            g.strokeCircle(target.x, target.y, radius);
-        }
+        const radius = this.scene.cardSystem.getFireSplashRadius();
+        g.fillStyle(0xb51f1e, 0.16);
+        g.fillCircle(target.x, target.y, radius);
+        g.lineStyle(1, 0xef7c4b, 0.5);
+        g.strokeCircle(target.x, target.y, radius);
     },
     // Live weapon numbers: the flat sigil bonuses (Honed, Bloodlust, Kinship,
     // Packrat, Outnumbered, Ironclad) change during a fight.

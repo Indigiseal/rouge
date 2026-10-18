@@ -1,7 +1,8 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { tweenAlongArc } from '../../ui/ArcFlight.js';
 import { CombatSequencer } from './CombatSequencer.js';
-import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
+import { getEnemyHitAttack, spendSapping } from '../../content/combat/enemyAttack.js';
+import { ENCHANT_SAPPING_CHANCE } from '../../content/balance/WeaponEnchants.js';
 import { CONTROL_HESITATION_CHANCE, pickControlTreacheryTarget } from '../../content/amulets/control.js';
 import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
 import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
@@ -313,6 +314,7 @@ export class CombatTurnController {
 
                 // Reflect damage back to enemy
                 const reflectedDamage = getEnemyHitAttack(firstAttacker.card, scene.cardSystem?.boardCards);
+                spendSapping(firstAttacker.card);
                 scene.cardSystem.attackEnemy(firstAttacker.index, reflectedDamage, true);
                 scene.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Reflected)`, 0xfef0cf);
                 scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Bone Shield!', 0xfef0cf);
@@ -447,6 +449,26 @@ export class CombatTurnController {
             return;
         }
 
+        // Charm sigil: this attack goes to another face-up enemy; with no one
+        // else to hit, the charmed enemy loses it. Either way it wears off.
+        if (card.data?.charmed) {
+            card.data.charmed = false;
+            const target = pickControlTreacheryTarget(
+                scene.cardSystem.boardCards,
+                index,
+                (other) => scene.isEnemyCard(other)
+            );
+            if (target) {
+                scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xa83c69);
+                const charmed = getEnemyHitAttack(card, scene.cardSystem.boardCards);
+                spendSapping(card);
+                scene.cardSystem.attackEnemy(target.index, charmed, false);
+            } else {
+                scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed, no one to hit', 0xa83c69);
+            }
+            return;
+        }
+
         if (card.data?.controlHesitation && Math.random() < CONTROL_HESITATION_CHANCE) {
             scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Hesitates!', 0x71b1ae);
             return;
@@ -460,11 +482,9 @@ export class CombatTurnController {
             );
             if (target) {
                 scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Betrayal!', 0xa83c69);
-                scene.cardSystem.attackEnemy(
-                    target.index,
-                    getEnemyHitAttack(card, scene.cardSystem.boardCards),
-                    false
-                );
+                const betrayal = getEnemyHitAttack(card, scene.cardSystem.boardCards);
+                spendSapping(card);
+                scene.cardSystem.attackEnemy(target.index, betrayal, false);
                 return;
             }
         }
@@ -480,13 +500,17 @@ export class CombatTurnController {
             if (others.length > 0) {
                 const target = others[Math.floor(Math.random() * others.length)];
                 scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xa83c69);
-                scene.cardSystem.attackEnemy(target.index, getEnemyHitAttack(card, scene.cardSystem.boardCards), false);
+                const charmed = getEnemyHitAttack(card, scene.cardSystem.boardCards);
+                spendSapping(card);
+                scene.cardSystem.attackEnemy(target.index, charmed, false);
                 return; // skip player damage
             }
         }
 
         const features = Array.isArray(card.data?.features) ? card.data.features : [];
         let damageDealt = getEnemyHitAttack(card, scene.cardSystem?.boardCards);
+        spendSapping(card);
+        scene.cardSystem?.updateEnemyInfoText?.(card);
 
         // The enemy's own x1.5 sigils (a boss's): Merciless once the hero is
         // at half health or less, Ambush while the hero is unhurt, Unscathed
@@ -667,6 +691,13 @@ export class CombatTurnController {
         if (features.includes('spore_on_hit')) {
             scene.gameState.playerSpored = true;
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18, 'Spored!', 0xfee093);
+        }
+
+        // Sapping (an enemy's sigil): a connecting hit may weaken the hero's
+        // next weapon hit. The same 20% as the hero's own Sapping.
+        if (!dodged && sigilLevel(card.data, 'sapping') > 0 && Math.random() < ENCHANT_SAPPING_CHANCE) {
+            scene.gameState.playerSapped = true;
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 26, 'Sapped!', 0x712a65);
         }
 
         // Toll Brute — chance to bark other goblins into an extra swing.

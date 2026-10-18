@@ -330,11 +330,16 @@ export class CardSystem {
 
     getEliteSpriteKey(...args) { return this.fx.getEliteSpriteKey(...args); }
     applyEliteMiniBossVisual(...args) { return this.fx.applyEliteMiniBossVisual(...args); }
+    // A trap's hit after amulets (Trapwise Boots halves it).
+    trapDamage(amount) {
+        return this.scene.amuletManager?.scaleTrapDamage?.(amount) ?? (amount || 0);
+    }
+
     handleTrap(card, index) {
         const trapName = card.data.name || 'Trap';
         if (card.data.subType === 'spike') {
             SoundHelper.playSound(this.scene, 'trap_woosh', 0.7);
-            const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(card.data.damage, -1, 'trap');
+            const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(this.trapDamage(card.data.damage), -1, 'trap');
             if (this.scene.gameState.playerHealth <= 0) this.scene.killedBy = trapName;
             if (tookDamage) {
                 SoundHelper.playVariant(this.scene, 'player_hurt', 0.5);
@@ -346,7 +351,7 @@ export class CardSystem {
             // Acid trap opens with its smoke-poof SFX (paired with the poof anim below).
             SoundHelper.playSound(this.scene, 'poison_trap', 0.6);
             // Immediate hit on top of the lingering poison-over-time.
-            const hit = card.data.damage || 0;
+            const hit = this.trapDamage(card.data.damage);
             if (hit > 0) {
                 const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(hit, -1, 'trap');
                 if (this.scene.gameState.playerHealth <= 0) this.scene.killedBy = trapName;
@@ -362,13 +367,14 @@ export class CardSystem {
                 poof.play('poison_poof_anim');
                 poof.once('animationcomplete', () => poof.destroy());
             }
-            if (this.scene.gameState.addPlayerEffect({ ...card.data.abilities[0], killedBy: trapName })) {
+            const poison = { ...card.data.abilities[0], damage: this.trapDamage(card.data.abilities[0]?.damage) };
+            if (poison.damage > 0 && this.scene.gameState.addPlayerEffect({ ...poison, killedBy: trapName })) {
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Poisoned!', 0x71800b);
             }
         } else if (card.data.subType === 'reveal') {
             SoundHelper.playSound(this.scene, 'trap_spring', 0.6);
             // Light nick before it reveals the neighbours.
-            const hit = card.data.damage || 0;
+            const hit = this.trapDamage(card.data.damage);
             if (hit > 0) {
                 const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(hit, -1, 'trap');
                 if (this.scene.gameState.playerHealth <= 0) this.scene.killedBy = trapName;
@@ -707,6 +713,7 @@ export class CardSystem {
     playLightningShine(...args) { return this.fx.playLightningShine(...args); }
     playLightningArc(...args) { return this.fx.playLightningArc(...args); }
     damageGemTarget(...args) { return this.combat.damageGemTarget(...args); }
+    isTauntBlockingTarget(...args) { return this.combat.isTauntBlockingTarget(...args); }
     explodePoisonedEnemy(...args) { return this.combat.explodePoisonedEnemy(...args); }
     applyRelicSlow(...args) { return this.combat.applyRelicSlow(...args); }
     rollWeaponEnchant(...args) { return this.combat.rollWeaponEnchant(...args); }
