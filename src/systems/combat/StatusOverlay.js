@@ -1,6 +1,7 @@
 // systems/combat/StatusOverlay.js
 // A see-through colour over an enemy card or the hero's portrait while an
-// effect is on it: poisoned green, charmed pink, shocked yellow. It is a copy
+// effect is on it: charmed pink, frozen ice blue, shocked yellow, stunned
+// grey, sapped purple, spored dusty orange, poisoned green. It is a copy
 // of the sprite filled with the colour at low opacity (a translucent layer,
 // as in Aseprite), not a tint, so it never fights the elite tint or the hit
 // flash. One colour at a time: the first effect in STATUS_COLORS that applies.
@@ -11,9 +12,15 @@
 export const STATUS_OVERLAY_ALPHA = 0.35;
 
 // Order is priority: the first that applies wins.
+// The ones that change what the next action does come before the lingering
+// ones; poison, the most common, comes last.
 export const STATUS_COLORS = Object.freeze([
     { id: 'charmed',  color: 0xa83c69, enemy: (d) => !!d.charmed },
+    { id: 'frozen',   color: 0x71b1ae, enemy: (d) => (d.frozen || 0) > 0 },
     { id: 'shocked',  color: 0xfbad19, enemy: (d) => (d.shockedTurns || 0) > 0 },
+    { id: 'stunned',  color: 0xafafa2, player: (gs) => (gs.playerStunnedTurns || 0) > 0 },
+    { id: 'sapped',   color: 0x712a65, enemy: (d) => !!d.sapped, player: (gs) => !!gs.playerSapped },
+    { id: 'spored',   color: 0xe89353, player: (gs) => !!gs.playerSpored },
     { id: 'poisoned', color: 0x71800b,
         enemy: (d) => Array.isArray(d.statusEffects) && d.statusEffects.some((e) => e?.type === 'poison'),
         player: (gs) => Array.isArray(gs.playerEffects) && gs.playerEffects.some((e) => e?.type === 'poison') },
