@@ -15,6 +15,7 @@ import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js
 import { cameraWorldSize } from '../../config/renderScale.js';
 import { t, translateItemName, translateRarity } from '../../i18n/i18n.js';
 import { ENEMIES } from '../../content/cards/enemies.js';
+import { noteCardDiscovered } from '../../content/codex/Discoveries.js';
 import { BOSSES } from '../../content/cards/bosses.js';
 
 // --- Opening deal -----------------------------------------------------------
@@ -1494,13 +1495,14 @@ function spawnAmbushBoard(ambush) {
   // inherit the previous ambush's card back.
   this._boardVariant = null;
 
-  // Toll Collectors are a normal combat room with a themed enemy pool. Let
+  // Event fights that want a normal combat room (the Abandoned Camp). Let
   // spawnFloorCards retain its established item weights, card caps, layout,
   // opening reveals, and weapon supply rather than recreating those rules.
   if (ambush?.normalCombatBoard) {
     this.scene.gameState.pendingAmbush = null;
     this.scene.gameState.ambushId = ambush.id || null;
-    this._forcedEnemyTypes = Array.isArray(ambush.enemyTypes) ? ambush.enemyTypes : ['goblin'];
+    // Without an enemy list the room deals this location's own roster.
+    this._forcedEnemyTypes = Array.isArray(ambush.enemyTypes) ? ambush.enemyTypes : null;
     // A variant only changes how the room looks and opens; the generator below
     // still decides layout, loot and enemy counts.
     this._boardVariant = boardVariantFromAmbush(ambush);
@@ -1553,6 +1555,8 @@ function spawnAmbushBoard(ambush) {
 
     const card = { sprite, shadow, revealed: true, data, restX: x, restY: y };
     this.boardCards[i] = card;
+    // Face-up from the start, so they never pass through revealCard.
+    if (!this.scene.sandboxMode) noteCardDiscovered(data);
     this.createCardInfoText(card);
     this._attachBoardItemTooltip?.(card);
     this._attachEnemyBoardHover?.(card);
@@ -1609,6 +1613,8 @@ function spawnBoss() {
         restY: y,
     };
     this.boardCards[4] = card;
+    // Bosses arrive face-up, so they never pass through revealCard.
+    if (!this.scene.sandboxMode) noteCardDiscovered(bossData);
     this.createCardInfoText(card);
     this.playBossEntrance(cardSprite, bossData);
     card.sprite.setInteractive();

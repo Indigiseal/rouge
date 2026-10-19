@@ -11,6 +11,8 @@ export function hudAmuletTexture(scene, key) {
     if (key === RELICS_OTHERS_TEXTURE && scene?.textures?.exists(RELICS_OTHERS_SMALL_TEXTURE)) {
         return RELICS_OTHERS_SMALL_TEXTURE;
     }
+    // An amulet with its own icon file brings its own 28px copy, "<key>Small".
+    if (key && scene?.textures?.exists(`${key}Small`)) return `${key}Small`;
     return key;
 }
 

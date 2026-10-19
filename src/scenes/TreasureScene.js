@@ -15,9 +15,8 @@ import { createSelectionCorners } from '../ui/NineSlicePanel.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { playCardDissolve } from '../ui/CardDissolve.js';
 
-// Chance an elite's chest also holds a sigil (a secret room's always does).
-const ELITE_CHEST_SIGIL_CHANCE = 0.3;
 import { openSigilOffer, rollOfferableSigil } from '../ui/SigilOffer.js';
+import { createSigilRoom } from './SigilRoom.js';
 
 // The chest stands in the middle of the room and is opened by clicking it;
 // what it gives sits on top of it, with the take hint underneath.
@@ -55,6 +54,17 @@ export class TreasureScene extends StationRoomBase {
     this.enableShopStation();
     this.addOptionsCog();
 
+    // A Sigil Room has a statue and a sigil instead of a chest (SigilRoom.js).
+    // With no card in the bag that could take any sigil, it falls back to a
+    // good chest rather than an empty room.
+    if (this.rewardMode === 'sigil') {
+      const sigilId = data.sigilId || rollOfferableSigil(this.gameScene);
+      if (sigilId) {
+        createSigilRoom(this, sigilId);
+        return;
+      }
+      this.rewardMode = 'good';
+    }
     this.createChestRoom();
   }
 
@@ -199,12 +209,9 @@ export class TreasureScene extends StationRoomBase {
     this.gameScene?.updateUI?.();
     this.darkenOpenedChest(chest);
 
-    // A secret room's chest always holds a sigil; an elite's only sometimes —
-    // gaining one is meant to be rare. Put on a card the player picks now.
-    const brooch = this.gameScene?.amuletManager?.hasEliteChestSigil?.();
-    const sigilHere = this.rewardMode === 'secret'
-      || (this.rewardMode === 'elite' && (brooch || Math.random() < ELITE_CHEST_SIGIL_CHANCE));
-    if (sigilHere) this.time.delayedCall(450, () => this.offerChestSigil());
+    // Sigils now come from Sigil Rooms, not chests. Only a run saved before
+    // that change can still reach a 'secret' chest, which keeps its sigil.
+    if (this.rewardMode === 'secret') this.time.delayedCall(450, () => this.offerChestSigil());
   }
 
   offerChestSigil() {

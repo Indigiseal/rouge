@@ -44,11 +44,21 @@ export const HIDDEN_PATH_SOURCES = Object.freeze({
     }),
     // The sigil vault (sigils branch): one secret room in every act, always
     // there, but only drawn while the player stands in the room that leads
-    // into it (revealNear). Its chest holds a sigil — as does every secret room's.
+    // into it (revealNear). Inside is a Sigil Room: a statue, no chest.
     sigilVault: Object.freeze({
         roomType: 'TREASURE_GOOD',
         alwaysPresent: true,
         revealNear: true,
+    }),
+    // The Crystal Lair: a fight with the crystal spider mother and her brood,
+    // and a Crystal Brood sigil for winning it. Found like the vault, by
+    // standing next to it. Shut for the run once the mother is dead — beaten
+    // here, or squashed at the bottom of the Old Chute.
+    crystalLair: Object.freeze({
+        roomType: 'COMBAT',
+        alwaysPresent: true,
+        revealNear: true,
+        isOpen: (gameState) => !gameState?.storyRun?.oldChuteSeen && !gameState?.storyRun?.crystalLairCleared,
     }),
 });
 
@@ -97,7 +107,11 @@ export function isHiddenPathOpen(gameState, source) {
 export function isMapNodeVisible(gameState, node) {
     if (!node?.secret) return true;
     if (node.visited) return true;
-    if (HIDDEN_PATH_SOURCES[node.secretSource]?.revealNear) return isNearSecretRoom(gameState, node);
+    const def = HIDDEN_PATH_SOURCES[node.secretSource];
+    if (def?.revealNear) {
+        if (def.isOpen && !def.isOpen(gameState)) return false;
+        return isNearSecretRoom(gameState, node);
+    }
     return isHiddenPathOpen(gameState, node.secretSource);
 }
 

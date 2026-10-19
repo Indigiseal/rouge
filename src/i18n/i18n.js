@@ -3879,6 +3879,63 @@ function resolveTextKey(keyOrText, vars = {}) {
     return [raw, vars];
 }
 
+// The Codex (scenes/CodexScene.js).
+const CODEX_STRINGS = {
+    en: {
+        'ui.menu.codex': 'Codex', 'ui.codex.title': 'Codex', 'ui.codex.back': 'Back',
+        'ui.codex.enemies': 'Enemies', 'ui.codex.bosses': 'Bosses', 'ui.codex.stories': 'Stories',
+        'ui.codex.sigils': 'Sigils', 'ui.codex.amulets': 'Amulets',
+        'ui.codex.actBoss': 'Act {act} boss', 'ui.codex.sigilYou': 'Yours: {rule}', 'ui.codex.sigilEnemy': 'Enemy: {rule}',
+        'ui.codex.hint': 'Point at anything to read about it.', 'ui.codex.undiscovered': 'Not found yet.',
+        'ui.sandbox.encounter.crystalLair': 'Crystal Lair',
+        'ui.menu.modeDeveloper': 'Mode: Developer', 'ui.menu.modePlayer': 'Mode: Player',
+        'ui.sigilRoom.title': 'Sigil Room', 'ui.sigilRoom.hint': 'Drag a weapon or armor card into its mouth.', 'ui.sigilRoom.refuse': 'The jaw stays shut. That card cannot take this sigil.', 'ui.sigilRoom.stamped': 'It bites. {card} now bears {sigil}.', 'ui.sandbox.encounter.sigilRoom': 'Sigil Room',
+    },
+    es: {
+        'ui.menu.codex': 'Códice', 'ui.codex.title': 'Códice', 'ui.codex.back': 'Volver',
+        'ui.codex.enemies': 'Enemigos', 'ui.codex.bosses': 'Jefes', 'ui.codex.stories': 'Historias',
+        'ui.codex.sigils': 'Sigilos', 'ui.codex.amulets': 'Amuletos',
+        'ui.codex.actBoss': 'Jefe del acto {act}', 'ui.codex.sigilYou': 'Tuyo: {rule}', 'ui.codex.sigilEnemy': 'Enemigo: {rule}',
+        'ui.codex.hint': 'Señala cualquier cosa para leer sobre ella.', 'ui.codex.undiscovered': 'Aún no encontrado.',
+        'ui.sandbox.encounter.crystalLair': 'Guarida de cristal',
+        'ui.menu.modeDeveloper': 'Modo: desarrollador', 'ui.menu.modePlayer': 'Modo: jugador',
+        'ui.sigilRoom.title': 'Sala del sigilo', 'ui.sigilRoom.hint': 'Arrastra un arma o una armadura a su boca.', 'ui.sigilRoom.refuse': 'La mandíbula no se abre. Esa carta no admite este sigilo.', 'ui.sigilRoom.stamped': 'Muerde. {card} lleva ahora {sigil}.', 'ui.sandbox.encounter.sigilRoom': 'Sala del sigilo',
+    },
+    fr: {
+        'ui.menu.codex': 'Codex', 'ui.codex.title': 'Codex', 'ui.codex.back': 'Retour',
+        'ui.codex.enemies': 'Ennemis', 'ui.codex.bosses': 'Boss', 'ui.codex.stories': 'Histoires',
+        'ui.codex.sigils': 'Sigils', 'ui.codex.amulets': 'Amulettes',
+        'ui.codex.actBoss': "Boss de l'acte {act}", 'ui.codex.sigilYou': 'Le vôtre : {rule}', 'ui.codex.sigilEnemy': 'Ennemi : {rule}',
+        'ui.codex.hint': 'Pointez un élément pour en savoir plus.', 'ui.codex.undiscovered': 'Pas encore trouvé.',
+        'ui.sandbox.encounter.crystalLair': 'Antre de cristal',
+        'ui.menu.modeDeveloper': 'Mode : développeur', 'ui.menu.modePlayer': 'Mode : joueur',
+        'ui.sigilRoom.title': 'Salle du sigil', 'ui.sigilRoom.hint': 'Glissez une arme ou une armure dans sa gueule.', 'ui.sigilRoom.refuse': 'La mâchoire reste fermée. Cette carte ne peut pas recevoir ce sigil.', 'ui.sigilRoom.stamped': 'Elle mord. {card} porte maintenant {sigil}.', 'ui.sandbox.encounter.sigilRoom': 'Salle du sigil',
+    },
+    ru: {
+        'ui.menu.codex': 'Кодекс', 'ui.codex.title': 'Кодекс', 'ui.codex.back': 'Назад',
+        'ui.codex.enemies': 'Враги', 'ui.codex.bosses': 'Боссы', 'ui.codex.stories': 'Истории',
+        'ui.codex.sigils': 'Печати', 'ui.codex.amulets': 'Амулеты',
+        'ui.codex.actBoss': 'Босс {act} акта', 'ui.codex.sigilYou': 'Ваша: {rule}', 'ui.codex.sigilEnemy': 'У врага: {rule}',
+        'ui.codex.hint': 'Наведите на что угодно, чтобы прочитать.', 'ui.codex.undiscovered': 'Ещё не найдено.',
+        'ui.sandbox.encounter.crystalLair': 'Хрустальное логово',
+        'ui.menu.modeDeveloper': 'Режим: разработчик', 'ui.menu.modePlayer': 'Режим: игрок',
+        'ui.sigilRoom.title': 'Зал печати', 'ui.sigilRoom.hint': 'Перетащите оружие или броню ему в пасть.', 'ui.sigilRoom.refuse': 'Пасть не открывается. Эта карта не примет такую печать.', 'ui.sigilRoom.stamped': 'Укус. Теперь на {card} печать «{sigil}».', 'ui.sandbox.encounter.sigilRoom': 'Зал печати',
+    },
+    de: {
+        'ui.menu.codex': 'Kodex', 'ui.codex.title': 'Kodex', 'ui.codex.back': 'Zurück',
+        'ui.codex.enemies': 'Gegner', 'ui.codex.bosses': 'Bosse', 'ui.codex.stories': 'Geschichten',
+        'ui.codex.sigils': 'Siegel', 'ui.codex.amulets': 'Amulette',
+        'ui.codex.actBoss': 'Boss von Akt {act}', 'ui.codex.sigilYou': 'Deins: {rule}', 'ui.codex.sigilEnemy': 'Gegner: {rule}',
+        'ui.codex.hint': 'Zeig auf etwas, um mehr zu lesen.', 'ui.codex.undiscovered': 'Noch nicht gefunden.',
+        'ui.sandbox.encounter.crystalLair': 'Kristallhöhle',
+        'ui.menu.modeDeveloper': 'Modus: Entwickler', 'ui.menu.modePlayer': 'Modus: Spieler',
+        'ui.sigilRoom.title': 'Siegelraum', 'ui.sigilRoom.hint': 'Zieh eine Waffe oder Rüstung in sein Maul.', 'ui.sigilRoom.refuse': 'Das Maul bleibt zu. Diese Karte nimmt dieses Siegel nicht an.', 'ui.sigilRoom.stamped': 'Es beißt zu. {card} trägt jetzt {sigil}.', 'ui.sandbox.encounter.sigilRoom': 'Siegelraum',
+    },
+};
+for (const [language, additions] of Object.entries(CODEX_STRINGS)) {
+    Object.assign(STRINGS[language], additions);
+}
+
 // Languages with complete string coverage (menu + all in-game text). Only these are
 // offered in the language selector. fr/de/ja/zh still have only the ~15 menu strings
 // translated, so selecting them would show a mostly-English game and make the toggle

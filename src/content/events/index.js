@@ -16,6 +16,10 @@ import quietCrossroads from './quiet_crossroads.js';
 import screamingHead from './screaming_head.js';
 import reliquary from './reliquary.js';
 import mirrorTwin from './mirror_twin.js';
+import abandonedCamp from './abandoned_camp.js';
+import oldChute from './old_chute.js';
+import soupStand from './soup_stand.js';
+import robbedTraveller from './robbed_traveller.js';
 import { SILKDEEP_EVENTS } from '../location-packs/silkdeep/events/index.js';
 import { ALL_TOLLROAD_EVENTS } from '../location-packs/tollroad/events/index.js';
 
@@ -37,6 +41,10 @@ export const EVENTS = [
   screamingHead,
   reliquary,
   mirrorTwin,
+  abandonedCamp,
+  oldChute,
+  soupStand,
+  robbedTraveller,
   ...ALL_TOLLROAD_EVENTS,
   ...SILKDEEP_EVENTS,
 ];

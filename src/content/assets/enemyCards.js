@@ -1,7 +1,8 @@
 // Enemy cards — every month's roster in three tiers, composited from
 // assets/art/enemiesSpriteSheet.png plus the icon strip.
 //
-// The sheet is an 8x7 grid of 52x70 cells. One row per month:
+// The sheet is an 8x8 grid of 52x70 cells. One row per month (row 7 is the
+// Crystal Lair's spiders, which belong to no location — EXTRA_SHEET_ROWS):
 //
 //        0..4  the five enemies, in roster order
 //        5..7  the card face for normal / veteran / elite
@@ -9,7 +10,7 @@
 //   row 0  Thornwake      row 4  Mireturn
 //   row 1  Silkdeep       row 5  Veilbleed
 //   row 2  Tollroad       row 6  Ashhowl
-//   row 3  Boneflood
+//   row 3  Boneflood                  row 7  Crystal Lair
 //
 // A column is NEVER written down by hand. It is the enemy's position in its
 // month's roster — MELEE first, then RANGED, which is the order the rosters
@@ -45,6 +46,20 @@ export const MONTH_SHEET_ROWS = Object.freeze({
     veilbleed: 5,
     ashhowl: 6,
 });
+
+/**
+ * Sheet rows for creatures that belong to no location (row 7: the Crystal
+ * Lair's spiders). Kept out of MONTH_SHEET_ROWS, which the location door art
+ * also reads row for row.
+ */
+export const EXTRA_SHEET_ROWS = Object.freeze({
+    crystalLair: 7,
+});
+
+/** The sheet row for a location or extra group, or undefined if none is drawn. */
+export function sheetRowFor(id) {
+    return MONTH_SHEET_ROWS[id] ?? EXTRA_SHEET_ROWS[id];
+}
 
 /** Card-face column per tier — the three faces to the right of each roster. */
 export const TIER_FACE_COLUMNS = Object.freeze({
@@ -108,7 +123,7 @@ export function enemyCardPresentation(monthId, roster, enemyId) {
     // The column still travels with the card, so the day a row is added to
     // MONTH_SHEET_ROWS every enemy in that month picks up its real face with no
     // other change.
-    const drawn = MONTH_SHEET_ROWS[monthId] !== undefined;
+    const drawn = sheetRowFor(monthId) !== undefined;
     return Object.freeze({
         monthId,
         sheetColumn: column,
@@ -132,7 +147,7 @@ export function buildEnemyCardTextures(scene, months = []) {
     let built = 0;
 
     for (const month of months) {
-        const row = MONTH_SHEET_ROWS[month?.id];
+        const row = sheetRowFor(month?.id);
         // Months Petr has not written a roster for yet have art on the sheet
         // but nothing to hang it on. Skip them rather than guess.
         if (row === undefined || !month?.enemies) continue;

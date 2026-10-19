@@ -10,6 +10,8 @@ import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
+import { noteDiscovered } from '../content/codex/Discoveries.js';
+import { ROBBED_TRAVELLER_DELAY } from '../content/events/robbed_traveller.js';
 import { EVENTS, getEvent } from '../content/events/index.js';
 import { getMagic } from '../content/cards/magic.js';
 import { getPlannedActBoss } from '../map/MapGenerator.js';
@@ -52,7 +54,7 @@ import { ENEMIES } from '../content/cards/enemies.js';
 import { addSigil, cardSigils, noteSigilTaken } from '../content/sigils/sigils.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
 
-const EVENT_ILLUSTRATION_FRAMES = {
+export const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
   monster_bird_nest: 9,
   goblin_engineer: 12,
@@ -108,6 +110,7 @@ export class EventScene extends Phaser.Scene {
     this.forcedEventId = data.forcedEventId || null;
     this.ensureStoryState();
     this.event = this._pickEvent();
+    if (this.event?.id && !isSandboxMode(this)) noteDiscovered('stories', this.event.id);
     this.resolved = false;
   }
 
@@ -158,6 +161,7 @@ export class EventScene extends Phaser.Scene {
     if (story.pendingEvents.includes('arm_wrestling') && !story.armWrestleRematchDone) {
       return this.getEventById('arm_wrestling');
     }
+    if (this.isRobbedTravellerDue()) return this.getEventById('robbed_traveller');
     // Music Box Event Sequence opener. Not month-gated: any-month, then nest
     // and engineer via pendingEvents. (The donkey caravan + hermit thread was
     // removed and no longer appears at all.)
@@ -167,6 +171,9 @@ export class EventScene extends Phaser.Scene {
     // falling back to the plain filler.
     const bonusFillers = [];
     if (!story.mirrorSeen) bonusFillers.push('mirror');
+    if (!story.abandonedCampSeen) bonusFillers.push('abandoned_camp');
+    if (!story.oldChuteSeen) bonusFillers.push('old_chute');
+    if (!story.soupStandSeen) bonusFillers.push('soup_stand');
     if (!story.tooNiceRoomSeen) bonusFillers.push('too_nice_room');
     if (!story.wellSeen) bonusFillers.push('almost_you_well');
     if (!story.slimyPrisonSeen) bonusFillers.push('slimy_prison');
@@ -230,11 +237,15 @@ export class EventScene extends Phaser.Scene {
       return this.getEventById('hatching_egg');
     }
     if (story.pendingEvents.includes('brass_wizard')) return this.getEventById('brass_wizard');
+    if (this.isRobbedTravellerDue()) return this.getEventById('robbed_traveller');
     if (story.boxState === 'unknown') return this.getEventById('broken_music_box');
 
     const pool = [];
     if (!story.tollCollectorsSeen) pool.push('toll_collectors');
     if (!story.mirrorSeen) pool.push('mirror');
+    if (!story.abandonedCampSeen) pool.push('abandoned_camp');
+    if (!story.oldChuteSeen) pool.push('old_chute');
+    if (!story.soupStandSeen) pool.push('soup_stand');
     if (!story.tooNiceRoomSeen) pool.push('too_nice_room');
     if (!story.wellSeen) pool.push('almost_you_well');
     if (!story.slimyPrisonSeen) pool.push('slimy_prison');
@@ -243,6 +254,14 @@ export class EventScene extends Phaser.Scene {
     if (this.getQualifyingCompanions().length > 0) pool.push('old_drill_room');
     if (!pool.length) return this.getEventById('quiet_crossroads');
     return this.getEventById(pool[Math.floor(Math.random() * pool.length)]);
+  }
+
+  // The Soup Stand's next victim, a couple of floors after the player passed it.
+  isRobbedTravellerDue() {
+    const story = this.gameState.storyRun;
+    return story.pendingEvents.includes('robbed_traveller')
+      && !story.robbedTravellerSeen
+      && (this.gameState.currentFloor || 1) >= (story.soupStandFloor || 0) + ROBBED_TRAVELLER_DELAY;
   }
 
   getEventById(id) {
@@ -256,7 +275,7 @@ export class EventScene extends Phaser.Scene {
       const requestedId = new URLSearchParams(window.location.search).get('event');
       if (!requestedId) return null;
       const resolvedId = requestedId === 'singing_box' ? 'broken_music_box' : requestedId;
-      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'toll_collectors', 'arm_wrestling', 'old_drill_room', 'something_wicked', 'brass_wizard', 'silk_cocoon_cache']);
+      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'toll_collectors', 'arm_wrestling', 'old_drill_room', 'something_wicked', 'brass_wizard', 'silk_cocoon_cache', 'abandoned_camp', 'old_chute', 'soup_stand', 'robbed_traveller']);
       return forceable.has(resolvedId) ? resolvedId : null;
     } catch {
       return null;
@@ -294,6 +313,11 @@ export class EventScene extends Phaser.Scene {
       skeletonCompanionObtained: false,
       angryNestmotherRollFloor: null,
       mirrorSeen: false,
+      abandonedCampSeen: false,
+      oldChuteSeen: false,
+      soupStandSeen: false,
+      robbedTravellerSeen: false,
+      soupStandFloor: null,
       tooNiceRoomSeen: false,
       wellSeen: false,
       slimyPrisonSeen: false,
@@ -395,6 +419,10 @@ export class EventScene extends Phaser.Scene {
         ? existingStoryRun.angryNestmotherRollFloor
         : null,
       mirrorSeen: Boolean(existingStoryRun.mirrorSeen),
+      abandonedCampSeen: Boolean(existingStoryRun.abandonedCampSeen),
+      oldChuteSeen: Boolean(existingStoryRun.oldChuteSeen),
+      soupStandSeen: Boolean(existingStoryRun.soupStandSeen),
+      robbedTravellerSeen: Boolean(existingStoryRun.robbedTravellerSeen),
       tooNiceRoomSeen: Boolean(existingStoryRun.tooNiceRoomSeen),
       wellSeen: Boolean(existingStoryRun.wellSeen),
       slimyPrisonSeen: Boolean(existingStoryRun.slimyPrisonSeen),
@@ -2988,6 +3016,10 @@ export class EventScene extends Phaser.Scene {
   _markBonusEventSeen() {
     const flagByEvent = {
       mirror: 'mirrorSeen',
+      abandoned_camp: 'abandonedCampSeen',
+      old_chute: 'oldChuteSeen',
+      soup_stand: 'soupStandSeen',
+      robbed_traveller: 'robbedTravellerSeen',
       too_nice_room: 'tooNiceRoomSeen',
       almost_you_well: 'wellSeen',
       slimy_prison: 'slimyPrisonSeen',

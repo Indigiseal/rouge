@@ -12,6 +12,7 @@ import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 import { handLockOf } from '../../content/combat/handLock.js';
 import { sigilLine, storedSigils } from '../../content/sigils/sigils.js';
 import { refreshWeaponValueText } from '../board/BoardCardFx.js';
+import { createFireReach } from '../../ui/FireReach.js';
 import {
     axeHeavyCleaveTargetIndices,
     spearPierceTargetIndices,
@@ -75,7 +76,9 @@ export const InventoryView = {
                 briarFrame: 208,
                 sigils: 208.5,
                 webOverlay: 209,
-                twinkle: 208
+                // On top, as in the fight layout below: the merge sparkle
+                // used to sit at 208, under the sigil icons.
+                twinkle: 209.5
             }
             : {
                 panel: 10,
@@ -561,16 +564,10 @@ export const InventoryView = {
         }
 
         if (!this.fireReachIndicator?.scene) {
-            this.fireReachIndicator = this.scene.add.graphics().setDepth(1);
+            this.fireReachIndicator = createFireReach(this.scene, 1);
         }
-
-        const g = this.fireReachIndicator;
-        g.clear();
-        const radius = this.scene.cardSystem.getFireSplashRadius();
-        g.fillStyle(0xb51f1e, 0.16);
-        g.fillCircle(target.x, target.y, radius);
-        g.lineStyle(1, 0xef7c4b, 0.5);
-        g.strokeCircle(target.x, target.y, radius);
+        // Heat rings and embers inside the reach (ui/FireReach.js).
+        this.fireReachIndicator.setTarget(target.x, target.y, this.scene.cardSystem.getFireSplashRadius());
     },
     // Live weapon numbers: the flat sigil bonuses (Honed, Bloodlust, Kinship,
     // Packrat, Outnumbered, Ironclad) change during a fight.

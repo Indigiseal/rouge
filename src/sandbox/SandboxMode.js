@@ -3,6 +3,7 @@
 import { EVENTS } from '../content/events/index.js';
 import { getMagic } from '../content/cards/magic.js';
 import { resolveMonthIndex } from '../content/location-packs/calendar.js';
+import { antidoteCard } from '../content/cards/potions.js';
 
 export const SANDBOX_HUB_KEY = 'SandboxHubScene';
 export const SANDBOX_STORY_KEY = 'SandboxStoryScene';
@@ -13,6 +14,7 @@ export const SANDBOX_ENCOUNTERS = [
   { id: 'COMBAT', label: 'Combat', labelKey: 'ui.sandbox.encounter.combat', kind: 'combat' },
   { id: 'ELITE', label: 'Elite Combat', labelKey: 'ui.sandbox.encounter.elite', kind: 'combat' },
   { id: 'BOSS', label: 'Boss', labelKey: 'ui.sandbox.encounter.boss', kind: 'combat' },
+  { id: 'CRYSTAL_LAIR', label: 'Crystal Lair', labelKey: 'ui.sandbox.encounter.crystalLair', kind: 'combat' },
   { id: 'BOSS_REWARD', label: 'Boss Reward', labelKey: 'ui.sandbox.encounter.bossReward', kind: 'combat' },
   { id: 'SHOP', label: 'Shop', labelKey: 'ui.sandbox.encounter.shop', kind: 'station', sceneKey: 'ShopScene' },
   { id: 'RARE_SHOP', label: 'Rare Shop', labelKey: 'ui.sandbox.encounter.rareShop', kind: 'station', sceneKey: 'RareShopScene' },
@@ -22,12 +24,14 @@ export const SANDBOX_ENCOUNTERS = [
   { id: 'TREASURE', label: 'Treasure', labelKey: 'ui.sandbox.encounter.treasure', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'treasure' },
   { id: 'TREASURE_GOOD', label: 'Treasure (Good)', labelKey: 'ui.sandbox.encounter.treasureGood', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'good' },
   { id: 'TREASURE_ELITE', label: 'Elite Chest', labelKey: 'ui.sandbox.encounter.eliteChest', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'elite' },
+  { id: 'SIGIL_ROOM', label: 'Sigil Room', labelKey: 'ui.sandbox.encounter.sigilRoom', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'sigil' },
 ];
 
 const SANDBOX_FLOORS = {
   COMBAT: 8,
   ELITE: 12,
   BOSS: 15,
+  CRYSTAL_LAIR: 8,
   BOSS_REWARD: 15,
   SHOP: 10,
   RARE_SHOP: 20,
@@ -37,6 +41,7 @@ const SANDBOX_FLOORS = {
   TREASURE: 8,
   TREASURE_GOOD: 12,
   TREASURE_ELITE: 12,
+  SIGIL_ROOM: 12,
 };
 
 const SCENE_KEYS_TO_STOP = [
@@ -161,6 +166,14 @@ const SANDBOX_STORY_SETUP = {
     grant: ['gem', 'gemseekersLens', 'handMirror'],
     locationId: 'silkdeep',
   },
+  // A Fireball in the bag, so the Old Chute's burn choice can be tested.
+  old_chute: {
+    grant: ['fireball'],
+  },
+  // An Antidote in the bag, so the traveller can be saved.
+  robbed_traveller: {
+    grant: ['antidote'],
+  },
   arm_wrestling_rematch: {
     locationId: 'tollroad',
     story: { armWrestlingSeen: true, armWrestleWon: true, armWrestleRematchDone: false },
@@ -228,6 +241,11 @@ function grantSandboxStoryItem(gameScene, grant) {
   if (grant === 'gem') {
     const gem = gen.createGemCard?.(gs.currentFloor || 6);
     if (gem) inv.addCard(gem);
+    return;
+  }
+
+  if (grant === 'antidote') {
+    inv.addCard(antidoteCard());
     return;
   }
 

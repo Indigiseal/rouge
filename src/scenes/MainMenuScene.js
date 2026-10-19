@@ -22,13 +22,14 @@ import {
     TEST_OPTION_DEFS,
 } from '../config/TestOptions.js';
 import { MusicManager } from '../audio/MusicManager.js';
-import { devToolsEnabled } from '../config/DevTools.js';
+import { devToolsEnabled, isTeamBuild, switchDevMode } from '../config/DevTools.js';
 import { COG_X, COG_Y } from '../ui/OptionsCog.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { openConfirmModal } from '../ui/ConfirmModal.js';
 import { FONT_SIZE, fitLabel, serifStyle } from '../ui/uiFont.js';
 import { loadUiFonts } from '../ui/fontFamilies.js';
+import { clearDiscoveries } from '../content/codex/Discoveries.js';
 
 // --- Options screen skin -----------------------------------------------------
 // Plates, panel size, palette and label offsets all come from ui/OptionsSkin.js,
@@ -81,9 +82,29 @@ export class MainMenuScene extends Phaser.Scene {
             fill: '#869089',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         });
+        this.createDevModeSwitch();
 
         MusicManager.play(this, 'menu_music', 0.6, 900);
         this.showClickToPlayIfMuted();
+    }
+
+    // Developer / Player switch beside the version number. Team builds only
+    // (config/DevTools.js); clicking it saves the other mode and reloads.
+    createDevModeSwitch() {
+        if (!isTeamBuild()) return;
+        const dev = devToolsEnabled();
+        // 347, 3px above the version number's line: at 350 it sat on the edge.
+        const label = this.add.text(52, 347, t(this, dev ? 'ui.menu.modeDeveloper' : 'ui.menu.modePlayer'), {
+            fontSize: '12px',
+            fill: dev ? '#d48e17' : '#869089',
+            fontFamily: '"HoMM Pixel", Arial, sans-serif',
+        }).setInteractive({ useHandCursor: true });
+        label.on('pointerover', () => label.setColor('#fef0cf'));
+        label.on('pointerout', () => label.setColor(dev ? '#d48e17' : '#869089'));
+        label.on('pointerup', () => {
+            SoundHelper.playVariant(this, 'button_click', 0.5);
+            switchDevMode(!dev);
+        });
     }
 
     // Browsers refuse to start audio until the player has interacted with the
@@ -151,12 +172,13 @@ export class MainMenuScene extends Phaser.Scene {
             newRun: this.createSpriteButton(320, 110, t(this, 'ui.menu.newRun'),   () => this.startNewGame()),
             continue: this.createSpriteButton(320, 142, t(this, 'ui.menu.continue'),  hasSavedRun ? () => this.continueGame() : null),
             tutorial: this.createSpriteButton(320, 174, t(this, 'ui.menu.tutorial'), () => this.startTutorial()),
+            codex: this.createSpriteButton(320, 206, t(this, 'ui.menu.codex'), () => this.openCodex()),
             // The two test screens are ours, not the player's. devToolsEnabled()
             // is false in a tester build, and the entry points below refuse the
             // scene change as well — a hidden button is not a disabled one.
             ...(devToolsEnabled() ? {
-                testSite: this.createSpriteButton(320, 206, t(this, 'ui.menu.testSite'), () => this.startTestSite()),
-                testOptions: this.createSpriteButton(320, 238, t(this, 'ui.menu.testOptions'), () => this.showTestOptionsMenu()),
+                testSite: this.createSpriteButton(320, 238, t(this, 'ui.menu.testSite'), () => this.startTestSite()),
+                testOptions: this.createSpriteButton(320, 270, t(this, 'ui.menu.testOptions'), () => this.showTestOptionsMenu()),
             } : {}),
             // Cog tucked into the top-right corner (32x32, 6px margin).
             options: this.createIconButton(COG_X, COG_Y, 'optionsButton', () => this.showOptionsMenu()),
@@ -176,6 +198,7 @@ export class MainMenuScene extends Phaser.Scene {
         this.mainMenuButtons.newRun.text.setText(t(this, 'ui.menu.newRun'));
         this.mainMenuButtons.continue.text.setText(t(this, 'ui.menu.continue'));
         this.mainMenuButtons.tutorial.text.setText(t(this, 'ui.menu.tutorial'));
+        this.mainMenuButtons.codex.text.setText(t(this, 'ui.menu.codex'));
         this.mainMenuButtons.testSite?.text.setText(t(this, 'ui.menu.testSite'));
         // Options is the cog icon now — a glyph, nothing to translate.
         if (this.mainMenuButtons.testOptions) {
@@ -692,6 +715,13 @@ export class MainMenuScene extends Phaser.Scene {
         });
     }
 
+    openCodex() {
+        this.cameras.main.fadeOut(250, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+            this.scene.start('CodexScene');
+        });
+    }
+
     startTestSite() {
         if (!devToolsEnabled()) return;
         this.fadeOutMenuMusic();
@@ -712,6 +742,7 @@ export class MainMenuScene extends Phaser.Scene {
                 this.saveManager.safeRemove(this.saveManager.META_SAVE_KEY);
                 this.saveManager.safeRemove('heroMemory');
                 this.saveManager.safeRemove('storyProgress');
+                clearDiscoveries();
                 // Restart on the next game tick so the click that confirmed the
                 // reset cannot also activate a button in the rebuilt main menu.
                 this.time.delayedCall(0, () => this.scene.restart());

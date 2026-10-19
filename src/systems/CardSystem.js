@@ -1,5 +1,6 @@
 // CardSystem — board orchestration; layout/spawn/combat/fx live in ./board/
 import { CardDataGenerator } from './loot/CardDataGenerator.js';
+import { noteCardDiscovered } from '../content/codex/Discoveries.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { bagArrivalSoundKey } from '../content/audio/armorSounds.js';
 import { showItemTooltip, hideItemTooltip, showBossTooltip, showEnemyTooltip, TOOLTIP_DEPTH, BOARD_TOOLTIP_GAP } from '../ui/ItemTooltip.js';
@@ -188,6 +189,8 @@ export class CardSystem {
             SoundHelper.playVariant(this.scene, 'legendary_reveal', 0.6);
         }
         card.revealed = true;
+        // The Codex: a face-up enemy is a known enemy. Test Site fights do not count.
+        if (!this.scene.sandboxMode) noteCardDiscovered(card.data);
         this.scene.amuletManager?.onStrategyReveal?.(card);
         // Elite "mystery" card being flipped — drop the gold back highlight so
         // the real card (or the mini-boss's own yellow tint) shows cleanly.

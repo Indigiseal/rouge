@@ -27,6 +27,7 @@ const CUTPURSE_COINS = 1;         // coins per hit
 const FROST_CHANCE = 0.25;        // non-bosses
 const KEEN_CRIT = 0.05;           // added to the crit roll (a crit is x1.5)
 const RANSOM_CHANCE = 0.1;        // a crystal on a kill
+const CRYSTAL_BROOD_CRYSTAL_CHANCE = 0.15; // Crystal Brood: a crystal on a kill
 const BOUNTY_COINS = 2;           // coins on a kill
 const FIREBALL_SHARE = 0.5;       // of the swing, rounded down
 const FIREBALL_MINIMUM = 3;
@@ -284,6 +285,19 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         if (targetCard.sprite) scene.playCurrencyGainFlight?.(targetCard.sprite.x, targetCard.sprite.y, 'crystals');
         scene.updateUI?.();
         fired.push('ransom');
+    }
+    // Crystal Brood (the Crystal Lair's sigil): a kill opens a hidden card,
+    // and sometimes leaves a crystal.
+    if (killed && gs && sigilLevel(weapon, 'crystalBrood') > 0) {
+        const opened = scoutOneCard(scene);
+        let crystal = false;
+        if (Math.random() < CRYSTAL_BROOD_CRYSTAL_CHANCE) {
+            gs.crystals = (gs.crystals || 0) + 1;
+            if (targetCard.sprite) scene.playCurrencyGainFlight?.(targetCard.sprite.x, targetCard.sprite.y, 'crystals');
+            scene.updateUI?.();
+            crystal = true;
+        }
+        if (opened || crystal) fired.push('crystalBrood');
     }
     if (killed && gs && sigilLevel(weapon, 'bounty') > 0) {
         gs.coins = (gs.coins || 0) + BOUNTY_COINS;

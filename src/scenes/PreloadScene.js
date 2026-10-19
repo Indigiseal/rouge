@@ -8,6 +8,7 @@ import { buildEnemyCardTextures } from '../content/assets/enemyCards.js';
 import { buildLocationCardArt } from '../content/assets/locationCardArt.js';
 import { buildLocationCardTextures } from '../content/assets/locationCards.js';
 import { LOCATION_PACK_LIST } from '../content/location-packs/registry.js';
+import { CRYSTAL_LAIR_SHEET } from '../content/cards/crystalSpiders.js';
 
 export class PreloadScene extends Phaser.Scene {
     constructor() {
@@ -228,7 +229,7 @@ export class PreloadScene extends Phaser.Scene {
         // Resource cards are the sheet's icon and backing drawn together, so
         // the rest of the game keeps handling them as ordinary one-sprite cards.
         buildResourceCardTextures(this);
-        buildEnemyCardTextures(this, LOCATION_PACK_LIST);
+        buildEnemyCardTextures(this, [...LOCATION_PACK_LIST, CRYSTAL_LAIR_SHEET]);
         buildLocationCardTextures(this);
 
         // The mid-fight sounds load behind the menu (BackgroundAudioScene).

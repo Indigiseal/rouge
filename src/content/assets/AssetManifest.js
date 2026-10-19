@@ -7,6 +7,7 @@
 import { ENEMY_DEATH_SOUND_ASSETS } from '../audio/enemyDeathSounds.js';
 import { ITEM_SHEETS } from './itemSheets.js';
 import { ARMOR_EQUIP_SOUND_ASSETS } from '../audio/armorSounds.js';
+import { SIGIL_STATUES } from '../sigils/sigilStatues.js';
 
 /** @type {AssetEntry[]} */
 export const ASSET_MANIFEST = [
@@ -202,6 +203,9 @@ export const ASSET_MANIFEST = [
     { key: 'pathsBackgroundLight', path: 'assets/art/pathsBackgroundLight.png', type: 'image' },
     // Food
     { key: 'egg', path: 'assets/art/egg.png', type: 'image' },
+    { key: 'crystalSpiderEgg', path: 'assets/art/crystalSpiderEgg.png', type: 'image' },
+    // Sigil Room statues (content/sigils/sigilStatues.js).
+    ...SIGIL_STATUES.map(({ key, path }) => ({ key, path, type: 'image' })),
     { key: 'chickCompanion', path: 'assets/art/chickCompanion.png', type: 'image' },
     { key: 'chickCompanionUP', path: 'assets/art/chickCompanionUP.png', type: 'image' },
     { key: 'skeletonCompanion', path: 'assets/art/skeletonCompanion.png', type: 'image' },
@@ -215,6 +219,12 @@ export const ASSET_MANIFEST = [
     // The same sheet redrawn at 28px, same 12x7 layout so frame numbers carry
     // over. Only for equipped amulets in the battle HUD's corner strip.
     { key: 'relicsOthersSmall', path: 'assets/art/relicsOthersSmall.png', type: 'spritesheet', frameWidth: 28, frameHeight: 28 },
+    // Amulets with their own icon file (PixelLab, the crystal spider stories),
+    // each with a 28px copy for the battle HUD: "<key>Small".
+    { key: 'spiderCrystalShardIcon', path: 'assets/art/spiderCrystalShardIcon.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
+    { key: 'spiderCrystalShardIconSmall', path: 'assets/art/spiderCrystalShardIconSmall.png', type: 'spritesheet', frameWidth: 28, frameHeight: 28 },
+    { key: 'crystalSpiderlingIcon', path: 'assets/art/crystalSpiderlingIcon.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
+    { key: 'crystalSpiderlingIconSmall', path: 'assets/art/crystalSpiderlingIconSmall.png', type: 'spritesheet', frameWidth: 28, frameHeight: 28 },
     // Load flip animation frames
     // Per-location card art: 5 columns by 7 rows, one row per location in the
     // same order as enemiesSpriteSheet. See content/assets/locationCardArt.js,

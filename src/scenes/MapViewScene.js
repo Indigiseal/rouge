@@ -15,6 +15,7 @@ import {
   pendingLocationCheckpoint,
 } from '../content/locations/index.js';
 import { isSandboxMode } from '../sandbox/SandboxMode.js';
+import { createCrystalLairEnemies } from '../content/cards/crystalLair.js';
 import { t } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { MusicManager } from '../audio/MusicManager.js';
@@ -930,12 +931,17 @@ export class MapViewScene extends Phaser.Scene {
           node.type === 'TREASURE_GOOD'  ? 'TreasureScene' : 'EventScene';
         const sceneData = { gameState: this.gameState };
         if (node.type === 'TREASURE_GOOD') sceneData.rewardMode = 'good';
-        // A secret room's chest: no key needed, and it holds a sigil too.
-        if (node.secret && (node.type === 'TREASURE' || node.type === 'TREASURE_GOOD')) sceneData.rewardMode = 'secret';
+        // Secret rooms: the sigil vault is a Sigil Room (a statue, no chest);
+        // the Porter's passage leads to a good chest, no key needed.
+        if (node.secret && node.secretSource === 'sigilVault') sceneData.rewardMode = 'sigil';
+        else if (node.secret && (node.type === 'TREASURE' || node.type === 'TREASURE_GOOD')) sceneData.rewardMode = 'good';
         this.scene.launch(key, sceneData);
         return;
       }
-      // Combat-like
+      // Combat-like. The Crystal Lair deals its own board: the mother and her brood.
+      if (node.secret && node.secretSource === 'crystalLair') {
+        this.gameState.pendingAmbush = { id: 'crystal_lair', enemies: createCrystalLairEnemies(this.gameState.currentFloor) };
+      }
       this.scene.stop();
       // Pass a flag to indicate this is a new room transition
       this.scene.wake('GameScene', {

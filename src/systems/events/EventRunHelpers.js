@@ -11,6 +11,11 @@ import { WEAPONS, createWeaponCardData } from '../../content/cards/weapons.js';
 import { ARMORS, createArmorCardData } from '../../content/cards/armor.js';
 import { applyArmorTalentMods } from '../../content/talents/index.js';
 import { revealHiddenPaths } from '../../map/HiddenPaths.js';
+import { SOUP_ROBBERY_SHARE } from '../../content/events/soup_stand.js';
+import { ROBBED_TRAVELLER_AMULET } from '../../content/events/robbed_traveller.js';
+
+// How many floors a crystal spider egg takes to hatch (GameScene).
+export const CRYSTAL_EGG_FLOORS = 3;
 
 // The card types a reroll (Screaming Head, brass wizard tray) can hand back.
 const REROLL_CARD_TYPES = ['weapon', 'armor', 'thorns', 'potion', 'food', 'magic'];
@@ -490,6 +495,130 @@ export const EventRunHelpers = {
     const added = this._addCardToInventory(potion);
     if (added) this._reward({ key: 'event.reward.gained', vars: { name: translateItemName(this, potion) || t(this, 'tooltip.potion') } });
     return added;
+  },
+
+  // ─── The Abandoned Camp ───────────────────────────────────────────────────
+
+  /** The dead man's gear: one tier above what the floor usually deals. */
+  campGearRarity() {
+    const floor = this.gameState?.currentFloor || 1;
+    if (floor >= 30) return 'epic';
+    if (floor >= 15) return 'rare';
+    return 'uncommon';
+  },
+
+  /** A hidden roll: with chance `fightChance` the player ends up in a fight. */
+  rollCampFight(fightChance) {
+    this.campFight = Math.random() < fightChance;
+    if (this.campFight) {
+      // No enemy list: the room deals whatever lives in this location.
+      this.gameState.pendingAmbush = { id: 'abandoned_camp', normalCombatBoard: true };
+    }
+  },
+
+  takeCampBackpack() {
+    this.gainCoins(25);
+    this.addPotionToInventory();
+  },
+
+  takeCampSword() {
+    const sword = createWeaponCardData('sword', this.campGearRarity());
+    return this._deliverCardReward(sword, sword?.name || 'Sword');
+  },
+
+  takeCampArmor() {
+    const kinds = Object.keys(ARMORS);
+    const kind = kinds[Math.floor(Math.random() * kinds.length)];
+    const armor = createArmorCardData(kind, this.campGearRarity());
+    if (armor) applyArmorTalentMods(armor, this.gameState?.talentEffects);
+    return this._deliverCardReward(armor, armor?.name || 'Armor');
+  },
+
+  // ─── The Soup Stand and the Robbed Traveller ─────────────────────────────
+
+  /** The trap is still set: the traveller after you will fall for it. */
+  queueRobbedTraveller() {
+    this.ensureStoryState();
+    this.gameState.storyRun.soupStandFloor = this.gameState.currentFloor || 1;
+    this.addPendingEvent('robbed_traveller');
+  },
+
+  eatPoisonedSoup() {
+    this.loseHealthCapped(12);
+    this.gameState.addPlayerEffect?.({ type: 'poison', damage: 2, turns: 3, killedBy: 'Poisoned Soup' });
+    const coins = Number.isFinite(this.gameState.coins) ? this.gameState.coins : 0;
+    const stolen = Math.floor(coins * SOUP_ROBBERY_SHARE);
+    if (stolen > 0) {
+      this.gameState.coins = coins - stolen;
+      this.gameScene?.updateUI?.();
+      this._reward({ key: 'event.reward.coins', vars: { amount: `-${stolen}` } });
+    }
+    this.queueRobbedTraveller();
+  },
+
+  passSoupStand() {
+    this.queueRobbedTraveller();
+  },
+
+  kickSoupPot() {
+    this.ensureStoryState();
+    this.gameState.storyRun.soupPotKicked = true;
+  },
+
+  hasAntidote() {
+    return this._findInventoryIndex((item) => item?.id === 'antidote') >= 0;
+  },
+
+  /** The Antidote for the amulet sewn in his collar (any amulet if that one is owned). */
+  saveRobbedTraveller() {
+    this.ensureStoryState();
+    this.clearPendingEvent('robbed_traveller');
+    const index = this._findInventoryIndex((item) => item?.id === 'antidote');
+    if (index >= 0) this._removeInventoryCard(index);
+    this.gameState.storyRun.travellerSaved = true;
+    const mgr = (this.gameScene || this.scene?.get?.('GameScene'))?.amuletManager;
+    this.travellerPaid = mgr?.canAddAmulet?.(ROBBED_TRAVELLER_AMULET)
+      ? Boolean(this.gainAmulet(ROBBED_TRAVELLER_AMULET))
+      : Boolean(this.gainRandomAmulet());
+  },
+
+  leaveRobbedTraveller() {
+    this.clearPendingEvent('robbed_traveller');
+  },
+
+  // ─── The Old Chute (the crystal spider you land on) ──────────────────────
+
+  takeCrystalSpiderLeg() {
+    return this.gainAmulet('spiderCrystalShard');
+  },
+
+  burnCrystalEggs() {
+    this.consumeFireballCard();
+    this.gainCrystals(1);
+  },
+
+  /** Crystals either way; with chance `fightChance` it wakes the hatchlings. */
+  smashCrystalEggs(fightChance) {
+    this.gainCrystals(3);
+    this.chuteFight = Math.random() < fightChance;
+    if (this.chuteFight) {
+      this.gameState.pendingAmbush = { id: 'old_chute_hatchlings', normalCombatBoard: true, enemyTypes: ['spider'] };
+    }
+  },
+
+  /** Hatches into the Crystal Spiderling once the run is CRYSTAL_EGG_FLOORS deeper. */
+  takeCrystalSpiderEgg() {
+    const egg = {
+      id: 'crystalSpiderEgg',
+      type: 'junk',
+      name: 'Crystal Spider Egg',
+      sprite: 'crystalSpiderEgg',
+      rarity: 'rare',
+      description: `Cold, and heavier than it looks. Something inside taps back. Hatches in ${CRYSTAL_EGG_FLOORS} floors.`,
+      noEffect: true,
+      hatchFloor: (this.gameState?.currentFloor || 1) + CRYSTAL_EGG_FLOORS,
+    };
+    return this._deliverCardReward(egg, egg.name);
   },
 
   markCarnivalHagMet() {

@@ -6,6 +6,7 @@ import { BONEFLOOD_ENEMY_DEFS } from '../location-packs/boneflood/index.js';
 import { MIRETURN_ENEMY_DEFS } from '../location-packs/mireturn/index.js';
 import { VEILBLEED_ENEMY_DEFS } from '../location-packs/veilbleed/index.js';
 import { ASHHOWL_ENEMY_DEFS } from '../location-packs/ashhowl/index.js';
+import { CRYSTAL_SPIDER_DEFS } from './crystalSpiders.js';
 
 // Enemy catalog.
 // - Month packs (band + archetype): content/location-packs/<id>/enemies/
@@ -113,6 +114,8 @@ export const ENEMIES = {
   // throw it, and it is never dealt onto a board.
   ...VEILBLEED_ENEMY_DEFS,
   ...ASHHOWL_ENEMY_DEFS,
+  // Off every roster: only the Crystal Lair deals them.
+  ...CRYSTAL_SPIDER_DEFS,
 };
 
 export const SUMMON_ONLY_ENEMY_TYPES = new Set(['cerberusHead']);

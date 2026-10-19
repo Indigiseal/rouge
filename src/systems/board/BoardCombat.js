@@ -336,7 +336,7 @@ function processEnemyPoisonEffects() {
     if (poisonDamage <= 0) continue;
     card.data.health -= poisonDamage;
     this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${poisonDamage} Poison`, 0x71800b);
-    this.scene.shakeCard(card.sprite);
+    this.scene.shakeCard(card.sprite, { soft: true });
 
     if (card.data.health <= 0) {
       this.removeDefeatedEnemy(i, card);
@@ -731,7 +731,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
 
     // Reflected damage is the answer to a blow, not a blow of its own, so it
     // shakes on the reflect beat rather than crowding the enemy's own hit.
-    CombatSequencer.shakeCard(this.scene, isReflection ? 'reflect' : 'hit', card.sprite);
+    CombatSequencer.shakeCard(this.scene, isReflection ? 'reflect' : 'hit', card.sprite, { strong: feedbackCritical });
 
     // Gem effects fire BEFORE the weapon damage lands. If we waited until
     // after, a killing weapon hit would knock the target's health to ≤ 0

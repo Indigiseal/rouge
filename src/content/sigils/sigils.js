@@ -14,6 +14,8 @@
 // Briar Room's thorn wrap, shown as a sigil. Enemy sigils are read off the traits enemies already
 // have, so they show without changing how any enemy plays.
 
+import { noteDiscovered } from '../codex/Discoveries.js';
+
 export const SIGIL_ICONS_KEY = 'enemyIcons';
 export const SIGIL_CAP = 2;            // different sigils per card
 export const SIGIL_MULTIPLIER = 1.5;   // never x2 — rounds down, both sides
@@ -85,11 +87,15 @@ export const SIGILS = Object.freeze({
     frost:       { name: 'Frost',       frame: 57, side: 'player', player: '25% chance to freeze the enemy hit: it skips its next turn (not bosses)', works: true },
     web:         { name: 'Web',         frame: 58, side: 'enemy',  enemy: 'webs one of your cards: it can\'t be used next turn' },
     ink:         { name: 'Ink',         frame: 59, side: 'enemy',  enemy: 'inks one of your cards: it can\'t be used next turn' },
+    // Only the Crystal Lair gives it (lairOnly keeps it out of chests and the
+    // vault). The crystal spiders' theme: crystals and seeing what is hidden.
+    // Placeholder icon: Ransom's red crystal.
+    crystalBrood: { name: 'Crystal Brood', frame: 47, side: 'player', player: 'a kill turns one face-down card over, with a 15% chance of a crystal', works: true, lairOnly: true },
 });
 
 // Player sigils that work today: the ones the vault and elite chests hand out.
 export const WORKING_PLAYER_SIGILS = Object.freeze(
-    Object.keys(SIGILS).filter((id) => SIGILS[id].works && SIGILS[id].side !== 'enemy')
+    Object.keys(SIGILS).filter((id) => SIGILS[id].works && SIGILS[id].side !== 'enemy' && !SIGILS[id].lairOnly)
 );
 
 // Which card types a sigil can go on. Most act when a weapon strikes;
@@ -266,4 +272,5 @@ export function noteSigilTaken(gameState, id) {
     if (!gameState.storyRun) gameState.storyRun = {};
     const list = takenSigils(gameState);
     if (!list.includes(id)) gameState.storyRun.sigilsTaken = [...list, id];
+    if (!gameState.sandboxMode) noteDiscovered('sigils', id);
 }

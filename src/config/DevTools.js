@@ -17,10 +17,15 @@
 //   ?dev=1 in the URL                     — one session with the tools
 //   localStorage 'rogueDevTools' = '1'/'0' — this browser, until cleared
 //
+// The main menu's Developer / Player switch writes that localStorage key and
+// reloads. It only exists in a team build (DEV_TOOLS_DEFAULT true, or ?dev=1):
+// a player build never shows it, so players cannot switch themselves in.
+//
 // Anything that hides a control must ALSO refuse the action behind it. A hidden
 // button is not a disabled one: the console can still call the method.
 
 const DEV_TOOLS_DEFAULT = true;
+const STORAGE_KEY = 'rogueDevTools';
 
 function readFlag() {
     try {
@@ -30,7 +35,7 @@ function readFlag() {
         if (param === '0' || param === 'false') return false;
     } catch (_) { /* no URL in this context — fall through */ }
     try {
-        const stored = globalThis.localStorage?.getItem('rogueDevTools');
+        const stored = globalThis.localStorage?.getItem(STORAGE_KEY);
         if (stored === '1') return true;
         if (stored === '0') return false;
     } catch (_) { /* private windows and sandboxed frames throw — fall through */ }
@@ -45,6 +50,34 @@ let enabled = null;
 export function devToolsEnabled() {
     if (enabled === null) enabled = readFlag();
     return enabled;
+}
+
+/** A build the team works in: the mode switch is offered. */
+export function isTeamBuild() {
+    if (DEV_TOOLS_DEFAULT) return true;
+    try {
+        return new URLSearchParams(globalThis.location?.search || '').get('dev') === '1';
+    } catch (_) {
+        return false;
+    }
+}
+
+/**
+ * The menu switch: remember developer or player mode for this browser, then
+ * reload, because the flag is read once at boot.
+ */
+export function switchDevMode(on) {
+    try {
+        globalThis.localStorage?.setItem(STORAGE_KEY, on ? '1' : '0');
+    } catch (_) { /* storage blocked: the reload falls back to the default */ }
+    try {
+        const url = new URL(globalThis.location.href);
+        // A ?dev= in the address would override the choice on reload.
+        url.searchParams.delete('dev');
+        globalThis.location.replace(url.toString());
+    } catch (_) {
+        globalThis.location?.reload?.();
+    }
 }
 
 /** Test seam: force the flag without touching the URL or storage. */

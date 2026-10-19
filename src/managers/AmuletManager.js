@@ -13,6 +13,7 @@ import { depthScaled } from '../content/balance/DepthScaling.js';
 import { areAmuletsDisabled } from '../config/TestOptions.js';
 import { translateItemName } from '../i18n/i18n.js';
 import { scaleGoldReward } from '../content/economy/gold.js';
+import { noteDiscovered } from '../content/codex/Discoveries.js';
 
 export class AmuletManager {
     constructor(scene) {
@@ -198,6 +199,7 @@ export class AmuletManager {
         
         // Refresh Traveler's Journal bonus after any new amulet
         this.recalculateJournalBonus();
+        if (!this.scene?.sandboxMode) noteDiscovered('amulets', amuletId);
 
         this.scene.updateUI();
         return true;

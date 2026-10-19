@@ -148,9 +148,9 @@ export class CombatSequencer {
         scene.createFloatingText?.(x, y, text, color, size, { ...opts, delayMs: this._offsetOf(beat) });
     }
 
-    static shakeCard(scene, beat, sprite) {
+    static shakeCard(scene, beat, sprite, options) {
         this.schedule(scene, beat, () => {
-            if (sprite?.scene) scene.shakeCard?.(sprite);
+            if (sprite?.scene) scene.shakeCard?.(sprite, options);
         });
     }
 }

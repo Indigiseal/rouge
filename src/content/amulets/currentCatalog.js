@@ -354,7 +354,7 @@ export function buildCurrentAmuletDefinitions(mgr) {
             sapphireBrooch: {
                 ...getAmuletAtlasPresentation('sapphireBrooch'),
                 name: 'Sapphire Brooch',
-                description: 'Elite chests always hold a sigil.',
+                description: 'Twice as many elite rewards are a Sigil Room.',
                 rarity: 'rare',
                 eliteChestSigil: true,
             },
@@ -385,6 +385,25 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 description: 'Your critical hits deal x1.8 instead of x1.5.',
                 rarity: 'rare',
                 critMultiplier: 1.8,
+            },
+
+            // Not in the drop catalog: the Old Chute hands both out. The shard
+            // is the mother's leg; the spiderling hatches from a taken egg.
+            spiderCrystalShard: {
+                name: 'Spider Crystal Shard',
+                sprite: 'spiderCrystalShardIcon',
+                spriteFrame: 0,
+                description: '15% chance to find a crystal when killing an enemy.',
+                rarity: 'rare',
+                crystalOnKillChance: 0.15,
+            },
+            crystalSpiderling: {
+                name: 'Crystal Spiderling',
+                sprite: 'crystalSpiderlingIcon',
+                spriteFrame: 0,
+                description: 'At the start of each fight, it crawls ahead and turns one face-down card over.',
+                rarity: 'rare',
+                revealsAtFightStart: 1,
             },
 
             // Not in the drop catalog: a Tollroad story will hand it out.

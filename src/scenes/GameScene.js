@@ -65,6 +65,12 @@ import { openNoticeModal } from '../ui/ConfirmModal.js';
 import { isSilkCocoonCacheRoom, boardHasOpenCocoonEnemies } from '../systems/board/CocoonCacheBoard.js';
 import { playSmokeBurst, SMOKE_BURST_MS } from '../ui/SmokeBurst.js';
 import { pendingLocationAftermath } from '../content/locations/index.js';
+import { openSigilOffer, rollOfferableSigil } from '../ui/SigilOffer.js';
+import { SIGIL_ROOM_CHANCE, SIGIL_ROOM_CHANCE_BROOCH } from '../content/sigils/sigilStatues.js';
+import { createCrystalLairEnemies } from '../content/cards/crystalLair.js';
+
+// The Crystal Lair's reward when no card can take its sigil.
+const CRYSTAL_LAIR_FALLBACK_CRYSTALS = 3;
 
 // Rooms that play the battle loop (boss rooms have their own drums).
 const FIGHT_ROOM_TYPES = new Set(['COMBAT', 'ELITE']);
@@ -173,6 +179,17 @@ export class GameScene extends Phaser.Scene {
                 // encounters, not once-ever story beats — let each new run meet
                 // them again.
                 this.gameState.storyRun.mirrorSeen = false;
+                this.gameState.storyRun.abandonedCampSeen = false;
+                this.gameState.storyRun.oldChuteSeen = false;
+                this.gameState.storyRun.soupStandSeen = false;
+                this.gameState.storyRun.robbedTravellerSeen = false;
+                this.gameState.storyRun.soupStandFloor = null;
+                this.gameState.storyRun.soupPotKicked = false;
+                this.gameState.storyRun.travellerSaved = false;
+                // The traveller only follows a soup stand from this run.
+                this.gameState.storyRun.pendingEvents = (this.gameState.storyRun.pendingEvents || [])
+                    .filter((id) => id !== 'robbed_traveller');
+                this.gameState.storyRun.crystalLairCleared = false;
                 this.gameState.storyRun.tooNiceRoomSeen = false;
                 this.gameState.storyRun.wellSeen = false;
                 this.gameState.storyRun.bookWormSeen = false;
@@ -392,6 +409,21 @@ export class GameScene extends Phaser.Scene {
                 payload.forcedEventId = this.sandboxEventId;
             }
             this.scene.launch(encounter.sceneKey, payload);
+            return;
+        }
+
+        // The Crystal Lair is an ordinary fight room with its own board.
+        if (this.sandboxRoom === 'CRYSTAL_LAIR') {
+            this.gameState.storyRun = this.gameState.storyRun || {};
+            this.gameState.storyRun.crystalLairCleared = false;
+            this.gameState.pendingAmbush = {
+                id: 'crystal_lair',
+                enemies: createCrystalLairEnemies(this.gameState.currentFloor || 8),
+            };
+            this.gameState.roomType = 'COMBAT';
+            this.roomType = 'COMBAT';
+            this.startNewFloor();
+            this.updateRoomTitle();
             return;
         }
 
@@ -618,6 +650,7 @@ export class GameScene extends Phaser.Scene {
             this.inventorySystem.addStartingCards();
         }
         this.amuletManager?.processFloorStart?.();
+        this.hatchCrystalSpiderEggs();
         recordHumanRunEvent(this, 'floor_started', {
             floor: this.gameState.currentFloor,
             roomType: this.roomType,
@@ -961,6 +994,45 @@ export class GameScene extends Phaser.Scene {
         return defeated;
     }
 
+    // An elite's reward: a chest, or SIGIL_ROOM_CHANCE of the time (doubled by
+    // the Sapphire Brooch) a Sigil Room. Only when some card in the bag could
+    // actually take a sigil; otherwise the room would have nothing to offer.
+    pickEliteRewardMode() {
+        const chance = this.amuletManager?.hasEliteChestSigil?.() ? SIGIL_ROOM_CHANCE_BROOCH : SIGIL_ROOM_CHANCE;
+        if (Math.random() >= chance || !rollOfferableSigil(this)) return 'elite';
+        return 'sigil';
+    }
+
+    // The Crystal Lair is won: the room shuts for the run, and its sigil goes
+    // onto a card the player picks. With nothing that can take it, crystals.
+    rewardCrystalLair() {
+        const story = this.gameState.storyRun || (this.gameState.storyRun = {});
+        if (story.crystalLairCleared) return;
+        story.crystalLairCleared = true;
+        this.time.delayedCall(700, () => {
+            if (openSigilOffer(this, this, 'crystalBrood')) return;
+            this.gameState.crystals = (this.gameState.crystals || 0) + CRYSTAL_LAIR_FALLBACK_CRYSTALS;
+            this.playCurrencyGainFlight?.(320, 160, 'crystals');
+            this.updateUI?.();
+        });
+    }
+
+    // The Old Chute's egg: once the run is deep enough it cracks open in the
+    // bag and the hatchling climbs onto the amulet bar.
+    hatchCrystalSpiderEggs() {
+        const slots = this.inventorySystem?.slots || this.gameState?.inventory || [];
+        const floor = this.gameState?.currentFloor || 1;
+        const index = slots.findIndex(item => (
+            item?.id === 'crystalSpiderEgg' && floor >= (Number(item.hatchFloor) || 0)
+        ));
+        if (index < 0 || !this.amuletManager?.addAmulet?.('crystalSpiderling')) return false;
+        slots[index] = null;
+        this.gameState.inventory = slots;
+        this.inventorySystem?.rebuildInventorySprites?.();
+        this.createFloatingText?.(320, 150, 'The crystal egg hatches!', 0x9fd8ff);
+        return true;
+    }
+
     getChickCompanionEntry() {
         const slots = this.inventorySystem?.slots || this.gameState?.inventory || [];
         const index = slots.findIndex(item => item?.id === 'chickCompanion');
@@ -1130,31 +1202,94 @@ export class GameScene extends Phaser.Scene {
         });
     }
     
-    shakeCard(cardSprite) {
+    // The hit stack (docs/VISUAL-IDEAS-STUDIO-IGOR.md #2) on a struck board
+    // card: a white flash that holds the card still for a moment (hit-stop),
+    // then a knockback of a few whole pixels away from the hero that springs
+    // back. `strong` (a crit) holds longer and pushes further; `soft` (a
+    // poison tick) skips the flash and only nudges.
+    shakeCard(cardSprite, { strong = false, soft = false } = {}) {
+        if (!cardSprite?.scene) return;
         const boardCard = this.cardSystem?.boardCards?.find(card => card?.sprite === cardSprite);
-        const originalX = Number.isFinite(boardCard?.restX) ? boardCard.restX : cardSprite.x;
-        const intensity = 4;
-        const duration = 50;
-        // Overlapping cleave/gem impacts used to capture an already-shifted x
-        // as their new origin, leaving the card apart from its HP/ATK overlay.
+        // Where the card belongs. Remembered while a knockback is under way,
+        // so a second hit mid-push does not take the pushed spot as home.
+        const rests = (this._hitStackRest ||= new Map());
+        const known = rests.get(cardSprite);
+        const restX = Number.isFinite(boardCard?.restX) ? boardCard.restX : (known?.x ?? cardSprite.x);
+        const restY = Number.isFinite(boardCard?.restY) ? boardCard.restY : (known?.y ?? cardSprite.y);
+        rests.set(cardSprite, { x: restX, y: restY });
+        // Overlapping cleave/gem impacts used to capture an already-shifted
+        // position as their new origin, leaving the card apart from its
+        // HP/ATK overlay. Always start from rest.
         this.tweens.killTweensOf(cardSprite);
-        cardSprite.x = originalX;
+        this._hitStackTimers?.get(cardSprite)?.remove(false);
+        cardSprite.setPosition(restX, restY);
+        const infoText = boardCard?.infoText;
+        const infoOffsetY = infoText?.scene ? infoText.y - restY : 0;
         const syncStats = () => {
-            if (boardCard?.infoText?.scene) boardCard.infoText.x = Math.round(cardSprite.x);
+            if (!infoText?.scene) return;
+            infoText.x = Math.round(cardSprite.x);
+            infoText.y = Math.round(cardSprite.y + infoOffsetY);
         };
-        this.tweens.add({
-            targets: cardSprite,
-            x: originalX - intensity,
-            yoyo: true,
-            repeat: 2,
-            duration: duration,
-            ease: 'Sine.easeInOut',
-            onUpdate: syncStats,
-            onComplete: () => {
-                cardSprite.x = originalX;
-                syncStats();
+
+        // Away from the hero, in whole pixels.
+        const hero = this.playerAvatar;
+        const dx = restX - (hero?.x ?? restX);
+        const dy = restY - (hero?.y ?? restY + 100);
+        const len = Math.hypot(dx, dy) || 1;
+        const push = soft ? 2 : (strong ? 5 : 3);
+        const toX = Math.round(restX + (dx / len) * push);
+        const toY = Math.round(restY + (dy / len) * push);
+
+        // Flash, keeping whatever tint the card wore (frozen, marked) to put back.
+        const tint = cardSprite.isTinted
+            ? { fill: cardSprite.tintFill, color: cardSprite.tintTopLeft }
+            : null;
+        if (!soft) cardSprite.setTintFill(0xffffff);
+        const restoreTint = () => {
+            if (!cardSprite.scene || soft) return;
+            if (!tint) cardSprite.clearTint();
+            else if (tint.fill) cardSprite.setTintFill(tint.color);
+            else cardSprite.setTint(tint.color);
+        };
+
+        const hold = soft ? 0 : (strong ? 80 : 45);
+        (this._hitStackTimers ||= new Map()).set(cardSprite, this.time.delayedCall(hold, () => {
+            this._hitStackTimers.delete(cardSprite);
+            restoreTint();
+            if (!cardSprite.scene) {
+                rests.delete(cardSprite);
+                return;
             }
-        });
+            this.tweens.add({
+                targets: cardSprite,
+                x: toX,
+                y: toY,
+                duration: 55,
+                ease: 'Quad.easeOut',
+                onUpdate: syncStats,
+                onComplete: () => {
+                    if (!cardSprite.scene) return;
+                    this.tweens.add({
+                        targets: cardSprite,
+                        x: restX,
+                        y: restY,
+                        duration: 150,
+                        ease: 'Back.easeOut',
+                        onUpdate: () => {
+                            // Whole pixels only, so the card art never smears.
+                            cardSprite.x = Math.round(cardSprite.x);
+                            cardSprite.y = Math.round(cardSprite.y);
+                            syncStats();
+                        },
+                        onComplete: () => {
+                            rests.delete(cardSprite);
+                            cardSprite.setPosition(restX, restY);
+                            syncStats();
+                        },
+                    });
+                },
+            });
+        }));
     }
     
     gameOver() {
@@ -1329,8 +1464,9 @@ export class GameScene extends Phaser.Scene {
         }
         this.nextFloorButtonText?.setVisible(false);
         this.hideClosedDoorExit();
-        // Elite rooms still use the chest-click TreasureScene flow
-        const rewardChestMode = this.gameState.roomType === 'ELITE' ? 'elite' : null;
+        // Elite rooms lead to the chest-click TreasureScene, or now and then to
+        // a Sigil Room instead (pickEliteRewardMode).
+        const rewardChestMode = this.gameState.roomType === 'ELITE' ? this.pickEliteRewardMode() : null;
 
         // Process amulet floor end effects before moving to next floor.
         // Skip when leaving a combat room that was already cleared before a
@@ -1559,6 +1695,7 @@ export class GameScene extends Phaser.Scene {
             this.playCurrencyGainFlight?.(320, 160, 'coins');
         }
         this._silkCocoonLeaveOffer = false;
+        if (this.gameState?.ambushId === 'crystal_lair') this.rewardCrystalLair();
 
         // The room is cleared as of now; it just isn't announced yet. The door,
         // its sound and the victory text wait until the killing blow has been

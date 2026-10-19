@@ -5,6 +5,7 @@ import { GameScene } from '../scenes/GameScene.js';
 import { MapViewScene } from '../scenes/MapViewScene.js';
 import { LocationPickScene } from '../scenes/LocationPickScene.js';
 import { SilkdeepIntroScene } from '../scenes/SilkdeepIntroScene.js';
+import { CodexScene } from '../scenes/CodexScene.js';
 import { RestScene } from '../scenes/RestScene.js';
 import { AnvilScene } from '../scenes/AnvilScene.js';
 import { ShopScene } from '../scenes/ShopScene.js';
@@ -57,6 +58,7 @@ export function createGameConfig(Phaser) {
       ArmorerPickScene,
       LocationPickScene,
       SilkdeepIntroScene,
+      CodexScene,
     ],
     scale: {
       mode: Phaser.Scale.NONE,

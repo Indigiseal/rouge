@@ -102,13 +102,14 @@ export const CombatHud = {
             this.showPlayerEffectsTooltip();
         });
         portraitHover.on('pointerout', () => this.hidePlayerEffectsTooltip());
-        // Health orb, overlapping the lower-right of the avatar frame. Depth 4/5
-        // puts it above both the frame (2) and the portrait (3) — on default
-        // depth it was drawing behind the portrait art.
+        // Health orb, overlapping the lower-right of the avatar frame. Depth
+        // 7.5/7.6 puts it above the frame (2) and the portrait (3), and above
+        // the whole armour slot it overlaps (panel 5, worn armour 6, its
+        // frame and sigils 6.5-6.6, its numbers 7).
         this.healthOrbEmpty = this.add.image(87, 102 + HUD_COLUMN_SHIFT, 'healthOrb', 1)
-            .setOrigin(0.5, 1).setDepth(4);
+            .setOrigin(0.5, 1).setDepth(7.5);
         this.healthOrbFull = this.add.image(87, 102 + HUD_COLUMN_SHIFT, 'healthOrb', 0)
-            .setOrigin(0.5, 1).setDepth(5);
+            .setOrigin(0.5, 1).setDepth(7.6);
         this.healthText = this.add.text(87, 105 + HUD_COLUMN_SHIFT, '50/50', {
             fontSize: '10px',
             fill: '#fef0cf',

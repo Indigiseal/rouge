@@ -13,23 +13,65 @@
 
 import { tweenAlongArc } from './ArcFlight.js';
 
-const FLIGHT_MS = 650;
+const FLIGHT_MS = 560;
 const FLIGHT_ARC = 50;
 const DEPTH = 1000;
+// The landing: it carries on a few pixels past its spot, then settles back.
+const OVERSHOOT_PX = 5;
+const OVERSHOOT_MS = 70;
+const SETTLE_MS = 170;
 
-/** A copy of a texture flying from one point to another along an arc. */
+/**
+ * A copy of a texture flying from one point to another along an arc. It
+ * speeds up as it goes, overshoots its spot a little in the direction it was
+ * travelling, and settles back with a small bounce. Whole pixels throughout.
+ */
 export function flyRewardIcon(scene, { texture, frame, fromX, fromY, toX, toY, onArrive = null }) {
     if (!scene?.add || !scene.textures?.exists?.(texture)) { onArrive?.(); return; }
     const icon = scene.add.image(0, 0, texture, frame).setDepth(DEPTH).setAlpha(0);
+    const endX = Math.round(toX);
+    const endY = Math.round(toY);
+    let lastX = Math.round(fromX);
+    let lastY = Math.round(fromY);
+    let dirX = 0;
+    let dirY = 1;
     tweenAlongArc(scene, icon, {
         fromX, fromY, toX, toY,
         arc: FLIGHT_ARC,
         duration: FLIGHT_MS,
-        // Fades in as it leaves the picture; lands fully visible.
-        onProgress: (p) => icon.setAlpha(Math.min(1, p * 5)),
+        ease: 'Quad.easeIn',
+        // Fades in as it leaves the picture; lands fully visible. Remembers
+        // which way it is heading, for the overshoot.
+        onProgress: (p) => {
+            icon.setAlpha(Math.min(1, p * 5));
+            const dx = icon.x - lastX;
+            const dy = icon.y - lastY;
+            const len = Math.hypot(dx, dy);
+            if (len > 0) { dirX = dx / len; dirY = dy / len; }
+            lastX = icon.x;
+            lastY = icon.y;
+        },
         onComplete: () => {
-            icon.destroy();
-            onArrive?.();
+            if (!icon.scene) { onArrive?.(); return; }
+            scene.tweens.add({
+                targets: icon,
+                x: Math.round(endX + dirX * OVERSHOOT_PX),
+                y: Math.round(endY + dirY * OVERSHOOT_PX),
+                duration: OVERSHOOT_MS,
+                ease: 'Quad.easeOut',
+                onComplete: () => scene.tweens.add({
+                    targets: icon,
+                    x: endX,
+                    y: endY,
+                    duration: SETTLE_MS,
+                    ease: 'Back.easeOut',
+                    onUpdate: () => icon.setPosition(Math.round(icon.x), Math.round(icon.y)),
+                    onComplete: () => {
+                        icon.destroy();
+                        onArrive?.();
+                    },
+                }),
+            });
         },
     });
 }
