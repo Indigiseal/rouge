@@ -44,6 +44,7 @@ import fieldRations from './nodes/fieldRations.js';
 import muster from './nodes/muster.js';
 import smithyFavor from './nodes/smithyFavor.js';
 import secondWind from './nodes/secondWind.js';
+import { PLATE_RANGED_IGNORE_MAX } from '../cards/armor.js';
 
 export { TALENT_BRANCHES, TALENT_RANK_COSTS };
 export { TALENT_DISPLAY, getTalentDisplay } from './displayCopy.js';
@@ -374,7 +375,7 @@ export function applyArmorTalentMods(armor, talentEffects) {
   if (type === 'plate') {
     const bonus = (talentEffects.bulwarkBonus || 0) + (talentEffects.hardenedProcBonus || 0);
     if (bonus > 0 && armor.rangedIgnoreChance != null) {
-      armor.rangedIgnoreChance = Math.min(1, armor.rangedIgnoreChance + bonus);
+      armor.rangedIgnoreChance = Math.min(PLATE_RANGED_IGNORE_MAX, armor.rangedIgnoreChance + bonus);
     }
   }
   return armor;

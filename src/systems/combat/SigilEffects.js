@@ -151,7 +151,9 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage) {
         ['unscathed', () => heroHp >= heroMax],
         ['desperate', () => heroHp < heroMax * DESPERATE_BELOW],
         ['hunter', () => !!scene?._sigilLastTarget && scene._sigilLastTarget === targetCard],
-        ['combo', () => !!scene?._sigilLastWeaponHadCombo],
+        ['combo', () => !!weapon.weaponType
+            && scene?._sigilLastWeapon !== weapon
+            && scene?._sigilLastWeaponType === weapon.weaponType],
         // Tandem compares the swing before any sigil touched it, so the order
         // sigils apply in never changes whether it fires.
         ['tandem', () => Number.isFinite(scene?._sigilLastDamage) && scene._sigilLastDamage === damage],
@@ -360,7 +362,8 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
 
     // Remember this swing for the sequencing sigils.
     scene._sigilLastTarget = targetCard || null;
-    scene._sigilLastWeaponHadCombo = sigilLevel(weapon, 'combo') > 0;
+    scene._sigilLastWeapon = weapon;
+    scene._sigilLastWeaponType = weapon.weaponType || null;
     scene._sigilLastDamage = swingDamage;
     // Honed's streak: each hit that lands adds one; a miss (evaded, immune,
     // or no damage through) breaks it.

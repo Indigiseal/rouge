@@ -2,6 +2,7 @@ import { CardSystem } from '../systems/CardSystem.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { bagArrivalSoundKey } from '../content/audio/armorSounds.js';
 import { looseGemCard } from '../content/cards/gems.js';
+import { potionCardForTier } from '../content/cards/potions.js';
 import { t, translateItemName } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
@@ -19,6 +20,7 @@ import {
     rareShopGemPrice,
     rareShopThornsPrice,
     rareShopWeaponPrice,
+    shopItemBuyPrice,
 } from '../content/economy/shop.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 
@@ -109,6 +111,15 @@ export class RareShopScene extends StationRoomBase {
         this.shopItems.push({
             data: this.createGemCard(randomGem),
             price: rareShopGemPrice(floor),
+            currency: 'coins',
+            purchased: false
+        });
+
+        // Premium healing is always available alongside the rare shop's gear.
+        const potionData = potionCardForTier(3);
+        this.shopItems.push({
+            data: potionData,
+            price: shopItemBuyPrice(potionData, floor),
             currency: 'coins',
             purchased: false
         });

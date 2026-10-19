@@ -1,5 +1,9 @@
+
 // Armor identity (stats) and loot spawn schedule are separate tables.
 // Talent starters / merge / shops build cards via createArmorCardData.
+
+/** The most a plate armor can ignore of ranged hits, talents included. */
+export const PLATE_RANGED_IGNORE_MAX = 0.7;
 
 export const ARMOR_RARITIES = Object.freeze([
   'common', 'uncommon', 'rare', 'epic', 'legendary',
@@ -25,11 +29,13 @@ export const ARMORS = Object.freeze({
   }),
   plate: Object.freeze({
     // Flat DEF + chance to fully ignore a ranged hit.
-    common: Object.freeze({ protection: 1, rangedIgnoreChance: 0.50, sprite: 'plate_C' }),
-    uncommon: Object.freeze({ protection: 2, rangedIgnoreChance: 0.75, sprite: 'plate_U' }),
-    rare: Object.freeze({ protection: 3, rangedIgnoreChance: 1.00, sprite: 'plate_R' }),
-    epic: Object.freeze({ protection: 4, rangedIgnoreChance: 1.00, sprite: 'plate_E' }),
-    legendary: Object.freeze({ protection: 4, rangedIgnoreChance: 1.00, sprite: 'plate_L' }),
+    // Ranged ignore tops out at PLATE_RANGED_IGNORE_MAX (Taya): at 100% a
+    // plate wearer could not be shot at all.
+    common: Object.freeze({ protection: 1, rangedIgnoreChance: 0.40, sprite: 'plate_C' }),
+    uncommon: Object.freeze({ protection: 2, rangedIgnoreChance: 0.50, sprite: 'plate_U' }),
+    rare: Object.freeze({ protection: 3, rangedIgnoreChance: 0.60, sprite: 'plate_R' }),
+    epic: Object.freeze({ protection: 4, rangedIgnoreChance: 0.65, sprite: 'plate_E' }),
+    legendary: Object.freeze({ protection: 4, rangedIgnoreChance: 0.70, sprite: 'plate_L' }),
   }),
 });
 

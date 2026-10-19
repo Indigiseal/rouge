@@ -2,7 +2,6 @@
 import brokenMusicBox from './broken_music_box.js';
 import monsterBirdNest from './monster_bird_nest.js';
 import goblinEngineer from './goblin_engineer.js';
-import hatchingEgg from './hatching_egg.js';
 import tooNiceRoom from './too_nice_room.js';
 import bookWorm from './book_worm.js';
 import briarRoom from './briar_room.js';
@@ -27,7 +26,6 @@ export const EVENTS = [
   brokenMusicBox,
   monsterBirdNest,
   goblinEngineer,
-  hatchingEgg,
   tooNiceRoom,
   bookWorm,
   briarRoom,

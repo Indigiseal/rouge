@@ -9,6 +9,12 @@
 // Chance that smashing the nest wakes the hatchlings, rolled out of sight.
 export const CHUTE_FIGHT_ON_SMASH = 1 / 3;
 
+// A nest that is not smashed or burnt (left, or one egg taken) hatches:
+// for the rest of the act, each fight room has this chance of Crystal
+// Hatchlings among its enemies (FloorSpawner.injectCrystalBrood).
+export const CHUTE_BROOD_CHANCE = 0.3;
+export const CHUTE_BROOD_MAX = 2;
+
 const NEST =
   'Ahead of you, in the corner of the pit, is her nest: a heap of crystal eggs, each the size of a fist.';
 
@@ -34,14 +40,18 @@ function nestChoices() {
     {
       id: 'chute_take_egg',
       text: 'Take one egg',
-      action: (gs, scene) => scene.takeCrystalSpiderEgg(),
+      action: (gs, scene) => {
+        scene.takeCrystalSpiderEgg();
+        scene.leaveCrystalBrood();
+      },
       outcome: 'You pick the smallest one. It is cold, and heavier than it looks.\n\nSomething inside taps back.',
     },
     {
       id: 'chute_leave_nest',
       text: 'Leave the nest',
-      action: () => {},
-      outcome: 'You leave the eggs where they are and climb out the long way.',
+      action: (gs, scene) => scene.leaveCrystalBrood(),
+      outcome: 'You leave the eggs where they are and climb out the long way.\n\n'
+        + 'Halfway up, below you, one of them cracks.',
     },
   ];
 }

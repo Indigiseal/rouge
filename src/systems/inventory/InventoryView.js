@@ -18,6 +18,7 @@ import {
     spearPierceTargetIndices,
     swordCleaveTargetIndices,
 } from '../../content/cards/weapons.js';
+import { PLATE_RANGED_IGNORE_MAX } from '../../content/cards/armor.js';
 
 // Dragging a potion or food: corners frame the hero's portrait (80x80);
 // dragging armor with none worn: the armor slot (68x90).
@@ -129,7 +130,7 @@ export const InventoryView = {
         // The lock's own art: web, or the Ink Wraith's ink. An overlay of the
         // other kind (a card re-locked by a different enemy) is replaced.
         const lock = handLockOf(cardData);
-        if (slot.webOverlay?.scene && slot.webOverlay.texture?.key !== lock.overlayKey) {
+        if (slot.webOverlay?.scene && (slot.webOverlay._handLockKey || slot.webOverlay.texture?.key) !== lock.overlayKey) {
             this.clearWebOverlay(slotIndex);
         }
         if (slot.webOverlay?.scene) {
@@ -138,9 +139,24 @@ export const InventoryView = {
             slot.webOverlay.setVisible(true);
             slot.webOverlay.setDepth(this.getInventoryDepths().webOverlay);
         } else {
-            const overlay = snapOriginToPixelGrid(
-                this.scene.add.image(cardSprite.x, cardSprite.y, lock.overlayKey, lock.overlayFrame)
-            );
+            let overlay;
+            if (cardData.webbedKind === 'ink') {
+                // Match the card's silhouette so transparent corners stay clear.
+                // Both the darkened card and the top-edge splat ride together.
+                const shade = this.scene.add.image(0, 0, cardSprite.texture.key, cardSprite.frame?.name)
+                    .setOrigin(cardSprite.originX, cardSprite.originY)
+                    .setScale(cardSprite.scaleX, cardSprite.scaleY)
+                    .setTintFill(0x000000).setAlpha(0.35);
+                const splat = snapOriginToPixelGrid(
+                    this.scene.add.image(0, lock.overlayDY || 0, lock.overlayKey, lock.overlayFrame)
+                );
+                overlay = this.scene.add.container(cardSprite.x, cardSprite.y, [shade, splat]);
+                overlay._handLockKey = lock.overlayKey;
+            } else {
+                overlay = snapOriginToPixelGrid(
+                    this.scene.add.image(cardSprite.x, cardSprite.y, lock.overlayKey, lock.overlayFrame)
+                );
+            }
             // Drawn at native size, NOT stretched to the card. web.png is 60x78
             // against a 54x70 card because Taya drew the silk to overhang the
             // edges; forcing it to the card's size squashed it by 0.90 across
@@ -173,6 +189,10 @@ export const InventoryView = {
     setCardWebbedInteractive(slotIndex, webbed) {
         const cardSprite = this.slotSprites?.[slotIndex]?.card;
         if (!cardSprite?.scene || !cardSprite.input) return;
+        // Never switch dragging off under a card that is being dragged:
+        // Phaser cannot end that drag cleanly and the card stuck to the
+        // cursor. finishInventoryCardDrag locks it once it is let go.
+        if (webbed && this._liveDrag?.cardSprite === cardSprite) return;
         if (webbed) {
             this.scene.input.setDraggable(cardSprite, false);
             cardSprite.setData('webbedLocked', true);
@@ -180,6 +200,13 @@ export const InventoryView = {
             cardSprite.setData('webbedLocked', false);
             if (cardSprite.input) this.scene.input.setDraggable(cardSprite, true);
         }
+    },
+    relockWebbedCards() {
+        (this.slots || []).forEach((item, i) => {
+            if (!(item?.webbedTurns > 0)) return;
+            const card = this.slotSprites?.[i]?.card;
+            if (card?.scene && !card.getData?.('webbedLocked')) this.applyWebOverlay(i);
+        });
     },
     clearAllHandWebs() {
         const slots = this.slots || [];
@@ -221,6 +248,7 @@ export const InventoryView = {
     // scene. The real card still moves and performs all drop detection.
     setDragOverlayScene(scene = null) {
         if (this.dragOverlayScene === scene) return;
+        this.hideCardTooltip();
         this.destroyDragOverlay();
         this.dragOverlayScene = scene;
     },
@@ -395,6 +423,9 @@ export const InventoryView = {
             return false;
         } finally {
             this.restoreBoardInputAfterDrag();
+            // A web that landed while this card was held: lock it now. Every
+            // slot is checked, since a drop can move the card to another slot.
+            this.scene?.time?.delayedCall?.(0, () => this.relockWebbedCards());
             // Never touch Phaser's private drag bookkeeping from inside its own
             // dragend dispatch. It only needs repair when the DOM fallback ran
             // precisely because Phaser missed that dispatch.
@@ -1115,6 +1146,11 @@ export const InventoryView = {
         this.hideCardTooltip();
         if (!cardData) return;
 
+        // Station rooms render above GameScene regardless of object depth.
+        // Put the entire tooltip in the same upper scene as carried cards so
+        // the room's description cannot paint over its panel or text.
+        const tooltipScene = this.dragOverlayScene || this.scene;
+
         const allLines = this.getCardTooltipLines(cardData, slotIndex);
         // The enchant is split out into its own text object because a single
         // Text can only carry one colour.
@@ -1134,19 +1170,19 @@ export const InventoryView = {
             lineSpacing: 2,
             wordWrap: { width: TOOLTIP_TEXT_W }
         };
-        const tooltipText = this.scene.add.text(0, 0, lines.join('\n'), textStyle).setOrigin(0, 0);
+        const tooltipText = tooltipScene.add.text(0, 0, lines.join('\n'), textStyle).setOrigin(0, 0);
         // The enchant keeps a colour of its own — it is why the player is
         // hovering an enchanted weapon — but takes the rarity blue the shared
         // tooltip already uses, which reads on the light panel.
         const enchantText = enchantLine
-            ? this.scene.add.text(0, 0, enchantLine, { ...textStyle, fill: TOOLTIP_ENCHANT_COLOR }).setOrigin(0, 0)
+            ? tooltipScene.add.text(0, 0, enchantLine, { ...textStyle, fill: TOOLTIP_ENCHANT_COLOR }).setOrigin(0, 0)
             : null;
 
         const contentWidth = Math.max(tooltipText.width, enchantText?.width || 0);
         const contentHeight = tooltipText.height + (enchantText ? enchantText.height + 2 : 0);
         const width = Math.ceil(Math.min(TOOLTIP_TEXT_W, contentWidth) + TOOLTIP_PAD.x * 2);
         const height = Math.ceil(contentHeight + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom);
-        const bg = createTooltipPanel(this.scene, width, height);
+        const bg = createTooltipPanel(tooltipScene, width, height);
 
         const pointerPixelX = Math.round(pointerX);
         const pointerPixelY = Math.round(pointerY);
@@ -1159,7 +1195,7 @@ export const InventoryView = {
         enchantText?.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top + tooltipText.height + 2);
 
         const parts = enchantText ? [bg, tooltipText, enchantText] : [bg, tooltipText];
-        this.cardTooltip = this.scene.add.container(clampedX, clampedY, parts);
+        this.cardTooltip = tooltipScene.add.container(clampedX, clampedY, parts);
         this.cardTooltip.setDepth(3000);
         this.uiGroup.add(this.cardTooltip);
     },
@@ -1244,7 +1280,7 @@ export const InventoryView = {
                 lines.push(t(this.scene, 'tooltip.meleeCounterBlocked', { percent: Math.round(card.meleeCounterChance * 100) }));
             }
             if (card.rangedIgnoreChance) {
-                lines.push(t(this.scene, 'tooltip.ignoreRanged', { percent: Math.round(card.rangedIgnoreChance * 100) }));
+                lines.push(t(this.scene, 'tooltip.ignoreRanged', { percent: Math.round(Math.min(PLATE_RANGED_IGNORE_MAX, card.rangedIgnoreChance) * 100) }));
             }
             if (card.reflection) lines.push(t(this.scene, 'tooltip.reflect', { value: card.reflection }));
             if (card.thornDamage) lines.push(t(this.scene, 'tooltip.thornDamage', { amount: card.thornDamage }));
@@ -1260,6 +1296,11 @@ export const InventoryView = {
                 : t(this.scene, 'tooltip.healsColon', { amount: card.healAmount || 0 }));
         } else if (card.type === 'food') {
             lines.push(t(this.scene, 'tooltip.restoresColon', { amount: card.actionAmount || 0 }));
+        } else if (card.type === 'companion' && (card.websEnemies || card.id === 'crystalSpiderlingCompanion')) {
+            // The Crystal Spiderling does no damage; it webs.
+            lines.push(t(this.scene, 'tooltip.companion.webs'));
+            lines.push(t(this.scene, 'tooltip.companion.actsAfter'));
+            if (card.crystalFindChance) lines.push(t(this.scene, 'tooltip.companion.crystalChance', { amount: Math.round(card.crystalFindChance * 100) }));
         } else if (card.type === 'companion') {
             const damageKey = card.damageType === 'physical' ? 'tooltip.damage.physical' : 'tooltip.damage.lightning';
             const styleKey = card.attackStyle === 'melee' || card.range === 'melee'

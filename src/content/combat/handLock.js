@@ -21,6 +21,8 @@ export const HAND_LOCKS = Object.freeze({
         // inkBlob.png: frame 0 the ink over the card, frame 1 the blob in
         // flight (48x32 frames; the flying blob sits a pixel left of centre).
         overlayKey: 'inkBlob', overlayFrame: 0,
+        // The 32px splat sits along the top of the 70px card.
+        overlayDY: -19,
         thrownKey: 'inkBlob', thrownFrame: 1,
         thrownDrawingDX: -1, thrownDrawingDY: 0,
         spins: true,

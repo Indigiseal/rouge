@@ -17,6 +17,8 @@ import { t, translateItemName, translateRarity } from '../../i18n/i18n.js';
 import { ENEMIES } from '../../content/cards/enemies.js';
 import { noteCardDiscovered } from '../../content/codex/Discoveries.js';
 import { BOSSES } from '../../content/cards/bosses.js';
+import { CHUTE_BROOD_CHANCE, CHUTE_BROOD_MAX } from '../../content/events/old_chute.js';
+import { actOffsetForFloor } from '../../content/location-packs/calendar.js';
 
 // --- Opening deal -----------------------------------------------------------
 // Every card on a fresh floor falls into its slot from above, top rows first,
@@ -83,6 +85,8 @@ export class FloorSpawner {
         this.assignEliteMiniBoss = assignEliteMiniBoss.bind(cs);
         this.assignEliteHighlightCards = assignEliteHighlightCards.bind(cs);
         this.injectAngryNestmother = injectAngryNestmother.bind(cs);
+        this.keepShootersBack = keepShootersBack.bind(cs);
+        this.injectCrystalBrood = injectCrystalBrood.bind(cs);
         this.enforceForcedEnemyTypes = enforceForcedEnemyTypes.bind(cs);
         this.spawnAmbushBoard = spawnAmbushBoard.bind(cs);
         this.openSilkCocoon = (index, card) => openSilkCocoon(cs, index, card);
@@ -149,6 +153,7 @@ function spawnFloorCards() {
   // gemShadow sprites behind on the next combat floor.)
   this.clearBoard();
   // === ambush shortcut ===
+  this._roomMimicSpawned = false;
   // An event can hand a constrained combat floor over on pendingAmbush. Most
   // ambushes use a bespoke board, but the toll collectors deliberately reuse
   // the normal combat generator so its loot and face-down cards feel like a
@@ -310,6 +315,8 @@ function spawnFloorCards() {
   this.ensureEnemyMinimum(cf, roomType);
   this.enforceForcedEnemyTypes(cf);
   if (!this._forcedEnemyTypes?.length) this.injectAngryNestmother(cf, roomType);
+  if (!this._forcedEnemyTypes?.length) injectCrystalBrood.call(this, cf, roomType);
+  keepShootersBack.call(this);
   this.assignVeterans(roomType, cf);
   this.assignEliteMiniBoss(roomType);
   this.assignEliteHighlightCards(roomType, cf);
@@ -729,6 +736,8 @@ function refreshSavedBossAbilities(data) {
 
 function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
   if (!Array.isArray(savedCards)) return false;
+  this._roomMimicSpawned = Boolean(savedLayout?.mimicSpawned)
+    || savedCards.some(card => card?.data?.isMimic);
 
   // Pending reinforcements are part of the room, not the layout: without this
   // a save taken mid-fight came back with no waves left, so the room cleared
@@ -890,10 +899,11 @@ function spawnBossRewardBoard(items) {
 
     // Decorative chest sprite at the top of the play area
     const chestX = 320;
-    const chestY = 95;
-    const chestTexture = this.scene.textures.exists('bigChestAnimation') ? 'bigChestAnimation' : 'cardBack';
-    this.bossRewardChest = this.scene.add.sprite(chestX, chestY, chestTexture, 0);
-    if (this.scene.anims.exists('big_chest_open')) {
+    const chestY = 160;
+    const chestTexture = this.scene.textures.exists('eliteChest') ? 'eliteChest' :
+        (this.scene.textures.exists('bigChestAnimation') ? 'bigChestAnimation' : 'cardBack');
+    this.bossRewardChest = this.scene.add.sprite(chestX, chestY, chestTexture, chestTexture === 'eliteChest' ? 1 : 0);
+    if (chestTexture === 'bigChestAnimation' && this.scene.anims.exists('big_chest_open')) {
         this.bossRewardChest.play('big_chest_open');
     }
     SoundHelper.playSound(this.scene, 'chest_open', 0.5);
@@ -1486,6 +1496,71 @@ function injectAngryNestmother(floor, roomType) {
   return true;
 }
 
+// The Old Chute's nest, left to hatch (old_chute.js): for the rest of that
+// act each fight room may have one or two Crystal Hatchlings, which take the
+// seats of ordinary enemies. Rolled once per floor.
+function injectCrystalBrood(floor, roomType) {
+  const story = this.scene.gameState?.storyRun;
+  if (!Number.isFinite(story?.crystalBroodAct)) return false;
+  if (story.crystalBroodAct !== actOffsetForFloor(floor)) return false;
+  if (roomType !== 'COMBAT' && roomType !== 'ELITE') return false;
+  if (story.crystalBroodRollFloor === floor) return false;
+  story.crystalBroodRollFloor = floor;
+  if (Math.random() >= CHUTE_BROOD_CHANCE) return false;
+
+  const seats = this.boardCards
+    .filter((card) => (
+      card?.data?.type === 'enemy' && !card.data.isMimic && !card.data.storyEnemy
+      && !card.data.isRangedType && !card.data.crystalSpider
+    ));
+  Phaser.Utils.Array.Shuffle(seats);
+  const count = Math.min(seats.length, 1 + Math.floor(Math.random() * CHUTE_BROOD_MAX));
+  let placed = 0;
+  for (const card of seats.slice(0, count)) {
+    const hatchling = this.cardDataGenerator.createTieredEnemy('crystalHatchling', floor);
+    if (!hatchling || hatchling.enemyType !== 'crystalHatchling') continue;
+    hatchling.brick = card.data.brick;
+    hatchling.role = card.data.role || 'MELEE';
+    card.data = hatchling;
+    placed++;
+  }
+  return placed > 0;
+}
+
+// Shooters never start in a front row (Taya). The passes after the deal
+// (enemy minimum, forced types, the nestmother) can drop one there; each is
+// swapped with a back-row card, a melee enemy first, then anything that is not
+// a shooter. Cards are still face down and untinted here, so only their data
+// moves. A shooter the player pulls forward later (the March amulet, a seat
+// swap) is left where it was put.
+function keepShootersBack() {
+  const cards = this.boardCards || [];
+  const isShooter = (card) => Boolean(
+    card?.data && this.isEnemyType(card.data.type) && card.data.isRangedType && !card.data.isMimic
+  );
+  const row = (card) => card?.data?.brick?.r;
+  const swapData = (a, b) => {
+    const brickA = a.data.brick;
+    const brickB = b.data.brick;
+    [a.data, b.data] = [b.data, a.data];
+    a.data.brick = brickA;
+    b.data.brick = brickB;
+    for (const card of [a, b]) {
+      if (this.isEnemyType(card.data.type) && !card.data.isMimic && card.data.type !== 'boss') {
+        card.data.role = card.data.brick?.r > 0 ? 'MELEE' : 'RANGED';
+      }
+    }
+  };
+  for (const shooter of cards.filter((card) => isShooter(card) && row(card) > 0)) {
+    const back = cards.filter((card) => (
+      card?.data && row(card) === 0 && !card.revealed && !isShooter(card)
+      && card.data.type !== 'boss' && !card.data.isMimic
+    ));
+    const partner = back.find((card) => this.isEnemyType(card.data.type)) || back[0];
+    if (partner) swapData(shooter, partner);
+  }
+}
+
 // Board for an event-triggered fight. Bespoke ambushes start with their named
 // enemies revealed; constrained ambushes can instead enter through the normal
 // face-down combat-board generator below.
@@ -1600,7 +1675,8 @@ function spawnBoss() {
     // Viewport in world units, not device pixels — see cameraWorldSize.
     const { width: camW, height: camH } = cameraWorldSize(cam);
     const x = camW / 2 - 20; // match the 20px-left board shift
-    const bossOffsetY = bossData.name === 'Spider Queen' ? -90 : -45;
+    // -25 (was -45): every boss but the Spider Queen stands 20px lower (Taya).
+    const bossOffsetY = bossData.name === 'Spider Queen' ? -90 : -25;
     const y = camH / 2 + bossOffsetY;
     this.createBossBoardPanel();
     const cardSprite = snapOriginToPixelGrid(this.scene.add.image(x, y, bossData.sprite));
@@ -1678,6 +1754,7 @@ function injectTollGuards(bossX, bossY) {
 function pickCardType(currentFloor, excludedTypes = []) {
     const weights = this.cardDataGenerator.getCardWeights(currentFloor);
     const excluded = new Set(excludedTypes);
+    if (this._roomMimicSpawned) excluded.add('mimic');
     
     // Calculate total weight
     const totalWeight = Object.entries(weights).reduce((sum, [type, weight]) => (
@@ -1702,7 +1779,7 @@ function pickCardType(currentFloor, excludedTypes = []) {
 function generateRandomCard() {
     const currentFloor = this.scene.gameState.currentFloor;
     const type = this.pickCardType(currentFloor);
-    return this.cardDataGenerator.createCardData(type, currentFloor, false, this.scene.gameState);
+    return this.createCardData(type, currentFloor, false, this.scene.gameState);
 }
 
 function summonEnemy(enemyType, bossCard) {
@@ -2080,13 +2157,16 @@ function summonForElite(eliteCard) {
     if (!elite || !this._boardCells || !this._boardPlace) return false;
     if ((elite.summonsMade || 0) >= ELITE_SUMMON_CAP) return false;
 
-    // It calls its own kind: a wolf calls a wolf. Only an elite with no
-    // buildable type of its own falls back to a random floor enemy.
+    // It calls its own kind: a wolf calls a wolf. An enemy whose definition
+    // names what it `summons` calls that instead (the Crystal Mother calls
+    // hatchlings). Only an elite with no buildable type of its own falls back
+    // to a random floor enemy.
     const cf = this.scene.gameState?.currentFloor || 1;
-    const own = elite.enemyType
-        ? this.cardDataGenerator.createTieredEnemy(elite.enemyType, cf, false)
+    const callType = this.cardDataGenerator.enemyData?.[elite.enemyType]?.summons || elite.enemyType;
+    const own = callType
+        ? this.cardDataGenerator.createTieredEnemy(callType, cf, false)
         : null;
-    const ownKind = own && own.enemyType === elite.enemyType && this.isEnemyType(own.type) ? own : null;
+    const ownKind = own && own.enemyType === callType && this.isEnemyType(own.type) ? own : null;
 
     // The empty spot nearest the elite, preferring a row that suits the
     // minion's role (front rows melee, the back row ranged).
@@ -2101,6 +2181,8 @@ function summonForElite(eliteCard) {
         if (d < best) { best = d; pick = spot; }
     }
     if (!pick) return false;
+    // A shooter of its own kind needs a back-row spot (keepShootersBack).
+    if (ownKind?.isRangedType && pick.cell.r > 0) return false;
 
     const { slot, cell } = pick;
     const role = cell.r > 0 ? 'MELEE' : 'RANGED';
@@ -2131,11 +2213,14 @@ function summonForElite(eliteCard) {
 }
 
 function createCardData(type, floor, isElite = false, gameState = null, targetRarity = null, preferredRole = null) {
+    // One mimic for the entire room, even after it dies or escapes and later
+    // reinforcement waves arrive. Explicit mimic requests share the cap.
+    if (type === 'mimic' && this._roomMimicSpawned) type = 'enemy';
     // Forward gameState (for amulet no-reroll rules) and targetRarity
     // (for forced shop/reward rarities). Defaulting gameState to the
     // scene's keeps board amulet drops consistent too. preferredRole lets the
     // caller request a MELEE/RANGED enemy so front/back rows get matching types.
-    return this.cardDataGenerator.createCardData(
+    const data = this.cardDataGenerator.createCardData(
         type,
         floor || this.scene.gameState.currentFloor,
         isElite,
@@ -2143,6 +2228,8 @@ function createCardData(type, floor, isElite = false, gameState = null, targetRa
         targetRarity,
         preferredRole
     );
+    if (data?.isMimic) this._roomMimicSpawned = true;
+    return data;
 }
 
 function capRewardRarity(rarity, floor) {

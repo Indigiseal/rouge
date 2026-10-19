@@ -9,6 +9,8 @@ import { HAND_LOCKS, handLockKindOf } from '../content/combat/handLock.js';
 import { sigilLine, storedSigils } from '../content/sigils/sigils.js';
 import { SINGLE_AMULET, offerFaceAmulet } from '../content/cards/amulets.js';
 import { cameraWorldSize } from '../config/renderScale.js';
+import { eggFightsLeft, isHatchingEgg } from '../content/cards/eggHatching.js';
+import { PLATE_RANGED_IGNORE_MAX } from '../content/cards/armor.js';
 
 // Default tooltip depth — above the board and its card FX, below the modal
 // overlays. Callers that render higher pass their own depth.
@@ -91,7 +93,7 @@ export function getTooltipLines(scene, data) {
             lines.push(t(scene, 'tooltip.meleeCounterBlocked', { percent: Math.round(data.meleeCounterChance * 100) }));
         }
         if (data.rangedIgnoreChance) {
-            lines.push(t(scene, 'tooltip.ignoreRanged', { percent: Math.round(data.rangedIgnoreChance * 100) }));
+            lines.push(t(scene, 'tooltip.ignoreRanged', { percent: Math.round(Math.min(PLATE_RANGED_IGNORE_MAX, data.rangedIgnoreChance) * 100) }));
         }
         body = lines.join('\n');
     } else if (data.type === 'potion') {
@@ -100,8 +102,14 @@ export function getTooltipLines(scene, data) {
             : t(scene, 'tooltip.heals', { amount: data.healAmount ?? 0 });
     } else if (data.type === 'food') {
         body = t(scene, 'tooltip.restores', { amount: data.actionAmount ?? 0 });
+    } else if (data.type === 'companion' && (data.websEnemies || data.id === 'crystalSpiderlingCompanion')) {
+        // The Crystal Spiderling does no damage; it webs.
+        body = `${t(scene, 'tooltip.companion.webs')}\n${t(scene, 'tooltip.companion.actsAfter')}`;
+        if (data.crystalFindChance) body += `\n${t(scene, 'tooltip.companion.crystalChance', { amount: Math.round(data.crystalFindChance * 100) })}`;
     } else if (data.type === 'companion') {
-        const damageKey = data.damageType === 'physical' ? 'tooltip.damage.physical' : 'tooltip.damage.lightning';
+        const damageKey = data.damageType === 'physical' ? 'tooltip.damage.physical'
+            : data.damageType === 'magic' ? 'tooltip.damage.magic'
+                : 'tooltip.damage.lightning';
         const styleKey = data.attackStyle === 'melee' || data.range === 'melee'
             ? 'tooltip.companion.melee'
             : 'tooltip.companion.ranged';
@@ -109,6 +117,7 @@ export function getTooltipLines(scene, data) {
         if (data.boundThrall) body += `\n${t(scene, 'tooltip.boundThrall')}`;
         if (data.shockChance) body += `\n${t(scene, 'tooltip.companion.shockChance', { amount: Math.round(data.shockChance * 100) })}`;
         if (data.guardProtection) body += `\n${t(scene, 'tooltip.companion.guard', { amount: data.guardProtection })}`;
+        if (data.crystalFindChance) body += `\n${t(scene, 'tooltip.companion.crystalChance', { amount: Math.round(data.crystalFindChance * 100) })}`;
     } else if (data.type === 'magic') {
         body = data.description ? translateDescription(scene, data.description) : t(scene, 'tooltip.magicSpell');
     } else if (data.type === 'gem') {
@@ -121,6 +130,15 @@ export function getTooltipLines(scene, data) {
         body = t(scene, 'tooltip.keyBody');
     } else if (data.description) {
         body = translateDescription(scene, data.description);
+    }
+
+    // An egg that hatches says how many fights are left (eggHatching.js).
+    if (isHatchingEgg(data)) {
+        const left = eggFightsLeft(data);
+        const line = left > 1 ? t(scene, 'tooltip.egg.hatchesIn', { count: left })
+            : left === 1 ? t(scene, 'tooltip.egg.hatchesNext')
+                : t(scene, 'tooltip.egg.waiting');
+        body = body ? `${body}\n${line}` : line;
     }
 
     return { name, body };

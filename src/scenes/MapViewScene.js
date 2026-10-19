@@ -192,6 +192,7 @@ export class MapViewScene extends Phaser.Scene {
       fontSize: '12px', fill: '#c8b08a', fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5);
     this._addManualPickButton();
+    this._addFogToggleButton();
     this.input.keyboard?.on('keydown-ESC', this._onManualPickEscape, this);
 
     // Peaceful theme fades in whenever the map is shown (create() re-runs on
@@ -310,11 +311,15 @@ export class MapViewScene extends Phaser.Scene {
   // everything else is under cloud. As the map opens, cloud puffs cascade out
   // from the player over the cleared area.
   drawFog() {
+    this.mapFogContainer = null;
     const floors = this.actMap.floors;
     const nodes = floors.flat().filter(n => typeof n?.__y === 'number');
     if (!nodes.length) return;
     const sight = mapSightRadius(this.gameState);
     if (!Number.isFinite(sight)) return;   // Oracle's Eye: no fog
+    this.mapFogContainer = this.add.container(0, 0);
+    this.mapContainer.add(this.mapFogContainer);
+    this.mapFogContainer.setVisible(!(devToolsEnabled() && this._devFogLifted));
     const cursor = this.gameState.mapCursor || { floor: 0, node: 0 };
     const here = floors[cursor.floor]?.[cursor.node];
 
@@ -338,14 +343,14 @@ export class MapViewScene extends Phaser.Scene {
     const maxY = Math.max(...nodes.map(n => n.__y));
     const bounds = { left: minX - 360, right: maxX + 360, top: minY - 200, bottom: maxY + 200 };
     const grid = computeFogGrid(points, bounds);
-    drawMapFog(this, this.mapContainer, grid);
+    drawMapFog(this, this.mapFogContainer, grid);
 
     // The fog drawing back as the map opens, cascading out from the player.
     if (here) {
       // Puffs cover the fog's edge, then dissolve rippling out from the
       // player; three poofs, one after another, ride the ripple: as the
       // first puffs go, midway, and as the last go.
-      const timing = puffFogCascade(this, this.mapContainer, grid, { x: here.__x, y: here.__y });
+      const timing = puffFogCascade(this, this.mapFogContainer, grid, { x: here.__x, y: here.__y });
       if (timing) {
         const span = Math.max(FOG_POOF_GAP_MS * 2, timing.last - timing.first);
         [0, span / 2, span].forEach((offset) => {
@@ -703,6 +708,30 @@ export class MapViewScene extends Phaser.Scene {
     nodeSprite.on('pointerdown', () => {
       if (!this.isDragging) this.selectNode(floorIdx, nodeIdx, node);
     });
+  }
+
+  _addFogToggleButton() {
+    if (!devToolsEnabled()) return;
+    const btn = this.add.rectangle(510, 30, 108, 22, 0x363329)
+      .setStrokeStyle(1, 0xf2d3aa).setDepth(20)
+      .setInteractive({ useHandCursor: true });
+    this._fogToggleLabel = this.add.text(510, 30,
+      t(this, this._devFogLifted ? 'ui.map.restoreFog' : 'ui.map.liftFog'), {
+        fontSize: '10px', fill: '#f2d3aa', fontFamily: '"HoMM Pixel", Arial, sans-serif',
+      }).setOrigin(0.5).setDepth(21);
+    btn.on('pointerover', () => {
+      SoundHelper.playVariant(this, 'hover_button', 0.3);
+      btn.setFillStyle(0x584339);
+    });
+    btn.on('pointerout', () => btn.setFillStyle(0x363329));
+    btn.on('pointerdown', () => this._toggleMapFog());
+  }
+
+  _toggleMapFog() {
+    if (!devToolsEnabled() || this._leavingMap) return;
+    this._devFogLifted = !this._devFogLifted;
+    this.mapFogContainer?.setVisible(!this._devFogLifted);
+    this._fogToggleLabel?.setText(t(this, this._devFogLifted ? 'ui.map.restoreFog' : 'ui.map.liftFog'));
   }
 
   _addManualPickButton() {

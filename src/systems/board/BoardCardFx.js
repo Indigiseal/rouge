@@ -321,18 +321,26 @@ function createCardInfoText(card) {
         }
 
         case 'magic': {
-            // One label only: the spell's name, sitting in the lower text slot
-            // (nudged 2px up from the old description line at y=20). The
-            // "+20% Armor"-style blurb is gone — the hover tooltip already
-            // spells out what each spell does.
+            // The texture holds the arcane face and symbol only. Keep the name
+            // live (and translated), in the clear bottom band below the symbol.
+            // Damage and effect values continue to come from the hover tooltip.
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
-            const magicLabel = this.scene.add.text(0, 18, translateItemName(this.scene, card.data), {
+            // 20 (was 25): the name sits 5px higher (Taya).
+            const magicLabel = this.scene.add.text(0, 20, translateItemName(this.scene, card.data), {
                 fontSize: CARD_LABEL_SIZE,
                 fill: '#71b1ae',
                 fontFamily: '"HoMM Pixel"',
-                wordWrap: { width: 60 },
                 align: 'center'
             }).setOrigin(0.5);
+            // Use whole font sizes rather than scaling the card or its pixels.
+            for (const size of [8, 7, 6]) {
+                if (magicLabel.width <= 42) break;
+                magicLabel.setFontSize(`${size}px`);
+            }
+            // Longer translations use two tight lines in the same name band.
+            if (magicLabel.width > 42) {
+                magicLabel.setWordWrapWidth(42, true).setLineSpacing(-3);
+            }
 
             container.add(magicLabel);
             attachInfoText(container);
@@ -1074,21 +1082,47 @@ function playBossDeathEffect(sprite) {
         });
     };
 
-    if (scene.textures?.exists?.('bossDeathMask') && scene.anims?.exists?.('boss_death_mask')) {
-        const mask = scene.add.sprite(x, y, 'bossDeathMask');
-        mask.setDepth(depth + 1);
-        // Overlay the mask exactly on top of the boss, whatever its display size.
-        if (sprite.displayWidth && sprite.displayHeight) {
-            mask.setDisplaySize(sprite.displayWidth, sprite.displayHeight);
-        }
-        mask.play('boss_death_mask');
+    if (ghost && scene.textures?.exists?.('bossDeathMask') && scene.anims?.exists?.('boss_death_mask')) {
+        // The decay rises over the boss itself (Taya): the sheet is clipped to
+        // the boss's own pixels, so only the boss rots and the room around it
+        // stays clear. Native size, its bottom on the boss's feet, centred.
+        const width = ghost.displayWidth || 0;
+        const height = ghost.displayHeight || 0;
+        const centerX = Math.round(x + (0.5 - ghost.originX) * width);
+        const bottomY = Math.round(y + (1 - ghost.originY) * height);
+        const decay = scene.add.sprite(centerX, bottomY, 'bossDeathMask', 0)
+            .setOrigin(0.5, 1)
+            .setDepth(depth + 1);
+        decay.setMask(ghost.createBitmapMask());
+        decay.play('boss_death_mask');
+        let done = false;
         const finish = () => {
-            if (mask.active) mask.destroy();
-            dissolveGhost();
+            if (done) return;
+            done = true;
+            // Boss and decay fade out together; the tint covers any part of a
+            // tall boss the tide did not reach.
+            if (!ghost?.scene) {
+                if (decay.active) decay.destroy();
+                return;
+            }
+            ghost.setTint(0x2f2230);
+            scene.tweens.add({
+                targets: [ghost, decay],
+                alpha: 0,
+                duration: 240,
+                ease: 'Cubic.easeIn',
+                onComplete: () => {
+                    if (decay.active) {
+                        decay.clearMask(true);
+                        decay.destroy();
+                    }
+                    ghost.destroy();
+                }
+            });
         };
-        mask.once('animationcomplete', finish);
+        decay.once('animationcomplete', finish);
         // Safety net in case the complete event is missed.
-        scene.time.delayedCall(1200, () => { if (mask.active) finish(); });
+        scene.time.delayedCall(1200, finish);
     } else {
         dissolveGhost();
     }

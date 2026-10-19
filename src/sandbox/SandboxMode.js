@@ -135,11 +135,6 @@ const SANDBOX_STORY_SETUP = {
   goblin_engineer: {
     story: { boxState: 'has_cog', boxHasCog: true, boxFollowing: true },
   },
-  // Only fires with the engineer behind you and an egg still uneaten.
-  hatching_egg: {
-    story: { goblinEngineerResolved: true, chickHatched: false },
-    grant: ['egg'],
-  },
   // The wizard is the carnival's follow-up, so the carnival must have happened.
   brass_wizard: {
     story: { carnivalVisited: true, carnivalHagMet: true },

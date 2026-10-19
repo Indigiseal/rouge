@@ -42,6 +42,10 @@ function readFlag() {
     return DEV_TOOLS_DEFAULT;
 }
 
+// Amulets a new run starts with in Developer mode, to test them without
+// hunting for them. 'vacancyStep' is Close Order (the grappling hook).
+export const DEV_START_AMULETS = Object.freeze(['vacancyStep']);
+
 // Read once at boot. A flag that changes mid-run would leave half a screen
 // wearing controls the other half has already hidden.
 let enabled = null;

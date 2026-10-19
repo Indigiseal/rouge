@@ -19,7 +19,8 @@ const ROOM_CLEAR_ANNOUNCE_PAD_MS = 200;
 // the backdrop carries on in the same colour.
 const EVENT_BACKDROP_COLOR = 0x2b1f32;
 import { getLocationIdForFloor } from '../content/locations/index.js';
-import { devToolsEnabled } from '../config/DevTools.js';
+import { fightBackdropKey } from '../content/locations/fightBackgrounds.js';
+import { DEV_START_AMULETS, devToolsEnabled } from '../config/DevTools.js';
 import { SaveManager } from '../managers/SaveManager.js';
 import { MetaProgressionManager } from '../managers/MetaProgressionManager.js';
 import { TutorialManager } from '../managers/TutorialManager.js';
@@ -66,8 +67,10 @@ import { isSilkCocoonCacheRoom, boardHasOpenCocoonEnemies } from '../systems/boa
 import { playSmokeBurst, SMOKE_BURST_MS } from '../ui/SmokeBurst.js';
 import { pendingLocationAftermath } from '../content/locations/index.js';
 import { openSigilOffer, rollOfferableSigil } from '../ui/SigilOffer.js';
-import { SIGIL_ROOM_CHANCE, SIGIL_ROOM_CHANCE_BROOCH } from '../content/sigils/sigilStatues.js';
+import { SIGIL_ROOM_CHANCE, SIGIL_ROOM_CHANCE_BROOCH } from '../content/sigils/sigilStamps.js';
 import { createCrystalLairEnemies } from '../content/cards/crystalLair.js';
+import { EGG_HATCH_ROOMS, eggFightsLeft, isHatchingEgg } from '../content/cards/eggHatching.js';
+import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
 
 // The Crystal Lair's reward when no card can take its sigil.
 const CRYSTAL_LAIR_FALLBACK_CRYSTALS = 3;
@@ -369,6 +372,7 @@ export class GameScene extends Phaser.Scene {
             this.restoreSavedCombatRoom();
         } else {
             this.startNewFloor();
+            this.grantDevStartAmulets();
             this.offerHealerAmuletIfNeeded();
         }
         
@@ -514,33 +518,49 @@ export class GameScene extends Phaser.Scene {
     }
 
     createBackground() {
-        // Use the single dungeon background image
+        this._eventBackdropOn = false;
         const background = this.add.image(320, 180, 'stoneFloor');
         background.setDisplaySize(640, 360);
         background.setOrigin(0.5, 0.5);
         // Under the board frame and top HUD (month / floor / pause).
         background.setDepth(-10);
         this.backgroundImage = background;
+        this.refreshFightBackground();
     }
 
-    // An event dims the top of the screen and leaves the bottom strip to this
-    // scene's inventory and discard bin. With the dungeon painting behind them,
-    // the edge of the event's dim cut straight across the painting (vines and
-    // all) just above the panel painted into its foot. During an event the
-    // painting is swapped for a flat backdrop in the event's own dim colour, so
-    // the dim has no edge to show, and the panel is laid on separately, under
-    // the inventory and the bin.
+    refreshFightBackground(roomType = this.roomType) {
+        if (!this.backgroundImage?.scene) return;
+        const key = fightBackdropKey(this.gameState, roomType);
+        // dungeon.png is the foreground frame; its transparent centre reveals
+        // the location painting beneath it.
+        this.backgroundImage.setTexture('stoneFloor');
+        const show = key !== 'stoneFloor' && this.textures.exists(key);
+        if (show && !this.fightBackgroundImage?.scene) {
+            this.fightBackgroundImage = this.add.image(320, 180, key)
+                .setOrigin(0.5).setScale(1).setDepth(-11);
+        }
+        if (show) this.fightBackgroundImage.setTexture(key).setScale(1);
+        this.fightBackgroundImage?.setVisible(show);
+    }
+
+    // Events keep a location's illustration visible beneath their panels.
+    // Locations awaiting art retain the flat event backdrop and bag footer.
     setEventBackdrop(on) {
-        if (on && !this.eventBackdrop?.scene) {
+        this._eventBackdropOn = on;
+        const key = fightBackdropKey(this.gameState, this.roomType);
+        const hasLocationArt = key !== 'stoneFloor' && this.textures.exists(key);
+        const useFlatBackdrop = on && !hasLocationArt;
+        if (useFlatBackdrop && !this.eventBackdrop?.scene) {
             this.eventBackdrop = this.add.rectangle(320, 180, 640, 360, EVENT_BACKDROP_COLOR)
                 .setDepth(-9);
             this.underInventoryPanel = this.textures.exists('panelUnderInventory')
                 ? this.add.image(320, 360, 'panelUnderInventory').setOrigin(0.5, 1).setDepth(-8)
                 : null;
         }
-        this.eventBackdrop?.setVisible(on);
-        this.underInventoryPanel?.setVisible(on);
-        this.backgroundImage?.setVisible(!on);
+        this.eventBackdrop?.setVisible(useFlatBackdrop);
+        this.underInventoryPanel?.setVisible(useFlatBackdrop);
+        this.backgroundImage?.setVisible(!useFlatBackdrop);
+        this.refreshFightBackground();
     }
 
     stopScenesAboveCombat({ keepMap = false } = {}) {
@@ -556,6 +576,16 @@ export class GameScene extends Phaser.Scene {
                 this.scene.stop(key);
             }
         });
+    }
+
+    // Developer mode: a new run starts wearing DEV_START_AMULETS.
+    grantDevStartAmulets() {
+        if (!devToolsEnabled() || this.shouldLoadSave || this.tutorialMode || this.sandboxMode) return;
+        if (areAmuletsDisabled()) return;
+        DEV_START_AMULETS.forEach((id) => {
+            if (!this.amuletManager?.hasAmulet?.(id)) this.amuletManager?.addAmulet?.(id);
+        });
+        this.updateAmuletsUI?.();
     }
 
     offerHealerAmuletIfNeeded() {
@@ -650,7 +680,6 @@ export class GameScene extends Phaser.Scene {
             this.inventorySystem.addStartingCards();
         }
         this.amuletManager?.processFloorStart?.();
-        this.hatchCrystalSpiderEggs();
         recordHumanRunEvent(this, 'floor_started', {
             floor: this.gameState.currentFloor,
             roomType: this.roomType,
@@ -1017,20 +1046,41 @@ export class GameScene extends Phaser.Scene {
         });
     }
 
-    // The Old Chute's egg: once the run is deep enough it cracks open in the
-    // bag and the hatchling climbs onto the amulet bar.
-    hatchCrystalSpiderEggs() {
+    // Eggs hatch by fights (content/cards/eggHatching.js): each fight room
+    // cleared takes one off every egg in the bag, and an egg at zero cracks
+    // open in its own slot: the chick's egg into the Chick, the crystal egg
+    // into the Crystal Spiderling. Counted once per room.
+    tickEggHatching() {
+        const room = this.roomType || this.gameState?.roomType;
+        if (!EGG_HATCH_ROOMS.includes(room)) return 0;
+        const floor = this.gameState.currentFloor;
+        if (this.gameState.eggHatchTickFloor === floor) return 0;
+        this.gameState.eggHatchTickFloor = floor;
+
         const slots = this.inventorySystem?.slots || this.gameState?.inventory || [];
-        const floor = this.gameState?.currentFloor || 1;
-        const index = slots.findIndex(item => (
-            item?.id === 'crystalSpiderEgg' && floor >= (Number(item.hatchFloor) || 0)
-        ));
-        if (index < 0 || !this.amuletManager?.addAmulet?.('crystalSpiderling')) return false;
-        slots[index] = null;
+        const gen = this.cardSystem?.cardDataGenerator || new CardDataGenerator();
+        let changed = false;
+        const hatched = [];
+        slots.forEach((item, index) => {
+            if (!isHatchingEgg(item)) return;
+            item.hatchFightsLeft = Math.max(0, eggFightsLeft(item) - 1);
+            changed = true;
+            if (item.hatchFightsLeft > 0) return;
+            const crystal = item.id === 'crystalSpiderEgg';
+            const companion = crystal
+                ? gen.createCrystalSpiderlingCompanionCard()
+                : gen.createChickCompanionCard();
+            // One of each: a second egg waits while its companion is in the bag.
+            if (slots.some((other) => other?.id === companion.id)) return;
+            slots[index] = companion;
+            if (!crystal && this.gameState.storyRun) this.gameState.storyRun.chickHatched = true;
+            hatched.push(crystal ? 'ui.egg.hatched.crystal' : 'ui.egg.hatched.chick');
+        });
+        if (!changed) return 0;
         this.gameState.inventory = slots;
         this.inventorySystem?.rebuildInventorySprites?.();
-        this.createFloatingText?.(320, 150, 'The crystal egg hatches!', 0x9fd8ff);
-        return true;
+        hatched.forEach((key, i) => this.createFloatingText?.(320, 150 - i * 16, t(this, key), 0x9fd8ff));
+        return hatched.length;
     }
 
     getChickCompanionEntry() {
@@ -1222,6 +1272,10 @@ export class GameScene extends Phaser.Scene {
         // HP/ATK overlay. Always start from rest.
         this.tweens.killTweensOf(cardSprite);
         this._hitStackTimers?.get(cardSprite)?.remove(false);
+        // Finish the previous flash before recording this hit's base tint.
+        // Otherwise a second impact saves solid white as the original colour;
+        // a poison nudge can also cancel the only timer that would clear it.
+        this._hitStackRestoreTint?.get(cardSprite)?.();
         cardSprite.setPosition(restX, restY);
         const infoText = boardCard?.infoText;
         const infoOffsetY = infoText?.scene ? infoText.y - restY : 0;
@@ -1246,11 +1300,13 @@ export class GameScene extends Phaser.Scene {
             : null;
         if (!soft) cardSprite.setTintFill(0xffffff);
         const restoreTint = () => {
+            this._hitStackRestoreTint?.delete(cardSprite);
             if (!cardSprite.scene || soft) return;
             if (!tint) cardSprite.clearTint();
             else if (tint.fill) cardSprite.setTintFill(tint.color);
             else cardSprite.setTint(tint.color);
         };
+        if (!soft) (this._hitStackRestoreTint ||= new Map()).set(cardSprite, restoreTint);
 
         const hold = soft ? 0 : (strong ? 80 : 45);
         (this._hitStackTimers ||= new Map()).set(cardSprite, this.time.delayedCall(hold, () => {
@@ -1675,6 +1731,7 @@ export class GameScene extends Phaser.Scene {
             this.updateUI?.();
             return;
         }
+        this.tickEggHatching();
 
         // Floor-clear coin reward. Coins are no longer paid per enemy kill (that
         // faucet was flooding the economy); instead you're paid once for clearing
@@ -1981,6 +2038,7 @@ export class GameScene extends Phaser.Scene {
     }
     
     updateRoomTitle() {
+        this.refreshFightBackground();
         if (!this.roomTitle) return;
         let title = t(this, 'ui.room.combat');
         if (this.roomType === 'ELITE') title = t(this, 'ui.room.elite');
@@ -2033,6 +2091,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
         if (data?.shopStation) {
+            this.refreshFightBackground('SHOP');
             // Arriving at the shop completes the floor-clear transition. Clear the
             // flag or pauseGame()/ESC stay dead here (they bail while _transitioning
             // is true) — the reported "pause button does nothing in the shop" bug.

@@ -61,7 +61,6 @@ export default {
         scene.ensureStoryState();
         scene.clearPendingEvent('goblin_engineer');
         gs.storyRun.goblinEngineerResolved = true;
-        scene.queueEggHatchingEvent();
       },
       outcome: 'He shrugs. "Ash is ash. I don\'t do funerals."\n\nHe is already back behind the machine before you turn away.',
     },

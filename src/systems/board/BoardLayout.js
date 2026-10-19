@@ -5,9 +5,9 @@ import {
     seatOfCard,
 } from '../../content/amulets/strategy.js';
 import { cameraWorldSize } from '../../config/renderScale.js';
+import { boardArtFor } from '../../content/locations/boardArt.js';
 import {
     BOARD_PANEL_KEY,
-    BOARD_PANEL_SLICE,
     createNineSlicePanel,
 } from '../../ui/NineSlicePanel.js';
 
@@ -268,7 +268,9 @@ function clearFloorBoardPanel() {
 
 function createSideExtraPanel(side = 'right', { animate = true, delayMs = 200 } = {}) {
   if (!this.floorBoardPanel) return;
-  if (!this.scene.textures.exists('gamingBoardSideExtra')) return;
+  // The location's own wing (content/locations/boardArt.js) or the shared one.
+  const wingKey = boardArtFor(this.scene).sideExtra;
+  if (!this.scene.textures.exists(wingKey)) return;
   if (!Array.isArray(this.sideExtraPanels)) this.sideExtraPanels = [];
   // Replace an existing panel on THIS side so re-spawns don't stack, while
   // leaving the opposite side alone — wide boards wear both wings.
@@ -284,12 +286,12 @@ function createSideExtraPanel(side = 'right', { animate = true, delayMs = 200 } 
   // Start tucked behind the main board's centre, then slide outward so
   // roughly half of the extra panel pokes past the main board edge.
   const startX = main.x;
-  const tex = this.scene.textures.get('gamingBoardSideExtra').getSourceImage();
+  const tex = this.scene.textures.get(wingKey).getSourceImage();
   const sideW = tex.width || 200;
   const endX  = main.x + dir * (main.displayWidth * 0.45 - sideW * 0.1);
 
   const restY = main.getData('restY') ?? main.y;
-  const panel = this.scene.add.image(startX, restY, 'gamingBoardSideExtra');
+  const panel = this.scene.add.image(startX, restY, wingKey);
   panel.setOrigin(0.5);
   panel.setDepth(main.depth - 1); // sit BEHIND the main board
   if (side === 'left') panel.setFlipX(true);
@@ -365,6 +367,11 @@ const BOARD_CARD_MARGIN_Y = 14;
 
 function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamingBoard') {
   this.clearFloorBoardPanel();
+  // The fight board is the location's own when it has one
+  // (content/locations/boardArt.js), with its own nine-slice insets.
+  const boardArt = boardArtFor(this.scene);
+  if (textureKey === BOARD_PANEL_KEY) textureKey = boardArt.main;
+  const isFightBoard = textureKey === boardArt.main;
   if (!this.scene.textures.exists(textureKey)) return;
 
   const points = cells.map(({ r, c }) => this.brickToPixel(r, c, place));
@@ -409,10 +416,10 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
   // and station planks) keeps the plain image it has always used — they frame
   // fixed layouts and have nothing to grow for.
   let panel = null;
-  if (textureKey === BOARD_PANEL_KEY && (panelW > nativeW || panelH > nativeH)) {
+  if (isFightBoard && (panelW > nativeW || panelH > nativeH)) {
     panel = createNineSlicePanel(this.scene, panelW, panelH, {
       key: textureKey,
-      slice: BOARD_PANEL_SLICE,
+      slice: boardArt.slice,
     });
   }
   if (!panel) panel = this.scene.add.image(0, 0, textureKey);
@@ -441,53 +448,50 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
   if (animate) animateBoardEntrance.call(this, panel, y);
 }
 
-// The board slides up into place at the start of a fight: it starts low, rises
-// past its resting line, and settles back onto it.
-//
-// Only the APPROACH was deepened — the drop was 34px, which at this speed was
-// over before the eye found it. The overshoot and settle are the original 8px
-// and 180ms, so the last thing the animation does, and the line the board comes
-// to rest on, are exactly what they were before it was touched.
 // How far the board art rides above the centre of the card cluster it frames.
 const BOARD_PANEL_LIFT = 8;
 
+// The board jumps up into place at the start of a fight, the way the village
+// panels come in (VillageScene.playIntro): it starts low and see-through, so
+// the room shows through it, fades in as it rises, runs a few pixels past its
+// resting line and settles back onto it. Whole pixels all the way.
 const BOARD_ENTRANCE_DROP = 52;
-const BOARD_ENTRANCE_OVERSHOOT = 8;
-const BOARD_ENTRANCE_RISE_MS = 320;
-const BOARD_ENTRANCE_SETTLE_MS = 180;
+const BOARD_ENTRANCE_MS = 420;
+const BOARD_ENTRANCE_FADE_MS = 300;
+// Back ease strength: ~2.2 runs about 8px past the spot over a 52px rise.
+const BOARD_ENTRANCE_OVERSHOOT = 2.2;
 
 function animateBoardEntrance(panel, restY) {
-  this.scene.tweens.add({
-    targets: panel,
-    y: restY - BOARD_ENTRANCE_OVERSHOOT,
-    duration: BOARD_ENTRANCE_RISE_MS,
-    ease: 'Cubic.easeOut',
+  const restAlpha = panel.alpha ?? 1;
+  const rise = { offset: BOARD_ENTRANCE_DROP, ms: 0 };
+  const place = () => {
+    if (!panel.scene) return;
+    panel.y = restY + Math.round(rise.offset);
+    panel.setAlpha?.(restAlpha * Math.min(1, rise.ms / BOARD_ENTRANCE_FADE_MS));
+  };
+  place();
+  const tween = this.scene.tweens.add({
+    targets: rise,
+    duration: BOARD_ENTRANCE_MS,
+    // Only the rise overshoots; the fade clock runs straight.
+    props: {
+      offset: { value: 0, ease: 'Back.easeOut', easeParams: [BOARD_ENTRANCE_OVERSHOOT] },
+      ms: { value: BOARD_ENTRANCE_MS, ease: 'Linear' },
+    },
+    onUpdate: place,
     onComplete: () => {
-      if (!panel.scene) return;
-      this.scene.tweens.add({
-        targets: panel,
-        y: restY,
-        duration: BOARD_ENTRANCE_SETTLE_MS,
-        ease: 'Bounce.easeOut'
-      });
-    }
+      rise.offset = 0;
+      rise.ms = BOARD_ENTRANCE_MS;
+      place();
+    },
   });
+  // A board torn down mid-rise takes its tween with it.
+  panel.once?.('destroy', () => tween?.remove?.());
 }
 
+// Boss fights have no gaming board; location art lives behind dungeon.png.
 function createBossBoardPanel() {
   this.clearFloorBoardPanel();
-  if (!this.scene.textures.exists('gamingBoard')) return;
-
-  const cam = this.scene.cameras.main;
-  // Viewport in world units, not device pixels — see cameraWorldSize.
-  const { width: camW, height: camH } = cameraWorldSize(cam);
-  const y = Math.min(camH - 122, camH / 2 + 8) - 18;
-  // -10 (was +10): shifted 20px left to match the combat board and clear
-  // the combat-log panel on the right.
-  const panel = this.scene.add.image((camW / 2) - 10, y + BOARD_ENTRANCE_DROP, 'gamingBoard');
-  panel.setDepth(0);
-  this.floorBoardPanel = panel;
-  animateBoardEntrance.call(this, panel, y);
 }
 
 function _brickSizeForCount(n) {
@@ -545,6 +549,7 @@ function getSerializableBoardLayout() {
   if (!Array.isArray(this._boardCells) || !this._boardPlace) return null;
   return {
     cells: this._boardCells.map(cell => cell ? { r: cell.r, c: cell.c } : null),
+    mimicSpawned: Boolean(this._roomMimicSpawned),
     place: { ...this._boardPlace }
   };
 }

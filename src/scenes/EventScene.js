@@ -11,6 +11,7 @@ import { createTitle } from '../ui/titleText.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { noteDiscovered } from '../content/codex/Discoveries.js';
+import { boardArtFor } from '../content/locations/boardArt.js';
 import { ROBBED_TRAVELLER_DELAY } from '../content/events/robbed_traveller.js';
 import { EVENTS, getEvent } from '../content/events/index.js';
 import { getMagic } from '../content/cards/magic.js';
@@ -42,6 +43,7 @@ import {
   NEST_LEFT_NO_BOX,
 } from '../content/events/monster_bird_nest.js';
 import { getLocationIdForFloor } from '../content/locations/index.js';
+import { locationBackdropKey } from '../content/locations/fightBackgrounds.js';
 import { pickTollroadEventId } from '../content/location-packs/tollroad/index.js';
 import { tryLethalRevive } from '../systems/combat/PlayerDamageResolver.js';
 import { flyCurrencyGain } from '../ui/CurrencyFlight.js';
@@ -53,12 +55,12 @@ import { createExitDoor, EXIT_DOOR_X, EXIT_DOOR_Y } from '../ui/ExitDoor.js';
 import { ENEMIES } from '../content/cards/enemies.js';
 import { addSigil, cardSigils, noteSigilTaken } from '../content/sigils/sigils.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
+import { STATION_TOOLTIP_GAP, TOOLTIP_DEPTH, hideItemTooltip, showItemTooltip } from '../ui/ItemTooltip.js';
 
 export const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
   monster_bird_nest: 9,
   goblin_engineer: 12,
-  hatching_egg: 9,
   quiet_crossroads: 7,
   mirror: 11,
   too_nice_room: 14,
@@ -135,7 +137,7 @@ export class EventScene extends Phaser.Scene {
     if (locationId === 'tollroad') return this._pickTollroadEvent();
 
     const forcedId = this._getForcedEventId();
-    if (forcedId && (forcedId !== 'hatching_egg' || this.canShowEggHatchingEvent())) {
+    if (forcedId) {
       return this.getEventById(forcedId);
     }
 
@@ -145,10 +147,9 @@ export class EventScene extends Phaser.Scene {
       && story.boxState !== 'unknown'
       && !story.latchboxRewardClaimed
     ) return this.getEventById('goblin_engineer');
-    if (story.pendingEvents.includes('hatching_egg')) {
-      if (this.canShowEggHatchingEvent()) return this.getEventById('hatching_egg');
-      story.pendingEvents = story.pendingEvents.filter(id => id !== 'hatching_egg');
-    }
+    // The chick's egg hatches by itself now (content/cards/eggHatching.js);
+    // drop a hatching event an older save still has queued.
+    story.pendingEvents = story.pendingEvents.filter(id => id !== 'hatching_egg');
     if (story.pendingEvents.includes('brass_wizard')) return this.getEventById('brass_wizard');
     // The Lost Porter's party, a couple of floors after the map changed hands.
     if (
@@ -172,7 +173,8 @@ export class EventScene extends Phaser.Scene {
     const bonusFillers = [];
     if (!story.mirrorSeen) bonusFillers.push('mirror');
     if (!story.abandonedCampSeen) bonusFillers.push('abandoned_camp');
-    if (!story.oldChuteSeen) bonusFillers.push('old_chute');
+    // Not after the Crystal Lair: the mother is already dead.
+    if (!story.oldChuteSeen && !story.crystalLairCleared) bonusFillers.push('old_chute');
     if (!story.soupStandSeen) bonusFillers.push('soup_stand');
     if (!story.tooNiceRoomSeen) bonusFillers.push('too_nice_room');
     if (!story.wellSeen) bonusFillers.push('almost_you_well');
@@ -226,15 +228,12 @@ export class EventScene extends Phaser.Scene {
   _pickSharedTollroadEvent() {
     const story = this.gameState.storyRun;
     const forcedId = this._getForcedEventId();
-    if (forcedId && (forcedId !== 'hatching_egg' || this.canShowEggHatchingEvent())) {
+    if (forcedId) {
       return this.getEventById(forcedId);
     }
     if (story.pendingEvents.includes('monster_bird_nest')) return this.getEventById('monster_bird_nest');
     if (story.pendingEvents.includes('goblin_engineer') && story.boxState !== 'unknown' && !story.latchboxRewardClaimed) {
       return this.getEventById('goblin_engineer');
-    }
-    if (story.pendingEvents.includes('hatching_egg') && this.canShowEggHatchingEvent()) {
-      return this.getEventById('hatching_egg');
     }
     if (story.pendingEvents.includes('brass_wizard')) return this.getEventById('brass_wizard');
     if (this.isRobbedTravellerDue()) return this.getEventById('robbed_traveller');
@@ -244,7 +243,7 @@ export class EventScene extends Phaser.Scene {
     if (!story.tollCollectorsSeen) pool.push('toll_collectors');
     if (!story.mirrorSeen) pool.push('mirror');
     if (!story.abandonedCampSeen) pool.push('abandoned_camp');
-    if (!story.oldChuteSeen) pool.push('old_chute');
+    if (!story.oldChuteSeen && !story.crystalLairCleared) pool.push('old_chute');
     if (!story.soupStandSeen) pool.push('soup_stand');
     if (!story.tooNiceRoomSeen) pool.push('too_nice_room');
     if (!story.wellSeen) pool.push('almost_you_well');
@@ -275,7 +274,7 @@ export class EventScene extends Phaser.Scene {
       const requestedId = new URLSearchParams(window.location.search).get('event');
       if (!requestedId) return null;
       const resolvedId = requestedId === 'singing_box' ? 'broken_music_box' : requestedId;
-      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'hatching_egg', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'toll_collectors', 'arm_wrestling', 'old_drill_room', 'something_wicked', 'brass_wizard', 'silk_cocoon_cache', 'abandoned_camp', 'old_chute', 'soup_stand', 'robbed_traveller']);
+      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'toll_collectors', 'arm_wrestling', 'old_drill_room', 'something_wicked', 'brass_wizard', 'silk_cocoon_cache', 'abandoned_camp', 'old_chute', 'soup_stand', 'robbed_traveller']);
       return forceable.has(resolvedId) ? resolvedId : null;
     } catch {
       return null;
@@ -730,7 +729,9 @@ export class EventScene extends Phaser.Scene {
     const slideDistance = 56;
     const container = this.add.container(targetX - slideDistance, 173).setDepth(-2).setAlpha(0);
     const isScreamingHead = this.event?.id === 'screaming_head';
-    const panel = this.add.image(isScreamingHead ? 7 : 0, 0, 'gamingBoardSideSmall', 1).setOrigin(0.5);
+    // The location's own side panel when it has one (content/locations/boardArt.js).
+    const sideArt = boardArtFor(this);
+    const panel = this.add.image(isScreamingHead ? 7 : 0, 0, sideArt.sideSmall, sideArt.sideSmallFrame ?? 1).setOrigin(0.5);
     if (isScreamingHead) {
       // Keep the panel's left edge aligned with normal event art, then extend
       // only its right edge by 14px for the statue's larger native sprite.
@@ -983,11 +984,10 @@ export class EventScene extends Phaser.Scene {
       this._disableEventStation();
     });
 
-    // Background — dim only the top region so the bottom inventory strip shows
-    // through on the dungeon floor (like combat) instead of being covered.
-    // 0x1a1a2e is also GameScene's event backdrop colour (EVENT_BACKDROP_COLOR),
-    // so the dim's lower edge does not show.
-    this.add.rectangle(W / 2, 124, W, 250, 0x2b1f32, 0.92).setDepth(-10);
+    // Let the shared location illustration show around the reading panels.
+    const backdropKey = locationBackdropKey(this.gameState);
+    const hasLocationArt = backdropKey !== 'stoneFloor' && this.textures.exists(backdropKey);
+    this.add.rectangle(W / 2, 124, W, 250, 0x2b1f32, hasLocationArt ? 0.18 : 0.92).setDepth(-10);
     this._createEventIllustrationBoard(this._getEventIllustrationFrame());
     this._createEventBoardBase(this.eventLayout.centerX, 126);
     this._createEventPaper(this.eventLayout.centerX, 126);
@@ -1703,6 +1703,12 @@ export class EventScene extends Phaser.Scene {
       companion.sprite = 'chickCompanionUP'; // upgraded art: crackling storm chick
       this.companionTrainingOutcome = 'You set the Storm Chick card down by the old lightning rods.\n\nThe rods start to hum. A bolt jumps between them and hits the card square on.\n\nIn the picture, the chick puffs up, feathers crackling.';
       this._reward('event.reward.stormHatchling');
+    } else if (companion.id === 'crystalSpiderlingCompanion') {
+      companion.name = 'Crystal Seeker';
+      companion.crystalFindChance = 0.02;
+      companion.upgradedForm = 'crystalSeeker';
+      this.companionTrainingOutcome = 'You set the Crystal Spiderling card down on the cracked floor of the drill room.\n\nThe spiderling climbs off the card, taps along the cracks and pulls a grain of crystal out of one.\n\nIt climbs back into the picture and keeps the grain.';
+      this._reward('event.reward.crystalSeeker');
     } else if (companion.id === 'skeletonWarriorCompanion') {
       companion.name = 'Slimebone Guard';
       companion.guardProtection = Math.max(1, Number(companion.guardProtection) || 0);
@@ -2489,6 +2495,8 @@ export class EventScene extends Phaser.Scene {
 
     this._reliquaryCaseObjects = [];
     this._reliquaryGlass = [];
+    this._reliquaryCards = [];
+    this._reliquaryHoverCard = null;
     inv?.clearDropZones();
 
     offer.forEach((magicType, i) => {
@@ -2497,9 +2505,9 @@ export class EventScene extends Phaser.Scene {
 
       // Card first (behind), then the glass over it.
       if (frame !== null) {
-        this._reliquaryCaseObjects.push(
-          this.add.image(x, cardCenterY, 'glowingMagicCards', frame).setDepth(2)
-        );
+        const card = this.add.image(x, cardCenterY, 'glowingMagicCards', frame).setDepth(2);
+        this._reliquaryCaseObjects.push(card);
+        this._reliquaryCards.push(card);
       }
       const glass = this.add.image(x, centerY, 'glassCase').setDepth(3);
       this._reliquaryCaseObjects.push(glass);
@@ -2528,9 +2536,12 @@ export class EventScene extends Phaser.Scene {
   }
 
   _hideReliquaryCases() {
+    if (this._reliquaryHoverCard) hideItemTooltip(this);
     this._reliquaryCaseObjects?.forEach(obj => obj?.destroy?.());
     this._reliquaryCaseObjects = null;
     this._reliquaryGlass = null;
+    this._reliquaryCards = null;
+    this._reliquaryHoverCard = null;
   }
 
   // Hover highlight without input capture: poll the pointer instead of making
@@ -2549,6 +2560,24 @@ export class EventScene extends Phaser.Scene {
       if (over) obj.setTint(0xffe9a8);
       else obj.clearTint();
     });
+
+    // The glowing cards keep their spell a secret: pointing at one (not
+    // while carrying a weapon) shows only question marks (Taya).
+    const inside = (obj) => {
+      const b = obj.getBounds();
+      return pointer.worldX >= b.left && pointer.worldX <= b.right
+        && pointer.worldY >= b.top && pointer.worldY <= b.bottom;
+    };
+    const hovered = pointer.isDown
+      ? null
+      : (this._reliquaryCards || []).find((card) => card?.scene && inside(card)) || null;
+    if (hovered === this._reliquaryHoverCard) return;
+    this._reliquaryHoverCard = hovered;
+    if (!hovered) {
+      hideItemTooltip(this);
+      return;
+    }
+    showItemTooltip(this, { name: '???' }, hovered.x, hovered.y, TOOLTIP_DEPTH, STATION_TOOLTIP_GAP);
   }
 
   _handleReliquaryOffering(slotIndex, cardData, cardSprite, magicType) {

@@ -46,6 +46,7 @@ import {
 } from '../../content/cards/index.js';
 import { ANTIDOTE_CHANCE, ANTIDOTE_MIN_FLOOR, antidoteCard } from '../../content/cards/potions.js';
 import { getLocationContent } from '../../content/locations/index.js';
+import { EGG_HATCH_FIGHTS } from '../../content/cards/eggHatching.js';
 
 export class CardDataGenerator {
     // Re-export content tables as statics for existing callers.
@@ -810,6 +811,8 @@ export class CardDataGenerator {
             actionAmount: 30,
             sprite: 'egg',
             rarity: 'uncommon',
+            // Hatches into the Chick after this many fights (eggHatching.js).
+            hatchFightsLeft: EGG_HATCH_FIGHTS,
         };
     }
 
@@ -821,6 +824,23 @@ export class CardDataGenerator {
             // Tuned down from 3 → 2: at 3 it was too strong even into act 3.
             attack: 2,
             sprite: 'chickCompanion',
+            rarity: 'rare',
+            unique: true
+        };
+    }
+
+    // Hatched from the Old Chute's crystal spider egg (eggHatching.js). It
+    // does no damage: every other turn it throws a web at an enemy, which
+    // loses its next attack (CombatTurnController.runWebTurn). The drill room
+    // trains it into the Crystal Seeker (EventScene).
+    createCrystalSpiderlingCompanionCard() {
+        return {
+            id: 'crystalSpiderlingCompanion',
+            type: 'companion',
+            name: 'Crystal Spiderling',
+            attack: 0,
+            websEnemies: true,
+            sprite: 'crystalSpiderlingCompanion',
             rarity: 'rare',
             unique: true
         };

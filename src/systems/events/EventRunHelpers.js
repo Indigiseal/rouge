@@ -11,11 +11,11 @@ import { WEAPONS, createWeaponCardData } from '../../content/cards/weapons.js';
 import { ARMORS, createArmorCardData } from '../../content/cards/armor.js';
 import { applyArmorTalentMods } from '../../content/talents/index.js';
 import { revealHiddenPaths } from '../../map/HiddenPaths.js';
-import { SOUP_ROBBERY_SHARE } from '../../content/events/soup_stand.js';
+import { SOUP_ROBBERY_SHARE, SOUP_STAND_PURSE } from '../../content/events/soup_stand.js';
 import { ROBBED_TRAVELLER_AMULET } from '../../content/events/robbed_traveller.js';
+import { EGG_HATCH_FIGHTS } from '../../content/cards/eggHatching.js';
+import { actOffsetForFloor } from '../../content/location-packs/calendar.js';
 
-// How many floors a crystal spider egg takes to hatch (GameScene).
-export const CRYSTAL_EGG_FLOORS = 3;
 
 // The card types a reroll (Screaming Head, brass wizard tray) can hand back.
 const REROLL_CARD_TYPES = ['weapon', 'armor', 'thorns', 'potion', 'food', 'magic'];
@@ -387,39 +387,6 @@ export const EventRunHelpers = {
     return this.getInventorySlots().some(item => item?.id === 'chickCompanion');
   },
 
-  canShowEggHatchingEvent() {
-    this.ensureStoryState();
-    const story = this.gameState.storyRun;
-    return Boolean(
-      story.goblinEngineerResolved
-      && !story.chickHatched
-      && !this.hasChickCompanion()
-      && this.hasEggCard()
-    );
-  },
-
-  queueEggHatchingEvent() {
-    this.ensureStoryState();
-    if (!this.canShowEggHatchingEvent()) return false;
-    this.addPendingEvent('hatching_egg');
-    return true;
-  },
-
-  hatchEggIntoCompanion() {
-    this.ensureStoryState();
-    if (!this.canShowEggHatchingEvent()) return false;
-    const slots = this.getInventorySlots();
-
-    const eggIndex = slots.findIndex(item => item?.id === 'monsterEgg' || item?.name === 'Egg');
-    if (eggIndex < 0) return false;
-
-    slots[eggIndex] = new CardDataGenerator().createChickCompanionCard();
-    this.gameState.inventory = slots;
-    this.gameState.storyRun.chickHatched = true;
-    this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
-    return true;
-  },
-
   damageEquippedArmor(amount = 1) {
     const armor = this.gameState?.equippedArmor;
     if (!armor || !Number.isFinite(amount) || amount <= 0) return false;
@@ -476,7 +443,6 @@ export const EventRunHelpers = {
       story.boxFollowing = false;
       this.expandInventorySlots(1);
       this.boxRepairOutcome = `${prelude}\n\nThe box takes the cog, clicks once, and unfolds a drawer from somewhere no drawer should fit. Then a second. Then a third.\n\nIt climbs into your pack and settles in like it has always been there.\n\nLoyal Latchbox: +1 inventory slot`;
-      this.queueEggHatchingEvent();
       return true;
     }
 
@@ -486,7 +452,6 @@ export const EventRunHelpers = {
     this.gainCoins(12);
     this.gainCrystals(1);
     this.boxRepairOutcome = `${prelude}\n\nThe box swallows the cog. It clicks. It coughs smoke.\n\nThen it plays three flat notes, spits a handful of valuables at your feet, and refuses to look at you.`;
-    this.queueEggHatchingEvent();
     return false;
   },
 
@@ -563,6 +528,7 @@ export const EventRunHelpers = {
   kickSoupPot() {
     this.ensureStoryState();
     this.gameState.storyRun.soupPotKicked = true;
+    this.gainCoins?.(SOUP_STAND_PURSE);
   },
 
   hasAntidote() {
@@ -606,7 +572,13 @@ export const EventRunHelpers = {
     }
   },
 
-  /** Hatches into the Crystal Spiderling once the run is CRYSTAL_EGG_FLOORS deeper. */
+  /** The nest is left to hatch: hatchlings turn up in fights for the rest of this act. */
+  leaveCrystalBrood() {
+    this.ensureStoryState();
+    this.gameState.storyRun.crystalBroodAct = actOffsetForFloor(this.gameState.currentFloor || 1);
+  },
+
+  /** Hatches into the Crystal Spiderling companion after a few fights (eggHatching.js). */
   takeCrystalSpiderEgg() {
     const egg = {
       id: 'crystalSpiderEgg',
@@ -614,9 +586,9 @@ export const EventRunHelpers = {
       name: 'Crystal Spider Egg',
       sprite: 'crystalSpiderEgg',
       rarity: 'rare',
-      description: `Cold, and heavier than it looks. Something inside taps back. Hatches in ${CRYSTAL_EGG_FLOORS} floors.`,
+      description: 'Cold, and heavier than it looks. Something inside taps back.',
       noEffect: true,
-      hatchFloor: (this.gameState?.currentFloor || 1) + CRYSTAL_EGG_FLOORS,
+      hatchFightsLeft: EGG_HATCH_FIGHTS,
     };
     return this._deliverCardReward(egg, egg.name);
   },

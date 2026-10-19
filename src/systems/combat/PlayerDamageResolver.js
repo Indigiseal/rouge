@@ -4,6 +4,7 @@ import { CombatSequencer } from './CombatSequencer.js';
 import { PLAYER_BASE_BLOCK, PLAYER_BASE_DODGE } from '../../content/balance/CombatChance.js';
 import { effectiveArmorDodge, effectiveArmorProtection } from './ArmorMath.js';
 import { fleetfootDodgeChance } from './SigilEffects.js';
+import { PLATE_RANGED_IGNORE_MAX } from '../../content/cards/armor.js';
 
 // An enemy's attack missing the hero, whichever dodge saved them (talent,
 // village Armory, amulet, armour): the same whoosh a hero's swing makes when an
@@ -191,7 +192,8 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         }
 
         // Plate: chance to fully ignore a ranged attack (costs 1 armor pip).
-        const rangedIgnore = gameState.equippedArmor.rangedIgnoreChance || 0;
+        // Capped, so plate from an older save (up to 100%) follows the new rule.
+        const rangedIgnore = Math.min(PLATE_RANGED_IGNORE_MAX, gameState.equippedArmor.rangedIgnoreChance || 0);
         if (rangedIgnore > 0 && attackIsRanged && amount > 0 && Math.random() < rangedIgnore) {
             scene.createFloatingText(
                 scene.playerAvatar.x, scene.playerAvatar.y, 'Deflect!', 0x71b1ae

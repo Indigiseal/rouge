@@ -9,6 +9,8 @@ import { buildLocationCardArt } from '../content/assets/locationCardArt.js';
 import { buildLocationCardTextures } from '../content/assets/locationCards.js';
 import { LOCATION_PACK_LIST } from '../content/location-packs/registry.js';
 import { CRYSTAL_LAIR_SHEET } from '../content/cards/crystalSpiders.js';
+import { MAGIC } from '../content/cards/magic.js';
+import { getGlowCardFrame } from '../content/balance/WeaponEnchants.js';
 
 export class PreloadScene extends Phaser.Scene {
     constructor() {
@@ -91,6 +93,7 @@ export class PreloadScene extends Phaser.Scene {
         // Weapon and armor art arrives as two sheets; give every item its own
         // texture under the key the cards use, before anything draws one.
         splitItemSheets(this);
+        this.buildMagicCardTextures();
 
         // Each location's back, flip and hover, off the shared sheets. Built
         // before the fallbacks below so a missing row falls back to them.
@@ -219,6 +222,15 @@ export class PreloadScene extends Phaser.Scene {
             });
         });
 
+        if (this.textures.exists('hookAnim')) {
+            this.anims.create({
+                key: 'hook_pull',
+                frames: this.anims.generateFrameNumbers('hookAnim', { start: 0, end: 8 }),
+                frameRate: 14,
+                repeat: 0
+            });
+        }
+
         this.anims.create({
             key: 'big_chest_open',
             frames: this.anims.generateFrameNumbers('bigChestAnimation', { start: 0, end: 4 }),
@@ -235,6 +247,20 @@ export class PreloadScene extends Phaser.Scene {
         // The mid-fight sounds load behind the menu (BackgroundAudioScene).
         this.scene.launch('BackgroundAudioScene');
         this.scene.start('MainMenuScene');
+    }
+
+    // Mirror the weapon/armor sheet aliases: the sheet is the editable source,
+    // while existing spell keys keep working in inventory and saved runs.
+    buildMagicCardTextures() {
+        if (!this.textures.exists('magicCards')) return;
+        for (const card of MAGIC) {
+            if (this.textures.exists(card.sprite)) continue;
+            const frame = getGlowCardFrame(card.magicType);
+            if (!Number.isInteger(frame)) continue;
+            const texture = this.textures.createCanvas(card.sprite, 52, 70);
+            texture.drawFrame('magicCards', frame, 0, 0);
+            texture.refresh();
+        }
     }
 
     installCrispTextFactory() {

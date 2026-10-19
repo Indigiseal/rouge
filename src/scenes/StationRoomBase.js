@@ -18,6 +18,7 @@ import { bindCardRiders, cardRiders, pinRider } from '../ui/CardRiders.js';
 import { flyCurrencyGain } from '../ui/CurrencyFlight.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 import { cameraWorldSize } from '../config/renderScale.js';
+import { boardArtFor } from '../content/locations/boardArt.js';
 
 // The mark after a price: a coin for coins, a diamond for crystals. Both 7x7,
 // drawn row by row from Taya's assets/art/priceExample.png (one span of filled
@@ -624,7 +625,9 @@ export class StationRoomBase extends Phaser.Scene {
         const targetY = y - 5;
         const slideDistance = 56;
         const container = targetScene.add.container(targetX - slideDistance, targetY).setDepth(4).setAlpha(0);
-        container.add(targetScene.add.image(0, 0, 'gamingBoardSideSmall', boardFrame).setOrigin(0.5));
+        // The location's own side panel when it has one (content/locations/boardArt.js).
+        const sideArt = boardArtFor(targetScene, this.gameState);
+        container.add(targetScene.add.image(0, 0, sideArt.sideSmall, sideArt.sideSmallFrame ?? boardFrame).setOrigin(0.5));
 
         if (sellerKey && targetScene.textures.exists(sellerKey)) {
             // Bottom-centre origin on whole pixels (the art is 56 wide).

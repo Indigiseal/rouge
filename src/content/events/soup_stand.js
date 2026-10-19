@@ -4,10 +4,13 @@
 // Eating the soup poisons the player and costs half their coins. Eating it or
 // walking past both leave the trap set, and a few floors on the player meets
 // the next traveller who fell for it (robbed_traveller.js). Kicking the pot
-// over ruins the trap, so that traveller never comes.
+// over ruins the trap, so that traveller never comes, and turns up the purse
+// the robbers hid under the stand.
 
 // Share of the player's coins the robbers take.
 export const SOUP_ROBBERY_SHARE = 0.5;
+// Coins in the robbers' purse under the stand (before gold scaling).
+export const SOUP_STAND_PURSE = 15;
 
 export default {
   id: 'soup_stand',
@@ -37,7 +40,8 @@ export default {
       action: (gs, scene) => scene.kickSoupPot(),
       outcome:
         'You kick the pot off the stand. Soup runs across the stones, and where it pools, it fizzes.\n\n'
-        + 'You keep walking.',
+        + 'The stand tips over with it. Nailed to the underside is a purse: whatever the last few customers were carrying.\n\n'
+        + 'You take it and keep walking.',
     },
   ],
 };

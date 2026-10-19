@@ -26,6 +26,15 @@ export const SHOP_ITEM_RARITY_MULT = Object.freeze({
 export const SHOP_ITEM_BASE = 5;
 export const SHOP_ITEM_FLOOR_MULT = 2;
 export const SHOP_MAGIC_MULT = 1.2;
+/**
+ * Spells worth more than their rarity says. Restoration refills HP and action
+ * points both, so it costs more than a Greater Healing Potion (Taya): at
+ * x1.5 on top of uncommon and magic it lands at ~2.7x base, above the
+ * potion's 2x.
+ */
+export const SHOP_MAGIC_TYPE_MULT = Object.freeze({
+  restoration: 1.5,
+});
 export const SHOP_ARTIFACT_MULT = 2;
 export const SHOP_SELL_RATIO = 0.4;
 export const SHOP_ARMOR_PROTECTION_MULT = 2;
@@ -70,7 +79,7 @@ export function shopItemBuyPrice(item, floor, { isArtifact = false } = {}) {
   } else if (item.type === 'thorns') {
     basePrice += (item.thornDamage || 0) * SHOP_THORNS_DAMAGE_MULT;
   } else if (item.type === 'magic') {
-    basePrice *= SHOP_MAGIC_MULT;
+    basePrice *= SHOP_MAGIC_MULT * (SHOP_MAGIC_TYPE_MULT[item.magicType] || 1);
   }
 
   if (isArtifact) {

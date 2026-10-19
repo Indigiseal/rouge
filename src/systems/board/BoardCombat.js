@@ -288,6 +288,7 @@ function applyShockStatus(card, turns = 1) {
 function attachFrozenFrame(card) {
   if (!card?.sprite || (card.data?.frozen || 0) <= 0) return;
   if ((card.data?.shockedTurns || 0) > 0) return;
+  if ((card.data?.webbedTurns || 0) > 0) return;
   const textureKey = card.data?.type === 'boss' && this.scene.textures?.exists?.('bossFrozenFrame')
     ? 'bossFrozenFrame'
     : 'frozenFrame';

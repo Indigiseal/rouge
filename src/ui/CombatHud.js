@@ -193,6 +193,7 @@ export const CombatHud = {
         if (devToolsEnabled()) {
             this.createDebugVictoryButton(TOP_HUD_DEPTH);
             this.createDebugItemButton(TOP_HUD_DEPTH);
+            this.createDebugRevealButton(TOP_HUD_DEPTH);
         }
 
         // Also add ESC key binding for pause
@@ -215,6 +216,38 @@ export const CombatHud = {
             fill: '#fef0cf',
             fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
+    },
+
+    // Developer: turn every face-down card on the board over, a beat apart,
+    // as free reveals (no AP, the enemies do not answer). Mimics show too.
+    createDebugRevealButton(TOP_HUD_DEPTH) {
+        const button = this.add.rectangle(224, 20, 58, 18, 0x4a5a3a, 0.9)
+            .setStrokeStyle(1, 0x9aa86a)
+            .setDepth(TOP_HUD_DEPTH)
+            .on('pointerover', () => button.setFillStyle(0x5d7048, 1))
+            .on('pointerout', () => button.setFillStyle(0x4a5a3a, 0.9))
+            .on('pointerdown', () => {
+                SoundHelper.playVariant(this, 'button_click', 0.5);
+                this.debugRevealAllCards();
+            });
+        const label = this.add.text(224, 20, 'OPEN', {
+            fontSize: '9px', fill: '#fef0cf', fontFamily: '"HoMM Pixel"'
+        }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
+        this.debugRevealButton = button;
+        this.debugRevealButtonText = label;
+    },
+
+    debugRevealAllCards() {
+        const cardSystem = this.cardSystem;
+        const board = cardSystem?.boardCards || [];
+        let order = 0;
+        board.forEach((card, index) => {
+            if (!card || card.revealed || !card.data) return;
+            this.time.delayedCall(order++ * 60, () => {
+                if (this._transitioning || cardSystem.boardCards[index] !== card || card.revealed) return;
+                cardSystem.revealCard(index, true);
+            });
+        });
     },
 
     createDebugItemButton(TOP_HUD_DEPTH) {
@@ -275,6 +308,12 @@ export const CombatHud = {
             const skeleton = generator.createSkeletonWarriorCompanionCard();
             categories.other.push({ label: chick.name, card: chick });
             categories.other.push({ label: skeleton.name, card: skeleton });
+            const spiderling = generator.createCrystalSpiderlingCompanionCard();
+            categories.other.push({ label: spiderling.name, card: spiderling });
+            categories.other.push({
+                label: 'Crystal Seeker',
+                card: { ...spiderling, name: 'Crystal Seeker', crystalFindChance: 0.02, upgradedForm: 'crystalSeeker', trained: true },
+            });
             categories.other.push({
                 label: 'Storm Hatchling',
                 card: { ...chick, name: 'Storm Hatchling', sprite: 'chickCompanionUP', shockChance: 0.2, upgradedForm: 'stormHatchling', trained: true, attack: chick.attack + 1 },
@@ -521,6 +560,13 @@ export const CombatHud = {
             this.debugVictoryButton.setInteractive({ useHandCursor: true });
         } else {
             this.debugVictoryButton.disableInteractive();
+        }
+        // OPEN shows with WIN: in a fight that is still on.
+        if (this.debugRevealButton) {
+            this.debugRevealButton.setVisible(visible);
+            this.debugRevealButtonText?.setVisible(visible);
+            if (visible) this.debugRevealButton.setInteractive({ useHandCursor: true });
+            else this.debugRevealButton.disableInteractive();
         }
     },
 

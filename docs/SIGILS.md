@@ -146,7 +146,7 @@ Also shown as text today, could get marks: **Veteran** (+15% HP/ATK),
 | Sigil | Rule |
 |---|---|
 | **Hunter** | ×1.5 against the enemy you hit last |
-| **Combo** | ×1.5 if your previous card carried the same sigil |
+| **Combo** | ×1.5 if your previous attack used a different weapon of the same type; the previous weapon does not need Combo |
 | **Tandem** | ×1.5 if your previous attack did the same damage |
 | **Packrat** | +1 damage per empty bag slot |
 | **Riposte** | After you block a hit (armor or luck), this weapon's next hit +2; spent on that swing, cleared each floor |

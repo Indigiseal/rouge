@@ -21,8 +21,9 @@ import { createSigilRoom } from './SigilRoom.js';
 // The chest stands in the middle of the room and is opened by clicking it;
 // what it gives sits on top of it, with the take hint underneath.
 const CHEST_X = 320;
-const CHEST_Y = 130;
-const UNDER_CHEST_Y = 205;
+// Keep the chest, its loot and the take hint together.
+const CHEST_Y = 220;
+const UNDER_CHEST_Y = 295;
 // Selection corners on hover hug the chest art (98x98 frame, the chest
 // itself about 95x88 in it).
 const CHEST_CORNER_OFFSET = { x: 41, y: 38 };
@@ -90,12 +91,16 @@ export class TreasureScene extends StationRoomBase {
       fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5);
 
-    const chestTexture = this.textures.exists('bigChestAnimation') ? 'bigChestAnimation' : 'cardBack';
+    // The map's upgraded chest node enters as 'good'; both richer chest
+    // rooms use the elite art while keeping their own reward/key rules.
+    const roomChestTexture = ['elite', 'good'].includes(this.rewardMode) ? 'eliteChest' : 'treasureChest';
+    const chestTexture = this.textures.exists(roomChestTexture) ? roomChestTexture :
+      (this.textures.exists('bigChestAnimation') ? 'bigChestAnimation' : 'cardBack');
     const chest = this.add.sprite(CHEST_X, CHEST_Y, chestTexture, 0).setInteractive({ useHandCursor: true });
     // A sprite's hit area is measured from its frame's top-left corner, not
     // its centre: the old padded box was set from the centre, so it sat up and
     // left and only covered part of the chest. This is the chest art itself.
-    if (chestTexture === 'bigChestAnimation') chest.input.hitArea.setTo(1, 6, 95, 88);
+    if (chestTexture !== 'cardBack') chest.input.hitArea.setTo(1, 6, 95, 88);
     // Hover: the selection corners every pickable thing uses (map nodes,
     // village buildings), and the hover light every button has.
     this.chestCorners = createSelectionCorners(
@@ -184,7 +189,10 @@ export class TreasureScene extends StationRoomBase {
     setHoverLight(chest, false);
     SoundHelper.playSound(this, 'chest_open', 0.5);
 
-    if (chest.texture?.key === 'bigChestAnimation' && this.anims.exists('big_chest_open')) {
+    if (['treasureChest', 'eliteChest'].includes(chest.texture?.key)) {
+      chest.setFrame(1);
+      this.time.delayedCall(200, onComplete);
+    } else if (chest.texture?.key === 'bigChestAnimation' && this.anims.exists('big_chest_open')) {
       chest.once('animationcomplete-big_chest_open', onComplete);
       chest.play('big_chest_open');
     } else {

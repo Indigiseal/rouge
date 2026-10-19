@@ -237,8 +237,11 @@ export const InventorySlotRenderer = {
         cardSprite.on('dragstart', () => {
             if (!cardSprite.scene) return;
             // Silkslinger web: card cannot be dragged while locked.
+            // Refused without switching dragging off mid-drag (Phaser cannot
+            // end such a drag cleanly): the drag is ignored and the card put
+            // back on release.
             if (cardSprite.getData('webbedLocked') || (this.slots[slotIndex]?.webbedTurns > 0)) {
-                this.scene.input?.setDraggable?.(cardSprite, false);
+                cardSprite.setData('dragRefused', true);
                 this.scene.createFloatingText?.(cardSprite.x, cardSprite.y - 18, handLockOf(this.slots[slotIndex]).text, 0xd6c2c1);
                 return;
             }
@@ -325,7 +328,7 @@ export const InventorySlotRenderer = {
         });
         
         cardSprite.on('drag', (pointer, dragX, dragY) => {
-            if (!cardSprite.scene) return;
+            if (!cardSprite.scene || cardSprite.getData('dragRefused')) return;
             
             // Round to whole pixels: the pip container's children are pixel-art
             // sprites, and at fractional positions roundPixels rounds each pip
@@ -352,6 +355,11 @@ export const InventorySlotRenderer = {
         });
 
         cardSprite.on('dragend', () => {
+            if (cardSprite.getData('dragRefused')) {
+                cardSprite.setData('dragRefused', false);
+                this.relockWebbedCards?.();
+                return;
+            }
             this.onCardDrag?.(-1, null);
             this.finishInventoryCardDrag(slotIndex, cardSprite);
         });

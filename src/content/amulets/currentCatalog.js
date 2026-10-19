@@ -182,7 +182,7 @@ export function buildCurrentAmuletDefinitions(mgr) {
             vacancyStep: {
                 ...getAmuletAtlasPresentation('vacancyStep'),
                 name: 'Close Order',
-                description: 'The first time two or more enemies are revealed they swap with face-down cards to stand as row or column neighbors.',
+                description: 'The first time revealed enemies stand apart, a hook pulls them together: they swap with face-down cards to stand as neighbors.',
                 rarity: 'rare',
                 strategyCluster: true,
             },
@@ -387,8 +387,9 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 critMultiplier: 1.8,
             },
 
-            // Not in the drop catalog: the Old Chute hands both out. The shard
-            // is the mother's leg; the spiderling hatches from a taken egg.
+            // Not in the drop catalog: the Old Chute hands out the shard (the
+            // mother's leg). The spiderling amulet is kept for older saves;
+            // the egg now hatches into the Crystal Spiderling companion.
             spiderCrystalShard: {
                 name: 'Spider Crystal Shard',
                 sprite: 'spiderCrystalShardIcon',

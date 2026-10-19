@@ -16,6 +16,7 @@ export const STATUS_OVERLAY_ALPHA = 0.35;
 // ones; poison, the most common, comes last.
 export const STATUS_COLORS = Object.freeze([
     { id: 'charmed',  color: 0xa83c69, enemy: (d) => !!d.charmed },
+    { id: 'webbed',   color: 0xd6c2c1, enemy: (d) => (d.webbedTurns || 0) > 0 },
     { id: 'frozen',   color: 0x71b1ae, enemy: (d) => (d.frozen || 0) > 0 },
     { id: 'shocked',  color: 0xfbad19, enemy: (d) => (d.shockedTurns || 0) > 0 },
     { id: 'stunned',  color: 0xafafa2, enemy: (d) => !!d.dazed, player: (gs) => (gs.playerStunnedTurns || 0) > 0 },

@@ -16,6 +16,13 @@ import { SIGIL_MULTIPLIER, getSigil, sigilLevel } from '../../content/sigils/sig
 const BOSS_SUMMON_PITY = 4;
 import { ENEMY_BASE_CRIT, ENEMY_CRIT_MULT } from '../../content/balance/CombatChance.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
+import { showBossAttackFrame } from '../../content/cards/bossAttackFrames.js';
+
+// The Crystal Spiderling webs instead of hitting (older saves carry the old
+// card, which had damage, so the id counts too).
+function isWebSpinner(companion) {
+    return Boolean(companion?.websEnemies || companion?.id === 'crystalSpiderlingCompanion');
+}
 
 const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
 // Gap between consecutive enemies' attacks. Derived from the sequencer's last
@@ -406,13 +413,18 @@ export class CombatTurnController {
         // Process frozen duration BEFORE checking if enemy can attack
         if (card.data.frozen && card.data.frozen > 0) {
             const wasShocked = (card.data.shockedTurns || 0) > 0;
+            const wasWebbed = (card.data.webbedTurns || 0) > 0;
             card.data.frozen--;
             if (wasShocked) card.data.shockedTurns--;
+            if (wasWebbed) card.data.webbedTurns--;
 
             if (card.data.frozen === 0 && card.sprite) {
                 card.sprite.clearTint();
                 scene.cardSystem.removeFrozenFrame(card);
-                if (wasShocked) {
+                if (wasWebbed) {
+                    card.data.webbedTurns = 0;
+                    scene.createFloatingText(card.sprite.x, card.sprite.y, 'Broke free!', 0xd6c2c1);
+                } else if (wasShocked) {
                     card.shockMarker?.destroy?.();
                     card.shockMarker = null;
                     card.data.shockedTurns = 0;
@@ -588,6 +600,8 @@ export class CombatTurnController {
             SoundHelper.playSound(scene, 'armor_broken', 0.5);
         }
 
+        // A boss with an attack frame strikes in that pose for a moment.
+        if (card.data?.type === 'boss') showBossAttackFrame(scene, card);
         scene.createDamageEffect(card.sprite.x, card.sprite.y);
         // The enemy's blow: the player's weapon slash, upside down, so it
         // reads as a strike coming back down at the hero.
@@ -1013,6 +1027,7 @@ export class CombatTurnController {
     }
 
     runCompanionTurn(entry, onComplete = () => {}) {
+        if (isWebSpinner(entry?.companion)) return this.runWebTurn(entry, onComplete);
         const scene = this.scene;
         const target = this.selectCompanionTarget(entry?.companion);
         if (!entry || !target || scene._transitioning || scene.gameState.playerHealth <= 0) {
@@ -1054,18 +1069,34 @@ export class CombatTurnController {
                     // variants; the chick takes the lightning-gem zap. Both ride
                     // the 'gem' beat damageGemTarget uses below, so the sound and
                     // the number land together.
-                    CombatSequencer.playVariant(
-                        scene, 'gem',
-                        isMelee ? 'enemy_hit' : 'lightning_zap',
-                        COMPANION_SFX_VOLUME
-                    );
+                    // A companion can name its own strike (the Crystal
+                    // Spiderling's shard): label, colour and sound, no zap.
+                    const own = entry.companion.strikeLabel;
+                    if (own && entry.companion.strikeSound) {
+                        CombatSequencer.playSound(scene, 'gem', entry.companion.strikeSound, COMPANION_SFX_VOLUME);
+                    } else {
+                        CombatSequencer.playVariant(
+                            scene, 'gem',
+                            isMelee ? 'enemy_hit' : 'lightning_zap',
+                            COMPANION_SFX_VOLUME
+                        );
+                    }
                     scene.cardSystem.damageGemTarget(
                         target.index,
                         entry.companion.attack || 2,
-                        isMelee ? 'Skeleton Slash' : 'Chick Zap',
-                        isMelee ? 0xd6c7b3 : 0xffcf7f,
-                        isMelee ? null : 'lightning'
+                        own || (isMelee ? 'Skeleton Slash' : 'Chick Zap'),
+                        entry.companion.strikeColor ?? (isMelee ? 0xd6c7b3 : 0xffcf7f),
+                        (own || isMelee) ? null : 'lightning'
                     );
+                    // Crystal Seeker: a hit may turn up a crystal.
+                    if ((entry.companion.crystalFindChance || 0) > 0
+                        && Math.random() < entry.companion.crystalFindChance) {
+                        const sprite = target.card?.sprite;
+                        scene.cardSystem.playKillLootPickup?.(
+                            sprite?.x ?? 320, sprite?.y ?? 160,
+                            { kind: 'crystal', amount: 1 }, entry.companion.name || 'Crystal Seeker'
+                        );
+                    }
                     if ((entry.companion.shockChance || 0) > 0
                         && Math.random() < entry.companion.shockChance) {
                         const shockedTarget = scene.cardSystem.boardCards[target.index];
@@ -1079,6 +1110,68 @@ export class CombatTurnController {
             this.enemyTurnTimers.push(finishTimer);
         });
         this.enemyTurnTimers.push(attackTimer);
+        return true;
+    }
+
+    // The Crystal Spiderling's turn: every other turn it throws a web at an
+    // enemy, and that enemy loses its next attack. The turn between, it spins.
+    // A boss is too big to hold. The Crystal Seeker's web may turn up a crystal.
+    runWebTurn(entry, onComplete = () => {}) {
+        const scene = this.scene;
+        const companion = entry?.companion;
+        const slotCard = scene.inventorySystem?.slotSprites?.[entry?.index]?.card;
+        const done = (ms = 220) => {
+            const timer = scene.time.delayedCall(ms, onComplete);
+            this.enemyTurnTimers.push(timer);
+        };
+        if (!companion || scene._transitioning || scene.gameState.playerHealth <= 0) {
+            onComplete();
+            return false;
+        }
+        if (companion.webbedTurns > 0) {
+            scene.createFloatingText(slotCard?.x ?? 320, (slotCard?.y ?? 300) - 18, handLockOf(companion).text, 0xd6c2c1);
+            done();
+            return false;
+        }
+        if ((companion.webSpinTurns || 0) > 0) {
+            companion.webSpinTurns -= 1;
+            scene.createFloatingText(slotCard?.x ?? 320, (slotCard?.y ?? 300) - 18, 'Spinning...', 0xd6c2c1);
+            done();
+            return false;
+        }
+        const targets = (scene.cardSystem?.boardCards || [])
+            .map((card, index) => ({ card, index }))
+            .filter(({ card }) => (
+                card?.revealed && card.sprite && scene.isEnemyCard(card)
+                && (card.data?.health || 0) > 0 && !(card.data?.frozen > 0)
+                && card.data?.type !== 'boss' && !card.data?.isCocoon
+            ));
+        if (!targets.length) {
+            onComplete();
+            return false;
+        }
+        // The hardest hitter is the one worth holding.
+        const target = targets.reduce((best, next) => (
+            (next.card.data.attack || 0) > (best.card.data.attack || 0) ? next : best
+        ));
+        companion.webSpinTurns = 1;
+        scene.markCompanionParticipated(companion);
+        scene.inventorySystem?.playSlotStrikeAnimation(entry.index);
+        this.throwWebAt(slotCard, target.card.sprite, () => {
+            const card = scene.cardSystem.boardCards[target.index];
+            if (card === target.card && (card.data?.health || 0) > 0 && !(card.data.frozen > 0)) {
+                card.data.frozen = 1;
+                card.data.webbedTurns = 1;
+                scene.createFloatingText(card.sprite.x, card.sprite.y - 18, 'Webbed!', 0xd6c2c1);
+                SoundHelper.playSound(scene, 'card_place', 0.4);
+                if ((companion.crystalFindChance || 0) > 0 && Math.random() < companion.crystalFindChance) {
+                    scene.cardSystem.playKillLootPickup?.(
+                        card.sprite.x, card.sprite.y, { kind: 'crystal', amount: 1 }, companion.name || 'Crystal Seeker'
+                    );
+                }
+            }
+            done();
+        });
         return true;
     }
 
@@ -1133,7 +1226,7 @@ export class CombatTurnController {
             fromX: fromSprite.x,
             fromY: fromSprite.y,
             toX: toSprite.x,
-            toY: toSprite.y,
+            toY: toSprite.y + (lock.overlayDY || 0),
             arc: WEB_THROW_ARC,
             duration: WEB_THROW_MS,
             ease: 'Sine.easeIn',
@@ -1147,10 +1240,14 @@ export class CombatTurnController {
     applyWebHand(fromCard = null) {
         const scene = this.scene;
         const slots = scene.inventorySystem?.slots || scene.gameState?.inventory || [];
-        const candidates = [];
+        // Not the card in the player's hand, while there is any other: a web
+        // landing on a card mid-drag left it stuck to the cursor.
+        const held = scene.inventorySystem?._liveDrag?.slotIndex;
+        const all = [];
         for (let i = 0; i < slots.length; i++) {
-            if (slots[i]) candidates.push(i);
+            if (slots[i]) all.push(i);
         }
+        const candidates = all.length > 1 ? all.filter((i) => i !== held) : all;
         if (candidates.length === 0) return;
 
         const slotIndex = candidates[Math.floor(Math.random() * candidates.length)];
@@ -1158,6 +1255,9 @@ export class CombatTurnController {
         const kind = handLockKindOf(fromCard?.data);
         item.webbedTurns = 1;
         item.webbedKind = kind;
+        // Locked from the throw on, so it cannot be picked up while the web
+        // is in the air (if it is the held card, once it is let go).
+        scene.inventorySystem?.setCardWebbedInteractive?.(slotIndex, true);
 
         const slotSprite = scene.inventorySystem?.slotSprites?.[slotIndex];
         this.throwWebAt(fromCard?.sprite, slotSprite?.card, () => {

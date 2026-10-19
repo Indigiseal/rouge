@@ -26,6 +26,8 @@ export const CRYSTAL_SPIDER_DEFS = Object.freeze({
     abilities: [{ type: 'poison', damage: 3, turns: 3, stackable: true }],
     // She grows angrier with every bite (enemy Honed works today).
     sigils: [{ id: 'honed' }],
+    // As an elite she calls her brood, not another mother (FloorSpawner.summonForElite).
+    summons: 'crystalHatchling',
     crystalSpider: true,
   }),
   crystalHatchling: Object.freeze({

@@ -6,14 +6,24 @@ import {
 import {
     pickFirstRangedMarchPair,
     pickScoutTarget,
+    planClusterSwaps,
     STRATEGY_CLUSTER_DEBOUNCE_MS,
 } from '../content/amulets/strategy.js';
+
+// Close Order's hook (assets/art/hookAnim.png): where in a 96x170 frame the
+// hook catches, so that point lands on the enemies it pulls together, and the
+// frame it catches on, when they move.
+const HOOK_CATCH_X = 48;
+const HOOK_CATCH_Y = 30;
+const HOOK_CATCH_FRAME = 6;
+const HOOK_SCALE = 2;
 import { getEnemyHitAttack } from '../content/combat/enemyAttack.js';
 import { depthScaled } from '../content/balance/DepthScaling.js';
 import { areAmuletsDisabled } from '../config/TestOptions.js';
 import { translateItemName } from '../i18n/i18n.js';
 import { scaleGoldReward } from '../content/economy/gold.js';
 import { noteDiscovered } from '../content/codex/Discoveries.js';
+import { SoundHelper } from '../audio/SoundHelper.js';
 
 export class AmuletManager {
     constructor(scene) {
@@ -890,20 +900,72 @@ export class AmuletManager {
         if (this.gameState.strategyClusterUsed) return;
         const flags = this.getStrategyFlags();
         if (!flags.cluster) return;
-        const moved = !!this.scene.cardSystem?.applyStrategyCluster?.();
-        const revealedEnemies = (this.scene.cardSystem?.boardCards || []).filter((card) => (
-            card?.revealed && (card.data?.type === 'enemy' || card.data?.type === 'eliteEnemy')
-        ));
-        if (revealedEnemies.length >= 2) this.gameState.strategyClusterUsed = true;
-        if (moved && this.scene.createFloatingText) {
-            const avatar = this.scene.playerAvatar;
-            this.scene.createFloatingText(
-                avatar?.x ?? 320,
-                (avatar?.y ?? 180) - 16,
-                'Close ranks!',
-                0xc8ab78
-            );
-        }
+        const cardSystem = this.scene.cardSystem;
+        const board = cardSystem?.boardCards || [];
+
+        const closeRanks = () => {
+            if (this.scene._transitioning || this.scene.enemiesCleared) return;
+            const moved = !!this.scene.cardSystem?.applyStrategyCluster?.();
+            if (moved && this.scene.createFloatingText) {
+                const avatar = this.scene.playerAvatar;
+                this.scene.createFloatingText(
+                    avatar?.x ?? 320,
+                    (avatar?.y ?? 180) - 16,
+                    'Close ranks!',
+                    0xc8ab78
+                );
+            }
+        };
+
+        // It is spent only when it pulls enemies together. Revealed enemies
+        // that already stand side by side leave it waiting for the next
+        // reveal; it used to be spent then, unseen, which was most rooms.
+        // The hook goes out first, at the cards about to move, and they move
+        // when it catches.
+        const swaps = planClusterSwaps(board);
+        if (!swaps.length) return;
+        this.gameState.strategyClusterUsed = true;
+        if (!this.playClusterHook(swaps.flat(), closeRanks)) closeRanks();
+    }
+
+    // Close Order's grappling hook. Returns false when it cannot play (no
+    // sheet, no animation), and the cards then move at once.
+    playClusterHook(cards, onCatch) {
+        const scene = this.scene;
+        if (!scene?.add?.sprite || !scene.anims?.exists?.('hook_pull')) return false;
+        const spots = cards
+            .map((card) => ({ x: card.restX ?? card.sprite?.x, y: card.restY ?? card.sprite?.y }))
+            .filter(({ x, y }) => Number.isFinite(x) && Number.isFinite(y));
+        if (!spots.length) return false;
+        const x = Math.round(spots.reduce((sum, p) => sum + p.x, 0) / spots.length);
+        const y = Math.round(spots.reduce((sum, p) => sum + p.y, 0) / spots.length);
+
+        // Twice its pixel size (Taya): a whole number, so the art stays crisp.
+        const hook = scene.add.sprite(x, y, 'hookAnim', 0)
+            .setOrigin(HOOK_CATCH_X / 96, HOOK_CATCH_Y / 170)
+            .setScale(HOOK_SCALE)
+            .setDepth(500);
+        let caught = false;
+        const fire = () => {
+            if (caught) return;
+            caught = true;
+            onCatch();
+        };
+        hook.on('animationupdate', (anim, frame) => {
+            if (Number(frame?.textureFrame) >= HOOK_CATCH_FRAME) fire();
+        });
+        hook.once('animationcomplete', () => {
+            fire();
+            hook.destroy();
+        });
+        // Safety: a missed event never leaves the hook up or the cards unmoved.
+        scene.time.delayedCall(1500, () => {
+            fire();
+            if (hook.active) hook.destroy();
+        });
+        SoundHelper.playSound?.(scene, 'card_place', 0.4);
+        hook.play('hook_pull');
+        return true;
     }
 
     canUseStrategyDetour() {

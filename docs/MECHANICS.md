@@ -112,7 +112,7 @@ the current act; after that room the run continues from that floor.
 
 ## Event Sequences (any-location)
 - Optional lanes that are **not owned by a location**. Code lives in `src/content/events/`; the player's road must never soft-lock them.
-- **Music Box** (`broken_music_box` → `monster_bird_nest` → `goblin_engineer` → optional `hatching_egg`):
+- **Music Box** (`broken_music_box` → `monster_bird_nest` → `goblin_engineer`). The nest's egg, like the Old Chute's crystal egg, hatches by itself after 3 cleared fight rooms (`content/cards/eggHatching.js`): Chick from the egg, Crystal Spiderling companion from the crystal egg. Hovering the egg shows the fights left.
   - Opener while `boxState === 'unknown'` (first event of a run that has not met the box).
   - **Force it open** → lock-wafer overlay (`MusicBoxLockMinigame`): brief with example wafers, then 10 wafers (4 complementary pairs + 1 detonator pair). Seat all 4 safe pairs to succeed (`opened`, +1 crystal, box follows). Matching the detonators detonates (`boxState: exploded`, **35 HP**). After each attempt, three face-down wafers rotate. Nest then hides the cog prize (egg still available); engineer hides all repair (walk away).
   - **Open it carefully** (key card or Skeleton Key) → extract the charge, crystal cog crumbles (+1 crystal), missing repair cog, legs unfold, box follows.

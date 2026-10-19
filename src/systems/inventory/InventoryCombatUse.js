@@ -291,6 +291,10 @@ export const InventoryCombatUse = {
                 this.scene.updateUI();
                 return;
             }
+            // The spent spell rises and burns out, the way a broken weapon
+            // does, before it's removed.
+            this.scene.cardSystem?.playCardBreakEffect?.(cardSprite);
+
             // Clean up ALL sprites properly
             this.cleanupCardSprites(slotIndex, cardSprite);
             cardSprite.destroy();
@@ -1002,6 +1006,12 @@ export const InventoryCombatUse = {
                 oldInfoText.destroy();
             }
         }
+
+        // The swing can rebuild the bag (a kill reward, a pickup, a sigil),
+        // which replaces this card with a fresh one that has its own pips.
+        // Pips built for the old, destroyed card would have nothing to follow
+        // and stay on the board where it was released.
+        if (!cardSprite?.scene) return;
 
         const cardWithSprite = { sprite: cardSprite, data: weapon, infoText: null };
         this.scene.cardSystem.createCardInfoText(cardWithSprite);

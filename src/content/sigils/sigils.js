@@ -50,7 +50,7 @@ export const SIGILS = Object.freeze({
     smoke:       { name: 'Smoke',       frame: 36, side: 'player', player: 'a kill hides another enemy', works: true },
     tempered:    { name: 'Tempered',    frame: 37, side: 'player', player: '30% chance this card keeps its pip', works: true },
     hunter:      { name: 'Hunter',      frame: 38, side: 'player', player: 'x1.5 against the enemy you hit last', works: true },
-    combo:       { name: 'Combo',       frame: 39, side: 'player', player: 'x1.5 if your previous weapon also had Combo', works: true },
+    combo:       { name: 'Combo',       frame: 39, side: 'player', player: 'x1.5 if your previous attack used a different weapon of the same type', works: true },
     tandem:      { name: 'Tandem',      frame: 40, side: 'player', player: 'x1.5 if your previous attack hit for the same damage', works: true },
     packrat:     { name: 'Packrat',     frame: 41, side: 'player', player: '+1 damage per empty bag slot', works: true },
     summon:      { name: 'Summon',      frame: 42, side: 'enemy',  enemy: 'calls a minion to fight beside it' },

@@ -152,7 +152,7 @@ export const BOARD_PANEL_SLICE = { left: 194, right: 127, top: 181, bottom: 16 }
  */
 export function createNineSlicePanel(scene, width, height, opts = {}) {
     const { key, slice } = opts;
-    if (!scene?.add?.tileSprite || !key || !slice) return null;
+    if (!scene?.add?.image || !key || !slice) return null;
 
     // Even dimensions only: the pieces are laid out from -w/2, and an odd size
     // would put every one of them on a half pixel.
@@ -172,16 +172,15 @@ export function createNineSlicePanel(scene, width, height, opts = {}) {
         const col = i % 3;
         const row = Math.floor(i / 3);
         const frame = `${p}${name}`;
-        // Corners keep their exact pixels; edges and centre repeat theirs.
-        // Tiling rather than stretching is the house habit (see the note at the
-        // top of this file) and costs nothing here, because both bands are a
-        // single repeated row/column of flat colour either way.
-        if (col !== 1 && row !== 1) {
-            return scene.add.image(xs[col], ys[row], key, frame).setOrigin(0, 0);
-        }
+        // These bands contain identical source rows/columns, so stretching
+        // preserves their pixels. TileSprite resamples non-power-of-two frames
+        // into a power-of-two repeat texture in WebGL, shifting border detail
+        // at the seams even with nearest filtering. Images sample the original
+        // frame directly. Corners retain their authored dimensions.
         return scene.add
-            .tileSprite(xs[col], ys[row], ws[col], hs[row], key, frame)
-            .setOrigin(0, 0);
+            .image(xs[col], ys[row], key, frame)
+            .setOrigin(0, 0)
+            .setDisplaySize(ws[col], hs[row]);
     });
 
     const container = scene.add.container(0, 0, pieces);

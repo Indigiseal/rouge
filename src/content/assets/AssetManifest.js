@@ -7,7 +7,9 @@
 import { ENEMY_DEATH_SOUND_ASSETS } from '../audio/enemyDeathSounds.js';
 import { ITEM_SHEETS } from './itemSheets.js';
 import { ARMOR_EQUIP_SOUND_ASSETS } from '../audio/armorSounds.js';
-import { SIGIL_STATUES } from '../sigils/sigilStatues.js';
+import { SIGIL_ROOM_FLOOR, SIGIL_STAMPS } from '../sigils/sigilStamps.js';
+import { LOCATION_BOARD_FILES } from '../locations/boardArt.js';
+import { BOSS_ATTACK_FRAME_FILES } from '../cards/bossAttackFrames.js';
 
 /** @type {AssetEntry[]} */
 export const ASSET_MANIFEST = [
@@ -15,6 +17,13 @@ export const ASSET_MANIFEST = [
     // per item (sword_C, chain_L...) at boot (content/assets/itemSheets.js).
     ...ITEM_SHEETS.map((sheet) => ({ ...sheet, type: 'atlas' })),
     { key: 'stoneFloor', path: 'assets/art/dungeon.png', type: 'image' },
+    { key: 'goblinCaveBackground', path: 'assets/art/backgrounds/goblinCave.png', type: 'image' },
+    { key: 'silkdeepBackground', path: 'assets/art/backgrounds/silkdeep.png', type: 'image' },
+    { key: 'veilbleedBackground', path: 'assets/art/backgrounds/veilbleed.png', type: 'image' },
+    { key: 'thornwakeBackground', path: 'assets/art/backgrounds/thornwake.png', type: 'image' },
+    { key: 'mireturnBogBackground', path: 'assets/art/backgrounds/mireturnBog.png', type: 'image' },
+    { key: 'bonefloodBackground', path: 'assets/art/backgrounds/bonefloodOssuary.png', type: 'image' },
+    { key: 'ashhowlLavaBackground', path: 'assets/art/backgrounds/ashhowlLava.png', type: 'image' },
     { key: 'cardBack', path: 'assets/art/cardBack.png', type: 'image' },
     { key: 'panelCards', path: 'assets/art/panelCards.png', type: 'image' },
     { key: 'gamingBoard', path: 'assets/art/gamingBoard.png', type: 'image' },
@@ -22,6 +31,8 @@ export const ASSET_MANIFEST = [
     { key: 'rareShopBoard', path: 'assets/art/rareShopBoard.png', type: 'image' },
     { key: 'gamingBoardSideExtra', path: 'assets/art/gamingBoardSIdewaysExtra.png', type: 'image' },
     { key: 'gamingBoardSideSmall', path: 'assets/art/gamingBoardSIdewaysSmall.png', type: 'spritesheet', frameWidth: 208, frameHeight: 144 },
+    // Location boards (content/locations/boardArt.js): the Tollroad's goblin planks.
+    ...LOCATION_BOARD_FILES.map(({ key, path }) => ({ key, path, type: 'image' })),
     // Frame order: 0 rogue, 1 warrior — matches CHARACTER_PORTRAIT_FRAME.
     { key: 'characterPortraits', path: 'assets/art/portraits.png', type: 'spritesheet', frameWidth: 64, frameHeight: 64 },
     // Frame order: rest floor, defeat UI, victory UI, blacksmith floor.
@@ -204,9 +215,11 @@ export const ASSET_MANIFEST = [
     // Food
     { key: 'egg', path: 'assets/art/egg.png', type: 'image' },
     { key: 'crystalSpiderEgg', path: 'assets/art/crystalSpiderEgg.png', type: 'image' },
-    // Sigil Room statues (content/sigils/sigilStatues.js).
-    ...SIGIL_STATUES.map(({ key, path }) => ({ key, path, type: 'image' })),
+    // Sigil Room stamps (content/sigils/sigilStamps.js).
+    ...SIGIL_STAMPS.map(({ key, path }) => ({ key, path, type: 'image' })),
+    { key: SIGIL_ROOM_FLOOR.key, path: SIGIL_ROOM_FLOOR.path, type: 'image' },
     { key: 'chickCompanion', path: 'assets/art/chickCompanion.png', type: 'image' },
+    { key: 'crystalSpiderlingCompanion', path: 'assets/art/crystalSpiderlingCompanion.png', type: 'image' },
     { key: 'chickCompanionUP', path: 'assets/art/chickCompanionUP.png', type: 'image' },
     { key: 'skeletonCompanion', path: 'assets/art/skeletonCompanion.png', type: 'image' },
     { key: 'skeletonCompanionUP', path: 'assets/art/skeletonCompanionUP.png', type: 'image' },
@@ -297,7 +310,9 @@ export const ASSET_MANIFEST = [
     { key: 'skeleton_archer', path: 'assets/art/skeletonArcher_c.png', type: 'image' },
     { key: 'Lich', path: 'assets/art/lich.png', type: 'image' },
     { key: 'SoulEater', path: 'assets/art/soulEater.png', type: 'image' },
-    { key: 'MireBride', path: 'assets/art/mireBrideBoss.png', type: 'image' },
+    { key: 'MireBride', path: 'assets/art/mireBrideBossNoFloor.png', type: 'image' },
+    // Bosses' attack frames (content/cards/bossAttackFrames.js).
+    ...BOSS_ATTACK_FRAME_FILES.map(({ key, path }) => ({ key, path, type: 'image' })),
     // The door you walk through to choose a road. One 64x64 frame per
     // location, in the order LOCATION_DOOR_FRAMES declares.
     { key: 'locationDoors', path: 'assets/art/paths.png', type: 'spritesheet', frameWidth: 64, frameHeight: 64 },
@@ -309,26 +324,16 @@ export const ASSET_MANIFEST = [
     { key: 'locationDoorAnims', path: 'assets/ui/doorAnim68x70.png', type: 'spritesheet', frameWidth: 68, frameHeight: 70 },
     { key: 'Cerberus', path: 'assets/art/cerberus.png', type: 'image' },
     { key: 'AncientCerberus', path: 'assets/art/ancientCerberus.png', type: 'image' },
-    // Magic Cards
-    { key: 'fireBall', path: 'assets/art/magicBallCard.png', type: 'image' },
-    { key: 'frozenRing', path: 'assets/art/forzenRing.png', type: 'image' },
-    { key: 'recovery', path: 'assets/art/recovery.png', type: 'image' },
-    { key: 'soulSucking', path: 'assets/art/soulSucking.png', type: 'image' },
-    { key: 'shadowDagger', path: 'assets/art/shadowDagger.png', type: 'image' },
-    { key: 'weakening', path: 'assets/art/weakening.png', type: 'image' },
-    { key: 'boneWall', path: 'assets/art/boneWall.png', type: 'image' },
-    { key: 'macigShield', path: 'assets/art/macicShield.png', type: 'image' },
-    { key: 'smokeBomb', path: 'assets/art/smokeBomb.png', type: 'image' },
     // Smoke burst — 11 frames, played by the Smoke Screen spell and by the toll
     // goblins escaping. See PreloadScene's 'smoke_bomb_anim'.
     { key: 'smokeBombAnim', path: 'assets/art/smokeBombAnim82x82.png', type: 'spritesheet', frameWidth: 82, frameHeight: 82 },
     // Ogre's Gauntlet — one row of 52x70 card faces, common..legendary.
     // Frame per rarity is mapped in content/balance/Gauntlet.js.
     { key: 'gauntletCards', path: 'assets/art/gauntletSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
-    // The Reliquary's lit display cases. The glow sheet is one row of 52x70
-    // card faces (same footprint as a normal card); frame order is mapped in
-    // content/balance/WeaponEnchants.js â€” GLOW_CARD_FRAMES.
-    { key: 'glowingMagicCards', path: 'assets/art/glowingMagicCardsSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
+    // Normal spell cards and their glowing Reliquary variants share frame order.
+    // Preload exposes the normal frames under existing spell keys for saves.
+    { key: 'magicCards', path: 'assets/art/magicCardsOriginalSheet1.png', type: 'spritesheet', frameWidth: 52, frameHeight: 69 },
+    { key: 'glowingMagicCards', path: 'assets/art/glowingMagicCardsSheetNew1.png', type: 'spritesheet', frameWidth: 52, frameHeight: 69 },
     { key: 'glassCase', path: 'assets/art/glassCase.png', type: 'image' },
     { key: 'trap_spring1', path: 'assets/music/trap_spring1.mp3', type: 'audio' },
     // UI currency animations â€” the little coin/crystal flip shown when the | value changes. Now single spritesheets (6 frames each) instead of the | old crystalAnimation1-6 / coinAnimation1-6 individual PNGs.
@@ -346,6 +351,12 @@ export const ASSET_MANIFEST = [
     { key: 'fireBall4', path: 'assets/art/fireBall4.png', type: 'image' },
     // treasure
     { key: 'bigChestAnimation', path: 'assets/art/bigChestAnimation98x98.png', type: 'spritesheet', frameWidth: 98, frameHeight: 98 },
+    // Close Order's grappling hook (Taya): 9 frames of 96x170, the rope rising
+    // from below, the hook flying up and catching (AmuletManager).
+    { key: 'hookAnim', path: 'assets/art/hookAnim.png', type: 'spritesheet', frameWidth: 96, frameHeight: 170 },
+    // Frame 0 is closed; frame 1 is open. Original chest animation stays available.
+    { key: 'treasureChest', path: 'assets/art/chests/regularChest.png', type: 'spritesheet', frameWidth: 98, frameHeight: 98 },
+    { key: 'eliteChest', path: 'assets/art/chests/eliteChest.png', type: 'spritesheet', frameWidth: 98, frameHeight: 98 },
     { key: 'mimic', path: 'assets/art/mimic.png', type: 'image' },
     // Animation for MIMIC â€” merged 7-frame splash spritesheet (was splash1-7).
     { key: 'splashSheet', path: 'assets/art/splashShee118x62t.png', type: 'spritesheet', frameWidth: 118, frameHeight: 62 },
