@@ -11,6 +11,7 @@ import { t, translateItemName } from '../i18n/i18n.js';
 import { BoardCardFx } from '../systems/board/BoardCardFx.js';
 import { buildCardDecorations } from '../ui/CardDecorations.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
+import { createSelectionCorners } from '../ui/NineSlicePanel.js';
 
 // Floating "repaired" / "not enough coins" message. Sits above the carried card
 // (depth 10) and the hammer sparks (11), and is readable before it fades.
@@ -154,6 +155,41 @@ export class AnvilScene extends Phaser.Scene {
     // The anvil's "put it here" loop. Driven by hovering a repairable card
     // rather than by picking one up: by the time the card is in hand the player
     // has already decided, and the anvil was inviting a drop that was underway.
+    // The target corners the bag shows on a drop spot (InventoryView
+    // .updateAvatarDropTarget): around the anvil while a card is carried,
+    // pulsing, closing in when the card is over it.
+    showAnvilTargetCorners() {
+        this.hideAnvilTargetCorners();
+        const zone = this.anvilDropZone;
+        const offset = { x: Math.round(zone.width / 2) - 6, y: Math.round(zone.height / 2) - 6 };
+        const corners = createSelectionCorners(this, zone.x, zone.y, offset, { depth: 1500 });
+        if (!corners.length) return;
+        const pulse = this.tweens.add({ targets: corners, alpha: { from: 1, to: 0.45 }, duration: 520, yoyo: true, repeat: -1 });
+        this.anvilTarget = { corners, pulse, offset, over: null };
+    }
+
+    updateAnvilTargetCorners(card) {
+        const target = this.anvilTarget;
+        if (!target || !card) return;
+        const zone = this.anvilDropZone;
+        const over = Phaser.Geom.Intersects.RectangleToRectangle(card.getBounds(), zone.getBounds());
+        if (over === target.over) return;
+        target.over = over;
+        const pull = over ? 4 : 0;
+        const signs = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+        target.corners.forEach((corner, i) => corner.setPosition(
+            Math.round(zone.x + signs[i][0] * (target.offset.x - pull)),
+            Math.round(zone.y + signs[i][1] * (target.offset.y - pull))));
+    }
+
+    hideAnvilTargetCorners() {
+        const target = this.anvilTarget;
+        if (!target) return;
+        target.pulse?.remove?.();
+        target.corners.forEach((corner) => corner?.destroy?.());
+        this.anvilTarget = null;
+    }
+
     showAnvilDropHint() {
         if (this.anvilDropAnimation.visible) return;
         this.anvilDropAnimation.setVisible(true).play('anvil_drop_loop');
@@ -254,13 +290,16 @@ export class AnvilScene extends Phaser.Scene {
             face.y = -8;
             this.tweens.killTweensOf(container);
             container.setDepth(10);
+            this.showAnvilTargetCorners();
         });
         container.on('drag', (_pointer, dragX, dragY) => {
             container.setPosition(Math.round(dragX), Math.round(dragY));
+            this.updateAnvilTargetCorners(container);
         });
         container.on('dragend', () => {
             dragging = false;
             this.hideAnvilDropHint();
+            this.hideAnvilTargetCorners();
             // Restore the tag on every path out of the drag, including the ones
             // that refuse the repair. A drop that is accepted hides it again on
             // the next line, before a frame is drawn.

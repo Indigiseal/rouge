@@ -19,6 +19,7 @@ const LIST_TOP = 56;
 const LIST_BOTTOM = 312;
 const SCROLL_STEP = 40;
 const DRAG_SLOP = 4;
+const BUTTON_DEPTH = 20;
 // Board order for enemies: act 1 roads, then act 2.
 const LOCATION_ORDER = ['thornwake', 'silkdeep', 'tollroad', 'boneflood', 'mireturn', 'veilbleed', 'ashhowl'];
 const DEFAULT_EVENT_FRAME = 7;
@@ -234,7 +235,11 @@ export class CodexScene extends Phaser.Scene {
 
     const hit = this.add.rectangle(x, y + tab.cell.h / 2 - 4, tab.cell.w - 4, tab.cell.h - 4, 0xffffff, 0)
       .setInteractive();
-    hit.on('pointerover', () => {
+    // Only inside the visible window: the mask hides a tile scrolled past
+    // the edge, but not its click area.
+    const inWindow = (pointer) => pointer.y >= LIST_TOP && pointer.y <= LIST_BOTTOM;
+    hit.on('pointerover', (pointer) => {
+      if (!inWindow(pointer)) return;
       hit.setFillStyle(0xd48e17, 0.08);
       this.setInfo(entry);
     });
@@ -300,10 +305,15 @@ export class CodexScene extends Phaser.Scene {
   // ─── Buttons ─────────────────────────────────────────────────────────────
 
   createButton(x, y, label, onClick, width) {
+    // Above the scrolling list: its tiles' click areas reach past the
+    // clipped window, and one under Back used to swallow the click.
     const bg = this.add.rectangle(x, y, width, 18, 0x28150c, 0.92)
       .setStrokeStyle(1, 0x9b6a1b)
+      .setDepth(BUTTON_DEPTH)
       .setInteractive({ useHandCursor: true });
-    const text = this.add.text(x, y, label, { fontSize: '11px', fill: '#d6c2c1', fontFamily: FONT }).setOrigin(0.5);
+    const text = this.add.text(x, y, label, { fontSize: '11px', fill: '#d6c2c1', fontFamily: FONT })
+      .setOrigin(0.5)
+      .setDepth(BUTTON_DEPTH + 1);
     let selected = false;
     const paint = (hover) => {
       bg.setFillStyle(selected ? 0x5a3a14 : (hover ? 0x46261b : 0x28150c), 0.95);

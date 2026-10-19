@@ -1803,7 +1803,8 @@ export class EventScene extends Phaser.Scene {
     this.mirrorUsed = false;
     inv.clearDropZones();
     inv.addDropZone(target, (slotIndex, cardData, cardSprite) =>
-      this._handleMirrorDrop(slotIndex, cardData, cardSprite));
+      this._handleMirrorDrop(slotIndex, cardData, cardSprite),
+    { accepts: (card) => !this.resolved && this._isMirrorCopyable(card) });
   }
 
   _handleMirrorDrop(slotIndex, cardData, cardSprite) {
@@ -1943,7 +1944,11 @@ export class EventScene extends Phaser.Scene {
     inv.clearDropZones();
     inv.addDropZone(target, (slotIndex, cardData, cardSprite) => (
       this._handleBriarOffering(slotIndex, cardData, cardSprite)
-    ));
+    ), {
+      accepts: (card) => this.briarOfferingActive && !this.resolved
+        && (card?.type === 'weapon' || card?.type === 'armor')
+        && !cardSigils(card).some((s) => s.id === 'thorns'),
+    });
     return true;
   }
 
@@ -2122,7 +2127,7 @@ export class EventScene extends Phaser.Scene {
     inv.clearDropZones();
     inv.addDropZone(target, (slotIndex, cardData, cardSprite) => (
       this._handleArmWrestleCardBet(slotIndex, cardData, cardSprite)
-    ));
+    ), { accepts: (card) => this.armWrestleBetActive && !this.resolved && this._isArmWrestleStakeCard(card) });
     return true;
   }
 
@@ -2508,7 +2513,7 @@ export class EventScene extends Phaser.Scene {
       // Hover feedback is done by polling the pointer in update() instead.
       inv?.addDropZone(glass, (slotIndex, cardData, cardSprite) => (
         this._handleReliquaryOffering(slotIndex, cardData, cardSprite, magicType)
-      ));
+      ), { accepts: (card) => !this.resolved && card?.type === 'weapon' && !card.enchant });
     });
 
     // The story text now has to clear the cases, not just the buttons.
@@ -2638,7 +2643,8 @@ export class EventScene extends Phaser.Scene {
     if (!inv || !target?.getBounds) return;
     inv.clearDropZones();
     inv.addDropZone(target, (slotIndex, cardData, cardSprite) =>
-      this._handleWellDrop(slotIndex, cardData, cardSprite));
+      this._handleWellDrop(slotIndex, cardData, cardSprite),
+    { accepts: (card) => !this.resolved && this._isWellTradeable(card) });
   }
 
   _handleWellDrop(slotIndex, cardData, cardSprite) {
@@ -2923,7 +2929,8 @@ export class EventScene extends Phaser.Scene {
     if (inv?.addDropZone && this._wizardTray) {
       inv.clearDropZones();
       inv.addDropZone(this._wizardTray, (slotIndex, cardData, cardSprite) =>
-        this._handleWizardTrayDrop(slotIndex, cardData, cardSprite));
+        this._handleWizardTrayDrop(slotIndex, cardData, cardSprite),
+      { accepts: (card) => !this.resolved && this.isCarnivalJunk(card) });
     }
 
     if (declineChoice) {

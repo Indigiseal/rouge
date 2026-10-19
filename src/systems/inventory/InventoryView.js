@@ -204,9 +204,13 @@ export const InventoryView = {
     // the dragged sprite). Cleared when the interaction ends.
     // `sound`: played when the zone takes a card (null for none — a zone
     // that plays its own, like the shop's sell box).
-    addDropZone(zone, handler, { sound = 'card_offered' } = {}) {
+    // `accepts(card)`: which cards it takes. A zone that says shows the
+    // pulsing target corners while such a card is carried (dropTargetFor),
+    // so the player can see where it goes. The sell box takes anything and
+    // says nothing.
+    addDropZone(zone, handler, { sound = 'card_offered', accepts = null } = {}) {
         if (!zone || typeof handler !== 'function') return;
-        (this.dropZones ||= []).push({ zone, handler, sound });
+        (this.dropZones ||= []).push({ zone, handler, sound, accepts });
     },
     clearDropZones() {
         this.dropZones = [];
@@ -584,7 +588,7 @@ export const InventoryView = {
     // Where a carried card is used, framed by the selection corners, gently
     // breathing: a potion or food on the hero's portrait; armor on the armor
     // slot while none is worn. Over it, the corners close in and it lights up.
-    dropTargetFor(card) {
+    dropTargetFor(card, cardSprite = null) {
         if (!card) return null;
         // An event that takes an offering (the Screaming Head) names its own
         // target and which cards it takes.
@@ -593,6 +597,26 @@ export const InventoryView = {
             const w = offering.sprite.displayWidth || 80;
             const h = offering.sprite.displayHeight || 80;
             return { sprite: offering.sprite, offset: { x: Math.round(w / 2) - 6, y: Math.round(h / 2) - 6 } };
+        }
+        // A drop zone that takes this card (the Mirror, the Well, a Sigil
+        // Room's statue...). With several (the Reliquary's cases), the one
+        // nearest the carried card.
+        const zones = (this.dropZones || []).filter(({ zone, accepts }) => (
+            zone?.scene && typeof zone.getBounds === 'function' && accepts?.(card)
+        ));
+        if (zones.length) {
+            const near = (z) => {
+                if (!cardSprite) return 0;
+                const b = z.zone.getBounds();
+                return Math.hypot(b.centerX - cardSprite.x, b.centerY - cardSprite.y);
+            };
+            const { zone } = zones.reduce((best, z) => (near(z) < near(best) ? z : best));
+            const b = zone.getBounds();
+            return {
+                sprite: zone,
+                center: { x: Math.round(b.centerX), y: Math.round(b.centerY) },
+                offset: { x: Math.max(8, Math.round(b.width / 2) - 6), y: Math.max(8, Math.round(b.height / 2) - 6) },
+            };
         }
         if (this.isEventStation?.()) return null;
         const avatar = this.scene.playerAvatar;
@@ -606,18 +630,22 @@ export const InventoryView = {
         return null;
     },
     updateAvatarDropTarget(cardSprite, slotIndex) {
-        const goal = this.dropTargetFor(this.slots[slotIndex]);
+        const goal = this.dropTargetFor(this.slots[slotIndex], cardSprite);
         if (!goal) {
             this.destroyAvatarDropTarget();
             return;
         }
         if (this.avatarDropTarget && this.avatarDropTarget.sprite !== goal.sprite) this.destroyAvatarDropTarget();
         const { sprite, offset } = goal;
+        // Drop zones are framed on their bounds; the avatar and armour slot
+        // on their own centre, as before.
+        const cx = goal.center?.x ?? sprite.x;
+        const cy = goal.center?.y ?? sprite.y;
         if (!this.avatarDropTarget) {
             // In the target's own scene, so an event's target is framed above
             // the event screen rather than under it.
             const host = sprite.scene || this.scene;
-            const corners = createSelectionCorners(host, sprite.x, sprite.y, offset, { depth: AVATAR_DROP_DEPTH });
+            const corners = createSelectionCorners(host, cx, cy, offset, { depth: AVATAR_DROP_DEPTH });
             if (!corners.length) return;
             const pulse = host.tweens.add({
                 targets: corners, alpha: { from: 1, to: 0.45 }, duration: 520, yoyo: true, repeat: -1,
@@ -631,8 +659,8 @@ export const InventoryView = {
         const pull = over ? 4 : 0;
         const signs = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
         target.corners.forEach((corner, i) => corner.setPosition(
-            Math.round(sprite.x + signs[i][0] * (offset.x - pull)),
-            Math.round(sprite.y + signs[i][1] * (offset.y - pull))));
+            Math.round(cx + signs[i][0] * (offset.x - pull)),
+            Math.round(cy + signs[i][1] * (offset.y - pull))));
         setHoverLight(sprite, over);
     },
     destroyAvatarDropTarget() {

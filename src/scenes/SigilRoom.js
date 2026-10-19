@@ -159,7 +159,7 @@ export function createSigilRoom(scene, sigilId) {
     inv.clearDropZones?.();
     inv.addDropZone(image, (slotIndex, cardData, cardSprite) => (
       stampCard(scene, { image, icon, emblem, statue, sigilId, name }, slotIndex, cardData, cardSprite)
-    ), { sound: null });
+    ), { sound: null, accepts: (card) => !scene.sigilRoom.stamped && canTakeSigil(card, sigilId) });
     // The bag lives in GameScene, under this room: without this, a card
     // dragged to the statue was drawn behind it. Same as the Mirror event.
     inv.setDragOverlayScene?.(scene);
