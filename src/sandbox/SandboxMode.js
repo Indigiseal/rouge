@@ -64,6 +64,11 @@ export function isSandboxMode(ref) {
   if (ref.sandboxMode) return true;
   if (ref.gameState?.sandboxMode) return true;
   const gameScene = typeof ref.scene?.get === 'function' ? ref.scene.get('GameScene') : null;
+  // Only a live GameScene (running, paused or asleep: Phaser status 5-7). A
+  // stopped one keeps the flags of whatever it last ran, so after a visit to
+  // the Test Site, Save & Quit from the path picker went back to the Test Site.
+  const status = gameScene?.sys?.settings?.status ?? 0;
+  if (status < 5 || status > 7) return false;
   return Boolean(gameScene?.sandboxMode || gameScene?.gameState?.sandboxMode);
 }
 
