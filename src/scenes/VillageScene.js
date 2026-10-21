@@ -14,6 +14,7 @@ import { applyOverlayLight } from '../ui/OverlayLightPipeline.js';
 import { createSelectionCorners } from '../ui/NineSlicePanel.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
 import { setHoverLight } from '../ui/HoverLight.js';
+import { devToolsEnabled } from '../config/DevTools.js';
 
 // Every number here is measured off assets/ui/mockUpVillage.png, which is
 // authored at the world size, so it transfers 1:1.
@@ -188,13 +189,16 @@ export class VillageScene extends Phaser.Scene {
       });
     });
     this.makeFooterButton(FOOTER_X[1], t(this, 'ui.village.leave'), () => this.leave());
-    this.makeFooterButton(FOOTER_X[3], '+25', () => {
-      this.meta.grantDebugXp(this.characterId, 25);
-      this.refresh();
-    });
-    this.makeFooterButton(FOOTER_X[4], t(this, 'ui.village.debugResetMeta'),
-      () => this.confirmResetMetaProgression(),
-      { fontSize: '8px', upKey: 'villageButtonUp', downKey: 'villageButtonDown' });
+    if (devToolsEnabled()) {
+      this.makeFooterButton(FOOTER_X[3], '+25', () => {
+        if (!devToolsEnabled()) return;
+        this.meta.grantDebugXp(this.characterId, 25);
+        this.refresh();
+      });
+      this.makeFooterButton(FOOTER_X[4], t(this, 'ui.village.debugResetMeta'),
+        () => this.confirmResetMetaProgression(),
+        { fontSize: '8px', upKey: 'villageButtonUp', downKey: 'villageButtonDown' });
+    }
 
     applyOverlayLight(this);
 
@@ -602,12 +606,14 @@ export class VillageScene extends Phaser.Scene {
   }
 
   confirmResetMetaProgression() {
+    if (!devToolsEnabled()) return;
     openConfirmModal(this, {
       title: t(this, 'ui.village.resetMetaTitle'),
       body: t(this, 'ui.village.resetMetaBody'),
       confirmLabel: t(this, 'ui.options.reset'),
       cancelLabel: t(this, 'ui.options.cancel'),
       onConfirm: () => {
+        if (!devToolsEnabled()) return;
         this.selectedId = null;
         this.meta.resetProgression();
         this.refresh();

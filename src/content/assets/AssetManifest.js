@@ -362,6 +362,12 @@ export const ASSET_MANIFEST = [
     { key: 'splashSheet', path: 'assets/art/splashShee118x62t.png', type: 'spritesheet', frameWidth: 118, frameHeight: 62 },
     // ---- New SFX batch (variants rotate via SoundHelper.playVariant) ---- | Multi-variant groups
     { key: 'enemy_hit_1', path: 'assets/music/Enemy_Hit_01.mp3', type: 'audio' },
+    // Close Order's grappling hook: the throw and the catch (made in code).
+    { key: 'hook_swish', path: 'assets/music/Hook_Swish.mp3', type: 'audio' },
+    { key: 'hook_clunk', path: 'assets/music/Hook_Clunk.mp3', type: 'audio' },
+    // A companion's egg hatching: two taps, the shell splitting, a bright
+    // chime (made in code; take 2 of six, picked by Taya).
+    { key: 'egg_hatch', path: 'assets/music/Egg_Hatch.mp3', type: 'audio' },
     { key: 'enemy_hit_2', path: 'assets/music/Enemy_Hit_02.mp3', type: 'audio' },
     { key: 'enemy_hit_3', path: 'assets/music/Enemy_Hit_03.mp3', type: 'audio' },
     { key: 'enemy_hit_4', path: 'assets/music/Enemy_Hit_04.mp3', type: 'audio' },

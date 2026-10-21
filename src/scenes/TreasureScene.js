@@ -15,8 +15,9 @@ import { createSelectionCorners } from '../ui/NineSlicePanel.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { playCardDissolve } from '../ui/CardDissolve.js';
 
-import { openSigilOffer, rollOfferableSigil } from '../ui/SigilOffer.js';
+import { canOfferSigil, openSigilOffer, rollOfferableSigil } from '../ui/SigilOffer.js';
 import { createSigilRoom } from './SigilRoom.js';
+import { lootRarity } from '../content/cards/legendaryStars.js';
 
 // The chest stands in the middle of the room and is opened by clicking it;
 // what it gives sits on top of it, with the take hint underneath.
@@ -59,7 +60,10 @@ export class TreasureScene extends StationRoomBase {
     // With no card in the bag that could take any sigil, it falls back to a
     // good chest rather than an empty room.
     if (this.rewardMode === 'sigil') {
-      const sigilId = data.sigilId || rollOfferableSigil(this.gameScene);
+      // A named sigil (the Crystal Lair's) only if a card can still take it.
+      const sigilId = data.sigilId
+        ? (canOfferSigil(this.gameScene, data.sigilId) ? data.sigilId : null)
+        : rollOfferableSigil(this.gameScene);
       if (sigilId) {
         createSigilRoom(this, sigilId);
         return;
@@ -294,6 +298,8 @@ export class TreasureScene extends StationRoomBase {
     const gen = new CardDataGenerator();
     const roll = Math.random();
     const type = roll < 0.45 ? 'weapon' : roll < 0.85 ? 'armor' : 'magic';
+    // A chest never holds Legendary gear: that only comes from merging.
+    if (type !== 'magic') rarity = lootRarity(rarity);
     let item = gen.createCardData(type, this.gameState.currentFloor, false, this.gameState, rarity);
 
     // The generator honours spawn floors, so it can hand back a lower rarity

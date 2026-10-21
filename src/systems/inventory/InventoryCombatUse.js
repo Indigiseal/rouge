@@ -22,6 +22,8 @@ import { applyWeaponSigils, onWeaponSigilHit } from '../combat/SigilEffects.js';
 import { getSigil } from '../../content/sigils/sigils.js';
 import { GLUTTON_MAX_AP } from '../../content/amulets/currentCatalog.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
+import { fireDamageAgainst } from '../../content/combat/fireResist.js';
+import { hoverShineAnim } from '../../ui/RainbowShine.js';
 
 // The strike over a weapon card (playWeaponStrikeEffect): how far the card
 // shakes either way. The slash itself is ui/StrikeSlash.js.
@@ -125,7 +127,8 @@ export const InventoryCombatUse = {
                         this.createFireballEffect(enemyCard.sprite);
                     }
 
-                    this.scene.cardSystem.attackEnemy(closestEnemy, magicCard.damage);
+                    // Heatproof lava creatures take less (fireResist.js).
+                    this.scene.cardSystem.attackEnemy(closestEnemy, fireDamageAgainst(enemyCard?.data, magicCard.damage));
                     this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Fireball!', 0xef7c4b);
                     used = true;
                 }
@@ -793,7 +796,7 @@ export const InventoryCombatUse = {
 
         if (hoverSprite && this.scene.anims?.exists?.('hover_cards_anim')) {
             hoverSprite.setVisible(true);
-            hoverSprite.play('hover_cards_anim');
+            hoverSprite.play(hoverShineAnim(this.scene, hoverSprite));
         }
 
         // Drop-shadow stays put at the resting spot so the card reads as lifting

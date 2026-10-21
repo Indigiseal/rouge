@@ -47,6 +47,7 @@ import {
 import { ANTIDOTE_CHANCE, ANTIDOTE_MIN_FLOOR, antidoteCard } from '../../content/cards/potions.js';
 import { getLocationContent } from '../../content/locations/index.js';
 import { EGG_HATCH_FIGHTS } from '../../content/cards/eggHatching.js';
+import { lootRarity } from '../../content/cards/legendaryStars.js';
 
 export class CardDataGenerator {
     // Re-export content tables as statics for existing callers.
@@ -123,10 +124,11 @@ export class CardDataGenerator {
                 return this.createCrystalCard(floor);
             case 'trap':
                 return this.createTrapCard(floor);
+            // Legendary gear is merge-only (legendaryStars.js lootRarity).
             case 'weapon':
-                return this.createWeaponCard(floor, targetRarity, gameState);
+                return this.createWeaponCard(floor, lootRarity(targetRarity), gameState);
             case 'armor':
-                return this.createArmorCard(floor, targetRarity, gameState);
+                return this.createArmorCard(floor, lootRarity(targetRarity), gameState);
             case 'amulet':
                 if (areAmuletsDisabled()) return null;
                 // targetRarity here is overloaded as the SOURCE key when it's one of

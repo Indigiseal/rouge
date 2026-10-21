@@ -15,6 +15,7 @@ import { artBodyTop, buildSigilIcons, sigilCornerOffset } from '../../ui/SigilIc
 import { handLockKindOf } from '../../content/combat/handLock.js';
 import { weaponFlatSigilBonus } from '../combat/SigilEffects.js';
 import { scaleGoldReward } from '../../content/economy/gold.js';
+import { cardStars } from '../../content/cards/legendaryStars.js';
 
 // The one value slot painted into the bottom-right of every card that shows a
 // single number — weapon damage, armor protection, thorn damage, trap damage.
@@ -184,6 +185,40 @@ function _makeCornerText(scene, x, y, value, style) {
     const text = scene.add.text(Math.round(x), Math.round(y), String(value), style);
     text.setOrigin(0.5);
     return text;
+}
+
+// A Legendary's stars (legendaryStars.js): small pale pixel stars along the
+// bottom of the card, left of the number circle (the top is where a socketed
+// gem sits). The 7x7 star is drawn once into a texture.
+const STAR_KEY = 'legendaryStarPip';
+const STAR_ROW_Y = 27;
+const STAR_ROW_CENTER_X = -6;
+const STAR_GAP = 8;
+function addCardStars(scene, container, data) {
+    const stars = cardStars(data);
+    if (!stars || !scene?.add) return;
+    if (!scene.textures.exists(STAR_KEY) && scene.textures.generate) {
+        scene.textures.generate(STAR_KEY, {
+            data: [
+                '...1...',
+                '..121..',
+                '1112111',
+                '1222221',
+                '.12221.',
+                '.12121.',
+                '.11.11.',
+            ],
+            pixelWidth: 1,
+            // Near-white on a dark outline: gold on the gold Legendary card
+            // disappeared.
+            palette: { 1: '#3b2414', 2: '#fef0cf' },
+        });
+    }
+    if (!scene.textures.exists(STAR_KEY)) return;
+    const left = STAR_ROW_CENTER_X - ((stars - 1) * STAR_GAP) / 2;
+    for (let i = 0; i < stars; i++) {
+        container.add(snapOriginToPixelGrid(scene.add.image(Math.round(left + i * STAR_GAP), STAR_ROW_Y, STAR_KEY)));
+    }
 }
 
 function createCardInfoText(card) {
@@ -426,7 +461,8 @@ function createCardInfoText(card) {
                 const dot = snapOriginToPixelGrid(this.scene.add.image(-19, currentY + dotsAfterTens + (i * dotSpacing), 'durability_dot'));
                 container.add(dot);
             }
-            
+
+            addCardStars(this.scene, container, card.data);
             container.setDepth(1001);
             attachInfoText(container);
             return;
@@ -475,7 +511,8 @@ function createCardInfoText(card) {
                 const dot = snapOriginToPixelGrid(this.scene.add.image(-22, currentY + dotsAfterTens + (i * dotSpacing), 'durability_dot'));
                 container.add(dot);
             }
-            
+
+            addCardStars(this.scene, container, card.data);
             container.setDepth(1001);
             attachInfoText(container);
             return;
@@ -600,7 +637,8 @@ function _buildBossStats(card) {
     const barFrame = this.scene.textures.getFrame('healthBar');
     const barWidth = barFrame?.width || 84;
     const bossBottom = (card.sprite.displayHeight || card.sprite.height || 100) / 2;
-    const y = card.sprite.y + bossBottom + 18;
+    const barGap = card.data.name === 'Spider Queen' ? 18 : 10;
+    const y = card.sprite.y + bossBottom + barGap;
 
     const emptyBar = this.scene.make.image({ x: 0, y: 0, key: 'healthBarEmpty', add: false }).setOrigin(0.5);
     const fillBar = this.scene.make.image({ x: -barWidth / 2, y: 0, key: 'healthBar', add: false }).setOrigin(0, 0.5);
@@ -1017,7 +1055,7 @@ function updateBossInfoText(card) {
     container._bossHpFill.setVisible(fillWidth > 0);
     container._bossHpFill.setCrop(0, 0, fillWidth, container._bossHpFill.height);
     container._bossHpText.setText(`${health}/${maxHealth}`);
-    container._bossAtkText.setText(`ATK ${card.data.attack ?? 0}`);
+    container._bossAtkText.setText(`ATK ${getEnemyHitAttack(card, this.boardCards)}`);
 }
 
 function playKillLootPickup(x, y, reward, sourceLabel = 'Pick') {

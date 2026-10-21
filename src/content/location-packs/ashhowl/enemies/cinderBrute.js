@@ -5,5 +5,5 @@ export default {
   minFloor: 16,
   archetype: 'bruiser',
   // Heat shimmer and mass: it comes through a guard rather than around it.
-  features: ['ignore_armor'],
+  features: ['ignore_armor', 'heatproof'],
 };

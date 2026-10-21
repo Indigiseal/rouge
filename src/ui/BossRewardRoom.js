@@ -4,8 +4,12 @@
 import { exitToSandboxHub } from '../sandbox/SandboxMode.js';
 import { scaleGoldReward } from '../content/economy/gold.js';
 import { looseGemCard } from '../content/cards/gems.js';
+import { isLocationDoorTexture } from '../content/assets/locationCards.js';
+import { EXIT_DOOR_Y } from './ExitDoor.js';
+import { setHoverLight } from './HoverLight.js';
 
 export function setupBossRewardRoom(scene) {
+    scene._bossVictoryPending = false;
     scene.gameState.roomType = 'BOSS_REWARD';
     scene.roomType = 'BOSS_REWARD';
     scene.updateRoomTitle();
@@ -60,6 +64,7 @@ export function setupBossRewardRoom(scene) {
 }
 
 export function restoreSavedBossRewardRoom(scene) {
+    scene._bossVictoryPending = false;
     scene.gameState.roomType = 'BOSS_REWARD';
     scene.roomType = 'BOSS_REWARD';
     scene.updateRoomTitle();
@@ -90,8 +95,15 @@ export function makeBossRewardGem(scene) {
 export function leaveBossRewardRoom(scene) {
     scene._transitioning = true;
     if (scene.nextFloorButton) {
-        scene.nextFloorButton.disableInteractive();
-        scene.nextFloorButton.setVisible(false);
+        const button = scene.nextFloorButton;
+        button.disableInteractive();
+        if (isLocationDoorTexture(button.texture?.key)) {
+            button.clearTint();
+            setHoverLight(button, false);
+            button.y = EXIT_DOOR_Y;
+        } else {
+            button.setVisible(false);
+        }
     }
     scene.nextFloorButtonText?.setVisible(false);
 

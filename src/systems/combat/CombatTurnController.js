@@ -546,7 +546,10 @@ export class CombatTurnController {
             if (card.sprite) scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Crit!', 0xb51f1e);
         }
         // Honed: every attack it makes adds to the next one this fight.
-        if (sigilLevel(card.data, 'honed') > 0) card.data.honedUses = (card.data.honedUses || 0) + 1;
+        if (sigilLevel(card.data, 'honed') > 0) {
+            card.data.honedUses = (card.data.honedUses || 0) + 1;
+            scene.cardSystem?.updateEnemyInfoText?.(card);
+        }
 
         // Road Sniper — occasional heavy bolt.
         if (features.includes('heavy_shot') && Math.random() < 0.2) {

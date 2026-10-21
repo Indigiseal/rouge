@@ -54,10 +54,13 @@ export default {
           {
             id: 'camp_bury',
             text: 'Bury him and pray',
-            action: (gs, scene) => scene.heal(15),
+            action: (gs, scene) => {
+              scene.heal(15);
+              scene.fillActionPoints();
+            },
             outcome:
               'You leave his things where they are. The ground is soft enough.\n\n'
-              + 'When you finish the prayer, the chamber is very quiet. It feels like being let go.',
+              + 'When you finish the prayer, the chamber is very quiet. You stand up lighter than you knelt down.',
           },
           {
             id: 'camp_leave_body',

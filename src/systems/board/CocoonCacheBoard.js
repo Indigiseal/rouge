@@ -29,8 +29,9 @@ export function boardHasOpenCocoonEnemies(boardCards = []) {
   ));
 }
 
-function rollCocoonEnemy(generator, floor, gameState) {
-  const pool = (generator.getMonthEnemyPool?.(floor, null, gameState) || [])
+// `role` 'MELEE' for a cocoon in a front seat: shooters never stand there.
+function rollCocoonEnemy(generator, floor, gameState, role = null) {
+  const pool = (generator.getMonthEnemyPool?.(floor, role, gameState) || [])
     .filter((key) => !COCOON_ENEMY_EXCLUDE.has(key));
   if (pool.length > 0) {
     const enemyType = pool[Math.floor(Math.random() * pool.length)];
@@ -38,7 +39,7 @@ function rollCocoonEnemy(generator, floor, gameState) {
   }
   // Fallback: keep rolling until we get a non-excluded type (or give up).
   for (let i = 0; i < 16; i++) {
-    const enemy = generator.createEnemyCard(floor, false, null, gameState);
+    const enemy = generator.createEnemyCard(floor, false, role, gameState);
     if (enemy && !COCOON_ENEMY_EXCLUDE.has(enemy.enemyType)) return enemy;
   }
   return generator.createTieredEnemy('spider', floor, false)
@@ -304,14 +305,17 @@ export function openSilkCocoon(cs, index, cocoonCard) {
   cs.destroyControlMarkers?.(boardCard);
   boardCard.sprite?.destroy?.();
 
+  // A cocoon in a front seat hatches a melee enemy (shooters stay back).
+  const frontSeat = (brick?.r ?? 0) > 0;
   let newData = payload?.card;
   if (!newData || payload?.kind === 'enemy') {
     newData = payload?.card;
-    if (!newData || COCOON_ENEMY_EXCLUDE.has(newData.enemyType)) {
+    if (!newData || COCOON_ENEMY_EXCLUDE.has(newData.enemyType) || (frontSeat && newData.isRangedType)) {
       newData = rollCocoonEnemy(
         cs.cardDataGenerator,
         cs.scene.gameState?.currentFloor || 1,
-        cs.scene.gameState
+        cs.scene.gameState,
+        frontSeat ? 'MELEE' : null
       );
     }
   }
@@ -325,6 +329,7 @@ export function openSilkCocoon(cs, index, cocoonCard) {
   if (brickNeighbors) newData.brickNeighbors = brickNeighbors;
   // Hatched enemies sit out the swing that cracked them open.
   const hatchedEnemy = newData.type === 'enemy' || newData.type === 'eliteEnemy';
+  if (hatchedEnemy && !newData.isMimic && brick) newData.role = frontSeat ? 'MELEE' : 'RANGED';
 
   ensureSilkCocoonTexture(cs.scene);
   const spriteKey = cs.scene.textures.exists(newData.sprite)

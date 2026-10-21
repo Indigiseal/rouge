@@ -33,6 +33,7 @@ import { ENEMY_BASE_BLOCK, ENEMY_BASE_EVADE, PLAYER_BASE_CRIT, PLAYER_CRIT_MULT 
 const CRIT_SHAKE_MS = 80;
 const CRIT_SHAKE_INTENSITY = 0.0025;
 import { hideItemTooltip, showControlMarkTooltip } from '../../ui/ItemTooltip.js';
+import { fireDamageAgainst } from '../../content/combat/fireResist.js';
 
 export class BoardCombat {
     constructor(cs) {
@@ -1078,6 +1079,7 @@ function isTauntBlockingTarget(card) {
 function burnEnemy(index, amount) {
     const card = this.boardCards[index];
     if (!this.isAnyEnemyCard(card)) return;
+    amount = fireDamageAgainst(card.data, amount); // Heatproof lava creatures
     card.data.health -= amount;
     if (card.revealed && card.sprite?.scene) {
         CombatSequencer.schedule(this.scene, 'gem', () => {
@@ -1127,6 +1129,7 @@ function damageGemTarget(index, amount, label, color, effect = null, beat = 'gem
     if (effect) CombatSequencer.schedule(this.scene, beat, () => {
         if (card.sprite?.scene) this.playEnemyHitEffect(card, effect);
     });
+    if (effect === 'fire') amount = fireDamageAgainst(card.data, amount); // Heatproof
     card.data.health -= amount;
     CombatSequencer.floatingText(this.scene, beat, card.sprite.x, card.sprite.y - 18, `-${amount} ${label}`, color);
     CombatSequencer.shakeCard(this.scene, beat, card.sprite);

@@ -170,6 +170,11 @@ const SANDBOX_STORY_SETUP = {
   old_chute: {
     grant: ['fireball'],
   },
+  // Food in the bag for the feed choice; the brood was left this act.
+  webbed_corridor: {
+    story: { crystalBroodAct: 0, crystalBroodFloor: 1, webbedCorridorSeen: false },
+    grant: ['food'],
+  },
   // An Antidote in the bag, so the traveller can be saved.
   robbed_traveller: {
     grant: ['antidote'],
@@ -241,6 +246,12 @@ function grantSandboxStoryItem(gameScene, grant) {
   if (grant === 'gem') {
     const gem = gen.createGemCard?.(gs.currentFloor || 6);
     if (gem) inv.addCard(gem);
+    return;
+  }
+
+  if (grant === 'food') {
+    const food = gen?.createCardData?.('food', gs.currentFloor || 1);
+    if (food) inv.addCard(food);
     return;
   }
 

@@ -38,6 +38,11 @@ export function rollOfferableSigil(gameScene) {
     return options.length ? options[Math.floor(Math.random() * options.length)] : null;
 }
 
+/** True when at least one of the player's cards could take `sigilId`. */
+export function canOfferSigil(gameScene, sigilId) {
+    return candidateCards(gameScene).some((card) => canTakeSigil(card, sigilId));
+}
+
 /**
  * Open the panel for `sigilId`. `onDone(card | null)` runs once the player has
  * chosen a card or skipped. Returns false (and calls nothing) when no card can

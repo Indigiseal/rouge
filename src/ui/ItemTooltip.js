@@ -11,6 +11,8 @@ import { SINGLE_AMULET, offerFaceAmulet } from '../content/cards/amulets.js';
 import { cameraWorldSize } from '../config/renderScale.js';
 import { eggFightsLeft, isHatchingEgg } from '../content/cards/eggHatching.js';
 import { PLATE_RANGED_IGNORE_MAX } from '../content/cards/armor.js';
+import { HEATPROOF_RESIST } from '../content/combat/fireResist.js';
+import { MAX_LEGENDARY_STARS, cardStars } from '../content/cards/legendaryStars.js';
 
 // Default tooltip depth — above the board and its card FX, below the modal
 // overlays. Callers that render higher pass their own depth.
@@ -79,6 +81,7 @@ export function getTooltipLines(scene, data) {
         const dur = data.durability ?? data.maxDurability ?? 0;
         const rarityWord = data.rarity ? `${translateRarity(scene, data.rarity)} ` : '';
         body = `${rarityWord}${t(scene, describeWeaponKindKey(data))}\n${t(scene, 'tooltip.dmgDur', { dmg, dur })}`;
+        if (cardStars(data)) body += `\n${t(scene, 'tooltip.stars', { stars: cardStars(data), max: MAX_LEGENDARY_STARS })}`;
     } else if (data.type === 'armor') {
         const def = data.protection ?? 0;
         const dur = data.durability ?? data.maxDurability ?? 0;
@@ -95,6 +98,7 @@ export function getTooltipLines(scene, data) {
         if (data.rangedIgnoreChance) {
             lines.push(t(scene, 'tooltip.ignoreRanged', { percent: Math.round(Math.min(PLATE_RANGED_IGNORE_MAX, data.rangedIgnoreChance) * 100) }));
         }
+        if (cardStars(data)) lines.push(t(scene, 'tooltip.stars', { stars: cardStars(data), max: MAX_LEGENDARY_STARS }));
         body = lines.join('\n');
     } else if (data.type === 'potion') {
         body = data.curesPoison
@@ -253,6 +257,9 @@ function getEnemyFeatureLines(scene, data) {
     }
     if (features.includes('gnaw')) {
         lines.push(t(scene, 'tooltip.gnaw'));
+    }
+    if (features.includes('heatproof')) {
+        lines.push(t(scene, 'tooltip.heatproof', { amount: Math.round(HEATPROOF_RESIST * 100) }));
     }
     if (features.includes('taunt')) {
         lines.push(t(scene, 'tooltip.taunt'));

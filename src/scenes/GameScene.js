@@ -1,6 +1,7 @@
 import { CardSystem } from '../systems/CardSystem.js';
 import { applyOverlayLight } from '../ui/OverlayLightPipeline.js';
 import { CombatFeedback } from '../ui/CombatFeedback.js';
+import { playBossVictoryParticles } from '../ui/BossVictoryParticles.js';
 import { InventorySystem } from '../systems/InventorySystem.js';
 import { GameState, PLAYER_START_HP } from '../systems/GameState.js';
 import { AmuletManager } from '../managers/AmuletManager.js';
@@ -15,12 +16,14 @@ const NEXT_EXIT_Y = EXIT_DOOR_Y;
 // Pause between the killing blow's last sound starting and the door opening,
 // so the death is heard as its own event before the room announces it's clear.
 const ROOM_CLEAR_ANNOUNCE_PAD_MS = 200;
+// Let the boss fanfare play before the normal reward/victory handoff.
+const BOSS_FANFARE_DELAY_MS = 1500;
 // Must match the event screen's dim (EventScene create), so where the dim ends
 // the backdrop carries on in the same colour.
 const EVENT_BACKDROP_COLOR = 0x2b1f32;
 import { getLocationIdForFloor } from '../content/locations/index.js';
 import { fightBackdropKey } from '../content/locations/fightBackgrounds.js';
-import { DEV_START_AMULETS, devToolsEnabled } from '../config/DevTools.js';
+import { DEV_START_AMULETS, DEV_START_CARDS, devToolsEnabled } from '../config/DevTools.js';
 import { SaveManager } from '../managers/SaveManager.js';
 import { MetaProgressionManager } from '../managers/MetaProgressionManager.js';
 import { TutorialManager } from '../managers/TutorialManager.js';
@@ -46,6 +49,7 @@ import {
 } from '../ui/BossRewardRoom.js';
 import { t } from '../i18n/i18n.js';
 import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from '../content/story/StoryProgress.js';
+import { createDefaultStoryRun } from '../content/story/StoryDefaults.js';
 import { areAmuletsDisabled } from '../config/TestOptions.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { CombatTurnController } from '../systems/combat/CombatTurnController.js';
@@ -66,11 +70,13 @@ import { openNoticeModal } from '../ui/ConfirmModal.js';
 import { isSilkCocoonCacheRoom, boardHasOpenCocoonEnemies } from '../systems/board/CocoonCacheBoard.js';
 import { playSmokeBurst, SMOKE_BURST_MS } from '../ui/SmokeBurst.js';
 import { pendingLocationAftermath } from '../content/locations/index.js';
-import { openSigilOffer, rollOfferableSigil } from '../ui/SigilOffer.js';
+import { canOfferSigil, rollOfferableSigil } from '../ui/SigilOffer.js';
 import { SIGIL_ROOM_CHANCE, SIGIL_ROOM_CHANCE_BROOCH } from '../content/sigils/sigilStamps.js';
 import { createCrystalLairEnemies } from '../content/cards/crystalLair.js';
 import { EGG_HATCH_ROOMS, eggFightsLeft, isHatchingEgg } from '../content/cards/eggHatching.js';
 import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
+import { applyStars } from '../content/cards/legendaryStars.js';
+import { createArmorCardData, createWeaponCardData } from '../content/cards/index.js';
 
 // The Crystal Lair's reward when no card can take its sigil.
 const CRYSTAL_LAIR_FALLBACK_CRYSTALS = 3;
@@ -126,6 +132,7 @@ export class GameScene extends Phaser.Scene {
         this.sandboxStorySetupId = data.sandboxStorySetupId || this.sandboxEventId;
         if (this.sandboxMode) this.shouldLoadSave = false;
         this._transitioning = false;
+        this._bossVictoryPending = false;
         this._resultScreenShown = false;
         this._gameOverInProgress = false;
         // Reset per-scene-entry so a cleared-room restore flag can't leak into
@@ -159,68 +166,19 @@ export class GameScene extends Phaser.Scene {
                 }
                 this.metaManager.applyRelicEffects(this.gameState, true, opts);
             }
-            // Cross-run story memory: seed the fresh run from any saved story
-            // progress so completed events don't repeat and story chains resume
-            // where a past life left off. (Continues restore storyRun from the
-            // run save instead, so we only seed brand-new runs.)
-            //
-            // The Test Site deliberately skips this. Seeding it there is exactly
-            // what made a finished story untestable: once the music box was
-            // resolved, boxState was never 'unknown' again and the event could
-            // not be reached without wiping the profile.
+            // Every story can come back in a new run (Taya): a fresh run starts
+            // from fresh story state, so the Music Box, the Porter, the
+            // carnival and the rest are all there to meet again. What a past
+            // life learned is kept in heroMemory, not here. The story saved by
+            // the last run is read only for the two shop unlocks older profiles
+            // recorded in it (below). Continues restore storyRun from the run
+            // save instead; the Test Site never reads it.
             const storedStory = this.sandboxMode ? null : loadStoryProgress();
-            if (storedStory) {
-                Object.assign(this.gameState.storyRun, storedStory);
-                // birdAngry / angryNestmotherRollFloor are per-run combat
-                // consequences (the angry nestmother spawns in elite rooms and
-                // is cleared on kill in combat, which doesn't re-save story
-                // progress). Don't let them carry across deaths, or the bird
-                // would haunt every future run forever.
-                this.gameState.storyRun.birdAngry = false;
-                this.gameState.storyRun.angryNestmotherRollFloor = null;
-                // The copying-mirror and the too-nice room are once-per-run bonus
-                // encounters, not once-ever story beats — let each new run meet
-                // them again.
-                this.gameState.storyRun.mirrorSeen = false;
-                this.gameState.storyRun.abandonedCampSeen = false;
-                this.gameState.storyRun.oldChuteSeen = false;
-                this.gameState.storyRun.soupStandSeen = false;
-                this.gameState.storyRun.robbedTravellerSeen = false;
-                this.gameState.storyRun.soupStandFloor = null;
-                this.gameState.storyRun.soupPotKicked = false;
-                this.gameState.storyRun.travellerSaved = false;
-                // The traveller only follows a soup stand from this run.
-                this.gameState.storyRun.pendingEvents = (this.gameState.storyRun.pendingEvents || [])
-                    .filter((id) => id !== 'robbed_traveller');
-                this.gameState.storyRun.crystalLairCleared = false;
-                this.gameState.storyRun.tooNiceRoomSeen = false;
-                this.gameState.storyRun.wellSeen = false;
-                this.gameState.storyRun.bookWormSeen = false;
-                this.gameState.storyRun.briarRoomSeen = false;
-                this.gameState.storyRun.slimyPrisonSeen = false;
-                this.gameState.storyRun.reliquarySeen = false;
-                this.gameState.storyRun.tollCollectorsSeen = false;
-                // Toll Collectors consequences are per-RUN, exactly like
-                // birdAngry above. Without this, attacking the collectors once
-                // left tollFought saved forever, and their wounded guards then
-                // turned up beside the Goblin King in every later run — even
-                // runs where the player never met them.
-                this.gameState.storyRun.paidTheToll = false;
-                this.gameState.storyRun.tollIntimidated = false;
-                this.gameState.storyRun.tollFought = false;
-                this.gameState.storyRun.tollGuardsEscaped = 0;
-                this.gameState.storyRun.tollKiller = false;
-                this.gameState.storyRun.merchantRobbed = false;
-                this.gameState.storyRun.tollEscapeNoticeShown = false;
-                // Arm wrestling is a per-run encounter too: without this, one
-                // win would queue the ogre's rematch in every future run, and
-                // one loss would lock the gauntlet away forever.
-                this.gameState.storyRun.armWrestlingSeen = false;
-                this.gameState.storyRun.armWrestleWon = false;
-                this.gameState.storyRun.armWrestleLost = false;
-                this.gameState.storyRun.armWrestleRematchDone = false;
-                this.gameState.storyRun.gauntletWon = false;
-            }
+            this._legacyStoryUnlocks = {
+                chick: Boolean(storedStory?.chickHatched),
+                skeleton: Boolean(storedStory?.skeletonCompanionObtained),
+            };
+            this.gameState.storyRun = createDefaultStoryRun();
         }
 
         const storedHeroMemory = loadHeroMemory();
@@ -235,12 +193,12 @@ export class GameScene extends Phaser.Scene {
         // Repair profiles created before the death check accepted the durable
         // hatch flag. The hatch event is persisted across runs, so it is enough
         // evidence to restore the shop unlock that should have been recorded.
-        if (this.gameState.storyRun?.chickHatched
+        if ((this.gameState.storyRun?.chickHatched || this._legacyStoryUnlocks?.chick)
             && !this.gameState.heroMemory.chickRareShopUnlocked) {
             this.gameState.heroMemory.chickRareShopUnlocked = true;
             saveHeroMemory(this.gameState.heroMemory);
         }
-        if (this.gameState.storyRun?.skeletonCompanionObtained
+        if ((this.gameState.storyRun?.skeletonCompanionObtained || this._legacyStoryUnlocks?.skeleton)
             && !this.gameState.heroMemory.skeletonRareShopUnlocked) {
             this.gameState.heroMemory.skeletonRareShopUnlocked = true;
             saveHeroMemory(this.gameState.heroMemory);
@@ -373,6 +331,7 @@ export class GameScene extends Phaser.Scene {
         } else {
             this.startNewFloor();
             this.grantDevStartAmulets();
+            this.grantDevStartCards();
             this.offerHealerAmuletIfNeeded();
         }
         
@@ -454,6 +413,14 @@ export class GameScene extends Phaser.Scene {
         if (!this.anims.exists('hover_cards_anim')) this.anims.create({
             key: 'hover_cards_anim',
             frames: this.anims.generateFrameNumbers('hoverCardsUpSheet', { start: 0, end: 4 }),
+            frameRate: 12,
+            repeat: 0
+        });
+        // The rainbow sweep for starred Legendaries: the sheet's second row.
+        if (!this.anims.exists('hover_cards_rainbow_anim')
+            && (this.textures.get('hoverCardsUpSheet')?.frameTotal || 0) > 10) this.anims.create({
+            key: 'hover_cards_rainbow_anim',
+            frames: this.anims.generateFrameNumbers('hoverCardsUpSheet', { start: 5, end: 9 }),
             frameRate: 12,
             repeat: 0
         });
@@ -588,6 +555,19 @@ export class GameScene extends Phaser.Scene {
         this.updateAmuletsUI?.();
     }
 
+    // Developer mode: a new run starts with DEV_START_CARDS in the bag.
+    grantDevStartCards() {
+        if (!devToolsEnabled() || this.shouldLoadSave || this.tutorialMode || this.sandboxMode) return;
+        DEV_START_CARDS.forEach(({ type, kind, stars }) => {
+            const card = type === 'armor'
+                ? createArmorCardData(kind, 'legendary')
+                : createWeaponCardData(kind, 'legendary');
+            if (!card) return;
+            applyStars(card, stars);
+            this.inventorySystem?.addCard?.(card);
+        });
+    }
+
     offerHealerAmuletIfNeeded() {
         if (this.shouldLoadSave || this.tutorialMode || this.sandboxMode) return;
         if (areAmuletsDisabled()) return;
@@ -628,6 +608,7 @@ export class GameScene extends Phaser.Scene {
         this._floorEndAlreadyProcessed = false;
         this._transitioning = false;
         this.enemiesCleared = false;
+        this._bossVictoryPending = false;
         if (this.nextFloorButton) {
             this.nextFloorButton.setVisible(false);
             this.nextFloorButtonText?.setVisible(false);
@@ -734,6 +715,7 @@ export class GameScene extends Phaser.Scene {
 
     showNextFloorButton() {
         if (this.tutorialMode) return;
+        if (this._bossVictoryPending) return;
         if (this._transitioning || this.gameState?.playerHealth <= 0) return;
         if (this.nextFloorButton) {
             this.nextFloorButton
@@ -1032,14 +1014,19 @@ export class GameScene extends Phaser.Scene {
         return 'sigil';
     }
 
-    // The Crystal Lair is won: the room shuts for the run, and its sigil goes
-    // onto a card the player picks. With nothing that can take it, crystals.
+    // The Crystal Lair is won: the room shuts for the run, and the door out
+    // leads to a Sigil Room with the Crystal Brood stamp (the drag-and-drop
+    // room, SigilRoom.js), the way an elite's Sigil Room does. Kept in the
+    // story state so it survives a save. With nothing that can take it, crystals.
     rewardCrystalLair() {
         const story = this.gameState.storyRun || (this.gameState.storyRun = {});
         if (story.crystalLairCleared) return;
         story.crystalLairCleared = true;
+        if (canOfferSigil(this, 'crystalBrood')) {
+            story.crystalLairSigilPending = true;
+            return;
+        }
         this.time.delayedCall(700, () => {
-            if (openSigilOffer(this, this, 'crystalBrood')) return;
             this.gameState.crystals = (this.gameState.crystals || 0) + CRYSTAL_LAIR_FALLBACK_CRYSTALS;
             this.playCurrencyGainFlight?.(320, 160, 'crystals');
             this.updateUI?.();
@@ -1080,6 +1067,7 @@ export class GameScene extends Phaser.Scene {
         this.gameState.inventory = slots;
         this.inventorySystem?.rebuildInventorySprites?.();
         hatched.forEach((key, i) => this.createFloatingText?.(320, 150 - i * 16, t(this, key), 0x9fd8ff));
+        if (hatched.length) SoundHelper.playSound(this, 'egg_hatch', 0.6);
         return hatched.length;
     }
 
@@ -1474,6 +1462,9 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        // Ink and webs never leave the room with the player.
+        this.inventorySystem?.clearAllHandWebs?.();
+
         // Silk Cache Leave: walk away while only cocoons/loot remain — no clear payout.
         if (this._silkCocoonLeaveOffer && !this.enemiesCleared) {
             this.clearEnemyTurnTimers();
@@ -1519,10 +1510,17 @@ export class GameScene extends Phaser.Scene {
             }
         }
         this.nextFloorButtonText?.setVisible(false);
-        this.hideClosedDoorExit();
+        if (!this._bossVictoryPending) this.hideClosedDoorExit();
         // Elite rooms lead to the chest-click TreasureScene, or now and then to
         // a Sigil Room instead (pickEliteRewardMode).
-        const rewardChestMode = this.gameState.roomType === 'ELITE' ? this.pickEliteRewardMode() : null;
+        let rewardChestMode = this.gameState.roomType === 'ELITE' ? this.pickEliteRewardMode() : null;
+        // The Crystal Lair's door leads to its Sigil Room (rewardCrystalLair).
+        let rewardSigilId;
+        if (this.gameState.storyRun?.crystalLairSigilPending) {
+            this.gameState.storyRun.crystalLairSigilPending = false;
+            rewardChestMode = 'sigil';
+            rewardSigilId = 'crystalBrood';
+        }
 
         // Process amulet floor end effects before moving to next floor.
         // Skip when leaving a combat room that was already cleared before a
@@ -1550,6 +1548,7 @@ export class GameScene extends Phaser.Scene {
                     this.scene.launch('TreasureScene', {
                         gameState: this.gameState,
                         rewardMode: rewardChestMode,
+                        sigilId: rewardSigilId,
                     });
                 } else {
                     exitToSandboxHub(this);
@@ -1598,7 +1597,8 @@ export class GameScene extends Phaser.Scene {
             if (rewardChestMode) {
                 this.scene.launch('TreasureScene', {
                     gameState: this.gameState,
-                    rewardMode: rewardChestMode
+                    rewardMode: rewardChestMode,
+                    sigilId: rewardSigilId,
                 });
             } else {
                 this.scene.stop('MapViewScene');
@@ -1724,7 +1724,10 @@ export class GameScene extends Phaser.Scene {
             roomType: this.roomType || this.gameState.roomType,
         });
         const isBossFloor = [15, 30, 45].includes(floor);
-        if (this.roomType === 'BOSS' || this.gameState.roomType === 'BOSS' || isBossFloor) {
+        const isBossVictory = this.roomType === 'BOSS' || this.gameState.roomType === 'BOSS' ||
+            isBossFloor || (this.gameState.mapCursor?.floor ?? -1) >= 14;
+        if (isBossVictory) {
+            this._bossVictoryPending = true;
             this.stopBossMusic();
         }
         if (this.tutorialMode) {
@@ -1760,6 +1763,17 @@ export class GameScene extends Phaser.Scene {
         // rather than the door opening under the last hit.
         const announce = () => {
             if (this._transitioning || !this.enemiesCleared) return;
+            if (isBossVictory) {
+                if (this.gameState.playerHealth <= 0) return;
+                playBossVictoryParticles(this);
+                this.createFloatingText(320, 100, 'All enemies defeated!', 0x71800b);
+                this.time.delayedCall(BOSS_FANFARE_DELAY_MS, () => {
+                    if (this._transitioning || !this.enemiesCleared ||
+                        this.gameState.playerHealth <= 0 || this.gameState.roomType === 'BOSS_REWARD') return;
+                    this.floorCleared();
+                });
+                return;
+            }
             if (reward > 0) this.createFloatingText(320, 140, `+${reward} coins`, 0xfbad19);
             // Null-guard: if the button hasn't been (re)created yet, do NOT
             // throw — that would leave enemiesCleared=true with a still-hidden

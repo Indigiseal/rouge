@@ -15,6 +15,7 @@ import { SOUP_ROBBERY_SHARE, SOUP_STAND_PURSE } from '../../content/events/soup_
 import { ROBBED_TRAVELLER_AMULET } from '../../content/events/robbed_traveller.js';
 import { EGG_HATCH_FIGHTS } from '../../content/cards/eggHatching.js';
 import { actOffsetForFloor } from '../../content/location-packs/calendar.js';
+import { CORRIDOR_FED_CRYSTALS, CORRIDOR_ROUND_CRYSTALS, CORRIDOR_ROUND_HP } from '../../content/events/webbed_corridor.js';
 
 
 // The card types a reroll (Screaming Head, brass wizard tray) can hand back.
@@ -576,6 +577,28 @@ export const EventRunHelpers = {
   leaveCrystalBrood() {
     this.ensureStoryState();
     this.gameState.storyRun.crystalBroodAct = actOffsetForFloor(this.gameState.currentFloor || 1);
+    this.gameState.storyRun.crystalBroodFloor = this.gameState.currentFloor || 1;
+  },
+
+  // The Webbed Corridor (webbed_corridor.js).
+  hasSpareFood() {
+    return this._findInventoryIndex((item) => item?.type === 'food' && item.id !== 'monsterEgg') >= 0;
+  },
+
+  cutWebbedCorridor() {
+    this.gameState.pendingAmbush = { id: 'webbed_corridor', normalCombatBoard: true, enemyTypes: ['crystalHatchling'] };
+  },
+
+  climbRoundWebbedCorridor() {
+    this.loseHealthCapped(CORRIDOR_ROUND_HP);
+    this.gainCrystals(CORRIDOR_ROUND_CRYSTALS);
+  },
+
+  feedWebbedCorridor() {
+    const index = this._findInventoryIndex((item) => item?.type === 'food' && item.id !== 'monsterEgg');
+    if (index < 0) return;
+    this._removeInventoryCard(index);
+    this.gainCrystals(CORRIDOR_FED_CRYSTALS);
   },
 
   /** Hatches into the Crystal Spiderling companion after a few fights (eggHatching.js). */

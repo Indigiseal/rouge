@@ -46,6 +46,13 @@ function readFlag() {
 // hunting for them. 'vacancyStep' is Close Order (the grappling hook).
 export const DEV_START_AMULETS = Object.freeze(['vacancyStep']);
 
+// Cards a new run starts with in Developer mode: a starred Legendary to test
+// the stars, the third sigil slot and the rainbow shine. `kind` is a weapon
+// or armor type; `stars` 1-3.
+export const DEV_START_CARDS = Object.freeze([
+  Object.freeze({ type: 'weapon', kind: 'dagger', stars: 1 }),
+]);
+
 // Read once at boot. A flag that changes mid-run would leave half a screen
 // wearing controls the other half has already hidden.
 let enabled = null;

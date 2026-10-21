@@ -19,6 +19,8 @@ import {
     swordCleaveTargetIndices,
 } from '../../content/cards/weapons.js';
 import { PLATE_RANGED_IGNORE_MAX } from '../../content/cards/armor.js';
+import { MAX_LEGENDARY_STARS, cardStars, starBonus } from '../../content/cards/legendaryStars.js';
+import { hasRainbowShine } from '../../ui/RainbowShine.js';
 
 // Dragging a potion or food: corners frame the hero's portrait (80x80);
 // dragging armor with none worn: the armor slot (68x90).
@@ -208,14 +210,20 @@ export const InventoryView = {
             if (card?.scene && !card.getData?.('webbedLocked')) this.applyWebOverlay(i);
         });
     },
+    // Every web and ink blob off the bag. Also a card that was locked when
+    // the throw left but never got its overlay (the fight ended mid-flight),
+    // which would otherwise stay undraggable with nothing on it.
     clearAllHandWebs() {
         const slots = this.slots || [];
         for (let i = 0; i < slots.length; i++) {
             const item = slots[i];
-            if (!item || !(item.webbedTurns > 0)) continue;
+            const sprite = this.slotSprites?.[i]?.card;
+            const locked = item?.webbedTurns > 0 || sprite?.getData?.('webbedLocked') || this.slotSprites?.[i]?.webOverlay;
+            if (!item || !locked) continue;
             delete item.webbedTurns;
             delete item.webbedKind;
             this.clearWebOverlay(i);
+            this.setCardWebbedInteractive(i, false);
         }
     },
     setDiscardArea(discardArea) {
@@ -413,6 +421,11 @@ export const InventoryView = {
 
             const currentSlot = this.slotSprites[slotIndex];
             currentSlot?.shadow?.setAlpha?.(0);
+            // A starred card's rainbow looped while it was carried; let it go.
+            if (hasRainbowShine(currentSlot?.hoverSprite)) {
+                currentSlot.hoverSprite.stop();
+                currentSlot.hoverSprite.setVisible(false);
+            }
             currentSlot?.twinkleSprite?.setDepth?.(this.getInventoryDepths().twinkle);
 
             this.handleCardDrop(slotIndex, cardSprite);
@@ -1261,6 +1274,7 @@ export const InventoryView = {
             if (card.special) lines.push(t(this.scene, 'tooltip.special', { value: this.describeWeaponSpecial(card) }));
             if (card.poisonDamage) lines.push(t(this.scene, 'tooltip.poisonTurns', { amount: card.poisonDamage, turns: card.poisonTurns || 0 }));
             if (card.durability !== undefined) lines.push(t(this.scene, 'tooltip.pips', { value: `${card.durability}/${card.maxDurability || card.durability}` }));
+            if (cardStars(card)) lines.push(t(this.scene, 'tooltip.stars', { stars: cardStars(card), max: MAX_LEGENDARY_STARS }));
             this.addCanonicalDiffLines(lines, card, 'weapon');
         } else if (card.type === 'armor') {
             const armorType = translateItemName(this.scene, { type: 'armor', armorType: this.getArmorTypeFromCard(card) });
@@ -1284,6 +1298,7 @@ export const InventoryView = {
             }
             if (card.reflection) lines.push(t(this.scene, 'tooltip.reflect', { value: card.reflection }));
             if (card.thornDamage) lines.push(t(this.scene, 'tooltip.thornDamage', { amount: card.thornDamage }));
+            if (cardStars(card)) lines.push(t(this.scene, 'tooltip.stars', { stars: cardStars(card), max: MAX_LEGENDARY_STARS }));
             if (card.durability !== undefined) lines.push(t(this.scene, 'tooltip.pips', { value: `${card.durability}/${card.maxDurability || card.durability}` }));
             this.addCanonicalDiffLines(lines, card, 'armor');
         } else if (card.type === 'thorns') {
@@ -1342,10 +1357,11 @@ export const InventoryView = {
         if (!canonical) return;
 
         const differences = [];
-        if (category === 'weapon' && card.damage !== undefined && card.damage !== canonical.damage) {
+        const stars = starBonus(card);
+        if (category === 'weapon' && card.damage !== undefined && card.damage !== canonical.damage + stars.damage) {
             differences.push(t(this.scene, 'tooltip.baseDamage', { amount: canonical.damage }));
         }
-        if (category === 'armor' && card.protection !== undefined && card.protection !== canonical.protection) {
+        if (category === 'armor' && card.protection !== undefined && card.protection !== (canonical.protection || 0) + stars.protection) {
             differences.push(t(this.scene, 'tooltip.baseProtection', { amount: canonical.protection }));
         }
         if (differences.length > 0) {

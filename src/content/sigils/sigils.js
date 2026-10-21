@@ -15,9 +15,22 @@
 // have, so they show without changing how any enemy plays.
 
 import { noteDiscovered } from '../codex/Discoveries.js';
+import { canWearStars, cardStars } from '../cards/legendaryStars.js';
 
 export const SIGIL_ICONS_KEY = 'enemyIcons';
 export const SIGIL_CAP = 2;            // different sigils per card
+export const STARRED_SIGIL_CAP = 3;    // a starred Legendary holds one more (Taya)
+
+/** How many different sigils `card` may hold: one more once it wears a star. */
+export function sigilCap(card) {
+    return cardStars(card) > 0 ? STARRED_SIGIL_CAP : SIGIL_CAP;
+}
+
+// The cap a merge of `a` and `b` lands under: two Legendaries come out starred.
+function mergedSigilCap(a, b) {
+    const starred = cardStars(a) > 0 || cardStars(b) > 0 || (canWearStars(a) && canWearStars(b));
+    return starred ? STARRED_SIGIL_CAP : SIGIL_CAP;
+}
 export const SIGIL_MULTIPLIER = 1.5;   // never x2 — rounds down, both sides
 
 // side: 'both' | 'player' | 'enemy'. `player` / `enemy`: the rule as it reads
@@ -118,7 +131,7 @@ export function canTakeSigil(card, id) {
     if (!sigilFitsCardType(id, card)) return false;
     if (cardSigils(card).some((s) => s.id === id)) return false;
     if (id === 'thorns') return true;
-    return storedSigils(card).length < SIGIL_CAP;
+    return storedSigils(card).length < sigilCap(card);
 }
 
 // A Reliquary enchant shows as the sigil it becomes (design doc table).
@@ -217,7 +230,7 @@ export function addSigil(card, id) {
         return true;
     }
     const list = storedSigils(card).map((s) => ({ ...s }));
-    if (list.length >= SIGIL_CAP) return false;
+    if (list.length >= sigilCap(card)) return false;
     list.push({ id, level: 1 });
     card.sigils = list;
     return true;
@@ -231,8 +244,9 @@ export function addSigil(card, id) {
  */
 export function mergeSigils(baseCard, secondCard) {
     const out = [];
+    const cap = mergedSigilCap(baseCard, secondCard);
     for (const s of [...storedSigils(baseCard), ...storedSigils(secondCard)]) {
-        if (!out.some((o) => o.id === s.id) && out.length < SIGIL_CAP) out.push({ id: s.id, level: 1 });
+        if (!out.some((o) => o.id === s.id) && out.length < cap) out.push({ id: s.id, level: 1 });
     }
     return out;
 }
@@ -243,7 +257,7 @@ export function mergeSigils(baseCard, secondCard) {
  */
 export function sigilsFitOnMerge(cardA, cardB) {
     const ids = new Set([...storedSigils(cardA), ...storedSigils(cardB)].map((s) => s.id));
-    return ids.size <= SIGIL_CAP;
+    return ids.size <= mergedSigilCap(cardA, cardB);
 }
 
 /** One tooltip line: "Merciless: x1.5 against ..." (+ level when above 1). */

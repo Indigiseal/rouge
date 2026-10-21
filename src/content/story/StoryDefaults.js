@@ -30,6 +30,7 @@ export const DEFAULT_STORY_RUN = Object.freeze({
   mirrorSeen: false,
   abandonedCampSeen: false,
   oldChuteSeen: false,
+  webbedCorridorSeen: false,
   soupStandSeen: false,
   robbedTravellerSeen: false,
   soupStandFloor: null,

@@ -20,7 +20,7 @@ export const SIGIL_STAMPS = Object.freeze([
   Object.freeze({
     id: 'toad', family: 'wealth', key: 'sigilStampToad', path: 'assets/art/sigilStamps/toad.png',
     // The money toad: coins, crystals, a full bag, a second socket.
-    sigils: ['cutpurse', 'bounty', 'ransom', 'packrat', 'twinSocket', 'scout'],
+    sigils: ['cutpurse', 'bounty', 'ransom', 'packrat', 'twinSocket', 'scout', 'crystalBrood'],
   }),
   Object.freeze({
     id: 'cobra', family: 'venom', key: 'sigilStampCobra', path: 'assets/art/sigilStamps/cobra.png',

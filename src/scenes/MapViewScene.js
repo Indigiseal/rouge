@@ -934,6 +934,17 @@ export class MapViewScene extends Phaser.Scene {
       available: availableNodes,
       debugJump: manual || undefined,
     });
+    // The Crystal Lair's door was open and the player took another room: the
+    // brood lives on (webbed_corridor.js).
+    if (!manual && fromNode) {
+      const passedLair = openSecretLinks(this.gameState, fromNode, nextRow)
+        .some((idx) => idx !== targetNodeIdx && nextRow[idx]?.secretSource === 'crystalLair');
+      if (passedLair) {
+        this.gameState.storyRun = this.gameState.storyRun || {};
+        this.gameState.storyRun.crystalLairPassedAct = (this.currentAct || 1) - 1;
+        this.gameState.storyRun.crystalLairPassedFloor = (this.gameState.currentFloor || 1) + 1;
+      }
+    }
     SoundHelper.playVariant(this, 'map_select', 0.5);
     if (fromNode) fromNode.visited = true;
     node.visited = true;

@@ -4,6 +4,8 @@ import { showGemSockets } from '../../ui/GemSockets.js';
 import { buildCardDecorations } from '../../ui/CardDecorations.js';
 import { handLockOf } from '../../content/combat/handLock.js';
 import { bindCardRiders, cardRiders, pinRider } from '../../ui/CardRiders.js';
+import { attachRainbowShine, hasRainbowShine, hoverShineAnim } from '../../ui/RainbowShine.js';
+import { cardStars } from '../../content/cards/legendaryStars.js';
 
 export const InventorySlotRenderer = {
     // New method that doesn't trigger rebuilds
@@ -86,6 +88,8 @@ export const InventorySlotRenderer = {
             this.uiGroup.add(hoverSprite);
             slotSprite.hoverSprite = hoverSprite;
             pinRider(cardSprite, 'hoverShine', hoverSprite);
+            // A starred Legendary's shine glimmers through the rainbow.
+            if (cardStars(cardData)) attachRainbowShine(this.scene, hoverSprite);
         }
 
         // Create gem effect overlay sprite for weapons with a socketed gem
@@ -154,7 +158,7 @@ export const InventorySlotRenderer = {
             // Show and animate hover sprite
             if (currentSlot.hoverSprite) {
                 currentSlot.hoverSprite.setVisible(true);
-                currentSlot.hoverSprite.play('hover_cards_anim');
+                currentSlot.hoverSprite.play(hoverShineAnim(this.scene, currentSlot.hoverSprite));
             }
 
             // Play looped gem effect animation on hover (weapon with socketed gem)
@@ -275,8 +279,12 @@ export const InventorySlotRenderer = {
             const currentSlot = this.slotSprites[slotIndex];
             if (!currentSlot) return;
             
-            // Hide hover animation when dragging
-            if (currentSlot.hoverSprite) {
+            // Hide hover animation when dragging — except a starred card's
+            // rainbow, which keeps sweeping over the card while it is carried.
+            if (currentSlot.hoverSprite && hasRainbowShine(currentSlot.hoverSprite)) {
+                currentSlot.hoverSprite.setVisible(true).setDepth(dragBaseDepth + 1);
+                currentSlot.hoverSprite.play({ key: hoverShineAnim(this.scene, currentSlot.hoverSprite), repeat: -1, repeatDelay: 250 });
+            } else if (currentSlot.hoverSprite) {
                 currentSlot.hoverSprite.setVisible(false);
                 currentSlot.hoverSprite.stop();
             }

@@ -10,6 +10,7 @@ import { carryEnchantToWeapon } from '../../content/balance/WeaponEnchants.js';
 import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { mergeSigils, sigilsFitOnMerge } from '../../content/sigils/sigils.js';
 import { createGauntletCard, isGauntlet, nextGauntletRarity } from '../../content/balance/Gauntlet.js';
+import { applyStars, canWearStars, cardStars, starsAfterMerge } from '../../content/cards/legendaryStars.js';
 
 export const CardMergeRules = {
     canCardsMerge(cardA, cardB, canCrossTier = false) {
@@ -29,6 +30,8 @@ export const CardMergeRules = {
         // A merge that would push the card past two different sigils would
         // lose one, and sigils are never lost to an upgrade — so it isn't offered.
         if (!sigilsFitOnMerge(cardA, cardB)) return false;
+        // Legendaries merge in pairs of equal stars (legendaryStars.js).
+        if (canWearStars(cardA) && canWearStars(cardB) && cardStars(cardA) !== cardStars(cardB)) return false;
         return true;
     },
     getMergeKey(card) {
@@ -189,6 +192,10 @@ export const CardMergeRules = {
         const merged = this.createMergedCardCore(baseCard, secondCard);
         const sigils = mergeSigils(baseCard, secondCard);
         if (merged && sigils.length) merged.sigils = sigils;
+        // Two Legendaries: a star more, up to three (legendaryStars.js).
+        if (merged && canWearStars(baseCard) && canWearStars(secondCard) && canWearStars(merged)) {
+            applyStars(merged, starsAfterMerge(baseCard, secondCard));
+        }
         return merged;
     },
     createMergedCardCore(baseCard, secondCard) {

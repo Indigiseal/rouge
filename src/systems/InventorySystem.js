@@ -11,6 +11,7 @@ import { recordHumanRunEvent, snapshotHumanRunCard } from './HumanRunRecorder.js
 import { handLockOf } from '../content/combat/handLock.js';
 import { sigilLevel } from '../content/sigils/sigils.js';
 import { translateItemName } from '../i18n/i18n.js';
+import { hoverShineAnim } from '../ui/RainbowShine.js';
 
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
@@ -665,7 +666,7 @@ export class InventorySystem {
 
         if (hoverSprite?.scene) {
             hoverSprite.setVisible(true);
-            if (this.scene.anims?.exists?.('hover_cards_anim')) hoverSprite.play('hover_cards_anim');
+            if (this.scene.anims?.exists?.('hover_cards_anim')) hoverSprite.play(hoverShineAnim(this.scene, hoverSprite));
         }
 
         this.scene.tweens.add({

@@ -1557,7 +1557,18 @@ function keepShootersBack() {
       && card.data.type !== 'boss' && !card.data.isMimic
     ));
     const partner = back.find((card) => this.isEnemyType(card.data.type)) || back[0];
-    if (partner) swapData(shooter, partner);
+    if (partner) {
+      swapData(shooter, partner);
+      continue;
+    }
+    // No back-row seat to trade: it becomes one of the location's melee enemies.
+    const floor = this.scene.gameState?.currentFloor || 1;
+    const melee = this.cardDataGenerator?.createCardData?.('enemy', floor, false, this.scene.gameState, null, 'MELEE');
+    if (melee && this.isEnemyType(melee.type) && !melee.isRangedType) {
+      melee.brick = shooter.data.brick;
+      melee.role = 'MELEE';
+      shooter.data = melee;
+    }
   }
 }
 
@@ -1674,9 +1685,10 @@ function spawnBoss() {
     const cam = this.scene.cameras.main;
     // Viewport in world units, not device pixels — see cameraWorldSize.
     const { width: camW, height: camH } = cameraWorldSize(cam);
-    const x = camW / 2 - 20; // match the 20px-left board shift
-    // -25 (was -45): every boss but the Spider Queen stands 20px lower (Taya).
-    const bossOffsetY = bossData.name === 'Spider Queen' ? -90 : -25;
+    const isSpiderQueen = bossData.name === 'Spider Queen';
+    // Keep the Spider Queen in place; shift the other bosses down and right.
+    const x = camW / 2 - 20 + (isSpiderQueen ? 0 : 11);
+    const bossOffsetY = isSpiderQueen ? -90 : -5;
     const y = camH / 2 + bossOffsetY;
     this.createBossBoardPanel();
     const cardSprite = snapOriginToPixelGrid(this.scene.add.image(x, y, bossData.sprite));
@@ -1841,7 +1853,7 @@ function summonEnemy(enemyType, bossCard) {
     // summon used to appear on top of it, hiding the loot for good.
     const lanes = [-1, 1, -2, 2, -3, 3];
     const { height: camH } = cameraWorldSize(this.scene.cameras.main);
-    const y = Math.min(camH - 125, bossCard.sprite.y + 102);
+    const y = Math.min(camH - 125, bossCard.sprite.y + 102) - 6;
     const laneX = (lane) => bossCard.sprite.x + lane * 76;
     const LANE_HALF_WIDTH = 30;
     const laneTaken = (lane) => this.boardCards.some((card) => card && card !== bossCard

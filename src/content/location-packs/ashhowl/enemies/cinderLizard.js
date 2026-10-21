@@ -6,5 +6,5 @@ export default {
   archetype: 'skirmisher',
   // Its hide holds the heat of the waste. Closing on it costs you something
   // whether or not the blow lands well.
-  features: ['thorns_reflect'],
+  features: ['thorns_reflect', 'heatproof'],
 };

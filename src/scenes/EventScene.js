@@ -56,6 +56,8 @@ import { ENEMIES } from '../content/cards/enemies.js';
 import { addSigil, cardSigils, noteSigilTaken } from '../content/sigils/sigils.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
 import { STATION_TOOLTIP_GAP, TOOLTIP_DEPTH, hideItemTooltip, showItemTooltip } from '../ui/ItemTooltip.js';
+import { actOffsetForFloor } from '../content/location-packs/calendar.js';
+import { CORRIDOR_DELAY_FLOORS } from '../content/events/webbed_corridor.js';
 
 export const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
@@ -78,6 +80,8 @@ export const EVENT_ILLUSTRATION_FRAMES = {
   // (the Copying Mirror's glassy panel) is the closest stand-in for now.
   reliquary: 11,
   silk_cocoon_cache: 31,
+  // Webs and spiders: the cocoon cache's picture fits until it has its own.
+  webbed_corridor: 31,
 };
 
 // How far the Screaming Head statue sits right of the usual event-art spot.
@@ -163,6 +167,7 @@ export class EventScene extends Phaser.Scene {
       return this.getEventById('arm_wrestling');
     }
     if (this.isRobbedTravellerDue()) return this.getEventById('robbed_traveller');
+    if (this.isWebbedCorridorDue()) return this.getEventById('webbed_corridor');
     // Music Box Event Sequence opener. Not month-gated: any-month, then nest
     // and engineer via pendingEvents. (The donkey caravan + hermit thread was
     // removed and no longer appears at all.)
@@ -237,6 +242,7 @@ export class EventScene extends Phaser.Scene {
     }
     if (story.pendingEvents.includes('brass_wizard')) return this.getEventById('brass_wizard');
     if (this.isRobbedTravellerDue()) return this.getEventById('robbed_traveller');
+    if (this.isWebbedCorridorDue()) return this.getEventById('webbed_corridor');
     if (story.boxState === 'unknown') return this.getEventById('broken_music_box');
 
     const pool = [];
@@ -263,6 +269,20 @@ export class EventScene extends Phaser.Scene {
       && (this.gameState.currentFloor || 1) >= (story.soupStandFloor || 0) + ROBBED_TRAVELLER_DELAY;
   }
 
+  // The crystal brood, grown (webbed_corridor.js): due a couple of floors
+  // after the hatchlings were left alive this act, at the Old Chute or by
+  // walking past the Crystal Lair.
+  isWebbedCorridorDue() {
+    const story = this.gameState.storyRun;
+    if (!story || story.webbedCorridorSeen) return false;
+    const floor = this.gameState.currentFloor || 1;
+    const act = actOffsetForFloor(floor);
+    const since = story.crystalBroodAct === act ? story.crystalBroodFloor
+      : story.crystalLairPassedAct === act ? story.crystalLairPassedFloor
+        : null;
+    return Number.isFinite(since) && floor >= since + CORRIDOR_DELAY_FLOORS;
+  }
+
   getEventById(id) {
     const resolvedId = id === 'singing_box' ? 'broken_music_box' : id;
     return getEvent(resolvedId) || EVENTS[0];
@@ -274,7 +294,7 @@ export class EventScene extends Phaser.Scene {
       const requestedId = new URLSearchParams(window.location.search).get('event');
       if (!requestedId) return null;
       const resolvedId = requestedId === 'singing_box' ? 'broken_music_box' : requestedId;
-      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'toll_collectors', 'arm_wrestling', 'old_drill_room', 'something_wicked', 'brass_wizard', 'silk_cocoon_cache', 'abandoned_camp', 'old_chute', 'soup_stand', 'robbed_traveller']);
+      const forceable = new Set(['broken_music_box', 'monster_bird_nest', 'goblin_engineer', 'mirror', 'too_nice_room', 'almost_you_well', 'slimy_prison', 'book_worm', 'briar_room', 'screaming_head', 'reliquary', 'toll_collectors', 'arm_wrestling', 'old_drill_room', 'something_wicked', 'brass_wizard', 'silk_cocoon_cache', 'abandoned_camp', 'old_chute', 'webbed_corridor', 'soup_stand', 'robbed_traveller']);
       return forceable.has(resolvedId) ? resolvedId : null;
     } catch {
       return null;
@@ -314,6 +334,7 @@ export class EventScene extends Phaser.Scene {
       mirrorSeen: false,
       abandonedCampSeen: false,
       oldChuteSeen: false,
+      webbedCorridorSeen: false,
       soupStandSeen: false,
       robbedTravellerSeen: false,
       soupStandFloor: null,
@@ -420,6 +441,7 @@ export class EventScene extends Phaser.Scene {
       mirrorSeen: Boolean(existingStoryRun.mirrorSeen),
       abandonedCampSeen: Boolean(existingStoryRun.abandonedCampSeen),
       oldChuteSeen: Boolean(existingStoryRun.oldChuteSeen),
+      webbedCorridorSeen: Boolean(existingStoryRun.webbedCorridorSeen),
       soupStandSeen: Boolean(existingStoryRun.soupStandSeen),
       robbedTravellerSeen: Boolean(existingStoryRun.robbedTravellerSeen),
       tooNiceRoomSeen: Boolean(existingStoryRun.tooNiceRoomSeen),
@@ -1587,6 +1609,23 @@ export class EventScene extends Phaser.Scene {
       SoundHelper.playVariant(this, 'player_hurt', 0.5);
       this._reward({ key: 'event.reward.hp', vars: { amount: `-${lost}` } });
     }
+  }
+
+  /** Action points back to full, with the bar's refill and its sound. */
+  fillActionPoints() {
+    const gs = this.gameState;
+    if (!gs) return 0;
+    const before = Number.isFinite(gs.actionsLeft) ? gs.actionsLeft : 0;
+    const max = Number.isFinite(gs.maxActions) ? gs.maxActions : before;
+    if (before >= max) return 0;
+    gs.actionsLeft = max;
+    this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
+    this.gameScene?.playActionPointGain?.(before, max);
+    this.gameScene?.updateActionPointUI?.();
+    this.gameScene?.updateUI?.();
+    SoundHelper.playSound(this, 'ap_restore', 0.45);
+    this._reward({ key: 'event.reward.ap', vars: { amount: `+${max - before}` } });
+    return max - before;
   }
 
   loseActionPoints(amount) {
@@ -3054,6 +3093,7 @@ export class EventScene extends Phaser.Scene {
       mirror: 'mirrorSeen',
       abandoned_camp: 'abandonedCampSeen',
       old_chute: 'oldChuteSeen',
+      webbed_corridor: 'webbedCorridorSeen',
       soup_stand: 'soupStandSeen',
       robbed_traveller: 'robbedTravellerSeen',
       too_nice_room: 'tooNiceRoomSeen',
@@ -3091,11 +3131,11 @@ export class EventScene extends Phaser.Scene {
     const slots = this.getInventorySlots();
     if (!Array.isArray(slots)) return;
 
-    let delivered = false;
+    const deliveredSlots = [];
     while (pending.length > 0 && slots.some(slot => slot == null)) {
       const reward = pending[0];
       if (!this._addCardToInventory(reward.card)) break;
-      this._flyCardFromPicture(this.gameScene?.inventorySystem?.lastAddedSlot);
+      deliveredSlots.push(this.gameScene?.inventorySystem?.lastAddedSlot);
       pending.shift();
       if (Number.isInteger(reward.rewardLineIndex) && this._rewardLines) {
         this._rewardLines[reward.rewardLineIndex] = reward.gainedLabel;
@@ -3104,13 +3144,16 @@ export class EventScene extends Phaser.Scene {
         key: 'float.claimed',
         vars: { name: translateItemName(this, reward.card || reward.shortName) },
       }, 0x71800b);
-      delivered = true;
     }
 
-    if (delivered) {
+    if (deliveredSlots.length > 0) {
       this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
       this.gameScene?.updateUI?.();
       this._refreshRewardText();
+      // Flights hide the destination sprites until landing. Start them after
+      // all redraws, or the redraw replaces those hidden sprites with visible
+      // cards while their flying copies are still in the air.
+      deliveredSlots.forEach(slot => this._flyCardFromPicture(slot));
     }
   }
 

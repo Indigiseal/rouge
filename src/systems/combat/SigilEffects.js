@@ -11,6 +11,7 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { SIGIL_MULTIPLIER, hasStoredSigil, sigilLevel } from '../../content/sigils/sigils.js';
 import { ENCHANT_FIREBALL_CHANCE, ENCHANT_SAPPING_CHANCE } from '../../content/balance/WeaponEnchants.js';
+import { fireDamageAgainst } from '../../content/combat/fireResist.js';
 
 // Tuning, all per sigil level unless noted.
 const HONED_PER_USE = 1;          // +damage per earlier use this fight
@@ -431,7 +432,7 @@ function throwFireball(scene, struckCard, swingDamage) {
     const land = () => {
         if (cs.boardCards[index] !== card || (card.data?.health || 0) <= 0 || !card.sprite?.scene) return;
         scene.inventorySystem?.createFireballEffect?.(card.sprite);
-        cs.damageGemTarget(index, damage, 'Fireball', 0xef7c4b, null, 'hit');
+        cs.damageGemTarget(index, fireDamageAgainst(card.data, damage), 'Fireball', 0xef7c4b, null, 'hit');
     };
     if (!scene.textures?.exists?.('fireBall1')) {
         scene.time.delayedCall(FIREBALL_FLIGHT_MS, land);

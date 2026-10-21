@@ -949,6 +949,7 @@ export class AmuletManager {
         const fire = () => {
             if (caught) return;
             caught = true;
+            SoundHelper.playSound(scene, 'hook_clunk', 0.6);
             onCatch();
         };
         hook.on('animationupdate', (anim, frame) => {
@@ -963,7 +964,7 @@ export class AmuletManager {
             fire();
             if (hook.active) hook.destroy();
         });
-        SoundHelper.playSound?.(scene, 'card_place', 0.4);
+        SoundHelper.playSound(scene, 'hook_swish', 0.6);
         hook.play('hook_pull');
         return true;
     }

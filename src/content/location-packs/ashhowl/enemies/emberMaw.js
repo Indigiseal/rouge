@@ -5,5 +5,5 @@ export default {
   minFloor: 16,
   archetype: 'swarm',
   // Burn-bite pressure — small, many, and hard on equipment.
-  features: ['gnaw'],
+  features: ['gnaw', 'heatproof'],
 };
