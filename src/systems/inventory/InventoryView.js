@@ -21,6 +21,7 @@ import {
 import { PLATE_RANGED_IGNORE_MAX } from '../../content/cards/armor.js';
 import { MAX_LEGENDARY_STARS, cardStars, starBonus } from '../../content/cards/legendaryStars.js';
 import { hasRainbowShine } from '../../ui/RainbowShine.js';
+import { companionStrengthBonus } from '../combat/SigilEffects.js';
 
 // Dragging a potion or food: corners frame the hero's portrait (80x80);
 // dragging armor with none worn: the armor slot (68x90).
@@ -1321,7 +1322,7 @@ export const InventoryView = {
             const styleKey = card.attackStyle === 'melee' || card.range === 'melee'
                 ? 'tooltip.companion.melee'
                 : 'tooltip.companion.ranged';
-            lines.push(t(this.scene, damageKey, { amount: card.attack || 2 }));
+            lines.push(t(this.scene, damageKey, { amount: (card.attack || 2) + companionStrengthBonus(this.scene.gameScene || this.scene) }));
             lines.push(t(this.scene, styleKey));
             lines.push(t(this.scene, 'tooltip.companion.actsAfter'));
             if (card.boundThrall) lines.push(t(this.scene, 'tooltip.boundThrall'));
@@ -1435,13 +1436,19 @@ export const InventoryView = {
         return special;
     },
     describeMagicCard(card) {
+        if (card.magicType === 'desertFeast') return translateDescription(this.scene, 'Fully restores Action Points without healing HP.');
+        if (card.magicType === 'thunderclap') return translateDescription(this.scene, 'Deals 3 lightning damage to all revealed enemies and shocks survivors for one missed attack, including bosses.');
         if (card.magicType === 'fireball') return translateDescription(this.scene, 'Deals damage to one enemy.');
         if (card.magicType === 'frostRing') return translateDescription(this.scene, 'Freezes all enemies.');
         if (card.magicType === 'restoration') return translateDescription(this.scene, 'Fully restores HP and AP.');
         if (card.magicType === 'soulDrain') return translateDescription(this.scene, 'Kills a non-boss enemy and heals.');
         if (card.magicType === 'shadowBlade') return translateDescription(this.scene, 'Boosts weapon damage.');
         if (card.magicType === 'weakness') return translateDescription(this.scene, 'Weakens enemies.');
-        if (card.magicType === 'boneWall') return translateDescription(this.scene, 'Reflects the next attacks.');
+        if (card.magicType === 'boneWall') return translateDescription(this.scene, 'Blocks the next attacks.');
+        if (card.magicType === 'briarShield') return translateDescription(this.scene, 'Reflects the next attacks.');
+        if (card.magicType === 'venomousBomb') return translateDescription(this.scene, 'All revealed enemies take 3 poison damage for 3 turns');
+        if (card.magicType === 'scorched') return translateDescription(this.scene, 'Adds 3 burn to every enemy, including hidden ones. Burn deals its counter each turn, then drops by 1.');
+        if (card.magicType === 'summonMimic') return translateDescription(this.scene, 'Summons a hostile Mimic into an empty space. Defeat it before it escapes to claim its loot.');
         if (card.magicType === 'magicShield') return translateDescription(this.scene, 'Boosts armor.');
         if (card.magicType === 'smokeScreen') return translateDescription(this.scene, 'Hides revealed enemies.');
         return translateDescription(this.scene, 'Single-use magic.');

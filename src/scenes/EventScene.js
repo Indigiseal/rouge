@@ -31,6 +31,7 @@ import { scaleGoldReward } from '../content/economy/gold.js';
 import { openMusicBoxLockMinigame } from '../ui/MusicBoxLockMinigame.js';
 import { openBirdNestMinigame } from '../ui/BirdNestMinigame.js';
 import {
+  canStartMusicBox,
   MUSIC_BOX_EXPLODED,
   MUSIC_BOX_OPENED_BY_FORCE,
 } from '../content/events/broken_music_box.js';
@@ -53,7 +54,7 @@ import { serifStyle } from '../ui/uiFont.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { createExitDoor, EXIT_DOOR_X, EXIT_DOOR_Y } from '../ui/ExitDoor.js';
 import { ENEMIES } from '../content/cards/enemies.js';
-import { addSigil, cardSigils, noteSigilTaken } from '../content/sigils/sigils.js';
+import { addSigil, canTakeSigil, cardSigils, noteSigilTaken } from '../content/sigils/sigils.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
 import { STATION_TOOLTIP_GAP, TOOLTIP_DEPTH, hideItemTooltip, showItemTooltip } from '../ui/ItemTooltip.js';
 import { actOffsetForFloor } from '../content/location-packs/calendar.js';
@@ -168,10 +169,9 @@ export class EventScene extends Phaser.Scene {
     }
     if (this.isRobbedTravellerDue()) return this.getEventById('robbed_traveller');
     if (this.isWebbedCorridorDue()) return this.getEventById('webbed_corridor');
-    // Music Box Event Sequence opener. Not month-gated: any-month, then nest
-    // and engineer via pendingEvents. (The donkey caravan + hermit thread was
-    // removed and no longer appears at all.)
-    if (story.boxState === 'unknown') return this.getEventById('broken_music_box');
+    // New music-box starts belong to Tollroad; old queued follow-ups above
+    // remain playable so existing saves do not lose an unfinished story.
+    if (canStartMusicBox(this.gameState, locationId)) return this.getEventById('broken_music_box');
     // Once the main story beats are past, offer a special bonus room (copying
     // mirror / too-nice room) once each per run, chosen at random, before
     // falling back to the plain filler.
@@ -243,7 +243,7 @@ export class EventScene extends Phaser.Scene {
     if (story.pendingEvents.includes('brass_wizard')) return this.getEventById('brass_wizard');
     if (this.isRobbedTravellerDue()) return this.getEventById('robbed_traveller');
     if (this.isWebbedCorridorDue()) return this.getEventById('webbed_corridor');
-    if (story.boxState === 'unknown') return this.getEventById('broken_music_box');
+    if (canStartMusicBox(this.gameState, 'tollroad')) return this.getEventById('broken_music_box');
 
     const pool = [];
     if (!story.tollCollectorsSeen) pool.push('toll_collectors');
@@ -1991,8 +1991,7 @@ export class EventScene extends Phaser.Scene {
       this._handleBriarOffering(slotIndex, cardData, cardSprite)
     ), {
       accepts: (card) => this.briarOfferingActive && !this.resolved
-        && (card?.type === 'weapon' || card?.type === 'armor')
-        && !cardSigils(card).some((s) => s.id === 'thorns'),
+        && canTakeSigil(card, 'thorns'),
     });
     return true;
   }
@@ -2005,8 +2004,8 @@ export class EventScene extends Phaser.Scene {
   _handleBriarOffering(slotIndex, cardData, cardSprite) {
     const inv = this.gameScene?.inventorySystem;
     if (!inv || !cardData || !this.briarOfferingActive || this.resolved) return false;
-    if (cardData.type !== 'weapon' && cardData.type !== 'armor') {
-      this._mirrorFloat('The briars only want a weapon or armor card', 0xc45c45, cardSprite);
+    if (cardData.type !== 'armor') {
+      this._mirrorFloat('The briars only want an armor card', 0xc45c45, cardSprite);
       return false;
     }
 
@@ -2016,7 +2015,10 @@ export class EventScene extends Phaser.Scene {
       this._mirrorFloat('This card already has thorns', 0xc45c45, cardSprite);
       return false;
     }
-    addSigil(cardData, 'thorns');
+    if (!addSigil(cardData, 'thorns')) {
+      this._mirrorFloat('This card has no room for another sigil', 0xc45c45, cardSprite);
+      return false;
+    }
     noteSigilTaken(this.gameState, 'thorns');
 
     inv.returnCardToSlot(slotIndex, cardSprite);
@@ -2028,7 +2030,7 @@ export class EventScene extends Phaser.Scene {
     this._rewardLines = [];
     this._rewardIcons = [];
     this._reward({
-      key: cardData.type === 'weapon' ? 'event.reward.permanentDamage' : 'event.reward.thornDamage',
+      key: 'event.reward.thornDamage',
       vars: { name: translateItemName(this, cardData) },
     });
     this._resolve({
@@ -2492,7 +2494,7 @@ export class EventScene extends Phaser.Scene {
   // render, so rolling inline would reshuffle the wall under the player's hand.
   getReliquaryOffer() {
     if (!Array.isArray(this._reliquaryOffer) || this._reliquaryOffer.length === 0) {
-      this._reliquaryOffer = rollEnchantOffer(this.gameState?.currentFloor || 1, 3);
+      this._reliquaryOffer = rollEnchantOffer(this.gameState?.currentFloor || 1, 5, { ignoreMinFloor: true });
     }
     return this._reliquaryOffer;
   }
@@ -2517,11 +2519,13 @@ export class EventScene extends Phaser.Scene {
     if (!offer.length) return;
     if (!this.textures.exists('glassCase') || !this.textures.exists('glowingMagicCards')) return;
 
-    const CASE_W = 70;
-    const CASE_H = 108;
-    const CARD_H = 70;
-    const CARD_LIFT = 20; // the card's bottom edge floats this far above the case's
-    const GAP = 10;
+    // Five cases fit within the event paper's 344px reading area.
+    const CASE_SCALE = 0.9;
+    const CASE_W = 70 * CASE_SCALE;
+    const CASE_H = 108 * CASE_SCALE;
+    const CARD_H = 70 * CASE_SCALE;
+    const CARD_LIFT = 20 * CASE_SCALE;
+    const GAP = 6;
 
     const choiceBounds = this._getChoiceBounds();
     const rowBottom = (choiceBounds ? choiceBounds.top : 200) - 6;
@@ -2544,11 +2548,13 @@ export class EventScene extends Phaser.Scene {
 
       // Card first (behind), then the glass over it.
       if (frame !== null) {
-        const card = this.add.image(x, cardCenterY, 'glowingMagicCards', frame).setDepth(2);
+        const card = this.add.image(x, cardCenterY, 'glowingMagicCards', frame).setDepth(2).setScale(CASE_SCALE);
+        card.setData('magicType', magicType);
         this._reliquaryCaseObjects.push(card);
         this._reliquaryCards.push(card);
       }
-      const glass = this.add.image(x, centerY, 'glassCase').setDepth(3);
+      const glass = this.add.image(x, centerY, 'glassCase').setDepth(3).setScale(CASE_SCALE);
+      glass.setData('magicType', magicType);
       this._reliquaryCaseObjects.push(glass);
       this._reliquaryGlass.push(glass);
 
@@ -2600,8 +2606,8 @@ export class EventScene extends Phaser.Scene {
       else obj.clearTint();
     });
 
-    // The glowing cards keep their spell a secret: pointing at one (not
-    // while carrying a weapon) shows only question marks (Taya).
+    // Explain both the spell and its weapon enchantment before the player
+    // commits. Poll the whole case so hovering the glass also works.
     const inside = (obj) => {
       const b = obj.getBounds();
       return pointer.worldX >= b.left && pointer.worldX <= b.right
@@ -2609,14 +2615,19 @@ export class EventScene extends Phaser.Scene {
     };
     const hovered = pointer.isDown
       ? null
-      : (this._reliquaryCards || []).find((card) => card?.scene && inside(card)) || null;
+      : glass.find((card) => card?.scene && inside(card)) || null;
     if (hovered === this._reliquaryHoverCard) return;
     this._reliquaryHoverCard = hovered;
     if (!hovered) {
       hideItemTooltip(this);
       return;
     }
-    showItemTooltip(this, { name: '???' }, hovered.x, hovered.y, TOOLTIP_DEPTH, STATION_TOOLTIP_GAP);
+    const magicType = hovered.getData('magicType');
+    const magic = getMagic(magicType);
+    const enchantment = describeWeaponEnchant(this, { enchant: magicType });
+    const description = [translateDescription(this, magic?.description || ''), enchantment]
+      .filter(Boolean).join('\n\n');
+    showItemTooltip(this, { name: magic?.name, description }, hovered.x, hovered.y, TOOLTIP_DEPTH, STATION_TOOLTIP_GAP);
   }
 
   _handleReliquaryOffering(slotIndex, cardData, cardSprite, magicType) {
@@ -2691,7 +2702,7 @@ export class EventScene extends Phaser.Scene {
       key: 'event.reward.gainedCard', vars: { name: translateItemName(this, magic) },
     });
 
-    this.reliquaryBreakOutcome = `You put your elbow through the case holding the ${magic.name}.\n\nThe ward goes off late and shallow, opening a line across your forearm — but the card is in your fist and it stays there.\n\nThe other two cases go dark before the glass finishes falling.`;
+    this.reliquaryBreakOutcome = `You put your elbow through the case holding the ${magic.name}.\n\nThe ward goes off late and shallow, opening a line across your forearm — but the card is in your fist and it stays there.\n\nThe remaining cases go dark before the glass finishes falling.`;
     return true;
   }
 

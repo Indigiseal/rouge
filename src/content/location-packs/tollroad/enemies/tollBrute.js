@@ -6,5 +6,5 @@ export default {
   role: 'MELEE',
   minFloor: 1,
   archetype: 'bruiser',
-  features: ['goblin_rally'],
+  features: [],
 };

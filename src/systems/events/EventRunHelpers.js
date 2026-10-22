@@ -83,7 +83,7 @@ export const EventRunHelpers = {
     story.boxState = 'opened';
     story.boxFollowing = true;
     this.gainCrystals(1);
-    this.addPendingEvent('monster_bird_nest');
+    this.addPendingEvent('goblin_engineer');
   },
 
   resolveMusicBoxLeft() {
@@ -92,7 +92,7 @@ export const EventRunHelpers = {
     const story = this.gameState.storyRun;
     story.boxState = 'following';
     story.boxFollowing = true;
-    this.addPendingEvent('monster_bird_nest');
+    this.addPendingEvent('goblin_engineer');
   },
 
   resolveMusicBoxExploded() {
@@ -108,7 +108,7 @@ export const EventRunHelpers = {
     if (lost > 0) this._reward({ key: 'event.reward.hp', vars: { amount: `-${lost}` } });
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     this.gameScene?.updateUI?.();
-    this.addPendingEvent('monster_bird_nest');
+    this.addPendingEvent('goblin_engineer');
   },
 
   beginMusicBoxForceOpen() {
@@ -431,10 +431,12 @@ export const EventRunHelpers = {
     this.ensureStoryState();
     this.clearPendingEvent('goblin_engineer');
     const story = this.gameState.storyRun;
+    if (story.latchboxRewardClaimed) return false;
     story.goblinEngineerResolved = true;
 
     const requestedChance = Number.isFinite(story.boxRepairChance) ? story.boxRepairChance : 50;
-    const chance = story.boxHasCog ? Math.max(0, Math.min(100, requestedChance)) : 50;
+    // The engineer supplies a missing cog; the nest is no longer required.
+    const chance = Math.max(0, Math.min(100, requestedChance));
     story.boxRepairChance = chance;
     const succeeded = Math.random() * 100 < chance;
 

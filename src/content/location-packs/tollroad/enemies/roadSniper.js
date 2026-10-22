@@ -6,5 +6,6 @@ export default {
   role: 'RANGED',
   minFloor: 1,
   archetype: 'artillery',
-  features: ['heavy_shot'],
+  features: [],
+  sigils: [{ id: 'ambush' }],
 };

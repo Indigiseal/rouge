@@ -22,6 +22,7 @@ import {
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 import { playSmokePuff } from '../../ui/SmokeBurst.js';
 import { temperedSaveChance } from '../combat/SigilEffects.js';
+import { freezeEnemy } from '../../content/combat/frost.js';
 
 // Zap sigil: chance a lightning-gem (yellow stone) hit paralyses its target.
 const LIGHTNING_PARALYSE_CHANCE = 0.1;
@@ -34,6 +35,9 @@ const CRIT_SHAKE_MS = 80;
 const CRIT_SHAKE_INTENSITY = 0.0025;
 import { hideItemTooltip, showControlMarkTooltip } from '../../ui/ItemTooltip.js';
 import { fireDamageAgainst } from '../../content/combat/fireResist.js';
+import { enterBonePile } from '../../content/combat/boneflood.js';
+import { sigilLevel } from '../../content/sigils/sigils.js';
+import { canBurnCard, takeBurnTick } from '../../content/combat/ashhowl.js';
 
 export class BoardCombat {
     constructor(cs) {
@@ -41,6 +45,7 @@ export class BoardCombat {
         this.isRangedWeapon = isRangedWeapon.bind(cs);
         this.isVenomousWeapon = isVenomousWeapon.bind(cs);
         this.applyWeaponPoison = applyWeaponPoison.bind(cs);
+        this.applyEnemyPoison = applyEnemyPoison.bind(cs);
         this.applyPoisonGemStacks = applyPoisonGemStacks.bind(cs);
         this.splashPoisonGem = splashPoisonGem.bind(cs);
         this.getEnemyPoisonSummary = getEnemyPoisonSummary.bind(cs);
@@ -68,6 +73,7 @@ export class BoardCombat {
         this.isActiveBoardTaunter = isActiveBoardTaunter.bind(cs);
         this.isTauntBlockingTarget = isTauntBlockingTarget.bind(cs);
         this.burnEnemy = burnEnemy.bind(cs);
+        this.processEnemyBurnEffects = processEnemyBurnEffects.bind(cs);
         this.damageGemTarget = damageGemTarget.bind(cs);
         this.explodePoisonedEnemy = explodePoisonedEnemy.bind(cs);
         this.applyRelicSlow = applyRelicSlow.bind(cs);
@@ -151,7 +157,7 @@ function isVenomousWeapon(w) {
 
 function collectPoisonGemStacks(weapon, amuletManager) {
   if (weapon?.gemEffect !== 'poison') return [];
-  const stacks = CardDataGenerator.weaponGemStack(weapon);
+  const stacks = CardDataGenerator.weaponGemStack(weapon) + sigilLevel(weapon, 'venomStack');
   const tickDamage = amuletManager?.modifyPoisonGemTickDamage?.(1) ?? 1;
   const poisonStacks = [];
   for (let i = 0; i < stacks; i++) {
@@ -203,6 +209,13 @@ function applyPoisonGemStacks(card, weapon) {
   applyPoisonStacksToCard.call(this, card, collectPoisonGemStacks(weapon, this.scene.amuletManager));
 }
 
+// Spells/sigils use the ordinary poison status and marker, without rolling
+// weapon-poison relics or applying any socketed gems a second time.
+function applyEnemyPoison(card, damage, turns) {
+  if (!(damage > 0) || !(turns > 0)) return;
+  applyPoisonStacksToCard.call(this, card, [{ damage, turns }]);
+}
+
 function nearestEdgeDistSq(fromX, fromY, sprite) {
   const b = sprite.getBounds();
   const nx = Phaser.Math.Clamp(fromX, b.left, b.right);
@@ -214,7 +227,8 @@ function nearestEdgeDistSq(fromX, fromY, sprite) {
 
 function splashPoisonGem(mainIndex, weapon) {
   const extra = this.scene.amuletManager?.getPoisonGemSplashTargets?.() || 0;
-  if (extra <= 0 || weapon?.gemEffect !== 'poison') return;
+  const sigilExtra = sigilLevel(weapon, 'venomSplash');
+  if ((extra <= 0 && sigilExtra <= 0) || weapon?.gemEffect !== 'poison') return;
   const main = this.boardCards[mainIndex];
   const tx = main?.sprite?.x;
   const ty = main?.sprite?.y;
@@ -222,12 +236,18 @@ function splashPoisonGem(mainIndex, weapon) {
   const radiusSq = POISON_RUNE_SPLASH_RADIUS * POISON_RUNE_SPLASH_RADIUS;
   const candidates = [];
   this.boardCards.forEach((card, i) => {
-    if (i === mainIndex || !card?.sprite || !this.isAnyEnemyCard(card)) return;
+    if (i === mainIndex || !card?.sprite || !this.isAnyEnemyCard(card)
+        || !(card.data.health > 0) || card.data.isBonePile) return;
     const dist = nearestEdgeDistSq(tx, ty, card.sprite);
     if (dist <= radiusSq) candidates.push({ card, dist });
   });
   candidates.sort((a, b) => a.dist - b.dist);
-  candidates.slice(0, extra).forEach(({ card }) => this.applyPoisonGemStacks(card, weapon));
+  const selected = candidates.slice(0, extra);
+  // The sigil extends the amulet to another revealed target rather than
+  // applying the same splash twice to its first target.
+  selected.push(...candidates.filter(entry => entry.card.revealed && !selected.includes(entry)
+    && !entry.card.data.isCocoon && !entry.card.data.features?.includes('cocoon_shell')).slice(0, sigilExtra));
+  selected.forEach(({ card }) => this.applyPoisonGemStacks(card, weapon));
 }
 
 function applyWeaponPoison(card, weapon) {
@@ -326,23 +346,28 @@ function processEnemyPoisonEffects() {
       if (effect.type !== 'poison') continue;
       poisonDamage += effect.damage;
       effect.turns--;
-      if (effect.turns <= 0) effects.splice(e, 1);
     }
 
-    // Remove the poison icon once all stacks have expired
-    if (card.poisonMarker && !effects.some(e => e.type === 'poison')) {
-      card.poisonMarker.destroy();
-      card.poisonMarker = null;
-    }
-
-    if (poisonDamage <= 0) continue;
+    const expirePoison = () => {
+      for (let e = effects.length - 1; e >= 0; e--) {
+        if (effects[e].type === 'poison' && effects[e].turns <= 0) effects.splice(e, 1);
+      }
+      if (card.poisonMarker && !effects.some(effect => effect.type === 'poison')) {
+        card.poisonMarker.destroy();
+        card.poisonMarker = null;
+      }
+    };
+    if (poisonDamage <= 0) { expirePoison(); continue; }
     card.data.health -= poisonDamage;
     this.scene.createFloatingText(card.sprite.x, card.sprite.y, `-${poisonDamage} Poison`, 0x71800b);
     this.scene.shakeCard(card.sprite, { soft: true });
 
     if (card.data.health <= 0) {
+      // A creature killed by its final poison tick is still poisoned at
+      // death, so Plague Heart must see the status before it expires.
       this.removeDefeatedEnemy(i, card);
     } else {
+      expirePoison();
       this.updateEnemyInfoText(card);
     }
   }
@@ -851,8 +876,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         !isReflection
         && weapon
         && finalDamage > 0
-        && Array.isArray(card.data.features)
-        && card.data.features.includes('thorns_reflect')
+        && (card.data.features?.includes('thorns_reflect') || sigilLevel(card.data, 'thorns') > 0)
         && this.scene.gameState
     ) {
         const { actualDamage, tookDamage } = this.scene.gameState.takeDamage(1, index, 'enemy', 999);
@@ -912,7 +936,7 @@ function applyWeaponGemEffect(targetIndex, weapon, baseDamage) {
         // (main + 2 hops). Uncommon Rune of Zap adds extra hops.
         let zapDamage = gemStackDamage(stack, this.scene.gameState?.currentFloor);
         zapDamage = this.scene.amuletManager?.modifyGemDamage?.(zapDamage, 'lightning') ?? zapDamage;
-        const extraZaps = 2 + (this.scene.amuletManager?.getLightningExtraBounces?.() || 0);
+        const extraZaps = 2 + (this.scene.amuletManager?.getLightningExtraBounces?.() || 0) + sigilLevel(weapon, 'conductive');
         // One random zap SFX per lightning-gem swing (not per hop). Sits on
         // the gem beat so the zap answers the sword hit instead of racing it.
         CombatSequencer.playVariant(this.scene, 'gem', 'lightning_zap', 0.45);
@@ -1076,7 +1100,7 @@ function isTauntBlockingTarget(card) {
     return !(Array.isArray(card?.data?.features) && card.data.features.includes('taunt'));
 }
 
-function burnEnemy(index, amount) {
+function burnEnemy(index, amount, { label = 'Fire' } = {}) {
     const card = this.boardCards[index];
     if (!this.isAnyEnemyCard(card)) return;
     amount = fireDamageAgainst(card.data, amount); // Heatproof lava creatures
@@ -1085,13 +1109,23 @@ function burnEnemy(index, amount) {
         CombatSequencer.schedule(this.scene, 'gem', () => {
             if (card.sprite?.scene) this.playEnemyHitEffect(card, 'fire');
         });
-        CombatSequencer.floatingText(this.scene, 'gem', card.sprite.x, card.sprite.y - 18, `-${amount} Fire`, 0xef7c4b);
+        CombatSequencer.floatingText(this.scene, 'gem', card.sprite.x, card.sprite.y - 18, `-${amount} ${label}`, 0xef7c4b);
         CombatSequencer.shakeCard(this.scene, 'gem', card.sprite);
         this.updateEnemyInfoText(card);
     }
     // Face-down (unrevealed) enemies still take the damage above, but show no
     // floating text — we don't want to hint that a hidden card is being hit.
     if (card.data.health <= 0) this.removeDefeatedEnemy(index, card);
+}
+
+function processEnemyBurnEffects() {
+    // Hidden enemies burn without revealing a card, a marker or its damage.
+    for (let index = this.boardCards.length - 1; index >= 0; index--) {
+        const card = this.boardCards[index];
+        if (!canBurnCard(card)) continue;
+        const amount = takeBurnTick(card.data);
+        if (amount > 0) this.burnEnemy(index, amount, { label: 'Burn' });
+    }
 }
 
 // One pip off the equipped weapon, respecting the durability-save sources.
@@ -1118,10 +1152,10 @@ function spendWeaponDurability() {
     this.scene.updateUI();
 }
 
-function damageGemTarget(index, amount, label, color, effect = null, beat = 'gem') {
+function damageGemTarget(index, amount, label, color, effect = null, beat = 'gem', options = {}) {
     const card = this.boardCards[index];
     if (!this.isOpenEnemyCard(card)) return;
-    if (isTauntBlockingTarget.call(this, card)) return;
+    if (!options.bypassTargeting && isTauntBlockingTarget.call(this, card)) return;
     if ((card.data.health ?? 0) <= 0) {
         this.removeDefeatedEnemy(index, card);
         return;
@@ -1193,7 +1227,7 @@ function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
     switch (enchantId) {
         case 'frostRing': {
             if (!this.isAnyEnemyCard(card)) break;
-            card.data.frozen = Math.max(card.data.frozen || 0, ENCHANT_FREEZE_TURNS);
+            if (!freezeEnemy(this, card, ENCHANT_FREEZE_TURNS)) break;
             if (card.sprite) {
                 this.attachFrozenFrame(card);
                 SoundHelper.playSound(this.scene, 'enemy_freeze', 0.5);
@@ -1231,9 +1265,15 @@ function applyWeaponEnchantOnHit(index, enchantId, swingDamage) {
         }
 
         case 'boneWall': {
-            // The spell reflects two attacks; the proc reflects one.
+            // The spell blocks two attacks; the proc readies one block.
             gs.boneWall = Math.max(gs.boneWall || 0, 1);
             this.scene.createFloatingText(px, py, 'Bulwark!', 0xfef0cf);
+            this.scene.updateUI?.();
+            break;
+        }
+        case 'briarShield': {
+            gs.briarShield = Math.max(gs.briarShield || 0, 1);
+            this.scene.createFloatingText(px, py, t(this.scene, 'enchant.briarShield.title'), 0x71800b);
             this.scene.updateUI?.();
             break;
         }
@@ -1283,10 +1323,26 @@ function hideEnemyCard(index) {
     if (card.frozenFrame) { card.frozenFrame.destroy(); card.frozenFrame = null; }
     this.destroyCardInfoText?.(card);
     this.syncControlMarkers?.(card);
+    this.refreshEnemyAttackLabels?.();
     return true;
 }
 
 function removeDefeatedEnemy(index, card) {
+        if (this.boardCards[index] !== card) return;
+        if (enterBonePile(card?.data)) {
+            card.poisonMarker?.destroy?.();
+            card.poisonMarker = null;
+            card.shockMarker?.destroy?.();
+            card.shockMarker = null;
+            this.removeFrozenFrame?.(card);
+            card.sprite?.setAlpha?.(0.65);
+            this.createCardInfoText?.(card);
+            this.scene.createFloatingText?.(card.sprite?.x ?? 320, card.sprite?.y ?? 120,
+                'Bone Pile — finish it!', 0xd6c2c1);
+            this.refreshEnemyAttackLabels?.();
+            this.checkFloorClear();
+            return;
+        }
         // Silk cocoons crack open into loot or a month enemy — not a kill.
         if (isSilkCocoonCard(card?.data)) {
             this.openSilkCocoon?.(index, card);
@@ -1374,6 +1430,13 @@ function removeDefeatedEnemy(index, card) {
         if (tollVeteranDefeated) this.scene.handleTollVeteranDefeat?.(index);
 
         // Mask of Hollow Whispers — chance to drop a random pickup in the enemy's spot
+        if (sigilLevel(card.data, 'forage') > 0) {
+            this.spawnDeathDrop(index, card, this.cardDataGenerator.createFoodCard(this.scene.gameState.currentFloor));
+            this.refreshEnemyAttackLabels?.();
+            this.checkFloorClear();
+            this.scene.refreshSilkCocoonLeaveButton?.();
+            return;
+        }
         const dropChance = this.scene.amuletManager?.getDeathDropChance?.() || 0;
         if (dropChance > 0 && Math.random() < dropChance) {
             this.spawnDeathDrop(index, card);

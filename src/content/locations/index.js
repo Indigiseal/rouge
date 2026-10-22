@@ -6,7 +6,7 @@ import {
   actOffsetForFloor,
 } from '../location-packs/calendar.js';
 import { LOCATION_PACK_LIST, getLocationPack } from '../location-packs/registry.js';
-import { ACT_ROADS, ACT_SIDE_ROADS, PATH_LOCATIONS, SIDE_ROADS_DEALT, TRUE_PATH, allRoadsForAct } from './catalog.js';
+import { ACT_ROADS, PATH_LOCATIONS, PLAYABLE_LOCATION_IDS, allRoadsForAct } from './catalog.js';
 export {
   getLocationRule,
   getLocationNarrativeCheckpoints,
@@ -14,24 +14,44 @@ export {
   pendingLocationAftermath,
 } from './rules.js';
 
-export { ACT_ROADS, ACT_SIDE_ROADS, PATH_LOCATIONS, TRUE_PATH, allRoadsForAct };
+export { ACT_ROADS, PATH_LOCATIONS, PLAYABLE_LOCATION_IDS, allRoadsForAct };
 
 export function getLocation(id) {
   return PATH_LOCATIONS[id] || null;
 }
 
-// The three roads the pick screen deals for an act. An act with a side-road
-// pool offers its true road plus SIDE_ROADS_DEALT of the pool at random.
-export function roadsForAct(act) {
+// Three equal choices. Previously offered but unchosen roads remain eligible.
+export function roadsForAct(act, gameState = null) {
   const n = Math.max(1, Math.min(3, Math.floor(Number(act) || 1)));
-  const pool = ACT_SIDE_ROADS[n];
-  if (!pool?.length) return [...(ACT_ROADS[n] || ACT_ROADS[1])];
-  const sides = [...pool];
+  const visited = new Set(gameState?.actLocationIds?.slice(0, n - 1) || []);
+  const sides = allRoadsForAct(n).filter(id => !visited.has(id));
   for (let i = sides.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [sides[i], sides[j]] = [sides[j], sides[i]];
   }
-  return [TRUE_PATH[n - 1], ...sides.slice(0, SIDE_ROADS_DEALT)];
+  return sides.slice(0, 3);
+}
+
+/** Persist an act's doors so reopening selection cannot reroll them. */
+export function getLocationOffer(gameState, act) {
+  const n = Math.max(1, Math.min(3, Math.floor(Number(act) || 1)));
+  gameState.locationOffers ||= [null, null, null];
+  const existing = gameState.locationOffers[n - 1];
+  const visited = gameState.actLocationIds?.slice(0, n - 1) || [];
+  if (Array.isArray(existing) && existing.length === 3 && new Set(existing).size === 3
+      && existing.every(id => PLAYABLE_LOCATION_IDS.includes(id) && !visited.includes(id))) return [...existing];
+  const offer = roadsForAct(n, gameState);
+  gameState.locationOffers[n - 1] = offer;
+  return [...offer];
+}
+
+/** Saved offers use stable ids; reject malformed or unfinished choices. */
+export function normalizeLocationOffers(offers) {
+  return [0, 1, 2].map(index => {
+    const offer = offers?.[index];
+    return Array.isArray(offer) && offer.length === 3 && new Set(offer).size === 3
+      && offer.every(id => PLAYABLE_LOCATION_IDS.includes(id)) ? [...offer] : null;
+  });
 }
 
 export function emptyActLocationIds() {
@@ -102,22 +122,24 @@ export function needsLocationPick(gameState, act) {
 }
 
 /** Pin a chosen road onto the run and, if the map exists, its act boss. */
-export function applyLocationChoice(gameState, locationId) {
+export function applyLocationChoice(gameState, locationId, act = actOffsetForFloor(gameState?.currentFloor || 1) + 1) {
   const loc = PATH_LOCATIONS[locationId];
   if (!gameState || !loc) return false;
   if (!Array.isArray(gameState.actLocationIds) || gameState.actLocationIds.length !== 3) {
     gameState.actLocationIds = emptyActLocationIds();
   }
-  gameState.actLocationIds[loc.act - 1] = loc.id;
-  const actMap = gameState.dungeonMap?.[`act${loc.act}`];
-  const bossId = resolveActBossId(loc.act, loc.id);
+  if (!Number.isInteger(act) || act < 1 || act > 3) return false;
+  if (gameState.actLocationIds.slice(0, act - 1).includes(loc.id)) return false;
+  gameState.actLocationIds[act - 1] = loc.id;
+  const actMap = gameState.dungeonMap?.[`act${act}`];
+  const bossId = resolveActBossId(act, loc.id);
   if (actMap && bossId) actMap.bossId = bossId;
   return true;
 }
 
 export function resolveActBossId(act, locationId) {
   const loc = PATH_LOCATIONS[locationId];
-  if (!loc || loc.act !== act) return null;
+  if (!loc || !Number.isInteger(act) || act < 1 || act > 3) return null;
   if (loc.bossId && BOSSES[loc.bossId]) return loc.bossId;
   return null;
 }

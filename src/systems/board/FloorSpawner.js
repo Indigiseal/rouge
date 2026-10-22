@@ -1120,15 +1120,19 @@ function clearBossRewardChest() {
     }
 }
 
-function spawnDeathDrop(index, originalCard) {
-    const card = this.boardCards[index];
+function spawnDeathDrop(index, originalCard, forcedData = null) {
+    const source = this.boardCards[index];
+    // Explicit creature loot preserves the defeated enemy for on-hit/kill
+    // accounting, even though its board slot now holds food.
+    const card = forcedData && source ? { ...source } : source;
     if (!card || !card.sprite) return;
+    if (forcedData) this.boardCards[index] = card;
 
     // Random non-enemy pickup type. Mask of Hollow Whispers cannot leave
     // traps, enemies, or empty cards behind.
     const dropTypes = ['coin', 'crystal', 'gem', 'food', 'potion', 'weapon', 'armor', 'magic', 'thorns', 'amulet'];
-    const type = dropTypes[Math.floor(Math.random() * dropTypes.length)];
-    let newData = this.cardDataGenerator.createCardData(
+    const type = forcedData ? null : dropTypes[Math.floor(Math.random() * dropTypes.length)];
+    let newData = forcedData || this.cardDataGenerator.createCardData(
         type,
         this.scene.gameState.currentFloor,
         false,

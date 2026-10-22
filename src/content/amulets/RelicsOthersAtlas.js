@@ -1,3 +1,5 @@
+import { SANDGLASS_SCARAB } from './sandglassScarab.js';
+
 export const RELICS_OTHERS_TEXTURE = 'relicsOthers';
 // 28px copy of the sheet, frame for frame, for the battle HUD's equipped strip.
 export const RELICS_OTHERS_SMALL_TEXTURE = 'relicsOthersSmall';
@@ -218,6 +220,7 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     quickstepCharm: 'fingerlessGloves',
     heartOfHours: 'pocketWatch',
     gluttonsCharm: 'blueTeapot',
+    leadershipBanner: 'horn', // Provisional leadership art until the banner is drawn.
     veteransCarryall: 'basket',
     tollWrit: 'merchantSeal',
     heartbloodVial: 'heartVial',
@@ -276,7 +279,11 @@ export function getRelicAtlasPresentation(id) {
 
 export function applyAmuletAtlasPresentation(data) {
     if (!data?.id || !AMULET_ATLAS_KEYS[data.id]) return data;
-    return { ...data, ...getAmuletAtlasPresentation(data.id) };
+    return { ...data, ...getAmuletAtlasPresentation(data.id),
+        ...(data.id === SANDGLASS_SCARAB.id ? {
+            name: SANDGLASS_SCARAB.name, description: SANDGLASS_SCARAB.description,
+        } : {}),
+    };
 }
 
 function validateAtlasAssignments() {

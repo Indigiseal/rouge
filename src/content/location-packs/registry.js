@@ -5,6 +5,9 @@ import { BONEFLOOD_LOCATION_PACK } from './boneflood/index.js';
 import { MIRETURN_LOCATION_PACK } from './mireturn/index.js';
 import { VEILBLEED_LOCATION_PACK } from './veilbleed/index.js';
 import { ASHHOWL_LOCATION_PACK } from './ashhowl/index.js';
+import { STORMHATCH_LOCATION_PACK } from './stormhatch/index.js';
+import { FROSTHOLLOW_LOCATION_PACK } from './frosthollow/index.js';
+import { SANDREACH_LOCATION_PACK } from './sandreach/index.js';
 
 const PACKS = [
   THORNWAKE_LOCATION_PACK,
@@ -20,8 +23,9 @@ const PACKS = [
   Object.freeze({ id: 'spherefall', name: 'Spherefall', enemies: null }),
   Object.freeze({ id: 'starfold', name: 'Starfold', enemies: null }),
   // Shelved ids remain resolvable for simulator flags and imported old saves.
-  Object.freeze({ id: 'frosthollow', name: 'Frosthollow', enemies: null }),
-  Object.freeze({ id: 'stormhatch', name: 'Stormhatch', enemies: null }),
+  FROSTHOLLOW_LOCATION_PACK,
+  STORMHATCH_LOCATION_PACK,
+  SANDREACH_LOCATION_PACK,
 ];
 
 export const LOCATION_PACK_LIST = Object.freeze(PACKS);

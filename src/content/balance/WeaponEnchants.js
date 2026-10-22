@@ -10,6 +10,9 @@
 // only needs a row in WEAPON_ENCHANTS to become enchantable.
 import { getMagic } from '../cards/magic.js';
 import { t } from '../../i18n/i18n.js';
+import { VENOMOUS_BOMB_CHANCE } from '../combat/silkdeep.js';
+import { SCORCHED_CHANCE } from '../combat/ashhowl.js';
+import { SHOCK_CHANCE } from '../combat/storm.js';
 
 export const ENCHANT_CHANCE_BY_RARITY = Object.freeze({
   common: 0.25,
@@ -33,7 +36,7 @@ export const ENCHANT_OFFER_WEIGHT = Object.freeze({
 // another enemy; Sapping weakens the enemy hit for its next attack only.
 export const ENCHANT_FIREBALL_CHANCE = 0.1;
 export const ENCHANT_SAPPING_CHANCE = 0.2;
-const SIGIL_ENCHANT_CHANCE = Object.freeze({ fireball: ENCHANT_FIREBALL_CHANCE, weakness: ENCHANT_SAPPING_CHANCE });
+const SIGIL_ENCHANT_CHANCE = Object.freeze({ desertFeast: 0.1, fireball: ENCHANT_FIREBALL_CHANCE, weakness: ENCHANT_SAPPING_CHANCE, venomousBomb: VENOMOUS_BOMB_CHANCE, scorched: SCORCHED_CHANCE, thunderclap: SHOCK_CHANCE });
 
 export const ENCHANT_HEAL_AMOUNT = 3;
 export const ENCHANT_SHADOW_MULTIPLIER = 1.5;
@@ -48,21 +51,38 @@ export const ENCHANT_SHIELD_MULTIPLIER = 1.2;
 //               a killing blow cannot swallow the effect (same reason gems do)
 //   onKill    — only meaningful once the target is actually dead
 export const WEAPON_ENCHANTS = Object.freeze({
+  desertFeast: { title: 'Second Wind', titleKey: 'enchant.desertFeast.title', summary: 'restores 2 action points after a damaging hit', summaryKey: 'enchant.desertFeast.summary', timing: 'sigil' },
+  thunderclap: { title: 'Shock', titleKey: 'enchant.thunderclap.title', summary: 'the struck enemy misses its next attack, including bosses', summaryKey: 'enchant.thunderclap.summary', timing: 'sigil' },
+  scorched: { title: 'Scorched', titleKey: 'enchant.scorched.title', summary: 'adds 3 burn to every enemy, including hidden ones', summaryKey: 'enchant.scorched.summary', timing: 'sigil' },
+  venomousBomb: { title: 'Venomous Bomb', titleKey: 'enchant.venomousBomb.title', summary: 'all revealed enemies take 3 poison damage for 3 turns', summaryKey: 'enchant.venomousBomb.summary', timing: 'sigil' },
+  briarShield: { title: 'Briar Guard', titleKey: 'enchant.briarShield.title', summary: 'reflect the next enemy attack', summaryKey: 'enchant.briarShield.summary', timing: 'onHit' },
   fireball: { title: 'Fireball', titleKey: 'enchant.fireball.title', summary: 'throws a fireball at another random face-up enemy', summaryKey: 'enchant.fireball.summary', timing: 'sigil' },
   frostRing: { title: 'Frostbound', titleKey: 'enchant.frostRing.title', summary: 'freeze the enemy for 1 turn', summaryKey: 'enchant.frostRing.summary', timing: 'onHit' },
-  restoration: { title: 'Mending', titleKey: 'enchant.restoration.title', summary: `heal ${ENCHANT_HEAL_AMOUNT} HP on hit`, summaryKey: 'enchant.restoration.summary', timing: 'onHit' },
+  restoration: { title: 'Renewal', titleKey: 'enchant.restoration.title', summary: `heal ${ENCHANT_HEAL_AMOUNT} HP on hit`, summaryKey: 'enchant.restoration.summary', timing: 'onHit' },
   soulDrain: { title: 'Devouring', titleKey: 'enchant.soulDrain.title', summary: 'slay a non-boss enemy outright', summaryKey: 'enchant.soulDrain.summary', timing: 'preDamage' },
   shadowBlade: { title: 'Shadowed', titleKey: 'enchant.shadowBlade.title', summary: '+50% damage on the hit', summaryKey: 'enchant.shadowBlade.summary', timing: 'preDamage' },
   weakness: { title: 'Sapping', titleKey: 'enchant.weakness.title', summary: 'the enemy hit deals 30% less on its next attack', summaryKey: 'enchant.weakness.summary', timing: 'sigil' },
-  boneWall: { title: 'Bulwark', titleKey: 'enchant.boneWall.title', summary: 'reflect the next attack', summaryKey: 'enchant.boneWall.summary', timing: 'onHit' },
+  boneWall: { title: 'Bulwark', titleKey: 'enchant.boneWall.title', summary: 'block the next enemy attack', summaryKey: 'enchant.boneWall.summary', timing: 'onHit' },
   magicShield: { title: 'Warding', titleKey: 'enchant.magicShield.title', summary: '+20% armor for 1 turn', summaryKey: 'enchant.magicShield.summary', timing: 'onHit' },
-  smokeScreen: { title: 'Shrouding', titleKey: 'enchant.smokeScreen.title', summary: 'hide an enemy on a kill', summaryKey: 'enchant.smokeScreen.summary', timing: 'onKill' },
+  smokeScreen: { title: 'Ash Cloud', titleKey: 'enchant.smokeScreen.title', summary: 'hide an enemy on a kill', summaryKey: 'enchant.smokeScreen.summary', timing: 'onKill' },
 });
 
 // Frame index of each spell's glowing card face in the `glowingMagicCards`
 // sheet (one row of 52x70 frames), used by the Reliquary's display cases.
 // Sheet order, left to right.
 export const GLOW_CARD_FRAMES = Object.freeze({
+  // Provisional recovery art until Desert Feast has its own drawing.
+  desertFeast: 9,
+  // Provisional area-control artwork until Thunderclap has its own drawing.
+  thunderclap: 1,
+  // Provisional fire artwork until Scorched Land has its own card face.
+  scorched: 3,
+  // Provisional conjuring artwork until the Summon Mimic card is drawn.
+  summonMimic: 6,
+  // Temporary bomb artwork, shared with Smoke Screen until new art arrives.
+  venomousBomb: 8,
+  // Existing unused shield frame, provisional until Thornwake spell art is drawn.
+  briarShield: 2,
   boneWall: 0,
   frostRing: 1,
   fireball: 3,
@@ -101,8 +121,8 @@ export function enchantableMagicTypes(floor = 1) {
  * Pick the spells lit up in one Reliquary: a weighted sample without
  * replacement, so the same wall never shows the same spell twice.
  */
-export function rollEnchantOffer(floor = 1, count = 3) {
-  const pool = enchantableMagicTypes(floor).map((magicType) => ({
+export function rollEnchantOffer(floor = 1, count = 3, { ignoreMinFloor = false } = {}) {
+  const pool = enchantableMagicTypes(ignoreMinFloor ? Infinity : floor).map((magicType) => ({
     magicType,
     weight: ENCHANT_OFFER_WEIGHT[getMagic(magicType)?.rarity] ?? 10,
   }));

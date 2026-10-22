@@ -6,6 +6,5 @@ export default {
   role: 'RANGED',
   minFloor: 16,
   archetype: 'artillery',
-  // Draws to the ear now and then, and that one goes through.
-  features: ['heavy_shot'],
+  features: [],
 };

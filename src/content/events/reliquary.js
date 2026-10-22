@@ -5,7 +5,7 @@ import { getMagic } from '../cards/magic.js';
 // gating this on the player already owning one would hide the mechanic from
 // most runs — the wall exists so the merge is always reachable.
 //
-// The three lit cases are rendered inline by EventScene (_setupReliquaryCases)
+// The five lit cases are rendered inline by EventScene (_setupReliquaryCases)
 // and each is its own drop target, so there are no per-spell buttons here.
 export default {
     id: 'reliquary',

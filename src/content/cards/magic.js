@@ -1,5 +1,47 @@
 export const MAGIC = [
   {
+    magicType: 'desertFeast', name: 'Desert Feast',
+    description: 'Fully restores Action Points without healing HP.',
+    minFloor: 1, rarity: 'uncommon', sprite: 'desertFeast',
+  },
+  {
+    magicType: 'thunderclap', name: 'Thunderclap',
+    description: 'Deals 3 lightning damage to all revealed enemies and shocks survivors for one missed attack, including bosses.',
+    damage: 3, minFloor: 1, rarity: 'rare', sprite: 'thunderclap',
+  },
+  {
+    magicType: 'scorched',
+    name: 'Scorched Land',
+    description: 'Adds 3 burn to every enemy, including hidden ones. Burn deals its counter each turn, then drops by 1.',
+    minFloor: 1,
+    rarity: 'rare',
+    sprite: 'scorchedLand',
+  },
+  {
+    magicType: 'summonMimic',
+    name: 'Summon Mimic',
+    description: 'Summons a hostile Mimic into an empty space. Defeat it before it escapes to claim its loot.',
+    minFloor: 1,
+    rarity: 'rare',
+    sprite: 'summonMimic',
+  },
+  {
+    magicType: 'venomousBomb',
+    name: 'Venomous Bomb',
+    description: 'All revealed enemies take 3 poison damage for 3 turns',
+    minFloor: 1,
+    rarity: 'rare',
+    sprite: 'venomousBomb',
+  },
+  {
+    magicType: 'briarShield',
+    name: 'Briar Shield',
+    description: 'Reflects the next 2 enemy attacks',
+    minFloor: 1,
+    rarity: 'rare',
+    sprite: 'briarShield',
+  },
+  {
     magicType: 'fireball',
     name: 'Fireball',
     description: 'Deals 15 damage to a single enemy',
@@ -52,7 +94,7 @@ export const MAGIC = [
   {
     magicType: 'boneWall',
     name: 'Bone Shield',
-    description: 'Reflects the next 2 enemy attacks',
+    description: 'Blocks the next 2 enemy attacks',
     minFloor: 6,
     rarity: 'rare',
     sprite: 'boneWall',
@@ -67,8 +109,8 @@ export const MAGIC = [
   },
   {
     magicType: 'smokeScreen',
-    name: 'Smoke Screen',
-    description: 'Flips all face-up enemy cards back down',
+    name: 'Ash Cloud',
+    description: 'Flips all revealed non-boss enemies face-down',
     minFloor: 7,
     rarity: 'rare',
     sprite: 'smokeBomb',

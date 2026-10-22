@@ -20,13 +20,26 @@
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { MockScene } from './mock.js'; // also installs globalThis.Phaser + localStorage
+import { advanceBonePile, repairBoneArmor } from '../src/content/combat/boneflood.js';
+import { growEnemy, regenerateAllies } from '../src/content/combat/mireturn.js';
+import { getEnemyHitAttack, applyEnemyStrikeSigils } from '../src/content/combat/enemyAttack.js';
+import { applyVenomousBomb, isSilkdeepPoisonTarget, strengthenPlayerPoison } from '../src/content/combat/silkdeep.js';
+import { sigilLevel } from '../src/content/sigils/sigils.js';
+import { grantMealMaxActions } from '../src/content/amulets/foodEndurance.js';
+import { restoreDesertFeastAP } from '../src/content/combat/sandreach.js';
+import { mimicSummonSpot, summonMimic } from '../src/systems/board/MimicSummon.js';
+import { applyScorched, canBurnCard, takeBurnTick } from '../src/content/combat/ashhowl.js';
+import { fireDamageAgainst } from '../src/content/combat/fireResist.js';
+import { applyThunderclap, isStormSpellTarget } from '../src/content/combat/storm.js';
+import { freezeEnemy, isFrostTarget, consumePlayerAttackHold } from '../src/content/combat/frost.js';
+import { armorThornsDamage, companionStrengthBonus } from '../src/systems/combat/SigilEffects.js';
 import { GameState } from '../src/systems/GameState.js';
 import { CardSystem } from '../src/systems/CardSystem.js';
 import { CardDataGenerator } from '../src/systems/loot/CardDataGenerator.js';
 import { installSeededRandom, beginSeededRun, parseSeedArg, isSeeded } from './rng.js';
 import { setTuningOverrides } from '../src/content/balance/Tuning.js';
 import { getThornStats } from '../src/content/cards/thorns.js';
-import { FIRE_GEM_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../src/content/cards/gems.js';
+import { FIRE_GEM_SPLASH_RADIUS, POISON_RUNE_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../src/content/cards/gems.js';
 import { xpForRun, estimateBossesKilled } from '../src/content/economy/metaXp.js';
 import { weaponCanDamageEnemy, canHurtEnemyAtAll } from '../src/systems/board/BoardCombat.js';
 import { effectiveArmorDodge } from '../src/systems/combat/ArmorMath.js';
@@ -623,7 +636,7 @@ function expectedGemBossDamagePerHit(gs, weapon) {
   const stack = CardDataGenerator.weaponGemStack(weapon);
   if (weapon.gemEffect === 'poison') {
     const tick = gs.scene?.amuletManager?.modifyPoisonGemTickDamage?.(1) ?? 1;
-    return stack * tick * 3;
+    return (stack + sigilLevel(weapon, 'venomStack')) * tick * 3;
   }
   if (weapon.gemEffect === 'fire' || weapon.gemEffect === 'lightning') {
     let damage = gemStackDamage(stack, gs.currentFloor);
@@ -1539,6 +1552,7 @@ function collectLoot(mock, gs, inv, idx, ctx = null) {
       break;
     case 'food': {
       const gain = mock.amuletManager?.modifyFoodAP?.(d.actionAmount || 0) ?? (d.actionAmount || 0);
+      grantMealMaxActions(gs, mock.amuletManager);
       gs.actionsLeft = Math.min(gs.maxActions, gs.actionsLeft + gain);
       mock.scheduleEnemyTurn();
       break;
@@ -1776,6 +1790,11 @@ function castMagicCard(mock, gs, inv, slotIndex, board, floor) {
   let used = false;
 
   switch (magicCard.magicType) {
+    case 'desertFeast':
+      if (gs.playerHealth > 0 && gs.actionsLeft < gs.maxActions && mock.useAction()) {
+        used = restoreDesertFeastAP(gs) > 0;
+      }
+      break;
     case 'restoration':
       mock.useAction();
       used = useRestorationCard(mock, gs, magicCard, true);
@@ -1807,11 +1826,9 @@ function castMagicCard(mock, gs, inv, slotIndex, board, floor) {
       break;
     }
     case 'frostRing': {
-      if (revealedEnemies.length) {
-        for (const { card } of revealedEnemies) {
-          card.data.frozen = 3;
-          mock.cardSystem.attachFrozenFrame?.(card);
-        }
+      const targets = revealedEnemies.filter(({ card }) => isFrostTarget(card));
+      if (targets.length) {
+        for (const { card } of targets) freezeEnemy(mock.cardSystem, card, 3);
         mock.useAction();
         used = true;
       }
@@ -1828,6 +1845,37 @@ function castMagicCard(mock, gs, inv, slotIndex, board, floor) {
     case 'shadowBlade':
       if (!gs.shadowBlade || (gs.shadowBlade.turns || 0) <= CURRENT_BEHAVIOR.thresholds.shadowBladeMinTurns) {
         gs.shadowBlade = { turns: 10, multiplier: 1.5 };
+        mock.useAction();
+        used = true;
+      }
+      break;
+    case 'thunderclap':
+      if (applyThunderclap(mock.cardSystem) > 0) {
+        mock.useAction();
+        used = true;
+      }
+      break;
+    case 'scorched':
+      if (applyScorched(mock.cardSystem) > 0) {
+        mock.useAction();
+        used = true;
+      }
+      break;
+    case 'summonMimic':
+      if (summonMimic(mock.cardSystem)) {
+        mock.useAction();
+        used = true;
+      }
+      break;
+    case 'venomousBomb':
+      if (applyVenomousBomb(mock.cardSystem) > 0) {
+        mock.useAction();
+        used = true;
+      }
+      break;
+    case 'briarShield':
+      if ((gs.briarShield || 0) <= 0) {
+        gs.briarShield = 2;
         mock.useAction();
         used = true;
       }
@@ -1918,6 +1966,10 @@ function scoreMagicUse(mock, gs, inv, board, slotIndex, floor) {
   }
 
   switch (magicCard.magicType) {
+    case 'desertFeast':
+      if (gs.actionsLeft >= gs.maxActions) return -Infinity;
+      if (gs.actionsLeft > gs.maxActions * 0.4) return -Infinity;
+      return base + (1 - gs.actionsLeft / gs.maxActions) * 120;
     case 'restoration':
       if (BOSS_FLOORS.has(floor) && gs.actionsLeft > 0 && hpPct >= 0.3) return -Infinity;
       if (gs.actionsLeft > 0 && hpPct > t.restorationEmergencyHpPct) return -Infinity;
@@ -1939,6 +1991,25 @@ function scoreMagicUse(mock, gs, inv, board, slotIndex, floor) {
     case 'shadowBlade':
       if (!gs.equippedWeapon || (gs.shadowBlade?.turns || 0) > t.shadowBladeMinTurns) return -Infinity;
       return base + (gs.equippedWeapon.damage || 0) * 8;
+    case 'thunderclap':
+      if (!board.some(isStormSpellTarget)) return -Infinity;
+      return base + board.filter(isStormSpellTarget).length * 15;
+    case 'scorched':
+      if (!board.some(canBurnCard)) return -Infinity;
+      return base + board.filter(canBurnCard).length * 15;
+    case 'summonMimic':
+      // Optional loot: only risk the encounter when the bot is healthy and
+      // already carries enough weapon damage/pips to finish a normal Mimic.
+      if (!mimicSummonSpot(mock.cardSystem) || hpPct < 0.75) return -Infinity;
+      if (!inv.some(card => card?.type === 'weapon' && card.durability >= 2
+          && (card.damage || 0) * 2 >= 8 + Math.floor(floor / 2))) return -Infinity;
+      return base - 20;
+    case 'venomousBomb':
+      if (!board.some(isSilkdeepPoisonTarget)) return -Infinity;
+      return base + board.filter(isSilkdeepPoisonTarget).length * 18;
+    case 'briarShield':
+      if (revealedEnemies.length === 0 || (gs.briarShield || 0) > 0) return -Infinity;
+      return base + revealedEnemies.length * 12 + (hpPct < t.defensiveMagicHpPct ? 60 : 0);
     case 'boneWall':
       if (revealedEnemies.length === 0 || (gs.boneWall || 0) > 0) return -Infinity;
       return base + revealedEnemies.length * 12 + (hpPct < t.defensiveMagicHpPct ? 60 : 0);
@@ -2269,7 +2340,7 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs
     let zapDamage = gemStackDamage(stack, floor);
     zapDamage = gs?.scene?.amuletManager?.modifyGemDamage?.(zapDamage, 'lightning') ?? zapDamage;
     affected.set(targetIndex, (affected.get(targetIndex) || 0) + zapDamage);
-    const extraZaps = 2 + (gs?.scene?.amuletManager?.getLightningExtraBounces?.() || 0);
+    const extraZaps = 2 + (gs?.scene?.amuletManager?.getLightningExtraBounces?.() || 0) + sigilLevel(weapon, 'conductive');
     const candidates = board
       .map((card, index) => ({ card, index }))
       .filter(({ card, index }) => (
@@ -2289,10 +2360,11 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs
     }
   } else if (weapon.gemEffect === 'poison') {
     const tick = gs?.scene?.amuletManager?.modifyPoisonGemTickDamage?.(1) ?? 1;
-    const poison = stack * tick * 3;
+    const poison = (stack + sigilLevel(weapon, 'venomStack')) * tick * 3;
     affected.set(targetIndex, (affected.get(targetIndex) || 0) + poison);
     const extra = gs?.scene?.amuletManager?.getPoisonGemSplashTargets?.() || 0;
-    if (extra > 0) {
+    const sigilExtra = sigilLevel(weapon, 'venomSplash');
+    if (extra > 0 || sigilExtra > 0) {
       const target = board[targetIndex];
       const tx = target?.sprite?.x ?? 0;
       const ty = target?.sprite?.y ?? 0;
@@ -2300,15 +2372,18 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs
       for (let i = 0; i < board.length; i++) {
         if (i === targetIndex) continue;
         const card = board[i];
-        if (!(card?.data?.type === 'enemy' || card?.data?.type === 'boss' || card?.data?.type === 'eliteEnemy') || card.data.health <= 0) continue;
+        if (!(card?.data?.type === 'enemy' || card?.data?.type === 'boss' || card?.data?.type === 'eliteEnemy') || card.data.health <= 0 || card.data.isBonePile) continue;
         const b = card.sprite?.getBounds?.();
         const nearestX = b ? Math.max(b.x, Math.min(tx, b.x + b.width)) : (card.sprite?.x ?? 0);
         const nearestY = b ? Math.max(b.y, Math.min(ty, b.y + b.height)) : (card.sprite?.y ?? 0);
         const dist = Math.hypot(nearestX - tx, nearestY - ty);
-        if (dist <= FIRE_GEM_SPLASH_RADIUS) nearby.push({ index: i, dist });
+        if (dist <= POISON_RUNE_SPLASH_RADIUS) nearby.push({ index: i, dist });
       }
       nearby.sort((a, b) => a.dist - b.dist);
-      for (const { index } of nearby.slice(0, extra)) {
+      const selected = nearby.slice(0, extra);
+      selected.push(...nearby.filter(entry => !selected.includes(entry)
+        && isSilkdeepPoisonTarget(board[entry.index])).slice(0, sigilExtra));
+      for (const { index } of selected) {
         affected.set(index, (affected.get(index) || 0) + poison);
       }
     }
@@ -2334,6 +2409,7 @@ function createProjectedDefense(gs) {
   return {
     blockNextAttack: Boolean(gs.blockNextAttack),
     boneWall: Math.max(0, gs.boneWall || 0),
+    briarShield: Math.max(0, gs.briarShield || 0),
     armor: gs.equippedArmor ? { ...gs.equippedArmor } : null,
     armorDurabilitySaveChance: Math.min(
       0.95,
@@ -2344,6 +2420,12 @@ function createProjectedDefense(gs) {
     activeThorns: gs.activeThorns ? { ...gs.activeThorns } : null,
     magicShieldTurns: Math.max(0, gs.magicShield?.turns || 0),
     magicShieldMultiplier: gs.magicShield?.multiplier || 1.2,
+    playerFrozenAttacks: gs.playerFrozenAttacks || 0,
+    playerShocked: Boolean(gs.playerShocked),
+    playerSandstormed: Boolean(gs.playerSandstormed),
+    companionFreezes: new Map(companionsIn(gs.scene?._simInventory || []).filter(card => card.frozenAttacks > 0).map(card => [card, card.frozenAttacks])),
+    companionShocks: new Set(companionsIn(gs.scene?._simInventory || []).filter(card => card.shockedTurns > 0)),
+    burnCounter: Math.max(0, gs.playerEffects?.find(effect => effect.type === 'burn')?.burn || 0),
     poisonEffects: (gs.playerEffects || [])
       .filter((effect) => effect?.type === 'poison' && (effect.turns || 0) > 0)
       .map((effect) => ({ ...effect })),
@@ -2395,7 +2477,7 @@ function expectedEnemyHitOutcome(gs, enemy, defense) {
     : 0;
   const hitChance = (1 - amuletDodge) * (1 - armorDodge) * (1 - rangedIgnore);
 
-  let retaliation = 0;
+  let retaliation = amount > 0 ? armorThornsDamage(armor) : 0;
   if (armor && hitChance > 0) {
     let reflected = Math.floor(amount * ((armor.reflection || 0) / 100));
     if (enemy.type === 'boss') reflected = Math.min(reflected, Math.max(0, enemy.health - 1));
@@ -2469,6 +2551,13 @@ function expectedPlayerPoisonTick(gs, defense) {
   return damage * (1 - expectedAmuletDodgeChance(gs));
 }
 
+function expectedPlayerBurnTick(gs, defense) {
+  let damage = defense.burnCounter || 0;
+  defense.burnCounter = Math.max(0, damage - 1);
+  if (gs.scene?.amuletManager) damage = gs.scene.amuletManager.modifyDamageTaken(damage);
+  return damage * (1 - expectedAmuletDodgeChance(gs));
+}
+
 function cloneLookaheadBoard(board) {
   return board.map((card) => {
     if (!card?.data || (card.data.type !== 'enemy' && card.data.type !== 'eliteEnemy' && card.data.type !== 'boss')) return null;
@@ -2492,7 +2581,7 @@ function applyProjectedDamage(state, affected) {
   }
 }
 
-function applyProjectedCompanionTurns(state, gs) {
+function applyProjectedCompanionTurns(state, gs, defense) {
   for (const companion of companionsIn(gs.scene?._simInventory || [])) {
     const targets = state
       .map((card, index) => ({ card, index }))
@@ -2503,32 +2592,41 @@ function applyProjectedCompanionTurns(state, gs) {
       : targets;
     const pool = meleeTargets.length ? meleeTargets : targets;
     pool.sort((a, b) => a.card.data.health - b.card.data.health);
-    pool[0].card.data.health -= companion.attack || 2;
+    const shocked = defense?.companionShocks?.delete(companion);
+    const frozen = defense?.companionFreezes?.get(companion) || 0;
+    if (frozen > 0) defense.companionFreezes.set(companion, frozen - 1);
+    if (shocked || frozen > 0) continue;
+    pool[0].card.data.health -= (companion.attack || 2) + companionStrengthBonus(gs.scene);
   }
 }
 
-function simulateExpectedEnemyPhase(state, gs, defense) {
+function applyProjectedBurn(state) {
+  for (const card of state) {
+    if (canBurnCard(card)) card.data.health -= fireDamageAgainst(card.data, takeBurnTick(card.data));
+  }
+}
+
+function simulateExpectedEnemyPhase(state, gs, defense, playerHealth = gs.playerHealth) {
+  for (const card of state) {
+    if (advanceBonePile(card?.data)) card.justRevealed = true;
+  }
   const eligible = state.filter((card) => (
-    card?.revealed && card.data.health > 0 && !card.justRevealed
+    card?.revealed && card.data.health > 0 && !card.justRevealed && !card.data.isBonePile
   ));
   for (const card of state) {
     if (card?.justRevealed) card.justRevealed = false;
   }
   if (!eligible.length) {
     if (defense.magicShieldTurns > 0) defense.magicShieldTurns--;
-    return expectedPlayerPoisonTick(gs, defense);
+    applyProjectedBurn(state);
+    regenerateAllies(state, card => ['enemy', 'eliteEnemy', 'boss'].includes(card?.data?.type));
+    return expectedPlayerPoisonTick(gs, defense) + expectedPlayerBurnTick(gs, defense);
   }
 
   if (defense.blockNextAttack) {
     defense.blockNextAttack = false;
-    applyProjectedCompanionTurns(state, gs);
-    return 0;
-  }
-  const firstAttacker = eligible.find((card) => !(card.data.frozen > 0));
-  if (defense.boneWall > 0 && firstAttacker) {
-    defense.boneWall--;
-    firstAttacker.data.health -= firstAttacker.data.attack || 0;
-    applyProjectedCompanionTurns(state, gs);
+    applyProjectedBurn(state);
+    applyProjectedCompanionTurns(state, gs, defense);
     return 0;
   }
   let incoming = 0;
@@ -2546,18 +2644,37 @@ function simulateExpectedEnemyPhase(state, gs, defense) {
     if (enemy.controlHesitation && treacheryHasTarget) {
       others.sort((a, b) => a.data.health - b.data.health);
       others[0].data.health -= (enemy.attack || 0) * 0.5;
+      growEnemy(card);
       continue;
     }
     if (treacheryHasTarget) {
       others.sort((a, b) => a.data.health - b.data.health);
       others[0].data.health -= enemy.attack || 0;
+      growEnemy(card);
+      continue;
+    }
+    // Forecasts are deterministic; choose the first valid repair target.
+    repairBoneArmor(card, state, () => 0);
+    const attack = applyEnemyStrikeSigils(card, { playerHealth: playerHealth - incoming, maxHealth: gs.maxHealth, playerShocked: defense.playerShocked, playerFrozenAttacks: defense.playerFrozenAttacks },
+      getEnemyHitAttack(card, state));
+    growEnemy(card);
+    // Bone Shield blocks individual attacks, without reflected damage.
+    if (defense.boneWall > 0 && attack > 0) {
+      defense.boneWall--;
+      enemy.health -= armorThornsDamage(defense.armor);
+      continue;
+    }
+    if (defense.briarShield > 0 && attack > 0) {
+      defense.briarShield--;
+      enemy.health -= attack + armorThornsDamage(defense.armor);
       continue;
     }
     if (enemy.controlHesitation) {
       for (const ability of (enemy.abilities || [])) {
         if (ability.type === 'poison') addProjectedPoison(defense, ability);
       }
-      const outcome = expectedEnemyHitOutcome(gs, enemy, defense);
+      if (enemy.features?.includes('poison_amp')) strengthenPlayerPoison({ playerEffects: defense.poisonEffects });
+      const outcome = expectedEnemyHitOutcome(gs, { ...enemy, attack }, defense);
       incoming += outcome.incoming * 0.5;
       enemy.health -= outcome.retaliation * 0.5;
       continue;
@@ -2565,7 +2682,8 @@ function simulateExpectedEnemyPhase(state, gs, defense) {
     for (const ability of (enemy.abilities || [])) {
       if (ability.type === 'poison') addProjectedPoison(defense, ability);
     }
-    const outcome = expectedEnemyHitOutcome(gs, enemy, defense);
+    if (enemy.features?.includes('poison_amp')) strengthenPlayerPoison({ playerEffects: defense.poisonEffects });
+    const outcome = expectedEnemyHitOutcome(gs, { ...enemy, attack }, defense);
     incoming += outcome.incoming;
     enemy.health -= outcome.retaliation;
     const lifesteal = enemy.abilities?.find((ability) => ability.type === 'lifesteal');
@@ -2575,10 +2693,12 @@ function simulateExpectedEnemyPhase(state, gs, defense) {
     }
   }
   if (defense.magicShieldTurns > 0) defense.magicShieldTurns--;
-  incoming += expectedPlayerPoisonTick(gs, defense);
+  incoming += expectedPlayerPoisonTick(gs, defense) + expectedPlayerBurnTick(gs, defense);
 
-  // Companions act after poison and choose the weakest valid target.
-  applyProjectedCompanionTurns(state, gs);
+  applyProjectedBurn(state);
+  regenerateAllies(state, card => ['enemy', 'eliteEnemy', 'boss'].includes(card?.data?.type));
+  // Companions act after poison/burn and choose the weakest valid target.
+  applyProjectedCompanionTurns(state, gs, defense);
   return incoming;
 }
 
@@ -2590,10 +2710,10 @@ function projectSurvivalToTargetKill(board, gs, targetIndex, affected) {
   let firstMargin = gs.playerHealth;
   let turns = 1;
   const maxTurns = 10;
-  applyProjectedDamage(state, affected);
+  if (!consumePlayerAttackHold(defense)) applyProjectedDamage(state, affected);
 
   while (turns <= maxTurns) {
-    const phaseDamage = simulateExpectedEnemyPhase(state, gs, defense);
+    const phaseDamage = simulateExpectedEnemyPhase(state, gs, defense, margin);
     projectedIncoming += phaseDamage;
     margin -= phaseDamage;
     if (turns === 1) firstMargin = margin;
@@ -2618,7 +2738,7 @@ function projectSurvivalToTargetKill(board, gs, targetIndex, affected) {
         turns,
       };
     }
-    applyProjectedDamage(state, affected);
+    if (!consumePlayerAttackHold(defense)) applyProjectedDamage(state, affected);
     turns++;
   }
 
@@ -3126,6 +3246,12 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
       combatDamageWasted += Math.max(0, dmg - targetHP);
       if (!mock.useAction()) {
         // Stunned (or blocked): action cancelled, enemy turn still pending.
+        mock.resolvePendingEnemyTurn();
+        maybeHeal(mock, gs, inv);
+        bossMustAttackNext = false;
+        continue;
+      }
+      if (consumePlayerAttackHold(gs)) {
         mock.resolvePendingEnemyTurn();
         maybeHeal(mock, gs, inv);
         bossMustAttackNext = false;
@@ -3792,6 +3918,7 @@ function prepareShopInventory(mock, gs, inv, { mergeFirst = false } = {}) {
     foods.sort((a, b) => modifiedGain(a) - modifiedGain(b));
     const pick = foods.find((entry) => modifiedGain(entry) >= missing)
       || foods[foods.length - 1];
+    grantMealMaxActions(gs, mock.amuletManager);
     gs.actionsLeft = Math.min(gs.maxActions, gs.actionsLeft + modifiedGain(pick));
     removeInventoryCard(gs, inv, pick.index);
     if (metrics) metrics.foodUsed++;

@@ -1552,6 +1552,9 @@ export const CombatHud = {
 
         this.gameState.playerEffects.forEach((effect) => {
             switch (effect.type) {
+                case 'burn':
+                    entries.push({ text: t(this.scene, 'ui.hud.burn', { amount: effect.burn }), color: '#ef7c4b' });
+                    break;
                 case 'poison':
                     entries.push({ text: t(this.scene, 'ui.hud.poison', { count: effect.turns }), color: '#71800b' });
                     break;
@@ -1607,6 +1610,12 @@ export const CombatHud = {
                 color: '#fef0cf'
             });
         }
+        if (gs.briarShield > 0) {
+            entries.push({ text: t(this.scene, 'ui.hud.shieldCharges', {
+                name: t(this.scene, 'ui.hud.briarShield'), count: gs.briarShield,
+                unit: tCount(this.scene, 'ui.hud.chargeUnit', gs.briarShield),
+            }), color: '#71800b' });
+        }
         if (gs.blockNextAttack) {
             entries.push({ text: t(this.scene, 'ui.hud.blockNextAttack'), color: '#71b1ae' });
         }
@@ -1620,6 +1629,15 @@ export const CombatHud = {
         }
         if (gs.playerSapped) {
             entries.push({ text: t(this.scene, 'ui.hud.sapped'), color: '#712a65' });
+        }
+        if (gs.playerFrozenAttacks > 0) {
+            entries.push({ text: t(this.scene, 'status.frost.pending', { count: gs.playerFrozenAttacks }), color: '#71b1ae' });
+        }
+        if (gs.playerShocked) {
+            entries.push({ text: t(this.scene, 'status.shock.pending'), color: '#ffcf7f' });
+        }
+        if (gs.playerSandstormed) {
+            entries.push({ text: t(this.scene, 'status.sandstorm.pending'), color: '#ffcf7f' });
         }
 
         // --- Relic-driven counters ---

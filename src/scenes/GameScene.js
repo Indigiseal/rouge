@@ -22,7 +22,7 @@ const BOSS_FANFARE_DELAY_MS = 1500;
 // the backdrop carries on in the same colour.
 const EVENT_BACKDROP_COLOR = 0x2b1f32;
 import { getLocationIdForFloor } from '../content/locations/index.js';
-import { fightBackdropKey } from '../content/locations/fightBackgrounds.js';
+import { fightBackdropKey, TOP_PINNED_BACKGROUNDS } from '../content/locations/fightBackgrounds.js';
 import { DEV_START_AMULETS, DEV_START_CARDS, devToolsEnabled } from '../config/DevTools.js';
 import { SaveManager } from '../managers/SaveManager.js';
 import { MetaProgressionManager } from '../managers/MetaProgressionManager.js';
@@ -55,7 +55,7 @@ import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.
 import { CombatTurnController } from '../systems/combat/CombatTurnController.js';
 import { CombatSequencer } from '../systems/combat/CombatSequencer.js';
 import { installStatusOverlays } from '../systems/combat/StatusOverlay.js';
-import { applyLocationChoice, emptyActLocationIds, normalizeActLocationIds } from '../content/locations/index.js';
+import { applyLocationChoice, emptyActLocationIds, normalizeActLocationIds, normalizeLocationOffers } from '../content/locations/index.js';
 import { HEALER_RARITIES, healerRarityForRank } from '../content/village/index.js';
 import { openAmuletChoiceOverlay } from '../ui/AmuletChoiceOverlay.js';
 import {
@@ -70,7 +70,7 @@ import { openNoticeModal } from '../ui/ConfirmModal.js';
 import { isSilkCocoonCacheRoom, boardHasOpenCocoonEnemies } from '../systems/board/CocoonCacheBoard.js';
 import { playSmokeBurst, SMOKE_BURST_MS } from '../ui/SmokeBurst.js';
 import { pendingLocationAftermath } from '../content/locations/index.js';
-import { canOfferSigil, rollOfferableSigil } from '../ui/SigilOffer.js';
+import { canOfferSigil, offerableSigils } from '../ui/SigilOffer.js';
 import { SIGIL_ROOM_CHANCE, SIGIL_ROOM_CHANCE_BROOCH } from '../content/sigils/sigilStamps.js';
 import { createCrystalLairEnemies } from '../content/cards/crystalLair.js';
 import { EGG_HATCH_ROOMS, eggFightsLeft, isHatchingEgg } from '../content/cards/eggHatching.js';
@@ -152,6 +152,7 @@ export class GameScene extends Phaser.Scene {
             this.gameState = new GameState(this);
             this.gameState.characterId = normalizeCharacterId(data.characterId);
             this.gameState.actLocationIds = emptyActLocationIds();
+            this.gameState.locationOffers = normalizeLocationOffers(data.locationOffers);
             this.gameState.calendarMonthIndex = 0;
             if (this.tutorialMode || this.sandboxMode) {
               applyLocationChoice(this.gameState, 'thornwake');
@@ -506,7 +507,14 @@ export class GameScene extends Phaser.Scene {
             this.fightBackgroundImage = this.add.image(320, 180, key)
                 .setOrigin(0.5).setScale(1).setDepth(-11);
         }
-        if (show) this.fightBackgroundImage.setTexture(key).setScale(1);
+        if (show) {
+            this.fightBackgroundImage.setTexture(key).setScale(1);
+            // Top-pinned paintings hang from the top of the screen.
+            const pinned = TOP_PINNED_BACKGROUNDS.has(key);
+            this.fightBackgroundImage.setOrigin(0.5, pinned ? 0 : 0.5);
+            this.fightBackgroundImage.x = 320;
+            this.fightBackgroundImage.y = pinned ? 0 : 180;
+        }
         this.fightBackgroundImage?.setVisible(show);
     }
 
@@ -992,6 +1000,8 @@ export class GameScene extends Phaser.Scene {
         // would let the first death falsely look like the last one.
         cards.slice().forEach((card, index) => {
             if (cards[index] !== card || !this.isEnemyCard(card) || (card.data?.health ?? 1) <= 0) return;
+            // The developer shortcut clears pending reassembly as well.
+            if (card.data.sigils?.some(sigil => sigil.id === 'reassemble')) card.data.reassembled = true;
             card.data.health = 0;
             card.sprite?.disableInteractive?.();
             this.cardSystem.removeDefeatedEnemy(index, card);
@@ -1010,7 +1020,7 @@ export class GameScene extends Phaser.Scene {
     // actually take a sigil; otherwise the room would have nothing to offer.
     pickEliteRewardMode() {
         const chance = this.amuletManager?.hasEliteChestSigil?.() ? SIGIL_ROOM_CHANCE_BROOCH : SIGIL_ROOM_CHANCE;
-        if (Math.random() >= chance || !rollOfferableSigil(this)) return 'elite';
+        if (Math.random() >= chance || !offerableSigils(this).length) return 'elite';
         return 'sigil';
     }
 
@@ -1966,6 +1976,7 @@ export class GameScene extends Phaser.Scene {
         this.gameState.maxHealth = runData.player.maxHealth;
         this.gameState.actionsLeft = runData.player.actionsLeft;
         this.gameState.maxActions = runData.player.maxActions;
+        this.gameState.gluttonMaxApGained = runData.player.gluttonMaxApGained || 0;
         this.gameState.coins = runData.player.coins;
         this.gameState.crystals = runData.player.crystals;
         this.gameState.currentFloor = runData.player.currentFloor;
@@ -1974,6 +1985,7 @@ export class GameScene extends Phaser.Scene {
             runData.player.actLocationIds,
             runData.player.calendarMonthIndex ?? 0
         );
+        this.gameState.locationOffers = normalizeLocationOffers(runData.player.locationOffers);
         this.gameState.bonusInventorySlots = runData.player.bonusInventorySlots;
         this.gameState.firstActionUsed = runData.player.firstActionUsed;
         this.gameState.baseMaxHealth = runData.player.baseMaxHealth;
@@ -1995,6 +2007,14 @@ export class GameScene extends Phaser.Scene {
         this.gameState.shadowBlade = runData.effects.shadowBlade;
         this.gameState.magicShield = runData.effects.magicShield;
         this.gameState.boneWall = runData.effects.boneWall;
+        this.gameState.briarShield = runData.effects.briarShield || 0;
+        this.gameState.mirrorSigilFloor = runData.effects.mirrorSigilFloor ?? null;
+        this.gameState.mirrorSigilUses = runData.effects.mirrorSigilUses || 0;
+        this.gameState.riposteReady = runData.effects.riposteReady || false;
+        this.gameState.playerSapped = runData.effects.playerSapped || false;
+        this.gameState.playerShocked = runData.effects.playerShocked || false;
+        this.gameState.playerSandstormed = runData.effects.playerSandstormed || false;
+        this.gameState.playerFrozenAttacks = runData.effects.playerFrozenAttacks || 0;
         this.gameState.blockNextAttack = runData.effects.blockNextAttack;
         // Damage tracking
         this.gameState.damageTracking = runData.damageTracking;

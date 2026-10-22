@@ -647,11 +647,15 @@ export class AmuletManager {
     }
     
     // Modify food AP
-    // Glutton's Charm: max AP each meal adds.
+    // Sandglass Scarab (stable gluttonsCharm ID): max AP each meal adds.
     getFoodMaxActionGain() {
         return this.gameState.activeAmulets.reduce((sum, amulet) => (
             sum + (this.amuletDefinitions[amulet.id]?.foodMaxActionGain || 0)
         ), 0);
+    }
+
+    getCompanionExtraActionChance() {
+        return Math.min(0.5, this.sumAmuletProperty('companionExtraActionChance'));
     }
 
     // Wayfarer's Lamp: face-down cards turned over at the start of a fight.

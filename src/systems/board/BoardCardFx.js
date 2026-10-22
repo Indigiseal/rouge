@@ -581,15 +581,16 @@ function _buildEnemyCornerStats(card) {
     // A cocoon is a container, not a fighter: it has no attack, so it shows no
     // attack number rather than a meaningless 0. Real enemies still print a 0
     // if something has weakened them that far — that is worth knowing.
-    const atkText = isSilkCocoonCard(card.data)
+    const atkText = isSilkCocoonCard(card.data) || card.data.isBonePile
         ? null
         : _makeCornerText(this.scene, dx, dy, getEnemyHitAttack(card, this.boardCards), style);
 
     const children = atkText ? [hpText, atkText] : [hpText];
     let nameText = null;
     // Placeholder art: stamp the enemy name on the silhouette until real cards exist.
-    if (card.data.placeholderArt) {
-        const label = String(card.data.name || card.data.enemyType || 'Enemy');
+    if (card.data.placeholderArt || card.data.isBonePile) {
+        const label = card.data.isBonePile ? 'Bone Pile\nReforms: 1'
+            : String(card.data.name || card.data.enemyType || 'Enemy');
         nameText = _makeCornerText(this.scene, 0, -6, label, {
             fontSize: label.length > 12 ? '8px' : '9px',
             fill: '#fef0cf',
@@ -1037,7 +1038,7 @@ function refreshEnemyAttackLabels() {
     if (!Array.isArray(this.boardCards)) return;
     for (const card of this.boardCards) {
         if (!card?.revealed || !card.data) continue;
-        if (card.data.type !== 'enemy' && card.data.type !== 'boss') continue;
+        if (card.data.type !== 'enemy' && card.data.type !== 'eliteEnemy' && card.data.type !== 'boss') continue;
         if ((card.data.health ?? 0) <= 0) continue;
         this.updateEnemyInfoText(card);
     }
@@ -1258,10 +1259,10 @@ function mimicTreasureExplosion(x, y) {
 
     // Create splash sprite
     const splashSprite = this.scene.add.sprite(x, y, 'splashSheet');
-    if (this.scene.anims.exists('splash_anim')) splashSprite.play('splash_anim');
-
-    // On complete: Destroy sprite, add loot
-    splashSprite.on('animationcomplete', () => {
+    let awarded = false;
+    const finish = () => {
+        if (awarded) return;
+        awarded = true;
         splashSprite.destroy();
         SoundHelper.playSound(this.scene, 'treasure_explode', 0.5);
         this.scene.gameState.coins += coinReward;
@@ -1270,9 +1271,11 @@ function mimicTreasureExplosion(x, y) {
         this.scene.updateUI?.();
         this.scene.playCurrencyGainFlight?.(x, y, 'coins');
         this.scene.time?.delayedCall?.(120, () => this.scene.playCurrencyGainFlight?.(x, y, 'crystals'));
-    });
-    // Safety: ensure the splash clears even if the anim event misses
-    this.scene.time.delayedCall(900, () => splashSprite.active && splashSprite.destroy());
+    };
+    splashSprite.once('animationcomplete', finish);
+    if (this.scene.anims.exists('splash_anim')) splashSprite.play('splash_anim');
+    // Award once even if the animation is unavailable or its callback misses.
+    this.scene.time.delayedCall(900, finish);
 }
 
 function mimicEscape(index) {

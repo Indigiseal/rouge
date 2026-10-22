@@ -25,6 +25,7 @@ export class GameState {
         this.playerEffects = [];
         this.actionsLeft = 15;
         this.maxActions = 15;
+        this.gluttonMaxApGained = 0;
         this._currentFloor = 1;
         // Legacy save field. The single hero has no class stance.
         this.warriorStance = DEFAULT_WARRIOR_STANCE;
@@ -33,6 +34,7 @@ export class GameState {
         // saves and the sim pin; new runs resolve through actLocationIds.
         this.calendarMonthIndex = 0;
         this.actLocationIds = [null, null, null];
+        this.locationOffers = [null, null, null];
         // When true, every floor uses calendarMonthIndex (no act rotation).
         // Sim-only override; not part of the save contract.
         this.pinCalendarMonth = false;
@@ -55,6 +57,8 @@ export class GameState {
         this.secondWindUsed = 0;
         this.strategyDetourUsedAct = 0;
         this.revivedThisHit = false;
+        this.playerShocked = false;
+        this.playerFrozenAttacks = 0;
         this.discardedCardsThisRun = 0;
         this.discardCritChance = 0;
         this.storyRun = createDefaultStoryRun();
@@ -70,11 +74,15 @@ export class GameState {
         this.riposteReady = false;
         // Goblin club_stun: number of player actions to skip (usually 1).
         this.playerStunnedTurns = 0;
+        this.playerSandstormed = false;
         
         // Magic card effects
         this.shadowBlade = null;
         this.magicShield = null;
         this.boneWall = 0;
+        this.briarShield = 0;
+        this.mirrorSigilFloor = null;
+        this.mirrorSigilUses = 0;
 
         // Amulet-related properties
         this.firstActionUsed = false; // For Quickhand Gloves
@@ -315,6 +323,7 @@ export class GameState {
             case 'exhaustion':
                 this.damageTracking.damageBySource.exhaustion += amount;
                 break;
+            case 'burn':
             case 'environmental':
                 this.damageTracking.damageBySource.environmental += amount;
                 break;

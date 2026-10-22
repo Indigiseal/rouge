@@ -3,6 +3,16 @@
 Design draft, 2026-10-14. Not built yet. Background research:
 [research/slice-and-dice-reference.md](research/slice-and-dice-reference.md).
 
+2026-10-21 implementation note: the older proposals below are superseded where
+specified by `location-identity-redesign-plan.md` and `boneflood-design-proposal.md`.
+Boneflood now uses capped armor repair, random-item player Mending and enemy
+Reassemble. Bone Shield / Bulwark blocks instead of reflecting; its enchantment
+marker is Bulwark rather than Mirror. Regular location rewards are being migrated
+one location at a time.
+Sandreach's approved first playable pass is described in `sandreach-design-pass.md`:
+Sandstorm retains the `daze` ID, with Archer Bane, Well Fed, Forage, Quick Strike
+and existing Second Wind forming the local weapon pool.
+
 ## The idea
 
 A **sigil** is a mark on a card that gives it one rule. **Enemy traits and
@@ -76,7 +86,7 @@ onto sigils already listed above; five are new.
 |---|---|---|---|---|
 | Frost Ring | Frostbound: freeze the struck enemy 1 turn | **Arrest** | (as above) | (as above) |
 | Shadow Blade | Shadowed: +50% damage on the hit | **Crushing** | (as above) | (as above) |
-| Restoration | Mending: heal 3 HP on hit | **Leech** | (as above) | (as above) |
+| Restoration | Renewal: heal 3 HP on hit | **Leech** | (as above) | (as above) |
 | Fireball | Ember, then Ripple: fire splash to nearby enemies | **Fireball** (built, player only) | — | 10% on hit: a fireball flies at another random face-up enemy (bosses too) for half the hit, at least 3. It flies away rather than splashing, so it never reads as the fire gem |
 | Weakness | Sapping: the enemy deals 30% less (was permanent) | **Sapping** (built, both sides) | 20% on a connecting hit: the player's next weapon hit deals 30% less (rounded down); carried by The Mire Bride and the Drowned | 20% on hit: the enemy hit deals 30% less (rounded down) on its next attack only |
 | Magic Shield | Warding: +20% armor for 1 turn | **Warding** (new) | gains armor after it attacks | 20% on hit: the Magic Shield buff, armor +20% for a turn (only the sigil itself, not the enchant) |
@@ -150,7 +160,7 @@ Also shown as text today, could get marks: **Veteran** (+15% HP/ATK),
 | **Tandem** | ×1.5 if your previous attack did the same damage |
 | **Packrat** | +1 damage per empty bag slot |
 | **Riposte** | After you block a hit (armor or luck), this weapon's next hit +2; spent on that swing, cleared each floor |
-| **Mending** | 10% on hit: +2 pips on this weapon, after the swing's own pip, up to its max |
+| **Mending** | 10% per damaging weapon hit: restores 1 pip to a random damaged weapon or armor item, including worn armor; cannot exceed capacity or revive broken equipment |
 | **Second Wind** | 10% on hit: +2 AP, after the swing's own AP, up to max |
 | **Scout** | 15% on hit: a free reveal of one face-down card that is not an enemy, trap or mimic |
 | **Charm** | 15% on hit, not bosses: the enemy's next attack hits a random other face-up enemy; with no one else, it loses that attack. Shown pink (StatusOverlay) until spent |

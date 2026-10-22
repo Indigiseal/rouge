@@ -9,9 +9,11 @@
 
 import { SoundHelper } from '../audio/SoundHelper.js';
 import {
-    SIGIL_ICONS_KEY, WORKING_PLAYER_SIGILS, addSigil, canTakeSigil, cardSigils, getSigil, noteSigilTaken, sigilLine, takenSigils,
+    SIGIL_ICONS_KEY, addSigil, canTakeSigil, cardSigils, getSigil, noteSigilTaken, sigilLine, takenSigils,
 } from '../content/sigils/sigils.js';
 import { setHoverLight } from './HoverLight.js';
+import { getLocationIdForFloor } from '../content/locations/index.js';
+import { sigilPoolForLocation } from '../content/sigils/locationSigils.js';
 
 const DEPTH = 600;
 const PANEL = { x: 320, y: 118, w: 300, h: 154 };
@@ -24,17 +26,23 @@ function candidateCards(gameScene) {
     return [...bag, gs?.equippedArmor].filter(Boolean);
 }
 
-/** A random working sigil that at least one of the player's cards can take, or null. */
-export function rollOfferableSigil(gameScene) {
+/** Eligible local rewards, without consuming a random roll to check eligibility. */
+export function offerableSigils(gameScene) {
     const cards = candidateCards(gameScene);
     // Warcry only helps companions: not offered to a hero who has none.
     const hasCompanion = (gameScene?.getCompanionEntries?.() || []).length > 0;
     // Never one taken earlier this run, nor one a card already shows.
     const taken = new Set(takenSigils(gameScene?.gameState));
     cards.forEach((card) => cardSigils(card).forEach((s) => taken.add(s.id)));
-    const options = WORKING_PLAYER_SIGILS.filter((id) => !taken.has(id)
+    const pool = sigilPoolForLocation(getLocationIdForFloor(gameScene?.gameState));
+    return pool.filter((id) => getSigil(id)?.works && getSigil(id)?.side !== 'enemy' && !taken.has(id)
         && (id !== 'warcry' || hasCompanion)
         && cards.some((card) => canTakeSigil(card, id)));
+}
+
+/** Roll once from the eligible local pool; never fall back to another location. */
+export function rollOfferableSigil(gameScene) {
+    const options = offerableSigils(gameScene);
     return options.length ? options[Math.floor(Math.random() * options.length)] : null;
 }
 

@@ -1,7 +1,7 @@
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { tweenAlongArc } from '../../ui/ArcFlight.js';
 import { CombatSequencer } from './CombatSequencer.js';
-import { getEnemyHitAttack, spendSapping } from '../../content/combat/enemyAttack.js';
+import { getEnemyHitAttack, spendSapping, enemyStrikeSigils, applyEnemyStrikeSigils } from '../../content/combat/enemyAttack.js';
 import { ENCHANT_SAPPING_CHANCE } from '../../content/balance/WeaponEnchants.js';
 import { CONTROL_HESITATION_CHANCE, pickControlTreacheryTarget } from '../../content/amulets/control.js';
 import { isSilkCocoonCacheRoom } from '../board/CocoonCacheBoard.js';
@@ -9,14 +9,24 @@ import { canHurtEnemyAtAll } from '../board/BoardCombat.js';
 import { getEnemy } from '../../content/cards/enemies.js';
 import { HAND_LOCKS, handLockKindOf, handLockOf } from '../../content/combat/handLock.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
-import { consumeMirrorSigil, enemyWarcryChance, playerWarcryChance, regenerateAmount } from './SigilEffects.js';
-import { SIGIL_MULTIPLIER, getSigil, sigilLevel } from '../../content/sigils/sigils.js';
+import { consumeMirrorSigil, enemyWarcryChance, playerWarcryChance, regenerateAmount, armorThornsDamage, companionStrengthBonus } from './SigilEffects.js';
+import { getSigil, sigilLevel } from '../../content/sigils/sigils.js';
+import { tryEnemySandstorm, tryEnemyQuickStrike } from '../../content/combat/sandreach.js';
 
 // A boss summons for sure once it has gone this many turns without one.
 const BOSS_SUMMON_PITY = 4;
 import { ENEMY_BASE_CRIT, ENEMY_CRIT_MULT } from '../../content/balance/CombatChance.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 import { showBossAttackFrame } from '../../content/cards/bossAttackFrames.js';
+import { consumeBoneShield } from '../../content/combat/boneShield.js';
+import { consumeBriarShield } from '../../content/combat/briarShield.js';
+import { t } from '../../i18n/i18n.js';
+import { advanceBonePile, repairBoneArmor, summonAtHealthThresholds } from '../../content/combat/boneflood.js';
+import { growEnemy, regenerateAllies } from '../../content/combat/mireturn.js';
+import { strengthenPlayerPoison } from '../../content/combat/silkdeep.js';
+import { addPlayerBurn, takePlayerBurnTick, SCORCHED_CHANCE } from '../../content/combat/ashhowl.js';
+import { tryEnemyShock } from '../../content/combat/storm.js';
+import { consumeCompanionAttackHold, tryEnemyFrost } from '../../content/combat/frost.js';
 
 // The Crystal Spiderling webs instead of hitting (older saves carry the old
 // card, which had damage, so the id counts too).
@@ -46,36 +56,13 @@ const WEB_THROW_ARC = 30;
  * Scene keeps VFX / inventory / card-system APIs; this controller drives timing.
  */
 
-// The x1.5 sigils an enemy's strike earns right now.
-function enemyStrikeSigils(card, gameState) {
-    const data = card?.data;
-    if (!data || !Array.isArray(data.sigils) || !data.sigils.length) return [];
-    const heroHp = gameState?.playerHealth ?? 0;
-    const heroMax = Math.max(1, gameState?.maxHealth || 1);
-    const hp = data.health ?? 0;
-    const maxHp = Math.max(1, data.maxHealth || hp || 1);
-    const out = [];
-    if (sigilLevel(data, 'merciless') > 0 && heroHp <= heroMax / 2) out.push('merciless');
-    if (sigilLevel(data, 'ambush') > 0 && heroHp >= heroMax) out.push('ambush');
-    if (sigilLevel(data, 'unscathed') > 0 && hp >= maxHp) out.push('unscathed');
-    return out;
-}
-
-// Enemies with Regenerate heal 1 per level at the end of the enemy turn.
+// Bog healers sustain other revealed allies, including other healers.
 function regenerateEnemies(scene) {
     const cs = scene?.cardSystem;
-    (cs?.boardCards || []).forEach((card) => {
-        const data = card?.data;
-        if (!card?.revealed || !data || (data.health || 0) <= 0) return;
-        const level = sigilLevel(data, 'regenerate');
-        if (level <= 0) return;
-        const max = Math.max(1, data.maxHealth || data.health);
-        const healed = Math.min(level, max - data.health);
-        if (healed <= 0) return;
-        data.health += healed;
+    for (const { card, amount } of regenerateAllies(cs?.boardCards, card => scene.isEnemyCard(card))) {
         cs.updateEnemyInfoText?.(card);
-        if (card.sprite) scene.createFloatingText(card.sprite.x, card.sprite.y - 18, `+${healed}`, 0x4a884f);
-    });
+        if (card.sprite) scene.createFloatingText(card.sprite.x, card.sprite.y - 18, `+${amount}`, 0x4a884f);
+    }
 }
 
 export class CombatTurnController {
@@ -231,6 +218,16 @@ export class CombatTurnController {
         // Silkslinger webs expire at the start of the next enemy turn.
         this.tickHandWebs();
 
+        // Piles remain targetable, but never attack. A returned creature gets
+        // the same one-action grace as a newly revealed enemy.
+        scene.cardSystem.boardCards.forEach(card => {
+            if (!advanceBonePile(card?.data)) return;
+            card.justRevealed = true;
+            card.sprite?.setAlpha?.(1);
+            scene.cardSystem.createCardInfoText?.(card);
+            scene.createFloatingText?.(card.sprite?.x ?? 320, card.sprite?.y ?? 120, 'Reassembled!', 0xd6c2c1);
+        });
+
         // Snapshot which enemies are eligible to act this action. A freshly revealed
         // enemy sits out the action that revealed it (a one-action grace so flipping
         // into an enemy doesn't zap you on the same click), then joins the fight on
@@ -240,7 +237,7 @@ export class CombatTurnController {
             .map((card, index) => ({ card, index }))
             .filter(({ card }) => {
                 if (!card || !scene.isEnemyCard(card) || card.justRevealed) return false;
-                if ((card.data?.health ?? 0) <= 0) return false;
+                if ((card.data?.health ?? 0) <= 0 || card.data?.isBonePile) return false;
                 // Cocoon shells do not attack — they only crack when damaged.
                 if (card.data?.isCocoon || (Array.isArray(card.data?.features) && card.data.features.includes('cocoon_shell'))) {
                     return false;
@@ -270,6 +267,11 @@ export class CombatTurnController {
             if (isElite && card.data.frozen > 0) return;
             card.data.abilities.forEach(ability => {
                 if (ability.type !== 'summon') return;
+                if (Array.isArray(ability.thresholds)) {
+                    summonAtHealthThresholds(card.data, ability,
+                        enemyType => scene.cardSystem.summonEnemy(enemyType, card));
+                    return;
+                }
                 // A boss that has gone BOSS_SUMMON_PITY turns without a
                 // summon calls one for sure, so a low chance (Soul Eater
                 // 15%) can't leave a whole fight without one.
@@ -308,27 +310,6 @@ export class CombatTurnController {
 
             this.finishEnemyTurnWithCompanion();
             return; // Block prevents ALL enemy attacks this action
-        }
-
-        // Check for bone wall reflection FIRST (before individual enemy attacks)
-        if (scene.gameState.boneWall && scene.gameState.boneWall > 0) {
-            // Find the first eligible (non-frozen) attacking enemy
-            const firstAttacker = eligible.find(({ card }) => !(card.data.frozen && card.data.frozen > 0)) || null;
-
-            if (firstAttacker) {
-                scene.gameState.boneWall--;
-                SoundHelper.playSound(scene, 'bone_wall_hit', 0.5);
-
-                // Reflect damage back to enemy
-                const reflectedDamage = getEnemyHitAttack(firstAttacker.card, scene.cardSystem?.boardCards);
-                spendSapping(firstAttacker.card);
-                scene.cardSystem.attackEnemy(firstAttacker.index, reflectedDamage, true);
-                scene.createFloatingText(firstAttacker.card.sprite.x, firstAttacker.card.sprite.y, `-${reflectedDamage} (Reflected)`, 0xfef0cf);
-                scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Bone Shield!', 0xfef0cf);
-                scene.updateUI(); // Refresh so the remaining Bone Shield charges update
-                this.finishEnemyTurnWithCompanion();
-                return; // Bone wall blocks all attacks this action
-            }
         }
 
         const attackers = eligible;
@@ -399,8 +380,9 @@ export class CombatTurnController {
         this.isEnemyTurn = false;
     }
 
-    processEnemyAttack(card, index, { fromRally = false } = {}) {
+    processEnemyAttack(card, index, { fromRally = false, fromQuickStrike = false } = {}) {
         const scene = this.scene;
+        if (card?.data?.isBonePile) return;
         if (card?.data?.isCocoon || (Array.isArray(card?.data?.features) && card.data.features.includes('cocoon_shell'))) {
             return;
         }
@@ -481,6 +463,7 @@ export class CombatTurnController {
                 scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xa83c69);
                 const charmed = getEnemyHitAttack(card, scene.cardSystem.boardCards);
                 spendSapping(card);
+                this.applyEnemyGrowth(card);
                 scene.cardSystem.attackEnemy(target.index, charmed, false);
             } else {
                 scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed, no one to hit', 0xa83c69);
@@ -503,6 +486,7 @@ export class CombatTurnController {
                 scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Betrayal!', 0xa83c69);
                 const betrayal = getEnemyHitAttack(card, scene.cardSystem.boardCards);
                 spendSapping(card);
+                this.applyEnemyGrowth(card);
                 scene.cardSystem.attackEnemy(target.index, betrayal, false);
                 return;
             }
@@ -514,13 +498,14 @@ export class CombatTurnController {
             const others = scene.cardSystem.boardCards
                 .map((c, i) => ({ card: c, index: i }))
                 .filter(({ card: c, index: i }) =>
-                    c && c.revealed && i !== index && scene.isEnemyCard(c)
+                    c && c.revealed && i !== index && scene.isEnemyCard(c) && (c.data?.health || 0) > 0
                 );
             if (others.length > 0) {
                 const target = others[Math.floor(Math.random() * others.length)];
                 scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xa83c69);
                 const charmed = getEnemyHitAttack(card, scene.cardSystem.boardCards);
                 spendSapping(card);
+                this.applyEnemyGrowth(card);
                 scene.cardSystem.attackEnemy(target.index, charmed, false);
                 return; // skip player damage
             }
@@ -535,7 +520,7 @@ export class CombatTurnController {
         // at half health or less, Ambush while the hero is unhurt, Unscathed
         // while it is unhurt itself. Rounded down, like the player's.
         const enemySigilHits = enemyStrikeSigils(card, scene.gameState);
-        enemySigilHits.forEach(() => { damageDealt = Math.floor(damageDealt * SIGIL_MULTIPLIER); });
+        damageDealt = applyEnemyStrikeSigils(card, scene.gameState, damageDealt);
         if (enemySigilHits.length && card.sprite) {
             scene.createFloatingText(card.sprite.x, card.sprite.y - 30,
                 enemySigilHits.map((id) => getSigil(id)?.name).join(' + ') + '!', 0xc45c45);
@@ -574,24 +559,49 @@ export class CombatTurnController {
             }
         }
 
+        this.applyEnemyGrowth(card);
+        for (const repaired of repairBoneArmor(card, scene.cardSystem?.boardCards)) {
+            scene.cardSystem.updateEnemyInfoText?.(repaired.card);
+            scene.createFloatingText?.(repaired.card.sprite?.x ?? 320, repaired.card.sprite?.y ?? 120,
+                `+${repaired.amount} armor`, 0xd6c2c1);
+        }
+
+        // Capture before armor loses its last pip; that final attack still
+        // touches the worn sigil. It also retaliates against ranged attacks.
+        const thornRetaliation = damageDealt > 0 ? armorThornsDamage(scene.gameState.equippedArmor) : 0;
+        // Bone Shield stops this individual attack and all its on-hit riders.
+        // Resolve it before mirror/dodge so those defenses are not spent too.
+        if (consumeBoneShield(scene.gameState, damageDealt)) {
+            SoundHelper.playSound(scene, 'bone_wall_hit', 0.5);
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Bone Shield!', 0xfef0cf);
+            scene.updateUI?.();
+            this.applyArmorSigilThorns(card, index, thornRetaliation);
+            return;
+        }
+
         // Twinned Mirror — the first damaging attack of the fight goes back at
         // the attacker in full: melee, ranged or boss. The player takes nothing,
         // and none of the hit's riders (poison, theft, webbing) land either.
         // Hand Mirror — same bounce, but only on a small chance per attack.
-        const twinnedMirror = damageDealt > 0 && scene.amuletManager?.hasChargedTwinnedMirror?.();
+        const briarShield = consumeBriarShield(scene.gameState, damageDealt);
+        const twinnedMirror = !briarShield && damageDealt > 0 && scene.amuletManager?.hasChargedTwinnedMirror?.();
         // Mirror sigil on the worn armor: the first attack(s) each fight.
-        const mirrorSigil = !twinnedMirror && damageDealt > 0 && consumeMirrorSigil(scene);
-        const handMirrorGlint = !twinnedMirror && !mirrorSigil && damageDealt > 0
+        const mirrorSigil = !briarShield && !twinnedMirror && damageDealt > 0 && consumeMirrorSigil(scene);
+        const handMirrorGlint = !briarShield && !twinnedMirror && !mirrorSigil && damageDealt > 0
             && Math.random() < (scene.amuletManager?.getReflectChance?.() || 0);
-        if (twinnedMirror || mirrorSigil || handMirrorGlint) {
+        if (briarShield || twinnedMirror || mirrorSigil || handMirrorGlint) {
             if (twinnedMirror) scene.gameState.twinnedMirrorUsed = true;
             const x = card.sprite?.x ?? scene.playerAvatar.x;
             const y = card.sprite?.y ?? scene.playerAvatar.y;
-            CombatSequencer.floatingText(scene, 'reflect', scene.playerAvatar.x, scene.playerAvatar.y - 16, twinnedMirror ? 'Reflected!' : 'Glint!', 0xb697a3);
+            const reflectionName = briarShield ? t(scene, 'ui.hud.briarShield') : 'Mirror';
+            CombatSequencer.floatingText(scene, 'reflect', scene.playerAvatar.x, scene.playerAvatar.y - 16,
+                briarShield ? reflectionName : twinnedMirror ? 'Reflected!' : 'Glint!', 0xb697a3);
             scene.cardSystem.attackEnemy(index, damageDealt, true);
             CombatSequencer.playSound(scene, 'reflect', 'thorns_hit', 0.45);
-            CombatSequencer.floatingText(scene, 'reflect', x, y, `-${damageDealt} Mirror`, 0xb697a3);
+            CombatSequencer.floatingText(scene, 'reflect', x, y, `-${damageDealt} ${reflectionName}`, 0xb697a3);
             scene.updateAmuletsUI?.();
+            scene.updateUI?.();
+            this.applyArmorSigilThorns(card, index, thornRetaliation);
             return;
         }
 
@@ -610,15 +620,9 @@ export class CombatTurnController {
         // reads as a strike coming back down at the hero.
         playStrikeSlash(scene, card.sprite, { flipY: true });
 
-        // Apply abilities like poison on hit
+        // Coin theft keeps its established on-swing trigger.
         card.data.abilities?.forEach(ability => {
-            if (ability.type === 'poison') {
-                const killedBy = card.data.name || card.data.type || 'Enemy';
-                if (scene.gameState.addPlayerEffect({ ...ability, killedBy })) {
-                    SoundHelper.playVariant(scene, 'poison_tick', 0.45);
-                    scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Poisoned!', 0x71800b);
-                }
-            } else if (ability.type === 'coin_steal') {
+            if (ability.type === 'coin_steal') {
                 // Legacy goblin ability (chance + amount on the ability object).
                 if (Math.random() < ability.chance && scene.gameState.coins > 0
                     && !scene.amuletManager?.blocksCoinTheft?.()) {
@@ -648,13 +652,26 @@ export class CombatTurnController {
             ? { ignoreArmorChance: 0.1 }
             : {};
         const playerHealthBeforeDamage = scene.gameState.playerHealth;
-        const { actualDamage, tookDamage, dodged } = scene.gameState.takeDamage(
+        const { actualDamage, tookDamage, dodged, revived } = scene.gameState.takeDamage(
             damageDealt,
             index,
             'enemy',
             armorPierce,
             damageOptions,
         );
+
+        // Poison needs contact. Ordinary armor still permits it, but dodge,
+        // shield and reflection prevent it. Revival skips new poison this hit.
+        if (!dodged && !revived && scene.gameState.playerHealth > 0) {
+            for (const ability of card.data.abilities || []) {
+                if (ability.type !== 'poison') continue;
+                const killedBy = card.data.name || card.data.type || 'Enemy';
+                if (scene.gameState.addPlayerEffect({ ...ability, killedBy })) {
+                    SoundHelper.playVariant(scene, 'poison_tick', 0.45);
+                    scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Poisoned!', 0x71800b);
+                }
+            }
+        }
 
         if (tookDamage) {
             CombatSequencer.playVariant(scene, 'hurt', 'player_hurt', 0.5);
@@ -692,10 +709,9 @@ export class CombatTurnController {
         }
 
         // Stinger Scorpion — each connecting hit pumps +1 into active poison tick damage.
-        if (!dodged && features.includes('poison_amp')) {
-            const poison = scene.gameState.playerEffects?.find((e) => e.type === 'poison');
+        if (!dodged && !revived && features.includes('poison_amp')) {
+            const poison = strengthenPlayerPoison(scene.gameState);
             if (poison) {
-                poison.damage = (poison.damage || 0) + 1;
                 scene.createFloatingText(
                     scene.playerAvatar.x,
                     scene.playerAvatar.y - 18,
@@ -717,9 +733,37 @@ export class CombatTurnController {
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18, 'Spored!', 0xfee093);
         }
 
+        const frozen = !dodged && !revived ? tryEnemyFrost(scene, card.data, actualDamage) : null;
+        if (frozen) {
+            const anchor = frozen.companion ? scene.inventorySystem?.slotSprites?.[frozen.index]?.card : scene.playerAvatar;
+            scene.createFloatingText(anchor?.x ?? scene.playerAvatar.x, (anchor?.y ?? scene.playerAvatar.y) - 18,
+                t(scene, 'status.frost.pending', { count: 2 }), 0x71b1ae);
+            scene.updateUI?.();
+        }
+        const shocked = !dodged && !revived ? tryEnemyShock(scene, card.data, actualDamage) : null;
+        if (shocked) {
+            const anchor = shocked.companion ? scene.inventorySystem?.slotSprites?.[shocked.index]?.card : scene.playerAvatar;
+            scene.createFloatingText(anchor?.x ?? scene.playerAvatar.x, (anchor?.y ?? scene.playerAvatar.y) - 18,
+                t(scene, 'status.shock.pending'), 0xffcf7f);
+            scene.updateUI?.();
+        }
+
+        if (actualDamage > 0 && !dodged && !revived && scene.gameState.playerHealth > 0
+            && sigilLevel(card.data, 'scorched') > 0 && Math.random() < SCORCHED_CHANCE) {
+            addPlayerBurn(scene.gameState, card.data.name || 'Enemy');
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18, t(scene, 'status.burn.applied'), 0xef7c4b);
+            scene.updateUI?.();
+        }
+
+        if (!dodged && !revived && tryEnemySandstorm(scene.gameState, card.data, actualDamage)) {
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18,
+                t(scene, 'status.sandstorm.pending'), 0xffcf7f);
+            scene.updateUI?.();
+        }
+
         // Sapping (an enemy's sigil): a connecting hit may weaken the hero's
         // next weapon hit. The same 20% as the hero's own Sapping.
-        if (!dodged && sigilLevel(card.data, 'sapping') > 0 && Math.random() < ENCHANT_SAPPING_CHANCE) {
+        if (actualDamage > 0 && !dodged && sigilLevel(card.data, 'sapping') > 0 && Math.random() < ENCHANT_SAPPING_CHANCE) {
             scene.gameState.playerSapped = true;
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 26, 'Sapped!', 0x712a65);
         }
@@ -753,7 +797,21 @@ export class CombatTurnController {
             if (card.sprite) scene.createFloatingText(card.sprite.x, card.sprite.y - 16, `+${heal} Leech`, 0x71800b);
         }
 
+        this.applyArmorSigilThorns(card, index, thornRetaliation);
         this.applyThornsDamage(card, index, tookDamage);
+        if (!fromQuickStrike && !dodged && !revived && scene.cardSystem.boardCards[index] === card
+            && tryEnemyQuickStrike(scene.gameState, card.data, actualDamage)) {
+            scene.createFloatingText?.(card.sprite.x, card.sprite.y - 30, 'Quick Strike!', 0xffcf7f);
+            this.processEnemyAttack(card, index, { fromRally, fromQuickStrike: true });
+        }
+    }
+
+    applyEnemyGrowth(card) {
+        const amount = growEnemy(card);
+        if (!amount) return;
+        this.scene.cardSystem?.updateEnemyInfoText?.(card);
+        if (card.sprite) this.scene.createFloatingText?.(card.sprite.x, card.sprite.y - 18,
+            `+${amount} Max HP`, 0x4a884f);
     }
 
     triggerGoblinRally(sourceIndex) {
@@ -798,6 +856,14 @@ export class CombatTurnController {
             }
         }
         return null;
+    }
+
+    applyArmorSigilThorns(card, index, damage) {
+        const scene = this.scene;
+        if (!(damage > 0) || scene.cardSystem?.boardCards[index] !== card || !(card.data?.health > 0)) return;
+        scene.cardSystem.attackEnemy(index, damage, true);
+        CombatSequencer.playVariant(scene, 'reflect', 'thorns_retaliate', 0.45);
+        CombatSequencer.floatingText(scene, 'reflect', card.sprite?.x ?? 320, card.sprite?.y ?? 120, `-${damage} Thorns`, 0x71800b);
     }
 
     applyThornsDamage(card, index, playerTookDamage = false) {
@@ -869,13 +935,16 @@ export class CombatTurnController {
         }
 
         scene.cardSystem.processEnemyPoisonEffects();
+        scene.cardSystem.processEnemyBurnEffects?.();
 
         // Process player poison effects. Skip after a temple/Second Wind rise
         // so the rest of this enemy phase cannot immediately drop them again.
         let effectDamage = 0;
+        let revivedFromPoison = false;
         if (!skipPlayerPoison) {
         for (let i = scene.gameState.playerEffects.length - 1; i >= 0; i--) {
             const effect = scene.gameState.playerEffects[i];
+            if (effect.type === 'burn') continue;
             if (effect.type === 'poison') {
                 effectDamage += effect.damage;
             }
@@ -888,7 +957,8 @@ export class CombatTurnController {
 
         if (effectDamage > 0) {
             const playerHealthBeforePoison = scene.gameState.playerHealth;
-            const { actualDamage } = scene.gameState.takeDamage(effectDamage, -1, 'poison');
+            const { actualDamage, revived } = scene.gameState.takeDamage(effectDamage, -1, 'poison');
+            revivedFromPoison = Boolean(revived);
             // A dodged or immune tick already announced itself ("Dodge!",
             // "Poison Immune!") — don't stack a "-0 (Poison)" and a hurt grunt
             // on top of it.
@@ -914,11 +984,26 @@ export class CombatTurnController {
         }
         }
 
-        // Enemies' Regenerate sigil: each heals at the end of the enemy turn.
+        if (!skipPlayerPoison && !revivedFromPoison && scene.gameState.playerHealth > 0) {
+            const burn = takePlayerBurnTick(scene.gameState);
+            if (burn > 0) {
+                const { actualDamage } = scene.gameState.takeDamage(burn, -1, 'burn');
+                if (actualDamage > 0) CombatSequencer.floatingText(scene, 'hurt', scene.playerAvatar.x,
+                    scene.playerAvatar.y, t(scene, 'status.burn.tick', { amount: actualDamage }), 0xef7c4b);
+                if (scene.gameState.playerHealth <= 0) {
+                    scene.killedBy = 'Burn';
+                    this.isEnemyTurn = false;
+                    scene.updateUI?.();
+                    return;
+                }
+            }
+        }
+
+        // Regenerate healers sustain their other revealed living allies.
         regenerateEnemies(scene);
 
         // Regenerate sigils: carried cards and worn armor heal the hero a
-        // little at the end of every enemy turn.
+        // little per carried companion at the end of every enemy turn.
         const regen = regenerateAmount(scene);
         if (regen > 0 && scene.gameState.playerHealth > 0
             && scene.gameState.playerHealth < scene.gameState.maxHealth) {
@@ -1010,16 +1095,17 @@ export class CombatTurnController {
                 return;
             }
             const entry = entries[position];
-            let attacked = false;
-            attacked = this.runCompanionTurn(entry, () => {
-                // Warcry carried by the player: a companion that attacked may
+            this.runCompanionTurn(entry, (attacked) => {
+                // Leadership Banner or a legacy Warcry: a companion that attacked may
                 // attack again. (No target or webbed: no second try.)
                 const chance = attacked ? playerWarcryChance(scene) : 0;
                 if (chance > 0 && !scene._transitioning && Math.random() < chance) {
                     const card = scene.inventorySystem?.slotSprites?.[entry.index]?.card;
                     const x = card?.x ?? scene.playerAvatar?.x ?? 320;
                     const y = card?.y ?? scene.playerAvatar?.y ?? 300;
-                    scene.createFloatingText(x, y - 18, 'Warcry!', 0xffcf7f);
+                    scene.createFloatingText(x, y - 18,
+                        scene.amuletManager?.getCompanionExtraActionChance?.() > 0
+                            ? t(scene, 'amulet.leadershipBanner.trigger') : 'Warcry!', 0xffcf7f);
                     this.runCompanionTurn(entry, () => runNext(position + 1));
                     return;
                 }
@@ -1049,6 +1135,15 @@ export class CombatTurnController {
             scene.createFloatingText(x, y - 18, handLockOf(entry.companion).text, 0xd6c2c1);
             const skipTimer = scene.time.delayedCall(220, onComplete);
             this.enemyTurnTimers.push(skipTimer);
+            return false;
+        }
+
+        const attackHold = consumeCompanionAttackHold(entry.companion);
+        if (attackHold) {
+            scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18,
+                t(scene, attackHold === 'frost' ? 'status.frost.missed' : 'status.shock.missed'), 0xffcf7f);
+            const timer = scene.time.delayedCall(220, onComplete);
+            this.enemyTurnTimers.push(timer);
             return false;
         }
 
@@ -1086,7 +1181,7 @@ export class CombatTurnController {
                     }
                     scene.cardSystem.damageGemTarget(
                         target.index,
-                        entry.companion.attack || 2,
+                        (entry.companion.attack || 2) + companionStrengthBonus(scene),
                         own || (isMelee ? 'Skeleton Slash' : 'Chick Zap'),
                         entry.companion.strikeColor ?? (isMelee ? 0xd6c7b3 : 0xffcf7f),
                         (own || isMelee) ? null : 'lightning'
@@ -1109,7 +1204,7 @@ export class CombatTurnController {
                     }
                 }
             }
-            const finishTimer = scene.time.delayedCall(220, onComplete);
+            const finishTimer = scene.time.delayedCall(220, () => onComplete(true));
             this.enemyTurnTimers.push(finishTimer);
         });
         this.enemyTurnTimers.push(attackTimer);
@@ -1123,8 +1218,8 @@ export class CombatTurnController {
         const scene = this.scene;
         const companion = entry?.companion;
         const slotCard = scene.inventorySystem?.slotSprites?.[entry?.index]?.card;
-        const done = (ms = 220) => {
-            const timer = scene.time.delayedCall(ms, onComplete);
+        const done = (ms = 220, acted = false) => {
+            const timer = scene.time.delayedCall(ms, () => onComplete(acted));
             this.enemyTurnTimers.push(timer);
         };
         if (!companion || scene._transitioning || scene.gameState.playerHealth <= 0) {
@@ -1153,6 +1248,13 @@ export class CombatTurnController {
             onComplete();
             return false;
         }
+        const attackHold = consumeCompanionAttackHold(companion);
+        if (attackHold) {
+            scene.createFloatingText(slotCard?.x ?? 320, (slotCard?.y ?? 300) - 18,
+                t(scene, attackHold === 'frost' ? 'status.frost.missed' : 'status.shock.missed'), 0xffcf7f);
+            done();
+            return false;
+        }
         // The hardest hitter is the one worth holding.
         const target = targets.reduce((best, next) => (
             (next.card.data.attack || 0) > (best.card.data.attack || 0) ? next : best
@@ -1173,7 +1275,7 @@ export class CombatTurnController {
                     );
                 }
             }
-            done();
+            done(220, true);
         });
         return true;
     }

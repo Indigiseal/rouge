@@ -1,3 +1,7 @@
+export function canStartMusicBox(gameState, locationId) {
+  return locationId === 'tollroad' && (gameState?.storyRun?.boxState || 'unknown') === 'unknown';
+}
+
 export const MUSIC_BOX_OPENED_BY_KEY =
   'The lock gives. Inside, where the cylinder should turn, a cog is missing.\n\n'
   + 'The box looks at you — somehow — then grows two more legs and falls in behind you.';

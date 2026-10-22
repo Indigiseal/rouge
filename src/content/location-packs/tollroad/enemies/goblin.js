@@ -5,6 +5,6 @@ export default {
   role: 'MELEE',
   minFloor: 1,
   archetype: 'skirmisher',
-  features: ['club_stun'],
+  features: [],
   goblinAlly: true,
 };

@@ -6,6 +6,9 @@ import { BONEFLOOD_ENEMY_DEFS } from '../location-packs/boneflood/index.js';
 import { MIRETURN_ENEMY_DEFS } from '../location-packs/mireturn/index.js';
 import { VEILBLEED_ENEMY_DEFS } from '../location-packs/veilbleed/index.js';
 import { ASHHOWL_ENEMY_DEFS } from '../location-packs/ashhowl/index.js';
+import { STORMHATCH_ENEMY_DEFS } from '../location-packs/stormhatch/index.js';
+import { FROSTHOLLOW_ENEMY_DEFS, FROSTHOLLOW_ENEMY_ALIASES } from '../location-packs/frosthollow/index.js';
+import { SANDREACH_ENEMY_DEFS } from '../location-packs/sandreach/index.js';
 import { CRYSTAL_SPIDER_DEFS } from './crystalSpiders.js';
 
 // Enemy catalog.
@@ -114,6 +117,9 @@ export const ENEMIES = {
   // throw it, and it is never dealt onto a board.
   ...VEILBLEED_ENEMY_DEFS,
   ...ASHHOWL_ENEMY_DEFS,
+  ...STORMHATCH_ENEMY_DEFS,
+  ...FROSTHOLLOW_ENEMY_DEFS,
+  ...SANDREACH_ENEMY_DEFS,
   // Off every roster: only the Crystal Lair deals them.
   ...CRYSTAL_SPIDER_DEFS,
 };
@@ -122,15 +128,16 @@ export const SUMMON_ONLY_ENEMY_TYPES = new Set(['cerberusHead']);
 
 /** Types that use band×archetype instead of legacy tiers. */
 export function usesBandStats(enemyOrType) {
-  const enemy = typeof enemyOrType === 'string' ? ENEMIES[enemyOrType] : enemyOrType;
+  const enemy = typeof enemyOrType === 'string' ? getEnemy(enemyOrType) : enemyOrType;
   return !!(enemy && enemy.archetype && !enemy.tiers);
 }
 
 export function getEnemy(id) {
-  return ENEMIES[id] || null;
+  return ENEMIES[FROSTHOLLOW_ENEMY_ALIASES[id] || id] || null;
 }
 
 export function buildEnemyCardFromDef(enemyType, floor, isElite = false) {
+  enemyType = FROSTHOLLOW_ENEMY_ALIASES[enemyType] || enemyType;
   const enemy = ENEMIES[enemyType];
   if (!enemy) return null;
 
@@ -167,6 +174,8 @@ export function buildEnemyCardFromDef(enemyType, floor, isElite = false) {
     isRangedType: enemy.role === 'RANGED',
     archetype: enemy.archetype || null,
     bandId,
+    armor: enemy.armor || 0,
+    maxArmor: enemy.armor || 0,
     placeholderArt: !!enemy.placeholderArt,
     // Sheet identity, so a tier promotion can swap to the matching card face
     // without a lookup table. Absent on enemies not drawn on a month sheet.

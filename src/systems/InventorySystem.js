@@ -443,7 +443,7 @@ export class InventorySystem {
                     // Not in an event: the hero's portrait sits hidden under
                     // the event screen there, and a spell let go in that corner
                     // was cast by accident (see the board-cast guard below).
-                    const selfTarget = ['restoration', 'shadowBlade', 'magicShield', 'boneWall'];
+                    const selfTarget = ['restoration', 'shadowBlade', 'magicShield', 'boneWall', 'briarShield'];
                     if (selfTarget.includes(cardData.magicType)) {
                         this.useMagicCard(slotIndex, cardSprite);
                         return;
@@ -521,7 +521,7 @@ export class InventorySystem {
             } else if (cardData.type === 'magic') {
                 // Some magic cards can be used on player
                 if (cardData.magicType === 'restoration' || cardData.magicType === 'shadowBlade' ||
-                    cardData.magicType === 'magicShield' || cardData.magicType === 'boneWall') {
+                    cardData.magicType === 'magicShield' || cardData.magicType === 'boneWall' || cardData.magicType === 'briarShield') {
                     this.useMagicCard(slotIndex, cardSprite);
                     return;
                 }

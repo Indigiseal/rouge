@@ -1,7 +1,7 @@
 // systems/combat/SigilEffects.js
 // What the player's sigils do in a fight. The catalog — names, icons, rule
-// texts — is content/sigils/sigils.js; Thorns is the Briar Room bonus, already
-// in the card's damage.
+// texts — is content/sigils/sigils.js. Legacy Briar weapon bonuses stay in
+// their saved damage; new Thorns sigils retaliate from worn armor.
 //
 // Multipliers are x1.5 and round down (docs/SIGILS.md). Several sigils on one
 // swing multiply in turn: Merciless and Hunter together are x1.5 x1.5. Flat
@@ -12,6 +12,14 @@ import { SoundHelper } from '../../audio/SoundHelper.js';
 import { SIGIL_MULTIPLIER, hasStoredSigil, sigilLevel } from '../../content/sigils/sigils.js';
 import { ENCHANT_FIREBALL_CHANCE, ENCHANT_SAPPING_CHANCE } from '../../content/balance/WeaponEnchants.js';
 import { fireDamageAgainst } from '../../content/combat/fireResist.js';
+import { SHOCK_CHANCE } from '../../content/combat/storm.js';
+import { freezeEnemy, isFrostFrozen } from '../../content/combat/frost.js';
+import { repairRandomDamagedItem } from '../inventory/ItemRepair.js';
+import { t, translateItemName } from '../../i18n/i18n.js';
+import { applyVenomousBomb, entangleEnemy, WEB_CHANCE, VENOMOUS_BOMB_CHANCE } from '../../content/combat/silkdeep.js';
+import { applyScorched, SCORCHED_CHANCE } from '../../content/combat/ashhowl.js';
+import { sandAttackConditions, canRepeatStrike, FORAGE_CHANCE, QUICK_STRIKE_CHANCE } from '../../content/combat/sandreach.js';
+import { spawnForagedFood } from '../board/FoodForage.js';
 
 // Tuning, all per sigil level unless noted.
 const HONED_PER_USE = 1;          // +damage per earlier use this fight
@@ -33,14 +41,11 @@ const BOUNTY_COINS = 2;           // coins on a kill
 const FIREBALL_SHARE = 0.5;       // of the swing, rounded down
 const FIREBALL_MINIMUM = 3;
 const FIREBALL_FLIGHT_MS = 320;
-const TSUNAMI_CHANCE = 0.1;       // on hit
-const TSUNAMI_DAMAGE = 3;         // to every face-up enemy
 const DEVOURING_CHANCE = 0.08;    // per level, non-bosses only
 const TEMPERED_SAVE = 0.3;        // per level, chance a pip is kept (max 0.9)
 const WARCRY_CHANCE = 0.1;        // per level, an ally acts twice (max 0.5)
 const RIPOSTE_BONUS = 2;          // next hit after a block
 const MENDING_CHANCE = 0.1;       // on hit
-const MENDING_PIPS = 2;           // after the swing's own pip, so it reads +2
 const SECOND_WIND_CHANCE = 0.1;   // on hit
 const SECOND_WIND_AP = 2;         // after the swing's own AP, so it reads +2
 const SCOUT_CHANCE = 0.15;        // on hit
@@ -77,6 +82,20 @@ function emptyBagSlots(scene) {
     return slots.filter((card) => !card).length;
 }
 
+function bagItems(scene) {
+    return scene?.inventorySystem?.slots || scene?._simInventory || scene?.gameState?.inventory || [];
+}
+
+export function companionStrengthBonus(scene) {
+    return [...new Set([...bagItems(scene), scene?.gameState?.equippedArmor])]
+        .filter(item => item && (item.type === 'weapon' || item.type === 'armor') && item.durability > 0)
+        .reduce((sum, item) => sum + sigilLevel(item, 'companionStrength'), 0);
+}
+
+export function armorThornsDamage(armor) {
+    return armor?.durability > 0 && hasStoredSigil(armor, 'thorns') ? 1 : 0;
+}
+
 // Kinship: the cards in the bag slots right beside `weapon` that carry it.
 function kinshipNeighbours(scene, weapon) {
     const slots = scene?.inventorySystem?.slots || scene?.gameState?.inventory || [];
@@ -107,6 +126,9 @@ export function weaponFlatSigilBonus(scene, weapon) {
     const outnumbered = sigilLevel(weapon, 'outnumbered');
     if (outnumbered > 0) add('outnumbered', openEnemyCount(scene) * OUTNUMBERED_PER_ENEMY * outnumbered);
     add('kinship', kinshipNeighbours(scene, weapon) * KINSHIP_BONUS);
+    if (sigilLevel(weapon, 'packStrength') > 0) {
+        add('packStrength', bagItems(scene).filter(item => item?.type === 'companion').length);
+    }
     const ironclad = sigilLevel(weapon, 'ironclad');
     if (ironclad > 0) add('ironclad', wornArmorProtection(scene) * ironclad);
     const packrat = sigilLevel(weapon, 'packrat');
@@ -121,7 +143,7 @@ export function weaponFlatSigilBonus(scene, weapon) {
  * baseDamage is the swing before sigils (what Tandem compares next time),
  * triggered the sigils that changed it, for feedback.
  */
-export function applyWeaponSigils(scene, weapon, targetCard, damage) {
+export function applyWeaponSigils(scene, weapon, targetCard, damage, { actionsBefore = scene?.gameState?.actionsLeft } = {}) {
     const triggered = [];
     if (!weapon || !targetCard?.data) return { damage, triggered };
     const gs = scene?.gameState;
@@ -148,7 +170,9 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage) {
     // Then the x1.5 conditions.
     const conditions = [
         ['merciless', () => hp <= maxHp / 2],
+        ['shatter', () => isFrostFrozen(targetCard.data)],
         ['ambush', () => hp >= maxHp],
+        ['charged', () => (targetCard.data.shockedTurns || 0) > 0],
         ['unscathed', () => heroHp >= heroMax],
         ['desperate', () => heroHp < heroMax * DESPERATE_BELOW],
         ['hunter', () => !!scene?._sigilLastTarget && scene._sigilLastTarget === targetCard],
@@ -164,6 +188,11 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage) {
             out = multiply(out);
             triggered.push(id);
         }
+    }
+
+    for (const id of sandAttackConditions(weapon, targetCard, gs, actionsBefore)) {
+        out = multiply(out);
+        triggered.push(id);
     }
 
     // Crushing: a chance of a heavy hit, x1.5 and straight through armor
@@ -183,14 +212,24 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage) {
  * swing. `damageDealt` is the HP it actually took; `swingDamage` the swing
  * before sigils (applyWeaponSigils' baseDamage), which Tandem compares. Returns the on-hit sigils that fired, for feedback.
  */
-export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, swingDamage = 0 } = {}) {
+export function onWeaponSigilHit(scene, weapon, targetCard, {
+    damageDealt = 0, swingDamage = 0, repeatDamage = swingDamage, allowExtraStrike = true,
+} = {}) {
     const fired = [];
     if (!scene || !weapon) return fired;
     const gs = scene.gameState;
     const cs = scene.cardSystem;
-    const alive = targetCard?.data && (targetCard.data.health || 0) > 0 && targetCard.sprite?.scene;
+    const alive = targetCard?.data && !targetCard.data.isBonePile
+        && (targetCard.data.health || 0) > 0 && targetCard.sprite?.scene;
 
     const leech = sigilLevel(weapon, 'leech');
+    const growth = sigilLevel(weapon, 'growth');
+    if (growth > 0 && damageDealt > 0 && gs?.playerHealth > 0) {
+        gs.maxHealth += growth;
+        scene.createFloatingText?.(scene.playerAvatar.x, scene.playerAvatar.y - 14, `+${growth} Max HP`, 0x4a884f);
+        fired.push('growth');
+        scene.updateUI?.();
+    }
     if (leech > 0 && damageDealt > 0 && gs && gs.playerHealth < gs.maxHealth) {
         const heal = Math.ceil(damageDealt * LEECH_SHARE * leech);
         const before = gs.playerHealth;
@@ -201,11 +240,24 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         }
     }
     const venom = sigilLevel(weapon, 'venom');
+    if (damageDealt > 0 && sigilLevel(weapon, 'shock') > 0 && alive && Math.random() < SHOCK_CHANCE
+        && cs?.applyShockStatus?.(targetCard, 1)) fired.push('shock');
     if (venom > 0 && alive) {
         cs?.applyWeaponPoison?.(targetCard, { poisonDamage: VENOM_DAMAGE * venom, poisonTurns: VENOM_TURNS });
         fired.push('venom');
     }
     const cutpurse = sigilLevel(weapon, 'cutpurse');
+    if (damageDealt > 0 && sigilLevel(weapon, 'web') > 0 && alive
+        && targetCard.data.type !== 'boss' && !(targetCard.data.frozen > 0)
+        && Math.random() < WEB_CHANCE && entangleEnemy(cs, targetCard)) {
+        scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 30, 'Webbed!', 0xd6c2c1);
+        fired.push('web');
+    }
+    if (damageDealt > 0 && sigilLevel(weapon, 'venomousBomb') > 0
+        && Math.random() < VENOMOUS_BOMB_CHANCE && applyVenomousBomb(cs) > 0) {
+        SoundHelper.playVariant(scene, 'poison_tick', 0.45);
+        fired.push('venomousBomb');
+    }
     if (cutpurse > 0 && gs) {
         const coins = CUTPURSE_COINS * cutpurse;
         gs.coins = (gs.coins || 0) + coins;
@@ -215,10 +267,9 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
     }
     // Frost: a chance to freeze the enemy hit for its next turn. Only the
     // sigil put on the card — a Frost Ring enchant freezes by its own rule.
-    if (hasStoredSigil(weapon, 'frost') && alive && targetCard.data.type !== 'boss'
+    if (damageDealt > 0 && hasStoredSigil(weapon, 'frost') && alive && targetCard.data.type !== 'boss'
         && !(targetCard.data.frozen > 0) && Math.random() < FROST_CHANCE) {
-        targetCard.data.frozen = 1;
-        cs?.attachFrozenFrame?.(targetCard);
+        freezeEnemy(cs, targetCard, 1);
         scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 18, 'Frozen!', 0x71b1ae);
         fired.push('frost');
     }
@@ -226,7 +277,7 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
     // Sapping: a chance the enemy hit is weaker for its next attack only
     // (enemyAttack.js applies it, the turn controller spends it). The sigil
     // and the Reliquary's Weakness enchant are the same rule.
-    if (sigilLevel(weapon, 'sapping') > 0 && alive && !targetCard.data.sapped
+    if (damageDealt > 0 && sigilLevel(weapon, 'sapping') > 0 && alive && !targetCard.data.sapped
         && Math.random() < ENCHANT_SAPPING_CHANCE) {
         targetCard.data.sapped = true;
         cs?.updateEnemyInfoText?.(targetCard);
@@ -243,7 +294,7 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
     }
     // Daze: a chance the enemy hit (not a boss) misses its next attack
     // (CombatTurnController spends it). Shown grey until then.
-    if (sigilLevel(weapon, 'daze') > 0 && alive && targetCard.data.type !== 'boss'
+    if (damageDealt > 0 && sigilLevel(weapon, 'daze') > 0 && alive && targetCard.data.type !== 'boss'
         && !targetCard.data.dazed && Math.random() < DAZE_CHANCE) {
         targetCard.data.dazed = true;
         scene.createFloatingText?.(targetCard.sprite.x, targetCard.sprite.y - 30, 'Dazed!', 0xafafa2);
@@ -317,10 +368,13 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         fired.push('fireball');
     }
 
-    // Tsunami: a chance that a wave crashes over the whole board.
-    if (sigilLevel(weapon, 'tsunami') > 0 && Math.random() < TSUNAMI_CHANCE) {
-        crashTsunami(scene);
-        fired.push('tsunami');
+    // Scorched replaces Tsunami: every creature gets the same burn counter,
+    // including face-down creatures. Loot is never burned.
+    if (damageDealt > 0 && sigilLevel(weapon, 'scorched') > 0 && Math.random() < SCORCHED_CHANCE
+        && applyScorched(cs) > 0) {
+        SoundHelper.playSound(scene, 'magic_cast', 0.5);
+        scene.createFloatingText?.(320, 70, t(scene, 'magic.scorched.applied'), 0xef7c4b);
+        fired.push('scorched');
     }
 
     // Smoke: a kill hides another standing enemy (the Smoke Screen enchant's
@@ -331,20 +385,27 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         fired.push('smoke');
     }
 
-    // Mending and Second Wind: the swing has already spent its pip and its
-    // AP, so +2 shows as +2 and leaves the hero one up. Neither goes past
-    // the cap, and a weapon that just broke stays broken.
-    if (damageDealt > 0 && sigilLevel(weapon, 'mending') > 0 && weapon.durability > 0
+    // One roll per weapon hit, after its pip is spent. A broken source weapon
+    // can mend another item, but cannot bring itself back.
+    if (damageDealt > 0 && sigilLevel(weapon, 'mending') > 0
         && Math.random() < MENDING_CHANCE) {
-        const max = weapon.maxDurability || weapon.durability;
-        const gained = Math.max(0, Math.min(max, weapon.durability + MENDING_PIPS) - weapon.durability);
-        if (gained > 0) {
-            weapon.durability += gained;
-            scene.createFloatingText?.(scene.playerAvatar.x, scene.playerAvatar.y + 18, `+${gained} pips (Mending)`, 0xd6c2c1);
+        const inv = scene.inventorySystem;
+        const slots = inv?.slots || gs?.inventory || [];
+        const repaired = repairRandomDamagedItem([...slots, gs?.equippedArmor]);
+        if (repaired) {
+            const slotIndex = slots.indexOf(repaired.item);
+            const sprite = inv?.slotSprites?.[slotIndex]?.card;
+            if (sprite?.scene) inv.updateWeaponInfoText?.(sprite, repaired.item);
+            const anchor = sprite?.scene ? sprite : scene.playerAvatar;
+            scene.createFloatingText?.(anchor?.x ?? 320, (anchor?.y ?? 180) - 18, {
+                key: 'event.reward.repaired',
+                vars: { name: translateItemName(scene, repaired.item), amount: repaired.gained },
+            }, 0xd6c2c1);
             scene.updateUI?.();
             fired.push('mending');
         }
     }
+    // Second Wind returns AP after the swing has paid its cost.
     if (damageDealt > 0 && gs && sigilLevel(weapon, 'secondWind') > 0 && Math.random() < SECOND_WIND_CHANCE) {
         const before = gs.actionsLeft || 0;
         gs.actionsLeft = Math.min(gs.maxActions, before + SECOND_WIND_AP);
@@ -373,6 +434,22 @@ export function onWeaponSigilHit(scene, weapon, targetCard, { damageDealt = 0, s
         weapon.honedUses = damageDealt > 0 ? before + 1 : 0;
         weapon.honedFloor = gs?.currentFloor ?? 0;
         if (damageDealt <= 0 && before > 0) streakBroken(scene, targetCard, 'Honed');
+    }
+    if (damageDealt > 0 && sigilLevel(weapon, 'forage') > 0 && Math.random() < FORAGE_CHANCE
+        && spawnForagedFood(cs)) fired.push('forage');
+
+    // Copy this swing through ordinary armor/dodge/gem/death handling. The
+    // repeated hit may trigger other sigils, but cannot roll another repeat.
+    if (allowExtraStrike && repeatDamage > 0 && canRepeatStrike(scene, weapon, targetCard, damageDealt)
+        && Math.random() < QUICK_STRIKE_CHANCE) {
+        const index = cs.boardCards.indexOf(targetCard);
+        const before = targetCard.data.health;
+        cs.attackEnemy(index, repeatDamage, false, weapon, true);
+        onWeaponSigilHit(scene, weapon, targetCard, {
+            damageDealt: Math.max(0, before - Math.max(0, targetCard.data.isBonePile ? 0 : targetCard.data.health)),
+            swingDamage, repeatDamage, allowExtraStrike: false,
+        });
+        fired.push('quickStrike');
     }
     return fired;
 }
@@ -446,28 +523,6 @@ function throwFireball(scene, struckCard, swingDamage) {
     return true;
 }
 
-// Tsunami: a wave sweeps the board left to right (placeholder look: a
-// see-through band of water until its art exists), hitting every face-up
-// enemy as it passes.
-function crashTsunami(scene) {
-    const cs = scene?.cardSystem;
-    if (!cs || !scene.add) return;
-    SoundHelper.playSound(scene, 'magic_cast', 0.5);
-    scene.createFloatingText?.(320, 70, 'Tsunami!', 0x71b1ae);
-    const wave = scene.add.rectangle(-80, 150, 120, 250, 0x71b1ae, 0.35).setDepth(2400);
-    scene.tweens.add({ targets: wave, x: 720, duration: 650, ease: 'Sine.easeIn', onComplete: () => wave.destroy() });
-    (cs.boardCards || []).forEach((card, i) => {
-        if (!cs.isOpenEnemyCard?.(card) || (card.data?.health || 0) <= 0 || !card.sprite) return;
-        // Each enemy is hit as the wave reaches it.
-        const delay = Math.max(0, ((card.sprite.x + 80) / 800) * 650);
-        scene.time.delayedCall(delay, () => {
-            if (cs.boardCards[i] === card && (card.data?.health || 0) > 0) {
-                cs.damageGemTarget(i, TSUNAMI_DAMAGE, 'Wave', 0x71b1ae, null, 'hit');
-            }
-        });
-    });
-}
-
 /** Chance, from Tempered, that `card` keeps the pip it would spend. */
 export function temperedSaveChance(card) {
     return Math.min(0.9, sigilLevel(card, 'tempered') * TEMPERED_SAVE);
@@ -500,7 +555,7 @@ export function playerWarcryChance(scene) {
     if (!gs) return 0;
     const cards = [...(scene.inventorySystem?.slots || gs.inventory || []), gs.equippedArmor];
     const level = cards.reduce((sum, card) => sum + sigilLevel(card, 'warcry'), 0);
-    return Math.min(0.5, level * WARCRY_CHANCE);
+    return Math.min(0.5, level * WARCRY_CHANCE + (scene.amuletManager?.getCompanionExtraActionChance?.() || 0));
 }
 
 /**
@@ -520,10 +575,12 @@ export function enemyWarcryChance(boardCards, card, isEnemyCard) {
     return { chance: Math.min(0.5, level * WARCRY_CHANCE), source };
 }
 
-/** HP Regenerate gives at the end of an enemy turn: every carried card plus worn armor. */
+/** Each intact Regenerate item heals one HP per carried companion per level. */
 export function regenerateAmount(scene) {
     const gs = scene?.gameState;
     if (!gs) return 0;
-    const cards = [...(scene.inventorySystem?.slots || gs.inventory || []), gs.equippedArmor];
-    return cards.reduce((sum, card) => sum + sigilLevel(card, 'regenerate') * REGENERATE_PER_LEVEL, 0);
+    const companions = new Set(bagItems(scene).filter(card => card?.type === 'companion')).size;
+    const cards = [...new Set([...bagItems(scene), gs.equippedArmor])];
+    return companions * cards.filter(card => card?.durability > 0)
+        .reduce((sum, card) => sum + sigilLevel(card, 'regenerate') * REGENERATE_PER_LEVEL, 0);
 }

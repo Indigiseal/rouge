@@ -4,6 +4,6 @@ export default {
   role: 'RANGED',
   minFloor: 16,
   archetype: 'artillery',
-  // Venom at range: each hit deepens the poison already on you.
-  features: ['poison_amp'],
+  features: [],
+  sigils: [{ id: 'regenerate' }],
 };

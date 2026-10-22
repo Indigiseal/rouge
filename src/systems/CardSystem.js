@@ -95,6 +95,7 @@ export class CardSystem {
     isRangedWeapon(...args) { return this.combat.isRangedWeapon(...args); }
     isVenomousWeapon(...args) { return this.combat.isVenomousWeapon(...args); }
     applyWeaponPoison(...args) { return this.combat.applyWeaponPoison(...args); }
+    applyEnemyPoison(...args) { return this.combat.applyEnemyPoison(...args); }
     applyPoisonGemStacks(...args) { return this.combat.applyPoisonGemStacks(...args); }
     splashPoisonGem(...args) { return this.combat.splashPoisonGem(...args); }
     getEnemyPoisonSummary(...args) { return this.combat.getEnemyPoisonSummary(...args); }
@@ -102,6 +103,7 @@ export class CardSystem {
     attachFrozenFrame(...args) { return this.combat.attachFrozenFrame(...args); }
     removeFrozenFrame(...args) { return this.combat.removeFrozenFrame(...args); }
     processEnemyPoisonEffects(...args) { return this.combat.processEnemyPoisonEffects(...args); }
+    processEnemyBurnEffects(...args) { return this.combat.processEnemyBurnEffects(...args); }
     _aliveEnemyIndices(...args) { return this.combat._aliveEnemyIndices(...args); }
     _anyMeleeAlive(...args) { return this.combat._anyMeleeAlive(...args); }
     currentFrontRowR(...args) { return this.combat.currentFrontRowR(...args); }

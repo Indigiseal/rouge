@@ -4,6 +4,6 @@ export default {
   role: 'MELEE',
   minFloor: 16,
   archetype: 'swarm',
-  // A pile of edges. Hitting it costs you something back.
-  features: ['thorns_reflect'],
+  features: [],
+  sigils: [{ id: 'reassemble' }],
 };

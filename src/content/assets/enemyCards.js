@@ -1,7 +1,7 @@
 // Enemy cards — every month's roster in three tiers, composited from
 // assets/art/enemiesSpriteSheet.png plus the icon strip.
 //
-// The sheet is an 8x8 grid of 52x70 cells. One row per month (row 7 is the
+// The sheet is an 8-column grid of 52x70 cells. One row per month (row 7 is the
 // Crystal Lair's spiders, which belong to no location — EXTRA_SHEET_ROWS):
 //
 //        0..4  the five enemies, in roster order
@@ -11,9 +11,10 @@
 //   row 1  Silkdeep       row 5  Veilbleed
 //   row 2  Tollroad       row 6  Ashhowl
 //   row 3  Boneflood                  row 7  Crystal Lair
+//   row 8  Frosthollow (mixed-role painted order)
 //
-// A column is NEVER written down by hand. It is the enemy's position in its
-// month's roster — MELEE first, then RANGED, which is the order the rosters
+// A column is the enemy's position in its roster's SHEET_ORDER when provided,
+// otherwise MELEE first, then RANGED, which is the order the older rosters
 // already declare and the order the art was drawn in. The old Thornwake atlas
 // kept a separate hand-maintained frame table, it drifted from the roster, and
 // the Fairy and the Sprite ended up wearing each other's faces. Deriving the
@@ -48,12 +49,12 @@ export const MONTH_SHEET_ROWS = Object.freeze({
 });
 
 /**
- * Sheet rows for creatures that belong to no location (row 7: the Crystal
- * Lair's spiders). Kept out of MONTH_SHEET_ROWS, which the location door art
- * also reads row for row.
+ * Enemy-only rows without corresponding card flip/hover animation rows.
+ * Keep them out of MONTH_SHEET_ROWS, which locationCardArt also reads.
  */
 export const EXTRA_SHEET_ROWS = Object.freeze({
     crystalLair: 7,
+    frosthollow: 8,
 });
 
 /** The sheet row for a location or extra group, or undefined if none is drawn. */
@@ -91,6 +92,7 @@ export function enemyCardKey(monthId, column, tier = 'normal') {
  * here IS its column on the sheet.
  */
 export function rosterOrder(roster) {
+    if (roster?.SHEET_ORDER) return [...roster.SHEET_ORDER];
     return [
         ...(roster?.MELEE || []),
         ...(roster?.RANGED || []),

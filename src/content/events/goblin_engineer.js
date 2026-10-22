@@ -12,7 +12,7 @@ export default {
     const intro = 'A goblin steps out from behind a broken machine and points at the music box.\n\n"Sleepy Snatch Box. Old robber model. Plays a song, puffs smoke, hero sleeps, pockets empty. Very illegal. Very profitable."\n\nThe box hides behind your boot.';
     const cogLine = gs?.storyRun?.boxHasCog
       ? '"You found its heart cog. Give it here — I can seat it properly. Or improperly. Depends on payment."'
-      : '"No cog? Then I\'m guessing at the insides. Goblin confidence: fifty percent."';
+      : '"No cog? I have spares. Spare parts cost extra."';
     return `${intro}\n\n${cogLine}`;
   },
   choices: [
@@ -30,7 +30,7 @@ export default {
     },
     {
       text: 'Give him an unwanted card for spare parts',
-      condition: (gs, scene) => Boolean(boxIntact(gs) && gs?.storyRun?.boxHasCog && scene.hasSacrificeCard()),
+      condition: (gs, scene) => Boolean(boxIntact(gs) && scene.hasSacrificeCard()),
       action: (gs, scene) => {
         scene.ensureStoryState();
         scene.sacrificeFirstNonEssentialCard();
@@ -43,7 +43,7 @@ export default {
     },
     {
       text: 'Pay 30 coins for full repair',
-      condition: (gs) => Boolean(boxIntact(gs) && gs?.storyRun?.boxHasCog && (gs?.coins || 0) >= 30),
+      condition: (gs) => Boolean(boxIntact(gs) && (gs?.coins || 0) >= 30),
       action: (gs, scene) => {
         scene.ensureStoryState();
         gs.coins = Math.max(0, (gs.coins || 0) - 30);

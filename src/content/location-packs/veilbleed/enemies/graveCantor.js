@@ -4,6 +4,6 @@ export default {
   role: 'RANGED',
   minFloor: 16,
   archetype: 'artillery',
-  // The chant builds: now and then a verse lands with half again its weight.
-  features: ['heavy_shot'],
+  features: [],
+  sigils: [{ id: 'sapping' }],
 };

@@ -167,7 +167,7 @@ const STRINGS = {
         'tooltip.rangedImmune': 'Bark: immune to ranged',
         'tooltip.gnaw': 'Gnaw: 50% +1 armor durability loss on hit',
         'tooltip.taunt': 'Provocation: must attack this enemy',
-        'tooltip.poisonAmp': 'Venom Amp: +1 poison tick damage on hit',
+        'tooltip.poisonAmp': 'Venom Stacking: existing poison deals +1 damage per tick on hit',
         'tooltip.webHand': 'Web: locks a random hand card for 1 turn', 'tooltip.inkHand': 'Ink: locks a random hand card for 1 turn',
         'tooltip.clubStun': 'Club: 5% stun (skip next action)',
         'tooltip.coinSteal': 'Cutpurse: steals 10 coins on attack',
@@ -687,7 +687,7 @@ const STRINGS = {
         'tooltip.rangedImmune': 'Corteza: inmune a distancia',
         'tooltip.gnaw': 'Roer: 50% de probabilidad de perder 1 punto adicional de durabilidad al golpear',
         'tooltip.taunt': 'Provocación: debes atacar a este enemigo',
-        'tooltip.poisonAmp': 'Ponzoña: +1 de daño por tic de veneno al golpear',
+        'tooltip.poisonAmp': 'Acumulación de veneno: +1 de daño por tic al veneno activo al golpear',
         'tooltip.webHand': 'Telaraña: bloquea una carta de la mano 1 turno', 'tooltip.inkHand': 'Tinta: bloquea una carta de la mano 1 turno',
         'tooltip.clubStun': 'Garrote: 5% de probabilidad de aturdir (pierdes la siguiente acción)',
         'tooltip.coinSteal': 'Ratero: roba 10 monedas al atacar',
@@ -1126,7 +1126,7 @@ const STRINGS = {
         'ui.map.title': 'Acte {act} - Étage {floor}', 'ui.map.instructions': 'Cliquez sur les noeuds lumineux pour avancer - faites glisser pour déplacer la carte', 'map.tooltip.combat': 'Salle de combat', 'map.tooltip.elite': 'Combat d’élite - ennemi plus redoutable, meilleur butin', 'map.tooltip.shop': 'Boutique - acheter des objets', 'map.tooltip.rareShop': 'Boutique rare - articles spéciaux', 'map.tooltip.rest': 'Repos - restaure les PV et les actions', 'map.tooltip.anvil': 'Forgeron - réparer ou améliorer l’équipement', 'map.tooltip.event': 'Rencontre inconnue', 'map.tooltip.boss': 'Combat de boss !', 'map.tooltip.treasure': 'Salle au coffre', 'map.tooltip.treasureGood': 'Salle au trésor - récompenses plus riches !',
         'ui.shop.title': 'Boutique', 'ui.shop.rareTitle': 'Articles rares', 'ui.shop.coins': 'Pièces : {amount}', 'ui.shop.crystals': 'Cristaux : {amount}', 'ui.shop.floor': 'Acte {act}  Étage {floor}', 'ui.shop.sellItems': 'Vendre des objets', 'ui.shop.buyItems': 'Acheter des objets', 'ui.shop.continue': 'Continuer vers l’étage suivant', 'ui.shop.selectSell': 'Choisissez un objet à vendre :', 'ui.shop.sell': 'Vendre', 'ui.shop.sold': 'Vendu', 'ui.shop.empty': 'Vide', 'ui.shop.sellPrice': 'Vendre : {price} pièces', 'ui.shop.soldFeedback': '{name} vendu pour {price} pièces ({before}->{after})', 'ui.shop.magic': 'Magie', 'ui.shop.currencyCoins': 'pièces', 'ui.shop.currencyCrystals': 'cristaux',
         'tooltip.item': 'Objet', 'tooltip.card': 'Carte', 'tooltip.noRarity': 'Sans rareté', 'tooltip.weapon': 'Arme', 'tooltip.armor': 'Armure', 'tooltip.thorns': 'Épines', 'tooltip.potion': 'Potion', 'tooltip.cure': 'Remède', 'tooltip.food': 'Nourriture', 'tooltip.magic': 'Magie', 'tooltip.gem': 'Gemme', 'tooltip.relic': 'Relique', 'tooltip.key': 'Clé', 'tooltip.coins': 'Pièces', 'tooltip.ruby': 'Rubis', 'tooltip.melee': 'Mêlée', 'tooltip.ranged': 'À distance', 'tooltip.family': 'Famille : {value}', 'tooltip.damageShort': 'DGT : {amount}', 'tooltip.protectionShort': 'PROT : {amount}', 'tooltip.defDur': '{def} DEF  -  {dur} DUR', 'tooltip.dmgDur': '{dmg} DGT  -  {dur} DUR', 'tooltip.enemyHpAtk': '{hp} PV  -  {atk} ATQ',
-        'tooltip.wolfPack': 'Meute : +1 ATQ par autre loup vivant', 'tooltip.sporeOnHit': 'Spore : 15 % de rater votre prochaine attaque', 'tooltip.thornsReflect': 'Épines : renvoie 1 dégât réel', 'tooltip.veilFlip': 'Voile : se retourne face cachée à chaque tour', 'tooltip.rangedImmune': 'Écorce : immunisé aux attaques à distance', 'tooltip.gnaw': 'Ronge : 50 % de chance de perdre 1 durabilité d’armure supplémentaire à l’impact', 'tooltip.taunt': 'Provocation : vous devez attaquer cet ennemi', 'tooltip.poisonAmp': 'Amplification du venin : +1 dégât de poison à l’impact', 'tooltip.webHand': 'Toile : bloque une carte de main aléatoire pendant 1 tour', 'tooltip.inkHand': 'Encre : bloque une carte de main aléatoire pendant 1 tour', 'tooltip.clubStun': 'Gourdin : 5 % d’étourdir (passe la prochaine action)', 'tooltip.coinSteal': 'Vol à la tire : vole 10 pièces en attaquant', 'tooltip.goblinRally': 'Ralliement : 15 % d’attaques gobelines supplémentaires', 'tooltip.ignoreArmor': 'Perforation : 10 % d’ignorer la DEF de l’armure', 'tooltip.heavyShot': 'Lourd : 20 % d’infliger 150 % de dégâts', 'tooltip.cocoonShell': 'Cocon : infligez 1 dégât pour l’ouvrir (ce n’est pas un retournement)', 'tooltip.veteran': 'Vétéran : +15 % PV/ATQ', 'tooltip.eliteMiniBoss': 'Élite : mini-boss (+30 % PV/ATQ)', 'tooltip.mimicEscape': 'Fuite : s’enfuit dans {turns} tours s’il n’est pas tué', 'tooltip.durabilityShort': 'DUR', 'tooltip.armorBody': 'Armure {rarity}', 'tooltip.heals': 'Rend {amount} PV', 'tooltip.healsColon': 'Rend : {amount} PV', 'tooltip.curesPoison': 'Soigne tout le poison', 'tooltip.restores': 'Restaure {amount} PA', 'tooltip.restoresColon': 'Restaure : {amount} PA', 'tooltip.magicSpell': 'Sort magique', 'tooltip.socket': 'Châsse : {effect}', 'tooltip.effect': 'Effet : {effect}', 'tooltip.thornBody': '{rarity}{amount} DGT d’épines  -  {dur} DUR', 'tooltip.thornDamage': 'Dégâts d’épines : {amount}', 'tooltip.keyBody': 'Ouvre les coffres au trésor verrouillés', 'tooltip.keySafe': 'Ouvre un coffre sans risque.',
+        'tooltip.wolfPack': 'Meute : +1 ATQ par autre loup vivant', 'tooltip.sporeOnHit': 'Spore : 15 % de rater votre prochaine attaque', 'tooltip.thornsReflect': 'Épines : renvoie 1 dégât réel', 'tooltip.veilFlip': 'Voile : se retourne face cachée à chaque tour', 'tooltip.rangedImmune': 'Écorce : immunisé aux attaques à distance', 'tooltip.gnaw': 'Ronge : 50 % de chance de perdre 1 durabilité d’armure supplémentaire à l’impact', 'tooltip.taunt': 'Provocation : vous devez attaquer cet ennemi', 'tooltip.poisonAmp': 'Accumulation du venin : +1 dégât par tour au poison actif à l’impact', 'tooltip.webHand': 'Toile : bloque une carte de main aléatoire pendant 1 tour', 'tooltip.inkHand': 'Encre : bloque une carte de main aléatoire pendant 1 tour', 'tooltip.clubStun': 'Gourdin : 5 % d’étourdir (passe la prochaine action)', 'tooltip.coinSteal': 'Vol à la tire : vole 10 pièces en attaquant', 'tooltip.goblinRally': 'Ralliement : 15 % d’attaques gobelines supplémentaires', 'tooltip.ignoreArmor': 'Perforation : 10 % d’ignorer la DEF de l’armure', 'tooltip.heavyShot': 'Lourd : 20 % d’infliger 150 % de dégâts', 'tooltip.cocoonShell': 'Cocon : infligez 1 dégât pour l’ouvrir (ce n’est pas un retournement)', 'tooltip.veteran': 'Vétéran : +15 % PV/ATQ', 'tooltip.eliteMiniBoss': 'Élite : mini-boss (+30 % PV/ATQ)', 'tooltip.mimicEscape': 'Fuite : s’enfuit dans {turns} tours s’il n’est pas tué', 'tooltip.durabilityShort': 'DUR', 'tooltip.armorBody': 'Armure {rarity}', 'tooltip.heals': 'Rend {amount} PV', 'tooltip.healsColon': 'Rend : {amount} PV', 'tooltip.curesPoison': 'Soigne tout le poison', 'tooltip.restores': 'Restaure {amount} PA', 'tooltip.restoresColon': 'Restaure : {amount} PA', 'tooltip.magicSpell': 'Sort magique', 'tooltip.socket': 'Châsse : {effect}', 'tooltip.effect': 'Effet : {effect}', 'tooltip.thornBody': '{rarity}{amount} DGT d’épines  -  {dur} DUR', 'tooltip.thornDamage': 'Dégâts d’épines : {amount}', 'tooltip.keyBody': 'Ouvre les coffres au trésor verrouillés', 'tooltip.keySafe': 'Ouvre un coffre sans risque.',
         'boss.abilitiesTitle': 'Compétences', 'boss.attack': 'Attaque : {atk}', 'boss.lifesteal': 'Vol de vie : récupère {pct} % de son attaque lorsqu’il vous touche', 'boss.summon': 'Invocation : peut appeler {enemy} à combattre à ses côtés', 'boss.poison': 'Poison : cumule {dmg} dégâts par tour pendant {turns} tours', 'boss.armorBreak': 'Brise-armure : perce {amount} de votre armure', 'boss.rage': 'Rage : frappe {mult}x plus fort sous {pct} % de PV', 'boss.evade': 'Esquive : {pct} % de chance que votre attaque rate', 'boss.coinSteal': 'Vol de pièces : peut voler jusqu’à {amount} pièces lorsqu’il touche', 'boss.noAbilities': 'Une brute — aucune compétence spéciale.',
         'tooltip.skeleton': 'squelette', 'tooltip.goblin': 'gobelin', 'tooltip.spider': 'araignée', 'tooltip.range': 'Portée : {value}', 'tooltip.gemLine': 'Gemme : {effect}{stack}', 'tooltip.fireSplash': 'Éclaboussure de feu : {amount} DGT aux voisins', 'tooltip.lightningZap': 'Foudre : {amount} DGT à jusqu’à 3 ennemis', 'tooltip.poisonStacks.one': 'Poison : {count} charge (1 DGT / 3 tours chacune)', 'tooltip.poisonStacks.few': 'Poison : {count} charges (1 DGT / 3 tours chacune)', 'tooltip.poisonStacks.many': 'Poison : {count} charges (1 DGT / 3 tours chacune)', 'tooltip.special': 'Spécial : {value}', 'tooltip.poisonTurns': 'Poison : {amount} x {turns} tours', 'tooltip.pips': 'Points : {value}', 'tooltip.dodge': 'Esquive : {percent} %', 'tooltip.reflect': 'Renvoi : {value}', 'tooltip.meleeAttackers': 'Les attaquants au corps à corps subissent des dégâts.', 'tooltip.noMerge': 'Pas de fusion', 'tooltip.merges': 'Fusionne : emplacement {slots}', 'tooltip.noMergeReasons': 'Pas de fusion : {reasons}', 'tooltip.noteUnusual': 'Note : statistiques inhabituelles ({details})', 'tooltip.baseDamage': 'dégâts de base {amount}', 'tooltip.baseProtection': 'protection de base {amount}', 'tooltip.level': 'Niveau {level}', 'tooltip.usesLeft': '{uses} utilisations restantes', 'tooltip.cursed': '[MAUDIT]',
         'float.alreadyOwned': 'Déjà possédé !', 'float.maxLevel': 'Niveau maximal atteint !', 'float.inventoryFull': 'Inventaire plein !', 'float.discarded': 'Défaussé !', 'float.noValidTarget': 'Aucune cible valide !', 'float.fireball': 'Boule de feu !', 'float.enemiesFrozen': 'Ennemis gelés !', 'float.fullRestore': 'Restauration complète !', 'float.shadowBladeActive': 'Lame d’ombre active !', 'float.weakened': 'Affaibli !', 'float.weakenedAttack': 'Attaque affaiblie !', 'float.boneWall': 'Bouclier d’os !', 'float.boneWallActive': 'Bouclier d’os actif !', 'float.magicShieldActive': 'Bouclier magique actif !', 'float.cardsMerged': 'Fusionnées !', 'float.sameTier': 'Les objets doivent être du même rang !', 'float.magicCannotMerge': 'Les cartes magiques ne peuvent pas fusionner !', 'float.notEnoughActions': 'Pas assez d’actions !', 'float.differentGem': 'Une gemme différente est déjà sertie !', 'float.gemSlotsFull': 'Emplacements de gemme pleins !', 'float.gemSocketed': '{name} sertie{stack}', 'float.equippedItem': '{name} équipé !', 'float.upgradedItem': '{name} amélioré !', 'float.equippedArmor': '{name} équipée', 'float.unequippedArmor': '{name} retirée', 'float.plus': '+{amount}', 'float.plusHp': '+{amount} PV', 'float.plusAp': '+{amount} PA', 'float.plusActions': '+{amount} actions', 'float.plusInventorySlots': '+{amount} emplacements d’inventaire !', 'float.plusCoins': '+{amount} pièces', 'float.plusCrystals': '+{amount} cristaux', 'float.plusCoinsCrystals': '+{coins} pièces +{crystals} cristaux !', 'float.maxHp': '+{amount} PV max', 'float.maxHpSource': '+{amount} PV max ({source})', 'float.maxActions': '+{amount} actions max', 'float.refreshedPips': 'Rafraîchi : {amount} points', 'float.damage': '-{amount}', 'float.poisonDamage': '-{amount} poison', 'float.fireDamage': '-{amount} feu', 'float.burnDamage': '-{amount} brûlure', 'float.elementDamage': '-{amount} {label}', 'float.leech': '+{amount} vol de vie', 'float.thornsDamage': '-{amount} épines', 'float.reflectDamage': '-{amount} (renvoi)', 'float.reflectedDamage': '-{amount} (renvoyé)', 'float.mirroredDamage': '-{amount} (miroir)', 'float.poisonStatus': 'Empoisonné !', 'float.poisonImmune': 'Immunisé au poison !', 'float.dodged': 'Esquivé !', 'float.dodge': 'Esquive !', 'float.blocked': 'Bloqué !', 'float.blockedFrontline': 'Bloqué par la ligne de front !', 'float.freeAction': 'Action gratuite !', 'float.weaponBroke': 'Arme cassée !', 'float.itemBroke': '{name} s’est cassé !', 'float.thornsBroke': 'Épines cassées !', 'float.shadowBladeFaded': 'Lame d’ombre dissipée', 'float.magicShieldFaded': 'Bouclier magique dissipé', 'float.poisonWoreOff': 'Le poison s’est dissipé', 'float.miss': 'Raté !', 'float.spored': 'Empoisonné par les spores !', 'float.thornsReflect': '-{amount} épines !', 'float.immune': 'Immunisé !', 'float.crit': 'CRITIQUE !', 'float.critPercent': 'Critique {percent} %', 'float.luckyStrike': 'COUP CHANCEUX !', 'float.executed': 'EXÉCUTÉ !', 'float.nothing': 'Rien…', 'float.loot': 'Butin !', 'float.taken': 'Pris !', 'float.trapRemember': 'Piège ! Souvenez-vous…', 'float.mimicKill': 'Mimique ! Tuez-le en {turns} tours', 'float.summoning': 'Invocation !', 'float.summoned': 'Invoqué !', 'float.echoed': 'Écho !', 'float.slowed': 'Ralenti !', 'float.thawed': 'Dégelé !', 'float.frozenTurns': 'Gelé ({turns})', 'float.turnsLeft': '{turns} restants !', 'float.charmed': 'Charmé !', 'float.charmedTune': 'Charmé (Mélodie)', 'float.dualWield': 'Double arme !', 'float.heavyStrike': 'Frappe lourde !', 'float.coinsStolen': '-{amount} pièces volées !', 'float.mimicEscaped': 'Le mimique s’est échappé !', 'float.floorCleared': 'Étage nettoyé ! +{amount} pièces', 'float.act': 'Acte {act}', 'float.allEnemiesDefeated': 'Tous les ennemis vaincus !', 'float.clearOrProceed': 'Éliminez les cartes restantes ou avancez.', 'float.gameSaved': 'Partie sauvegardée', 'float.purchased': 'Acheté !', 'float.notEnoughCurrency': 'Pas assez de {currency} !',
@@ -1351,7 +1351,7 @@ const STRINGS = {
         'tooltip.rangedImmune': 'Кора: иммунитет к дальним атакам',
         'tooltip.gnaw': 'Грызня: 50% +1 прочности брони при ударе',
         'tooltip.taunt': 'Провокация: можно атаковать только этого врага',
-        'tooltip.poisonAmp': 'Усилитель яда: +1 к тику яда при попадании',
+        'tooltip.poisonAmp': 'Накопление яда: +1 к урону действующего яда при попадании',
         'tooltip.webHand': 'Паутина: блокирует случайную карту на руке на 1 ход', 'tooltip.inkHand': 'Чернила: блокируют случайную карту на руке на 1 ход',
         'tooltip.clubStun': 'Дубина: 5% стан (пропуск следующего действия)',
         'tooltip.coinSteal': 'Карманник: крадёт 10 монет за атаку',
@@ -1853,44 +1853,44 @@ const ENCHANT_TEXT_ADDITIONS = {
     en: {
         'enchant.fireball.title': 'Fireball', 'enchant.fireball.summary': 'throws a fireball at another random face-up enemy',
         'enchant.frostRing.title': 'Frostbound', 'enchant.frostRing.summary': 'freeze the enemy for 1 turn',
-        'enchant.restoration.title': 'Mending', 'enchant.restoration.summary': 'heal 3 HP on hit',
+        'enchant.restoration.title': 'Renewal', 'enchant.restoration.summary': 'heal 3 HP on hit',
         'enchant.soulDrain.title': 'Devouring', 'enchant.soulDrain.summary': 'slay a non-boss enemy outright',
         'enchant.shadowBlade.title': 'Shadowed', 'enchant.shadowBlade.summary': '+50% damage on the hit',
         'enchant.weakness.title': 'Sapping', 'enchant.weakness.summary': 'the enemy hit deals 30% less on its next attack',
-        'enchant.boneWall.title': 'Bulwark', 'enchant.boneWall.summary': 'reflect the next attack',
+        'enchant.boneWall.title': 'Bulwark', 'enchant.boneWall.summary': 'block the next enemy attack',
         'enchant.magicShield.title': 'Warding', 'enchant.magicShield.summary': '+20% armor for 1 turn',
         'enchant.smokeScreen.title': 'Shrouding', 'enchant.smokeScreen.summary': 'hide an enemy on a kill',
     },
     es: {
         'enchant.fireball.title': 'Bola de fuego', 'enchant.fireball.summary': 'lanza una bola de fuego a otro enemigo visible al azar',
         'enchant.frostRing.title': 'Helado', 'enchant.frostRing.summary': 'congela al enemigo 1 turno',
-        'enchant.restoration.title': 'Reparador', 'enchant.restoration.summary': 'cura 3 PV al golpear',
+        'enchant.restoration.title': 'Renovacion', 'enchant.restoration.summary': 'cura 3 PV al golpear',
         'enchant.soulDrain.title': 'Devorador', 'enchant.soulDrain.summary': 'mata de inmediato a un enemigo que no sea jefe',
         'enchant.shadowBlade.title': 'Sombrio', 'enchant.shadowBlade.summary': '+50% de dano al golpear',
         'enchant.weakness.title': 'Debilitante', 'enchant.weakness.summary': 'el enemigo golpeado inflige 30% menos en su proximo ataque',
-        'enchant.boneWall.title': 'Baluarte', 'enchant.boneWall.summary': 'refleja el proximo ataque',
+        'enchant.boneWall.title': 'Baluarte', 'enchant.boneWall.summary': 'bloquea el próximo ataque enemigo',
         'enchant.magicShield.title': 'Protector', 'enchant.magicShield.summary': '+20% de armadura durante 1 turno',
         'enchant.smokeScreen.title': 'Velado', 'enchant.smokeScreen.summary': 'oculta un enemigo al matar',
     },
     fr: {
         'enchant.fireball.title': 'Boule de feu', 'enchant.fireball.summary': 'lance une boule de feu sur un autre ennemi visible au hasard',
         'enchant.frostRing.title': 'Givre', 'enchant.frostRing.summary': 'gele l ennemi pendant 1 tour',
-        'enchant.restoration.title': 'Reparation', 'enchant.restoration.summary': 'rend 3 PV a l impact',
+        'enchant.restoration.title': 'Renouveau', 'enchant.restoration.summary': 'rend 3 PV a l impact',
         'enchant.soulDrain.title': 'Devoration', 'enchant.soulDrain.summary': 'tue directement un ennemi non-boss',
         'enchant.shadowBlade.title': 'Ombre', 'enchant.shadowBlade.summary': '+50% de degats a l impact',
         'enchant.weakness.title': 'Affaiblissant', 'enchant.weakness.summary': 'l ennemi touche inflige 30% de moins a sa prochaine attaque',
-        'enchant.boneWall.title': 'Rempart', 'enchant.boneWall.summary': 'renvoie la prochaine attaque',
+        'enchant.boneWall.title': 'Rempart', 'enchant.boneWall.summary': 'bloque la prochaine attaque ennemie',
         'enchant.magicShield.title': 'Gardien', 'enchant.magicShield.summary': '+20% d armure pendant 1 tour',
         'enchant.smokeScreen.title': 'Voile', 'enchant.smokeScreen.summary': 'cache un ennemi en le tuant',
     },
     ru: {
         'enchant.fireball.title': 'Огненный шар', 'enchant.fireball.summary': 'бросает огненный шар в другого случайного открытого врага',
         'enchant.frostRing.title': 'Ледяной', 'enchant.frostRing.summary': 'замораживает врага на 1 ход',
-        'enchant.restoration.title': 'Исцеляющий', 'enchant.restoration.summary': 'лечит 3 ОЗ при ударе',
+        'enchant.restoration.title': 'Обновление', 'enchant.restoration.summary': 'лечит 3 ОЗ при ударе',
         'enchant.soulDrain.title': 'Пожиратель', 'enchant.soulDrain.summary': 'сразу убивает врага не-босса',
         'enchant.shadowBlade.title': 'Теневой', 'enchant.shadowBlade.summary': '+50% урона при ударе',
         'enchant.weakness.title': 'Истощающий', 'enchant.weakness.summary': 'задетый враг наносит на 30% меньше в следующей атаке',
-        'enchant.boneWall.title': 'Оплот', 'enchant.boneWall.summary': 'отражает следующую атаку',
+        'enchant.boneWall.title': 'Оплот', 'enchant.boneWall.summary': 'блокирует следующую атаку врага',
         'enchant.magicShield.title': 'Оберег', 'enchant.magicShield.summary': '+20% брони на 1 ход',
         'enchant.smokeScreen.title': 'Пелена', 'enchant.smokeScreen.summary': 'скрывает врага после убийства',
     },
@@ -2536,7 +2536,7 @@ const GERMAN_STRINGS = {
     'tooltip.rangedImmune': 'Borke: immun gegen Fernkampf',
     'tooltip.gnaw': 'Nagen: 50% Chance auf +1 Rüstungsverschleiß bei Treffer',
     'tooltip.taunt': 'Provokation: dieser Gegner muss angegriffen werden',
-    'tooltip.poisonAmp': 'Giftverstärkung: +1 Giftschaden pro Tick bei Treffer',
+    'tooltip.poisonAmp': 'Giftstapel: bei Treffer +1 Schaden pro Tick für bestehendes Gift',
     'tooltip.webHand': 'Netz: sperrt eine zufällige Handkarte für 1 Zug', 'tooltip.inkHand': 'Tinte: sperrt eine zufällige Handkarte für 1 Zug',
     'tooltip.clubStun': 'Keule: 5% Betäubung (nächste Aktion entfällt)',
     'tooltip.coinSteal': 'Beutelschneider: stiehlt bei Angriff 10 Münzen',
@@ -2566,7 +2566,7 @@ const GERMAN_STRINGS = {
     'enchant.fireball.summary': 'wirft einen Feuerball auf einen anderen zufälligen offenen Gegner',
     'enchant.frostRing.title': 'Frostbann',
     'enchant.frostRing.summary': 'friert den Gegner 1 Zug lang ein',
-    'enchant.restoration.title': 'Heilung',
+    'enchant.restoration.title': 'Erneuerung',
     'enchant.restoration.summary': 'heilt 3 LP bei Treffer',
     'enchant.soulDrain.title': 'Verschlingen',
     'enchant.soulDrain.summary': 'tötet einen Gegner ohne Boss sofort',
@@ -2575,7 +2575,7 @@ const GERMAN_STRINGS = {
     'enchant.weakness.title': 'Zehrend',
     'enchant.weakness.summary': 'der getroffene Gegner macht beim nächsten Angriff 30% weniger Schaden',
     'enchant.boneWall.title': 'Bollwerk',
-    'enchant.boneWall.summary': 'reflektiert den nächsten Angriff',
+    'enchant.boneWall.summary': 'blockiert den nächsten gegnerischen Angriff',
     'enchant.magicShield.title': 'Schirmend',
     'enchant.magicShield.summary': '+20% Rüstung für 1 Zug',
     'enchant.smokeScreen.title': 'Verhüllend',
@@ -3185,11 +3185,11 @@ const DESCRIPTION_TRANSLATIONS = {
         'Instantly kills a non-boss enemy and heals 30 HP': 'Tue instantanément un ennemi non-boss et rend 30 PV',
         'Increases attack damage by 50% for 10 turns': 'Augmente les dégâts d’attaque de 50 % pendant 10 tours',
         'Reduces all enemies damage by 30%': 'Réduit les dégâts de tous les ennemis de 30 %',
-        'Reflects the next 2 enemy attacks': 'Renvoie les 2 prochaines attaques ennemies',
+        'Blocks the next 2 enemy attacks': 'Bloque les 2 prochaines attaques ennemies',
         'Increases armor by 20% for 10 turns': 'Augmente l’armure de 20 % pendant 10 tours',
         'Reflects the next enemy attack': 'Renvoie la prochaine attaque ennemie',
         'Flips all face-up enemy cards back down': 'Retourne face cachée toutes les cartes ennemies révélées',
-        'Deals damage to one enemy.': 'Inflige des dégâts à un ennemi.', 'Freezes all enemies.': 'Gèle tous les ennemis.', 'Fully restores HP and AP.': 'Restaure entièrement les PV et les PA.', 'Kills a non-boss enemy and heals.': 'Tue un ennemi non-boss et soigne.', 'Boosts weapon damage.': 'Augmente les dégâts d’arme.', 'Weakens enemies.': 'Affaiblit les ennemis.', 'Reflects the next attacks.': 'Renvoie les prochaines attaques.', 'Boosts armor.': 'Augmente l’armure.', 'Reflects one attack.': 'Renvoie une attaque.', 'Hides revealed enemies.': 'Cache les ennemis révélés.', 'Single-use magic.': 'Magie à usage unique.', 'A passive relic effect.': 'Un effet de relique passif.',
+        'Deals damage to one enemy.': 'Inflige des dégâts à un ennemi.', 'Freezes all enemies.': 'Gèle tous les ennemis.', 'Fully restores HP and AP.': 'Restaure entièrement les PV et les PA.', 'Kills a non-boss enemy and heals.': 'Tue un ennemi non-boss et soigne.', 'Boosts weapon damage.': 'Augmente les dégâts d’arme.', 'Weakens enemies.': 'Affaiblit les ennemis.', 'Blocks the next attacks.': 'Bloque les prochaines attaques.', 'Boosts armor.': 'Augmente l’armure.', 'Reflects one attack.': 'Renvoie une attaque.', 'Hides revealed enemies.': 'Cache les ennemis révélés.', 'Single-use magic.': 'Magie à usage unique.', 'A passive relic effect.': 'Un effet de relique passif.',
         'splash adjacent enemies': 'éclabousse les ennemis adjacents', 'stacking poison on hit': 'cumule du poison à l’impact', 'zaps up to 3 open enemies': 'foudroie jusqu’à 3 ennemis découverts', 'adds an effect to a weapon': 'ajoute un effet à une arme',
         'Restores 1 HP per stack at end of each floor': 'Restaure 1 PV par charge à la fin de chaque étage', 'Potions heal 20% more': 'Les potions soignent 20 % de plus', 'Prevents death once per run': 'Empêche la mort une fois par partie', '10% dodge chance': '10 % de chance d’esquiver', '+1 weapon damage': '+1 dégât d’arme', '+30% gold found': '+30 % d’or trouvé', '+5 max health': '+5 PV max', '+3 max action points': '+3 points d’action max', '15% chance for free actions': '15 % de chance d’actions gratuites', '+2 AP after completing floor': '+2 PA après avoir terminé l’étage', 'Weapons lose half durability': 'Les armes perdent deux fois moins de durabilité', '+2 inventory slots': '+2 emplacements d’inventaire', 'Food restores 50% more AP': 'La nourriture restaure 50 % de PA en plus',
         'Drinking a healing potion cures all poison and heals +2 HP per poison stack removed': 'Boire une potion de soin guérit tout le poison et rend +2 PV par charge de poison retirée', '+3 HP per kill, -30% max health': '+3 PV par élimination, -30 % PV max', 'Heal 2 HP per enemy kill': 'Rend 2 PV par ennemi tué', 'Heal 1 HP per kill, +3 AP every 3 kills': 'Rend 1 PV par élimination, +3 PA toutes les 3 éliminations', '+20% damage below 30% HP, +10% damage taken': '+20 % de dégâts sous 30 % de PV, +10 % de dégâts subis', '+50% damage below 50% HP, potions cannot heal above 50%': '+50 % de dégâts sous 50 % de PV, les potions ne soignent pas au-dessus de 50 %', '+5 max action points': '+5 points d’action max',
@@ -3207,7 +3207,7 @@ const DESCRIPTION_TRANSLATIONS = {
         'Instantly kills a non-boss enemy and heals 30 HP': 'Mata al instante a un enemigo que no sea jefe y cura 30 PV',
         'Increases attack damage by 50% for 10 turns': 'Aumenta el daño de ataque un 50% durante 10 turnos',
         'Reduces all enemies damage by 30%': 'Reduce el daño de todos los enemigos un 30%',
-        'Reflects the next 2 enemy attacks': 'Refleja los 2 próximos ataques enemigos',
+        'Blocks the next 2 enemy attacks': 'Bloquea los 2 próximos ataques enemigos',
         'Increases armor by 20% for 10 turns': 'Aumenta la armadura un 20% durante 10 turnos',
         'Reflects the next enemy attack': 'Refleja el próximo ataque enemigo',
         'Flips all face-up enemy cards back down': 'Vuelve a poner boca abajo las cartas enemigas descubiertas',
@@ -3217,7 +3217,7 @@ const DESCRIPTION_TRANSLATIONS = {
         'Kills a non-boss enemy and heals.': 'Mata a un enemigo que no sea jefe y cura.',
         'Boosts weapon damage.': 'Aumenta el daño del arma.',
         'Weakens enemies.': 'Debilita a los enemigos.',
-        'Reflects the next attacks.': 'Refleja los próximos ataques.',
+        'Blocks the next attacks.': 'Bloquea los próximos ataques.',
         'Boosts armor.': 'Aumenta la armadura.',
         'Reflects one attack.': 'Refleja un ataque.',
         'Hides revealed enemies.': 'Oculta a los enemigos descubiertos.',
@@ -3290,7 +3290,7 @@ const DESCRIPTION_TRANSLATIONS = {
         'Instantly kills a non-boss enemy and heals 30 HP': 'Мгновенно убивает не-босса и лечит 30 ОЗ',
         'Increases attack damage by 50% for 10 turns': 'Повышает урон атаки на 50% на 10 ходов',
         'Reduces all enemies damage by 30%': 'Снижает урон всех врагов на 30%',
-        'Reflects the next 2 enemy attacks': 'Отражает следующие 2 атаки врагов',
+        'Blocks the next 2 enemy attacks': 'Блокирует следующие 2 атаки врагов',
         'Increases armor by 20% for 10 turns': 'Повышает броню на 20% на 10 ходов',
         'Reflects the next enemy attack': 'Отражает следующую атаку врага',
         'Flips all face-up enemy cards back down': 'Переворачивает открытые карты врагов обратно',
@@ -3300,7 +3300,7 @@ const DESCRIPTION_TRANSLATIONS = {
         'Kills a non-boss enemy and heals.': 'Убивает не-босса и лечит.',
         'Boosts weapon damage.': 'Усиливает урон оружия.',
         'Weakens enemies.': 'Ослабляет врагов.',
-        'Reflects the next attacks.': 'Отражает следующие атаки.',
+        'Blocks the next attacks.': 'Блокирует следующие атаки.',
         'Boosts armor.': 'Усиливает броню.',
         'Reflects one attack.': 'Отражает одну атаку.',
         'Hides revealed enemies.': 'Скрывает открытых врагов.',
@@ -4018,6 +4018,89 @@ Object.assign(STRINGS.fr, {
     'ui.silkdeepIntro.goOn': 'Entrer dans le palais',
 });
 
+// Thornwake's first identity pass. Spell art keeps its own stable texture key.
+for (const [language, text] of Object.entries({
+    en: ['Briar Shield', 'Briar Guard', 'reflect the next enemy attack', 'Reflects the next 2 enemy attacks', 'Reflects the next attacks.'],
+    es: ['Escudo de zarzas', 'Guardia de zarzas', 'refleja el próximo ataque enemigo', 'Refleja los próximos 2 ataques enemigos', 'Refleja los próximos ataques.'],
+    fr: ['Bouclier de ronces', 'Garde de ronces', 'renvoie la prochaine attaque ennemie', 'Renvoie les 2 prochaines attaques ennemies', 'Renvoie les prochaines attaques.'],
+    ru: ['Терновый щит', 'Терновая защита', 'отражает следующую атаку врага', 'Отражает следующие 2 атаки врагов', 'Отражает следующие атаки.'],
+    de: ['Dornenschild', 'Dornenwacht', 'reflektiert den nächsten gegnerischen Angriff', 'Reflektiert die nächsten 2 gegnerischen Angriffe', 'Reflektiert die nächsten Angriffe.'],
+})) {
+    Object.assign(STRINGS[language], {
+        'enchant.briarShield.title': text[1],
+        'enchant.briarShield.summary': text[2],
+        'ui.hud.briarShield': text[0],
+    });
+    if (language !== 'en') {
+        EXACT_NAME_TRANSLATIONS[language] ||= {};
+        DESCRIPTION_TRANSLATIONS[language] ||= {};
+        EXACT_NAME_TRANSLATIONS[language]['Briar Shield'] = text[0];
+        DESCRIPTION_TRANSLATIONS[language]['Reflects the next 2 enemy attacks'] = text[3];
+        DESCRIPTION_TRANSLATIONS[language]['Reflects the next attacks.'] = text[4];
+    }
+}
+
+for (const [language, text] of Object.entries({
+    es: ['Ofrecer una carta de armadura', 'Elige una carta de armadura y arrástrala hasta las zarzas.'],
+    fr: ['Offrir une carte d’armure', 'Choisissez une carte d’armure et faites-la glisser sur les ronces.'],
+    ru: ['Предложить карту брони', 'Выбери карту брони и перетащи её на терновник.'],
+    de: ['Eine Rüstungskarte anbieten', 'Wähle eine Rüstungskarte und ziehe sie auf die Dornen.'],
+})) {
+    DESCRIPTION_TRANSLATIONS[language]['Offer an armor card'] = text[0];
+    DESCRIPTION_TRANSLATIONS[language]['Choose an armor card and drag it onto the briars.'] = text[1];
+}
+
+for (const [language, text] of Object.entries({
+    en: ['Venomous Bomb', 'all revealed enemies take 3 poison damage for 3 turns'],
+    es: ['Bomba venenosa', 'todos los enemigos revelados reciben 3 de daño de veneno durante 3 turnos'],
+    fr: ['Bombe venimeuse', 'tous les ennemis révélés subissent 3 dégâts de poison pendant 3 tours'],
+    ru: ['Ядовитая бомба', 'все открытые враги получают 3 урона ядом в течение 3 ходов'],
+    de: ['Giftbombe', 'alle aufgedeckten Gegner erleiden 3 Runden lang 3 Giftschaden'],
+})) {
+    Object.assign(STRINGS[language], {
+        'enchant.venomousBomb.title': text[0],
+        'enchant.venomousBomb.summary': text[1],
+    });
+    if (language !== 'en') {
+        EXACT_NAME_TRANSLATIONS[language]['Venomous Bomb'] = text[0];
+        DESCRIPTION_TRANSLATIONS[language]['All revealed enemies take 3 poison damage for 3 turns'] = text[1];
+    }
+}
+
+for (const [language, text] of Object.entries({
+    en: ['Summon Mimic', 'Summons a hostile Mimic into an empty space. Defeat it before it escapes to claim its loot.', 'Mimic summoned!'],
+    es: ['Invocar mímico', 'Invoca un mímico hostil en un espacio vacío. Derrótalo antes de que escape para obtener su botín.', '¡Mímico invocado!'],
+    fr: ['Invoquer un mimique', 'Invoque un mimique hostile dans un emplacement vide. Battez-le avant sa fuite pour obtenir son butin.', 'Mimique invoqué !'],
+    ru: ['Призыв мимика', 'Призывает враждебного мимика на свободное место. Победи его до побега, чтобы получить добычу.', 'Мимик призван!'],
+    de: ['Mimik beschwören', 'Beschwört einen feindlichen Mimik auf einem freien Platz. Besiege ihn vor seiner Flucht, um seine Beute zu erhalten.', 'Mimik beschworen!'],
+})) {
+    STRINGS[language]['magic.summonMimic.appeared'] = text[2];
+    if (language !== 'en') {
+        EXACT_NAME_TRANSLATIONS[language]['Summon Mimic'] = text[0];
+        DESCRIPTION_TRANSLATIONS[language]['Summons a hostile Mimic into an empty space. Defeat it before it escapes to claim its loot.'] = text[1];
+    }
+}
+
+for (const [language, text] of Object.entries({
+    en: ['Scorched', 'adds 3 burn to every enemy, including hidden ones', 'Scorched Land', 'Adds 3 burn to every enemy, including hidden ones. Burn deals its counter each turn, then drops by 1.', 'Ash Cloud', 'Flips all revealed non-boss enemies face-down', 'Burn {amount}: decreases by 1 each turn', 'Scorched!'],
+    es: ['Calcinado', 'añade 3 de quemadura a todos los enemigos, incluidos los ocultos', 'Tierra calcinada', 'Añade 3 de quemadura a todos los enemigos, incluidos los ocultos. Cada turno, la quemadura inflige su valor y luego disminuye en 1.', 'Nube de ceniza', 'Vuelve boca abajo a todos los enemigos revelados excepto los jefes', 'Quemadura {amount}: disminuye en 1 cada turno', '¡Calcinado!'],
+    fr: ['Calciné', 'ajoute 3 de brûlure à tous les ennemis, même cachés', 'Terre calcinée', 'Ajoute 3 de brûlure à tous les ennemis, même cachés. Chaque tour, la brûlure inflige sa valeur puis diminue de 1.', 'Nuage de cendres', 'Retourne face cachée tous les ennemis révélés sauf les boss', 'Brûlure {amount} : diminue de 1 par tour', 'Calciné !'],
+    ru: ['Ожог', 'добавляет 3 ожога всем врагам, включая скрытых', 'Выжженная земля', 'Добавляет 3 ожога всем врагам, включая скрытых. Каждый ход ожог наносит урон, равный счётчику, затем уменьшается на 1.', 'Облако пепла', 'Закрывает всех открытых врагов, кроме боссов', 'Ожог {amount}: уменьшается на 1 каждый ход', 'Ожог!'],
+    de: ['Versengt', 'fügt allen Gegnern 3 Brand hinzu, auch verdeckten', 'Verbrannte Erde', 'Fügt allen Gegnern 3 Brand hinzu, auch verdeckten. Brand verursacht jede Runde Schaden in Höhe seines Zählers und sinkt dann um 1.', 'Aschewolke', 'Dreht alle aufgedeckten Gegner außer Bossen wieder um', 'Brand {amount}: sinkt jede Runde um 1', 'Versengt!'],
+})) {
+    Object.assign(STRINGS[language], {
+        'enchant.scorched.title': text[0], 'enchant.scorched.summary': text[1],
+        'enchant.smokeScreen.title': text[4],
+        'tooltip.burnCounter': text[6], 'magic.scorched.applied': text[7],
+    });
+    if (language !== 'en') {
+        EXACT_NAME_TRANSLATIONS[language]['Scorched Land'] = text[2];
+        EXACT_NAME_TRANSLATIONS[language]['Ash Cloud'] = text[4];
+        DESCRIPTION_TRANSLATIONS[language]['Adds 3 burn to every enemy, including hidden ones. Burn deals its counter each turn, then drops by 1.'] = text[3];
+        DESCRIPTION_TRANSLATIONS[language]['Flips all revealed non-boss enemies face-down'] = text[5];
+    }
+}
+
 export function getLanguageName(code) {
     const normalized = normalizeLanguageCode(code);
     return LANGUAGE_OPTIONS.find(option => option.code === normalized)?.name || 'English';
@@ -4144,4 +4227,105 @@ export function translateItemName(sceneOrGame, data) {
     }
 
     return rawName;
+}
+
+// Player burn shares the board's single decaying counter.
+for (const [language, text] of Object.entries({
+    en: ['Burning!', '-{amount} (Burn)', 'Burn {amount}: falls by 1 each turn'],
+    es: ['¡Ardiendo!', '-{amount} (Quemadura)', 'Quemadura {amount}: baja 1 cada turno'],
+    fr: ['En feu !', '-{amount} (Brûlure)', 'Brûlure {amount} : baisse de 1 par tour'],
+    ru: ['Горение!', '-{amount} (Ожог)', 'Ожог {amount}: уменьшается на 1 каждый ход'],
+    de: ['Brennt!', '-{amount} (Brand)', 'Brand {amount}: sinkt jede Runde um 1'],
+})) {
+    Object.assign(STRINGS[language], {
+        'status.burn.applied': text[0], 'status.burn.tick': text[1], 'ui.hud.burn': text[2],
+    });
+}
+
+for (const [language, text] of Object.entries({
+    en: ['Shocked: misses the next attack', 'Shocked! Attack missed'],
+    es: ['Electrocutado: pierde el próximo ataque', '¡Electrocutado! Ataque fallido'],
+    fr: ['Électrocuté : rate la prochaine attaque', 'Électrocuté ! Attaque ratée'],
+    ru: ['Шок: пропускает следующую атаку', 'Шок! Атака пропущена'],
+    de: ['Geschockt: nächster Angriff verfehlt', 'Geschockt! Angriff verfehlt'],
+})) {
+    Object.assign(STRINGS[language], { 'status.shock.pending': text[0], 'status.shock.missed': text[1] });
+}
+
+for (const [language, text] of Object.entries({
+    en: ['Thunderclap', 'Deals 3 lightning damage to all revealed enemies and shocks survivors for one missed attack, including bosses.', 'Shock', 'the struck enemy misses its next attack, including bosses'],
+    es: ['Trueno', 'Inflige 3 de daño de rayo a todos los enemigos revelados y los supervivientes pierden su próximo ataque, incluidos los jefes.', 'Descarga', 'el enemigo golpeado pierde su próximo ataque, incluidos los jefes'],
+    fr: ['Coup de tonnerre', 'Inflige 3 dégâts de foudre à tous les ennemis révélés ; les survivants ratent leur prochaine attaque, même les boss.', 'Choc', 'la cible touchée rate sa prochaine attaque, même les boss'],
+    ru: ['Раскат грома', 'Наносит 3 урона молнией всем открытым врагам. Выжившие, включая боссов, пропускают следующую атаку.', 'Шок', 'поражённый враг пропускает следующую атаку, включая боссов'],
+    de: ['Donnerschlag', 'Verursacht 3 Blitzschaden bei allen aufgedeckten Gegnern. Überlebende, auch Bosse, verfehlen ihren nächsten Angriff.', 'Schock', 'der getroffene Gegner verfehlt seinen nächsten Angriff, auch Bosse'],
+})) {
+    Object.assign(STRINGS[language], { 'enchant.thunderclap.title': text[2], 'enchant.thunderclap.summary': text[3] });
+    if (language !== 'en') {
+        EXACT_NAME_TRANSLATIONS[language].Thunderclap = text[0];
+        DESCRIPTION_TRANSLATIONS[language]['Deals 3 lightning damage to all revealed enemies and shocks survivors for one missed attack, including bosses.'] = text[1];
+    }
+}
+
+for (const [language, text] of Object.entries({
+    en: ['Frozen: {count} attacks to thaw', 'Frozen! Attack missed'],
+    es: ['Congelado: {count} ataques para descongelarse', '¡Congelado! Ataque fallido'],
+    fr: ['Gelé : {count} attaques avant le dégel', 'Gelé ! Attaque ratée'],
+    ru: ['Заморозка: атак до оттаивания — {count}', 'Заморожен! Атака пропущена'],
+    de: ['Gefroren: {count} Angriffe bis zum Auftauen', 'Gefroren! Angriff verfehlt'],
+})) {
+    Object.assign(STRINGS[language], { 'status.frost.pending': text[0], 'status.frost.missed': text[1] });
+}
+
+for (const [language, text] of Object.entries({
+    en: ['Sandstorm: misses the next weapon attack', 'Sandstorm! Attack missed'],
+    es: ['Tormenta de arena: falla el próximo ataque con arma', '¡Tormenta de arena! Ataque fallido'],
+    fr: ['Tempête de sable : rate la prochaine attaque avec une arme', 'Tempête de sable ! Attaque ratée'],
+    ru: ['Песчаная буря: следующая атака оружием пропущена', 'Песчаная буря! Атака пропущена'],
+    de: ['Sandsturm: nächster Waffenangriff verfehlt', 'Sandsturm! Angriff verfehlt'],
+})) {
+    Object.assign(STRINGS[language], { 'status.sandstorm.pending': text[0], 'status.sandstorm.missed': text[1] });
+}
+
+for (const [language, text] of Object.entries({
+    en: ['Desert Feast', 'Fully restores Action Points without healing HP.', 'Second Wind', 'restores 2 action points after a damaging hit', 'Action Points restored!', 'Sandglass Scarab', 'Each food you eat gives +1 max action point (up to +10 a run).'],
+    es: ['Festín del desierto', 'Restaura todos los puntos de acción sin curar PV.', 'Segundo aliento', 'restaura 2 puntos de acción tras un golpe que causa daño', '¡Puntos de acción restaurados!', 'Escarabajo de vidrio de arena', 'Cada comida otorga +1 punto de acción máximo (hasta +10 por partida).'],
+    fr: ['Festin du désert', 'Restaure tous les points d’action sans soigner les PV.', 'Second souffle', 'restaure 2 points d’action après un coup infligeant des dégâts', 'Points d’action restaurés !', 'Scarabée de verre des sables', 'Chaque aliment mangé donne +1 point d’action maximum (jusqu’à +10 par partie).'],
+    ru: ['Пир пустыни', 'Полностью восстанавливает очки действий, не восстанавливая здоровье.', 'Второе дыхание', 'восстанавливает 2 очка действий после удара, нанёсшего урон', 'Очки действий восстановлены!', 'Скарабей из песчаного стекла', 'Каждая съеденная еда даёт +1 к максимуму очков действий (до +10 за забег).'],
+    de: ['Wüstenmahl', 'Stellt alle Aktionspunkte wieder her, ohne LP zu heilen.', 'Zweiter Atem', 'stellt nach einem schadenden Treffer 2 Aktionspunkte wieder her', 'Aktionspunkte wiederhergestellt!', 'Sandglasskarabäus', 'Jede verzehrte Nahrung gewährt +1 maximalen Aktionspunkt (bis zu +10 pro Durchlauf).'],
+})) {
+    Object.assign(STRINGS[language], {
+        'enchant.desertFeast.title': text[2], 'enchant.desertFeast.summary': text[3],
+        'magic.desertFeast.applied': text[4],
+    });
+    if (language !== 'en') {
+        EXACT_NAME_TRANSLATIONS[language]['Desert Feast'] = text[0];
+        EXACT_NAME_TRANSLATIONS[language]['Sandglass Scarab'] = text[5];
+        DESCRIPTION_TRANSLATIONS[language]['Fully restores Action Points without healing HP.'] = text[1];
+        DESCRIPTION_TRANSLATIONS[language]['Each food you eat gives +1 max action point (up to +10 a run).'] = text[6];
+    }
+}
+
+for (const [language, text] of Object.entries({
+    en: ['Leadership Banner', 'Each companion that attacks has a 10% chance to act once more. Extra actions cannot chain.', 'Leadership Banner!'],
+    es: ['Estandarte de liderazgo', 'Cada compañero que ataca tiene un 10% de probabilidad de actuar una vez más. Las acciones extra no pueden encadenarse.', '¡Estandarte de liderazgo!'],
+    fr: ['Bannière de commandement', 'Chaque compagnon qui attaque a 10 % de chances d’agir une fois de plus. Les actions supplémentaires ne peuvent pas s’enchaîner.', 'Bannière de commandement !'],
+    ru: ['Знамя предводителя', 'Каждый атакующий спутник с вероятностью 10% действует ещё раз. Дополнительные действия не запускают цепочку.', 'Знамя предводителя!'],
+    de: ['Führungsbanner', 'Jeder angreifende Begleiter hat eine Chance von 10 %, einmal zusätzlich zu handeln. Zusatzaktionen können keine Kette auslösen.', 'Führungsbanner!'],
+})) {
+    STRINGS[language]['amulet.leadershipBanner.trigger'] = text[2];
+    if (language !== 'en') {
+        EXACT_NAME_TRANSLATIONS[language]['Leadership Banner'] = text[0];
+        DESCRIPTION_TRANSLATIONS[language]['Each companion that attacks has a 10% chance to act once more. Extra actions cannot chain.'] = text[1];
+    }
+}
+
+for (const [language, names] of Object.entries({
+    es: ['Bruto de nieve', 'Arquero de nieve', 'Orbe de hielo', 'Gólem de hielo', 'Caballero congelado'],
+    fr: ['Brute des neiges', 'Archer des neiges', 'Orbe de glace', 'Golem de glace', 'Chevalier gelé'],
+    ru: ['Снежный громила', 'Снежный лучник', 'Ледяная сфера', 'Ледяной голем', 'Замёрзший рыцарь'],
+    de: ['Schneebrute', 'Schneebogenschütze', 'Eiskugel', 'Eisgolem', 'Gefrorener Ritter'],
+})) {
+    ['Snow Brute', 'Snow Archer', 'Ice Orb', 'Ice Golem', 'Frozen Knight'].forEach((name, index) => {
+        EXACT_NAME_TRANSLATIONS[language][name] = names[index];
+    });
 }

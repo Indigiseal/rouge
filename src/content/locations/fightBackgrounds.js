@@ -12,6 +12,14 @@ const LOCATION_ROOM_BACKGROUNDS = Object.freeze({
     boneflood: 'bonefloodBackground',
 });
 
+// Paintings drawn taller than the screen on purpose (Taya): their top row sits
+// at the top of the screen and the extra height hangs below, instead of being
+// centred. Every other painting stays centred.
+export const TOP_PINNED_BACKGROUNDS = Object.freeze(new Set([
+    'thornwakeBackground',
+    'bonefloodBackground',
+]));
+
 export function locationBackdropKey(gameState) {
     return LOCATION_ROOM_BACKGROUNDS[getLocationIdForFloor(gameState)] || 'stoneFloor';
 }

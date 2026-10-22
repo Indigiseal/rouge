@@ -4,9 +4,9 @@ export default {
     description: 'The room is walled in briars — floor to ceiling, grown through a litter of old weapons and armor scraps.\n\nWhen you step in, the vines turn toward your bag.',
     choices: [
       {
-        text: 'Offer a weapon or armor card',
+        text: 'Offer an armor card',
         action: (gs, scene) => scene.beginBriarOffering(),
-        outcome: 'Choose a weapon or armor card and drag it onto the briars.',
+        outcome: 'Choose an armor card and drag it onto the briars.',
         next: {
           choices: [
             {

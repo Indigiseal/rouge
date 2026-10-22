@@ -16,14 +16,20 @@ import {
 } from '../../content/cards/weapons.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { playSmokeBurst } from '../../ui/SmokeBurst.js';
-import { translateItemName } from '../../i18n/i18n.js';
+import { t, translateItemName } from '../../i18n/i18n.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
 import { applyWeaponSigils, onWeaponSigilHit } from '../combat/SigilEffects.js';
 import { getSigil } from '../../content/sigils/sigils.js';
-import { GLUTTON_MAX_AP } from '../../content/amulets/currentCatalog.js';
+import { grantMealMaxActions } from '../../content/amulets/foodEndurance.js';
+import { restoreDesertFeastAP } from '../../content/combat/sandreach.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { fireDamageAgainst } from '../../content/combat/fireResist.js';
 import { hoverShineAnim } from '../../ui/RainbowShine.js';
+import { applyVenomousBomb, isSilkdeepPoisonTarget } from '../../content/combat/silkdeep.js';
+import { mimicSummonSpot, summonMimic } from '../board/MimicSummon.js';
+import { applyScorched, canBurnCard } from '../../content/combat/ashhowl.js';
+import { applyThunderclap, isStormSpellTarget } from '../../content/combat/storm.js';
+import { freezeEnemy, isFrostTarget, consumePlayerAttackHold } from '../../content/combat/frost.js';
 
 // The strike over a weapon card (playWeaponStrikeEffect): how far the card
 // shakes either way. The slash itself is ui/StrikeSlash.js.
@@ -46,6 +52,17 @@ export const InventoryCombatUse = {
         const revealedEnemies = board.filter(c => c?.revealed && this.isEnemyBoardCard(c));
 
         switch (magicCard.magicType) {
+            case 'desertFeast':
+                return this.scene.gameState.playerHealth > 0
+                    && this.scene.gameState.actionsLeft < this.scene.gameState.maxActions;
+            case 'thunderclap':
+                return board.some(isStormSpellTarget);
+            case 'scorched':
+                return board.some(canBurnCard);
+            case 'summonMimic':
+                return !!mimicSummonSpot(this.scene.cardSystem);
+            case 'venomousBomb':
+                return board.some(isSilkdeepPoisonTarget);
             case 'fireball': {
                 // Needs a revealed enemy within 150px of where the card was dropped
                 let closest = Infinity;
@@ -64,6 +81,7 @@ export const InventoryCombatUse = {
                     && Phaser.Math.Distance.Between(cardSprite.x, cardSprite.y, c.sprite.x, c.sprite.y) < 150);
             }
             case 'frostRing':
+                return board.some(isFrostTarget);
             case 'weakness':
                 // Needs at least one revealed enemy/boss to do anything
                 return revealedEnemies.length > 0;
@@ -75,6 +93,7 @@ export const InventoryCombatUse = {
             case 'shadowBlade':
             case 'magicShield':
             case 'boneWall':
+            case 'briarShield':
                 return true;
             default:
                 return true; // Unknown types: don't block, let the switch handle it
@@ -100,6 +119,36 @@ export const InventoryCombatUse = {
         let used = false;
 
         switch(magicCard.magicType) {
+            case 'desertFeast': {
+                const before = this.scene.gameState.actionsLeft;
+                used = restoreDesertFeastAP(this.scene.gameState) > 0;
+                if (used) {
+                    this.scene.playActionPointGain?.(before, this.scene.gameState.actionsLeft);
+                    SoundHelper.playSound(this.scene, 'recovery', 0.5);
+                    this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y,
+                        t(this.scene, 'magic.desertFeast.applied'), 0x71800b);
+                    this.scene.updateUI();
+                }
+                break;
+            }
+            case 'thunderclap':
+                used = applyThunderclap(this.scene.cardSystem) > 0;
+                if (used) SoundHelper.playVariant(this.scene, 'lightning_zap', 0.5);
+                break;
+            case 'scorched':
+                used = applyScorched(this.scene.cardSystem) > 0;
+                if (used) {
+                    SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+                    this.scene.createFloatingText(320, 70, t(this.scene, 'magic.scorched.applied'), 0xef7c4b);
+                }
+                break;
+            case 'summonMimic':
+                used = summonMimic(this.scene.cardSystem);
+                break;
+            case 'venomousBomb':
+                used = applyVenomousBomb(this.scene.cardSystem) > 0;
+                if (used) SoundHelper.playVariant(this.scene, 'poison_tick', 0.5);
+                break;
             case 'fireball':
                 // Find closest enemy to where card was dropped
                 let closestEnemy = -1;
@@ -138,11 +187,7 @@ export const InventoryCombatUse = {
                 // Freeze all revealed enemies
                 let frozeAny = false;
                 this.scene.cardSystem.boardCards.forEach((card) => {
-                    if (card?.revealed && this.isEnemyBoardCard(card)) {
-                        card.data.frozen = 3; // Frozen for 3 turns
-                        this.scene.cardSystem.attachFrozenFrame(card); // Ice frame overlay
-                        frozeAny = true;
-                    }
+                    if (freezeEnemy(this.scene.cardSystem, card, 3)) frozeAny = true;
                 });
                 if (frozeAny) {
                     SoundHelper.playSound(this.scene, 'frozenRing', 0.5);
@@ -235,8 +280,15 @@ export const InventoryCombatUse = {
                 used = true;
                 break;
 
+            case 'briarShield':
+                this.scene.gameState.briarShield = 2;
+                SoundHelper.playSound(this.scene, 'thorns_hit', 0.5);
+                this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, t(this.scene, 'ui.hud.briarShield'), 0x71800b);
+                used = true;
+                break;
+
             case 'boneWall':
-                this.scene.gameState.boneWall = 2; // Reflects next 2 attacks
+                this.scene.gameState.boneWall = 2; // Blocks two individual attacks
                 SoundHelper.playSound(this.scene, 'boneWall', 0.5);
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Bone Shield Active!', 0xfef0cf);
                 used = true;
@@ -272,6 +324,7 @@ export const InventoryCombatUse = {
                     }
                 });
                 if (flippedAny) {
+                    this.scene.cardSystem.refreshEnemyAttackLabels?.();
                     SoundHelper.playSound(this.scene, 'smoke_bomb', 0.5);
                     this.createSmokeEffect();
                     used = true;
@@ -517,9 +570,19 @@ export const InventoryCombatUse = {
         }
 
         // Regular attack logic for all weapons
+        const actionsBefore = this.scene.gameState.actionsLeft;
         const wasExhausted = this.scene.gameState.actionsLeft <= 0;
         if (!this.scene.useAction()) {
             this.returnWeaponToSlot(slotIndex, cardSprite);
+            return;
+        }
+
+        const attackHold = consumePlayerAttackHold(this.scene.gameState);
+        if (attackHold) {
+            this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y - 18,
+                t(this.scene, `status.${attackHold}.missed`), 0xffcf7f);
+            this.scene.updateUI?.();
+            this.returnWeaponToSlotDelayed(slotIndex, cardSprite);
             return;
         }
 
@@ -549,7 +612,7 @@ export const InventoryCombatUse = {
 
             // The weapon's sigils (Merciless, Hunter, Honed) against this target.
             const sigilTarget = this.scene.cardSystem.boardCards[closestEnemy];
-            const sigilHit = applyWeaponSigils(this.scene, weapon, sigilTarget, attackDamage);
+            const sigilHit = applyWeaponSigils(this.scene, weapon, sigilTarget, attackDamage, { actionsBefore });
             attackDamage = sigilHit.damage;
             if (sigilHit.triggered.length && sigilTarget?.sprite) {
                 this.scene.createFloatingText(sigilTarget.sprite.x, sigilTarget.sprite.y - 30,
@@ -655,8 +718,8 @@ export const InventoryCombatUse = {
             for (let i = 0; i < attackCount; i++) {
                 // Check if enemy still exists for subsequent attacks
                 const currentEnemy = this.scene.cardSystem.boardCards[closestEnemy];
-                if (!currentEnemy || !currentEnemy.revealed ||
-                    (currentEnemy.data.type !== 'enemy' && currentEnemy.data.type !== 'boss')) {
+                if (!currentEnemy?.revealed || !this.isEnemyBoardCard(currentEnemy)
+                    || !(currentEnemy.data.health > 0)) {
                     break;
                 }
 
@@ -666,10 +729,11 @@ export const InventoryCombatUse = {
                     this.scene.cardSystem.attackEnemy(closestEnemy, attackDamage, false, weapon, false, { critical: didCrit });
                     // On-hit sigils (Leech, Venom, Cutpurse, Arrest), and the
                     // swing remembered for Hunter, Combo, Tandem and Honed.
-                    const healthAfter = currentEnemy.data?.health ?? 0;
+                    const healthAfter = currentEnemy.data?.isBonePile ? 0 : (currentEnemy.data?.health ?? 0);
                     onWeaponSigilHit(this.scene, weapon, currentEnemy, {
                         damageDealt: Math.max(0, (targetHealthBefore ?? 0) - Math.max(0, healthAfter)),
                         swingDamage: sigilHit.baseDamage,
+                        repeatDamage: attackDamage,
                     });
                     this.applyAssassinateTalent(closestEnemy);
                 } else {
@@ -686,7 +750,7 @@ export const InventoryCombatUse = {
                     // The off-hand dagger's own sigils count on its hit, the
                     // same as the dragged one's (Outnumbered on the off-hand
                     // used to do nothing).
-                    const offhandSigils = applyWeaponSigils(this.scene, secondaryDagger, currentEnemy, secondaryDamage);
+                    const offhandSigils = applyWeaponSigils(this.scene, secondaryDagger, currentEnemy, secondaryDamage, { actionsBefore });
                     secondaryDamage = offhandSigils.damage;
                     if (offhandSigils.triggered.length && currentEnemy?.sprite) {
                         this.scene.createFloatingText(currentEnemy.sprite.x, currentEnemy.sprite.y - 42,
@@ -695,8 +759,10 @@ export const InventoryCombatUse = {
                     const offhandHealthBefore = currentEnemy.data?.health ?? 0;
                     this.scene.cardSystem.attackEnemy(closestEnemy, secondaryDamage, false, secondaryDagger, true);
                     onWeaponSigilHit(this.scene, secondaryDagger, currentEnemy, {
-                        damageDealt: Math.max(0, offhandHealthBefore - Math.max(0, currentEnemy.data?.health ?? 0)),
+                        damageDealt: Math.max(0, offhandHealthBefore - Math.max(0,
+                            currentEnemy.data?.isBonePile ? 0 : (currentEnemy.data?.health ?? 0))),
                         swingDamage: offhandSigils.baseDamage,
+                        repeatDamage: secondaryDamage,
                     });
                     this.applyAssassinateTalent(closestEnemy);
                     this.scene.updateUI?.();
@@ -1197,14 +1263,11 @@ export const InventoryCombatUse = {
             actionGain = this.scene.amuletManager.modifyFoodAP(actionGain);
         }
 
-        // Glutton's Charm: each meal also raises max AP (capped per run),
+        // Sandglass Scarab: each meal also raises max AP (capped per run),
         // before the AP gain so the meal can fill the new point.
         const gs = this.scene.gameState;
-        const mealMaxGain = this.scene.amuletManager?.getFoodMaxActionGain?.() || 0;
-        if (mealMaxGain > 0 && (gs.gluttonMaxApGained || 0) < GLUTTON_MAX_AP) {
-            const gain = Math.min(mealMaxGain, GLUTTON_MAX_AP - (gs.gluttonMaxApGained || 0));
-            gs.maxActions += gain;
-            gs.gluttonMaxApGained = (gs.gluttonMaxApGained || 0) + gain;
+        const gain = grantMealMaxActions(gs, this.scene.amuletManager);
+        if (gain > 0) {
             this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y - 16,
                 `+${gain} Max AP`, 0x71b1ae);
         }

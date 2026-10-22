@@ -13,6 +13,16 @@ import { eggFightsLeft, isHatchingEgg } from '../content/cards/eggHatching.js';
 import { PLATE_RANGED_IGNORE_MAX } from '../content/cards/armor.js';
 import { HEATPROOF_RESIST } from '../content/combat/fireResist.js';
 import { MAX_LEGENDARY_STARS, cardStars } from '../content/cards/legendaryStars.js';
+import { companionStrengthBonus } from '../systems/combat/SigilEffects.js';
+
+function enemySigilTooltip(data, sigil) {
+    if (sigil.id === 'growth') {
+        const amount = Math.max(1, Math.floor(data.growthPerAttack || 1));
+        return `Growth: +${amount} maximum HP after attacking; does not heal`;
+    }
+    return sigilLine(sigil.id, sigil.level || 1, 'enemy');
+}
+import { getEnemyHitAttack, applyEnemyStrikeSigils } from '../content/combat/enemyAttack.js';
 
 // Default tooltip depth — above the board and its card FX, below the modal
 // overlays. Callers that render higher pass their own depth.
@@ -117,7 +127,7 @@ export function getTooltipLines(scene, data) {
         const styleKey = data.attackStyle === 'melee' || data.range === 'melee'
             ? 'tooltip.companion.melee'
             : 'tooltip.companion.ranged';
-        body = `${t(scene, styleKey)}\n${t(scene, damageKey, { amount: data.attack ?? 0 })}\n${t(scene, 'tooltip.companion.actsAfter')}`;
+        body = `${t(scene, styleKey)}\n${t(scene, damageKey, { amount: (data.attack ?? 0) + companionStrengthBonus(scene.gameScene || scene) })}\n${t(scene, 'tooltip.companion.actsAfter')}`;
         if (data.boundThrall) body += `\n${t(scene, 'tooltip.boundThrall')}`;
         if (data.shockChance) body += `\n${t(scene, 'tooltip.companion.shockChance', { amount: Math.round(data.shockChance * 100) })}`;
         if (data.guardProtection) body += `\n${t(scene, 'tooltip.companion.guard', { amount: data.guardProtection })}`;
@@ -145,6 +155,12 @@ export function getTooltipLines(scene, data) {
         body = body ? `${body}\n${line}` : line;
     }
 
+    if (data.type === 'companion' && data.frozenAttacks > 0) {
+        body = [body, t(scene, 'status.frost.pending', { count: data.frozenAttacks })].filter(Boolean).join('\n');
+    }
+    if (data.type === 'companion' && data.shockedTurns > 0) {
+        body = [body, t(scene, 'status.shock.pending')].filter(Boolean).join('\n');
+    }
     return { name, body };
 }
 
@@ -170,6 +186,7 @@ export function showItemTooltip(scene, data, anchorX, anchorY, depth = TOOLTIP_D
 export function getBossAbilityLines(scene, data) {
     const abilities = Array.isArray(data?.abilities) ? data.abilities : [];
     const lines = [];
+    if (data?.burn > 0) lines.push(t(scene, 'tooltip.burnCounter', { amount: data.burn }));
     abilities.forEach(ab => {
         switch (ab?.type) {
             case 'lifesteal':
@@ -180,6 +197,9 @@ export function getBossAbilityLines(scene, data) {
                 lines.push(ab.enemyType
                     ? t(scene, 'boss.summon', { enemy: translateEnemyName(scene, ab.enemyType) })
                     : sigilLine('summon', 1, 'enemy'));
+                if (Array.isArray(ab.thresholds)) {
+                    lines.push(`${ab.thresholds.map(value => `${Math.round(value * 100)}%`).join(' / ')} HP`);
+                }
                 break;
             case 'poison':
                 lines.push(t(scene, 'boss.poison', { dmg: ab.damage || 0, turns: ab.turns || 0 }));
@@ -203,7 +223,7 @@ export function getBossAbilityLines(scene, data) {
                 break;
         }
     });
-    for (const sigil of storedSigils(data)) lines.push(sigilLine(sigil.id, sigil.level || 1, 'enemy'));
+    for (const sigil of storedSigils(data)) lines.push(enemySigilTooltip(data, sigil));
     return lines;
 }
 
@@ -227,7 +247,10 @@ export function showBossTooltip(scene, data, anchorX, anchorY, gap = TOOLTIP_GAP
 
     const name = data.name || t(scene, 'tooltip.card');
     const abilityLines = getBossAbilityLines(scene, data);
-    const bodyParts = [t(scene, 'boss.attack', { atk: data.attack ?? 0 })];
+    const board = (scene.gameScene || scene).cardSystem?.boardCards || [];
+    const card = board.find(entry => entry?.data === data) || { data };
+    const attack = applyEnemyStrikeSigils(card, (scene.gameScene || scene).gameState, getEnemyHitAttack(card, board));
+    const bodyParts = [t(scene, 'boss.attack', { atk: attack })];
     if (abilityLines.length) {
         bodyParts.push(`${t(scene, 'boss.abilitiesTitle')}:`, ...abilityLines);
     } else {
@@ -303,7 +326,7 @@ function getEnemyFeatureLines(scene, data) {
     if (data?.controlTreachery) {
         lines.push(t(scene, 'tooltip.markTreachery'));
     }
-    for (const sigil of storedSigils(data)) lines.push(sigilLine(sigil.id, sigil.level || 1, 'enemy'));
+    for (const sigil of storedSigils(data)) lines.push(enemySigilTooltip(data, sigil));
     return lines;
 }
 

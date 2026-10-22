@@ -45,7 +45,8 @@ import {
     buildEnemyCardFromDef,
 } from '../../content/cards/index.js';
 import { ANTIDOTE_CHANCE, ANTIDOTE_MIN_FLOOR, antidoteCard } from '../../content/cards/potions.js';
-import { getLocationContent } from '../../content/locations/index.js';
+import { getLocationContent, getLocationIdForFloor, resolveActBossId } from '../../content/locations/index.js';
+import { scaleBossForAct } from '../../content/cards/bosses.js';
 import { EGG_HATCH_FIGHTS } from '../../content/cards/eggHatching.js';
 import { lootRarity } from '../../content/cards/legendaryStars.js';
 
@@ -166,21 +167,18 @@ export class CardDataGenerator {
     }
 
     createBossCard(floor, gameState = null) {
-        // The act determines the tier. Which boss inside that tier was decided
-        // back at map generation (map v8+), so the act's events could build
-        // toward it — honour that choice here. Maps from older saves have no
-        // bossId, so those still roll at the door as they always did.
+        // The location selects the boss; the act selects its difficulty.
+        // Preserve an already planned boss, including one from an older map.
         const act = Math.max(1, Math.min(3, Math.floor((floor - 1) / 15) + 1));
         const pool = this.bossTiers[act] || this.bossTiers[1];
         const planned = gameState?.dungeonMap?.[`act${act}`]?.bossId;
-        const id = pool.includes(planned)
-            ? planned
-            : pool[Math.floor(Math.random() * pool.length)];
+        const locationBoss = gameState
+            ? resolveActBossId(act, getLocationIdForFloor(gameState, floor)) : null;
+        const id = this.bossData[planned] ? planned
+            : locationBoss || pool[Math.floor(Math.random() * pool.length)];
         // Deep-copy so per-fight mutations (health dropping, rage flag) never corrupt
         // the shared template for the next spawn/run.
-        // Boss stats are used verbatim from bossData (pure-runs-v1: no knob
-        // multipliers) — tune the tier tables directly.
-        const boss = JSON.parse(JSON.stringify(this.bossData[id]));
+        const boss = JSON.parse(JSON.stringify(scaleBossForAct(this.bossData[id], act)));
         return boss;
     }
 
@@ -221,16 +219,18 @@ export class CardDataGenerator {
 
         pool = pool.filter((key) => {
             const def = this.enemyData[key];
-            return def && floor >= (def.minFloor || 1)
+            return def
                 && !CardDataGenerator.SUMMON_ONLY_ENEMY_TYPES.has(key);
         });
 
-        // If the role slice is empty (shouldn't happen for Thornwake), fall back
+        // Local roster membership determines eligibility in any act; minFloor
+        // still applies to the global fallback pool above, not this location.
+        // If the role slice is empty, fall back
         // to the full location roster before leaving location mode.
         if (!pool.length && roleKey) {
             pool = [...(roster.MELEE || []), ...(roster.RANGED || [])].filter((key) => {
                 const def = this.enemyData[key];
-                return def && floor >= (def.minFloor || 1)
+                return def
                     && !CardDataGenerator.SUMMON_ONLY_ENEMY_TYPES.has(key);
             });
         }

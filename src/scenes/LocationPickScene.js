@@ -1,6 +1,6 @@
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { applyLocationChoice, roadsForAct } from '../content/locations/index.js';
+import { applyLocationChoice, getLocationOffer } from '../content/locations/index.js';
 import { PATH_LOCATIONS } from '../content/locations/catalog.js';
 import {
   ensureDoorOpenAnim,
@@ -46,6 +46,7 @@ export class LocationPickScene extends Phaser.Scene {
     this.characterId = 'rogue';
     this.armorerArmorType = data.armorerArmorType || null;
     this.gameState = data.gameState || null;
+    this._offerState = this.gameState || { actLocationIds: [null, null, null] };
     this._locked = false;
     this._cards = [];
   }
@@ -86,8 +87,9 @@ export class LocationPickScene extends Phaser.Scene {
     // (sound, quit to menu), the way the village does.
     createOptionsCog(this, () => this.openOptions());
 
-    const roads = roadsForAct(this.pickAct);
-    Phaser.Utils.Array.Shuffle(roads);
+    this._offerState = this.gameState || this._offerState || { actLocationIds: [null, null, null] };
+    const roads = getLocationOffer(this._offerState, this.pickAct);
+    if (this.gameState) this.scene.get('GameScene')?.saveCurrentRun?.();
 
     roads.forEach((id, i) => this.dealCard(id, CARD_XS[i], CARD_YS[i], i));
 
@@ -228,7 +230,7 @@ export class LocationPickScene extends Phaser.Scene {
 
   leave(locationId) {
     if (this.mode === 'nextAct' && this.gameState) {
-      applyLocationChoice(this.gameState, locationId);
+      if (!applyLocationChoice(this.gameState, locationId, this.pickAct)) return;
       const act = this.pickAct;
       const startNode = this.gameState.dungeonMap?.[`act${act}`]?.floors?.[0]?.[0];
       this.gameState.mapCursor = { act, floor: 0, node: 0 };
@@ -256,6 +258,7 @@ export class LocationPickScene extends Phaser.Scene {
       characterId: this.characterId,
       armorerArmorType: this.armorerArmorType,
       locationId,
+      locationOffers: this._offerState.locationOffers,
     };
     // The first door goes straight into the run. (A location's intro text
     // screen — Silkdeep's, the Tollroad's — used to play here first; it is

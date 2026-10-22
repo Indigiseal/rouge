@@ -1,9 +1,10 @@
 export default {
   id: 'skullLobber',
-  name: 'Skull Lobber',
+  // Keep the stable id and existing robed art for saved cards and discoveries.
+  name: 'Skull Mender',
   role: 'RANGED',
   minFloor: 16,
   archetype: 'artillery',
-  // It throws heads. One in twenty lands hard enough to cost you the next move.
-  features: ['club_stun'],
+  features: [],
+  sigils: [{ id: 'mending' }],
 };

@@ -11,6 +11,7 @@ const frame = (key, file) => Object.freeze({
 
 // Keyed by the boss's sprite key (content/cards/bosses.js).
 export const BOSS_ATTACK_FRAMES = Object.freeze({
+  frostGiant: frame('FrostGiantAttack', 'frostGiantAttack'),
   GoblinKingSprite: frame('GoblinKingAttack', 'goblinKingAttack'),
   giantSkeleton: frame('GiantSkeletonAttack', 'giantSkeletonAttack'),
   greenWarden: frame('GreenWardenAttack', 'greenWardenAttack'),

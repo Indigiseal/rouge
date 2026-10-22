@@ -8,7 +8,19 @@
 //   2. A MockScene that stubs every scene method the logic touches and runs
 //      tweens / timers synchronously so combat resolves in one call.
 
-import { getEnemyHitAttack } from '../src/content/combat/enemyAttack.js';
+import { getEnemyHitAttack, spendSapping, applyEnemyStrikeSigils } from '../src/content/combat/enemyAttack.js';
+import { sigilLevel } from '../src/content/sigils/sigils.js';
+import { ENCHANT_SAPPING_CHANCE } from '../src/content/balance/WeaponEnchants.js';
+import { consumeBoneShield } from '../src/content/combat/boneShield.js';
+import { consumeBriarShield } from '../src/content/combat/briarShield.js';
+import { armorThornsDamage, companionStrengthBonus, regenerateAmount, playerWarcryChance } from '../src/systems/combat/SigilEffects.js';
+import { advanceBonePile, repairBoneArmor, summonAtHealthThresholds } from '../src/content/combat/boneflood.js';
+import { growEnemy, regenerateAllies } from '../src/content/combat/mireturn.js';
+import { strengthenPlayerPoison } from '../src/content/combat/silkdeep.js';
+import { addPlayerBurn, takePlayerBurnTick, SCORCHED_CHANCE } from '../src/content/combat/ashhowl.js';
+import { tryEnemyShock } from '../src/content/combat/storm.js';
+import { consumeCompanionAttackHold, tryEnemyFrost } from '../src/content/combat/frost.js';
+import { tryEnemySandstorm, tryEnemyQuickStrike } from '../src/content/combat/sandreach.js';
 import { CONTROL_HESITATION_CHANCE } from '../src/content/amulets/control.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../src/content/location-packs/tollroad/index.js';
 
@@ -232,6 +244,9 @@ export class MockScene {
   runEnemyTurn() {
     if (this.gameState.playerHealth <= 0) return;
     const board = this.cardSystem.boardCards;
+    for (const card of board) {
+      if (advanceBonePile(card?.data)) card.justRevealed = true;
+    }
     // Per-enemy grace (mirrors GameScene.revealedEnemiesAttack): a freshly revealed
     // enemy sits out the action that revealed it, then joins the fight on the next
     // action. Snapshot who's eligible now, then clear the flag. This is per-enemy —
@@ -239,7 +254,7 @@ export class MockScene {
     const eligible = [];
     for (let i = 0; i < board.length; i++) {
       const c = board[i];
-      if (c && c.revealed && this.isEnemyCard(c) && !c.justRevealed) eligible.push(i);
+      if (c && c.revealed && this.isEnemyCard(c) && !c.justRevealed && !c.data?.isBonePile) eligible.push(i);
     }
     for (const c of board) { if (c && c.justRevealed) c.justRevealed = false; }
 
@@ -250,7 +265,9 @@ export class MockScene {
       if (!card || card.data.health <= 0) continue;
       if (card.data.type === 'boss' && card.data.abilities) {
         for (const ab of card.data.abilities) {
-          if (ab.type === 'summon' && Math.random() < ab.chance) {
+          if (ab.type === 'summon' && Array.isArray(ab.thresholds)) {
+            summonAtHealthThresholds(card.data, ab, enemyType => this._summonMinion(enemyType));
+          } else if (ab.type === 'summon' && Math.random() < ab.chance) {
             const n = ab.count || 1;
             for (let k = 0; k < n; k++) this._summonMinion(ab.enemyType);
           }
@@ -275,18 +292,14 @@ export class MockScene {
       this._runCompanionTurns();
       return;
     }
-    if ((this.gameState.boneWall || 0) > 0 && firstAttacker) {
-      this.gameState.boneWall--;
-      this.cardSystem.attackEnemy(firstAttacker.i, firstAttacker.card.data.attack, true);
-      this._runCompanionTurns();
-      return;
-    }
     if (eligible.length === 0) {
       this._finishEnemyTurnEffects({ runCompanions: false });
       return;
     }
 
-    for (const i of eligible) {
+    const attackers = eligible.map(i => ({ i, extra: false }));
+    for (let attackerIndex = 0; attackerIndex < attackers.length; attackerIndex++) {
+      const { i, extra } = attackers[attackerIndex];
       const card = board[i];
       if (!card || !card.revealed || !this.isEnemyCard(card)) continue;
       if (card.data.health <= 0) continue;
@@ -322,6 +335,19 @@ export class MockScene {
         continue;
       }
 
+      if (card.data?.charmed) {
+        card.data.charmed = false;
+        const others = board.map((target, index) => ({ target, index })).filter(({ target, index }) => (
+          index !== i && target?.revealed && this.isEnemyCard(target) && target.data.health > 0
+        ));
+        if (others.length) {
+          const target = others[Math.floor(Math.random() * others.length)];
+          this.cardSystem.attackEnemy(target.index, getEnemyHitAttack(card, board), true);
+          spendSapping(card);
+          growEnemy(card);
+        }
+        continue;
+      }
       if (card.data?.controlHesitation && Math.random() < CONTROL_HESITATION_CHANCE) {
         continue;
       }
@@ -342,6 +368,8 @@ export class MockScene {
             getEnemyHitAttack(card, board),
             true
           );
+          spendSapping(card);
+          growEnemy(card);
           continue;
         }
       }
@@ -358,12 +386,15 @@ export class MockScene {
           ));
         if (others.length > 0) {
           const target = others[Math.floor(Math.random() * others.length)];
-          this.cardSystem.attackEnemy(target.index, card.data.attack, true);
+          this.cardSystem.attackEnemy(target.index, getEnemyHitAttack(card, board), true);
+          spendSapping(card);
+          growEnemy(card);
           continue;
         }
       }
 
-      let damageDealt = getEnemyHitAttack(card, board);
+      let damageDealt = applyEnemyStrikeSigils(card, this.gameState, getEnemyHitAttack(card, board));
+      spendSapping(card);
       const features = Array.isArray(card.data?.features) ? card.data.features : [];
       if (features.includes('heavy_shot') && Math.random() < 0.2) {
         damageDealt = Math.ceil(damageDealt * 1.5);
@@ -375,20 +406,31 @@ export class MockScene {
           damageDealt = Math.ceil(damageDealt * (rage.damageBoost || 1.5));
         }
       }
+      growEnemy(card);
+      repairBoneArmor(card, board);
+      const sigilThorns = damageDealt > 0 ? armorThornsDamage(this.gameState.equippedArmor) : 0;
+      const retaliate = () => {
+        if (sigilThorns > 0 && board[i] === card && card.data.health > 0) this.cardSystem.attackEnemy(i, sigilThorns, true);
+      };
+      if (consumeBoneShield(this.gameState, damageDealt)) { retaliate(); continue; }
+      if (consumeBriarShield(this.gameState, damageDealt)) {
+        this.cardSystem.attackEnemy(i, damageDealt, true);
+        retaliate();
+        continue;
+      }
       // Hand Mirror glint — mirrors CombatTurnController: the hit bounces
       // back in full and the player takes nothing.
       const reflectChance = this.amuletManager?.getReflectChance?.() || 0;
       if (damageDealt > 0 && reflectChance > 0 && Math.random() < reflectChance) {
         this.cardSystem.attackEnemy(i, damageDealt, true);
+        retaliate();
         continue;
       }
       const armorBreak = card.data.abilities?.find((a) => a.type === 'armor_break');
       const armorPierce = armorBreak?.amount || 0;
 
       card.data.abilities?.forEach((ability) => {
-        if (ability.type === 'poison') {
-          this.gameState.addPlayerEffect({ ...ability, killedBy: card.data.name || 'Enemy' });
-        } else if (ability.type === 'coin_steal') {
+        if (ability.type === 'coin_steal') {
           if (Math.random() < ability.chance && this.gameState.coins > 0) {
             this.gameState.coins -= Math.min(ability.amount, this.gameState.coins);
           }
@@ -415,6 +457,25 @@ export class MockScene {
       if (this.gameState.playerHealth <= 0) { this._lastKiller = card.data.name || 'enemy'; return; }
       if (revived) { this._finishEnemyTurnEffects({ runCompanions: true, skipPlayerPoison: true }); return; }
 
+      if (!dodged) {
+        for (const ability of card.data.abilities || []) {
+          if (ability.type === 'poison') {
+            this.gameState.addPlayerEffect({ ...ability, killedBy: card.data.name || 'Enemy' });
+          }
+        }
+        if (features.includes('poison_amp')) strengthenPlayerPoison(this.gameState);
+      }
+      if (!dodged) {
+        tryEnemyFrost(this, card.data, actualDamage);
+        tryEnemyShock(this, card.data, actualDamage);
+        tryEnemySandstorm(this.gameState, card.data, actualDamage);
+      }
+      if (actualDamage > 0 && !dodged && sigilLevel(card.data, 'scorched') > 0 && Math.random() < SCORCHED_CHANCE) {
+        addPlayerBurn(this.gameState, card.data.name || 'Enemy');
+      }
+      if (actualDamage > 0 && !dodged && sigilLevel(card.data, 'sapping') > 0 && Math.random() < ENCHANT_SAPPING_CHANCE) {
+        this.gameState.playerSapped = true;
+      }
       if (!dodged && features.includes('club_stun') && Math.random() < 0.05) {
         this.gameState.playerStunnedTurns = Math.max(this.gameState.playerStunnedTurns || 0, 1);
       }
@@ -432,7 +493,7 @@ export class MockScene {
           ) {
             // Inline one extra ally swing (no nested rally).
             const allyFeatures = Array.isArray(ally.data?.features) ? ally.data.features : [];
-            let allyDmg = getEnemyHitAttack(ally, board);
+            let allyDmg = applyEnemyStrikeSigils(ally, this.gameState, getEnemyHitAttack(ally, board));
             if (allyFeatures.includes('heavy_shot') && Math.random() < 0.2) {
               allyDmg = Math.ceil(allyDmg * 1.5);
             }
@@ -453,6 +514,7 @@ export class MockScene {
         }
       }
 
+      retaliate();
       // Card thorns retaliate against melee even on a dodge; armor Briar
       // damage only applies when damage actually landed.
       const t = this.gameState.activeThorns;
@@ -471,9 +533,8 @@ export class MockScene {
           }
         }
       }
-      // Boss abilities: leech (heal from damage ACTUALLY landed, after armor —
-      // mirrors GameScene) + summon minions.
-      if (card.data.type === 'boss' && card.data.abilities) {
+      // Leech heals normal creatures and bosses from actual post-armor damage.
+      if (card.data.abilities) {
         for (const ab of card.data.abilities) {
           if (ab.type === 'lifesteal' && actualDamage > 0) {
             const heal = Math.max(1, Math.ceil(actualDamage * (ab.percentage || 0.3)));
@@ -481,6 +542,9 @@ export class MockScene {
             card.data.health = Math.min(card.data.maxHealth, card.data.health + heal);
           }
         }
+      }
+      if (!extra && !dodged && board[i] === card && tryEnemyQuickStrike(this.gameState, card.data, actualDamage)) {
+        attackers.splice(attackerIndex + 1, 0, { i, extra: true });
       }
     }
     this._finishEnemyTurnEffects();
@@ -494,23 +558,36 @@ export class MockScene {
     // contribute their real card attack instead of being dead weight.
     const companions = (this._simInventory || []).filter((item) => item?.type === 'companion');
     for (const companion of companions) {
-      const targets = board
-        .map((card, index) => ({ card, index }))
-        .filter(({ card }) => card?.revealed && this.isEnemyCard(card) && card.data.health > 0);
-      if (!targets.length) break;
-      const meleeTargets = companion.attackStyle === 'melee'
-        ? targets.filter(({ card }) => card.data.role === 'MELEE' || card.data.type === 'boss')
-        : targets;
-      const pool = meleeTargets.length ? meleeTargets : targets;
-      pool.sort((a, b) => a.card.data.health - b.card.data.health);
-      const target = pool[0];
-      this.cardSystem.attackEnemy(target.index, companion.attack || 2, true);
-      const shockedTarget = board[target.index];
-      if ((companion.shockChance || 0) > 0
-          && shockedTarget === target.card
-          && shockedTarget?.data?.health > 0
-          && Math.random() < companion.shockChance) {
-        this.cardSystem.applyShockStatus?.(shockedTarget, 1);
+      const pickTarget = () => {
+        const targets = board
+          .map((card, index) => ({ card, index }))
+          .filter(({ card }) => card?.revealed && this.isEnemyCard(card) && card.data.health > 0);
+        if (!targets.length) return null;
+        const meleeTargets = companion.attackStyle === 'melee'
+          ? targets.filter(({ card }) => card.data.role === 'MELEE' || card.data.type === 'boss')
+          : targets;
+        const pool = meleeTargets.length ? meleeTargets : targets;
+        pool.sort((a, b) => a.card.data.health - b.card.data.health);
+        return pool[0];
+      };
+      let target = pickTarget();
+      if (!target) break;
+      if (companion.webbedTurns > 0 || consumeCompanionAttackHold(companion)) continue;
+      for (let strike = 0; strike < 2; strike++) {
+        if (strike === 1) {
+          const chance = playerWarcryChance(this);
+          if (!(chance > 0) || this._transitioning || this.gameState.playerHealth <= 0 || Math.random() >= chance) break;
+          target = pickTarget();
+          if (!target) break;
+        }
+        this.cardSystem.attackEnemy(target.index, (companion.attack || 2) + companionStrengthBonus(this), true);
+        const shockedTarget = board[target.index];
+        if ((companion.shockChance || 0) > 0
+            && shockedTarget === target.card
+            && shockedTarget?.data?.health > 0
+            && Math.random() < companion.shockChance) {
+          this.cardSystem.applyShockStatus?.(shockedTarget, 1);
+        }
       }
     }
   }
@@ -528,10 +605,13 @@ export class MockScene {
     // End-of-enemy-turn effects: poison damage-over-time ticks on enemies
     // (mirrors GameScene.finishEnemyTurnEffects → processEnemyPoisonEffects).
     this.cardSystem.processEnemyPoisonEffects?.();
+    this.cardSystem.processEnemyBurnEffects?.();
+    let revivedFromPoison = false;
     if (!skipPlayerPoison) {
     let effectDamage = 0;
     for (let i = this.gameState.playerEffects.length - 1; i >= 0; i--) {
       const effect = this.gameState.playerEffects[i];
+      if (effect.type === 'burn') continue;
       if (effect.type === 'poison') {
         effectDamage += effect.damage || 0;
       }
@@ -539,11 +619,20 @@ export class MockScene {
       if (effect.turns <= 0) this.gameState.playerEffects.splice(i, 1);
     }
     if (effectDamage > 0) {
-      this.gameState.takeDamage(effectDamage, -1, 'poison');
+      revivedFromPoison = Boolean(this.gameState.takeDamage(effectDamage, -1, 'poison').revived);
       if (this.gameState.playerHealth <= 0) this._lastKiller = 'Poison';
     }
     }
-    if (runCompanions && this.gameState.playerHealth > 0) this._runCompanionTurns();
+    if (!skipPlayerPoison && !revivedFromPoison && this.gameState.playerHealth > 0) {
+      const burn = takePlayerBurnTick(this.gameState);
+      if (burn > 0) this.gameState.takeDamage(burn, -1, 'burn');
+      if (this.gameState.playerHealth <= 0) this._lastKiller = 'Burn';
+    }
+    if (this.gameState.playerHealth > 0) {
+      regenerateAllies(this.cardSystem.boardCards, card => this.isEnemyCard(card));
+      this.gameState.heal(regenerateAmount(this));
+      if (runCompanions) this._runCompanionTurns();
+    }
   }
 
   // Inject a summoned minion (revealed enemy) onto the board — boss summon.
@@ -569,6 +658,7 @@ export class MockScene {
     const sprite = makeGameObject(this);
     sprite.scene = this;
     this.cardSystem.boardCards.push({ data: e, revealed: true, sprite });
+    return true;
   }
 
   // Drain a queued enemy turn (called by the engine after each player action).

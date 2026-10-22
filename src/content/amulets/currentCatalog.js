@@ -1,5 +1,6 @@
 // Current offerable amulet catalog (common → legendary).
 import { getAmuletAtlasPresentation } from './RelicsOthersAtlas.js';
+import { SANDGLASS_SCARAB } from './sandglassScarab.js';
 
 /** @param {object} mgr AmuletManager instance (bound as `this` for arrow hooks). */
 // Max action points from an amulet, both the cap and the points in hand.
@@ -10,8 +11,8 @@ function raiseMaxActions(mgr, amount) {
     mgr.scene?.updateUI?.();
 }
 
-// Glutton's Charm: how much max AP food can add in one run.
-export const GLUTTON_MAX_AP = 5;
+// Stable export name for the renamed Sandglass Scarab's run cap.
+export const GLUTTON_MAX_AP = SANDGLASS_SCARAB.maxAp;
 
 export function buildCurrentAmuletDefinitions(mgr) {
     return (function () {
@@ -163,6 +164,12 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 rarity: 'rare',
                 poisonGemTickBonus: 2,
             },
+            sirensPendant: {
+                ...getAmuletAtlasPresentation('sirensPendant'),
+                description: '15% chance enemies attack their own kind instead of you',
+                rarity: 'rare',
+                charmChance: 0.15,
+            },
             maskOfHollowWhispers: {
                 ...getAmuletAtlasPresentation('maskOfHollowWhispers'),
                 name: 'Mask of Hollow Whispers',
@@ -306,10 +313,18 @@ export function buildCurrentAmuletDefinitions(mgr) {
             },
             gluttonsCharm: {
                 ...getAmuletAtlasPresentation('gluttonsCharm'),
-                name: "Glutton's Charm",
-                description: `Each food you eat gives +1 max action point (up to +${GLUTTON_MAX_AP} a run).`,
+                name: SANDGLASS_SCARAB.name,
+                description: SANDGLASS_SCARAB.description,
+                originLocationId: SANDGLASS_SCARAB.originLocationId,
                 rarity: 'rare',
                 foodMaxActionGain: 1,
+            },
+            leadershipBanner: {
+                ...getAmuletAtlasPresentation('leadershipBanner'),
+                name: 'Leadership Banner',
+                description: 'Each companion that attacks has a 10% chance to act once more. Extra actions cannot chain.',
+                rarity: 'rare', originLocationId: 'thornwake',
+                companionExtraActionChance: 0.1,
             },
             // One more bag slot: slots are scarce, so it is a rare find.
             veteransCarryall: {

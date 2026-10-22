@@ -17,23 +17,40 @@ import { tuned } from '../balance/Tuning.js';
 // Stats are normalized within a tier so difficulty stays consistent no matter
 // which boss is rolled. Poison is intentionally exclusive to the Spider Queen.
 export const BOSSES = {
+  sandscaleChieftain: {
+    type: 'boss', tier: 2, name: 'Sandscale Chieftain', health: 167, attack: 17,
+    sprite: 'enemyPlaceholder', sigils: [{ id: 'quickStrike' }, { id: 'daze' }],
+    abilities: [{ type: 'summon', enemyType: 'lizardArcher', chance: 0.25, count: 1 }],
+  },
+  frostGiant: {
+    type: 'boss', tier: 2, name: 'Frost Giant', health: 167, attack: 17,
+    sprite: 'frostGiant', sigils: [{ id: 'frost' }, { id: 'shatter' }],
+    abilities: [{ type: 'summon', enemyType: 'iceGolem', chance: 0.25, count: 1 }],
+  },
+  // Selected by Storm's location; keep legacy tier averages unchanged.
+  tempestRoc: {
+    type: 'boss', tier: 2, name: 'Tempest Roc', health: 167, attack: 17,
+    sprite: 'enemyPlaceholder', sigils: [{ id: 'shock' }],
+    abilities: [{ type: 'summon', enemyType: 'thunderCrow', chance: 0.25, count: 1 }],
+  },
   // ---- Tier 1 (Act 1 finale, floor 15) ----
   giantSkeleton: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'honed' }],
+    sigils: [{ id: 'warding' }],
     type: 'boss', tier: 1,
     name: 'Giant Skeleton',
     health: 89,
     attack: 11,
     armor: 2,
+    maxArmor: 2,
     sprite: 'giantSkeleton',
     abilities: [
-      { type: 'summon', enemyType: 'skeleton', chance: 0.35, count: 1 }
+      { type: 'summon', enemyType: 'skeleton', thresholds: [0.7, 0.35], count: 1 }
     ]
   },
   goblinKing: {
-    // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'outnumbered' }, { id: 'warcry' }],
+    // Tollroad: ambush, steal coins, and call ordinary goblins.
+    sigils: [{ id: 'ambush' }],
     type: 'boss', tier: 1,
     name: 'Goblin King',
     health: 84,
@@ -46,7 +63,7 @@ export const BOSSES = {
   },
   greenWarden: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'regenerate' }],
+    sigils: [{ id: 'thorns' }],
     type: 'boss', tier: 1,
     name: 'The Green Warden',
     health: 86,
@@ -57,8 +74,8 @@ export const BOSSES = {
     ]
   },
   spiderQueen: {
-    // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'ambush' }],
+    // Silkdeep: poison and spider summons. Ambush belongs to Tollroad.
+    sigils: [],
     type: 'boss', tier: 1,
     name: 'Spider Queen',
     health: 81,
@@ -75,42 +92,33 @@ export const BOSSES = {
 
   // ---- Tier 2 (Act 2 finale, floor 30) ----
   soulEater: {
-    // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'merciless' }],
+    // Its three abilities supply the Fleetfoot, Leech and Summon icons.
+    sigils: [],
     type: 'boss', tier: 2,
     name: 'Soul Eater',
     health: 162,
     attack: 17,
     sprite: 'SoulEater',
-    // A slippery bruiser, NOT a healer (that's the Lich's profile).
-    // Like the Lost Souls it commands, attacks have a 15% chance to
-    // phase right through it — so it out-lasts you by dodging, not
-    // by leeching. Rounds out with armor-break + a late rage spike.
+    // Veilbleed: evade, drain actual damage, and call Lost Souls.
     abilities: [
       { type: 'evade', chance: 0.12 },
+      { type: 'lifesteal', percentage: 0.15 },
       { type: 'summon', enemyType: 'lostSoul', chance: 0.15, count: 1 },
-      { type: 'armor_break', amount: 2 },
-      { type: 'rage', threshold: 0.35, damageBoost: 1.5 }
     ]
   },
   mireBride: {
-    // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    // Sapping, not Regenerate: she is dead, and what she does is drain.
-    sigils: [{ id: 'sapping' }],
+    // Stable ID/art until the living Bog mermaid is drawn.
+    sigils: [{ id: 'growth' }],
+    growthPerAttack: 3,
     type: 'boss', tier: 2,
-    name: 'The Mire Bride',
-    // Base stats sit under the tier-2 median on purpose. She carries a
-    // stacking DoT, and the Spider Queen pass showed what that costs: a DoT
-    // on median stats put her fight 43% over budget for her tier.
+    name: 'Bog Mermaid',
+    // Preserve the initial HP/ATK for testing the new healing/growth pairing.
     health: 158,
     attack: 16,
     sprite: 'MireBride',
     abilities: [
-      // She pulls travellers under: the bog does the killing, slowly, while
-      // the fen dead she raises keep you from leaving.
-      { type: 'poison', damage: 2, turns: 3, stackable: true, maxStacks: 4 },
+      // Healing minions fill the capacity earned by the mermaid's attacks.
       { type: 'summon', enemyType: 'drowned', chance: 0.25, count: 1 },
-      { type: 'evade', chance: 0.1 }
     ]
   },
   lich: {
@@ -129,7 +137,7 @@ export const BOSSES = {
   },
   cerberus: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'outnumbered' }],
+    sigils: [{ id: 'scorched' }],
     type: 'boss', tier: 2,
     name: 'Cerberus',
     // +20% HP vs prior 105 (act-2 boss HP pass).
@@ -137,8 +145,6 @@ export const BOSSES = {
     attack: 17,
     sprite: 'Cerberus',
     abilities: [
-      { type: 'rage', threshold: 0.4, damageBoost: 1.5 },
-      { type: 'armor_break', amount: 4 },
       { type: 'summon', enemyType: 'cerberusHead', chance: 0.18, count: 1 }
     ]
   },
@@ -146,15 +152,13 @@ export const BOSSES = {
   // ---- Tier 3 (Act 3 finale, floor 45) ----
   ancientCerberus: {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
-    sigils: [{ id: 'outnumbered' }, { id: 'merciless' }],
+    sigils: [{ id: 'scorched' }],
     type: 'boss', tier: 3,
     name: 'Ancient Cerberus',
     health: 272,
     attack: 28,
     sprite: 'AncientCerberus',
     abilities: [
-      { type: 'rage', threshold: 0.3, damageBoost: 2 },
-      { type: 'armor_break', amount: 6 },
       { type: 'summon', enemyType: 'cerberusHead', chance: 0.3, count: 1 }
     ]
   }
@@ -175,5 +179,28 @@ export function getBoss(id) {
   const attack = tuned(`boss.${id}.attack`, boss.attack);
   if (health === boss.health && attack === boss.attack) return boss;
   return { ...boss, health, attack };
+}
+
+// Preserve each boss's relative HP/attack against the existing act boss bands.
+// These are initial scaling values for playtesting, not new ability multipliers:
+// armor, status durations, summons and proc chances retain their own rules.
+export function scaleBossForAct(boss, act) {
+  if (!boss || boss.tier === act || !BOSS_TIERS[act]) return boss;
+  const average = tier => {
+    const entries = (BOSS_TIERS[tier] || []).map(id => BOSSES[id]).filter(Boolean);
+    if (!entries.length) return null;
+    return {
+      health: entries.reduce((sum, item) => sum + item.health, 0) / entries.length,
+      attack: entries.reduce((sum, item) => sum + item.attack, 0) / entries.length,
+    };
+  };
+  const source = average(boss.tier), target = average(act);
+  if (!source || !target) return boss;
+  return {
+    ...boss,
+    tier: act,
+    health: Math.max(1, Math.round(boss.health * target.health / source.health)),
+    attack: Math.max(1, Math.round(boss.attack * target.attack / source.attack)),
+  };
 }
 

@@ -8,7 +8,7 @@ assert.equal(ASSET_MANIFEST.find(asset => asset.key === 'magicCards').path, 'ass
 assert.equal(ASSET_MANIFEST.find(asset => asset.key === 'glowingMagicCards').path, 'assets/art/glowingMagicCardsSheetNew1.png');
 const { chromium } = createRequire(import.meta.url)('playwright');
 assert.equal(ASSET_MANIFEST.find(asset => asset.key === 'cardBack').path, 'assets/art/cardBack.png');
-assert.equal(MAGIC.length, 9);
+assert.equal(MAGIC.length, 15);
 const browser = await chromium.launch({ headless: true });
 try {
     const page = await browser.newPage({ viewport: { width: 720, height: 600 } });
@@ -28,7 +28,7 @@ try {
         PreloadScene.prototype.installCrispTextFactory.call({});
         return new Promise(resolve => {
             window.artTest = new Phaser.Game({
-                type: Phaser.WEBGL, width: 360, height: 300,
+                type: Phaser.WEBGL, width: 360, height: 500,
                 zoom: 2, pixelArt: true, backgroundColor: '#211d28',
                 scene: {
                     preload() {

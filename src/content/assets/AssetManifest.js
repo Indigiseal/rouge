@@ -303,6 +303,7 @@ export const ASSET_MANIFEST = [
     // Load twinkle animation frames
     { key: 'twinkle', path: 'assets/art/twinkle60x78Sheet.png', type: 'spritesheet', frameWidth: 60, frameHeight: 78 },
     // Bosses
+    { key: 'frostGiant', path: 'assets/art/frosthollow/frostGiant.png', type: 'image' },
     { key: 'greenWarden', path: 'assets/art/greenWarden.png', type: 'image' },
     { key: 'giantSkeleton', path: 'assets/art/giantSkeleton.png', type: 'image' },
     { key: 'GoblinKingSprite', path: 'assets/art/goblinKing.png', type: 'image' },
@@ -319,7 +320,7 @@ export const ASSET_MANIFEST = [
     // Animated doors, one road per row, six frames each from shut to open:
     // row 0 Boneflood's skull door, row 1 Mireturn's bog door, row 2
     // Thornwake's briar door, row 3 Silkdeep's web door, row 4 Tollroad's
-    // goblin door. See
+    // goblin door; row 5 Frosthollow's ice door. See
     // LOCATION_DOOR_SHEETS in locationCards.js.
     { key: 'locationDoorAnims', path: 'assets/ui/doorAnim68x70.png', type: 'spritesheet', frameWidth: 68, frameHeight: 70 },
     { key: 'Cerberus', path: 'assets/art/cerberus.png', type: 'image' },

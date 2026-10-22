@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { fightBackgroundKey, fightBackdropKey } from '../src/content/locations/fightBackgrounds.js';
+import { TOP_PINNED_BACKGROUNDS, fightBackgroundKey, fightBackdropKey } from '../src/content/locations/fightBackgrounds.js';
 import { ASSET_MANIFEST } from '../src/content/assets/AssetManifest.js';
 
 globalThis.Phaser = { Scene: class {}, Renderer: { WebGL: { Pipelines: { PostFXPipeline: class {} } } } };
@@ -154,7 +154,15 @@ for (const [gameState, key] of biomes) {
     const asset = ASSET_MANIFEST.find(asset => asset.key === key);
     assert.ok(asset && existsSync(asset.path));
     const png = readFileSync(asset.path);
-    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [512, 288]);
+    // 512x288, or drawn taller on purpose and hung from the top of the screen
+    // (TOP_PINNED_BACKGROUNDS): then at least as tall, about as wide.
+    const [w, h] = [png.readUInt32BE(16), png.readUInt32BE(20)];
+    if (TOP_PINNED_BACKGROUNDS.has(key)) {
+        assert.ok(h >= 288 && w >= 500, `${key} is at least 500x288 (${w}x${h})`);
+        assert.equal(host.fightBackgroundImage.y, 0, `${key} hangs from the top of the screen`);
+    } else {
+        assert.deepEqual([w, h], [512, 288]);
+    }
 }
 host.gameState = state;
 host.refreshFightBackground();

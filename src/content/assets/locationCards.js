@@ -122,6 +122,7 @@ export const LOCATION_DOOR_SHEETS = Object.freeze({
   thornwake: doorAnimRow(2), // the Briar March: briar-wrapped door
   silkdeep: doorAnimRow(3),  // the Silkdeep Caves: web-hung door
   tollroad: doorAnimRow(4),  // the King's Mile: iron-banded goblin door
+  frosthollow: doorAnimRow(5), // Frosthollow: ice-sealed door
 });
 const DOOR_OPEN_FPS = 12;
 

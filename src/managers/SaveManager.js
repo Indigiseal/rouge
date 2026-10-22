@@ -4,17 +4,19 @@ import { applyAmuletAtlasPresentation } from '../content/amulets/RelicsOthersAtl
 import { DEFAULT_WARRIOR_STANCE, WARRIOR_STANCES, normalizeCharacterId } from '../content/characters/CharacterClasses.js';
 import { PLAYER_START_HP } from '../systems/GameState.js';
 import { normalizeMonthIndex } from '../content/location-packs/index.js';
-import { normalizeActLocationIds } from '../content/locations/index.js';
+import { normalizeActLocationIds, normalizeLocationOffers } from '../content/locations/index.js';
 import { emptyVillageBuildings, normalizeVillageBuildings } from '../content/village/index.js';
 import { migrateSharedXp } from './MetaProgressionManager.js';
 import { normalizeWeaponIdentity } from '../content/cards/weapons.js';
+import { getMagic } from '../content/cards/magic.js';
+import { refreshFrostCardArt } from '../content/location-packs/frosthollow/index.js';
 
 export class SaveManager {
   constructor() {
     this.META_SAVE_KEY = 'metaProgression';
     this.RUN_SAVE_KEY = 'currentRun';
     this.SETTINGS_SAVE_KEY = 'gameSettings';
-    this.SAVE_VERSION = '1.0.7'; // Path locations: actLocationIds on the run
+    this.SAVE_VERSION = '1.0.9'; // Location identity passes; new effects have compatible defaults
     // Any currentRun with saveVersion < this is discarded so players start a
     // fresh Thornwake run instead of Continue into a skeleton board.
     this.RUN_MIN_COMPATIBLE_VERSION = '1.0.6';
@@ -158,6 +160,7 @@ export class SaveManager {
         maxHealth: gameState?.maxHealth ?? PLAYER_START_HP,
         actionsLeft: gameState?.actionsLeft ?? 15,
         maxActions: gameState?.maxActions ?? 15,
+        gluttonMaxApGained: gameState?.gluttonMaxApGained ?? 0,
         coins: gameState?.coins ?? 0,
         crystals: gameState?.crystals ?? 0,
         currentFloor: gameState?.currentFloor ?? 1,
@@ -165,6 +168,7 @@ export class SaveManager {
         actLocationIds: Array.isArray(gameState?.actLocationIds)
           ? [...gameState.actLocationIds]
           : [null, null, null],
+        locationOffers: normalizeLocationOffers(gameState?.locationOffers),
         warriorStance: gameState?.warriorStance ?? DEFAULT_WARRIOR_STANCE,
         // Added missing fields
         bonusInventorySlots: gameState?.bonusInventorySlots ?? 0,
@@ -195,6 +199,14 @@ export class SaveManager {
         shadowBlade: gameState?.shadowBlade || null,
         magicShield: gameState?.magicShield || null,
         boneWall: gameState?.boneWall ?? 0,
+        briarShield: gameState?.briarShield ?? 0,
+        mirrorSigilFloor: gameState?.mirrorSigilFloor ?? null,
+        mirrorSigilUses: gameState?.mirrorSigilUses ?? 0,
+        riposteReady: gameState?.riposteReady ?? false,
+        playerSapped: gameState?.playerSapped ?? false,
+        playerShocked: gameState?.playerShocked ?? false,
+        playerSandstormed: gameState?.playerSandstormed ?? false,
+        playerFrozenAttacks: gameState?.playerFrozenAttacks ?? 0,
         blockNextAttack: gameState?.blockNextAttack ?? false,
       },
       // Add damage tracking for death stats
@@ -275,6 +287,7 @@ export class SaveManager {
           maxHealth: parsed.player?.maxHealth ?? PLAYER_START_HP,
           actionsLeft: parsed.player?.actionsLeft ?? 15,
           maxActions: parsed.player?.maxActions ?? 15,
+          gluttonMaxApGained: parsed.player?.gluttonMaxApGained ?? 0,
           coins: parsed.player?.coins ?? 0,
           crystals: parsed.player?.crystals ?? 0,
           currentFloor: Number.isFinite(parsed.player?.currentFloor)
@@ -285,6 +298,7 @@ export class SaveManager {
             ? [...parsed.player.actLocationIds]
             : undefined,
           // Runs saved before stances existed have no field — default it.
+          locationOffers: normalizeLocationOffers(parsed.player?.locationOffers),
           warriorStance: WARRIOR_STANCES[parsed.player?.warriorStance]
             ? parsed.player.warriorStance
             : DEFAULT_WARRIOR_STANCE,
@@ -313,6 +327,14 @@ export class SaveManager {
           shadowBlade: parsed.effects?.shadowBlade || null,
           magicShield: parsed.effects?.magicShield || null,
           boneWall: parsed.effects?.boneWall ?? 0,
+          briarShield: parsed.effects?.briarShield ?? 0,
+          mirrorSigilFloor: parsed.effects?.mirrorSigilFloor ?? null,
+          mirrorSigilUses: parsed.effects?.mirrorSigilUses ?? 0,
+          riposteReady: parsed.effects?.riposteReady ?? false,
+          playerSapped: parsed.effects?.playerSapped ?? false,
+          playerShocked: parsed.effects?.playerShocked ?? false,
+          playerSandstormed: parsed.effects?.playerSandstormed ?? false,
+          playerFrozenAttacks: parsed.effects?.playerFrozenAttacks ?? 0,
           blockNextAttack: parsed.effects?.blockNextAttack ?? false,
         },
         damageTracking: parsed.damageTracking ?? {
@@ -410,6 +432,7 @@ export class SaveManager {
 
     run.player = run.player && typeof run.player === 'object' ? run.player : {};
     run.player.strategyDetourUsedAct = Number(run.player.strategyDetourUsedAct) || 0;
+    run.player.locationOffers = normalizeLocationOffers(run.player.locationOffers);
     run.player.actLocationIds = normalizeActLocationIds(
       run.player.actLocationIds,
       run.player.calendarMonthIndex,
@@ -436,7 +459,7 @@ export class SaveManager {
       run.equipment.inventory = run.equipment.inventory.map(item =>
         item?.type === 'amulet'
           ? applyAmuletAtlasPresentation(item)
-          : normalizeWeaponIdentity(this.removeLegacyBowBlock(item))
+          : normalizeWeaponIdentity(this.removeLegacyBowBlock(this.refreshMagicCard(item)))
       );
     }
     run.equipment.equippedWeapon = normalizeWeaponIdentity(
@@ -461,7 +484,7 @@ export class SaveManager {
         if (!c) return null;
         const data = c.data?.type === 'amulet'
           ? applyAmuletAtlasPresentation(c.data)
-          : normalizeWeaponIdentity(this.removeLegacyBowBlock(c.data ?? null));
+          : refreshFrostCardArt(normalizeWeaponIdentity(this.removeLegacyBowBlock(this.refreshMagicCard(c.data ?? null))));
         return {
           revealed: !!c.revealed,
           justRevealed: !!c.justRevealed,
@@ -486,6 +509,18 @@ export class SaveManager {
       return card;
     }
     return { ...card, special: null };
+  }
+
+  refreshMagicCard(card) {
+    if (card?.type === 'weapon' && card.enchant === 'restoration') {
+      const base = card.enchantBaseName || (typeof card.name === 'string' && card.name.startsWith('Mending ')
+        ? card.name.slice('Mending '.length) : null);
+      if (base) return { ...card, enchantBaseName: base, name: `Renewal ${base}` };
+    }
+    return card?.type === 'magic' && ['boneWall', 'smokeScreen'].includes(card.magicType)
+      ? { ...card, name: card.magicType === 'smokeScreen' ? getMagic('smokeScreen').name : card.name,
+          description: getMagic(card.magicType).description }
+      : card;
   }
 
   clearCurrentRun() { 

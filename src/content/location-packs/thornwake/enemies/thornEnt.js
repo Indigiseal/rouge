@@ -4,5 +4,6 @@ export default {
   role: 'MELEE',
   minFloor: 1,
   archetype: 'bruiser',
-  features: ['thorns_reflect'],
+  features: [],
+  sigils: [{ id: 'thorns' }],
 };

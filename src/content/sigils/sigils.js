@@ -10,9 +10,8 @@
 // cuffs, is no longer used.)
 //
 // Every sigil has an icon and a rule text; `works: true` marks the ones whose
-// player-side rule is built (systems/combat/SigilEffects.js). Thorns is the
-// Briar Room's thorn wrap, shown as a sigil. Enemy sigils are read off the traits enemies already
-// have, so they show without changing how any enemy plays.
+// player-side rule is built (systems/combat/SigilEffects.js). New location
+// creatures carry the same sigils; older traits still map to their icons.
 
 import { noteDiscovered } from '../codex/Discoveries.js';
 import { canWearStars, cardStars } from '../cards/legendaryStars.js';
@@ -37,16 +36,26 @@ export const SIGIL_MULTIPLIER = 1.5;   // never x2 — rounds down, both sides
 // on that side. `works`: true once the player-side rule is built.
 export const SIGILS = Object.freeze({
     venom:       { name: 'Venom',       frame: 15, side: 'both',   enemy: 'poisons you on hit', player: 'poisons the enemy hit: 1 for 3 turns', works: true },
-    thorns:      { name: 'Thorns',      frame: 16, side: 'both',   enemy: 'damages whoever hits it', player: '+1 damage (Briar Room)', works: true },
+    venomStack:  { name: 'Venom Stacking', frame: 15, side: 'both', enemy: 'on a connecting hit: existing poison deals +1 damage per tick', player: 'poison gems apply 1 extra poison stack', works: true },
+    venomSplash: { name: 'Venom Splash', frame: 15, side: 'player', player: 'poison gems also poison 1 nearby revealed enemy', works: true },
+    venomousBomb: { name: 'Venomous Bomb', frame: 15, side: 'player', player: '10% chance on a damaging hit: all revealed enemies take 3 poison damage for 3 turns', works: true },
+    thorns:      { name: 'Thorns',      frame: 16, side: 'both',   enemy: 'retaliates 1 damage when hit', player: 'on worn armor: retaliates 1 damage when attacked', works: true },
+    packStrength: { name: 'Pack Strength', frame: 24, side: 'both', enemy: '+1 attack per other revealed living ally', player: '+1 weapon damage per companion in your bag', works: true },
+    companionStrength: { name: 'Companion Strength', frame: 46, side: 'both', enemy: 'other revealed allies deal +1 damage', player: 'carried or worn: your companions deal +1 damage', works: true },
     sunder:      { name: 'Sunder',      frame: 17, side: 'both',   enemy: 'wears down your armor', player: 'each hit strips 1 armor from the enemy hit', works: true },
-    daze:        { name: 'Daze',        frame: 18, side: 'both',   enemy: 'can make you lose an action or miss', player: '20% chance on hit: the enemy hit (not a boss) misses its next attack', works: true },
+    daze:        { name: 'Sandstorm',   frame: 18, side: 'both',   enemy: '20% chance on a damaging hit: you miss your next weapon attack', player: '20% chance on a damaging hit: the enemy hit (not a boss) misses its next attack', works: true },
+    archerBane:  { name: 'Archer Bane', frame: 38, side: 'player', player: 'x1.5 weapon damage against ranged enemies', works: true },
+    wellFed:     { name: 'Well Fed', frame: 62, side: 'player', player: 'x1.5 weapon damage if you begin the attack at full action points', works: true },
+    forage:      { name: 'Forage', frame: 63, side: 'both', enemy: 'leaves ordinary food when defeated', player: '10% chance on a damaging hit: creates ordinary food in an empty board space', works: true },
+    quickStrike: { name: 'Quick Strike', frame: 39, side: 'both', enemy: '10% chance after dealing damage: attacks once more; cannot chain', player: '10% chance on a damaging hit: strikes the same surviving enemy once more, with no extra AP or pip cost; cannot chain', works: true },
     crushing:    { name: 'Crushing',    frame: 19, side: 'both',   enemy: 'can hit harder or ignore armor', player: '15% chance of a heavy hit: x1.5 and ignores enemy armor', works: true },
     cutpurse:    { name: 'Cutpurse',    frame: 20, side: 'both',   enemy: 'steals coins on hit', player: '+1 coin on each hit', works: true },
     leech:       { name: 'Leech',       frame: 21, side: 'both',   enemy: 'heals when it hits you', player: 'heals you 15% of the damage dealt', works: true },
     fleetfoot:   { name: 'Fleetfoot',   frame: 22, side: 'both',   enemy: 'your attacks can miss it', player: 'on armor: 10% chance to dodge a hit', works: true },
     desperate:   { name: 'Desperate',   frame: 23, side: 'both',   enemy: 'hits x1.5 harder near death', player: 'x1.5 while you are below a quarter health', works: true },
     outnumbered: { name: 'Outnumbered', frame: 24, side: 'both',   enemy: '+1 attack per other enemy on the board', player: '+1 damage per enemy on the board', works: true },
-    merciless:   { name: 'Merciless',   frame: 25, side: 'both',   enemy: 'x1.5 once you are below half health', player: 'x1.5 against enemies at half health or less', works: true },
+    merciless:   { name: 'Frozen Hammer', frame: 25, side: 'both', enemy: 'x1.5 while you are at half health or less', player: 'x1.5 against enemies at half health or less', works: true },
+    shatter:     { name: 'Shatter', frame: 57, side: 'both', enemy: 'x1.5 damage while you are frozen', player: 'x1.5 damage against a Frost-frozen target', works: true },
     ambush:      { name: 'Ambush',      frame: 26, side: 'both',   enemy: 'x1.5 while you are unhurt', player: 'x1.5 against unhurt enemies', works: true },
     unscathed:   { name: 'Unscathed',   frame: 27, side: 'both',   enemy: 'x1.5 until you chip it once', player: 'x1.5 while you are at full health', works: true },
     honed:       { name: 'Honed',       frame: 28, side: 'both',   enemy: '+1 attack after each attack this fight', player: '+1 damage for each hit in a row this fight; a miss resets it', works: true },
@@ -56,15 +65,19 @@ export const SIGILS = Object.freeze({
     // one hit, so it never reads as the fire gem.
     fireball:    { name: 'Fireball',    frame: 30, side: 'player', player: '10% chance on hit: a fireball flies at another random face-up enemy for half the hit', works: true },
     sapping:     { name: 'Sapping',     frame: 31, side: 'both',   enemy: '20% chance on hit: your next weapon hit deals 30% less', player: '20% chance on hit: the enemy hit deals 30% less on its next attack', works: true },
-    warding:     { name: 'Warding',     frame: 32, side: 'both',   enemy: 'gains armor after it attacks', player: '20% chance on hit: your armor is 20% stronger for a turn', works: true },
+    warding:     { name: 'Warding',     frame: 32, side: 'both',   enemy: 'restores 1 lost armor after attacking, up to its starting armor', player: '20% chance on hit: your armor is 20% stronger for a turn', works: true },
     mirror:      { name: 'Mirror',      frame: 33, side: 'both',   enemy: 'sends your next hit back', player: 'on armor: sends the first enemy attack each fight back', works: true },
-    regenerate:  { name: 'Regenerate',  frame: 34, side: 'both',   enemy: 'heals at the end of each turn', player: 'heals you 1 each enemy turn', works: true },
+    // Enchantment marker only; not added to the regular stamp reward pool.
+    bulwark:     { name: 'Bulwark',     frame: 32, side: 'player', player: 'on hit: chance to block the next enemy attack' },
+    briarGuard:  { name: 'Briar Guard', frame: 33, side: 'player', player: 'on hit: chance to reflect the next enemy attack' },
+    regenerate:  { name: 'Regenerate',  frame: 34, side: 'both',   enemy: 'heals every other revealed living ally 1 HP each enemy turn', player: 'carried or worn: heals you 1 HP per companion each enemy turn', works: true },
+    growth:      { name: 'Growth', frame: 48, side: 'both', enemy: 'gains maximum HP after attacking; does not heal', player: '+1 maximum HP on a damaging weapon hit; does not heal', works: true },
     devouring:   { name: 'Devouring',   frame: 35, side: 'player', player: '8% chance to kill a non-boss outright', works: true },
-    smoke:       { name: 'Smoke',       frame: 36, side: 'player', player: 'a kill hides another enemy', works: true },
+    smoke:       { name: 'Ash Cloud',   frame: 36, side: 'player', player: 'a kill hides another enemy', works: true },
     tempered:    { name: 'Tempered',    frame: 37, side: 'player', player: '30% chance this card keeps its pip', works: true },
     hunter:      { name: 'Hunter',      frame: 38, side: 'player', player: 'x1.5 against the enemy you hit last', works: true },
     combo:       { name: 'Combo',       frame: 39, side: 'player', player: 'x1.5 if your previous attack used a different weapon of the same type', works: true },
-    tandem:      { name: 'Tandem',      frame: 40, side: 'player', player: 'x1.5 if your previous attack hit for the same damage', works: true },
+    tandem:      { name: 'Tandem',      frame: 40, side: 'player', player: 'x1.5 if your previous attack hit for the same damage', works: true, retired: true },
     packrat:     { name: 'Packrat',     frame: 41, side: 'player', player: '+1 damage per empty bag slot', works: true },
     summon:      { name: 'Summon',      frame: 42, side: 'enemy',  enemy: 'calls a minion to fight beside it' },
     taunt:       { name: 'Taunt',       frame: 43, side: 'enemy',  enemy: 'must be attacked first' },
@@ -72,24 +85,28 @@ export const SIGILS = Object.freeze({
     barkskin:    { name: 'Barkskin',    frame: 45, side: 'enemy',  enemy: 'immune to ranged attacks' },
     rally:       { name: 'Rally',       frame: 46, side: 'enemy',  enemy: 'goblins attack more often' },
     // Placeholder icons (frames of similar sigils) until their own are drawn
-    // (Twin Socket, Keen, Bounty, Tsunami). Ransom wears Taya's red crystal
+    // (Twin Socket, Keen, Bounty, Scorched). Ransom wears Taya's red crystal
     // (47), Bloodlust her +1 (48).
     // Kinship buffs its neighbours, not itself (placeholder icon; frame 53 is its own).
     kinship:     { name: 'Kinship',     frame: 24, side: 'player', player: 'weapons in the bag slots next to this card hit +1', works: true },
     twinSocket:  { name: 'Twin Socket', frame: 56, side: 'player', player: 'a second gem socket: this weapon can hold two kinds of gem', works: true },
+    conductive:  { name: 'Conductive', frame: 56, side: 'player', player: 'lightning gems reach 1 additional revealed enemy', works: true },
+    shock:       { name: 'Shock', frame: 56, side: 'both', enemy: '10% chance on a damaging hit: shocks you or one carried companion; the target misses its next attack', player: '10% chance on a damaging hit: the target misses its next attack, including bosses', works: true },
+    charged:     { name: 'Charged', frame: 56, side: 'both', enemy: 'x1.5 damage while you are shocked', player: 'x1.5 damage against a shocked target', works: true },
     keen:        { name: 'Keen',        frame: 19, side: 'player', player: '+5% chance of a critical hit (x1.5)', works: true },
     ransom:      { name: 'Ransom',      frame: 47, side: 'player', player: 'a kill has a 10% chance to drop a crystal', works: true },
     bounty:      { name: 'Bounty',      frame: 20, side: 'player', player: 'a kill gives +2 coins', works: true },
     bloodlust:   { name: 'Bloodlust',   frame: 48, side: 'player', player: '+1 damage for each kill in a row this fight; a hit that does not kill resets it', works: true },
-    tsunami:     { name: 'Tsunami',     frame: 30, side: 'player', player: '10% chance on hit: a wave crashes over the board, 3 damage to every face-up enemy', works: true },
+    scorched:    { name: 'Scorched',    frame: 30, side: 'both', enemy: '10% chance on a damaging hit: adds 3 burn to the player; burn deals its counter then drops by 1', player: '10% chance on a damaging hit: adds 3 burn to every enemy, including hidden ones; burn deals its counter each turn, then drops by 1', works: true },
     // A buffer: it never acts twice itself, its side does. Frame 47 is its
     // own icon slot; until that is drawn it wears Rally's horn.
-    warcry:      { name: 'Warcry',      frame: 46, side: 'both',   enemy: 'other enemies: 10% chance to act twice', player: 'carried: your companions get 10% chance to act twice', works: true },
+    warcry:      { name: 'Warcry',      frame: 46, side: 'both',   enemy: 'other enemies: 10% chance to act twice', player: 'carried: your companions get 10% chance to act twice', works: true, retired: true },
     // Taya's numbered placeholder icons until the real ones are drawn.
     riposte:     { name: 'Riposte',     frame: 60, side: 'player', player: 'after you block a hit, this weapon\'s next hit deals +2', works: true },
-    mending:     { name: 'Mending',     frame: 61, side: 'player', player: '10% chance on hit: replenishes 2 pips on this weapon', works: true },
+    mending:     { name: 'Mending',     frame: 61, side: 'both', enemy: 'after attacking: restores 1 lost armor to another revealed ally', player: '10% chance on a damaging hit: restores 1 pip to a random damaged weapon or armor item, including worn armor', works: true },
+    reassemble:  { name: 'Reassemble',  frame: 61, side: 'enemy', enemy: 'returns once at half health unless its bone pile is destroyed first' },
     secondWind:  { name: 'Second Wind', frame: 62, side: 'player', player: '10% chance on hit: replenishes 2 action points', works: true },
-    charm:       { name: 'Charm',       frame: 64, side: 'player', player: '15% chance on hit: the enemy hit (not a boss) attacks another enemy instead of you on its next attack', works: true },
+    charm:       { name: 'Charm',       frame: 64, side: 'player', player: '15% chance on hit: the enemy hit (not a boss) attacks another enemy instead of you on its next attack', works: true, retired: true },
     scout:       { name: 'Scout',       frame: 63, side: 'player', player: '15% chance on hit: opens a face-down card that is not an enemy or a trap', works: true },
     // Four sigils that stop a card or an enemy for a turn, each its own.
     // Zap is never handed out: a card shows it while it can shock — the
@@ -97,25 +114,25 @@ export const SIGILS = Object.freeze({
     // Hatchling. Frost is offered like any sigil (and shown by Frost Ring).
     // Web and Ink are the Silkslinger's and the Ink Wraith's.
     zap:         { name: 'Zap',         frame: 56, side: 'player', player: 'small chance to paralyse the enemy hit: it skips its next turn' },
-    frost:       { name: 'Frost',       frame: 57, side: 'player', player: '25% chance to freeze the enemy hit: it skips its next turn (not bosses)', works: true },
-    web:         { name: 'Web',         frame: 58, side: 'enemy',  enemy: 'webs one of your cards: it can\'t be used next turn' },
+    frost:       { name: 'Frost', frame: 57, side: 'both', enemy: '10% chance on a damaging hit: freezes you or one companion for 2 attack attempts; refreshes instead of stacking', player: '25% chance to freeze the enemy hit: it skips its next turn (not bosses)', works: true },
+    web:         { name: 'Web',         frame: 58, side: 'both', enemy: 'webs one of your cards: it can\'t be used next turn', player: '15% chance on a damaging hit: the enemy hit misses its next attack (not bosses)', works: true },
     ink:         { name: 'Ink',         frame: 59, side: 'enemy',  enemy: 'inks one of your cards: it can\'t be used next turn' },
-    // Only the Crystal Lair gives it (lairOnly keeps it out of chests and the
-    // vault). The crystal spiders' theme: crystals and seeing what is hidden.
+    // Crystal Lair and Silkdeep's explicit local pool give it. lairOnly keeps
+    // it out of the legacy global fallback while other locations migrate.
     // Placeholder icon: Ransom's red crystal.
     crystalBrood: { name: 'Crystal Brood', frame: 47, side: 'player', player: 'a kill turns one face-down card over, with a 15% chance of a crystal', works: true, lairOnly: true },
 });
 
 // Player sigils that work today: the ones the vault and elite chests hand out.
 export const WORKING_PLAYER_SIGILS = Object.freeze(
-    Object.keys(SIGILS).filter((id) => SIGILS[id].works && SIGILS[id].side !== 'enemy' && !SIGILS[id].lairOnly)
+    Object.keys(SIGILS).filter((id) => SIGILS[id].works && SIGILS[id].side !== 'enemy' && !SIGILS[id].lairOnly && !SIGILS[id].retired)
 );
 
 // Which card types a sigil can go on. Most act when a weapon strikes;
 // Regenerate, Thorns, Tempered and Warcry also work from armor; Mirror and
 // Fleetfoot only do.
-const ARMOR_SIGILS = new Set(['regenerate', 'thorns', 'tempered', 'mirror', 'warcry', 'kinship', 'fleetfoot']);
-const ARMOR_ONLY_SIGILS = new Set(['mirror', 'fleetfoot']);
+const ARMOR_SIGILS = new Set(['regenerate', 'thorns', 'tempered', 'mirror', 'warcry', 'kinship', 'fleetfoot', 'companionStrength']);
+const ARMOR_ONLY_SIGILS = new Set(['mirror', 'fleetfoot', 'thorns']);
 export function sigilFitsCardType(id, card) {
     if (!card || !SIGILS[id]) return false;
     if (card.type === 'weapon') return !ARMOR_ONLY_SIGILS.has(id);
@@ -128,22 +145,24 @@ export function sigilFitsCardType(id, card) {
  * it already carries — a sigil is never repeated on a card.
  */
 export function canTakeSigil(card, id) {
+    if (SIGILS[id]?.retired) return false;
     if (!sigilFitsCardType(id, card)) return false;
     if (cardSigils(card).some((s) => s.id === id)) return false;
-    if (id === 'thorns') return true;
     return storedSigils(card).length < sigilCap(card);
 }
 
 // A Reliquary enchant shows as the sigil it becomes (design doc table).
 const ENCHANT_SIGIL = Object.freeze({
+    desertFeast: 'secondWind',
+    thunderclap: 'shock',
     frostRing: 'frost', shadowBlade: 'crushing', restoration: 'leech', fireball: 'fireball',
-    weakness: 'sapping', magicShield: 'warding', boneWall: 'mirror', soulDrain: 'devouring',
-    smokeScreen: 'smoke',
+    weakness: 'sapping', magicShield: 'warding', boneWall: 'bulwark', soulDrain: 'devouring',
+    smokeScreen: 'smoke', briarShield: 'briarGuard', venomousBomb: 'venomousBomb', scorched: 'scorched',
 });
 
 // An enemy's existing traits, as the sigils that will replace them.
 const FEATURE_SIGIL = Object.freeze({
-    poison_amp: 'venom', thorns_reflect: 'thorns', gnaw: 'sunder', club_stun: 'daze',
+    poison_amp: 'venomStack', thorns_reflect: 'thorns', gnaw: 'sunder', club_stun: 'daze',
     spore_on_hit: 'daze', heavy_shot: 'crushing', ignore_armor: 'crushing', coin_steal: 'cutpurse',
     wolf_pack: 'outnumbered', taunt: 'taunt', veil_flip: 'veil', ranged_immune: 'barkskin',
     goblin_rally: 'rally',
@@ -159,7 +178,7 @@ export function getSigil(id) {
 
 // Sigils renamed since a save was written: Arrest became Frost; Ember became
 // Ripple, then Fireball.
-const RENAMED_SIGILS = Object.freeze({ arrest: 'frost', ember: 'fireball', ripple: 'fireball' });
+const RENAMED_SIGILS = Object.freeze({ arrest: 'frost', ember: 'fireball', ripple: 'fireball', tsunami: 'scorched' });
 
 /** The sigils stored on a card: [{ id, level }], never undefined. */
 export function storedSigils(card) {
@@ -217,18 +236,12 @@ export function sigilLevel(card, id) {
 
 /**
  * Put a sigil on a card: it takes a free slot, up to SIGIL_CAP. Returns false
- * when the card is full or already carries it (sigils never repeat). Thorns
- * is the Briar Room's wrap, so it sets that bonus instead.
+ * when the card is full, incompatible or already carries it.
  */
 export function addSigil(card, id) {
-    if (!card || !SIGILS[id]) return false;
+    if (!card || !SIGILS[id] || SIGILS[id].retired) return false;
     if (cardSigils(card).some((s) => s.id === id)) return false;
-    if (id === 'thorns') {
-        card.briarDamageBonus = 1;
-        if (card.type === 'weapon') card.damage = (card.damage || 0) + 1;
-        else if (card.type === 'armor') card.thornDamage = 1;
-        return true;
-    }
+    if (!sigilFitsCardType(id, card)) return false;
     const list = storedSigils(card).map((s) => ({ ...s }));
     if (list.length >= sigilCap(card)) return false;
     list.push({ id, level: 1 });
@@ -277,7 +290,7 @@ export function sigilLine(id, level = 1, side = 'player') {
 /** Ids of the sigils taken this run. */
 export function takenSigils(gameState) {
     const list = gameState?.storyRun?.sigilsTaken;
-    return Array.isArray(list) ? list : [];
+    return Array.isArray(list) ? [...new Set(list.map(id => RENAMED_SIGILS[id] || id))] : [];
 }
 
 /** Note that the player took sigil `id` this run. */

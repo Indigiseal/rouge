@@ -75,6 +75,8 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     // blocking it. Dodge still applies (you can shrug off a tick), but it must
     // not cost durability either, or leather bleeds a pip every poison turn.
     const isPoison = source === 'poison';
+    const isBurn = source === 'burn';
+    const isDamageOverTime = isPoison || isBurn;
 
     if (source === 'poison' && (
         gameState.relicEffects?.poisonImmunity
@@ -96,7 +98,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     // Rolled alongside the amulet dodge rather than folded into it so the
     // floating text can tell the player which one saved them.
     const talentDodge = gameState.talentEffects?.shadowStepDodge || 0;
-    if (!isPoison && talentDodge > 0 && Math.random() < talentDodge) {
+    if (!isDamageOverTime && talentDodge > 0 && Math.random() < talentDodge) {
         if (gameState.equippedArmor) gameState.tickEquippedArmorDurability();
         scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Shadow Step!', 0x71b1ae);
         playDodgeWhoosh(scene);
@@ -107,7 +109,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     }
 
     const villageDodge = gameState.talentEffects?.villageDodge || 0;
-    if (!isPoison && villageDodge > 0 && Math.random() < villageDodge) {
+    if (!isDamageOverTime && villageDodge > 0 && Math.random() < villageDodge) {
         if (gameState.equippedArmor) gameState.tickEquippedArmorDurability();
         scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Armory!', 0x3f818f);
         playDodgeWhoosh(scene);
@@ -119,7 +121,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
 
     // Check for dodge (from amulets)
     if (scene.amuletManager && scene.amuletManager.checkDodge()) {
-        if (gameState.equippedArmor && !isPoison) gameState.tickEquippedArmorDurability();
+        if (gameState.equippedArmor && !isDamageOverTime) gameState.tickEquippedArmorDurability();
         scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodged!', 0x71800b);
         playDodgeWhoosh(scene);
         return {
@@ -132,7 +134,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     }
 
     // Fleetfoot (armor sigil): a dodge, worn like the armor's own.
-    if (!isPoison && Math.random() < fleetfootDodgeChance(gameState)) {
+    if (!isDamageOverTime && Math.random() < fleetfootDodgeChance(gameState)) {
         gameState.tickEquippedArmorDurability();
         scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Fleetfoot!', 0x71800b);
         playDodgeWhoosh(scene);
@@ -175,13 +177,13 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     let ignoreArmor = Boolean(options?.ignoreArmor);
     const ignoreArmorChance = Math.max(0, Number(options?.ignoreArmorChance) || 0);
 
-    if (gameState.equippedArmor) {
+    if (gameState.equippedArmor && !isBurn) {
         // Handle Dodge from equipped armor — durability ticks on dodge.
         const armorDodge = effectiveArmorDodge(gameState, gameState.equippedArmor);
         if (armorDodge > 0 && Math.random() < armorDodge) {
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y, 'Dodge!', 0x71800b);
             playDodgeWhoosh(scene);
-            if (!isPoison) gameState.tickEquippedArmorDurability();
+            if (!isDamageOverTime) gameState.tickEquippedArmorDurability();
             return {
                 actualDamage: 0,
                 tookDamage: false,
@@ -213,7 +215,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
     // (Goblin Archer): DEF does not apply and durability does not tick.
     if (
         !ignoreArmor
-        && !isPoison
+        && !isDamageOverTime
         && ignoreArmorChance > 0
         && amount > 0
         && Math.random() < ignoreArmorChance
@@ -229,7 +231,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         }
     }
 
-    if (gameState.equippedArmor && !ignoreArmor) {
+    if (gameState.equippedArmor && !ignoreArmor && !isBurn) {
         // Add protection from equipped armor (leather is dodge-only: protection 0),
         // including any Magic Shield / Warding boost. Shared with the armor card's
         // displayed number so the two can never disagree.
@@ -259,7 +261,7 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
         // Durability tick when armor's protection actually absorbs a hit.
         // (Dodge-only leather never enters here — it ticks on dodge above.)
         // Rivets save chance lives inside tickEquippedArmorDurability.
-        if (protection > 0 && amount > 0 && !isPoison) {
+        if (protection > 0 && amount > 0 && !isDamageOverTime) {
             gameState.tickEquippedArmorDurability();
         }
     }
@@ -269,8 +271,8 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
 
     // armor_break (boss ability) pierces some of the player's protection so the
     // hit lands harder. Never turns armor into a damage bonus — just reduces it.
-    // Poison bypasses protection outright — plate is no defence against venom.
-    const effectiveProtection = isPoison
+    // Poison and burn bypass protection without wearing armor.
+    const effectiveProtection = isDamageOverTime
         ? 0
         : Math.max(0, protection - Math.max(0, armorPierce));
     const actualDamage = Math.max(0, amount - effectiveProtection);

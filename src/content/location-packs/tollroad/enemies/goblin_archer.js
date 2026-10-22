@@ -5,6 +5,6 @@ export default {
   role: 'RANGED',
   minFloor: 1,
   archetype: 'artillery',
-  features: ['ignore_armor'],
+  features: [],
   goblinAlly: true,
 };
