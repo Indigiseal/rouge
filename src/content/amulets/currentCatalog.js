@@ -1,6 +1,7 @@
 // Current offerable amulet catalog (common → legendary).
 import { getAmuletAtlasPresentation } from './RelicsOthersAtlas.js';
 import { SANDGLASS_SCARAB } from './sandglassScarab.js';
+import { spiceFoodActions } from './sandspicePouch.js';
 
 /** @param {object} mgr AmuletManager instance (bound as `this` for arrow hooks). */
 // Max action points from an amulet, both the cap and the points in hand.
@@ -80,10 +81,33 @@ export function buildCurrentAmuletDefinitions(mgr) {
             },
             monocle: {
                 ...getAmuletAtlasPresentation('monocle'),
-                name: 'Monocle',
-                description: '10% chance to find a crystal when killing an enemy',
                 rarity: 'uncommon',
-                crystalOnKillChance: 0.1,
+                crystalOnKillChance: 0.03,
+            },
+            goblinSpyglass: {
+                ...getAmuletAtlasPresentation('goblinSpyglass'),
+                rarity: 'uncommon',
+                scoutOnHitChance: 0.15,
+            },
+            boneSpool: {
+                ...getAmuletAtlasPresentation('boneSpool'),
+                rarity: 'uncommon',
+                repairOnDiscard: true,
+            },
+            mossyStone: {
+                ...getAmuletAtlasPresentation('mossyStone'),
+                rarity: 'uncommon',
+                maxHpPerMerge: 1,
+            },
+            duneQuiver: {
+                ...getAmuletAtlasPresentation('duneQuiver'),
+                rarity: 'uncommon',
+                bowDamageBonus: 1,
+            },
+            travelKitchen: {
+                ...getAmuletAtlasPresentation('travelKitchen'),
+                rarity: 'uncommon',
+                modifyFoodAP: spiceFoodActions,
             },
             pouchOfGreed: {
                 ...getAmuletAtlasPresentation('pouchOfGreed'),
@@ -109,22 +133,16 @@ export function buildCurrentAmuletDefinitions(mgr) {
             },
             runeOfFire: {
                 ...getAmuletAtlasPresentation('runeOfFire'),
-                name: 'Rune of Fire',
-                description: 'Fire gem splash radius x1.5',
                 rarity: 'uncommon',
                 fireSplashRadiusMultiplier: 1.5,
             },
             runeOfZap: {
                 ...getAmuletAtlasPresentation('runeOfZap'),
-                name: 'Rune of Zap',
-                description: 'Lightning gems bounce to 1 extra enemy',
                 rarity: 'uncommon',
                 lightningExtraBounces: 1,
             },
             runeOfPoison: {
                 ...getAmuletAtlasPresentation('runeOfPoison'),
-                name: 'Rune of Poison',
-                description: 'Poison gems also poison 1 nearby enemy',
                 rarity: 'uncommon',
                 poisonGemSplashTargets: 1,
             },
@@ -145,22 +163,16 @@ export function buildCurrentAmuletDefinitions(mgr) {
             },
             greaterRuneOfFire: {
                 ...getAmuletAtlasPresentation('greaterRuneOfFire'),
-                name: 'Greater Rune of Fire',
-                description: '+20% fire gem damage (rounded up)',
                 rarity: 'rare',
                 fireGemDamageBonus: 0.2,
             },
             greaterRuneOfZap: {
                 ...getAmuletAtlasPresentation('greaterRuneOfZap'),
-                name: 'Greater Rune of Zap',
-                description: '+20% Zap gem damage (rounded up)',
                 rarity: 'rare',
                 zapGemDamageBonus: 0.2,
             },
             greaterRuneOfPoison: {
                 ...getAmuletAtlasPresentation('greaterRuneOfPoison'),
-                name: 'Greater Rune of Poison',
-                description: '+2 poison gem tick damage',
                 rarity: 'rare',
                 poisonGemTickBonus: 2,
             },
@@ -188,8 +200,6 @@ export function buildCurrentAmuletDefinitions(mgr) {
             },
             vacancyStep: {
                 ...getAmuletAtlasPresentation('vacancyStep'),
-                name: 'Close Order',
-                description: 'The first time revealed enemies stand apart, a hook pulls them together: they swap with face-down cards to stand as neighbors.',
                 rarity: 'rare',
                 strategyCluster: true,
             },

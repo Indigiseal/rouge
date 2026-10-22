@@ -18,6 +18,8 @@ export const ENEMY_DEATH_FAMILIES = Object.freeze({
     bog: ['bogSlug', 'drowned', 'mireBrute', 'fenSpitter', 'lavaSlime'],
     ghosts: ['lostSoul', 'hollowMourner', 'veilRipper', 'inkWraith', 'graveCantor'],
     fire: ['emberMaw', 'cinderLizard', 'cinderBrute', 'slagSpitter'],
+    // Storm's Cloudborn (assets/art/stormhatch/), sounds ready before the roster is wired.
+    storm: ['cloudbornGuard', 'lightningBee', 'stormGolem', 'lightningEye', 'cloudbornArcher', 'stormArchon'],
 });
 
 /** Every enemy kind with a death sound of its own. */

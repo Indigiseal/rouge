@@ -517,6 +517,7 @@ function dealBoardCardsIn() {
             });
         }
 
+        card._openingDeal = true;
         sprite.y = restY - DEAL_DROP_HEIGHT;
         // A card in the air must not be clickable: flipping one mid-fall would
         // reveal it at whatever height it had reached. Switch the input object
@@ -536,6 +537,7 @@ function dealBoardCardsIn() {
                 this.syncControlMarkers?.(card);
             },
             onComplete: () => {
+                card._openingDeal = false;
                 if (!sprite.scene) return;
                 snapOriginToPixelGrid(sprite);
                 this.syncControlMarkers?.(card);

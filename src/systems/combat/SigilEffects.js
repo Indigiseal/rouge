@@ -13,12 +13,13 @@ import { SIGIL_MULTIPLIER, hasStoredSigil, sigilLevel } from '../../content/sigi
 import { ENCHANT_FIREBALL_CHANCE, ENCHANT_SAPPING_CHANCE } from '../../content/balance/WeaponEnchants.js';
 import { fireDamageAgainst } from '../../content/combat/fireResist.js';
 import { SHOCK_CHANCE } from '../../content/combat/storm.js';
-import { freezeEnemy, isFrostFrozen } from '../../content/combat/frost.js';
+import { freezeEnemy, isFrostFrozen, ECHO_CHANCE, ECHO_DAMAGE_SHARE } from '../../content/combat/frost.js';
 import { repairRandomDamagedItem } from '../inventory/ItemRepair.js';
 import { t, translateItemName } from '../../i18n/i18n.js';
 import { applyVenomousBomb, entangleEnemy, WEB_CHANCE, VENOMOUS_BOMB_CHANCE } from '../../content/combat/silkdeep.js';
 import { applyScorched, SCORCHED_CHANCE } from '../../content/combat/ashhowl.js';
-import { sandAttackConditions, canRepeatStrike, FORAGE_CHANCE, QUICK_STRIKE_CHANCE } from '../../content/combat/sandreach.js';
+import { sandAttackConditions, FORAGE_CHANCE, QUICK_STRIKE_CHANCE } from '../../content/combat/sandreach.js';
+import { canRepeatStrike } from '../../content/combat/extraStrike.js';
 import { spawnForagedFood } from '../board/FoodForage.js';
 
 // Tuning, all per sigil level unless noted.
@@ -415,8 +416,11 @@ export function onWeaponSigilHit(scene, weapon, targetCard, {
             fired.push('secondWind');
         }
     }
-    // Scout: opens one face-down card that is neither an enemy nor a trap.
-    if (damageDealt > 0 && sigilLevel(weapon, 'scout') > 0 && Math.random() < SCOUT_CHANCE && scoutOneCard(scene)) {
+    // Spyglass replaces new Scout rewards. A legacy Scout and the amulet
+    // share one reveal roll; neither can expose an enemy or a trap.
+    const scoutChance = Math.max(sigilLevel(weapon, 'scout') > 0 ? SCOUT_CHANCE : 0,
+        scene.amuletManager?.getScoutOnHitChance?.() || 0);
+    if (damageDealt > 0 && scoutChance > 0 && Math.random() < scoutChance && scoutOneCard(scene)) {
         fired.push('scout');
     }
     // Riposte: the block's +2 is spent on this swing, hit or miss.
@@ -440,16 +444,21 @@ export function onWeaponSigilHit(scene, weapon, targetCard, {
 
     // Copy this swing through ordinary armor/dodge/gem/death handling. The
     // repeated hit may trigger other sigils, but cannot roll another repeat.
-    if (allowExtraStrike && repeatDamage > 0 && canRepeatStrike(scene, weapon, targetCard, damageDealt)
-        && Math.random() < QUICK_STRIKE_CHANCE) {
-        const index = cs.boardCards.indexOf(targetCard);
-        const before = targetCard.data.health;
-        cs.attackEnemy(index, repeatDamage, false, weapon, true);
-        onWeaponSigilHit(scene, weapon, targetCard, {
-            damageDealt: Math.max(0, before - Math.max(0, targetCard.data.isBonePile ? 0 : targetCard.data.health)),
-            swingDamage, repeatDamage, allowExtraStrike: false,
-        });
-        fired.push('quickStrike');
+    for (const [id, chance, extraDamage] of [
+        ['quickStrike', QUICK_STRIKE_CHANCE, repeatDamage],
+        ['echo', ECHO_CHANCE, Math.floor(repeatDamage * ECHO_DAMAGE_SHARE)],
+    ]) {
+        if (allowExtraStrike && extraDamage > 0 && canRepeatStrike(scene, weapon, targetCard, damageDealt, id)
+            && Math.random() < chance) {
+            const index = cs.boardCards.indexOf(targetCard);
+            const before = targetCard.data.health;
+            cs.attackEnemy(index, extraDamage, false, weapon, true);
+            onWeaponSigilHit(scene, weapon, targetCard, {
+                damageDealt: Math.max(0, before - Math.max(0, targetCard.data.isBonePile ? 0 : targetCard.data.health)),
+                swingDamage, repeatDamage: extraDamage, allowExtraStrike: false,
+            });
+            fired.push(id);
+        }
     }
     return fired;
 }

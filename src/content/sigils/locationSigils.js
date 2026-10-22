@@ -11,7 +11,7 @@ export const LOCATION_SIGIL_POOLS = Object.freeze({
     veilbleed: Object.freeze(['leech', 'sapping', 'devouring', 'fleetfoot', 'bloodlust']),
     mireturn: Object.freeze(['regenerate', 'unscathed', 'growth']),
     stormhatch: Object.freeze(['conductive', 'shock', 'charged', 'twinSocket']),
-    frosthollow: Object.freeze(['frost', 'shatter', 'merciless']),
+    frosthollow: Object.freeze(['frost', 'shatter', 'merciless', 'echo']),
     sandreach: Object.freeze(['secondWind', 'daze', 'archerBane', 'wellFed', 'forage', 'quickStrike']),
 });
 

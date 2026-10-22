@@ -22,6 +22,7 @@ export const DEFAULT_STORY_RUN = Object.freeze({
   birdAngry: false,
   stoleBirdEgg: false,
   nestRaidTimedOut: false,
+  birdNestSeen: false,
   latchboxRewardClaimed: false,
   goblinEngineerResolved: false,
   chickHatched: false,

@@ -31,12 +31,3 @@ export function sandAttackConditions(weapon, target, gameState, actionsBefore = 
         && actionsBefore >= gameState.maxActions) ids.push('wellFed');
     return ids;
 }
-
-export function canRepeatStrike(scene, weapon, target, damageDealt) {
-    return damageDealt > 0 && scene?.gameState?.playerHealth > 0
-        && sigilLevel(weapon, 'quickStrike') > 0 && target?.revealed
-        && ['enemy', 'eliteEnemy', 'boss'].includes(target.data?.type)
-        && target.data.health > 0 && !target.data.isBonePile && !target.data.isCocoon
-        && !target.data.features?.includes('cocoon_shell')
-        && (scene.cardSystem?.boardCards || []).includes(target);
-}

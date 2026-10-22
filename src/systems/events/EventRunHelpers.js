@@ -14,6 +14,7 @@ import { revealHiddenPaths } from '../../map/HiddenPaths.js';
 import { SOUP_ROBBERY_SHARE, SOUP_STAND_PURSE } from '../../content/events/soup_stand.js';
 import { ROBBED_TRAVELLER_AMULET } from '../../content/events/robbed_traveller.js';
 import { EGG_HATCH_FIGHTS } from '../../content/cards/eggHatching.js';
+import { legacyNestHasCog, legacyNestNeedsEngineer } from '../../content/story/StormStories.js';
 import { actOffsetForFloor } from '../../content/location-packs/calendar.js';
 import { CORRIDOR_FED_CRYSTALS, CORRIDOR_ROUND_CRYSTALS, CORRIDOR_ROUND_HP } from '../../content/events/webbed_corridor.js';
 
@@ -123,16 +124,20 @@ export const EventRunHelpers = {
 
   resolveBirdNestRaid(result = {}) {
     this.ensureStoryState();
+    const hasLegacyBox = legacyNestHasCog(this.gameState);
+    const needsEngineer = legacyNestNeedsEngineer(this.gameState);
+    this._birdNestLegacyCog = hasLegacyBox;
     this.clearPendingEvent('monster_bird_nest');
     const story = this.gameState.storyRun;
+    story.birdNestSeen = true;
     const timedOut = Boolean(result.timedOut);
     story.nestRaidTimedOut = timedOut;
-    this.markHeroMemory('learnedBirdNestHasCog');
+    if (hasLegacyBox) this.markHeroMemory('learnedBirdNestHasCog');
 
-    const canTakeCog = story.boxState !== 'exploded' && Boolean(result.tookCog) && !timedOut;
+    const canTakeCog = hasLegacyBox && Boolean(result.tookCog) && !timedOut;
     const canTakeEgg = Boolean(result.tookEgg) && !timedOut;
 
-    if (story.boxState !== 'exploded') {
+    if (hasLegacyBox) {
       story.boxHasCog = canTakeCog;
       if (canTakeCog) story.boxState = 'has_cog';
     }
@@ -145,7 +150,8 @@ export const EventRunHelpers = {
       this.addEgg();
     }
     if (canTakeCog) this._reward('event.reward.brassCog');
-    this.addPendingEvent('goblin_engineer');
+    if (needsEngineer) this.addPendingEvent('goblin_engineer');
+    return { tookCog: canTakeCog, tookEgg: canTakeEgg, timedOut };
   },
 
   hasPotion() {

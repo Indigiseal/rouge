@@ -2,15 +2,16 @@
 
 Frosthollow is selectable in every act, using the existing `frosthollow` ID.
 Its identity is freezing attacks and exploiting frozen or weakened targets.
-Echo's rule and the final location name/art remain open.
+Echo's first playtest rule is implemented. Final location name/art remain open.
 
 | Sigil | Rule |
 | --- | --- |
 | Frost | Existing 25% chance on a damaging hit: the struck non-boss misses its next attack to freeze. |
 | Shatter | x1.5 weapon damage against a Frost-frozen target, rounded down. |
 | Frozen Hammer | Existing Merciless rule: x1.5 against a target at half HP or less, rounded down. |
+| Echo | 10% after a damaging hit: strikes the same surviving target again for half weapon-swing damage, rounded down, with no extra AP or pip spent. Cannot chain. |
 
-All three fit weapons. Shatter and Frozen Hammer are separate conditions and
+All four fit weapons. Shatter and Frozen Hammer are separate conditions and
 can multiply together using ordinary sigil caps and sequential rounding.
 Shock and Web's shared hold counter does not count as Frost for Shatter.
 Charged remains Storm's corresponding Shock damage bonus.
@@ -21,8 +22,22 @@ logic. Only the displayed name changes. Enemy-side Frozen Hammer also retains
 its existing at-half-health-or-less condition.
 
 Frost and Shatter temporarily share the ice icon; Frozen Hammer keeps its old
-icon. All three use the existing turtle stamp provisionally until Frost's
+icon. Echo reuses the existing double-strike icon provisionally. All four use the existing turtle stamp until Frost's
 stamp is chosen. There is no new resistance or immunity.
+
+Echo copies half of the resolved input swing, after its class/sigil adjustments,
+through the ordinary weapon-hit pipeline: armor, evasion, amulet/enchantment
+modifiers, gems, on-hit effects and death handling still apply. It does not
+recompute the primary swing's sigil multipliers or spend another pip/AP. Odd
+input damage rounds down; a zero rounded strike does nothing. It can hit bosses
+and trigger from a weapon's final pip. It never retargets a dead/replaced card,
+hidden enemy, cocoon or bone pile. Echo and Quick Strike share one no-chain
+guard. Both may independently trigger from a primary hit, but neither secondary
+hit can trigger either extra-attack sigil. The enemy roster is unchanged.
+
+`npm run test:echo` checks real inventory attacks, half-damage rounding, armor,
+bosses, AP/pip costs, last-pip attacks, normal on-hit effects, mixed-sigil
+non-chaining, invalid targets, exact proc boundaries and saved sigils.
 
 ## Freeze consistency
 

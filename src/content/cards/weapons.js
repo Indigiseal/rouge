@@ -167,6 +167,14 @@ export const WEAPON_SPAWN_MIN_FLOOR_BY_CLASS = Object.freeze({});
  * predicate, so the combat gate and the bot's target planner cannot drift apart
  * on the answer the way the stalemate detector once did.
  */
+export function isRangedWeaponCard(weapon) {
+  if (!weapon) return false;
+  const name = String(weapon.name || weapon.id || '').toLowerCase();
+  return weapon.range === 'ranged' || weapon.isRanged === true
+    || weapon.weaponType === 'bow' || weapon.subType === 'bow'
+    || name.includes('bow') || name.includes('crossbow');
+}
+
 export function weaponIgnoresFrontline(weapon) {
   if (!weapon) return false;
   // `reach` remains valid for cards loaded from older saves.

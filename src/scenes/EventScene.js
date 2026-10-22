@@ -6,6 +6,7 @@
 
 import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
 import { loadHeroMemory, saveHeroMemory, saveStoryProgress } from '../content/story/StoryProgress.js';
+import { legacyNestHasCog, stormStoryEventIds } from '../content/story/StormStories.js';
 import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
@@ -212,8 +213,7 @@ export class EventScene extends Phaser.Scene {
       && (!this.hasAmulet('fireRuneStone') || !this.hasAmulet('lightningRune') || !this.hasAmulet('poisonRune'))) {
       bonusFillers.push('screaming_head');
     }
-    if (locationId === 'brassfair' && !story.carnivalVisited) bonusFillers.push('something_wicked');
-    if (locationId === 'brassfair' && story.carnivalVisited && !story.brassWizardSeen) bonusFillers.push('brass_wizard');
+    bonusFillers.push(...stormStoryEventIds(this.gameState, locationId));
     if (this.getQualifyingCompanions().length > 0) bonusFillers.push('old_drill_room');
     if (bonusFillers.length > 0) {
       return this.getEventById(bonusFillers[Math.floor(Math.random() * bonusFillers.length)]);
@@ -326,6 +326,7 @@ export class EventScene extends Phaser.Scene {
       birdAngry: false,
       stoleBirdEgg: false,
       nestRaidTimedOut: false,
+      birdNestSeen: false,
       latchboxRewardClaimed: false,
       goblinEngineerResolved: false,
       chickHatched: false,
@@ -429,6 +430,7 @@ export class EventScene extends Phaser.Scene {
       birdAngry: Boolean(existingStoryRun.birdAngry),
       stoleBirdEgg: Boolean(existingStoryRun.stoleBirdEgg),
       nestRaidTimedOut: Boolean(existingStoryRun.nestRaidTimedOut),
+      birdNestSeen: Boolean(existingStoryRun.birdNestSeen || existingStoryRun.stoleBirdEgg || existingStoryRun.nestRaidTimedOut),
       latchboxRewardClaimed: Boolean(existingStoryRun.latchboxRewardClaimed),
       goblinEngineerResolved: typeof existingStoryRun.goblinEngineerResolved === 'boolean'
         ? existingStoryRun.goblinEngineerResolved
@@ -2353,7 +2355,7 @@ export class EventScene extends Phaser.Scene {
       bg?.setAlpha?.(0);
       label?.setAlpha?.(0);
     });
-    const includeCog = this.gameState?.storyRun?.boxState !== 'exploded';
+    const includeCog = legacyNestHasCog(this.gameState);
     this._birdNestHandle = openBirdNestMinigame(this, {
       includeCog,
       onDone: (result) => {
@@ -2373,12 +2375,12 @@ export class EventScene extends Phaser.Scene {
   _finishBirdNestSearch(result = {}) {
     this._rewardLines = [];
     this._rewardIcons = [];
-    this.resolveBirdNestRaid(result);
-    let outcome = this.isMusicBoxExploded() ? NEST_LEFT_NO_BOX : NEST_LEFT;
-    if (result.timedOut) outcome = NEST_TIMEOUT;
-    else if (result.tookCog && result.tookEgg) outcome = NEST_TOOK_BOTH;
-    else if (result.tookCog) outcome = NEST_TOOK_COG;
-    else if (result.tookEgg) outcome = NEST_TOOK_EGG;
+    const resolved = this.resolveBirdNestRaid(result);
+    let outcome = this._birdNestLegacyCog ? NEST_LEFT : NEST_LEFT_NO_BOX;
+    if (resolved.timedOut) outcome = NEST_TIMEOUT;
+    else if (resolved.tookCog && resolved.tookEgg) outcome = NEST_TOOK_BOTH;
+    else if (resolved.tookCog) outcome = NEST_TOOK_COG;
+    else if (resolved.tookEgg) outcome = NEST_TOOK_EGG;
     this.birdNestOutcome = outcome;
     this.gameScene?.updateUI?.();
     this._resolve({
@@ -3101,6 +3103,7 @@ export class EventScene extends Phaser.Scene {
   // Marks the once-per-run bonus rooms as seen when they resolve.
   _markBonusEventSeen() {
     const flagByEvent = {
+      monster_bird_nest: 'birdNestSeen',
       mirror: 'mirrorSeen',
       abandoned_camp: 'abandonedCampSeen',
       old_chute: 'oldChuteSeen',

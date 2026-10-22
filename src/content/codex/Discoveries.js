@@ -5,10 +5,11 @@
 // or a save that is cleared, never un-discovers anything. Only Reset Progress
 // does (MainMenuScene.confirmResetProgress).
 import { BOSSES } from '../cards/bosses.js';
-import { SIGILS } from '../sigils/sigils.js';
+import { SIGILS, RENAMED_SIGILS, enemySigils } from '../sigils/sigils.js';
+import { FROSTHOLLOW_ENEMY_ALIASES } from '../location-packs/frosthollow/index.js';
 
 export const CODEX_STORAGE_KEY = 'codexDiscoveries';
-export const CODEX_KINDS = Object.freeze(['enemies', 'bosses', 'stories', 'sigils', 'amulets']);
+export const CODEX_KINDS = Object.freeze(['enemies', 'bosses', 'stories', 'sigils', 'amulets', 'magic']);
 
 let cache = null;
 
@@ -32,6 +33,13 @@ function load() {
     for (const kind of CODEX_KINDS) {
       if (parsed?.[kind] && typeof parsed[kind] === 'object') cache[kind] = { ...parsed[kind] };
     }
+    // A renamed sigil keeps the player's discovery, just like saved cards do.
+    for (const [oldId, id] of Object.entries(RENAMED_SIGILS)) {
+      if (cache.sigils[oldId]) cache.sigils[id] = true;
+    }
+    for (const [oldId, id] of Object.entries(FROSTHOLLOW_ENEMY_ALIASES)) {
+      if (cache.enemies[oldId]) cache.enemies[id] = true;
+    }
   } catch {
     // A corrupt entry starts the Codex over rather than breaking the game.
   }
@@ -47,11 +55,13 @@ function save() {
 }
 
 export function isDiscovered(kind, id) {
+  if (kind === 'sigils') id = RENAMED_SIGILS[id] || id;
   return Boolean(load()[kind]?.[id]);
 }
 
 /** Records `id` under `kind`. Returns true the first time it is seen. */
 export function noteDiscovered(kind, id) {
+  if (kind === 'sigils') id = RENAMED_SIGILS[id] || id;
   if (!CODEX_KINDS.includes(kind) || typeof id !== 'string' || !id) return false;
   const data = load();
   if (data[kind][id]) return false;
@@ -76,13 +86,14 @@ export function bossIdForCard(data) {
  */
 export function noteCardDiscovered(data) {
   if (!data) return;
+  if (data.type === 'magic' && data.magicType) noteDiscovered('magic', data.magicType);
   if (data.type === 'enemy' && data.enemyType) noteDiscovered('enemies', data.enemyType);
   if (data.type === 'boss') {
     const bossId = bossIdForCard(data);
     if (bossId) noteDiscovered('bosses', bossId);
   }
   if (data.type === 'enemy' || data.type === 'boss') {
-    for (const sigil of Array.isArray(data.sigils) ? data.sigils : []) {
+    for (const sigil of enemySigils(data, { lockKind: data.enemyType === 'inkWraith' ? 'ink' : null })) {
       if (SIGILS[sigil?.id]) noteDiscovered('sigils', sigil.id);
     }
   }

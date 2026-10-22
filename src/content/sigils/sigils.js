@@ -56,6 +56,7 @@ export const SIGILS = Object.freeze({
     outnumbered: { name: 'Outnumbered', frame: 24, side: 'both',   enemy: '+1 attack per other enemy on the board', player: '+1 damage per enemy on the board', works: true },
     merciless:   { name: 'Frozen Hammer', frame: 25, side: 'both', enemy: 'x1.5 while you are at half health or less', player: 'x1.5 against enemies at half health or less', works: true },
     shatter:     { name: 'Shatter', frame: 57, side: 'both', enemy: 'x1.5 damage while you are frozen', player: 'x1.5 damage against a Frost-frozen target', works: true },
+    echo:        { name: 'Echo', frame: 39, side: 'player', player: '10% chance after a damaging hit: strikes the same surviving enemy for half weapon damage, rounded down, with no extra AP or pip cost; cannot chain', works: true },
     ambush:      { name: 'Ambush',      frame: 26, side: 'both',   enemy: 'x1.5 while you are unhurt', player: 'x1.5 against unhurt enemies', works: true },
     unscathed:   { name: 'Unscathed',   frame: 27, side: 'both',   enemy: 'x1.5 until you chip it once', player: 'x1.5 while you are at full health', works: true },
     honed:       { name: 'Honed',       frame: 28, side: 'both',   enemy: '+1 attack after each attack this fight', player: '+1 damage for each hit in a row this fight; a miss resets it', works: true },
@@ -94,7 +95,7 @@ export const SIGILS = Object.freeze({
     shock:       { name: 'Shock', frame: 56, side: 'both', enemy: '10% chance on a damaging hit: shocks you or one carried companion; the target misses its next attack', player: '10% chance on a damaging hit: the target misses its next attack, including bosses', works: true },
     charged:     { name: 'Charged', frame: 56, side: 'both', enemy: 'x1.5 damage while you are shocked', player: 'x1.5 damage against a shocked target', works: true },
     keen:        { name: 'Keen',        frame: 19, side: 'player', player: '+5% chance of a critical hit (x1.5)', works: true },
-    ransom:      { name: 'Ransom',      frame: 47, side: 'player', player: 'a kill has a 10% chance to drop a crystal', works: true },
+    ransom:      { name: 'Ransom',      frame: 47, side: 'player', player: 'a kill has a 10% chance to drop a crystal', works: true, retired: true },
     bounty:      { name: 'Bounty',      frame: 20, side: 'player', player: 'a kill gives +2 coins', works: true },
     bloodlust:   { name: 'Bloodlust',   frame: 48, side: 'player', player: '+1 damage for each kill in a row this fight; a hit that does not kill resets it', works: true },
     scorched:    { name: 'Scorched',    frame: 30, side: 'both', enemy: '10% chance on a damaging hit: adds 3 burn to the player; burn deals its counter then drops by 1', player: '10% chance on a damaging hit: adds 3 burn to every enemy, including hidden ones; burn deals its counter each turn, then drops by 1', works: true },
@@ -107,7 +108,7 @@ export const SIGILS = Object.freeze({
     reassemble:  { name: 'Reassemble',  frame: 61, side: 'enemy', enemy: 'returns once at half health unless its bone pile is destroyed first' },
     secondWind:  { name: 'Second Wind', frame: 62, side: 'player', player: '10% chance on hit: replenishes 2 action points', works: true },
     charm:       { name: 'Charm',       frame: 64, side: 'player', player: '15% chance on hit: the enemy hit (not a boss) attacks another enemy instead of you on its next attack', works: true, retired: true },
-    scout:       { name: 'Scout',       frame: 63, side: 'player', player: '15% chance on hit: opens a face-down card that is not an enemy or a trap', works: true },
+    scout:       { name: 'Scout',       frame: 63, side: 'player', player: '15% chance on hit: opens a face-down card that is not an enemy or a trap', works: true, retired: true },
     // Four sigils that stop a card or an enemy for a turn, each its own.
     // Zap is never handed out: a card shows it while it can shock — the
     // yellow stone (lightning gem) socketed in a weapon, or the Storm
@@ -178,7 +179,7 @@ export function getSigil(id) {
 
 // Sigils renamed since a save was written: Arrest became Frost; Ember became
 // Ripple, then Fireball.
-const RENAMED_SIGILS = Object.freeze({ arrest: 'frost', ember: 'fireball', ripple: 'fireball', tsunami: 'scorched' });
+export const RENAMED_SIGILS = Object.freeze({ arrest: 'frost', ember: 'fireball', ripple: 'fireball', tsunami: 'scorched' });
 
 /** The sigils stored on a card: [{ id, level }], never undefined. */
 export function storedSigils(card) {

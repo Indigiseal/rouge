@@ -2,11 +2,12 @@
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { t, translateItemName } from '../../i18n/i18n.js';
 import { POISON_RUNE_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../../content/cards/gems.js';
-import { weaponIgnoresFrontline } from '../../content/cards/weapons.js';
+import { weaponIgnoresFrontline, isRangedWeaponCard } from '../../content/cards/weapons.js';
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { enemyDeathSoundKeys } from '../../content/audio/enemyDeathSounds.js';
 import { CombatSequencer } from '../combat/CombatSequencer.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
+import { playTacticianPinDrop, positionTacticianPin, cancelTacticianPinDrop } from '../../ui/TacticianPin.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { isSilkCocoonCard } from './CocoonCacheBoard.js';
 import {
@@ -101,14 +102,7 @@ function isMeleeWeapon(w) {
 }
 
 export function isRangedWeapon(w) {
-  if (!w) return false;
-  const n = (w.name || w.id || '').toLowerCase();
-  return (
-    w.range === 'ranged' ||
-    w.isRanged === true ||
-    w.subType === 'bow' ||
-    n.includes('bow') || n.includes('crossbow')
-  );
+  return isRangedWeaponCard(w);
 }
 
 /**
@@ -483,6 +477,7 @@ function destroyControlMarkers(card) {
     card.controlTreacheryMarker = null;
   }
   if (card.strategyScoutMarker) {
+    cancelTacticianPinDrop(card.sprite?.scene, card.strategyScoutMarker);
     card.strategyScoutMarker.destroy();
     card.strategyScoutMarker = null;
   }
@@ -555,6 +550,7 @@ function syncControlMarkers(card) {
   const scoutY = Math.round(card.sprite.y - halfH + 7) - (hasPinArt ? SCOUT_PIN_HEAD_Y : 0);
   if (!scout) {
     if (card.strategyScoutMarker) {
+      cancelTacticianPinDrop(scene, card.strategyScoutMarker);
       card.strategyScoutMarker.destroy();
       card.strategyScoutMarker = null;
     }
@@ -570,10 +566,15 @@ function syncControlMarkers(card) {
     card.strategyScoutMarker = pin;
     bindScoutCardHover(card, scene);
   } else {
-    card.strategyScoutMarker.x = scoutX;
-    card.strategyScoutMarker.y = scoutY;
+    positionTacticianPin(card.strategyScoutMarker, scoutX, scoutY);
     card.strategyScoutMarker.setDepth?.(depth);
     bindScoutCardHover(card, scene);
+  }
+  if (scout && hasPinArt && card.strategyScoutMarker?.scene) {
+    const pin = card.strategyScoutMarker;
+    // A pin planted while its card is being dealt would finish off-screen.
+    pin.setVisible?.(!card._openingDeal);
+    if (!card._openingDeal) playTacticianPinDrop(scene, pin);
   }
 }
 
@@ -667,7 +668,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     let feedbackCritical = Boolean(options.critical);
     let feedbackLabel = options.feedbackLabel;
     if (!isReflection && weapon && this.scene.amuletManager) {
-        finalDamage = this.scene.amuletManager.modifyWeaponDamage(damage);
+        finalDamage = this.scene.amuletManager.modifyWeaponDamage(damage, weapon);
     }
     // Giant's Morningstar relic: +1 flat damage on every weapon attack.
     if (!isReflection && weapon) {
@@ -1396,7 +1397,8 @@ function removeDefeatedEnemy(index, card) {
         }
         const monocleReward = this.scene.amuletManager?.rollMonocleCrystalReward?.();
         if (monocleReward) {
-            this.playKillLootPickup(card.sprite?.x ?? 0, card.sprite?.y ?? 0, monocleReward, 'Monocle');
+            this.playKillLootPickup(card.sprite?.x ?? 0, card.sprite?.y ?? 0, monocleReward,
+                t(this.scene, 'amulet.crystalFind'));
         }
 
         // NOTE: individual enemy kills no longer pay coins. The per-kill

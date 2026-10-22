@@ -92,7 +92,8 @@ export function refreshWeaponValueText(scene, container) {
     const gs = scene?.gameState;
     const base = getDisplayedWeaponDamage(gs?.characterId, weapon, gs?.talentEffects || null);
     const inBag = (scene?.inventorySystem?.slots || []).includes(weapon);
-    const bonus = inBag ? weaponFlatSigilBonus(scene, weapon).bonus : 0;
+    const bonus = inBag ? weaponFlatSigilBonus(scene, weapon).bonus
+        + (scene?.amuletManager?.getBowDamageBonus?.(weapon) || 0) : 0;
     const label = `${base + bonus}`;
     if (text.text !== label) text.setText(label);
     text.setColor(bonus > 0 ? WEAPON_VALUE_BOOSTED : WEAPON_VALUE_COLOR);

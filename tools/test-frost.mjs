@@ -42,7 +42,7 @@ for (const act of [1, 2, 3]) {
     scene.gameState.currentFloor = (act - 1) * 15 + 1;
     scene.gameState.actLocationIds = [null, null, null];
     scene.gameState.actLocationIds[act - 1] = 'frosthollow';
-    assert.deepEqual(offerableSigils(scene), ['frost', 'shatter', 'merciless']);
+    assert.deepEqual(offerableSigils(scene), ['frost', 'shatter', 'merciless', 'echo']);
     for (const [id, sigils] of Object.entries({ snowBrute: [], snowArcher: [], iceOrb: ['frost'], iceGolem: ['shatter'], frozenKnight: ['merciless'] })) {
         const data = buildEnemyCardFromDef(id, scene.gameState.currentFloor);
         assert.deepEqual(enemySigils(data).map(sigil => sigil.id), sigils);
@@ -59,7 +59,7 @@ for (const act of [1, 2, 3]) {
     assert.deepEqual(offerableSigils(scene), []);
 }
 assert.ok(PLAYABLE_LOCATION_IDS.includes('frosthollow'), 'approved complete Frost roster enters the door pool');
-for (const id of ['frost', 'shatter', 'merciless']) assert.equal(stampForSigil(id).id, 'turtle');
+for (const id of ['frost', 'shatter', 'merciless', 'echo']) assert.equal(stampForSigil(id).id, 'turtle');
 assert.equal(getSigil('merciless').name, 'Frozen Hammer');
 const savedFrostEnemy = { type: 'eliteEnemy', enemyType: 'iceWolf', sprite: 'enemyPlaceholder',
     placeholderArt: true, health: 7, maxHealth: 40, frozen: 2, sigils: [{ id: 'shatter' }] };

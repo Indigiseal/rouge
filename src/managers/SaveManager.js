@@ -161,6 +161,7 @@ export class SaveManager {
         actionsLeft: gameState?.actionsLeft ?? 15,
         maxActions: gameState?.maxActions ?? 15,
         gluttonMaxApGained: gameState?.gluttonMaxApGained ?? 0,
+        mossyMaxHpGained: gameState?.mossyMaxHpGained ?? 0,
         coins: gameState?.coins ?? 0,
         crystals: gameState?.crystals ?? 0,
         currentFloor: gameState?.currentFloor ?? 1,
@@ -288,6 +289,7 @@ export class SaveManager {
           actionsLeft: parsed.player?.actionsLeft ?? 15,
           maxActions: parsed.player?.maxActions ?? 15,
           gluttonMaxApGained: parsed.player?.gluttonMaxApGained ?? 0,
+          mossyMaxHpGained: parsed.player?.mossyMaxHpGained ?? 0,
           coins: parsed.player?.coins ?? 0,
           crystals: parsed.player?.crystals ?? 0,
           currentFloor: Number.isFinite(parsed.player?.currentFloor)

@@ -12,6 +12,7 @@ import { handLockOf } from '../content/combat/handLock.js';
 import { sigilLevel } from '../content/sigils/sigils.js';
 import { translateItemName } from '../i18n/i18n.js';
 import { hoverShineAnim } from '../ui/RainbowShine.js';
+import { noteCardDiscovered } from '../content/codex/Discoveries.js';
 
 export class InventorySystem {
     constructor(scene, existingInventory = null) {
@@ -301,6 +302,7 @@ export class InventorySystem {
 
         this.addCardDirect(cardData, emptySlot);
         this.lastAddedSlot = emptySlot;
+        if (!this.scene.sandboxMode && cardData?.type === 'magic') noteCardDiscovered(cardData);
         recordHumanRunEvent(this.scene, 'inventory_slot_filled', {
             destinationSlot: emptySlot,
             card: snapshotHumanRunCard(this.slots[emptySlot] || cardData),
@@ -775,6 +777,7 @@ export class InventorySystem {
         }
         this.removeCard(slotIndex, true, 'merge_source');
         this.scene.gameState.equippedArmor = upgradedArmor;
+        this.scene.amuletManager?.processCardMerge?.();
         recordHumanRunEvent(this.scene, 'cards_merged', {
             sources: mergeSources,
             crossTier: Boolean(canCrossTier && cardData.rarity !== worn.rarity),
@@ -986,7 +989,9 @@ export class InventorySystem {
         // Add upgraded card. Target the slot it will land in (first free one)
         // up front so we can play the merge flicker on top of it afterward.
         const mergedSlot = this.slots.findIndex(slot => slot === null);
-        this.addCard(upgradedCard, mergedSlot);
+        if (this.addCard(upgradedCard, mergedSlot)) {
+            this.scene.amuletManager?.processCardMerge?.();
+        }
         recordHumanRunEvent(this.scene, 'cards_merged', {
             sources: mergeSources,
             crossTier: Boolean(canCrossTier && indexA_tier !== indexB_tier),

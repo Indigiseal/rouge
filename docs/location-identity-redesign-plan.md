@@ -52,10 +52,14 @@ not automatically included. Existing encounters may be retained independently.
 - **Mending:** each damaging weapon attack has a **10% chance to restore 1 pip**
   to a random damaged weapon or armor item, including worn armor.
 - Bone Shield blocks attacks; reflection belongs to Thornwake's magic.
-- The grappling-hook amulet should receive bone-related art and identity.
-- Keep the amulet concept: discarding an item repairs a random remaining item.
+- The grappling-hook amulet is now Bone Hook, retaining Close Order's stable
+  `vacancyStep` ID, clustering behavior and existing placeholder hook art.
+- Bone Spool implements discard-to-repair: a deliberately discarded card restores
+  1 pip to one random remaining damaged weapon or armor, including worn armor.
+  This first playtest rule excludes the discarded source and broken items.
 - Weapon transformation is **an amulet**, not a Reassemble sigil. Its bone-themed
-  name, art, transformation rules, and limits are undecided.
+  name, art, transformation rules, and limits are undecided. The user explicitly
+  deferred this amulet for later; it is not part of the current implementation pass.
 - The user approved plain Skeletons and Archers, an Ironclad Crypt Warden,
   an ally-armor-repairing Skull Mender, and a Bone Heap that leaves a destroyable
   pile before returning once. This first roster pass is implemented.
@@ -102,8 +106,10 @@ not automatically included. Existing encounters may be retained independently.
 ### Tollroad
 
 - Keep Cutpurse, Bounty, Packrat; move Ambush here.
-- Ransom becomes a proposed amulet with a 3% crystal chance on kill.
-- Scout becomes a proposed goblin-flavored amulet that may be found anywhere.
+- Ransom is implemented as Goblin's Ransom, reusing Monocle (`monocle`) with a
+  3% crystal chance on kill. Scout is implemented as Goblin's Spyglass, retaining
+  its 15% damaging-hit safe reveal rule. Both may be found anywhere. New Scout
+  and Ransom sigil rewards are retired; saved weapon sigils retain their rules.
 - Summon Mimic creates a normal hostile mimic on the board for the player to
   defeat for its normal loot. It is not a companion.
 - Separate the music box / goblin inventory-upgrade story from the bird story.
@@ -132,7 +138,10 @@ not automatically included. Existing encounters may be retained independently.
   use the toad stamp. Restoration's healing enchant is now called Renewal,
   separating it from Boneflood's item-repair Mending.
 - Restoration keeps its full HP and AP restoration effect.
-- A kill-to-maximum-HP amulet with bog flavor is a possible home for Marrow.
+- Mossy Stone is implemented in place of Marrow's old kill-based proposal:
+  each successful card merge grants +1 maximum HP, capped at +50 per run,
+  without healing. Bag and worn-armor merges count. Earned growth and cap usage
+  persist through Continue, removal and re-equipping; it drops globally.
 
 ### Ashhowl
 
@@ -195,7 +204,9 @@ not automatically included. Existing encounters may be retained independently.
   Enemy Frost has a 10% damaging-hit chance to freeze the player or one
   companion for two attack attempts, refreshing rather than stacking.
   Art remains provisional. See [Frost's design pass](frost-design-pass.md).
-- Echo belongs to Frost as a proposal; its final rule remains open.
+- Echo is implemented for Frost: 10% after a damaging weapon hit to strike the
+  same surviving target again for half swing damage, rounded down, without
+  spending extra AP or a pip. Echo and Quick Strike secondary hits cannot chain.
 - Carnival hag / Brass Wizard and mother bird / chick material are candidates
   for Storm. Exact story relocation and dependencies still need planning.
 
@@ -221,8 +232,11 @@ not automatically included. Existing encounters may be retained independently.
 - Desert Feast is approved and implemented: fully restores AP without healing
   HP. Its Reliquary enchantment grants Second Wind's existing 10% chance after
   a damaging hit to restore 2 AP, with no duplicate proc from a stored sigil.
-- Feast becomes an amulet. Reject Provision and Desperate from this pool.
-- A +1 damage to ranged weapons amulet is proposed. Keen and Combo are candidates.
+- Feast is implemented as Sandspice Pouch (stable `travelKitchen` ID), reusing
+  the existing +50% food AP effect, rounded down, with global uncommon drops.
+  Reject Provision and Desperate from this pool.
+- Dune Quiver gives +1 damage to bows only, using the
+  existing quiver sprite (atlas frame 73) and global uncommon drops. Keen and Combo remain candidates.
 
 ## Shared encounters and parked ideas
 
@@ -248,6 +262,14 @@ plan's progress section for limitations and `npm run test:any-act-locations`.
 Boneflood's approved creature/boss pass and blocking Bone Shield are implemented.
 All ten first creature/boss passes are implemented. Final art, later amulet work,
 open mechanics, story migrations and human balance testing remain planned.
+Storm's nest/carnival story migration is now implemented: new starts belong to
+Storm in any act, the fresh bird nest is independent of the goblin music box,
+and old pending chains and mother pursuit remain intact. See the
+[Storm story pass](storm-story-design-pass.md).
+Elemental gem amulets now use location identities: Emberstone/Molten Heart for
+Ashhowl, Storm Shard/Tempest Heart for Stormhatch, and Spider Fang/Broodmother's
+Fang for Silkdeep. These are presentation changes with their existing effects
+and stable IDs preserved; see the [amulet pass](location-amulet-design-pass.md).
 
 The [any-act implementation plan](any-act-location-implementation-plan.md) maps
 shared selection, scaling, rewards and save changes to the current code, and
@@ -260,7 +282,7 @@ rules and numbers require review; they do not add approvals to this document.
 
 The original six foundation steps are implemented, apart from final artwork
 and human balance testing. Continue from the [remaining-work checklist](location-redesign-remaining-work.md):
-Storm story integration, remaining amulets, unresolved sigil/enchantment rules,
+Storm story visual review, amulet playtesting, unresolved sigil/enchantment rules,
 final art/names, balance and visual/save regression testing.
 
 No game-code changes are authorized by this planning document alone.

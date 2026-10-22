@@ -1,4 +1,4 @@
-const boxIntact = (gs) => gs?.storyRun?.boxState !== 'exploded';
+import { legacyNestHasCog } from '../story/StormStories.js';
 
 export const NEST_TOOK_COG =
   'You take the cog and nothing else, and you run.\n\n'
@@ -25,7 +25,7 @@ export default {
   title: 'Monster Bird Nest',
   description: (gs) => {
     const shadow = 'A shadow crosses the nest. Then again, lower.';
-    if (!boxIntact(gs)) {
+    if (!legacyNestHasCog(gs)) {
       return `A nest sits wedged between two fallen pillars — speckled eggs, bent keys, old buttons.\n\n${shadow}`;
     }
     return 'A nest sits wedged between two fallen pillars — speckled eggs, bent keys, old buttons, and one small brass cog.\n\n'
@@ -42,7 +42,7 @@ export default {
       id: 'nest_leave',
       text: 'Leave it alone',
       action: (gs, scene) => scene.resolveBirdNestRaid({ tookCog: false, tookEgg: false, timedOut: false, left: true }),
-      outcome: (gs) => (boxIntact(gs) ? NEST_LEFT : NEST_LEFT_NO_BOX),
+      outcome: (gs, scene) => (scene?._birdNestLegacyCog ? NEST_LEFT : NEST_LEFT_NO_BOX),
     },
   ],
 };

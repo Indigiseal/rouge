@@ -3894,7 +3894,7 @@ const CODEX_STRINGS = {
     en: {
         'ui.menu.codex': 'Codex', 'ui.codex.title': 'Codex', 'ui.codex.back': 'Back',
         'ui.codex.enemies': 'Enemies', 'ui.codex.bosses': 'Bosses', 'ui.codex.stories': 'Stories',
-        'ui.codex.sigils': 'Sigils', 'ui.codex.amulets': 'Amulets',
+        'ui.codex.sigils': 'Sigils', 'ui.codex.amulets': 'Amulets', 'ui.codex.magic': 'Magic',
         'ui.codex.actBoss': 'Act {act} boss', 'ui.codex.sigilYou': 'Yours: {rule}', 'ui.codex.sigilEnemy': 'Enemy: {rule}',
         'ui.codex.hint': 'Point at anything to read about it.', 'ui.codex.undiscovered': 'Not found yet.',
         'ui.sandbox.encounter.crystalLair': 'Crystal Lair',
@@ -3905,7 +3905,7 @@ const CODEX_STRINGS = {
     es: {
         'ui.menu.codex': 'Códice', 'ui.codex.title': 'Códice', 'ui.codex.back': 'Volver',
         'ui.codex.enemies': 'Enemigos', 'ui.codex.bosses': 'Jefes', 'ui.codex.stories': 'Historias',
-        'ui.codex.sigils': 'Sigilos', 'ui.codex.amulets': 'Amuletos',
+        'ui.codex.sigils': 'Sigilos', 'ui.codex.amulets': 'Amuletos', 'ui.codex.magic': 'Magia',
         'ui.codex.actBoss': 'Jefe del acto {act}', 'ui.codex.sigilYou': 'Tuyo: {rule}', 'ui.codex.sigilEnemy': 'Enemigo: {rule}',
         'ui.codex.hint': 'Señala cualquier cosa para leer sobre ella.', 'ui.codex.undiscovered': 'Aún no encontrado.',
         'ui.sandbox.encounter.crystalLair': 'Guarida de cristal',
@@ -3916,7 +3916,7 @@ const CODEX_STRINGS = {
     fr: {
         'ui.menu.codex': 'Codex', 'ui.codex.title': 'Codex', 'ui.codex.back': 'Retour',
         'ui.codex.enemies': 'Ennemis', 'ui.codex.bosses': 'Boss', 'ui.codex.stories': 'Histoires',
-        'ui.codex.sigils': 'Sigils', 'ui.codex.amulets': 'Amulettes',
+        'ui.codex.sigils': 'Sigils', 'ui.codex.amulets': 'Amulettes', 'ui.codex.magic': 'Magie',
         'ui.codex.actBoss': "Boss de l'acte {act}", 'ui.codex.sigilYou': 'Le vôtre : {rule}', 'ui.codex.sigilEnemy': 'Ennemi : {rule}',
         'ui.codex.hint': 'Pointez un élément pour en savoir plus.', 'ui.codex.undiscovered': 'Pas encore trouvé.',
         'ui.sandbox.encounter.crystalLair': 'Antre de cristal',
@@ -3927,7 +3927,7 @@ const CODEX_STRINGS = {
     ru: {
         'ui.menu.codex': 'Кодекс', 'ui.codex.title': 'Кодекс', 'ui.codex.back': 'Назад',
         'ui.codex.enemies': 'Враги', 'ui.codex.bosses': 'Боссы', 'ui.codex.stories': 'Истории',
-        'ui.codex.sigils': 'Печати', 'ui.codex.amulets': 'Амулеты',
+        'ui.codex.sigils': 'Печати', 'ui.codex.amulets': 'Амулеты', 'ui.codex.magic': 'Магия',
         'ui.codex.actBoss': 'Босс {act} акта', 'ui.codex.sigilYou': 'Ваша: {rule}', 'ui.codex.sigilEnemy': 'У врага: {rule}',
         'ui.codex.hint': 'Наведите на что угодно, чтобы прочитать.', 'ui.codex.undiscovered': 'Ещё не найдено.',
         'ui.sandbox.encounter.crystalLair': 'Хрустальное логово',
@@ -3938,7 +3938,7 @@ const CODEX_STRINGS = {
     de: {
         'ui.menu.codex': 'Kodex', 'ui.codex.title': 'Kodex', 'ui.codex.back': 'Zurück',
         'ui.codex.enemies': 'Gegner', 'ui.codex.bosses': 'Bosse', 'ui.codex.stories': 'Geschichten',
-        'ui.codex.sigils': 'Siegel', 'ui.codex.amulets': 'Amulette',
+        'ui.codex.sigils': 'Siegel', 'ui.codex.amulets': 'Amulette', 'ui.codex.magic': 'Magie',
         'ui.codex.actBoss': 'Boss von Akt {act}', 'ui.codex.sigilYou': 'Deins: {rule}', 'ui.codex.sigilEnemy': 'Gegner: {rule}',
         'ui.codex.hint': 'Zeig auf etwas, um mehr zu lesen.', 'ui.codex.undiscovered': 'Noch nicht gefunden.',
         'ui.sandbox.encounter.crystalLair': 'Kristallhöhle',
@@ -4328,4 +4328,79 @@ for (const [language, names] of Object.entries({
     ['Snow Brute', 'Snow Archer', 'Ice Orb', 'Ice Golem', 'Frozen Knight'].forEach((name, index) => {
         EXACT_NAME_TRANSLATIONS[language][name] = names[index];
     });
+}
+
+for (const [language, text] of Object.entries({
+    en: ['Bone Hook', "Goblin's Ransom", "Goblin's Spyglass", 'Crystal find', '3% chance to find a crystal when killing an enemy.', '15% chance after a damaging weapon hit to reveal one face-down card that is not an enemy or a trap.'],
+    es: ['Gancho de hueso', 'Rescate del goblin', 'Catalejo del goblin', 'Hallazgo de cristal', '3% de probabilidad de encontrar un cristal al matar a un enemigo.', '15% de probabilidad tras un golpe de arma que causa daño de revelar una carta boca abajo que no sea enemigo ni trampa.'],
+    fr: ['Crochet en os', 'Rançon du gobelin', 'Longue-vue du gobelin', 'Cristal trouvé', '3 % de chances de trouver un cristal en tuant un ennemi.', '15 % de chances après un coup d’arme infligeant des dégâts de révéler une carte face cachée qui n’est ni un ennemi ni un piège.'],
+    ru: ['Костяной крюк', 'Выкуп гоблина', 'Подзорная труба гоблина', 'Найден кристалл', '3% шанс найти кристалл при убийстве врага.', 'После удара оружием, нанёсшего урон, с вероятностью 15% открывает одну закрытую карту, которая не является врагом или ловушкой.'],
+    de: ['Knochenhaken', 'Goblin-Lösegeld', 'Goblin-Fernrohr', 'Kristallfund', '3 % Chance, beim Töten eines Gegners einen Kristall zu finden.', '15 % Chance nach einem schadenden Waffentreffer, eine verdeckte Karte aufzudecken, die weder Gegner noch Falle ist.'],
+})) {
+    STRINGS[language]['amulet.crystalFind'] = text[3];
+    if (language !== 'en') {
+        ['Bone Hook', "Goblin's Ransom", "Goblin's Spyglass"].forEach((name, index) => {
+            EXACT_NAME_TRANSLATIONS[language][name] = text[index];
+        });
+        DESCRIPTION_TRANSLATIONS[language]['3% chance to find a crystal when killing an enemy.'] = text[4];
+        DESCRIPTION_TRANSLATIONS[language]['15% chance after a damaging weapon hit to reveal one face-down card that is not an enemy or a trap.'] = text[5];
+    }
+}
+
+for (const [language, text] of Object.entries({
+    es: ['Carrete de hueso', 'Carcaj de las dunas', 'Descartar una carta restaura 1 punto de durabilidad a un arma o armadura dañada al azar que conserves, incluida la armadura equipada. No repara objetos rotos.', '+1 de daño a los arcos.'],
+    fr: ['Bobine en os', 'Carquois des dunes', 'Défausser une carte rend 1 point de durabilité à une arme ou armure abîmée aléatoire que vous gardez, y compris l’armure portée. Ne répare pas les objets cassés.', '+1 dégât pour les arcs.'],
+    ru: ['Костяная катушка', 'Колчан дюн', 'Сброс карты восстанавливает 1 единицу прочности случайному повреждённому оружию или доспеху, который вы оставляете, включая надетый доспех. Не чинит сломанные предметы.', '+1 к урону луков.'],
+    de: ['Knochenspule', 'Dünenköcher', 'Das Ablegen einer Karte stellt 1 Haltbarkeit eines zufälligen beschädigten behaltenen Waffen- oder Rüstungsgegenstands wieder her, auch getragener Rüstung. Repariert keine zerbrochenen Gegenstände.', '+1 Schaden für Bögen.'],
+})) {
+    EXACT_NAME_TRANSLATIONS[language]['Bone Spool'] = text[0];
+    EXACT_NAME_TRANSLATIONS[language]['Dune Quiver'] = text[1];
+    DESCRIPTION_TRANSLATIONS[language]['Discarding a card restores 1 pip to a random damaged weapon or armor item you keep, including worn armor. Cannot repair broken items.'] = text[2];
+    DESCRIPTION_TRANSLATIONS[language]['+1 damage to bows.'] = text[3];
+}
+
+for (const [language, text] of Object.entries({
+    es: ['Piedra de brasas', 'Corazón fundido', 'Esquirla de tormenta', 'Corazón de tempestad', 'Colmillo de araña', 'Colmillo de la madre araña', '+20% de daño de gemas de rayo (redondeado hacia arriba)'],
+    fr: ['Pierre de braise', 'Cœur en fusion', 'Éclat de tempête', 'Cœur de tempête', 'Croc d’araignée', 'Croc de la mère araignée', '+20 % de dégâts des gemmes de foudre (arrondis au supérieur)'],
+    ru: ['Угольный камень', 'Расплавленное сердце', 'Осколок грозы', 'Сердце бури', 'Паучий клык', 'Клык праматери', '+20% урона самоцветов молнии (с округлением вверх)'],
+    de: ['Glutstein', 'Geschmolzenes Herz', 'Sturmsplitter', 'Sturmherz', 'Spinnenzahn', 'Zahn der Brutmutter', '+20 % Schaden durch Blitzedelsteine (aufgerundet)'],
+})) {
+    ['Emberstone', 'Molten Heart', 'Storm Shard', 'Tempest Heart', 'Spider Fang', "Broodmother's Fang"].forEach((name, index) => {
+        EXACT_NAME_TRANSLATIONS[language][name] = text[index];
+    });
+    DESCRIPTION_TRANSLATIONS[language]['+20% lightning gem damage (rounded up)'] = text[6];
+}
+
+for (const [language, text] of Object.entries({
+    en: ['Mossy Stone', 'Each successful card merge gives +1 maximum HP, up to +50 per run. Does not heal you.', '+{amount} Max HP (Mossy Stone)'],
+    es: ['Piedra musgosa', 'Cada fusión de cartas completada da +1 PV máximo, hasta +50 por partida. No te cura.', '+{amount} PV máx. (Piedra musgosa)'],
+    fr: ['Pierre moussue', 'Chaque fusion de cartes réussie donne +1 PV maximum, jusqu’à +50 par partie. Ne vous soigne pas.', '+{amount} PV max (Pierre moussue)'],
+    ru: ['Мшистый камень', 'Каждое успешное слияние карт даёт +1 к максимуму ОЗ, до +50 за забег. Не лечит.', '+{amount} макс. ОЗ (Мшистый камень)'],
+    de: ['Moosstein', 'Jede erfolgreiche Kartenfusion gewährt +1 maximale LP, bis zu +50 pro Lauf. Heilt dich nicht.', '+{amount} max. LP (Moosstein)'],
+})) {
+    STRINGS[language]['amulet.mossyStone.growth'] = text[2];
+    if (language !== 'en') {
+        EXACT_NAME_TRANSLATIONS[language]['Mossy Stone'] = text[0];
+        DESCRIPTION_TRANSLATIONS[language]['Each successful card merge gives +1 maximum HP, up to +50 per run. Does not heal you.'] = text[1];
+    }
+}
+
+for (const [language, text] of Object.entries({
+    es: ['Bolsa de especias del desierto', 'La comida restaura un 50% más de puntos de acción, redondeado hacia abajo.'],
+    fr: ['Bourse d’épices des sables', 'La nourriture restaure 50 % de points d’action en plus, arrondis à l’inférieur.'],
+    ru: ['Мешочек пустынных специй', 'Еда восстанавливает на 50% больше очков действий, с округлением вниз.'],
+    de: ['Wüstengewürzbeutel', 'Nahrung stellt 50 % mehr Aktionspunkte wieder her, abgerundet.'],
+})) {
+    EXACT_NAME_TRANSLATIONS[language]['Sandspice Pouch'] = text[0];
+    DESCRIPTION_TRANSLATIONS[language]['Food restores 50% more Action Points, rounded down.'] = text[1];
+}
+
+for (const [language, text] of Object.entries({
+    es: ['Eco', '10% de probabilidad tras un golpe que causa daño: golpea al mismo enemigo superviviente con la mitad del daño del arma, redondeado hacia abajo, sin gastar PA ni durabilidad adicional; no puede encadenarse'],
+    fr: ['Écho', '10 % de chances après un coup infligeant des dégâts : frappe à nouveau la même cible survivante pour la moitié des dégâts de l’arme, arrondis à l’inférieur, sans coût supplémentaire en PA ni en durabilité ; ne peut pas s’enchaîner'],
+    ru: ['Эхо', 'После удара, нанёсшего урон, с вероятностью 10% снова бьёт того же выжившего врага с половиной урона оружия, округляя вниз, без затрат ОД и прочности; не запускает цепочку'],
+    de: ['Echo', '10 % Chance nach einem schadenden Treffer: trifft denselben überlebenden Gegner erneut mit halbem Waffenschaden, abgerundet, ohne zusätzliche AP oder Haltbarkeit; kann keine Kette auslösen'],
+})) {
+    EXACT_NAME_TRANSLATIONS[language]['Echo'] = text[0];
+    DESCRIPTION_TRANSLATIONS[language]['10% chance after a damaging hit: strikes the same surviving enemy for half weapon damage, rounded down, with no extra AP or pip cost; cannot chain'] = text[1];
 }

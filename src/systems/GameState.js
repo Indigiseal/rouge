@@ -60,6 +60,7 @@ export class GameState {
         this.playerShocked = false;
         this.playerFrozenAttacks = 0;
         this.discardedCardsThisRun = 0;
+        this.mossyMaxHpGained = 0;
         this.discardCritChance = 0;
         this.storyRun = createDefaultStoryRun();
         this.heroMemory = createDefaultHeroMemory();

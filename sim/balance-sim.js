@@ -33,6 +33,7 @@ import { fireDamageAgainst } from '../src/content/combat/fireResist.js';
 import { applyThunderclap, isStormSpellTarget } from '../src/content/combat/storm.js';
 import { freezeEnemy, isFrostTarget, consumePlayerAttackHold } from '../src/content/combat/frost.js';
 import { armorThornsDamage, companionStrengthBonus } from '../src/systems/combat/SigilEffects.js';
+import { prepareSimWeaponSwing, resolveSimWeaponSwing } from './player-weapon-strike.js';
 import { GameState } from '../src/systems/GameState.js';
 import { CardSystem } from '../src/systems/CardSystem.js';
 import { CardDataGenerator } from '../src/systems/loot/CardDataGenerator.js';
@@ -649,7 +650,7 @@ function expectedGemBossDamagePerHit(gs, weapon) {
 function expectedWeaponBossDamagePerHit(gs, weapon, boss) {
   if (!weapon || !boss) return 0;
   let direct = simWeaponHitDamage(gs, weapon, false, { expectedCrit: true });
-  direct = gs.scene?.amuletManager?.modifyWeaponDamage?.(direct) ?? direct;
+  direct = gs.scene?.amuletManager?.modifyWeaponDamage?.(direct, weapon) ?? direct;
   direct += gs.relicEffects?.weaponDamageBonus || 0;
   direct = Math.max(1, direct - Math.max(0, boss.armor || 0));
   const evade = Math.max(
@@ -1078,6 +1079,7 @@ function tryCarry(gs, inv, card, { eventReward = false, visibleBoard = null } = 
       const targetIndex = inv.indexOf(mergeTarget);
       if (targetIndex >= 0) inv[targetIndex] = merged;
       if (gs.equippedWeapon === mergeTarget) gs.equippedWeapon = merged;
+      gs.scene?.amuletManager?.processCardMerge?.();
       const tracker = gs._mergeTracker;
       if (tracker) {
         tracker.recordMerge('weapon', merged.rarity, gs.currentFloor || 1);
@@ -1186,7 +1188,7 @@ function mergeArmor(gen, a, b, floor = 0) {
 }
 // Mutable ref so mergeArmor (no gs arg historically) still sees run talents.
 const gsTalentEffectsRef = { current: null };
-function mergeArmorList(gen, list, echoChance = 0, tracker = null, floor = 0, talentEffects = null) {
+function mergeArmorList(gen, list, echoChance = 0, tracker = null, floor = 0, talentEffects = null, gs = null) {
   gsTalentEffectsRef.current = talentEffects || null;
   let changed = true, guard = 0;
   while (changed && guard++ < 60) {
@@ -1199,6 +1201,7 @@ function mergeArmorList(gen, list, echoChance = 0, tracker = null, floor = 0, ta
             RARITY_ORDER.indexOf(a.rarity) < RARITY_ORDER.length - 1) {
           const m = mergeArmor(gen, a, b, floor);
           list.splice(j, 1); list.splice(i, 1); list.push(m);
+          gs?.scene?.amuletManager?.processCardMerge?.();
           if (tracker) {
             tracker.recordMerge('armor', m.rarity, floor);
             tracker.mergeCounts.armor++;
@@ -1256,6 +1259,7 @@ function mergeWeaponList(gen, list, echoChance = 0, tracker = null, floor = 0, g
           }
           const merged = mergeWeapons(gen, a, b, floor);
           list.splice(j, 1); list.splice(i, 1); list.push(merged);
+          gs?.scene?.amuletManager?.processCardMerge?.();
           if (tracker) {
             tracker.recordMerge('weapon', merged.rarity, floor);
             tracker.mergeCounts.weapon++;
@@ -1297,6 +1301,7 @@ function findOffhandDagger(primary, gs, inv) {
       && w !== primary
       && w.special === 'dualWield'
       && (w.durability || 0) > 0
+      && !(w.webbedTurns > 0)
     ))
     .sort((a, b) => (
       wpnValue(b) - wpnValue(a)
@@ -1307,7 +1312,7 @@ function findOffhandDagger(primary, gs, inv) {
 // Thorns merging: two equal-damage thorns → stronger thorns with refreshed
 // durability (mirrors inventorySystem merge for thorns). The bot "always
 // carries and merges thorns," so we accumulate and fuse them.
-function mergeThornsList(list, tracker = null) {
+function mergeThornsList(list, tracker = null, gs = null) {
   let changed = true, guard = 0;
   while (changed && guard++ < 40) {
     changed = false;
@@ -1320,6 +1325,7 @@ function mergeThornsList(list, tracker = null) {
           const { thornDamage: dmg, durability: dur } = getThornStats(rarity);
           list.splice(j, 1); list.splice(i, 1);
           list.push({ type: 'thorns', name: 'Thorns Card', thornDamage: dmg, durability: dur, maxDurability: dur, rarity });
+          gs?.scene?.amuletManager?.processCardMerge?.();
           if (tracker) tracker.mergeCounts.thorns++;
           changed = true; break;
         }
@@ -1330,7 +1336,7 @@ function mergeThornsList(list, tracker = null) {
 }
 
 // Potions follow the real canonical ladder (35 -> 70 -> 110 -> 200).
-function mergePotionList(gen, list, tracker = null) {
+function mergePotionList(gen, list, tracker = null, gs = null) {
   let changed = true, guard = 0;
   while (changed && guard++ < 40) {
     changed = false;
@@ -1343,6 +1349,7 @@ function mergePotionList(gen, list, tracker = null) {
         list.splice(j, 1);
         list.splice(i, 1);
         list.push(upgraded);
+        gs?.scene?.amuletManager?.processCardMerge?.();
         if (tracker) tracker.mergeCounts.potion++;
         changed = true;
         break;
@@ -1388,9 +1395,9 @@ function regear(gen, gs, inv) {
     gs.currentFloor || 0,
     gs,
   );
-  mergeArmorList(gen, armors, echoChance, gs._mergeTracker || null, gs.currentFloor || 0, gs.talentEffects);
-  mergeThornsList(thorns, gs._mergeTracker || null);
-  mergePotionList(gen, potions, gs._mergeTracker || null);
+  mergeArmorList(gen, armors, echoChance, gs._mergeTracker || null, gs.currentFloor || 0, gs.talentEffects, gs);
+  mergeThornsList(thorns, gs._mergeTracker || null, gs);
+  mergePotionList(gen, potions, gs._mergeTracker || null, gs);
 
   weapons.sort((a, b) => wpnValue(b) - wpnValue(a));
   // Protect a strong weapon on its LAST pip: if the best weapon is at 1
@@ -3159,7 +3166,6 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
     if (attackPlan) {
       // Exhaustion penalty: attacks while out of AP deal 20% less (real game rule).
       const wasExhausted = gs.actionsLeft <= 0;
-      const effDmg = (wp) => simWeaponHitDamage(gs, wp, wasExhausted);
 
       // Attack the target/weapon pair chosen by the efficiency planner.
       attackIdx = attackPlan.index;
@@ -3175,13 +3181,21 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
         }
       }
 
-      // Keen Edge / First Blood apply to the primary swing only (not off-hand).
-      const useFirstBlood = gs?.talentEffects?.firstBloodFlat > 0 && !gs.firstAttackThisFloorUsed;
-      let dmg = simWeaponHitDamage(gs, gs.equippedWeapon, wasExhausted, {
-        applyFirstBlood: useFirstBlood,
-        applyKeenEdge: true,
-      });
-      if (useFirstBlood) gs.firstAttackThisFloorUsed = true;
+      const actionsBefore = gs.actionsLeft;
+      if (!mock.useAction()) {
+        mock.resolvePendingEnemyTurn();
+        maybeHeal(mock, gs, inv);
+        bossMustAttackNext = false;
+        continue;
+      }
+      if (consumePlayerAttackHold(gs)) {
+        mock.resolvePendingEnemyTurn();
+        maybeHeal(mock, gs, inv);
+        bossMustAttackNext = false;
+        continue;
+      }
+      const primarySwing = prepareSimWeaponSwing(mock, attackIdx, gs.equippedWeapon, { wasExhausted, actionsBefore });
+      let dmg = primarySwing.damage;
       const weaponBeforeAttack = gs.equippedWeapon;
       const axeTarget = board[attackIdx];
       const axeTargetHp = axeTarget?.data?.health || 0;
@@ -3244,32 +3258,20 @@ function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
       );
       combatDamageDealt += dmg;
       combatDamageWasted += Math.max(0, dmg - targetHP);
-      if (!mock.useAction()) {
-        // Stunned (or blocked): action cancelled, enemy turn still pending.
-        mock.resolvePendingEnemyTurn();
-        maybeHeal(mock, gs, inv);
-        bossMustAttackNext = false;
-        continue;
-      }
-      if (consumePlayerAttackHold(gs)) {
-        mock.resolvePendingEnemyTurn();
-        maybeHeal(mock, gs, inv);
-        bossMustAttackNext = false;
-        continue;
-      }
       // Main hit always lands first.
       const primaryCardBeforeAttack = board[attackIdx];
       const primaryHealthBeforeAttack = primaryCardBeforeAttack?.data?.health;
-      mock.cardSystem.attackEnemy(attackIdx, dmg, false, gs.equippedWeapon || null, false);
+      resolveSimWeaponSwing(mock, attackIdx, weaponBeforeAttack, primarySwing, { damage: dmg });
       combatDamageDealt += applyAssassinateSim(mock, gs, attackIdx);
       // Dual wield = free OFFHAND dagger swing only. Main-hand damage is
       // baseline weapon damage and must not inflate this specialization bucket.
       const offhand = wasExhausted ? null : findOffhandDagger(weaponBeforeAttack, gs, inv);
-      if (offhand && board[attackIdx]?.data?.health > 0) {
-        const dmg2 = simOffhandDamage(gs, offhand, wasExhausted);
+      if (offhand && board[attackIdx] === primaryCardBeforeAttack && board[attackIdx]?.data?.health > 0) {
+        const secondarySwing = prepareSimWeaponSwing(mock, attackIdx, offhand, { wasExhausted, actionsBefore, primary: false });
+        const dmg2 = secondarySwing.damage;
         combatDamageDealt += dmg2;
         combatSpecializationDualWield += measureTargetWeaponHit(attackIdx, () => {
-          mock.cardSystem.attackEnemy(attackIdx, dmg2, false, offhand, true);
+          resolveSimWeaponSwing(mock, attackIdx, offhand, secondarySwing, { skipDurability: true });
         });
         combatDamageDealt += applyAssassinateSim(mock, gs, attackIdx);
       }

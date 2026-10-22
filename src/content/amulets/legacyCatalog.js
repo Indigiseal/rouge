@@ -140,13 +140,6 @@ export function buildLegacyAmuletDefinitions(mgr) {
                 }
             },
             
-            travelKitchen: {
-                ...getAmuletAtlasPresentation('travelKitchen'),
-                description: 'Food restores 50% more AP',
-                rarity: 'uncommon',
-                modifyFoodAP: (amount) => Math.floor(amount * 1.5)
-            },
-            
             // CURSED AMULETS (with debuffs)
             hungryDagger: {
                 ...getAmuletAtlasPresentation('hungryDagger'),

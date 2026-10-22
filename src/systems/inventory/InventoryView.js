@@ -1233,11 +1233,12 @@ export const InventoryView = {
             // weapon it is, so it was pure duplication.
             const characterId = this.scene?.gameState?.characterId;
             const talentFx = this.scene?.gameState?.talentEffects || null;
-            const shownDmg = getDisplayedWeaponDamage(characterId, card, talentFx);
+            const bowBonus = this.scene?.amuletManager?.getBowDamageBonus?.(card) || 0;
+            const shownDmg = getDisplayedWeaponDamage(characterId, card, talentFx) + bowBonus;
             const baseDmg = card.damage || 0;
             lines.push(t(this.scene, 'tooltip.damageShort', { amount: shownDmg }));
             if (shownDmg !== baseDmg) {
-                lines.push(`Base ${baseDmg} + class/talents`);
+                lines.push(`Base ${baseDmg} + class/talents${bowBonus ? ` + ${translateItemName(this.scene, 'Dune Quiver')}` : ''}`);
             }
             const critChance = (this.scene?.gameState?.discardCritChance || 0)
                 + (this.scene?.amuletManager?.getCriticalChanceBonus?.() || 0);

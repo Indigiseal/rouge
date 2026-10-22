@@ -92,7 +92,13 @@ headless enemy phase shares the live proc helpers. A pinned simulator smoke run
 checks generation and combat execution; its player-sigil tactical forecasting
 remains an approximation and is not balance validation.
 
-Still open: a separate Feast amulet, ranged amulets, any additional maximum-AP
+Dune Quiver now supplies +1 damage to bows only. Sandspice Pouch implements
+the Feast amulet by reusing Travel Kitchen (`travelKitchen`): food restores
+50% more AP, rounded down. Both are global uncommon drops with provisional art.
+Sandspice Pouch stacks with Sandglass Scarab's +1 maximum AP per meal without
+changing that growth amount. Old owners keep one effect and receive the new name.
+
+Still open: any additional maximum-AP
 sigil, final names/art, visual review and human balance testing. No food
 transformation or new resistance was added.
 

@@ -18,6 +18,7 @@ const LOCATION_ROOM_BACKGROUNDS = Object.freeze({
 export const TOP_PINNED_BACKGROUNDS = Object.freeze(new Set([
     'thornwakeBackground',
     'bonefloodBackground',
+    'mireturnBogBackground',
 ]));
 
 export function locationBackdropKey(gameState) {

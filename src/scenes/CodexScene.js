@@ -1,4 +1,4 @@
-// The Codex: every enemy, boss, story, sigil and amulet in the game. What the
+// The Codex: every enemy, boss, story, sigil, amulet and magic card in the game. What the
 // player has met shows its art and name; the rest is a black silhouette and
 // "???". Discovery is profile-wide (content/codex/Discoveries.js).
 import { SoundHelper } from '../audio/SoundHelper.js';
@@ -7,8 +7,12 @@ import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
 import { ENEMIES, SUMMON_ONLY_ENEMY_TYPES } from '../content/cards/enemies.js';
 import { BOSSES } from '../content/cards/bosses.js';
 import { EVENTS } from '../content/events/index.js';
-import { SIGILS, SIGIL_ICONS_KEY } from '../content/sigils/sigils.js';
-import { buildCurrentAmuletDefinitions } from '../content/amulets/currentCatalog.js';
+import { SIGILS, SIGIL_ICONS_KEY, enemySigils } from '../content/sigils/sigils.js';
+import { createAmuletDefinitions } from '../content/amulets/index.js';
+import { RETIRED_ACTIVE_AMULETS } from '../content/cards/amulets.js';
+import { MAGIC } from '../content/cards/magic.js';
+import { PLAYABLE_LOCATION_IDS, PATH_LOCATIONS } from '../content/locations/catalog.js';
+import { getLocationPack } from '../content/location-packs/registry.js';
 import { EVENT_ILLUSTRATION_FRAMES } from './EventScene.js';
 import { isDiscovered } from '../content/codex/Discoveries.js';
 import { ENEMY_SHEET_KEY, sheetRowFor } from '../content/assets/enemyCards.js';
@@ -16,12 +20,16 @@ import { ENEMY_SHEET_KEY, sheetRowFor } from '../content/assets/enemyCards.js';
 const FONT = '"HoMM Pixel", Arial, sans-serif';
 // The scrolling window: under the tabs, above the description bar.
 const LIST_TOP = 56;
-const LIST_BOTTOM = 312;
+const LIST_BOTTOM = 280;
 const SCROLL_STEP = 40;
 const DRAG_SLOP = 4;
 const BUTTON_DEPTH = 20;
-// Board order for enemies: act 1 roads, then act 2.
-const LOCATION_ORDER = ['thornwake', 'silkdeep', 'tollroad', 'boneflood', 'mireturn', 'veilbleed', 'ashhowl'];
+const LOCATION_ORDER = PLAYABLE_LOCATION_IDS;
+// Placeholder rosters may not carry sheet/month metadata yet.
+const ENEMY_LOCATIONS = Object.fromEntries(LOCATION_ORDER.flatMap(locationId =>
+  Object.values(getLocationPack(locationId)?.enemies || {}).flat()
+    .map(enemyId => [enemyId, locationId])));
+const locationForEnemy = (id, enemy) => enemy.monthId || ENEMY_LOCATIONS[id];
 const DEFAULT_EVENT_FRAME = 7;
 const ENEMY_SHEET_COLUMNS = 8;
 
@@ -31,6 +39,7 @@ const TABS = Object.freeze([
   { id: 'stories', labelKey: 'ui.codex.stories', cell: { w: 104, h: 96 }, box: { w: 64, h: 64 } },
   { id: 'sigils', labelKey: 'ui.codex.sigils', cell: { w: 76, h: 58 }, box: { w: 32, h: 32 } },
   { id: 'amulets', labelKey: 'ui.codex.amulets', cell: { w: 76, h: 70 }, box: { w: 44, h: 44 } },
+  { id: 'magic', labelKey: 'ui.codex.magic', cell: { w: 76, h: 96 }, box: { w: 52, h: 70 } },
 ]);
 
 function firstLines(text, max = 150) {
@@ -58,16 +67,16 @@ export class CodexScene extends Phaser.Scene {
       .setOrigin(1, 0.5);
 
     this.tabButtons = TABS.map((tab, i) => this.createButton(
-      96 + i * 112, 40, t(this, tab.labelKey), () => this.showTab(tab.id), 104,
+      70 + i * 100, 40, t(this, tab.labelKey), () => this.showTab(tab.id), 94,
     ));
 
     // Description bar for whatever the pointer is over.
-    this.add.rectangle(320, 330, 620, 30, 0x28150c, 0.85).setStrokeStyle(1, 0x9b6a1b);
-    this.infoName = this.add.text(20, 322, '', { fontSize: '11px', fill: '#fef0cf', fontFamily: FONT })
+    this.add.rectangle(320, 314, 620, 62, 0x28150c, 0.85).setStrokeStyle(1, 0x9b6a1b);
+    this.infoName = this.add.text(20, 293, '', { fontSize: '11px', fill: '#fef0cf', fontFamily: FONT })
       .setOrigin(0, 0.5);
-    this.infoText = this.add.text(20, 337, '', {
+    this.infoText = this.add.text(20, 302, '', {
       fontSize: '10px', fill: '#b9b0a0', fontFamily: FONT, wordWrap: { width: 600 },
-    }).setOrigin(0, 0.5);
+    }).setOrigin(0, 0);
 
     this.createButton(320, 352, t(this, 'ui.codex.back'), () => this.goBack(), 140);
 
@@ -90,18 +99,20 @@ export class CodexScene extends Phaser.Scene {
     if (tabId === 'bosses') return this.bossEntries();
     if (tabId === 'stories') return this.storyEntries();
     if (tabId === 'sigils') return this.sigilEntries();
+    if (tabId === 'magic') return this.magicEntries();
     return this.amuletEntries();
   }
 
   enemyEntries() {
-    const rank = (enemy) => {
-      const i = LOCATION_ORDER.indexOf(enemy.monthId);
+    const rank = (id, enemy) => {
+      const i = LOCATION_ORDER.indexOf(locationForEnemy(id, enemy));
       return i < 0 ? LOCATION_ORDER.length : i;
     };
     return Object.entries(ENEMIES)
       .filter(([id]) => !SUMMON_ONLY_ENEMY_TYPES.has(id))
-      .sort(([, a], [, b]) => rank(a) - rank(b))
+      .sort(([aId, a], [bId, b]) => rank(aId, a) - rank(bId, b))
       .map(([id, enemy]) => {
+        const locationId = locationForEnemy(id, enemy);
         // Undiscovered: the creature alone off the sheet, so the silhouette is
         // its shape rather than a black card.
         const row = sheetRowFor(enemy.monthId);
@@ -110,9 +121,12 @@ export class CodexScene extends Phaser.Scene {
           : null;
         return {
           id,
+          locationId,
           known: isDiscovered('enemies', id),
           name: translateItemName(this, enemy.name) || enemy.name,
-          info: enemy.monthId ? t(this, `location.${enemy.monthId}.name`) : '',
+          info: [locationId ? t(this, `location.${locationId}.name`) : '',
+            ...enemySigils(enemy, { lockKind: id === 'inkWraith' ? 'ink' : null }).map(({ id }) => SIGILS[id]?.enemy)
+              .filter(Boolean).map(rule => translateDescription(this, rule))].filter(Boolean).join(' · '),
           texture: enemy.sprite,
           frame: enemy.spriteFrame,
           silhouette: creature,
@@ -125,7 +139,11 @@ export class CodexScene extends Phaser.Scene {
       id,
       known: isDiscovered('bosses', id),
       name: translateItemName(this, boss.name) || boss.name,
-      info: t(this, 'ui.codex.actBoss', { act: boss.tier || 1 }),
+      // Location bosses can now appear in any act; tier is a tuning baseline.
+      info: [...LOCATION_ORDER.filter(locationId => PATH_LOCATIONS[locationId]?.bossId === id)
+        .map(locationId => t(this, `location.${locationId}.name`)),
+        ...enemySigils(boss).map(({ id: sigilId }) => SIGILS[sigilId]?.enemy)
+          .filter(Boolean).map(rule => translateDescription(this, rule))].join(' · '),
       texture: boss.sprite,
     }));
   }
@@ -150,10 +168,10 @@ export class CodexScene extends Phaser.Scene {
   }
 
   sigilEntries() {
-    return Object.entries(SIGILS).map(([id, sigil]) => {
+    return Object.entries(SIGILS).filter(([id, sigil]) => !sigil.retired || isDiscovered('sigils', id)).map(([id, sigil]) => {
       const rules = [
-        sigil.player ? t(this, 'ui.codex.sigilYou', { rule: sigil.player }) : null,
-        sigil.enemy ? t(this, 'ui.codex.sigilEnemy', { rule: sigil.enemy }) : null,
+        sigil.player ? t(this, 'ui.codex.sigilYou', { rule: translateDescription(this, sigil.player) }) : null,
+        sigil.enemy ? t(this, 'ui.codex.sigilEnemy', { rule: translateDescription(this, sigil.enemy) }) : null,
       ].filter(Boolean);
       return {
         id,
@@ -167,14 +185,27 @@ export class CodexScene extends Phaser.Scene {
   }
 
   amuletEntries() {
-    const defs = buildCurrentAmuletDefinitions({});
-    return Object.entries(defs).map(([id, def]) => ({
-      id,
-      known: isDiscovered('amulets', id),
-      name: translateItemName(this, def) || def.name,
-      info: translateDescription(this, def.description || ''),
-      texture: def.sprite,
-      frame: def.spriteFrame,
+    const defs = createAmuletDefinitions({});
+    return Object.entries(defs)
+      .filter(([id, def]) => (def.rarity !== 'old' && !RETIRED_ACTIVE_AMULETS.has(id)) || isDiscovered('amulets', id))
+      .map(([id, def]) => ({
+        id,
+        known: isDiscovered('amulets', id),
+        name: translateItemName(this, def) || def.name,
+        info: translateDescription(this, def.description || ''),
+        texture: def.sprite,
+        frame: def.spriteFrame,
+      }));
+  }
+
+  magicEntries() {
+    return MAGIC.map(card => ({
+      id: card.magicType,
+      known: isDiscovered('magic', card.magicType),
+      name: translateItemName(this, card) || card.name,
+      info: translateDescription(this, card.description || ''),
+      texture: card.sprite,
+      frame: card.spriteFrame,
     }));
   }
 
@@ -214,7 +245,8 @@ export class CodexScene extends Phaser.Scene {
     const texture = this.textures.exists(look.texture) ? look.texture : null;
     let art;
     if (texture) {
-      art = Number.isInteger(look.frame)
+      // Standalone art such as Tactician's Pin has no numbered atlas frame.
+      art = Number.isInteger(look.frame) && this.textures.get(texture).has(look.frame)
         ? this.add.image(x, artY, texture, look.frame)
         : this.add.image(x, artY, texture);
       const scale = Math.min(tab.box.w / art.width, tab.box.h / art.height);

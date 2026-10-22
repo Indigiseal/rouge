@@ -127,13 +127,13 @@ const SANDBOX_STORY_SETUP = {
   broken_music_box: {
     grant: ['key'],
   },
-  // Nest copy and cog prize assume the box survived the opener.
+  // The Storm nest is now independent of the Tollroad music box.
   monster_bird_nest: {
-    story: { boxState: 'opened', boxFollowing: true },
+    story: { boxState: 'unknown', boxFollowing: false },
   },
-  // Needs the cog recovered from the bird nest, or both repair choices hide.
+  // The engineer now supplies spare parts without needing the bird nest.
   goblin_engineer: {
-    story: { boxState: 'has_cog', boxHasCog: true, boxFollowing: true },
+    story: { boxState: 'opened', boxHasCog: false, boxFollowing: true },
   },
   // The wizard is the carnival's follow-up, so the carnival must have happened.
   brass_wizard: {

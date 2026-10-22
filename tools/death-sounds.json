@@ -75,6 +75,32 @@
     "cinderBrute": "Big fire brute dying: a heavy rocky body crashing down, flames bursting and then sputtering out",
     "slagSpitter": "Molten slag creature dying: a bubbling spit of magma, a heavy sizzle as it cools and cracks"
   },
+  "storm_deaths": {
+    "cloudbornGuard": {
+      "prompt": "Masked spear guard defeated: a sharp crackling electric zap, a copper spear clanging onto stone, stiff insect wings snapping shut. Crisp and dry, no wet sounds, no low rumble, no voice",
+      "durationSeconds": 1.0
+    },
+    "lightningBee": {
+      "prompt": "Giant electric insect defeated: a high bright electric zap and a short crackle of static, brittle chitin snapping. Crisp and sharp, no wet sounds, no low buzz, no voice",
+      "durationSeconds": 0.9
+    },
+    "stormGolem": {
+      "prompt": "Storm golem defeated: a loud thunder crack, stone blocks breaking apart and tumbling, a last crackle of sparks. Hard and crisp, no wet sounds, no voice",
+      "durationSeconds": 1.3
+    },
+    "lightningEye": {
+      "prompt": "Floating lightning eye defeated: glass cracking and shattering, copper rings ringing and clattering, a bright electric discharge fizzing out. Crisp and metallic, no wet sounds, no voice",
+      "durationSeconds": 1.1
+    },
+    "cloudbornArcher": {
+      "prompt": "Masked archer defeated: a bowstring snapping with a sharp twang, a copper bow clattering on stone, a short electric spark. Crisp and dry, no wet sounds, no voice",
+      "durationSeconds": 1.0
+    },
+    "stormArchon": {
+      "prompt": "Storm ruler defeated: one huge crack of thunder, a long sizzling electric discharge, a metal crown and staff crashing onto stone. Powerful and sharp, no wet sounds, no voice, no music",
+      "durationSeconds": 1.7
+    }
+  },
   "armor": {
     "leather": "Leather armor put on: a soft padded thud of thick leather and a quiet creak. Soft, warm and rounded, slightly muffled, mellow and gentle, quiet and close, no sharp attack, no bright or piercing high frequencies, no hiss",
     "chain": "Chainmail armor put on: a heavy muffled chainmail shuffle settling, dull and weighty rather than jingly. Soft, warm and rounded, slightly muffled, mellow and gentle, quiet and close, no sharp attack, no bright or piercing high frequencies, no hiss",
@@ -90,12 +116,15 @@
   "pickups": {
     "crystal": "Picking up a magic crystal: a soft low warm crystal tone, a gentle muted glassy note. Soft, warm and rounded, slightly muffled, mellow and gentle, quiet and close, no sharp attack, no bright or piercing high frequencies, no hiss"
   },
-  "tone": {},
+  "tone": {
+    "storm_deaths": "highpass=f=180"
+  },
   "setInfluence": {
     "armor": 0.75,
     "pickups": 0.75,
     "combat": 0.7,
-    "events": 0.45
+    "events": 0.45,
+    "storm_deaths": 0.75
   },
   "combat": {
     "block_ready": "A warrior bracing behind a raised sword: a quick firm swoosh as the blade snaps up into a guard, ending in a short solid metallic grip. Warm and full, not shrill, not tinny, no harsh high frequencies",

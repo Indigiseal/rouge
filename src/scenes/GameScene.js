@@ -1899,6 +1899,8 @@ export class GameScene extends Phaser.Scene {
     recordCardDiscarded(card, x = this.playerAvatar.x, y = this.playerAvatar.y) {
         if (!card) return;
 
+        this.amuletManager?.processCardDiscard?.(card);
+
         this.gameState.discardedCardsThisRun = (this.gameState.discardedCardsThisRun || 0) + 1;
 
         const coinBonus = this.amuletManager?.getDiscardCoinBonus?.() || 0;
@@ -1977,6 +1979,7 @@ export class GameScene extends Phaser.Scene {
         this.gameState.actionsLeft = runData.player.actionsLeft;
         this.gameState.maxActions = runData.player.maxActions;
         this.gameState.gluttonMaxApGained = runData.player.gluttonMaxApGained || 0;
+        this.gameState.mossyMaxHpGained = runData.player.mossyMaxHpGained || 0;
         this.gameState.coins = runData.player.coins;
         this.gameState.crystals = runData.player.crystals;
         this.gameState.currentFloor = runData.player.currentFloor;

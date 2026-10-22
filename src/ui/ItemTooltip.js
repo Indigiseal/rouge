@@ -87,7 +87,7 @@ export function getTooltipLines(scene, data) {
             scene?.gameState?.characterId,
             data,
             scene?.gameState?.talentEffects || null
-        );
+        ) + (scene?.amuletManager?.getBowDamageBonus?.(data) || 0);
         const dur = data.durability ?? data.maxDurability ?? 0;
         const rarityWord = data.rarity ? `${translateRarity(scene, data.rarity)} ` : '';
         body = `${rarityWord}${t(scene, describeWeaponKindKey(data))}\n${t(scene, 'tooltip.dmgDur', { dmg, dur })}`;

@@ -3,6 +3,8 @@ import { consumePlayerShock, consumeCompanionShock } from './storm.js';
 
 export const ENEMY_FROST_CHANCE = 0.1;
 export const ENEMY_FROST_ATTACKS = 2;
+export const ECHO_CHANCE = 0.1;
+export const ECHO_DAMAGE_SHARE = 0.5;
 
 export function freezePlayer(gameState) {
     if (!(gameState?.playerHealth > 0)) return false;

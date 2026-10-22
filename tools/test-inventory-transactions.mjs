@@ -75,7 +75,8 @@ function eventTypes() {
     assert.equal(manager.amuletDefinitions.keepersWard.armorDurabilitySaveChance, 0.3);
     assert.equal(AMULETS.some(amulet => amulet.id === 'keepersWard'), true);
     assert.equal(AMULETS.some(amulet => retired.includes(amulet.id)), false);
-    assert.equal(AMULETS.some(amulet => amulet.id === 'monocle'), false);
+    assert.equal(AMULETS.find(amulet => amulet.id === 'monocle')?.name, "Goblin's Ransom");
+    assert.equal(manager.amuletDefinitions.monocle.crystalOnKillChance, 0.03);
     assert.deepEqual(
         AMULETS.find(amulet => amulet.id === 'forcedMarch'),
         { ...AMULETS.find(amulet => amulet.id === 'forcedMarch'), minFloor: 0, rarity: 'common' },

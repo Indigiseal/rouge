@@ -121,6 +121,9 @@ Taunt preservation, exclusions, defeated targets, freeze preservation, cast
 consumption/refusal, artwork mapping, Reliquary eligibility, enchant hover and
 the single proc roll.
 
-The shared any-act suite now covers 30 location/act combinations. Story
-migrations, final assets/name and human balance testing remain follow-ups.
+The shared any-act suite now covers 30 location/act combinations. The bird nest
+and carnival now begin in Storm, with fresh nests independent of the goblin music
+box and old pending follow-ups preserved. See [the story pass](storm-story-design-pass.md)
+and `npm run test:storm-stories`. Final assets/name, visual review and human
+balance testing remain follow-ups.
 Storm does not gain AP recovery; that belongs to the sand lizardfolk theme.

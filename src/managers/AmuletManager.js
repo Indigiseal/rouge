@@ -24,6 +24,8 @@ import { translateItemName } from '../i18n/i18n.js';
 import { scaleGoldReward } from '../content/economy/gold.js';
 import { noteDiscovered } from '../content/codex/Discoveries.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { repairRandomDamagedItem } from '../systems/inventory/ItemRepair.js';
+import { grantMergeMaxHealth } from '../content/amulets/mossyStone.js';
 
 export class AmuletManager {
     constructor(scene) {
@@ -76,6 +78,44 @@ export class AmuletManager {
     // Golden Seed — permanent max HP gained per card discarded.
     getDiscardMaxHpBonus() {
         return this.sumAmuletProperty('maxHpPerDiscard');
+    }
+
+    processCardMerge() {
+        const gained = grantMergeMaxHealth(this.gameState, this);
+        if (gained > 0) {
+            const anchor = this.scene.playerAvatar;
+            this.scene.createFloatingText?.(anchor?.x ?? 320, (anchor?.y ?? 180) - 18, {
+                key: 'amulet.mossyStone.growth', vars: { amount: gained },
+            }, 0x71800b);
+            this.scene.updateUI?.();
+        }
+        return gained;
+    }
+
+    // Called only by deliberate discards, before the dragged card is removed.
+    // Exclude it explicitly so it can never consume its own repair reward.
+    processCardDiscard(card) {
+        if (!card || !this.gameState.activeAmulets.some(a => this.amuletDefinitions[a.id]?.repairOnDiscard)) return null;
+        const inv = this.scene.inventorySystem;
+        const slots = inv?.slots || this.gameState.inventory || [];
+        const repaired = repairRandomDamagedItem(
+            [...slots, this.gameState.equippedArmor].filter(item => item !== card)
+        );
+        if (!repaired) return null;
+        const sprite = inv?.slotSprites?.[slots.indexOf(repaired.item)]?.card;
+        if (sprite?.scene) inv.updateWeaponInfoText?.(sprite, repaired.item);
+        const anchor = sprite?.scene ? sprite : this.scene.playerAvatar;
+        this.scene.createFloatingText?.(anchor?.x ?? 320, (anchor?.y ?? 180) - 18, {
+            key: 'event.reward.repaired',
+            vars: { name: translateItemName(this.scene, repaired.item), amount: repaired.gained },
+        }, 0xd6c2c1);
+        this.scene.updateUI?.();
+        return repaired;
+    }
+
+    getBowDamageBonus(weapon) {
+        return weapon?.type === 'weapon' && weapon.weaponType === 'bow'
+            ? this.sumAmuletProperty('bowDamageBonus') : 0;
     }
 
     // Legacy Fire Rune (event) — extra pixels added to the fire gem's splash radius.
@@ -422,8 +462,8 @@ export class AmuletManager {
     }
     
     // Modify weapon damage
-    modifyWeaponDamage(baseDamage) {
-        let damage = baseDamage;
+    modifyWeaponDamage(baseDamage, weapon = null) {
+        let damage = baseDamage + this.getBowDamageBonus(weapon);
         this.gameState.activeAmulets.forEach(amulet => {
             const definition = this.amuletDefinitions[amulet.id];
             if (definition && definition.modifyWeaponDamage) {
@@ -518,11 +558,15 @@ export class AmuletManager {
         this.tryBindThrall(card);
     }
 
-    // Monocle — chance to find a crystal on kill. Caller grants currency + FX.
+    // Goblin's Ransom (stable monocle ID) and existing crystal amulets.
     rollMonocleCrystalReward() {
         const chance = this.sumAmuletProperty('crystalOnKillChance');
         if (chance <= 0 || Math.random() >= chance) return null;
         return { kind: 'crystal', amount: 1 };
+    }
+
+    getScoutOnHitChance() {
+        return Math.min(1, this.sumAmuletProperty('scoutOnHitChance'));
     }
 
     // Vampire Fang — heal for a % of weapon damage dealt (ceil).

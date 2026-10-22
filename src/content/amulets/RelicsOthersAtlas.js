@@ -1,4 +1,4 @@
-import { SANDGLASS_SCARAB } from './sandglassScarab.js';
+import { LOCATION_AMULET_IDENTITIES } from './locationIdentities.js';
 
 export const RELICS_OTHERS_TEXTURE = 'relicsOthers';
 // 28px copy of the sheet, frame for frame, for the battle HUD's equipped strip.
@@ -101,6 +101,7 @@ export const RELICS_OTHERS_ATLAS = Object.freeze({
     poisonRune:           { frame: 71, name: 'Poison Rune' },
 
     bloodFang:            { frame: 72, name: 'Vampire Fang' },
+    quiver:               { frame: 73, name: 'Quiver' },
     monocleLens:          { frame: 78, name: 'Monocle' },
     alchemistSatchel:     { frame: 80, name: 'Alchemist Bag' },
     violetGauntlet:       { frame: 81, name: 'Gloves of the Hermit Wizard' },
@@ -136,7 +137,7 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     abyssHourglass: 'moonPotion',
     temperedSteel: 'goldBar',
     bottomlessBag: 'bottomlessBag',
-    travelKitchen: 'strawHat',
+    travelKitchen: 'stormPouch', // Existing pale pouch, now Sandspice Pouch.
     hungryDagger: 'birdSkull',
     bloodyHarvest: 'runeOfBalance',
     vampiricRing: 'signetRing',
@@ -185,6 +186,10 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     earringOfGreaterWeaponDurability: 'stormShard',
     alchemistBag: 'alchemistSatchel',
     monocle: 'monocleLens',
+    goblinSpyglass: 'magnifyingGlass', // Placeholder until its goblin-flavored art is drawn.
+    boneSpool: 'boneScroll', // Provisional bone craft art.
+    mossyStone: 'runeOfBalance', // Existing grey-green standing stone.
+    duneQuiver: 'quiver',
     pouchOfGreed: 'greedPouch',
     vampireFang: 'bloodFang',
     newDragonClaw: 'dragonClaw',
@@ -264,7 +269,8 @@ export function getAmuletAtlasPresentation(id) {
     return {
         name: entry.name,
         sprite: RELICS_OTHERS_TEXTURE,
-        spriteFrame: entry.frame
+        spriteFrame: entry.frame,
+        ...LOCATION_AMULET_IDENTITIES[id],
     };
 }
 
@@ -279,11 +285,7 @@ export function getRelicAtlasPresentation(id) {
 
 export function applyAmuletAtlasPresentation(data) {
     if (!data?.id || !AMULET_ATLAS_KEYS[data.id]) return data;
-    return { ...data, ...getAmuletAtlasPresentation(data.id),
-        ...(data.id === SANDGLASS_SCARAB.id ? {
-            name: SANDGLASS_SCARAB.name, description: SANDGLASS_SCARAB.description,
-        } : {}),
-    };
+    return { ...data, ...getAmuletAtlasPresentation(data.id) };
 }
 
 function validateAtlasAssignments() {

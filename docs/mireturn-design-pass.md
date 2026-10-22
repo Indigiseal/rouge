@@ -83,4 +83,8 @@ the same enemy-type check as selection, fixing an inconsistency that could
 skip an `eliteEnemy` after accepting it as a target.
 
 Final living creature and mermaid art, the final Growth icon, the possible
-Marrow amulet and human balance testing remain follow-ups.
+The Marrow proposal is now Mossy Stone: +1 maximum HP per successful card merge,
+capped at +50 per run, without healing. This replaces the earlier kill-based
+idea. Bag and worn-armor merges count; cap usage survives Continue and re-equipping.
+It drops globally with provisional art. See `npm run test:mossy-stone`.
+Human balance testing remains a follow-up.
