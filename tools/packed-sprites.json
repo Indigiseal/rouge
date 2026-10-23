@@ -1,0 +1,354 @@
+{
+ "sheets": [
+  {
+   "key": "packedCards",
+   "path": "assets/art/packed/cards.png",
+   "columns": 8,
+   "cellWidth": 54,
+   "cellHeight": 70,
+   "entries": [
+    {
+     "key": "angryNestmother",
+     "source": "assets/_sources/packed/cards/bird.png"
+    },
+    {
+     "key": "silkCocoon",
+     "source": "assets/_sources/packed/cards/cocoon.png"
+    },
+    {
+     "key": "trap",
+     "source": "assets/_sources/packed/cards/trap.png"
+    },
+    {
+     "key": "trap2",
+     "source": "assets/_sources/packed/cards/trap2.png"
+    },
+    {
+     "key": "keyCard",
+     "source": "assets/_sources/packed/cards/keyCard.png"
+    },
+    {
+     "key": "trapTriggers",
+     "source": "assets/_sources/packed/cards/trapTriggers.png"
+    },
+    {
+     "key": "thornsCard",
+     "source": "assets/_sources/packed/cards/thornsCard.png"
+    },
+    {
+     "key": "thornsCard_U",
+     "source": "assets/_sources/packed/cards/thornsCard_U.png"
+    },
+    {
+     "key": "thornsCard_R",
+     "source": "assets/_sources/packed/cards/thornsCard_R.png"
+    },
+    {
+     "key": "thornsCard_E",
+     "source": "assets/_sources/packed/cards/thornsCard_E.png"
+    },
+    {
+     "key": "carnivalPipe",
+     "source": "assets/_sources/packed/cards/pipe.png"
+    },
+    {
+     "key": "carnivalDucky",
+     "source": "assets/_sources/packed/cards/ducky.png"
+    },
+    {
+     "key": "carnivalRing",
+     "source": "assets/_sources/packed/cards/brokenRing.png"
+    },
+    {
+     "key": "holographicOmen",
+     "source": "assets/_sources/packed/cards/omen.png"
+    },
+    {
+     "key": "egg",
+     "source": "assets/_sources/packed/cards/egg.png"
+    },
+    {
+     "key": "crystalSpiderEgg",
+     "source": "assets/_sources/packed/cards/crystalSpiderEgg.png"
+    },
+    {
+     "key": "chickCompanion",
+     "source": "assets/_sources/packed/cards/chickCompanion.png"
+    },
+    {
+     "key": "crystalSpiderlingCompanion",
+     "source": "assets/_sources/packed/cards/crystalSpiderlingCompanion.png"
+    },
+    {
+     "key": "chickCompanionUP",
+     "source": "assets/_sources/packed/cards/chickCompanionUP.png"
+    },
+    {
+     "key": "skeletonCompanion",
+     "source": "assets/_sources/packed/cards/skeletonCompanion.png"
+    },
+    {
+     "key": "skeletonCompanionUP",
+     "source": "assets/_sources/packed/cards/skeletonCompanionUP.png"
+    },
+    {
+     "key": "thornFrame",
+     "source": "assets/_sources/packed/cards/thornFrame.png"
+    },
+    {
+     "key": "caveCrawler",
+     "source": "assets/_sources/packed/cards/caveCrawler.png"
+    },
+    {
+     "key": "silkHusk",
+     "source": "assets/_sources/packed/cards/silkHusk.png"
+    },
+    {
+     "key": "enemyPlaceholder",
+     "source": "assets/_sources/packed/cards/ghostlyEnemy.png"
+    },
+    {
+     "key": "cerberusHead",
+     "source": "assets/_sources/packed/cards/dogHead.png"
+    },
+    {
+     "key": "cerberusHead_elite",
+     "source": "assets/_sources/packed/cards/dogHeadElite.png"
+    },
+    {
+     "key": "skeleton_archer",
+     "source": "assets/_sources/packed/cards/skeletonArcher_c.png"
+    },
+    {
+     "key": "mimic",
+     "source": "assets/_sources/packed/cards/mimic.png"
+    }
+   ]
+  },
+  {
+   "key": "packedFireball",
+   "path": "assets/art/packed/fireball.png",
+   "columns": 4,
+   "cellWidth": 37,
+   "cellHeight": 37,
+   "entries": [
+    {
+     "key": "fireBall1",
+     "source": "assets/_sources/packed/fireball/fireBall1.png"
+    },
+    {
+     "key": "fireBall2",
+     "source": "assets/_sources/packed/fireball/fireBall2.png"
+    },
+    {
+     "key": "fireBall3",
+     "source": "assets/_sources/packed/fireball/fireBall3.png"
+    },
+    {
+     "key": "fireBall4",
+     "source": "assets/_sources/packed/fireball/fireBall4.png"
+    }
+   ]
+  },
+  {
+   "key": "packedBanners",
+   "path": "assets/art/packed/banners.png",
+   "columns": 1,
+   "cellWidth": 262,
+   "cellHeight": 71,
+   "entries": [
+    {
+     "key": "uiBanner",
+     "source": "assets/_sources/packed/banners/bannerEvents.png"
+    },
+    {
+     "key": "villageBanner",
+     "source": "assets/_sources/packed/banners/bannerVillage.png"
+    },
+    {
+     "key": "anvilBanner",
+     "source": "assets/_sources/packed/banners/bannerAnvil.png"
+    },
+    {
+     "key": "restBanner",
+     "source": "assets/_sources/packed/banners/bannerRestl.png"
+    },
+    {
+     "key": "sigilBanner",
+     "source": "assets/_sources/packed/banners/bannerSigil.png"
+    }
+   ]
+  },
+  {
+   "key": "packedUi",
+   "path": "assets/art/packed/ui.png",
+   "columns": 6,
+   "cellWidth": 122,
+   "cellHeight": 64,
+   "entries": [
+    {
+     "key": "villageButtonUp",
+     "source": "assets/_sources/packed/ui/buttonUpReset.png"
+    },
+    {
+     "key": "villageButtonDown",
+     "source": "assets/_sources/packed/ui/buttonDownReset.png"
+    },
+    {
+     "key": "nextTurnUp",
+     "source": "assets/_sources/packed/ui/nextTurnUp.png"
+    },
+    {
+     "key": "nextTurnDown",
+     "source": "assets/_sources/packed/ui/nextTurnDown.png"
+    },
+    {
+     "key": "villagePlate",
+     "source": "assets/_sources/packed/ui/panelVillage.png"
+    },
+    {
+     "key": "villageRankStar",
+     "source": "assets/_sources/packed/ui/rankStar.png"
+    },
+    {
+     "key": "scrollHandle",
+     "source": "assets/_sources/packed/ui/scroll.png"
+    },
+    {
+     "key": "priceTag",
+     "source": "assets/_sources/packed/ui/priceTag.png"
+    },
+    {
+     "key": "anvilPriceTag",
+     "source": "assets/_sources/packed/ui/priceTag.png"
+    },
+    {
+     "key": "tutorialPointer",
+     "source": "assets/_sources/packed/ui/pointer.png"
+    },
+    {
+     "key": "gemSpot",
+     "source": "assets/_sources/packed/ui/gemSpot.png"
+    },
+    {
+     "key": "cornerSelect",
+     "source": "assets/_sources/packed/ui/cornerSelect.png"
+    },
+    {
+     "key": "actionPoint",
+     "source": "assets/_sources/packed/ui/actionPoint.png"
+    },
+    {
+     "key": "volumeKnob",
+     "source": "assets/_sources/packed/ui/toggle.png"
+    },
+    {
+     "key": "coinUI",
+     "source": "assets/_sources/packed/ui/coinUI.png"
+    },
+    {
+     "key": "CrystalUI",
+     "source": "assets/_sources/packed/ui/CrystalUI.png"
+    },
+    {
+     "key": "healthBar",
+     "source": "assets/_sources/packed/ui/healthBar.png"
+    },
+    {
+     "key": "healthBarEmpty",
+     "source": "assets/_sources/packed/ui/healthBarEmpty2.png"
+    },
+    {
+     "key": "durability_dot",
+     "source": "assets/_sources/packed/ui/durability_dot.png"
+    },
+    {
+     "key": "ten_durability",
+     "source": "assets/_sources/packed/ui/ten_durability.png"
+    },
+    {
+     "key": "uiPanelDark",
+     "source": "assets/_sources/packed/ui/paneDarkl9x9.png"
+    },
+    {
+     "key": "uiBar",
+     "source": "assets/_sources/packed/ui/barSlice.png"
+    },
+    {
+     "key": "panelText9Slice",
+     "source": "assets/_sources/packed/ui/panelText9Slice.png"
+    }
+   ]
+  },
+  {
+   "key": "packedSigilStamps",
+   "path": "assets/art/packed/sigilStamps.png",
+   "columns": 4,
+   "cellWidth": 148,
+   "cellHeight": 125,
+   "entries": [
+    {
+     "key": "sigilStampLion",
+     "source": "assets/_sources/packed/sigilstamps/lion.png"
+    },
+    {
+     "key": "sigilStampTurtle",
+     "source": "assets/_sources/packed/sigilstamps/turtle.png"
+    },
+    {
+     "key": "sigilStampToad",
+     "source": "assets/_sources/packed/sigilstamps/toad.png"
+    },
+    {
+     "key": "sigilStampCobra",
+     "source": "assets/_sources/packed/sigilstamps/cobra.png"
+    },
+    {
+     "key": "sigilStampDeer",
+     "source": "assets/_sources/packed/sigilstamps/deer.png"
+    },
+    {
+     "key": "sigilRoomFloor",
+     "source": "assets/_sources/packed/sigilstamps/floor.png"
+    },
+    {
+     "key": "sigilStonePanel",
+     "source": "assets/_sources/packed/sigilstamps/stonePanel.png"
+    }
+   ]
+  },
+  {
+   "key": "packedSanctuary",
+   "path": "assets/art/packed/sanctuary.png",
+   "columns": 6,
+   "cellWidth": 128,
+   "cellHeight": 128,
+   "entries": [
+    {
+     "key": "sanctuaryLion",
+     "source": "assets/_sources/packed/sanctuary/fanged-guardian.png"
+    },
+    {
+     "key": "sanctuaryTurtle",
+     "source": "assets/_sources/packed/sanctuary/shelled-sentinel.png"
+    },
+    {
+     "key": "sanctuaryToad",
+     "source": "assets/_sources/packed/sanctuary/deep-toad.png"
+    },
+    {
+     "key": "sanctuaryBird",
+     "source": "assets/_sources/packed/sanctuary/trinket-keeper.png"
+    },
+    {
+     "key": "sanctuaryPhoenix",
+     "source": "assets/_sources/packed/sanctuary/phoenix.png"
+    },
+    {
+     "key": "sanctuaryPhoenixBroken",
+     "source": "assets/_sources/packed/sanctuary/phoenix-damaged.png"
+    }
+   ]
+  }
+ ]
+}

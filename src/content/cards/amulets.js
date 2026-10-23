@@ -22,7 +22,7 @@ export const AMULET_DROP_DATA = [
 
   // Uncommon (from floor 10)
   { id: 'ringOfGreaterRegeneration', minFloor: 10, weight: 7, rarity: 'uncommon', group: 'survival' },
-  { id: 'alchemistBag', minFloor: 10, weight: 6, rarity: 'uncommon', group: 'survival' },
+  // The Alchemist's Bag is the Robbed Traveller's alone (events/robbed_traveller.js), not a drop.
   { id: 'pouchOfGreed', minFloor: 10, weight: 8, rarity: 'uncommon', group: 'utility' },
   { id: 'monocle', minFloor: 10, weight: 5, rarity: 'uncommon', group: 'utility' },
   { id: 'goblinSpyglass', minFloor: 10, weight: 5, rarity: 'uncommon', group: 'utility' },

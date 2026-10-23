@@ -42,6 +42,11 @@ export const HIDDEN_PATH_SOURCES = Object.freeze({
         roomType: 'TREASURE_GOOD',
         isOpen: (gameState) => hasAmulet(gameState, 'porterMap'),
     }),
+    // The Robbed Traveller (soup_stand.js): where the gang sleeps. Their stash
+    // is a good chest.
+    robberStash: Object.freeze({ roomType: 'TREASURE_GOOD' }),
+    // Quiet Crossroads: a map scratched into the alcove wall.
+    crossroadsWall: Object.freeze({ roomType: 'TREASURE_GOOD' }),
     // The sigil vault (sigils branch): one secret room in every act, always
     // there, but only drawn while the player stands in the room that leads
     // into it (revealNear). Inside is a Sigil Room: a statue, no chest.

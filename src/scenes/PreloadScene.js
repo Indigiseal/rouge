@@ -4,13 +4,16 @@ import { fontFamily } from '../ui/fontFamilies.js';
 import { PIXEL_SCALE } from '../config/renderScale.js';
 import { wrapUiText } from '../ui/wrapText.js';
 import { buildResourceCardTextures } from '../content/assets/resourceCards.js';
+import { buildPackedSprites } from '../content/assets/packedSprites.js';
 import { buildEnemyCardTextures } from '../content/assets/enemyCards.js';
+import { buildBossPoseTextures } from '../content/cards/bossAttackFrames.js';
 import { buildLocationCardArt } from '../content/assets/locationCardArt.js';
 import { buildLocationCardTextures } from '../content/assets/locationCards.js';
 import { LOCATION_PACK_LIST } from '../content/location-packs/registry.js';
 import { CRYSTAL_LAIR_SHEET } from '../content/cards/crystalSpiders.js';
+import { ROBBERS_SHEET } from '../content/cards/robbers.js';
 import { MAGIC } from '../content/cards/magic.js';
-import { getGlowCardFrame } from '../content/balance/WeaponEnchants.js';
+import { getMagicCardFrame } from '../content/balance/WeaponEnchants.js';
 
 export class PreloadScene extends Phaser.Scene {
     constructor() {
@@ -240,8 +243,11 @@ export class PreloadScene extends Phaser.Scene {
          
         // Resource cards are the sheet's icon and backing drawn together, so
         // the rest of the game keeps handling them as ordinary one-sprite cards.
+        // Sheets packed from loose sprites go back to their old keys first.
+        buildPackedSprites(this);
         buildResourceCardTextures(this);
-        buildEnemyCardTextures(this, [...LOCATION_PACK_LIST, CRYSTAL_LAIR_SHEET]);
+        buildEnemyCardTextures(this, [...LOCATION_PACK_LIST, CRYSTAL_LAIR_SHEET, ROBBERS_SHEET]);
+        buildBossPoseTextures(this);
         buildLocationCardTextures(this);
 
         // The mid-fight sounds load behind the menu (BackgroundAudioScene).
@@ -255,7 +261,7 @@ export class PreloadScene extends Phaser.Scene {
         if (!this.textures.exists('magicCards')) return;
         for (const card of MAGIC) {
             if (this.textures.exists(card.sprite)) continue;
-            const frame = getGlowCardFrame(card.magicType);
+            const frame = getMagicCardFrame(card.magicType);
             if (!Number.isInteger(frame)) continue;
             const texture = this.textures.createCanvas(card.sprite, 52, 70);
             texture.drawFrame('magicCards', frame, 0, 0);

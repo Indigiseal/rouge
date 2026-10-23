@@ -75,9 +75,9 @@ try {
                         const canvas = document.createElement('canvas');
                         canvas.width = 52; canvas.height = 70;
                         const ctx = canvas.getContext('2d', { willReadFrequently: true });
-                        const { getGlowCardFrame } = window.magicFrameModule;
+                        const { getGlowCardFrame, getMagicCardFrame } = window.magicFrameModule;
                         const aliasesMatchSheet = MAGIC.every(data => {
-                            const frame = this.textures.getFrame('magicCards', getGlowCardFrame(data.magicType));
+                            const frame = this.textures.getFrame('magicCards', getMagicCardFrame(data.magicType));
                             ctx.clearRect(0, 0, 52, 70);
                             ctx.drawImage(this.textures.get('magicCards').getSourceImage(),
                                 frame.cutX, frame.cutY, frame.cutWidth, frame.cutHeight, 0, 0, frame.cutWidth, frame.cutHeight);
@@ -104,7 +104,7 @@ try {
         assert.ok(row.labelHeight <= 13, `${row.label} is too tall (${row.labelHeight}px)`);
         assert.equal(row.labelY, 25);
     }
-    assert.deepEqual(report.sheetSize, [520, 69]);
+    assert.deepEqual(report.sheetSize, [572, 138]);
     assert.ok(report.glowingFramesValid, 'all Reliquary spells must have the matching glowing frame');
     assert.ok(report.aliasesMatchSheet, 'saved spell texture keys must match the correct sheet frames');
     await page.waitForTimeout(100);

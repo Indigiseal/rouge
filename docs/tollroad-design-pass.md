@@ -29,7 +29,11 @@ escape pays nothing; defeating it uses the existing loot/death path.
 The spell requires genuinely empty board space, including after cards have
 been rearranged. Boss rooms use available minion lanes, avoiding enemies and
 loot already in those lanes. A full board does not consume a card or action.
-Completed fights, scene transitions and non-combat stations cannot summon.
+Cleared ordinary combat rooms can summon: the exit closes until the Mimic is
+defeated or escapes. The original room-clear coins, egg progress and companion
+history rewards are not granted again. A saved `board.clearRewardsGranted`
+flag preserves this rule through Save & Quit / Continue. Boss victory handoffs,
+scene transitions and non-combat stations cannot summon.
 Explicit spell summons mark the room's existing natural-Mimic spawn flag;
 later random reinforcements do not introduce another natural Mimic.
 

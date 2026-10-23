@@ -1,7 +1,8 @@
 // The Sigil Room: a TreasureScene with a stamp instead of a chest
 // (rewardMode 'sigil'). The stamp is the animal of the sigil's family (see
-// content/sigils/sigilStamps.js) on its stone base; what it gives floats in a
-// panel beside it. The player drags a weapon or armor card from the bag onto
+// content/sigils/sigilStamps.js) on its stone base; its sigil sits on the front
+// stone face, with a small explanation tablet beside it. The player drags a
+// weapon or armor card from the bag onto
 // the stone slab under the stamp. The stamp lifts, slams down, the room
 // rumbles and dust falls from the ceiling, and the card flies back to the bag
 // with the sigil on it. One sigil, no other loot. Leave works as in any chest
@@ -11,36 +12,38 @@
 // GameScene.pickEliteRewardMode) and from the secret sigil vault on the map.
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { createTitle } from '../ui/titleText.js';
-import { t, translateItemName } from '../i18n/i18n.js';
+import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 import {
-  SIGIL_ICONS_KEY, addSigil, canTakeSigil, getSigil, noteSigilTaken, sigilLine,
+  SIGIL_ICONS_KEY, addSigil, canTakeSigil, getSigil, noteSigilTaken, sigilIconArt,
 } from '../content/sigils/sigils.js';
 import { SIGIL_ROOM_FLOOR, stampForSigil } from '../content/sigils/sigilStamps.js';
 import { sigilCornerOffset } from '../ui/SigilIcons.js';
-import { flyCardToBag } from '../ui/RewardFlight.js';
+import { createCardFlightVisual, flyCardToBag } from '../ui/RewardFlight.js';
+import { createNineSlicePanel } from '../ui/NineSlicePanel.js';
 
-// The info panel: family, the sigil big, its name and rule.
-const PANEL_X = 170;
-const FAMILY_Y = 84;
-const EMBLEM_Y = 120;
-const NAME_Y = 156;
-const RULE_Y = 172;
-const RULE_WIDTH = 200;
-// The emblem's drawing fills about this many pixels, at a whole-number scale.
-const EMBLEM_TARGET_PX = 24;
+// A compact explanation tablet beside the stamp.
+const PANEL_X = 274;
+const PANEL_TOP = 110;
+const PANEL_WIDTH = 152;
+const PANEL_HEIGHT = 132;
+const NAME_Y = 128;
+const RULE_Y = 148;
+const RULE_WIDTH = 120;
+const EMBLEM_TARGET_PX = 20;
 const EMBLEM_GLOW = 0xc58cff;
-const SPARKS = 8;
-const SPARK_STEP_MS = 120;
+// Centre of the recessed face, measured up from each stamp's bottom edge.
+const EMBLEM_FACE_HEIGHT = { lion: 28, turtle: 28, toad: 29, cobra: 25, deer: 28 };
 // The stamp (drawn standing on its bottom edge) and the slab under it.
-const STAMP_X = 380;
+const STAMP_X = 420;
 const STAMP_BOTTOM = 182;
 const SLAB_Y = 224;
 // The dais under both: its bottom edge just above the bag (which starts
 // around y 266), so the slab sits on its inner circle.
 const FLOOR_BOTTOM = 264;
-const SLAB_W = 62;
-const SLAB_H = 80;
+// Match the anvil's native 69x89 animated outline without stretching its pixels.
+const SLAB_W = 68;
+const SLAB_H = 88;
 // The slam: up this far, then down onto the card.
 const LIFT_PX = 12;
 const PRESS_PX = 12;
@@ -50,14 +53,14 @@ const DUST_COLORS = [0x9a9187, 0x6f6a63, 0xc9bfae, 0x847b70];
 // Sigil icons are drawn small in one corner of their 16px frame (they sit in
 // a card's corner). Measure the drawing so it can be centred, and scaled up
 // by its own size rather than the frame's.
-function iconFit(scene, frame) {
-  const f = scene.textures.getFrame(SIGIL_ICONS_KEY, frame);
+function iconFit(scene, key, frame) {
+  const f = scene.textures.getFrame(key, frame);
   const w = f?.width || 16;
   const h = f?.height || 16;
   let minX = w; let minY = h; let maxX = -1; let maxY = -1;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      if ((scene.textures.getPixelAlpha(x, y, SIGIL_ICONS_KEY, frame) || 0) > 0) {
+      if ((scene.textures.getPixelAlpha(x, y, key, frame) || 0) > 0) {
         if (x < minX) minX = x;
         if (y < minY) minY = y;
         if (x > maxX) maxX = x;
@@ -73,69 +76,77 @@ function iconFit(scene, frame) {
   };
 }
 
-// The floating emblem in the panel. Returns its parts and a stop().
-function createEmblem(scene, def) {
+// The mark is inlaid in the stamp's stone face and travels with its slam.
+function createEmblem(scene, def, stampImage, stamp) {
   const glow = scene.add.graphics();
-  const drawGlow = (strength) => {
-    glow.clear();
-    glow.fillStyle(EMBLEM_GLOW, 0.1 * strength);
-    glow.fillCircle(PANEL_X, EMBLEM_Y, 22);
-    glow.fillStyle(EMBLEM_GLOW, 0.2 * strength);
-    glow.fillCircle(PANEL_X, EMBLEM_Y, 16);
-  };
-  drawGlow(1);
-  const pulse = { s: 1 };
-  const pulseTween = scene.tweens.add({
-    targets: pulse, s: 0.55, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    onUpdate: () => drawGlow(pulse.s),
-  });
+  glow.fillStyle(EMBLEM_GLOW, 0.18);
+  glow.fillCircle(0, 0, 13);
+  const art = sigilIconArt(def, scene.textures);
+  const fit = iconFit(scene, art.key, art.frame);
+  const scale = Math.max(1, Math.floor(EMBLEM_TARGET_PX / fit.size));
+  const icon = scene.add.image(0, 0, art.key, art.frame)
+    .setOrigin(fit.originX, fit.originY).setScale(scale);
+  const mark = scene.add.container(0, 0, [glow, icon]).setDepth(stampImage.depth + 1);
+  const sync = () => mark.setPosition(stampImage.x, stampImage.y - EMBLEM_FACE_HEIGHT[stamp.id]);
+  sync();
+  stampImage.once('destroy', () => mark.destroy());
+  return { mark, sync, consume: () => mark.setVisible(false) };
+}
 
-  const fit = iconFit(scene, def.frame);
-  const scale = Math.max(2, Math.floor(EMBLEM_TARGET_PX / fit.size));
-  const icon = scene.add.image(PANEL_X, EMBLEM_Y, SIGIL_ICONS_KEY, def.frame)
-    .setOrigin(fit.originX, fit.originY)
-    .setScale(scale);
-  // A slow bob, in whole pixels.
-  const bob = { y: 0 };
-  const bobTween = scene.tweens.add({
-    targets: bob, y: -3, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-    onUpdate: () => icon.setY(EMBLEM_Y + Math.round(bob.y)),
-  });
-
-  // Sparks: 2x2 pixels drifting up around it, stepped like the fire reach.
-  const sparks = scene.add.graphics();
-  const spawn = (spark = {}) => {
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 12 + Math.random() * 10;
-    spark.x = Math.round(PANEL_X + Math.cos(angle) * dist);
-    spark.y = Math.round(EMBLEM_Y + Math.sin(angle) * dist * 0.7);
-    spark.age = Math.floor(Math.random() * 8);
-    return spark;
+// The same invitation as the anvil: light the slab while considering or
+// carrying a card that can receive this sigil. Rebind after bag redraws.
+function bindDropHint(scene, inv, sigilId) {
+  if (!scene.textures.exists('anvilDropAnim')) return () => {};
+  if (!scene.anims.exists('anvil_drop_loop')) {
+    scene.anims.create({
+      key: 'anvil_drop_loop',
+      frames: scene.anims.generateFrameNumbers('anvilDropAnim', { start: 0, end: 6 }),
+      frameRate: 14, repeat: -1,
+    });
+  }
+  const hint = scene.add.sprite(STAMP_X, SLAB_Y, 'anvilDropAnim', 0).setDepth(1).setVisible(false);
+  scene.sigilDropAnimation = hint;
+  const hide = () => { if (hint.scene) hint.stop().setVisible(false); };
+  const bindings = new Map();
+  const bind = () => {
+    for (const [card] of bindings) if (!card.scene) bindings.delete(card);
+    [...inv.slotSprites, { card: scene.gameScene?.armorPanelEquippedSprite }].forEach((slot, index) => {
+      const card = slot?.card;
+      if (!card?.scene || bindings.has(card)) return;
+      const show = () => {
+        const data = index === inv.slotSprites.length ? scene.gameState.equippedArmor : inv.slots[index];
+        if (!scene.sigilRoom.stamped && canTakeSigil(data, sigilId) && !hint.visible) {
+          hint.setVisible(true).play('anvil_drop_loop');
+        }
+      };
+      const out = () => {
+        if (inv._liveDrag?.cardSprite !== card && inv.dragOverlay?.cardSprite !== card) hide();
+      };
+      card.on('pointerover', show);
+      card.on('pointerout', out);
+      card.on('dragstart', show);
+      card.on('dragend', hide);
+      card.once('destroy', hide);
+      bindings.set(card, { show, out });
+    });
   };
-  const list = Array.from({ length: SPARKS }, () => spawn());
-  const timer = scene.time.addEvent({
-    delay: SPARK_STEP_MS,
-    loop: true,
-    callback: () => {
-      sparks.clear();
-      for (const spark of list) {
-        spark.age++;
-        if (spark.age >= 8) spawn(spark);
-        sparks.fillStyle(spark.age < 4 ? 0xfef0cf : EMBLEM_GLOW, 1 - spark.age / 8);
-        sparks.fillRect(spark.x, spark.y - spark.age, 2, 2);
-      }
-    },
-  });
-
-  return {
-    glow, icon, sparks,
-    stop() {
-      timer.remove(false);
-      pulseTween.remove();
-      bobTween.remove();
-      sparks.clear();
-    },
+  bind();
+  scene.events.on('update', bind);
+  const release = () => {
+    scene.events.off('update', bind);
+    for (const [card, { show, out }] of bindings) {
+      card.off('pointerover', show);
+      card.off('pointerout', out);
+      card.off('dragstart', show);
+      card.off('dragend', hide);
+      card.off('destroy', hide);
+    }
+    bindings.clear();
+    hide();
   };
+  scene.events.once('shutdown', release);
+  scene.events.once('sleep', release);
+  return hide;
 }
 
 /** Builds the room in `scene` (a TreasureScene) for `sigilId`. */
@@ -144,23 +155,33 @@ export function createSigilRoom(scene, sigilId) {
   const stamp = stampForSigil(sigilId);
   scene.sigilRoom = { sigilId, stampId: stamp.id, stamped: false };
 
-  createTitle(scene, 320, 20, t(scene, 'ui.sigilRoom.title'), { color: '#c58cff', fallbackSize: '24px' });
+  // The heading's ribbon (packed with the other banners). Its band is rows 11-40 of the
+  // image, so the title sits at y 26; the hint keeps its place just under it.
+  if (scene.textures.exists('sigilBanner')) scene.add.image(320, 0, 'sigilBanner').setOrigin(0.5, 0);
+  createTitle(scene, 320, scene.textures.exists('sigilBanner') ? 26 : 20, t(scene, 'ui.sigilRoom.title'), { color: '#c58cff', fallbackSize: '24px' });
   scene.instructionText = scene.add.text(320, 46, t(scene, 'ui.sigilRoom.hint'), {
     fontSize: '14px', fill: '#fef0cf', fontFamily: '"HoMM Pixel"',
   }).setOrigin(0.5);
 
-  // What it gives: the family, the sigil big, its name and rule.
-  scene.add.text(PANEL_X, FAMILY_Y, t(scene, `ui.sigilRoom.family.${stamp.id}`), {
-    fontSize: '12px', fill: '#d6c2c1', fontFamily: '"HoMM Pixel"',
-  }).setOrigin(0.5);
-  const emblem = def && scene.textures.exists(SIGIL_ICONS_KEY) ? createEmblem(scene, def) : null;
   const name = translateItemName(scene, def?.name) || def?.name || sigilId;
-  scene.add.text(PANEL_X, NAME_Y, name, {
-    fontSize: '14px', fill: '#c58cff', fontFamily: '"HoMM Pixel"', stroke: '#1c130a', strokeThickness: 3,
+  scene.sigilNameText = scene.add.text(PANEL_X, NAME_Y, name, {
+    fontSize: '11px', fill: '#c58cff', fontFamily: '"HoMM Pixel"', stroke: '#1c130a', strokeThickness: 2,
+    align: 'center', wordWrap: { width: RULE_WIDTH },
   }).setOrigin(0.5);
-  scene.add.text(PANEL_X, RULE_Y, sigilLine(sigilId, 1, 'player'), {
-    fontSize: '11px', fill: '#d6c2c1', fontFamily: '"HoMM Pixel"', align: 'center', wordWrap: { width: RULE_WIDTH },
+  scene.sigilRuleText = scene.add.text(PANEL_X, RULE_Y, translateDescription(scene, def?.player || ''), {
+    fontSize: '9px', fill: '#f2e6d2', fontFamily: '"HoMM Pixel"', align: 'center', wordWrap: { width: RULE_WIDTH },
   }).setOrigin(0.5, 0);
+  if (scene.sigilRuleText.height > PANEL_TOP + PANEL_HEIGHT - RULE_Y - 22) {
+    scene.sigilRuleText.setFontSize('8px');
+  }
+  // Keep the tablet compact; longer translations can use a little more height.
+  scene.sigilRuleText.setY(Math.max(RULE_Y, scene.sigilNameText.getBounds().bottom + 8));
+  const panelHeight = Math.max(PANEL_HEIGHT, scene.sigilRuleText.y + scene.sigilRuleText.height + 22 - PANEL_TOP);
+  scene.sigilInfoPanel = createNineSlicePanel(scene, PANEL_WIDTH, panelHeight, {
+    key: 'sigilStonePanel', slice: { left: 16, right: 16, top: 14, bottom: 22 },
+  });
+  scene.sigilInfoPanel?.setPosition(PANEL_X, PANEL_TOP + panelHeight / 2).setDepth(-1);
+
 
   // The dais, the slab the card goes on, then the stamp standing over it.
   if (scene.textures.exists(SIGIL_ROOM_FLOOR.key)) {
@@ -170,19 +191,33 @@ export function createSigilRoom(scene, sigilId) {
     .setStrokeStyle(1, 0xa78f70);
   const texture = scene.textures.exists(stamp.key) ? stamp.key : 'cardBack';
   const image = scene.add.image(STAMP_X, STAMP_BOTTOM, texture).setOrigin(0.5, 1).setDepth(5);
+  const emblem = def && scene.textures.exists(SIGIL_ICONS_KEY) ? createEmblem(scene, def, image, stamp) : null;
 
   const inv = scene.gameScene?.inventorySystem;
   if (inv) {
+    const hideDropHint = bindDropHint(scene, inv, sigilId);
     inv.clearDropZones?.();
-    inv.addDropZone(slab, (slotIndex, cardData, cardSprite) => (
-      stampCard(scene, { image, emblem, stamp, sigilId, name }, slotIndex, cardData, cardSprite)
-    ), { sound: null, accepts: (card) => !scene.sigilRoom.stamped && canTakeSigil(card, sigilId) });
+    const offer = (slotIndex, cardData, cardSprite) => {
+      const accepted = stampCard(scene, { image, emblem, stamp, sigilId, name }, slotIndex, cardData, cardSprite);
+      if (accepted) hideDropHint();
+      return accepted;
+    };
+    const accepts = (card) => !scene.sigilRoom.stamped && canTakeSigil(card, sigilId);
+    inv.addDropZone(slab, offer, { sound: null, accepts });
+    const armorTarget = {
+      accepts,
+      onDrop: (card, sprite) => accepts(card) && sprite?.scene
+        && Phaser.Geom.Intersects.RectangleToRectangle(sprite.getBounds(), slab.getBounds())
+        && offer(-1, card, sprite),
+    };
+    inv.equippedArmorDropTarget = armorTarget;
     // The bag lives in GameScene, under this room: without this, a carried
     // card was drawn behind the room. Same as the Mirror event.
     inv.setDragOverlayScene?.(scene);
     const release = () => {
       inv.clearDropZones?.();
       inv.setDragOverlayScene?.(null);
+      if (inv.equippedArmorDropTarget === armorTarget) inv.equippedArmorDropTarget = null;
     };
     scene.events.once('shutdown', release);
     scene.events.once('sleep', release);
@@ -201,7 +236,7 @@ function floatOver(scene, x, y, text, color) {
 
 // The bag card and everything riding it, shown or hidden together.
 function setBagCardAlpha(inv, slotIndex, alpha) {
-  const card = inv.slotSprites?.[slotIndex]?.card;
+  const card = slotIndex === -1 ? inv.scene?.armorPanelEquippedSprite : inv.slotSprites?.[slotIndex]?.card;
   if (!card?.scene) return;
   const riders = card.getData?.('cardRiders');
   [card, card.getData?.('infoText'), ...(riders ? [...riders.values()].map((r) => r.object) : [])]
@@ -263,25 +298,23 @@ function stampCard(scene, room, slotIndex, cardData, cardSprite) {
   // The real card goes home hidden; a copy of it lies on the slab.
   const dropX = cardSprite?.x ?? STAMP_X;
   const dropY = cardSprite?.y ?? SLAB_Y;
-  const texKey = cardSprite?.texture?.key;
-  const texFrame = cardSprite?.frame?.name;
-  inv.returnCardToSlot?.(slotIndex, cardSprite);
+  cardSprite?.clearTint?.();
+  // Copy it BEFORE it goes home: its pips and numbers follow the card one frame
+  // late (ui/CardRiders.js), so once the card is back in its slot they are still
+  // where the drag left them, and a copy taken then has them all misplaced.
+  const copy = createCardFlightVisual(scene, cardSprite);
+  if (slotIndex !== -1) inv.returnCardToSlot?.(slotIndex, cardSprite);
+  copy?.setPosition(Math.round(dropX), Math.round(dropY)).setDepth(4);
   setBagCardAlpha(inv, slotIndex, 0);
-  const copy = texKey && scene.textures.exists(texKey)
-    ? scene.add.image(Math.round(dropX), Math.round(dropY), texKey, texFrame).setDepth(4)
-    : null;
   if (copy) scene.tweens.add({ targets: copy, x: STAMP_X, y: SLAB_Y, duration: 120, ease: 'Quad.easeOut' });
   SoundHelper.playVariant(scene, 'card_offered', 0.6);
 
-  // The emblem has done its job: it dims while the stamp works.
-  if (room.emblem) {
-    room.emblem.stop();
-    scene.tweens.add({ targets: [room.emblem.glow, room.emblem.icon, room.emblem.sparks], alpha: 0.25, duration: 300 });
-  }
-
   const { image } = room;
   const rest = STAMP_BOTTOM;
-  const snap = () => image.setY(Math.round(image.y));
+  const snap = () => {
+    image.setY(Math.round(image.y));
+    room.emblem?.sync();
+  };
   // Lift, hold, slam.
   scene.tweens.chain({
     targets: image,
@@ -291,6 +324,7 @@ function stampCard(scene, room, slotIndex, cardData, cardSprite) {
       {
         y: rest + PRESS_PX, duration: 90, ease: 'Quad.easeIn', onUpdate: snap,
         onComplete: () => {
+          room.emblem?.consume();
           scene.cameras.main.shake(260, 0.012);
           SoundHelper.playVariant(scene, 'armor_break', 0.6);
           playImpactPuff(scene, STAMP_X, rest + PRESS_PX);
@@ -298,10 +332,11 @@ function stampCard(scene, room, slotIndex, cardData, cardSprite) {
           if (copy) {
             copy.setTintFill(0xffffff);
             scene.time.delayedCall(90, () => copy.scene && copy.clearTint());
-            const corner = sigilCornerOffset(copy.width || 52, copy.height || 70);
+            const corner = sigilCornerOffset(cardSprite?.displayWidth || 52, cardSprite?.displayHeight || 70);
             const def = getSigil(room.sigilId);
             if (def && scene.textures.exists(SIGIL_ICONS_KEY)) {
-              const mark = scene.add.image(copy.x + corner.x, copy.y + corner.y, SIGIL_ICONS_KEY, def.frame).setDepth(4.5);
+              const markArt = sigilIconArt(def, scene.textures);
+              const mark = scene.add.image(copy.x + corner.x, copy.y + corner.y, markArt.key, markArt.frame).setDepth(4.5);
               copy.once('destroy', () => mark.destroy());
             }
           }

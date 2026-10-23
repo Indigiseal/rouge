@@ -13,7 +13,7 @@ import { t, translateItemName } from '../../i18n/i18n.js';
 import { enemySigils } from '../../content/sigils/sigils.js';
 import { artBodyTop, buildSigilIcons, sigilCornerOffset } from '../../ui/SigilIcons.js';
 import { handLockKindOf } from '../../content/combat/handLock.js';
-import { weaponFlatSigilBonus } from '../combat/SigilEffects.js';
+import { weaponFlatSigilBonus, companionStrengthBonus } from '../combat/SigilEffects.js';
 import { scaleGoldReward } from '../../content/economy/gold.js';
 import { cardStars } from '../../content/cards/legendaryStars.js';
 
@@ -97,6 +97,19 @@ export function refreshWeaponValueText(scene, container) {
     const label = `${base + bonus}`;
     if (text.text !== label) text.setText(label);
     text.setColor(bonus > 0 ? WEAPON_VALUE_BOOSTED : WEAPON_VALUE_COLOR);
+}
+
+// A companion's damage number, live: its attack plus the Companion Strength
+// sigils carried right now, in green when raised. Same number its tooltip shows.
+const COMPANION_VALUE_COLOR = '#ffcf7f';
+export function refreshCompanionValueText(scene, container) {
+    const text = container?._companionDamageText;
+    const companion = container?._companionData;
+    if (!text?.scene || !companion) return;
+    const bonus = companionStrengthBonus(scene?.gameScene || scene);
+    const label = `${(Number(companion.attack) || 0) + bonus}`;
+    if (text.text !== label) text.setText(label);
+    text.setColor(bonus > 0 ? WEAPON_VALUE_BOOSTED : COMPANION_VALUE_COLOR);
 }
 
 function playBossEntrance(cardSprite, bossData) {
@@ -379,6 +392,49 @@ function createCardInfoText(card) {
             }
 
             container.add(magicLabel);
+            attachInfoText(container);
+            return;
+        }
+
+        case 'companion': {
+            // The companion art leaves a name plate along the bottom and a
+            // weapon icon in the lower right corner, so the card carries its
+            // name on the plate and its damage in the corner, like a weapon.
+            // The Crystal Spiderling does no damage: it webs, so the corner
+            // says so instead of printing a 0.
+            const container = this.scene.add.container(card.sprite.x, card.sprite.y);
+            // The skeleton's art has no plate, so its name gets an outline.
+            const plateless = String(card.data.sprite || '').startsWith('skeletonCompanion');
+            const nameLabel = this.scene.add.text(-1, 21, translateItemName(this.scene, card.data), {
+                fontSize: CARD_LABEL_SIZE,
+                fill: plateless ? '#fef0cf' : '#51484b',
+                fontFamily: '"HoMM Pixel"',
+                align: 'center'
+            }).setOrigin(0.5);
+            if (plateless) nameLabel.setStroke('#2b2332', 3);
+            // Whole font sizes, kept clear of the weapon icon on the right.
+            for (const size of [8, 7, 6]) {
+                if (nameLabel.width <= 34) break;
+                nameLabel.setFontSize(`${size}px`);
+            }
+            if (nameLabel.width > 34) nameLabel.setWordWrapWidth(34, true).setLineSpacing(-3);
+            container.add(nameLabel);
+
+            const webs = Boolean(card.data.websEnemies || card.data.id === 'crystalSpiderlingCompanion');
+            const valueText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y,
+                webs ? t(this.scene, 'ui.card.web') : '', {
+                    fontSize: webs ? '8px' : CARD_VALUE_SIZE,
+                    fill: webs ? '#d6e8f0' : COMPANION_VALUE_COLOR,
+                    fontFamily: '"HoMM Pixel"'
+                }).setOrigin(0.5);
+            if (webs) valueText.setStroke('#2b2332', 2);
+            container.add(valueText);
+            if (!webs) {
+                container._companionDamageText = valueText;
+                container._companionData = card.data;
+                refreshCompanionValueText(this.scene, container);
+            }
+            container.setDepth(1001);
             attachInfoText(container);
             return;
         }

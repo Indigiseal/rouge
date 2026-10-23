@@ -113,7 +113,21 @@ const COVER_MAX = 15;
 const COVERS_PER_PRIZE = 3;
 // Junk pieces this close read as a stack rather than a scatter.
 const MIN_JUNK_SEP = 17;
-const PLAN_ATTEMPTS = 80;
+const PLAN_ATTEMPTS = 200;
+
+// Loose valuables: a coin pile and a crystal, each buried under one piece of
+// junk. They are prizes like the egg, so they only come free once uncovered.
+// Timing out loses them with everything else.
+const LOOT_GAP = 26;
+const COINS_MIN = 10;
+const COINS_MAX = 20;
+const CRYSTALS_MIN = 1;
+const CRYSTALS_MAX = 3;
+const LOOT_ART = {
+  coins: { key: 'coinUI', r: 14 },
+  crystals: { key: 'CrystalUI', r: 14 },
+};
+const randomInt = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
 
 function insideFloor(dx, dy) {
   const x = dx / NEST_FLOOR.hx;
@@ -163,16 +177,34 @@ function tryPlanNest(includeCog) {
     if (!cog) return null;
   }
 
+  // The coin pile and the crystal, clear of every other prize.
+  const loot = {};
+  for (const kind of ['coins', 'crystals']) {
+    let spot = null;
+    for (let i = 0; i < 30 && !spot; i++) {
+      const candidate = randomInEllipse(PRIZE_AREA.hx, PRIZE_AREA.hy);
+      const others = [egg, cog, loot.coins, loot.crystals].filter(Boolean);
+      if (others.every((o) => Math.hypot(o.dx - candidate.dx, o.dy - candidate.dy) >= LOOT_GAP)) spot = candidate;
+    }
+    if (!spot) return null;
+    loot[kind] = {
+      ...spot,
+      amount: kind === 'coins' ? randomInt(COINS_MIN, COINS_MAX) : randomInt(CRYSTALS_MIN, CRYSTALS_MAX),
+    };
+  }
+
   const frames = shuffled(NEST_JUNK_FRAMES.map((j) => j.frame));
   const junk = [];
 
   // Cover, dealt around each prize at thirds of a circle so three pieces can
   // ring it without stacking on each other.
-  for (const prize of [egg, cog]) {
+  for (const [prize, covers] of [
+    [egg, COVERS_PER_PRIZE], [cog, COVERS_PER_PRIZE], [loot.coins, 1], [loot.crystals, 1],
+  ]) {
     if (!prize) continue;
     const base = rand(0, Math.PI * 2);
-    for (let k = 0; k < COVERS_PER_PRIZE; k++) {
-      const angle = base + (k * Math.PI * 2) / COVERS_PER_PRIZE + rand(-0.4, 0.4);
+    for (let k = 0; k < covers; k++) {
+      const angle = base + (k * Math.PI * 2) / covers + rand(-0.4, 0.4);
       const reach = rand(COVER_MIN, COVER_MAX);
       const dx = Math.round(prize.dx + Math.cos(angle) * reach);
       const dy = Math.round(prize.dy + Math.sin(angle) * reach);
@@ -197,7 +229,7 @@ function tryPlanNest(includeCog) {
   }
 
   // Everything is already on whole pixels — see randomInEllipse.
-  return { egg, cog, junk };
+  return { egg, cog, coins: loot.coins, crystals: loot.crystals, junk };
 }
 
 /**
@@ -213,6 +245,9 @@ export function planNestLayout(includeCog = true) {
   return {
     egg: { dx: -26, dy: -3 },
     cog: includeCog ? { dx: 34, dy: 9 } : null,
+    // Each sits under a junk piece below: (-4,-24) and (26,-24).
+    coins: { dx: -8, dy: -22, amount: 15 },
+    crystals: { dx: 38, dy: -20, amount: 2 },
     junk: [
       { frame: 4, dx: -26, dy: -16 }, { frame: 1, dx: -40, dy: 4 },
       { frame: 9, dx: -12, dy: 9 }, { frame: 8, dx: 34, dy: -5 },
@@ -230,7 +265,9 @@ export function planNestLayout(includeCog = true) {
  * @param {Phaser.Scene} scene
  * @param {{
  *   includeCog?: boolean,
- *   onDone: (result: { tookCog: boolean, tookEgg: boolean, timedOut: boolean }) => void,
+ *   onDone: (result: {
+ *     tookCog: boolean, tookEgg: boolean, timedOut: boolean, coins: number, crystals: number,
+ *   }) => void,
  * }} cfg
  */
 export function openBirdNestMinigame(scene, cfg) {
@@ -282,11 +319,15 @@ export function openBirdNestMinigame(scene, cfg) {
     phase = 'done';
     const egg = pieces.find((p) => p.kind === 'egg');
     const cog = pieces.find((p) => p.kind === 'cog');
+    const coins = pieces.find((p) => p.kind === 'coins');
+    const crystals = pieces.find((p) => p.kind === 'crystals');
     close();
     cfg.onDone({
       tookCog: timedOut ? false : Boolean(cog?.taken),
       tookEgg: timedOut ? false : Boolean(egg?.taken),
       timedOut: Boolean(timedOut),
+      coins: !timedOut && coins?.taken ? coins.amount : 0,
+      crystals: !timedOut && crystals?.taken ? crystals.amount : 0,
     });
   };
 
@@ -409,7 +450,7 @@ export function openBirdNestMinigame(scene, cfg) {
     y: Phaser.Math.Clamp(y, junkTop, junkBot),
   });
 
-  const addPiece = (kind, art, x, y, r, draggable) => {
+  const addPiece = (kind, art, x, y, r, draggable, amount = 0) => {
     // `art` is a key, or a key plus a frame for anything off nestMiniGame.
     const image = push(art.frame === undefined
       ? scene.add.image(x, y, art.key)
@@ -421,6 +462,7 @@ export function openBirdNestMinigame(scene, cfg) {
       image,
       r,
       draggable,
+      amount,
       taken: false,
       depth: DEPTH + nextDepth,
     };
@@ -448,7 +490,14 @@ export function openBirdNestMinigame(scene, cfg) {
         if (phase === 'play' && !piece.taken) SoundHelper.playVariant(scene, 'nest_rummage', 0.3);
       });
     } else {
-      image.setInteractive({ useHandCursor: true });
+      // The loot is small (a 20px coin, a 14px crystal): a few pixels of slack
+      // around it keep it easy to click.
+      const pad = kind === 'coins' || kind === 'crystals' ? 6 : 0;
+      image.setInteractive(
+        new Phaser.Geom.Rectangle(-pad, -pad, image.width + pad * 2, image.height + pad * 2),
+        Phaser.Geom.Rectangle.Contains,
+      );
+      image.input.cursor = 'pointer';
       image.on('pointerdown', () => tryTake(piece));
     }
     pieces.push(piece);
@@ -484,7 +533,9 @@ export function openBirdNestMinigame(scene, cfg) {
     }
     prize.taken = true;
     prize.image.disableInteractive();
-    SoundHelper.playVariant(scene, 'gem_pickup', 0.55);
+    if (prize.kind === 'coins') SoundHelper.playVariant(scene, 'coin_collect', 0.55);
+    else if (prize.kind === 'crystals') SoundHelper.playVariant(scene, 'crystal_pickup', 0.55);
+    else SoundHelper.playVariant(scene, 'gem_pickup', 0.55);
     scene.tweens?.add?.({
       targets: prize.image,
       alpha: 0,
@@ -493,13 +544,11 @@ export function openBirdNestMinigame(scene, cfg) {
       duration: 180,
     });
     if (prize.kind === 'cog') statusText.setText(t(scene, 'ui.birdNest.cogTaken'));
+    else if (prize.kind === 'coins') statusText.setText(t(scene, 'ui.birdNest.coinsTaken'));
+    else if (prize.kind === 'crystals') statusText.setText(t(scene, 'ui.birdNest.crystalsTaken'));
     else statusText.setText(t(scene, 'ui.birdNest.eggTaken'));
     refreshPrizes();
-    const egg = pieces.find((p) => p.kind === 'egg');
-    const cog = pieces.find((p) => p.kind === 'cog');
-    const eggDone = !egg || egg.taken;
-    const cogDone = !cog || cog.taken;
-    if (eggDone && cogDone) {
+    if (pieces.every((p) => p.draggable || p.taken)) {
       scene.time?.delayedCall?.(280, () => finish(false));
     }
   };
@@ -525,6 +574,20 @@ export function openBirdNestMinigame(scene, cfg) {
       floorY + layout.cog.dy,
       15,
       false,
+    );
+  }
+
+  for (const kind of ['coins', 'crystals']) {
+    const spot = layout[kind];
+    if (!spot) continue;
+    addPiece(
+      kind,
+      { key: LOOT_ART[kind].key },
+      floorX + spot.dx,
+      floorY + spot.dy,
+      LOOT_ART[kind].r,
+      false,
+      spot.amount,
     );
   }
 

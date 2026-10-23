@@ -35,3 +35,10 @@ assets/_sfx_takes/
 # Audio the game no longer loads, kept to reach for later: alternate music,
 # the old shared family death sounds, retired clicks. Not shipped, not loaded.
 assets/_archive/
+
+# Generated QA screenshots/scripts, Python caches and PixelLab concept dumps: local scratch.
+__pycache__/
+output/
+assets/art/*-candidates/
+assets/art/*-prototypes/
+assets/art/*-structures/

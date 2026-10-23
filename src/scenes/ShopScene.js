@@ -32,7 +32,7 @@ export class ShopScene extends StationRoomBase {
 
         // Get reference to GameScene for inventory access
         this.gameScene = this.scene.get('GameScene');
-        this.enableShopStation();
+        this.enableShopStation({ backdropFloor: data.backdropFloor });
         this.addOptionsCog();
 
         // Title
@@ -427,7 +427,10 @@ export class ShopScene extends StationRoomBase {
                         options: takeable,
                         amuletManager: this.gameScene.amuletManager,
                         title: `Shop — ${offer.rarity} amulet`,
-                        onPicked: () => this.gameScene.updateUI?.(),
+                        onPicked: (id) => {
+                            this.gameScene?.updateUI?.();
+                            this.animateAmuletPurchase(item, id);
+                        },
                     });
                     return;
                 }
@@ -447,6 +450,7 @@ export class ShopScene extends StationRoomBase {
                         item.purchased = true;
                         this.markButtonDone(button, t(this, 'ui.shop.sold'));
                         if (this.gameScene.updateUI) this.gameScene.updateUI();
+                        this.animateAmuletPurchase(item, item.data.id);
                     } else {
                         this.showFeedback('Already owned!', 0xb51f1e);
                     }

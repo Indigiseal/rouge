@@ -26,6 +26,21 @@ export const HEALER_RARITY_ODDS = Object.freeze([
 
 export const COTTAGE_HP_PER_RANK = 15;
 
+// The Sanctuary (scenes/SanctuaryScene.js) shows these buildings as statues:
+// forge = Fanged Guardian, armory = Shelled Sentinel, cottage = Deep Toad,
+// healer = Trinket Keeper, temple = the Phoenix. The ids stay the village's so
+// saved progress carries over. The Phoenix sleeps until each guardian has at
+// least one restoration, and costs more than the ladder's first rung.
+export const SANCTUARY_GUARDIAN_IDS = Object.freeze(['forge', 'armory', 'cottage', 'healer']);
+export const PHOENIX_COST = 7;
+export const ARMORY_DEF_PER_RANK = 1;
+
+/** True once every guardian has been restored at least once. */
+export function phoenixAwake(buildings) {
+  const b = normalizeVillageBuildings(buildings);
+  return SANCTUARY_GUARDIAN_IDS.every((id) => (b[id] || 0) >= 1);
+}
+
 /** @typedef {'forge'|'temple'|'armory'|'healer'|'cottage'} VillageBuildingId */
 
 /**
@@ -80,7 +95,8 @@ export function normalizeVillageBuildings(src) {
   return out;
 }
 
-export function costForVillageRank(currentRank) {
+export function costForVillageRank(currentRank, buildingId = null) {
+  if (buildingId === 'temple') return currentRank <= 0 ? PHOENIX_COST : null;
   if (currentRank < 0) return VILLAGE_RANK_COSTS[0];
   if (currentRank >= VILLAGE_RANK_COSTS.length) return null;
   return VILLAGE_RANK_COSTS[currentRank];
@@ -124,10 +140,7 @@ export function resolveVillageEffects(buildings, characterId) {
   }
 
   const armory = b.armory || 0;
-  if (armory > 0) {
-    if (characterId === 'warrior') fx.villageArmoryDef = armory;
-    if (characterId === 'rogue') fx.villageDodge = Math.min(0.5, armory * 0.1);
-  }
+  if (armory > 0) fx.villageArmoryDef = armory * ARMORY_DEF_PER_RANK;
 
   fx.healerRank = b.healer || 0;
   fx.villageMaxHp = cottageHpForRank(b.cottage || 0);

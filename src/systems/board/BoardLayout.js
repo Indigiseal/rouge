@@ -6,10 +6,9 @@ import {
 } from '../../content/amulets/strategy.js';
 import { cameraWorldSize } from '../../config/renderScale.js';
 import { boardArtFor } from '../../content/locations/boardArt.js';
-import {
-    BOARD_PANEL_KEY,
-    createNineSlicePanel,
-} from '../../ui/NineSlicePanel.js';
+import { frozenFrameOffsetY } from '../../content/cards/frozenFrameOffset.js';
+import { BOARD_PANEL_KEY } from '../../ui/NineSlicePanel.js';
+import { createBoardPanel } from '../../ui/BoardPanel.js';
 
 export class BoardLayout {
     constructor(cs) {
@@ -412,12 +411,11 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
   const panelW = Math.min(camW, Math.max(nativeW, (reachX + BOARD_CARD_MARGIN_X) * 2));
   const panelH = Math.min(camH, Math.max(nativeH, (reachY + BOARD_CARD_MARGIN_Y) * 2));
 
-  // Only gamingBoard has measured slice insets. Every other backdrop (the shop
-  // and station planks) keeps the plain image it has always used — they frame
-  // fixed layouts and have nothing to grow for.
+  // Combat boards grow as one composed image, with native-size repeated bands.
+  // Shop and station planks keep their fixed, plain images.
   let panel = null;
   if (isFightBoard && (panelW > nativeW || panelH > nativeH)) {
-    panel = createNineSlicePanel(this.scene, panelW, panelH, {
+    panel = createBoardPanel(this.scene, panelW, panelH, {
       key: textureKey,
       slice: boardArt.slice,
     });
@@ -432,16 +430,13 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
   panel.setData('restY', y);
   this.floorBoardPanel = panel;
 
-  // The side wings are the older way to fit a wide formation, a fixed 200x206
-  // picture. A grown (nine-slice) board already fits the formation up to the
-  // whole screen, and a wing behind it only peeked out as a sliver of a
-  // different height at the screen edge — so wings stay for the plain board.
-  const grown = panelW > nativeW || panelH > nativeH;
+  // Combat expansion is one composed board. Side-extra art belongs to the
+  // older layout and must never be layered behind this frame.
   const halfPanelW = (panel.displayWidth || panel.width || nativeW) / 2;
-  if (!grown && minX - halfCardW < panel.x - halfPanelW + 8) {
+  if (!isFightBoard && minX - halfCardW < panel.x - halfPanelW + 8) {
     this.createSideExtraPanel('left', { animate, delayMs: 120 });
   }
-  if (!grown && maxX + halfCardW > panel.x + halfPanelW - 8) {
+  if (!isFightBoard && maxX + halfCardW > panel.x + halfPanelW - 8) {
     this.createSideExtraPanel('right', { animate, delayMs: 120 });
   }
 
@@ -604,7 +599,7 @@ function syncMovedCardVisuals(card) {
         card.infoText.y = y + (card.data?.type === 'gem' ? 22 : 0);
     }
     if (card.frozenFrame?.scene) {
-        card.frozenFrame.setPosition?.(Math.round(x), Math.round(y));
+        card.frozenFrame.setPosition?.(Math.round(x), Math.round(y + frozenFrameOffsetY(card.data)));
     }
     if (card.gemShadow?.scene) {
         const off = card.gemShadowOffset || { x: 0, y: 3 };

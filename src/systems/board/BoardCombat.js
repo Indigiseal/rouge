@@ -5,6 +5,8 @@ import { POISON_RUNE_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius }
 import { weaponIgnoresFrontline, isRangedWeaponCard } from '../../content/cards/weapons.js';
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { enemyDeathSoundKeys } from '../../content/audio/enemyDeathSounds.js';
+import { bossSoundKeys } from '../../content/audio/bossSounds.js';
+import { frozenFrameOffsetY } from '../../content/cards/frozenFrameOffset.js';
 import { CombatSequencer } from '../combat/CombatSequencer.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { playTacticianPinDrop, positionTacticianPin, cancelTacticianPinDrop } from '../../ui/TacticianPin.js';
@@ -310,11 +312,11 @@ function attachFrozenFrame(card) {
   if (!this.scene.textures?.exists?.(textureKey)) return;
   if (card.frozenFrame && card.frozenFrame.active) {
     if (card.frozenFrame.texture?.key !== textureKey) card.frozenFrame.setTexture(textureKey);
-    card.frozenFrame.setPosition(Math.round(card.sprite.x), Math.round(card.sprite.y));
+    card.frozenFrame.setPosition(Math.round(card.sprite.x), Math.round(card.sprite.y + frozenFrameOffsetY(card.data)));
     return;
   }
   const frame = snapOriginToPixelGrid(
-    this.scene.add.image(card.sprite.x, card.sprite.y, textureKey)
+    this.scene.add.image(card.sprite.x, card.sprite.y + frozenFrameOffsetY(card.data), textureKey)
   );
   frame.setDepth((card.sprite.depth || 1) + 2);
   card.frozenFrame = frame;
@@ -1356,8 +1358,11 @@ function removeDefeatedEnemy(index, card) {
 
         // The enemy's own death sound, else its family's, whichever is loaded
         // (enemyDeathSounds), else the shared pair every enemy used to make.
-        const deathKey = enemyDeathSoundKeys(card.data)
-            .find((key) => this.scene.cache?.audio?.exists?.(key));
+        // A boss with its own death sound uses it (bossSounds).
+        const deathKeys = card.data?.type === 'boss'
+            ? [bossSoundKeys(card.data)?.death].filter(Boolean)
+            : enemyDeathSoundKeys(card.data);
+        const deathKey = deathKeys.find((key) => this.scene.cache?.audio?.exists?.(key));
         if (deathKey) {
             CombatSequencer.playSound(this.scene, 'death', deathKey, 0.5);
         } else {
@@ -1518,20 +1523,10 @@ function checkFloorClear() {
         if (potentialEnemies) return;
 
         const currentFloor = this.scene.gameState.currentFloor;
-        const bossFloors = [15, 30, 45];
-
-        if (bossFloors.includes(currentFloor)) {
-            // Check if this is the final floor
-            if (currentFloor === 45) {
-                this.scene.lockInputForRunEnd?.();
-                this.scene.time.delayedCall(2500, () => this.scene.gameWon());
-            } else {
-                // Boss defeated, continue to next floor
-                this.scene.onEnemiesCleared();
-            }
-        } else {
-            this.scene.onEnemiesCleared();
-        }
+        // Final victory uses the same death → fanfare → handoff as the other
+        // bosses. Lock input immediately, while that celebration plays.
+        if (currentFloor === 45) this.scene.lockInputForRunEnd?.();
+        this.scene.onEnemiesCleared();
     } else if (!enemiesRemaining && this.scene.enemiesCleared) {
         // Clear detection is intentionally idempotent. If another scene or
         // stale input state hid/disabled Next after the first check, any

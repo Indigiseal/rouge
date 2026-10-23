@@ -201,10 +201,32 @@ export class InventorySystem {
         return true;
     }
 
-    // Drops the carnival clover into the bag as an equipable amulet card, then
-    // plays the "card morphs into a little amulet" reveal. Returns the slot index,
-    // or -1 if the bag was full.
-    deliverCloverAmulet() {
+    // Takes an amulet pickup card out of its bag slot and straight onto the amulet
+    // bar, with no sound or flight of its own (the caller adds them). Returns
+    // `{ id, x, y }` (the slot's centre, where the flight should start), or null
+    // when it can't be worn (already worn, or not a pickup) and stays in the bag.
+    takeAmuletPickupFromBag(slotIndex) {
+        const data = this.slots[slotIndex];
+        if (data?.type !== 'amuletPickup') return null;
+        const mgr = this.scene.amuletManager;
+        const id = data.amuletId;
+        const def = mgr?.amuletDefinitions?.[id];
+        if (!mgr?.addAmulet || !id || (mgr.hasAmulet(id) && !def?.stackable) || !mgr.addAmulet(id)) return null;
+        const slot = this.slotSprites[slotIndex];
+        const at = { id, x: slot?.background?.x ?? 0, y: slot?.background?.y ?? 0 };
+        const cardSprite = slot?.card;
+        if (cardSprite) this.cleanupCardSprites(slotIndex, cardSprite);
+        this.removeCard(slotIndex, false, 'amulet_equipped');
+        cardSprite?.destroy?.();
+        this.scene.updateUI?.();
+        return at;
+    }
+
+    // Drops the carnival clover into the bag as an amulet card, then plays the
+    // "card morphs into a little amulet" reveal. `onDone(slotIndex)` runs when the
+    // reveal is over (or was skipped), so the caller can send the amulet on to
+    // the bar like any other. Returns the slot index, or -1 if the bag was full.
+    deliverCloverAmulet(onDone = null) {
         const slotIndex = this.slots.findIndex(slot => slot === null);
         if (slotIndex < 0) return -1;
 
@@ -218,15 +240,17 @@ export class InventorySystem {
             rarity: 'rare',
             description: '+3% crit chance'
         }, slotIndex);
-        this.playCloverMorph(slotIndex);
+        this.playCloverMorph(slotIndex, 650, onDone);
         return slotIndex;
     }
 
     // Covers the freshly-placed amulet icon with the full clover card art, waits a
     // beat, then jumps + shrinks the card away to reveal the small amulet beneath.
-    playCloverMorph(slotIndex, delay = 650) {
+    playCloverMorph(slotIndex, delay = 650, onDone = null) {
         const slot = this.slotSprites[slotIndex];
-        if (!slot?.background || !this.scene.textures.exists('luckyClover')) return;
+        if (!slot?.background || !this.scene.textures.exists('luckyClover')) { onDone?.(slotIndex); return; }
+        let finished = false;
+        const done = () => { if (finished) return; finished = true; onDone?.(slotIndex); };
 
         const x = slot.background.x;
         const y = slot.background.y;
@@ -243,7 +267,7 @@ export class InventorySystem {
 
         // If the player leaves before the morph plays, drop the overlay and just
         // show the amulet — the slot already holds the correct, equipable card.
-        const cleanup = () => { if (cardImg.scene) cardImg.destroy(); revealIcon(); };
+        const cleanup = () => { if (cardImg.scene) cardImg.destroy(); revealIcon(); done(); };
         this.scene.events.once('sleep', cleanup);
         this.scene.events.once('shutdown', cleanup);
 
@@ -273,6 +297,7 @@ export class InventorySystem {
                         onComplete: () => {
                             if (cardImg.scene) cardImg.destroy();
                             this.sparkleAtSlot(slotIndex);
+                            done();
                         }
                     });
                 }

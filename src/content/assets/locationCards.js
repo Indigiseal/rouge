@@ -58,10 +58,11 @@ export function buildLocationCardTextures(scene) {
  *
  * Taya drew these in a fixed order and they are 64x64, not the 52x70 of a card,
  * so the frame index is written down here rather than derived from anything.
- * The eleventh frame is a runic portal with no location behind it yet — it is
+ * Frame 10 is a runic portal with no location behind it yet — it is
  * deliberately unlisted, so nothing can pick it by accident.
  *
- * Four roads have no door drawn (Duskhold, Frosthollow, Stormhatch, Starfold).
+ * Two roads have no door drawn on this sheet (Duskhold, Starfold), and Frosthollow
+ * has its own animated one.
  * On the road-choice screen they fall back to the boss-portrait card back
  * above; as a room's way out they borrow the runic portal (FALLBACK_DOOR_FRAME,
  * see locationDoorArt), so every room still has a door.
@@ -79,6 +80,8 @@ export const LOCATION_DOOR_FRAMES = Object.freeze({
   brassfair: 7,
   mirrorwane: 8,
   spherefall: 9,
+  stormhatch: 11,
+  sandreach: 12,
 });
 
 // The runic portal: frame 10, drawn but belonging to no road. The way out of
@@ -92,10 +95,10 @@ export function locationDoorFrame(id) {
 }
 
 // paths.png carries two rows of the same doors: row 0 shut, row 1 open. The
-// sheet is 11 columns wide, so a location's open door is its closed frame plus
+// sheet is 13 columns wide, so a location's open door is its closed frame plus
 // one row. The floor-clear reveal in combat swaps to this rather than drawing a
 // Next button — the road you chose visibly opens.
-export const LOCATION_DOOR_COLUMNS = 11;
+export const LOCATION_DOOR_COLUMNS = 13;
 
 /** Open-door frame for a location, or null if no door is drawn for it. */
 export function locationOpenDoorFrame(id) {

@@ -7,6 +7,7 @@
 import { BOSSES } from '../cards/bosses.js';
 import { SIGILS, RENAMED_SIGILS, enemySigils } from '../sigils/sigils.js';
 import { FROSTHOLLOW_ENEMY_ALIASES } from '../location-packs/frosthollow/index.js';
+import { STORMHATCH_ENEMY_ALIASES } from '../location-packs/stormhatch/index.js';
 
 export const CODEX_STORAGE_KEY = 'codexDiscoveries';
 export const CODEX_KINDS = Object.freeze(['enemies', 'bosses', 'stories', 'sigils', 'amulets', 'magic']);
@@ -37,7 +38,7 @@ function load() {
     for (const [oldId, id] of Object.entries(RENAMED_SIGILS)) {
       if (cache.sigils[oldId]) cache.sigils[id] = true;
     }
-    for (const [oldId, id] of Object.entries(FROSTHOLLOW_ENEMY_ALIASES)) {
+    for (const [oldId, id] of Object.entries({ ...FROSTHOLLOW_ENEMY_ALIASES, ...STORMHATCH_ENEMY_ALIASES })) {
       if (cache.enemies[oldId]) cache.enemies[id] = true;
     }
   } catch {

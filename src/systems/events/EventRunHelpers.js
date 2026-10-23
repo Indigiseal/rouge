@@ -11,8 +11,12 @@ import { WEAPONS, createWeaponCardData } from '../../content/cards/weapons.js';
 import { ARMORS, createArmorCardData } from '../../content/cards/armor.js';
 import { applyArmorTalentMods } from '../../content/talents/index.js';
 import { revealHiddenPaths } from '../../map/HiddenPaths.js';
+import { flyAmuletToBar } from '../../ui/RewardFlight.js';
 import { SOUP_ROBBERY_SHARE, SOUP_STAND_PURSE } from '../../content/events/soup_stand.js';
 import { ROBBED_TRAVELLER_AMULET } from '../../content/events/robbed_traveller.js';
+
+// The one magic card that restores health, usable on someone else.
+const isRestorationMagic = (item) => item?.type === 'magic' && item.magicType === 'restoration';
 import { EGG_HATCH_FIGHTS } from '../../content/cards/eggHatching.js';
 import { legacyNestHasCog, legacyNestNeedsEngineer } from '../../content/story/StormStories.js';
 import { actOffsetForFloor } from '../../content/location-packs/calendar.js';
@@ -150,8 +154,13 @@ export const EventRunHelpers = {
       this.addEgg();
     }
     if (canTakeCog) this._reward('event.reward.brassCog');
+    // Loose valuables found in the nest. A timed-out raid runs with nothing.
+    const coins = timedOut ? 0 : Math.max(0, Math.floor(Number(result.coins)) || 0);
+    const crystals = timedOut ? 0 : Math.max(0, Math.floor(Number(result.crystals)) || 0);
+    if (coins > 0) this.gainCoins(coins);
+    if (crystals > 0) this.gainCrystals(crystals);
     if (needsEngineer) this.addPendingEvent('goblin_engineer');
-    return { tookCog: canTakeCog, tookEgg: canTakeEgg, timedOut };
+    return { tookCog: canTakeCog, tookEgg: canTakeEgg, timedOut, coins, crystals };
   },
 
   hasPotion() {
@@ -534,6 +543,42 @@ export const EventRunHelpers = {
     this.queueRobbedTraveller();
   },
 
+  /** Hide and wait: the gang comes back for its soup (cards/robbers.js). */
+  waitForSoupRobbers() {
+    this.queueRobbedTraveller();
+    this.gameState.pendingAmbush = {
+      id: 'soup_robbers',
+      normalCombatBoard: true,
+      enemyTypes: ['robberCook', 'robberMuscle', 'robberLookout'],
+    };
+  },
+
+  // The Robbed Traveller's other ways out (robbed_traveller.js). Each ends the story
+  // and shows the way to the gang's stash on the map.
+  askRobbedTraveller() {
+    this.clearPendingEvent('robbed_traveller');
+    revealHiddenPaths(this.gameState, 'robberStash');
+  },
+
+  giveTravellerFood() {
+    const index = this._findInventoryIndex((item) => item?.type === 'food' && item.id !== 'monsterEgg');
+    if (index < 0) return;
+    this._removeInventoryCard(index);
+    this.clearPendingEvent('robbed_traveller');
+    this.gainCoins(15);
+    revealHiddenPaths(this.gameState, 'robberStash');
+  },
+
+  searchRobbedTraveller() {
+    this.clearPendingEvent('robbed_traveller');
+    this.gainCoins(20);
+  },
+
+  /** A map scratched into the Quiet Crossroads wall. */
+  readCrossroadsWall() {
+    revealHiddenPaths(this.gameState, 'crossroadsWall');
+  },
+
   kickSoupPot() {
     this.ensureStoryState();
     this.gameState.storyRun.soupPotKicked = true;
@@ -544,11 +589,21 @@ export const EventRunHelpers = {
     return this._findInventoryIndex((item) => item?.id === 'antidote') >= 0;
   },
 
-  /** The Antidote for the amulet sewn in his collar (any amulet if that one is owned). */
-  saveRobbedTraveller() {
+  /** A Restoration card heals him as well as an Antidote does. */
+  hasRestorationMagic() {
+    return this._findInventoryIndex(isRestorationMagic) >= 0;
+  },
+
+  /**
+   * The Antidote, or a Restoration card, for the amulet sewn in his collar
+   * (any amulet if that one is owned). Pass 'restoration' to spend the spell.
+   */
+  saveRobbedTraveller(remedy = 'antidote') {
     this.ensureStoryState();
     this.clearPendingEvent('robbed_traveller');
-    const index = this._findInventoryIndex((item) => item?.id === 'antidote');
+    const index = this._findInventoryIndex(remedy === 'restoration'
+      ? isRestorationMagic
+      : (item) => item?.id === 'antidote');
     if (index >= 0) this._removeInventoryCard(index);
     this.gameState.storyRun.travellerSaved = true;
     const mgr = (this.gameScene || this.scene?.get?.('GameScene'))?.amuletManager;
@@ -657,19 +712,31 @@ export const EventRunHelpers = {
     if (!this.spendCoins(1)) return false;
     this.addPendingEvent('brass_wizard');
 
-    // The clover lands in the bag as an equipable amulet card (with a little
-    // card→amulet morph), rather than auto-equipping. The player taps it in a
-    // later battle to actually wear it. If the bag is full, fall back to
-    // equipping it outright so the coin is never wasted.
+    // The clover lands in the bag as a card, morphs into a little amulet, then
+    // hops and flies to the amulet bar like any other amulet (no tapping to wear
+    // it). If the bag is full, it goes straight onto the bar so the coin is never
+    // wasted.
     const inv = this.gameScene?.inventorySystem;
-    const slot = inv?.deliverCloverAmulet?.();
+    const slot = inv?.deliverCloverAmulet?.((slotIndex) => this._sendCloverToBar(slotIndex));
     if (Number.isInteger(slot) && slot >= 0) {
       this.gameScene?.updateUI?.();
-      this._reward({ key: 'event.reward.cloverHint', vars: { name: translateItemName(this, 'Lucky Clover') } });
+      this._reward({ key: 'event.reward.gainedAmulet', vars: { name: translateItemName(this, 'Lucky Clover') } });
       this._pushRewardIcon('relicsOthers', 69, 'luckyClover');
       return true;
     }
     return this.gainAmulet('luckyClover');
+  },
+
+  /** The morphed clover leaves the bag for the amulet bar: the regular amulet sound, a hop, a flight. */
+  _sendCloverToBar(slotIndex) {
+    const taken = this.gameScene?.inventorySystem?.takeAmuletPickupFromBag?.(slotIndex);
+    if (!taken) return;
+    // Let the HUD finish rebuilding its icons before the copy flies to one.
+    this.time?.delayedCall?.(0, () => {
+      if (!this.scene?.isActive?.()) return;
+      SoundHelper.playSound(this, 'shop_buy', 0.5);
+      flyAmuletToBar(this, taken.id, taken.x, taken.y, { hop: true });
+    });
   },
 
   refuseCarnivalHag() {

@@ -64,7 +64,9 @@ function placeRider(card, object, dx, dy) {
 }
 
 /**
- * Start pinning `card`'s riders every frame, until the card is destroyed.
+ * Put every rider where it belongs on `card` right now. The per-frame pin below runs
+ * this; call it before copying or measuring a card that was just moved (a drag
+ * ending), when the riders have not had their frame yet.
  *
  * The pips-and-value container is read from the card's 'infoText' data each
  * frame rather than pinned, because several paths rebuild it (a weapon after a
@@ -72,34 +74,37 @@ function placeRider(card, object, dx, dy) {
  * it is seen — the frame it was built in, at the card — so a gem's label keeps
  * its place below the art.
  */
-export function bindCardRiders(scene, card) {
-    const follow = () => {
-        if (!card.scene) return;
-        card.x = Math.round(card.x);
-        card.y = Math.round(card.y);
+export function syncCardRiders(card) {
+    if (!card?.scene) return;
+    card.x = Math.round(card.x);
+    card.y = Math.round(card.y);
 
-        const info = card.getData('infoText');
-        if (info?.scene) {
-            if (!info._followOffset) {
-                info._followOffset = {
-                    x: Math.round(info.x - card.x),
-                    y: Math.round(info.y - card.y),
-                };
-            }
-            info.x = card.x + info._followOffset.x;
-            info.y = card.y + info._followOffset.y;
+    const info = card.getData('infoText');
+    if (info?.scene) {
+        if (!info._followOffset) {
+            info._followOffset = {
+                x: Math.round(info.x - card.x),
+                y: Math.round(info.y - card.y),
+            };
         }
+        info.x = card.x + info._followOffset.x;
+        info.y = card.y + info._followOffset.y;
+    }
 
-        const riders = card.getData(RIDERS);
-        if (!riders) return;
-        riders.forEach(({ object, dx, dy }, name) => {
-            if (!object?.scene) {
-                riders.delete(name);
-                return;
-            }
-            placeRider(card, object, dx, dy);
-        });
-    };
+    const riders = card.getData(RIDERS);
+    if (!riders) return;
+    riders.forEach(({ object, dx, dy }, name) => {
+        if (!object?.scene) {
+            riders.delete(name);
+            return;
+        }
+        placeRider(card, object, dx, dy);
+    });
+}
+
+/** Start pinning `card`'s riders every frame, until the card is destroyed. */
+export function bindCardRiders(scene, card) {
+    const follow = () => syncCardRiders(card);
     scene.events.on('postupdate', follow);
     card.once('destroy', () => scene.events.off('postupdate', follow));
 }

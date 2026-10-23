@@ -9,7 +9,7 @@
 
 import { SoundHelper } from '../audio/SoundHelper.js';
 import {
-    SIGIL_ICONS_KEY, addSigil, canTakeSigil, cardSigils, getSigil, noteSigilTaken, sigilLine, takenSigils,
+    SIGIL_ICONS_KEY, addSigil, canTakeSigil, cardSigils, getSigil, noteSigilTaken, sigilIconArt, sigilLine, takenSigils,
 } from '../content/sigils/sigils.js';
 import { setHoverLight } from './HoverLight.js';
 import { getLocationIdForFloor } from '../content/locations/index.js';
@@ -74,7 +74,8 @@ export function openSigilOffer(scene, gameScene, sigilId, onDone = () => {}) {
         .setStrokeStyle(2, 0xc8ab78).setInteractive());
     text(PANEL.x, PANEL.y - PANEL.h / 2 + 14, 'The chest holds a sigil', '12px', '#fed991').setOrigin(0.5);
     if (scene.textures.exists(SIGIL_ICONS_KEY)) {
-        add(scene.add.image(PANEL.x - 118, PANEL.y - 38, SIGIL_ICONS_KEY, def.frame).setScale(2));
+        const art = sigilIconArt(sigilId, scene.textures);
+        add(scene.add.image(PANEL.x - 118, PANEL.y - 38, art.key, art.frame).setScale(2));
     }
     text(PANEL.x - 98, PANEL.y - 50, def.name, '11px', '#fef0cf').setOrigin(0, 0.5);
     text(PANEL.x - 98, PANEL.y - 30, sigilLine(sigilId).slice(def.name.length + 2), '9px', '#f2d3aa',

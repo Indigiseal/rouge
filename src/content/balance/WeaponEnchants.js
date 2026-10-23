@@ -99,6 +99,26 @@ export function getGlowCardFrame(magicType) {
   return Number.isInteger(frame) ? frame : null;
 }
 
+// Frame index of each spell in the normal `magicCards` sheet. Same order as the
+// glowing one for the first nine, then the sheet carries the spells that had no
+// art of their own: Desert Feast's bowl ends the first row (11 frames wide),
+// and the second row holds Thunderclap, Scorched Land, Summon Mimic, Venomous
+// Bomb and Briar Shield (the Reliquary's glow sheet has not been given these yet).
+export const MAGIC_CARD_FRAMES = Object.freeze({
+  ...GLOW_CARD_FRAMES,
+  desertFeast: 10,
+  thunderclap: 11,
+  scorched: 12,
+  summonMimic: 13,
+  venomousBomb: 14,
+  briarShield: 15,
+});
+
+export function getMagicCardFrame(magicType) {
+  const frame = MAGIC_CARD_FRAMES[magicType];
+  return Number.isInteger(frame) ? frame : null;
+}
+
 export function getWeaponEnchant(magicType) {
   return WEAPON_ENCHANTS[magicType] || null;
 }

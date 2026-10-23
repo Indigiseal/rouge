@@ -145,7 +145,10 @@ export class MapViewScene extends Phaser.Scene {
       const shopKey = this.gameState.pendingActShop === 'RARE_SHOP' ? 'RareShopScene' : 'ShopScene';
       this.gameState.pendingActShop = null;
       this.scene.sleep();
-      this.scene.launch(shopKey, { gameState: this.gameState });
+      this.scene.launch(shopKey, {
+        gameState: this.gameState,
+        backdropFloor: this.gameState.currentFloor - 1,
+      });
       return;
     }
 

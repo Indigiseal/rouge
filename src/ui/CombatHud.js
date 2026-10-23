@@ -30,9 +30,10 @@ import { createGauntletCard } from '../content/balance/Gauntlet.js';
 import { AMULETS } from '../content/cards/amulets.js';
 import { hudAmuletTexture } from '../content/amulets/RelicsOthersAtlas.js';
 import { EXIT_DOOR_X, EXIT_DOOR_Y } from './ExitDoor.js';
-import { SIGIL_ICONS_KEY, WORKING_PLAYER_SIGILS, addSigil, canTakeSigil, cardSigils, getSigil } from '../content/sigils/sigils.js';
+import { WORKING_PLAYER_SIGILS, addSigil, canTakeSigil, cardSigils, getSigil, sigilIconArt } from '../content/sigils/sigils.js';
 import { buildSigilIcons, sigilCornerOffset } from './SigilIcons.js';
 import { SHOW_BRIAR_FRAME } from './CardDecorations.js';
+import { cardRiders, pinRider } from './CardRiders.js';
 import { TOOLTIP_DEPTH } from './ItemTooltip.js';
 import { isLocationDoorTexture } from '../content/assets/locationCards.js';
 
@@ -169,10 +170,10 @@ export const CombatHud = {
         this.amuletScrollOffset = 0; // which amulet is the first one shown
         this.armorTooltip = null; // tooltip shown on hover over equipped armor
         // Above the floor board frame (depth 0) and stone BG — otherwise the
-        // gamingBoard lip covers location/act/floor in the top-right.
+        // gamingBoard lip would otherwise cover the location/act/floor header.
         const TOP_HUD_DEPTH = 40;
         // Location first (bright), then Act/Floor (muted).
-        this.floorText = this.add.text(455, 15, t(this.scene, 'ui.hud.floorBanner', {
+        this.floorText = this.add.text(320, 9, t(this.scene, 'ui.hud.floorBanner', {
             month: 'Thornwake', act: 1, floor: 1,
         }), {
             fontSize: '13px',
@@ -276,7 +277,8 @@ export const CombatHud = {
         // Sigils (sigils branch): the ones that work so far, put on a card in the bag.
         for (const id of WORKING_PLAYER_SIGILS) {
             const def = getSigil(id);
-            categories.sigil.push({ label: def.name, sigilId: id, sprite: SIGIL_ICONS_KEY, spriteFrame: def.frame });
+            const art = sigilIconArt(id, this.textures);
+            categories.sigil.push({ label: def.name, sigilId: id, sprite: art.key, spriteFrame: art.frame });
         }
         for (const type of Object.keys(WEAPONS)) {
             for (const rarity of rarities) {
@@ -315,8 +317,8 @@ export const CombatHud = {
                 card: { ...spiderling, name: 'Crystal Seeker', crystalFindChance: 0.02, upgradedForm: 'crystalSeeker', trained: true },
             });
             categories.other.push({
-                label: 'Storm Hatchling',
-                card: { ...chick, name: 'Storm Hatchling', sprite: 'chickCompanionUP', shockChance: 0.2, upgradedForm: 'stormHatchling', trained: true, attack: chick.attack + 1 },
+                label: 'Storm Chick',
+                card: { ...chick, name: 'Storm Chick', sprite: 'chickCompanionUP', shockChance: 0.2, upgradedForm: 'stormHatchling', trained: true, attack: chick.attack + 1 },
             });
             categories.other.push({
                 label: 'Slimebone Guard',
@@ -823,6 +825,10 @@ export const CombatHud = {
         this.floorText.setText(t(this.scene, 'ui.hud.floorBanner', {
             month: locationName, act: _act, floor: this.gameState.currentFloor,
         }));
+        const combatRoom = ['COMBAT', 'ELITE', 'HARD', 'BOSS', 'AMBUSH']
+            .includes(this.roomType || this.gameState.roomType);
+        const centeredHeader = combatRoom && !this.inventorySystem?.stationMode;
+        this.floorText.setPosition(centeredHeader ? 320 : 455, centeredHeader ? 9 : 15);
         this.updateEquippedArmorPanel();
         
         // Update health orb
@@ -1095,7 +1101,13 @@ export const CombatHud = {
                 this.armorPanelEquippedSprite.displayHeight || 70);
             this.armorPanelSigilIcons = buildSigilIcons(this, wornSigils,
                 this.armorPanelEquippedSprite.x + corner.x, this.armorPanelEquippedSprite.y + corner.y);
-            this.armorPanelSigilIcons.forEach((icon) => icon.setDepth(6.6));
+            this.armorPanelSigilIcons.forEach((icon, i) => {
+                icon.setDepth(6.6);
+                pinRider(this.armorPanelEquippedSprite, `sigil${i}`, icon, {
+                    dx: icon.x - this.armorPanelEquippedSprite.x,
+                    dy: icon.y - this.armorPanelEquippedSprite.y,
+                });
+            });
         }
         if (SHOW_BRIAR_FRAME && (armor.briarDamageBonus || 0) > 0 && this.textures.exists('thornFrame')) {
             this.armorPanelBriarFrame = snapOriginToPixelGrid(
@@ -1107,6 +1119,7 @@ export const CombatHud = {
                     this.armorPanelEquippedSprite.displayHeight || 70
                 )
                 .setDepth(6.5);
+            pinRider(this.armorPanelEquippedSprite, 'briarFrame', this.armorPanelBriarFrame);
         }
         // Tap to unequip, drag to the chute to throw it away. The tap has to
         // wait for pointerup: on pointerdown it fired the instant the armor was
@@ -1116,7 +1129,7 @@ export const CombatHud = {
         const restY = this.armorPanelEquippedSprite.y;
         let dragging = false;
         // The pips and the thorn frame ride along, the way they do on a bag card.
-        const riders = () => [this.armorPanelInfoText, this.armorPanelBriarFrame]
+        const riders = () => cardRiders(this.armorPanelEquippedSprite)
             .filter((rider) => rider?.active);
         const moveTo = (x, y) => {
             const sprite = this.armorPanelEquippedSprite;
@@ -1136,12 +1149,23 @@ export const CombatHud = {
             // the way down rather than sliding under the HUD it crosses.
             this.armorPanelEquippedSprite.setDepth(1002);
             riders().forEach((rider) => rider.setDepth(1003));
+            if (this.inventorySystem?.equippedArmorDropTarget?.accepts(armor)) {
+                this.inventorySystem.createDragOverlay(this.armorPanelEquippedSprite, -1);
+            }
         });
         this.armorPanelEquippedSprite.on('drag', (pointer, dragX, dragY) => {
             moveTo(Math.round(dragX), Math.round(dragY));
+            this.inventorySystem?.updateDragOverlay(this.armorPanelEquippedSprite);
         });
         this.armorPanelEquippedSprite.on('dragend', () => {
             const sprite = this.armorPanelEquippedSprite;
+            const inv = this.inventorySystem;
+            inv?.destroyDragOverlay();
+            if (inv?.equippedArmorDropTarget?.onDrop(armor, sprite)) {
+                moveTo(restX, restY);
+                this.time.delayedCall(0, () => { dragging = false; });
+                return;
+            }
             const overChute = this.discardArea
                 && sprite?.active
                 && Phaser.Geom.Intersects.RectangleToRectangle(
@@ -1683,6 +1707,7 @@ export const CombatHud = {
         });
 
         this.updatePlayerPoisonMarker();
+        this.updatePlayerShockMarker();
     },
 
     // ── Warrior stance ────────────────────────────────────────────────────
@@ -1782,6 +1807,32 @@ export const CombatHud = {
         } else if (this.playerPoisonMarker) {
             this.playerPoisonMarker.destroy();
             this.playerPoisonMarker = null;
+        }
+    },
+    // The same crackling icon an enemy card wears when shocked, in the hero
+    // portrait's top-right corner for as long as the next weapon attack is
+    // lost to Shock. It slides left of the poison icon when both are up.
+    updatePlayerShockMarker() {
+        const shocked = Boolean(this.gameState.playerShocked);
+
+        if (shocked) {
+            if (!this.playerAvatar?.scene || !this.textures.exists('shockedStatus')) return;
+            const halfW = (this.playerAvatar.displayWidth || 0) / 2;
+            const halfH = (this.playerAvatar.displayHeight || 0) / 2;
+            const x = Math.round(this.playerAvatar.x + halfW - 2)
+                - (this.playerPoisonMarker?.scene ? 15 : 0);
+            if (!this.playerShockMarker?.scene) {
+                const marker = this.add.sprite(x, Math.round(this.playerAvatar.y - halfH + 2), 'shockedStatus');
+                marker.setOrigin(1, 0);
+                marker.setDepth(41);
+                if (this.anims.exists('shock_status_anim')) marker.play('shock_status_anim');
+                this.playerShockMarker = marker;
+            } else {
+                this.playerShockMarker.x = x;
+            }
+        } else if (this.playerShockMarker) {
+            this.playerShockMarker.destroy();
+            this.playerShockMarker = null;
         }
     },
     capitalizeEffect(value) {

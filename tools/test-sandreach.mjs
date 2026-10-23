@@ -72,11 +72,12 @@ for (const act of [1, 2, 3]) {
         sandSkirmisher: ['quickStrike'], lizardArcher: [], sandcaller: ['daze'] })) {
         const data = buildEnemyCardFromDef(id, scene.gameState.currentFloor);
         assert.deepEqual(enemySigils(data).map(sigil => sigil.id), expected);
-        assert.equal(data.placeholderArt, true);
+        assert.equal(data.placeholderArt, false);
         assert.deepEqual(data.features, []);
     }
     const boss = scene.cardSystem.cardDataGenerator.createBossCard(act * 15, scene.gameState);
     assert.equal(boss.name, 'Sandscale Chieftain');
+    assert.equal(boss.sprite, 'lizardBoss');
     assert.equal(boss.tier, act);
     assert.deepEqual(enemySigils(boss).map(sigil => sigil.id), ['quickStrike', 'daze', 'summon']);
     scene.gameState.storyRun = { sigilsTaken: ['secondWind', 'daze'] };
@@ -344,7 +345,7 @@ try {
     caster.useMagicCard(0, feast.add.image(200, 80, spell.sprite));
     assert.equal(caster.slots[0], spell);
     assert.equal(wastedActions, 0, 'full AP returns the spell before charging an action');
-    assert.match(InventoryView.describeMagicCard.call({ scene: feast }, spell), /without healing HP/);
+    assert.equal(InventoryView.describeMagicCard.call({ scene: feast }, spell), 'Restore Action Points');
     assert.equal(getGlowCardFrame('desertFeast'), 9);
     assert.ok(enchantableMagicTypes(1).includes('desertFeast'));
     feast.gameState.actionsLeft = 1;

@@ -6,7 +6,7 @@
 // own container (enemy stats, an anvil card face) or pins them to the card
 // (the bag), so they move with it.
 
-import { SIGIL_ICONS_KEY, getSigil } from '../content/sigils/sigils.js';
+import { SIGIL_ICONS_KEY, getSigil, sigilIconArt } from '../content/sigils/sigils.js';
 
 const ICON = 16;
 const STEP = 14;      // icons overlap a little so two fit beside the art
@@ -84,7 +84,8 @@ export function buildSigilIcons(scene, sigils, x, y) {
         const def = getSigil(s.id);
         if (!def) return;
         const iy = Math.round(y + i * STEP);
-        out.push(scene.add.image(Math.round(x), iy, SIGIL_ICONS_KEY, def.frame));
+        const art = sigilIconArt(s.id, scene.textures);
+        out.push(scene.add.image(Math.round(x), iy, art.key, art.frame));
     });
     return out;
 }

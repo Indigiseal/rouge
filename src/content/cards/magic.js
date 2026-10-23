@@ -1,18 +1,18 @@
 export const MAGIC = [
   {
     magicType: 'desertFeast', name: 'Desert Feast',
-    description: 'Fully restores Action Points without healing HP.',
+    description: 'Restore Action Points',
     minFloor: 1, rarity: 'uncommon', sprite: 'desertFeast',
   },
   {
     magicType: 'thunderclap', name: 'Thunderclap',
-    description: 'Deals 3 lightning damage to all revealed enemies and shocks survivors for one missed attack, including bosses.',
+    description: 'Deal 3 damage and Shock all revealed enemies.',
     damage: 3, minFloor: 1, rarity: 'rare', sprite: 'thunderclap',
   },
   {
     magicType: 'scorched',
     name: 'Scorched Land',
-    description: 'Adds 3 burn to every enemy, including hidden ones. Burn deals its counter each turn, then drops by 1.',
+    description: 'Apply 3 Burn to all enemies, even hidden ones.',
     minFloor: 1,
     rarity: 'rare',
     sprite: 'scorchedLand',
@@ -20,7 +20,7 @@ export const MAGIC = [
   {
     magicType: 'summonMimic',
     name: 'Summon Mimic',
-    description: 'Summons a hostile Mimic into an empty space. Defeat it before it escapes to claim its loot.',
+    description: 'Summon a Mimic. Defeat it for loot.',
     minFloor: 1,
     rarity: 'rare',
     sprite: 'summonMimic',

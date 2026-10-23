@@ -8,6 +8,7 @@ import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } 
 import { HAND_LOCKS, handLockKindOf } from '../content/combat/handLock.js';
 import { sigilLine, storedSigils } from '../content/sigils/sigils.js';
 import { SINGLE_AMULET, offerFaceAmulet } from '../content/cards/amulets.js';
+import { getMagic } from '../content/cards/magic.js';
 import { cameraWorldSize } from '../config/renderScale.js';
 import { eggFightsLeft, isHatchingEgg } from '../content/cards/eggHatching.js';
 import { PLATE_RANGED_IGNORE_MAX } from '../content/cards/armor.js';
@@ -133,7 +134,8 @@ export function getTooltipLines(scene, data) {
         if (data.guardProtection) body += `\n${t(scene, 'tooltip.companion.guard', { amount: data.guardProtection })}`;
         if (data.crystalFindChance) body += `\n${t(scene, 'tooltip.companion.crystalChance', { amount: Math.round(data.crystalFindChance * 100) })}`;
     } else if (data.type === 'magic') {
-        body = data.description ? translateDescription(scene, data.description) : t(scene, 'tooltip.magicSpell');
+        const description = getMagic(data.magicType)?.description || data.description;
+        body = description ? translateDescription(scene, description) : t(scene, 'tooltip.magicSpell');
     } else if (data.type === 'gem') {
         const effect = data.gemEffect || data.effect;
         body = t(scene, 'tooltip.socket', { effect: effect ? translateGemEffect(scene, effect) : t(scene, 'tooltip.gem') });
@@ -326,7 +328,8 @@ function getEnemyFeatureLines(scene, data) {
     if (data?.controlTreachery) {
         lines.push(t(scene, 'tooltip.markTreachery'));
     }
-    for (const sigil of storedSigils(data)) lines.push(enemySigilTooltip(data, sigil));
+    // Stored sigils are described by getBossAbilityLines, which the enemy
+    // tooltip also includes. Features here must not append them a second time.
     return lines;
 }
 

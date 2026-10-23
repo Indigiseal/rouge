@@ -68,7 +68,13 @@ export function describeFeedback(message, options = {}) {
 // How long a label may wait for room before it is skipped on screen, by
 // priority (minor, normal, major). Counted from when it was due, so labels
 // deliberately timed to a later beat (delayMs) still get their full wait.
-const MAX_WAIT_MS = Object.freeze([1800, 1500, 2400]);
+const MAX_WAIT_MS = Object.freeze([500, 700, 1600]);
+
+// A label that had to queue behind others is read faster, and the lane opens sooner, so a
+// burst of statuses clears with the fight instead of trailing it. Every label is already
+// in the log, so a skipped one is not lost.
+const BACKLOG_HOLD = 0.45;
+const LANE_GAP_MS = 110;
 
 const overlap = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 
@@ -147,7 +153,7 @@ export class CombatFeedback {
             const rendered = this.render(event);
             if (!rendered) { event.readyAt = now + 80; continue; }
             this.queue.splice(this.queue.indexOf(event), 1);
-            this.lanes.set(event.lane, now + 170);
+            this.lanes.set(event.lane, now + LANE_GAP_MS);
         }
         for (const [lane, until] of this.lanes) if (until < now && !this.queue.some(e => e.lane === lane)) this.lanes.delete(lane);
     }
@@ -213,7 +219,9 @@ export class CombatFeedback {
             scene.tweens.add({ targets: object, scale: 1, duration: event.pop, ease: 'Cubic.easeOut' });
             scene.tweens.add({ targets: object, y: object.y - event.drift, duration: 260, ease: 'Cubic.easeOut' });
         }
-        scene.tweens.add({ targets: object, alpha: 0, delay: 260 + event.hold, duration: event.fade,
+        const backlog = this.queue.some(other => other !== event && other.lane === event.lane);
+        const hold = backlog && event.priority < 2 ? event.hold * BACKLOG_HOLD : event.hold;
+        scene.tweens.add({ targets: object, alpha: 0, delay: 260 + hold, duration: event.fade,
             onComplete: () => this.remove(entry) });
         return true;
     }

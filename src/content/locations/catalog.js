@@ -24,7 +24,7 @@ export function allRoadsForAct(act) {
 export const PATH_LOCATIONS = Object.freeze({
   sandreach: Object.freeze({
     id: 'sandreach', name: 'Sandreach', place: 'The Sand Lizardfolk Desert',
-    bossId: 'sandscaleChieftain', portrait: 'enemyPlaceholder',
+    bossId: 'sandscaleChieftain', portrait: 'lizardBoss',
   }),
   frosthollow: Object.freeze({
     id: 'frosthollow', name: 'Frosthollow', place: 'The Frosthollow Tundra',
@@ -32,7 +32,7 @@ export const PATH_LOCATIONS = Object.freeze({
   }),
   stormhatch: Object.freeze({
     id: 'stormhatch', name: 'Stormhatch', place: 'The Storm Cliffs',
-    bossId: 'tempestRoc', portrait: 'enemyPlaceholder',
+    bossId: 'tempestRoc', portrait: 'lightningBoss',
   }),
   thornwake: Object.freeze({
     id: 'thornwake',

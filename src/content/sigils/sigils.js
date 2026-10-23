@@ -110,9 +110,9 @@ export const SIGILS = Object.freeze({
     charm:       { name: 'Charm',       frame: 64, side: 'player', player: '15% chance on hit: the enemy hit (not a boss) attacks another enemy instead of you on its next attack', works: true, retired: true },
     scout:       { name: 'Scout',       frame: 63, side: 'player', player: '15% chance on hit: opens a face-down card that is not an enemy or a trap', works: true, retired: true },
     // Four sigils that stop a card or an enemy for a turn, each its own.
-    // Zap is never handed out: a card shows it while it can shock — the
-    // yellow stone (lightning gem) socketed in a weapon, or the Storm
-    // Hatchling. Frost is offered like any sigil (and shown by Frost Ring).
+    // Zap is never handed out: it marks an innate shock ability, such as the
+    // Storm Hatchling's. Socketed gems are shown separately, not as sigils.
+    // Frost is offered like any sigil (and shown by Frost Ring).
     // Web and Ink are the Silkslinger's and the Ink Wraith's.
     zap:         { name: 'Zap',         frame: 56, side: 'player', player: 'small chance to paralyse the enemy hit: it skips its next turn' },
     frost:       { name: 'Frost', frame: 57, side: 'both', enemy: '10% chance on a damaging hit: freezes you or one companion for 2 attack attempts; refreshes instead of stacking', player: '25% chance to freeze the enemy hit: it skips its next turn (not bosses)', works: true },
@@ -177,6 +177,41 @@ export function getSigil(id) {
     return SIGILS[id] || null;
 }
 
+// Flat coloured icons for the sigils that used to borrow another sigil's frame
+// or a numbered placeholder (PixelLab, chosen by Taya): one 16x16 sheet,
+// 8 frames to a row, in the order below. A sigil listed here draws from this
+// sheet; every other sigil keeps its frame on enemyIcons.png, and so does any
+// sigil whose new icon failed to load.
+export const SIGIL_ICONS_NEW_KEY = 'sigilIconsNew';
+export const SIGIL_ICONS_NEW_SHEET = Object.freeze({
+    key: SIGIL_ICONS_NEW_KEY,
+    path: 'assets/art/sigilIconsNew.png',
+    frameWidth: 16,
+    frameHeight: 16,
+});
+export const SIGIL_ICONS_NEW_COLUMNS = 8;
+export const NEW_SIGIL_ICON_ORDER = Object.freeze([
+    'twinSocket', 'conductive', 'shock', 'charged', 'zap', 'quickStrike', 'echo', 'combo',
+    'riposte', 'mending', 'secondWind', 'forage', 'wellFed', 'hunter', 'archerBane', 'keen',
+    'bounty', 'growth', 'venomStack', 'venomSplash', 'venomousBomb', 'packStrength',
+    'companionStrength', 'kinship', 'reassemble', 'scorched', 'bulwark', 'briarGuard', 'shatter',
+]);
+const NEW_ICON_FRAME = new Map(NEW_SIGIL_ICON_ORDER.map((id, frame) => [id, frame]));
+const SIGIL_ID_OF = new Map(Object.entries(SIGILS).map(([id, def]) => [def, id]));
+
+/**
+ * Where to draw a sigil's icon: `{ key, frame }`. Takes the id or the def, and
+ * the texture manager so a sheet that did not load falls back to the old frame.
+ */
+export function sigilIconArt(sigil, textures) {
+    const id = typeof sigil === 'string' ? sigil : SIGIL_ID_OF.get(sigil);
+    const def = typeof sigil === 'string' ? SIGILS[sigil] : sigil;
+    if (NEW_ICON_FRAME.has(id) && textures?.exists?.(SIGIL_ICONS_NEW_KEY)) {
+        return { key: SIGIL_ICONS_NEW_KEY, frame: NEW_ICON_FRAME.get(id) };
+    }
+    return { key: SIGIL_ICONS_KEY, frame: def?.frame };
+}
+
 // Sigils renamed since a save was written: Arrest became Frost; Ember became
 // Ripple, then Fireball.
 export const RENAMED_SIGILS = Object.freeze({ arrest: 'frost', ember: 'fireball', ripple: 'fireball', tsunami: 'scorched' });
@@ -208,9 +243,9 @@ export function cardSigils(card) {
     if ((card.briarDamageBonus || 0) > 0 && !has('thorns')) out.push({ id: 'thorns', level: 1 });
     const fromEnchant = ENCHANT_SIGIL[card.enchant];
     if (fromEnchant && !has(fromEnchant)) out.push({ id: fromEnchant, level: 1 });
-    // Zap: whatever can shock — the Storm Hatchling, or a weapon carrying the
-    // yellow stone (lightning gem).
-    const shocks = (card.shockChance || 0) > 0 || (card.type === 'weapon' && card.gemEffect === 'lightning');
+    // Only innate shock gets Zap. A lightning gem already has its own stone
+    // on the card; it does not grant an additional sigil icon.
+    const shocks = (card.shockChance || 0) > 0;
     if (shocks && !has('zap')) out.push({ id: 'zap', level: 1 });
     return out;
 }

@@ -105,7 +105,9 @@ export const InventoryCombatUse = {
 
         // Pre-flight check: confirm there's a valid target before spending an action.
         if (!this.canMagicCardSucceed(magicCard, cardSprite)) {
-            this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'No valid target!', 0xef7c4b);
+            const message = magicCard.magicType === 'summonMimic'
+                ? t(this.scene, 'magic.summonMimic.unavailable') : 'No valid target!';
+            this.scene.createFloatingText(cardSprite.x, cardSprite.y, message, 0xef7c4b);
             this.returnCardToSlot(slotIndex, cardSprite);
             return;
         }
@@ -117,6 +119,7 @@ export const InventoryCombatUse = {
         }
 
         let used = false;
+        const wasCleared = this.scene.enemiesCleared;
 
         switch(magicCard.magicType) {
             case 'desertFeast': {
@@ -144,11 +147,26 @@ export const InventoryCombatUse = {
                 break;
             case 'summonMimic':
                 used = summonMimic(this.scene.cardSystem);
+                // useAction ran while the room was cleared, so its normal
+                // enemy response was suppressed. Queue it after reopening.
+                if (used && wasCleared) this.scene.scheduleEnemyTurn?.();
                 break;
-            case 'venomousBomb':
+            case 'venomousBomb': {
                 used = applyVenomousBomb(this.scene.cardSystem) > 0;
-                if (used) SoundHelper.playVariant(this.scene, 'poison_tick', 0.5);
+                if (used) {
+                    SoundHelper.playSound(this.scene, 'poison_trap', 0.6);
+                    if (this.scene.anims.exists('poison_poof_anim')) {
+                        this.scene.cardSystem.boardCards.filter(isSilkdeepPoisonTarget).forEach(card => {
+                            if (!card.sprite?.scene) return;
+                            const poof = this.scene.add.sprite(card.sprite.x, card.sprite.y, 'poisonPoof')
+                                .setDepth((card.sprite.depth || 0) + 10);
+                            poof.play('poison_poof_anim');
+                            poof.once('animationcomplete', () => poof.destroy());
+                        });
+                    }
+                }
                 break;
+            }
             case 'fireball':
                 // Find closest enemy to where card was dropped
                 let closestEnemy = -1;

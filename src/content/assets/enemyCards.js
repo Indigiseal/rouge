@@ -12,6 +12,9 @@
 //   row 2  Tollroad       row 6  Ashhowl
 //   row 3  Boneflood                  row 7  Crystal Lair
 //   row 8  Frosthollow (mixed-role painted order)
+//   row 9  Stormhatch (the Cloudborn)
+//   row 10 Sandreach (the sand lizardfolk)
+//   row 11 Robbers (generic thieves for stories, on Tollroad's card faces)
 //
 // A column is the enemy's position in its roster's SHEET_ORDER when provided,
 // otherwise MELEE first, then RANGED, which is the order the older rosters
@@ -55,6 +58,9 @@ export const MONTH_SHEET_ROWS = Object.freeze({
 export const EXTRA_SHEET_ROWS = Object.freeze({
     crystalLair: 7,
     frosthollow: 8,
+    stormhatch: 9,
+    sandreach: 10,
+    robbers: 11,
 });
 
 /** The sheet row for a location or extra group, or undefined if none is drawn. */

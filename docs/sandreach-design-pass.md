@@ -2,8 +2,9 @@
 
 Sandreach is the provisional sand lizardfolk location, available in every act.
 It owns archery, food and action-point momentum. Ordinary food still drops in
-all locations. Names, creature art, portrait, stamp and room art remain provisional;
-the current build uses generic enemy art, the deer stamp and existing room fallbacks.
+all locations. Taya's lizardfolk enemy row and two-pose boss art are wired.
+Names, stamp and room art remain provisional; the deer stamp and existing
+room fallbacks remain in use.
 
 ## Player sigils
 
@@ -84,7 +85,7 @@ description refresh in saved equipped items without replaying earned bonuses.
 
 ## Validation and follow-ups
 
-`npm run test:sandreach` covers all-act roster/boss/reward generation, placeholder
+`npm run test:sandreach` covers all-act roster/boss/reward generation, painted
 art, stable IDs, damage conditions, actual inventory attacks and costs, extra-hit
 armor/on-hit behavior, no chaining, food placement/full boards/boss lanes, Forager
 death drops, enemy extra attacks, Sandstorm, HUD and save compatibility. The
@@ -99,8 +100,27 @@ Sandspice Pouch stacks with Sandglass Scarab's +1 maximum AP per meal without
 changing that growth amount. Old owners keep one effect and receive the new name.
 
 Still open: any additional maximum-AP
-sigil, final names/art, visual review and human balance testing. No food
+sigil, final names and remaining room/stamp art, visual review and human balance testing. No food
 transformation or new resistance was added.
+
+## Painted enemy and boss art
+
+Enemy sheet row 10 uses the painted order Glass Scarab, Dune Forager, Sand
+Skirmisher, Lizard Archer, Sandcaller. Each has normal/veteran/elite card faces
+from that row, with live stats and the correct melee/ranged icon. It is an
+enemy-only row, so it does not point to nonexistent hover or flip animation rows.
+
+`assets/art/lizardBoss.png` is the editable 224x144 source: two 112x144 frames,
+idle left and attack right. Preload creates separate single-pose textures from
+those frames, keeping portraits and boss layout at the correct single-frame
+width. Combat uses the existing attack-pose timer with zero padding offsets,
+so the boss anchor stays fixed. The location portrait and Codex use idle art.
+Old saved enemy/boss placeholders refresh on Continue without resetting combat
+state. Stats, abilities, rewards and sounds are unchanged by this art pass.
+
+`npm run test:sandreach-art` checks all 15 tier cards, painted columns and weapon
+icons, the original two-frame PNG and generated pose textures, repeat attack
+timers/anchors, portraits and actual saved-run art refresh.
 
 The existing food-growth amulet's run counter (`gluttonMaxApGained`) is now
 saved alongside maximum AP and restored on Continue. Older saves without a

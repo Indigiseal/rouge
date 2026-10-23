@@ -123,12 +123,13 @@ export class SandboxStoryScene extends Phaser.Scene {
     // Dragging the list is the only gesture available on a trackpad or touch,
     // and it does not fight the buttons: a click that never moves still fires.
     this.input.on('pointerdown', (pointer) => {
-      if (pointer.y < LIST_TOP || pointer.y > LIST_BOTTOM) return;
-      this._drag = { y: pointer.y, from: this.scrollY };
+      // World units: pointer.y is in canvas pixels, twice the world's.
+      if (pointer.worldY < LIST_TOP || pointer.worldY > LIST_BOTTOM) return;
+      this._drag = { y: pointer.worldY, from: this.scrollY };
     });
     this.input.on('pointermove', (pointer) => {
       if (!this._drag || !pointer.isDown) return;
-      this.setScroll(this._drag.from - (pointer.y - this._drag.y));
+      this.setScroll(this._drag.from - (pointer.worldY - this._drag.y));
     });
     this.input.on('pointerup', () => { this._drag = null; this._press = null; });
 
@@ -182,13 +183,13 @@ export class SandboxStoryScene extends Phaser.Scene {
     // list scrolls by dragging, and a row that launched on pointerdown made
     // that impossible: every attempt to drag started a story instead.
     bg.on('pointerdown', (pointer) => {
-      this._press = { bg, y: pointer.y };
+      this._press = { bg, y: pointer.worldY };
     });
     bg.on('pointerup', (pointer) => {
       const press = this._press;
       this._press = null;
       if (press?.bg !== bg) return;
-      if (Math.abs(pointer.y - press.y) > DRAG_SLOP) return;
+      if (Math.abs(pointer.worldY - press.y) > DRAG_SLOP) return;
       SoundHelper.playVariant(this, 'button_click', 0.5);
       onClick?.();
     });

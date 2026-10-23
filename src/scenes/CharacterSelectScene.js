@@ -113,7 +113,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     if (!CHARACTER_IDS.includes(characterId)) characterId = 'rogue';
     this.cameras.main.fadeOut(350, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('VillageScene', { characterId });
+      this.scene.start('SanctuaryScene', { characterId });
     });
   }
 }

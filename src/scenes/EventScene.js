@@ -41,6 +41,8 @@ import {
   NEST_TOOK_BOTH,
   NEST_TOOK_COG,
   NEST_TOOK_EGG,
+  NEST_TOOK_LOOT,
+  NEST_ALSO_LOOT,
   NEST_LEFT,
   NEST_LEFT_NO_BOX,
 } from '../content/events/monster_bird_nest.js';
@@ -50,6 +52,7 @@ import { pickTollroadEventId } from '../content/location-packs/tollroad/index.js
 import { tryLethalRevive } from '../systems/combat/PlayerDamageResolver.js';
 import { flyCurrencyGain } from '../ui/CurrencyFlight.js';
 import { flyAmuletToBar, flyCardToBag } from '../ui/RewardFlight.js';
+import { bagArrivalSoundKey } from '../content/audio/armorSounds.js';
 import { playCardDissolve } from '../ui/CardDissolve.js';
 import { serifStyle } from '../ui/uiFont.js';
 import { setHoverLight } from '../ui/HoverLight.js';
@@ -78,12 +81,18 @@ export const EVENT_ILLUSTRATION_FRAMES = {
   toll_collectors: 29,
   arm_wrestling: 30,
   screaming_head: 26,
-  // TODO: swap to the Reliquary's own frame once its art lands. Frame 11
-  // (the Copying Mirror's glassy panel) is the closest stand-in for now.
-  reliquary: 11,
+  reliquary: 39,
   silk_cocoon_cache: 31,
-  // Webs and spiders: the cocoon cache's picture fits until it has its own.
-  webbed_corridor: 31,
+  webbed_corridor: 40,
+  // Frames 32-40: pictures made with PixelLab Create Object (Taya's pick), added
+  // to the end of the sheet.
+  mirror_twin: 32,
+  abandoned_camp: 33,
+  old_chute: 34,
+  soup_stand: 35,
+  robbed_traveller: 36,
+  lost_porter: 37,
+  porter_party_argument: 38,
 };
 
 // How far the Screaming Head statue sits right of the usual event-art spot.
@@ -1512,7 +1521,9 @@ export class EventScene extends Phaser.Scene {
       this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
       this.gameScene?.updateUI?.();
       this._reward(localizedGainedLabel);
-      // It floats from the event's picture into the slot it landed in.
+      // It floats from the event's picture into the slot it landed in, with the
+      // sound a card makes arriving anywhere else (armor: its own equip sound).
+      SoundHelper.playSound(this, bagArrivalSoundKey(this, card, 'shop_buy'), 0.5);
       this._flyCardFromPicture(this.gameScene?.inventorySystem?.lastAddedSlot);
       return true;
     }
@@ -1738,7 +1749,7 @@ export class EventScene extends Phaser.Scene {
     if (!companion || !history || history.upgraded === true) return false;
 
     if (companion.id === 'chickCompanion') {
-      companion.name = 'Storm Hatchling';
+      companion.name = 'Storm Chick';
       companion.shockChance = 0.20;
       companion.upgradedForm = 'stormHatchling';
       companion.sprite = 'chickCompanionUP'; // upgraded art: crackling storm chick
@@ -1784,7 +1795,9 @@ export class EventScene extends Phaser.Scene {
     if (ok) {
       this._reward({ key: 'event.reward.gainedAmulet', vars: { name } });
       this._pushRewardIcon(def?.sprite || 'relicsOthers', def?.spriteFrame ?? 0, id);
-      // It floats from the event's picture to its spot on the amulet bar.
+      // It floats from the event's picture to its spot on the amulet bar, with
+      // the sound the shop and the boss reward make for an amulet.
+      SoundHelper.playSound(this, 'shop_buy', 0.5);
       const from = this._rewardSourcePoint();
       flyAmuletToBar(this, id, from.x, from.y);
     }
@@ -2381,6 +2394,9 @@ export class EventScene extends Phaser.Scene {
     else if (resolved.tookCog && resolved.tookEgg) outcome = NEST_TOOK_BOTH;
     else if (resolved.tookCog) outcome = NEST_TOOK_COG;
     else if (resolved.tookEgg) outcome = NEST_TOOK_EGG;
+    if (!resolved.timedOut && (resolved.coins > 0 || resolved.crystals > 0)) {
+      outcome = resolved.tookCog || resolved.tookEgg ? outcome + NEST_ALSO_LOOT : NEST_TOOK_LOOT;
+    }
     this.birdNestOutcome = outcome;
     this.gameScene?.updateUI?.();
     this._resolve({

@@ -822,7 +822,7 @@ export class CardDataGenerator {
         return {
             id: 'chickCompanion',
             type: 'companion',
-            name: 'Chick Companion',
+            name: 'Chick',
             // Tuned down from 3 → 2: at 3 it was too strong even into act 3.
             attack: 2,
             sprite: 'chickCompanion',

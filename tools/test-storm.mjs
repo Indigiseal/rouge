@@ -45,18 +45,19 @@ for (const act of [1, 2, 3]) {
     scene.gameState.actLocationIds = [null, null, null];
     scene.gameState.actLocationIds[act - 1] = 'stormhatch';
     assert.deepEqual(offerableSigils(scene), ['conductive', 'shock', 'charged', 'twinSocket']);
-    for (const [id, sigils] of Object.entries({ rainMite: [], stormBoar: [], cliffGull: [], stormRam: ['charged'], thunderCrow: ['shock'] })) {
+    for (const [id, sigils] of Object.entries({ lightningBee: [], cloudbornGuard: [], cloudbornArcher: [], stormGolem: ['charged'], lightningEye: ['shock'] })) {
         const data = buildEnemyCardFromDef(id, scene.gameState.currentFloor);
         assert.deepEqual(enemySigils(data).map(sigil => sigil.id), sigils);
-        assert.equal(data.sprite, 'enemyPlaceholder');
-        assert.equal(data.placeholderArt, true);
+        assert.match(data.sprite, /^enemyCard_stormhatch_\d_normal$/);
+        assert.equal(data.placeholderArt, false);
         assert.deepEqual(data.features, []);
     }
     const boss = scene.cardSystem.cardDataGenerator.createBossCard(act * 15, scene.gameState);
-    assert.equal(boss.name, 'Tempest Roc');
+    assert.equal(boss.name, 'Storm Archon');
+    assert.equal(boss.sprite, 'lightningBoss');
     assert.equal(boss.tier, act);
     assert.deepEqual(enemySigils(boss).map(sigil => sigil.id), ['shock', 'summon']);
-    assert.deepEqual(boss.abilities, [{ type: 'summon', enemyType: 'thunderCrow', chance: 0.25, count: 1 }]);
+    assert.deepEqual(boss.abilities, [{ type: 'summon', enemyType: 'lightningEye', chance: 0.25, count: 1 }]);
 }
 assert.ok(PLAYABLE_LOCATION_IDS.includes('stormhatch'), 'the approved complete roster enters the door pool');
 const randomBefore = Math.random;
@@ -172,8 +173,8 @@ try {
     manager.safeSet(manager.RUN_SAVE_KEY, JSON.stringify(saved));
     assert.equal(manager.loadCurrentRun().effects.playerShocked, false);
 
-    const stormScene = fixture(), crow = enemy(stormScene, { ...buildEnemyCardFromDef('thunderCrow', 1), attack: 5 });
-    const ram = enemy(stormScene, { ...buildEnemyCardFromDef('stormRam', 1), attack: 11 });
+    const stormScene = fixture(), crow = enemy(stormScene, { ...buildEnemyCardFromDef('lightningEye', 1), attack: 5 });
+    const ram = enemy(stormScene, { ...buildEnemyCardFromDef('stormGolem', 1), attack: 11 });
     stormScene.cardSystem.boardCards = [crow, ram];
     const friend = { type: 'companion', attack: 3 };
     stormScene.inventorySystem.slots.push(friend);
@@ -191,7 +192,7 @@ try {
     assert.equal(stormScene.gameState.playerHealth, 95);
     assert.equal(applyEnemyStrikeSigils(ram, stormScene.gameState, getEnemyHitAttack(ram, [crow, ram])), 16);
     stormController.processEnemyAttack(ram, 1);
-    assert.equal(stormScene.gameState.playerHealth, 79, 'a Crow can set up a Ram in the same enemy phase');
+    assert.equal(stormScene.gameState.playerHealth, 79, 'a Lightning Eye can set up a Storm Golem in the same enemy phase');
     stormScene.gameState.playerShocked = false;
     stormScene.gameState.equippedArmor = { type: 'armor', protection: 20, durability: 10, maxDurability: 10 };
     stormController.processEnemyAttack(crow, 0);
@@ -212,7 +213,7 @@ try {
     queue.tickHandWebs = () => {};
     queue.finishEnemyTurnEffects = () => {};
     queue.revealedEnemiesAttack();
-    assert.deepEqual(calls, ['thunderCrow']);
+    assert.deepEqual(calls, ['lightningEye']);
 
     Math.random = () => 0.99;
     const spellScene = fixture(), spellCs = spellScene.cardSystem;
@@ -253,7 +254,7 @@ try {
     caster.useMagicCard(0, spellScene.add.image(200, 100, 'thunderclap'));
     assert.equal(caster.slots[0], thunderclap);
     assert.equal(spellScene.gameState.actionsLeft, spellAp - 1, 'invalid casts do not spend AP');
-    assert.match(InventoryView.describeMagicCard.call({ scene: spellScene }, thunderclap), /3 lightning.*including bosses/);
+    assert.equal(InventoryView.describeMagicCard.call({ scene: spellScene }, thunderclap), 'Deal 3 damage and Shock all revealed enemies.');
     assert.equal(getGlowCardFrame('thunderclap'), 1);
     assert.ok(enchantableMagicTypes(1).includes('thunderclap'));
     const enchanted = weapon();
@@ -262,6 +263,13 @@ try {
     assert.match(describeWeaponEnchant(spellScene, enchanted), /10%.*struck enemy/);
     enchanted.sigils = [{ id: 'shock' }];
     assert.equal(cardSigils(enchanted).filter(sigil => sigil.id === 'shock').length, 1);
+    for (const gemSlots of [{ gemEffect: 'lightning' }, { gemEffect: 'fire', gem2Effect: 'lightning' }]) {
+        assert.deepEqual(cardSigils({ type: 'weapon', ...gemSlots }), [], 'gems do not add sigil icons');
+        assert.deepEqual(cardSigils({ type: 'weapon', ...gemSlots, sigils: [{ id: 'shock' }, { id: 'conductive' }] })
+            .map(sigil => sigil.id), ['shock', 'conductive'], 'real sigils remain visible beside the gem');
+    }
+    assert.ok(cardSigils({ type: 'companion', shockChance: 0.2 }).some(sigil => sigil.id === 'zap'),
+        'innate companion shock still shows its ability');
     const enchantedTarget = enemy(spellScene), untouched = enemy(spellScene);
     spellCs.boardCards = [enchantedTarget, untouched];
     let procRolls = 0;

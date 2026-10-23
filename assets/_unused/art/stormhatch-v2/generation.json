@@ -1,0 +1,197 @@
+[
+  {
+    "name": "cloudbornGuard",
+    "label": "Cloudborn Guard",
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "d9ad5b21-6a72-4c02-885e-98e35603bd16",
+    "source_candidate": 15,
+    "source": "output\\art-concepts\\storm-objects-v2\\enemies\\candidate-15.png",
+    "png": "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+    "size": [
+      70,
+      70
+    ],
+    "alpha_range": [
+      0,
+      255
+    ],
+    "visible_bounds": [
+      12,
+      2,
+      55,
+      68
+    ],
+    "prompt": "Hostile monsters for our pixel-art dungeon card game. Match the supplied existing enemy sprites: same native pixel density, sharp dark outlines, compact hand-drawn shaded clusters, detailed but readable monster proportions, three-quarter front view facing the player, full body. A lost floating city inside storm clouds: slate grey skin or stone, aged copper armor, ivory angular masks, violet cloth or insect wings, restrained amber and cyan lightning. Each sprite is one isolated creature, no environment, no cloud platform, no floor, no ground shadow, no text, no icons, no card frame. Entire wings, feet and weapons inside its frame, with empty transparent margins. Not cute, not a friendly hero, not an angel. Keep background transparent and outlines crisp. ",
+    "subject_prompt": "Cloudborn Guard: grounded gaunt masked winged humanoid sentinel, aged copper shoulder armor, violet waistcloth, clawed feet. Two insect wings FOLDED close behind its back. One straight copper-tipped spear held upright beside its body. Pale ivory face mask with amber eye slits. Compact tall full-body threatening idle silhouette, not flying. Alternate silhouette, same design language.",
+    "style_reference_paths": [
+      "output\\art-concepts\\storm-objects-v2\\style-frozen-knight.png",
+      "output\\art-concepts\\storm-objects-v2\\style-crypt-warden.png",
+      "output\\art-concepts\\storm-objects-v2\\style-spore-archer.png",
+      "output\\art-concepts\\storm-objects-v2\\style-crystal-spider.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "lightningBee",
+    "label": "Lightning Bee",
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "d9ad5b21-6a72-4c02-885e-98e35603bd16",
+    "source_candidate": 6,
+    "source": "output\\art-concepts\\storm-objects-v2\\enemies\\candidate-06.png",
+    "png": "assets\\art\\stormhatch-v2\\lightningBee.png",
+    "size": [
+      70,
+      70
+    ],
+    "alpha_range": [
+      0,
+      255
+    ],
+    "visible_bounds": [
+      11,
+      7,
+      64,
+      66
+    ],
+    "prompt": "Hostile monsters for our pixel-art dungeon card game. Match the supplied existing enemy sprites: same native pixel density, sharp dark outlines, compact hand-drawn shaded clusters, detailed but readable monster proportions, three-quarter front view facing the player, full body. A lost floating city inside storm clouds: slate grey skin or stone, aged copper armor, ivory angular masks, violet cloth or insect wings, restrained amber and cyan lightning. Each sprite is one isolated creature, no environment, no cloud platform, no floor, no ground shadow, no text, no icons, no card frame. Entire wings, feet and weapons inside its frame, with empty transparent margins. Not cute, not a friendly hero, not an angel. Keep background transparent and outlines crisp. ",
+    "subject_prompt": "Lightning Bee: monstrous large hovering bee, heavy dark chitin thorax, rounded segmented amber abdomen with cyan electric bands, hooked insect legs, vicious mandibles. Four translucent violet wings spread sideways in a compact silhouette, with all wing tips visible. Tiny lightning arcs at its stinger. Clearly a bee-shaped dungeon insect, not a humanoid or spider. Alternate silhouette, same design language.",
+    "style_reference_paths": [
+      "output\\art-concepts\\storm-objects-v2\\style-frozen-knight.png",
+      "output\\art-concepts\\storm-objects-v2\\style-crypt-warden.png",
+      "output\\art-concepts\\storm-objects-v2\\style-spore-archer.png",
+      "output\\art-concepts\\storm-objects-v2\\style-crystal-spider.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "stormGolem",
+    "label": "Storm Golem",
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "d9ad5b21-6a72-4c02-885e-98e35603bd16",
+    "source_candidate": 2,
+    "source": "output\\art-concepts\\storm-objects-v2\\enemies\\candidate-02.png",
+    "png": "assets\\art\\stormhatch-v2\\stormGolem.png",
+    "size": [
+      70,
+      70
+    ],
+    "alpha_range": [
+      0,
+      255
+    ],
+    "visible_bounds": [
+      5,
+      7,
+      65,
+      68
+    ],
+    "prompt": "Hostile monsters for our pixel-art dungeon card game. Match the supplied existing enemy sprites: same native pixel density, sharp dark outlines, compact hand-drawn shaded clusters, detailed but readable monster proportions, three-quarter front view facing the player, full body. A lost floating city inside storm clouds: slate grey skin or stone, aged copper armor, ivory angular masks, violet cloth or insect wings, restrained amber and cyan lightning. Each sprite is one isolated creature, no environment, no cloud platform, no floor, no ground shadow, no text, no icons, no card frame. Entire wings, feet and weapons inside its frame, with empty transparent margins. Not cute, not a friendly hero, not an angel. Keep background transparent and outlines crisp. ",
+    "subject_prompt": "Storm Golem: broad heavy humanoid made of floating dark slate stone blocks. Separated fists, waist and knees held close together by short cyan lightning arcs. Small carved head with amber eyes, copper bands, electric chest fissure. Both massive fists and feet visible. Not ice, not a shiny robot, no weapon or pedestal.",
+    "style_reference_paths": [
+      "output\\art-concepts\\storm-objects-v2\\style-frozen-knight.png",
+      "output\\art-concepts\\storm-objects-v2\\style-crypt-warden.png",
+      "output\\art-concepts\\storm-objects-v2\\style-spore-archer.png",
+      "output\\art-concepts\\storm-objects-v2\\style-crystal-spider.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "lightningEye",
+    "label": "Lightning Eye",
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "d9ad5b21-6a72-4c02-885e-98e35603bd16",
+    "source_candidate": 3,
+    "source": "output\\art-concepts\\storm-objects-v2\\enemies\\candidate-03.png",
+    "png": "assets\\art\\stormhatch-v2\\lightningEye.png",
+    "size": [
+      70,
+      70
+    ],
+    "alpha_range": [
+      0,
+      255
+    ],
+    "visible_bounds": [
+      9,
+      9,
+      62,
+      61
+    ],
+    "prompt": "Hostile monsters for our pixel-art dungeon card game. Match the supplied existing enemy sprites: same native pixel density, sharp dark outlines, compact hand-drawn shaded clusters, detailed but readable monster proportions, three-quarter front view facing the player, full body. A lost floating city inside storm clouds: slate grey skin or stone, aged copper armor, ivory angular masks, violet cloth or insect wings, restrained amber and cyan lightning. Each sprite is one isolated creature, no environment, no cloud platform, no floor, no ground shadow, no text, no icons, no card frame. Entire wings, feet and weapons inside its frame, with empty transparent margins. Not cute, not a friendly hero, not an angel. Keep background transparent and outlines crisp. ",
+    "subject_prompt": "Lightning Eye: one huge floating eyeball, pale ivory sclera, violet iris with narrow amber pupil. Two broken aged copper rings orbit the eye on different axes, with short cyan electrical arcs between their ends. The eye dominates the shape. No body, limbs, extra eyes or pedestal.",
+    "style_reference_paths": [
+      "output\\art-concepts\\storm-objects-v2\\style-frozen-knight.png",
+      "output\\art-concepts\\storm-objects-v2\\style-crypt-warden.png",
+      "output\\art-concepts\\storm-objects-v2\\style-spore-archer.png",
+      "output\\art-concepts\\storm-objects-v2\\style-crystal-spider.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "cloudbornArcher",
+    "label": "Cloudborn Archer",
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "d9ad5b21-6a72-4c02-885e-98e35603bd16",
+    "source_candidate": 4,
+    "source": "output\\art-concepts\\storm-objects-v2\\enemies\\candidate-04.png",
+    "png": "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+    "size": [
+      70,
+      70
+    ],
+    "alpha_range": [
+      0,
+      255
+    ],
+    "visible_bounds": [
+      5,
+      5,
+      65,
+      69
+    ],
+    "prompt": "Hostile monsters for our pixel-art dungeon card game. Match the supplied existing enemy sprites: same native pixel density, sharp dark outlines, compact hand-drawn shaded clusters, detailed but readable monster proportions, three-quarter front view facing the player, full body. A lost floating city inside storm clouds: slate grey skin or stone, aged copper armor, ivory angular masks, violet cloth or insect wings, restrained amber and cyan lightning. Each sprite is one isolated creature, no environment, no cloud platform, no floor, no ground shadow, no text, no icons, no card frame. Entire wings, feet and weapons inside its frame, with empty transparent margins. Not cute, not a friendly hero, not an angel. Keep background transparent and outlines crisp. ",
+    "subject_prompt": "Cloudborn Archer: hovering gaunt masked humanoid, ivory angular face mask and amber eye slits, grey skin, aged copper light armor, violet cloth, claw feet with bent knees. Two translucent violet insect wings spread above and behind it. Holds a clearly readable copper BOW, drawing one cyan electric arrow. Same species as the guard, hostile and alien, not a fairy.",
+    "style_reference_paths": [
+      "output\\art-concepts\\storm-objects-v2\\style-frozen-knight.png",
+      "output\\art-concepts\\storm-objects-v2\\style-crypt-warden.png",
+      "output\\art-concepts\\storm-objects-v2\\style-spore-archer.png",
+      "output\\art-concepts\\storm-objects-v2\\style-crystal-spider.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "stormArchon",
+    "label": "Storm Archon",
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "80034c5e-edf0-4121-9998-73bd469151d5",
+    "source_candidate": 3,
+    "source": "output\\art-concepts\\storm-objects-v2\\boss\\candidate-03.png",
+    "png": "assets\\art\\stormhatch-v2\\stormArchon.png",
+    "size": [
+      110,
+      110
+    ],
+    "alpha_range": [
+      0,
+      255
+    ],
+    "visible_bounds": [
+      2,
+      2,
+      107,
+      109
+    ],
+    "prompt": "Hostile monsters for our pixel-art dungeon card game. Match the supplied existing enemy sprites: same native pixel density, sharp dark outlines, compact hand-drawn shaded clusters, detailed but readable monster proportions, three-quarter front view facing the player, full body. A lost floating city inside storm clouds: slate grey skin or stone, aged copper armor, ivory angular masks, violet cloth or insect wings, restrained amber and cyan lightning. Each sprite is one isolated creature, no environment, no cloud platform, no floor, no ground shadow, no text, no icons, no card frame. Entire wings, feet and weapons inside its frame, with empty transparent margins. Not cute, not a friendly hero, not an angel. Keep background transparent and outlines crisp. Storm Archon boss: towering terrifying winged humanoid ruler of the same lost floating city. Pale slate grey elongated limbs, claw feet, angular ivory face mask with amber eyes, ancient copper chest armor, spiked copper lightning crown, torn violet robe. Two enormous damaged insect wings with cyan electrical veins, fully visible and balanced around the body. Holds a long copper lightning rod close to one side, other claw hand open. Hovering full-body idle pose, all crown spikes, wings, rod and feet inside the image with margins. Same crisp pixel art as the style reference; no ground, platform, cloud, frame, text, icons or other creatures.",
+    "subject_prompt": "Storm Archon boss: towering terrifying winged humanoid ruler of the same lost floating city. Pale slate grey elongated limbs, claw feet, angular ivory face mask with amber eyes, ancient copper chest armor, spiked copper lightning crown, torn violet robe. Two enormous damaged insect wings with cyan electrical veins, fully visible and balanced around the body. Holds a long copper lightning rod close to one side, other claw hand open. Hovering full-body idle pose, all crown spikes, wings, rod and feet inside the image with margins. Same crisp pixel art as the style reference; no ground, platform, cloud, frame, text, icons or other creatures.",
+    "style_reference_paths": [
+      "assets\\art\\greenWarden.png"
+    ],
+    "wired_into_game": false
+  }
+]

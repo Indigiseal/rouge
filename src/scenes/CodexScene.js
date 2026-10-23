@@ -7,7 +7,7 @@ import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
 import { ENEMIES, SUMMON_ONLY_ENEMY_TYPES } from '../content/cards/enemies.js';
 import { BOSSES } from '../content/cards/bosses.js';
 import { EVENTS } from '../content/events/index.js';
-import { SIGILS, SIGIL_ICONS_KEY, enemySigils } from '../content/sigils/sigils.js';
+import { SIGILS, enemySigils, sigilIconArt } from '../content/sigils/sigils.js';
 import { createAmuletDefinitions } from '../content/amulets/index.js';
 import { RETIRED_ACTIVE_AMULETS } from '../content/cards/amulets.js';
 import { MAGIC } from '../content/cards/magic.js';
@@ -16,11 +16,15 @@ import { getLocationPack } from '../content/location-packs/registry.js';
 import { EVENT_ILLUSTRATION_FRAMES } from './EventScene.js';
 import { isDiscovered } from '../content/codex/Discoveries.js';
 import { ENEMY_SHEET_KEY, sheetRowFor } from '../content/assets/enemyCards.js';
+import { OptionsSkin } from '../ui/OptionsSkin.js';
+import { createPaintedButton } from '../ui/PaintedButton.js';
+import { createNineSlicePanel, UI_PANEL_KEY, UI_PANEL_SLICE } from '../ui/NineSlicePanel.js';
+import { fitLabel } from '../ui/uiFont.js';
 
 const FONT = '"HoMM Pixel", Arial, sans-serif';
 // The scrolling window: under the tabs, above the description bar.
-const LIST_TOP = 56;
-const LIST_BOTTOM = 280;
+const LIST_TOP = 78;
+const LIST_BOTTOM = 256;
 const SCROLL_STEP = 40;
 const DRAG_SLOP = 4;
 const BUTTON_DEPTH = 20;
@@ -57,28 +61,34 @@ export class CodexScene extends Phaser.Scene {
   }
 
   create() {
+    this._leaving = false;
     if (this.textures.exists('mainBG')) this.add.image(320, 180, 'mainBG');
     else this.add.rectangle(320, 180, 640, 360, 0x0a1514);
     this.add.rectangle(320, 180, 640, 360, 0x000000, 0.6);
 
-    this.add.text(320, 16, t(this, 'ui.codex.title'), { fontSize: '20px', fill: '#d6c2c1', fontFamily: FONT })
+    this.paper = OptionsSkin.createPaperPanel.call(this, 320, 188, 624, 292);
+    if (this.textures.exists('uiBanner')) this.add.image(320, 22, 'uiBanner');
+
+    // The painted ribbon sits above the centre of its transparent texture.
+    this.add.text(320, 13, t(this, 'ui.codex.title'), { fontSize: '20px', fill: '#d6c2c1', fontFamily: FONT })
       .setOrigin(0.5);
-    this.countText = this.add.text(620, 16, '', { fontSize: '11px', fill: '#869089', fontFamily: FONT })
+    this.countText = this.add.text(614, 22, '', { fontSize: '11px', fill: '#d6c2c1', fontFamily: FONT })
       .setOrigin(1, 0.5);
 
     this.tabButtons = TABS.map((tab, i) => this.createButton(
-      70 + i * 100, 40, t(this, tab.labelKey), () => this.showTab(tab.id), 94,
+      70 + i * 100, 56, t(this, tab.labelKey), () => this.showTab(tab.id), 94,
     ));
 
     // Description bar for whatever the pointer is over.
-    this.add.rectangle(320, 314, 620, 62, 0x28150c, 0.85).setStrokeStyle(1, 0x9b6a1b);
-    this.infoName = this.add.text(20, 293, '', { fontSize: '11px', fill: '#fef0cf', fontFamily: FONT })
+    this.descriptionPanel = createNineSlicePanel(this, 596, 64, { key: UI_PANEL_KEY, slice: UI_PANEL_SLICE });
+    this.descriptionPanel?.setPosition(320, 296);
+    this.infoName = this.add.text(34, 275, '', { fontSize: '11px', fill: '#fef0cf', fontFamily: FONT })
       .setOrigin(0, 0.5);
-    this.infoText = this.add.text(20, 302, '', {
-      fontSize: '10px', fill: '#b9b0a0', fontFamily: FONT, wordWrap: { width: 600 },
+    this.infoText = this.add.text(34, 285, '', {
+      fontSize: '10px', fill: '#b9b0a0', fontFamily: FONT, wordWrap: { width: 572 },
     }).setOrigin(0, 0);
 
-    this.createButton(320, 352, t(this, 'ui.codex.back'), () => this.goBack(), 140);
+    this.createButton(320, 342, t(this, 'ui.codex.back'), () => this.goBack(), 122);
 
     this.listView = this.add.container(0, 0);
     const maskShape = this.make.graphics({ add: false });
@@ -178,8 +188,8 @@ export class CodexScene extends Phaser.Scene {
         known: isDiscovered('sigils', id),
         name: translateItemName(this, sigil.name) || sigil.name,
         info: rules.join('   '),
-        texture: SIGIL_ICONS_KEY,
-        frame: sigil.frame,
+        texture: sigilIconArt(id, this.textures).key,
+        frame: sigilIconArt(id, this.textures).frame,
       };
     });
   }
@@ -223,15 +233,16 @@ export class CodexScene extends Phaser.Scene {
 
     const cols = Math.max(1, Math.floor(600 / tab.cell.w));
     const startX = 320 - ((cols - 1) * tab.cell.w) / 2;
-    const startY = LIST_TOP + 8;
-    entries.forEach((entry, i) => {
-      const x = startX + (i % cols) * tab.cell.w;
-      const y = startY + Math.floor(i / cols) * tab.cell.h;
-      this.addCell(entry, x, y, tab);
-    });
+    let rowY = LIST_TOP + 8;
+    for (let first = 0; first < entries.length; first += cols) {
+      let rowHeight = tab.cell.h;
+      entries.slice(first, first + cols).forEach((entry, column) => {
+        rowHeight = Math.max(rowHeight, this.addCell(entry, startX + column * tab.cell.w, rowY, tab));
+      });
+      rowY += rowHeight;
+    }
 
-    const rows = Math.ceil(entries.length / cols);
-    this.scrollMax = Math.max(0, startY + rows * tab.cell.h - LIST_BOTTOM);
+    this.scrollMax = Math.max(0, rowY - LIST_BOTTOM);
     this.buildScrollBar();
     this.setScroll(0);
     this.setInfo(null);
@@ -259,17 +270,20 @@ export class CodexScene extends Phaser.Scene {
 
     const label = this.add.text(x, y + tab.box.h + 6, entry.known ? entry.name : '???', {
       fontSize: '10px',
-      fill: entry.known ? '#d6c2c1' : '#51484b',
+      fill: entry.known ? '#432d20' : '#76654f',
       fontFamily: FONT,
       align: 'center',
       wordWrap: { width: tab.cell.w - 6 },
     }).setOrigin(0.5, 0);
 
-    const hit = this.add.rectangle(x, y + tab.cell.h / 2 - 4, tab.cell.w - 4, tab.cell.h - 4, 0xffffff, 0)
+    const cellHeight = Math.max(tab.cell.h, tab.box.h + 6 + label.height + 10);
+    const hit = this.add.rectangle(x, y + cellHeight / 2 - 4, tab.cell.w - 4, cellHeight - 4, 0xffffff, 0)
       .setInteractive();
     // Only inside the visible window: the mask hides a tile scrolled past
-    // the edge, but not its click area.
-    const inWindow = (pointer) => pointer.y >= LIST_TOP && pointer.y <= LIST_BOTTOM;
+    // the edge, but not its click area. World units: pointer.y is in canvas
+    // pixels, twice the world's (PIXEL_SCALE), which used to cut the lower
+    // part of the list out of the window, so only some tiles showed their info.
+    const inWindow = (pointer) => pointer.worldY >= LIST_TOP && pointer.worldY <= LIST_BOTTOM;
     hit.on('pointerover', (pointer) => {
       if (!inWindow(pointer)) return;
       hit.setFillStyle(0xd48e17, 0.08);
@@ -280,6 +294,7 @@ export class CodexScene extends Phaser.Scene {
       this.setInfo(null);
     });
     this.listView.add([hit, art, label]);
+    return cellHeight;
   }
 
   setInfo(entry) {
@@ -301,9 +316,9 @@ export class CodexScene extends Phaser.Scene {
     this.scrollThumb = null;
     if (this.scrollMax <= 0) return;
     const visible = LIST_BOTTOM - LIST_TOP;
-    this.scrollTrack = this.add.rectangle(632, LIST_TOP, 3, visible, 0x9b6a1b, 0.2).setOrigin(0.5, 0);
+    this.scrollTrack = this.add.rectangle(618, LIST_TOP, 3, visible, 0x9b6a1b, 0.2).setOrigin(0.5, 0);
     const thumbH = Math.max(18, Math.round(visible * (visible / (visible + this.scrollMax))));
-    this.scrollThumb = this.add.rectangle(632, LIST_TOP, 3, thumbH, 0xd48e17, 0.75).setOrigin(0.5, 0)
+    this.scrollThumb = this.add.rectangle(618, LIST_TOP, 3, thumbH, 0xd48e17, 0.75).setOrigin(0.5, 0)
       .setInteractive({ useHandCursor: true, draggable: true });
     this.input.setDraggable(this.scrollThumb);
     this.scrollThumb.on('drag', (pointer, dragX, dragY) => {
@@ -315,12 +330,12 @@ export class CodexScene extends Phaser.Scene {
   attachScrolling() {
     this.input.on('wheel', (pointer, over, dx, dy) => this.setScroll(this.scrollY + (dy > 0 ? SCROLL_STEP : -SCROLL_STEP)));
     this.input.on('pointerdown', (pointer) => {
-      if (pointer.y < LIST_TOP || pointer.y > LIST_BOTTOM || pointer.x > 620) return;
-      this._drag = { y: pointer.y, from: this.scrollY };
+      if (pointer.worldY < LIST_TOP || pointer.worldY > LIST_BOTTOM || pointer.worldX > 620) return;
+      this._drag = { y: pointer.worldY, from: this.scrollY };
     });
     this.input.on('pointermove', (pointer) => {
-      if (!this._drag || !pointer.isDown || Math.abs(pointer.y - this._drag.y) <= DRAG_SLOP) return;
-      this.setScroll(this._drag.from - (pointer.y - this._drag.y));
+      if (!this._drag || !pointer.isDown || Math.abs(pointer.worldY - this._drag.y) <= DRAG_SLOP) return;
+      this.setScroll(this._drag.from - (pointer.worldY - this._drag.y));
     });
     this.input.on('pointerup', () => { this._drag = null; });
   }
@@ -337,36 +352,24 @@ export class CodexScene extends Phaser.Scene {
   // ─── Buttons ─────────────────────────────────────────────────────────────
 
   createButton(x, y, label, onClick, width) {
-    // Above the scrolling list: its tiles' click areas reach past the
-    // clipped window, and one under Back used to swallow the click.
-    const bg = this.add.rectangle(x, y, width, 18, 0x28150c, 0.92)
-      .setStrokeStyle(1, 0x9b6a1b)
-      .setDepth(BUTTON_DEPTH)
-      .setInteractive({ useHandCursor: true });
-    const text = this.add.text(x, y, label, { fontSize: '11px', fill: '#d6c2c1', fontFamily: FONT })
-      .setOrigin(0.5)
-      .setDepth(BUTTON_DEPTH + 1);
+    // Shared painted up/down plates, hover light, press and sound.
+    const button = createPaintedButton(this, x, y, label, onClick, { size: '14px' })
+      .setDepth(BUTTON_DEPTH);
+    const [bg, text] = button.list;
+    bg.setDisplaySize(width, 28);
+    fitLabel(text, width - 20, '14px');
     let selected = false;
-    const paint = (hover) => {
-      bg.setFillStyle(selected ? 0x5a3a14 : (hover ? 0x46261b : 0x28150c), 0.95);
-      bg.setStrokeStyle(1, selected || hover ? 0xd48e17 : 0x9b6a1b);
-      text.setColor(selected ? '#fef0cf' : '#d6c2c1');
+    const paint = () => {
+      bg.setTexture(selected ? 'nextTurnDown' : 'nextTurnUp');
+      text.setColor(selected ? '#fff1cb' : '#d6c2c1');
     };
-    bg.on('pointerover', () => {
-      SoundHelper.playVariant(this, 'hover_button', 0.35);
-      paint(true);
-    });
-    bg.on('pointerout', () => paint(false));
-    bg.on('pointerup', () => {
-      SoundHelper.playVariant(this, 'button_click', 0.5);
-      onClick?.();
-    });
+    bg.on('pointerout', paint);
     return {
       bg,
       text,
       setSelected(value) {
         selected = value;
-        paint(false);
+        paint();
       },
     };
   }

@@ -9,8 +9,32 @@ const frame = (key, file) => Object.freeze({
   key, path: `assets/art/bossAttack/${file}.png`, padX: 16, padTop: 24,
 });
 
+// Editable two-pose sheets. Build separate texture keys so boss portraits,
+// layout and pose swapping all see the single-frame dimensions.
+export const BOSS_POSE_SHEETS = Object.freeze([
+  Object.freeze({ key: 'lizardBossSheet', path: 'assets/art/lizardBoss.png',
+    frameWidth: 112, frameHeight: 144, idleKey: 'lizardBoss', attackKey: 'LizardBossAttack' }),
+]);
+
+export function buildBossPoseTextures(scene) {
+  let built = 0;
+  for (const sheet of BOSS_POSE_SHEETS) {
+    if (!scene.textures.exists(sheet.key)) continue;
+    for (const [index, key] of [sheet.idleKey, sheet.attackKey].entries()) {
+      if (scene.textures.exists(key)) continue;
+      const texture = scene.textures.createCanvas(key, sheet.frameWidth, sheet.frameHeight);
+      texture.drawFrame(sheet.key, index, 0, 0);
+      texture.refresh();
+      built++;
+    }
+  }
+  return built;
+}
+
 // Keyed by the boss's sprite key (content/cards/bosses.js).
 export const BOSS_ATTACK_FRAMES = Object.freeze({
+  // Both poses share a canvas and anchor; this texture is built from frame 1.
+  lizardBoss: Object.freeze({ key: 'LizardBossAttack', padX: 0, padTop: 0 }),
   frostGiant: frame('FrostGiantAttack', 'frostGiantAttack'),
   GoblinKingSprite: frame('GoblinKingAttack', 'goblinKingAttack'),
   giantSkeleton: frame('GiantSkeletonAttack', 'giantSkeletonAttack'),
@@ -24,7 +48,7 @@ export const BOSS_ATTACK_FRAMES = Object.freeze({
 });
 
 export const BOSS_ATTACK_FRAME_FILES = Object.freeze(
-  Object.values(BOSS_ATTACK_FRAMES).map(({ key, path }) => ({ key, path })),
+  Object.values(BOSS_ATTACK_FRAMES).filter(({ path }) => path).map(({ key, path }) => ({ key, path })),
 );
 
 // How long the attack frame stays up.

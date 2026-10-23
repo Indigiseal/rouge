@@ -15,7 +15,8 @@ import { EventScene } from '../scenes/EventScene.js';
 import { TreasureScene } from '../scenes/TreasureScene.js';
 import { SandboxHubScene } from '../scenes/SandboxHubScene.js';
 import { SandboxStoryScene } from '../scenes/SandboxStoryScene.js';
-import { VillageScene } from '../scenes/VillageScene.js';
+import { SanctuaryPreviewScene } from '../scenes/SanctuaryPreviewScene.js';
+import { SanctuaryScene } from '../scenes/SanctuaryScene.js';
 import { TalentTreeScene } from '../scenes/TalentTreeScene.js';
 import { ArmorerPickScene } from '../scenes/ArmorerPickScene.js';
 import { WORLD_WIDTH, WORLD_HEIGHT, PIXEL_SCALE } from './renderScale.js';
@@ -53,7 +54,8 @@ export function createGameConfig(Phaser) {
       TreasureScene,
       SandboxHubScene,
       SandboxStoryScene,
-      VillageScene,
+      SanctuaryPreviewScene,
+      SanctuaryScene,
       TalentTreeScene,
       ArmorerPickScene,
       LocationPickScene,
@@ -61,7 +63,13 @@ export function createGameConfig(Phaser) {
       CodexScene,
     ],
     scale: {
-      mode: Phaser.Scale.NONE,
+      // FIT, but never bigger than native: the 1280x720 canvas shrinks to fit a smaller
+      // browser window or itch.io embed (with NONE it stayed 1280x720 and was cut off
+      // at the edges), and stays at its own size in a bigger one, as it always did.
+      // Phaser maps the pointer back into game coordinates, and the page's CSS keeps
+      // the pixels crisp.
+      mode: Phaser.Scale.FIT,
+      max: { width: WORLD_WIDTH * PIXEL_SCALE, height: WORLD_HEIGHT * PIXEL_SCALE },
       // NOT CENTER_BOTH. #phaser-game-container is a flex box that already
       // centres the canvas; CENTER_BOTH then adds its own margin-left on top,
       // and a flex box counts that margin when it centres — so the canvas ended

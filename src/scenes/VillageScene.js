@@ -14,15 +14,15 @@ import { applyOverlayLight } from '../ui/OverlayLightPipeline.js';
 import { createSelectionCorners } from '../ui/NineSlicePanel.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
 import { setHoverLight } from '../ui/HoverLight.js';
+import { fitLabel } from '../ui/uiFont.js';
 import { devToolsEnabled } from '../config/DevTools.js';
 
 // Every number here is measured off assets/ui/mockUpVillage.png, which is
 // authored at the world size, so it transfers 1:1.
 //
 // The three board layers and the thorns are each placed by their own centre
-// rather than being centred on the screen: two of them deliberately overhang
-// the bottom edge, because the art carries extra length there for a slide-in
-// that does not exist yet.
+// rather than being centred on the screen: two deliberately overhang the
+// bottom edge, with extra length to cover their entrance slide.
 const BACKDROP = 0x584339;          // flat fill behind everything, from the mock
 const LAYERS = Object.freeze([
   { key: 'villageBoardWood',  x: 316, y: 184 },   // 644x368, flush to the top
@@ -91,24 +91,19 @@ const INTRO_STAGE_OF_LAYER = Object.freeze({
   villageBoardWood2: 'rail',
   villageThorn: 'rail',
 });
-const INTRO_DROP = 24;           // how far below the rest spot each group starts
-const INTRO_MS = 360;
-// Fade-in over the start of the rise, per group. The wood and the rail are
-// close in colour to the backdrop and get away with a quick fade; the grey
-// metal over brown, carrying every card, popped at that speed, so it fades
-// for longer.
-const INTRO_FADE_MS = Object.freeze({ wood: 100, metal: 220, rail: 160 });
+const INTRO_DROP = 20;           // short travel keeps the arrival crisp
+const INTRO_MS = 240;
+// Every panel uses the same movement and fade rate.
+const INTRO_FADE_MS = 110;
 // Every group waits at this opacity, below its spot, until its start, then
 // fades the rest of the way up as it rises.
 const INTRO_FADE_FROM = 0.7;
-// When each group starts: one even step apart, top to bottom, so each starts
-// rising while the one above is still arriving. The rail used to wait until
-// 400ms and came in visibly late.
-const INTRO_STEP_MS = 100;
+// A tight cascade keeps the footer close behind the other panels.
+// The full entrance takes 320ms (previously 560ms).
+const INTRO_STEP_MS = 40;
 const INTRO_START_MS = Object.freeze({ wood: 0, metal: INTRO_STEP_MS, rail: INTRO_STEP_MS * 2 });
-// Back ease strength. Over a short drop Phaser's default (1.70158) overshoots
-// by only ~2px; 2.5 runs ~19% of the drop past the spot, about 4-5px.
-const INTRO_OVERSHOOT = 2.5;
+// A small, quick overshoot gives the shorter slide a firm settling motion.
+const INTRO_OVERSHOOT = 2.8;
 
 export class VillageScene extends Phaser.Scene {
   constructor() {
@@ -150,6 +145,13 @@ export class VillageScene extends Phaser.Scene {
       fallbackSize: '18px',
       depth: 41,
     }));
+
+    // Available village currency, on the same slate plate as building names.
+    this.supportPlate = this.add.image(106, BANNER_Y, 'villagePlate').setDepth(40);
+    this.supportText = this.add.text(106, BANNER_Y - 1, '', {
+      fontSize: '11px', fill: '#f2d3aa', fontFamily: '"HoMM Pixel", Arial, sans-serif',
+    }).setOrigin(0.5).setDepth(41);
+    this.introGroups.wood.push(this.supportPlate, this.supportText);
 
     // Same corner as the main menu's cog. It opens the in-run options (sound,
     // quit to menu), the way the rest and anvil rooms do.
@@ -222,7 +224,7 @@ export class VillageScene extends Phaser.Scene {
     this.input.enabled = false;
     let landed = 0;
     stages.forEach(({ name, objs }) => {
-      const fadeMs = INTRO_FADE_MS[name];
+      const fadeMs = INTRO_FADE_MS;
       const rest = objs.map((o) => o.y);
       // Fade relative to each object's own alpha: refresh() has already
       // dimmed the unavailable buttons, and the shadows are half-strength.
@@ -666,6 +668,9 @@ export class VillageScene extends Phaser.Scene {
   }
 
   refresh() {
+    this.supportText.setText(t(this, 'ui.village.support', { amount: this.meta.getCharacterXp(this.characterId) }));
+    this.supportText.setFontSize('11px');
+    fitLabel(this.supportText, 80, '11px');
     this.plotViews.forEach((view) => {
       const { plot, card, name } = view;
       if (!plot.id) return;

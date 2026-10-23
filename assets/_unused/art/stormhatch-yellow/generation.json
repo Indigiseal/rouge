@@ -1,0 +1,430 @@
+[
+  {
+    "name": "cloudbornGuard",
+    "label": "Guard 1",
+    "png": "assets\\art\\stormhatch-yellow\\cloudbornGuard-01.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 0,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Cloudborn Guard: grounded gaunt masked winged humanoid sentinel, aged copper shoulder armor, violet waistcloth, clawed feet. Two insect wings FOLDED close behind its back. One straight copper-tipped spear held upright beside its body. Pale ivory face mask with amber eye slits. Compact tall full-body threatening idle silhouette, not flying. Guard stance with the spear vertical and both feet planted. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "lightningBee",
+    "label": "Bee 1",
+    "png": "assets\\art\\stormhatch-yellow\\lightningBee-01.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 1,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Lightning Bee: monstrous large hovering bee, heavy dark chitin thorax, rounded segmented amber abdomen with bright golden-yellow electric bands, hooked insect legs, vicious mandibles. Four translucent violet wings spread sideways in a compact silhouette, with all wing tips visible. Tiny lightning arcs at its stinger. Clearly a bee-shaped dungeon insect, not a humanoid or spider. Heavy hovering insect with a luminous golden stinger and visible hooked legs. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "stormGolem",
+    "label": "Golem 1",
+    "png": "assets\\art\\stormhatch-yellow\\stormGolem-01.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 2,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Storm Golem: broad heavy humanoid made of floating dark slate stone blocks. Separated fists, waist and knees held close together by short bright golden-yellow lightning arcs. Small carved head with yellow eyes, copper bands, electric chest fissure. Both massive fists and feet visible. Not ice, not a shiny robot, no weapon or pedestal. Broad blocky shoulders and separated stone fists, yellow lightning holding joints together. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "lightningEye",
+    "label": "Eye 1",
+    "png": "assets\\art\\stormhatch-yellow\\lightningEye-01.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 3,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Lightning Eye: one huge floating eyeball, pale ivory sclera, violet iris with narrow amber pupil. Two broken aged copper rings orbit the eye on different axes, with short bright golden-yellow electrical arcs between their ends. The eye dominates the shape. No body, limbs, extra eyes or pedestal. Central yellow slit pupil and two copper orbit rings with yellow sparks. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "cloudbornArcher",
+    "label": "Archer 1",
+    "png": "assets\\art\\stormhatch-yellow\\cloudbornArcher-01.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 4,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Cloudborn Archer: hovering gaunt masked humanoid, ivory angular face mask and amber eye slits, grey skin, aged copper light armor, violet cloth, claw feet with bent knees. Two translucent violet insect wings spread above and behind it. Holds a clearly readable copper BOW, drawing one bright golden-yellow electric arrow. Same species as the guard, hostile and alien, not a fairy. Wings high behind the shoulders, bow drawn horizontally, luminous yellow arrow. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "cloudbornGuard",
+    "label": "Guard 2",
+    "png": "assets\\art\\stormhatch-yellow\\cloudbornGuard-02.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 5,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Cloudborn Guard: grounded gaunt masked winged humanoid sentinel, aged copper shoulder armor, violet waistcloth, clawed feet. Two insect wings FOLDED close behind its back. One straight copper-tipped spear held upright beside its body. Pale ivory face mask with amber eye slits. Compact tall full-body threatening idle silhouette, not flying. More angular mask and folded compact wings, spear held diagonally across the body. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "lightningBee",
+    "label": "Bee 2",
+    "png": "assets\\art\\stormhatch-yellow\\lightningBee-02.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 6,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Lightning Bee: monstrous large hovering bee, heavy dark chitin thorax, rounded segmented amber abdomen with bright golden-yellow electric bands, hooked insect legs, vicious mandibles. Four translucent violet wings spread sideways in a compact silhouette, with all wing tips visible. Tiny lightning arcs at its stinger. Clearly a bee-shaped dungeon insect, not a humanoid or spider. Bee in a three-quarter side pose, thick amber abdomen, four violet wings and yellow electrical bands. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "stormGolem",
+    "label": "Golem 2",
+    "png": "assets\\art\\stormhatch-yellow\\stormGolem-02.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 7,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Storm Golem: broad heavy humanoid made of floating dark slate stone blocks. Separated fists, waist and knees held close together by short bright golden-yellow lightning arcs. Small carved head with yellow eyes, copper bands, electric chest fissure. Both massive fists and feet visible. Not ice, not a shiny robot, no weapon or pedestal. Stone golem with a squat low center of gravity, big fists and jagged yellow chest fissure. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "lightningEye",
+    "label": "Eye 2",
+    "png": "assets\\art\\stormhatch-yellow\\lightningEye-02.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 8,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Lightning Eye: one huge floating eyeball, pale ivory sclera, violet iris with narrow amber pupil. Two broken aged copper rings orbit the eye on different axes, with short bright golden-yellow electrical arcs between their ends. The eye dominates the shape. No body, limbs, extra eyes or pedestal. Eye staring forward, asymmetric copper rings and jagged golden lightning arcs. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "cloudbornArcher",
+    "label": "Archer 2",
+    "png": "assets\\art\\stormhatch-yellow\\cloudbornArcher-02.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 9,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Cloudborn Archer: hovering gaunt masked humanoid, ivory angular face mask and amber eye slits, grey skin, aged copper light armor, violet cloth, claw feet with bent knees. Two translucent violet insect wings spread above and behind it. Holds a clearly readable copper BOW, drawing one bright golden-yellow electric arrow. Same species as the guard, hostile and alien, not a fairy. Lean floating archer with bent knees, tattered violet cloth and yellow wing veins. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "cloudbornGuard",
+    "label": "Guard 3",
+    "png": "assets\\art\\stormhatch-yellow\\cloudbornGuard-03.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 10,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Cloudborn Guard: grounded gaunt masked winged humanoid sentinel, aged copper shoulder armor, violet waistcloth, clawed feet. Two insect wings FOLDED close behind its back. One straight copper-tipped spear held upright beside its body. Pale ivory face mask with amber eye slits. Compact tall full-body threatening idle silhouette, not flying. Armored guard with a tall pointed mask and two small folded insect wings, copper spear upright. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "lightningBee",
+    "label": "Bee 3",
+    "png": "assets\\art\\stormhatch-yellow\\lightningBee-03.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 11,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Lightning Bee: monstrous large hovering bee, heavy dark chitin thorax, rounded segmented amber abdomen with bright golden-yellow electric bands, hooked insect legs, vicious mandibles. Four translucent violet wings spread sideways in a compact silhouette, with all wing tips visible. Tiny lightning arcs at its stinger. Clearly a bee-shaped dungeon insect, not a humanoid or spider. Monstrous lightning bee with thicker chitin armor, spread violet wings and yellow stinger sparks. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "stormGolem",
+    "label": "Golem 3",
+    "png": "assets\\art\\stormhatch-yellow\\stormGolem-03.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 12,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Storm Golem: broad heavy humanoid made of floating dark slate stone blocks. Separated fists, waist and knees held close together by short bright golden-yellow lightning arcs. Small carved head with yellow eyes, copper bands, electric chest fissure. Both massive fists and feet visible. Not ice, not a shiny robot, no weapon or pedestal. Heavy golem with copper shoulder bands, huge stone forearms, gold electrical joints. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "lightningEye",
+    "label": "Eye 3",
+    "png": "assets\\art\\stormhatch-yellow\\lightningEye-03.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 13,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Lightning Eye: one huge floating eyeball, pale ivory sclera, violet iris with narrow amber pupil. Two broken aged copper rings orbit the eye on different axes, with short bright golden-yellow electrical arcs between their ends. The eye dominates the shape. No body, limbs, extra eyes or pedestal. Large floating eye with a vivid yellow iris and a dark pupil, copper rings and gold sparks. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "cloudbornArcher",
+    "label": "Archer 3",
+    "png": "assets\\art\\stormhatch-yellow\\cloudbornArcher-03.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 14,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Cloudborn Archer: hovering gaunt masked humanoid, ivory angular face mask and amber eye slits, grey skin, aged copper light armor, violet cloth, claw feet with bent knees. Two translucent violet insect wings spread above and behind it. Holds a clearly readable copper BOW, drawing one bright golden-yellow electric arrow. Same species as the guard, hostile and alien, not a fairy. Winged copper-armored archer with compact wings and a bow of yellow lightning and copper. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "cloudbornGuard",
+    "label": "Guard 4",
+    "png": "assets\\art\\stormhatch-yellow\\cloudbornGuard-04.png",
+    "size": [
+      70,
+      70
+    ],
+    "source_index": 15,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "8c749033-e095-43f0-a78e-16f61a317fc0",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. ",
+    "subject_prompt": "Cloudborn Guard: grounded gaunt masked winged humanoid sentinel, aged copper shoulder armor, violet waistcloth, clawed feet. Two insect wings FOLDED close behind its back. One straight copper-tipped spear held upright beside its body. Pale ivory face mask with amber eye slits. Compact tall full-body threatening idle silhouette, not flying. Masked sentinel with violet torn waistcloth, spear gripped in both hands, grounded idle stance. Every electrical glow and spark is yellow or gold, never blue or cyan.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\cloudbornGuard.png",
+      "assets\\art\\stormhatch-v2\\cloudbornArcher.png",
+      "assets\\art\\stormhatch-v2\\stormGolem.png",
+      "assets\\art\\stormhatch-v2\\lightningEye.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "stormArchon",
+    "label": "Archon 1",
+    "png": "assets\\art\\stormhatch-yellow\\stormArchon-01.png",
+    "size": [
+      110,
+      110
+    ],
+    "source_index": 0,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "4d17852c-394f-4453-8e4d-36088b815bce",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. Storm Archon boss: towering terrifying winged humanoid ruler of the same lost floating city. Pale slate grey elongated limbs, claw feet, angular ivory face mask with yellow eyes, ancient copper chest armor, spiked copper lightning crown, torn violet robe. Two enormous damaged insect wings with bright golden-yellow electrical veins, fully visible and balanced around the body. Holds a long copper lightning rod close to one side, other claw hand open. Hovering full-body idle pose, all crown spikes, wings, rod and feet inside the image with margins. Same crisp pixel art as the style reference; no ground, platform, cloud, frame, text, icons or other creatures. All electricity and wing veins glow golden yellow. No cyan or blue luminous details.",
+    "subject_prompt": "Storm Archon boss: towering terrifying winged humanoid ruler of the same lost floating city. Pale slate grey elongated limbs, claw feet, angular ivory face mask with yellow eyes, ancient copper chest armor, spiked copper lightning crown, torn violet robe. Two enormous damaged insect wings with bright golden-yellow electrical veins, fully visible and balanced around the body. Holds a long copper lightning rod close to one side, other claw hand open. Hovering full-body idle pose, all crown spikes, wings, rod and feet inside the image with margins. Same crisp pixel art as the style reference; no ground, platform, cloud, frame, text, icons or other creatures. All electricity and wing veins glow golden yellow. No cyan or blue luminous details. Four broad moth-like wings, long narrow robe and a jagged copper lightning crown.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\stormArchon.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "stormArchon",
+    "label": "Archon 2",
+    "png": "assets\\art\\stormhatch-yellow\\stormArchon-02.png",
+    "size": [
+      110,
+      110
+    ],
+    "source_index": 1,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "4d17852c-394f-4453-8e4d-36088b815bce",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. Storm Archon boss: towering terrifying winged humanoid ruler of the same lost floating city. Pale slate grey elongated limbs, claw feet, angular ivory face mask with yellow eyes, ancient copper chest armor, spiked copper lightning crown, torn violet robe. Two enormous damaged insect wings with bright golden-yellow electrical veins, fully visible and balanced around the body. Holds a long copper lightning rod close to one side, other claw hand open. Hovering full-body idle pose, all crown spikes, wings, rod and feet inside the image with margins. Same crisp pixel art as the style reference; no ground, platform, cloud, frame, text, icons or other creatures. All electricity and wing veins glow golden yellow. No cyan or blue luminous details.",
+    "subject_prompt": "Storm Archon boss: towering terrifying winged humanoid ruler of the same lost floating city. Pale slate grey elongated limbs, claw feet, angular ivory face mask with yellow eyes, ancient copper chest armor, spiked copper lightning crown, torn violet robe. Two enormous damaged insect wings with bright golden-yellow electrical veins, fully visible and balanced around the body. Holds a long copper lightning rod close to one side, other claw hand open. Hovering full-body idle pose, all crown spikes, wings, rod and feet inside the image with margins. Same crisp pixel art as the style reference; no ground, platform, cloud, frame, text, icons or other creatures. All electricity and wing veins glow golden yellow. No cyan or blue luminous details. Heavy copper shoulder armor and two large damaged violet insect wings with golden veins.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\stormArchon.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "stormArchon",
+    "label": "Archon 3",
+    "png": "assets\\art\\stormhatch-yellow\\stormArchon-03.png",
+    "size": [
+      110,
+      110
+    ],
+    "source_index": 2,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "4d17852c-394f-4453-8e4d-36088b815bce",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. Storm Archon boss: towering terrifying winged humanoid ruler of the same lost floating city. Pale slate grey elongated limbs, claw feet, angular ivory face mask with yellow eyes, ancient copper chest armor, spiked copper lightning crown, torn violet robe. Two enormous damaged insect wings with bright golden-yellow electrical veins, fully visible and balanced around the body. Holds a long copper lightning rod close to one side, other claw hand open. Hovering full-body idle pose, all crown spikes, wings, rod and feet inside the image with margins. Same crisp pixel art as the style reference; no ground, platform, cloud, frame, text, icons or other creatures. All electricity and wing veins glow golden yellow. No cyan or blue luminous details.",
+    "subject_prompt": "Storm Archon boss: towering terrifying winged humanoid ruler of the same lost floating city. Pale slate grey elongated limbs, claw feet, angular ivory face mask with yellow eyes, ancient copper chest armor, spiked copper lightning crown, torn violet robe. Two enormous damaged insect wings with bright golden-yellow electrical veins, fully visible and balanced around the body. Holds a long copper lightning rod close to one side, other claw hand open. Hovering full-body idle pose, all crown spikes, wings, rod and feet inside the image with margins. Same crisp pixel art as the style reference; no ground, platform, cloud, frame, text, icons or other creatures. All electricity and wing veins glow golden yellow. No cyan or blue luminous details. Tall gaunt ruler, one claw raised, holding a copper staff topped with a yellow lightning fork.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\stormArchon.png"
+    ],
+    "wired_into_game": false
+  },
+  {
+    "name": "stormArchon",
+    "label": "Archon 4",
+    "png": "assets\\art\\stormhatch-yellow\\stormArchon-04.png",
+    "size": [
+      110,
+      110
+    ],
+    "source_index": 3,
+    "provider": "PixelLab",
+    "endpoint": "create-1-direction-object",
+    "object_id": "4d17852c-394f-4453-8e4d-36088b815bce",
+    "prompt": "Hostile monsters from the same lost floating city as the supplied style sprites. Match their exact native pixel density, crisp dark outlines, compact hand-drawn shading, angular ivory masks, aged copper armor, violet cloth, insect wings and dungeon-monster proportions. IMPORTANT PALETTE CHANGE: all lightning bolts, sparks, energy cracks, wing veins, glowing eyes and magical arrows glow vivid YELLOW and GOLD, with pale lemon centers and amber edges. NO BLUE, CYAN or TURQUOISE electricity, highlights or luminous wing veins. Stone and skin are neutral charcoal grey, copper stays warm, cloth and wings stay muted violet. Three-quarter front view, full body, threatening readable monster silhouettes. Transparent backgrounds. Each sprite is one creature with all limbs, wings and weapons inside its frame with margins. No floor, shadow, clouds, platform, scenery, card border, text, icons, extra characters or blur. Storm Archon boss: towering terrifying winged humanoid ruler of the same lost floating city. Pale slate grey elongated limbs, claw feet, angular ivory face mask with yellow eyes, ancient copper chest armor, spiked copper lightning crown, torn violet robe. Two enormous damaged insect wings with bright golden-yellow electrical veins, fully visible and balanced around the body. Holds a long copper lightning rod close to one side, other claw hand open. Hovering full-body idle pose, all crown spikes, wings, rod and feet inside the image with margins. Same crisp pixel art as the style reference; no ground, platform, cloud, frame, text, icons or other creatures. All electricity and wing veins glow golden yellow. No cyan or blue luminous details.",
+    "subject_prompt": "Storm Archon boss: towering terrifying winged humanoid ruler of the same lost floating city. Pale slate grey elongated limbs, claw feet, angular ivory face mask with yellow eyes, ancient copper chest armor, spiked copper lightning crown, torn violet robe. Two enormous damaged insect wings with bright golden-yellow electrical veins, fully visible and balanced around the body. Holds a long copper lightning rod close to one side, other claw hand open. Hovering full-body idle pose, all crown spikes, wings, rod and feet inside the image with margins. Same crisp pixel art as the style reference; no ground, platform, cloud, frame, text, icons or other creatures. All electricity and wing veins glow golden yellow. No cyan or blue luminous details. Regal hovering stance, torn violet robe, swept insect wings and a tall golden lightning crown.",
+    "style_reference_paths": [
+      "assets\\art\\stormhatch-v2\\stormArchon.png"
+    ],
+    "wired_into_game": false
+  }
+]

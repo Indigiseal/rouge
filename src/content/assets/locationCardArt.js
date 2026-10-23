@@ -39,6 +39,31 @@ export const CARD_BACK_HEIGHT = 70;
 /** The locations that have a row of card art drawn. */
 export const CARD_ART_LOCATIONS = Object.freeze(Object.keys(MONTH_SHEET_ROWS));
 
+// Face-down backs drawn for each location (PixelLab, finished by Taya): one
+// strip, assets/art/cardBacks/cardBacksStrip.png, ten 52x70 frames in the order
+// below. They are the resting look of a face-down card in that location, on
+// the roads that have a flip row and the ones that do not.
+// The flip and hover still come from the sheets (or the standard ones) until
+// their own turn-up animations are drawn, and the shared cardBack.png stays
+// the back of any location not listed here.
+export const LOCATION_CARD_BACK_IDS = Object.freeze([
+    'thornwake', 'silkdeep', 'tollroad', 'boneflood', 'mireturn',
+    'veilbleed', 'ashhowl', 'stormhatch', 'frosthollow', 'sandreach',
+]);
+
+/** The strip, as the asset manifest loads it: frame N is LOCATION_CARD_BACK_IDS[N]. */
+export const LOCATION_CARD_BACK_SHEET = Object.freeze({
+    key: 'cardBacksStrip',
+    path: 'assets/art/cardBacks/cardBacksStrip.png',
+    frameWidth: 52,
+    frameHeight: 70,
+});
+
+/** True when this location has a back drawn for it. */
+export function hasLocationCardBack(locationId) {
+    return LOCATION_CARD_BACK_IDS.includes(locationId);
+}
+
 /** Sheet row for a location, or undefined when its art is not drawn yet. */
 export function locationCardRow(locationId) {
     return MONTH_SHEET_ROWS[locationId];
@@ -63,6 +88,23 @@ export function locationHoverAnimKey(locationId) {
  * Returns how many locations were built, so boot can log or ignore it.
  */
 export function buildLocationCardArt(scene) {
+    // The drawn backs first, so the sheet loop below never cuts its own over them.
+    LOCATION_CARD_BACK_IDS.forEach((locationId, frame) => {
+        const backKey = locationCardBackKey(locationId);
+        if (scene?.textures?.exists?.(LOCATION_CARD_BACK_SHEET.key) && !scene.textures.exists(backKey)) {
+            const rt = scene.make.renderTexture({ width: CARD_BACK_WIDTH, height: CARD_BACK_HEIGHT, add: false });
+            rt.drawFrame(LOCATION_CARD_BACK_SHEET.key, frame, 0, 0);
+            // saveTexture hands the RenderTexture to the texture manager, so it
+            // must not be destroyed afterwards.
+            rt.saveTexture(backKey);
+        }
+        // Until its own hover is drawn, hovering holds the drawn back still:
+        // the sheet's sweep is painted over the old back and would swap it in.
+        const hoverKey = locationHoverAnimKey(locationId);
+        if (scene?.textures?.exists?.(backKey) && scene.anims && !scene.anims.exists(hoverKey)) {
+            scene.anims.create({ key: hoverKey, frames: [{ key: backKey }], frameRate: 24, repeat: 0 });
+        }
+    });
     if (!scene?.textures?.exists?.(CARD_FLIP_SHEET_KEY)) return 0;
     const hasHover = scene.textures.exists(CARD_HOVER_SHEET_KEY);
     let built = 0;

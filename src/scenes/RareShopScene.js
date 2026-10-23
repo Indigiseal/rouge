@@ -34,7 +34,7 @@ export class RareShopScene extends StationRoomBase {
         this.shopItems = [];
 
         this.gameScene = this.scene.get('GameScene');
-        this.enableShopStation();
+        this.enableShopStation({ backdropFloor: data.backdropFloor });
         this.addOptionsCog();
 
         createTitle(this, 320, 30, t(this, 'ui.shop.rareTitle'), {
@@ -281,7 +281,10 @@ export class RareShopScene extends StationRoomBase {
                         options: takeable,
                         amuletManager: this.gameScene.amuletManager,
                         title: `Rare shop — ${offer.rarity} amulet`,
-                        onPicked: () => this.gameScene?.updateUI?.(),
+                        onPicked: (id) => {
+                            this.gameScene?.updateUI?.();
+                            this.animateAmuletPurchase(item, id);
+                        },
                     });
                     return;
                 }
@@ -291,6 +294,7 @@ export class RareShopScene extends StationRoomBase {
                         return;
                     }
                     this.showFeedback({ key: 'float.equippedItem', vars: { name: this.getItemDisplayName(item.data) } }, 0x712a65, 100);
+                    this.animateAmuletPurchase(item, item.data.id);
                 } else {
                     this.consumeAmulet(item.data);
                 }

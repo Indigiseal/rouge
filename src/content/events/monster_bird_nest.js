@@ -12,6 +12,10 @@ export const NEST_TOOK_BOTH =
   'You take the cog and one warm egg, and you run.\n\n'
   + 'In your pack, the box rattles. Grateful, or judging. Hard to say.';
 
+export const NEST_TOOK_LOOT = 'You take what shines and leave the rest.';
+
+export const NEST_ALSO_LOOT = '\n\nYou pocket what shines, too.';
+
 export const NEST_TIMEOUT =
   'The shadow drops onto the nest. You run with nothing.';
 

@@ -117,7 +117,24 @@ assert.equal(actions, 1);
 assert.equal(caster.slots[0], null);
 assert.equal(full.cardSystem.boardCards.filter(card => card?.data?.isMimic).length, 1);
 full.enemiesCleared = true;
-assert.equal(mimicSummonSpot(full.cardSystem), null, 'a completed fight must not be reopened');
+assert.ok(mimicSummonSpot(full.cardSystem), 'a cleared ordinary board can host a Mimic');
+let queued = 0, closed = 0;
+full.scheduleEnemyTurn = () => queued++;
+full.hideExitUnderStation = () => closed++;
+caster.slots[0] = spell;
+caster.useMagicCard(0, sprite);
+assert.equal(actions, 2);
+assert.equal(queued, 1, 'the cast owes an enemy response even though the room started cleared');
+assert.equal(closed, 1);
+assert.equal(full.enemiesCleared, false);
+assert.equal(full._roomClearRewarded, true);
+saves.saveCurrentRun(full.gameState, caster, full.cardSystem);
+const reopenedSave = saves.loadCurrentRun();
+assert.equal(reopenedSave.board.enemiesCleared, false);
+assert.equal(reopenedSave.board.clearRewardsGranted, true, 'Continue must remember the first room payout');
+full.enemiesCleared = true;
+full.gameState.roomType = 'BOSS';
+assert.equal(mimicSummonSpot(full.cardSystem), null, 'boss victory handoffs cannot be reopened');
 full.enemiesCleared = false;
 full.gameState.roomType = 'SHOP';
 assert.equal(mimicSummonSpot(full.cardSystem), null, 'the spell cannot populate a hidden board from a station');
@@ -141,6 +158,30 @@ const killIndex = killScene.cardSystem.boardCards.findIndex(card => card?.data?.
 killScene.cardSystem.attackEnemy(killIndex, 100, true);
 assert.equal(killScene.gameState.coins, scaleGoldReward(22), 'killing the summoned Mimic grants ordinary loot');
 assert.equal(killScene.gameState.crystals, 5);
+
+// A Mimic summoned after clearing pays its normal loot, but cannot repeat the
+// room's currency, egg progress or companion-history rewards.
+globalThis.Phaser.Scene ??= class {};
+const { GameScene } = await import('../src/scenes/GameScene.js');
+const clearedScene = fixture();
+clearedScene.tutorialMode = false;
+let eggTicks = 0, histories = 0, exits = 0;
+clearedScene.clearEnemyTurnTimers = () => {};
+clearedScene.tickEggHatching = () => eggTicks++;
+clearedScene.finalizeCompanionCombatHistory = () => histories++;
+clearedScene.showNextFloorButton = () => exits++;
+clearedScene.onEnemiesCleared = GameScene.prototype.onEnemiesCleared.bind(clearedScene);
+clearedScene.onEnemiesCleared();
+const firstRoomCoins = clearedScene.gameState.coins;
+assert.ok(firstRoomCoins > 0);
+assert.equal(summonMimic(clearedScene.cardSystem), true);
+const extraIndex = clearedScene.cardSystem.boardCards.findIndex(card => card?.data?.isMimic);
+clearedScene.cardSystem.attackEnemy(extraIndex, 100, true);
+assert.equal(clearedScene.gameState.coins, firstRoomCoins + scaleGoldReward(22));
+assert.equal(clearedScene.gameState.crystals, 5);
+assert.equal(eggTicks, 1);
+assert.equal(histories, 1);
+assert.equal(exits, 2, 'the exit returns after the Mimic is defeated');
 
 // Normal Mimic loot: the animation callback and its fallback must pay once,
 // even when the animation is unavailable or completion arrives late.

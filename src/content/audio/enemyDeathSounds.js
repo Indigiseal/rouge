@@ -20,6 +20,12 @@ export const ENEMY_DEATH_FAMILIES = Object.freeze({
     fire: ['emberMaw', 'cinderLizard', 'cinderBrute', 'slagSpitter'],
     // Storm's Cloudborn (assets/art/stormhatch/), sounds ready before the roster is wired.
     storm: ['cloudbornGuard', 'lightningBee', 'stormGolem', 'lightningEye', 'cloudbornArcher', 'stormArchon'],
+    // Sandreach's lizardfolk; the Glass Scarab is still on the shared pair.
+    sandreach: ['duneForager', 'sandSkirmisher', 'lizardArcher', 'sandcaller'],
+    // Frosthollow's snow roster.
+    frosthollow: ['snowBrute', 'snowArcher', 'iceOrb', 'iceGolem', 'frozenKnight'],
+    // The generic robbers stories deal (cards/robbers.js).
+    robbers: ['robberCook', 'robberMuscle', 'robberLookout'],
 });
 
 /** Every enemy kind with a death sound of its own. */

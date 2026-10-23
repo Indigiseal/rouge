@@ -18,6 +18,7 @@ const BOSS_SUMMON_PITY = 4;
 import { ENEMY_BASE_CRIT, ENEMY_CRIT_MULT } from '../../content/balance/CombatChance.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 import { showBossAttackFrame } from '../../content/cards/bossAttackFrames.js';
+import { bossSoundKeys } from '../../content/audio/bossSounds.js';
 import { consumeBoneShield } from '../../content/combat/boneShield.js';
 import { consumeBriarShield } from '../../content/combat/briarShield.js';
 import { t } from '../../i18n/i18n.js';
@@ -614,7 +615,14 @@ export class CombatTurnController {
         }
 
         // A boss with an attack frame strikes in that pose for a moment.
-        if (card.data?.type === 'boss') showBossAttackFrame(scene, card);
+        if (card.data?.type === 'boss') {
+            showBossAttackFrame(scene, card);
+            // A boss with its own attack sound, once loaded, adds it to the blow.
+            const attackKey = bossSoundKeys(card.data)?.attack;
+            if (attackKey && scene.cache?.audio?.exists?.(attackKey)) {
+                SoundHelper.playSound(scene, attackKey, 0.6);
+            }
+        }
         scene.createDamageEffect(card.sprite.x, card.sprite.y);
         // The enemy's blow: the player's weapon slash, upside down, so it
         // reads as a strike coming back down at the hero.
@@ -1029,6 +1037,7 @@ export class CombatTurnController {
 
         this.isEnemyTurn = false;
         scene.updateUI();
+        scene.checkpointCombat?.();
         this._drainEnemyTurns();
         this.queueStalemateEnemyTurn();
     }
@@ -1080,6 +1089,7 @@ export class CombatTurnController {
         this.runCompanionTurns(() => {
             this.isEnemyTurn = false;
             scene.updateUI();
+            scene.checkpointCombat?.();
             // Run the next queued enemy turn, if any actions stacked up during this one.
             this._drainEnemyTurns();
             this.queueStalemateEnemyTurn();

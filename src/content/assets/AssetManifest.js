@@ -5,11 +5,13 @@
 /** @typedef {{ key: string, path: string, type: 'image'|'spritesheet'|'audio'|'bitmapFont', frameWidth?: number, frameHeight?: number, xmlPath?: string }} AssetEntry */
 
 import { ENEMY_DEATH_SOUND_ASSETS } from '../audio/enemyDeathSounds.js';
+import { BOSS_SOUND_ASSETS } from '../audio/bossSounds.js';
 import { ITEM_SHEETS } from './itemSheets.js';
 import { ARMOR_EQUIP_SOUND_ASSETS } from '../audio/armorSounds.js';
-import { SIGIL_ROOM_FLOOR, SIGIL_STAMPS } from '../sigils/sigilStamps.js';
-import { LOCATION_BOARD_FILES } from '../locations/boardArt.js';
-import { BOSS_ATTACK_FRAME_FILES } from '../cards/bossAttackFrames.js';
+import { PACKED_SHEETS } from './packedSprites.js';
+import { SIGIL_ICONS_NEW_SHEET } from '../sigils/sigils.js';
+import { LOCATION_CARD_BACK_SHEET } from './locationCardArt.js';
+import { BOSS_ATTACK_FRAME_FILES, BOSS_POSE_SHEETS } from '../cards/bossAttackFrames.js';
 
 /** @type {AssetEntry[]} */
 export const ASSET_MANIFEST = [
@@ -17,14 +19,14 @@ export const ASSET_MANIFEST = [
     // per item (sword_C, chain_L...) at boot (content/assets/itemSheets.js).
     ...ITEM_SHEETS.map((sheet) => ({ ...sheet, type: 'atlas' })),
     { key: 'stoneFloor', path: 'assets/art/dungeon.png', type: 'image' },
-    { key: 'goblinCaveBackground', path: 'assets/art/backgrounds/goblinCave.png', type: 'image' },
-    { key: 'silkdeepBackground', path: 'assets/art/backgrounds/silkdeep.png', type: 'image' },
-    { key: 'veilbleedBackground', path: 'assets/art/backgrounds/veilbleed.png', type: 'image' },
-    { key: 'thornwakeBackground', path: 'assets/art/backgrounds/thornwake.png', type: 'image' },
-    { key: 'mireturnBogBackground', path: 'assets/art/backgrounds/mireturnBog.png', type: 'image' },
-    { key: 'bonefloodBackground', path: 'assets/art/backgrounds/bonefloodOssuary.png', type: 'image' },
-    { key: 'ashhowlLavaBackground', path: 'assets/art/backgrounds/ashhowlLava.png', type: 'image' },
+    // Each location's room painting and boards are not here: a run loads its current
+    // location's set (content/assets/locationAssets.js).
     { key: 'cardBack', path: 'assets/art/cardBack.png', type: 'image' },
+    // Loose card-sized sprites, the fireball frames, the banners and the small UI pieces, packed into sheets
+    // (tools/pack-sprites.py); buildPackedSprites cuts each back into its own key at boot.
+    ...PACKED_SHEETS.map(({ key, path, frameWidth, frameHeight }) => ({ key, path, frameWidth, frameHeight, type: 'spritesheet' })),
+    // Each location's own face-down back, one frame each (content/assets/locationCardArt.js).
+    { ...LOCATION_CARD_BACK_SHEET, type: 'spritesheet' },
     { key: 'panelCards', path: 'assets/art/panelCards.png', type: 'image' },
     { key: 'gamingBoard', path: 'assets/art/gamingBoard.png', type: 'image' },
     { key: 'gamingBoard2', path: 'assets/art/gamingBoard2.png', type: 'image' },
@@ -32,7 +34,6 @@ export const ASSET_MANIFEST = [
     { key: 'gamingBoardSideExtra', path: 'assets/art/gamingBoardSIdewaysExtra.png', type: 'image' },
     { key: 'gamingBoardSideSmall', path: 'assets/art/gamingBoardSIdewaysSmall.png', type: 'spritesheet', frameWidth: 208, frameHeight: 144 },
     // Location boards (content/locations/boardArt.js): the Tollroad's goblin planks.
-    ...LOCATION_BOARD_FILES.map(({ key, path }) => ({ key, path, type: 'image' })),
     // Frame order: 0 rogue, 1 warrior — matches CHARACTER_PORTRAIT_FRAME.
     { key: 'characterPortraits', path: 'assets/art/portraits.png', type: 'spritesheet', frameWidth: 64, frameHeight: 64 },
     // Frame order: rest floor, defeat UI, victory UI, blacksmith floor.
@@ -45,9 +46,7 @@ export const ASSET_MANIFEST = [
     { key: 'eventPaper9Slice', path: 'assets/art/paper9Slice.png', type: 'image' },
     // Hover-tooltip frame. 48x48 with a 5px border on three sides and a taller
     // 7px decorative bottom edge — see TOOLTIP_PANEL_SLICE in ui/NineSlicePanel.js.
-    { key: 'panelText9Slice', path: 'assets/art/panelText9Slice.png', type: 'image' },
     // Top-left selection bracket; mirrored on both axes to make all 4 corners.
-    { key: 'cornerSelect', path: 'assets/art/cornerSelect.png', type: 'image' },
 
     // Shared minigame chrome, in assets/ui/ rather than assets/art/ because it
     // is window furniture rather than anything the game world contains.
@@ -56,9 +55,6 @@ export const ASSET_MANIFEST = [
     // size the window needs — see ui/NineSlicePanel.js for the insets. The
     // banner is not sliced: its ribbon carries painted highlights and drawn
     // tails, so it rides at its authored 256px and the title sits on top.
-    { key: 'uiPanelDark', path: 'assets/ui/paneDarkl9x9.png', type: 'image' },
-    { key: 'uiBar', path: 'assets/ui/barSlice.png', type: 'image' },
-    { key: 'uiBanner', path: 'assets/ui/bannerEvents.png', type: 'image' },
 
     // Full-screen light sheet, laid over the finished frame in Aseprite's
     // Overlay mode by ui/OverlayLightPipeline.js. Authored at the world size
@@ -78,11 +74,6 @@ export const ASSET_MANIFEST = [
     { key: 'villageBoardMetal', path: 'assets/ui/boardMetalVillage.png', type: 'image' },
     { key: 'villageBoardWood2', path: 'assets/ui/boardWoodVillage2.png', type: 'image' },
     { key: 'villageThorn', path: 'assets/ui/villageThorn.png', type: 'image' },
-    { key: 'villageBanner', path: 'assets/ui/bannerVillage.png', type: 'image' },
-    { key: 'villagePlate', path: 'assets/ui/panelVillage.png', type: 'image' },
-    { key: 'villageRankStar', path: 'assets/ui/rankStar.png', type: 'image' },
-    { key: 'villageButtonUp', path: 'assets/ui/buttonUpReset.png', type: 'image' },
-    { key: 'villageButtonDown', path: 'assets/ui/buttonDownReset.png', type: 'image' },
 
     // Six building cards, drawn card-sized so they can use the board's own
     // hover and flip sheets. Frame order matches VILLAGE_FRAME in VillageScene.
@@ -92,7 +83,6 @@ export const ASSET_MANIFEST = [
     // The board uses the "All" variants; the village wants the base pair.
     { key: 'villageCardHover', path: 'assets/art/cardHover52x72Sheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 72 },
     { key: 'villageCardFlip', path: 'assets/art/cardFlip54x86Sheet.png', type: 'spritesheet', frameWidth: 54, frameHeight: 86 },
-    { key: 'scrollHandle', path: 'assets/art/scroll.png', type: 'image' },
     { key: 'eventsShops', path: 'assets/art/eventsShops80x80.png', type: 'spritesheet', frameWidth: 80, frameHeight: 80 },
     { key: 'rareShopSeller', path: 'assets/art/rareShopSeller.png', type: 'image' },
     // Arm Wrestling minigame art (human vs ogre locked hands).
@@ -121,12 +111,9 @@ export const ASSET_MANIFEST = [
     { key: 'panelArmor', path: 'assets/art/panelArmor.png', type: 'image' },
     { key: 'anvilDropAnim', path: 'assets/art/anvilDropAnim.png', type: 'spritesheet', frameWidth: 69, frameHeight: 89 },
     { key: 'anvilClankAnim', path: 'assets/art/anvilClanckAnim80x86.png', type: 'spritesheet', frameWidth: 80, frameHeight: 86 },
-    { key: 'anvilBanner', path: 'assets/art/bannerAnvil.png', type: 'image' },
     // The rest room's title ribbon — same 262x48 shape as the anvil's, so both
     // rooms put their name in the same place.
-    { key: 'restBanner', path: 'assets/art/bannerRestl.png', type: 'image' },
     { key: 'anvilIllustration', path: 'assets/art/anvil1.png', type: 'image' },
-    { key: 'anvilPriceTag', path: 'assets/art/priceTag.png', type: 'image' },
     // Silkslinger's web, two 60x78 frames: 0 the silk over a webbed bag card,
     // 1 the web in flight as it is thrown (CombatTurnController.applyWebHand).
     // Soul Drain: the soul leaving the enemy for the hero, five 48x48 frames
@@ -139,24 +126,20 @@ export const ASSET_MANIFEST = [
     { key: 'inkBlob', path: 'assets/art/inkBlob.png', type: 'spritesheet', frameWidth: 48, frameHeight: 32 },
     { key: 'webCardOverlay', path: 'assets/art/web.png', type: 'spritesheet', frameWidth: 60, frameHeight: 78 },
     // Little banner behind each shop item's price (32x18)
-    { key: 'priceTag', path: 'assets/art/priceTag.png', type: 'image' },
     // Dedicated crisp 16px title font (rasterized 1-bit from Able5.ttf).
     // Tutorial coach-mark pointer (16x16 cursor-style arrow).
-    { key: 'tutorialPointer', path: 'assets/art/pointer.png', type: 'image' },
-    { key: 'angryNestmother', path: 'assets/art/bird.png', type: 'image' },
     // Load item sprites
     // Load Uncommon / Rare / Epic / Legendary item sprites
     // Silk Cache cocoon shell. Loading this under the key ensureSilkCocoonTexture
     // uses means the drawn-in-code placeholder in CocoonCacheBoard.js never runs.
-    { key: 'silkCocoon', path: 'assets/art/cocoon.png', type: 'image' },
     // Cocoon cracking open: 7 frames, played once between the damaging hit and
     // whatever was inside appearing. Slightly taller than a card on purpose.
     { key: 'cocoonAnim', path: 'assets/art/cocoonAnim.png', type: 'spritesheet', frameWidth: 54, frameHeight: 78 },
     // Enemy trait icons, 176x32 laid out as a 16x16 grid: 11 columns, 2 rows.
     // The three tall icons in the first columns are drawn across both rows.
     { key: 'enemyIcons', path: 'assets/art/enemyIcons.png', type: 'spritesheet', frameWidth: 16, frameHeight: 16 },
-    { key: 'trap', path: 'assets/art/trap.png', type: 'image' },
-    { key: 'trap2', path: 'assets/art/trap2.png', type: 'image' },
+    // The sigils' flat coloured icons (content/sigils/sigils.js).
+    { ...SIGIL_ICONS_NEW_SHEET, type: 'spritesheet' },
     // Coins, potions, food, key and crystals in three rarities, plus the card
     // face they sit on. Composited into per-card textures at boot — see
     // content/assets/resourceCards.js.
@@ -164,18 +147,8 @@ export const ASSET_MANIFEST = [
     // One row per month: five enemies then three card faces (normal, veteran,
     // elite). Composited with the icon strip at boot — see assets/enemyCards.js.
     { key: 'enemyCards', path: 'assets/art/enemiesSpriteSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
-    { key: 'keyCard', path: 'assets/art/keyCard.png', type: 'image' },
-    { key: 'trapTriggers', path: 'assets/art/trapTriggers.png', type: 'image' },
-    { key: 'thornsCard', path: 'assets/art/thornsCard.png', type: 'image' },
-    { key: 'thornsCard_U', path: 'assets/art/thornsCard_U.png', type: 'image' },
-    { key: 'thornsCard_R', path: 'assets/art/thornsCard_R.png', type: 'image' },
-    { key: 'thornsCard_E', path: 'assets/art/thornsCard_E.png', type: 'image' },
-    { key: 'carnivalPipe', path: 'assets/art/pipe.png', type: 'image' },
-    { key: 'carnivalDucky', path: 'assets/art/ducky.png', type: 'image' },
-    { key: 'carnivalRing', path: 'assets/art/brokenRing.png', type: 'image' },
     { key: 'carnivalTray', path: 'assets/art/tray.png', type: 'image' },
     { key: 'wizardTray', path: 'assets/art/trayWizard.png', type: 'image' },
-    { key: 'holographicOmen', path: 'assets/art/omen.png', type: 'image' },
     { key: 'luckyClover', path: 'assets/art/clover.png', type: 'spritesheet', frameWidth: 53, frameHeight: 70 },
     { key: 'mapNodes', path: 'assets/art/mapNodes42x42.png', type: 'spritesheet', frameWidth: 42, frameHeight: 42 },
     // Fog of war over the map (the HoMM in Pixel Art fog atlas; map/MapFog.js).
@@ -185,7 +158,6 @@ export const ASSET_MANIFEST = [
     { key: 'gemsTiered', path: 'assets/art/gemsTiered.png', type: 'spritesheet', frameWidth: 18, frameHeight: 18 },
     // The socket a gem sets into: shown empty on cards that could take a
     // dragged gem, and drawn under the gem once one is set.
-    { key: 'gemSpot', path: 'assets/art/gemSpot.png', type: 'image' },
     // 7-frame shine that sweeps across a gem on hover, masked to its silhouette.
     { key: 'gemLightAnim', path: 'assets/art/gemLightAnim.png', type: 'spritesheet', frameWidth: 18, frameHeight: 18 },
     // Enemy role marker: frame 0 = melee, frame 1 = ranged | 'enemyCardType' sprite sheet was the old melee/ranged/poison badge | overlay. The new enemy art bakes those icons into the cards, and | HP / ATK now render as corner numbers, so we no longer load it.
@@ -213,16 +185,6 @@ export const ASSET_MANIFEST = [
     { key: 'pathsBackground', path: 'assets/art/pathsBackground.png', type: 'image' },
     { key: 'pathsBackgroundLight', path: 'assets/art/pathsBackgroundLight.png', type: 'image' },
     // Food
-    { key: 'egg', path: 'assets/art/egg.png', type: 'image' },
-    { key: 'crystalSpiderEgg', path: 'assets/art/crystalSpiderEgg.png', type: 'image' },
-    // Sigil Room stamps (content/sigils/sigilStamps.js).
-    ...SIGIL_STAMPS.map(({ key, path }) => ({ key, path, type: 'image' })),
-    { key: SIGIL_ROOM_FLOOR.key, path: SIGIL_ROOM_FLOOR.path, type: 'image' },
-    { key: 'chickCompanion', path: 'assets/art/chickCompanion.png', type: 'image' },
-    { key: 'crystalSpiderlingCompanion', path: 'assets/art/crystalSpiderlingCompanion.png', type: 'image' },
-    { key: 'chickCompanionUP', path: 'assets/art/chickCompanionUP.png', type: 'image' },
-    { key: 'skeletonCompanion', path: 'assets/art/skeletonCompanion.png', type: 'image' },
-    { key: 'skeletonCompanionUP', path: 'assets/art/skeletonCompanionUP.png', type: 'image' },
     // New Cards
     { key: 'amulet', path: 'assets/art/amulet.png', type: 'image' },
     { key: 'relicsOthers', path: 'assets/art/relicsOthers.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
@@ -248,7 +210,6 @@ export const ASSET_MANIFEST = [
     // location whose row is not drawn yet) play off villageCardFlip and
     // villageCardHover above: the same five frames the old single images held.
     { key: 'discardSprite', path: 'assets/art/discard.png', type: 'image' },
-    { key: 'thornFrame', path: 'assets/art/thornFrame.png', type: 'image' },
     // Card hover when in inventory effects (5 frames, 54x70 each)
     { key: 'hoverCardsUpSheet', path: 'assets/art/hoverCardsUp54x70Sheet.png', type: 'spritesheet', frameWidth: 54, frameHeight: 70 },
     // Card disappear dissolve (6 frames, 54x70 each) â€” plays on top of a card | as it is removed (enemy defeated, weapon pips spent).
@@ -271,49 +232,38 @@ export const ASSET_MANIFEST = [
     // Poison trap trigger poof (5 frames, 92x92 each)
     { key: 'poisonPoof', path: 'assets/art/poisonPoof92x92.png', type: 'spritesheet', frameWidth: 92, frameHeight: 92 },
     // Frozen frame overlay (66x80) â€” drawn on top of a frozen card in place | of the old blue tint.
+    // A soft glow behind the tiny gem and amulet rewards of a boss (32x32).
+    { key: 'rewardSpot', path: 'assets/art/spot.png', type: 'image' },
     { key: 'frozenFrame', path: 'assets/art/frozen.png', type: 'image' },
     { key: 'bossFrozenFrame', path: 'assets/art/bossFrozen.png', type: 'image' },
-    { key: 'healthBar', path: 'assets/art/healthBar.png', type: 'image' },
-    { key: 'healthBarEmpty', path: 'assets/art/healthBarEmpty2.png', type: 'image' },
     { key: 'healthOrb', path: 'assets/art/healthOrbFullEmpty62x54.png', type: 'spritesheet', frameWidth: 62, frameHeight: 54 },
-    { key: 'actionPoint', path: 'assets/art/actionPoint.png', type: 'image' },
-    { key: 'nextTurnUp', path: 'assets/art/nextTurnUp.png', type: 'image' },
-    { key: 'nextTurnDown', path: 'assets/art/nextTurnDown.png', type: 'image' },
     // Cog button skin â€” frame 0 = up, frame 1 = pressed.
     { key: 'optionsButton', path: 'assets/art/optionsButtonUpDown32x32.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
     // Options screen skin, one 128x32 button per row:
     // 0 language, 1 empty volume bar, 2 filled volume bar, 3 back, 4 reset.
     { key: 'uiButtons', path: 'assets/art/uiButtons.png', type: 'spritesheet', frameWidth: 128, frameHeight: 32 },
     // Draggable knob that rides the volume bars.
-    { key: 'volumeKnob', path: 'assets/art/toggle.png', type: 'image' },
     { key: 'MainPlayerAvatar', path: 'assets/art/MainPlayerAvatar.png', type: 'image' },
-    { key: 'coinUI', path: 'assets/art/coinUI.png', type: 'image' },
-    { key: 'CrystalUI', path: 'assets/art/CrystalUI.png', type: 'image' },
     // Silkdeep roster. Silkslinger is still on the placeholder face.
-    { key: 'caveCrawler', path: 'assets/art/caveCrawler.png', type: 'image' },
-    { key: 'silkHusk', path: 'assets/art/silkHusk.png', type: 'image' },
     // Temporary face for month enemies without dedicated card art (53×70).
-    { key: 'enemyPlaceholder', path: 'assets/art/ghostlyEnemy.png', type: 'image' },
-    { key: 'cerberusHead', path: 'assets/art/dogHead.png', type: 'image' },
     // Elite mini-boss portraits â€” same 53x70 footprint as the base art they
     // replace. Only some enemies have one; see ELITE_SPRITE_KEYS below.
-    { key: 'cerberusHead_elite', path: 'assets/art/dogHeadElite.png', type: 'image' },
-    { key: 'durability_dot', path: 'assets/art/durability_dot.png', type: 'image' },
-    { key: 'ten_durability', path: 'assets/art/ten_durability.png', type: 'image' },
     // Load twinkle animation frames
     { key: 'twinkle', path: 'assets/art/twinkle60x78Sheet.png', type: 'spritesheet', frameWidth: 60, frameHeight: 78 },
     // Bosses
+    { key: 'lightningBoss', path: 'assets/art/lightningBoss.png', type: 'image' },
     { key: 'frostGiant', path: 'assets/art/frosthollow/frostGiant.png', type: 'image' },
     { key: 'greenWarden', path: 'assets/art/greenWarden.png', type: 'image' },
     { key: 'giantSkeleton', path: 'assets/art/giantSkeleton.png', type: 'image' },
     { key: 'GoblinKingSprite', path: 'assets/art/goblinKing.png', type: 'image' },
     { key: 'SpiderQween', path: 'assets/art/spiderBoss.png', type: 'image' },
-    { key: 'skeleton_archer', path: 'assets/art/skeletonArcher_c.png', type: 'image' },
     { key: 'Lich', path: 'assets/art/lich.png', type: 'image' },
     { key: 'SoulEater', path: 'assets/art/soulEater.png', type: 'image' },
     { key: 'MireBride', path: 'assets/art/mireBrideBossNoFloor.png', type: 'image' },
     // Bosses' attack frames (content/cards/bossAttackFrames.js).
     ...BOSS_ATTACK_FRAME_FILES.map(({ key, path }) => ({ key, path, type: 'image' })),
+    ...BOSS_POSE_SHEETS.map(({ key, path, frameWidth, frameHeight }) =>
+        ({ key, path, frameWidth, frameHeight, type: 'spritesheet' })),
     // The door you walk through to choose a road. One 64x64 frame per
     // location, in the order LOCATION_DOOR_FRAMES declares.
     { key: 'locationDoors', path: 'assets/art/paths.png', type: 'spritesheet', frameWidth: 64, frameHeight: 64 },
@@ -346,10 +296,6 @@ export const ASSET_MANIFEST = [
     // Bespoke boss death: a 5-frame mask played over the boss sprite.
     { key: 'bossDeathMask', path: 'assets/art/bossDeathMask232x194.png', type: 'spritesheet', frameWidth: 232, frameHeight: 194 },
     // Animation for Magic cards
-    { key: 'fireBall1', path: 'assets/art/fireBall1.png', type: 'image' },
-    { key: 'fireBall2', path: 'assets/art/fireBall2.png', type: 'image' },
-    { key: 'fireBall3', path: 'assets/art/fireBall3.png', type: 'image' },
-    { key: 'fireBall4', path: 'assets/art/fireBall4.png', type: 'image' },
     // treasure
     { key: 'bigChestAnimation', path: 'assets/art/bigChestAnimation98x98.png', type: 'spritesheet', frameWidth: 98, frameHeight: 98 },
     // Close Order's grappling hook (Taya): 9 frames of 96x170, the rope rising
@@ -358,7 +304,6 @@ export const ASSET_MANIFEST = [
     // Frame 0 is closed; frame 1 is open. Original chest animation stays available.
     { key: 'treasureChest', path: 'assets/art/chests/regularChest.png', type: 'spritesheet', frameWidth: 98, frameHeight: 98 },
     { key: 'eliteChest', path: 'assets/art/chests/eliteChest.png', type: 'spritesheet', frameWidth: 98, frameHeight: 98 },
-    { key: 'mimic', path: 'assets/art/mimic.png', type: 'image' },
     // Animation for MIMIC â€” merged 7-frame splash spritesheet (was splash1-7).
     { key: 'splashSheet', path: 'assets/art/splashShee118x62t.png', type: 'spritesheet', frameWidth: 118, frameHeight: 62 },
     // ---- New SFX batch (variants rotate via SoundHelper.playVariant) ---- | Multi-variant groups
@@ -500,6 +445,8 @@ export const LATE_AUDIO = [
     // Every enemy's own death (content/audio/enemyDeathSounds.js); until one
     // lands, that death plays the shared enemy_death pair.
     ...ENEMY_DEATH_SOUND_ASSETS,
+    // The location bosses' own attack and death (content/audio/bossSounds.js).
+    ...BOSS_SOUND_ASSETS,
     // Equip sounds per armor type (content/audio/armorSounds.js); the shared
     // clank, armor_equip, stands in until they land.
     ...ARMOR_EQUIP_SOUND_ASSETS,
@@ -514,6 +461,8 @@ export const LATE_AUDIO = [
     // crossing its rage threshold, and a mimic getting away.
     { key: 'boss_enraged', path: 'assets/music/Boss_Enraged.mp3', type: 'audio' },
     { key: 'mimic_escaped', path: 'assets/music/Mimic_Escaped.mp3', type: 'audio' },
+    // The Mimic's cry as the Summon Mimic spell drops it onto the board.
+    { key: 'mimic_cry', path: 'assets/music/Mimic_Cry.mp3', type: 'audio' },
     // An enemy's hit piercing the hero's armor ("Armor Broken!").
     { key: 'armor_broken', path: 'assets/music/Armor_Broken.mp3', type: 'audio' },
     // The hero rising again: Temple / Second Wind, and the Invulnerable amulet.

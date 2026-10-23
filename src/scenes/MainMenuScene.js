@@ -684,16 +684,16 @@ export class MainMenuScene extends Phaser.Scene {
         // Clear any existing run save
         this.saveManager.clearCurrentRun();
 
-        // No fade-out here, unlike the other ways out of the menu: the village
+        // No fade-out here, unlike the other ways out of the menu: the sanctuary
         // plays this same theme, and asking for a track that is already playing
-        // keeps it going. Fading it out first made the village start it again
-        // from the top on every New Game. The village fades it when the run
+        // keeps it going. Fading it out first made the sanctuary start it again
+        // from the top on every New Game. The sanctuary fades it when the run
         // actually starts.
         // There is one unrestricted hero now, so a new run goes straight to
-        // the village instead of presenting a class choice.
+        // the sanctuary instead of presenting a class choice.
         this.cameras.main.fadeOut(500, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
-            this.scene.start('VillageScene', { characterId: 'rogue' });
+            this.scene.start('SanctuaryScene', { characterId: 'rogue' });
         });
     }
     

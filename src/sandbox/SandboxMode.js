@@ -25,6 +25,7 @@ export const SANDBOX_ENCOUNTERS = [
   { id: 'TREASURE_GOOD', label: 'Treasure (Good)', labelKey: 'ui.sandbox.encounter.treasureGood', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'good' },
   { id: 'TREASURE_ELITE', label: 'Elite Chest', labelKey: 'ui.sandbox.encounter.eliteChest', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'elite' },
   { id: 'SIGIL_ROOM', label: 'Sigil Room', labelKey: 'ui.sandbox.encounter.sigilRoom', kind: 'station', sceneKey: 'TreasureScene', rewardMode: 'sigil' },
+  { id: 'SANCTUARY_PREVIEW', label: 'Statue Sanctuary', kind: 'preview', sceneKey: 'SanctuaryPreviewScene' },
 ];
 
 const SANDBOX_FLOORS = {
@@ -57,6 +58,7 @@ const SCENE_KEYS_TO_STOP = [
   'LocationPickScene',
   SANDBOX_HUB_KEY,
   SANDBOX_STORY_KEY,
+  'SanctuaryPreviewScene',
 ];
 
 export function isSandboxMode(ref) {

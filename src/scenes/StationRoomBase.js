@@ -15,6 +15,7 @@ import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { t } from '../i18n/i18n.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
 import { bindCardRiders, cardRiders, pinRider } from '../ui/CardRiders.js';
+import { flyAmuletToBar } from '../ui/RewardFlight.js';
 import { flyCurrencyGain } from '../ui/CurrencyFlight.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRecorder.js';
 import { cameraWorldSize } from '../config/renderScale.js';
@@ -63,18 +64,25 @@ export class StationRoomBase extends Phaser.Scene {
         });
     }
 
-    enableShopStation() {
+    enableShopStation({ backdropFloor = null } = {}) {
         this.gameScene = this.gameScene || this.scene.get('GameScene');
         if (!this.gameScene?.inventorySystem) return;
+        // Inter-act shops still stand on the road just cleared, even though
+        // progression and shop prices have already advanced to the next act.
+        this.gameScene._stationBackdropFloor = backdropFloor;
         this.scene.wake('GameScene', { shopStation: true });
+        this.gameScene.refreshFightBackground?.('SHOP');
         // The fight underneath still has its own door up (it stays once used).
         // This room puts its own door in the same spot; one is enough.
         this.gameScene.hideExitUnderStation?.();
         this.gameScene.inventorySystem.setStationMode(true);
         this.gameScene.inventorySystem.setVisibility(true);
+        // Station headings occupy the centre; the fight's header sits aside.
+        this.gameScene.floorText?.setPosition(455, 15);
     }
 
     closeStation() {
+        if (this.gameScene) this.gameScene._stationBackdropFloor = null;
         recordHumanRunEvent(this, 'station_departed', {
             station: this.scene?.key || this.sys?.settings?.key || null,
             offers: Array.isArray(this.shopItems)
@@ -474,6 +482,15 @@ export class StationRoomBase extends Phaser.Scene {
                 sprite.setAlpha(0.55);
                 this.hideItemTooltip();
             }
+        });
+    }
+
+    animateAmuletPurchase(item, id) {
+        const entry = this.shopCards?.find(card => card.item === item);
+        if (!entry || !id) return;
+        // Wait until purchase handlers have finished refreshing the HUD.
+        this.time.delayedCall(0, () => {
+            flyAmuletToBar(this, id, entry.x, entry.y, { hop: true });
         });
     }
 

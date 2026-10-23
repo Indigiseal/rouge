@@ -60,6 +60,7 @@ const STRINGS = {
         'ui.locationPick.hint': 'Click a road to walk it.',
         'ui.village.title': 'The Village',
         'ui.village.hint': 'Buildings and Support are shared.',
+        'ui.village.support': 'Support: {amount}',
         'ui.village.pickPlot': 'Click a lot to build or upgrade.',
         'ui.village.build': 'Build',
         'ui.village.upgrade': 'Upgrade',
@@ -82,6 +83,27 @@ const STRINGS = {
         'village.healer.desc': 'At run start, pick 1 of 3 amulets. Each rank makes rarer amulets likelier.',
         'village.cottage.name': "Healer's Hut",
         'village.cottage.desc': '+15 max HP per rank. Five ranks (15 / 30 / 45 / 60 / 75).',
+        'ui.sanctuary.title': 'The Sanctuary',
+        'ui.sanctuary.pick': 'Click a statue to restore it.',
+        'ui.sanctuary.restore': 'Restore',
+        'ui.sanctuary.restored': 'Restored',
+        'ui.sanctuary.dormant': 'Dormant',
+        'ui.sanctuary.phoenixLocked': 'The Phoenix wakes once each of the four guardians has been restored.',
+        'sanctuary.forge.name': 'Fanged Guardian',
+        'sanctuary.forge.rule': '+1 weapon damage',
+        'sanctuary.forge.desc': '+1 weapon damage per restoration, on any weapon. Five restorations.',
+        'sanctuary.armory.name': 'Shelled Sentinel',
+        'sanctuary.armory.rule': '+1 DEF',
+        'sanctuary.armory.desc': '+1 DEF on armor per restoration. Five restorations.',
+        'sanctuary.cottage.name': 'Deep Toad',
+        'sanctuary.cottage.rule': '+15 max HP',
+        'sanctuary.cottage.desc': '+15 max HP per restoration. Five restorations (15 / 30 / 45 / 60 / 75).',
+        'sanctuary.healer.name': 'Trinket Keeper',
+        'sanctuary.healer.rule': 'Starting amulet\nBetter quality',
+        'sanctuary.healer.desc': 'At run start, pick 1 of 3 amulets. Each restoration makes rarer amulets likelier.',
+        'sanctuary.temple.name': 'The Phoenix',
+        'sanctuary.temple.rule': 'Revive once · 50% HP',
+        'sanctuary.temple.desc': 'Once per run, rise after a killing blow with half your health. One restoration.',
         'location.thornwake.name': 'Thornwake',
         'location.thornwake.place': 'The Briar March',
         'location.thornwake.pitch': 'Living hedge. The Green Warden still thinks the thorn is a kingdom.',
@@ -526,7 +548,7 @@ const STRINGS = {
         'ui.birdNest.run': 'Run',
         'ui.birdNest.buried': 'Still buried. Move the junk first.',
         'ui.birdNest.cogTaken': 'The brass cog is yours.',
-        'ui.birdNest.eggTaken': 'The egg is warm in your hand.',
+        'ui.birdNest.eggTaken': 'The egg is warm in your hand.', 'ui.birdNest.coinsTaken': 'The coins are yours.', 'ui.birdNest.crystalsTaken': 'The crystals are yours.',
         'ui.birdNest.caught': 'The shadow found you.',
     },
     es: {
@@ -580,6 +602,7 @@ const STRINGS = {
         'ui.locationPick.hint': 'Haz clic en un camino para tomarlo.',
         'ui.village.title': 'La Aldea',
         'ui.village.hint': 'Los edificios y el Apoyo son comunes.',
+        'ui.village.support': 'Apoyo: {amount}',
         'ui.village.pickPlot': 'Haz clic en un solar para construir o mejorar.',
         'ui.village.build': 'Construir',
         'ui.village.upgrade': 'Mejorar',
@@ -602,6 +625,27 @@ const STRINGS = {
         'village.healer.desc': 'Al inicio, elige 1 de 3 amuletos. Cada rango hace mas probables los raros.',
         'village.cottage.name': 'Choza del medico',
         'village.cottage.desc': '+15 de vida maxima por rango. Cinco rangos (15 / 30 / 45 / 60 / 75).',
+        'ui.sanctuary.title': 'El Santuario',
+        'ui.sanctuary.pick': 'Haz clic en una estatua para restaurarla.',
+        'ui.sanctuary.restore': 'Restaurar',
+        'ui.sanctuary.restored': 'Restaurada',
+        'ui.sanctuary.dormant': 'Dormida',
+        'ui.sanctuary.phoenixLocked': 'El Fénix despierta cuando los cuatro guardianes están restaurados.',
+        'sanctuary.forge.name': 'Guardián colmilludo',
+        'sanctuary.forge.rule': '+1 de daño de arma',
+        'sanctuary.forge.desc': '+1 de daño de arma por restauración, cualquier arma. Cinco restauraciones.',
+        'sanctuary.armory.name': 'Centinela acorazado',
+        'sanctuary.armory.rule': '+1 DEF',
+        'sanctuary.armory.desc': '+1 DEF en la armadura por restauración. Cinco restauraciones.',
+        'sanctuary.cottage.name': 'Sapo profundo',
+        'sanctuary.cottage.rule': '+15 de vida máx.',
+        'sanctuary.cottage.desc': '+15 de vida máxima por restauración. Cinco restauraciones (15 / 30 / 45 / 60 / 75).',
+        'sanctuary.healer.name': 'Guardián de baratijas',
+        'sanctuary.healer.rule': 'Amuleto inicial\nMejor calidad',
+        'sanctuary.healer.desc': 'Al inicio, elige 1 de 3 amuletos. Cada restauración hace más probables los raros.',
+        'sanctuary.temple.name': 'El Fénix',
+        'sanctuary.temple.rule': 'Revive una vez · 50 % PV',
+        'sanctuary.temple.desc': 'Una vez por expedición, levántate tras un golpe mortal con la mitad de tu vida. Una restauración.',
         'location.thornwake.name': 'Thornwake',
         'location.thornwake.place': 'La Marcha de Zarzas',
         'location.thornwake.pitch': 'Seto vivo. El Guardian Verde aun cree que el espino es un reino.',
@@ -1045,7 +1089,7 @@ const STRINGS = {
         'ui.birdNest.run': 'Huir',
         'ui.birdNest.buried': 'Aún está enterrado. Aparta primero la basura.',
         'ui.birdNest.cogTaken': 'El engranaje de latón es tuyo.',
-        'ui.birdNest.eggTaken': 'El huevo está tibio en tu mano.',
+        'ui.birdNest.eggTaken': 'El huevo está tibio en tu mano.', 'ui.birdNest.coinsTaken': 'Las monedas son tuyas.', 'ui.birdNest.crystalsTaken': 'Los cristales son tuyos.',
         'ui.birdNest.caught': 'La sombra te encontró.',
     },
     fr: {
@@ -1060,6 +1104,7 @@ const STRINGS = {
         'ui.locationPick.subtitle': 'Acte {act}',
         'ui.locationPick.hint': 'Cliquez sur une route pour l’emprunter.',
         'ui.village.title': 'Le Village',
+        'ui.village.support': 'Soutien : {amount}',
         'ui.village.hint': 'Les bâtiments et le Soutien sont partagés.',
         'ui.village.pickPlot': 'Cliquez un terrain pour construire ou améliorer.',
         'ui.village.build': 'Construire',
@@ -1083,6 +1128,27 @@ const STRINGS = {
         'village.healer.desc': 'Au départ, choisissez 1 amulette sur 3. Chaque rang rend les plus rares plus probables.',
         'village.cottage.name': 'Hutte du médecin',
         'village.cottage.desc': '+15 PV max par rang. Cinq rangs (15 / 30 / 45 / 60 / 75).',
+        'ui.sanctuary.title': 'Le Sanctuaire',
+        'ui.sanctuary.pick': 'Cliquez une statue pour la restaurer.',
+        'ui.sanctuary.restore': 'Restaurer',
+        'ui.sanctuary.restored': 'Restaurée',
+        'ui.sanctuary.dormant': 'Endormi',
+        'ui.sanctuary.phoenixLocked': 'Le Phénix s’éveille quand les quatre gardiens sont restaurés.',
+        'sanctuary.forge.name': 'Gardien à crocs',
+        'sanctuary.forge.rule': '+1 dégât d’arme',
+        'sanctuary.forge.desc': '+1 dégât d’arme par restauration, n’importe quelle arme. Cinq restaurations.',
+        'sanctuary.armory.name': 'Sentinelle carapacée',
+        'sanctuary.armory.rule': '+1 DEF',
+        'sanctuary.armory.desc': '+1 DEF sur l’armure par restauration. Cinq restaurations.',
+        'sanctuary.cottage.name': 'Crapaud des profondeurs',
+        'sanctuary.cottage.rule': '+15 PV max',
+        'sanctuary.cottage.desc': '+15 PV max par restauration. Cinq restaurations (15 / 30 / 45 / 60 / 75).',
+        'sanctuary.healer.name': 'Gardien des bibelots',
+        'sanctuary.healer.rule': 'Amulette de départ\nMeilleure qualité',
+        'sanctuary.healer.desc': 'Au départ, choisissez 1 amulette sur 3. Chaque restauration rend les plus rares plus probables.',
+        'sanctuary.temple.name': 'Le Phénix',
+        'sanctuary.temple.rule': 'Revient une fois · 50 % PV',
+        'sanctuary.temple.desc': 'Une fois par expédition, relevez-vous après un coup mortel avec la moitié de vos PV. Une restauration.',
         'location.thornwake.name': 'Thornwake',
         'location.thornwake.place': 'La Marche des Ronces',
         'location.thornwake.pitch': 'Haie vivante. Le Gardien Vert croit encore que l’épine est un royaume.',
@@ -1140,7 +1206,7 @@ const STRINGS = {
         'ui.hud.effect.burn': 'Brûlure', 'ui.hud.effect.stun': 'Étourdi', 'ui.hud.effect.weakness': 'Affaibli', 'ui.hud.shadowBlade': 'Lame d’ombre', 'ui.hud.magicShield': 'Bouclier magique', 'ui.hud.boneShield': 'Bouclier d’os', 'ui.hud.poison': 'Poison {count}', 'ui.hud.blockNextAttack': 'Bloque la prochaine attaque', 'ui.hud.stunned': 'Étourdi : votre prochaine action est perdue', 'ui.hud.spored': 'Spores : votre prochaine attaque peut rater', 'ui.hud.sapped': 'Affaibli : votre prochain coup inflige 30 % de moins', 'ui.hud.effectsTitle': 'Effets actifs', 'ui.hud.noEffects': 'Aucun effet actif', 'ui.hud.discardCrit': 'Critique de défausse +{percent} %', 'ui.hud.discardCritProgress': 'Critique de défausse ({cards} pour +{percent} %)', 'ui.hud.effectTurns': '{name} ({count} {unit})', 'ui.hud.buffTurns': '{name} {bonus} ({count} {unit})', 'ui.hud.shieldCharges': '{name} ({count} {unit})', 'ui.hud.turnUnit.one': 'tour', 'ui.hud.turnUnit.few': 'tours', 'ui.hud.turnUnit.many': 'tours', 'ui.hud.chargeUnit.one': 'charge', 'ui.hud.chargeUnit.few': 'charges', 'ui.hud.chargeUnit.many': 'charges', 'ui.hud.floorBanner': '{month}  ·  Acte {act} · Étage {floor}', 'ui.hud.dmgBonus': '+{percent} % DGT', 'ui.hud.defBonus': '+{percent} % DEF', 'ui.hud.dodgeBonus': '+{percent} % esquive',
         'ui.event.choice.offerCard': 'Offrir une carte', 'ui.event.choice.offerWeapon': 'Offrir une arme', 'ui.event.choice.wrestle': 'Faire un bras de fer', 'ui.event.choice.forceOpen': 'Forcer l’ouverture', 'ui.event.choice.searchNest': 'Fouiller le nid', 'ui.event.choice.trade': 'Échanger', 'ui.event.choice.tradeJunk': 'Échanger les déchets', 'ui.event.choice.reroll': 'Relancer', 'ui.event.choice.pullBack': 'Retirer votre main', 'ui.event.dragCardHint': 'Faites glisser une carte sur le plateau',
         'ui.armWrestling.title': 'Bras de fer', 'ui.armWrestling.lockedHands': 'MAINS VERROUILLÉES', 'ui.armWrestling.instructions': 'Cliquez aussi vite que possible !', 'ui.armWrestling.ogre': 'OGRE', 'ui.armWrestling.you': 'VOUS', 'ui.armWrestling.clickHint': 'Cliquez n’importe où dans la fenêtre !', 'ui.armWrestling.push': 'POUSSEZ !', 'ui.armWrestling.wait': 'Attendez…', 'ui.armWrestling.win': 'VOUS GAGNEZ !', 'ui.armWrestling.lose': 'VOUS PERDEZ !',
-        'ui.birdNest.title': 'Le nid', 'ui.birdNest.instructionsCog': 'Dégagez les déchets. Prenez l’engrenage et l’oeuf si vous le pouvez. Surveillez l’ombre.', 'ui.birdNest.instructionsEgg': 'Dégagez les déchets. Prenez l’oeuf si vous le pouvez. Surveillez l’ombre.', 'ui.birdNest.status': 'Écartez les déchets. Cliquez sur une récompense libre pour la prendre.', 'ui.birdNest.run': 'Fuir', 'ui.birdNest.buried': 'Toujours enfoui. Déplacez d’abord les déchets.', 'ui.birdNest.cogTaken': 'L’engrenage en laiton est à vous.', 'ui.birdNest.eggTaken': 'L’oeuf est chaud dans votre main.', 'ui.birdNest.caught': 'L’ombre vous a trouvé.',
+        'ui.birdNest.title': 'Le nid', 'ui.birdNest.instructionsCog': 'Dégagez les déchets. Prenez l’engrenage et l’oeuf si vous le pouvez. Surveillez l’ombre.', 'ui.birdNest.instructionsEgg': 'Dégagez les déchets. Prenez l’oeuf si vous le pouvez. Surveillez l’ombre.', 'ui.birdNest.status': 'Écartez les déchets. Cliquez sur une récompense libre pour la prendre.', 'ui.birdNest.run': 'Fuir', 'ui.birdNest.buried': 'Toujours enfoui. Déplacez d’abord les déchets.', 'ui.birdNest.cogTaken': 'L’engrenage en laiton est à vous.', 'ui.birdNest.eggTaken': 'L’oeuf est chaud dans votre main.', 'ui.birdNest.coinsTaken': 'Les pièces sont à vous.', 'ui.birdNest.crystalsTaken': 'Les cristaux sont à vous.', 'ui.birdNest.caught': 'L’ombre vous a trouvé.',
     },
     de: {
         'ui.menu.newRun': 'Neuer Lauf', 'ui.menu.newRunTitle': 'Neuen Lauf starten?', 'ui.menu.newRunBody': 'Dein gespeicherter Lauf geht verloren.',
@@ -1243,6 +1309,7 @@ const STRINGS = {
         'ui.locationPick.subtitle': 'Акт {act}',
         'ui.locationPick.hint': 'Нажми на дверь, чтобы пойти этой дорогой.',
         'ui.village.title': 'Деревня',
+        'ui.village.support': 'Поддержка: {amount}',
         'ui.village.hint': 'Здания и поддержка общие.',
         'ui.village.pickPlot': 'Нажми участок, чтобы построить или улучшить.',
         'ui.village.build': 'Построить',
@@ -1266,6 +1333,27 @@ const STRINGS = {
         'village.healer.desc': 'В начале забега выбрать 1 из 3 амулетов. Каждый ранг повышает шанс на более редкие.',
         'village.cottage.name': 'Хижина лекаря',
         'village.cottage.desc': '+15 к запасу жизней за ранг. Пять рангов (15 / 30 / 45 / 60 / 75).',
+        'ui.sanctuary.title': 'Святилище',
+        'ui.sanctuary.pick': 'Нажми на статую, чтобы восстановить её.',
+        'ui.sanctuary.restore': 'Восстановить',
+        'ui.sanctuary.restored': 'Восстановлено',
+        'ui.sanctuary.dormant': 'Спит',
+        'ui.sanctuary.phoenixLocked': 'Феникс проснётся, когда все четыре стража будут восстановлены.',
+        'sanctuary.forge.name': 'Клыкастый страж',
+        'sanctuary.forge.rule': '+1 урона оружия',
+        'sanctuary.forge.desc': '+1 урона оружия за восстановление, любое оружие. Пять восстановлений.',
+        'sanctuary.armory.name': 'Панцирный страж',
+        'sanctuary.armory.rule': '+1 DEF',
+        'sanctuary.armory.desc': '+1 DEF на броню за восстановление. Пять восстановлений.',
+        'sanctuary.cottage.name': 'Глубинная жаба',
+        'sanctuary.cottage.rule': '+15 макс. жизней',
+        'sanctuary.cottage.desc': '+15 к запасу жизней за восстановление. Пять восстановлений (15 / 30 / 45 / 60 / 75).',
+        'sanctuary.healer.name': 'Хранитель безделушек',
+        'sanctuary.healer.rule': 'Стартовый амулет\nЛучше качество',
+        'sanctuary.healer.desc': 'В начале забега выбрать 1 из 3 амулетов. Каждое восстановление повышает шанс на более редкие.',
+        'sanctuary.temple.name': 'Феникс',
+        'sanctuary.temple.rule': 'Воскрешение раз · 50% HP',
+        'sanctuary.temple.desc': 'Один раз за забег встать после смертельного удара с половиной жизней. Одно восстановление.',
         'location.thornwake.name': 'Thornwake',
         'location.thornwake.place': 'Терновый марш',
         'location.thornwake.pitch': 'Живая изгородь. Зелёный Страж всё ещё считает тёрн королевством.',
@@ -1709,7 +1797,7 @@ const STRINGS = {
         'ui.birdNest.run': 'Бежать',
         'ui.birdNest.buried': 'Все еще завалено. Сначала убери хлам.',
         'ui.birdNest.cogTaken': 'Латунная шестеренка твоя.',
-        'ui.birdNest.eggTaken': 'Яйцо теплое в руке.',
+        'ui.birdNest.eggTaken': 'Яйцо теплое в руке.', 'ui.birdNest.coinsTaken': 'Монеты твои.', 'ui.birdNest.crystalsTaken': 'Кристаллы твои.',
         'ui.birdNest.caught': 'Тень нашла тебя.',
     },
 };
@@ -1719,6 +1807,7 @@ const STRINGS = {
 const UI_TEXT_ADDITIONS = {
     en: {
         'ui.card.egg': 'Egg',
+        'ui.card.web': 'Web',
         'ui.musicBox.title': 'Force the Lock',
         'ui.musicBox.brief': 'Find 4 pairs that fit. Do not seat the detonators.',
         'ui.musicBox.safePairs': 'Seat these\n(4 pairs)',
@@ -1742,6 +1831,7 @@ const UI_TEXT_ADDITIONS = {
     },
     es: {
         'ui.card.egg': 'Huevo',
+        'ui.card.web': 'Red',
         'ui.musicBox.title': 'Forzar la cerradura',
         'ui.musicBox.brief': 'Encuentra 4 parejas que encajen. No coloques los detonadores.',
         'ui.musicBox.safePairs': 'Coloca estas\n(4 parejas)',
@@ -1765,6 +1855,7 @@ const UI_TEXT_ADDITIONS = {
     },
     fr: {
         'ui.card.egg': 'Oeuf',
+        'ui.card.web': 'Toile',
         'ui.musicBox.title': 'Forcer la serrure',
         'ui.musicBox.brief': 'Trouvez 4 paires compatibles. Ne placez pas les detonateurs.',
         'ui.musicBox.safePairs': 'Placez celles-ci\n(4 paires)',
@@ -1788,6 +1879,7 @@ const UI_TEXT_ADDITIONS = {
     },
     ru: {
         'ui.card.egg': 'Яйцо',
+        'ui.card.web': 'Сеть',
         'ui.musicBox.title': 'Взломать замок',
         'ui.musicBox.brief': 'Найдите 4 подходящие пары. Не соединяйте детонаторы.',
         'ui.musicBox.safePairs': 'Соедините их\n(4 пары)',
@@ -2019,7 +2111,7 @@ const EVENT_TEXT_ADDITIONS = {
         'event.reward.brassCog': 'Brass cog', 'event.reward.fedMagic': 'Fed magic card: {name}', 'event.reward.consumedMagic': 'Consumed magic card: {name}', 'event.reward.spentCoins': '-{amount} coins', 'event.reward.noReward': 'No reward',
         'event.reward.gainedCard': 'Gained card: {name}', 'event.reward.gainedJunk': 'Gained junk card: {name}', 'event.reward.gainedCompanion': 'Gained companion: {name}', 'event.reward.gainedPassive': 'Gained passive card: {name}', 'event.reward.cloverHint': 'Gained: {name} — tap it in battle to equip', 'event.reward.repaired': 'Repaired: {name} (+{amount} durability)',
         'event.reward.offered': 'Offered: {name}', 'event.reward.received': 'Received: {name}', 'event.reward.traded': 'Traded: {oldName} → {newName}', 'event.reward.kept': 'Kept: {name}', 'event.reward.lostStake': 'Lost stake: {name}', 'event.reward.enchanted': '{name}: enchanted', 'event.reward.permanentDamage': '{name}: +1 permanent damage', 'event.reward.thornDamage': '{name}: +1 thorn damage',
-        'event.reward.stormHatchling': 'Storm Hatchling: 20% chance to Shock for 1 turn', 'event.reward.slimeboneGuard': 'Slimebone Guard: +1 protection while carried', 'event.reward.companionDamage': '{name}: +1 damage',
+        'event.reward.stormHatchling': 'Storm Chick: 20% chance to Shock for 1 turn', 'event.reward.slimeboneGuard': 'Slimebone Guard: +1 protection while carried', 'event.reward.companionDamage': '{name}: +1 damage',
     },
     es: {
         'tooltip.passiveEffect': 'Efecto pasivo mientras se lleva.', 'tooltip.noEffect': 'Sin efecto.',
@@ -2125,6 +2217,7 @@ for (const [language, additions] of Object.entries(COMPANION_TEXT_ADDITIONS)) {
  * pair the other locales use.
  */
 const GERMAN_STRINGS = {
+    'ui.village.support': 'Beistand: {amount}',
     // --- Menus, options, test screens ---------------------------------------
     'ui.menu.testOptions': 'Testoptionen',
     'ui.menu.tutorial': 'Tutorial',
@@ -2425,9 +2518,10 @@ const GERMAN_STRINGS = {
     'ui.birdNest.run': 'Weglaufen',
     'ui.birdNest.buried': 'Noch verschüttet. Räum erst den Plunder weg.',
     'ui.birdNest.cogTaken': 'Das Messingzahnrad gehört dir.',
-    'ui.birdNest.eggTaken': 'Das Ei liegt warm in deiner Hand.',
+    'ui.birdNest.eggTaken': 'Das Ei liegt warm in deiner Hand.', 'ui.birdNest.coinsTaken': 'Die Münzen gehören dir.', 'ui.birdNest.crystalsTaken': 'Die Kristalle gehören dir.',
     'ui.birdNest.caught': 'Der Schatten hat dich gefunden.',
     'ui.card.egg': 'Ei',
+    'ui.card.web': 'Netz',
     'ui.musicBox.title': 'Das Schloss knacken',
     'ui.musicBox.brief': 'Finde 4 Paare, die passen. Setze die Zünder nicht.',
     'ui.musicBox.safePairs': 'Diese setzen\n(4 Paare)',
@@ -3379,7 +3473,7 @@ const EVENT_NARRATIVE_TRANSLATIONS = {
     es: {
         'Quiet Crossroads': 'Cruce tranquilo',
         'For one floor, nothing is haunted, cursed, or pretending to be a chest.\n\nThere is a small dry alcove, a few coins someone dropped, and quiet.': 'Durante un piso, nada está embrujado, maldito ni finge ser un cofre.\n\nHay un pequeño hueco seco, unas monedas que alguien dejó caer y silencio.',
-        'Gain 10 coins': 'Ganar 10 monedas', 'Heal 5 HP': 'Curar 5 PV', 'Leave': 'Salir',
+        'Gain 10 coins': 'Ganar 10 monedas', 'Heal 5 HP': 'Curar 5 PV', 'Leave': 'Salir', 'Pick up the coins': 'Recoger las monedas', 'Rest in the alcove': 'Descansar en el hueco',
         'You pocket the coins and move on.': 'Guardas las monedas y sigues adelante.',
         'You sit down for a few minutes. Nothing attacks you. It helps more than it should.': 'Te sientas unos minutos. Nada te ataca. Ayuda más de lo que debería.',
         "You don't trust it. You keep moving.": 'No te fías. Sigues avanzando.',
@@ -3404,7 +3498,7 @@ const EVENT_NARRATIVE_TRANSLATIONS = {
     fr: {
         'Quiet Crossroads': 'Carrefour tranquille',
         'For one floor, nothing is haunted, cursed, or pretending to be a chest.\n\nThere is a small dry alcove, a few coins someone dropped, and quiet.': 'Pendant un étage, rien n’est hanté, maudit ou déguisé en coffre.\n\nIl y a une petite alcôve sèche, quelques pièces tombées par quelqu’un et du calme.',
-        'Gain 10 coins': 'Gagner 10 pièces', 'Heal 5 HP': 'Soigner 5 PV', 'Leave': 'Partir',
+        'Gain 10 coins': 'Gagner 10 pièces', 'Heal 5 HP': 'Soigner 5 PV', 'Leave': 'Partir', 'Pick up the coins': 'Ramasser les pièces', 'Rest in the alcove': 'Se reposer dans l’alcôve',
         'You pocket the coins and move on.': 'Vous empochez les pièces et continuez.',
         'You sit down for a few minutes. Nothing attacks you. It helps more than it should.': 'Vous vous asseyez quelques minutes. Rien ne vous attaque. Cela aide plus que prévu.',
         "You don't trust it. You keep moving.": 'Vous ne lui faites pas confiance. Vous continuez.',
@@ -3429,7 +3523,7 @@ const EVENT_NARRATIVE_TRANSLATIONS = {
     ru: {
         'Quiet Crossroads': 'Тихий перекресток',
         'For one floor, nothing is haunted, cursed, or pretending to be a chest.\n\nThere is a small dry alcove, a few coins someone dropped, and quiet.': 'На целый этаж здесь нет ничего проклятого, населенного призраками или притворяющегося сундуком.\n\nЕсть маленькая сухая ниша, несколько оброненных кем-то монет и тишина.',
-        'Gain 10 coins': 'Получить 10 монет', 'Heal 5 HP': 'Восстановить 5 ОЗ', 'Leave': 'Уйти',
+        'Gain 10 coins': 'Получить 10 монет', 'Heal 5 HP': 'Восстановить 5 ОЗ', 'Leave': 'Уйти', 'Pick up the coins': 'Подобрать монеты', 'Rest in the alcove': 'Отдохнуть в нише',
         'You pocket the coins and move on.': 'Вы забираете монеты и идете дальше.',
         'You sit down for a few minutes. Nothing attacks you. It helps more than it should.': 'Вы садитесь на несколько минут. Никто не нападает. Это помогает больше, чем должно.',
         "You don't trust it. You keep moving.": 'Вы не доверяете этому месту. Вы идете дальше.',
@@ -4068,25 +4162,28 @@ for (const [language, text] of Object.entries({
 }
 
 for (const [language, text] of Object.entries({
-    en: ['Summon Mimic', 'Summons a hostile Mimic into an empty space. Defeat it before it escapes to claim its loot.', 'Mimic summoned!'],
-    es: ['Invocar mímico', 'Invoca un mímico hostil en un espacio vacío. Derrótalo antes de que escape para obtener su botín.', '¡Mímico invocado!'],
-    fr: ['Invoquer un mimique', 'Invoque un mimique hostile dans un emplacement vide. Battez-le avant sa fuite pour obtenir son butin.', 'Mimique invoqué !'],
-    ru: ['Призыв мимика', 'Призывает враждебного мимика на свободное место. Победи его до побега, чтобы получить добычу.', 'Мимик призван!'],
-    de: ['Mimik beschwören', 'Beschwört einen feindlichen Mimik auf einem freien Platz. Besiege ihn vor seiner Flucht, um seine Beute zu erhalten.', 'Mimik beschworen!'],
+    en: ['Summon Mimic', 'Summon a Mimic. Defeat it for loot.', 'Mimic summoned!', 'Needs a free card space on a combat board.'],
+    es: ['Invocar mímico', 'Invoca un mímico. Derrótalo para obtener botín.', '¡Mímico invocado!', 'Necesita un espacio libre en un tablero de combate.'],
+    fr: ['Invoquer un mimique', 'Invoque un mimique. Battez-le pour obtenir du butin.', 'Mimique invoqué !', 'Nécessite un emplacement libre sur un plateau de combat.'],
+    ru: ['Призыв мимика', 'Призывает мимика. Победи его ради добычи.', 'Мимик призван!', 'Нужно свободное место на поле боя.'],
+    de: ['Mimik beschwören', 'Beschwört einen Mimik. Besiege ihn für Beute.', 'Mimik beschworen!', 'Benötigt einen freien Kartenplatz auf einem Kampffeld.'],
 })) {
     STRINGS[language]['magic.summonMimic.appeared'] = text[2];
+    STRINGS[language]['magic.summonMimic.unavailable'] = text[3];
     if (language !== 'en') {
         EXACT_NAME_TRANSLATIONS[language]['Summon Mimic'] = text[0];
         DESCRIPTION_TRANSLATIONS[language]['Summons a hostile Mimic into an empty space. Defeat it before it escapes to claim its loot.'] = text[1];
+        DESCRIPTION_TRANSLATIONS[language]['Drop onto the board to summon a hostile Mimic in a free card space, even after combat. Defeat it before it escapes to claim its loot.'] = text[1];
+        DESCRIPTION_TRANSLATIONS[language]['Summon a Mimic. Defeat it for loot.'] = text[1];
     }
 }
 
 for (const [language, text] of Object.entries({
-    en: ['Scorched', 'adds 3 burn to every enemy, including hidden ones', 'Scorched Land', 'Adds 3 burn to every enemy, including hidden ones. Burn deals its counter each turn, then drops by 1.', 'Ash Cloud', 'Flips all revealed non-boss enemies face-down', 'Burn {amount}: decreases by 1 each turn', 'Scorched!'],
-    es: ['Calcinado', 'añade 3 de quemadura a todos los enemigos, incluidos los ocultos', 'Tierra calcinada', 'Añade 3 de quemadura a todos los enemigos, incluidos los ocultos. Cada turno, la quemadura inflige su valor y luego disminuye en 1.', 'Nube de ceniza', 'Vuelve boca abajo a todos los enemigos revelados excepto los jefes', 'Quemadura {amount}: disminuye en 1 cada turno', '¡Calcinado!'],
-    fr: ['Calciné', 'ajoute 3 de brûlure à tous les ennemis, même cachés', 'Terre calcinée', 'Ajoute 3 de brûlure à tous les ennemis, même cachés. Chaque tour, la brûlure inflige sa valeur puis diminue de 1.', 'Nuage de cendres', 'Retourne face cachée tous les ennemis révélés sauf les boss', 'Brûlure {amount} : diminue de 1 par tour', 'Calciné !'],
-    ru: ['Ожог', 'добавляет 3 ожога всем врагам, включая скрытых', 'Выжженная земля', 'Добавляет 3 ожога всем врагам, включая скрытых. Каждый ход ожог наносит урон, равный счётчику, затем уменьшается на 1.', 'Облако пепла', 'Закрывает всех открытых врагов, кроме боссов', 'Ожог {amount}: уменьшается на 1 каждый ход', 'Ожог!'],
-    de: ['Versengt', 'fügt allen Gegnern 3 Brand hinzu, auch verdeckten', 'Verbrannte Erde', 'Fügt allen Gegnern 3 Brand hinzu, auch verdeckten. Brand verursacht jede Runde Schaden in Höhe seines Zählers und sinkt dann um 1.', 'Aschewolke', 'Dreht alle aufgedeckten Gegner außer Bossen wieder um', 'Brand {amount}: sinkt jede Runde um 1', 'Versengt!'],
+    en: ['Scorched', 'adds 3 burn to every enemy, including hidden ones', 'Scorched Land', 'Apply 3 Burn to all enemies, even hidden ones.', 'Ash Cloud', 'Flips all revealed non-boss enemies face-down', 'Burn {amount}: decreases by 1 each turn', 'Scorched!'],
+    es: ['Calcinado', 'añade 3 de quemadura a todos los enemigos, incluidos los ocultos', 'Tierra calcinada', 'Aplica 3 de quemadura a todos los enemigos, incluso los ocultos.', 'Nube de ceniza', 'Vuelve boca abajo a todos los enemigos revelados excepto los jefes', 'Quemadura {amount}: disminuye en 1 cada turno', '¡Calcinado!'],
+    fr: ['Calciné', 'ajoute 3 de brûlure à tous les ennemis, même cachés', 'Terre calcinée', 'Applique 3 de brûlure à tous les ennemis, même cachés.', 'Nuage de cendres', 'Retourne face cachée tous les ennemis révélés sauf les boss', 'Brûlure {amount} : diminue de 1 par tour', 'Calciné !'],
+    ru: ['Ожог', 'добавляет 3 ожога всем врагам, включая скрытых', 'Выжженная земля', 'Накладывает 3 ожога на всех врагов, даже скрытых.', 'Облако пепла', 'Закрывает всех открытых врагов, кроме боссов', 'Ожог {amount}: уменьшается на 1 каждый ход', 'Ожог!'],
+    de: ['Versengt', 'fügt allen Gegnern 3 Brand hinzu, auch verdeckten', 'Verbrannte Erde', 'Fügt allen Gegnern 3 Brand hinzu, auch verdeckten.', 'Aschewolke', 'Dreht alle aufgedeckten Gegner außer Bossen wieder um', 'Brand {amount}: sinkt jede Runde um 1', 'Versengt!'],
 })) {
     Object.assign(STRINGS[language], {
         'enchant.scorched.title': text[0], 'enchant.scorched.summary': text[1],
@@ -4097,6 +4194,7 @@ for (const [language, text] of Object.entries({
         EXACT_NAME_TRANSLATIONS[language]['Scorched Land'] = text[2];
         EXACT_NAME_TRANSLATIONS[language]['Ash Cloud'] = text[4];
         DESCRIPTION_TRANSLATIONS[language]['Adds 3 burn to every enemy, including hidden ones. Burn deals its counter each turn, then drops by 1.'] = text[3];
+        DESCRIPTION_TRANSLATIONS[language]['Apply 3 Burn to all enemies, even hidden ones.'] = text[3];
         DESCRIPTION_TRANSLATIONS[language]['Flips all revealed non-boss enemies face-down'] = text[5];
     }
 }
@@ -4253,16 +4351,17 @@ for (const [language, text] of Object.entries({
 }
 
 for (const [language, text] of Object.entries({
-    en: ['Thunderclap', 'Deals 3 lightning damage to all revealed enemies and shocks survivors for one missed attack, including bosses.', 'Shock', 'the struck enemy misses its next attack, including bosses'],
-    es: ['Trueno', 'Inflige 3 de daño de rayo a todos los enemigos revelados y los supervivientes pierden su próximo ataque, incluidos los jefes.', 'Descarga', 'el enemigo golpeado pierde su próximo ataque, incluidos los jefes'],
-    fr: ['Coup de tonnerre', 'Inflige 3 dégâts de foudre à tous les ennemis révélés ; les survivants ratent leur prochaine attaque, même les boss.', 'Choc', 'la cible touchée rate sa prochaine attaque, même les boss'],
-    ru: ['Раскат грома', 'Наносит 3 урона молнией всем открытым врагам. Выжившие, включая боссов, пропускают следующую атаку.', 'Шок', 'поражённый враг пропускает следующую атаку, включая боссов'],
-    de: ['Donnerschlag', 'Verursacht 3 Blitzschaden bei allen aufgedeckten Gegnern. Überlebende, auch Bosse, verfehlen ihren nächsten Angriff.', 'Schock', 'der getroffene Gegner verfehlt seinen nächsten Angriff, auch Bosse'],
+    en: ['Thunderclap', 'Deal 3 damage and Shock all revealed enemies.', 'Shock', 'the struck enemy misses its next attack, including bosses'],
+    es: ['Trueno', 'Inflige 3 de daño y aplica Descarga a todos los enemigos revelados.', 'Descarga', 'el enemigo golpeado pierde su próximo ataque, incluidos los jefes'],
+    fr: ['Coup de tonnerre', 'Inflige 3 dégâts et applique Choc à tous les ennemis révélés.', 'Choc', 'la cible touchée rate sa prochaine attaque, même les boss'],
+    ru: ['Раскат грома', 'Наносит 3 урона и накладывает Шок на всех открытых врагов.', 'Шок', 'поражённый враг пропускает следующую атаку, включая боссов'],
+    de: ['Donnerschlag', 'Verursacht 3 Schaden und Schock bei allen aufgedeckten Gegnern.', 'Schock', 'der getroffene Gegner verfehlt seinen nächsten Angriff, auch Bosse'],
 })) {
     Object.assign(STRINGS[language], { 'enchant.thunderclap.title': text[2], 'enchant.thunderclap.summary': text[3] });
     if (language !== 'en') {
         EXACT_NAME_TRANSLATIONS[language].Thunderclap = text[0];
         DESCRIPTION_TRANSLATIONS[language]['Deals 3 lightning damage to all revealed enemies and shocks survivors for one missed attack, including bosses.'] = text[1];
+        DESCRIPTION_TRANSLATIONS[language]['Deal 3 damage and Shock all revealed enemies.'] = text[1];
     }
 }
 
@@ -4287,11 +4386,11 @@ for (const [language, text] of Object.entries({
 }
 
 for (const [language, text] of Object.entries({
-    en: ['Desert Feast', 'Fully restores Action Points without healing HP.', 'Second Wind', 'restores 2 action points after a damaging hit', 'Action Points restored!', 'Sandglass Scarab', 'Each food you eat gives +1 max action point (up to +10 a run).'],
-    es: ['Festín del desierto', 'Restaura todos los puntos de acción sin curar PV.', 'Segundo aliento', 'restaura 2 puntos de acción tras un golpe que causa daño', '¡Puntos de acción restaurados!', 'Escarabajo de vidrio de arena', 'Cada comida otorga +1 punto de acción máximo (hasta +10 por partida).'],
-    fr: ['Festin du désert', 'Restaure tous les points d’action sans soigner les PV.', 'Second souffle', 'restaure 2 points d’action après un coup infligeant des dégâts', 'Points d’action restaurés !', 'Scarabée de verre des sables', 'Chaque aliment mangé donne +1 point d’action maximum (jusqu’à +10 par partie).'],
-    ru: ['Пир пустыни', 'Полностью восстанавливает очки действий, не восстанавливая здоровье.', 'Второе дыхание', 'восстанавливает 2 очка действий после удара, нанёсшего урон', 'Очки действий восстановлены!', 'Скарабей из песчаного стекла', 'Каждая съеденная еда даёт +1 к максимуму очков действий (до +10 за забег).'],
-    de: ['Wüstenmahl', 'Stellt alle Aktionspunkte wieder her, ohne LP zu heilen.', 'Zweiter Atem', 'stellt nach einem schadenden Treffer 2 Aktionspunkte wieder her', 'Aktionspunkte wiederhergestellt!', 'Sandglasskarabäus', 'Jede verzehrte Nahrung gewährt +1 maximalen Aktionspunkt (bis zu +10 pro Durchlauf).'],
+    en: ['Desert Feast', 'Restore Action Points', 'Second Wind', 'restores 2 action points after a damaging hit', 'Action Points restored!', 'Sandglass Scarab', 'Each food you eat gives +1 max action point (up to +10 a run).'],
+    es: ['Festín del desierto', 'Restaura puntos de acción', 'Segundo aliento', 'restaura 2 puntos de acción tras un golpe que causa daño', '¡Puntos de acción restaurados!', 'Escarabajo de vidrio de arena', 'Cada comida otorga +1 punto de acción máximo (hasta +10 por partida).'],
+    fr: ['Festin du désert', 'Restaure les points d’action', 'Second souffle', 'restaure 2 points d’action après un coup infligeant des dégâts', 'Points d’action restaurés !', 'Scarabée de verre des sables', 'Chaque aliment mangé donne +1 point d’action maximum (jusqu’à +10 par partie).'],
+    ru: ['Пир пустыни', 'Восстанавливает очки действий', 'Второе дыхание', 'восстанавливает 2 очка действий после удара, нанёсшего урон', 'Очки действий восстановлены!', 'Скарабей из песчаного стекла', 'Каждая съеденная еда даёт +1 к максимуму очков действий (до +10 за забег).'],
+    de: ['Wüstenmahl', 'Stellt Aktionspunkte wieder her', 'Zweiter Atem', 'stellt nach einem schadenden Treffer 2 Aktionspunkte wieder her', 'Aktionspunkte wiederhergestellt!', 'Sandglasskarabäus', 'Jede verzehrte Nahrung gewährt +1 maximalen Aktionspunkt (bis zu +10 pro Durchlauf).'],
 })) {
     Object.assign(STRINGS[language], {
         'enchant.desertFeast.title': text[2], 'enchant.desertFeast.summary': text[3],
@@ -4301,6 +4400,7 @@ for (const [language, text] of Object.entries({
         EXACT_NAME_TRANSLATIONS[language]['Desert Feast'] = text[0];
         EXACT_NAME_TRANSLATIONS[language]['Sandglass Scarab'] = text[5];
         DESCRIPTION_TRANSLATIONS[language]['Fully restores Action Points without healing HP.'] = text[1];
+        DESCRIPTION_TRANSLATIONS[language]['Restore Action Points'] = text[1];
         DESCRIPTION_TRANSLATIONS[language]['Each food you eat gives +1 max action point (up to +10 a run).'] = text[6];
     }
 }
@@ -4320,12 +4420,45 @@ for (const [language, text] of Object.entries({
 }
 
 for (const [language, names] of Object.entries({
+    es: ['Guardia de las nubes', 'Abeja relámpago', 'Gólem de tormenta', 'Ojo relámpago', 'Arquero de las nubes'],
+    fr: ['Garde des nuages', 'Abeille foudre', 'Golem de tempête', 'Œil foudroyant', 'Archer des nuages'],
+    ru: ['Страж облаков', 'Пчела-молния', 'Грозовой голем', 'Глаз-молния', 'Лучник облаков'],
+    de: ['Wolkenwächter', 'Blitzbiene', 'Sturmgolem', 'Blitzauge', 'Wolkenbogenschütze'],
+})) {
+    ['Cloudborn Guard', 'Lightning Bee', 'Storm Golem', 'Lightning Eye', 'Cloudborn Archer'].forEach((name, index) => {
+        EXACT_NAME_TRANSLATIONS[language][name] = names[index];
+    });
+}
+
+for (const [language, names] of Object.entries({
     es: ['Bruto de nieve', 'Arquero de nieve', 'Orbe de hielo', 'Gólem de hielo', 'Caballero congelado'],
     fr: ['Brute des neiges', 'Archer des neiges', 'Orbe de glace', 'Golem de glace', 'Chevalier gelé'],
     ru: ['Снежный громила', 'Снежный лучник', 'Ледяная сфера', 'Ледяной голем', 'Замёрзший рыцарь'],
     de: ['Schneebrute', 'Schneebogenschütze', 'Eiskugel', 'Eisgolem', 'Gefrorener Ritter'],
 })) {
     ['Snow Brute', 'Snow Archer', 'Ice Orb', 'Ice Golem', 'Frozen Knight'].forEach((name, index) => {
+        EXACT_NAME_TRANSLATIONS[language][name] = names[index];
+    });
+}
+
+for (const [language, names] of Object.entries({
+    es: ['Ladrón cocinero', 'Ladrón matón', 'Ladrón vigía'],
+    fr: ['Voleur cuisinier', 'Voleur costaud', 'Voleur guetteur'],
+    ru: ['Вор-повар', 'Вор-громила', 'Вор-наблюдатель'],
+    de: ['Räuberkoch', 'Räuberschläger', 'Räuberspäher'],
+})) {
+    ['Robber Cook', 'Robber Muscle', 'Robber Lookout'].forEach((name, index) => {
+        EXACT_NAME_TRANSLATIONS[language][name] = names[index];
+    });
+}
+
+for (const [language, names] of Object.entries({
+    es: ['Polluelo', 'Polluelo de tormenta', 'Guerrero esqueleto', 'Guardia de limobuesos', 'Arañita de cristal', 'Buscador de cristales'],
+    fr: ['Poussin', 'Poussin de tempête', 'Guerrier squelette', 'Garde d’os visqueux', 'Petite araignée de cristal', 'Chercheur de cristaux'],
+    ru: ['Цыпленок', 'Грозовой цыпленок', 'Воин-скелет', 'Страж из слизистых костей', 'Хрустальный паучок', 'Искатель кристаллов'],
+    de: ['Küken', 'Sturmküken', 'Skelettkrieger', 'Schleimknochenwache', 'Kristallspinnchen', 'Kristallsucher'],
+})) {
+    ['Chick', 'Storm Chick', 'Skeleton Warrior', 'Slimebone Guard', 'Crystal Spiderling', 'Crystal Seeker'].forEach((name, index) => {
         EXACT_NAME_TRANSLATIONS[language][name] = names[index];
     });
 }

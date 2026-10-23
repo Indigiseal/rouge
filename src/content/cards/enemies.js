@@ -6,10 +6,11 @@ import { BONEFLOOD_ENEMY_DEFS } from '../location-packs/boneflood/index.js';
 import { MIRETURN_ENEMY_DEFS } from '../location-packs/mireturn/index.js';
 import { VEILBLEED_ENEMY_DEFS } from '../location-packs/veilbleed/index.js';
 import { ASHHOWL_ENEMY_DEFS } from '../location-packs/ashhowl/index.js';
-import { STORMHATCH_ENEMY_DEFS } from '../location-packs/stormhatch/index.js';
+import { STORMHATCH_ENEMY_DEFS, STORMHATCH_ENEMY_ALIASES } from '../location-packs/stormhatch/index.js';
 import { FROSTHOLLOW_ENEMY_DEFS, FROSTHOLLOW_ENEMY_ALIASES } from '../location-packs/frosthollow/index.js';
 import { SANDREACH_ENEMY_DEFS } from '../location-packs/sandreach/index.js';
 import { CRYSTAL_SPIDER_DEFS } from './crystalSpiders.js';
+import { ROBBER_DEFS } from './robbers.js';
 
 // Enemy catalog.
 // - Month packs (band + archetype): content/location-packs/<id>/enemies/
@@ -122,6 +123,8 @@ export const ENEMIES = {
   ...SANDREACH_ENEMY_DEFS,
   // Off every roster: only the Crystal Lair deals them.
   ...CRYSTAL_SPIDER_DEFS,
+  // Off every roster: only stories deal them.
+  ...ROBBER_DEFS,
 };
 
 export const SUMMON_ONLY_ENEMY_TYPES = new Set(['cerberusHead']);
@@ -132,12 +135,15 @@ export function usesBandStats(enemyOrType) {
   return !!(enemy && enemy.archetype && !enemy.tiers);
 }
 
+// Retired placeholder ids resolve to the creature that replaced them.
+const ENEMY_ALIASES = { ...FROSTHOLLOW_ENEMY_ALIASES, ...STORMHATCH_ENEMY_ALIASES };
+
 export function getEnemy(id) {
-  return ENEMIES[FROSTHOLLOW_ENEMY_ALIASES[id] || id] || null;
+  return ENEMIES[ENEMY_ALIASES[id] || id] || null;
 }
 
 export function buildEnemyCardFromDef(enemyType, floor, isElite = false) {
-  enemyType = FROSTHOLLOW_ENEMY_ALIASES[enemyType] || enemyType;
+  enemyType = ENEMY_ALIASES[enemyType] || enemyType;
   const enemy = ENEMIES[enemyType];
   if (!enemy) return null;
 

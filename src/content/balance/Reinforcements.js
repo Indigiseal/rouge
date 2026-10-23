@@ -4,7 +4,7 @@
  * cards once the player has cleared most of that board.
  */
 export const REINFORCEMENT_RULES = [
-  { floors: [1, 45], roomTypes: ['COMBAT'], maxBoardCards: 15, waveSize: 6, threshold: 3 },
+  { floors: [1, 45], roomTypes: ['COMBAT', 'ELITE'], maxBoardCards: 15, waveSize: 6, threshold: 3 },
 ];
 
 /** Return fresh wave state only when a room exceeds its visible-card cap. */

@@ -11,7 +11,7 @@ import { describeWeaponEnchant } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 import { handLockOf } from '../../content/combat/handLock.js';
 import { sigilLine, storedSigils } from '../../content/sigils/sigils.js';
-import { refreshWeaponValueText } from '../board/BoardCardFx.js';
+import { refreshWeaponValueText, refreshCompanionValueText } from '../board/BoardCardFx.js';
 import { createFireReach } from '../../ui/FireReach.js';
 import {
     axeHeavyCleaveTargetIndices,
@@ -624,6 +624,7 @@ export const InventoryView = {
         (this.slotSprites || []).forEach((slot) => {
             const info = slot?.card?.getData?.('infoText');
             if (info?._weaponDamageText) refreshWeaponValueText(this.scene, info);
+            if (info?._companionDamageText) refreshCompanionValueText(this.scene, info);
         });
     },
     destroyFireReachIndicator() {
@@ -1437,8 +1438,8 @@ export const InventoryView = {
         return special;
     },
     describeMagicCard(card) {
-        if (card.magicType === 'desertFeast') return translateDescription(this.scene, 'Fully restores Action Points without healing HP.');
-        if (card.magicType === 'thunderclap') return translateDescription(this.scene, 'Deals 3 lightning damage to all revealed enemies and shocks survivors for one missed attack, including bosses.');
+        if (card.magicType === 'desertFeast') return translateDescription(this.scene, 'Restore Action Points');
+        if (card.magicType === 'thunderclap') return translateDescription(this.scene, 'Deal 3 damage and Shock all revealed enemies.');
         if (card.magicType === 'fireball') return translateDescription(this.scene, 'Deals damage to one enemy.');
         if (card.magicType === 'frostRing') return translateDescription(this.scene, 'Freezes all enemies.');
         if (card.magicType === 'restoration') return translateDescription(this.scene, 'Fully restores HP and AP.');
@@ -1448,8 +1449,8 @@ export const InventoryView = {
         if (card.magicType === 'boneWall') return translateDescription(this.scene, 'Blocks the next attacks.');
         if (card.magicType === 'briarShield') return translateDescription(this.scene, 'Reflects the next attacks.');
         if (card.magicType === 'venomousBomb') return translateDescription(this.scene, 'All revealed enemies take 3 poison damage for 3 turns');
-        if (card.magicType === 'scorched') return translateDescription(this.scene, 'Adds 3 burn to every enemy, including hidden ones. Burn deals its counter each turn, then drops by 1.');
-        if (card.magicType === 'summonMimic') return translateDescription(this.scene, 'Summons a hostile Mimic into an empty space. Defeat it before it escapes to claim its loot.');
+        if (card.magicType === 'scorched') return translateDescription(this.scene, 'Apply 3 Burn to all enemies, even hidden ones.');
+        if (card.magicType === 'summonMimic') return translateDescription(this.scene, 'Summon a Mimic. Defeat it for loot.');
         if (card.magicType === 'magicShield') return translateDescription(this.scene, 'Boosts armor.');
         if (card.magicType === 'smokeScreen') return translateDescription(this.scene, 'Hides revealed enemies.');
         return translateDescription(this.scene, 'Single-use magic.');

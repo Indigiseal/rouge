@@ -8,6 +8,7 @@ import {
   locationDoorArt,
 } from '../content/assets/locationCards.js';
 import { t } from '../i18n/i18n.js';
+import { ensureLocationAssets } from '../content/assets/locationAssets.js';
 import { createTitle } from '../ui/titleText.js';
 import { snapOriginToPixelGrid } from '../ui/PixelSnap.js';
 import { applyOverlayLight } from '../ui/OverlayLightPipeline.js';
@@ -231,28 +232,40 @@ export class LocationPickScene extends Phaser.Scene {
   leave(locationId) {
     if (this.mode === 'nextAct' && this.gameState) {
       if (!applyLocationChoice(this.gameState, locationId, this.pickAct)) return;
-      const act = this.pickAct;
-      const startNode = this.gameState.dungeonMap?.[`act${act}`]?.floors?.[0]?.[0];
-      this.gameState.mapCursor = { act, floor: 0, node: 0 };
-      this.gameState.currentFloor = (act - 1) * 15 + 1;
-      this.gameState.roomType = startNode?.type || 'COMBAT';
-      if (startNode) startNode.visited = true;
-      const gameScene = this.scene.get('GameScene');
-      // BossRewardRoom put the shared combat scene into transition mode before
-      // sleeping it. The first room of the new act must start as a normal room,
-      // otherwise its cleared-state exit (including the Brassfair door) stays
-      // suppressed.
-      if (gameScene) gameScene._transitioning = false;
-      gameScene?.saveCurrentRun?.();
-      this.scene.stop('MapViewScene');
-      this.scene.stop();
-      this.scene.wake('GameScene', {
-        roomType: this.gameState.roomType,
-        isNewRoom: true,
-      });
+      if (this._leavingForAct) return;
+      this._leavingForAct = true;
+      // The new road's painting and boards are not loaded yet: fetch them, then
+      // go. (Stopping this scene first would cancel its own loader.)
+      ensureLocationAssets(this, [locationId]).then(() => this._enterNextAct());
       return;
     }
+    this._startRun(locationId);
+  }
 
+  _enterNextAct() {
+    this._leavingForAct = false;
+    const act = this.pickAct;
+    const startNode = this.gameState.dungeonMap?.[`act${act}`]?.floors?.[0]?.[0];
+    this.gameState.mapCursor = { act, floor: 0, node: 0 };
+    this.gameState.currentFloor = (act - 1) * 15 + 1;
+    this.gameState.roomType = startNode?.type || 'COMBAT';
+    if (startNode) startNode.visited = true;
+    const gameScene = this.scene.get('GameScene');
+    // BossRewardRoom put the shared combat scene into transition mode before
+    // sleeping it. The first room of the new act must start as a normal room,
+    // otherwise its cleared-state exit (including the Brassfair door) stays
+    // suppressed.
+    if (gameScene) gameScene._transitioning = false;
+    gameScene?.saveCurrentRun?.();
+    this.scene.stop('MapViewScene');
+    this.scene.stop();
+    this.scene.wake('GameScene', {
+      roomType: this.gameState.roomType,
+      isNewRoom: true,
+    });
+  }
+
+  _startRun(locationId) {
     const runData = {
       newGame: true,
       characterId: this.characterId,

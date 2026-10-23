@@ -19,7 +19,7 @@ import { tuned } from '../balance/Tuning.js';
 export const BOSSES = {
   sandscaleChieftain: {
     type: 'boss', tier: 2, name: 'Sandscale Chieftain', health: 167, attack: 17,
-    sprite: 'enemyPlaceholder', sigils: [{ id: 'quickStrike' }, { id: 'daze' }],
+    sprite: 'lizardBoss', sigils: [{ id: 'quickStrike' }, { id: 'daze' }],
     abilities: [{ type: 'summon', enemyType: 'lizardArcher', chance: 0.25, count: 1 }],
   },
   frostGiant: {
@@ -29,9 +29,9 @@ export const BOSSES = {
   },
   // Selected by Storm's location; keep legacy tier averages unchanged.
   tempestRoc: {
-    type: 'boss', tier: 2, name: 'Tempest Roc', health: 167, attack: 17,
-    sprite: 'enemyPlaceholder', sigils: [{ id: 'shock' }],
-    abilities: [{ type: 'summon', enemyType: 'thunderCrow', chance: 0.25, count: 1 }],
+    type: 'boss', tier: 2, name: 'Storm Archon', health: 167, attack: 17,
+    sprite: 'lightningBoss', spriteScale: 0.5, sigils: [{ id: 'shock' }],
+    abilities: [{ type: 'summon', enemyType: 'lightningEye', chance: 0.25, count: 1 }],
   },
   // ---- Tier 1 (Act 1 finale, floor 15) ----
   giantSkeleton: {

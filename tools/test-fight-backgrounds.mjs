@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { TOP_PINNED_BACKGROUNDS, fightBackgroundKey, fightBackdropKey } from '../src/content/locations/fightBackgrounds.js';
 import { ASSET_MANIFEST } from '../src/content/assets/AssetManifest.js';
+import { ALL_LOCATION_ASSETS } from '../src/content/assets/locationAssets.js';
+// Location paintings and boards load per location, not at boot.
+const assetFor = (key) => [...ASSET_MANIFEST, ...ALL_LOCATION_ASSETS].find(asset => asset.key === key);
 
 globalThis.Phaser = { Scene: class {}, Renderer: { WebGL: { Pipelines: { PostFXPipeline: class {} } } } };
 const { BoardLayout } = await import('../src/systems/board/BoardLayout.js');
@@ -43,7 +46,7 @@ function fixture(gameState, roomType) {
     layout.createFloorBoardPanel([{ r: 0, c: 0 }], {}, false);
     const panel = cs.floorBoardPanel;
     assert.equal(panel.depth, 0);
-    assert.equal(panel.key, 'gamingBoard', 'the room picture is not wrapped onto the gaming board');
+    assert.equal(panel.key, 'gamingBoardBoneflood', 'Boneflood fights on its own bone board, with no room picture wrapped onto it');
     assert.equal(panel.list.length, 0);
     layout.clearFloorBoardPanel();
     assert.equal(panel.scene, null, 'board teardown still works');
@@ -62,7 +65,7 @@ missing.cs.scene.textures.exists = key => key === 'gamingBoard';
 missing.layout.createFloorBoardPanel([{ r: 0, c: 0 }], {}, false);
 assert.equal(missing.cs.floorBoardPanel.key, 'gamingBoard', 'missing picture leaves the board intact');
 for (const key of ['goblinCaveBackground', 'bonefloodBackground']) {
-    const asset = ASSET_MANIFEST.find(asset => asset.key === key);
+    const asset = assetFor(key);
     assert.ok(asset && existsSync(asset.path), `${key} is registered and saved in the game assets`);
 }
 console.log('Fight board art passed: location selection, native size, child layering, boss boards, cleanup, and fallback.');
@@ -128,6 +131,30 @@ assert.equal(host.eventBackdrop.visible, false);
 assert.equal(host.backgroundImage.visible, true);
 console.log('Shared location backdrop passed: shops, treasure, sigils, events, event cleanup, and fallback.');
 
+// Post-boss shops use the completed act's painting without rewinding run
+// progression. Clearing the station override restores the new act's art.
+for (const floor of [16, 31]) {
+    for (const location of ['tollroad', 'silkdeep', 'veilbleed', 'thornwake', 'mireturn',
+        'boneflood', 'ashhowl', 'stormhatch', 'frosthollow', 'sandreach']) {
+        const locations = [null, null, null];
+        locations[Math.floor((floor - 2) / 15)] = location;
+        host.gameState = { currentFloor: floor, actLocationIds: locations };
+        host._stationBackdropFloor = floor - 1;
+        for (const room of ['SHOP', 'RARE_SHOP']) {
+            GameScene.prototype.refreshFightBackground.call(host, room);
+            assert.equal(host.fightBackgroundImage.key,
+                fightBackdropKey({ ...host.gameState, currentFloor: floor - 1 }, room));
+            assert.equal(host.gameState.currentFloor, floor);
+        }
+        host._stationBackdropFloor = null;
+        GameScene.prototype.refreshFightBackground.call(host, 'COMBAT');
+        const nextBackdrop = fightBackdropKey(host.gameState, 'COMBAT');
+        if (nextBackdrop === 'stoneFloor') assert.equal(host.fightBackgroundImage.visible, false);
+        else assert.equal(host.fightBackgroundImage.key, nextBackdrop);
+    }
+}
+console.log('Post-boss shop backgrounds passed: all ten locations in acts 1 and 2, both shops, progression and cleanup.');
+
 const biomes = [
     [{ ...state, currentFloor: 16, actLocationIds: ['tollroad', 'veilbleed', 'starfold'] }, 'veilbleedBackground'],
     [{ ...state, actLocationIds: ['silkdeep', 'boneflood', 'starfold'] }, 'silkdeepBackground'],
@@ -135,6 +162,9 @@ const biomes = [
     [{ ...state, currentFloor: 16, actLocationIds: ['tollroad', 'ashhowl', 'starfold'] }, 'ashhowlLavaBackground'],
     [{ ...state, actLocationIds: ['thornwake', 'boneflood', 'starfold'] }, 'thornwakeBackground'],
     [{ ...state, currentFloor: 16, actLocationIds: ['tollroad', 'mireturn', 'starfold'] }, 'mireturnBogBackground'],
+    [{ ...state, currentFloor: 16, actLocationIds: ['tollroad', 'stormhatch', 'starfold'] }, 'stormhatchBackground'],
+    [{ ...state, currentFloor: 16, actLocationIds: ['tollroad', 'frosthollow', 'starfold'] }, 'frosthollowBackground'],
+    [{ ...state, currentFloor: 16, actLocationIds: ['tollroad', 'sandreach', 'starfold'] }, 'sandreachBackground'],
 ];
 for (const [gameState, key] of biomes) {
     for (const roomType of ['COMBAT', 'ELITE', 'BOSS', 'SHOP', 'RARE_SHOP', 'TREASURE', 'TREASURE_GOOD', 'BOSS_REWARD', 'EVENT']) {
@@ -151,17 +181,16 @@ for (const [gameState, key] of biomes) {
     assert.equal(host.fightBackgroundImage.visible, true);
     assert.equal(host.eventBackdrop.visible, false, 'new biome art replaces the flat event backdrop');
     GameScene.prototype.setEventBackdrop.call(host, false);
-    const asset = ASSET_MANIFEST.find(asset => asset.key === key);
+    const asset = assetFor(key);
     assert.ok(asset && existsSync(asset.path));
     const png = readFileSync(asset.path);
-    // 512x288, or drawn taller on purpose and hung from the top of the screen
-    // (TOP_PINNED_BACKGROUNDS): then at least as tall, about as wide.
+    // 512x288, or painted a little larger by hand (Silkdeep, Veilbleed...): never smaller
+    // than the frame's opening. A painting in TOP_PINNED_BACKGROUNDS also hangs from
+    // the top of the screen instead of being centred.
     const [w, h] = [png.readUInt32BE(16), png.readUInt32BE(20)];
+    assert.ok(h >= 288 && w >= 500, `${key} is at least 500x288 (${w}x${h})`);
     if (TOP_PINNED_BACKGROUNDS.has(key)) {
-        assert.ok(h >= 288 && w >= 500, `${key} is at least 500x288 (${w}x${h})`);
         assert.equal(host.fightBackgroundImage.y, 0, `${key} hangs from the top of the screen`);
-    } else {
-        assert.deepEqual([w, h], [512, 288]);
     }
 }
 host.gameState = state;

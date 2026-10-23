@@ -10,7 +10,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 process.chdir(root);
 const moduleAt = rel => import(pathToFileURL(path.join(root, rel)).href);
 const { ASSET_MANIFEST, LATE_AUDIO, DEFERRED_AUDIO } = await moduleAt('src/content/assets/AssetManifest.js');
-const all = [...ASSET_MANIFEST, ...LATE_AUDIO, ...DEFERRED_AUDIO];
+const { ALL_LOCATION_ASSETS } = await moduleAt('src/content/assets/locationAssets.js');
+const all = [...ASSET_MANIFEST, ...ALL_LOCATION_ASSETS, ...LATE_AUDIO, ...DEFERRED_AUDIO];
 const report = {
     sourceFiles: 0, syntaxErrors: [], missingImports: [],
     assets: all.length, missingAssets: all.filter(a => typeof a.path === 'string' && !fs.existsSync(a.path)),

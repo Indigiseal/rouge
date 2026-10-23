@@ -1,4 +1,5 @@
 // CardSystem — board orchestration; layout/spawn/combat/fx live in ./board/
+import { hideCardBackHover } from '../ui/CardBackHover.js';
 import { CardDataGenerator } from './loot/CardDataGenerator.js';
 import { noteCardDiscovered } from '../content/codex/Discoveries.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
@@ -12,7 +13,7 @@ import { BoardCombat } from './board/BoardCombat.js';
 import { BoardCardFx } from './board/BoardCardFx.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from './HumanRunRecorder.js';
 import { serializeReinforcementState } from '../content/balance/Reinforcements.js';
-import { cardBackKey, cardHoverAnimKey, isCardBackTexture, opensByDamage, revealAnimKey } from './board/BoardVariant.js';
+import { DEFAULT_CARD_BACK, cardBackKey, cardHoverAnimKey, isCardBackTexture, opensByDamage, revealAnimKey } from './board/BoardVariant.js';
 import { getLocationIdForFloor } from '../content/locations/index.js';
 import { scaleGoldReward } from '../content/economy/gold.js';
 
@@ -82,7 +83,15 @@ export class CardSystem {
         const gameState = this.scene?.gameState;
         return gameState ? getLocationIdForFloor(gameState) : null;
     }
-    _cardBackKey() { return cardBackKey(this._boardVariant, this._cardArtLocationId()); }
+    /** True while the floor-start cards are still being dealt and flipped open. */
+    openingRevealsPending() {
+        return (this.scene?.time?.now ?? 0) < (this._openingRevealUntil || 0);
+    }
+    _cardBackKey() {
+        const key = cardBackKey(this._boardVariant, this._cardArtLocationId());
+        // A back that did not load falls back to the shared original.
+        return key === DEFAULT_CARD_BACK || this.scene?.textures?.exists?.(key) ? key : DEFAULT_CARD_BACK;
+    }
     _cardHoverAnimKey() { return cardHoverAnimKey(this._boardVariant, this._cardArtLocationId()); }
     /** Reveal animation for the current room. */
     _revealAnimKey() { return revealAnimKey(this._boardVariant, this._cardArtLocationId()); }
@@ -231,6 +240,7 @@ export class CardSystem {
             card.shadow.setAlpha(notACard ? 0 : 1);
         }
 
+        hideCardBackHover(card.sprite);
         card.sprite.off('pointerover');
         card.sprite.off('pointerout');
         // Face-down hover lifts the card (y - 5). Clicking to reveal strips

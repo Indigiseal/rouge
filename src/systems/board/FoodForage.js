@@ -4,7 +4,7 @@ import { noteCardDiscovered } from '../../content/codex/Discoveries.js';
 
 /** A revealed, ordinary food card; never replaces a card or requires bag space. */
 export function spawnForagedFood(cardSystem) {
-    const spot = mimicSummonSpot(cardSystem);
+    const spot = mimicSummonSpot(cardSystem, { allowCleared: false });
     if (!spot) return false;
     const scene = cardSystem.scene;
     const data = cardSystem.cardDataGenerator.createFoodCard(scene.gameState.currentFloor || 1);

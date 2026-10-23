@@ -10,6 +10,9 @@ import { migrateSharedXp } from './MetaProgressionManager.js';
 import { normalizeWeaponIdentity } from '../content/cards/weapons.js';
 import { getMagic } from '../content/cards/magic.js';
 import { refreshFrostCardArt } from '../content/location-packs/frosthollow/index.js';
+import { refreshStormCardArt } from '../content/location-packs/stormhatch/index.js';
+import { refreshCompanionName } from '../content/cards/companions.js';
+import { refreshSandreachCardArt } from '../content/location-packs/sandreach/index.js';
 
 export class SaveManager {
   constructor() {
@@ -151,7 +154,8 @@ export class SaveManager {
 
   saveCurrentRun(gameState, inventorySystem, cardSystem) {
     const serializedBoard = cardSystem ? this.serializeBoardCards(cardSystem.boardCards) : [];
-    const enemiesCleared = gameState?.scene?.enemiesCleared ?? false;
+    const enemiesCleared = !this.hasLiveEnemyOnBoard(serializedBoard)
+      && (gameState?.scene?.enemiesCleared ?? false);
     const roomType = this.resolveRoomTypeForSave(gameState, serializedBoard, enemiesCleared);
 
     const runData = {
@@ -236,6 +240,8 @@ export class SaveManager {
       board: {
         cards: serializedBoard,
         enemiesCleared,
+        clearRewardsGranted: gameState?.scene?._roomClearRewarded
+          ?? (gameState?.scene?.enemiesCleared ?? false),
         layout: cardSystem?.getSerializableBoardLayout?.() ?? null,
         // Reinforcement waves the room still owes the player. Without this a
         // reload drops them and the floor clears early.
@@ -376,6 +382,7 @@ export class SaveManager {
         board: {
           cards: Array.isArray(parsed.board?.cards) ? parsed.board.cards : [],
           enemiesCleared: parsed.board?.enemiesCleared ?? false,
+          clearRewardsGranted: parsed.board?.clearRewardsGranted ?? parsed.board?.enemiesCleared ?? false,
           layout: parsed.board?.layout && typeof parsed.board.layout === 'object'
             ? parsed.board.layout
             : null,
@@ -461,7 +468,7 @@ export class SaveManager {
       run.equipment.inventory = run.equipment.inventory.map(item =>
         item?.type === 'amulet'
           ? applyAmuletAtlasPresentation(item)
-          : normalizeWeaponIdentity(this.removeLegacyBowBlock(this.refreshMagicCard(item)))
+          : refreshCompanionName(normalizeWeaponIdentity(this.removeLegacyBowBlock(this.refreshMagicCard(item))))
       );
     }
     run.equipment.equippedWeapon = normalizeWeaponIdentity(
@@ -486,7 +493,7 @@ export class SaveManager {
         if (!c) return null;
         const data = c.data?.type === 'amulet'
           ? applyAmuletAtlasPresentation(c.data)
-          : refreshFrostCardArt(normalizeWeaponIdentity(this.removeLegacyBowBlock(this.refreshMagicCard(c.data ?? null))));
+          : refreshSandreachCardArt(refreshStormCardArt(refreshFrostCardArt(normalizeWeaponIdentity(this.removeLegacyBowBlock(this.refreshMagicCard(c.data ?? null))))));
         return {
           revealed: !!c.revealed,
           justRevealed: !!c.justRevealed,
@@ -498,6 +505,7 @@ export class SaveManager {
       });
     }
 
+    if (this.hasLiveEnemyOnBoard(run.board.cards)) run.board.enemiesCleared = false;
     run.navigation.roomType = this.resolveRoomTypeForSave(
       { roomType: run.navigation.roomType, scene: { roomType: run.navigation.roomType } },
       run.board.cards,
@@ -603,7 +611,11 @@ export class SaveManager {
         revealed: !!card.revealed,
         justRevealed: !!card.justRevealed,
         data: card.data ? JSON.parse(JSON.stringify(card.data)) : null,
-        position: card.sprite && card.sprite.x != null && card.sprite.y != null
+        // Entry/drop tweens and hover lifts are presentation. A checkpoint
+        // taken during them must restore the card's settled board seat.
+        position: Number.isFinite(card.restX) && Number.isFinite(card.restY)
+          ? { x: card.restX, y: card.restY }
+          : card.sprite && card.sprite.x != null && card.sprite.y != null
           ? { x: card.sprite.x, y: card.sprite.y }
           : null,
       };
@@ -615,6 +627,13 @@ export class SaveManager {
     const sceneRoomType = gameState?.scene?.roomType || savedRoomType;
     const combatTypes = ['COMBAT', 'ELITE', 'BOSS'];
 
+    // A living saved board wins over stale map/clear flags. Never re-deal an
+    // unfinished encounter merely because navigation was saved between rooms.
+    if ([...combatTypes, 'MAP'].includes(savedRoomType) && this.hasLiveEnemyOnBoard(boardCards)) {
+      if (boardCards.some(card => card?.data?.type === 'boss')) return 'BOSS';
+      if (combatTypes.includes(savedRoomType)) return savedRoomType;
+      return boardCards.some(card => card?.data?.type === 'eliteEnemy') ? 'ELITE' : 'COMBAT';
+    }
     if (combatTypes.includes(savedRoomType)) return savedRoomType;
     if (combatTypes.includes(sceneRoomType)) return sceneRoomType;
     if (enemiesCleared || !this.hasLiveEnemyOnBoard(boardCards)) return savedRoomType;

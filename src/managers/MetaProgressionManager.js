@@ -19,6 +19,7 @@ import { normalizeMonthIndex, nextMonthIndex } from '../content/location-packs/i
 import {
   getVillageBuilding,
   costForVillageRank,
+  phoenixAwake,
   emptyVillageBuildings,
   normalizeVillageBuildings,
   resolveVillageEffects,
@@ -200,7 +201,9 @@ export class MetaProgressionManager {
     if (!this.buildings) this.buildings = emptyVillageBuildings();
     const rank = this.getBuildingRank(buildingId);
     if (rank >= def.maxRank) return { ok: false, reason: 'max' };
-    const cost = costForVillageRank(rank);
+    // The Phoenix statue stays dormant until every guardian has been restored.
+    if (buildingId === 'temple' && !phoenixAwake(this.buildings)) return { ok: false, reason: 'locked' };
+    const cost = costForVillageRank(rank, buildingId);
     if (cost == null) return { ok: false, reason: 'max' };
     if (this.getCharacterXp() < cost) {
       return { ok: false, reason: 'support', cost };

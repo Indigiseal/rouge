@@ -16,6 +16,7 @@
 //   }
 
 import {
+    hasLocationCardBack,
     locationCardBackKey,
     locationCardRow,
     locationFlipAnimKey,
@@ -69,7 +70,10 @@ function locationOr(fallback, locationId, keyFor) {
 
 /** The face-down texture for `variant`, else the location's, else standard. */
 export function cardBackKey(variant, locationId = null) {
-    return variant?.cardBack || locationOr(DEFAULT_CARD_BACK, locationId, locationCardBackKey);
+    if (variant?.cardBack) return variant.cardBack;
+    // A back drawn for the location wins, even on a road with no flip row.
+    if (hasLocationCardBack(locationId)) return locationCardBackKey(locationId);
+    return locationOr(DEFAULT_CARD_BACK, locationId, locationCardBackKey);
 }
 
 /** The reveal animation for `variant`, else the location's, else standard. */
@@ -86,6 +90,7 @@ export function revealAnimKey(variant, locationId = null) {
  */
 export function cardHoverAnimKey(variant, locationId = null) {
     if (variant?.cardBack) return DEFAULT_HOVER_ANIM;
+    if (hasLocationCardBack(locationId)) return locationHoverAnimKey(locationId);
     return locationOr(DEFAULT_HOVER_ANIM, locationId, locationHoverAnimKey);
 }
 

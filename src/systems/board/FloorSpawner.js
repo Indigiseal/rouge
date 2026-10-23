@@ -1,4 +1,5 @@
 // FloorSpawner — spawnFloorCards and spawn-related helpers
+import { showCardBackHover, hideCardBackHover } from '../../ui/CardBackHover.js';
 import { SoundHelper } from '../../audio/SoundHelper.js';
 import { bagArrivalSoundKey } from '../../content/audio/armorSounds.js';
 import { showItemTooltip, hideItemTooltip, TOOLTIP_DEPTH, BOARD_TOOLTIP_GAP } from '../../ui/ItemTooltip.js';
@@ -227,7 +228,7 @@ function spawnFloorCards() {
         this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(card, y) - 5, duration: 150 });
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
-        cardSprite.play(this._cardHoverAnimKey());
+        showCardBackHover(this.scene, cardSprite);
       }
     });
     cardSprite.on('pointerout', () => {
@@ -235,6 +236,7 @@ function spawnFloorCards() {
       if (card && !card.revealed) {
         shadow.setAlpha(0);
         this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(card, y), duration: 150 });
+        hideCardBackHover(cardSprite);
         cardSprite.stop();
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
@@ -437,6 +439,13 @@ function spawnFloorCards() {
 
   const omenDelay = revealSettleMs + (Math.max(0, revealOrder.length - 1) * revealStaggerMs) + 160;
   this.scene.time.delayedCall(omenDelay, () => this.applyHolographicOmenStartEffect());
+  // The opening cards are flipped for free, with no enemy turn after them to
+  // checkpoint the room. Until the cascade ends the board on screen is still
+  // face-down, so a save taken in that window restored a room with every card
+  // turned over (and the opening flips lost). The room counts as unsettled for
+  // that long, and is checkpointed as soon as it is over.
+  this._openingRevealUntil = (this.scene.time?.now ?? 0) + omenDelay + 40;
+  this.scene.time.delayedCall(omenDelay + 60, () => this.scene.checkpointCombat?.());
 
   // Watcher's Lamp — preview one trap (no damage)
   if (this.scene.amuletManager?.wantsTrapPreview?.()) {
@@ -647,7 +656,7 @@ function spawnTutorialCards() {
         this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(card, y) - 5, duration: 150 });
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
-        cardSprite.play(this._cardHoverAnimKey());
+        showCardBackHover(this.scene, cardSprite);
       }
     });
     cardSprite.on('pointerout', () => {
@@ -655,6 +664,7 @@ function spawnTutorialCards() {
       if (card && !card.revealed) {
         shadow.setAlpha(0);
         this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(card, y), duration: 150 });
+        hideCardBackHover(cardSprite);
         cardSprite.stop();
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
@@ -797,6 +807,7 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
     cardSprite.setScale(this._boardPlace?.cardScale || 1).setDepth(2).setInteractive();
 
     const notACard = ['gem', 'amulet', 'relic', 'empty', 'boss'].includes(data.type);
+    if (data.type === 'boss') cardSprite.setScale(data.spriteScale || 1);
     const shadow = data.type === 'boss'
       ? null
       : this.scene.add.rectangle(x, y + 28, 52, 15, 0x000000, 0.6)
@@ -826,13 +837,14 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
         this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(current, y) - 5, duration: 150 });
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
-        if (this.scene.anims.exists(this._cardHoverAnimKey())) cardSprite.play(this._cardHoverAnimKey());
+        showCardBackHover(this.scene, cardSprite);
       });
       cardSprite.on('pointerout', () => {
         const current = this.boardCards[index];
         if (!current || current.revealed) return;
         shadow?.setAlpha(0);
         this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(current, y), duration: 150 });
+        hideCardBackHover(cardSprite);
         cardSprite.stop?.();
         cardSprite.setTexture(this._cardBackKey());
         snapOriginToPixelGrid(cardSprite);
@@ -883,6 +895,9 @@ function convertCardToFood(floor) {
     card.data = foodData;
 }
 
+// spot.png is 32x32; doubled it reads as a glow around a 32px icon.
+const REWARD_SPOT_SCALE = 2;
+
 function spawnBossRewardBoard(items) {
     items = (items || []).filter(Boolean);
     // Clear whatever was on the board (boss fight remnants)
@@ -922,6 +937,15 @@ function spawnBossRewardBoard(items) {
         // sit 60px below the card during the drop-in animation.
         const shadow = this.scene.add.rectangle(x, cardY + 28, 52, 15, 0x000000, 0.6);
         shadow.setAlpha(0);
+
+        // A gem or amulet is a tiny icon, hard to see against the board: a soft
+        // glow (spot.png) sits behind it. Drawn first so it stays underneath,
+        // fades in as the reward lands, and goes with the reward when it is
+        // taken or the room is cleared.
+        const rewardSpot = notACard && this.scene.textures.exists('rewardSpot')
+            ? snapOriginToPixelGrid(this.scene.add.image(x, cardY, 'rewardSpot'))
+                .setScale(REWARD_SPOT_SCALE).setAlpha(0)
+            : null;
 
         const spriteKey = item.sprite || 'cardBack';
         const cardSprite = snapOriginToPixelGrid(item.spriteFrame !== undefined
@@ -1008,7 +1032,10 @@ function spawnBossRewardBoard(items) {
             }
             hideItemTooltip(this.scene);
         });
-        cardSprite.once('destroy', () => hideItemTooltip(this.scene));
+        cardSprite.once('destroy', () => {
+            hideItemTooltip(this.scene);
+            rewardSpot?.destroy();
+        });
 
         // Drop-in animation from above the chest.
         // createCardInfoText is deferred to onComplete so the pips/durability
@@ -1027,6 +1054,9 @@ function spawnBossRewardBoard(items) {
                 // to where it actually sits (some sit at the card, some at y=0).
                 if (cardEntry.infoText) cardEntry.infoRestY = cardEntry.infoText.y;
                 if (!notACard) shadow.setAlpha(0.6);
+                if (rewardSpot?.scene) {
+                    this.scene.tweens.add({ targets: rewardSpot, alpha: 1, duration: 200 });
+                }
                 if (item.type === 'gem') {
                     this.attachGemShadow(cardEntry);
                     this.enableGemDrag(cardEntry, myIndex);
@@ -1698,6 +1728,7 @@ function spawnBoss() {
     const y = camH / 2 + bossOffsetY;
     this.createBossBoardPanel();
     const cardSprite = snapOriginToPixelGrid(this.scene.add.image(x, y, bossData.sprite));
+    cardSprite.setScale(bossData.spriteScale || 1);
     
     const card = {
         sprite: cardSprite,
@@ -1995,7 +2026,7 @@ function respawnCardOnBoard(cardData, options = {}) {
             this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(c, y) - 5, duration: 150 });
             cardSprite.setTexture(this._cardBackKey());
             snapOriginToPixelGrid(cardSprite);
-            if (this.scene.anims.exists(this._cardHoverAnimKey())) cardSprite.play(this._cardHoverAnimKey());
+            showCardBackHover(this.scene, cardSprite);
         }
     });
     cardSprite.on('pointerout', () => {
@@ -2003,6 +2034,7 @@ function respawnCardOnBoard(cardData, options = {}) {
         if (c && !c.revealed) {
             shadow.setAlpha(0);
             this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(c, y), duration: 150 });
+            hideCardBackHover(cardSprite);
             cardSprite.stop();
             cardSprite.setTexture(this._cardBackKey());
             snapOriginToPixelGrid(cardSprite);
@@ -2129,7 +2161,7 @@ function dropCardIntoSlot(slot, data, delay = 0, onLanded = null, atCell = null)
                 this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(c, y) - 5, duration: 150 });
                 cardSprite.setTexture(this._cardBackKey());
                 snapOriginToPixelGrid(cardSprite);
-                if (this.scene.anims.exists(this._cardHoverAnimKey())) cardSprite.play(this._cardHoverAnimKey());
+                showCardBackHover(this.scene, cardSprite);
             }
         });
         cardSprite.on('pointerout', () => {
@@ -2137,6 +2169,7 @@ function dropCardIntoSlot(slot, data, delay = 0, onLanded = null, atCell = null)
             if (c && !c.revealed) {
                 shadow.setAlpha(0);
                 this.scene.tweens.add({ targets: cardSprite, y: faceDownRestY(c, y), duration: 150 });
+                hideCardBackHover(cardSprite);
                 cardSprite.stop();
                 cardSprite.setTexture(this._cardBackKey());
                 snapOriginToPixelGrid(cardSprite);

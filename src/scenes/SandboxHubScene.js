@@ -96,7 +96,9 @@ export class SandboxHubScene extends Phaser.Scene {
     MusicManager.stopIfPlaying(this, 'menu_music', 250);
     this.cameras.main.fadeOut(280, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      this.scene.start('GameScene', { sandbox: true, sandboxRoom: roomId });
+      const entry = SANDBOX_ENCOUNTERS.find(encounter => encounter.id === roomId);
+      if (entry?.kind === 'preview') this.scene.start(entry.sceneKey);
+      else this.scene.start('GameScene', { sandbox: true, sandboxRoom: roomId });
     });
   }
 }

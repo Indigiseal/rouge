@@ -10,6 +10,9 @@ const LOCATION_ROOM_BACKGROUNDS = Object.freeze({
     mireturn: 'mireturnBogBackground',
     ashhowl: 'ashhowlLavaBackground',
     boneflood: 'bonefloodBackground',
+    stormhatch: 'stormhatchBackground',
+    frosthollow: 'frosthollowBackground',
+    sandreach: 'sandreachBackground',
 });
 
 // Paintings drawn taller than the screen on purpose (Taya): their top row sits
@@ -19,6 +22,7 @@ export const TOP_PINNED_BACKGROUNDS = Object.freeze(new Set([
     'thornwakeBackground',
     'bonefloodBackground',
     'mireturnBogBackground',
+    'veilbleedBackground',
 ]));
 
 export function locationBackdropKey(gameState) {

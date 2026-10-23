@@ -29,6 +29,14 @@ export default {
         + 'When you wake up the pot is gone, and so is half your purse.',
     },
     {
+      id: 'soup_wait',
+      text: 'Wait out of sight',
+      action: (gs, scene) => scene.waitForSoupRobbers(),
+      outcome:
+        'You step behind the wall and wait. The soup goes on steaming.\n\n'
+        + 'Three men in green scarves come back for it. The cook lifts his ladle, looks at the two clean bowls, then at your wall.',
+    },
+    {
       id: 'soup_ignore',
       text: 'Leave it and keep going',
       action: (gs, scene) => scene.passSoupStand(),
@@ -39,7 +47,7 @@ export default {
       text: 'Kick the pot over',
       action: (gs, scene) => scene.kickSoupPot(),
       outcome:
-        'You kick the pot off the stand. Soup runs across the stones, and where it pools, it fizzes.\n\n'
+        'You kick the pot off the stand. Soup runs across the stones. The first rat to lick it falls asleep on the spot.\n\n'
         + 'The stand tips over with it. Nailed to the underside is a purse: whatever the last few customers were carrying.\n\n'
         + 'You take it and keep walking.',
     },

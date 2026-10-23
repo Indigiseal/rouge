@@ -22,6 +22,7 @@ const BOSS_FANFARE_DELAY_MS = 1500;
 // the backdrop carries on in the same colour.
 const EVENT_BACKDROP_COLOR = 0x2b1f32;
 import { getLocationIdForFloor } from '../content/locations/index.js';
+import { locationIdsForRunStart, queueLocationAssets } from '../content/assets/locationAssets.js';
 import { fightBackdropKey, TOP_PINNED_BACKGROUNDS } from '../content/locations/fightBackgrounds.js';
 import { DEV_START_AMULETS, DEV_START_CARDS, devToolsEnabled } from '../config/DevTools.js';
 import { SaveManager } from '../managers/SaveManager.js';
@@ -111,7 +112,18 @@ export class GameScene extends Phaser.Scene {
         if (this.combatTurns) this.combatTurns.isEnemyTurn = value;
     }
 
+    // The current location's painting and boards are not in the boot manifest:
+    // load them before create() runs (content/assets/locationAssets.js).
+    preload() {
+        const data = this._startData || {};
+        const saved = data.loadSave && !data.tutorial && !data.sandbox ? this.saveManager?.loadCurrentRun?.() : null;
+        this.load.setCORS('anonymous');
+        queueLocationAssets(this, locationIdsForRunStart(data, saved, getLocationIdForFloor));
+    }
+
     init(data = {}) {
+        this._startData = data;
+        this._stationBackdropFloor = null;
         this.saveManager = new SaveManager();
         this.metaManager = new MetaProgressionManager(this);
         // Phaser reuses the same Scene instance after Quit -> Main Menu -> New
@@ -135,9 +147,12 @@ export class GameScene extends Phaser.Scene {
         this._bossVictoryPending = false;
         this._resultScreenShown = false;
         this._gameOverInProgress = false;
+        this._pauseRequested = false;
+        this._pauseWaitTimer = null;
         // Reset per-scene-entry so a cleared-room restore flag can't leak into
         // the next run (Phaser reuses the GameScene instance across runs).
         this._floorEndAlreadyProcessed = false;
+        this._roomClearRewarded = false;
         this.events.off('endPlayerTurn');
         this.events.off('wake', this.wake, this);
         this.combatTurns?.resetBinding?.();
@@ -498,7 +513,10 @@ export class GameScene extends Phaser.Scene {
 
     refreshFightBackground(roomType = this.roomType) {
         if (!this.backgroundImage?.scene) return;
-        const key = fightBackdropKey(this.gameState, roomType);
+        const backdropState = Number.isFinite(this._stationBackdropFloor)
+            ? { ...this.gameState, currentFloor: this._stationBackdropFloor }
+            : this.gameState;
+        const key = fightBackdropKey(backdropState, roomType);
         // dungeon.png is the foreground frame; its transparent centre reveals
         // the location painting beneath it.
         this.backgroundImage.setTexture('stoneFloor');
@@ -609,6 +627,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     startNewFloor() {
+        this._roomClearRewarded = false;
         this.clearEnemyTurnTimers();
         this.clearFloatingTexts();
         // Fresh combat floor reached (restores bypass startNewFloor()).
@@ -669,6 +688,7 @@ export class GameScene extends Phaser.Scene {
             this.inventorySystem.addStartingCards();
         }
         this.amuletManager?.processFloorStart?.();
+        this.checkpointCombat();
         recordHumanRunEvent(this, 'floor_started', {
             floor: this.gameState.currentFloor,
             roomType: this.roomType,
@@ -1724,12 +1744,14 @@ export class GameScene extends Phaser.Scene {
         // The killing blow is what got us here, and its sounds and numbers are
         // still on the narration timeline. Keep them.
         this.clearEnemyTurnTimers({ keepNarration: true });
-        this.finalizeCompanionCombatHistory();
+        const firstClear = !this._roomClearRewarded;
+        this._roomClearRewarded = true;
+        if (firstClear) this.finalizeCompanionCombatHistory();
         this.enemiesCleared = true;
         this.refreshDebugVictoryButton?.();
         this.inventorySystem?.clearAllHandWebs?.();
         const floor = this.gameState.currentFloor;
-        recordHumanRunEvent(this, 'floor_cleared', {
+        if (firstClear) recordHumanRunEvent(this, 'floor_cleared', {
             floor,
             roomType: this.roomType || this.gameState.roomType,
         });
@@ -1744,7 +1766,7 @@ export class GameScene extends Phaser.Scene {
             this.updateUI?.();
             return;
         }
-        this.tickEggHatching();
+        if (firstClear) this.tickEggHatching();
 
         // Floor-clear coin reward. Coins are no longer paid per enemy kill (that
         // faucet was flooding the economy); instead you're paid once for clearing
@@ -1756,7 +1778,7 @@ export class GameScene extends Phaser.Scene {
         // Flattened from 20+floor*3: act 1 was coin-starved (2.7/6 affordable)
         // while acts 2-3 hoarded 500-750 unspent coins (4.5/6 affordable).
         let reward = 0;
-        if (!isBossFloor) {
+        if (!isBossFloor && firstClear) {
             const base = Math.floor(24 + floor * 1.2);
             reward = this.amuletManager ? this.amuletManager.modifyGoldFound(base) : scaleGoldReward(base);
             this.gameState.coins += reward;
@@ -1765,7 +1787,7 @@ export class GameScene extends Phaser.Scene {
             this.playCurrencyGainFlight?.(320, 160, 'coins');
         }
         this._silkCocoonLeaveOffer = false;
-        if (this.gameState?.ambushId === 'crystal_lair') this.rewardCrystalLair();
+        if (firstClear && this.gameState?.ambushId === 'crystal_lair') this.rewardCrystalLair();
 
         // The room is cleared as of now; it just isn't announced yet. The door,
         // its sound and the victory text wait until the killing blow has been
@@ -1943,13 +1965,47 @@ export class GameScene extends Phaser.Scene {
     
     pauseGame() {
         // Don't allow pausing during transitions or game over
-        if (this._transitioning || this.gameState.playerHealth <= 0) return;
+        if (this._transitioning || this._bossVictoryPending || this.gameState.playerHealth <= 0) return;
+
+        // Finish the action and its enemy/companion response before pausing.
+        // A paused timer cannot be serialized, so quitting halfway through used
+        // to erase the attacks that had not landed yet.
+        if (this.hasUnsettledCombat()) {
+            if (this._pauseRequested) return;
+            this._pauseRequested = true;
+            this.input.enabled = false;
+            const waitForExchange = () => {
+                if (this._transitioning || this.gameState.playerHealth <= 0 || !this.hasUnsettledCombat()) {
+                    this._pauseRequested = false;
+                    this._pauseWaitTimer = null;
+                    this.input.enabled = true;
+                    this.pauseGame();
+                    return;
+                }
+                this._pauseWaitTimer = this.time.delayedCall(50, waitForExchange);
+            };
+            this._pauseWaitTimer = this.time.delayedCall(50, waitForExchange);
+            return;
+        }
         
         // Pause the current scene
         this.scene.pause();
         this.scene.launch('PauseMenuScene', { pausedScene: 'GameScene' });
         const pause = this.scene.get('PauseMenuScene');
         if (pause?.input) pause.input.enabled = true;
+    }
+
+    hasUnsettledCombat() {
+        const turns = this.combatTurns;
+        return !!(turns?.isEnemyTurn || turns?.enemyTurnQueued || turns?.pendingEnemyTurns > 0
+            || this.cardSystem?.openingRevealsPending?.());
+    }
+
+    checkpointCombat() {
+        if (this.sandboxMode || this.tutorialMode || this._transitioning || this.enemiesCleared
+            || this.gameState?.playerHealth <= 0 || this.hasUnsettledCombat()
+            || !['COMBAT', 'ELITE', 'BOSS'].includes(this.gameState?.roomType)) return;
+        this.saveManager?.saveCurrentRun(this.gameState, this.inventorySystem, this.cardSystem);
     }
     
     // Save current run method
@@ -2055,6 +2111,7 @@ export class GameScene extends Phaser.Scene {
         this._loadedBoardLayout = runData.board?.layout || null;
         this._loadedWaveState = runData.board?.waves || null;
         this._loadedEnemiesCleared = !!runData.board?.enemiesCleared;
+        this._roomClearRewarded = !!runData.board?.clearRewardsGranted;
         this._loadedBoardAvailable = this._loadedBoardCards.some(Boolean)
             || this._loadedEnemiesCleared;
         // Inventory
@@ -2085,6 +2142,10 @@ export class GameScene extends Phaser.Scene {
     }
     
     shutdown() {
+        if (this._pauseRequested && this.input) this.input.enabled = true;
+        this._pauseWaitTimer?.remove?.(false);
+        this._pauseWaitTimer = null;
+        this._pauseRequested = false;
         this.tutorialManager?.destroy?.();
         this.tutorialManager = null;
         this.stopBossMusic();
