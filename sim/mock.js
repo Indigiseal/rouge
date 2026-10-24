@@ -48,6 +48,8 @@ globalThis.Phaser = {
     },
   },
   BlendModes: { SCREEN: 'SCREEN', NORMAL: 'NORMAL' },
+  // Scene classes are only extended, never run, when the sim borrows their rules.
+  Scene: class {},
 };
 
 // MetaProgressionManager reads localStorage directly (no try/catch), so give

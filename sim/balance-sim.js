@@ -20,6 +20,8 @@
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { MockScene } from './mock.js'; // also installs globalThis.Phaser + localStorage
+import { SimInventorySystem } from './sim-inventory.js';
+import { playRealEvent } from './event-bridge.js';
 import { advanceBonePile, repairBoneArmor } from '../src/content/combat/boneflood.js';
 import { growEnemy, regenerateAllies } from '../src/content/combat/mireturn.js';
 import { getEnemyHitAttack, applyEnemyStrikeSigils } from '../src/content/combat/enemyAttack.js';
@@ -60,7 +62,8 @@ import {
 import { AmuletManager } from '../src/managers/AmuletManager.js';
 import { MetaProgressionManager } from '../src/managers/MetaProgressionManager.js';
 import { MapGenerator, floorOfRow, isBonusRow } from '../src/map/MapGenerator.js';
-import { ensureHiddenPaths } from '../src/map/HiddenPaths.js';
+import { ensureHiddenPaths, isHiddenPathOpen } from '../src/map/HiddenPaths.js';
+import { createCrystalLairEnemies } from '../src/content/cards/crystalLair.js';
 import { getPowerBand, ARCHETYPES } from '../src/content/balance/EnemyPower.js';
 import { veteranChanceForFloor, ELITE_ROOM_VETERAN_BONUS, MAX_VETERAN_CHANCE, ENEMY_TIERS } from '../src/content/balance/EnemyTiers.js';
 import { getCardWeights } from '../src/content/balance/FloorWeights.js';
@@ -95,7 +98,7 @@ import {
   sampleAmuletIds,
 } from './parse-sim-flags.js';
 import { getDefaultAmuletIds } from './sim-catalog.js';
-import { normalizeActLocationIds, getLocationIdForFloor } from '../src/content/locations/index.js';
+import { normalizeActLocationIds, getLocationIdForFloor, getLocationOffer, applyLocationChoice } from '../src/content/locations/index.js';
 import { totalRepairCost } from '../src/content/economy/repair.js';
 import { scaleGoldReward } from '../src/content/economy/gold.js';
 import {
@@ -151,6 +154,10 @@ const CLI_ACT = (() => {
   return n === 1 || n === 2 || n === 3 ? n : null;
 })();
 const SIM_VAULT_RATE = Number(process.env.SIM_VAULT_RATE ?? 0.7);
+// How often the bot takes the Crystal Lair's open door (a hard optional fight).
+const SIM_LAIR_RATE = Number(process.env.SIM_LAIR_RATE ?? 0.5);
+// GameScene's crystals for a lair won with nothing able to take its sigil.
+const CRYSTAL_LAIR_FALLBACK_CRYSTALS = 3;
 const BOSS_FLOORS = new Set([15, 30, 45]);
 const BOSS_PREP_FLOORS = new Set([12, 13, 14, 27, 28, 29, 42, 43, 44]);
 const IMMEDIATE_PRE_BOSS_FLOORS = new Set([14, 29, 44]);
@@ -381,59 +388,6 @@ function applyFrontVolleySim(mock, gs, primaryIndex, bowDamage, weapon) {
 
 function cloneCard(card) {
   return card ? { ...card } : null;
-}
-
-class SimInventorySystem {
-  constructor(gs) {
-    this.gameState = gs;
-    this.slots = new Array(5 + Math.max(0, gs.bonusInventorySlots || 0)).fill(null);
-    this.slotSprites = [];
-    this.discardArea = null;
-  }
-
-  getCurrentWeapon() {
-    return this.gameState?.equippedWeapon || null;
-  }
-
-  syncGameStateInventory() {
-    if (this.gameState) this.gameState.inventory = this.slots;
-  }
-
-  expandInventory(n = 0) {
-    if (n <= 0) return;
-    this.gameState.bonusInventorySlots = (this.gameState.bonusInventorySlots || 0) + n;
-    for (let i = 0; i < n; i++) this.slots.push(null);
-    this.syncGameStateInventory();
-  }
-
-  addInventorySlots(n = 0) {
-    this.expandInventory(n);
-  }
-
-  rebuildInventorySprites() {}
-
-  updateTwinkleEffects() {}
-
-  addCard(card) {
-    const idx = this.slots.findIndex((slot) => slot == null);
-    if (idx < 0) return false;
-    this.slots[idx] = card;
-    this.syncGameStateInventory();
-    return true;
-  }
-
-  addCardDirect(card, idx) {
-    if (idx < 0 || idx >= this.slots.length) return false;
-    this.slots[idx] = card;
-    this.syncGameStateInventory();
-    return true;
-  }
-
-  removeCard(idx) {
-    if (idx < 0 || idx >= this.slots.length) return;
-    this.slots[idx] = null;
-    this.syncGameStateInventory();
-  }
 }
 
 // ── One game ────────────────────────────────────────────────────────────
@@ -3697,10 +3651,86 @@ function runBrassWizard(mock, gs, inv, floor, story) {
   mock.amuletManager.addAmulet('fortuneCard');
 }
 
-// Mirrors the current EventScene selection order and makes the strongest
-// available choice. Story rewards that require a card slot reserve that slot
-// before ordinary loot can fill it.
-function runEvent(mock, gs, inv, floor) {
+// EVENT rooms play the game's own stories (sim/event-bridge.js): EventScene
+// picks the story for this location and floor, and its choice actions apply
+// the outcome. --legacy-events plays the older hand-written models below
+// instead, for comparing against earlier batches.
+const LEGACY_EVENTS = process.argv.includes('--legacy-events');
+// Below this share of max HP the bot plays a story safe: it walks away, rests
+// or sneaks past instead of picking at random.
+const STORY_CAUTION_HP = 0.35;
+const CAUTIOUS_CHOICE = /leave|walk away|walk on|turn back|sneak|refuse|decline|rest|pull your hand back|point the way|ignore/i;
+
+function choiceLabel(choice) {
+  return choice.id || choice.text || choice.textKey || '?';
+}
+
+// A player who does not know the outcomes: any choice the story shows, except
+// that a hurt hero plays it safe. Carnival tray items need a coin and, for the
+// junk, a free slot, as dragging them in the game does.
+function storyPolicy(gs, inv) {
+  const freeSlot = () => inv.some((slot) => slot == null);
+  const affordable = (choice) => !choice.trayItem
+    || ((gs.coins || 0) >= 1 && (choice.trayItem === 'luckyClover' || freeSlot()));
+  return {
+    chooseChoice(_eventId, choices) {
+      const open = choices.filter(affordable);
+      const pool = open.length ? open : choices;
+      if (gs.playerHealth < gs.maxHealth * STORY_CAUTION_HP) {
+        const safe = pool.filter((choice) => CAUTIOUS_CHOICE.test(choice.text || choice.id || ''));
+        if (safe.length) return safe[Math.floor(Math.random() * safe.length)];
+      }
+      return pool[Math.floor(Math.random() * pool.length)];
+    },
+    // The mirror copies the best card; every other drop zone takes a card in
+    // exchange, so the bot gives the one it values least, and keeps cards it
+    // would never trade.
+    chooseDrop(eventId, candidates) {
+      const ranked = [...candidates].sort((a, b) => cardKeepScore(b.card, CURRENT_BEHAVIOR, gs) - cardKeepScore(a.card, CURRENT_BEHAVIOR, gs));
+      if (eventId === 'mirror') return ranked[0];
+      const worst = ranked[ranked.length - 1];
+      return cardKeepScore(worst.card, CURRENT_BEHAVIOR, gs) < 220 ? worst : null;
+    },
+    // The Reliquary's spell goes on the strongest weapon carried.
+    chooseReliquary(offer, weapons) {
+      const best = [...weapons].sort((a, b) => (b.card.damage || 0) - (a.card.damage || 0))[0];
+      return { magicType: offer[Math.floor(Math.random() * offer.length)], slotIndex: best.slotIndex };
+    },
+  };
+}
+
+function runEvent(mock, gs, inv, floor, metrics, floorStartWeaponPips) {
+  if (LEGACY_EVENTS) {
+    runModelledEvent(mock, gs, inv, floor);
+    return;
+  }
+  const result = playRealEvent(mock, gs, storyPolicy(gs, inv));
+  syncInventoryState(gs, inv);
+  if (metrics) {
+    const id = result.eventId || 'none';
+    const bucket = (metrics.stories[id] ||= { visits: 0, ambushes: 0, errors: 0, paths: {} });
+    bucket.visits++;
+    if (result.ambush) bucket.ambushes++;
+    const path = result.choices.join(' > ') || '(none)';
+    bucket.paths[path] = (bucket.paths[path] || 0) + 1;
+    if (result.error) {
+      bucket.errors++;
+      bucket.lastError = String(result.error?.stack || result.error).split('\n').slice(0, 3).join(' | ');
+    }
+  }
+  // A story that ends in a fight (Toll Collectors, the Silk Cache, the camp)
+  // hands the board over on pendingAmbush, as the game does.
+  if (gs.pendingAmbush && gs.playerHealth > 0) {
+    runCombat(mock, gs, inv, floor, floorStartWeaponPips);
+    if (gs.playerHealth > 0) mock.amuletManager.processFloorEnd();
+  }
+}
+
+// The hand-written story models used before the sim played the real stories
+// (--legacy-events). They cover the Thornwake chain and the older bonus rooms
+// only. Story rewards that require a card slot reserve that slot before
+// ordinary loot can fill it.
+function runModelledEvent(mock, gs, inv, floor) {
   const gen = mock.cardSystem.cardDataGenerator;
   const story = gs._simStory || (gs._simStory = {
     stage: 'music_box', seen: new Set(), reserveRewardSlot: false,
@@ -4391,12 +4421,12 @@ function sigilCards(gs, inv) {
   });
 }
 
-function offerableSimSigils(gs, inv) {
+function offerableSimSigils(gs, inv, onlyId = null) {
   const cards = sigilCards(gs, inv);
   const taken = new Set(takenSigils(gs));
   cards.forEach((card) => cardSigils(card).forEach((s) => taken.add(s.id)));
   const hasCompanion = companionsIn(inv).length > 0;
-  const pool = sigilPoolForLocation(getLocationIdForFloor(gs));
+  const pool = onlyId ? [onlyId] : sigilPoolForLocation(getLocationIdForFloor(gs));
   return pool.filter((id) => getSigil(id)?.works && getSigil(id)?.side !== 'enemy' && !taken.has(id)
     && (id !== 'warcry' || hasCompanion)
     && cards.some((card) => canTakeSigil(card, id)));
@@ -4415,8 +4445,8 @@ function chooseSigilTarget(gs, inv, sigilId) {
 }
 
 /** Take a sigil on one card. Returns true when one was taken. */
-function takeSigil(gs, inv, metrics, source) {
-  const options = offerableSimSigils(gs, inv);
+function takeSigil(gs, inv, metrics, source, onlyId = null) {
+  const options = offerableSimSigils(gs, inv, onlyId);
   if (!options.length) { metrics.sigils.noRoom++; return false; }
   const id = options[Math.floor(Math.random() * options.length)];
   const card = chooseSigilTarget(gs, inv, id);
@@ -4789,7 +4819,20 @@ function runGame(metrics, config = {}) {
   // only the visited anchor after that fight.
   playOpeningCombat((startAct - 1) * 15 + 1);
 
+  // Choose Your Road: unless the run pins its locations (--location, --month),
+  // each act starts by taking one of the three roads the game offers, as a
+  // player does at the road picker. Players pick by taste, so any of the three.
+  const choosesRoads = !(Array.isArray(config.actLocationIds) && config.actLocationIds.some(Boolean))
+    && !gs.pinCalendarMonth;
+  if (choosesRoads) gs.actLocationIds = [null, null, null];
   for (let act = startAct; act <= endAct && !dead; act++) {
+    if (choosesRoads) {
+      const roads = getLocationOffer(gs, act);
+      const road = roads[Math.floor(Math.random() * roads.length)];
+      applyLocationChoice(gs, road, act);
+      const byAct = (metrics.locations[act] ||= {});
+      byAct[road] = (byAct[road] || 0) + 1;
+    }
     const floors = map['act' + act].floors;
     const memo = new Map();
     let cur = 0;
@@ -4802,12 +4845,29 @@ function runGame(metrics, config = {}) {
       const vaultIdx = Math.random() < SIM_VAULT_RATE
         ? (floors[f - 1]?.[cur]?.secretLinks || []).find((i) => floors[f]?.[i]?.secretSource === 'sigilVault')
         : undefined;
-      const next = vaultIdx !== undefined ? vaultIdx : chooseNextNode(floors, f, cur, memo, gs, inv, floor);
+      // The Crystal Lair, when its door is open from here: taken SIM_LAIR_RATE
+      // of the time; walking past it leaves the brood alive (webbed_corridor).
+      const lairIdx = vaultIdx === undefined
+        && isHiddenPathOpen(gs, 'crystalLair')
+        ? (floors[f - 1]?.[cur]?.secretLinks || []).find((i) => floors[f]?.[i]?.secretSource === 'crystalLair')
+        : undefined;
+      const takeLair = lairIdx !== undefined && Math.random() < SIM_LAIR_RATE;
+      const next = vaultIdx !== undefined ? vaultIdx
+        : takeLair ? lairIdx
+          : chooseNextNode(floors, f, cur, memo, gs, inv, floor);
       if (next < 0) break;
+      if (lairIdx !== undefined && !takeLair) {
+        gs.storyRun ||= {};
+        gs.storyRun.crystalLairPassedAct = act - 1;
+        gs.storyRun.crystalLairPassedFloor = floor + 1;
+      }
       cur = next;
       const node = floors[f][cur];
       gs.currentFloor = floor;
       const isVault = Boolean(node.secret && node.secretSource === 'sigilVault');
+      const isLair = Boolean(node.secret && node.secretSource === 'crystalLair');
+      // The lair deals its own board: the mother and her brood (MapViewScene).
+      if (isLair) gs.pendingAmbush = { id: 'crystal_lair', enemies: createCrystalLairEnemies(floor) };
       const roomType = isVault ? 'SIGIL' : (node.type || 'COMBAT');
       gs.roomType = roomType;
       metrics.roomVisits[roomType] = (metrics.roomVisits[roomType] || 0) + 1;
@@ -4840,6 +4900,14 @@ function runGame(metrics, config = {}) {
           mock.amuletManager.processFloorEnd();
           // An elite pays a chest, or a Sigil Room.
           if (roomType === 'ELITE') runEliteReward(mock, gs, inv, floor, metrics);
+          // The lair won: it shuts for the run and pays the Crystal Brood
+          // sigil, or crystals when nothing can take it (GameScene.rewardCrystalLair).
+          if (isLair) {
+            gs.storyRun ||= {};
+            gs.storyRun.crystalLairCleared = true;
+            metrics.crystalLairs++;
+            if (!takeSigil(gs, inv, metrics, 'crystalLair', 'crystalBrood')) gs.crystals += CRYSTAL_LAIR_FALLBACK_CRYSTALS;
+          }
           // Act-boss victory → reward room when another act follows in this run.
           if ((floor === 15 || floor === 30) && BOSS_FLOORS.has(floor) && act < endAct) {
             runBossReward(mock, gs, inv, floor);
@@ -4864,7 +4932,7 @@ function runGame(metrics, config = {}) {
         if (distance <= 3) metrics.lateAnvilVisits++;
         runAnvil(gs, inv, metrics);
       }
-      else if (roomType === 'EVENT') runEvent(mock, gs, inv, floor);
+      else if (roomType === 'EVENT') runEvent(mock, gs, inv, floor, metrics, floorStartWeaponPips);
 
       regear(mock.cardSystem.cardDataGenerator, gs, inv);
       if (gs._lootStats) recordFloorInventoryEnd(gs._lootStats, floor, gs, inv);
@@ -4990,6 +5058,11 @@ function newMetrics() {
     finalCompanions: [], finalCompanionAttack: [], finalTrainedCompanions: [],
     finalGuardCompanions: [], finalShockCompanions: [],
     roomVisits: {},
+    // EVENT rooms by story: visits, fights they started, choice paths taken.
+    stories: {},
+    crystalLairs: 0,
+    // Roads taken at Choose Your Road, by act.
+    locations: {},
     // Enemies spawned per tier (bosses excluded — they are never promoted).
     enemyTiers: { normal: 0, veteran: 0, elite: 0 },
     totalActions: 0, hungryActions: 0, restorationUses: 0, gemsSeen: [], gemsByFloor: {}, floors,
@@ -5110,6 +5183,25 @@ function report(metrics) {
       ` combat ${((metrics.roomVisits?.COMBAT || 0) / N).toFixed(1)},` +
       ` elite ${((metrics.roomVisits?.ELITE || 0) / N).toFixed(1)}`
     );
+  }
+  if (metrics.crystalLairs) console.log(`Crystal Lairs won: ${(metrics.crystalLairs / N).toFixed(2)}/run`);
+  for (const [act, roads] of Object.entries(metrics.locations || {})) {
+    const total = Object.values(roads).reduce((sum, n) => sum + n, 0);
+    console.log(`Roads, act ${act}: ` + Object.entries(roads).sort((a, b) => b[1] - a[1])
+      .map(([id, n]) => `${id} ${pct(n, total)}%`).join(', '));
+  }
+  const stories = Object.entries(metrics.stories || {}).sort((a, b) => b[1].visits - a[1].visits);
+  if (stories.length) {
+    console.log('\nStories (EVENT rooms, per run; most taken choice path):');
+    for (const [id, story] of stories) {
+      const [topPath, topCount] = Object.entries(story.paths).sort((a, b) => b[1] - a[1])[0] || ['', 0];
+      console.log(
+        `  ${id.padEnd(22)} ${(story.visits / N).toFixed(2)}/run` +
+        `${story.ambushes ? `  fights ${pct(story.ambushes, story.visits)}%` : ''}` +
+        `  ${topPath.slice(0, 48)} (${pct(topCount, story.visits)}%)` +
+        `${story.errors ? `  ERRORS ${story.errors}: ${story.lastError}` : ''}`
+      );
+    }
   }
   const tiers = metrics.enemyTiers || {};
   const tieredTotal = (tiers.normal || 0) + (tiers.veteran || 0) + (tiers.elite || 0);
