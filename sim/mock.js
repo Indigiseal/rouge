@@ -280,7 +280,13 @@ export class MockScene {
     const eligible = [];
     for (let i = 0; i < board.length; i++) {
       const c = board[i];
-      if (c && c.revealed && this.isEnemyCard(c) && !c.justRevealed && !c.data?.isBonePile) eligible.push(i);
+      if (!c || !this.isEnemyCard(c) || c.justRevealed || c.data?.isBonePile) continue;
+      const features = Array.isArray(c.data?.features) ? c.data.features : [];
+      // Cocoon shells never attack: they only crack when hit.
+      if (c.data?.isCocoon || features.includes('cocoon_shell')) continue;
+      // Thorn Fairy veil: face down, her turn is spent flipping back up.
+      if (!c.revealed && features.includes('veil_flip')) { this.cardSystem.revealCard(i, true); continue; }
+      if (c.revealed) eligible.push(i);
     }
     for (const c of board) { if (c && c.justRevealed) c.justRevealed = false; }
 
