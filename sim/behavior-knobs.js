@@ -104,6 +104,7 @@ export const BEHAVIOR_PRESETS = {
       RARE_SHOP: 65,
       ANVIL: 60,
       REST: 45,
+      SIGIL: 85,
       TREASURE_GOOD: 40,
       TREASURE: 30,
       COMBAT: -45,

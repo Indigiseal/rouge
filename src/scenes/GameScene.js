@@ -51,6 +51,10 @@ import {
 import { t } from '../i18n/i18n.js';
 import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from '../content/story/StoryProgress.js';
 import { createDefaultStoryRun } from '../content/story/StoryDefaults.js';
+import { ROBBER_SATCHEL_AMULET } from '../content/cards/robbers.js';
+import { onBossRow } from '../map/MapGenerator.js';
+import { flyAmuletToBar } from '../ui/RewardFlight.js';
+import { playCrowFlyby, CROW_TOP_Y } from '../ui/CrowFlyby.js';
 import { areAmuletsDisabled } from '../config/TestOptions.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { CombatTurnController } from '../systems/combat/CombatTurnController.js';
@@ -616,12 +620,18 @@ export class GameScene extends Phaser.Scene {
             if (options.length) { rarity = tier; break; }
         }
         if (!options.length) return;
+        // The Trinket Keeper's crow brings it: a caw, its shadow crossing the top of the screen,
+        // and the amulet dropped as it passes over the middle, flying down to the amulet bar.
         this.time.delayedCall(350, () => {
-            openAmuletChoiceOverlay(this, {
-                rarity,
-                options,
-                amuletManager: this.amuletManager,
-                title: t(this, 'ui.village.healerTitle'),
+            playCrowFlyby(this, {
+                dropAtX: 320,
+                onDrop: () => openAmuletChoiceOverlay(this, {
+                    rarity,
+                    options,
+                    amuletManager: this.amuletManager,
+                    title: t(this, 'ui.village.healerTitle'),
+                    onPicked: (id) => this.time.delayedCall(0, () => flyAmuletToBar(this, id, 320, CROW_TOP_Y + 6, { hop: true })),
+                }),
             });
         });
     }
@@ -1042,6 +1052,25 @@ export class GameScene extends Phaser.Scene {
         const chance = this.amuletManager?.hasEliteChestSigil?.() ? SIGIL_ROOM_CHANCE_BROOCH : SIGIL_ROOM_CHANCE;
         if (Math.random() >= chance || !offerableSigils(this).length) return 'elite';
         return 'sigil';
+    }
+
+    // The robbers of the Soup Stand (cards/robbers.js) were carrying a satchel: beating them
+    // earns the +1 bag slot amulet. Paid once; if it cannot be worn, coins instead.
+    rewardRobberSatchel() {
+        const story = this.gameState.storyRun || (this.gameState.storyRun = {});
+        if (story.robberSatchelTaken) return;
+        story.robberSatchelTaken = true;
+        this.time.delayedCall(700, () => {
+            const id = ROBBER_SATCHEL_AMULET;
+            if (this.amuletManager?.canAddAmulet?.(id) && this.amuletManager.addAmulet(id)) {
+                flyAmuletToBar(this, id, 320, 160, { hop: true });
+                return;
+            }
+            const coins = scaleGoldReward(25);
+            this.gameState.coins += coins;
+            this.playCurrencyGainFlight?.(320, 160, 'coins');
+            this.updateUI?.();
+        });
     }
 
     // The Crystal Lair is won: the room shuts for the run, and the door out
@@ -1596,7 +1625,7 @@ export class GameScene extends Phaser.Scene {
         const completedActBoss =
             bossFloors.includes(this.gameState.currentFloor) ||
             this.gameState.roomType === 'BOSS' ||
-            (this.gameState.mapCursor?.floor ?? -1) >= 14;
+            onBossRow(this.gameState);
 
         if (completedActBoss) {
             // Final boss → straight to victory, no reward room. Detect the final act
@@ -1757,7 +1786,7 @@ export class GameScene extends Phaser.Scene {
         });
         const isBossFloor = [15, 30, 45].includes(floor);
         const isBossVictory = this.roomType === 'BOSS' || this.gameState.roomType === 'BOSS' ||
-            isBossFloor || (this.gameState.mapCursor?.floor ?? -1) >= 14;
+            isBossFloor || onBossRow(this.gameState);
         if (isBossVictory) {
             this._bossVictoryPending = true;
             this.stopBossMusic();
@@ -1788,6 +1817,7 @@ export class GameScene extends Phaser.Scene {
         }
         this._silkCocoonLeaveOffer = false;
         if (firstClear && this.gameState?.ambushId === 'crystal_lair') this.rewardCrystalLair();
+        if (firstClear && this.gameState?.ambushId === 'soup_robbers') this.rewardRobberSatchel();
 
         // The room is cleared as of now; it just isn't announced yet. The door,
         // its sound and the victory text wait until the killing blow has been

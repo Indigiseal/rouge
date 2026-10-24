@@ -7,7 +7,7 @@
 import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
 import { loadHeroMemory, saveHeroMemory, saveStoryProgress } from '../content/story/StoryProgress.js';
 import { legacyNestHasCog, stormStoryEventIds } from '../content/story/StormStories.js';
-import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
+import { t, translateDescription, translateItemName, translateTemplate } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { exitToSandboxHub, isSandboxMode } from '../sandbox/SandboxMode.js';
@@ -2282,11 +2282,11 @@ export class EventScene extends Phaser.Scene {
           this._deliverCardReward(gauntlet, "Ogre's Gauntlet", {
             key: 'event.reward.gainedCard', vars: { name: translateItemName(this, gauntlet) },
           });
-          this.armWrestleOutcome = `He goes at it properly this time, and it takes everything you have.\n\nWhen his hand finally goes down the crowd does not cheer. They just look at the ogre.\n\nHe unhooks the stone guard and pushes it across to you, then sits back with his arms folded and watches you take it, ${stakeName} and all.`;
+          this.armWrestleOutcome = translateTemplate(this, 'He goes at it properly this time, and it takes everything you have.\n\nWhen his hand finally goes down the crowd does not cheer. They just look at the ogre.\n\nHe unhooks the stone guard and pushes it across to you, then sits back with his arms folded and watches you take it, {card} and all.', { card: translateItemName(this, stakeName) });
         } else {
           this.gainCoins(this.getArmWrestlePot());
           this._winArmWrestleMatchOne();
-          this.armWrestleOutcome = `He looks at ${stakeName} for a long moment, decides it is worth his time, and plants his elbow.\n\nYou win by not fighting him where he is strongest.\n\nHe pushes his coins over, keeps looking at his own hand, and says something short in Ogrish. The crowd stops laughing. You get the distinct impression this is not finished.`;
+          this.armWrestleOutcome = translateTemplate(this, 'He looks at {card} for a long moment, decides it is worth his time, and plants his elbow.\n\nYou win by not fighting him where he is strongest.\n\nHe pushes his coins over, keeps looking at his own hand, and says something short in Ogrish. The crowd stops laughing. You get the distinct impression this is not finished.', { card: translateItemName(this, stakeName) });
         }
       } else {
         const inv = this.gameScene?.inventorySystem;
@@ -2303,8 +2303,8 @@ export class EventScene extends Phaser.Scene {
         if (rematch) this.gameState.storyRun.armWrestleRematchDone = true;
         this._loseArmWrestle();
         this.armWrestleOutcome = rematch
-          ? `He does not make the same mistake twice.\n\nYour hand is on the slab before you have finished bracing, and ${stakeName} goes into the pile beside his elbow.\n\nHe buckles the stone guard back onto his forearm and turns away from the table.`
-          : `He takes ${stakeName} off the table before your hand has finished going down.\n\nThe crowd is delighted, briefly, and then bored.`;
+          ? translateTemplate(this, 'He does not make the same mistake twice.\n\nYour hand is on the slab before you have finished bracing, and {card} goes into the pile beside his elbow.\n\nHe buckles the stone guard back onto his forearm and turns away from the table.', { card: translateItemName(this, stakeName) })
+          : translateTemplate(this, 'He takes {card} off the table before your hand has finished going down.\n\nThe crowd is delighted, briefly, and then bored.', { card: translateItemName(this, stakeName) });
       }
     }
 
@@ -2680,7 +2680,7 @@ export class EventScene extends Phaser.Scene {
       text: 'Offer weapon',
       textKey: 'ui.event.choice.offerWeapon',
       action: () => {},
-      outcome: `You press the weapon flat against the glass.\n\nThe case opens from the inside. The ${magicName} settles against the metal and sinks in, and the glass closes over nothing.\n\nThe other cases go dark.\n\nWhat you are holding is called ${cardData.name} now.`
+      outcome: translateTemplate(this, 'You press the weapon flat against the glass.\n\nThe case opens from the inside. The {magic} settles against the metal and sinks in, and the glass closes over nothing.\n\nThe other cases go dark.\n\nWhat you are holding is called {weapon} now.', { magic: translateItemName(this, magicName), weapon: translateItemName(this, cardData) })
     }, -1, { keepRewards: true });
     return true;
   }
@@ -2720,7 +2720,7 @@ export class EventScene extends Phaser.Scene {
       key: 'event.reward.gainedCard', vars: { name: translateItemName(this, magic) },
     });
 
-    this.reliquaryBreakOutcome = `You put your elbow through the case holding the ${magic.name}.\n\nThe ward goes off late and shallow, opening a line across your forearm — but the card is in your fist and it stays there.\n\nThe remaining cases go dark before the glass finishes falling.`;
+    this.reliquaryBreakOutcome = translateTemplate(this, 'You put your elbow through the case holding the {magic}.\n\nThe ward goes off late and shallow, opening a line across your forearm — but the card is in your fist and it stays there.\n\nThe remaining cases go dark before the glass finishes falling.', { magic: translateItemName(this, magic.name) });
     return true;
   }
 
@@ -2853,7 +2853,7 @@ export class EventScene extends Phaser.Scene {
 
     this._carnivalHint = this.add.text(
       centerX, 131,
-      trayChoices.length ? 'Drag a trinket into your bag   ·   1 coin each' : 'Nothing here you can afford.',
+      t(this, trayChoices.length ? 'ui.carnival.trayHint' : 'ui.carnival.nothingAffordable'),
       { fontSize: '10px', fill: '#fee8b5', fontFamily: '"HoMM Pixel"', align: 'center' }
     ).setOrigin(0.5).setDepth(5);
 

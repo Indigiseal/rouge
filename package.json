@@ -31,6 +31,8 @@
     "test:packed-sprites": "node tools/test-packed-sprites.mjs",
     "test:location-assets": "node tools/test-location-assets.mjs",
     "test:clover": "node tools/test-clover.mjs",
+    "audit:l10n": "node tools/audit-localization.mjs",
+    "test:sigil-node": "node tools/test-sigil-node.mjs",
     "test:sanctuary": "node tools/test-sanctuary.mjs",
     "test:sanctuary-preview": "node tools/test-sanctuary-preview.mjs",
     "test:fight-backgrounds": "node tools/test-fight-backgrounds.mjs",
@@ -73,5 +75,8 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }

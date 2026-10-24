@@ -20,6 +20,8 @@ import { noteCardDiscovered } from '../../content/codex/Discoveries.js';
 import { BOSSES } from '../../content/cards/bosses.js';
 import { CHUTE_BROOD_CHANCE, CHUTE_BROOD_MAX } from '../../content/events/old_chute.js';
 import { actOffsetForFloor } from '../../content/location-packs/calendar.js';
+import { BOARD_ENTRANCE_DELAY_MS } from './boardTiming.js';
+import { onBossRow } from '../../map/MapGenerator.js';
 
 // --- Opening deal -----------------------------------------------------------
 // Every card on a fresh floor falls into its slot from above, top rows first,
@@ -32,7 +34,8 @@ const DEAL_DROP_HEIGHT = 220;
 const DEAL_FALL_MS = 340;
 // Held until the board panel has finished rising, so the cards land on a table
 // that has stopped moving.
-const DEAL_START_DELAY = 200;
+// plus the pause that shows the room's picture on its own first (boardTiming.js).
+const DEAL_START_DELAY = 200 + BOARD_ENTRANCE_DELAY_MS;
 // Per-card delay, and the budget the whole cascade has to fit inside. A 6-card
 // floor deals at the full 45ms; a 26-card floor tightens to keep the opening
 // the same length rather than three times as long.
@@ -176,7 +179,7 @@ function spawnFloorCards() {
   // Spawn the act boss when ANY of these say "this is the boss room":
   //   1. the floor number lines up with a boss floor (15/30/45),
   //   2. the room type is BOSS,
-  //   3. the map cursor sits on the act's final floor (node index >= 14).
+  //   3. the map cursor sits on the act's final row (map/MapGenerator.js onBossRow).
   // currentFloor, roomType and the map cursor are tracked separately and can
   // each drift or get reset (act transitions, save/load, returning from a
   // sub-scene), which is how the player reached a boss node but got a scaled-up
@@ -185,7 +188,7 @@ function spawnFloorCards() {
   const currentFloor = this.scene.gameState.currentFloor;
   const bossFloors = [15, 30, 45];
   const enteringBossRoom = (this.scene.gameState?.roomType || this.scene.roomType) === 'BOSS';
-  const onBossNode = (this.scene.gameState?.mapCursor?.floor ?? -1) >= 14;
+  const onBossNode = onBossRow(this.scene.gameState);
   if (bossFloors.includes(currentFloor) || enteringBossRoom || onBossNode) { this.spawnBoss(); return; }
   // Determine scaled count (your code that decides roomType etc. can stay)
   const cf = this.scene.gameState?.currentFloor || 1;
@@ -528,6 +531,13 @@ function dealBoardCardsIn() {
 
         card._openingDeal = true;
         sprite.y = restY - DEAL_DROP_HEIGHT;
+        // Waiting in the air for the board to rise, a card would hang in view: it, its numbers and
+        // its shadow stay unseen until its own fall begins.
+        const waiting = [sprite, card.infoText, card.shadow].filter(part => part?.scene && part.setAlpha);
+        const wasAlpha = waiting.map(part => part.alpha);
+        waiting.forEach(part => part.setAlpha(0));
+        const appear = () => waiting.forEach((part, i) => { if (part.scene) part.setAlpha(wasAlpha[i]); });
+        this.scene.time.delayedCall(delay, appear);
         // A card in the air must not be clickable: flipping one mid-fall would
         // reveal it at whatever height it had reached. Switch the input object
         // off rather than calling disableInteractive/setInteractive — a card the
@@ -1930,6 +1940,13 @@ function summonEnemy(enemyType, bossCard) {
                 onComplete: () => flash.destroy()
             });
         }
+    });
+    // Anything that stops a card's tweens (a hit-stack knockback, a poison tick, a
+    // board shuffle) mid-fade leaves it at whatever alpha it had reached, which at
+    // the start is 0: the numbers show and the minion does not. Land it fully
+    // visible once the fade is due, whatever happened to the tween.
+    this.scene.time.delayedCall(560, () => {
+        if (cardSprite.scene && cardSprite.alpha < 1) cardSprite.setAlpha(1);
     });
     
     // Create the board card

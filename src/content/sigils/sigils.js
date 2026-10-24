@@ -14,6 +14,7 @@
 // creatures carry the same sigils; older traits still map to their icons.
 
 import { noteDiscovered } from '../codex/Discoveries.js';
+import { translateDescription, translateItemName } from '../../i18n/i18n.js';
 import { canWearStars, cardStars } from '../cards/legendaryStars.js';
 
 export const SIGIL_ICONS_KEY = 'enemyIcons';
@@ -194,7 +195,7 @@ export const NEW_SIGIL_ICON_ORDER = Object.freeze([
     'twinSocket', 'conductive', 'shock', 'charged', 'zap', 'quickStrike', 'echo', 'combo',
     'riposte', 'mending', 'secondWind', 'forage', 'wellFed', 'hunter', 'archerBane', 'keen',
     'bounty', 'growth', 'venomStack', 'venomSplash', 'venomousBomb', 'packStrength',
-    'companionStrength', 'kinship', 'reassemble', 'scorched', 'bulwark', 'briarGuard', 'shatter',
+    'companionStrength', 'kinship', 'reassemble', 'scorched', 'bulwark', 'briarGuard', 'shatter', 'crushing',
 ]);
 const NEW_ICON_FRAME = new Map(NEW_SIGIL_ICON_ORDER.map((id, frame) => [id, frame]));
 const SIGIL_ID_OF = new Map(Object.entries(SIGILS).map(([id, def]) => [def, id]));
@@ -310,11 +311,13 @@ export function sigilsFitOnMerge(cardA, cardB) {
 }
 
 /** One tooltip line: "Merciless: x1.5 against ..." (+ level when above 1). */
-export function sigilLine(id, level = 1, side = 'player') {
+export function sigilLine(id, level = 1, side = 'player', scene = null) {
     const s = SIGILS[id];
     if (!s) return '';
     const rule = (side === 'enemy' ? s.enemy : s.player) || s.player || s.enemy || '';
     const lvl = level > 1 ? ` ${level}` : '';
+    // With a scene (any scene: it only carries the language) the line is read in the player's language.
+    if (scene) return `${translateItemName(scene, s.name)}${lvl}: ${translateDescription(scene, rule)}`;
     return `${s.name}${lvl}: ${rule}`;
 }
 

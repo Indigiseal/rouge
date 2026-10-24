@@ -255,7 +255,7 @@ try {
     assert.equal(caster.slots[0], thunderclap);
     assert.equal(spellScene.gameState.actionsLeft, spellAp - 1, 'invalid casts do not spend AP');
     assert.equal(InventoryView.describeMagicCard.call({ scene: spellScene }, thunderclap), 'Deal 3 damage and Shock all revealed enemies.');
-    assert.equal(getGlowCardFrame('thunderclap'), 1);
+    assert.equal(getGlowCardFrame('thunderclap'), 11, 'the glowing sheet has its own Thunderclap card');
     assert.ok(enchantableMagicTypes(1).includes('thunderclap'));
     const enchanted = weapon();
     assert.equal(applyEnchantToWeapon(enchanted, 'thunderclap'), true);

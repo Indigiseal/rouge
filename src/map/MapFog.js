@@ -98,10 +98,11 @@ export function drawMapFog(scene, container, grid) {
  * FogOfWarSystem._spawnPuffs does it: cloud puffs cover the fog's edge at
  * once, then dissolve in a ripple out from `from` (the player's room, map
  * space), each drifting up a little and shrinking as it fades.
+ * `maxDist` limits the puffs to tiles that close to `from`.
  * Returns { first, last }: when the first and the last puff start to go (ms),
  * so sounds can land with them; null when there is no edge.
  */
-export function puffFogCascade(scene, container, grid, from) {
+export function puffFogCascade(scene, container, grid, from, maxDist = Infinity) {
     if (!grid || !scene.textures.exists(MAP_FOG_KEY)) return null;
     const PUFFS_PER_EDGE_TILE = 4;
     const MS_PER_TILE = 35;     // ripple delay per tile of distance
@@ -115,6 +116,8 @@ export function puffFogCascade(scene, container, grid, from) {
             if (!edge) continue;
             const cx = grid.left + col * TILE + TILE / 2;
             const cy = grid.top + row * TILE + TILE / 2;
+            // Only the edge near `from`: a newly lifted patch, not the whole map's.
+            if (from && Math.hypot(cx - from.x, cy - from.y) > maxDist) continue;
             const wave = from ? (Math.hypot(cx - from.x, cy - from.y) / TILE) * MS_PER_TILE : 0;
             for (let k = 0; k < PUFFS_PER_EDGE_TILE; k++) {
                 // Random cloud frame, scattered within about a tile.

@@ -8,6 +8,7 @@
 // scene's bag, so the bag is rebuilt afterwards to show the new icon.
 
 import { SoundHelper } from '../audio/SoundHelper.js';
+import { translateDescription, translateItemName } from '../i18n/i18n.js';
 import {
     SIGIL_ICONS_KEY, addSigil, canTakeSigil, cardSigils, getSigil, noteSigilTaken, sigilIconArt, sigilLine, takenSigils,
 } from '../content/sigils/sigils.js';
@@ -77,8 +78,8 @@ export function openSigilOffer(scene, gameScene, sigilId, onDone = () => {}) {
         const art = sigilIconArt(sigilId, scene.textures);
         add(scene.add.image(PANEL.x - 118, PANEL.y - 38, art.key, art.frame).setScale(2));
     }
-    text(PANEL.x - 98, PANEL.y - 50, def.name, '11px', '#fef0cf').setOrigin(0, 0.5);
-    text(PANEL.x - 98, PANEL.y - 30, sigilLine(sigilId).slice(def.name.length + 2), '9px', '#f2d3aa',
+    text(PANEL.x - 98, PANEL.y - 50, translateItemName(scene, def.name), '11px', '#fef0cf').setOrigin(0, 0.5);
+    text(PANEL.x - 98, PANEL.y - 30, translateDescription(scene, def.player || def.enemy || ''), '9px', '#f2d3aa',
         { wordWrap: { width: 210 } }).setOrigin(0, 0.5);
     text(PANEL.x, PANEL.y - 6, 'Choose a card for it:', '9px', '#d6c7b3').setOrigin(0.5);
 

@@ -18,6 +18,10 @@ export const ROBBERS_SHEET = Object.freeze({ id: 'robbers', enemies: ROBBERS_ROS
 
 const art = (id) => enemyCardPresentation('robbers', ROBBERS_ROSTER, id);
 
+// The amulet the gang's cook was carrying: +1 bag slot, given for beating the robbers the
+// Soup Stand's "wait out of sight" brings (GameScene.rewardRobberSatchel). Not a drop.
+export const ROBBER_SATCHEL_AMULET = 'robberSatchel';
+
 export const ROBBER_DEFS = Object.freeze({
   // Fast hands: takes a coin when it hits.
   robberCook: Object.freeze({

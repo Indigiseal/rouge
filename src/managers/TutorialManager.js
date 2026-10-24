@@ -464,10 +464,13 @@ export class TutorialManager {
             // One step, not two: the gem goes from the board straight onto the
             // sword. A gem dropped into an empty bag slot instead is carried,
             // and dragging it from the bag onto the sword still completes the
-            // step — done() only checks that the sword holds the gem.
+            // step — done() only checks that the sword holds the gem. The overlay
+            // only lets the player touch the step's target, so once the gem is in
+            // the bag the target is the gem there; with the board's gem as the
+            // only target a tester who dropped it in the bag could not pick it up.
             {
                 textKey: 'ui.tutorial.socketGem',
-                target: () => this.boardSprite('lightningGem'),
+                target: () => this.boardSprite('lightningGem') || this.invSprite('lightningGem'),
                 hintTarget: () => this.tutorialSwordSprite(),
                 done: () => this.hasLightningGemSocketed(),
             },

@@ -1,3 +1,4 @@
+import { SoundHelper } from '../../audio/SoundHelper.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { cardRiders, pinRider, unpinRider } from '../../ui/CardRiders.js';
 import { hideGemSockets } from '../../ui/GemSockets.js';
@@ -1030,6 +1031,45 @@ export const InventoryView = {
         this.updateTwinkleEffects();
 
         this.scene.createFloatingText(320, 300, `+${additionalSlots} Inventory Slots!`, 0xfbad19);
+        for (let i = oldSize; i < newSize; i++) this.playNewSlotEffect(i, (i - oldSize) * 140);
+    },
+    // A freshly earned slot lights up: a warm glow swells over it, a gold frame
+    // ripples outward and a few sparks drift up, with a chime. Whole pixels.
+    playNewSlotEffect(slotIndex, delay = 0) {
+        const bg = this.slotSprites?.[slotIndex]?.background;
+        const scene = this.scene;
+        if (!bg?.scene) return;
+        const { x, y } = bg;
+        const depth = 14;
+        const glow = scene.add.rectangle(x, y, 50, 70, 0xffd37a, 1)
+            .setBlendMode(Phaser.BlendModes.ADD).setDepth(depth).setAlpha(0);
+        const frame = scene.add.rectangle(x, y, 50, 70).setStrokeStyle(1, 0xfbad19).setDepth(depth).setAlpha(0);
+        const sparks = [];
+        for (let i = 0; i < 6; i++) {
+            sparks.push(scene.add.rectangle(Math.round(x - 18 + i * 7 + (i % 2) * 2), y + 24, 2, 2, 0xfff0b8)
+                .setDepth(depth).setAlpha(0));
+        }
+        const all = [glow, frame, ...sparks];
+        const destroyAll = () => all.forEach(o => o.scene && o.destroy());
+        scene.events.once('shutdown', destroyAll);
+        scene.time.delayedCall(delay, () => {
+            if (!glow.scene) return;
+            SoundHelper.playSound(scene, 'bag_slot_unlock', 0.5);
+            scene.tweens.add({ targets: glow, alpha: { from: 0, to: 0.55 }, duration: 220, yoyo: true, ease: 'Sine.easeOut' });
+            scene.tweens.add({
+                targets: frame, alpha: { from: 0.9, to: 0 }, scaleX: 1.3, scaleY: 1.2,
+                duration: 600, ease: 'Cubic.easeOut',
+            });
+            sparks.forEach((spark, i) => scene.tweens.add({
+                targets: spark, alpha: { from: 1, to: 0 }, y: Math.round(y + 24 - 44 - (i % 3) * 8),
+                delay: i * 40, duration: 520, ease: 'Sine.easeOut',
+                onUpdate: () => { spark.y = Math.round(spark.y); },
+            }));
+            scene.time.delayedCall(900 + sparks.length * 40, () => {
+                scene.events.off('shutdown', destroyAll);
+                destroyAll();
+            });
+        });
     },
     // Special rebuild method that doesn't double-preserve items
     rebuildSpritesAfterExpansion() {
@@ -1239,11 +1279,14 @@ export const InventoryView = {
             const baseDmg = card.damage || 0;
             lines.push(t(this.scene, 'tooltip.damageShort', { amount: shownDmg }));
             if (shownDmg !== baseDmg) {
-                lines.push(`Base ${baseDmg} + class/talents${bowBonus ? ` + ${translateItemName(this.scene, 'Dune Quiver')}` : ''}`);
+                lines.push(t(this.scene, 'tooltip.baseDamageNote', {
+                    amount: baseDmg,
+                    extra: bowBonus ? ` + ${translateItemName(this.scene, 'Dune Quiver')}` : '',
+                }));
             }
             const critChance = (this.scene?.gameState?.discardCritChance || 0)
                 + (this.scene?.amuletManager?.getCriticalChanceBonus?.() || 0);
-            if (critChance > 0) lines.push(`Crit: ${Math.round(critChance * 100)}%`);
+            if (critChance > 0) lines.push(t(this.scene, 'tooltip.critChanceLine', { amount: Math.round(critChance * 100) }));
             lines.push(t(this.scene, 'tooltip.range', {
                 value: t(this.scene, (card.range || 'melee') === 'ranged' ? 'tooltip.ranged' : 'tooltip.melee')
             }));
@@ -1349,7 +1392,7 @@ export const InventoryView = {
 
         // The card's sigils, one line each ("Merciless: x1.5 against ...").
         // The Thorns and enchant sigils already have their own lines above.
-        for (const sigil of storedSigils(card)) lines.push(sigilLine(sigil.id, sigil.level || 1, 'player'));
+        for (const sigil of storedSigils(card)) lines.push(sigilLine(sigil.id, sigil.level || 1, 'player', this.scene));
 
         return lines;
     },

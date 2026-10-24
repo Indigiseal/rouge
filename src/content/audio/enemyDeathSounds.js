@@ -21,9 +21,11 @@ export const ENEMY_DEATH_FAMILIES = Object.freeze({
     // Storm's Cloudborn (assets/art/stormhatch/), sounds ready before the roster is wired.
     storm: ['cloudbornGuard', 'lightningBee', 'stormGolem', 'lightningEye', 'cloudbornArcher', 'stormArchon'],
     // Sandreach's lizardfolk; the Glass Scarab is still on the shared pair.
-    sandreach: ['duneForager', 'sandSkirmisher', 'lizardArcher', 'sandcaller'],
+    sandreach: ['duneForager', 'sandSkirmisher', 'lizardArcher', 'sandcaller', 'glassScarab'],
     // Frosthollow's snow roster.
     frosthollow: ['snowBrute', 'snowArcher', 'iceOrb', 'iceGolem', 'frozenKnight'],
+    // The Crystal Lair's mother and her brood (cards/crystalSpiders.js).
+    crystal: ['crystalMother', 'crystalHatchling'],
     // The generic robbers stories deal (cards/robbers.js).
     robbers: ['robberCook', 'robberMuscle', 'robberLookout'],
 });

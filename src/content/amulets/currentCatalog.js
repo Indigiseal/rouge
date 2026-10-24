@@ -347,6 +347,18 @@ export function buildCurrentAmuletDefinitions(mgr) {
                     else this.gameState.bonusInventorySlots = (this.gameState.bonusInventorySlots || 0) + 1;
                 },
             },
+            // Won from the Soup Stand's robbers (cards/robbers.js), never dropped: the same
+            // bag slot as the Carryall, made certain by the fight that earns it.
+            robberSatchel: {
+                ...getAmuletAtlasPresentation('robberSatchel'),
+                name: "Robber's Satchel",
+                description: '+1 bag slot.',
+                rarity: 'uncommon',
+                onEquip: function() {
+                    if (this.scene.inventorySystem) this.scene.inventorySystem.expandInventory(1);
+                    else this.gameState.bonusInventorySlots = (this.gameState.bonusInventorySlots || 0) + 1;
+                },
+            },
             // Taya's new art (sigils branch).
             heartbloodVial: {
                 ...getAmuletAtlasPresentation('heartbloodVial'),

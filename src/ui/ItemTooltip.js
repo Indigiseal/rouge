@@ -16,12 +16,12 @@ import { HEATPROOF_RESIST } from '../content/combat/fireResist.js';
 import { MAX_LEGENDARY_STARS, cardStars } from '../content/cards/legendaryStars.js';
 import { companionStrengthBonus } from '../systems/combat/SigilEffects.js';
 
-function enemySigilTooltip(data, sigil) {
+function enemySigilTooltip(scene, data, sigil) {
     if (sigil.id === 'growth') {
         const amount = Math.max(1, Math.floor(data.growthPerAttack || 1));
         return `Growth: +${amount} maximum HP after attacking; does not heal`;
     }
-    return sigilLine(sigil.id, sigil.level || 1, 'enemy');
+    return sigilLine(sigil.id, sigil.level || 1, 'enemy', scene);
 }
 import { getEnemyHitAttack, applyEnemyStrikeSigils } from '../content/combat/enemyAttack.js';
 
@@ -198,7 +198,7 @@ export function getBossAbilityLines(scene, data) {
                 // An elite's summon calls whatever fits the floor: no fixed enemy.
                 lines.push(ab.enemyType
                     ? t(scene, 'boss.summon', { enemy: translateEnemyName(scene, ab.enemyType) })
-                    : sigilLine('summon', 1, 'enemy'));
+                    : sigilLine('summon', 1, 'enemy', scene));
                 if (Array.isArray(ab.thresholds)) {
                     lines.push(`${ab.thresholds.map(value => `${Math.round(value * 100)}%`).join(' / ')} HP`);
                 }
@@ -225,7 +225,7 @@ export function getBossAbilityLines(scene, data) {
                 break;
         }
     });
-    for (const sigil of storedSigils(data)) lines.push(enemySigilTooltip(data, sigil));
+    for (const sigil of storedSigils(data)) lines.push(enemySigilTooltip(scene, data, sigil));
     return lines;
 }
 
@@ -247,7 +247,7 @@ export function showBossTooltip(scene, data, anchorX, anchorY, gap = TOOLTIP_GAP
     if (!scene || !scene.add || !data) return;
     hideItemTooltip(scene);
 
-    const name = data.name || t(scene, 'tooltip.card');
+    const name = translateItemName(scene, data) || data.name || t(scene, 'tooltip.card');
     const abilityLines = getBossAbilityLines(scene, data);
     const board = (scene.gameScene || scene).cardSystem?.boardCards || [];
     const card = board.find(entry => entry?.data === data) || { data };

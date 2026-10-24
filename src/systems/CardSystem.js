@@ -80,6 +80,8 @@ export class CardSystem {
     /** Face-down art for the current room. */
     /** The location whose card art this board wears. */
     _cardArtLocationId() {
+        // The tutorial's enemies are skeletons, so its cards wear Boneflood's back.
+        if (this.scene?.tutorialMode) return 'boneflood';
         const gameState = this.scene?.gameState;
         return gameState ? getLocationIdForFloor(gameState) : null;
     }

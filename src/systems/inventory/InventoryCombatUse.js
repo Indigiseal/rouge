@@ -17,6 +17,7 @@ import {
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { playSmokeBurst } from '../../ui/SmokeBurst.js';
 import { t, translateItemName } from '../../i18n/i18n.js';
+import { playHeatWave } from '../../ui/HeatWave.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
 import { applyWeaponSigils, onWeaponSigilHit } from '../combat/SigilEffects.js';
 import { getSigil } from '../../content/sigils/sigils.js';
@@ -141,7 +142,9 @@ export const InventoryCombatUse = {
             case 'scorched':
                 used = applyScorched(this.scene.cardSystem) > 0;
                 if (used) {
-                    SoundHelper.playSound(this.scene, 'magic_cast', 0.5);
+                    // A wave of heat from the middle of the board, under the cards (ui/HeatWave.js).
+                    SoundHelper.playSound(this.scene, 'scorched_wave', 0.6);
+                    playHeatWave(this.scene);
                     this.scene.createFloatingText(320, 70, t(this.scene, 'magic.scorched.applied'), 0xef7c4b);
                 }
                 break;
@@ -634,7 +637,7 @@ export const InventoryCombatUse = {
             attackDamage = sigilHit.damage;
             if (sigilHit.triggered.length && sigilTarget?.sprite) {
                 this.scene.createFloatingText(sigilTarget.sprite.x, sigilTarget.sprite.y - 30,
-                    sigilHit.triggered.map((id) => getSigil(id)?.name).join(' + ') + '!', 0xffcf7f);
+                    sigilHit.triggered.map((id) => translateItemName(this.scene, getSigil(id)?.name)).join(' + ') + '!', 0xffcf7f);
             }
 
             // Keen Edge: first dagger/bow attack each floor gets flat +N.
@@ -772,7 +775,7 @@ export const InventoryCombatUse = {
                     secondaryDamage = offhandSigils.damage;
                     if (offhandSigils.triggered.length && currentEnemy?.sprite) {
                         this.scene.createFloatingText(currentEnemy.sprite.x, currentEnemy.sprite.y - 42,
-                            offhandSigils.triggered.map((id) => getSigil(id)?.name).join(' + ') + '!', 0xffcf7f);
+                            offhandSigils.triggered.map((id) => translateItemName(this.scene, getSigil(id)?.name)).join(' + ') + '!', 0xffcf7f);
                     }
                     const offhandHealthBefore = currentEnemy.data?.health ?? 0;
                     this.scene.cardSystem.attackEnemy(closestEnemy, secondaryDamage, false, secondaryDagger, true);

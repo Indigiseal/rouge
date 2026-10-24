@@ -6,7 +6,7 @@ import { SoundHelper } from '../../audio/SoundHelper.js';
 import { playCardDissolve } from '../../ui/CardDissolve.js';
 import { isGauntlet } from '../../content/balance/Gauntlet.js';
 import { resourceCardKey } from '../../content/assets/resourceCards.js';
-import { t, translateItemName } from '../../i18n/i18n.js';
+import { t, translateDescription, translateItemName } from '../../i18n/i18n.js';
 import { WEAPONS, createWeaponCardData } from '../../content/cards/weapons.js';
 import { ARMORS, createArmorCardData } from '../../content/cards/armor.js';
 import { applyArmorTalentMods } from '../../content/talents/index.js';
@@ -460,7 +460,8 @@ export const EventRunHelpers = {
       story.latchboxRewardClaimed = true;
       story.boxFollowing = false;
       this.expandInventorySlots(1);
-      this.boxRepairOutcome = `${prelude}\n\nThe box takes the cog, clicks once, and unfolds a drawer from somewhere no drawer should fit. Then a second. Then a third.\n\nIt climbs into your pack and settles in like it has always been there.\n\nLoyal Latchbox: +1 inventory slot`;
+      // Two sentences that each have a translation; the prelude is the choice's own.
+      this.boxRepairOutcome = `${translateDescription(this, prelude)}\n\n${translateDescription(this, 'The box takes the cog, clicks once, and unfolds a drawer from somewhere no drawer should fit. Then a second. Then a third.\n\nIt climbs into your pack and settles in like it has always been there.\n\nLoyal Latchbox: +1 inventory slot')}`;
       return true;
     }
 
@@ -469,7 +470,7 @@ export const EventRunHelpers = {
     story.boxFollowing = false;
     this.gainCoins(12);
     this.gainCrystals(1);
-    this.boxRepairOutcome = `${prelude}\n\nThe box swallows the cog. It clicks. It coughs smoke.\n\nThen it plays three flat notes, spits a handful of valuables at your feet, and refuses to look at you.`;
+    this.boxRepairOutcome = `${translateDescription(this, prelude)}\n\n${translateDescription(this, 'The box swallows the cog. It clicks. It coughs smoke.\n\nThen it plays three flat notes, spits a handful of valuables at your feet, and refuses to look at you.')}`;
     return false;
   },
 

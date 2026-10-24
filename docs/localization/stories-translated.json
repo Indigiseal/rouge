@@ -1,0 +1,788 @@
+[
+  {
+    "id": 1,
+    "es": "El campamento abandonado",
+    "fr": "Le camp abandonné",
+    "ru": "Брошенный лагерь"
+  },
+  {
+    "id": 2,
+    "es": "Un campamento en una cámara lateral, abandonado a toda prisa. El fuego está frío. La tienda sigue en pie, con un poste inclinado.\n\nPetates, una olla, una bolsa a medio vaciar. Nadie volvió a por nada.",
+    "fr": "Un camp dans une salle latérale, abandonné à la hâte. Le feu est froid. La tente tient encore, un piquet de travers.\n\nDes couchages, une marmite, un sac à moitié défait. Personne n’est revenu chercher quoi que ce soit.",
+    "ru": "Лагерь в боковой зале, брошенный в спешке. Костёр остыл. Палатка ещё стоит, одна стойка покосилась.\n\nСпальные мешки, котелок, наполовину разобранная сумка. Ни за чем не вернулись."
+  },
+  {
+    "id": 3,
+    "es": "Dormir en la tienda",
+    "fr": "Dormir dans la tente",
+    "ru": "Спать в палатке"
+  },
+  {
+    "id": 4,
+    "es": "De noche, algo camina alrededor de la tienda. Luego deja de caminar.",
+    "fr": "Dans la nuit, quelque chose marche autour de la tente. Puis cesse de marcher.",
+    "ru": "Ночью что-то ходит вокруг палатки. Потом перестаёт ходить."
+  },
+  {
+    "id": 5,
+    "es": "Duermes. No viene nadie.\n\nPor la mañana, el campamento está tal como lo dejaron.",
+    "fr": "Vous dormez. Personne ne vient.\n\nAu matin, le camp est exactement comme ils l’ont laissé.",
+    "ru": "Вы спите. Никто не приходит.\n\nУтром лагерь выглядит ровно так, как его оставили."
+  },
+  {
+    "id": 6,
+    "es": "Explorar el campamento",
+    "fr": "Inspecter le camp",
+    "ru": "Осмотреть лагерь"
+  },
+  {
+    "id": 7,
+    "es": "Detrás de la tienda, medio tapado por los petates, encuentras a uno de ellos.\n\nSu espada está fuera de la vaina. La hoja está limpia. No tiene ni un rasguño.\n\nNo murió luchando. Tiene cara de haber visto un fantasma.",
+    "fr": "Derrière la tente, à moitié sous les couchages, vous trouvez l’un d’eux.\n\nSon épée est sortie du fourreau. La lame est propre. Il n’a pas une égratignure.\n\nIl n’est pas mort au combat. À voir son visage, on dirait qu’il a vu un fantôme.",
+    "ru": "За палаткой, наполовину под спальными мешками, вы находите одного из них.\n\nМеч вынут из ножен. Клинок чистый. На теле ни царапины.\n\nОн умер не в бою. Лицо такое, будто он увидел призрака."
+  },
+  {
+    "id": 8,
+    "es": "Coger su mochila",
+    "fr": "Prendre son sac",
+    "ru": "Взять его рюкзак"
+  },
+  {
+    "id": 9,
+    "es": "Sigues agachado sobre él cuando la entrada de la tienda se mueve a tu espalda.\n\nAquí abajo no hay viento.",
+    "fr": "Vous êtes encore accroupi au-dessus de lui quand le pan de la tente bouge derrière vous.\n\nIl n’y a pas de vent ici.",
+    "ru": "Вы всё ещё сидите над ним на корточках, когда за спиной шевелится полог палатки.\n\nЗдесь внизу нет ветра."
+  },
+  {
+    "id": 10,
+    "es": "Nada se mueve. Le dejas lo demás.",
+    "fr": "Rien ne bouge. Vous lui laissez le reste.",
+    "ru": "Ничего не шевелится. Остальное вы ему оставляете."
+  },
+  {
+    "id": 11,
+    "es": "Coger su espada",
+    "fr": "Prendre son épée",
+    "ru": "Взять его меч"
+  },
+  {
+    "id": 12,
+    "es": "Coger su armadura",
+    "fr": "Prendre son armure",
+    "ru": "Взять его броню"
+  },
+  {
+    "id": 13,
+    "es": "Enterrarlo y rezar",
+    "fr": "L’enterrer et prier",
+    "ru": "Похоронить и помолиться"
+  },
+  {
+    "id": 14,
+    "es": "Dejas sus cosas donde están. La tierra está bastante blanda.\n\nCuando terminas de rezar, la cámara está en silencio. Te levantas con menos peso del que sentías al arrodillarte.",
+    "fr": "Vous laissez ses affaires en place. La terre est assez meuble.\n\nQuand vous finissez la prière, la salle est très calme. Vous vous relevez plus léger qu’en vous agenouillant.",
+    "ru": "Вы оставляете его вещи на месте. Земля достаточно мягкая.\n\nКогда вы заканчиваете молитву, в зале очень тихо. Вы встаёте с колен. Стало легче."
+  },
+  {
+    "id": 15,
+    "es": "Dejarlo",
+    "fr": "Le laisser",
+    "ru": "Оставить его"
+  },
+  {
+    "id": 16,
+    "es": "Lo dejas como lo encontraste. No vuelves a mirarle la cara.",
+    "fr": "Vous le laissez comme vous l’avez trouvé. Vous ne regardez plus son visage.",
+    "ru": "Вы оставляете его как нашли. На лицо больше не смотрите."
+  },
+  {
+    "id": 17,
+    "es": "Salir del campamento",
+    "fr": "Quitter le camp",
+    "ru": "Уйти из лагеря"
+  },
+  {
+    "id": 18,
+    "es": "Dejas el campamento como está. Quien lo abandonó no va a volver.",
+    "fr": "Vous laissez le camp en l’état. Ceux qui l’ont quitté ne reviendront pas.",
+    "ru": "Вы оставляете лагерь как есть. Кто бы его ни бросил, он не вернётся."
+  },
+  {
+    "id": 19,
+    "es": "Bajo los escombros hay una cajita de música negra: tapa agrietada, una pata de latón que se mueve.\n\nCuando te acercas, toca tres notas y se cierra de golpe.",
+    "fr": "Une petite boîte à musique noire gît sous les gravats : couvercle fendu, une patte en laiton qui tressaute.\n\nQuand vous vous penchez, elle joue trois notes et se referme d’un coup.",
+    "ru": "Под обломками лежит маленькая чёрная музыкальная шкатулка. Крышка треснула, одна латунная ножка дёргается.\n\nВы наклоняетесь. Она играет три ноты и захлопывается."
+  },
+  {
+    "id": 20,
+    "es": "Abrirla a la fuerza",
+    "fr": "Forcer le couvercle",
+    "ru": "Вскрыть силой"
+  },
+  {
+    "id": 21,
+    "es": "Haces palanca en la tapa.",
+    "fr": "Vous faites levier sur le couvercle.",
+    "ru": "Вы поддеваете крышку."
+  },
+  {
+    "id": 22,
+    "es": "Abrirla con cuidado",
+    "fr": "L’ouvrir avec soin",
+    "ru": "Открыть осторожно"
+  },
+  {
+    "id": 23,
+    "es": "La cerradura cede. Dentro, donde debería girar el cilindro, falta un engranaje.\n\nLa caja te mira, de algún modo. Luego le salen dos patas más y empieza a seguirte.",
+    "fr": "La serrure cède. À l’intérieur, là où le cylindre devrait tourner, il manque un rouage.\n\nLa boîte vous regarde. On ne sait comment. Puis deux autres pattes lui poussent et elle vous emboîte le pas.",
+    "ru": "Замок поддаётся. Внутри, там, где должен вращаться валик, не хватает шестерёнки.\n\nШкатулка смотрит на вас. Каким-то образом. Потом отращивает ещё две ножки и пристраивается сзади."
+  },
+  {
+    "id": 24,
+    "es": "Dejarla en paz",
+    "fr": "La laisser tranquille",
+    "ru": "Не трогать"
+  },
+  {
+    "id": 25,
+    "es": "Pasas por encima y sigues andando.\n\nDiez pasos después: patitas de metal sobre las piedras, detrás de ti.",
+    "fr": "Vous l’enjambez et continuez.\n\nDix pas plus loin : de petits pieds métalliques sur les pierres, derrière vous.",
+    "ru": "Вы перешагиваете через неё и идёте дальше.\n\nЧерез десять шагов: маленькие металлические ножки стучат по камням позади вас."
+  },
+  {
+    "id": 26,
+    "es": "Un goblin sale de detrás de una máquina rota, olfatea el aire y tose.\n\n",
+    "fr": "Un gobelin sort de derrière une machine cassée, renifle l’air et tousse.\n\n",
+    "ru": "Из-за сломанной машины выходит гоблин, принюхивается и кашляет.\n\n"
+  },
+  {
+    "id": 27,
+    "es": "«Caja Ratera. La carga estalló antes. Huelo la pólvora desde aquí. Ya no queda dónde encajar un engranaje».\n\n",
+    "fr": "« Boîte chapardeuse. La charge a sauté d’abord. Je sens la poudre d’ici. Plus rien où loger un rouage. »\n\n",
+    "ru": "«Шкатулка-воровка. Заряд сработал первым. Порох отсюда чую. Шестерёнку уже некуда ставить».\n\n"
+  },
+  {
+    "id": 28,
+    "es": "Te mira las botas, como si la caja aún pudiera esconderse ahí. No está.",
+    "fr": "Il regarde vos bottes comme si une boîte pouvait encore s’y cacher. Ce n’est pas le cas.",
+    "ru": "Он смотрит на ваши сапоги, будто шкатулка ещё может там прятаться. Её там нет."
+  },
+  {
+    "id": 29,
+    "es": "Un goblin sale de detrás de una máquina rota y señala la caja de música.\n\n«Caja Ratera Somnífera. Viejo modelo de ladrones. Toca una canción, suelta humo, héroe duerme, bolsillos vacíos. Muy ilegal. Muy rentable».\n\nLa caja se esconde detrás de tu bota.",
+    "fr": "Un gobelin sort de derrière une machine cassée et montre la boîte à musique.\n\n« Boîte chapardeuse soporifique. Vieux modèle de brigand. Joue un air, souffle de la fumée, héros dort, poches vides. Très illégal. Très rentable. »\n\nLa boîte se cache derrière votre botte.",
+    "ru": "Из-за сломанной машины выходит гоблин и указывает на музыкальную шкатулку.\n\n«Сонная шкатулка-воровка. Старая разбойничья модель. Играет песенку, пускает дым, герой спит, карманы пусты. Очень незаконно. Очень прибыльно».\n\nШкатулка прячется за вашим сапогом."
+  },
+  {
+    "id": 30,
+    "es": "«Encontraste su engranaje central. Dámelo, puedo encajarlo bien. O mal. Depende del pago».",
+    "fr": "« Vous avez trouvé son rouage central. Donnez, je peux le monter comme il faut. Ou pas. Ça dépend du paiement. »",
+    "ru": "«Вы нашли её сердечную шестерёнку. Давайте сюда. Могу поставить как надо. Или как не надо. Смотря сколько заплатите»."
+  },
+  {
+    "id": 31,
+    "es": "«¿Sin engranaje? Tengo repuestos. Las piezas se cobran aparte».",
+    "fr": "« Pas de rouage ? J’ai des pièces de rechange. Les pièces, c’est en supplément. »",
+    "ru": "«Нет шестерёнки? У меня есть запасные. Запчасти за отдельную плату»."
+  },
+  {
+    "id": 32,
+    "es": "Negarte a pagar",
+    "fr": "Refuser de payer",
+    "ru": "Отказаться платить"
+  },
+  {
+    "id": 33,
+    "es": "Darle una carta para piezas",
+    "fr": "Donner une carte à démonter",
+    "ru": "Отдать карту на запчасти"
+  },
+  {
+    "id": 34,
+    "es": "Repararla por 30 monedas",
+    "fr": "Tout réparer : 30 pièces",
+    "ru": "Полный ремонт за 30 монет"
+  },
+  {
+    "id": 35,
+    "es": "Se encoge de hombros. «Ceniza es ceniza. No hago funerales».\n\nYa está detrás de la máquina cuando te das la vuelta.",
+    "fr": "Il hausse les épaules. « La cendre, c’est de la cendre. Je ne fais pas les enterrements. »\n\nIl est déjà retourné derrière la machine quand vous vous détournez.",
+    "ru": "Он пожимает плечами. «Пепел есть пепел. Похоронами не занимаюсь».\n\nВы ещё не отвернулись, а он уже снова за машиной."
+  },
+  {
+    "id": 36,
+    "es": "El doble del espejo",
+    "fr": "Le double du miroir",
+    "ru": "Зеркальный двойник"
+  },
+  {
+    "id": 37,
+    "es": "Un rincón seco. Te sientas y cierras los ojos.\n\nCuando los abres, hay alguien sentado frente a ti. Con capucha, piernas cruzadas y tu cara. La cicatriz de tu barbilla está en el otro lado de la suya.\n\nTe rascas la nariz. Él se rasca la nariz. Sus rodillas tocan las tuyas.",
+    "fr": "Un coin sec. Vous vous asseyez et fermez les yeux.\n\nQuand vous les ouvrez, quelqu’un est assis en face. En capuche, les jambes croisées, avec votre visage. La cicatrice de votre menton est de l’autre côté du sien.\n\nVous vous grattez le nez. Il se gratte le nez. Ses genoux touchent les vôtres.",
+    "ru": "Сухой угол. Вы садитесь и закрываете глаза.\n\nКогда вы их открываете, напротив кто-то сидит. В капюшоне, скрестив ноги, с вашим лицом. Шрам на подбородке у него с другой стороны.\n\nВы чешете нос. Он чешет нос. Его колени касаются ваших."
+  },
+  {
+    "id": 38,
+    "es": "Darle un fragmento",
+    "fr": "Lui donner un éclat",
+    "ru": "Дать ему осколок"
+  },
+  {
+    "id": 39,
+    "es": "Levanta el fragmento. En él se refleja una cara, pero no la tuya. Se vuelve para mirar mejor.",
+    "fr": "Il lève l’éclat. Un visage s’y reflète. Pas le vôtre. Il se tourne pour mieux voir.",
+    "ru": "Он поднимает осколок. Из него смотрит лицо. Не ваше. Он отворачивается, чтобы разглядеть поближе."
+  },
+  {
+    "id": 40,
+    "es": "Escabullirte",
+    "fr": "Filer en douce",
+    "ru": "Тихо уйти"
+  },
+  {
+    "id": 41,
+    "es": "Levantas la mochila, una correa cada vez, y sales del rincón retrocediendo. Él no levanta la vista.\n\nAl sexto paso se acaba el suelo.\n\nAterrizas sobre alfombras viejas junto a un campamento muerto. Una nota bajo una piedra: «Día 4. El hombre del espejo SIGUE aquí. Voy a intentar escabullirme. No mirar atrás».\n\nDebajo hay un amuleto. Lo coges y trepas por el otro lado. No miras atrás.",
+    "fr": "Vous soulevez votre sac, une bretelle après l’autre, et reculez hors du coin. Il ne lève pas les yeux.\n\nAu sixième pas, le sol s’arrête.\n\nVous atterrissez sur de vieux tapis près d’un camp désert. Un mot sous une pierre : « Jour 4. L’homme du miroir est TOUJOURS là. Vais essayer de filer en douce. Ne pas regarder derrière. »\n\nDessous, une amulette. Vous la prenez et remontez de l’autre côté. Vous ne regardez pas derrière.",
+    "ru": "Вы поднимаете рюкзак за одну лямку, потом за другую и пятитесь из угла. Он не поднимает глаз.\n\nНа шестом шаге пол кончается.\n\nВы приземляетесь на старые ковры возле вымершего лагеря. Под камнем записка: «День 4. Зеркальный человек ВСЁ ЕЩЁ здесь. Попробую уйти тихо. Не оглядываться».\n\nПод ней амулет. Вы берёте его и выбираетесь с другой стороны. Не оглядываетесь."
+  },
+  {
+    "id": 42,
+    "es": "Dar la Lente del buscagemas",
+    "fr": "Donner la Lentille",
+    "ru": "Дать Линзу искателя камней"
+  },
+  {
+    "id": 43,
+    "es": "Aún mejor: su propia cara, enorme. Pega la nariz y se olvida de ti.",
+    "fr": "Encore mieux : son propre visage, énorme. Il y colle le nez et vous oublie.",
+    "ru": "Ещё лучше: его собственное лицо, огромное. Он прижимает к ней нос и забывает о вас."
+  },
+  {
+    "id": 44,
+    "es": "Darle el Espejo de mano",
+    "fr": "Donner le Miroir à main",
+    "ru": "Дать Ручное зеркало"
+  },
+  {
+    "id": 45,
+    "es": "Se mira en el espejo. Otro él le devuelve la mirada. Se acerca. El otro también.\n\nFiu.\n\nRecoges el espejo. Tu reflejo no está. Está él, aplastado contra el cristal, con cara de satisfacción.",
+    "fr": "Il regarde dans le miroir. Un autre lui le regarde. Il s’approche. L’autre aussi.\n\nFrouf.\n\nVous ramassez le miroir. Votre reflet n’y est pas. Lui, si. Aplati contre la vitre, l’air content.",
+    "ru": "Он смотрит в зеркало. Оттуда смотрит ещё один он. Он наклоняется ближе. Другой тоже.\n\nФьюх.\n\nВы поднимаете зеркало. Вашего отражения в нём нет. Зато есть он, расплющенный по стеклу, с довольным видом."
+  },
+  {
+    "id": 46,
+    "es": "Ganarle sin parpadear",
+    "fr": "Soutenir son regard",
+    "ru": "Переиграть его в гляделки"
+  },
+  {
+    "id": 47,
+    "es": "Parpadeas primero. Hace un bailecito de victoria y se marcha sin dejar de bailar. Te quedas sin descanso.",
+    "fr": "Vous clignez des yeux en premier. Il fait une petite danse de victoire et s’en va, toujours en dansant. Vous n’avez pas eu votre repos.",
+    "ru": "Вы моргаете первым. Он исполняет маленький победный танец и уходит, всё ещё пританцовывая. Отдохнуть вам не удалось."
+  },
+  {
+    "id": 48,
+    "es": "Una sombra pasa sobre el nido. Luego otra vez, más baja.",
+    "fr": "Une ombre passe sur le nid. Puis encore, plus bas.",
+    "ru": "Над гнездом проходит тень. Потом ещё раз, ниже."
+  },
+  {
+    "id": 49,
+    "es": "Un nido encajado entre dos columnas caídas: huevos moteados, llaves dobladas, botones viejos y un pequeño engranaje de latón.\n\n",
+    "fr": "Un nid est coincé entre deux piliers tombés : des œufs tachetés, des clés tordues, de vieux boutons et un petit rouage en laiton.\n\n",
+    "ru": "Между двумя упавшими колоннами застряло гнездо. Пятнистые яйца, гнутые ключи, старые пуговицы и одна маленькая латунная шестерёнка.\n\n"
+  },
+  {
+    "id": 50,
+    "es": "Registrar el nido",
+    "fr": "Fouiller le nid",
+    "ru": "Обыскать гнездо"
+  },
+  {
+    "id": 51,
+    "es": "Metes la mano en el nido.",
+    "fr": "Vous plongez la main dans le nid.",
+    "ru": "Вы запускаете руку в гнездо."
+  },
+  {
+    "id": 52,
+    "es": "El viejo conducto",
+    "fr": "La vieille chute",
+    "ru": "Старый спуск"
+  },
+  {
+    "id": 53,
+    "es": "Una losa se inclina bajo tu bota. Caes en el conducto de una vieja trampa y te deslizas un buen trecho a oscuras.\n\nLo que debía esperarte abajo se pudrió hace años. Aterrizas sin hacerte daño, sobre algo que cruje.\n\nDebajo hay una araña del tamaño de un perro, hecha de cristal transparente. Ahora casi toda está en pedazos.",
+    "fr": "Une dalle bascule sous votre botte. Vous tombez dans la chute d’un vieux piège et glissez longtemps dans le noir.\n\nCe qui devait vous attendre en bas a pourri il y a des années. Vous atterrissez sans mal sur quelque chose qui craque.\n\nSous vous, une araignée de la taille d’un chien, faite de cristal transparent. Elle est maintenant presque toute en morceaux.",
+    "ru": "Плита под сапогом наклоняется. Вы падаете в спуск старой ловушки и долго скользите вниз в темноте.\n\nВсё, что должно было ждать внизу, сгнило много лет назад. Вы приземляетесь без ушибов. Под вами что-то хрустит.\n\nЭто паучиха размером с собаку, из прозрачного кристалла. Теперь почти вся разбита."
+  },
+  {
+    "id": 54,
+    "es": "Coger una pata de cristal",
+    "fr": "Prendre une patte de cristal",
+    "ru": "Взять кристальную лапу"
+  },
+  {
+    "id": 55,
+    "es": "Una pata se ha desprendido entera. Está fría y aún refleja la luz.\n\nDelante, en un rincón del foso, está su nido: un montón de huevos de cristal, cada uno del tamaño de un puño.",
+    "fr": "Une patte s’est détachée net. Elle est froide et accroche encore la lumière.\n\nDevant vous, dans un coin de la fosse, son nid : un tas d’œufs de cristal, chacun gros comme le poing.",
+    "ru": "Одна лапа отломилась целиком. Холодная, всё ещё ловит свет.\n\nВпереди, в углу ямы, её гнездо: куча кристальных яиц, каждое с кулак."
+  },
+  {
+    "id": 56,
+    "es": "Quemar los huevos",
+    "fr": "Brûler les œufs",
+    "ru": "Сжечь яйца"
+  },
+  {
+    "id": 57,
+    "es": "La bola de fuego llena el foso. Los huevos estallan uno a uno.\n\nCuando se disipa el humo, el calor ha fundido los restos en un solo bloque de cristal.",
+    "fr": "La boule de feu remplit la fosse. Les œufs éclatent un par un.\n\nQuand la fumée se dissipe, la chaleur a soudé les restes en un seul bloc de cristal.",
+    "ru": "Огненный шар заполняет яму. Яйца лопаются одно за другим.\n\nКогда дым рассеивается, видно, что жар сплавил остатки в одну глыбу кристалла."
+  },
+  {
+    "id": 58,
+    "es": "Romper los huevos",
+    "fr": "Briser les œufs",
+    "ru": "Разбить яйца"
+  },
+  {
+    "id": 59,
+    "es": "El tercer huevo ya está abierto. El cuarto también.\n\nDel montón salen pequeñas patas de cristal.",
+    "fr": "Le troisième œuf est déjà ouvert. Le quatrième aussi.\n\nDe petites pattes de cristal sortent du tas.",
+    "ru": "Третье яйцо уже открыто. Четвёртое тоже.\n\nИз кучи тянутся маленькие кристальные лапки."
+  },
+  {
+    "id": 60,
+    "es": "Los aplastas todos. Haces mucho ruido. Nada responde.\n\nLos fragmentos valen algo.",
+    "fr": "Vous les écrasez tous. Cela fait du bruit. Rien ne répond.\n\nLes éclats valent quelque chose.",
+    "ru": "Вы давите их все. Шумно. Ничего не отзывается.\n\nОсколки чего-то стоят."
+  },
+  {
+    "id": 61,
+    "es": "Coger un huevo",
+    "fr": "Prendre un œuf",
+    "ru": "Взять одно яйцо"
+  },
+  {
+    "id": 62,
+    "es": "Eliges el más pequeño. Está frío y pesa más de lo que parece.\n\nAlgo dentro responde con unos golpecitos.",
+    "fr": "Vous prenez le plus petit. Il est froid, plus lourd qu’il n’y paraît.\n\nQuelque chose répond en tapotant de l’intérieur.",
+    "ru": "Вы выбираете самое маленькое. Холодное и тяжелее, чем кажется.\n\nЧто-то внутри стучит в ответ."
+  },
+  {
+    "id": 63,
+    "es": "Dejar el nido",
+    "fr": "Quitter le nid",
+    "ru": "Уйти от гнезда"
+  },
+  {
+    "id": 64,
+    "es": "Dejas los huevos donde están y trepas por el camino largo.\n\nA mitad de la subida, debajo de ti, uno se resquebraja.",
+    "fr": "Vous laissez les œufs en place et remontez par le chemin le plus long.\n\nÀ mi-hauteur, sous vous, l’un d’eux se fend.",
+    "ru": "Вы оставляете яйца на месте и выбираетесь долгим путём.\n\nНа полпути наверх внизу трескается одно из яиц."
+  },
+  {
+    "id": 65,
+    "es": "Dejarla en paz",
+    "fr": "La laisser en paix",
+    "ru": "Не трогать её"
+  },
+  {
+    "id": 66,
+    "es": "Te apartas de ella y la dejas donde está.\n\nDelante, en un rincón del foso, está su nido: un montón de huevos de cristal, cada uno del tamaño de un puño.",
+    "fr": "Vous vous dégagez et la laissez où elle est.\n\nDevant vous, dans un coin de la fosse, son nid : un tas d’œufs de cristal, chacun gros comme le poing.",
+    "ru": "Вы слезаете с неё и оставляете лежать на месте.\n\nВпереди, в углу ямы, её гнездо: куча кристальных яиц, каждое с кулак."
+  },
+  {
+    "id": 67,
+    "es": "Leer las marcas de la pared",
+    "fr": "Lire les marques sur le mur",
+    "ru": "Прочесть царапины на стене"
+  },
+  {
+    "id": 68,
+    "es": "Alguien grabó un mapa en la piedra, con un pasadizo rodeado dos veces. Lo copias.",
+    "fr": "Quelqu’un a gravé une carte dans la pierre, un passage entouré deux fois. Vous la recopiez.",
+    "ru": "Кто-то выцарапал на камне карту. Один проход обведён дважды. Вы её срисовываете."
+  },
+  {
+    "id": 69,
+    "es": "El viajero robado",
+    "fr": "Le voyageur dépouillé",
+    "ru": "Ограбленный путник"
+  },
+  {
+    "id": 70,
+    "es": "Un hombre está sentado contra la pared, con la mochila vaciada a su lado. Tiene los ojos medio cerrados. Te ve e intenta levantarse. No puede.\n\n«Había un puesto», dice. «Sopa. No había nadie». Se ríe, y la risa se convierte en bostezo. «Se lo llevaron todo».",
+    "fr": "Un homme est assis contre le mur, son sac vidé à côté de lui. Il a les yeux mi-clos. Il vous voit, essaie de se lever, n’y arrive pas.\n\n« Il y avait un étal, dit-il. De la soupe. Personne. » Il rit, puis son rire devient un bâillement. « Ils ont tout pris. »",
+    "ru": "У стены сидит человек. Рядом вывернутый рюкзак. Глаза полузакрыты. Он видит вас, пытается встать и не может.\n\n«Там был прилавок, — говорит он. — Суп. Никого». Он смеётся, и смех переходит в зевок. «Всё забрали»."
+  },
+  {
+    "id": 71,
+    "es": "Darle tu Antídoto",
+    "fr": "Lui donner votre Antidote",
+    "ru": "Дать ему Противоядие"
+  },
+  {
+    "id": 72,
+    "es": "Se lo bebe de un trago. Al rato abre bien los ojos y se endereza.\n\n",
+    "fr": "Il boit d’un trait. Au bout d’un moment, ses yeux s’ouvrent bien et il se redresse.\n\n",
+    "ru": "Он выпивает всё разом. Через некоторое время глаза открываются как следует, и он выпрямляется.\n\n"
+  },
+  {
+    "id": 73,
+    "es": "No le queda nada con lo que pagarte, salvo lo único que se les pasó. Deshace la costura del cuello y te lo pone en la mano.",
+    "fr": "Il n’a plus rien pour vous payer, sauf la seule chose qu’ils ont ratée. Il découd son col et vous la met dans la main.",
+    "ru": "Ему нечем заплатить, кроме одной вещи, которую они не нашли. Он распарывает воротник и кладёт её вам в ладонь."
+  },
+  {
+    "id": 74,
+    "es": "Deshace la costura del cuello para pagarte. Está vacío. Te mira un buen rato. «Gracias», dice.",
+    "fr": "Il découd son col pour vous payer et le trouve vide. Il vous regarde longtemps. « Merci », dit-il.",
+    "ru": "Он распарывает воротник, чтобы заплатить вам, но там пусто. Долго смотрит на вас. «Спасибо», — говорит он."
+  },
+  {
+    "id": 75,
+    "es": "Lanzarle Restauración",
+    "fr": "Lancer Restauration sur lui",
+    "ru": "Применить Восстановление"
+  },
+  {
+    "id": 76,
+    "es": "Sostienes la carta sobre él. La luz entra en su cuerpo y se endereza.\n\n",
+    "fr": "Vous tenez la carte au-dessus de lui. La lumière entre en lui et il se redresse.\n\n",
+    "ru": "Вы держите над ним карту. Свет входит в него, и он выпрямляется.\n\n"
+  },
+  {
+    "id": 77,
+    "es": "Preguntar qué pasó",
+    "fr": "Demander ce qui s’est passé",
+    "ru": "Спросить, что случилось"
+  },
+  {
+    "id": 78,
+    "es": "«Eran tres. Un puesto, una olla». Bosteza. «Pañuelos verdes. Me tomé un cuenco y desperté así. Se llevaron mis antídotos».\n\nTe dice dónde duermen. No está lejos.",
+    "fr": "« Ils étaient trois. Un étal, une marmite. » Il bâille. « Des foulards verts. J’ai pris un bol et je me suis réveillé comme ça. Ils ont pris mes antidotes. »\n\nIl vous dit où ils dorment. Ce n’est pas loin.",
+    "ru": "«Трое. Прилавок, котелок». Он зевает. «Зелёные шарфы. Съел миску и проснулся вот так. Забрали мои противоядия».\n\nОн говорит, где они ночуют. Это недалеко."
+  },
+  {
+    "id": 79,
+    "es": "Darle comida",
+    "fr": "Lui donner à manger",
+    "ru": "Дать ему еды"
+  },
+  {
+    "id": 80,
+    "es": "Come y se anima lo suficiente para hablar.\n\n«Mi bolsa está en el forro», dice, y te cuenta dónde duerme la banda. Luego vuelve a dormirse, sonriendo.",
+    "fr": "Il mange et reprend assez de forces pour parler.\n\n« Ma bourse est dans la doublure », dit-il, puis il vous indique où dort la bande. Il se rendort ensuite, le sourire aux lèvres.",
+    "ru": "Он ест и оживает настолько, чтобы заговорить.\n\n«Кошелёк в подкладке», — говорит он и рассказывает, где ночует банда. Потом снова засыпает с улыбкой."
+  },
+  {
+    "id": 81,
+    "es": "Registrar su mochila",
+    "fr": "Fouiller son sac",
+    "ru": "Обыскать его рюкзак"
+  },
+  {
+    "id": 82,
+    "es": "Hay una bolsa cosida al forro. Te ve cortarla, demasiado adormilado para impedirlo.\n\n«Claro», murmura. «Claro que sí».",
+    "fr": "Une bourse est cousue dans la doublure. Il vous regarde la découper, trop somnolent pour vous en empêcher.\n\n« Bien sûr, marmonne-t-il. Bien sûr que vous aussi. »",
+    "ru": "В подкладку вшит кошелёк. Он смотрит, как вы его вырезаете. Слишком сонный, чтобы помешать.\n\n«Ну конечно, — бормочет он. — Кто бы сомневался»."
+  },
+  {
+    "id": 83,
+    "es": "Lo dejas dormitando contra la pared. Ya se despertará.",
+    "fr": "Vous le laissez somnoler contre le mur. Il finira par se réveiller.",
+    "ru": "Вы оставляете его дремать у стены. Когда-нибудь проснётся."
+  },
+  {
+    "id": 84,
+    "es": "El puesto de sopa",
+    "fr": "L’étal de soupe",
+    "ru": "Прилавок с супом"
+  },
+  {
+    "id": 85,
+    "es": "Un puesto de madera contra la pared. Encima, una olla de sopa que aún humea, un cucharón y dos cuencos limpios.\n\nLlamas. Nadie responde. Llamas otra vez, más fuerte. Nada.",
+    "fr": "Un étal en bois contre le mur. Dessus, une marmite de soupe encore fumante, une louche et deux bols propres.\n\nVous appelez. Personne ne répond. Vous rappelez, plus fort. Rien.",
+    "ru": "Деревянный прилавок у стены. На нём котелок с ещё дымящимся супом, половник и две чистые миски.\n\nВы зовёте. Никто не отвечает. Зовёте снова, громче. Ничего."
+  },
+  {
+    "id": 86,
+    "es": "Comer la sopa",
+    "fr": "Manger la soupe",
+    "ru": "Съесть суп"
+  },
+  {
+    "id": 87,
+    "es": "La sopa está buena. Te sirves otro cuenco.\n\nA la mitad se te duermen los dedos, y entiendes por qué nadie atendía el puesto. Demasiado tarde.\n\nCuando despiertas, la olla ya no está. La mitad de tus monedas tampoco.",
+    "fr": "La soupe est bonne. Vous prenez un deuxième bol.\n\nÀ la moitié, vos doigts s’engourdissent et vous comprenez pourquoi personne ne tenait l’étal. Trop tard.\n\nÀ votre réveil, la marmite a disparu. La moitié de votre bourse aussi.",
+    "ru": "Суп хороший. Вы берёте вторую миску.\n\nНа середине немеют пальцы, и вы понимаете, почему за прилавком никого не было. Слишком поздно.\n\nКогда вы просыпаетесь, котелка уже нет. Половины денег тоже."
+  },
+  {
+    "id": 88,
+    "es": "Esperar a escondidas",
+    "fr": "Attendre à couvert",
+    "ru": "Подождать в укрытии"
+  },
+  {
+    "id": 89,
+    "es": "Te escondes detrás de la pared y esperas. La sopa sigue humeando.\n\nTres hombres con pañuelos verdes vuelven a buscarla. El cocinero levanta el cucharón, mira los dos cuencos limpios y luego tu pared.",
+    "fr": "Vous passez derrière le mur et attendez. La soupe continue de fumer.\n\nTrois hommes aux foulards verts reviennent la chercher. Le cuisinier lève sa louche, regarde les deux bols propres, puis votre mur.",
+    "ru": "Вы заходите за стену и ждёте. Суп всё дымится.\n\nЗа ним возвращаются трое мужчин в зелёных шарфах. Повар поднимает половник, смотрит на две чистые миски, потом на вашу стену."
+  },
+  {
+    "id": 90,
+    "es": "Dejarla y seguir",
+    "fr": "Laisser et continuer",
+    "ru": "Оставить и идти дальше"
+  },
+  {
+    "id": 91,
+    "es": "Dejas la sopa donde está y sigues andando. A tu espalda sigue humeando.",
+    "fr": "Vous laissez la soupe en place et continuez. Derrière vous, elle fume toujours.",
+    "ru": "Вы оставляете суп на месте и идёте дальше. Позади он всё дымится."
+  },
+  {
+    "id": 92,
+    "es": "Volcar la olla de una patada",
+    "fr": "Renverser la marmite du pied",
+    "ru": "Опрокинуть котелок ногой"
+  },
+  {
+    "id": 93,
+    "es": "De una patada tiras la olla del puesto. La sopa se extiende por las piedras. La primera rata que la lame se duerme en el acto.\n\nEl puesto también vuelca. Debajo hay una bolsa clavada: lo que llevaban los últimos clientes.\n\nLa coges y sigues andando.",
+    "fr": "Vous faites tomber la marmite d’un coup de pied. La soupe coule sur les pierres. Le premier rat qui la lèche s’endort sur place.\n\nL’étal bascule aussi. Une bourse est clouée dessous : ce que portaient les derniers clients.\n\nVous la prenez et continuez.",
+    "ru": "Вы сбиваете котелок с прилавка ногой. Суп растекается по камням. Первая крыса, лизнувшая его, тут же засыпает.\n\nПрилавок тоже опрокидывается. Снизу прибит кошелёк: всё, что было при последних посетителях.\n\nВы берёте его и идёте дальше."
+  },
+  {
+    "id": 94,
+    "es": "El corredor de telarañas",
+    "fr": "Le couloir aux toiles",
+    "ru": "Коридор в паутине"
+  },
+  {
+    "id": 95,
+    "es": "Las telarañas cruzan el corredor. Los hilos son finos y transparentes, y reflejan la luz como el vidrio.\n\nHay pequeñas arañas de cristal sobre ellos, al menos una docena, cada una del tamaño de tu mano. Las más cercanas se vuelven para mirarte.",
+    "fr": "Des toiles barrent le couloir devant vous. Leurs fils sont fins et transparents, et accrochent la lumière comme du verre.\n\nDe petites araignées de cristal y sont posées, une douzaine au moins, chacune de la taille de votre main. Les plus proches se tournent pour vous regarder.",
+    "ru": "Коридор впереди затянут паутиной. Нити тонкие и прозрачные, ловят свет, как стекло.\n\nНа них сидят маленькие кристальные пауки. Не меньше дюжины, каждый с вашу ладонь. Ближайшие поворачиваются к вам."
+  },
+  {
+    "id": 96,
+    "es": "Cortar las telarañas",
+    "fr": "Couper les toiles",
+    "ru": "Прорубиться сквозь паутину"
+  },
+  {
+    "id": 97,
+    "es": "El primer hilo que cortas suena como un alambre.\n\nTodas las arañas de la telaraña se vuelven hacia ti a la vez.",
+    "fr": "Le premier fil que vous coupez résonne comme du métal.\n\nToutes les araignées de la toile se tournent vers vous en même temps.",
+    "ru": "Первая разрезанная нить звенит, как проволока.\n\nВсе пауки на паутине разом поворачиваются к вам."
+  },
+  {
+    "id": 98,
+    "es": "Rodear por los escombros",
+    "fr": "Passer par les gravats",
+    "ru": "Обойти через завалы"
+  },
+  {
+    "id": 99,
+    "es": "Hay un hueco donde se ha derrumbado la pared. Pasas por él a rastras y sales con los dos codos sangrando.\n\nUn hilo de telaraña se ha enganchado en tu manga. Cuando lo quitas, ya está duro y transparente.",
+    "fr": "Il y a une brèche là où le mur s’est effondré. Vous rampez à travers et ressortez les deux coudes en sang.\n\nUn fil de toile s’est accroché à votre manche. Le temps de l’enlever, il est devenu dur et transparent.",
+    "ru": "Там, где обвалилась стена, есть щель. Вы протискиваетесь на животе и вылезаете с ободранными до крови локтями.\n\nЗа рукав зацепилась паутинка. Пока вы её снимаете, она твердеет и становится прозрачной."
+  },
+  {
+    "id": 100,
+    "es": "Echarles algo de comida",
+    "fr": "Leur jeter de la nourriture",
+    "ru": "Бросить им еды"
+  },
+  {
+    "id": 101,
+    "es": "La comida cae en la telaraña. Las arañas más cercanas ya están encima antes de que deje de temblar.\n\nLas demás trepan y dejan paso. Donde estaban, quedan unos fragmentos de cristal en la telaraña.",
+    "fr": "La nourriture tombe sur la toile. Les araignées les plus proches sont dessus avant qu’elle cesse de trembler.\n\nLes autres grimpent et libèrent le passage. Là où elles étaient, la toile a laissé quelques éclats de cristal.",
+    "ru": "Еда падает в паутину. Та ещё дрожит, а ближайшие пауки уже облепили еду.\n\nОстальные лезут наверх, освобождая путь. Там, где они сидели, паутина оставила несколько кристальных осколков."
+  },
+  {
+    "id": 102,
+    "es": "Volver atrás",
+    "fr": "Faire demi-tour",
+    "ru": "Повернуть назад"
+  },
+  {
+    "id": 103,
+    "es": "Vuelves por donde viniste. A tu espalda, algo repiquetea por los hilos.",
+    "fr": "Vous repartez par où vous êtes venu. Derrière vous, quelque chose court sur les fils à petits clics.",
+    "ru": "Вы возвращаетесь тем же путём. Сзади что-то цокает по нитям."
+  },
+  {
+    "id": 104,
+    "es": "El escondite de seda",
+    "fr": "La cache de soie",
+    "ru": "Тайник в паутине"
+  },
+  {
+    "id": 105,
+    "es": "El pasadizo se ensancha en una cámara de techo bajo. Del techo cuelgan mantos de seda. Debajo, el suelo está lleno de capullos pálidos: unos del tamaño de un puño, otros bastante grandes para un hombre.\n\nEntre ellos: una coraza abollada, una lanza partida, un guante que conserva la forma de una mano que ya no está. Alguien luchó aquí. Alguien perdió.\n\nLos capullos se mueven si respiras demasiado fuerte.",
+    "fr": "Le passage s’élargit en une salle basse. Des nappes de soie pendent du plafond. Dessous, le sol est couvert de cocons pâles, certains gros comme le poing, d’autres assez grands pour un homme.\n\nEntre eux : un plastron déformé, une lance brisée, un gant qui garde la forme d’une main absente. Quelqu’un s’est battu ici. Quelqu’un a perdu.\n\nLes cocons tressaillent quand vous respirez trop fort.",
+    "ru": "Проход расширяется в залу с низким потолком. С потолка полотнищами свисает паутина. Под ней пол усеян бледными коконами: одни с кулак, в других поместится человек.\n\nМежду ними: смятая кираса, сломанное копьё, перчатка, всё ещё хранящая форму руки, которой в ней нет. Здесь кто-то сражался. Кто-то проиграл.\n\nКоконы дёргаются, когда вы дышите слишком громко."
+  },
+  {
+    "id": 106,
+    "es": "Irte en silencio",
+    "fr": "Partir sans bruit",
+    "ru": "Тихо уйти"
+  },
+  {
+    "id": 107,
+    "es": "Retrocedes hasta el corredor sin tocar un solo hilo.\n\nA tu espalda, la seda se asienta y los capullos dejan de moverse.",
+    "fr": "Vous reculez dans le couloir sans toucher un fil.\n\nDerrière vous, la soie retombe et les cocons cessent de tressaillir.",
+    "ru": "Вы осторожно отступаете в коридор, не задев ни нити.\n\nПозади паутина оседает, и коконы перестают дёргаться."
+  },
+  {
+    "id": 108,
+    "es": "Registrar los capullos",
+    "fr": "Fouiller les cocons",
+    "ru": "Обыскать коконы"
+  },
+  {
+    "id": 109,
+    "es": "Desenvainas y te adentras en la seda.\n\nEl capullo más cercano no se abre al cortarlo. Se resiste, duro como cuero mojado. Tendrás que romperlos de verdad.",
+    "fr": "Vous tirez une lame et entrez dans la soie.\n\nLe cocon le plus proche ne s’ouvre pas sous la lame. Il résiste, coriace comme du cuir mouillé. Il faudra vraiment les briser.",
+    "ru": "Вы обнажаете клинок и входите в паутину.\n\nБлижайший кокон не раскрывается под лезвием. Он не поддаётся, прочный, как мокрая кожа. Придётся разбивать их всерьёз."
+  },
+  {
+    "id": 110,
+    "es": "¡Quemarlos todos!",
+    "fr": "Tous les brûler !",
+    "ru": "Сжечь всё!"
+  },
+  {
+    "id": 111,
+    "es": "La bola de fuego llena la cámara de golpe.\n\nLa seda ennegrece. Los capullos se abren y se derrumban. Cuando el humo se disipa, quedan tres tesoros chamuscados sobre la piedra. Nada se mueve para reclamarlos.",
+    "fr": "La boule de feu envahit la salle d’un coup.\n\nLa soie noircit. Les cocons se fendent et s’affaissent. Quand la fumée se dissipe, trois trésors roussis sont à découvert sur la pierre. Rien ne bouge pour les réclamer.",
+    "ru": "Огненный шар разом заполняет залу.\n\nПаутина чернеет. Коконы лопаются и оседают. Когда дым редеет, на камнях лежат три обгорелые награды. Никто не шевелится, чтобы их забрать."
+  },
+  {
+    "id": 112,
+    "es": "El porteador perdido",
+    "fr": "Le porteur perdu",
+    "ru": "Заблудившийся носильщик"
+  },
+  {
+    "id": 113,
+    "es": "Un corredor lateral está blanco de telarañas viejas. A medio camino cuelga un hombre boca abajo, envuelto hasta las axilas, con una sartén en la mano.\n\n«¡Oh! ¡Hola! ¿Has visto a mi grupo? Me dijeron que sujetara la cuerda mientras exploraban. Así que la sujeté».\n\nLevanta el extremo de la cuerda. El corte es limpio.\n\n«Se habrá roto. En fin, creo que me he perdido».",
+    "fr": "Un couloir latéral est blanc de vieilles toiles. À mi-chemin, un homme pend la tête en bas, enveloppé jusqu’aux aisselles, une poêle à la main.\n\n« Oh ! Bonjour ! Vous avez vu mon groupe ? Ils m’ont dit de tenir la corde pendant qu’ils partaient en éclaireurs. Alors je l’ai tenue. »\n\nIl lève le bout de la corde. Elle a été coupée net.\n\n« Elle a dû casser. Enfin, je crois que je suis perdu. »",
+    "ru": "Боковой коридор побелел от старой паутины. На полпути висит вниз головой человек, обмотанный до подмышек, со сковородкой в руке.\n\n«О! Здравствуйте! Вы моих не видели? Велели держать верёвку, пока они всё разведают впереди. Ну я и держал».\n\nОн поднимает конец верёвки. Она ровно перерезана.\n\n«Наверное, порвалась. В общем, кажется, я заблудился»."
+  },
+  {
+    "id": 114,
+    "es": "Darle tu armadura de sobra",
+    "fr": "Donner une armure en trop",
+    "ru": "Дать ему запасную броню"
+  },
+  {
+    "id": 115,
+    "es": "Lo liberas y lo ayudas a ponerse la armadura. Le queda enorme. El casco gira cuando mueve la cabeza, un poco después.\n\n«Es como llevar una casa puesta», dice contento, y se da unos golpecitos en el pecho.",
+    "fr": "Vous le décrochez et l’aidez à enfiler l’armure. Elle est bien trop grande. Le casque tourne quand il tourne la tête, un peu après.\n\n« C’est comme porter une maison », dit-il, ravi, en frappant sur son torse.",
+    "ru": "Вы срезаете его и помогаете надеть броню. Она ему совсем велика. Шлем поворачивается вслед за головой. С небольшим опозданием.\n\n«Будто дом надел», — радуется он и стучит себя по груди."
+  },
+  {
+    "id": 116,
+    "es": "Coger el mapa",
+    "fr": "Prendre la carte",
+    "ru": "Взять карту"
+  },
+  {
+    "id": 117,
+    "es": "«Creo que esto de las aventuras no es lo mío», dice. «Mamá ya me lo decía. Me voy a casa».\n\nTe pone el mapa enrollado en las manos. «Lo llevaba porque lo llevo todo».\n\nEn una esquina, con tinta desvaída y otra letra, está marcado un pasadizo que nunca has visto.\n\nSe aleja por el corredor que has despejado, tintineando y tarareando, con la sartén por delante.",
+    "fr": "« Je ne crois pas être fait pour l’aventure, dit-il. Maman me l’avait dit. Je rentre. »\n\nIl vous met la carte roulée dans les mains. « Je la portais parce que je porte tout. »\n\nDans un coin, à l’encre passée et d’une autre main, un passage que vous n’avez jamais vu est indiqué.\n\nIl s’éloigne en ferraillant dans le couloir que vous avez dégagé, fredonnant, la poêle en avant.",
+    "ru": "«Не гожусь я, кажется, в искатели приключений, — говорит он. — Мама так и говорила. Пойду домой».\n\nОн суёт вам в руки свёрнутую карту. «Я её носил, потому что я всё ношу».\n\nВ углу выцветшими чернилами и другим почерком отмечен проход, которого вы никогда не видели.\n\nОн с лязгом уходит по расчищенному вами коридору, напевая и выставив вперёд сковородку."
+  },
+  {
+    "id": 118,
+    "es": "Darle un arma",
+    "fr": "Lui donner une arme",
+    "ru": "Дать ему оружие"
+  },
+  {
+    "id": 119,
+    "es": "Lo liberas y le pones un arma en las manos. La sostiene como una escoba.\n\n«Si algo da miedo, la agito y ya está. A las cosas no les gusta que les agiten cosas delante. Seguro».",
+    "fr": "Vous le décrochez et lui mettez une arme dans les mains. Il la tient comme un balai.\n\n« Je l’agiterai si quelque chose fait peur. Les choses n’aiment pas qu’on agite des trucs devant elles. Je parie. »",
+    "ru": "Вы срезаете его и даёте в руки оружие. Он держит его как метлу.\n\n«Если будет что-то страшное, я просто помашу. Никому не нравится, когда перед ним машут. Наверное»."
+  },
+  {
+    "id": 120,
+    "es": "Curarlo",
+    "fr": "Le soigner",
+    "ru": "Вылечить его"
+  },
+  {
+    "id": 121,
+    "es": "Lo liberas. La telaraña le ha dejado un sarpullido rojo en ambos brazos y se ha puesto algo morado.\n\nBebe tu poción, parpadea dos veces y da unos saltitos. «Ah, mucho mejor. Es como desayunar».",
+    "fr": "Vous le décrochez. La toile lui a laissé des rougeurs sur les deux bras et il est devenu un peu violet.\n\nIl boit votre potion, cligne deux fois des yeux et sautille. « Oh, ça va bien mieux. C’est comme un petit-déjeuner. »",
+    "ru": "Вы срезаете его. От паутины обе руки покрылись красной сыпью, а сам он слегка посинел.\n\nОн пьёт ваше зелье, дважды моргает и подпрыгивает на носках. «О, вот теперь гораздо лучше. Прямо как позавтракал»."
+  },
+  {
+    "id": 122,
+    "es": "Indicarle el camino y seguir",
+    "fr": "Indiquer le chemin et partir",
+    "ru": "Указать дорогу и идти дальше"
+  },
+  {
+    "id": 123,
+    "es": "Lo liberas y señalas por donde viniste. «Por ahí es seguro. Ya lo despejé».\n\nTe estrecha la mano con las dos suyas. «Qué amable eres. Todos aquí son muy amables».",
+    "fr": "Vous le décrochez et montrez le chemin par lequel vous êtes venu. « Par là, c’est sûr. J’ai déjà dégagé le passage. »\n\nIl vous serre la main des deux siennes. « Vous êtes bien aimable. Tout le monde ici est si aimable. »",
+    "ru": "Вы срезаете его и указываете туда, откуда пришли. «Там безопасно. Я уже всё зачистил».\n\nОн пожимает вашу руку обеими руками. «Вы очень добры. Все здесь такие добрые»."
+  },
+  {
+    "id": 124,
+    "es": "Voces a la vuelta de la esquina",
+    "fr": "Des voix au tournant",
+    "ru": "Голоса за углом"
+  },
+  {
+    "id": 125,
+    "es": "Tres voces, bajas y furiosas, justo tras la siguiente esquina.\n\n«Tú tenías el mapa». «No, lo tenía ÉL. Él lo lleva todo». «Pues vuelve a buscarlo». «¿Pasando por la araña? Ve tú».\n\n«No lo perdimos. Lo dejamos. No es lo mismo».\n\n«Para el mapa, sí».",
+    "fr": "Trois voix basses et furieuses, juste après le prochain tournant.\n\n« C’est toi qui avais la carte. » « Non, c’est LUI. Il porte tout. » « Alors retourne la chercher. » « En passant devant l’araignée ? Vas-y, toi. »\n\n« On ne l’a pas perdu. On l’a laissé. C’est différent. »\n\n« Pas pour la carte. »",
+    "ru": "Три голоса, тихих и злых, сразу за следующим поворотом.\n\n«Карта была у тебя». «Нет, у НЕГО. Он всё таскает». «Ну так вернись и забери». «Мимо паука? Сам возвращайся».\n\n«Мы его не потеряли. Мы его оставили. Это другое».\n\n«Карте от этого не легче»."
+  },
+  {
+    "id": 126,
+    "es": "Pasar a escondidas",
+    "fr": "Passer en douce",
+    "ru": "Прокрасться мимо"
+  },
+  {
+    "id": 127,
+    "es": "Te pegas a la pared más alejada y pisas solo la seda, que amortigua el ruido.\n\nSiguen discutiendo cuando llegas a la siguiente sala. No levantan la vista.",
+    "fr": "Vous longez le mur opposé et ne marchez que sur la soie, qui étouffe les bruits.\n\nIls se disputent encore quand vous atteignez la salle suivante. Ils ne lèvent pas les yeux.",
+    "ru": "Вы держитесь дальней стены и ступаете только по паутине: она глушит шаги.\n\nКогда вы добираетесь до следующей комнаты, они всё ещё спорят. Так и не подняли глаз."
+  },
+  {
+    "id": 128,
+    "es": "Encararte con ellos",
+    "fr": "Les confronter",
+    "ru": "Выйти к ним"
+  },
+  {
+    "id": 129,
+    "es": "Tres manos van a tres armas. Luego se relajan al ver que estás solo.\n\n«Vuestro porteador está bien», dices. «Cree que se perdió».\n\nSe miran las botas. «...Bien», murmura al fin el jefe. «Bien por él».",
+    "fr": "Trois mains se portent sur trois armes, puis se détendent en voyant que vous êtes seul.\n\n« Votre porteur va bien, dites-vous. Il pense s’être perdu. »\n\nIls regardent leurs bottes. « ...Bien, marmonne enfin le chef. Tant mieux pour lui. »",
+    "ru": "Три руки тянутся к оружию, потом расслабляются: вы один.\n\n«Ваш носильщик в порядке, — говорите вы. — Думает, что заблудился».\n\nОни смотрят на свои сапоги. «...Хорошо, — наконец бормочет главарь. — Хорошо ему»."
+  },
+  {
+    "id": 130,
+    "es": "Devolverles el mapa",
+    "fr": "Leur rendre la carte",
+    "ru": "Вернуть им карту"
+  },
+  {
+    "id": 131,
+    "es": "El jefe te arrebata el mapa y lo guarda como si nunca hubiera faltado.\n\nLuego te da dos palmaditas en el hombro. Como a un perro que ha traído un palo.\n\n«Muy decente por tu parte. Muy decente. Hala, sigue tu camino».",
+    "fr": "Le chef vous arrache la carte et la range comme si elle n’avait jamais disparu.\n\nPuis il vous tapote l’épaule. Deux fois. Comme on flatte un chien qui a rapporté un bâton.\n\n« C’est bien de votre part. Très bien. Allez, filez. »",
+    "ru": "Главарь выхватывает карту и прячет её, словно она никуда и не девалась.\n\nПотом хлопает вас по плечу. Дважды. Как пса, который принёс палку.\n\n«Порядочно с вашей стороны. Очень порядочно. Ну, ступайте»."
+  }
+]

@@ -11,9 +11,9 @@ same positions as the new sheet, leaving unused frame 2 blank.
 `glowingMagicCardsSheet.png` is the separate, unchanged Reliquary glow sheet;
 it is not the original regular spell artwork.
 
-The normal sheet is 572×138, two rows of eleven 52×69 frames (frames count along
-the first row, then the second); the glowing Reliquary sheet is 520×69, one row
-of ten frames. Normal art loads at
+Both sheets are 572×138, two rows of eleven 52×69 frames in the same order (frames
+count along the first row, then the second), so one frame table serves both
+(`MAGIC_CARD_FRAMES` in `WeaponEnchants.js`). Normal art loads at
 native size into the existing 52×70 card textures with one transparent bottom
 row. The comparison sheets are 520×70. Edit the active PNG directly; there is
 no assembly step. The `magicCards` and `glowingMagicCards` entries in
@@ -31,12 +31,12 @@ Frame order, left to right:
 7. Shadow Blade
 8. Smoke Screen
 9. Restoration
-10. Desert Feast (normal sheet only)
-11. Thunderclap (normal sheet only)
-12. Scorched Land (normal sheet only)
-13. Summon Mimic (normal sheet only)
-14. Venomous Bomb (normal sheet only)
-15. Briar Shield (normal sheet only)
+10. Desert Feast
+11. Thunderclap
+12. Scorched Land
+13. Summon Mimic
+14. Venomous Bomb
+15. Briar Shield
 16-18. Blank faces, unused
 
 Preload exposes the normal sheet's frames

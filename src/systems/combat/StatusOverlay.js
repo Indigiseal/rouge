@@ -9,6 +9,8 @@
 // Read off the game state every frame, so no status needs to add or remove
 // it: when the effect ends, the colour goes.
 
+import { HAND_LOCKS } from '../../content/combat/handLock.js';
+
 export const STATUS_OVERLAY_ALPHA = 0.35;
 
 // Order is priority: the first that applies wins.
@@ -27,6 +29,52 @@ export const STATUS_COLORS = Object.freeze([
         player: (gs) => Array.isArray(gs.playerEffects) && gs.playerEffects.some((e) => e?.type === 'poison') },
 ]);
 
+// Charmed enemies also give off little hearts: one drifts up now and then while the charm
+// lasts, and a few at once when it lands. The heart is drawn here, 7x6 whole pixels.
+const HEART_KEY = 'charmHeart';
+const HEART_ROWS = Object.freeze(['.XX.XX.', 'XhXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...']);
+const HEART_FILL = '#e8588d';
+const HEART_SHINE = '#ffc2d9';
+const HEART_GAP_MS = 380;
+
+function ensureHeartTexture(scene) {
+    if (scene.textures.exists(HEART_KEY)) return true;
+    const canvas = scene.textures.createCanvas?.(HEART_KEY, 7, 6);
+    const ctx = canvas?.getContext?.();
+    if (!ctx) return false;
+    HEART_ROWS.forEach((row, y) => [...row].forEach((c, x) => {
+        if (c === '.') return;
+        ctx.fillStyle = c === 'h' ? HEART_SHINE : HEART_FILL;
+        ctx.fillRect(x, y, 1, 1);
+    }));
+    canvas.refresh();
+    return true;
+}
+
+/** Hearts rising from (x, y): `count` of them, a little apart, each fading as it goes. */
+export function playCharmHearts(scene, x, y, count = 1, depth = 60) {
+    if (!scene?.add || !ensureHeartTexture(scene)) return;
+    for (let i = 0; i < count; i++) {
+        const startX = Math.round(x + (Math.random() - 0.5) * 36);
+        const startY = Math.round(y - 14 + Math.random() * 10);
+        const heart = scene.add.image(startX, startY, HEART_KEY).setDepth(depth).setAlpha(0);
+        const sway = (Math.random() < 0.5 ? -1 : 1) * (3 + Math.floor(Math.random() * 4));
+        scene.tweens.add({
+            targets: heart, y: startY - 26 - Math.floor(Math.random() * 8), x: startX + sway,
+            duration: 950, delay: i * 120, ease: 'Sine.easeOut',
+            onUpdate: () => { heart.x = Math.round(heart.x); heart.y = Math.round(heart.y); },
+            onComplete: () => heart.destroy(),
+        });
+        scene.tweens.add({
+            targets: heart, alpha: { from: 0, to: 1 }, duration: 160, delay: i * 120,
+            onComplete: () => scene.tweens.add({
+                targets: heart, alpha: 0, duration: 640, delay: 150,
+            }),
+        });
+        scene.events.once('shutdown', () => heart.scene && heart.destroy());
+    }
+}
+
 /** The overlay colour an enemy's data calls for, or null. */
 export function enemyStatusColor(data) {
     if (!data || (data.health ?? 0) <= 0) return null;
@@ -40,20 +88,27 @@ export function playerStatusColor(gameState) {
 }
 
 // Keep `holder[key]` a colour copy of `base`, or remove it when color is null.
-function syncOverlay(scene, holder, key, base, color, depthOffset) {
+function syncOverlay(scene, holder, key, base, color, depthOffset, webbed = false) {
     let overlay = holder[key];
     if (color == null || !base?.scene || !base.texture || base.type === 'Rectangle') {
         if (overlay) { overlay.destroy(); holder[key] = null; }
         return;
     }
-    const frame = base.frame?.name;
+    const web = HAND_LOCKS.web;
+    const useWebArt = webbed && scene.textures?.exists?.(web.overlayKey)
+        && scene.textures.get(web.overlayKey).has(web.overlayFrame);
+    const texture = useWebArt ? web.overlayKey : base.texture.key;
+    const frame = useWebArt ? web.overlayFrame : base.frame?.name;
     if (!overlay?.scene) {
-        overlay = scene.add.image(base.x, base.y, base.texture.key, frame);
+        overlay = scene.add.image(base.x, base.y, texture, frame);
         holder[key] = overlay;
-    } else if (overlay.texture.key !== base.texture.key || overlay.frame?.name !== frame) {
-        overlay.setTexture(base.texture.key, frame);
+    } else if (overlay.texture.key !== texture || overlay.frame?.name !== frame) {
+        overlay.setTexture(texture, frame);
     }
-    if (overlay._statusColor !== color) {
+    if (useWebArt) {
+        overlay.clearTint();
+        overlay._statusColor = null;
+    } else if (overlay._statusColor !== color) {
         overlay.setTintFill(color);
         overlay._statusColor = color;
     }
@@ -63,7 +118,8 @@ function syncOverlay(scene, holder, key, base, color, depthOffset) {
     overlay.setAngle(base.angle || 0);
     overlay.setFlip(base.flipX, base.flipY);
     overlay.setVisible(base.visible);
-    overlay.setAlpha(STATUS_OVERLAY_ALPHA * (base.alpha ?? 1));
+    // The silk keeps its native overhang, just like a webbed inventory card.
+    overlay.setAlpha((useWebArt ? 1 : STATUS_OVERLAY_ALPHA) * (base.alpha ?? 1));
     overlay.setDepth((base.depth || 0) + depthOffset);
 }
 
@@ -79,8 +135,19 @@ export function installStatusOverlays(scene) {
             if (!card) continue;
             const open = card.revealed && cs.isEnemyType?.(card.data?.type);
             // Between the card's art (+0) and its numbers (+2).
-            syncOverlay(scene, card, '_statusOverlay', card.sprite, open ? enemyStatusColor(card.data) : null, 0.5);
+            syncOverlay(scene, card, '_statusOverlay', card.sprite, open ? enemyStatusColor(card.data) : null, 0.5,
+                !card.data?.charmed && (card.data?.webbedTurns || 0) > 0);
             if (card._statusOverlay) { holders.add(card); seen.add(card); }
+            // Hearts while the charm lasts: a burst when it lands, then a trickle.
+            if (open && card.data?.charmed && card.sprite?.scene) {
+                if (!card._charmHearts) { card._charmHearts = true; playCharmHearts(scene, card.sprite.x, card.sprite.y, 3, (card.sprite.depth || 1) + 6); }
+                else if (scene.time.now >= (card._charmNext || 0)) {
+                    playCharmHearts(scene, card.sprite.x, card.sprite.y, 1, (card.sprite.depth || 1) + 6);
+                    card._charmNext = scene.time.now + HEART_GAP_MS + Math.random() * 220;
+                }
+            } else if (card._charmHearts) {
+                card._charmHearts = false;
+            }
         }
         // A card that left the board (killed, swapped) takes its colour with it.
         for (const card of holders) {

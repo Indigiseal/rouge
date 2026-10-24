@@ -346,7 +346,7 @@ try {
     assert.equal(caster.slots[0], spell);
     assert.equal(wastedActions, 0, 'full AP returns the spell before charging an action');
     assert.equal(InventoryView.describeMagicCard.call({ scene: feast }, spell), 'Restore Action Points');
-    assert.equal(getGlowCardFrame('desertFeast'), 9);
+    assert.equal(getGlowCardFrame('desertFeast'), 10, 'the glowing sheet has its own Desert Feast card');
     assert.ok(enchantableMagicTypes(1).includes('desertFeast'));
     feast.gameState.actionsLeft = 1;
     assert.equal(restoreDesertFeastAP(feast.gameState), 14);

@@ -40,9 +40,9 @@ export class SanctuaryPreviewScene extends Phaser.Scene {
         this.add.image(320, 278, 'sigilRoomFloor').setAlpha(0.65);
         for (const statue of SANCTUARY_STATUES) this.drawStatue(statue);
 
-        this.backButton = createPaintedButton(this, 80, 340, 'Back', () => this.leave());
-        this.restoreButton = createPaintedButton(this, 320, 340, 'Restore', () => this.restoreSelected());
-        this.resetButton = createPaintedButton(this, 560, 340, 'Reset preview', () => {
+        this.backButton = createPaintedButton(this, 80, 342, 'Back', () => this.leave());
+        this.restoreButton = createPaintedButton(this, 320, 342, 'Restore', () => this.restoreSelected());
+        this.resetButton = createPaintedButton(this, 560, 342, 'Reset preview', () => {
             if (this.busy) return;
             this.game.sanctuaryPreview = freshSanctuaryPreview();
             this.scene.restart();
@@ -61,11 +61,11 @@ export class SanctuaryPreviewScene extends Phaser.Scene {
         for (let i = 0; i < (statue.id === 'phoenix' ? 1 : 5); i++) {
             inlays.push(this.add.image(x, bottom - 9, 'villageRankStar').setVisible(false));
         }
-        const name = this.add.text(x, bottom + 8, statue.name, {
+        const name = this.add.text(x, bottom + 7, statue.name, {
             fontSize: '9px', fill: '#d9c9a7', fontFamily: '"HoMM Pixel"',
             stroke: '#10151b', strokeThickness: 3,
         }).setOrigin(0.5);
-        const rule = this.add.text(x, bottom + 18, statue.rule, {
+        const rule = this.add.text(x, bottom + 15, statue.rule, {
             fontSize: '8px', fill: '#e1d6be', fontFamily: '"HoMM Pixel"',
             align: 'center', wordWrap: { width: 156 }, stroke: '#10151b', strokeThickness: 3,
         }).setOrigin(0.5, 0);

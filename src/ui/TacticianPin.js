@@ -1,3 +1,5 @@
+import { SoundHelper } from '../audio/SoundHelper.js';
+
 // Animate an offset from the marker's current card anchor. Board movement can
 // update that anchor without snapping the pin out of its planting animation.
 export function positionTacticianPin(pin, x, y) {
@@ -47,6 +49,8 @@ export function playTacticianPinDrop(scene, pin) {
                 // Set explicitly as well, so the endpoint is exact on every renderer.
                 motion.offsetY = steps[index].offsetY;
                 positionTacticianPin(pin, motion.x, motion.y);
+                // The plunge (step 1) is the moment the needle goes in.
+                if (index === 1) SoundHelper.playSound(scene, 'tactician_pin', 0.5);
                 playStep(index + 1);
             },
         });

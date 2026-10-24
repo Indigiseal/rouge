@@ -24,7 +24,12 @@ import { advanceBonePile, repairBoneArmor } from '../src/content/combat/bonefloo
 import { growEnemy, regenerateAllies } from '../src/content/combat/mireturn.js';
 import { getEnemyHitAttack, applyEnemyStrikeSigils } from '../src/content/combat/enemyAttack.js';
 import { applyVenomousBomb, isSilkdeepPoisonTarget, strengthenPlayerPoison } from '../src/content/combat/silkdeep.js';
-import { sigilLevel } from '../src/content/sigils/sigils.js';
+import {
+  sigilLevel, addSigil, canTakeSigil, cardSigils, getSigil, noteSigilTaken, takenSigils,
+  mergeSigils, sigilsFitOnMerge,
+} from '../src/content/sigils/sigils.js';
+import { sigilPoolForLocation } from '../src/content/sigils/locationSigils.js';
+import { SIGIL_ROOM_CHANCE, SIGIL_ROOM_CHANCE_BROOCH } from '../src/content/sigils/sigilStamps.js';
 import { grantMealMaxActions } from '../src/content/amulets/foodEndurance.js';
 import { restoreDesertFeastAP } from '../src/content/combat/sandreach.js';
 import { mimicSummonSpot, summonMimic } from '../src/systems/board/MimicSummon.js';
@@ -54,7 +59,12 @@ import {
 } from '../src/content/cards/weapons.js';
 import { AmuletManager } from '../src/managers/AmuletManager.js';
 import { MetaProgressionManager } from '../src/managers/MetaProgressionManager.js';
-import { MapGenerator } from '../src/map/MapGenerator.js';
+import { MapGenerator, floorOfRow, isBonusRow } from '../src/map/MapGenerator.js';
+import { ensureHiddenPaths } from '../src/map/HiddenPaths.js';
+import { getPowerBand, ARCHETYPES } from '../src/content/balance/EnemyPower.js';
+import { veteranChanceForFloor, ELITE_ROOM_VETERAN_BONUS, MAX_VETERAN_CHANCE, ENEMY_TIERS } from '../src/content/balance/EnemyTiers.js';
+import { getCardWeights } from '../src/content/balance/FloorWeights.js';
+import { minEnemyRatioForFloor } from '../src/content/balance/EnemyDensity.js';
 import {
   newLootStats, recordBoard, recordWeapon, recordFloorSnapshot,
   recordFloorInventoryStart, recordFloorInventoryEnd, recordCombatEnemySnapshot,
@@ -85,7 +95,7 @@ import {
   sampleAmuletIds,
 } from './parse-sim-flags.js';
 import { getDefaultAmuletIds } from './sim-catalog.js';
-import { normalizeActLocationIds } from '../src/content/locations/index.js';
+import { normalizeActLocationIds, getLocationIdForFloor } from '../src/content/locations/index.js';
 import { totalRepairCost } from '../src/content/economy/repair.js';
 import { scaleGoldReward } from '../src/content/economy/gold.js';
 import {
@@ -131,6 +141,16 @@ import {
 // ── Config ────────────────────────────────────────────────────────────────
 const RUNS = parseInt(process.argv[2], 10) || 2000;
 const MAX_FLOOR = 45;
+// How often the bot steps into the sigil vault (a secret room, shown only from the room that
+// leads to it) when it is offered. A human sees the way and a Sigil Room is worth the detour.
+// --act=N plays only that act (act-scaled starters), so a change to one act can be judged without the
+// runs that never reach it.
+const CLI_ACT = (() => {
+  const token = process.argv.find((arg) => arg.startsWith('--act='));
+  const n = token ? Number(token.slice('--act='.length)) : NaN;
+  return n === 1 || n === 2 || n === 3 ? n : null;
+})();
+const SIM_VAULT_RATE = Number(process.env.SIM_VAULT_RATE ?? 0.7);
 const BOSS_FLOORS = new Set([15, 30, 45]);
 const BOSS_PREP_FLOORS = new Set([12, 13, 14, 27, 28, 29, 42, 43, 44]);
 const IMMEDIATE_PRE_BOSS_FLOORS = new Set([14, 29, 44]);
@@ -1154,6 +1174,9 @@ function mergeWeapons(gen, a, b, floor = 0) {
   };
   const slots = merged.gemSlots || CardDataGenerator.gemSlotsForRarity(r);
   merged.gemSlots = slots;
+  // Sigils ride every merge (systems/inventory/CardMergeRules.js createMergedCard).
+  const mergedSigils = mergeSigils(a, b);
+  if (mergedSigils.length) merged.sigils = mergedSigils;
   if (a.gemEffect && b.gemEffect && a.gemEffect === b.gemEffect) {
     merged.gemEffect = a.gemEffect;
     merged.gemName = a.gemName;
@@ -1181,6 +1204,8 @@ function mergeArmor(gen, a, b, floor = 0) {
     maxDurability: CardDataGenerator.armorDurability(type, r),
   };
   merged.reflection = a.reflection || 0;
+  const mergedSigils = mergeSigils(a, b);
+  if (mergedSigils.length) merged.sigils = mergedSigils;
   // Re-apply Iron talents — merge rebuilt from catalog and would otherwise
   // strip Hardened / Counter Drill / Bulwark.
   applyArmorTalentMods(merged, gsTalentEffectsRef.current);
@@ -1198,7 +1223,8 @@ function mergeArmorList(gen, list, echoChance = 0, tracker = null, floor = 0, ta
       for (let j = i + 1; j < list.length; j++) {
         const a = list[i], b = list[j];
         if (a.armorType && a.armorType === b.armorType && a.rarity === b.rarity &&
-            RARITY_ORDER.indexOf(a.rarity) < RARITY_ORDER.length - 1) {
+            RARITY_ORDER.indexOf(a.rarity) < RARITY_ORDER.length - 1 &&
+            sigilsFitOnMerge(a, b)) {
           const m = mergeArmor(gen, a, b, floor);
           list.splice(j, 1); list.splice(i, 1); list.push(m);
           gs?.scene?.amuletManager?.processCardMerge?.();
@@ -1230,7 +1256,8 @@ function mergeWeaponList(gen, list, echoChance = 0, tracker = null, floor = 0, g
       for (let j = i + 1; j < list.length; j++) {
         const a = list[i], b = list[j];
         if (a.weaponType && a.weaponType === b.weaponType && a.rarity === b.rarity &&
-            RARITY_ORDER.indexOf(a.rarity) < RARITY_ORDER.length - 1) {
+            RARITY_ORDER.indexOf(a.rarity) < RARITY_ORDER.length - 1 &&
+            sigilsFitOnMerge(a, b)) {
           // Two daggers are a complete dual-wield build. Do not automatically
           // collapse the final pair into one upgraded dagger. With three or
           // more, merging two still leaves an off-hand blade.
@@ -4338,6 +4365,88 @@ function runTreasure(mock, gs, inv, floor, good) {
   regear(mock.cardSystem.cardDataGenerator, gs, inv);
 }
 
+// An elite's reward chest (TreasureScene 'elite' values), the one the game gives for every
+// elite fight that does not turn into a Sigil Room.
+function runEliteChest(mock, gs, inv, floor) {
+  gs.coins += scaleGoldReward(15 + Math.floor(floor / 2));
+  gs.crystals += 2 + Math.floor(floor / 10);
+  const roll = Math.random();
+  const type = roll < 0.45 ? 'weapon' : roll < 0.85 ? 'armor' : 'magic';
+  const item = mock.cardSystem.createCardData(type, floor, false, null, 'rare');
+  if (item?.type === 'weapon' && gs._lootStats) recordWeapon(gs._lootStats, floor, item, 'elite');
+  if (item) tryCarry(gs, inv, item);
+  regear(mock.cardSystem.cardDataGenerator, gs, inv);
+}
+
+// ── Sigils ────────────────────────────────────────────────────────────────
+// A Sigil Room (a map node, a reward row, an elite's reward, the secret vault) puts one sigil
+// from the act's location pool on one of the bot's cards. Mirrors ui/SigilOffer.js without its
+// panel: the same pool, the same "never one twice in a run", the same room-for-it rule.
+function sigilCards(gs, inv) {
+  const seen = new Set();
+  return [...invItems(inv), gs.equippedArmor].filter((card) => {
+    if (!card || seen.has(card) || (card.type !== 'weapon' && card.type !== 'armor')) return false;
+    seen.add(card);
+    return true;
+  });
+}
+
+function offerableSimSigils(gs, inv) {
+  const cards = sigilCards(gs, inv);
+  const taken = new Set(takenSigils(gs));
+  cards.forEach((card) => cardSigils(card).forEach((s) => taken.add(s.id)));
+  const hasCompanion = companionsIn(inv).length > 0;
+  const pool = sigilPoolForLocation(getLocationIdForFloor(gs));
+  return pool.filter((id) => getSigil(id)?.works && getSigil(id)?.side !== 'enemy' && !taken.has(id)
+    && (id !== 'warcry' || hasCompanion)
+    && cards.some((card) => canTakeSigil(card, id)));
+}
+
+// The card a sigil goes on: the strongest weapon that can take it (the one that will land the
+// hits), or the worn armor for the sigils only armor can carry. Sturdier cards first, since a
+// sigil goes when its card breaks.
+function chooseSigilTarget(gs, inv, sigilId) {
+  const score = (card) => (card.type === 'weapon'
+    ? 100 + (card.damage || 0) * 4 + (card.durability || 0) + (card === gs.equippedWeapon ? 50 : 0)
+    : 60 + (card.protection || 0) * 5 + (card.durability || 0) + (card === gs.equippedArmor ? 30 : 0));
+  return sigilCards(gs, inv)
+    .filter((card) => canTakeSigil(card, sigilId))
+    .sort((a, b) => score(b) - score(a))[0] || null;
+}
+
+/** Take a sigil on one card. Returns true when one was taken. */
+function takeSigil(gs, inv, metrics, source) {
+  const options = offerableSimSigils(gs, inv);
+  if (!options.length) { metrics.sigils.noRoom++; return false; }
+  const id = options[Math.floor(Math.random() * options.length)];
+  const card = chooseSigilTarget(gs, inv, id);
+  if (!card || !addSigil(card, id)) { metrics.sigils.noRoom++; return false; }
+  noteSigilTaken(gs, id);
+  metrics.sigils.taken++;
+  metrics.sigils.byId[id] = (metrics.sigils.byId[id] || 0) + 1;
+  metrics.sigils.bySource[source] = (metrics.sigils.bySource[source] || 0) + 1;
+  if (card.type === 'weapon') metrics.sigils.onWeapon++; else metrics.sigils.onArmor++;
+  return true;
+}
+
+// A Sigil Room: the sigil, or, when no card can take any, the good chest the game falls back to.
+function runSigilRoom(mock, gs, inv, floor, metrics, source = 'node') {
+  if (takeSigil(gs, inv, metrics, source)) return true;
+  runTreasure(mock, gs, inv, floor, true);
+  return false;
+}
+
+// What an elite fight pays: SIGIL_ROOM_CHANCE of the time (more with the Sapphire Brooch) a
+// Sigil Room, otherwise the elite chest (GameScene.pickEliteRewardMode).
+function runEliteReward(mock, gs, inv, floor, metrics) {
+  const chance = mock.amuletManager?.hasEliteChestSigil?.() ? SIGIL_ROOM_CHANCE_BROOCH : SIGIL_ROOM_CHANCE;
+  if (Math.random() < chance && offerableSimSigils(gs, inv).length) {
+    runSigilRoom(mock, gs, inv, floor, metrics, 'elite');
+  } else {
+    runEliteChest(mock, gs, inv, floor);
+  }
+}
+
 // Blacksmith: repair every affordable damaged inventory/equipment card.
 function runAnvil(gs, inv, metrics) {
   // Mirror the live anvil: an item is repaired in full or not at all, at the
@@ -4514,8 +4623,9 @@ function runGame(metrics, config = {}) {
     gs.pinCalendarMonth = Boolean(config.pinCalendarMonth);
   }
 
-  const startAct = (config.act === 1 || config.act === 2 || config.act === 3) ? config.act : 1;
-  const endAct = (config.act === 1 || config.act === 2 || config.act === 3) ? config.act : 3;
+  const onlyAct = [config.act, CLI_ACT].find((act) => act === 1 || act === 2 || act === 3);
+  const startAct = onlyAct || 1;
+  const endAct = onlyAct || 3;
   const winFloor = endAct * 15;
   const starterRarity = config.startingWeaponRarity || actStartWeaponRarity(startAct);
 
@@ -4609,6 +4719,11 @@ function runGame(metrics, config = {}) {
   // Walk the REAL generated map. Optional --act N runs only that act's floors
   // (mid-act start with act-scaled starters).
   const map = new MapGenerator().generateFullMap();
+  // The game adds the secret rooms that are always there (the sigil vault, the Crystal Lair) when
+  // the map opens; do the same, so the vault can be offered. The run's own state, as the game has it.
+  gs.dungeonMap = map;
+  gs.mapCursor = { act: startAct, floor: 0, node: 0 };
+  try { ensureHiddenPaths(gs); } catch (err) { /* no vault this run */ }
   let reached = 0, dead = false;
 
   const playOpeningCombat = (floor) => {
@@ -4679,13 +4794,21 @@ function runGame(metrics, config = {}) {
     const memo = new Map();
     let cur = 0;
     for (let f = 1; f < floors.length; f++) {
-      const floor = (act - 1) * 15 + f + 1;
-      const next = chooseNextNode(floors, f, cur, memo, gs, inv, floor);
+      // An act's map has two reward rows that are not floors (map/MapGenerator.js): rooms there
+      // share the floor number of the row before them, so enemy strength and loot do not move.
+      const bonusRow = isBonusRow(floors, f);
+      const floor = (act - 1) * 15 + floorOfRow(floors, f);
+      // The sigil vault, when the way to it is open from here.
+      const vaultIdx = Math.random() < SIM_VAULT_RATE
+        ? (floors[f - 1]?.[cur]?.secretLinks || []).find((i) => floors[f]?.[i]?.secretSource === 'sigilVault')
+        : undefined;
+      const next = vaultIdx !== undefined ? vaultIdx : chooseNextNode(floors, f, cur, memo, gs, inv, floor);
       if (next < 0) break;
       cur = next;
       const node = floors[f][cur];
       gs.currentFloor = floor;
-      const roomType = node.type || 'COMBAT';
+      const isVault = Boolean(node.secret && node.secretSource === 'sigilVault');
+      const roomType = isVault ? 'SIGIL' : (node.type || 'COMBAT');
       gs.roomType = roomType;
       metrics.roomVisits[roomType] = (metrics.roomVisits[roomType] || 0) + 1;
       const hpStart = gs.playerHealth;
@@ -4715,6 +4838,8 @@ function runGame(metrics, config = {}) {
         }
         if (gs.playerHealth > 0) {
           mock.amuletManager.processFloorEnd();
+          // An elite pays a chest, or a Sigil Room.
+          if (roomType === 'ELITE') runEliteReward(mock, gs, inv, floor, metrics);
           // Act-boss victory → reward room when another act follows in this run.
           if ((floor === 15 || floor === 30) && BOSS_FLOORS.has(floor) && act < endAct) {
             runBossReward(mock, gs, inv, floor);
@@ -4730,6 +4855,7 @@ function runGame(metrics, config = {}) {
       }
       else if (roomType === 'TREASURE') runTreasure(mock, gs, inv, floor, false);
       else if (roomType === 'TREASURE_GOOD') runTreasure(mock, gs, inv, floor, true);
+      else if (roomType === 'SIGIL') runSigilRoom(mock, gs, inv, floor, metrics, isVault ? 'vault' : (node.bonus ? 'rewardRow' : 'node'));
       else if (roomType === 'ANVIL') {
         metrics.anvilVisits++;
         const nextBoss = Math.ceil(floor / 15) * 15;
@@ -4751,17 +4877,21 @@ function runGame(metrics, config = {}) {
       }
 
       reached = floor;
-      const m = metrics.floors[floor];
-      m.reached++;
-      m.hpStart += hpStart;
-      m.hpEnd += Math.max(0, gs.playerHealth);
-      m.hpLost += Math.max(0, hpStart - gs.playerHealth);
-      m.coins += gs.coins;
-      m.crystals += gs.crystals;
-      m.weaponDmg += gs.equippedWeapon ? gs.equippedWeapon.damage : 0;
-      m.armor += gs.equippedArmor ? gs.equippedArmor.protection : 0;
-      m.maxHp += gs.maxHealth;
-      if (COMBAT_ROOMS.has(roomType)) m.combats++;
+      // A reward row shares its floor with the room before it: counting it again would put
+      // more runs on that floor than set foot on it.
+      if (!bonusRow) {
+        const m = metrics.floors[floor];
+        m.reached++;
+        m.hpStart += hpStart;
+        m.hpEnd += Math.max(0, gs.playerHealth);
+        m.hpLost += Math.max(0, hpStart - gs.playerHealth);
+        m.coins += gs.coins;
+        m.crystals += gs.crystals;
+        m.weaponDmg += gs.equippedWeapon ? gs.equippedWeapon.damage : 0;
+        m.armor += gs.equippedArmor ? gs.equippedArmor.protection : 0;
+        m.maxHp += gs.maxHealth;
+        if (COMBAT_ROOMS.has(roomType)) m.combats++;
+      }
 
       if (gs._lootStats) {
         recordFloorSnapshot(gs._lootStats, floor, gs, inv, mock.cardSystem.boardCards);
@@ -4868,6 +4998,8 @@ function newMetrics() {
     repairActions: 0, repairPips: 0, repairCoins: 0,
     anvilVisits: 0, lateAnvilVisits: 0, anvilDistanceToBoss: 0,
     amuletOffers: 0, amuletPicks: 0, amuletPicksById: {},
+    // Sigils the bot took, by where they came from (Sigil Room node, reward row, an elite's room, the vault).
+    sigils: { taken: 0, byId: {}, bySource: {}, noRoom: 0, onWeapon: 0, onArmor: 0 },
     weaponMerges: 0, daggerRefreshMerges: 0, armorMerges: 0, thornMerges: 0, potionMerges: 0,
     combatLoot: { pickups: 0, byType: {} },
     lookahead: {
@@ -5005,6 +5137,19 @@ function report(metrics) {
       `Amulet choices: ${metrics.amuletPicks}/${metrics.amuletOffers} offers taken` +
       `${topPicks ? `; top picks: ${topPicks}` : ''}`
     );
+  }
+  const sg = metrics.sigils;
+  if (sg && (sg.taken || sg.noRoom)) {
+    const bySource = Object.entries(sg.bySource).sort((a, b) => b[1] - a[1])
+      .map(([source, n]) => `${source} ${(n / N).toFixed(2)}`).join(', ');
+    const topIds = Object.entries(sg.byId).sort((a, b) => b[1] - a[1]).slice(0, 8)
+      .map(([id, n]) => `${id} ${pct(n, sg.taken)}%`).join(', ');
+    console.log(
+      `Sigils per run: ${(sg.taken / N).toFixed(2)} (${bySource || 'none'}); ` +
+      `${pct(sg.onWeapon, sg.taken)}% on weapons, ${pct(sg.onArmor, sg.taken)}% on armor; ` +
+      `${(sg.noRoom / N).toFixed(2)} rooms with no card to take one`
+    );
+    if (topIds) console.log(`  most taken: ${topIds}`);
   }
   const fc = metrics.finalCompanions || [];
   if (fc.length) {
@@ -6454,9 +6599,99 @@ function runActMetaMatrix() {
   }
 }
 
+// ── Enemy curve ───────────────────────────────────────────────────────────
+// `node sim/balance-sim.js enemy-curve [--json]` — no runs, no randomness: what the content tables
+// say a floor throws at the player. For every floor: the power band an enemy comes from, the board
+// (how many cards, what share are enemies), and from those the room's total enemy HP and attack,
+// with the step from the previous fight floor. A spike is a step of +25% or more; the first floor
+// of each act is where they are. Beside it, how many hits the act's usual starting weapon needs to
+// clear the room, so a step in the enemies can be read against the step in the player.
+// The same formulas the game uses (FloorSpawner._baseCardsForFloor, EnemyDensity, EnemyPower,
+// EnemyTiers, FloorWeights); change one of those and this changes with it.
+const SPIKE_STEP = 0.25;
+function baseCardsForFloor(cf) {
+  const f = Math.max(1, Math.min(45, cf));
+  if (f <= 15) return Math.round(6 + ((f - 1) / 14) * (11 - 6));
+  if (f <= 30) return Math.round(11 + ((f - 15) / 15) * (14 - 11));
+  return Math.round(14 + ((f - 30) / 15) * (16 - 14));
+}
+
+function enemyCurveRows() {
+  const archetypes = Object.values(ARCHETYPES);
+  const archHp = archetypes.reduce((s, a) => s + a.health, 0) / archetypes.length;
+  const archAtk = archetypes.reduce((s, a) => s + a.attack, 0) / archetypes.length;
+  const rows = [];
+  let previous = null;
+  for (let floor = 1; floor <= MAX_FLOOR; floor++) {
+    if (BOSS_FLOORS.has(floor)) { rows.push({ floor, boss: true }); continue; }
+    const band = getPowerBand(floor);
+    const weights = getCardWeights(floor);
+    const total = Object.values(weights).reduce((s, w) => s + w, 0) || 1;
+    const share = Math.max(minEnemyRatioForFloor(floor), (weights.enemy || 0) / total);
+    const cards = baseCardsForFloor(floor);
+    const enemies = cards * share;
+    const vet = Math.min(MAX_VETERAN_CHANCE, veteranChanceForFloor(floor));
+    const tierHp = 1 + vet * (ENEMY_TIERS.veteran.health - 1);
+    const tierAtk = 1 + vet * (ENEMY_TIERS.veteran.attack - 1);
+    const hp = band.health * archHp * tierHp;
+    const atk = band.attack * archAtk * tierAtk;
+    // The weapon the bot holds on this floor's act: its damage, and the hits to clear.
+    const act = Math.min(3, Math.floor((floor - 1) / 15) + 1);
+    const dmg = createWeaponCardData('sword', actStartWeaponRarity(act))?.damage || 1;
+    const row = {
+      floor, act, band: band.id, enemyHp: hp, enemyAtk: atk, cards, enemyShare: share, enemies,
+      poolHp: enemies * hp, poolAtk: enemies * atk, weaponDamage: dmg, hitsToClear: (enemies * hp) / dmg,
+    };
+    row.step = previous ? row.poolHp / previous.poolHp - 1 : 0;
+    row.hpStep = previous ? row.enemyHp / previous.enemyHp - 1 : 0;
+    row.spike = previous ? row.step >= SPIKE_STEP : false;
+    rows.push(row);
+    previous = row;
+  }
+  return rows;
+}
+
+function runEnemyCurve() {
+  const rows = enemyCurveRows();
+  if (process.argv.includes('--json')) {
+    console.log(JSON.stringify(rows, null, 2));
+    return;
+  }
+  console.log('\n=== Enemy curve — what each floor throws at the player ===');
+  console.log('band = power band; hp/atk = one average enemy; pool = the whole room; step = pool HP vs the floor before\n');
+  console.log('floor act band  enemyHP  enemyATK  cards enemies  poolHP  poolATK  hits(sword)  step');
+  for (const r of rows) {
+    if (r.boss) { console.log(`${String(r.floor).padStart(5)}  --  BOSS`); continue; }
+    console.log(
+      `${String(r.floor).padStart(5)} ${String(r.act).padStart(3)}  ${r.band}   `
+      + `${r.enemyHp.toFixed(1).padStart(7)}  ${r.enemyAtk.toFixed(1).padStart(8)}  `
+      + `${String(r.cards).padStart(5)} ${r.enemies.toFixed(1).padStart(7)}  `
+      + `${r.poolHp.toFixed(0).padStart(6)}  ${r.poolAtk.toFixed(0).padStart(7)}  `
+      + `${r.hitsToClear.toFixed(1).padStart(11)}  ${(r.step * 100).toFixed(0).padStart(4)}%${r.spike ? '  ◄ SPIKE' : ''}`
+    );
+  }
+  const spikes = rows.filter((r) => r.spike);
+  console.log(`\n${spikes.length} floor(s) step up by ${SPIKE_STEP * 100}% or more: ${spikes.map((r) => r.floor).join(', ') || 'none'}`);
+  const act = (n) => rows.filter((r) => !r.boss && r.act === n);
+  for (const n of [1, 2, 3]) {
+    const list = act(n);
+    if (!list.length) continue;
+    const first = list[0];
+    const last = list[list.length - 1];
+    console.log(`act ${n}: floor ${first.floor} -> ${last.floor}: enemy HP ${first.enemyHp.toFixed(1)} -> ${last.enemyHp.toFixed(1)}, room pool ${first.poolHp.toFixed(0)} -> ${last.poolHp.toFixed(0)}`);
+  }
+  const a1 = act(1).slice(-1)[0];
+  const a2 = act(2)[0];
+  if (a1 && a2) {
+    console.log(`\nAct 1 -> act 2: one enemy's HP x${(a2.enemyHp / a1.enemyHp).toFixed(2)}, the room's HP pool x${(a2.poolHp / a1.poolHp).toFixed(2)}, hits for the starting sword x${(a2.hitsToClear / a1.hitsToClear).toFixed(2)}`);
+  }
+}
+
 const MODE = process.argv[2];
 const t0 = Date.now();
-if (MODE === 'reliccompare' || MODE === 'talentcompare') {
+if (MODE === 'enemy-curve' || MODE === 'curve') {
+  runEnemyCurve();
+} else if (MODE === 'reliccompare' || MODE === 'talentcompare') {
   runTalentCompare();
 } else if (MODE === 'talentladder') {
   runTalentLadder();

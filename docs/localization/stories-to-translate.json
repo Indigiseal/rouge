@@ -1,0 +1,919 @@
+[
+  {
+    "id": 1,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp",
+    "kind": "title",
+    "en": "The Abandoned Camp"
+  },
+  {
+    "id": 2,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp",
+    "kind": "description",
+    "en": "A camp in a side chamber, left in a hurry. The fire is cold. The tent still stands, one pole leaning.\n\nBedrolls, a cooking pot, a bag half unpacked. Nobody came back for any of it."
+  },
+  {
+    "id": 3,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 1",
+    "kind": "choice button",
+    "en": "Sleep in the tent"
+  },
+  {
+    "id": 4,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 1",
+    "kind": "outcome (one of several, chosen by the game)",
+    "en": "In the night, something walks around the tent. Then it stops walking."
+  },
+  {
+    "id": 5,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 1",
+    "kind": "outcome (one of several, chosen by the game)",
+    "en": "You sleep. Nobody comes.\n\nIn the morning the camp is exactly as they left it."
+  },
+  {
+    "id": 6,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 2",
+    "kind": "choice button",
+    "en": "Look around the camp"
+  },
+  {
+    "id": 7,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 2",
+    "kind": "outcome",
+    "en": "Behind the tent, half under the bedrolls, you find one of them.\n\nHis sword is out of its sheath. The blade is clean. There is not a mark on him.\n\nHe did not die fighting. His face looks as if he saw a ghost."
+  },
+  {
+    "id": 8,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 2 > then > choice 1",
+    "kind": "choice button",
+    "en": "Take his backpack"
+  },
+  {
+    "id": 9,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 2 > then > choice 1",
+    "kind": "outcome (one of several, chosen by the game)",
+    "en": "You are still crouched over him when the tent flap moves behind you.\n\nThere is no wind down here."
+  },
+  {
+    "id": 10,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 2 > then > choice 1",
+    "kind": "outcome (one of several, chosen by the game)",
+    "en": "Nothing moves. You leave him the rest."
+  },
+  {
+    "id": 11,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 2 > then > choice 2",
+    "kind": "choice button",
+    "en": "Take his sword"
+  },
+  {
+    "id": 12,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 2 > then > choice 3",
+    "kind": "choice button",
+    "en": "Take his armor"
+  },
+  {
+    "id": 13,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 2 > then > choice 4",
+    "kind": "choice button",
+    "en": "Bury him and pray"
+  },
+  {
+    "id": 14,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 2 > then > choice 4",
+    "kind": "outcome",
+    "en": "You leave his things where they are. The ground is soft enough.\n\nWhen you finish the prayer, the chamber is very quiet. You stand up lighter than you knelt down."
+  },
+  {
+    "id": 15,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 2 > then > choice 5",
+    "kind": "choice button",
+    "en": "Leave him"
+  },
+  {
+    "id": 16,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 2 > then > choice 5",
+    "kind": "outcome",
+    "en": "You leave him as you found him. You do not look at his face again."
+  },
+  {
+    "id": 17,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 3",
+    "kind": "choice button",
+    "en": "Leave the camp"
+  },
+  {
+    "id": 18,
+    "story": "abandoned_camp",
+    "where": "abandoned_camp > choice 3",
+    "kind": "outcome",
+    "en": "You leave the camp as it is. Whoever left it is not coming back."
+  },
+  {
+    "id": 19,
+    "story": "broken_music_box",
+    "where": "broken_music_box",
+    "kind": "description",
+    "en": "A small black music box lies under the rubble — lid cracked, one brass leg twitching.\n\nAs you lean in, it plays three notes and snaps shut."
+  },
+  {
+    "id": 20,
+    "story": "broken_music_box",
+    "where": "broken_music_box > choice 1",
+    "kind": "choice button",
+    "en": "Force it open"
+  },
+  {
+    "id": 21,
+    "story": "broken_music_box",
+    "where": "broken_music_box > choice 1",
+    "kind": "outcome",
+    "en": "You pry at the lid."
+  },
+  {
+    "id": 22,
+    "story": "broken_music_box",
+    "where": "broken_music_box > choice 2",
+    "kind": "choice button",
+    "en": "Open it carefully"
+  },
+  {
+    "id": 23,
+    "story": "broken_music_box",
+    "where": "broken_music_box > choice 2",
+    "kind": "outcome",
+    "en": "The lock gives. Inside, where the cylinder should turn, a cog is missing.\n\nThe box looks at you — somehow — then grows two more legs and falls in behind you."
+  },
+  {
+    "id": 24,
+    "story": "broken_music_box",
+    "where": "broken_music_box > choice 3",
+    "kind": "choice button",
+    "en": "Leave it alone"
+  },
+  {
+    "id": 25,
+    "story": "broken_music_box",
+    "where": "broken_music_box > choice 3",
+    "kind": "outcome",
+    "en": "You step over it and keep walking.\n\nTen steps later: small metal feet on the stones behind you."
+  },
+  {
+    "id": 26,
+    "story": "goblin_engineer",
+    "where": "goblin_engineer",
+    "kind": "description (varies)",
+    "en": "A goblin steps out from behind a broken machine, sniffs the air, and coughs.\n\n"
+  },
+  {
+    "id": 27,
+    "story": "goblin_engineer",
+    "where": "goblin_engineer",
+    "kind": "description (varies)",
+    "en": "\"Snatch Box. Charge went first. I can smell the powder from here. Nothing left to seat a cog in.\"\n\n"
+  },
+  {
+    "id": 28,
+    "story": "goblin_engineer",
+    "where": "goblin_engineer",
+    "kind": "description (varies)",
+    "en": "He looks at your boots as if a box might still be hiding there. It is not."
+  },
+  {
+    "id": 29,
+    "story": "goblin_engineer",
+    "where": "goblin_engineer",
+    "kind": "description (varies)",
+    "en": "A goblin steps out from behind a broken machine and points at the music box.\n\n\"Sleepy Snatch Box. Old robber model. Plays a song, puffs smoke, hero sleeps, pockets empty. Very illegal. Very profitable.\"\n\nThe box hides behind your boot."
+  },
+  {
+    "id": 30,
+    "story": "goblin_engineer",
+    "where": "goblin_engineer",
+    "kind": "description (varies)",
+    "en": "\"You found its heart cog. Give it here — I can seat it properly. Or improperly. Depends on payment.\""
+  },
+  {
+    "id": 31,
+    "story": "goblin_engineer",
+    "where": "goblin_engineer",
+    "kind": "description (varies)",
+    "en": "\"No cog? I have spares. Spare parts cost extra.\""
+  },
+  {
+    "id": 32,
+    "story": "goblin_engineer",
+    "where": "goblin_engineer > choice 1",
+    "kind": "choice button",
+    "en": "Refuse to pay"
+  },
+  {
+    "id": 33,
+    "story": "goblin_engineer",
+    "where": "goblin_engineer > choice 2",
+    "kind": "choice button",
+    "en": "Give him an unwanted card for spare parts"
+  },
+  {
+    "id": 34,
+    "story": "goblin_engineer",
+    "where": "goblin_engineer > choice 3",
+    "kind": "choice button",
+    "en": "Pay 30 coins for full repair"
+  },
+  {
+    "id": 35,
+    "story": "goblin_engineer",
+    "where": "goblin_engineer > choice 4",
+    "kind": "outcome",
+    "en": "He shrugs. \"Ash is ash. I don't do funerals.\"\n\nHe is already back behind the machine before you turn away."
+  },
+  {
+    "id": 36,
+    "story": "mirror_twin",
+    "where": "mirror_twin",
+    "kind": "title",
+    "en": "The Mirror Twin"
+  },
+  {
+    "id": 37,
+    "story": "mirror_twin",
+    "where": "mirror_twin",
+    "kind": "description",
+    "en": "A dry corner. You sit down and shut your eyes.\n\nWhen you open them, someone is sitting across from you. Hooded, cross-legged, wearing your face. The scar on your chin is on his other side.\n\nYou scratch your nose. He scratches his nose. His knees touch yours."
+  },
+  {
+    "id": 38,
+    "story": "mirror_twin",
+    "where": "mirror_twin > choice 1",
+    "kind": "choice button",
+    "en": "Give him a shard"
+  },
+  {
+    "id": 39,
+    "story": "mirror_twin",
+    "where": "mirror_twin > choice 1",
+    "kind": "outcome",
+    "en": "He holds the shard up. A face looks back from it, not yours. He turns to look closer."
+  },
+  {
+    "id": 40,
+    "story": "mirror_twin",
+    "where": "mirror_twin > choice 1 > then > choice 1",
+    "kind": "choice button",
+    "en": "Sneak away"
+  },
+  {
+    "id": 41,
+    "story": "mirror_twin",
+    "where": "mirror_twin > choice 1 > then > choice 1",
+    "kind": "outcome",
+    "en": "You lift your pack one strap at a time and back out of the corner. He doesn't look up.\n\nOn the sixth step the floor stops.\n\nYou land on old rugs beside a dead camp. A note under a stone: \"Day 4. Mirror man STILL here. Going to try sneaking. Don't look back.\"\n\nUnder it, an amulet. You take it and climb out the far side. You don't look back."
+  },
+  {
+    "id": 42,
+    "story": "mirror_twin",
+    "where": "mirror_twin > choice 2",
+    "kind": "choice button",
+    "en": "Give him the Gemseeker's Lens"
+  },
+  {
+    "id": 43,
+    "story": "mirror_twin",
+    "where": "mirror_twin > choice 2",
+    "kind": "outcome",
+    "en": "Even better: his own face, enormous. He presses his nose to it and forgets you."
+  },
+  {
+    "id": 44,
+    "story": "mirror_twin",
+    "where": "mirror_twin > choice 3",
+    "kind": "choice button",
+    "en": "Give him the Hand Mirror"
+  },
+  {
+    "id": 45,
+    "story": "mirror_twin",
+    "where": "mirror_twin > choice 3",
+    "kind": "outcome",
+    "en": "He looks into the mirror. Another him looks back. He leans in. So does the other one.\n\nWhoosh.\n\nYou pick up the mirror. Your reflection isn't in it. He is, pressed flat against the glass, looking pleased."
+  },
+  {
+    "id": 46,
+    "story": "mirror_twin",
+    "where": "mirror_twin > choice 4",
+    "kind": "choice button",
+    "en": "Try to out-stare him"
+  },
+  {
+    "id": 47,
+    "story": "mirror_twin",
+    "where": "mirror_twin > choice 4",
+    "kind": "outcome",
+    "en": "You blink first. He does a small victory dance and wanders off, still dancing. You do not get your rest."
+  },
+  {
+    "id": 48,
+    "story": "monster_bird_nest",
+    "where": "monster_bird_nest",
+    "kind": "description (varies)",
+    "en": "A shadow crosses the nest. Then again, lower."
+  },
+  {
+    "id": 49,
+    "story": "monster_bird_nest",
+    "where": "monster_bird_nest",
+    "kind": "description (varies)",
+    "en": "A nest sits wedged between two fallen pillars — speckled eggs, bent keys, old buttons, and one small brass cog.\n\n"
+  },
+  {
+    "id": 50,
+    "story": "monster_bird_nest",
+    "where": "monster_bird_nest > choice 1",
+    "kind": "choice button",
+    "en": "Search the nest"
+  },
+  {
+    "id": 51,
+    "story": "monster_bird_nest",
+    "where": "monster_bird_nest > choice 1",
+    "kind": "outcome",
+    "en": "You reach into the nest."
+  },
+  {
+    "id": 52,
+    "story": "old_chute",
+    "where": "old_chute",
+    "kind": "title",
+    "en": "The Old Chute"
+  },
+  {
+    "id": 53,
+    "story": "old_chute",
+    "where": "old_chute",
+    "kind": "description",
+    "en": "A flagstone tips under your boot. You drop into an old trap chute and slide a long way down in the dark.\n\nWhatever was meant to be waiting at the bottom rotted away years ago. You land unhurt, on something that goes crack.\n\nUnder you is a spider the size of a dog, made of clear crystal. Most of it is in pieces now."
+  },
+  {
+    "id": 54,
+    "story": "old_chute",
+    "where": "old_chute > choice 1",
+    "kind": "choice button",
+    "en": "Take a crystal leg"
+  },
+  {
+    "id": 55,
+    "story": "old_chute",
+    "where": "old_chute > choice 1",
+    "kind": "outcome",
+    "en": "One leg came off clean. It is cold, and it still catches the light.\n\nAhead of you, in the corner of the pit, is her nest: a heap of crystal eggs, each the size of a fist."
+  },
+  {
+    "id": 56,
+    "story": "old_chute",
+    "where": "old_chute > choice 1 > then > choice 1",
+    "kind": "choice button",
+    "en": "Burn the eggs"
+  },
+  {
+    "id": 57,
+    "story": "old_chute",
+    "where": "old_chute > choice 1 > then > choice 1",
+    "kind": "outcome",
+    "en": "The fireball fills the pit. The eggs pop one by one.\n\nWhen the smoke clears, the heat has fused what is left into a single lump of crystal."
+  },
+  {
+    "id": 58,
+    "story": "old_chute",
+    "where": "old_chute > choice 1 > then > choice 2",
+    "kind": "choice button",
+    "en": "Smash the eggs"
+  },
+  {
+    "id": 59,
+    "story": "old_chute",
+    "where": "old_chute > choice 1 > then > choice 2",
+    "kind": "outcome (one of several, chosen by the game)",
+    "en": "The third egg is already open. So is the fourth.\n\nSmall crystal legs come out of the heap."
+  },
+  {
+    "id": 60,
+    "story": "old_chute",
+    "where": "old_chute > choice 1 > then > choice 2",
+    "kind": "outcome (one of several, chosen by the game)",
+    "en": "You crush them all. It is loud, and nothing answers.\n\nThe shards are worth something."
+  },
+  {
+    "id": 61,
+    "story": "old_chute",
+    "where": "old_chute > choice 1 > then > choice 3",
+    "kind": "choice button",
+    "en": "Take one egg"
+  },
+  {
+    "id": 62,
+    "story": "old_chute",
+    "where": "old_chute > choice 1 > then > choice 3",
+    "kind": "outcome",
+    "en": "You pick the smallest one. It is cold, and heavier than it looks.\n\nSomething inside taps back."
+  },
+  {
+    "id": 63,
+    "story": "old_chute",
+    "where": "old_chute > choice 1 > then > choice 4",
+    "kind": "choice button",
+    "en": "Leave the nest"
+  },
+  {
+    "id": 64,
+    "story": "old_chute",
+    "where": "old_chute > choice 1 > then > choice 4",
+    "kind": "outcome",
+    "en": "You leave the eggs where they are and climb out the long way.\n\nHalfway up, below you, one of them cracks."
+  },
+  {
+    "id": 65,
+    "story": "old_chute",
+    "where": "old_chute > choice 2",
+    "kind": "choice button",
+    "en": "Leave her be"
+  },
+  {
+    "id": 66,
+    "story": "old_chute",
+    "where": "old_chute > choice 2",
+    "kind": "outcome",
+    "en": "You climb off her and leave her where she lies.\n\nAhead of you, in the corner of the pit, is her nest: a heap of crystal eggs, each the size of a fist."
+  },
+  {
+    "id": 67,
+    "story": "quiet_crossroads",
+    "where": "quiet_crossroads > choice 3",
+    "kind": "choice button",
+    "en": "Read the scratches on the wall"
+  },
+  {
+    "id": 68,
+    "story": "quiet_crossroads",
+    "where": "quiet_crossroads > choice 3",
+    "kind": "outcome",
+    "en": "Someone scratched a map into the stone, one passage circled twice. You copy it down."
+  },
+  {
+    "id": 69,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller",
+    "kind": "title",
+    "en": "The Robbed Traveller"
+  },
+  {
+    "id": 70,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller",
+    "kind": "description",
+    "en": "A man sits against the wall with his pack turned out beside him. His eyes are half shut. He sees you and tries to stand, and can't.\n\n\"There was a stand,\" he says. \"Soup. Nobody there.\" He laughs, and it turns into a yawn. \"They took everything.\""
+  },
+  {
+    "id": 71,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 1",
+    "kind": "choice button",
+    "en": "Give him your Antidote"
+  },
+  {
+    "id": 72,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 1",
+    "kind": "outcome (one of several, chosen by the game)",
+    "en": "He drinks it in one go. After a while his eyes open properly and he sits up straight.\n\n"
+  },
+  {
+    "id": 73,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 1",
+    "kind": "outcome (one of several, chosen by the game)",
+    "en": "He has nothing left to pay you with, except the one thing they missed. He unpicks his collar and puts it in your hand."
+  },
+  {
+    "id": 74,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 1",
+    "kind": "outcome (one of several, chosen by the game)",
+    "en": "He unpicks his collar to pay you, and finds it empty. He looks at you for a long time. \"Thank you,\" he says."
+  },
+  {
+    "id": 75,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 2",
+    "kind": "choice button",
+    "en": "Cast Restoration on him"
+  },
+  {
+    "id": 76,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 2",
+    "kind": "outcome (one of several, chosen by the game)",
+    "en": "You hold the card over him. The light goes into him and he sits up straight.\n\n"
+  },
+  {
+    "id": 77,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 3",
+    "kind": "choice button",
+    "en": "Ask what happened"
+  },
+  {
+    "id": 78,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 3",
+    "kind": "outcome",
+    "en": "\"Three of them. A stand, a pot.\" He yawns. \"Green scarves. I had one bowl and woke up like this. They took my antidotes.\"\n\nHe tells you where they sleep. It isn't far."
+  },
+  {
+    "id": 79,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 4",
+    "kind": "choice button",
+    "en": "Give him food"
+  },
+  {
+    "id": 80,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 4",
+    "kind": "outcome",
+    "en": "He eats, and perks up enough to talk.\n\n\"My purse is in the lining,\" he says, and tells you where the gang sleeps. Then he nods off again, smiling."
+  },
+  {
+    "id": 81,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 5",
+    "kind": "choice button",
+    "en": "Search his pack"
+  },
+  {
+    "id": 82,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 5",
+    "kind": "outcome",
+    "en": "There is a purse sewn into the lining. He watches you cut it out, too sleepy to stop you.\n\n\"Of course,\" he mumbles. \"Of course you would.\""
+  },
+  {
+    "id": 83,
+    "story": "robbed_traveller",
+    "where": "robbed_traveller > choice 6",
+    "kind": "outcome",
+    "en": "You leave him dozing against the wall. He will wake up eventually."
+  },
+  {
+    "id": 84,
+    "story": "soup_stand",
+    "where": "soup_stand",
+    "kind": "title",
+    "en": "The Soup Stand"
+  },
+  {
+    "id": 85,
+    "story": "soup_stand",
+    "where": "soup_stand",
+    "kind": "description",
+    "en": "A wooden stand against the wall. On it, a pot of soup, still steaming, a ladle and two clean bowls.\n\nYou call out. Nobody answers. You call again, louder. Nothing."
+  },
+  {
+    "id": 86,
+    "story": "soup_stand",
+    "where": "soup_stand > choice 1",
+    "kind": "choice button",
+    "en": "Eat the soup"
+  },
+  {
+    "id": 87,
+    "story": "soup_stand",
+    "where": "soup_stand > choice 1",
+    "kind": "outcome",
+    "en": "It is good soup. You have a second bowl.\n\nHalfway through it your fingers go numb, and you understand why nobody was minding the stand. Too late.\n\nWhen you wake up the pot is gone, and so is half your purse."
+  },
+  {
+    "id": 88,
+    "story": "soup_stand",
+    "where": "soup_stand > choice 2",
+    "kind": "choice button",
+    "en": "Wait out of sight"
+  },
+  {
+    "id": 89,
+    "story": "soup_stand",
+    "where": "soup_stand > choice 2",
+    "kind": "outcome",
+    "en": "You step behind the wall and wait. The soup goes on steaming.\n\nThree men in green scarves come back for it. The cook lifts his ladle, looks at the two clean bowls, then at your wall."
+  },
+  {
+    "id": 90,
+    "story": "soup_stand",
+    "where": "soup_stand > choice 3",
+    "kind": "choice button",
+    "en": "Leave it and keep going"
+  },
+  {
+    "id": 91,
+    "story": "soup_stand",
+    "where": "soup_stand > choice 3",
+    "kind": "outcome",
+    "en": "You leave the soup where it is and keep walking. Behind you it goes on steaming."
+  },
+  {
+    "id": 92,
+    "story": "soup_stand",
+    "where": "soup_stand > choice 4",
+    "kind": "choice button",
+    "en": "Kick the pot over"
+  },
+  {
+    "id": 93,
+    "story": "soup_stand",
+    "where": "soup_stand > choice 4",
+    "kind": "outcome",
+    "en": "You kick the pot off the stand. Soup runs across the stones. The first rat to lick it falls asleep on the spot.\n\nThe stand tips over with it. Nailed to the underside is a purse: whatever the last few customers were carrying.\n\nYou take it and keep walking."
+  },
+  {
+    "id": 94,
+    "story": "webbed_corridor",
+    "where": "webbed_corridor",
+    "kind": "title",
+    "en": "The Webbed Corridor"
+  },
+  {
+    "id": 95,
+    "story": "webbed_corridor",
+    "where": "webbed_corridor",
+    "kind": "description",
+    "en": "The corridor ahead is strung across with webs. The strands are thin and clear, and they catch the light like glass.\n\nSmall crystal spiders sit along them, a dozen at least, each about the size of your hand. The ones nearest you turn to watch."
+  },
+  {
+    "id": 96,
+    "story": "webbed_corridor",
+    "where": "webbed_corridor > choice 1",
+    "kind": "choice button",
+    "en": "Cut through the webs"
+  },
+  {
+    "id": 97,
+    "story": "webbed_corridor",
+    "where": "webbed_corridor > choice 1",
+    "kind": "outcome",
+    "en": "The first strand you cut rings like a wire.\n\nEvery spider on the web turns toward you at once."
+  },
+  {
+    "id": 98,
+    "story": "webbed_corridor",
+    "where": "webbed_corridor > choice 2",
+    "kind": "choice button",
+    "en": "Go round through the rubble"
+  },
+  {
+    "id": 99,
+    "story": "webbed_corridor",
+    "where": "webbed_corridor > choice 2",
+    "kind": "outcome",
+    "en": "There is a gap where the wall has fallen in. You squeeze through it on your stomach and come out bleeding from both elbows.\n\nA strand of web has caught on your sleeve. By the time you pick it off, it has gone hard and clear."
+  },
+  {
+    "id": 100,
+    "story": "webbed_corridor",
+    "where": "webbed_corridor > choice 3",
+    "kind": "choice button",
+    "en": "Toss them some food"
+  },
+  {
+    "id": 101,
+    "story": "webbed_corridor",
+    "where": "webbed_corridor > choice 3",
+    "kind": "outcome",
+    "en": "The food lands on the web and the nearest spiders are on it before it stops shaking.\n\nThe rest climb up out of the way. Where they were sitting, the web has left a few shards of crystal behind."
+  },
+  {
+    "id": 102,
+    "story": "webbed_corridor",
+    "where": "webbed_corridor > choice 4",
+    "kind": "choice button",
+    "en": "Turn back"
+  },
+  {
+    "id": 103,
+    "story": "webbed_corridor",
+    "where": "webbed_corridor > choice 4",
+    "kind": "outcome",
+    "en": "You go back the way you came. Behind you, something ticks along the strands."
+  },
+  {
+    "id": 104,
+    "story": "index",
+    "where": "silk_cocoon_cache",
+    "kind": "title",
+    "en": "The Silk Cache"
+  },
+  {
+    "id": 105,
+    "story": "index",
+    "where": "silk_cocoon_cache",
+    "kind": "description",
+    "en": "The passage widens into a low chamber. Silk hangs in sheets from the ceiling, and beneath it the floor is crowded with pale cocoons — some the size of a fist, some large enough to hold a man.\n\nScattered between them: a buckled breastplate, a snapped spear, a glove still shaped around an empty hand. Someone fought here. Someone lost.\n\nThe cocoons twitch when you breathe too loud."
+  },
+  {
+    "id": 106,
+    "story": "index",
+    "where": "silk_cocoon_cache > choice 1",
+    "kind": "choice button",
+    "en": "Leave quietly"
+  },
+  {
+    "id": 107,
+    "story": "index",
+    "where": "silk_cocoon_cache > choice 1",
+    "kind": "outcome",
+    "en": "You ease back into the corridor without touching a strand.\n\nBehind you the silk settles, and the twitching stops."
+  },
+  {
+    "id": 108,
+    "story": "index",
+    "where": "silk_cocoon_cache > choice 2",
+    "kind": "choice button",
+    "en": "Search the cocoons"
+  },
+  {
+    "id": 109,
+    "story": "index",
+    "where": "silk_cocoon_cache > choice 2",
+    "kind": "outcome",
+    "en": "You draw a blade and step into the silk.\n\nThe nearest cocoon does not open when you cut it — it resists, tough as wet leather. You will have to break them properly."
+  },
+  {
+    "id": 110,
+    "story": "index",
+    "where": "silk_cocoon_cache > choice 3",
+    "kind": "choice button",
+    "en": "Burn them all!"
+  },
+  {
+    "id": 111,
+    "story": "index",
+    "where": "silk_cocoon_cache > choice 3",
+    "kind": "outcome",
+    "en": "The fireball takes the chamber in one breath.\n\nSilk blackens. Cocoons split and collapse. When the smoke thins, three scorched prizes lie open on the stone — and nothing moves to claim them."
+  },
+  {
+    "id": 112,
+    "story": "index",
+    "where": "lost_porter",
+    "kind": "title",
+    "en": "The Lost Porter"
+  },
+  {
+    "id": 113,
+    "story": "index",
+    "where": "lost_porter",
+    "kind": "description",
+    "en": "A side corridor has gone white with old web. Halfway along it, a man hangs upside down, wrapped to the armpits, holding a frying pan.\n\n\"Oh! Hello! Have you seen my party? They told me to hold the rope while they scouted ahead. So I held it.\"\n\nHe lifts the end of the rope. It has been cut clean through.\n\n\"Must have snapped. Anyway, I think I'm lost.\""
+  },
+  {
+    "id": 114,
+    "story": "index",
+    "where": "lost_porter > choice 1",
+    "kind": "choice button",
+    "en": "Give him your spare armor"
+  },
+  {
+    "id": 115,
+    "story": "index",
+    "where": "lost_porter > choice 1",
+    "kind": "outcome",
+    "en": "You cut him down and help him into the armor. It is far too big. The helmet turns when he turns his head, a little after.\n\n\"It's like wearing a house,\" he says happily, and knocks on his own chest."
+  },
+  {
+    "id": 116,
+    "story": "index",
+    "where": "lost_porter > choice 1 > then > choice 1",
+    "kind": "choice button",
+    "en": "Take the map"
+  },
+  {
+    "id": 117,
+    "story": "index",
+    "where": "lost_porter > choice 1 > then > choice 1",
+    "kind": "outcome",
+    "en": "\"I don't think I'm cut out for adventuring,\" he says. \"Ma said so. I'm going home.\"\n\nHe presses the rolled map into your hands. \"I only carried it because I carry everything.\"\n\nIn one corner, in faded ink and a different hand, a passage is marked that you have never seen.\n\nHe clanks away down your cleared corridor, humming, frying pan first."
+  },
+  {
+    "id": 118,
+    "story": "index",
+    "where": "lost_porter > choice 2",
+    "kind": "choice button",
+    "en": "Give him a weapon"
+  },
+  {
+    "id": 119,
+    "story": "index",
+    "where": "lost_porter > choice 2",
+    "kind": "outcome",
+    "en": "You cut him down and put a weapon in his hands. He holds it like a broom.\n\n\"I'll just wave it if anything's scary. Things don't like being waved at. I bet.\""
+  },
+  {
+    "id": 120,
+    "story": "index",
+    "where": "lost_porter > choice 3",
+    "kind": "choice button",
+    "en": "Heal him"
+  },
+  {
+    "id": 121,
+    "story": "index",
+    "where": "lost_porter > choice 3",
+    "kind": "outcome",
+    "en": "You cut him down. The web has left a red rash up both arms, and he has gone a little purple.\n\nHe drinks your potion, blinks twice, and bounces on his toes. \"Oh, that's much better. That's like breakfast.\""
+  },
+  {
+    "id": 122,
+    "story": "index",
+    "where": "lost_porter > choice 4",
+    "kind": "choice button",
+    "en": "Point the way and walk on"
+  },
+  {
+    "id": 123,
+    "story": "index",
+    "where": "lost_porter > choice 4",
+    "kind": "outcome",
+    "en": "You cut him down and point back the way you came. \"That way's safe. I already cleared it.\"\n\nHe shakes your hand with both of his. \"You're very kind. Everyone in this place is so kind.\""
+  },
+  {
+    "id": 124,
+    "story": "index",
+    "where": "porter_party_argument",
+    "kind": "title",
+    "en": "Voices Around the Corner"
+  },
+  {
+    "id": 125,
+    "story": "index",
+    "where": "porter_party_argument",
+    "kind": "description",
+    "en": "Three voices, low and angry, just past the next turn.\n\n\"You had the map.\" \"No, HE had the map. He carries everything.\" \"So go back and get it.\" \"Past the spider? You go back.\"\n\n\"We didn't lose him. We left him. That's different.\"\n\n\"Not to the map, it isn't.\""
+  },
+  {
+    "id": 126,
+    "story": "index",
+    "where": "porter_party_argument > choice 1",
+    "kind": "choice button",
+    "en": "Sneak past"
+  },
+  {
+    "id": 127,
+    "story": "index",
+    "where": "porter_party_argument > choice 1",
+    "kind": "outcome",
+    "en": "You keep to the far wall and step only on the silk, where it swallows the sound.\n\nThey are still arguing when you reach the next room. They never look up."
+  },
+  {
+    "id": 128,
+    "story": "index",
+    "where": "porter_party_argument > choice 2",
+    "kind": "choice button",
+    "en": "Confront them"
+  },
+  {
+    "id": 129,
+    "story": "index",
+    "where": "porter_party_argument > choice 2",
+    "kind": "outcome",
+    "en": "Three hands go to three weapons, then relax when they see you are alone.\n\n\"Your porter is fine,\" you say. \"He thinks he got lost.\"\n\nThey look at their boots. \"...Good,\" the leader mutters at last. \"Good for him.\""
+  },
+  {
+    "id": 130,
+    "story": "index",
+    "where": "porter_party_argument > choice 3",
+    "kind": "choice button",
+    "en": "Give them back the map"
+  },
+  {
+    "id": 131,
+    "story": "index",
+    "where": "porter_party_argument > choice 3",
+    "kind": "outcome",
+    "en": "The leader snatches the map and tucks it away as if it had never left.\n\nThen he pats you on the shoulder. Twice. The way you pat a dog that brought back a stick.\n\n\"Decent of you. Very decent. Off you go, then.\""
+  }
+]

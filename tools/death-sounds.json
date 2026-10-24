@@ -195,7 +195,13 @@
     "armor": 0,
     "pickups": 0,
     "combat": 0,
-    "events": 0
+    "events": 0,
+    "sanctuary": 0,
+    "pins": 0,
+    "bag": 0,
+    "extra_deaths": 0,
+    "food": 0,
+    "spells": 0
   },
   "pickups": {
     "crystal": "Picking up a magic crystal: a soft low warm crystal tone, a gentle muted glassy note. Soft, warm and rounded, slightly muffled, mellow and gentle, quiet and close, no sharp attack, no bright or piercing high frequencies, no hiss"
@@ -212,7 +218,13 @@
     "sandreach_deaths": 0.75,
     "boss_sounds": 0.75,
     "frosthollow_deaths": 0.75,
-    "robber_deaths": 0.75
+    "robber_deaths": 0.75,
+    "sanctuary": 0.6,
+    "pins": 0.6,
+    "bag": 0.6,
+    "extra_deaths": 0.75,
+    "food": 0.75,
+    "spells": 0.65
   },
   "combat": {
     "block_ready": "A warrior bracing behind a raised sword: a quick firm swoosh as the blade snaps up into a guard, ending in a short solid metallic grip. Warm and full, not shrill, not tinny, no harsh high frequencies",
@@ -319,6 +331,51 @@
     "ap_restore": {
       "prompt": "Strength returning to a tired traveller: a short soft rising shimmer of small warm bells, gentle and bright, quickly settling. Close, delicate, no voice",
       "durationSeconds": 0.8
+    }
+  },
+  "sanctuary": {
+    "restore_a": "An ancient stone statue coming back to life: a deep grinding stone rumble with falling dust and pebbles, then a warm soft magical chime settling",
+    "restore_b": "A cracked stone statue mending itself: stone cracks knitting together with dry scraping clicks, then a gentle warm glowing hum rising",
+    "restore_c": "A heavy stone block sliding into place with a deep thud and a puff of dust, then a soft low bell tone fading away",
+    "phoenix_awaken": "A stone phoenix statue awakening: stone cracking, a rush of fire, a rising bright flame whoosh and a distant fiery bird cry",
+    "crow_caw": "A single crow cawing loudly overhead: one or two hoarse caws, then a quick flap of wings flying past, outdoors, dry and close"
+  },
+  "pins": {
+    "tactician_pin": "A small metal pin pressed into a wooden card: a short soft thunk with a tiny bright metallic ting, a quick light stab, dry and close"
+  },
+  "bag": {
+    "slot_unlock_chime_a": "A bright magical chime: three soft glassy bell notes rising in a pleasant major arpeggio, gentle sparkle, clean and melodic, short",
+    "slot_unlock_chime_b": "A pretty fairy chime: two bell notes, a low note then a higher note, warm and tuned like a music box, with a soft shimmer tail",
+    "slot_unlock_chime_c": "A magical harp glissando: a quick upward sweep of soft plucked strings ending on one ringing bell note, melodic, warm and gentle"
+  },
+  "extra_deaths": {
+    "crystalMother": {
+      "prompt": "Giant crystal spider queen dying: a long rasping hissing shriek that rattles, then heavy crystalline cracking and shattering as her armored body collapses. Low and heavy, no words",
+      "durationSeconds": 1.6
+    },
+    "crystalHatchling": {
+      "prompt": "Tiny crystal spiderling dying: a short high chitter, then a sharp glassy crack and a small tinkle of crystal shards. Quick and dry, no words",
+      "durationSeconds": 0.8
+    },
+    "glassScarab": {
+      "prompt": "A glass scarab beetle crushed: a sharp crunch of a cracking glass shell, a quick rattling skitter of tiny legs, then a descending glassy chime as shards fall. Bright and crisp, no words",
+      "durationSeconds": 1.0
+    }
+  },
+  "food": {
+    "berries": {
+      "prompt": "Eating a handful of fresh berries: a soft juicy bite, a light squish and a couple of quick chews, small and close, no words",
+      "durationSeconds": 1.0
+    },
+    "steak": {
+      "prompt": "Eating a thick cooked steak: a hungry tearing bite, heavy slow chewing and a satisfied gulp, close and dry, no words",
+      "durationSeconds": 1.4
+    }
+  },
+  "spells": {
+    "scorched_wave": {
+      "prompt": "A wave of searing heat rolling outward across a stone floor: a deep low whoomph, a rising roar of flames with crackling embers, then fading to a hot hiss",
+      "durationSeconds": 2.2
     }
   }
 }

@@ -67,22 +67,11 @@ export const WEAPON_ENCHANTS = Object.freeze({
   smokeScreen: { title: 'Ash Cloud', titleKey: 'enchant.smokeScreen.title', summary: 'hide an enemy on a kill', summaryKey: 'enchant.smokeScreen.summary', timing: 'onKill' },
 });
 
-// Frame index of each spell's glowing card face in the `glowingMagicCards`
-// sheet (one row of 52x70 frames), used by the Reliquary's display cases.
-// Sheet order, left to right.
-export const GLOW_CARD_FRAMES = Object.freeze({
-  // Provisional recovery art until Desert Feast has its own drawing.
-  desertFeast: 9,
-  // Provisional area-control artwork until Thunderclap has its own drawing.
-  thunderclap: 1,
-  // Provisional fire artwork until Scorched Land has its own card face.
-  scorched: 3,
-  // Provisional conjuring artwork until the Summon Mimic card is drawn.
-  summonMimic: 6,
-  // Temporary bomb artwork, shared with Smoke Screen until new art arrives.
-  venomousBomb: 8,
-  // Existing unused shield frame, provisional until Thornwake spell art is drawn.
-  briarShield: 2,
+// Frame index of each spell's card face in the `magicCards` sheet and in the `glowingMagicCards`
+// sheet the Reliquary's display cases use. Both are 572x138: two rows of eleven 52x69 frames,
+// laid out the same way, so one table serves both. Frame 2 is the original shield, kept
+// unused; 16-18 are blank faces.
+export const MAGIC_CARD_FRAMES = Object.freeze({
   boneWall: 0,
   frostRing: 1,
   fireball: 3,
@@ -92,20 +81,6 @@ export const GLOW_CARD_FRAMES = Object.freeze({
   shadowBlade: 7,
   smokeScreen: 8,
   restoration: 9,
-});
-
-export function getGlowCardFrame(magicType) {
-  const frame = GLOW_CARD_FRAMES[magicType];
-  return Number.isInteger(frame) ? frame : null;
-}
-
-// Frame index of each spell in the normal `magicCards` sheet. Same order as the
-// glowing one for the first nine, then the sheet carries the spells that had no
-// art of their own: Desert Feast's bowl ends the first row (11 frames wide),
-// and the second row holds Thunderclap, Scorched Land, Summon Mimic, Venomous
-// Bomb and Briar Shield (the Reliquary's glow sheet has not been given these yet).
-export const MAGIC_CARD_FRAMES = Object.freeze({
-  ...GLOW_CARD_FRAMES,
   desertFeast: 10,
   thunderclap: 11,
   scorched: 12,
@@ -113,6 +88,12 @@ export const MAGIC_CARD_FRAMES = Object.freeze({
   venomousBomb: 14,
   briarShield: 15,
 });
+export const GLOW_CARD_FRAMES = MAGIC_CARD_FRAMES;
+
+export function getGlowCardFrame(magicType) {
+  const frame = GLOW_CARD_FRAMES[magicType];
+  return Number.isInteger(frame) ? frame : null;
+}
 
 export function getMagicCardFrame(magicType) {
   const frame = MAGIC_CARD_FRAMES[magicType];

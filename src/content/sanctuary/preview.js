@@ -4,17 +4,17 @@
 // Nothing in the preview itself touches the meta manager or save data.
 export const SANCTUARY_GUARDIANS = Object.freeze([
     { id: 'lion', name: 'Fanged Guardian', texture: 'sanctuaryLion',
-        building: 'forge', x: 106, bottom: 277, rule: '+1 weapon damage' },
+        building: 'forge', x: 97, bottom: 295, rule: '+1 weapon damage' },
     { id: 'turtle', name: 'Shelled Sentinel', texture: 'sanctuaryTurtle',
-        building: 'armory', x: 216, bottom: 222, rule: '+1 DEF' },
+        building: 'armory', x: 200, bottom: 275, rule: '+1 DEF' },
     { id: 'toad', name: 'Deep Toad', texture: 'sanctuaryToad',
-        building: 'cottage', x: 424, bottom: 222, rule: '+15 max HP' },
+        building: 'cottage', x: 434, bottom: 274, rule: '+15 max HP' },
     { id: 'bird', name: 'Trinket Keeper', texture: 'sanctuaryBird',
-        building: 'healer', x: 534, bottom: 277, rule: 'Starting amulet\nImprove its quality' },
+        building: 'healer', x: 562, bottom: 296, rule: 'Starting amulet · better quality' },
 ]);
 export const SANCTUARY_PHOENIX = Object.freeze({
     id: 'phoenix', name: 'The Phoenix', texture: 'sanctuaryPhoenix',
-    building: 'temple', x: 320, bottom: 272, rule: 'Revive once · 50% HP',
+    building: 'temple', x: 316, bottom: 233, rule: 'Revive once · 50% HP',
 });
 export const SANCTUARY_STATUES = Object.freeze([...SANCTUARY_GUARDIANS, SANCTUARY_PHOENIX]);
 export const RESTORATION_COSTS = Object.freeze([2, 3, 5, 8, 12]);

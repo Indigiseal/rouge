@@ -21,6 +21,7 @@
 // the player walked.
 
 import { getLocationNarrativeCheckpoints } from '../content/locations/rules.js';
+import { floorOfRow, isBonusRow } from './MapGenerator.js';
 
 /** Map colour for everything on a secret branch: node tint, halo and road. */
 export const HIDDEN_PATH_TINT = 0xc58cff;
@@ -178,7 +179,10 @@ function addSecretRoom(gameState, actMap, act, source, cursor) {
     const startFloor = actMap.startFloor || ((act - 1) * 15 + 1);
     const stops = new Set(getLocationNarrativeCheckpoints(gameState, startFloor)
         .map((checkpoint) => checkpoint.afterFloor));
-    const crossesStop = (f) => stops.has(f + 1) || stops.has(f + 2);
+    // A stop sits after the ordinary row of its floor. Rows are not floors once reward rows
+    // are in the act (map/MapGenerator.js), so ask the row.
+    const stopAfterRow = (r) => !isBonusRow(floors, r) && stops.has(floorOfRow(floors, r));
+    const crossesStop = (f) => stopAfterRow(f) || stopAfterRow(f + 1);
 
     // The branch leaves floor f and rejoins on f+2. f+2 must still be an
     // ordinary floor, not the boss.

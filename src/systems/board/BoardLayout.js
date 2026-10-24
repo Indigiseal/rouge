@@ -9,6 +9,7 @@ import { boardArtFor } from '../../content/locations/boardArt.js';
 import { frozenFrameOffsetY } from '../../content/cards/frozenFrameOffset.js';
 import { BOARD_PANEL_KEY } from '../../ui/NineSlicePanel.js';
 import { createBoardPanel } from '../../ui/BoardPanel.js';
+import { BOARD_ENTRANCE_DELAY_MS } from './boardTiming.js';
 
 export class BoardLayout {
     constructor(cs) {
@@ -434,10 +435,10 @@ function createFloorBoardPanel(cells, place, animate = true, textureKey = 'gamin
   // older layout and must never be layered behind this frame.
   const halfPanelW = (panel.displayWidth || panel.width || nativeW) / 2;
   if (!isFightBoard && minX - halfCardW < panel.x - halfPanelW + 8) {
-    this.createSideExtraPanel('left', { animate, delayMs: 120 });
+    this.createSideExtraPanel('left', { animate, delayMs: 120 + BOARD_ENTRANCE_DELAY_MS });
   }
   if (!isFightBoard && maxX + halfCardW > panel.x + halfPanelW - 8) {
-    this.createSideExtraPanel('right', { animate, delayMs: 120 });
+    this.createSideExtraPanel('right', { animate, delayMs: 120 + BOARD_ENTRANCE_DELAY_MS });
   }
 
   if (animate) animateBoardEntrance.call(this, panel, y);
@@ -467,6 +468,7 @@ function animateBoardEntrance(panel, restY) {
   place();
   const tween = this.scene.tweens.add({
     targets: rise,
+    delay: BOARD_ENTRANCE_DELAY_MS,
     duration: BOARD_ENTRANCE_MS,
     // Only the rise overshoots; the fade clock runs straight.
     props: {

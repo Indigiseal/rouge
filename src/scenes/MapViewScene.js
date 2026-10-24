@@ -1,7 +1,7 @@
 // scenes/MapViewScene.js
 // Phaser is provided as a UMD global (see index.html) — no import needed.
 import { createOptionsCog } from '../ui/OptionsCog.js';
-import { MapGenerator, MAP_VERSION } from '../map/MapGenerator.js';
+import { MapGenerator, MAP_VERSION, MAP_ROWS, floorOfRow, rowOfFloor, isBonusRow } from '../map/MapGenerator.js';
 import {
   ensureHiddenPaths,
   HIDDEN_PATH_TINT,
@@ -25,9 +25,19 @@ import { recordHumanRunEvent } from '../systems/HumanRunRecorder.js';
 import { createSelectionCorners, createTooltipPanel, TOOLTIP_TEXT_COLOR } from '../ui/NineSlicePanel.js';
 import { CHOICE_SIGHT, computeFogGrid, drawMapFog, mapSightRadius, puffFogCascade } from '../map/MapFog.js';
 import { setHoverLight } from '../ui/HoverLight.js';
+import { createSecretAura } from '../ui/SecretAura.js';
 
 // The header band and title, above the scrolling map nodes (see create()).
 const MAP_HEADER_DEPTH = 18;
+
+// mapNodes42x42.png frame 10: the question mark every secret room wears.
+const SECRET_NODE_FRAME = 10;
+// How far the fog lifts around a secret room as it appears, in map pixels.
+const SECRET_SIGHT = 60;
+// A secret room appears this long after the map's own fog starts to draw back (not after it has
+// finished: that ripple runs for over a second), and these many ms apart when several appear.
+const SECRET_APPEAR_DELAY_MS = 250;
+const SECRET_APPEAR_GAP_MS = 350;
 
 // The fog's three poofs sit at least this far apart.
 const FOG_POOF_GAP_MS = 160;
@@ -58,7 +68,7 @@ export class MapViewScene extends Phaser.Scene {
     // Build/keep full map. Regenerate when shape changes or when new node types were added.
     // MAP_VERSION is imported from MapGenerator so the two can never drift.
     const hasCurrentMapShape =
-      this.gameState.dungeonMap?.act1?.floors?.length === 15 &&
+      this.gameState.dungeonMap?.act1?.floors?.length === MAP_ROWS &&
       this.gameState.dungeonMap?._version === MAP_VERSION;
     if (!this.gameState.dungeonMap || !hasCurrentMapShape) {
       const gen = new MapGenerator();
@@ -80,7 +90,7 @@ export class MapViewScene extends Phaser.Scene {
     if (!this.gameState.mapCursor || this.gameState.mapCursor.act !== this.currentAct) {
       this.gameState.mapCursor = {
         act: this.currentAct,
-        floor: (cf - 1) % 15,
+        floor: rowOfFloor(this.actMap.floors, ((cf - 1) % 15) + 1) ?? 0,
         node: 0
       };
       // Mark the start as visited so connections from start are valid
@@ -90,7 +100,7 @@ export class MapViewScene extends Phaser.Scene {
     // If the saved node index no longer exists in this floor, clamp to 0.
     const cur = this.gameState.mapCursor;
     if (!Number.isInteger(cur.floor) || cur.floor < 0 || cur.floor >= this.actMap.floors.length) {
-      cur.floor = (cf - 1) % 15;
+      cur.floor = rowOfFloor(this.actMap.floors, ((cf - 1) % 15) + 1) ?? 0;
     }
     const curFloor = this.actMap.floors[cur.floor];
     if (!curFloor || cur.node >= curFloor.length || !curFloor[cur.node]) {
@@ -265,8 +275,12 @@ export class MapViewScene extends Phaser.Scene {
 
     // Assign positions per floor: nodes are centered symmetrically around x=0
     this.actMap.floors.forEach((floorNodes, f) => {
-      const floorNumber = f + 1;
-      const insertedBefore = this.narrativeCheckpoints.filter(cp => cp.afterFloor < floorNumber).length;
+      const floorNumber = floorOfRow(this.actMap.floors, f);
+      // A story stop sits right after the ordinary row of its floor, so a reward row of that
+      // floor comes after it.
+      const insertedBefore = this.narrativeCheckpoints.filter(cp => (
+        cp.afterFloor < floorNumber || (cp.afterFloor === floorNumber && isBonusRow(this.actMap.floors, f))
+      )).length;
       const y = startY + f * floorGap + insertedBefore * 42;
       // Secret rooms are appended to their row, so the ordinary nodes are
       // centred on their own count and the secret one stands a lane beyond the
@@ -298,6 +312,19 @@ export class MapViewScene extends Phaser.Scene {
     // once turns them into a static image that snaps to the pixel grid like the nodes.
     this.drawLinks();
 
+    // A secret room the player has not yet seen does not just sit there: it appears (see
+    // _appearSecretNode). Remember which ones are new, and that they have now been seen.
+    const story = (this.gameState.storyRun = this.gameState.storyRun || {});
+    const seenSecrets = (story.secretNodesSeen = story.secretNodesSeen || {});
+    this._appearing = new Set();
+    this.actMap.floors.forEach((row, f) => row.forEach((node, i) => {
+      if (!node?.secret || !node.id) return;
+      if (node.visited) { seenSecrets[node.id] = true; return; }
+      if (seenSecrets[node.id] || this.getNodeVisualState(f, i) === 'hidden') return;
+      this._appearing.add(node);
+      seenSecrets[node.id] = true;
+    }));
+
     // Draw nodes
     this.nodeSprites = [];
     this.actMap.floors.forEach((floorNodes, f) => {
@@ -319,7 +346,10 @@ export class MapViewScene extends Phaser.Scene {
     const nodes = floors.flat().filter(n => typeof n?.__y === 'number');
     if (!nodes.length) return;
     const sight = mapSightRadius(this.gameState);
-    if (!Number.isFinite(sight)) return;   // Oracle's Eye: no fog
+    if (!Number.isFinite(sight)) {   // Oracle's Eye: no fog, but the secret rooms still appear
+      this._scheduleSecretAppear(SECRET_APPEAR_DELAY_MS);
+      return;
+    }
     this.mapFogContainer = this.add.container(0, 0);
     this.mapContainer.add(this.mapFogContainer);
     this.mapFogContainer.setVisible(!(devToolsEnabled() && this._devFogLifted));
@@ -334,7 +364,8 @@ export class MapViewScene extends Phaser.Scene {
       if (typeof node?.__y !== 'number') return;
       if (node.visited || node === here) walked.push(node);
       const state = this.getNodeVisualState(f, i);
-      if (state === 'available' || state === 'detour') choices.push(node);
+      // A secret room still to appear stays under the fog until its moment.
+      if ((state === 'available' || state === 'detour') && !this._appearing?.has(node)) choices.push(node);
     }));
     const point = (n, r) => ({ x: n.__x, y: n.__y, r });
     const points = [...walked.map(n => point(n, sight)), ...choices.map(n => point(n, CHOICE_SIGHT))];
@@ -346,7 +377,8 @@ export class MapViewScene extends Phaser.Scene {
     const maxY = Math.max(...nodes.map(n => n.__y));
     const bounds = { left: minX - 360, right: maxX + 360, top: minY - 200, bottom: maxY + 200 };
     const grid = computeFogGrid(points, bounds);
-    drawMapFog(this, this.mapFogContainer, grid);
+    this._fog = { points, bounds, rt: drawMapFog(this, this.mapFogContainer, grid) };
+    let appearAt = SECRET_APPEAR_DELAY_MS;
 
     // The fog drawing back as the map opens, cascading out from the player.
     if (here) {
@@ -359,12 +391,60 @@ export class MapViewScene extends Phaser.Scene {
         [0, span / 2, span].forEach((offset) => {
           this.time.delayedCall(timing.first + offset, () => SoundHelper.playVariant(this, 'fog_poof', 0.6));
         });
+        appearAt = timing.first + SECRET_APPEAR_DELAY_MS;
       }
     }
+    this._scheduleSecretAppear(appearAt);
+  }
+
+  // The new secret rooms come out of the fog, one after another.
+  _scheduleSecretAppear(startMs) {
+    [...(this._appearing || [])].forEach((node, k) => {
+      this.time.delayedCall(startMs + k * SECRET_APPEAR_GAP_MS, () => this._appearSecretNode(node));
+    });
+  }
+
+  // A secret room shows itself: the fog lifts around it, a poof of smoke goes up where it
+  // stands, and it pops out of the poof with a whoosh. The same poof an empty card makes.
+  _appearSecretNode(node) {
+    const sprite = node?.__sprite;
+    if (!sprite?.scene || this._leavingMap) return;
+    const fog = this._fog;
+    if (fog?.rt?.scene && this.mapFogContainer?.scene) {
+      const points = [...fog.points, { x: node.__x, y: node.__y, r: SECRET_SIGHT }];
+      fog.points = points;
+      fog.rt.destroy();
+      const grid = computeFogGrid(points, fog.bounds);
+      fog.rt = drawMapFog(this, this.mapFogContainer, grid);
+      puffFogCascade(this, this.mapFogContainer, grid, { x: node.__x, y: node.__y }, SECRET_SIGHT + 40);
+      SoundHelper.playVariant(this, 'fog_poof', 0.6);
+    }
+    SoundHelper.playSound(this, 'empty_whoosh', 0.5);
+    if (this.textures.exists('poofEmpty') && this.anims.exists('poof_empty_anim')) {
+      const poof = this.add.sprite(node.__x, node.__y, 'poofEmpty').setScale(1.25);
+      this.mapContainer.add(poof);
+      poof.once('animationcomplete', () => poof.destroy());
+      poof.play('poof_empty_anim');
+    }
+    const rest = node.__restAlpha ?? 1;
+    sprite.setScale(0.5);
+    // The node steps out as the smoke is at its thickest.
+    this.tweens.add({
+      targets: sprite, alpha: rest, scale: 1, delay: 140, duration: 260, ease: 'Back.easeOut',
+      onComplete: () => { if (sprite.input) sprite.input.enabled = true; },
+    });
+    if (node.__halo?.scene) this.tweens.add({ targets: node.__halo, alpha: rest, delay: 140, duration: 400 });
+  }
+
+  // The nodes the map is framed around: every one the player can see. A secret room that is
+  // not showing sits a lane outside its row, and counting it pulled the whole map off-centre.
+  _framedNodes() {
+    const nodes = this.actMap.floors.flat().filter(n => n && typeof n.__x === 'number' && isMapNodeVisible(this.gameState, n));
+    return nodes.length ? nodes : this.actMap.floors.flat();
   }
 
   updatePanBounds() {
-    const nodes = this.actMap.floors.flat();
+    const nodes = this._framedNodes();
     const minX = Math.min(...nodes.map(n => n.__x));
     const maxX = Math.max(...nodes.map(n => n.__x));
     const minY = Math.min(...nodes.map(n => n.__y));
@@ -403,7 +483,7 @@ export class MapViewScene extends Phaser.Scene {
     const node = this.actMap.floors?.[cursor.floor]?.[cursor.node];
     if (!node || typeof node.__x !== 'number' || typeof node.__y !== 'number') return;
 
-    const nodes = this.actMap.floors.flat();
+    const nodes = this._framedNodes();
     const minX = Math.min(...nodes.map(n => n.__x));
     const maxX = Math.max(...nodes.map(n => n.__x));
     const mapCenterX = (minX + maxX) / 2;
@@ -431,7 +511,7 @@ export class MapViewScene extends Phaser.Scene {
         // A secret room's roads are drawn in purple below, with the way in.
         if (n.secret) return;
         n.connections.forEach(t => {
-          const checkpoint = this.narrativeCheckpoints?.find(cp => cp.afterFloor === f + 1);
+          const checkpoint = this._checkpointAfterRow(f);
           if (checkpoint) {
             const checkpointY = Math.round((n.__y + nxt[t].__y) / 2);
             checkpoint.__x = 0;
@@ -467,7 +547,7 @@ export class MapViewScene extends Phaser.Scene {
       const from = this.actMap.floors[curF][this.gameState.mapCursor.node];
       if (from) {
         const nxt = this.actMap.floors[curF + 1];
-        const checkpoint = this.narrativeCheckpoints?.find(cp => cp.afterFloor === curF + 1);
+        const checkpoint = this._checkpointAfterRow(curF);
         const checkpointPending = checkpoint && !this.gameState.storyRun?.[checkpoint.seenFlag];
         const highlightedTargets = checkpoint && !checkpointPending
           ? nxt.map((_, index) => index)
@@ -532,10 +612,7 @@ export class MapViewScene extends Phaser.Scene {
     if (floorIdx === curF && nodeIdx === curN) return 'current';
     if (floorIdx === curF + 1) {
       if (this.narrativeCheckpoints?.length && pendingLocationCheckpoint(this.gameState)) return 'locked_next';
-      const completedCheckpoint = this.narrativeCheckpoints?.find(checkpoint => (
-        checkpoint.afterFloor === curF + 1
-        && this.gameState.storyRun?.[checkpoint.seenFlag]
-      ));
+      const completedCheckpoint = (c => (c && this.gameState.storyRun?.[c.seenFlag] ? c : null))(this._checkpointAfterRow(curF));
       // A mandatory story stop merges the incoming roads into one node, then
       // fans back out. Every road visibly leaving that node must be selectable.
       if (completedCheckpoint) return 'available';
@@ -548,6 +625,15 @@ export class MapViewScene extends Phaser.Scene {
       return 'locked_next';
     }
     return 'locked';
+  }
+
+  // The story stop standing right after map row `row`: the row that is the stop's floor itself
+  // (a reward row of the same floor comes after the stop).
+  _checkpointAfterRow(row) {
+    const floors = this.actMap.floors;
+    if (isBonusRow(floors, row)) return undefined;
+    const floor = floorOfRow(floors, row);
+    return this.narrativeCheckpoints?.find(cp => cp.afterFloor === floor);
   }
 
   drawNarrativeCheckpoint(checkpoint) {
@@ -601,12 +687,15 @@ export class MapViewScene extends Phaser.Scene {
 
     // Spritesheet frame per room type
     // Frame order: 0=normal chest, 1=rest, 2=good chest, 3=shop, 4=rare shop,
-    //              5=fight, 6=elite fight, 7=boss, 8=event, 9=blacksmith
+    //              5=fight, 6=elite fight, 7=boss, 8=event, 9=blacksmith,
+    //              10=secret room (question mark), 11=sigil room
     const frameByType = {
       TREASURE: 0, REST: 1, TREASURE_GOOD: 2, SHOP: 3, RARE_SHOP: 4,
-      COMBAT: 5, ELITE: 6, BOSS: 7, EVENT: 8, ANVIL: 9
+      COMBAT: 5, ELITE: 6, BOSS: 7, EVENT: 8, ANVIL: 9, SIGIL: 11
     };
-    const frame = frameByType[node.type] ?? 5;
+    // 10 is the question mark: every secret room wears it, so the player cannot tell a
+    // sigil from a fight before walking in.
+    const frame = node.secret ? SECRET_NODE_FRAME : (frameByType[node.type] ?? 5);
 
     // Alpha by state — available/current are fully bright, others dimmed
     let alpha = 1;
@@ -645,13 +734,19 @@ export class MapViewScene extends Phaser.Scene {
       const fallbackColors = {
         COMBAT: 0x776c4f, ELITE: 0xae5347, SHOP: 0xc8b08a, RARE_SHOP: 0xfbad19,
         REST: 0x9fa081, ANVIL: 0x869089, EVENT: 0xc8b08a, BOSS: 0x8b161e,
-        TREASURE: 0xf8ab2e, TREASURE_GOOD: 0xfbad19
+        TREASURE: 0xf8ab2e, TREASURE_GOOD: 0xfbad19, SIGIL: 0xe8c96a
       };
       nodeSprite = this.add.circle(node.__x, node.__y, 18, fallbackColors[node.type] || 0x776c4f);
     }
     nodeSprite.setAlpha(alpha);
     if (nodeSprite.setTint) nodeSprite.setTint(idleTint);
     node.__sprite = nodeSprite;
+    // A secret room that is about to appear waits invisible (see _appearSecretNode).
+    if (this._appearing?.has(node)) {
+      nodeSprite.setAlpha(0);
+      node.__halo?.setAlpha(0);
+      node.__restAlpha = alpha;
+    }
     nodeSprite.setData('floorIdx', floorIdx);
     nodeSprite.setData('nodeIdx', nodeIdx);
     this.nodeSprites.push(nodeSprite);
@@ -659,6 +754,7 @@ export class MapViewScene extends Phaser.Scene {
 
     const canClick = state === 'available' || state === 'detour';
     if (canClick) this._bindNodeClick(nodeSprite, node, floorIdx, nodeIdx, idleTint);
+    if (this._appearing?.has(node)) nodeSprite.input && (nodeSprite.input.enabled = false);
   }
 
   // Which side of its row a secret room stands on: -1 left, 1 right. The side
@@ -679,12 +775,13 @@ export class MapViewScene extends Phaser.Scene {
     return lean < 0 ? -1 : 1;
   }
 
-  // Soft purple glow behind a secret room: the overlay that marks it as off
+  // The swirling glow behind a secret room (ui/SecretAura.js): the overlay that marks it as off
   // the normal map. Added before the node so it sits underneath.
   _addHiddenPathHalo(node, alpha) {
-    const halo = this.add.circle(node.__x, node.__y, 24, HIDDEN_PATH_TINT, 0.28 * alpha)
-      .setStrokeStyle(2, HIDDEN_PATH_TINT, 0.7 * alpha);
+    const halo = createSecretAura(this, node.__x, node.__y, 24).setAlpha(alpha);
     this.mapContainer.add(halo);
+    node.__halo = halo;
+    return halo;
   }
 
   _bindNodeClick(nodeSprite, node, floorIdx, nodeIdx, idleTint) {
@@ -699,7 +796,7 @@ export class MapViewScene extends Phaser.Scene {
       // Lit like every button, now that idle nodes show their own colours.
       setHoverLight(nodeSprite, true);
       this.showHoverCorners(node);
-      this.showTooltip(t(this, this.getNodeTooltipKey(node.type)), node.__x, node.__y - 30);
+      this.showTooltip(t(this, node.secret ? 'map.tooltip.secret' : this.getNodeTooltipKey(node.type)), node.__x, node.__y - 30);
     });
     nodeSprite.on('pointerout', () => {
       nodeSprite.y = node.__y;
@@ -848,7 +945,8 @@ export class MapViewScene extends Phaser.Scene {
       EVENT: 'map.tooltip.event',
       BOSS: 'map.tooltip.boss',
       TREASURE: 'map.tooltip.treasure',
-      TREASURE_GOOD: 'map.tooltip.treasureGood'
+      TREASURE_GOOD: 'map.tooltip.treasureGood',
+      SIGIL: 'map.tooltip.sigil'
     };
     return keyByType[type] || 'tooltip.item';
   }
@@ -891,10 +989,7 @@ export class MapViewScene extends Phaser.Scene {
     const cur = this.gameState.mapCursor;
     const fromNode = this.actMap.floors[cur.floor]?.[cur.node];
     const manual = !!this._manualPick;
-    const completedCheckpoint = this.narrativeCheckpoints?.find(checkpoint => (
-      checkpoint.afterFloor === cur.floor + 1
-      && this.gameState.storyRun?.[checkpoint.seenFlag]
-    ));
+    const completedCheckpoint = (c => (c && this.gameState.storyRun?.[c.seenFlag] ? c : null))(this._checkpointAfterRow(cur.floor));
     if (!manual) {
       if (targetFloorIdx !== cur.floor + 1) return;
       if (!fromNode) return;
@@ -952,14 +1047,16 @@ export class MapViewScene extends Phaser.Scene {
     if (fromNode) fromNode.visited = true;
     node.visited = true;
     this.gameState.mapCursor = { act: this.currentAct, floor: targetFloorIdx, node: targetNodeIdx };
+    // A reward row is between floors: walking into one leaves the floor counter where it was.
     this.gameState.currentFloor = manual
-      ? (this.currentAct - 1) * 15 + targetFloorIdx + 1
-      : (this.gameState.currentFloor || 1) + 1;
-    this.gameState.roomType = node.type;
+      ? (this.currentAct - 1) * 15 + floorOfRow(this.actMap.floors, targetFloorIdx)
+      : (this.gameState.currentFloor || 1) + (isBonusRow(this.actMap.floors, targetFloorIdx) ? 0 : 1);
+    // A Sigil Room is a treasure room to everything that reads the room type (saves, amulets).
+    this.gameState.roomType = node.type === 'SIGIL' ? 'TREASURE_GOOD' : node.type;
     this._manualPick = false;
 
     // Route (deferred so the map theme can fade out first).
-    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE', 'TREASURE_GOOD'];
+    const nonCombat = ['SHOP', 'RARE_SHOP', 'REST', 'ANVIL', 'EVENT', 'TREASURE', 'TREASURE_GOOD', 'SIGIL'];
     const proceed = () => {
       if (nonCombat.includes(node.type)) {
         // Tea Room Bell (and any future AP-on-non-battle amulet) triggers here.
@@ -971,9 +1068,11 @@ export class MapViewScene extends Phaser.Scene {
           node.type === 'REST'           ? 'RestScene' :
           node.type === 'ANVIL'          ? 'AnvilScene' :
           node.type === 'TREASURE'       ? 'TreasureScene' :
-          node.type === 'TREASURE_GOOD'  ? 'TreasureScene' : 'EventScene';
+          node.type === 'TREASURE_GOOD'  ? 'TreasureScene' :
+          node.type === 'SIGIL'          ? 'TreasureScene' : 'EventScene';
         const sceneData = { gameState: this.gameState };
         if (node.type === 'TREASURE_GOOD') sceneData.rewardMode = 'good';
+        if (node.type === 'SIGIL') sceneData.rewardMode = 'sigil';
         // Secret rooms: the sigil vault is a Sigil Room (a statue, no chest);
         // the Porter's passage leads to a good chest, no key needed.
         if (node.secret && node.secretSource === 'sigilVault') sceneData.rewardMode = 'sigil';

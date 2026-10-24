@@ -7,7 +7,47 @@ import { resolveActBossId } from '../content/locations/index.js';
 // keeping its own copy — the two used to be separate constants that had to be
 // kept in sync by hand.
 // v8: each act now records the boss it is building toward (bossId).
-export const MAP_VERSION = 8;
+// v10: two reward rows per act that are not floors (see BONUS_ROWS).
+export const MAP_VERSION = 10;
+
+// An act is 15 floors long to everything that scales with depth: enemy strength, loot, shops and
+// the boss on floor 15. Its map has 17 rows: two of them are reward rows (a Sigil Room, events,
+// chests, a rest) that sit between floors. Walking into one does not advance the floor counter,
+// so the extra rooms cost the player nothing in difficulty and the numbers stay as tuned.
+export const MAP_ROWS = 17;
+const BONUS_ROW_CHOICES = Object.freeze([[4, 5, 6], [9, 10, 11, 12]]);
+
+/**
+ * True when the player stands on their act's boss row: the last row of its map. The row number is
+ * not fixed (reward rows lengthen the act's map), so it is read off the map; with no map to read,
+ * the last row of a standard one.
+ */
+export function onBossRow(gameState) {
+  const cursor = gameState?.mapCursor;
+  if (!Number.isInteger(cursor?.floor)) return false;
+  const rows = gameState?.dungeonMap?.[`act${cursor.act}`]?.floors?.length ?? MAP_ROWS;
+  return cursor.floor >= rows - 1;
+}
+
+/** True when row `row` of an act's map is a reward row. */
+export function isBonusRow(floors, row) {
+  return Boolean(floors?.[row]?.[0]?.bonus);
+}
+
+/** The floor (1..15, within its act) a map row stands for; a reward row shares its predecessor's. */
+export function floorOfRow(floors, row) {
+  let bonus = 0;
+  for (let r = 0; r <= row; r++) if (isBonusRow(floors, r)) bonus++;
+  return row + 1 - bonus;
+}
+
+/** The ordinary row that stands for floor `floorInAct`, or null. */
+export function rowOfFloor(floors, floorInAct) {
+  for (let r = 0; r < (floors?.length || 0); r++) {
+    if (!isBonusRow(floors, r) && floorOfRow(floors, r) === floorInAct) return r;
+  }
+  return null;
+}
 
 /** Act (1..3) that a global floor number belongs to. */
 export function actForFloor(floor) {
@@ -27,7 +67,7 @@ export function getPlannedActBoss(gameState, floor = gameState?.currentFloor) {
 export class MapGenerator {
   constructor({
     LANES = 7,
-    FLOORS = 15,          // 0..13 normal, 14 boss
+    FLOORS = MAP_ROWS,    // rows 0..15 ordinary or reward, 16 boss
     PATHS = 6,
     LANE_GAP = 120,       // pixel spacing for x (so MapViewScene doesn't change)
     eliteMult = 1.0       // set 1.6 if you want more elites later
@@ -70,12 +110,18 @@ export class MapGenerator {
       const mid = Math.floor(this.LANES / 2);
       // floor 0: single start node at center lane
       floors.push([this._makeNode(actNumber, 0, 0, mid, 'COMBAT')]);
-      // floors 1..13: 2-4 nodes, contiguous lanes, centered-ish
+      // The two reward rows of this act, one from each half.
+      const bonusRows = new Set(BONUS_ROW_CHOICES.map(rows => rows[Math.floor(Math.random() * rows.length)]));
+      // rows 1..15: 2-4 nodes, contiguous lanes, centered-ish
       for (let f = 1; f < this.FLOORS - 1; f++) {
-        const count = this._nodeCountForFloor(f);
+        const count = bonusRows.has(f) ? (Math.random() < 0.5 ? 2 : 3) : this._nodeCountForFloor(f);
         const leftMost = Math.max(0, Math.min(this.LANES - count, mid - Math.floor(count / 2)));
         const lanes = Array.from({ length: count }, (_, i) => leftMost + i);
-        floors.push(lanes.map((lane, i) => this._makeNode(actNumber, f, i, lane, null)));
+        floors.push(lanes.map((lane, i) => {
+          const node = this._makeNode(actNumber, f, i, lane, null);
+          if (bonusRows.has(f)) node.bonus = true;
+          return node;
+        }));
       }
       // final act floor: single centered boss node
       floors.push([this._makeNode(actNumber, this.FLOORS - 1, 0, mid, 'BOSS')]);
@@ -321,6 +367,25 @@ export class MapGenerator {
       return maxParent >= MAX_NONCOMBAT_RUN;
     };
 
+    // Reward rows first, so everything after them sees where they are: no fight, a pick from
+    // the rooms that pay out. Cards in them are never converted by a guarantee below.
+    const bonusNodes = [];
+    const bonusWeights = { EVENT: 4, TREASURE: 3, SIGIL: 3, REST: 2, TREASURE_GOOD: 1 };
+    floors.forEach((row) => row.forEach((n) => {
+      if (!n.bonus) return;
+      n.type = pickWeighted(bonusWeights);
+      bonusNodes.push(n);
+    }));
+    // A reward row stands between two fights, so no road runs three rooms without one.
+    floors.forEach((row, f) => {
+      if (!row[0]?.bonus) return;
+      [f - 1, f + 1].forEach((side) => (floors[side] || []).forEach((n) => {
+        if (n.bonus || n.type === 'BOSS') return;
+        n.type = 'COMBAT';
+        bonusNodes.push(n);
+      }));
+    });
+
     // pass 1: assign respecting simple rules
     let rareShopCount = 0; // capped at 2 per act
     for (let f = 1; f <= preBoss; f++) {
@@ -431,11 +496,12 @@ export class MapGenerator {
     // pass 2: per-act room guarantees.
     // Rooms placed (or kept) to satisfy a guarantee. The cap repair never
     // converts these back to COMBAT, so a guarantee can't be silently undone.
-    const guaranteed = new Set();
+    const guaranteed = new Set(bonusNodes);
+    // Guarantees are for the ordinary rows; a reward row never counts toward one or gives itself up.
     const nodesInRange = (fromF, toF) => {
       const out = [];
       for (let f = Math.max(1, fromF); f <= Math.min(toF, preBoss); f++)
-        floors[f].forEach((n, i) => out.push({ n, f, i }));
+        floors[f].forEach((n, i) => { if (!n.bonus) out.push({ n, f, i }); });
       return out;
     };
 
@@ -452,10 +518,16 @@ export class MapGenerator {
           n.type !== 'BOSS' && n.type !== type && !guaranteed.has(n) &&
           !(f <= 1 && (type === 'ELITE' || type === 'REST')) &&
           !(f === preBoss && type === 'REST') &&
-          !((type === 'TREASURE' || type === 'TREASURE_GOOD') && f <= 2) &&
+          !((type === 'TREASURE' || type === 'TREASURE_GOOD' || type === 'SIGIL') && f <= 2) &&
           !(supportTypes.has(type) && hasSupportNeighbor(floors, f, i));
         let pool = nodesInRange(fromF, toF).filter(placeable);
-        const capSafe = pool.filter(({ f, i }) => typeKeepsCap(f, i, type));
+        let capSafe = pool.filter(({ f, i }) => typeKeepsCap(f, i, type));
+        // Nowhere in the window keeps the cap: look further afield for a slot that does, rather than
+        // leave a road with three rooms and no fight.
+        if (!capSafe.length) {
+          pool = nodesInRange(1, preBoss).filter(placeable);
+          capSafe = pool.filter(({ f, i }) => typeKeepsCap(f, i, type));
+        }
         if (capSafe.length) pool = capSafe;
         const fights = pool.filter(({ n }) => isFightType(n.type));
         if (fights.length) pool = fights;
@@ -484,6 +556,9 @@ export class MapGenerator {
     ensureOne('ANVIL', preBoss - 3, preBoss - 1); // late-act blacksmith (near boss)
     ensureOne('TREASURE', 4, 8);             // At least one normal chest mid-act
     ensureOne('TREASURE_GOOD', 6, preBoss);  // At least one good chest per act
+    // A Sigil Room on the road, one per act at least (it opens like a secret vault's room,
+    // a statue and a sigil in place of a chest). Not early, and not on the boss's doorstep.
+    ensureOne('SIGIL', 3, preBoss - 2);
     // Run this guarantee last so later support-room guarantees cannot replace
     // the sole Rare Shop they are supposed to coexist with.
     ensureOne('RARE_SHOP', 3, preBoss - 2);

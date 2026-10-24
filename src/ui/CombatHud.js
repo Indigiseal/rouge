@@ -383,7 +383,7 @@ export const CombatHud = {
         this.inventorySystem.rebuildInventorySprites?.();
         this.updateEquippedArmorPanel?.();
         this.saveCurrentRun?.();
-        this.createFloatingText(320, 330, `${getSigil(id).name} on ${target.name}`, 0x4a884f);
+        this.createFloatingText(320, 330, `${translateItemName(this, getSigil(id).name)} on ${translateItemName(this, target)}`, 0x4a884f);
     },
 
     closeDebugItemOverlay() {
@@ -1581,9 +1581,6 @@ export const CombatHud = {
                     break;
                 case 'poison':
                     entries.push({ text: t(this.scene, 'ui.hud.poison', { count: effect.turns }), color: '#71800b' });
-                    break;
-                case 'burn':
-                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.burn'), effect.turns), color: '#ef7c4b' });
                     break;
                 case 'stun':
                     entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.stun'), effect.turns), color: '#fbad19' });

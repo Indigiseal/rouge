@@ -22,6 +22,7 @@ import { bossSoundKeys } from '../../content/audio/bossSounds.js';
 import { consumeBoneShield } from '../../content/combat/boneShield.js';
 import { consumeBriarShield } from '../../content/combat/briarShield.js';
 import { t } from '../../i18n/i18n.js';
+import { playCharmHearts } from './StatusOverlay.js';
 import { advanceBonePile, repairBoneArmor, summonAtHealthThresholds } from '../../content/combat/boneflood.js';
 import { growEnemy, regenerateAllies } from '../../content/combat/mireturn.js';
 import { strengthenPlayerPoison } from '../../content/combat/silkdeep.js';
@@ -441,6 +442,7 @@ export class CombatTurnController {
             card.data.role === 'MELEE') {
             scene.gameState.charmingTuneUsed = true;
             scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed (Lute)', 0xa83c69);
+            playCharmHearts(scene, card.sprite.x, card.sprite.y, 4, (card.sprite.depth || 1) + 6);
             return;
         }
 
@@ -462,6 +464,7 @@ export class CombatTurnController {
             );
             if (target) {
                 scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xa83c69);
+                playCharmHearts(scene, card.sprite.x, card.sprite.y, 4, (card.sprite.depth || 1) + 6);
                 const charmed = getEnemyHitAttack(card, scene.cardSystem.boardCards);
                 spendSapping(card);
                 this.applyEnemyGrowth(card);
@@ -504,6 +507,7 @@ export class CombatTurnController {
             if (others.length > 0) {
                 const target = others[Math.floor(Math.random() * others.length)];
                 scene.createFloatingText(card.sprite.x, card.sprite.y - 20, 'Charmed!', 0xa83c69);
+                playCharmHearts(scene, card.sprite.x, card.sprite.y, 4, (card.sprite.depth || 1) + 6);
                 const charmed = getEnemyHitAttack(card, scene.cardSystem.boardCards);
                 spendSapping(card);
                 this.applyEnemyGrowth(card);
@@ -1272,6 +1276,7 @@ export class CombatTurnController {
         companion.webSpinTurns = 1;
         scene.markCompanionParticipated(companion);
         scene.inventorySystem?.playSlotStrikeAnimation(entry.index);
+        SoundHelper.playSound(scene, 'empty_whoosh', 0.3);
         this.throwWebAt(slotCard, target.card.sprite, () => {
             const card = scene.cardSystem.boardCards[target.index];
             if (card === target.card && (card.data?.health || 0) > 0 && !(card.data.frozen > 0)) {

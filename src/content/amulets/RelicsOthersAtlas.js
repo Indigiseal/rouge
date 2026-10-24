@@ -227,6 +227,7 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     gluttonsCharm: 'blueTeapot',
     leadershipBanner: 'horn', // Provisional leadership art until the banner is drawn.
     veteransCarryall: 'basket',
+    robberSatchel: 'bottomlessBag', // Provisional: the satchel art is not drawn yet.
     tollWrit: 'merchantSeal',
     heartbloodVial: 'heartVial',
     starfallPendant: 'starryPendant',

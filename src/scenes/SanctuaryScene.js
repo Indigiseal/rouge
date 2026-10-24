@@ -6,12 +6,15 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { MetaProgressionManager } from '../managers/MetaProgressionManager.js';
-import { getVillageBuilding } from '../content/village/index.js';
+import { getVillageBuilding, healerRarityForRank, HEALER_RARITIES } from '../content/village/index.js';
+import { AMULET_DROP_DATA } from '../content/cards/amulets.js';
+import { getAmuletAtlasPresentation } from '../content/amulets/RelicsOthersAtlas.js';
 import { SANCTUARY_STATUES } from '../content/sanctuary/preview.js';
-import { t } from '../i18n/i18n.js';
+import { t, translateRarity } from '../i18n/i18n.js';
 import { createPaintedButton } from '../ui/PaintedButton.js';
 import { createTitle } from '../ui/titleText.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
+import { playCrowFlyby, CROW_TOP_Y } from '../ui/CrowFlyby.js';
 import { openConfirmModal } from '../ui/ConfirmModal.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { fitLabel } from '../ui/uiFont.js';
@@ -52,20 +55,19 @@ export class SanctuaryScene extends Phaser.Scene {
         this.supportText = this.add.text(24, 24, '', { fontSize: '11px', fill: '#f2d3aa', fontFamily: FONT });
         createOptionsCog(this, () => this.openOptions());
 
-        // The guardians form an arc around the final, central shrine.
-        this.add.image(320, 288, 'sigilRoomFloor').setAlpha(0.65);
+        // The guardians stand in a loose arc around the Phoenix, placed after assets/art/possiblePlacement.png.
         for (const statue of SANCTUARY_STATUES) this.drawStatue(statue);
 
-        this.backButton = createPaintedButton(this, 80, 340, t(this, 'ui.village.back'), () => this.back());
-        this.restoreButton = createPaintedButton(this, 320, 340, t(this, 'ui.sanctuary.restore'), () => this.restoreSelected());
-        this.nextButton = createPaintedButton(this, 560, 340, t(this, 'ui.village.leave'), () => this.leave());
+        this.backButton = createPaintedButton(this, 80, 342, t(this, 'ui.village.back'), () => this.back());
+        this.restoreButton = createPaintedButton(this, 320, 342, t(this, 'ui.sanctuary.restore'), () => this.restoreSelected());
+        this.nextButton = createPaintedButton(this, 560, 342, t(this, 'ui.village.leave'), () => this.leave());
         if (devToolsEnabled()) {
-            createPaintedButton(this, 200, 340, '+25', () => {
+            createPaintedButton(this, 200, 342, '+25', () => {
                 if (!devToolsEnabled()) return;
                 this.meta.grantDebugXp(this.characterId, 25);
                 this.refresh();
             }, { size: '12px' });
-            createPaintedButton(this, 440, 340, t(this, 'ui.village.debugResetMeta'), () => this.confirmResetMetaProgression(), { size: '9px' });
+            createPaintedButton(this, 440, 342, t(this, 'ui.village.debugResetMeta'), () => this.confirmResetMetaProgression(), { size: '9px' });
         }
         this.input.keyboard?.on('keydown-ESC', () => this.openOptions());
 
@@ -87,11 +89,11 @@ export class SanctuaryScene extends Phaser.Scene {
                 stars.push(this.add.image(x, bottom - 9, 'villageRankStar').setVisible(false));
             }
         }
-        const name = this.add.text(x, bottom + 8, t(this, `sanctuary.${building}.name`), {
+        const name = this.add.text(x, bottom + 7, t(this, `sanctuary.${building}.name`), {
             fontSize: '9px', fill: '#d9c9a7', fontFamily: FONT,
             stroke: '#10151b', strokeThickness: 3,
         }).setOrigin(0.5);
-        const rule = this.add.text(x, bottom + 18, t(this, `sanctuary.${building}.rule`), {
+        const rule = this.add.text(x, bottom + 15, t(this, `sanctuary.${building}.rule`), {
             fontSize: '8px', fill: '#e1d6be', fontFamily: FONT,
             align: 'center', wordWrap: { width: 156 }, stroke: '#10151b', strokeThickness: 3,
         }).setOrigin(0.5, 0);
@@ -164,9 +166,7 @@ export class SanctuaryScene extends Phaser.Scene {
         }
         this.busy = true;
         const view = this.views.get(building);
-        // A heavy stone settle, then the shimmer of the repair.
-        SoundHelper.playVariant(this, 'armor_break', 0.45);
-        this.time.delayedCall(120, () => SoundHelper.playVariant(this, 'recovery', 0.5));
+        SoundHelper.playSound(this, 'sanctuary_restore', 0.6);
         this.tweens.add({
             targets: view.art, y: view.statue.bottom - 7, duration: 160, yoyo: true, ease: 'Sine.easeOut',
             onUpdate: () => { view.art.y = Math.round(view.art.y); },
@@ -175,9 +175,54 @@ export class SanctuaryScene extends Phaser.Scene {
                 this.busy = false;
                 this.refresh();
                 if (wasLocked && !this.isLocked('temple')) this.awakenPhoenix();
+                if (building === 'healer') this.playCrowGift(view.statue);
             },
         });
         if (building === 'temple') SoundHelper.playSound(this, 'revival', 0.55);
+    }
+
+    // The Trinket Keeper's gift: a crow's shadow crosses the top of the screen with a caw and
+    // drops an amulet by the statue, which bounces and clinks. It is a sample of what the next
+    // runs may start with (a random amulet of the rarity this rank can roll), not a promise.
+    playCrowGift(statue) {
+        if (this._crowBusy) return;
+        const rolled = healerRarityForRank(this.rank('healer'));
+        const tiers = HEALER_RARITIES.slice(0, HEALER_RARITIES.indexOf(rolled) + 1).reverse();
+        let pick = null;
+        for (const tier of tiers) {
+            const pool = AMULET_DROP_DATA.filter((amulet) => amulet.rarity === tier);
+            if (pool.length) { pick = { rarity: tier, id: pool[Math.floor(Math.random() * pool.length)].id }; break; }
+        }
+        const art = pick ? getAmuletAtlasPresentation(pick.id) : null;
+        if (!pick || !art || !this.textures.exists(art.sprite)) return;
+        this._crowBusy = true;
+
+        const landY = statue.bottom - 96;
+        const amulet = this.add.image(statue.x, CROW_TOP_Y + 6, art.sprite, art.spriteFrame).setDepth(60).setAlpha(0);
+        const label = this.add.text(statue.x, landY + 24, translateRarity(this, pick.rarity, pick.rarity), {
+            fontSize: '8px', fill: '#fff0c7', fontFamily: FONT, stroke: '#10151b', strokeThickness: 3,
+        }).setOrigin(0.5).setDepth(60).setAlpha(0);
+        const done = () => { this._crowBusy = false; [amulet, label].forEach((o) => o.scene && o.destroy()); };
+        this.events.once('shutdown', done);
+        playCrowFlyby(this, { dropAtX: statue.x, onDrop: () => {
+            if (!amulet.scene) return;
+            amulet.setAlpha(1);
+            this.tweens.add({
+                targets: amulet, y: landY, duration: 620, ease: 'Bounce.easeOut',
+                onUpdate: () => { amulet.y = Math.round(amulet.y); },
+                onComplete: () => {
+                    SoundHelper.playSound(this, 'shop_buy', 0.5);
+                    this.tweens.add({
+                        targets: amulet, y: landY - 8, duration: 130, yoyo: true, ease: 'Quad.easeOut',
+                        onUpdate: () => { amulet.y = Math.round(amulet.y); },
+                    });
+                    this.tweens.add({ targets: label, alpha: 1, duration: 200 });
+                    this.time.delayedCall(1700, () => this.tweens.add({
+                        targets: [amulet, label], alpha: 0, duration: 450, onComplete: done,
+                    }));
+                },
+            });
+        } });
     }
 
     // The fourth guardian was just restored: the Phoenix stirs.

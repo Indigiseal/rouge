@@ -191,6 +191,8 @@ export const ASSET_MANIFEST = [
     // Tactician's Pin stuck in the face-down enemy it marked (BoardCombat's
     // syncControlMarkers): the pin's head, needle and shadow, 22x34.
     { key: 'tacticianPin', path: 'assets/art/pin.png', type: 'image' },
+    // The pin redrawn at 28px tall for the equipped-amulet strip (hudAmuletTexture picks "<key>Small").
+    { key: 'tacticianPinSmall', path: 'assets/art/pinSmall.png', type: 'image' },
     // The same sheet redrawn at 28px, same 12x7 layout so frame numbers carry
     // over. Only for equipped amulets in the battle HUD's corner strip.
     { key: 'relicsOthersSmall', path: 'assets/art/relicsOthersSmall.png', type: 'spritesheet', frameWidth: 28, frameHeight: 28 },
@@ -474,6 +476,16 @@ export const LATE_AUDIO = [
     // A card taken by something in an event: the mirror, the well, the
     // screaming head... (InventorySystem's event drop zones).
     { key: 'card_offered', path: 'assets/music/Card_Offered.mp3', type: 'audio' },
+    // A statue restored in the Sanctuary (ElevenLabs, tools/death-sounds.json set "sanctuary").
+    // The Tactician's Pin going into its card (ElevenLabs, tools/death-sounds.json set "pins").
+    { key: 'tactician_pin', path: 'assets/music/Tactician_Pin.mp3', type: 'audio' },
+    // A new bag slot lighting up (ElevenLabs, tools/death-sounds.json set "bag").
+    { key: 'bag_slot_unlock', path: 'assets/music/Bag_Slot_Unlock.mp3', type: 'audio' },
+    // The crow's caw as the Trinket Keeper is restored (ElevenLabs, set "sanctuary").
+    { key: 'sanctuary_crow', path: 'assets/music/Sanctuary_Crow.mp3', type: 'audio' },
+    // Scorched Land's wave of heat (ElevenLabs, tools/death-sounds.json set "spells").
+    { key: 'scorched_wave', path: 'assets/music/Scorched_Wave.mp3', type: 'audio' },
+    { key: 'sanctuary_restore', path: 'assets/music/Sanctuary_Restore.mp3', type: 'audio' },
     // The bird's nest minigame: the bird's cry as its shadow sweeps over, and
     // the trinkets clicking as they are moved ('nest_screech'/'nest_rummage').
     // The Broken Music Box lock: a wafer flipped, a pin seated (four chimes,

@@ -106,5 +106,15 @@ export function syncCardRiders(card) {
 export function bindCardRiders(scene, card) {
     const follow = () => syncCardRiders(card);
     scene.events.on('postupdate', follow);
-    card.once('destroy', () => scene.events.off('postupdate', follow));
+    card.once('destroy', () => {
+        scene.events.off('postupdate', follow);
+        // The card is gone, so its value and pips, its sigil icons and its gem go
+        // with it. Some paths destroy the card and only some of what rode on it, and
+        // what is left would sit on the board with nothing to follow.
+        const info = card.getData?.('infoText');
+        if (info?.scene) info.destroy();
+        card.getData?.(RIDERS)?.forEach(({ object }, name) => {
+            if ((name === 'gem' || name.startsWith('sigil')) && object?.scene) object.destroy();
+        });
+    });
 }

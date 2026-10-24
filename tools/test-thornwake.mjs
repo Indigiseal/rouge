@@ -195,7 +195,7 @@ assert.equal(shield.briarShield, 1);
 assert.equal(consumeBriarShield(shield, 4), true);
 assert.equal(consumeBriarShield(shield, 4), false);
 assert.match(getMagic('briarShield').description, /next 2/);
-assert.equal(getGlowCardFrame('briarShield'), 2);
+assert.equal(getGlowCardFrame('briarShield'), 15, 'the glowing sheet has its own Briar Shield card');
 assert.equal(applyEnchantToWeapon(weapon, 'briarShield'), true);
 assert.ok(cardSigils(weapon).some(s => s.id === 'briarGuard'));
 assert.match(describeWeaponEnchant(scene, weapon), /Briar Guard 15%: reflect/);

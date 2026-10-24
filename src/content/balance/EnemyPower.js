@@ -13,11 +13,21 @@ import { tuned } from './Tuning.js';
 // account passes the act-1 gate 14% of the time and barely sees them. The same
 // change is therefore heavy on the over-powered end and nearly free on the
 // under-powered one — which a flat nerf to the tree would not be.
+//
+// Act 2 is a ramp, not a step. Band D used to jump from 12 HP to 34 on floor 16, which made one enemy
+// 2.8x tougher and a whole room 3.5x, and the geared sim's HP lost per floor went from about 2 to 13
+// in two floors. Bands C2 to D4 climb into the old act-2 value by floor 23 instead, each step no more
+// than about a fifth, so the new act asks a little more of the player each floor (sim enemy-curve).
 export const POWER_BANDS = Object.freeze([
   { id: 'A', minFloor: 1, health: 8, attack: 4 },
   { id: 'B', minFloor: 5, health: 10, attack: 5 },
   { id: 'C', minFloor: 10, health: 12, attack: 7 },
-  { id: 'D', minFloor: 16, health: 34, attack: 9 },
+  { id: 'C2', minFloor: 13, health: 13, attack: 7 },
+  { id: 'C3', minFloor: 14, health: 14, attack: 8 },
+  { id: 'D', minFloor: 16, health: 18, attack: 9 },
+  { id: 'D2', minFloor: 18, health: 21, attack: 9 },
+  { id: 'D3', minFloor: 20, health: 25, attack: 10 },
+  { id: 'D4', minFloor: 22, health: 29, attack: 10 },
   { id: 'E', minFloor: 23, health: 34, attack: 11 },
   { id: 'F', minFloor: 31, health: 40, attack: 12 },
   { id: 'G', minFloor: 38, health: 44, attack: 13 },

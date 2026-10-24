@@ -30,10 +30,13 @@ const DURABILITY_DOT_SPACING = 5;
 // edge meets the card frame; a card with only single dots starts them on the
 // first row inside the frame. Weapons, armor and thorns all start here — armor
 // used to start 2px lower than the others.
-const PIP_TOP_TEN = -27;
-const PIP_TOP_DOT = -29;
-// The first dot under a ten-marker sits this much higher than the ten-marker
-// step would put it: 1px of gap below the marker instead of 4.
+const PIP_TOP_TEN = -28;
+const PIP_TOP_DOT = -30;
+// Step between ten-markers. The art is 10px tall with rounded ends, so 9 makes
+// each overlap the next by 1px, snug like the single dots (5 for a 6px frame).
+const TEN_PIP_SPACING = 9;
+// The first dot under a ten-marker sits this much above where the next
+// ten-marker would be centred, which overlaps the marker by 1px as well.
 const DOT_AFTER_TEN_TUCK = -3;
 
 // Where a resource card's name sits. Coins and crystals used to print it at
@@ -450,7 +453,7 @@ function createCardInfoText(card) {
 
             const startY = PIP_TOP_TEN;
             const dotSpacing = DURABILITY_DOT_SPACING;
-            const tenDurabilitySpacing = 11;
+            const tenDurabilitySpacing = TEN_PIP_SPACING;
             const tensCount = Math.floor(card.data.durability / 10);
             const remainingDots = card.data.durability % 10;
             let currentY = startY;
@@ -497,7 +500,7 @@ function createCardInfoText(card) {
             // Durability display with 10-point sprites and individual dots
             const startY = PIP_TOP_TEN;
             const dotSpacing = DURABILITY_DOT_SPACING;
-            const tenDurabilitySpacing = 11; // Space between 10-point sprites
+            const tenDurabilitySpacing = TEN_PIP_SPACING;
             
             const tensCount = Math.floor(card.data.durability / 10);
             const remainingDots = card.data.durability % 10;
@@ -547,7 +550,7 @@ function createCardInfoText(card) {
             // Durability display with 10-point sprites and individual dots
             const startY = PIP_TOP_TEN;
             const dotSpacing = DURABILITY_DOT_SPACING;
-            const tenDurabilitySpacing = 11; // Space between 10-point sprites
+            const tenDurabilitySpacing = TEN_PIP_SPACING;
             
             const tensCount = Math.floor(card.data.durability / 10);
             const remainingDots = card.data.durability % 10;
