@@ -42,3 +42,4 @@ output/
 assets/art/*-candidates/
 assets/art/*-prototypes/
 assets/art/*-structures/
+tmp/

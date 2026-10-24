@@ -19,7 +19,7 @@ import { companionStrengthBonus } from '../systems/combat/SigilEffects.js';
 function enemySigilTooltip(scene, data, sigil) {
     if (sigil.id === 'growth') {
         const amount = Math.max(1, Math.floor(data.growthPerAttack || 1));
-        return `Growth: +${amount} maximum HP after attacking; does not heal`;
+        return t(scene, 'tooltip.enemyGrowth', { amount });
     }
     return sigilLine(sigil.id, sigil.level || 1, 'enemy', scene);
 }

@@ -1,19 +1,21 @@
+import { translateDescription } from '../../i18n/i18n.js';
+
 const boxIntact = (gs) => gs?.storyRun?.boxState !== 'exploded';
 
 export default {
   id: 'goblin_engineer',
   title: 'Goblin Engineer',
-  description: (gs) => {
+  description: (gs, scene) => {
     if (!boxIntact(gs)) {
-      return 'A goblin steps out from behind a broken machine, sniffs the air, and coughs.\n\n'
-        + '"Snatch Box. Charge went first. I can smell the powder from here. Nothing left to seat a cog in."\n\n'
-        + 'He looks at your boots as if a box might still be hiding there. It is not.';
+      return translateDescription(scene, 'A goblin steps out from behind a broken machine, sniffs the air, and coughs.\n\n')
+        + translateDescription(scene, '"Snatch Box. Charge went first. I can smell the powder from here. Nothing left to seat a cog in."\n\n')
+        + translateDescription(scene, 'He looks at your boots as if a box might still be hiding there. It is not.');
     }
     const intro = 'A goblin steps out from behind a broken machine and points at the music box.\n\n"Sleepy Snatch Box. Old robber model. Plays a song, puffs smoke, hero sleeps, pockets empty. Very illegal. Very profitable."\n\nThe box hides behind your boot.';
     const cogLine = gs?.storyRun?.boxHasCog
       ? '"You found its heart cog. Give it here — I can seat it properly. Or improperly. Depends on payment."'
       : '"No cog? I have spares. Spare parts cost extra."';
-    return `${intro}\n\n${cogLine}`;
+    return `${translateDescription(scene, intro)}\n\n${translateDescription(scene, cogLine)}`;
   },
   choices: [
     {

@@ -1,0 +1,224 @@
+[
+  {
+    "id": 1,
+    "es": "Empujas la gema entre los dientes. Rueda hasta una cuenca y encaja perfectamente.\n\nUna luz roja se extiende por las grietas de la cara. La cabeza exhala una lenta nube de polvo. Cuando se disipa, hay una Runa de fuego sobre la lengua de piedra.",
+    "fr": "Vous poussez la gemme entre les dents. Elle roule jusqu’à une orbite et s’y loge exactement.\n\nUne lumière rouge gagne les fissures du visage. La tête expire lentement un nuage de poussière. Quand il se dissipe, une rune de feu repose sur la langue de pierre.",
+    "ru": "Вы проталкиваете камень между зубами. Он закатывается в глазницу и точно встаёт на место.\n\nПо трещинам на лице разливается красный свет. Голова медленно выдыхает облако пыли. Когда оно рассеивается, на каменном языке лежит Руна огня."
+  },
+  {
+    "id": 2,
+    "es": "Empujas la gema entre los dientes. Encaja con un chasquido en una cuenca.\n\nUn rayo fino recorre la frente agrietada y los dientes castañetean una vez. La cabeza exhala polvo. Una Runa de rayo parpadea entre sus dientes.",
+    "fr": "Vous poussez la gemme entre les dents. Elle se loge dans une orbite avec un déclic.\n\nUn éclair fin parcourt le front fissuré et les dents claquent une fois. La tête expire de la poussière. Une Rune de foudre clignote entre ses dents.",
+    "ru": "Вы проталкиваете камень между зубами. Он со щелчком встаёт в глазницу.\n\nТонкая молния пробегает по треснувшему лбу. Зубы разок стучат. Голова выдыхает пыль. Между зубами мерцает Руна молнии."
+  },
+  {
+    "id": 3,
+    "es": "Empujas la gema entre los dientes. Se asienta en una cuenca.\n\nUna luz verde se filtra por las grietas y la boca se tuerce, casi como si recordara un dolor. La cabeza exhala una nube amarga. Detrás queda una runa verde oscura sobre la lengua de piedra.",
+    "fr": "Vous poussez la gemme entre les dents. Elle se cale dans une orbite.\n\nUne lumière verte filtre par les fissures et la bouche se tord, presque comme au souvenir d’une douleur. La tête expire un nuage âcre. Derrière, une rune vert sombre repose sur la langue de pierre.",
+    "ru": "Вы проталкиваете камень между зубами. Он ложится в глазницу.\n\nИз трещин сочится зелёный свет, рот кривится, словно вспомнив боль. Голова выдыхает горькое облако. За ним на каменном языке лежит тёмно-зелёная руна."
+  },
+  {
+    "id": 4,
+    "es": "Pones la carta de la Arañita de cristal en el suelo agrietado de la sala de entrenamiento.\n\nLa arañita sale de la carta, tantea las grietas y saca de una un grano de cristal.\n\nVuelve a la imagen y se queda con el grano.",
+    "fr": "Vous posez la carte de la Petite araignée de cristal sur le sol fissuré de la salle d’entraînement.\n\nL’araignée sort de la carte, tapote les fissures et tire de l’une d’elles un grain de cristal.\n\nElle rentre dans l’image et garde le grain.",
+    "ru": "Вы кладёте карту Хрустального паучка на потрескавшийся пол тренировочной комнаты.\n\nПаучок вылезает из карты, простукивает трещины и вытаскивает из одной кристальное зёрнышко.\n\nПотом возвращается в картинку. Зёрнышко оставляет себе."
+  },
+  {
+    "id": 5,
+    "es": "Deslizas la carta entre los dientes de piedra.\n\nLa boca se cierra. La piedra rechina contra la piedra y la cabeza mastica unos segundos.\n\nLuego la mandíbula se abre con un crujido. Sobre la lengua hay otra carta, húmeda de polvo gris.",
+    "fr": "Vous glissez la carte entre les dents de pierre.\n\nLa bouche se ferme. La pierre grince contre la pierre et, quelques secondes, la tête mâche.\n\nPuis la mâchoire s’ouvre en craquant. Une autre carte repose sur la langue, humide de poussière grise.",
+    "ru": "Вы просовываете карту между каменными зубами.\n\nРот закрывается. Камень скрежещет о камень. Несколько секунд голова жуёт.\n\nПотом челюсть с треском раскрывается. На языке лежит другая карта, влажная от серой пыли."
+  },
+  {
+    "id": 6,
+    "es": "Tiendes la carta hacia las enredaderas.\n\nLa envuelven con cuidado, casi con suavidad, y clavan unas espinas negras en el borde.\n\nCuando la sueltan, la carta ya no es la misma.",
+    "fr": "Vous tendez la carte aux lianes.\n\nElles l’enveloppent avec soin, presque doucement, et plantent quelques épines noires dans son bord.\n\nQuand elles la lâchent, la carte n’est plus la même.",
+    "ru": "Вы протягиваете карту лозам.\n\nОни осторожно, почти нежно обвивают её и вонзают в край несколько чёрных шипов.\n\nКогда они отпускают карту, она уже другая."
+  },
+  {
+    "id": 7,
+    "es": "Algunos dejan de masticar al ver lo que llevas. Un goblin pasa discretamente a tu lado de la mesa.",
+    "fr": "Certains arrêtent de mâcher en voyant ce que vous portez. Un gobelin passe discrètement de votre côté de la table.",
+    "ru": "Увидев, что у вас с собой, некоторые перестают жевать. Один гоблин тихонько переходит на вашу сторону стола."
+  },
+  {
+    "id": 8,
+    "es": "Nadie se mueve. La cosa con demasiadas patas os mira a los dos y no toma partido.",
+    "fr": "Personne ne bouge. La chose qui a trop de pattes vous observe tous les deux sans choisir de camp.",
+    "ru": "Никто не двигается. Существо с лишними ногами смотрит на вас обоих и не выбирает сторону."
+  },
+  {
+    "id": 9,
+    "es": "Toda la sala ya se está riendo. Alguien empieza a recoger apuestas antes de que te sientes.",
+    "fr": "Toute la salle rit déjà. Quelqu’un commence à prendre les paris avant même que vous soyez assis.",
+    "ru": "Вся комната уже смеётся. Кто-то начинает собирать ставки, пока вы ещё не сели."
+  },
+  {
+    "id": 10,
+    "es": "Es más fuerte que tú y ambos lo sabéis, así que no intentas ganarle por fuerza. Esperas a que se incline y dejas de estar donde él empuja.\n\nSu propio peso lleva su mano contra la losa.\n\nLa sala se queda en silencio. El ogro mira su mano un rato, luego te mira a ti y te empuja todo el montón de monedas sin decir nada.",
+    "fr": "Il est plus fort que vous et vous le savez tous les deux. Vous n’essayez donc pas de gagner en force. Vous attendez qu’il se penche, puis cessez d’être là où il pousse.\n\nSon propre poids rabat sa main sur la dalle.\n\nLa salle devient très calme. L’ogre regarde sa main un moment, puis vous, et pousse toute la pile de pièces vers vous sans un mot.",
+    "ru": "Он сильнее вас, и вы оба это знаете. Силой его не одолеть. Вы ждёте, пока он наклонится, и перестаёте быть там, куда он давит.\n\nПод собственным весом его рука ложится на плиту.\n\nВ комнате становится очень тихо. Огр некоторое время смотрит на свою руку, потом на вас. Молча пододвигает к вам всю стопку монет."
+  },
+  {
+    "id": 11,
+    "es": "Aguantas unos dos segundos.\n\nLuego tus nudillos encuentran la piedra.\n\nSe lleva las monedas. Solo se lleva eso.",
+    "fr": "Vous tenez à peu près deux secondes.\n\nPuis vos jointures trouvent la pierre.\n\nIl prend les pièces. C’est tout ce qu’il prend.",
+    "ru": "Вы держитесь примерно две секунды.\n\nПотом костяшки находят камень.\n\nОн забирает монеты. Только монеты."
+  },
+  {
+    "id": 12,
+    "es": "Esta vez va en serio y necesitas todo lo que tienes.\n\nCuando su mano por fin cae, el público no aplaude. Solo mira al ogro.\n\nSe desabrocha el protector de piedra y te lo empuja. Luego se reclina con los brazos cruzados y te ve recogerlo todo, incluida tu carta: {card}.",
+    "fr": "Cette fois, il s’y met vraiment et vous donnez tout ce que vous avez.\n\nQuand sa main cède enfin, la foule n’applaudit pas. Elle regarde l’ogre.\n\nIl détache la protection de pierre et la pousse vers vous. Puis il se rassoit, les bras croisés, et vous regarde tout emporter, y compris votre carte : {card}.",
+    "ru": "На этот раз он берётся всерьёз, и вам приходится выложиться полностью.\n\nКогда его рука наконец ложится на стол, толпа не ликует. Все просто смотрят на огра.\n\nОн отстёгивает каменный наруч и пододвигает к вам. Потом откидывается, скрестив руки, и смотрит, как вы забираете всё, включая свою карту: {card}."
+  },
+  {
+    "id": 13,
+    "es": "Mira la carta, {card}, un buen rato, decide que merece su tiempo y planta el codo.\n\nGanas evitando medir fuerzas donde él tiene ventaja.\n\nTe empuja sus monedas, sigue mirándose la mano y dice algo breve en ogresco. El público deja de reír. Te queda muy claro que esto no ha terminado.",
+    "fr": "Il regarde la carte, {card}, un long moment, décide qu’elle vaut son temps et pose le coude.\n\nVous gagnez en évitant de l’affronter là où il est le plus fort.\n\nIl pousse ses pièces vers vous, regarde encore sa main et dit quelques mots en ogre. La foule cesse de rire. Vous avez la nette impression que ce n’est pas fini.",
+    "ru": "Он долго смотрит на карту — {card}, решает, что она стоит его времени, и ставит локоть на стол.\n\nВы побеждаете, не меряясь с ним силой там, где он сильнее.\n\nОн пододвигает вам монеты, всё смотрит на свою руку и коротко говорит что-то по-огрски. Толпа перестаёт смеяться. Вам становится ясно: это ещё не конец."
+  },
+  {
+    "id": 14,
+    "es": "No comete el mismo error dos veces.\n\nTu mano ya está contra la losa cuando aún intentas afirmarte, y tu carta, {card}, va al montón junto a su codo.\n\nSe abrocha el protector de piedra en el antebrazo y se aparta de la mesa.",
+    "fr": "Il ne fait pas deux fois la même erreur.\n\nVotre main est sur la dalle avant même que vous ayez fini de vous caler. Votre carte, {card}, rejoint la pile près de son coude.\n\nIl rattache la protection de pierre à son avant-bras et se détourne de la table.",
+    "ru": "Он не повторяет ошибок.\n\nВы ещё не успели упереться, а рука уже на плите. Ваша карта, {card}, отправляется в кучу у его локтя.\n\nОн застёгивает каменный наруч на предплечье и отворачивается от стола."
+  },
+  {
+    "id": 15,
+    "es": "Se lleva tu carta, {card}, antes de que tu mano termine de caer.\n\nEl público se entusiasma un momento. Luego se aburre.",
+    "fr": "Il prend votre carte, {card}, sur la table avant que votre main ait fini de descendre.\n\nLa foule est ravie, un instant. Puis s’ennuie.",
+    "ru": "Он забирает вашу карту, {card}, со стола раньше, чем ваша рука успевает опуститься.\n\nТолпа в восторге. Недолго. Потом ей скучно."
+  },
+  {
+    "id": 16,
+    "es": "No dices nada. Sacas el arma y la apoyas contra las puertas, a la luz, donde los tres puedan verla bien.\n\nEl de la tablilla deja de escribir. El del escudo encuentra algo interesante en el suelo.\n\nNadie te impide abrir el cofre al pie de la puerta. Nadie te mira tampoco. Cuando te enderezas, ya han quitado la tranca.",
+    "fr": "Vous ne dites rien. Vous sortez l’arme et l’appuyez contre les portes, dans la lumière, bien en vue de tous les trois.\n\nCelui qui tient le registre cesse d’écrire. Celui au bouclier trouve quelque chose d’intéressant par terre.\n\nPersonne ne vous empêche de soulever le couvercle du coffre au pied de la porte. Personne ne vous regarde non plus. Quand vous vous redressez, la barre est déjà retirée.",
+    "ru": "Вы ничего не говорите. Достаёте оружие и прислоняете к дверям, на свету, чтобы все трое хорошенько разглядели.\n\nТот, что с дощечкой для подсчётов, перестаёт писать. Тот, что со щитом, находит на полу что-то интересное.\n\nНикто не мешает вам открыть сундук у двери. На вас тоже никто не смотрит. Когда вы выпрямляетесь, засов уже снят."
+  },
+  {
+    "id": 17,
+    "es": "Apoyas el arma plana contra el cristal.\n\nLa vitrina se abre desde dentro. La carta, {magic}, se posa sobre el metal y se hunde en él. El cristal se cierra sobre el vacío.\n\nLas otras vitrinas se oscurecen.\n\nLo que tienes en las manos ahora se llama {weapon}.",
+    "fr": "Vous plaquez l’arme contre la vitre.\n\nLa vitrine s’ouvre de l’intérieur. La carte, {magic}, se pose contre le métal et s’y enfonce. La vitre se referme sur du vide.\n\nLes autres vitrines s’assombrissent.\n\nCe que vous tenez s’appelle maintenant {weapon}.",
+    "ru": "Вы прижимаете оружие плашмя к стеклу.\n\nВитрина открывается изнутри. Карта, {magic}, ложится на металл и уходит в него. Стекло закрывается над пустотой.\n\nОстальные витрины гаснут.\n\nТеперь то, что вы держите, называется {weapon}."
+  },
+  {
+    "id": 18,
+    "es": "Rompes la vitrina más cercana con el codo.\n\nEl cristal te abre el brazo. Lo que había dentro ya no está.",
+    "fr": "Vous passez le coude à travers la vitrine la plus proche.\n\nLe verre vous ouvre le bras. Ce qui était dedans a déjà disparu.",
+    "ru": "Вы пробиваете локтем ближайшую витрину.\n\nСтекло распарывает руку. Что бы ни было внутри, оно уже исчезло."
+  },
+  {
+    "id": 19,
+    "es": "Rompes con el codo la vitrina que contiene la carta: {magic}.\n\nLa protección se activa tarde y apenas te abre un corte en el antebrazo. Pero la carta está en tu puño y ahí se queda.\n\nLas demás vitrinas se oscurecen antes de que el cristal termine de caer.",
+    "fr": "Vous passez le coude à travers la vitrine qui contient la carte : {magic}.\n\nLa protection se déclenche tard et vous entaille à peine l’avant-bras. Mais la carte est dans votre poing et y reste.\n\nLes autres vitrines s’assombrissent avant que le verre ait fini de tomber.",
+    "ru": "Вы пробиваете локтем витрину с картой: {magic}.\n\nЗащита срабатывает поздно и лишь слегка рассекает предплечье. Но карта уже в вашем кулаке и там остаётся.\n\nОстальные витрины гаснут, прежде чем стекло успевает упасть."
+  },
+  {
+    "id": 20,
+    "es": "Tiendes la carta sobre el agua. Tu reflejo levanta la mano equivocada.\n\nLa carta se hunde sin hacer ruido. Sube otra distinta, fría y goteando alquitrán.\n\nPor un segundo parece que has hecho un trato contigo mismo.",
+    "fr": "Vous tendez la carte au-dessus de l’eau. Votre reflet lève la mauvaise main.\n\nLa carte coule sans un bruit. Une autre remonte, froide et dégoulinante de goudron.\n\nUn instant, vous avez l’impression d’avoir passé un marché avec vous-même.",
+    "ru": "Вы протягиваете карту над водой. Отражение поднимает не ту руку.\n\nКарта беззвучно тонет. Другая всплывает, холодная, с неё капает дёготь.\n\nНа секунду кажется, что вы заключили сделку с собой."
+  },
+  {
+    "id": 21,
+    "es": "Pones la baratija en la bandeja. Se recoge de golpe dentro de la cabina.\n\nEl cristal se oscurece. Luego un brillo arcoíris se extiende por dentro, fino y aceitoso, como luz sobre tinta derramada.\n\nSale una carta. Es demasiado brillante para la máquina que la ha hecho.",
+    "fr": "Vous posez la babiole sur le plateau. Il rentre d’un coup dans la cabine.\n\nLa vitre s’assombrit. Puis un reflet arc-en-ciel s’étale de l’intérieur, fin et huileux, comme de la lumière sur de l’encre renversée.\n\nUne carte sort. Elle est bien trop brillante pour la machine qui l’a faite.",
+    "ru": "Вы кладёте безделушку на поднос. Он резко уходит внутрь будки.\n\nСтекло темнеет. Потом изнутри по нему растекается тонкий маслянистый радужный блеск, как свет по пролитым чернилам.\n\nВыдвигается карта. Слишком яркая для машины, которая её сделала."
+  },
+  {
+    "id": 22,
+    "es": "Pones una de tus cartas en la bandeja. Se recoge antes de que puedas cambiar de idea.\n\nTras el cristal, el mago mira la carta un buen rato. Luego da dos golpecitos en el cristal.\n\nSale una carta distinta.",
+    "fr": "Vous posez une de vos cartes sur le plateau. Il rentre avant que vous puissiez changer d’avis.\n\nDerrière la vitre, le sorcier regarde longuement la carte. Puis il tape deux fois sur le verre.\n\nUne autre carte sort.",
+    "ru": "Вы кладёте одну из своих карт на поднос. Он уходит внутрь прежде, чем вы успеваете передумать.\n\nЗа стеклом волшебник долго смотрит на карту. Потом дважды стучит по стеклу.\n\nВыдвигается другая карта."
+  },
+  {
+    "id": 23,
+    "es": "La caja coge el engranaje, hace clic y despliega un cajón de donde no debería caber ninguno. Luego otro. Luego un tercero.\n\nSe mete en tu mochila y se acomoda como si siempre hubiera estado ahí.\n\nCaja Fiel: +1 espacio de inventario",
+    "fr": "La boîte prend le rouage, clique une fois et déplie un tiroir là où aucun ne devrait tenir. Puis un deuxième. Puis un troisième.\n\nElle grimpe dans votre sac et s’installe comme si elle avait toujours été là.\n\nBoîte fidèle : +1 emplacement d’inventaire",
+    "ru": "Шкатулка берёт шестерёнку, разок щёлкает и выдвигает ящик оттуда, где никакой ящик не должен помещаться. Потом второй. Потом третий.\n\nОна залезает в ваш рюкзак и устраивается так, будто всегда там жила.\n\nВерная шкатулка: +1 ячейка инвентаря"
+  },
+  {
+    "id": 24,
+    "es": "La caja se traga el engranaje. Hace clic. Tose humo.\n\nLuego toca tres notas desafinadas, escupe un puñado de objetos de valor a tus pies y se niega a mirarte.",
+    "fr": "La boîte avale le rouage. Elle clique. Elle tousse de la fumée.\n\nPuis elle joue trois notes fausses, crache une poignée d’objets de valeur à vos pieds et refuse de vous regarder.",
+    "ru": "Шкатулка глотает шестерёнку. Щёлкает. Кашляет дымом.\n\nПотом фальшиво играет три ноты, выплёвывает горсть ценностей вам под ноги и отказывается на вас смотреть."
+  },
+  {
+    "id": 25,
+    "es": "«Una reparación gratis sigue siendo una reparación», dice el goblin. «Solo que más corta».",
+    "fr": "« Une réparation gratuite reste une réparation, dit le gobelin. Juste plus courte. »",
+    "ru": "«Бесплатный ремонт тоже ремонт, — говорит гоблин. — Просто короче»."
+  },
+  {
+    "id": 26,
+    "es": "Mastica la carta pensativo y luego atornilla la mitad a la carcasa. «Basta para una máquina poco exigente».",
+    "fr": "Il mâche la carte d’un air pensif, puis en boulonne la moitié dans le boîtier. « Ça suffira pour une machine peu exigeante. »",
+    "ru": "Он задумчиво жуёт карту, потом прикручивает половину к корпусу. «Для непритязательной машины сойдёт»."
+  },
+  {
+    "id": 27,
+    "es": "Cuenta las monedas dos veces. Luego se vuelve de pronto completamente profesional, lo cual es peor por algún motivo.",
+    "fr": "Il compte les pièces deux fois. Puis il devient soudain parfaitement professionnel, ce qui est pire, on ne sait pourquoi.",
+    "ru": "Он дважды пересчитывает монеты. Потом вдруг становится безупречным профессионалом, что почему-то ещё хуже."
+  },
+  {
+    "id": 28,
+    "es": "El ogro está en la misma mesa. No ha vuelto a sacar las monedas.\n\nEn su lugar se ha quitado el protector de piedra del antebrazo y lo ha puesto en la losa, entre los dos. Tiene escamas, pesa y está claro que no era suyo.\n\nEsta vez hay más público y mucho menos ruido.\n\n{crowd}",
+    "fr": "L’ogre est à la même table. Il n’a pas ressorti ses pièces.\n\nÀ la place, il a détaché la protection de pierre de son avant-bras et l’a posée sur la dalle entre vous. Elle est couverte d’écailles, lourde, et n’était clairement pas à lui à l’origine.\n\nLa foule est plus nombreuse cette fois, et bien plus calme.\n\n{crowd}",
+    "ru": "Огр за тем же столом. Монеты он обратно не выложил.\n\nВместо них он снял с предплечья каменный наруч и положил на плиту между вами. Чешуйчатый, тяжёлый и явно изначально не его.\n\nТолпа на этот раз больше и гораздо тише.\n\n{crowd}"
+  },
+  {
+    "id": 29,
+    "es": "Un ogro está sentado a una mesa de piedra, con un codo plantado en ella. Junto a su mano hay monedas apiladas: más que un peaje goblin, menos de lo que él parece creer.\n\nEn tu lado hay un taburete. Es demasiado pequeño.\n\nSe han reunido monstruos para mirar: unos goblins, algo con demasiadas patas y un esqueleto que no deja de perder su sitio entre el público.\n\n{crowd}",
+    "fr": "Un ogre est assis à une table de pierre, un coude posé dessus. Des pièces sont empilées près de sa main. Plus qu’un péage gobelin, moins qu’il ne semble le croire.\n\nUn tabouret vous attend de votre côté. Il est trop petit.\n\nDes monstres se sont rassemblés pour regarder : quelques gobelins, quelque chose avec trop de pattes et un squelette qui perd sans cesse sa place dans la foule.\n\n{crowd}",
+    "ru": "За каменным столом сидит огр, уперев в него локоть. У руки сложены монеты. Больше, чем берут гоблины за проход. Меньше, чем ему, похоже, кажется.\n\nС вашей стороны ждёт табуретка. Слишком маленькая.\n\nПосмотреть собрались чудовища: несколько гоблинов, что-то с лишними ногами и скелет, который всё теряет своё место в толпе.\n\n{crowd}"
+  },
+  {
+    "id": 30,
+    "es": "Dejas el protector donde está.\n\nEl ogro dice algo en ogresco que al público le hace más gracia que a ti y se lo vuelve a abrochar en el brazo.",
+    "fr": "Vous laissez la protection en place.\n\nL’ogre dit quelque chose en ogre qui amuse la foule plus que vous, puis la rattache à son bras.",
+    "ru": "Вы оставляете наруч на месте.\n\nОгр говорит что-то по-огрски. Толпе смешнее, чем вам. Он снова застёгивает наруч на руке."
+  },
+  {
+    "id": 31,
+    "es": "Murmura algo en ogresco. El público pierde el interés en ti al instante.\n\nEl taburete sigue vacío.",
+    "fr": "Il marmonne quelque chose en ogre. La foule se désintéresse aussitôt de vous.\n\nLe tabouret reste vide.",
+    "ru": "Он бормочет что-то по-огрски. Толпа тут же теряет к вам интерес.\n\nТабуретка остаётся пустой."
+  },
+  {
+    "id": 32,
+    "es": "(Arrastra un arma a una vitrina.)",
+    "fr": "(Glissez une arme sur une vitrine.)",
+    "ru": "(Перетащите оружие на витрину.)"
+  },
+  {
+    "id": 33,
+    "es": "(No tienes armas para el trueque.)",
+    "fr": "(Vous n’avez pas d’arme à échanger.)",
+    "ru": "(У вас нет оружия для обмена.)"
+  },
+  {
+    "id": 34,
+    "es": "El corredor termina en una pared de vitrinas de cristal. Casi todas están rotas y vacías. {lit} no lo están.\n\nTRAE HIERRO. SAL DISTINTO: está grabado debajo y arañado bajo las vitrinas vacías, con peor letra.\n\n{dragLine}",
+    "fr": "Le couloir se termine devant un mur de vitrines. La plupart sont brisées et vides. {lit} ne le sont pas.\n\nAPPORTEZ DU FER. REPARTEZ CHANGÉ — gravé dessous et griffonné sous les vitrines vides, d’une écriture moins soignée.\n\n{dragLine}",
+    "ru": "Коридор кончается стеной стеклянных витрин. Большинство разбиты и пусты. {lit} — нет.\n\nПРИНЕСИ ЖЕЛЕЗО. УЙДИ ДРУГИМ — высечено под ними и нацарапано под пустыми витринами почерком похуже.\n\n{dragLine}"
+  },
+  {
+    "id": 35,
+    "es": "Recorres la pared, tanteando entre las vitrinas rotas.\n\nEn casi todas solo hay cristal. En una aún queda algo encajado en la esquina.",
+    "fr": "Vous longez le mur en fouillant à tâtons les vitrines brisées.\n\nLa plupart ne contiennent que du verre. Dans l’une, quelque chose est encore coincé dans un coin.",
+    "ru": "Вы идёте вдоль стены, ощупывая разбитые витрины.\n\nВ большинстве только стекло. В одной ещё что-то застряло в углу."
+  },
+  {
+    "id": 36,
+    "es": "\n\nA tu espalda, {names} siguen girando en sus vitrinas, esperando un hierro que no llega.",
+    "fr": "\n\nDerrière vous, {names} tournent encore dans leurs vitrines, attendant du fer qui ne vient pas.",
+    "ru": "\n\nПозади {names} всё вращаются в витринах, ожидая железа, которого так и нет."
+  },
+  {
+    "id": 37,
+    "es": "Dejas la pared en paz.",
+    "fr": "Vous laissez le mur tranquille.",
+    "ru": "Вы оставляете стену в покое."
+  }
+]

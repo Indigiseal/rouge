@@ -1,6 +1,7 @@
 // Writes the stories that still have no translation into one JSON file for a translator.
 //
-//   node tools/export-stories-for-translation.mjs [out.json]
+//   node tools/export-stories-for-translation.mjs [out.json] [--runtime]
+// --runtime includes prose written in event scene/helpers and goblin repair preludes.
 //
 // Each entry keeps its place in the story (the event, then its title, description and each choice's
 // text and outcome, in play order), so a translator sees what the sentence is part of. The text is
@@ -12,7 +13,9 @@ import vm from 'node:vm';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const out = process.argv[2] || path.join(root, 'docs/localization/stories-to-translate.json');
+const runtime = process.argv.includes('--runtime');
+const out = process.argv.slice(2).find(arg => !arg.startsWith('--'))
+    || path.join(root, `docs/localization/stories${runtime ? '-runtime' : ''}-to-translate.json`);
 const LANGS = ['es', 'fr', 'ru'];
 
 let source = fs.readFileSync(path.join(root, 'src/i18n/i18n.js'), 'utf8');
@@ -76,13 +79,36 @@ for (const pack of fs.readdirSync(path.join(root, 'src/content/location-packs'))
     const index = `src/content/location-packs/${pack}/index.js`;
     if (fs.existsSync(path.join(root, index))) files.push(index);
 }
-for (const file of files) {
+for (const file of runtime ? [] : files) {
     const mod = await load(file);
     for (const value of Object.values(mod)) {
         if (value?.choices) readEvent(file, value);
         else if (value && typeof value === 'object') {
             for (const inner of Object.values(value)) if (inner?.choices) readEvent(file, inner);
             for (const inner of Array.isArray(value.events) ? value.events : []) readEvent(file, inner);
+        }
+    }
+}
+if (runtime) {
+    // These outcomes are assigned at runtime, so walking content registries cannot find them.
+    // Read literals without executing scene actions or generating random rewards.
+    for (const file of ['src/scenes/EventScene.js', 'src/systems/events/EventRunHelpers.js',
+        'src/content/events/goblin_engineer.js', 'src/content/events/arm_wrestling.js',
+        'src/content/events/reliquary.js']) {
+        const text = fs.readFileSync(path.join(root, file), 'utf8');
+        for (const match of text.matchAll(/(['"])((?:\\.|(?!\1)[^\\\r\n])*)\1/g)) {
+            let literal;
+            try { literal = vm.runInNewContext(match[0], {}, { timeout: 100 }); } catch { continue; }
+            const before = text.slice(Math.max(0, match.index - 80), match.index);
+            const prelude = /resolveBoxRepair\(\s*$/.test(before);
+            const crowd = ['A few of them stop chewing', 'Nobody moves. The thing',
+                'The whole room is already laughing'].some(prefix => literal.startsWith(prefix));
+            const reliquaryText = file.endsWith('/reliquary.js')
+                && (literal.startsWith('(Drag a weapon') || literal.startsWith('(You have no weapon')
+                    || literal === 'You leave the wall alone.');
+            if (!literal.includes('\n') && !prelude && !crowd && !reliquaryText) continue;
+            const line = text.slice(0, match.index).split('\n').length;
+            push(file, `${file}:${line}`, prelude || crowd ? 'prelude' : 'outcome', literal);
         }
     }
 }

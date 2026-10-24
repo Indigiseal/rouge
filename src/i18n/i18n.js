@@ -5477,6 +5477,126 @@ Object.assign(EVENT_NARRATIVE_TRANSLATIONS.ru, {
 });
 // <<< imported stories-translated.json
 
+// >>> imported stories-runtime-translated.json (tools/import-translations.mjs)
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.es, {
+    "You push the gem past the teeth. It rolls up into an eye socket and fits exactly.\n\nRed light spreads through the cracks in the face. The head exhales one slow cloud of dust — and when it clears, a Fire Rune is resting on the stone tongue.": "Empujas la gema entre los dientes. Rueda hasta una cuenca y encaja perfectamente.\n\nUna luz roja se extiende por las grietas de la cara. La cabeza exhala una lenta nube de polvo. Cuando se disipa, hay una Runa de fuego sobre la lengua de piedra.",
+    "You push the gem past the teeth. It clicks into an eye socket.\n\nA thin bolt skips across the cracked forehead, and the teeth chatter once. The head exhales dust — and a Lightning Rune flickers between its teeth.": "Empujas la gema entre los dientes. Encaja con un chasquido en una cuenca.\n\nUn rayo fino recorre la frente agrietada y los dientes castañetean una vez. La cabeza exhala polvo. Una Runa de rayo parpadea entre sus dientes.",
+    "You push the gem past the teeth. It settles into an eye socket.\n\nGreen light seeps through the cracks, and the mouth curls — almost like remembering pain. The head exhales a bitter cloud. Behind it, a dark green rune rests on the stone tongue.": "Empujas la gema entre los dientes. Se asienta en una cuenca.\n\nUna luz verde se filtra por las grietas y la boca se tuerce, casi como si recordara un dolor. La cabeza exhala una nube amarga. Detrás queda una runa verde oscura sobre la lengua de piedra.",
+    "You set the Crystal Spiderling card down on the cracked floor of the drill room.\n\nThe spiderling climbs off the card, taps along the cracks and pulls a grain of crystal out of one.\n\nIt climbs back into the picture and keeps the grain.": "Pones la carta de la Arañita de cristal en el suelo agrietado de la sala de entrenamiento.\n\nLa arañita sale de la carta, tantea las grietas y saca de una un grano de cristal.\n\nVuelve a la imagen y se queda con el grano.",
+    "You slide the card between the stone teeth.\n\nThe mouth closes. Stone grinds on stone, and for a few seconds the head chews.\n\nThen the jaw cracks open. A different card is lying on the tongue, damp with gray dust.": "Deslizas la carta entre los dientes de piedra.\n\nLa boca se cierra. La piedra rechina contra la piedra y la cabeza mastica unos segundos.\n\nLuego la mandíbula se abre con un crujido. Sobre la lengua hay otra carta, húmeda de polvo gris.",
+    "You hold the card out to the vines.\n\nThey wrap it carefully — almost gently — and sink a few black thorns into its edge.\n\nWhen they let go, the card is not the same.": "Tiendes la carta hacia las enredaderas.\n\nLa envuelven con cuidado, casi con suavidad, y clavan unas espinas negras en el borde.\n\nCuando la sueltan, la carta ya no es la misma.",
+    "A few of them stop chewing when they see what you are carrying. One goblin quietly moves round to your side of the table.": "Algunos dejan de masticar al ver lo que llevas. Un goblin pasa discretamente a tu lado de la mesa.",
+    "Nobody moves. The thing with too many legs watches both of you and does not pick a side.": "Nadie se mueve. La cosa con demasiadas patas os mira a los dos y no toma partido.",
+    "The whole room is already laughing. Someone starts collecting bets before you have sat down.": "Toda la sala ya se está riendo. Alguien empieza a recoger apuestas antes de que te sientes.",
+    "He is stronger than you and both of you know it, so you do not try to out-pull him. You wait until he leans, and then you stop being where he is pushing.\n\nHis own weight takes his hand down onto the slab.\n\nThe room goes very quiet. The ogre looks at his hand for a while, then at you, and pushes the whole stack of coins across the table without a word.": "Es más fuerte que tú y ambos lo sabéis, así que no intentas ganarle por fuerza. Esperas a que se incline y dejas de estar donde él empuja.\n\nSu propio peso lleva su mano contra la losa.\n\nLa sala se queda en silencio. El ogro mira su mano un rato, luego te mira a ti y te empuja todo el montón de monedas sin decir nada.",
+    "You get about two seconds of holding him.\n\nThen your knuckles find the stone.\n\nHe takes the coins. That is all he takes.": "Aguantas unos dos segundos.\n\nLuego tus nudillos encuentran la piedra.\n\nSe lleva las monedas. Solo se lleva eso.",
+    "He goes at it properly this time, and it takes everything you have.\n\nWhen his hand finally goes down the crowd does not cheer. They just look at the ogre.\n\nHe unhooks the stone guard and pushes it across to you, then sits back with his arms folded and watches you take it, {card} and all.": "Esta vez va en serio y necesitas todo lo que tienes.\n\nCuando su mano por fin cae, el público no aplaude. Solo mira al ogro.\n\nSe desabrocha el protector de piedra y te lo empuja. Luego se reclina con los brazos cruzados y te ve recogerlo todo, incluida tu carta: {card}.",
+    "He looks at {card} for a long moment, decides it is worth his time, and plants his elbow.\n\nYou win by not fighting him where he is strongest.\n\nHe pushes his coins over, keeps looking at his own hand, and says something short in Ogrish. The crowd stops laughing. You get the distinct impression this is not finished.": "Mira la carta, {card}, un buen rato, decide que merece su tiempo y planta el codo.\n\nGanas evitando medir fuerzas donde él tiene ventaja.\n\nTe empuja sus monedas, sigue mirándose la mano y dice algo breve en ogresco. El público deja de reír. Te queda muy claro que esto no ha terminado.",
+    "He does not make the same mistake twice.\n\nYour hand is on the slab before you have finished bracing, and {card} goes into the pile beside his elbow.\n\nHe buckles the stone guard back onto his forearm and turns away from the table.": "No comete el mismo error dos veces.\n\nTu mano ya está contra la losa cuando aún intentas afirmarte, y tu carta, {card}, va al montón junto a su codo.\n\nSe abrocha el protector de piedra en el antebrazo y se aparta de la mesa.",
+    "He takes {card} off the table before your hand has finished going down.\n\nThe crowd is delighted, briefly, and then bored.": "Se lleva tu carta, {card}, antes de que tu mano termine de caer.\n\nEl público se entusiasma un momento. Luego se aburre.",
+    "You do not say anything. You draw the weapon and rest it against the doors, in the light, where all three of them can see it properly.\n\nThe one with the tally board stops writing. The one with the shield finds something interesting on the floor.\n\nNobody stops you lifting the lid of the strongbox at the foot of the door, and nobody looks at you either. The bar is already off by the time you straighten up.": "No dices nada. Sacas el arma y la apoyas contra las puertas, a la luz, donde los tres puedan verla bien.\n\nEl de la tablilla deja de escribir. El del escudo encuentra algo interesante en el suelo.\n\nNadie te impide abrir el cofre al pie de la puerta. Nadie te mira tampoco. Cuando te enderezas, ya han quitado la tranca.",
+    "You press the weapon flat against the glass.\n\nThe case opens from the inside. The {magic} settles against the metal and sinks in, and the glass closes over nothing.\n\nThe other cases go dark.\n\nWhat you are holding is called {weapon} now.": "Apoyas el arma plana contra el cristal.\n\nLa vitrina se abre desde dentro. La carta, {magic}, se posa sobre el metal y se hunde en él. El cristal se cierra sobre el vacío.\n\nLas otras vitrinas se oscurecen.\n\nLo que tienes en las manos ahora se llama {weapon}.",
+    "You put your elbow through the nearest case.\n\nThe glass opens your arm. Whatever was inside is already gone.": "Rompes la vitrina más cercana con el codo.\n\nEl cristal te abre el brazo. Lo que había dentro ya no está.",
+    "You put your elbow through the case holding the {magic}.\n\nThe ward goes off late and shallow, opening a line across your forearm — but the card is in your fist and it stays there.\n\nThe remaining cases go dark before the glass finishes falling.": "Rompes con el codo la vitrina que contiene la carta: {magic}.\n\nLa protección se activa tarde y apenas te abre un corte en el antebrazo. Pero la carta está en tu puño y ahí se queda.\n\nLas demás vitrinas se oscurecen antes de que el cristal termine de caer.",
+    "You hold the card out over the water. Your reflection lifts the wrong hand.\n\nThe card sinks without a sound. A different one comes up, cold and dripping tar.\n\nFor a second it feels like you made a deal with yourself.": "Tiendes la carta sobre el agua. Tu reflejo levanta la mano equivocada.\n\nLa carta se hunde sin hacer ruido. Sube otra distinta, fría y goteando alquitrán.\n\nPor un segundo parece que has hecho un trato contigo mismo.",
+    "You put the trinket on the tray. It snaps back into the booth.\n\nThe glass goes dark. Then a rainbow sheen spreads across it from the inside — thin and oily, like light on spilled ink.\n\nA card slides out. It is far too bright for the machine that made it.": "Pones la baratija en la bandeja. Se recoge de golpe dentro de la cabina.\n\nEl cristal se oscurece. Luego un brillo arcoíris se extiende por dentro, fino y aceitoso, como luz sobre tinta derramada.\n\nSale una carta. Es demasiado brillante para la máquina que la ha hecho.",
+    "You put one of your cards on the tray. It snaps back before you can change your mind.\n\nBehind the glass, the wizard looks at the card for a long time. Then it taps the glass twice.\n\nA different card slides out.": "Pones una de tus cartas en la bandeja. Se recoge antes de que puedas cambiar de idea.\n\nTras el cristal, el mago mira la carta un buen rato. Luego da dos golpecitos en el cristal.\n\nSale una carta distinta.",
+    "The box takes the cog, clicks once, and unfolds a drawer from somewhere no drawer should fit. Then a second. Then a third.\n\nIt climbs into your pack and settles in like it has always been there.\n\nLoyal Latchbox: +1 inventory slot": "La caja coge el engranaje, hace clic y despliega un cajón de donde no debería caber ninguno. Luego otro. Luego un tercero.\n\nSe mete en tu mochila y se acomoda como si siempre hubiera estado ahí.\n\nCaja Fiel: +1 espacio de inventario",
+    "The box swallows the cog. It clicks. It coughs smoke.\n\nThen it plays three flat notes, spits a handful of valuables at your feet, and refuses to look at you.": "La caja se traga el engranaje. Hace clic. Tose humo.\n\nLuego toca tres notas desafinadas, escupe un puñado de objetos de valor a tus pies y se niega a mirarte.",
+    "\"Free repair is still repair,\" the goblin says. \"Just shorter.\"": "«Una reparación gratis sigue siendo una reparación», dice el goblin. «Solo que más corta».",
+    "He chews the card thoughtfully, then bolts half of it into the casing. \"Good enough for a machine with low standards.\"": "Mastica la carta pensativo y luego atornilla la mitad a la carcasa. «Basta para una máquina poco exigente».",
+    "He counts the coins twice. Then he becomes suddenly, completely professional, which is somehow worse.": "Cuenta las monedas dos veces. Luego se vuelve de pronto completamente profesional, lo cual es peor por algún motivo.",
+    "The ogre is at the same table. He has not put his coins back out.\n\nInstead he has unbuckled the stone guard from his forearm and laid it on the slab between you. It is scaled, heavy, and clearly not his originally.\n\nThe crowd is bigger this time, and much quieter.\n\n{crowd}": "El ogro está en la misma mesa. No ha vuelto a sacar las monedas.\n\nEn su lugar se ha quitado el protector de piedra del antebrazo y lo ha puesto en la losa, entre los dos. Tiene escamas, pesa y está claro que no era suyo.\n\nEsta vez hay más público y mucho menos ruido.\n\n{crowd}",
+    "An ogre sits at a stone table with one elbow planted on it. Coins are stacked by his hand — more than a goblin toll, less than he seems to think.\n\nA stool waits on your side. It is too small.\n\nMonsters have gathered to watch: a few goblins, something with too many legs, and a skeleton that keeps losing its place in the crowd.\n\n{crowd}": "Un ogro está sentado a una mesa de piedra, con un codo plantado en ella. Junto a su mano hay monedas apiladas: más que un peaje goblin, menos de lo que él parece creer.\n\nEn tu lado hay un taburete. Es demasiado pequeño.\n\nSe han reunido monstruos para mirar: unos goblins, algo con demasiadas patas y un esqueleto que no deja de perder su sitio entre el público.\n\n{crowd}",
+    "You leave the guard where it is.\n\nThe ogre says something in Ogrish that the crowd finds funnier than you do, and buckles it back onto his arm.": "Dejas el protector donde está.\n\nEl ogro dice algo en ogresco que al público le hace más gracia que a ti y se lo vuelve a abrochar en el brazo.",
+    "He mutters something in Ogrish. The crowd loses interest in you immediately.\n\nThe stool stays empty.": "Murmura algo en ogresco. El público pierde el interés en ti al instante.\n\nEl taburete sigue vacío.",
+    "(Drag a weapon onto a case.)": "(Arrastra un arma a una vitrina.)",
+    "(You have no weapon to trade.)": "(No tienes armas para el trueque.)",
+    "The corridor ends at a wall of glass cases. Most are broken and empty. {lit} are not.\n\nBRING IRON. LEAVE CHANGED — carved beneath them, and scratched under the empty cases in worse handwriting.\n\n{dragLine}": "El corredor termina en una pared de vitrinas de cristal. Casi todas están rotas y vacías. {lit} no lo están.\n\nTRAE HIERRO. SAL DISTINTO: está grabado debajo y arañado bajo las vitrinas vacías, con peor letra.\n\n{dragLine}",
+    "You go along the wall, feeling through the broken cases.\n\nMost hold nothing but glass. One still has something wedged in the corner.": "Recorres la pared, tanteando entre las vitrinas rotas.\n\nEn casi todas solo hay cristal. En una aún queda algo encajado en la esquina.",
+    "\n\nBehind you, {names} keep turning in their cases, waiting for iron that does not come.": "\n\nA tu espalda, {names} siguen girando en sus vitrinas, esperando un hierro que no llega.",
+    "You leave the wall alone.": "Dejas la pared en paz.",
+});
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.fr, {
+    "You push the gem past the teeth. It rolls up into an eye socket and fits exactly.\n\nRed light spreads through the cracks in the face. The head exhales one slow cloud of dust — and when it clears, a Fire Rune is resting on the stone tongue.": "Vous poussez la gemme entre les dents. Elle roule jusqu’à une orbite et s’y loge exactement.\n\nUne lumière rouge gagne les fissures du visage. La tête expire lentement un nuage de poussière. Quand il se dissipe, une rune de feu repose sur la langue de pierre.",
+    "You push the gem past the teeth. It clicks into an eye socket.\n\nA thin bolt skips across the cracked forehead, and the teeth chatter once. The head exhales dust — and a Lightning Rune flickers between its teeth.": "Vous poussez la gemme entre les dents. Elle se loge dans une orbite avec un déclic.\n\nUn éclair fin parcourt le front fissuré et les dents claquent une fois. La tête expire de la poussière. Une Rune de foudre clignote entre ses dents.",
+    "You push the gem past the teeth. It settles into an eye socket.\n\nGreen light seeps through the cracks, and the mouth curls — almost like remembering pain. The head exhales a bitter cloud. Behind it, a dark green rune rests on the stone tongue.": "Vous poussez la gemme entre les dents. Elle se cale dans une orbite.\n\nUne lumière verte filtre par les fissures et la bouche se tord, presque comme au souvenir d’une douleur. La tête expire un nuage âcre. Derrière, une rune vert sombre repose sur la langue de pierre.",
+    "You set the Crystal Spiderling card down on the cracked floor of the drill room.\n\nThe spiderling climbs off the card, taps along the cracks and pulls a grain of crystal out of one.\n\nIt climbs back into the picture and keeps the grain.": "Vous posez la carte de la Petite araignée de cristal sur le sol fissuré de la salle d’entraînement.\n\nL’araignée sort de la carte, tapote les fissures et tire de l’une d’elles un grain de cristal.\n\nElle rentre dans l’image et garde le grain.",
+    "You slide the card between the stone teeth.\n\nThe mouth closes. Stone grinds on stone, and for a few seconds the head chews.\n\nThen the jaw cracks open. A different card is lying on the tongue, damp with gray dust.": "Vous glissez la carte entre les dents de pierre.\n\nLa bouche se ferme. La pierre grince contre la pierre et, quelques secondes, la tête mâche.\n\nPuis la mâchoire s’ouvre en craquant. Une autre carte repose sur la langue, humide de poussière grise.",
+    "You hold the card out to the vines.\n\nThey wrap it carefully — almost gently — and sink a few black thorns into its edge.\n\nWhen they let go, the card is not the same.": "Vous tendez la carte aux lianes.\n\nElles l’enveloppent avec soin, presque doucement, et plantent quelques épines noires dans son bord.\n\nQuand elles la lâchent, la carte n’est plus la même.",
+    "A few of them stop chewing when they see what you are carrying. One goblin quietly moves round to your side of the table.": "Certains arrêtent de mâcher en voyant ce que vous portez. Un gobelin passe discrètement de votre côté de la table.",
+    "Nobody moves. The thing with too many legs watches both of you and does not pick a side.": "Personne ne bouge. La chose qui a trop de pattes vous observe tous les deux sans choisir de camp.",
+    "The whole room is already laughing. Someone starts collecting bets before you have sat down.": "Toute la salle rit déjà. Quelqu’un commence à prendre les paris avant même que vous soyez assis.",
+    "He is stronger than you and both of you know it, so you do not try to out-pull him. You wait until he leans, and then you stop being where he is pushing.\n\nHis own weight takes his hand down onto the slab.\n\nThe room goes very quiet. The ogre looks at his hand for a while, then at you, and pushes the whole stack of coins across the table without a word.": "Il est plus fort que vous et vous le savez tous les deux. Vous n’essayez donc pas de gagner en force. Vous attendez qu’il se penche, puis cessez d’être là où il pousse.\n\nSon propre poids rabat sa main sur la dalle.\n\nLa salle devient très calme. L’ogre regarde sa main un moment, puis vous, et pousse toute la pile de pièces vers vous sans un mot.",
+    "You get about two seconds of holding him.\n\nThen your knuckles find the stone.\n\nHe takes the coins. That is all he takes.": "Vous tenez à peu près deux secondes.\n\nPuis vos jointures trouvent la pierre.\n\nIl prend les pièces. C’est tout ce qu’il prend.",
+    "He goes at it properly this time, and it takes everything you have.\n\nWhen his hand finally goes down the crowd does not cheer. They just look at the ogre.\n\nHe unhooks the stone guard and pushes it across to you, then sits back with his arms folded and watches you take it, {card} and all.": "Cette fois, il s’y met vraiment et vous donnez tout ce que vous avez.\n\nQuand sa main cède enfin, la foule n’applaudit pas. Elle regarde l’ogre.\n\nIl détache la protection de pierre et la pousse vers vous. Puis il se rassoit, les bras croisés, et vous regarde tout emporter, y compris votre carte : {card}.",
+    "He looks at {card} for a long moment, decides it is worth his time, and plants his elbow.\n\nYou win by not fighting him where he is strongest.\n\nHe pushes his coins over, keeps looking at his own hand, and says something short in Ogrish. The crowd stops laughing. You get the distinct impression this is not finished.": "Il regarde la carte, {card}, un long moment, décide qu’elle vaut son temps et pose le coude.\n\nVous gagnez en évitant de l’affronter là où il est le plus fort.\n\nIl pousse ses pièces vers vous, regarde encore sa main et dit quelques mots en ogre. La foule cesse de rire. Vous avez la nette impression que ce n’est pas fini.",
+    "He does not make the same mistake twice.\n\nYour hand is on the slab before you have finished bracing, and {card} goes into the pile beside his elbow.\n\nHe buckles the stone guard back onto his forearm and turns away from the table.": "Il ne fait pas deux fois la même erreur.\n\nVotre main est sur la dalle avant même que vous ayez fini de vous caler. Votre carte, {card}, rejoint la pile près de son coude.\n\nIl rattache la protection de pierre à son avant-bras et se détourne de la table.",
+    "He takes {card} off the table before your hand has finished going down.\n\nThe crowd is delighted, briefly, and then bored.": "Il prend votre carte, {card}, sur la table avant que votre main ait fini de descendre.\n\nLa foule est ravie, un instant. Puis s’ennuie.",
+    "You do not say anything. You draw the weapon and rest it against the doors, in the light, where all three of them can see it properly.\n\nThe one with the tally board stops writing. The one with the shield finds something interesting on the floor.\n\nNobody stops you lifting the lid of the strongbox at the foot of the door, and nobody looks at you either. The bar is already off by the time you straighten up.": "Vous ne dites rien. Vous sortez l’arme et l’appuyez contre les portes, dans la lumière, bien en vue de tous les trois.\n\nCelui qui tient le registre cesse d’écrire. Celui au bouclier trouve quelque chose d’intéressant par terre.\n\nPersonne ne vous empêche de soulever le couvercle du coffre au pied de la porte. Personne ne vous regarde non plus. Quand vous vous redressez, la barre est déjà retirée.",
+    "You press the weapon flat against the glass.\n\nThe case opens from the inside. The {magic} settles against the metal and sinks in, and the glass closes over nothing.\n\nThe other cases go dark.\n\nWhat you are holding is called {weapon} now.": "Vous plaquez l’arme contre la vitre.\n\nLa vitrine s’ouvre de l’intérieur. La carte, {magic}, se pose contre le métal et s’y enfonce. La vitre se referme sur du vide.\n\nLes autres vitrines s’assombrissent.\n\nCe que vous tenez s’appelle maintenant {weapon}.",
+    "You put your elbow through the nearest case.\n\nThe glass opens your arm. Whatever was inside is already gone.": "Vous passez le coude à travers la vitrine la plus proche.\n\nLe verre vous ouvre le bras. Ce qui était dedans a déjà disparu.",
+    "You put your elbow through the case holding the {magic}.\n\nThe ward goes off late and shallow, opening a line across your forearm — but the card is in your fist and it stays there.\n\nThe remaining cases go dark before the glass finishes falling.": "Vous passez le coude à travers la vitrine qui contient la carte : {magic}.\n\nLa protection se déclenche tard et vous entaille à peine l’avant-bras. Mais la carte est dans votre poing et y reste.\n\nLes autres vitrines s’assombrissent avant que le verre ait fini de tomber.",
+    "You hold the card out over the water. Your reflection lifts the wrong hand.\n\nThe card sinks without a sound. A different one comes up, cold and dripping tar.\n\nFor a second it feels like you made a deal with yourself.": "Vous tendez la carte au-dessus de l’eau. Votre reflet lève la mauvaise main.\n\nLa carte coule sans un bruit. Une autre remonte, froide et dégoulinante de goudron.\n\nUn instant, vous avez l’impression d’avoir passé un marché avec vous-même.",
+    "You put the trinket on the tray. It snaps back into the booth.\n\nThe glass goes dark. Then a rainbow sheen spreads across it from the inside — thin and oily, like light on spilled ink.\n\nA card slides out. It is far too bright for the machine that made it.": "Vous posez la babiole sur le plateau. Il rentre d’un coup dans la cabine.\n\nLa vitre s’assombrit. Puis un reflet arc-en-ciel s’étale de l’intérieur, fin et huileux, comme de la lumière sur de l’encre renversée.\n\nUne carte sort. Elle est bien trop brillante pour la machine qui l’a faite.",
+    "You put one of your cards on the tray. It snaps back before you can change your mind.\n\nBehind the glass, the wizard looks at the card for a long time. Then it taps the glass twice.\n\nA different card slides out.": "Vous posez une de vos cartes sur le plateau. Il rentre avant que vous puissiez changer d’avis.\n\nDerrière la vitre, le sorcier regarde longuement la carte. Puis il tape deux fois sur le verre.\n\nUne autre carte sort.",
+    "The box takes the cog, clicks once, and unfolds a drawer from somewhere no drawer should fit. Then a second. Then a third.\n\nIt climbs into your pack and settles in like it has always been there.\n\nLoyal Latchbox: +1 inventory slot": "La boîte prend le rouage, clique une fois et déplie un tiroir là où aucun ne devrait tenir. Puis un deuxième. Puis un troisième.\n\nElle grimpe dans votre sac et s’installe comme si elle avait toujours été là.\n\nBoîte fidèle : +1 emplacement d’inventaire",
+    "The box swallows the cog. It clicks. It coughs smoke.\n\nThen it plays three flat notes, spits a handful of valuables at your feet, and refuses to look at you.": "La boîte avale le rouage. Elle clique. Elle tousse de la fumée.\n\nPuis elle joue trois notes fausses, crache une poignée d’objets de valeur à vos pieds et refuse de vous regarder.",
+    "\"Free repair is still repair,\" the goblin says. \"Just shorter.\"": "« Une réparation gratuite reste une réparation, dit le gobelin. Juste plus courte. »",
+    "He chews the card thoughtfully, then bolts half of it into the casing. \"Good enough for a machine with low standards.\"": "Il mâche la carte d’un air pensif, puis en boulonne la moitié dans le boîtier. « Ça suffira pour une machine peu exigeante. »",
+    "He counts the coins twice. Then he becomes suddenly, completely professional, which is somehow worse.": "Il compte les pièces deux fois. Puis il devient soudain parfaitement professionnel, ce qui est pire, on ne sait pourquoi.",
+    "The ogre is at the same table. He has not put his coins back out.\n\nInstead he has unbuckled the stone guard from his forearm and laid it on the slab between you. It is scaled, heavy, and clearly not his originally.\n\nThe crowd is bigger this time, and much quieter.\n\n{crowd}": "L’ogre est à la même table. Il n’a pas ressorti ses pièces.\n\nÀ la place, il a détaché la protection de pierre de son avant-bras et l’a posée sur la dalle entre vous. Elle est couverte d’écailles, lourde, et n’était clairement pas à lui à l’origine.\n\nLa foule est plus nombreuse cette fois, et bien plus calme.\n\n{crowd}",
+    "An ogre sits at a stone table with one elbow planted on it. Coins are stacked by his hand — more than a goblin toll, less than he seems to think.\n\nA stool waits on your side. It is too small.\n\nMonsters have gathered to watch: a few goblins, something with too many legs, and a skeleton that keeps losing its place in the crowd.\n\n{crowd}": "Un ogre est assis à une table de pierre, un coude posé dessus. Des pièces sont empilées près de sa main. Plus qu’un péage gobelin, moins qu’il ne semble le croire.\n\nUn tabouret vous attend de votre côté. Il est trop petit.\n\nDes monstres se sont rassemblés pour regarder : quelques gobelins, quelque chose avec trop de pattes et un squelette qui perd sans cesse sa place dans la foule.\n\n{crowd}",
+    "You leave the guard where it is.\n\nThe ogre says something in Ogrish that the crowd finds funnier than you do, and buckles it back onto his arm.": "Vous laissez la protection en place.\n\nL’ogre dit quelque chose en ogre qui amuse la foule plus que vous, puis la rattache à son bras.",
+    "He mutters something in Ogrish. The crowd loses interest in you immediately.\n\nThe stool stays empty.": "Il marmonne quelque chose en ogre. La foule se désintéresse aussitôt de vous.\n\nLe tabouret reste vide.",
+    "(Drag a weapon onto a case.)": "(Glissez une arme sur une vitrine.)",
+    "(You have no weapon to trade.)": "(Vous n’avez pas d’arme à échanger.)",
+    "The corridor ends at a wall of glass cases. Most are broken and empty. {lit} are not.\n\nBRING IRON. LEAVE CHANGED — carved beneath them, and scratched under the empty cases in worse handwriting.\n\n{dragLine}": "Le couloir se termine devant un mur de vitrines. La plupart sont brisées et vides. {lit} ne le sont pas.\n\nAPPORTEZ DU FER. REPARTEZ CHANGÉ — gravé dessous et griffonné sous les vitrines vides, d’une écriture moins soignée.\n\n{dragLine}",
+    "You go along the wall, feeling through the broken cases.\n\nMost hold nothing but glass. One still has something wedged in the corner.": "Vous longez le mur en fouillant à tâtons les vitrines brisées.\n\nLa plupart ne contiennent que du verre. Dans l’une, quelque chose est encore coincé dans un coin.",
+    "\n\nBehind you, {names} keep turning in their cases, waiting for iron that does not come.": "\n\nDerrière vous, {names} tournent encore dans leurs vitrines, attendant du fer qui ne vient pas.",
+    "You leave the wall alone.": "Vous laissez le mur tranquille.",
+});
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.ru, {
+    "You push the gem past the teeth. It rolls up into an eye socket and fits exactly.\n\nRed light spreads through the cracks in the face. The head exhales one slow cloud of dust — and when it clears, a Fire Rune is resting on the stone tongue.": "Вы проталкиваете камень между зубами. Он закатывается в глазницу и точно встаёт на место.\n\nПо трещинам на лице разливается красный свет. Голова медленно выдыхает облако пыли. Когда оно рассеивается, на каменном языке лежит Руна огня.",
+    "You push the gem past the teeth. It clicks into an eye socket.\n\nA thin bolt skips across the cracked forehead, and the teeth chatter once. The head exhales dust — and a Lightning Rune flickers between its teeth.": "Вы проталкиваете камень между зубами. Он со щелчком встаёт в глазницу.\n\nТонкая молния пробегает по треснувшему лбу. Зубы разок стучат. Голова выдыхает пыль. Между зубами мерцает Руна молнии.",
+    "You push the gem past the teeth. It settles into an eye socket.\n\nGreen light seeps through the cracks, and the mouth curls — almost like remembering pain. The head exhales a bitter cloud. Behind it, a dark green rune rests on the stone tongue.": "Вы проталкиваете камень между зубами. Он ложится в глазницу.\n\nИз трещин сочится зелёный свет, рот кривится, словно вспомнив боль. Голова выдыхает горькое облако. За ним на каменном языке лежит тёмно-зелёная руна.",
+    "You set the Crystal Spiderling card down on the cracked floor of the drill room.\n\nThe spiderling climbs off the card, taps along the cracks and pulls a grain of crystal out of one.\n\nIt climbs back into the picture and keeps the grain.": "Вы кладёте карту Хрустального паучка на потрескавшийся пол тренировочной комнаты.\n\nПаучок вылезает из карты, простукивает трещины и вытаскивает из одной кристальное зёрнышко.\n\nПотом возвращается в картинку. Зёрнышко оставляет себе.",
+    "You slide the card between the stone teeth.\n\nThe mouth closes. Stone grinds on stone, and for a few seconds the head chews.\n\nThen the jaw cracks open. A different card is lying on the tongue, damp with gray dust.": "Вы просовываете карту между каменными зубами.\n\nРот закрывается. Камень скрежещет о камень. Несколько секунд голова жуёт.\n\nПотом челюсть с треском раскрывается. На языке лежит другая карта, влажная от серой пыли.",
+    "You hold the card out to the vines.\n\nThey wrap it carefully — almost gently — and sink a few black thorns into its edge.\n\nWhen they let go, the card is not the same.": "Вы протягиваете карту лозам.\n\nОни осторожно, почти нежно обвивают её и вонзают в край несколько чёрных шипов.\n\nКогда они отпускают карту, она уже другая.",
+    "A few of them stop chewing when they see what you are carrying. One goblin quietly moves round to your side of the table.": "Увидев, что у вас с собой, некоторые перестают жевать. Один гоблин тихонько переходит на вашу сторону стола.",
+    "Nobody moves. The thing with too many legs watches both of you and does not pick a side.": "Никто не двигается. Существо с лишними ногами смотрит на вас обоих и не выбирает сторону.",
+    "The whole room is already laughing. Someone starts collecting bets before you have sat down.": "Вся комната уже смеётся. Кто-то начинает собирать ставки, пока вы ещё не сели.",
+    "He is stronger than you and both of you know it, so you do not try to out-pull him. You wait until he leans, and then you stop being where he is pushing.\n\nHis own weight takes his hand down onto the slab.\n\nThe room goes very quiet. The ogre looks at his hand for a while, then at you, and pushes the whole stack of coins across the table without a word.": "Он сильнее вас, и вы оба это знаете. Силой его не одолеть. Вы ждёте, пока он наклонится, и перестаёте быть там, куда он давит.\n\nПод собственным весом его рука ложится на плиту.\n\nВ комнате становится очень тихо. Огр некоторое время смотрит на свою руку, потом на вас. Молча пододвигает к вам всю стопку монет.",
+    "You get about two seconds of holding him.\n\nThen your knuckles find the stone.\n\nHe takes the coins. That is all he takes.": "Вы держитесь примерно две секунды.\n\nПотом костяшки находят камень.\n\nОн забирает монеты. Только монеты.",
+    "He goes at it properly this time, and it takes everything you have.\n\nWhen his hand finally goes down the crowd does not cheer. They just look at the ogre.\n\nHe unhooks the stone guard and pushes it across to you, then sits back with his arms folded and watches you take it, {card} and all.": "На этот раз он берётся всерьёз, и вам приходится выложиться полностью.\n\nКогда его рука наконец ложится на стол, толпа не ликует. Все просто смотрят на огра.\n\nОн отстёгивает каменный наруч и пододвигает к вам. Потом откидывается, скрестив руки, и смотрит, как вы забираете всё, включая свою карту: {card}.",
+    "He looks at {card} for a long moment, decides it is worth his time, and plants his elbow.\n\nYou win by not fighting him where he is strongest.\n\nHe pushes his coins over, keeps looking at his own hand, and says something short in Ogrish. The crowd stops laughing. You get the distinct impression this is not finished.": "Он долго смотрит на карту — {card}, решает, что она стоит его времени, и ставит локоть на стол.\n\nВы побеждаете, не меряясь с ним силой там, где он сильнее.\n\nОн пододвигает вам монеты, всё смотрит на свою руку и коротко говорит что-то по-огрски. Толпа перестаёт смеяться. Вам становится ясно: это ещё не конец.",
+    "He does not make the same mistake twice.\n\nYour hand is on the slab before you have finished bracing, and {card} goes into the pile beside his elbow.\n\nHe buckles the stone guard back onto his forearm and turns away from the table.": "Он не повторяет ошибок.\n\nВы ещё не успели упереться, а рука уже на плите. Ваша карта, {card}, отправляется в кучу у его локтя.\n\nОн застёгивает каменный наруч на предплечье и отворачивается от стола.",
+    "He takes {card} off the table before your hand has finished going down.\n\nThe crowd is delighted, briefly, and then bored.": "Он забирает вашу карту, {card}, со стола раньше, чем ваша рука успевает опуститься.\n\nТолпа в восторге. Недолго. Потом ей скучно.",
+    "You do not say anything. You draw the weapon and rest it against the doors, in the light, where all three of them can see it properly.\n\nThe one with the tally board stops writing. The one with the shield finds something interesting on the floor.\n\nNobody stops you lifting the lid of the strongbox at the foot of the door, and nobody looks at you either. The bar is already off by the time you straighten up.": "Вы ничего не говорите. Достаёте оружие и прислоняете к дверям, на свету, чтобы все трое хорошенько разглядели.\n\nТот, что с дощечкой для подсчётов, перестаёт писать. Тот, что со щитом, находит на полу что-то интересное.\n\nНикто не мешает вам открыть сундук у двери. На вас тоже никто не смотрит. Когда вы выпрямляетесь, засов уже снят.",
+    "You press the weapon flat against the glass.\n\nThe case opens from the inside. The {magic} settles against the metal and sinks in, and the glass closes over nothing.\n\nThe other cases go dark.\n\nWhat you are holding is called {weapon} now.": "Вы прижимаете оружие плашмя к стеклу.\n\nВитрина открывается изнутри. Карта, {magic}, ложится на металл и уходит в него. Стекло закрывается над пустотой.\n\nОстальные витрины гаснут.\n\nТеперь то, что вы держите, называется {weapon}.",
+    "You put your elbow through the nearest case.\n\nThe glass opens your arm. Whatever was inside is already gone.": "Вы пробиваете локтем ближайшую витрину.\n\nСтекло распарывает руку. Что бы ни было внутри, оно уже исчезло.",
+    "You put your elbow through the case holding the {magic}.\n\nThe ward goes off late and shallow, opening a line across your forearm — but the card is in your fist and it stays there.\n\nThe remaining cases go dark before the glass finishes falling.": "Вы пробиваете локтем витрину с картой: {magic}.\n\nЗащита срабатывает поздно и лишь слегка рассекает предплечье. Но карта уже в вашем кулаке и там остаётся.\n\nОстальные витрины гаснут, прежде чем стекло успевает упасть.",
+    "You hold the card out over the water. Your reflection lifts the wrong hand.\n\nThe card sinks without a sound. A different one comes up, cold and dripping tar.\n\nFor a second it feels like you made a deal with yourself.": "Вы протягиваете карту над водой. Отражение поднимает не ту руку.\n\nКарта беззвучно тонет. Другая всплывает, холодная, с неё капает дёготь.\n\nНа секунду кажется, что вы заключили сделку с собой.",
+    "You put the trinket on the tray. It snaps back into the booth.\n\nThe glass goes dark. Then a rainbow sheen spreads across it from the inside — thin and oily, like light on spilled ink.\n\nA card slides out. It is far too bright for the machine that made it.": "Вы кладёте безделушку на поднос. Он резко уходит внутрь будки.\n\nСтекло темнеет. Потом изнутри по нему растекается тонкий маслянистый радужный блеск, как свет по пролитым чернилам.\n\nВыдвигается карта. Слишком яркая для машины, которая её сделала.",
+    "You put one of your cards on the tray. It snaps back before you can change your mind.\n\nBehind the glass, the wizard looks at the card for a long time. Then it taps the glass twice.\n\nA different card slides out.": "Вы кладёте одну из своих карт на поднос. Он уходит внутрь прежде, чем вы успеваете передумать.\n\nЗа стеклом волшебник долго смотрит на карту. Потом дважды стучит по стеклу.\n\nВыдвигается другая карта.",
+    "The box takes the cog, clicks once, and unfolds a drawer from somewhere no drawer should fit. Then a second. Then a third.\n\nIt climbs into your pack and settles in like it has always been there.\n\nLoyal Latchbox: +1 inventory slot": "Шкатулка берёт шестерёнку, разок щёлкает и выдвигает ящик оттуда, где никакой ящик не должен помещаться. Потом второй. Потом третий.\n\nОна залезает в ваш рюкзак и устраивается так, будто всегда там жила.\n\nВерная шкатулка: +1 ячейка инвентаря",
+    "The box swallows the cog. It clicks. It coughs smoke.\n\nThen it plays three flat notes, spits a handful of valuables at your feet, and refuses to look at you.": "Шкатулка глотает шестерёнку. Щёлкает. Кашляет дымом.\n\nПотом фальшиво играет три ноты, выплёвывает горсть ценностей вам под ноги и отказывается на вас смотреть.",
+    "\"Free repair is still repair,\" the goblin says. \"Just shorter.\"": "«Бесплатный ремонт тоже ремонт, — говорит гоблин. — Просто короче».",
+    "He chews the card thoughtfully, then bolts half of it into the casing. \"Good enough for a machine with low standards.\"": "Он задумчиво жуёт карту, потом прикручивает половину к корпусу. «Для непритязательной машины сойдёт».",
+    "He counts the coins twice. Then he becomes suddenly, completely professional, which is somehow worse.": "Он дважды пересчитывает монеты. Потом вдруг становится безупречным профессионалом, что почему-то ещё хуже.",
+    "The ogre is at the same table. He has not put his coins back out.\n\nInstead he has unbuckled the stone guard from his forearm and laid it on the slab between you. It is scaled, heavy, and clearly not his originally.\n\nThe crowd is bigger this time, and much quieter.\n\n{crowd}": "Огр за тем же столом. Монеты он обратно не выложил.\n\nВместо них он снял с предплечья каменный наруч и положил на плиту между вами. Чешуйчатый, тяжёлый и явно изначально не его.\n\nТолпа на этот раз больше и гораздо тише.\n\n{crowd}",
+    "An ogre sits at a stone table with one elbow planted on it. Coins are stacked by his hand — more than a goblin toll, less than he seems to think.\n\nA stool waits on your side. It is too small.\n\nMonsters have gathered to watch: a few goblins, something with too many legs, and a skeleton that keeps losing its place in the crowd.\n\n{crowd}": "За каменным столом сидит огр, уперев в него локоть. У руки сложены монеты. Больше, чем берут гоблины за проход. Меньше, чем ему, похоже, кажется.\n\nС вашей стороны ждёт табуретка. Слишком маленькая.\n\nПосмотреть собрались чудовища: несколько гоблинов, что-то с лишними ногами и скелет, который всё теряет своё место в толпе.\n\n{crowd}",
+    "You leave the guard where it is.\n\nThe ogre says something in Ogrish that the crowd finds funnier than you do, and buckles it back onto his arm.": "Вы оставляете наруч на месте.\n\nОгр говорит что-то по-огрски. Толпе смешнее, чем вам. Он снова застёгивает наруч на руке.",
+    "He mutters something in Ogrish. The crowd loses interest in you immediately.\n\nThe stool stays empty.": "Он бормочет что-то по-огрски. Толпа тут же теряет к вам интерес.\n\nТабуретка остаётся пустой.",
+    "(Drag a weapon onto a case.)": "(Перетащите оружие на витрину.)",
+    "(You have no weapon to trade.)": "(У вас нет оружия для обмена.)",
+    "The corridor ends at a wall of glass cases. Most are broken and empty. {lit} are not.\n\nBRING IRON. LEAVE CHANGED — carved beneath them, and scratched under the empty cases in worse handwriting.\n\n{dragLine}": "Коридор кончается стеной стеклянных витрин. Большинство разбиты и пусты. {lit} — нет.\n\nПРИНЕСИ ЖЕЛЕЗО. УЙДИ ДРУГИМ — высечено под ними и нацарапано под пустыми витринами почерком похуже.\n\n{dragLine}",
+    "You go along the wall, feeling through the broken cases.\n\nMost hold nothing but glass. One still has something wedged in the corner.": "Вы идёте вдоль стены, ощупывая разбитые витрины.\n\nВ большинстве только стекло. В одной ещё что-то застряло в углу.",
+    "\n\nBehind you, {names} keep turning in their cases, waiting for iron that does not come.": "\n\nПозади {names} всё вращаются в витринах, ожидая железа, которого так и нет.",
+    "You leave the wall alone.": "Вы оставляете стену в покое.",
+});
+// <<< imported stories-runtime-translated.json
+
 const TOLLROAD_STORY_STRINGS = {
     "en": {
     },
@@ -6231,4 +6351,246 @@ for (const [language, text] of Object.entries({
 })) {
     EXACT_NAME_TRANSLATIONS[language]['Echo'] = text[0];
     DESCRIPTION_TRANSLATIONS[language]['10% chance after a damaging hit: strikes the same surviving enemy for half weapon damage, rounded down, with no extra AP or pip cost; cannot chain'] = text[1];
+}
+
+// Runtime event notices and the UI around sigils and enemy status.
+// Keep aliases for feedback callers that still pass canonical English.
+for (const [key, en, es, fr, ru] of [
+    [
+        "ui.sigilOffer.title",
+        "The chest holds a sigil",
+        "El cofre contiene un sigilo",
+        "Le coffre contient un sigil",
+        "В сундуке печать"
+    ],
+    [
+        "ui.sigilOffer.chooseCard",
+        "Choose a card for it:",
+        "Elige una carta:",
+        "Choisissez une carte :",
+        "Выберите карту:"
+    ],
+    [
+        "tooltip.enemyGrowth",
+        "Growth: +{amount} maximum HP after attacking; does not heal",
+        "Crecimiento: +{amount} PV máximos tras atacar; no cura",
+        "Croissance : +{amount} PV max après une attaque ; ne soigne pas",
+        "Рост: +{amount} к максимуму ОЗ после атаки; не лечит"
+    ],
+    [
+        "ui.card.bonePileReforms",
+        "Bone Pile\nReforms: {amount}",
+        "Pila de huesos\nSe recompone: {amount}",
+        "Tas d’os\nSe reforme : {amount}",
+        "Груда костей\nСоберётся: {amount}"
+    ],
+    [
+        "event.notice.mirrorUsed",
+        "The mirror already copied a card",
+        "El espejo ya ha copiado una carta",
+        "Le miroir a déjà copié une carte",
+        "Зеркало уже скопировало карту"
+    ],
+    [
+        "event.notice.mirrorReject",
+        "The mirror won't copy that",
+        "El espejo no copia eso",
+        "Le miroir ne copie pas ça",
+        "Зеркало это не скопирует"
+    ],
+    [
+        "event.notice.copyNoSlot",
+        "No empty slot for the copy",
+        "No hay espacio para la copia",
+        "Pas de place pour la copie",
+        "Нет места для копии"
+    ],
+    [
+        "event.notice.headReject",
+        "The stone teeth reject that offering",
+        "Los dientes de piedra rechazan eso",
+        "Les dents de pierre refusent cette offrande",
+        "Каменные зубы отвергают подношение"
+    ],
+    [
+        "event.notice.briarsArmor",
+        "The briars only want an armor card",
+        "Las zarzas solo quieren armadura",
+        "Les ronces ne veulent qu’une carte d’armure",
+        "Терновнику нужна карта брони"
+    ],
+    [
+        "event.notice.alreadyThorns",
+        "This card already has thorns",
+        "Esta carta ya tiene espinas",
+        "Cette carte a déjà des épines",
+        "На карте уже есть шипы"
+    ],
+    [
+        "event.notice.noSigilSlot",
+        "This card has no room for another sigil",
+        "No cabe otro sigilo en esta carta",
+        "Cette carte n’a plus de place pour un sigil",
+        "На карте нет места для ещё одной печати"
+    ],
+    [
+        "event.notice.ogreReject",
+        "He turns it over once and hands it back. \"I do not fight for junk. Bring me something better (uncommon or better).\"",
+        "Le da la vuelta y te la devuelve. «No lucho por chatarra. Trae algo mejor (poco común o superior)».",
+        "Il la retourne et vous la rend. « Je ne me bats pas pour de la camelote. Apportez mieux (inhabituel ou supérieur). »",
+        "Он переворачивает карту и возвращает. «За хлам не дерусь. Принесите что получше (необычное или выше)»."
+    ],
+    [
+        "event.notice.caseWeapon",
+        "The case only opens for a weapon",
+        "La vitrina solo se abre para un arma",
+        "La vitrine ne s’ouvre que pour une arme",
+        "Витрина открывается только для оружия"
+    ],
+    [
+        "event.notice.weaponSpell",
+        "That weapon already holds a spell",
+        "Esa arma ya tiene un hechizo",
+        "Cette arme contient déjà un sort",
+        "В оружии уже есть заклинание"
+    ],
+    [
+        "event.notice.glassClosed",
+        "The glass does not open",
+        "El cristal no se abre",
+        "La vitre ne s’ouvre pas",
+        "Стекло не открывается"
+    ],
+    [
+        "event.notice.reflectionGear",
+        "The reflection only wants gear (weapon/armor/thorns)",
+        "El reflejo solo quiere equipo (arma/armadura/espinas)",
+        "Le reflet ne veut que de l’équipement (arme/armure/épines)",
+        "Отражению нужно снаряжение (оружие/броня/шипы)"
+    ],
+    [
+        "event.notice.wellReject",
+        "The well won't take that",
+        "El pozo no acepta eso",
+        "Le puits n’accepte pas ça",
+        "Колодец это не примет"
+    ],
+    [
+        "event.notice.wizardReject",
+        "The wizard won't take that",
+        "El mago no acepta eso",
+        "Le sorcier n’accepte pas ça",
+        "Волшебник это не примет"
+    ],
+    [
+        "event.notice.wizardUnwanted",
+        "The wizard doesn't want that",
+        "El mago no quiere eso",
+        "Le sorcier n’en veut pas",
+        "Волшебнику это не нужно"
+    ],
+    [
+        "float.noHiddenWeapons",
+        "No hidden weapons",
+        "No hay armas ocultas",
+        "Aucune arme cachée",
+        "Нет скрытого оружия"
+    ],
+    [
+        "float.noHiddenPotions",
+        "No hidden potions",
+        "No hay pociones ocultas",
+        "Aucune potion cachée",
+        "Нет скрытых зелий"
+    ],
+    [
+        "float.noHiddenGems",
+        "No hidden gems",
+        "No hay gemas ocultas",
+        "Aucune gemme cachée",
+        "Нет скрытых камней"
+    ],
+    [
+        "float.weaponRevealed",
+        "Weapon revealed",
+        "Arma revelada",
+        "Arme révélée",
+        "Оружие открыто"
+    ],
+    [
+        "float.potionRevealed",
+        "Potion revealed",
+        "Poción revelada",
+        "Potion révélée",
+        "Зелье открыто"
+    ],
+    [
+        "float.gemRevealed",
+        "Gem revealed",
+        "Gema revelada",
+        "Gemme révélée",
+        "Камень открыт"
+    ]
+]) {
+    for (const [language, text] of Object.entries({ en, es, fr, ru })) STRINGS[language][key] = text;
+    TEXT_ALIASES[en] = key;
+}
+
+for (const [en, es, fr, ru] of [
+    [
+        "Toll Collector",
+        "Recaudador de peaje",
+        "Collecteur de péage",
+        "Сборщик пошлин"
+    ],
+    [
+        "Veteran Toll Collector",
+        "Recaudador veterano",
+        "Collecteur de péage vétéran",
+        "Бывалый сборщик пошлин"
+    ],
+    [
+        "Silk Cocoon",
+        "Capullo de seda",
+        "Cocon de soie",
+        "Паутинный кокон"
+    ],
+    [
+        "Poisoned Soup",
+        "Sopa envenenada",
+        "Soupe empoisonnée",
+        "Отравленный суп"
+    ],
+    [
+        "Crystal Spider Egg",
+        "Huevo de araña de cristal",
+        "Œuf d’araignée de cristal",
+        "Яйцо кристального паука"
+    ],
+    [
+        "Unknown Enemy",
+        "Enemigo desconocido",
+        "Ennemi inconnu",
+        "Неизвестный враг"
+    ],
+    [
+        "your card",
+        "tu carta",
+        "votre carte",
+        "ваша карта"
+    ],
+    [
+        "the card",
+        "la carta",
+        "la carte",
+        "карта"
+    ],
+    [
+        "Loyal Latchbox",
+        "Caja Fiel",
+        "Boîte fidèle",
+        "Верная шкатулка"
+    ]
+]) {
+    for (const [language, text] of Object.entries({ es, fr, ru })) EXACT_NAME_TRANSLATIONS[language][en] = text;
 }

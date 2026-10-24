@@ -1,0 +1,261 @@
+[
+  {
+    "id": 1,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:106",
+    "kind": "outcome",
+    "en": "You push the gem past the teeth. It rolls up into an eye socket and fits exactly.\n\nRed light spreads through the cracks in the face. The head exhales one slow cloud of dust — and when it clears, a Fire Rune is resting on the stone tongue."
+  },
+  {
+    "id": 2,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:110",
+    "kind": "outcome",
+    "en": "You push the gem past the teeth. It clicks into an eye socket.\n\nA thin bolt skips across the cracked forehead, and the teeth chatter once. The head exhales dust — and a Lightning Rune flickers between its teeth."
+  },
+  {
+    "id": 3,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:114",
+    "kind": "outcome",
+    "en": "You push the gem past the teeth. It settles into an eye socket.\n\nGreen light seeps through the cracks, and the mouth curls — almost like remembering pain. The head exhales a bitter cloud. Behind it, a dark green rune rests on the stone tongue."
+  },
+  {
+    "id": 4,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:1762",
+    "kind": "outcome",
+    "en": "You set the Crystal Spiderling card down on the cracked floor of the drill room.\n\nThe spiderling climbs off the card, taps along the cracks and pulls a grain of crystal out of one.\n\nIt climbs back into the picture and keeps the grain."
+  },
+  {
+    "id": 5,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:1994",
+    "kind": "outcome",
+    "en": "You slide the card between the stone teeth.\n\nThe mouth closes. Stone grinds on stone, and for a few seconds the head chews.\n\nThen the jaw cracks open. A different card is lying on the tongue, damp with gray dust."
+  },
+  {
+    "id": 6,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2055",
+    "kind": "outcome",
+    "en": "You hold the card out to the vines.\n\nThey wrap it carefully — almost gently — and sink a few black thorns into its edge.\n\nWhen they let go, the card is not the same."
+  },
+  {
+    "id": 7,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2109",
+    "kind": "prelude",
+    "en": "A few of them stop chewing when they see what you are carrying. One goblin quietly moves round to your side of the table."
+  },
+  {
+    "id": 8,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2112",
+    "kind": "prelude",
+    "en": "Nobody moves. The thing with too many legs watches both of you and does not pick a side."
+  },
+  {
+    "id": 9,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2114",
+    "kind": "prelude",
+    "en": "The whole room is already laughing. Someone starts collecting bets before you have sat down."
+  },
+  {
+    "id": 10,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2265",
+    "kind": "outcome",
+    "en": "He is stronger than you and both of you know it, so you do not try to out-pull him. You wait until he leans, and then you stop being where he is pushing.\n\nHis own weight takes his hand down onto the slab.\n\nThe room goes very quiet. The ogre looks at his hand for a while, then at you, and pushes the whole stack of coins across the table without a word."
+  },
+  {
+    "id": 11,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2269",
+    "kind": "outcome",
+    "en": "You get about two seconds of holding him.\n\nThen your knuckles find the stone.\n\nHe takes the coins. That is all he takes."
+  },
+  {
+    "id": 12,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2285",
+    "kind": "outcome",
+    "en": "He goes at it properly this time, and it takes everything you have.\n\nWhen his hand finally goes down the crowd does not cheer. They just look at the ogre.\n\nHe unhooks the stone guard and pushes it across to you, then sits back with his arms folded and watches you take it, {card} and all."
+  },
+  {
+    "id": 13,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2289",
+    "kind": "outcome",
+    "en": "He looks at {card} for a long moment, decides it is worth his time, and plants his elbow.\n\nYou win by not fighting him where he is strongest.\n\nHe pushes his coins over, keeps looking at his own hand, and says something short in Ogrish. The crowd stops laughing. You get the distinct impression this is not finished."
+  },
+  {
+    "id": 14,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2306",
+    "kind": "outcome",
+    "en": "He does not make the same mistake twice.\n\nYour hand is on the slab before you have finished bracing, and {card} goes into the pile beside his elbow.\n\nHe buckles the stone guard back onto his forearm and turns away from the table."
+  },
+  {
+    "id": 15,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2307",
+    "kind": "outcome",
+    "en": "He takes {card} off the table before your hand has finished going down.\n\nThe crowd is delighted, briefly, and then bored."
+  },
+  {
+    "id": 16,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2479",
+    "kind": "outcome",
+    "en": "You do not say anything. You draw the weapon and rest it against the doors, in the light, where all three of them can see it properly.\n\nThe one with the tally board stops writing. The one with the shield finds something interesting on the floor.\n\nNobody stops you lifting the lid of the strongbox at the foot of the door, and nobody looks at you either. The bar is already off by the time you straighten up."
+  },
+  {
+    "id": 17,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2683",
+    "kind": "outcome",
+    "en": "You press the weapon flat against the glass.\n\nThe case opens from the inside. The {magic} settles against the metal and sinks in, and the glass closes over nothing.\n\nThe other cases go dark.\n\nWhat you are holding is called {weapon} now."
+  },
+  {
+    "id": 18,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2706",
+    "kind": "outcome",
+    "en": "You put your elbow through the nearest case.\n\nThe glass opens your arm. Whatever was inside is already gone."
+  },
+  {
+    "id": 19,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2723",
+    "kind": "outcome",
+    "en": "You put your elbow through the case holding the {magic}.\n\nThe ward goes off late and shallow, opening a line across your forearm — but the card is in your fist and it stays there.\n\nThe remaining cases go dark before the glass finishes falling."
+  },
+  {
+    "id": 20,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:2787",
+    "kind": "outcome",
+    "en": "You hold the card out over the water. Your reflection lifts the wrong hand.\n\nThe card sinks without a sound. A different one comes up, cold and dripping tar.\n\nFor a second it feels like you made a deal with yourself."
+  },
+  {
+    "id": 21,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:3071",
+    "kind": "outcome",
+    "en": "You put the trinket on the tray. It snaps back into the booth.\n\nThe glass goes dark. Then a rainbow sheen spreads across it from the inside — thin and oily, like light on spilled ink.\n\nA card slides out. It is far too bright for the machine that made it."
+  },
+  {
+    "id": 22,
+    "story": "EventScene",
+    "where": "src/scenes/EventScene.js:3097",
+    "kind": "outcome",
+    "en": "You put one of your cards on the tray. It snaps back before you can change your mind.\n\nBehind the glass, the wizard looks at the card for a long time. Then it taps the glass twice.\n\nA different card slides out."
+  },
+  {
+    "id": 23,
+    "story": "EventRunHelpers",
+    "where": "src/systems/events/EventRunHelpers.js:464",
+    "kind": "outcome",
+    "en": "The box takes the cog, clicks once, and unfolds a drawer from somewhere no drawer should fit. Then a second. Then a third.\n\nIt climbs into your pack and settles in like it has always been there.\n\nLoyal Latchbox: +1 inventory slot"
+  },
+  {
+    "id": 24,
+    "story": "EventRunHelpers",
+    "where": "src/systems/events/EventRunHelpers.js:473",
+    "kind": "outcome",
+    "en": "The box swallows the cog. It clicks. It coughs smoke.\n\nThen it plays three flat notes, spits a handful of valuables at your feet, and refuses to look at you."
+  },
+  {
+    "id": 25,
+    "story": "goblin_engineer",
+    "where": "src/content/events/goblin_engineer.js:27",
+    "kind": "prelude",
+    "en": "\"Free repair is still repair,\" the goblin says. \"Just shorter.\""
+  },
+  {
+    "id": 26,
+    "story": "goblin_engineer",
+    "where": "src/content/events/goblin_engineer.js:40",
+    "kind": "prelude",
+    "en": "He chews the card thoughtfully, then bolts half of it into the casing. \"Good enough for a machine with low standards.\""
+  },
+  {
+    "id": 27,
+    "story": "goblin_engineer",
+    "where": "src/content/events/goblin_engineer.js:53",
+    "kind": "prelude",
+    "en": "He counts the coins twice. Then he becomes suddenly, completely professional, which is somehow worse."
+  },
+  {
+    "id": 28,
+    "story": "arm_wrestling",
+    "where": "src/content/events/arm_wrestling.js:22",
+    "kind": "description (varies)",
+    "en": "The ogre is at the same table. He has not put his coins back out.\n\nInstead he has unbuckled the stone guard from his forearm and laid it on the slab between you. It is scaled, heavy, and clearly not his originally.\n\nThe crowd is bigger this time, and much quieter.\n\n{crowd}"
+  },
+  {
+    "id": 29,
+    "story": "arm_wrestling",
+    "where": "src/content/events/arm_wrestling.js:24",
+    "kind": "description (varies)",
+    "en": "An ogre sits at a stone table with one elbow planted on it. Coins are stacked by his hand — more than a goblin toll, less than he seems to think.\n\nA stool waits on your side. It is too small.\n\nMonsters have gathered to watch: a few goblins, something with too many legs, and a skeleton that keeps losing its place in the crowd.\n\n{crowd}"
+  },
+  {
+    "id": 30,
+    "story": "arm_wrestling",
+    "where": "src/content/events/arm_wrestling.js:55",
+    "kind": "outcome",
+    "en": "You leave the guard where it is.\n\nThe ogre says something in Ogrish that the crowd finds funnier than you do, and buckles it back onto his arm."
+  },
+  {
+    "id": 31,
+    "story": "arm_wrestling",
+    "where": "src/content/events/arm_wrestling.js:56",
+    "kind": "outcome",
+    "en": "He mutters something in Ogrish. The crowd loses interest in you immediately.\n\nThe stool stays empty."
+  },
+  {
+    "id": 32,
+    "story": "reliquary",
+    "where": "src/content/events/reliquary.js:17",
+    "kind": "outcome",
+    "en": "(Drag a weapon onto a case.)"
+  },
+  {
+    "id": 33,
+    "story": "reliquary",
+    "where": "src/content/events/reliquary.js:18",
+    "kind": "outcome",
+    "en": "(You have no weapon to trade.)"
+  },
+  {
+    "id": 34,
+    "story": "reliquary",
+    "where": "src/content/events/reliquary.js:19",
+    "kind": "outcome",
+    "en": "The corridor ends at a wall of glass cases. Most are broken and empty. {lit} are not.\n\nBRING IRON. LEAVE CHANGED — carved beneath them, and scratched under the empty cases in worse handwriting.\n\n{dragLine}"
+  },
+  {
+    "id": 35,
+    "story": "reliquary",
+    "where": "src/content/events/reliquary.js:28",
+    "kind": "outcome",
+    "en": "You go along the wall, feeling through the broken cases.\n\nMost hold nothing but glass. One still has something wedged in the corner."
+  },
+  {
+    "id": 36,
+    "story": "reliquary",
+    "where": "src/content/events/reliquary.js:48",
+    "kind": "outcome",
+    "en": "\n\nBehind you, {names} keep turning in their cases, waiting for iron that does not come."
+  },
+  {
+    "id": 37,
+    "story": "reliquary",
+    "where": "src/content/events/reliquary.js:50",
+    "kind": "outcome",
+    "en": "You leave the wall alone."
+  }
+]

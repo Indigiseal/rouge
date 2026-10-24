@@ -1911,7 +1911,7 @@ export class EventScene extends Phaser.Scene {
   _mirrorFloat(text, color, cardSprite) {
     const x = cardSprite?.x ?? 320;
     const y = cardSprite?.y ?? 300;
-    this.gameScene?.createFloatingText?.(x, y, text, color);
+    this.gameScene?.createFloatingText?.(x, y, t(this, text), color);
   }
 
   // ─── Briar Room (drag a weapon/armor in to grow a permanent thorn) ───────

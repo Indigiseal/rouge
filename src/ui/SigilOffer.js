@@ -8,7 +8,7 @@
 // scene's bag, so the bag is rebuilt afterwards to show the new icon.
 
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { translateDescription, translateItemName } from '../i18n/i18n.js';
+import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
 import {
     SIGIL_ICONS_KEY, addSigil, canTakeSigil, cardSigils, getSigil, noteSigilTaken, sigilIconArt, sigilLine, takenSigils,
 } from '../content/sigils/sigils.js';
@@ -73,7 +73,7 @@ export function openSigilOffer(scene, gameScene, sigilId, onDone = () => {}) {
     // card under it.
     add(scene.add.rectangle(PANEL.x, PANEL.y, PANEL.w, PANEL.h, 0x1c130a, 0.96)
         .setStrokeStyle(2, 0xc8ab78).setInteractive());
-    text(PANEL.x, PANEL.y - PANEL.h / 2 + 14, 'The chest holds a sigil', '12px', '#fed991').setOrigin(0.5);
+    text(PANEL.x, PANEL.y - PANEL.h / 2 + 14, t(scene, 'ui.sigilOffer.title'), '12px', '#fed991').setOrigin(0.5);
     if (scene.textures.exists(SIGIL_ICONS_KEY)) {
         const art = sigilIconArt(sigilId, scene.textures);
         add(scene.add.image(PANEL.x - 118, PANEL.y - 38, art.key, art.frame).setScale(2));
@@ -81,7 +81,7 @@ export function openSigilOffer(scene, gameScene, sigilId, onDone = () => {}) {
     text(PANEL.x - 98, PANEL.y - 50, translateItemName(scene, def.name), '11px', '#fef0cf').setOrigin(0, 0.5);
     text(PANEL.x - 98, PANEL.y - 30, translateDescription(scene, def.player || def.enemy || ''), '9px', '#f2d3aa',
         { wordWrap: { width: 210 } }).setOrigin(0, 0.5);
-    text(PANEL.x, PANEL.y - 6, 'Choose a card for it:', '9px', '#d6c7b3').setOrigin(0.5);
+    text(PANEL.x, PANEL.y - 6, t(scene, 'ui.sigilOffer.chooseCard'), '9px', '#d6c7b3').setOrigin(0.5);
 
     const slotW = Math.min(46, (PANEL.w - 30) / cards.length);
     const rowX = PANEL.x - ((cards.length - 1) * slotW) / 2;
@@ -106,7 +106,7 @@ export function openSigilOffer(scene, gameScene, sigilId, onDone = () => {}) {
         thumb.on('pointerdown', () => choose(card));
     });
 
-    const skip = text(PANEL.x + PANEL.w / 2 - 12, PANEL.y + PANEL.h / 2 - 10, 'Skip', '9px', '#869089')
+    const skip = text(PANEL.x + PANEL.w / 2 - 12, PANEL.y + PANEL.h / 2 - 10, t(scene, 'ui.tutorial.skip'), '9px', '#869089')
         .setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
     skip.on('pointerover', () => skip.setColor('#fef0cf'));
     skip.on('pointerout', () => skip.setColor('#869089'));

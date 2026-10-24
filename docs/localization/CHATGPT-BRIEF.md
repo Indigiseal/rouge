@@ -3,6 +3,12 @@
 Paste this whole file into ChatGPT, then attach `stories-to-translate.json`.
 It asks for the story text in **Spanish (es), French (fr) and Russian (ru)**.
 
+There is also a second batch, `stories-runtime-to-translate.json`. It contains outcomes written in
+`EventScene.js` and `EventRunHelpers.js`, goblin repair preludes, and assembled story descriptions.
+Use the same voice and rules below, and save that batch as `stories-runtime-translated.json`.
+Placeholders such as `{card}`, `{magic}`, `{weapon}`, `{crowd}`, `{lit}` and `{dragLine}` are filled by
+the game. Keep each one exactly; write around names without assuming their grammatical gender.
+
 ---
 
 ## What the game is
@@ -94,6 +100,13 @@ send it in parts of about 40 ids (each its own JSON array); they can be joined a
 ```sh
 node tools/import-translations.mjs docs/localization/stories-to-translate.json docs/localization/stories-translated.json
 npm run test:i18n
+```
+
+For the second batch:
+
+```sh
+node tools/export-stories-for-translation.mjs --runtime
+node tools/import-translations.mjs docs/localization/stories-runtime-to-translate.json docs/localization/stories-runtime-translated.json
 ```
 
 The import refuses to write anything if an id is missing, a language is empty, a `{placeholder}`

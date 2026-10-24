@@ -1,4 +1,5 @@
 import { getMagic } from '../cards/magic.js';
+import { translateDescription, translateItemName, translateTemplate } from '../../i18n/i18n.js';
 
 // The room supplies the rare half of the trade (a magic card) and the player
 // supplies the common half (a weapon). Magic cards are scarce enough that
@@ -15,7 +16,7 @@ export default {
       const dragLine = scene.hasEnchantableWeapon()
         ? '(Drag a weapon onto a case.)'
         : '(You have no weapon to trade.)';
-      return `The corridor ends at a wall of glass cases. Most are broken and empty. ${lit} are not.\n\nBRING IRON. LEAVE CHANGED — carved beneath them, and scratched under the empty cases in worse handwriting.\n\n${dragLine}`;
+      return translateTemplate(scene, 'The corridor ends at a wall of glass cases. Most are broken and empty. {lit} are not.\n\nBRING IRON. LEAVE CHANGED — carved beneath them, and scratched under the empty cases in worse handwriting.\n\n{dragLine}', { lit, dragLine: translateDescription(scene, dragLine) });
     },
     choices: (gs, scene) => [
       {
@@ -41,12 +42,12 @@ export default {
         },
         outcome: (state, s) => {
           const names = s.getReliquaryOffer()
-            .map(magicType => getMagic(magicType)?.name)
+            .map(magicType => translateItemName(s, getMagic(magicType)?.name || ''))
             .filter(Boolean);
           const tail = names.length
-            ? `\n\nBehind you, ${names.join(', ')} keep turning in their cases, waiting for iron that does not come.`
+            ? translateTemplate(s, '\n\nBehind you, {names} keep turning in their cases, waiting for iron that does not come.', { names: names.join(', ') })
             : '';
-          return `You leave the wall alone.${tail}`;
+          return `${translateDescription(s, 'You leave the wall alone.')}${tail}`;
         }
       }
     ]

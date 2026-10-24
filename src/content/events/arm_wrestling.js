@@ -10,16 +10,18 @@
 // rematch queues up, and that is the only time he stakes the gauntlet. Lose
 // either match and he is finished with you.
 
+import { translateDescription, translateTemplate } from '../../i18n/i18n.js';
+
 export default {
     id: 'arm_wrestling',
     title: 'Arm Wrestling',
     rematchHint: 'Drag a card onto the ogre (uncommon or better)',
     description: (gs, scene) => {
-      const crowd = scene.getArmWrestleCrowdLine();
+      const crowd = translateDescription(scene, scene.getArmWrestleCrowdLine());
       if (scene.isArmWrestleRematch()) {
-        return `The ogre is at the same table. He has not put his coins back out.\n\nInstead he has unbuckled the stone guard from his forearm and laid it on the slab between you. It is scaled, heavy, and clearly not his originally.\n\nThe crowd is bigger this time, and much quieter.\n\n${crowd}`;
+        return translateTemplate(scene, 'The ogre is at the same table. He has not put his coins back out.\n\nInstead he has unbuckled the stone guard from his forearm and laid it on the slab between you. It is scaled, heavy, and clearly not his originally.\n\nThe crowd is bigger this time, and much quieter.\n\n{crowd}', { crowd });
       }
-      return `An ogre sits at a stone table with one elbow planted on it. Coins are stacked by his hand — more than a goblin toll, less than he seems to think.\n\nA stool waits on your side. It is too small.\n\nMonsters have gathered to watch: a few goblins, something with too many legs, and a skeleton that keeps losing its place in the crowd.\n\n${crowd}`;
+      return translateTemplate(scene, 'An ogre sits at a stone table with one elbow planted on it. Coins are stacked by his hand — more than a goblin toll, less than he seems to think.\n\nA stool waits on your side. It is too small.\n\nMonsters have gathered to watch: a few goblins, something with too many legs, and a skeleton that keeps losing its place in the crowd.\n\n{crowd}', { crowd });
     },
     choices: (gs, scene) => {
       const rematch = scene.isArmWrestleRematch();

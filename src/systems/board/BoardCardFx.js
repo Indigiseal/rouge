@@ -649,8 +649,8 @@ function _buildEnemyCornerStats(card) {
     let nameText = null;
     // Placeholder art: stamp the enemy name on the silhouette until real cards exist.
     if (card.data.placeholderArt || card.data.isBonePile) {
-        const label = card.data.isBonePile ? 'Bone Pile\nReforms: 1'
-            : String(card.data.name || card.data.enemyType || 'Enemy');
+        const label = card.data.isBonePile ? t(this.scene, 'ui.card.bonePileReforms', { amount: 1 })
+            : translateItemName(this.scene, String(card.data.name || card.data.enemyType || 'Enemy'));
         nameText = _makeCornerText(this.scene, 0, -6, label, {
             fontSize: label.length > 12 ? '8px' : '9px',
             fill: '#fef0cf',

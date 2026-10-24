@@ -28,9 +28,15 @@ matching, so retranslate it.
 npm run audit:l10n                       # what has no translation yet (es, fr, ru)
 node tools/audit-localization.mjs --list # every missing string, by source file
 node tools/export-stories-for-translation.mjs   # stories still missing -> docs/localization/stories-to-translate.json
+node tools/export-stories-for-translation.mjs --runtime # scene/helper prose -> stories-runtime-to-translate.json
 node tools/import-translations.mjs <source.json> <translations.json> [--table narrative|names|descriptions]
 ```
 
 `docs/localization/CHATGPT-BRIEF.md` is the brief to give a translator for the stories. The import tool
 checks ids, `{placeholders}` and line breaks before it writes anything, and keeps each import in its own
 generated block in `i18n.js`.
+
+Assembled descriptions must translate their templates and inserted prose separately, before joining
+them. Use `translateTemplate()` for dynamic names and counts; an already assembled English sentence
+will not match the exact-text tables. The second story batch is saved alongside the first as
+`stories-runtime-to-translate.json` and `stories-runtime-translated.json`.
