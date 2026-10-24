@@ -102,8 +102,10 @@ import { normalizeActLocationIds, getLocationIdForFloor, getLocationOffer, apply
 import { totalRepairCost } from '../src/content/economy/repair.js';
 import { scaleGoldReward } from '../src/content/economy/gold.js';
 import {
+  emptyVillageBuildings,
   healerRarityForRank,
   maxVillageBuildings,
+  VILLAGE_BUILDING_IDS,
   normalizeVillageBuildings,
 } from '../src/content/village/index.js';
 import { getBehaviorProfile, getBehaviorPresetNames } from './behavior-knobs.js';
@@ -433,6 +435,42 @@ function applyHealerAmulet(mock, gs) {
   if (!options.length) return;
   const pick = options[Math.floor(Math.random() * options.length)];
   if (pick?.id) mock.amuletManager.addAmulet(pick.id);
+}
+
+// ── One account over many runs (accumulate) ─────────────────────────────
+// A fresh profile: no Support, every Sanctuary statue unrestored.
+function newSimAccount() {
+  const meta = new MetaProgressionManager({});
+  meta.characters = {
+    rogue: { xp: 0, talents: {}, choices: {} },
+    warrior: { xp: 0, talents: {}, choices: {} },
+  };
+  meta.xp = 0;
+  meta.totalDeaths = 0;
+  meta.bestFloor = 1;
+  meta.buildings = emptyVillageBuildings();
+  return meta;
+}
+
+// A run's end, as the game books it: Support for the floor reached, then a
+// visit to the Sanctuary. The bot restores the cheapest statue it can afford
+// until nothing is affordable (the Phoenix, once awake, costs the same way).
+function settleSimAccount(meta, run, characterId) {
+  if (run.won) meta.grantRunXp(characterId, run.reached);
+  else meta.handlePlayerDeath(run.killer, run.reached, characterId);
+  for (;;) {
+    const options = VILLAGE_BUILDING_IDS
+      .map((id) => ({ id, check: meta.canUpgradeBuilding(characterId, id) }))
+      .filter(({ check }) => check.ok)
+      .sort((a, b) => a.check.cost - b.check.cost);
+    if (!options.length) break;
+    meta.upgradeBuilding(characterId, options[0].id);
+  }
+}
+
+function simAccountLabel(meta) {
+  return VILLAGE_BUILDING_IDS.map((id) => `${id} ${meta.getBuildingRank(id)}`).join(', ')
+    + `; Support left ${meta.getCharacterXp()}`;
 }
 
 /** Restrict MetaProgressionManager definitions so accumulate unlocks stay in-pool. */
@@ -6201,7 +6239,7 @@ function runLootStats() {
       allAmulets,
       metaMode,
     });
-    runGame(throwaway, {
+    return runGame(throwaway, {
       ...extras,
       ...overrides,
       lootStats,
@@ -6219,22 +6257,13 @@ function runLootStats() {
       const extras = buildSimRunExtras(simFlags, {
         allRelics: ALL_RELICS, strongAmulets: STRONG_AMULETS, allAmulets, metaMode,
       });
-      const meta = new MetaProgressionManager({});
-      meta.characters = {
-        rogue: { xp: 0, talents: {}, choices: {} },
-        warrior: { xp: 0, talents: {}, choices: {} },
-      };
-      meta.totalDeaths = 0;
-      meta.bestFloor = 1;
+      const meta = newSimAccount();
       const charId = simFlags.characterId || DEFAULT_CHARACTER_ID;
       for (let i = 0; i < runs; i++) {
-        const r = runOne({
-          characterId: charId,
-          talents: { ...meta.ensureCharacter(charId).talents },
-          talentChoices: { ...meta.ensureCharacter(charId).choices },
-        });
-        if (!r.won) meta.handlePlayerDeath(r.killer, r.reached, charId);
+        const r = runOne({ characterId: charId, buildings: { ...meta.buildings } });
+        settleSimAccount(meta, r, charId);
       }
+      console.log(`Account after ${runs} runs: ${simAccountLabel(meta)}`);
     } else {
       for (let i = 0; i < runs; i++) runOne({});
     }
@@ -6349,21 +6378,11 @@ function runStatsDb() {
 
     db.runInTransaction(() => {
       if (metaMode === 'accumulate' && simFlags.enableMeta) {
-        const meta = new MetaProgressionManager({});
-        meta.characters = {
-          rogue: { xp: 0, talents: {}, choices: {} },
-          warrior: { xp: 0, talents: {}, choices: {} },
-        };
-        meta.totalDeaths = 0;
-        meta.bestFloor = 1;
+        const meta = newSimAccount();
         const charId = normFlags.characterId || DEFAULT_CHARACTER_ID;
         for (let i = 0; i < runs; i++) {
           recorder.beginRun();
-          const r = runGame(throwaway, buildRunConfig({
-            characterId: charId,
-            talents: { ...meta.ensureCharacter(charId).talents },
-            talentChoices: { ...meta.ensureCharacter(charId).choices },
-          }));
+          const r = runGame(throwaway, buildRunConfig({ characterId: charId, buildings: { ...meta.buildings } }));
           recorder.finishRun({
             won: r.won,
             reachedFloor: r.reached,
@@ -6371,8 +6390,9 @@ function runStatsDb() {
             endReason: r.endReason,
             deathEncounterType: r.deathEncounterType,
           });
-          if (!r.won) meta.handlePlayerDeath(r.killer, r.reached, charId);
+          settleSimAccount(meta, r, charId);
         }
+        console.log(`Account after ${runs} runs: ${simAccountLabel(meta)}`);
       } else {
         for (let i = 0; i < runs; i++) {
           recorder.beginRun();
