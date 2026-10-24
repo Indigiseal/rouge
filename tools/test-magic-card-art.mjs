@@ -102,7 +102,7 @@ try {
         assert.deepEqual([row.width, row.height, row.scaleX, row.scaleY], [52, 70, 1, 1], row.key);
         assert.ok(row.labelWidth <= 44, `${row.label} exceeds its name band (${row.labelWidth}px)`);
         assert.ok(row.labelHeight <= 13, `${row.label} is too tall (${row.labelHeight}px)`);
-        assert.equal(row.labelY, 25);
+        assert.equal(row.labelY, 20, `${row.label}: the name sits at y=20 (moved up from 25)`);
     }
     assert.deepEqual(report.sheetSize, [572, 138]);
     assert.ok(report.glowingFramesValid, 'all Reliquary spells must have the matching glowing frame');

@@ -19,6 +19,9 @@ const scene = {
     },
     textures: { exists: () => false },
     getNodeVisualState: () => 'locked',
+    // The real secret-room step drawFog ends on; no secret rooms wait here.
+    _scheduleSecretAppear: MapViewScene.prototype._scheduleSecretAppear,
+    time: { delayedCall() {} },
     _fogToggleLabel: { setText(value) { this.text = value; } },
 };
 

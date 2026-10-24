@@ -650,7 +650,9 @@ export class MainMenuScene extends Phaser.Scene {
         saveVolumeSettings(this.game.globalVolume);
         
         // Load language
-        const savedLanguage = localStorage.getItem('gameLanguage');
+        // Storage can be blocked (private windows, sandboxed frames): fall back to the default.
+        let savedLanguage = null;
+        try { savedLanguage = localStorage.getItem('gameLanguage'); } catch (_) { /* blocked */ }
         this.game.language = normalizeLanguageCode(savedLanguage);
 
         attachTestOptionsToGame(this.game);
@@ -661,7 +663,7 @@ export class MainMenuScene extends Phaser.Scene {
     
     saveSettings() {
         saveVolumeSettings(this.game.globalVolume);
-        localStorage.setItem('gameLanguage', this.game.language);
+        try { localStorage.setItem('gameLanguage', this.game.language); } catch (_) { /* blocked: this session only */ }
     }
     
     startNewGame() {

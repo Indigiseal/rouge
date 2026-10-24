@@ -39,7 +39,11 @@ export function loadTestOptions() {
 
 export function saveTestOptions(options) {
     cache = { ...defaultOptions(), ...options };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
+    } catch {
+        // Blocked storage: the options still apply for this session.
+    }
 }
 
 export function invalidateTestOptionsCache() {
