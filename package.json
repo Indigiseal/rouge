@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node tools/run-all-tests.mjs",
     "start": "node tools/server.mjs",
     "test:inventory-transactions": "node tools/test-inventory-transactions.mjs",
     "test:save-resume": "node tools/test-save-resume.mjs",
@@ -71,7 +72,17 @@
     "sim:compare-human": "node tools/compare-human-sim.mjs",
     "test:viewport": "node tools/audit-viewport-reads.mjs",
     "test:fonts": "node tools/audit-font-coverage.mjs",
-    "test:combat-feedback": "node tools/test-combat-feedback.mjs"
+    "test:combat-feedback": "node tools/test-combat-feedback.mjs",
+    "test:board-expansion": "node tools/test-board-expansion.mjs",
+    "test:board-rendering": "node tools/test-board-rendering.mjs",
+    "test:magic-card-art": "node tools/test-magic-card-art.mjs",
+    "test:map-fog-toggle": "node tools/test-map-fog-toggle.mjs",
+    "test:combo-sigil": "node tools/test-combo-sigil.mjs",
+    "test:hit-flash": "node tools/test-hit-flash.mjs",
+    "test:inventory-tooltip-layering": "node tools/test-inventory-tooltip-layering.mjs",
+    "test:menu-clicks": "node tools/test-menu-clicks.mjs",
+    "test:room-mimic-cap": "node tools/test-room-mimic-cap.mjs",
+    "test:blocked-storage": "node tools/test-blocked-storage.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1"

@@ -49,7 +49,9 @@ export class MetaProgressionManager {
   }
 
   loadMetaProgression() {
-    const saved = localStorage.getItem('metaProgression');
+    let saved = null;
+    // Private windows and sandboxed frames can throw on any storage access.
+    try { saved = localStorage.getItem('metaProgression'); } catch (_) { /* start fresh */ }
     if (saved) {
       try {
         const data = JSON.parse(saved);
@@ -133,7 +135,11 @@ export class MetaProgressionManager {
       veteranHp: 0,
       metaPoints: 0,
     };
-    localStorage.setItem('metaProgression', JSON.stringify(data));
+    try {
+      localStorage.setItem('metaProgression', JSON.stringify(data));
+    } catch (_) {
+      // Quota or blocked storage: progress still counts for this session.
+    }
   }
 
   setPendingEgg(hasEgg) {

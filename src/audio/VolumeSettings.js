@@ -22,5 +22,9 @@ export function loadVolumeSettings() {
 }
 
 export function saveVolumeSettings(settings) {
-    localStorage.setItem('gameVolume', JSON.stringify(normalizeVolumeSettings(settings)));
+    try {
+        localStorage.setItem('gameVolume', JSON.stringify(normalizeVolumeSettings(settings)));
+    } catch (_) {
+        // Blocked storage: the volume still applies for this session.
+    }
 }
