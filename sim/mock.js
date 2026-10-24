@@ -22,6 +22,7 @@ import { tryEnemyShock } from '../src/content/combat/storm.js';
 import { consumeCompanionAttackHold, tryEnemyFrost } from '../src/content/combat/frost.js';
 import { tryEnemySandstorm, tryEnemyQuickStrike } from '../src/content/combat/sandreach.js';
 import { CONTROL_HESITATION_CHANCE } from '../src/content/amulets/control.js';
+import { ENEMY_BASE_CRIT, ENEMY_CRIT_MULT } from '../src/content/balance/CombatChance.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../src/content/location-packs/tollroad/index.js';
 
 const GOBLIN_ALLY_TYPE_SET = new Set(TOLLROAD_GOBLIN_ALLY_TYPES);
@@ -243,8 +244,31 @@ export class MockScene {
   // No shields/bonewall/mirror in baseline (no amulets). Each revealed,
   // alive, non-frozen enemy deals its attack to the player via the REAL
   // gameState.takeDamage (armor / dodge / reflection all honored).
+  // A web (web_hand) holds one bag card through the player's next turn, as
+  // CombatTurnController.applyWebHand does. The card leaves its slot for a
+  // stand-in the bot can neither use, merge nor sell, and comes back when the
+  // next enemy turn starts (tickHandWebs) or the room ends.
+  webHandCard() {
+    const slots = this.inventorySystem?.slots || [];
+    const candidates = [];
+    for (let i = 0; i < slots.length; i++) if (slots[i] && slots[i].type !== 'webbed') candidates.push(i);
+    if (!candidates.length) return;
+    const index = candidates[Math.floor(Math.random() * candidates.length)];
+    slots[index] = { type: 'webbed', name: 'Webbed card', webbedCard: slots[index] };
+    this._handWebs = (this._handWebs || 0) + 1;
+  }
+
+  clearHandWebs() {
+    const slots = this.inventorySystem?.slots || [];
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i]?.type === 'webbed') slots[i] = slots[i].webbedCard;
+    }
+  }
+
   runEnemyTurn() {
     if (this.gameState.playerHealth <= 0) return;
+    // Webs from the last enemy turn come off before this one attacks.
+    this.clearHandWebs();
     const board = this.cardSystem.boardCards;
     for (const card of board) {
       if (advanceBonePile(card?.data)) card.justRevealed = true;
@@ -397,6 +421,10 @@ export class MockScene {
 
       let damageDealt = applyEnemyStrikeSigils(card, this.gameState, getEnemyHitAttack(card, board));
       spendSapping(card);
+      // Every enemy can crit a little (CombatChance), as in CombatTurnController.
+      if (damageDealt > 0 && !this.tutorialMode && Math.random() < ENEMY_BASE_CRIT) damageDealt = Math.floor(damageDealt * ENEMY_CRIT_MULT);
+      // Honed: every attack it makes adds to the next one this fight.
+      if (sigilLevel(card.data, 'honed') > 0) card.data.honedUses = (card.data.honedUses || 0) + 1;
       const features = Array.isArray(card.data?.features) ? card.data.features : [];
       if (features.includes('heavy_shot') && Math.random() < 0.2) {
         damageDealt = Math.ceil(damageDealt * 1.5);
@@ -481,6 +509,12 @@ export class MockScene {
       if (!dodged && features.includes('club_stun') && Math.random() < 0.05) {
         this.gameState.playerStunnedTurns = Math.max(this.gameState.playerStunnedTurns || 0, 1);
       }
+      // Cave Crawler: an extra armor chew on a connecting hit.
+      if (!dodged && features.includes('gnaw') && this.gameState.equippedArmor && Math.random() < 0.5) {
+        this.gameState.tickEquippedArmorDurability();
+      }
+      // Silkslinger / Ink Wraith: a bag card is stuck until the next enemy turn.
+      if (features.includes('web_hand')) this.webHandCard();
 
       if (features.includes('goblin_rally') && Math.random() < 0.15) {
         for (let j = 0; j < board.length; j++) {

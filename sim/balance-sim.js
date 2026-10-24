@@ -719,6 +719,8 @@ function isUsefulBowUpgrade(gs, inv, weapon) {
 function cardKeepScore(card, behavior = CURRENT_BEHAVIOR, gs = null) {
   const k = behavior.keepScore;
   if (!card) return -Infinity;
+  // A webbed card's stand-in (mock.webHandCard): never traded or thrown away.
+  if (card.type === 'webbed') return Infinity;
   if (card.id === 'monsterEgg') return k.monsterEgg;
   if (card.type === 'companion') return k.companion;
   if (card.type === 'amuletPickup') return k.amuletPickup;
@@ -1520,16 +1522,33 @@ function useRestorationCard(mock, gs, card, force = false) {
   return true;
 }
 
+// Twin Socket (InventorySystem.applyGemToWeapon): a gem of another kind goes
+// in the second socket, which stacks to the same number of slots.
+function usesSecondSocket(weapon, gem) {
+  return Boolean(weapon.gemEffect && weapon.gemEffect !== gem.gemEffect && sigilLevel(weapon, 'twinSocket') > 0
+    && (!weapon.gem2Effect || weapon.gem2Effect === gem.gemEffect));
+}
+
 function gemFitsWeapon(weapon, gem) {
   if (!weapon || weapon.type !== 'weapon' || !gem || gem.type !== 'gem') return false;
-  const count = weapon.gemEffect ? (weapon.gemCount || 1) : 0;
   const slots = CardDataGenerator.weaponGemSlots(weapon);
+  if (usesSecondSocket(weapon, gem)) return (weapon.gem2Effect ? (weapon.gem2Count || 1) : 0) < slots;
+  const count = weapon.gemEffect ? (weapon.gemCount || 1) : 0;
   return count < slots && (!weapon.gemEffect || weapon.gemEffect === gem.gemEffect);
 }
 
 function socketGemIntoWeapon(weapon, gem) {
-  const count = weapon.gemEffect ? (weapon.gemCount || 1) : 0;
   const slots = CardDataGenerator.weaponGemSlots(weapon);
+  if (usesSecondSocket(weapon, gem)) {
+    const count2 = weapon.gem2Effect ? (weapon.gem2Count || 1) : 0;
+    if (count2 >= slots) return false;
+    weapon.gem2Effect = gem.gemEffect;
+    weapon.gem2Name = gem.name;
+    weapon.gem2Color = gem.color;
+    weapon.gem2Count = count2 + 1;
+    return true;
+  }
+  const count = weapon.gemEffect ? (weapon.gemCount || 1) : 0;
   if (count >= slots) return false;
   weapon.gemEffect = gem.gemEffect;
   weapon.gemName = gem.name;
@@ -2956,6 +2975,13 @@ function chooseEfficientAttack(board, gs, inv, wasExhausted) {
 }
 
 function runCombat(mock, gs, inv, floor, floorStartWeaponPips) {
+  const result = runCombatRounds(mock, gs, inv, floor, floorStartWeaponPips);
+  // A web still on a bag card when the room ends comes off with the room.
+  mock.clearHandWebs();
+  return result;
+}
+
+function runCombatRounds(mock, gs, inv, floor, floorStartWeaponPips) {
   // Grace is now per-enemy (card.justRevealed, set in the real revealCard) — no
   // global first-turn skip. A freshly revealed enemy sits out only its reveal action.
   mock.isEnemyTurn = false;
