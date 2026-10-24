@@ -3,10 +3,10 @@ import { WORKING_PLAYER_SIGILS } from './sigils.js';
 // Introduce approved location pools one at a time. Other locations retain the
 // current catalog until their new sigils and rules have been implemented.
 export const LOCATION_SIGIL_POOLS = Object.freeze({
-    thornwake: Object.freeze(['thorns', 'mirror', 'kinship', 'companionStrength', 'packStrength', 'hunter', 'outnumbered']),
+    thornwake: Object.freeze(['thorns', 'mirror', 'kinship', 'companionStrength', 'packStrength', 'hunter', 'outnumbered', 'briarGuard']),
     silkdeep: Object.freeze(['venomStack', 'venomSplash', 'venomousBomb', 'web', 'crystalBrood']),
     tollroad: Object.freeze(['cutpurse', 'bounty', 'packrat', 'ambush']),
-    boneflood: Object.freeze(['ironclad', 'warding', 'tempered', 'mending', 'riposte', 'sunder']),
+    boneflood: Object.freeze(['ironclad', 'warding', 'tempered', 'mending', 'riposte', 'sunder', 'bulwark']),
     ashhowl: Object.freeze(['fireball', 'scorched', 'smoke']),
     veilbleed: Object.freeze(['leech', 'sapping', 'devouring', 'fleetfoot', 'bloodlust']),
     mireturn: Object.freeze(['regenerate', 'unscathed', 'growth']),

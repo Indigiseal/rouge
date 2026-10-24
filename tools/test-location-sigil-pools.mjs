@@ -3,7 +3,7 @@ import { offerableSigils, rollOfferableSigil, canOfferSigil } from '../src/ui/Si
 import { LOCATION_SIGIL_POOLS, sigilPoolForLocation } from '../src/content/sigils/locationSigils.js';
 import { WORKING_PLAYER_SIGILS } from '../src/content/sigils/sigils.js';
 
-const bone = ['ironclad', 'warding', 'tempered', 'mending', 'riposte', 'sunder'];
+const bone = ['ironclad', 'warding', 'tempered', 'mending', 'riposte', 'sunder', 'bulwark'];
 const weapon = () => ({ type: 'weapon', name: 'Sword', damage: 5, durability: 3, maxDurability: 5 });
 function fixture(act = 1) {
     const slots = [weapon()];
@@ -32,7 +32,7 @@ try {
     const taken = fixture();
     taken.gameState.storyRun.sigilsTaken = ['ironclad', 'mending'];
     taken.inventorySystem.slots[0].sigils = [{ id: 'sunder' }];
-    assert.deepEqual(offerableSigils(taken), ['warding', 'tempered', 'riposte']);
+    assert.deepEqual(offerableSigils(taken), ['warding', 'tempered', 'riposte', 'bulwark']);
 
     const full = fixture();
     full.inventorySystem.slots[0].sigils = [{ id: 'cutpurse' }, { id: 'bounty' }];
