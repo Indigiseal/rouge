@@ -83,7 +83,8 @@
     "test:menu-clicks": "node tools/test-menu-clicks.mjs",
     "test:room-mimic-cap": "node tools/test-room-mimic-cap.mjs",
     "test:blocked-storage": "node tools/test-blocked-storage.mjs",
-    "test:sim-coverage": "node tools/test-sim-coverage.mjs"
+    "test:sim-coverage": "node tools/test-sim-coverage.mjs",
+    "test:sigil-traits": "node tools/test-sigil-traits.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1"

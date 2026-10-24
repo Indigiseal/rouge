@@ -67,7 +67,7 @@ assert.deepEqual(failures, [], `stories the sim cannot play:\n  ${failures.join(
 // Rules the sim does not need to copy, and why. Anything else the turn loop
 // checks must appear in sim/.
 const NOT_IN_SIM = {
-    taunt: 'no enemy carries it; the Taunt sigil is not marked working yet',
+    taunt: 'targeting rule (BoardCombat, which the sim runs); no enemy carries it yet',
     spore_on_hit: 'no enemy carries it; Spore Archer has the Daze sigil, applied in shared code',
     boss: 'card type, not a rule',
 };
@@ -82,6 +82,7 @@ const patterns = [
     /features\??\.includes\('([A-Za-z_]+)'\)/g,
     /sigilLevel\([^,]+, '([A-Za-z]+)'\)/g,
     /\b(?:ability|ab|a)\.type === '([a-z_]+)'/g,
+    /hasEnemyTrait\([^,]+, '([A-Za-z_]+)'\)/g,
 ];
 for (const pattern of patterns) for (const [, id] of turnLoop.matchAll(pattern)) rules.add(id);
 assert.ok(rules.size > 10, 'the turn loop rules were found');

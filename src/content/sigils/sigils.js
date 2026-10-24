@@ -70,8 +70,8 @@ export const SIGILS = Object.freeze({
     warding:     { name: 'Warding',     frame: 32, side: 'both',   enemy: 'restores 1 lost armor after attacking, up to its starting armor', player: '20% chance on hit: your armor is 20% stronger for a turn', works: true },
     mirror:      { name: 'Mirror',      frame: 33, side: 'both',   enemy: 'sends your next hit back', player: 'on armor: sends the first enemy attack each fight back', works: true },
     // Enchantment marker only; not added to the regular stamp reward pool.
-    bulwark:     { name: 'Bulwark',     frame: 32, side: 'player', player: 'on hit: chance to block the next enemy attack' },
-    briarGuard:  { name: 'Briar Guard', frame: 33, side: 'player', player: 'on hit: chance to reflect the next enemy attack' },
+    bulwark:     { name: 'Bulwark',     frame: 32, side: 'player', player: 'on hit: chance to block the next enemy attack', works: true },
+    briarGuard:  { name: 'Briar Guard', frame: 33, side: 'player', player: 'on hit: chance to reflect the next enemy attack', works: true },
     regenerate:  { name: 'Regenerate',  frame: 34, side: 'both',   enemy: 'heals every other revealed living ally 1 HP each enemy turn', player: 'carried or worn: heals you 1 HP per companion each enemy turn', works: true },
     growth:      { name: 'Growth', frame: 48, side: 'both', enemy: 'gains maximum HP after attacking; does not heal', player: '+1 maximum HP on a damaging weapon hit; does not heal', works: true },
     devouring:   { name: 'Devouring',   frame: 35, side: 'player', player: '8% chance to kill a non-boss outright', works: true },
@@ -82,10 +82,10 @@ export const SIGILS = Object.freeze({
     tandem:      { name: 'Tandem',      frame: 40, side: 'player', player: 'x1.5 if your previous attack hit for the same damage', works: true, retired: true },
     packrat:     { name: 'Packrat',     frame: 41, side: 'player', player: '+1 damage per empty bag slot', works: true },
     summon:      { name: 'Summon',      frame: 42, side: 'enemy',  enemy: 'calls a minion to fight beside it' },
-    taunt:       { name: 'Taunt',       frame: 43, side: 'enemy',  enemy: 'must be attacked first' },
-    veil:        { name: 'Veil',        frame: 44, side: 'enemy',  enemy: 'flips face-down each turn' },
-    barkskin:    { name: 'Barkskin',    frame: 45, side: 'enemy',  enemy: 'immune to ranged attacks' },
-    rally:       { name: 'Rally',       frame: 46, side: 'enemy',  enemy: 'goblins attack more often' },
+    taunt:       { name: 'Taunt',       frame: 43, side: 'enemy',  enemy: 'must be attacked first', works: true },
+    veil:        { name: 'Veil',        frame: 44, side: 'enemy',  enemy: 'flips face-down each turn', works: true },
+    barkskin:    { name: 'Barkskin',    frame: 45, side: 'enemy',  enemy: 'immune to ranged attacks', works: true },
+    rally:       { name: 'Rally',       frame: 46, side: 'enemy',  enemy: 'goblins attack more often', works: true },
     // Placeholder icons (frames of similar sigils) until their own are drawn
     // (Twin Socket, Keen, Bounty, Scorched). Ransom wears Taya's red crystal
     // (47), Bloodlust her +1 (48).
@@ -169,6 +169,17 @@ const FEATURE_SIGIL = Object.freeze({
     wolf_pack: 'outnumbered', taunt: 'taunt', veil_flip: 'veil', ranged_immune: 'barkskin',
     goblin_rally: 'rally',
 });
+/**
+ * Whether an enemy has a trait, given either way: as the old feature
+ * ('veil_flip') or as the sigil that replaces it (Veil). Lets an enemy carry
+ * the sigil while the rule's code still reads the trait.
+ */
+export function hasEnemyTrait(data, feature) {
+    if (Array.isArray(data?.features) && data.features.includes(feature)) return true;
+    const sigil = FEATURE_SIGIL[feature];
+    return Boolean(sigil) && storedSigils(data).some((s) => s.id === sigil);
+}
+
 const ABILITY_SIGIL = Object.freeze({
     poison: 'venom', armor_break: 'sunder', coin_steal: 'cutpurse', lifesteal: 'leech',
     evade: 'fleetfoot', rage: 'desperate', summon: 'summon',

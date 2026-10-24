@@ -10,7 +10,7 @@ import { getEnemy } from '../../content/cards/enemies.js';
 import { HAND_LOCKS, handLockKindOf, handLockOf } from '../../content/combat/handLock.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
 import { consumeMirrorSigil, enemyWarcryChance, playerWarcryChance, regenerateAmount, armorThornsDamage, companionStrengthBonus } from './SigilEffects.js';
-import { getSigil, sigilLevel } from '../../content/sigils/sigils.js';
+import { getSigil, hasEnemyTrait, sigilLevel } from '../../content/sigils/sigils.js';
 import { tryEnemySandstorm, tryEnemyQuickStrike } from '../../content/combat/sandreach.js';
 
 // A boss summons for sure once it has gone this many turns without one.
@@ -246,7 +246,7 @@ export class CombatTurnController {
                 }
                 if (card.revealed) return true;
                 // Thorn Fairy keeps acting while face-down so she can flip back up.
-                return Array.isArray(card.data?.features) && card.data.features.includes('veil_flip');
+                return hasEnemyTrait(card.data, 'veil_flip');
             });
         // Clear the grace flag now that we've snapshotted — they act next turn.
         scene.cardSystem.boardCards.forEach(card => {
@@ -328,8 +328,7 @@ export class CombatTurnController {
             const card = scene.cardSystem.boardCards[index];
             const veilFaceDown = card
                 && !card.revealed
-                && Array.isArray(card.data?.features)
-                && card.data.features.includes('veil_flip');
+                && hasEnemyTrait(card.data, 'veil_flip');
             if (card && scene.isEnemyCard(card) && (card.revealed || veilFaceDown)) {
                 this.processEnemyAttack(card, index);
                 scene.updateUI();
@@ -389,7 +388,7 @@ export class CombatTurnController {
             return;
         }
         // Thorn Fairy veil: face-down → flip up and skip the strike this turn.
-        if (Array.isArray(card.data?.features) && card.data.features.includes('veil_flip') && !card.revealed) {
+        if (hasEnemyTrait(card.data, 'veil_flip') && !card.revealed) {
             scene.cardSystem.revealCard(index, true);
             return;
         }
@@ -781,14 +780,13 @@ export class CombatTurnController {
         }
 
         // Toll Brute — chance to bark other goblins into an extra swing.
-        if (!fromRally && features.includes('goblin_rally') && Math.random() < 0.15) {
+        if (!fromRally && hasEnemyTrait(card.data, 'goblin_rally') && Math.random() < 0.15) {
             this.triggerGoblinRally(index);
         }
 
         // Thorn Fairy — strike, then flip face-down (if she survived).
         if (
-            Array.isArray(card.data?.features)
-            && card.data.features.includes('veil_flip')
+            hasEnemyTrait(card.data, 'veil_flip')
             && card.revealed
             && (card.data.health ?? 0) > 0
         ) {
@@ -1063,7 +1061,7 @@ export class CombatTurnController {
             if (!card?.revealed || (card.data?.health ?? 0) <= 0) return false;
             const tex = card.sprite?.texture?.key;
             if (!tex || tex === 'cardBack' || String(tex).startsWith('cardFlip')) return false;
-            return Array.isArray(card.data?.features) && card.data.features.includes('taunt');
+            return hasEnemyTrait(card.data, 'taunt');
         });
         if (taunters.length > 0) candidates = taunters;
 
