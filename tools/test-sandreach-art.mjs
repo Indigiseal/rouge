@@ -5,7 +5,7 @@ import { ASSET_MANIFEST } from '../src/content/assets/AssetManifest.js';
 import { SANDREACH_ENEMY_DEFS, SANDREACH_LOCATION_PACK, refreshSandreachCardArt } from '../src/content/location-packs/sandreach/index.js';
 import { buildEnemyCardTextures, sheetRowFor } from '../src/content/assets/enemyCards.js';
 import { locationCardRow } from '../src/content/assets/locationCardArt.js';
-import { BOSS_ATTACK_FRAMES, BOSS_POSE_SHEETS, buildBossPoseTextures, showBossAttackFrame } from '../src/content/cards/bossAttackFrames.js';
+import { BOSS_ATTACK_FRAMES, showBossAttackFrame } from '../src/content/cards/bossAttackFrames.js';
 import { BOSSES } from '../src/content/cards/bosses.js';
 import { PATH_LOCATIONS } from '../src/content/locations/catalog.js';
 import { buildEnemyCardFromDef } from '../src/content/cards/enemies.js';
@@ -49,45 +49,37 @@ for (const [column, id] of order.entries()) {
     }
 }
 
-const poses = BOSS_POSE_SHEETS.find(sheet => sheet.idleKey === BOSSES.sandscaleChieftain.sprite);
-assert.ok(poses);
-assert.equal(PATH_LOCATIONS.sandreach.portrait, poses.idleKey);
-assert.deepEqual(pngSize(poses.path), [poses.frameWidth * 2, poses.frameHeight]);
+// The Chieftain is one idle-first strip: idle, then the swing, all on one 112x144 canvas.
+const idleKey = BOSSES.sandscaleChieftain.sprite;
+const poses = BOSS_ATTACK_FRAMES[idleKey];
+assert.ok(poses?.sheet, 'the Chieftain attacks with a sheet');
+assert.equal(PATH_LOCATIONS.sandreach.portrait, idleKey);
+const [chieftainW, chieftainH] = pngSize(poses.path);
+assert.equal(chieftainH, poses.frameHeight);
+assert.equal(chieftainW % poses.frameWidth, 0, 'whole frames only');
+assert.ok(chieftainW / poses.frameWidth >= 2, 'idle frame, then the swing');
+assert.deepEqual([poses.padX, poses.padTop], [0, 0], 'idle and swing share one canvas');
 const loaded = ASSET_MANIFEST.find(asset => asset.key === poses.key);
 assert.equal(loaded.type, 'spritesheet');
 assert.deepEqual([loaded.frameWidth, loaded.frameHeight], [112, 144]);
 assert.ok(ASSET_MANIFEST.every(asset => asset.path), 'derived pose keys must not create undefined asset URLs');
-const textures = new Map();
-const poseScene = { textures: {
-    exists: key => key === poses.key || textures.has(key),
-    createCanvas(key, width, height) {
-        const record = { width, height, draws: [], refreshed: false };
-        textures.set(key, record);
-        return { drawFrame(...args) { record.draws.push(args); }, refresh() { record.refreshed = true; } };
-    },
-} };
-assert.equal(buildBossPoseTextures(poseScene), 2);
-assert.equal(buildBossPoseTextures(poseScene), 0);
-for (const [frame, key] of [poses.idleKey, poses.attackKey].entries()) {
-    assert.deepEqual(textures.get(key), { width: 112, height: 144, draws: [[poses.key, frame, 0, 0]], refreshed: true });
-}
-assert.equal(BOSS_ATTACK_FRAMES[poses.idleKey].key, poses.attackKey);
+assert.ok(!ASSET_MANIFEST.some(asset => asset.key === idleKey), 'the idle pose comes from the sheet, not a file of its own');
 let restore, canceled = 0;
-const sprite = { active: true, texture: { key: poses.idleKey }, displayOriginX: 56, displayOriginY: 72,
+const sprite = { active: true, texture: { key: idleKey }, displayOriginX: 56, displayOriginY: 72,
     setTexture(key) { this.texture.key = key; },
     setDisplayOrigin(x, y) { this.displayOriginX = x; this.displayOriginY = y; } };
-const card = { sprite, data: { sprite: poses.idleKey } };
-const scene = { textures: { exists: key => textures.has(key) }, time: { delayedCall(_ms, callback) {
+const card = { sprite, data: { sprite: idleKey } };
+const scene = { textures: { exists: key => key === poses.key }, time: { delayedCall(_ms, callback) {
     restore = callback; return { remove() { canceled++; } };
 } } };
 showBossAttackFrame(scene, card);
-assert.equal(sprite.texture.key, poses.attackKey);
+assert.equal(sprite.texture.key, poses.key);
 assert.deepEqual([sprite.displayOriginX, sprite.displayOriginY], [56, 72]);
 showBossAttackFrame(scene, card);
 assert.equal(canceled, 1, 'an extra boss attack replaces its restore timer');
 assert.deepEqual([sprite.displayOriginX, sprite.displayOriginY], [56, 72]);
 restore();
-assert.equal(sprite.texture.key, poses.idleKey);
+assert.equal(sprite.texture.key, idleKey);
 assert.deepEqual([sprite.displayOriginX, sprite.displayOriginY], [56, 72], 'idle/attack keep the same anchor');
 
 const oldEnemy = { type: 'eliteEnemy', enemyType: 'sandcaller', name: 'Sandcaller', sprite: 'enemyPlaceholder',
@@ -96,7 +88,7 @@ const oldBoss = { type: 'boss', bossId: 'sandscaleChieftain', name: 'Sandscale C
     sprite: 'enemyPlaceholder', health: 27, maxHealth: 167, attack: 17, shockedTurns: 1 };
 assert.equal(refreshSandreachCardArt(oldEnemy).sprite, 'enemyCard_sandreach_4_elite');
 assert.equal(refreshSandreachCardArt({ ...oldEnemy, enemyTier: 'veteran' }).sprite, 'enemyCard_sandreach_4_veteran');
-assert.equal(refreshSandreachCardArt(oldBoss).sprite, poses.idleKey);
+assert.equal(refreshSandreachCardArt(oldBoss).sprite, idleKey);
 const custom = { ...oldEnemy, sprite: 'customArt' };
 assert.equal(refreshSandreachCardArt(custom), custom);
 const otherBoss = { ...oldBoss, bossId: 'tempestRoc', name: 'Tempest Roc' };
@@ -110,7 +102,7 @@ saves.saveCurrentRun(runScene.gameState, { slots: [] }, runScene.cardSystem);
 const run = saves.loadCurrentRun();
 assert.ok(run);
 assert.equal(run.board.cards[0].data.sprite, 'enemyCard_sandreach_4_elite');
-assert.equal(run.board.cards[1].data.sprite, poses.idleKey);
+assert.equal(run.board.cards[1].data.sprite, idleKey);
 for (const [i, source] of [oldEnemy, oldBoss].entries()) {
     for (const prop of ['health', 'maxHealth', 'attack', 'frozenTurns', 'shockedTurns', 'sigils']) {
         assert.deepEqual(run.board.cards[i].data[prop], source[prop], `Continue preserves ${prop}`);

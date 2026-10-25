@@ -248,6 +248,11 @@ export const EventRunHelpers = {
     story.porterPartySeen = true;
     story.porterPartyChoice = choice;
     this.clearPendingEvent('porter_party_argument');
+    // Called out, the party buys the player's silence with an amulet.
+    if (choice === 'confront') {
+      this.porterPartyPaid = Boolean(this.gainRandomNonCursedAmulet());
+      return;
+    }
     if (choice !== 'return') return;
     this.gameScene = this.gameScene || this.scene?.get?.('GameScene');
     const mgr = this.gameScene?.amuletManager;
@@ -401,6 +406,10 @@ export const EventRunHelpers = {
 
   hasChickCompanion() {
     return this.getInventorySlots().some(item => item?.id === 'chickCompanion');
+  },
+
+  hasSkeletonCompanion() {
+    return this.getInventorySlots().some(item => item?.id === 'skeletonWarriorCompanion');
   },
 
   damageEquippedArmor(amount = 1) {

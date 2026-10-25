@@ -509,7 +509,9 @@ export class MapGenerator {
     // are already there count toward the minimum. Any shortfall is placed by
     // converting another room, preferring slots that keep the non-combat cap
     // intact and preferring to eat a fight over a support room.
-    const ensureCount = (type, min, fromF = 2, toF = 7) => {
+    // `strictWindow` keeps the room inside [fromF..toF] even when no slot there keeps the
+    // non-combat cap; the cap repair then turns a neighbouring room into a fight instead.
+    const ensureCount = (type, min, fromF = 2, toF = 7, { strictWindow = false } = {}) => {
       const already = nodesInRange(fromF, toF).filter(({ n }) => n.type === type);
       already.slice(0, min).forEach(({ n }) => guaranteed.add(n));
       let missing = min - already.length;
@@ -524,7 +526,7 @@ export class MapGenerator {
         let capSafe = pool.filter(({ f, i }) => typeKeepsCap(f, i, type));
         // Nowhere in the window keeps the cap: look further afield for a slot that does, rather than
         // leave a road with three rooms and no fight.
-        if (!capSafe.length) {
+        if (!capSafe.length && !strictWindow) {
           pool = nodesInRange(1, preBoss).filter(placeable);
           capSafe = pool.filter(({ f, i }) => typeKeepsCap(f, i, type));
         }
@@ -545,7 +547,7 @@ export class MapGenerator {
         repairNonCombatRuns();
       }
     };
-    const ensureOne = (type, fromF = 2, toF = 7) => ensureCount(type, 1, fromF, toF);
+    const ensureOne = (type, fromF = 2, toF = 7, opts) => ensureCount(type, 1, fromF, toF, opts);
 
     ensureOne('REST');
     ensureOne('SHOP');
@@ -557,8 +559,9 @@ export class MapGenerator {
     ensureOne('TREASURE', 4, 8);             // At least one normal chest mid-act
     ensureOne('TREASURE_GOOD', 6, preBoss);  // At least one good chest per act
     // A Sigil Room on the road, one per act at least (it opens like a secret vault's room,
-    // a statue and a sigil in place of a chest). Not early, and not on the boss's doorstep.
-    ensureOne('SIGIL', 3, preBoss - 2);
+    // a statue and a sigil in place of a chest). Not early, and not on the boss's doorstep:
+    // the window holds even when the cap is tight.
+    ensureOne('SIGIL', 3, preBoss - 2, { strictWindow: true });
     // Run this guarantee last so later support-room guarantees cannot replace
     // the sole Rare Shop they are supposed to coexist with.
     ensureOne('RARE_SHOP', 3, preBoss - 2);

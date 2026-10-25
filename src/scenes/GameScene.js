@@ -142,6 +142,8 @@ export class GameScene extends Phaser.Scene {
         // Test Site: forced single encounter, then back to the hub.
         this.sandboxMode = Boolean(data.sandbox);
         this.sandboxRoom = data.sandboxRoom || null;
+        // The location a Test Site fight happens in; without one it is the first act's default.
+        this.sandboxLocation = data.sandboxLocation || null;
         // A specific story picked from the Test Site, rather than whichever one
         // the story rules would have served next.
         this.sandboxEventId = data.sandboxEventId || null;
@@ -369,6 +371,13 @@ export class GameScene extends Phaser.Scene {
         this.gameState.sandboxMode = true;
         const encounter = getSandboxEncounter(this.sandboxRoom);
         applySandboxLoadout(this, this.sandboxRoom);
+        // A boss picked by location: the first act takes that road, so its boss,
+        // board and background are the ones fought.
+        if (this.sandboxLocation) {
+            this.gameState.actLocationIds = emptyActLocationIds();
+            this.gameState.actLocationIds[0] = this.sandboxLocation;
+            this.gameState.pinCalendarMonth = false;
+        }
 
         if (this.sandboxRoom === 'BOSS_REWARD') {
             this.setupBossRewardRoom();
@@ -2039,19 +2048,19 @@ export class GameScene extends Phaser.Scene {
     }
     
     // Save current run method
+    // Returns whether the run reached storage, so Save & Quit can warn when it did not.
     saveCurrentRun() {
-        if (this.sandboxMode) return;
-        if (this.saveManager) {
-            const saved = this.saveManager.saveCurrentRun(
-                this.gameState,
-                this.inventorySystem,
-                this.cardSystem
-            );
-            
-            if (saved) {
-                this.createFloatingText(570, 320, 'Game Saved', 0x71800b);
-            }
+        if (this.sandboxMode) return true;
+        if (!this.saveManager) return false;
+        const saved = this.saveManager.saveCurrentRun(
+            this.gameState,
+            this.inventorySystem,
+            this.cardSystem
+        );
+        if (saved) {
+            this.createFloatingText(570, 320, 'Game Saved', 0x71800b);
         }
+        return Boolean(saved);
     }
     
     // Load current run method

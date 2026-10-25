@@ -10,7 +10,7 @@ export const LOCATION_AMULET_IDENTITIES = Object.freeze({
     keepersWard: Object.freeze({ name: "Keeper's Ward", originLocationId: 'boneflood' }),
     vampireFang: Object.freeze({ name: 'Vampire Fang', originLocationId: 'veilbleed' }),
     sirensPendant: Object.freeze({ name: "Siren's Perfume", originLocationId: 'veilbleed' }),
-    plagueHeart: Object.freeze({ name: 'Plague Heart', originLocationId: 'silkdeep' }),
+    plagueHeart: Object.freeze({ name: 'Plague Chalice', originLocationId: 'silkdeep' }),
     leadershipBanner: Object.freeze({ name: 'Leadership Banner', originLocationId: 'thornwake' }),
     maskOfEmbers: Object.freeze({ name: 'Mask of Embers', originLocationId: 'ashhowl' }),
     mossyStone: Object.freeze({ name: MOSSY_STONE.name,

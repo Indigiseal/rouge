@@ -26,6 +26,7 @@ import { createSelectionCorners, createTooltipPanel, TOOLTIP_TEXT_COLOR } from '
 import { CHOICE_SIGHT, computeFogGrid, drawMapFog, mapSightRadius, puffFogCascade } from '../map/MapFog.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { createSecretAura } from '../ui/SecretAura.js';
+import { mapColorFor } from '../content/locations/mapColors.js';
 
 // The header band and title, above the scrolling map nodes (see create()).
 const MAP_HEADER_DEPTH = 18;
@@ -174,8 +175,8 @@ export class MapViewScene extends Phaser.Scene {
       return;
     }
 
-    // Background & title
-    this.add.rectangle(320, 180, 640, 360, 0x776c4f);
+    // Background & title. The background takes the act's location colour.
+    this.add.rectangle(320, 180, 640, 360, mapColorFor(this.gameState));
     // The header band and its "Act / Floor" title sit above the map: dragging
     // the map scrolls the nodes up under them, and at the default depth the
     // nodes (drawn later) covered the title. Below the dev pick button (20).

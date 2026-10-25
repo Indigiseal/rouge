@@ -617,9 +617,11 @@ export class CombatTurnController {
             SoundHelper.playSound(scene, 'armor_broken', 0.5);
         }
 
-        // A boss with an attack frame strikes in that pose for a moment.
+        // A boss with an attack frame strikes in that pose for a moment, in place
+        // of the generic slash below.
+        let ownAttackArt = false;
         if (card.data?.type === 'boss') {
-            showBossAttackFrame(scene, card);
+            ownAttackArt = showBossAttackFrame(scene, card);
             // A boss with its own attack sound, once loaded, adds it to the blow.
             const attackKey = bossSoundKeys(card.data)?.attack;
             if (attackKey && scene.cache?.audio?.exists?.(attackKey)) {
@@ -628,8 +630,8 @@ export class CombatTurnController {
         }
         scene.createDamageEffect(card.sprite.x, card.sprite.y);
         // The enemy's blow: the player's weapon slash, upside down, so it
-        // reads as a strike coming back down at the hero.
-        playStrikeSlash(scene, card.sprite, { flipY: true });
+        // reads as a strike coming back down at the hero. Not over a boss's own swing.
+        if (!ownAttackArt) playStrikeSlash(scene, card.sprite, { flipY: true });
 
         // Coin theft keeps its established on-swing trigger.
         card.data.abilities?.forEach(ability => {

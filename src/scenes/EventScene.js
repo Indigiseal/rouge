@@ -193,7 +193,8 @@ export class EventScene extends Phaser.Scene {
     if (!story.soupStandSeen) bonusFillers.push('soup_stand');
     if (!story.tooNiceRoomSeen) bonusFillers.push('too_nice_room');
     if (!story.wellSeen) bonusFillers.push('almost_you_well');
-    if (!story.slimyPrisonSeen) bonusFillers.push('slimy_prison');
+    // The Skeleton Warrior is unique: no second one while one is in the bag.
+    if (!story.slimyPrisonSeen && !this.hasSkeletonCompanion()) bonusFillers.push('slimy_prison');
     if (!story.bookWormSeen) bonusFillers.push('book_worm');
     if (!story.briarRoomSeen && locationId === 'thornwake') bonusFillers.push('briar_room');
     // Silkdeep-only: cocoon chamber.
@@ -262,7 +263,7 @@ export class EventScene extends Phaser.Scene {
     if (!story.soupStandSeen) pool.push('soup_stand');
     if (!story.tooNiceRoomSeen) pool.push('too_nice_room');
     if (!story.wellSeen) pool.push('almost_you_well');
-    if (!story.slimyPrisonSeen) pool.push('slimy_prison');
+    if (!story.slimyPrisonSeen && !this.hasSkeletonCompanion()) pool.push('slimy_prison');
     if (!story.bookWormSeen) pool.push('book_worm');
     if (!story.reliquarySeen && this.hasEnchantableWeapon()) pool.push('reliquary');
     if (this.getQualifyingCompanions().length > 0) pool.push('old_drill_room');

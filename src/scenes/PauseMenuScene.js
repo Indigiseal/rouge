@@ -134,6 +134,16 @@ export class PauseMenuScene extends Phaser.Scene {
         this.scene.stop();
     }
     
+    showSaveFailed() {
+        this.saveFailedText?.destroy();
+        this.saveFailedText = this.add.text(320, 238, t(this, 'ui.pause.saveFailed'), {
+            ...serifStyle('14px', OPTIONS_RESET_INK),
+            wordWrap: { width: 300 }, align: 'center',
+        }).setOrigin(0.5, 0);
+        // The recorder's status line sits here in team builds; the warning wins.
+        this.recorderStatusText?.setVisible(false);
+    }
+
     quitToMainMenu() {
         // Save the current run so it can be resumed from the main menu. The load
         // side treats a save taken in a shop/rest/etc. as "resume on the map", so
@@ -156,7 +166,13 @@ export class PauseMenuScene extends Phaser.Scene {
         const runStatus = runScene?.sys?.settings?.status ?? 0;
         if (typeof runScene?.saveCurrentRun === 'function' && runScene.gameState
             && runStatus >= 5 && runStatus <= 7) {
-            runScene.saveCurrentRun();
+            // A failed save (private window, full storage) keeps the menu open
+            // and says so. Pressing again tries once more, then leaves anyway.
+            if (!runScene.saveCurrentRun() && !this._quitWithoutSave) {
+                this._quitWithoutSave = true;
+                this.showSaveFailed();
+                return;
+            }
         }
 
         // Stop active gameplay scenes, then go to the main menu. Include the

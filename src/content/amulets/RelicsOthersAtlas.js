@@ -7,11 +7,14 @@ export const RELICS_OTHERS_SMALL_TEXTURE = 'relicsOthersSmall';
 /**
  * The texture to draw an equipped amulet with in the battle HUD: the 28px
  * sheet when the amulet comes from the shared atlas and the small sheet is
- * loaded, otherwise whatever it is normally drawn with.
+ * loaded, otherwise whatever it is normally drawn with. A frame the small
+ * sheet has not been drawn for yet comes from the full-size sheet.
  */
-export function hudAmuletTexture(scene, key) {
+export function hudAmuletTexture(scene, key, frame = null) {
     if (key === RELICS_OTHERS_TEXTURE && scene?.textures?.exists(RELICS_OTHERS_SMALL_TEXTURE)) {
-        return RELICS_OTHERS_SMALL_TEXTURE;
+        const small = scene.textures.get(RELICS_OTHERS_SMALL_TEXTURE);
+        if (frame == null || small.has?.(frame) !== false) return RELICS_OTHERS_SMALL_TEXTURE;
+        return key;
     }
     // An amulet with its own icon file brings its own 28px copy, "<key>Small".
     if (key && scene?.textures?.exists(`${key}Small`)) return `${key}Small`;
@@ -110,16 +113,28 @@ export const RELICS_OTHERS_ATLAS = Object.freeze({
 
     // Taya's new art (sigils branch). Names are working titles.
     stormPouch:           { frame: 74, name: 'Storm Pouch' },
-    lamp:                 { frame: 84, name: "Wayfarer's Lamp" },
+    // 84, 86 and 91 swapped places on the sheet on Oct 19; these follow the art.
+    lamp:                 { frame: 91, name: "Wayfarer's Lamp" },
     heartVial:            { frame: 85, name: 'Heartblood Vial' },
-    starryPendant:        { frame: 86, name: 'Starfall Pendant' },
+    starryPendant:        { frame: 84, name: 'Starfall Pendant' },
     eyePendant:           { frame: 87, name: "Oracle's Eye" },
     sapphireBrooch:       { frame: 88, name: 'Sapphire Brooch' },
     blueTeapot:           { frame: 89, name: 'Blue Teapot' },
     lookingGlass:         { frame: 90, name: 'Looking Glass' },
-    pocketWatch:          { frame: 91, name: 'Pocket Watch' },
+    pocketWatch:          { frame: 86, name: 'Pocket Watch' },
     goldenLeaf:           { frame: 92, name: 'Gilded Leaf' },
-    burningMask:          { frame: 93, name: 'Mask of Embers' }
+    burningMask:          { frame: 93, name: 'Mask of Embers' },
+    banner:               { frame: 96, name: 'Leadership Banner' },
+    // Taya's Oct 24 art, given to amulets that were borrowing someone else's picture.
+    redCirclet:           { frame: 94, name: 'Collar of Binding' },
+    gargoyle:             { frame: 98, name: "Keeper's Ward" },
+    goblet:               { frame: 99, name: 'Plague Chalice' },
+    phoenixMedallion:     { frame: 100, name: 'Molten Heart' },
+    hourglass:            { frame: 102, name: 'Sandglass Scarab' },
+    greenRing:            { frame: 108, name: 'Ring of Greater Regeneration' },
+    inkAndQuill:          { frame: 110, name: "Cartographer's Ink" },
+    sleepingBag:          { frame: 111, name: "Robber's Bedroll" },
+    spyglass:             { frame: 112, name: "Goblin's Spyglass" }
 });
 
 // Gameplay IDs stay stable for saves and balance code. These maps are the
@@ -181,12 +196,12 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     amuletOfGreaterEvasion: 'greenHood',
     ringOfGreaterHealth: 'griffinMedallion',
     amuletOfGreaterProtection: 'iceShield',
-    ringOfGreaterRegeneration: 'moonPotion',
+    ringOfGreaterRegeneration: 'greenRing',
     earringOfGreaterArmorDurability: 'shieldPotion',
     earringOfGreaterWeaponDurability: 'stormShard',
     alchemistBag: 'alchemistSatchel',
     monocle: 'monocleLens',
-    goblinSpyglass: 'magnifyingGlass', // Placeholder until its goblin-flavored art is drawn.
+    goblinSpyglass: 'spyglass',
     boneSpool: 'boneScroll', // Provisional bone craft art.
     mossyStone: 'runeOfBalance', // Existing grey-green standing stone.
     duneQuiver: 'quiver',
@@ -194,10 +209,10 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     vampireFang: 'bloodFang',
     newDragonClaw: 'dragonClaw',
     runeOfFire: 'fireRuneStone',
-    runeOfZap: 'lightningRune',
+    runeOfZap: 'stormShard', // Storm Shard wears the stone drawn as the Storm Shard.
     runeOfPoison: 'poisonRune',
-    greaterRuneOfFire: 'fireSpirit',
-    greaterRuneOfZap: 'stormShard',
+    greaterRuneOfFire: 'phoenixMedallion',
+    greaterRuneOfZap: 'lightningRune',
     greaterRuneOfPoison: 'wormVenomVial',
     maskOfHollowWhispers: 'hollowWhispersMask',
     philosophersStone: 'sunstone',
@@ -207,27 +222,27 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     markOfHesitation: 'charmingFan',
     markOfTreachery: 'perfumeBottle',
     twinMarks: 'hangingBat',
-    collarOfBinding: 'redCloak',
+    collarOfBinding: 'redCirclet',
     tacticiansPin: 'compass',
     forcedMarch: 'horn',
     vacancyStep: 'grapplingHook',
     generalsTable: 'spectacles',
     provisionersBell: 'breadLoaf',
     shiftingMedallion: 'runeOfBalance',
-    keepersWard: 'shieldPotion',
+    keepersWard: 'gargoyle',
     armsfindersCharm: 'divinersSpade',
     apothecarysEye: 'moonPotion',
     gemseekersLens: 'magnifyingGlass',
-    plagueHeart: 'wormVenomVial',
+    plagueHeart: 'goblet',
     // Sigils branch (placeholder art from frames already in the sheet).
-    cartographersInk: 'featherQuill',
+    cartographersInk: 'inkAndQuill',
     oraclesFishbowl: 'eyePendant',
     quickstepCharm: 'fingerlessGloves',
     heartOfHours: 'pocketWatch',
-    gluttonsCharm: 'blueTeapot',
-    leadershipBanner: 'horn', // Provisional leadership art until the banner is drawn.
+    gluttonsCharm: 'hourglass',
+    leadershipBanner: 'banner',
     veteransCarryall: 'basket',
-    robberSatchel: 'bottomlessBag', // Provisional: the satchel art is not drawn yet.
+    robberSatchel: 'sleepingBag', // Shown as the Robber's Bedroll; the id stays for saves.
     tollWrit: 'merchantSeal',
     heartbloodVial: 'heartVial',
     starfallPendant: 'starryPendant',

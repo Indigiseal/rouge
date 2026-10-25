@@ -69,7 +69,9 @@ export function ensureLocationAssets(scene, locationIds) {
  * floor it was saved on.
  */
 export function locationIdsForRunStart(data = {}, savedRun = null, locationForFloor = () => null) {
-    if (data.tutorial || data.sandbox) return ['thornwake'];
+    if (data.tutorial) return ['thornwake'];
+    // A Test Site boss is fought in its own location (SandboxHubScene's boss picker).
+    if (data.sandbox) return [data.sandboxLocation || 'thornwake'];
     if (data.loadSave) {
         const player = savedRun?.player;
         const id = player ? locationForFloor({ actLocationIds: player.actLocationIds, currentFloor: player.currentFloor,

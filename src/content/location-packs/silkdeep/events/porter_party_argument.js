@@ -1,6 +1,7 @@
 // Silkdeep follow-up to The Lost Porter. Only queued once the player holds the
 // Porter's Map. The party argues about the map they "lost"; returning it costs
-// the amulet and earns nothing but a pat on the shoulder.
+// the amulet and earns nothing but a pat on the shoulder. Confronting them earns
+// a random amulet: they pay for the player's silence.
 
 export default {
   id: 'porter_party_argument',
@@ -24,10 +25,10 @@ export default {
       id: 'porter_party_confront',
       text: 'Confront them',
       action: (gs, scene) => scene.resolvePorterParty('confront'),
-      outcome:
-        'Three hands go to three weapons, then relax when they see you are alone.\n\n'
-        + '"Your porter is fine," you say. "He thinks he got lost."\n\n'
-        + 'They look at their boots. "...Good," the leader mutters at last. "Good for him."',
+      // One literal per branch so the localization audit sees each whole outcome.
+      outcome: (gs, scene) => (scene.porterPartyPaid
+        ? 'Three hands go to three weapons, then relax when they see you are alone.\n\n"Your porter is fine," you say. "He thinks he got lost."\n\nThe youngest one looks at his boots. The leader does not. He smiles, puts something in your hand and pats your cheek.\n\n"For your trouble. He got lost. Didn\'t he."'
+        : 'Three hands go to three weapons, then relax when they see you are alone.\n\n"Your porter is fine," you say. "He thinks he got lost."\n\nThey look at their boots. "...Good," the leader mutters at last. "Good for him."'),
     },
     {
       id: 'porter_party_return',

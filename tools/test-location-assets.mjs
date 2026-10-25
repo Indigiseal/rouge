@@ -49,6 +49,7 @@ assert.equal(queued.length, 0);
 const forFloor = (gs) => getLocationIdForFloor(gs);
 assert.deepEqual(locationIdsForRunStart({ tutorial: true }), ['thornwake']);
 assert.deepEqual(locationIdsForRunStart({ sandbox: true }), ['thornwake']);
+assert.deepEqual(locationIdsForRunStart({ sandbox: true, sandboxLocation: 'ashhowl' }), ['ashhowl'], 'a Test Site boss loads its own location');
 assert.deepEqual(locationIdsForRunStart({ locationId: 'sandreach' }), ['sandreach']);
 assert.deepEqual(locationIdsForRunStart({}), ['thornwake']);
 const savedRun = { player: { currentFloor: 20, actLocationIds: ['tollroad', 'stormhatch', null], calendarMonthIndex: 0 } };

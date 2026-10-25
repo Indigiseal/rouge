@@ -31,8 +31,28 @@ try {
     await page.evaluate(`${scene('LocationPickScene')}.leave('thornwake')`);
     await reach('GameScene');
     await page.waitForTimeout(1500);
+
+    // Save & Quit cannot save here: the pause menu stays open and says so,
+    // and a second press leaves anyway.
+    await page.evaluate(`(() => {
+        const game = ${scene('GameScene')};
+        game.scene.pause();
+        game.scene.launch('PauseMenuScene', { pausedScene: 'GameScene' });
+    })()`);
+    await reach('PauseMenuScene');
+    await page.evaluate(`${scene('PauseMenuScene')}.quitToMainMenu()`);
+    await page.waitForTimeout(200);
+    const warned = await page.evaluate(`(() => {
+        const pause = ${scene('PauseMenuScene')};
+        return { open: pause.sys.isActive(), text: pause.saveFailedText?.text || '' };
+    })()`);
+    assert.ok(warned.open, 'a failed save keeps the pause menu open');
+    assert.match(warned.text, /could not be saved/, 'a failed save is explained');
+    await page.evaluate(`${scene('PauseMenuScene')}.quitToMainMenu()`);
+    await reach('MainMenuScene');
+
     assert.deepEqual(errors, [], 'no uncaught errors with storage blocked');
-    console.log('Blocked storage checks passed: boot, Sanctuary, Choose Your Road and the first room.');
+    console.log('Blocked storage checks passed: boot, Sanctuary, Choose Your Road, the first room, and a warned Save & Quit.');
 } finally {
     await browser.close();
 }

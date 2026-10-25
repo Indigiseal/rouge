@@ -1294,9 +1294,10 @@ export const CombatHud = {
             }
 
             const def = this.amuletManager.amuletDefinitions[amulet.id];
+            const activeFrame = def?.spriteFrame ?? amulet.spriteFrame ?? 0;
             const sprite = this.add.image(
-                ACTIVE_X, ACTIVE_Y, hudAmuletTexture(this, def?.sprite ?? amulet.sprite ?? 'relicsOthers'),
-                def?.spriteFrame ?? amulet.spriteFrame ?? 0,
+                ACTIVE_X, ACTIVE_Y, hudAmuletTexture(this, def?.sprite ?? amulet.sprite ?? 'relicsOthers', activeFrame),
+                activeFrame,
             ).setDepth(22).setInteractive({ useHandCursor: true });
             sprite.on('pointerdown', () => this.amuletManager.activateAmulet(amulet.id));
             sprite.on('pointerover', () => this.showAmuletTooltip(amulet, ACTIVE_X + 20, ACTIVE_Y));
@@ -1346,8 +1347,8 @@ export const CombatHud = {
 
             // Always resolve sprite from the live definition
             const def = this.amuletManager?.amuletDefinitions?.[amulet.id];
-            const spriteKey   = hudAmuletTexture(this, def?.sprite ?? amulet.sprite ?? 'relicsOthers');
             const spriteFrame = def?.spriteFrame  ?? amulet.spriteFrame  ?? 0;
+            const spriteKey   = hudAmuletTexture(this, def?.sprite ?? amulet.sprite ?? 'relicsOthers', spriteFrame);
 
             const amuletSprite = this.add.image(x, y, spriteKey, spriteFrame).setInteractive();
             amuletSprite.setDepth(22);

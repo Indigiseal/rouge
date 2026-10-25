@@ -282,7 +282,7 @@ export function buildCurrentAmuletDefinitions(mgr) {
             },
             plagueHeart: {
                 ...getAmuletAtlasPresentation('plagueHeart'),
-                name: 'Plague Heart',
+                name: 'Plague Chalice',
                 description: 'A poisoned enemy explodes on death, dealing 10 damage to every adjacent enemy.',
                 rarity: 'legendary',
                 poisonDeathExplosionDamage: 10,
@@ -351,7 +351,7 @@ export function buildCurrentAmuletDefinitions(mgr) {
             // bag slot as the Carryall, made certain by the fight that earns it.
             robberSatchel: {
                 ...getAmuletAtlasPresentation('robberSatchel'),
-                name: "Robber's Satchel",
+                name: "Robber's Bedroll",
                 description: '+1 bag slot.',
                 rarity: 'uncommon',
                 onEquip: function() {

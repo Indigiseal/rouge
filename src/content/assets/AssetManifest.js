@@ -11,7 +11,7 @@ import { ARMOR_EQUIP_SOUND_ASSETS } from '../audio/armorSounds.js';
 import { PACKED_SHEETS } from './packedSprites.js';
 import { SIGIL_ICONS_NEW_SHEET } from '../sigils/sigils.js';
 import { LOCATION_CARD_BACK_SHEET } from './locationCardArt.js';
-import { BOSS_ATTACK_FRAME_FILES, BOSS_POSE_SHEETS } from '../cards/bossAttackFrames.js';
+import { BOSS_ATTACK_FRAME_FILES } from '../cards/bossAttackFrames.js';
 
 /** @type {AssetEntry[]} */
 export const ASSET_MANIFEST = [
@@ -255,17 +255,15 @@ export const ASSET_MANIFEST = [
     // Bosses
     { key: 'lightningBoss', path: 'assets/art/lightningBoss.png', type: 'image' },
     { key: 'frostGiant', path: 'assets/art/frosthollow/frostGiant.png', type: 'image' },
-    { key: 'greenWarden', path: 'assets/art/greenWarden.png', type: 'image' },
-    { key: 'giantSkeleton', path: 'assets/art/giantSkeleton.png', type: 'image' },
-    { key: 'GoblinKingSprite', path: 'assets/art/goblinKing.png', type: 'image' },
+    // The Green Warden, Goblin King, Giant Skeleton, Soul Eater, Mire Bride, Cerberus and Sandscale Chieftain have
+    // no idle file: their idle pose is frame 0 of their attack sheet (bossAttackFrames.js).
     { key: 'SpiderQween', path: 'assets/art/spiderBoss.png', type: 'image' },
     { key: 'Lich', path: 'assets/art/lich.png', type: 'image' },
-    { key: 'SoulEater', path: 'assets/art/soulEater.png', type: 'image' },
-    { key: 'MireBride', path: 'assets/art/mireBrideBossNoFloor.png', type: 'image' },
-    // Bosses' attack frames (content/cards/bossAttackFrames.js).
-    ...BOSS_ATTACK_FRAME_FILES.map(({ key, path }) => ({ key, path, type: 'image' })),
-    ...BOSS_POSE_SHEETS.map(({ key, path, frameWidth, frameHeight }) =>
-        ({ key, path, frameWidth, frameHeight, type: 'spritesheet' })),
+    // Bosses' attack art (content/cards/bossAttackFrames.js): a sheet (frameWidth set)
+    // loads as a spritesheet, a single attack picture as an image.
+    ...BOSS_ATTACK_FRAME_FILES.map(({ key, path, frameWidth, frameHeight }) => (frameWidth
+        ? { key, path, frameWidth, frameHeight, type: 'spritesheet' }
+        : { key, path, type: 'image' })),
     // The door you walk through to choose a road. One 64x64 frame per
     // location, in the order LOCATION_DOOR_FRAMES declares.
     { key: 'locationDoors', path: 'assets/art/paths.png', type: 'spritesheet', frameWidth: 64, frameHeight: 64 },
@@ -275,7 +273,6 @@ export const ASSET_MANIFEST = [
     // goblin door; row 5 Frosthollow's ice door. See
     // LOCATION_DOOR_SHEETS in locationCards.js.
     { key: 'locationDoorAnims', path: 'assets/ui/doorAnim68x70.png', type: 'spritesheet', frameWidth: 68, frameHeight: 70 },
-    { key: 'Cerberus', path: 'assets/art/cerberus.png', type: 'image' },
     { key: 'AncientCerberus', path: 'assets/art/ancientCerberus.png', type: 'image' },
     // Smoke burst — 11 frames, played by the Smoke Screen spell and by the toll
     // goblins escaping. See PreloadScene's 'smoke_bomb_anim'.

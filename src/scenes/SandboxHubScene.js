@@ -2,7 +2,9 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { SANDBOX_ENCOUNTERS, SANDBOX_STORY_KEY } from '../sandbox/SandboxMode.js';
-import { t } from '../i18n/i18n.js';
+import { t, translateItemName } from '../i18n/i18n.js';
+import { PATH_LOCATIONS } from '../content/locations/catalog.js';
+import { BOSSES } from '../content/cards/bosses.js';
 
 export class SandboxHubScene extends Phaser.Scene {
   constructor() {
@@ -92,13 +94,38 @@ export class SandboxHubScene extends Phaser.Scene {
     return { bg, text };
   }
 
-  launchEncounter(roomId) {
+  launchEncounter(roomId, sandboxLocation = null) {
+    // Every location has its own boss: ask which one first.
+    if (roomId === 'BOSS' && !sandboxLocation) {
+      this.showBossPicker();
+      return;
+    }
     MusicManager.stopIfPlaying(this, 'menu_music', 250);
     this.cameras.main.fadeOut(280, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       const entry = SANDBOX_ENCOUNTERS.find(encounter => encounter.id === roomId);
       if (entry?.kind === 'preview') this.scene.start(entry.sceneKey);
-      else this.scene.start('GameScene', { sandbox: true, sandboxRoom: roomId });
+      else this.scene.start('GameScene', { sandbox: true, sandboxRoom: roomId, sandboxLocation });
     });
+  }
+
+  // One button per location that has a boss; the fight happens in that location.
+  showBossPicker() {
+    const layer = this.add.container(0, 0).setDepth(50);
+    layer.add(this.add.rectangle(320, 180, 640, 360, 0x000000, 0.82).setInteractive());
+    layer.add(this.add.text(320, 34, t(this, 'ui.sandbox.encounter.boss'), {
+      fontSize: '18px', fill: '#d6c2c1', fontFamily: '"HoMM Pixel", Arial, sans-serif',
+    }).setOrigin(0.5));
+    const bosses = Object.values(PATH_LOCATIONS).filter(loc => loc.bossId && BOSSES[loc.bossId]);
+    bosses.forEach((loc, i) => {
+      const x = 200 + (i % 2) * 240;
+      const y = 76 + Math.floor(i / 2) * 34;
+      const label = `${loc.name}: ${translateItemName(this, BOSSES[loc.bossId]) || BOSSES[loc.bossId].name}`;
+      const button = this.createEncounterButton(x, y, label, () => this.launchEncounter('BOSS', loc.id), 220);
+      layer.add([button.bg, button.text]);
+    });
+    // Back closes the list, not the Test Site.
+    const back = this.createEncounterButton(320, 330, t(this, 'ui.common.back'), () => layer.destroy(), 180);
+    layer.add([back.bg, back.text]);
   }
 }

@@ -23,6 +23,7 @@ import {
 } from '../config/TestOptions.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { devToolsEnabled, isTeamBuild, switchDevMode } from '../config/DevTools.js';
+import { buildLabel } from '../config/buildInfo.js';
 import { COG_X, COG_Y } from '../ui/OptionsCog.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
@@ -76,8 +77,8 @@ export class MainMenuScene extends Phaser.Scene {
         // Main menu buttons
         this.createMainMenuButtons();
 
-        // Version text
-        this.add.text(10, 350, 'v1.0.0', {
+        // Build name (config/buildInfo.js): which playtest upload this is.
+        this.versionText = this.add.text(10, 350, buildLabel(), {
             fontSize: '12px',
             fill: '#869089',
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
@@ -94,7 +95,9 @@ export class MainMenuScene extends Phaser.Scene {
         if (!isTeamBuild()) return;
         const dev = devToolsEnabled();
         // 347, 3px above the version number's line: at 350 it sat on the edge.
-        const label = this.add.text(52, 347, t(this, dev ? 'ui.menu.modeDeveloper' : 'ui.menu.modePlayer'), {
+        // Just after the build name, however long it is.
+        const switchX = Math.round((this.versionText?.x ?? 10) + (this.versionText?.width ?? 34) + 8);
+        const label = this.add.text(switchX, 347, t(this, dev ? 'ui.menu.modeDeveloper' : 'ui.menu.modePlayer'), {
             fontSize: '12px',
             fill: dev ? '#d48e17' : '#869089',
             fontFamily: '"HoMM Pixel", Arial, sans-serif',
