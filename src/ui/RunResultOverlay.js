@@ -1,7 +1,7 @@
 // Defeat / victory result overlays for GameScene.
 import { MusicManager } from '../audio/MusicManager.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { t } from '../i18n/i18n.js';
+import { t, translateItemName } from '../i18n/i18n.js';
 import { OptionsSkin, UI_BUTTON } from './OptionsSkin.js';
 
 export function showDefeatFallback(scene, deathStats) {
@@ -14,7 +14,7 @@ export function showDefeatFallback(scene, deathStats) {
         fill: '#fef0cf',
         fontFamily: 'Arial, sans-serif'
     }).setOrigin(0.5).setDepth(depth + 1);
-    scene.add.text(320, 160, `${t(scene, 'ui.result.killedBy', { enemy: deathStats.killedBy })}\n${t(scene, 'ui.result.reachedFloor', { floor: deathStats.floor })}`, {
+    scene.add.text(320, 160, `${t(scene, 'ui.result.killedBy', { enemy: translateItemName(scene, deathStats.killedBy) })}\n${t(scene, 'ui.result.reachedFloor', { floor: deathStats.floor })}`, {
         fontSize: '16px',
         fill: '#d6c2c1',
         fontFamily: 'Arial, sans-serif',
@@ -79,7 +79,7 @@ export function showDefeatResult(scene, deathStats, xpResult) {
         fill: '#fef0cf',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'
     }).setOrigin(0.5).setDepth(resultDepth + 2);
-    scene.add.text(320, 116, t(scene, 'ui.result.killedBy', { enemy: deathStats.killedBy }), {
+    scene.add.text(320, 116, t(scene, 'ui.result.killedBy', { enemy: translateItemName(scene, deathStats.killedBy) }), {
         fontSize: '14px',
         fill: '#d6c2c1',
         fontFamily: '"HoMM Pixel", Arial, sans-serif'

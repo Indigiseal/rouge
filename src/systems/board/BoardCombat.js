@@ -1289,7 +1289,9 @@ function applyWeaponEnchantOnKill(enchantId) {
     // attacker, so this buys a turn exactly like the Smoke Screen card does.
     const candidates = this.boardCards
         .map((card, index) => ({ card, index }))
-        .filter(({ card }) => this.isOpenEnemyCard(card) && card.data?.type !== 'boss');
+        // Never the enemy this kill just felled (it is still on the board, at 0 HP), nor a bone pile.
+        .filter(({ card }) => this.isOpenEnemyCard(card) && card.data?.type !== 'boss'
+            && (card.data?.health || 0) > 0 && !card.data?.isBonePile);
     if (candidates.length === 0) return;
     const pick = candidates[Math.floor(Math.random() * candidates.length)];
     const hiddenX = pick.card?.sprite?.x ?? 320;
@@ -1316,6 +1318,15 @@ function hideEnemyCard(index) {
     if (!this.isOpenEnemyCard(card)) return false;
 
     card.revealed = false;
+    // A card turned face-up a moment ago may still be playing its flip. Left running, the flip
+    // ends by putting the enemy's face back on a card that is hidden: it shows, but it cannot be
+    // attacked or clicked open (Ash Cloud, Shrouded!). Stop it, and anything moving the card.
+    card.sprite.stop?.();
+    card.sprite.off('animationcomplete');
+    this.scene.tweens.killTweensOf(card.sprite);
+    if (Number.isFinite(card.restX)) card.sprite.x = card.restX;
+    if (Number.isFinite(card.restY)) card.sprite.y = card.restY;
+    card.justRevealed = false;
     card.sprite.setTexture(this._cardBackKey());
     card.sprite.off('pointerdown');
     card.sprite.on('pointerdown', () => this.revealCard(index));

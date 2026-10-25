@@ -1,4 +1,5 @@
 import { loadAssetManifest } from '../content/assets/AssetManifest.js';
+import { t } from '../i18n/i18n.js';
 import { splitItemSheets } from '../content/assets/itemSheets.js';
 import { fontFamily } from '../ui/fontFamilies.js';
 import { PIXEL_SCALE } from '../config/renderScale.js';
@@ -61,7 +62,7 @@ export class PreloadScene extends Phaser.Scene {
         this.load.on('progress', (value) => {
             const pct = Math.round(value * 100);
             if (fill) fill.style.width = `${pct}%`;
-            if (status) status.textContent = `Loading... ${pct}%`;
+            if (status) status.textContent = t(this, 'ui.loading.progress', { pct });
         });
 
         // itch.io has served 403s for individual files before (see the note in
@@ -71,12 +72,12 @@ export class PreloadScene extends Phaser.Scene {
         let failed = 0;
         this.load.on('loaderror', () => {
             failed += 1;
-            if (errors) errors.textContent = `${failed} file${failed === 1 ? '' : 's'} failed to load`;
+            if (errors) errors.textContent = t(this, 'ui.loading.failed', { count: failed });
         });
 
         this.load.on('complete', () => {
             if (fill) fill.style.width = '100%';
-            if (status) status.textContent = 'Ready';
+            if (status) status.textContent = t(this, 'ui.loading.ready');
         });
     }
 

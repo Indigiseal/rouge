@@ -7,7 +7,7 @@ import { setHoverLight } from '../../ui/HoverLight.js';
 import { DISCARD_X } from '../../ui/CombatHud.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
-import { t, translateDescription, translateGemEffect, translateItemName, tCount } from '../../i18n/i18n.js';
+import { t, translateDescription, translateGemEffect, translateItemName, translateRarity, tCount } from '../../i18n/i18n.js';
 import { describeWeaponEnchant } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
 import { handLockOf } from '../../content/combat/handLock.js';
@@ -1447,7 +1447,11 @@ export const InventoryView = {
         if (cardA.type === 'magic' || cardB.type === 'magic') return translateDescription(this.scene, 'magic cards cannot merge');
         if (cardA.type === 'gem' || cardB.type === 'gem') return translateDescription(this.scene, 'gems socket into weapons');
         if (this.getMergeKey(cardA) !== this.getMergeKey(cardB)) return translateDescription(this.scene, 'different family');
-        if (cardA.rarity !== cardB.rarity) return `rarity ${cardA.rarity || '?'} vs ${cardB.rarity || '?'}`;
+        if (cardA.rarity !== cardB.rarity) {
+            return t(this.scene, 'tooltip.mergeRarity', {
+                a: translateRarity(this.scene, cardA.rarity, '?'), b: translateRarity(this.scene, cardB.rarity, '?'),
+            });
+        }
         if (this.getMergeStatsKey(cardA) !== this.getMergeStatsKey(cardB)) return translateDescription(this.scene, 'stats/effect differ');
         return '';
     },

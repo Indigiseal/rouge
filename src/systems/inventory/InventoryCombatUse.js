@@ -327,20 +327,11 @@ export const InventoryCombatUse = {
                 // Boss is intentionally excluded — it cannot be hidden.
                 let flippedAny = false;
                 this.scene.cardSystem.boardCards.forEach((card, idx) => {
-                    if (card?.revealed && this.isEnemyBoardCard(card, false)) {
-                        card.revealed = false;
-                        card.sprite.setTexture('cardBack');
-                        // Rebind click so the player can re-reveal this card normally.
-                        // (After reveal the handler was swapped to interactWithCard,
-                        // which silently returns when card.revealed is false.)
-                        card.sprite.off('pointerdown');
-                        card.sprite.on('pointerdown', () => this.scene.cardSystem.revealCard(idx));
-                        // Destroy role/poison markers — they will be recreated on re-reveal.
-                        if (card.roleMarker) { card.roleMarker.destroy(); card.roleMarker = null; }
-                        if (card.poisonMarker) { card.poisonMarker.destroy(); card.poisonMarker = null; }
-                        if (card.shockMarker) { card.shockMarker.destroy(); card.shockMarker = null; }
-                        this.scene.cardSystem.destroyCardInfoText?.(card);
-                        this.scene.cardSystem.syncControlMarkers?.(card);
+                    // The same flip back as the Ash Cloud sigil (BoardCombat.hideEnemyCard): the
+                    // location's card back, the click rebound to reveal, the markers cleared, and
+                    // a flip still running stopped so it cannot put the face back.
+                    if (card?.revealed && this.isEnemyBoardCard(card, false)
+                        && this.scene.cardSystem.hideEnemyCard(idx)) {
                         flippedAny = true;
                     }
                 });

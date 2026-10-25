@@ -3303,6 +3303,100 @@ Object.assign(STRINGS.es, { "ui.carnival.trayHint": "Arrastra una baratija a tu 
 Object.assign(STRINGS.fr, { "ui.carnival.trayHint": "Glissez un bibelot dans votre sac   ·   1 pièce chacun", "ui.carnival.nothingAffordable": "Rien ici n’est dans vos moyens." });
 Object.assign(STRINGS.ru, { "ui.carnival.trayHint": "Перетащите безделушку в сумку   ·   1 монета за штуку", "ui.carnival.nothingAffordable": "Здесь вам ничего не по карману." });
 
+// More text that was English at its call site: floaters, damage labels, the loading bar, names
+// and choice buttons. Found with tools/audit-hardcoded-text.mjs and the code sweep.
+const CALL_SITE_TEXT_2 = {
+    en: {
+        "float.plagueBurst": "Plague Burst!",
+        "float.bonePileFinish": "Bone Pile — finish it!",
+        "float.quickStrike": "Quick Strike!",
+        "float.secondWind": "Second Wind!",
+        "float.heavyCleave": "Heavy Cleave!",
+        "float.apSecondWind": "+{amount} AP (Second Wind)",
+        "float.skeletonSlash": "-{amount} Skeleton Slash",
+        "float.chickZap": "-{amount} Chick Zap",
+        "float.embersDamage": "-{amount} Embers",
+        "float.fireballDamage": "-{amount} Fireball",
+        "float.lightningDamage": "-{amount} Lightning",
+        "float.zapDamage": "-{amount} Zap",
+        "ui.loading.progress": "Loading... {pct}%",
+        "ui.loading.ready": "Ready",
+        "ui.loading.failed": "Files that did not load: {count}",
+        "tooltip.mergeRarity": "rarity {a} vs {b}",
+    },
+    es: {
+        "float.plagueBurst": "¡Estallido de plaga!",
+        "float.bonePileFinish": "Montón de huesos: ¡acaba con él!",
+        "float.quickStrike": "¡Golpe rápido!",
+        "float.secondWind": "¡Segundo aliento!",
+        "float.heavyCleave": "¡Tajo pesado!",
+        "float.apSecondWind": "+{amount} PA (Segundo aliento)",
+        "float.skeletonSlash": "-{amount} Tajo de esqueleto",
+        "float.chickZap": "-{amount} Chispazo del pollito",
+        "float.embersDamage": "-{amount} Brasas",
+        "float.fireballDamage": "-{amount} Bola de fuego",
+        "float.lightningDamage": "-{amount} Rayo",
+        "float.zapDamage": "-{amount} Chispazo",
+        "ui.loading.progress": "Cargando... {pct} %",
+        "ui.loading.ready": "Listo",
+        "ui.loading.failed": "Archivos que no cargaron: {count}",
+        "tooltip.mergeRarity": "rareza {a} contra {b}",
+    },
+    fr: {
+        "float.plagueBurst": "Explosion de peste !",
+        "float.bonePileFinish": "Tas d’os : achevez-le !",
+        "float.quickStrike": "Frappe rapide !",
+        "float.secondWind": "Second souffle !",
+        "float.heavyCleave": "Fendoir lourd !",
+        "float.apSecondWind": "+{amount} PA (Second souffle)",
+        "float.skeletonSlash": "-{amount} Taillade du squelette",
+        "float.chickZap": "-{amount} Décharge du poussin",
+        "float.embersDamage": "-{amount} Braises",
+        "float.fireballDamage": "-{amount} Boule de feu",
+        "float.lightningDamage": "-{amount} Foudre",
+        "float.zapDamage": "-{amount} Décharge",
+        "ui.loading.progress": "Chargement... {pct} %",
+        "ui.loading.ready": "Prêt",
+        "ui.loading.failed": "Fichiers non chargés : {count}",
+        "tooltip.mergeRarity": "rareté {a} contre {b}",
+    },
+    ru: {
+        "float.plagueBurst": "Чумной взрыв!",
+        "float.bonePileFinish": "Груда костей — добейте!",
+        "float.quickStrike": "Быстрый удар!",
+        "float.secondWind": "Второе дыхание!",
+        "float.heavyCleave": "Тяжелое рассечение!",
+        "float.apSecondWind": "+{amount} AP (Второе дыхание)",
+        "float.skeletonSlash": "-{amount} Удар скелета",
+        "float.chickZap": "-{amount} Разряд цыпленка",
+        "float.embersDamage": "-{amount} Угли",
+        "float.fireballDamage": "-{amount} Огненный шар",
+        "float.lightningDamage": "-{amount} Молния",
+        "float.zapDamage": "-{amount} Разряд",
+        "ui.loading.progress": "Загрузка... {pct}%",
+        "ui.loading.ready": "Готово",
+        "ui.loading.failed": "Не загрузились файлы: {count}",
+        "tooltip.mergeRarity": "редкость {a} против {b}",
+    },
+};
+for (const [language, additions] of Object.entries(CALL_SITE_TEXT_2)) Object.assign(STRINGS[language], additions);
+Object.assign(TEXT_ALIASES, {
+    "Plague Burst!": "float.plagueBurst",
+    "Bone Pile — finish it!": "float.bonePileFinish",
+    "Quick Strike!": "float.quickStrike",
+    "Second Wind!": "float.secondWind",
+    "Heavy Cleave!": "float.heavyCleave",
+});
+TEXT_PATTERNS.push(
+    [new RegExp("^\\+(\\d+) AP \\(Second Wind\\)$"), match => ["float.apSecondWind", { amount: match[1] }]],
+    [new RegExp("^-(\\d+) Skeleton Slash$"), match => ["float.skeletonSlash", { amount: match[1] }]],
+    [new RegExp("^-(\\d+) Chick Zap$"), match => ["float.chickZap", { amount: match[1] }]],
+    [new RegExp("^-(\\d+) Embers$"), match => ["float.embersDamage", { amount: match[1] }]],
+    [new RegExp("^-(\\d+) Fireball$"), match => ["float.fireballDamage", { amount: match[1] }]],
+    [new RegExp("^-(\\d+) Lightning$"), match => ["float.lightningDamage", { amount: match[1] }]],
+    [new RegExp("^-(\\d+) Zap$"), match => ["float.zapDamage", { amount: match[1] }]],
+);
+
 const EXACT_NAME_TRANSLATIONS = {
     fr: {
         'Mark of Hesitation': 'Marque d’Hésitation',
@@ -5596,6 +5690,62 @@ Object.assign(EVENT_NARRATIVE_TRANSLATIONS.ru, {
     "You leave the wall alone.": "Вы оставляете стену в покое.",
 });
 // <<< imported stories-runtime-translated.json
+
+// Names, choice buttons and descriptions written straight into code (see CALL_SITE_TEXT_2).
+Object.assign(EXACT_NAME_TRANSLATIONS.es, {
+    "Dungeon Event": "Suceso de la mazmorra",
+    "Exploding Music Box": "Caja de música explosiva",
+    "Rare Thorns": "Espinas raras",
+    "fortune card": "carta de la fortuna",
+    "Angry Nestmother": "Madre del nido furiosa",
+    "Makeshift Weapon": "Arma improvisada",
+});
+Object.assign(EXACT_NAME_TRANSLATIONS.fr, {
+    "Dungeon Event": "Événement du donjon",
+    "Exploding Music Box": "Boîte à musique explosive",
+    "Rare Thorns": "Épines rares",
+    "fortune card": "carte de fortune",
+    "Angry Nestmother": "Mère du nid furieuse",
+    "Makeshift Weapon": "Arme de fortune",
+});
+Object.assign(EXACT_NAME_TRANSLATIONS.ru, {
+    "Dungeon Event": "Событие подземелья",
+    "Exploding Music Box": "Взрывающаяся музыкальная шкатулка",
+    "Rare Thorns": "Редкие шипы",
+    "fortune card": "карта удачи",
+    "Angry Nestmother": "Разгневанная мать гнезда",
+    "Makeshift Weapon": "Самодельное оружие",
+});
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.es, {
+    "Offer gem": "Ofrecer gema",
+    "Offer card": "Ofrecer carta",
+    "Offer weapon": "Ofrecer arma",
+    "Trade junk": "Cambiar baratijas",
+});
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.fr, {
+    "Offer gem": "Offrir une gemme",
+    "Offer card": "Offrir une carte",
+    "Offer weapon": "Offrir une arme",
+    "Trade junk": "Échanger le bric-à-brac",
+});
+Object.assign(EVENT_NARRATIVE_TRANSLATIONS.ru, {
+    "Offer gem": "Отдать камень",
+    "Offer card": "Отдать карту",
+    "Offer weapon": "Отдать оружие",
+    "Trade junk": "Обменять хлам",
+});
+Object.assign(DESCRIPTION_TRANSLATIONS.es, {
+    "Cold, and heavier than it looks. Something inside taps back.": "Frío, y más pesado de lo que parece. Algo dentro golpea en respuesta.",
+    "At the start of combat, revealed enemies receive random status effects. Sometimes backfires.": "Al empezar el combate, los enemigos revelados reciben efectos de estado al azar. A veces sale mal.",
+});
+Object.assign(DESCRIPTION_TRANSLATIONS.fr, {
+    "Cold, and heavier than it looks. Something inside taps back.": "Froid, et plus lourd qu’il n’y paraît. À l’intérieur, quelque chose tape en retour.",
+    "At the start of combat, revealed enemies receive random status effects. Sometimes backfires.": "Au début du combat, les ennemis révélés reçoivent des effets d’état aléatoires. Parfois, cela se retourne contre vous.",
+});
+Object.assign(DESCRIPTION_TRANSLATIONS.ru, {
+    "Cold, and heavier than it looks. Something inside taps back.": "Холодное и тяжелее, чем кажется. Внутри что-то стучит в ответ.",
+    "At the start of combat, revealed enemies receive random status effects. Sometimes backfires.": "В начале боя открытые враги получают случайные эффекты. Иногда это оборачивается против вас.",
+});
 
 const TOLLROAD_STORY_STRINGS = {
     "en": {
