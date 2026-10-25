@@ -185,6 +185,10 @@ export function enchantChanceOf(weapon) {
     : getEnchantChance(weapon?.enchant);
 }
 
+// Sigils whose rule is a Reliquary enchant's: stamped in a Sigil Room, they
+// roll that spell's effect at that spell's chance, as the enchant would.
+export const SIGIL_AS_ENCHANT = Object.freeze({ bulwark: 'boneWall', briarGuard: 'briarShield' });
+
 export function describeWeaponEnchant(sceneOrWeapon, maybeWeapon) {
   const scene = maybeWeapon ? sceneOrWeapon : null;
   const weapon = maybeWeapon || sceneOrWeapon;

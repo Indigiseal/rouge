@@ -19,7 +19,9 @@ import {
     ENCHANT_SHADOW_MULTIPLIER,
     ENCHANT_SHIELD_MULTIPLIER,
     ENCHANT_SHIELD_TURNS,
+    SIGIL_AS_ENCHANT,
     enchantChanceOf,
+    getEnchantChance,
     getWeaponEnchant,
 } from '../../content/balance/WeaponEnchants.js';
 import { effectiveArmorProtection } from '../combat/ArmorMath.js';
@@ -39,7 +41,7 @@ const CRIT_SHAKE_INTENSITY = 0.0025;
 import { hideItemTooltip, showControlMarkTooltip } from '../../ui/ItemTooltip.js';
 import { fireDamageAgainst } from '../../content/combat/fireResist.js';
 import { enterBonePile } from '../../content/combat/boneflood.js';
-import { sigilLevel } from '../../content/sigils/sigils.js';
+import { hasEnemyTrait, sigilLevel } from '../../content/sigils/sigils.js';
 import { canBurnCard, takeBurnTick } from '../../content/combat/ashhowl.js';
 
 export class BoardCombat {
@@ -124,7 +126,7 @@ export function weaponCanDamageEnemy(weapon, card) {
   if (!weapon || !card?.data) return true;
   const features = Array.isArray(card.data.features) ? card.data.features : [];
   // Thorn Sprite: bark shrugs off bows; melee and spells still connect.
-  if (features.includes('ranged_immune') && isRangedWeapon(weapon)) return false;
+  if (hasEnemyTrait(card.data, 'ranged_immune') && isRangedWeapon(weapon)) return false;
   return true;
 }
 
@@ -1091,7 +1093,7 @@ function isActiveBoardTaunter(card) {
     // Face-down / mid-flip art must not provoke even if `revealed` desynced.
     const tex = card.sprite.texture?.key;
     if (this._isCardBackTexture(tex)) return false;
-    return Array.isArray(card.data?.features) && card.data.features.includes('taunt');
+    return hasEnemyTrait(card.data, 'taunt');
 }
 
 function isTauntBlockingTarget(card) {
@@ -1100,7 +1102,7 @@ function isTauntBlockingTarget(card) {
     // Any taunter card is a legal target; non-taunters are blocked while a
     // face-up husk lives. (Target need not pass the "active" visual check —
     // mid-flip husk art is still the provoked enemy.)
-    return !(Array.isArray(card?.data?.features) && card.data.features.includes('taunt'));
+    return !hasEnemyTrait(card?.data, 'taunt');
 }
 
 function burnEnemy(index, amount, { label = 'Fire' } = {}) {
@@ -1213,8 +1215,16 @@ function applyRelicSlow(card) {
 
 function rollWeaponEnchant(weapon) {
     const enchant = getWeaponEnchant(weapon?.enchant);
+    // A stamped Bulwark or Briar Guard is that spell's enchant. Still one roll
+    // a swing: a weapon's own enchant comes first.
+    if (!enchant) {
+        const stamped = Object.keys(SIGIL_AS_ENCHANT).find((id) => sigilLevel(weapon, id) > 0);
+        if (!stamped) return null;
+        const magicType = SIGIL_AS_ENCHANT[stamped];
+        return Math.random() < getEnchantChance(magicType) ? magicType : null;
+    }
     // A 'sigil' enchant (Fireball, Sapping) is rolled by its sigil in SigilEffects.
-    if (!enchant || enchant.timing === 'sigil') return null;
+    if (enchant.timing === 'sigil') return null;
     const chance = enchantChanceOf(weapon);
     return Math.random() < chance ? weapon.enchant : null;
 }

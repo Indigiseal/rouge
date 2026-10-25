@@ -9,7 +9,7 @@
 //      tweens / timers synchronously so combat resolves in one call.
 
 import { getEnemyHitAttack, spendSapping, applyEnemyStrikeSigils } from '../src/content/combat/enemyAttack.js';
-import { sigilLevel } from '../src/content/sigils/sigils.js';
+import { hasEnemyTrait, sigilLevel } from '../src/content/sigils/sigils.js';
 import { ENCHANT_SAPPING_CHANCE } from '../src/content/balance/WeaponEnchants.js';
 import { consumeBoneShield } from '../src/content/combat/boneShield.js';
 import { consumeBriarShield } from '../src/content/combat/briarShield.js';
@@ -285,7 +285,7 @@ export class MockScene {
       // Cocoon shells never attack: they only crack when hit.
       if (c.data?.isCocoon || features.includes('cocoon_shell')) continue;
       // Thorn Fairy veil: face down, her turn is spent flipping back up.
-      if (!c.revealed && features.includes('veil_flip')) { this.cardSystem.revealCard(i, true); continue; }
+      if (!c.revealed && hasEnemyTrait(c.data, 'veil_flip')) { this.cardSystem.revealCard(i, true); continue; }
       if (c.revealed) eligible.push(i);
     }
     for (const c of board) { if (c && c.justRevealed) c.justRevealed = false; }
@@ -522,7 +522,7 @@ export class MockScene {
       // Silkslinger / Ink Wraith: a bag card is stuck until the next enemy turn.
       if (features.includes('web_hand')) this.webHandCard();
 
-      if (features.includes('goblin_rally') && Math.random() < 0.15) {
+      if (hasEnemyTrait(card.data, 'goblin_rally') && Math.random() < 0.15) {
         for (let j = 0; j < board.length; j++) {
           if (j === i || this.gameState.playerHealth <= 0) continue;
           const ally = board[j];

@@ -20,7 +20,7 @@ import { t, translateItemName } from '../../i18n/i18n.js';
 import { playHeatWave } from '../../ui/HeatWave.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
 import { applyWeaponSigils, onWeaponSigilHit } from '../combat/SigilEffects.js';
-import { getSigil } from '../../content/sigils/sigils.js';
+import { getSigil, hasEnemyTrait } from '../../content/sigils/sigils.js';
 import { grantMealMaxActions } from '../../content/amulets/foodEndurance.js';
 import { restoreDesertFeastAP } from '../../content/combat/sandreach.js';
 import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
@@ -990,8 +990,7 @@ export const InventoryCombatUse = {
         const tauntActive = boards.some((card) => (
             card?.revealed
             && (card.data?.health ?? 0) > 0
-            && Array.isArray(card.data?.features)
-            && card.data.features.includes('taunt')
+            && hasEnemyTrait(card.data, 'taunt')
             && card.sprite?.texture?.key
             && card.sprite.texture.key !== 'cardBack'
             && !String(card.sprite.texture.key).startsWith('cardFlip')
@@ -1004,7 +1003,7 @@ export const InventoryCombatUse = {
             if ((card.data.health ?? 0) <= 0) return;
             // Front row ≈ MELEE role (bow already ignores them for primary shot).
             if (card.data.role !== 'MELEE') return;
-            if (tauntActive && !(Array.isArray(card.data.features) && card.data.features.includes('taunt'))) {
+            if (tauntActive && !hasEnemyTrait(card.data, 'taunt')) {
                 return;
             }
             candidates.push(index);
