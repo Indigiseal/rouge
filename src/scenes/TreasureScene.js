@@ -24,6 +24,13 @@ import { lootRarity } from '../content/cards/legendaryStars.js';
 const CHEST_X = 320;
 // Keep the chest, its loot and the take hint together.
 const CHEST_Y = 220;
+// Banner and title at the Rest/Anvil rooms' height; the hint starts under the
+// ribbon (it reaches y 68) and wraps well inside the screen.
+const CHEST_BANNER_KEY = 'villageBanner';
+const BANNER_Y = 44;
+const BANNER_TITLE_Y = 42;
+const HINT_Y = 74;
+const HINT_WIDTH = 400;
 const UNDER_CHEST_Y = 295;
 // Selection corners on hover hug the chest art (98x98 frame, the chest
 // itself about 95x88 in it).
@@ -81,19 +88,26 @@ export class TreasureScene extends StationRoomBase {
     const title = this.rewardMode === 'elite' ? t(this, 'ui.treasure.eliteTitle') : t(this, 'ui.treasure.title');
     // (A secret room's chest reads as a treasure; what sets it apart is the
     // sigil it also holds, offered once it opens.)
-    createTitle(this, 320, 20, title, {
-      color: '#fbad19',
+    // A hanging banner like the Rest and Anvil rooms' (same spot, same title style).
+    // The village's brown banner stands in until a chest banner is drawn.
+    if (this.textures.exists(CHEST_BANNER_KEY)) this.add.image(320, BANNER_Y, CHEST_BANNER_KEY);
+    createTitle(this, 320, BANNER_TITLE_Y, title, {
+      color: '#fef0cf',
       fallbackSize: '24px'
     });
 
+    // Under the banner, wrapped to the room: the locked-chest hint ran off both
+    // sides of the screen as one line.
     const instruction = this.requiresKey ?
       t(this, 'ui.treasure.forceHint') :
       t(this, 'ui.treasure.hint');
-    this.instructionText = this.add.text(320, 46, instruction, {
+    this.instructionText = this.add.text(320, HINT_Y, instruction, {
       fontSize: '14px',
       fill: '#fef0cf',
-      fontFamily: '"HoMM Pixel"'
-    }).setOrigin(0.5);
+      fontFamily: '"HoMM Pixel"',
+      align: 'center',
+      wordWrap: { width: HINT_WIDTH, useAdvancedWrap: true },
+    }).setOrigin(0.5, 0);
 
     // The map's upgraded chest node enters as 'good'; both richer chest
     // rooms use the elite art while keeping their own reward/key rules.

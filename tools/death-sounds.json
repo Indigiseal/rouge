@@ -377,5 +377,15 @@
       "prompt": "A wave of searing heat rolling outward across a stone floor: a deep low whoomph, a rising roar of flames with crackling embers, then fading to a hot hiss",
       "durationSeconds": 2.2
     }
+  },
+  "frenzy": {
+    "cerberus_growl": {
+      "prompt": "A colossal three-headed hellbeast working into a frenzy: a deep low rumbling growl from three huge throats at once, guttural and demonic, hot rasping breath. Monstrous, not a dog, no barking, no words",
+      "durationSeconds": 1.5
+    },
+    "cerberus_chomp": {
+      "prompt": "A colossal hellbeast's jaws snapping shut: a heavy lunge, huge fangs crunching down with a deep bone-crushing chomp and a short low demonic snarl. Monstrous, not a dog, no bark, no words",
+      "durationSeconds": 0.7
+    }
   }
 }

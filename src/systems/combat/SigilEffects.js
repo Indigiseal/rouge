@@ -130,8 +130,10 @@ export function weaponFlatSigilBonus(scene, weapon) {
     if (sigilLevel(weapon, 'packStrength') > 0) {
         add('packStrength', bagItems(scene).filter(item => item?.type === 'companion').length);
     }
+    // Ironclad: half the worn armor's protection, rounded down (full was too
+    // strong, Taya). An enemy's Ironclad still adds its whole armor (enemyAttack.js).
     const ironclad = sigilLevel(weapon, 'ironclad');
-    if (ironclad > 0) add('ironclad', wornArmorProtection(scene) * ironclad);
+    if (ironclad > 0) add('ironclad', Math.floor(wornArmorProtection(scene) / 2) * ironclad);
     const packrat = sigilLevel(weapon, 'packrat');
     if (packrat > 0) add('packrat', emptyBagSlots(scene) * PACKRAT_PER_SLOT * packrat);
     if (sigilLevel(weapon, 'riposte') > 0 && scene?.gameState?.riposteReady) add('riposte', RIPOSTE_BONUS);

@@ -1759,6 +1759,9 @@ export class EventScene extends Phaser.Scene {
     } else if (companion.id === 'crystalSpiderlingCompanion') {
       companion.name = 'Crystal Seeker';
       companion.crystalFindChance = 0.02;
+      // Training is worth more than crystals late in a run: +2 to its bite (Taya).
+      companion.attack = Math.max(0, Number(companion.attack) || 0) + 2;
+      this.gameScene?.logCompanionAttackUp?.(companion, 2);
       companion.upgradedForm = 'crystalSeeker';
       this.companionTrainingOutcome = 'You set the Crystal Spiderling card down on the cracked floor of the drill room.\n\nThe spiderling climbs off the card, taps along the cracks and pulls a grain of crystal out of one.\n\nIt climbs back into the picture and keeps the grain.';
       this._reward('event.reward.crystalSeeker');

@@ -17,9 +17,9 @@
 
 import { snapOriginToPixelGrid } from './PixelSnap.js';
 import { attachGemShine } from './GemShine.js';
-import { GEM_SPOT_KEY, gemSpotPosition } from './GemSockets.js';
+import { GEM_SPOT_KEY, createGlintingSpot, gemSpotPosition } from './GemSockets.js';
 import { gemTierFrame } from '../content/cards/gems.js';
-import { cardSigils } from '../content/sigils/sigils.js';
+import { cardSigils, sigilLevel } from '../content/sigils/sigils.js';
 import { buildSigilIcons, sigilCornerOffset } from './SigilIcons.js';
 import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
 
@@ -54,33 +54,58 @@ export function buildCardDecorations(scene, cardSprite, cardData, { gemShine = t
         out.briarFrame = briarFrame;
     }
 
+    const twinSocket = cardData.type === 'weapon' && sigilLevel(cardData, 'twinSocket') > 0;
     if (cardData.type === 'weapon' && cardData.gemEffect && scene.textures.exists('gemsTiered')) {
         // Top middle, tucked inside the card's top edge: the socket first, then
         // the stone on top of it — set in, not stuck on. Whole pixels, so it
         // cannot jitter when a neighbour's blend-mode hover forces a batch flush.
         const spotAt = gemSpotPosition(cardSprite);
         const gemIndicator = scene.add.container(spotAt.x, spotAt.y);
-        if (scene.textures.exists(GEM_SPOT_KEY)) {
-            gemIndicator.add(scene.add.image(0, 0, GEM_SPOT_KEY));
-        }
+        if (scene.textures.exists(GEM_SPOT_KEY)) gemIndicator.add(scene.add.image(0, 0, GEM_SPOT_KEY));
         const gemFrame = gemTierFrame(cardData.gemEffect, CardDataGenerator.weaponGemStack(cardData));
         const gemSprite = scene.add.sprite(0, 0, 'gemsTiered', gemFrame);
         gemIndicator.add(gemSprite);
         if (gemShine) attachGemShine(scene, gemSprite, { container: gemIndicator });
-        // Twin Socket: the second stone sits beside the first.
-        if (cardData.gem2Effect) {
+        // Twin Socket: the second stone sits beside the first, or, while that
+        // socket is still free, a glinting socket (Taya's gemSpotAnim) says so.
+        if (cardData.gem2Effect || twinSocket) {
             gemIndicator.each((part) => part.setX(-SECOND_GEM_GAP / 2));
-            if (scene.textures.exists(GEM_SPOT_KEY)) gemIndicator.add(scene.add.image(SECOND_GEM_GAP / 2, 0, GEM_SPOT_KEY));
-            const gem2Frame = gemTierFrame(cardData.gem2Effect, Math.max(1, cardData.gem2Count || 1));
-            gemIndicator.add(scene.add.sprite(SECOND_GEM_GAP / 2, 0, 'gemsTiered', gem2Frame));
+            if (cardData.gem2Effect) {
+                if (scene.textures.exists(GEM_SPOT_KEY)) gemIndicator.add(scene.add.image(SECOND_GEM_GAP / 2, 0, GEM_SPOT_KEY));
+                const gem2Frame = gemTierFrame(cardData.gem2Effect, Math.max(1, cardData.gem2Count || 1));
+                gemIndicator.add(scene.add.sprite(SECOND_GEM_GAP / 2, 0, 'gemsTiered', gem2Frame));
+            } else {
+                const free = createGlintingSpot(scene, SECOND_GEM_GAP / 2, 0);
+                if (free) gemIndicator.add(free);
+            }
         }
         gemIndicator.restX = spotAt.x;
         gemIndicator.restY = spotAt.y;
         out.gemIndicator = gemIndicator;
         out.gemSprite = gemSprite;
+    } else if (twinSocket) {
+        // A Twin Socket card with no gem yet: its socket glints, so the card
+        // reads as one made for gems.
+        const spotAt = gemSpotPosition(cardSprite);
+        const gemIndicator = scene.add.container(spotAt.x, spotAt.y);
+        const free = createGlintingSpot(scene, 0, 0);
+        if (free) {
+            gemIndicator.add(free);
+            gemIndicator.restX = spotAt.x;
+            gemIndicator.restY = spotAt.y;
+            out.gemIndicator = gemIndicator;
+        } else {
+            gemIndicator.destroy();
+        }
     }
 
     const sigils = cardSigils(cardData);
+    // The Crystal Spiderling wears the Web icon to say what it does. Only the
+    // icon: it is not a Web sigil (whose rule is a 15% on-hit chance), so its
+    // tooltip keeps describing the spiderling's own web.
+    const spinsWebs = cardData.type === 'companion'
+        && (cardData.websEnemies || cardData.id === 'crystalSpiderlingCompanion');
+    if (spinsWebs && !sigils.some((s) => s.id === 'web')) sigils.push({ id: 'web', level: 1 });
     if (sigils.length) {
         const corner = sigilCornerOffset(cardSprite.displayWidth || 52, cardSprite.displayHeight || 70);
         out.sigilIcons = buildSigilIcons(scene, sigils, cardSprite.x + corner.x, cardSprite.y + corner.y);

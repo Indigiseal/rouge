@@ -980,10 +980,6 @@ const AMULET_CHOICE_BASE_SCORE = Object.freeze({
   runeOfZap: 240,
   runeOfFire: 230,
   tacticiansPin: 170,
-  collarOfBinding: 640,
-  twinMarks: 500,
-  markOfTreachery: 380,
-  markOfHesitation: 230,
 });
 
 function amuletChoiceScore(mock, pick) {

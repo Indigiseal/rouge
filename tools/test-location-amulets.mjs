@@ -221,7 +221,10 @@ try {
     const run = saves.loadCurrentRun();
     assert.deepEqual(run.effects.activeAmulets.map(item => item.name), identities.map(([, name]) => name));
     assert.deepEqual(run.effects.activeAmulets.map(item => item.id), identities.map(([id]) => id));
-    assert.equal(scene.amuletManager.amuletDefinitions.glovesOfHermitWizard.replaces.includes('runeOfZap'), true);
+    // The gloves stack with the gem amulets now (+25%) instead of taking them away.
+    const gloves = scene.amuletManager.amuletDefinitions.glovesOfHermitWizard;
+    assert.equal(gloves.replaces, undefined);
+    assert.equal(gloves.allGemDamageBonus, 0.25);
 }
 
 {

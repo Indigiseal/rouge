@@ -26,6 +26,7 @@ import { noteDiscovered } from '../content/codex/Discoveries.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { repairRandomDamagedItem } from '../systems/inventory/ItemRepair.js';
 import { grantMergeMaxHealth } from '../content/amulets/mossyStone.js';
+import { plusIdFor, wouldUpgradeToPlus } from '../content/amulets/amuletPlus.js';
 
 export class AmuletManager {
     constructor(scene) {
@@ -154,6 +155,13 @@ export class AmuletManager {
         return true;
     }
 
+    // Taking this id again now would turn the one worn into its "+" (amuletPlus.js).
+    upgradesToPlus(amuletId) {
+        const owned = new Set(this.gameState.activeAmulets.map((a) => a.id));
+        return wouldUpgradeToPlus(amuletId, owned)
+            && Boolean(this.amuletDefinitions[plusIdFor(amuletId)]);
+    }
+
     // True if an owned amulet already replaces this id (upgrade present).
     isReplacedByOwned(amuletId) {
         return this.gameState.activeAmulets.some((owned) => {
@@ -172,6 +180,7 @@ export class AmuletManager {
         const definition = this.amuletDefinitions[amuletId];
         if (!definition) return false;
         if (this.isReplacedByOwned(amuletId)) return false;
+        if (this.upgradesToPlus(amuletId)) return true;
         if (this.hasAmulet(amuletId) && !definition.stackable) return false;
         return true;
     }
@@ -196,7 +205,20 @@ export class AmuletManager {
             this.scene.createFloatingText(320, 180, 'Already upgraded!', 0xfbad19);
             return false;
         }
-        
+
+        // Found again while worn: it becomes its "+" (which takes the plain one's place).
+        if (this.upgradesToPlus(amuletId)) {
+            const plusId = plusIdFor(amuletId);
+            const added = this.addAmulet(plusId, { force });
+            if (added) {
+                this.scene.createFloatingText?.(320, 180, {
+                    key: 'float.upgradedItem',
+                    vars: { name: translateItemName(this.scene, this.amuletDefinitions[plusId]?.name || plusId) },
+                }, 0x71800b);
+            }
+            return added;
+        }
+
         // Check if stackable or already owned
         if (this.hasAmulet(amuletId) && !definition.stackable) {
             this.scene.createFloatingText(320, 180, 'Already owned!', 0xb51f1e);
@@ -613,34 +635,30 @@ export class AmuletManager {
         return Math.max(0, Math.min(1, rate * (1 - save)));
     }
 
-    // Scale gem hit damage: hermit gloves (+20% all) or typed runes.
+    // Scale gem hit damage: the typed gem amulet (Molten Heart, Tempest Heart)
+    // first, then the Hermit Wizard's gloves on top. They stack: the gloves no
+    // longer take the typed amulets away.
     modifyGemDamage(baseDamage, gemType) {
         let damage = baseDamage;
-        const allBonus = this.sumAmuletProperty('allGemDamageBonus');
-        if (allBonus > 0) {
-            damage = Math.ceil(damage * (1 + allBonus));
-            return Math.max(1, damage);
-        }
         let typed = 0;
         if (gemType === 'fire') typed = this.sumAmuletProperty('fireGemDamageBonus');
         else if (gemType === 'lightning' || gemType === 'zap') typed = this.sumAmuletProperty('zapGemDamageBonus');
         if (typed > 0) damage = Math.ceil(damage * (1 + typed));
+        const allBonus = this.sumAmuletProperty('allGemDamageBonus');
+        if (allBonus > 0) damage = Math.ceil(damage * (1 + allBonus));
         return Math.max(1, damage);
     }
 
     getPoisonGemTickBonus() {
-        if (this.sumAmuletProperty('allGemDamageBonus') > 0) {
-            // Hermit gloves replace poison rune; +20% on tick 1 → ceil(1.2)=2 vs +1 flat.
-            // Spec: gloves = +20% all gem damage. Poison ticks are gem damage.
-            return 0; // percent applied in modifyGemDamage for poison stacks below
-        }
         return this.sumAmuletProperty('poisonGemTickBonus');
     }
 
+    // A poison gem's tick: Broodmother's Fang's flat bonus, then the gloves' percent.
     modifyPoisonGemTickDamage(baseDamage) {
+        let damage = baseDamage + this.sumAmuletProperty('poisonGemTickBonus');
         const allBonus = this.sumAmuletProperty('allGemDamageBonus');
-        if (allBonus > 0) return Math.max(1, Math.ceil(baseDamage * (1 + allBonus)));
-        return Math.max(1, baseDamage + this.sumAmuletProperty('poisonGemTickBonus'));
+        if (allBonus > 0) damage = Math.ceil(damage * (1 + allBonus));
+        return Math.max(1, damage);
     }
 
     // Prospector's Pick — 10% chance per kill to find 1-2 coins OR a crystal.

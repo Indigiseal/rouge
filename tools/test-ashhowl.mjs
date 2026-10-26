@@ -184,7 +184,8 @@ for (const floor of [1, 16, 31]) {
 }
 for (const id of ['cerberus', 'ancientCerberus']) {
     assert.deepEqual(enemySigils(BOSSES[id]).map(sigil => sigil.id), ['scorched', 'summon']);
-    assert.deepEqual(BOSSES[id].abilities.map(ability => ability.type), ['summon']);
+    // Summons a head, and now and then frenzies: one bite per head (content/combat/frenzy.js).
+    assert.deepEqual(BOSSES[id].abilities.map(ability => ability.type), ['summon', 'frenzy']);
     assert.equal(BOSSES[id].abilities[0].enemyType, 'cerberusHead');
 }
 const burning = fixture(), burnGs = burning.gameState;

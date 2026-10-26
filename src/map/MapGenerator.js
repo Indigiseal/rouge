@@ -370,7 +370,9 @@ export class MapGenerator {
     // Reward rows first, so everything after them sees where they are: no fight, a pick from
     // the rooms that pay out. Cards in them are never converted by a guarantee below.
     const bonusNodes = [];
-    const bonusWeights = { EVENT: 4, TREASURE: 3, SIGIL: 3, REST: 2, TREASURE_GOOD: 1 };
+    // SIGIL 1 (was 3): with the act's own Sigil Room and the secret vault on top,
+    // reward rows made sigils too common (Taya).
+    const bonusWeights = { EVENT: 4, TREASURE: 3, SIGIL: 1, REST: 2, TREASURE_GOOD: 1 };
     floors.forEach((row) => row.forEach((n) => {
       if (!n.bonus) return;
       n.type = pickWeighted(bonusWeights);

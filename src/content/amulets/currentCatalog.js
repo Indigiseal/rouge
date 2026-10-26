@@ -28,13 +28,6 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 // nothing by act 2 (0% of its act-1 value in sim).
                 floorStartHeal: { base: 8, perFloor: 0.3 },
             },
-            markOfHesitation: {
-                ...getAmuletAtlasPresentation('markOfHesitation'),
-                name: 'Mark of Hesitation',
-                description: 'One random enemy per floor is marked. 50% chance it skips its attack.',
-                rarity: 'common',
-                controlHesitation: true,
-            },
             tacticiansPin: {
                 ...getAmuletAtlasPresentation('tacticiansPin'),
                 name: "Tactician's Pin",
@@ -53,10 +46,12 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 reflectChance: 0.05,
             },
 
+            // Ring of Regeneration+ (amuletPlus.js): found by taking the ring again.
+            // The id stays for saves that already hold it.
             ringOfGreaterRegeneration: {
                 ...getAmuletAtlasPresentation('ringOfGreaterRegeneration'),
-                name: 'Ring of Greater Regeneration',
-                description: '+12 HP at the start of each combat floor, +1 more every 2 floors. Replaces Ring of Regeneration.',
+                name: 'Ring of Regeneration+',
+                description: '+12 HP at the start of each combat floor, +1 more every 2 floors.',
                 rarity: 'uncommon',
                 floorStartHeal: { base: 12, perFloor: 0.45 },
                 replaces: ['ringOfRegeneration'],
@@ -115,14 +110,6 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 description: '+20% gold found',
                 rarity: 'uncommon',
                 modifyGoldFound: (amount) => Math.ceil(amount * 1.2),
-            },
-            markOfTreachery: {
-                ...getAmuletAtlasPresentation('markOfTreachery'),
-                name: 'Mark of Treachery',
-                description: 'One random enemy per floor is marked. It attacks another revealed enemy instead of you. Replaces Mark of Hesitation.',
-                rarity: 'uncommon',
-                controlTreachery: true,
-                replaces: ['markOfHesitation'],
             },
             forcedMarch: {
                 ...getAmuletAtlasPresentation('forcedMarch'),
@@ -189,15 +176,6 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 rarity: 'rare',
                 deathDropChance: 0.25,
             },
-            twinMarks: {
-                ...getAmuletAtlasPresentation('twinMarks'),
-                name: 'Twin Marks',
-                description: 'One marked enemy has a 50% chance to skip its attack. Another marked enemy attacks its own kind. Replaces Marks of Hesitation and Treachery.',
-                rarity: 'rare',
-                controlHesitation: true,
-                controlTreachery: true,
-                replaces: ['markOfHesitation', 'markOfTreachery'],
-            },
             vacancyStep: {
                 ...getAmuletAtlasPresentation('vacancyStep'),
                 rarity: 'rare',
@@ -255,23 +233,10 @@ export function buildCurrentAmuletDefinitions(mgr) {
             glovesOfHermitWizard: {
                 ...getAmuletAtlasPresentation('glovesOfHermitWizard'),
                 name: 'Gloves of the Hermit Wizard',
-                description: '+35% damage from all gems (rounded up). Replaces Fire/Zap/Poison runes.',
+                // Stacks with the gem amulets (it used to take them away), so +25%, not +35%.
+                description: '+25% damage from all gems (rounded up).',
                 rarity: 'legendary',
-                allGemDamageBonus: 0.35,
-                replaces: [
-                    'runeOfFire', 'runeOfZap', 'runeOfPoison',
-                    'greaterRuneOfFire', 'greaterRuneOfZap', 'greaterRuneOfPoison',
-                ],
-            },
-            collarOfBinding: {
-                ...getAmuletAtlasPresentation('collarOfBinding'),
-                name: 'Collar of Binding',
-                description: 'Twin Marks, and a killed marked non-boss enemy joins your bag as a companion if a slot is free. Stays until discarded. Replaces the control marks.',
-                rarity: 'legendary',
-                controlHesitation: true,
-                controlTreachery: true,
-                bindOnKill: true,
-                replaces: ['markOfHesitation', 'markOfTreachery', 'twinMarks'],
+                allGemDamageBonus: 0.25,
             },
             generalsTable: {
                 ...getAmuletAtlasPresentation('generalsTable'),
@@ -296,9 +261,10 @@ export function buildCurrentAmuletDefinitions(mgr) {
                 description: "Your sight through the map's fog reaches much further.",
                 rarity: 'uncommon',
             },
+            // Cartographer's Ink+ (amuletPlus.js): found by taking the ink again.
             oraclesFishbowl: {
                 ...getAmuletAtlasPresentation('oraclesFishbowl'),
-                name: "Oracle's Eye",
+                name: "Cartographer's Ink+",
                 description: 'The map has no fog: every floor is in sight.',
                 rarity: 'rare',
                 replaces: ['cartographersInk'],

@@ -8,6 +8,8 @@ import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } 
 import { HAND_LOCKS, handLockKindOf } from '../content/combat/handLock.js';
 import { sigilLine, storedSigils } from '../content/sigils/sigils.js';
 import { SINGLE_AMULET, offerFaceAmulet } from '../content/cards/amulets.js';
+import { plusIdFor } from '../content/amulets/amuletPlus.js';
+import { buildTooltipBody } from './TooltipBody.js';
 import { getMagic } from '../content/cards/magic.js';
 import { cameraWorldSize } from '../config/renderScale.js';
 import { eggFightsLeft, isHatchingEgg } from '../content/cards/eggHatching.js';
@@ -83,6 +85,12 @@ export function getTooltipLines(scene, data) {
         body = translateDescription(scene, def?.description || data.description || '');
         const rarityWord = data.rarity ? translateRarity(scene, data.rarity) : '';
         if (rarityWord) body = `${rarityWord}\n${body}`.trim();
+        // Worn already, with a "+" to become (content/amulets/amuletPlus.js).
+        const mgr = scene?.amuletManager;
+        if (data.id && mgr?.upgradesToPlus?.(data.id)) {
+            const plusDef = mgr.amuletDefinitions?.[plusIdFor(data.id)];
+            body += `\n${t(scene, 'tooltip.amuletUpgradesToPlus', { name: translateItemName(scene, plusDef) })}`;
+        }
     } else if (data.type === 'weapon') {
         const dmg = getDisplayedWeaponDamage(
             scene?.gameState?.characterId,
@@ -405,8 +413,9 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth 
         align: 'center',
     }).setOrigin(0, 0);
 
-    const bodyText = body
-        ? scene.add.text(0, Math.ceil(nameText.height) + 3, body, {
+    // The body, with each sigil's name in colour (ui/TooltipBody.js).
+    const bodyBlock = body
+        ? buildTooltipBody(scene, body, {
             fontSize: TOOLTIP_BODY_PX,
             fontRole: 'reading',
             fill: TOOLTIP_TEXT_COLOR,
@@ -414,16 +423,16 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth 
             wordWrap: { width: maxWidth },
             align: 'center',
             lineSpacing: 2,
-        }).setOrigin(0, 0)
+        })
         : null;
 
     // Round all dimensions/positions to whole pixels to avoid hover jitter.
     const nameWidth = Math.ceil(nameText.width);
-    const bodyWidth = Math.ceil(bodyText?.width ?? 0);
+    const bodyWidth = Math.ceil(bodyBlock?.width ?? 0);
     const nameHeight = Math.ceil(nameText.height);
-    const bodyHeight = Math.ceil(bodyText?.height ?? 0);
+    const bodyHeight = Math.ceil(bodyBlock?.height ?? 0);
     const contentWidth = Math.max(nameWidth, bodyWidth);
-    const contentHeight = nameHeight + (bodyText ? bodyHeight + 3 : 0);
+    const contentHeight = nameHeight + (bodyBlock ? bodyHeight + 3 : 0);
     const boxWidth = Math.ceil(Math.min(maxWidth, contentWidth) + padX * 2);
     const boxHeight = Math.ceil(contentHeight + padTop + padBottom);
 
@@ -440,12 +449,12 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth 
     ));
 
     nameText.setPosition(Math.round((boxWidth - nameWidth) / 2), padTop);
-    if (bodyText) {
-        bodyText.setPosition(Math.round((boxWidth - bodyWidth) / 2), padTop + nameHeight + 3);
+    // Each part centred on its own, like the single centred text it replaces.
+    for (const part of bodyBlock?.parts || []) {
+        part.setPosition(Math.round((boxWidth - Math.ceil(part.width)) / 2), padTop + nameHeight + 3 + part.y);
     }
 
-    const children = [bg, nameText];
-    if (bodyText) children.push(bodyText);
+    const children = [bg, nameText, ...(bodyBlock?.parts || [])];
 
     scene._itemTooltip = scene.add.container(tipX, tipY, children).setDepth(depth);
 }

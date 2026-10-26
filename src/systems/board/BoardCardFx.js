@@ -11,7 +11,9 @@ import { getEnemyHitAttack } from '../../content/combat/enemyAttack.js';
 import { isSilkCocoonCard } from './CocoonCacheBoard.js';
 import { t, translateItemName } from '../../i18n/i18n.js';
 import { enemySigils } from '../../content/sigils/sigils.js';
-import { artBodyTop, buildSigilIcons, sigilCornerOffset } from '../../ui/SigilIcons.js';
+import {
+    BOSS_SIGIL_GAP, SIGIL_ICON_SIZE, artBodyTop, artRightEdge, buildSigilIcons, sigilCornerOffset,
+} from '../../ui/SigilIcons.js';
 import { handLockKindOf } from '../../content/combat/handLock.js';
 import { weaponFlatSigilBonus, companionStrengthBonus } from '../combat/SigilEffects.js';
 import { scaleGoldReward } from '../../content/economy/gold.js';
@@ -380,7 +382,9 @@ function createCardInfoText(card) {
             // 20 (was 25): the name sits 5px higher (Taya).
             const magicLabel = this.scene.add.text(0, 20, translateItemName(this.scene, card.data), {
                 fontSize: CARD_LABEL_SIZE,
-                fill: '#71b1ae',
+                // Dark plum from the card's own frame: reads on the tan name band
+                // and on the glowing cards' teal one (the old light teal did not).
+                fill: '#3b1d34',
                 fontFamily: '"HoMM Pixel"',
                 align: 'center'
             }).setOrigin(0.5);
@@ -423,20 +427,18 @@ function createCardInfoText(card) {
             if (nameLabel.width > 34) nameLabel.setWordWrapWidth(34, true).setLineSpacing(-3);
             container.add(nameLabel);
 
-            const webs = Boolean(card.data.websEnemies || card.data.id === 'crystalSpiderlingCompanion');
-            const valueText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y,
-                webs ? t(this.scene, 'ui.card.web') : '', {
-                    fontSize: webs ? '8px' : CARD_VALUE_SIZE,
-                    fill: webs ? '#d6e8f0' : COMPANION_VALUE_COLOR,
-                    fontFamily: '"HoMM Pixel"'
-                }).setOrigin(0.5);
-            if (webs) valueText.setStroke('#2b2332', 2);
+            // Every companion shows its attack in the corner, the Crystal
+            // Spiderling's bite too, even at 0 (its web is the Web sigil icon,
+            // ui/CardDecorations.js, not a word here).
+            const valueText = this.scene.add.text(CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, '', {
+                fontSize: CARD_VALUE_SIZE,
+                fill: COMPANION_VALUE_COLOR,
+                fontFamily: '"HoMM Pixel"'
+            }).setOrigin(0.5);
             container.add(valueText);
-            if (!webs) {
-                container._companionDamageText = valueText;
-                container._companionData = card.data;
-                refreshCompanionValueText(this.scene, container);
-            }
+            container._companionDamageText = valueText;
+            container._companionData = card.data;
+            refreshCompanionValueText(this.scene, container);
             container.setDepth(1001);
             attachInfoText(container);
             return;
@@ -687,6 +689,22 @@ function _buildEnemyCornerStats(card) {
     card.sprite?.setData?.('infoText', container);
 }
 
+// The boss's resting picture (card.data.sprite): its key, frame and displayed
+// size. While it swings, the sprite shows an attack frame instead.
+function bossRestArt(scene, card) {
+    const sprite = card.sprite;
+    const restKey = card.data?.sprite;
+    const swinging = restKey && sprite.texture?.key !== restKey && scene.textures.exists(restKey);
+    const key = swinging ? restKey : sprite.texture?.key;
+    const frame = swinging ? undefined : sprite.frame?.name;
+    const f = swinging ? scene.textures.getFrame(restKey) : sprite.frame;
+    const frameWidth = f?.cutWidth || sprite.width || 100;
+    const frameHeight = f?.cutHeight || sprite.height || 100;
+    const width = frameWidth * Math.abs(sprite.scaleX || 1);
+    const height = frameHeight * Math.abs(sprite.scaleY || 1);
+    return { key, frame, frameWidth, width, height, bottom: height / 2 };
+}
+
 function _buildBossStats(card) {
     if (!card?.sprite || !card.data) return;
 
@@ -697,9 +715,12 @@ function _buildBossStats(card) {
 
     const barFrame = this.scene.textures.getFrame('healthBar');
     const barWidth = barFrame?.width || 84;
-    const bossBottom = (card.sprite.displayHeight || card.sprite.height || 100) / 2;
+    // Measured from the boss's resting art, even if it is mid-swing now (an
+    // attack sheet's frames are padded, so they would move the bar and sigils).
+    const rest = bossRestArt(this.scene, card);
     const barGap = card.data.name === 'Spider Queen' ? 18 : 10;
-    const y = card.sprite.y + bossBottom + barGap;
+    // A boss whose art was lowered (FloorSpawner BOSS_ART_DROP_Y) keeps its bar where it was.
+    const y = card.sprite.y + rest.bottom + barGap - (card.data.artDropY || 0);
 
     const emptyBar = this.scene.make.image({ x: 0, y: 0, key: 'healthBarEmpty', add: false }).setOrigin(0.5);
     const fillBar = this.scene.make.image({ x: -barWidth / 2, y: 0, key: 'healthBar', add: false }).setOrigin(0, 0.5);
@@ -718,16 +739,16 @@ function _buildBossStats(card) {
         strokeThickness: 2
     });
 
-    // The boss's sigils in the top-right corner of its art. The container sits
-    // under the art (at y), so the corner is measured back up from there —
-    // and down past any thread the art hangs from (the Spider Queen).
-    const bossW = card.sprite.displayWidth || card.sprite.width || 100;
-    const bossH = card.sprite.displayHeight || card.sprite.height || 100;
-    const bossCorner = sigilCornerOffset(bossW, bossH);
-    const bodyTop = artBodyTop(this.scene, card.sprite.texture?.key, card.sprite.frame?.name)
-        * (card.sprite.scaleY || 1);
+    // The boss's sigils beside the top-right of its art: just past the art's
+    // right edge (a boss's art fills its corner, so icons in the corner sat on
+    // the staff, the spear, the hair), level with the top of its body. The
+    // container sits under the art (at y), so the height is measured back up
+    // from there, and down past any thread the art hangs from (the Spider Queen).
+    const bossCorner = sigilCornerOffset(rest.width, rest.height);
+    const bodyTop = artBodyTop(this.scene, rest.key, rest.frame) * (card.sprite.scaleY || 1);
+    const rightOfArt = (artRightEdge(this.scene, rest.key, rest.frame) - rest.frameWidth / 2) * (card.sprite.scaleX || 1);
     const sigilIcons = buildSigilIcons(this.scene, boardEnemySigils(card.data),
-        bossCorner.x, bossCorner.y + bodyTop + (card.sprite.y - y));
+        Math.round(rightOfArt + BOSS_SIGIL_GAP + SIGIL_ICON_SIZE / 2), bossCorner.y + bodyTop + (card.sprite.y - y));
 
     const container = this.scene.add.container(card.sprite.x, y, [emptyBar, fillBar, hpText, atkText, ...sigilIcons]);
     container.setDepth((card.sprite.depth || 1) + 8);

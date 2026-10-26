@@ -209,7 +209,20 @@ function addSecretRoom(gameState, actMap, act, source, cursor) {
     }
     if (!options.length) return false;
 
-    const [f, parentIdx] = options[Math.floor(Math.random() * options.length)];
+    // Each source rolls on its own, so two secret rooms could leave from the
+    // same room or share a row, drawn on top of each other with the same roads
+    // (Taya saw two joined to the same rooms). Keep them apart: a row with a
+    // secret room in it already, or a room already leading into one, or the
+    // rows either side of one, are used only when nothing else is left.
+    const secretRows = new Set();
+    floors.forEach((r, i) => { if (r.some((node) => node?.secret)) secretRows.add(i); });
+    const clear = ([pf, pi]) => !floors[pf][pi]?.secretLinks?.length
+        && !secretRows.has(pf + 1) && !secretRows.has(pf) && !secretRows.has(pf + 2);
+    const roomy = options.filter(clear);
+    const ownRow = options.filter(([pf, pi]) => !floors[pf][pi]?.secretLinks?.length && !secretRows.has(pf + 1));
+    const pool = roomy.length ? roomy : (ownRow.length ? ownRow : options);
+
+    const [f, parentIdx] = pool[Math.floor(Math.random() * pool.length)];
     const parent = floors[f][parentIdx];
 
     // Rejoin on one of the parent's grandchildren, so the branch bends back

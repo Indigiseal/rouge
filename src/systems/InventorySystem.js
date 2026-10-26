@@ -178,7 +178,8 @@ export class InventorySystem {
         }
 
         const def = mgr.amuletDefinitions?.[amuletId];
-        if (mgr.hasAmulet(amuletId) && !def?.stackable) {
+        // Worn already, unless taking it again upgrades it to its "+".
+        if (mgr.hasAmulet(amuletId) && !def?.stackable && !mgr.upgradesToPlus?.(amuletId)) {
             this.scene.createFloatingText(cardSprite.x, cardSprite.y, 'Already equipped!', 0xfbad19);
             this.returnCardToSlot(slotIndex, cardSprite);
             return false;
@@ -211,7 +212,8 @@ export class InventorySystem {
         const mgr = this.scene.amuletManager;
         const id = data.amuletId;
         const def = mgr?.amuletDefinitions?.[id];
-        if (!mgr?.addAmulet || !id || (mgr.hasAmulet(id) && !def?.stackable) || !mgr.addAmulet(id)) return null;
+        if (!mgr?.addAmulet || !id || (mgr.hasAmulet(id) && !def?.stackable && !mgr.upgradesToPlus?.(id))
+            || !mgr.addAmulet(id)) return null;
         const slot = this.slotSprites[slotIndex];
         const at = { id, x: slot?.background?.x ?? 0, y: slot?.background?.y ?? 0 };
         const cardSprite = slot?.card;

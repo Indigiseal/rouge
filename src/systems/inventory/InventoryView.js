@@ -3,8 +3,9 @@ import { snapOriginToPixelGrid } from '../../ui/PixelSnap.js';
 import { cardRiders, pinRider, unpinRider } from '../../ui/CardRiders.js';
 import { hideGemSockets } from '../../ui/GemSockets.js';
 import { createSelectionCorners, createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from '../../ui/NineSlicePanel.js';
+import { buildTooltipBody } from '../../ui/TooltipBody.js';
 import { setHoverLight } from '../../ui/HoverLight.js';
-import { DISCARD_X } from '../../ui/CombatHud.js';
+import { DISCARD_X, EFFECTS_PANEL } from '../../ui/CombatHud.js';
 import { CardDataGenerator } from '../loot/CardDataGenerator.js';
 import { getDisplayedWeaponDamage } from '../../content/characters/CharacterClasses.js';
 import { t, translateDescription, translateGemEffect, translateItemName, translateRarity, tCount } from '../../i18n/i18n.js';
@@ -357,6 +358,8 @@ export const InventoryView = {
     // inventory drop.
     beginInventoryCardDrag(slotIndex, cardSprite) {
         this._liveDrag = { slotIndex, cardSprite };
+        // The held card's own tooltip goes as it is picked up.
+        this.hideCardTooltip?.();
         cardSprite?.setData?.('inventoryDragging', true);
         this.freezeBoardInputForDrag();
     },
@@ -819,9 +822,11 @@ export const InventoryView = {
         // symmetric. 5–7 slots keep the roomy framing; only a near-full 8-slot bag
         // tightens up (its slots already run close to the bin either way).
         const desiredPanelWidth = Math.max(368, totalWidth + 90);
-        // The bin is on the LEFT now, so the clearance that caps the panel is
-        // measured leftward from the bag's centre instead of rightward.
-        const discardClearWidth = 2 * (inventoryCenterX - (DISCARD_X + 39));
+        // Clear of the Effects panel on the left and the bin on the right: the
+        // panel is centred, so the nearer of the two sets the cap.
+        const leftLimit = EFFECTS_PANEL.x + EFFECTS_PANEL.w / 2 + 4;
+        const rightLimit = DISCARD_X - 32 - 4;
+        const discardClearWidth = 2 * Math.min(inventoryCenterX - leftLimit, rightLimit - inventoryCenterX);
         this.createInventoryPanel(inventoryCenterX, panelY, Math.min(desiredPanelWidth, discardClearWidth));
 
         for (let i = 0; i < slotCount; i++) {
@@ -1225,7 +1230,8 @@ export const InventoryView = {
             lineSpacing: 2,
             wordWrap: { width: TOOLTIP_TEXT_W }
         };
-        const tooltipText = tooltipScene.add.text(0, 0, lines.join('\n'), textStyle).setOrigin(0, 0);
+        // The lines, with each sigil's name in colour (ui/TooltipBody.js).
+        const body = buildTooltipBody(tooltipScene, lines.join('\n'), textStyle);
         // The enchant keeps a colour of its own — it is why the player is
         // hovering an enchanted weapon — but takes the rarity blue the shared
         // tooltip already uses, which reads on the light panel.
@@ -1233,8 +1239,8 @@ export const InventoryView = {
             ? tooltipScene.add.text(0, 0, enchantLine, { ...textStyle, fill: TOOLTIP_ENCHANT_COLOR }).setOrigin(0, 0)
             : null;
 
-        const contentWidth = Math.max(tooltipText.width, enchantText?.width || 0);
-        const contentHeight = tooltipText.height + (enchantText ? enchantText.height + 2 : 0);
+        const contentWidth = Math.max(body.width, enchantText?.width || 0);
+        const contentHeight = body.height + (enchantText ? enchantText.height + 2 : 0);
         const width = Math.ceil(Math.min(TOOLTIP_TEXT_W, contentWidth) + TOOLTIP_PAD.x * 2);
         const height = Math.ceil(contentHeight + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom);
         const bg = createTooltipPanel(tooltipScene, width, height);
@@ -1246,10 +1252,10 @@ export const InventoryView = {
         const targetY = pointerPixelY - Math.round(Math.min(24, height / 2));
         const clampedX = Math.round(Phaser.Math.Clamp(targetX, 6, 640 - width - 6));
         const clampedY = Math.round(Phaser.Math.Clamp(targetY, 6, 360 - height - 6));
-        tooltipText.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top);
-        enchantText?.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top + tooltipText.height + 2);
+        for (const part of body.parts) part.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top + part.y);
+        enchantText?.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top + body.height + 2);
 
-        const parts = enchantText ? [bg, tooltipText, enchantText] : [bg, tooltipText];
+        const parts = [bg, ...body.parts, ...(enchantText ? [enchantText] : [])];
         this.cardTooltip = tooltipScene.add.container(clampedX, clampedY, parts);
         this.cardTooltip.setDepth(3000);
         this.uiGroup.add(this.cardTooltip);
@@ -1358,7 +1364,10 @@ export const InventoryView = {
         } else if (card.type === 'food') {
             lines.push(t(this.scene, 'tooltip.restoresColon', { amount: card.actionAmount || 0 }));
         } else if (card.type === 'companion' && (card.websEnemies || card.id === 'crystalSpiderlingCompanion')) {
-            // The Crystal Spiderling does no damage; it webs.
+            // The Crystal Spiderling bites and webs in one move; its bite is
+            // 0 until it grows (an act, the drill room), so only shown once real.
+            const bite = (Number(card.attack) || 0) + companionStrengthBonus(this.scene.gameScene || this.scene);
+            if (bite > 0) lines.push(t(this.scene, 'tooltip.damage.physical', { amount: bite }));
             lines.push(t(this.scene, 'tooltip.companion.webs'));
             lines.push(t(this.scene, 'tooltip.companion.actsAfter'));
             if (card.crystalFindChance) lines.push(t(this.scene, 'tooltip.companion.crystalChance', { amount: Math.round(card.crystalFindChance * 100) }));

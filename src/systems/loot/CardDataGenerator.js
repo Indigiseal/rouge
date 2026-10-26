@@ -1,4 +1,5 @@
 import { areAmuletsDisabled } from '../../config/TestOptions.js';
+import { wouldUpgradeToPlus } from '../../content/amulets/amuletPlus.js';
 import { coinAmountFor, crystalAmountFor, rollResourceRarity } from '../../content/cards/resources.js';
 import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { resolveArmorSpawnTypes } from '../../content/characters/CharacterClasses.js';
@@ -578,10 +579,11 @@ export class CardDataGenerator {
             if (list) list.forEach((r) => replacedIds.add(r));
         }
 
+        // One you wear stays on offer while it still has a "+" to become.
         return (this.amuletTypes || []).filter((amulet) =>
             amulet.rarity === rarity
             && (ignoreMinFloor || floor >= (amulet.minFloor ?? 0))
-            && !ownedIds.has(amulet.id)
+            && (!ownedIds.has(amulet.id) || wouldUpgradeToPlus(amulet.id, ownedIds))
             && !replacedIds.has(amulet.id)
         );
     }

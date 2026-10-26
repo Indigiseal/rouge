@@ -27,6 +27,7 @@ import { CHOICE_SIGHT, computeFogGrid, drawMapFog, mapSightRadius, puffFogCascad
 import { setHoverLight } from '../ui/HoverLight.js';
 import { createSecretAura } from '../ui/SecretAura.js';
 import { mapColorFor } from '../content/locations/mapColors.js';
+import { drawWalkedRoad, walkedRoute } from '../map/MapRoad.js';
 
 // The header band and title, above the scrolling map nodes (see create()).
 const MAP_HEADER_DEPTH = 18;
@@ -312,6 +313,11 @@ export class MapViewScene extends Phaser.Scene {
     // texture is created), making the connections jitter. Baking them to a texture
     // once turns them into a static image that snaps to the pixel grid like the nodes.
     this.drawLinks();
+    // The road walked so far, under the lines (map/MapRoad.js).
+    // A restart has already destroyed the last one with the scene.
+    if (this.roadTexture?.scene) this.roadTexture.destroy();
+    this.roadTexture = drawWalkedRoad(this, this.mapContainer,
+      walkedRoute(this.actMap.floors, this.gameState.mapCursor, (f) => this._checkpointAfterRow(f)));
 
     // A secret room the player has not yet seen does not just sit there: it appears (see
     // _appearSecretNode). Remember which ones are new, and that they have now been seen.

@@ -52,15 +52,9 @@ export const AMULET_SOURCE_MIN_FLOOR = {
   rare_shop: 20,
 };
 
-// When an upgrade is owned, its weaker forms are excluded from offers.
+// When an amulet's "+" is owned, the plain one is excluded from offers: it is
+// already as strong as it gets (content/amulets/amuletPlus.js).
 export const AMULET_UPGRADE_REPLACES = {
   ringOfGreaterRegeneration: ['ringOfRegeneration'],
-  glovesOfHermitWizard: [
-    'runeOfFire', 'runeOfZap', 'runeOfPoison',
-    'greaterRuneOfFire', 'greaterRuneOfZap', 'greaterRuneOfPoison',
-  ],
-  markOfTreachery: ['markOfHesitation'],
-  twinMarks: ['markOfHesitation', 'markOfTreachery'],
-  collarOfBinding: ['markOfHesitation', 'markOfTreachery', 'twinMarks'],
   oraclesFishbowl: ['cartographersInk'],
 };

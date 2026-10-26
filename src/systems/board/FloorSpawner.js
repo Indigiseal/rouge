@@ -51,6 +51,11 @@ const DROP_FALL_MS = 430;
 // How many minions one elite may call in a fight.
 const ELITE_SUMMON_CAP = 2;
 
+// How far to lower a boss's art on the board, by sprite key. The Cerberus's
+// picture has 19px of empty canvas under its feet (the Warden and Goblin King
+// have none), so it floated above where the others stand (Taya).
+const BOSS_ART_DROP_Y = Object.freeze({ Cerberus: 12 });
+
 function tollGoblinArt() {
   const goblin = ENEMIES.goblin || {};
   return { sprite: goblin.sprite, monthId: goblin.monthId, sheetColumn: goblin.sheetColumn };
@@ -1735,7 +1740,10 @@ function spawnBoss() {
     // Keep the Spider Queen in place; shift the other bosses down and right.
     const x = camW / 2 - 20 + (isSpiderQueen ? 0 : 11);
     const bossOffsetY = isSpiderQueen ? -90 : -5;
-    const y = camH / 2 + bossOffsetY;
+    // Art drawn with empty canvas under its feet stands too high: lower just the
+    // art, not its health bar (BoardCardFx subtracts artDropY back out).
+    bossData.artDropY = BOSS_ART_DROP_Y[bossData.sprite] || 0;
+    const y = camH / 2 + bossOffsetY + bossData.artDropY;
     this.createBossBoardPanel();
     const cardSprite = snapOriginToPixelGrid(this.scene.add.image(x, y, bossData.sprite));
     cardSprite.setScale(bossData.spriteScale || 1);
@@ -1777,10 +1785,12 @@ function injectTollGuards(bossX, bossY) {
     // The regular Goblin's Tollroad card (goblin_c.png was the old art).
     const goblinArt = tollGoblinArt();
     const spriteKey = this.scene.textures.exists(goblinArt.sprite) ? goblinArt.sprite : 'cardBack';
+    // Standing beside him, feet level with his (his card is ~132 tall, theirs 70).
+    // At dy 102 they sat under his feet, half behind the bag bar.
     const places = [
-        { dx: -112, dy: 102, c: -1 },
-        { dx: 112, dy: 102, c: 1 },
-        { dx: -174, dy: 102, c: -2 },
+        { dx: -112, dy: 30, c: -1 },
+        { dx: 112, dy: 30, c: 1 },
+        { dx: -174, dy: 30, c: -2 },
     ];
 
     places.slice(0, escaped).forEach(({ dx, dy, c }) => {

@@ -72,6 +72,48 @@ export function artBodyTop(scene, key, frame) {
     return top;
 }
 
+const rightEdgeCache = new Map();
+
+/**
+ * The art's right edge in a texture frame's own pixels: one past its rightmost
+ * opaque column. A boss's art fills its corner, so its sigils go just past
+ * this instead of on top of it. The frame width when the pixels can't be read.
+ */
+export function artRightEdge(scene, key, frame) {
+    const cacheKey = `${key}|${frame ?? ''}`;
+    if (rightEdgeCache.has(cacheKey)) return rightEdgeCache.get(cacheKey);
+    let edge = 0;
+    try {
+        const f = scene.textures.getFrame(key, frame);
+        const img = f?.source?.image;
+        const w = f?.cutWidth || 0;
+        const h = f?.cutHeight || 0;
+        edge = w;
+        if (img && w && h && typeof document !== 'undefined') {
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(img, f.cutX, f.cutY, w, h, 0, 0, w, h);
+            const alpha = ctx.getImageData(0, 0, w, h).data;
+            edge = 0;
+            for (let y = 0; y < h; y++) {
+                for (let x = w - 1; x >= edge; x--) {
+                    if (alpha[(y * w + x) * 4 + 3] > 0) { edge = x + 1; break; }
+                }
+            }
+        }
+    } catch {
+        edge = scene.textures?.getFrame?.(key, frame)?.cutWidth || 0;
+    }
+    rightEdgeCache.set(cacheKey, edge);
+    return edge;
+}
+
+/** Room between a boss's art and its sigils. */
+export const BOSS_SIGIL_GAP = 2;
+export const SIGIL_ICON_SIZE = ICON;
+
 /**
  * Build the icons for `sigils` ([{ id, level }]) with the first one centred at
  * (x, y). Missing icon sheet → nothing.

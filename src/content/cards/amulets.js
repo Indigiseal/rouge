@@ -21,7 +21,8 @@ export const AMULET_DROP_DATA = [
   { id: 'handMirror', minFloor: 0, weight: 6, rarity: 'common', group: 'survival' },
 
   // Uncommon (from floor 10)
-  { id: 'ringOfGreaterRegeneration', minFloor: 10, weight: 7, rarity: 'uncommon', group: 'survival' },
+  // Ring of Regeneration+ and Cartographer's Ink+ are not drops: finding the
+  // plain one again while wearing it upgrades it (content/amulets/amuletPlus.js).
   // The Alchemist's Bag is the Robbed Traveller's alone (events/robbed_traveller.js), not a drop.
   { id: 'pouchOfGreed', minFloor: 10, weight: 8, rarity: 'uncommon', group: 'utility' },
   { id: 'monocle', minFloor: 10, weight: 5, rarity: 'uncommon', group: 'utility' },
@@ -56,7 +57,6 @@ export const AMULET_DROP_DATA = [
   { id: 'armsfindersCharm', minFloor: 16, weight: 4, rarity: 'rare', group: 'utility' },
   { id: 'apothecarysEye', minFloor: 16, weight: 4, rarity: 'rare', group: 'utility' },
   { id: 'gemseekersLens', minFloor: 16, weight: 4, rarity: 'rare', group: 'magic' },
-  { id: 'oraclesFishbowl', minFloor: 16, weight: 3, rarity: 'rare', group: 'utility' },
   { id: 'heartOfHours', minFloor: 16, weight: 3, rarity: 'rare', group: 'magic' },
   { id: 'gluttonsCharm', minFloor: 16, weight: 3, rarity: 'rare', group: 'survival' },
   { id: 'leadershipBanner', minFloor: 16, weight: 3, rarity: 'rare', group: 'offense' },

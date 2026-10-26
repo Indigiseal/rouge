@@ -29,6 +29,7 @@ import { GEMS } from '../content/cards/gems.js';
 import { createGauntletCard } from '../content/balance/Gauntlet.js';
 import { AMULETS } from '../content/cards/amulets.js';
 import { hudAmuletTexture } from '../content/amulets/RelicsOthersAtlas.js';
+import { isPlusAmulet } from '../content/amulets/amuletPlus.js';
 import { EXIT_DOOR_X, EXIT_DOOR_Y } from './ExitDoor.js';
 import { WORKING_PLAYER_SIGILS, addSigil, canTakeSigil, cardSigils, getSigil, sigilIconArt } from '../content/sigils/sigils.js';
 import { buildSigilIcons, sigilCornerOffset } from './SigilIcons.js';
@@ -62,12 +63,15 @@ const AP_GAIN_LIFT_PX = 4;
 const AP_GAIN_HOP_PX = 2;
 const AP_GAIN_HOP_MS = 80;
 const AP_SPEND_STEP_MS = 70;
-// Where the discard bin sits. Left of the bag now; the inventory panel is capped
-// so it never grows into it. y 314 (was 305) puts the bin's top edge (69px
-// art, top at y-34) at 280, level with the top of the 70px bag cards centred
-// at 315.
-export const DISCARD_X = 39;
+// Where the discard bin sits: back in the bottom-right corner, right of the bag
+// (Taya), under the combat log. y 314 puts the bin's top edge (69px art, top at
+// y-34) at 280, level with the top of the 70px bag cards centred at 315.
+export const DISCARD_X = 601;
 export const DISCARD_Y = 314;
+// The Effects panel in the bottom-left corner the bin left: a dark box listing
+// what is on the hero right now (poison, burn, shields, ...). Its right edge is
+// the bag's left limit, the bin's left edge its right one (InventoryView).
+export const EFFECTS_PANEL = Object.freeze({ x: 39, y: 314, w: 68, h: 72 });
 
 // Stance plate colours. Sweep wears the HUD's own brown/tan so it reads as part
 // of the hero column; Focus goes warm so an active crit stance is obvious at a
@@ -489,16 +493,27 @@ export const CombatHud = {
     },
 
     buildRestOfHud(TOP_HUD_DEPTH) {
-        // Discard bin, now on the LEFT of the bag rather than the right. The
-        // corner it moved into is the one the Effects heading just vacated, and
-        // the inventory panel's width cap mirrors to match (see
-        // rebuildInventorySprites).
+        // Discard bin, back on the RIGHT of the bag. The inventory panel's width
+        // cap keeps clear of it and of the Effects panel on the left
+        // (see rebuildInventorySprites).
         this.discardArea = snapOriginToPixelGrid(this.add.image(DISCARD_X, DISCARD_Y, 'discardSprite'));
         this.add.text(DISCARD_X, DISCARD_Y, t(this, 'ui.hud.discard'), { fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"' }).setOrigin(0.5);
         // Rest button removed - players must manage action points carefully
-        // No "Effects" heading: the icons under it say what they are, and the
-        // word was the only thing left in that corner once the discard bin moved
-        // across. The group it labelled still draws.
+        // The Effects panel: a dark box with its heading; the lines in it are
+        // redrawn by updatePlayerEffectsUI into playerEffectsUIGroup.
+        const panel = EFFECTS_PANEL;
+        this.effectsPanel = this.add.rectangle(panel.x, panel.y, panel.w, panel.h, 0x0e0b10, 0.72)
+            .setStrokeStyle(1, 0x6e7470);
+        this.add.text(panel.x, panel.y - panel.h / 2 + 4, t(this, 'ui.hud.effects'), {
+            fontSize: '10px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"',
+        }).setOrigin(0.5, 0);
+        // Hovering it lists everything, for when the box is too small.
+        this.effectsPanel.setInteractive();
+        // Not while a bag card is in hand (it flashed up as the card passed over).
+        this.effectsPanel.on('pointerover', () => {
+            if (!this.inventorySystem?._liveDrag) this.showPlayerEffectsTooltip(this.effectsPanel);
+        });
+        this.effectsPanel.on('pointerout', () => this.hidePlayerEffectsTooltip());
         this.playerEffectsUIGroup = this.add.group();
         // Next Floor Button (initially hidden) - top right, under pause
         // In a fight the way out is the road you picked, standing open — see
@@ -770,7 +785,9 @@ export const CombatHud = {
         this.renderCombatLog();
     },
     refreshCombatLogVisibility() {
-        this.setCombatLogVisible(['COMBAT', 'ELITE', 'BOSS'].includes(this.roomType));
+        // The boss reward room keeps the boss fight's log up: it is where the
+        // companions' "+1 attack" for the next act is written (Taya).
+        this.setCombatLogVisible(['COMBAT', 'ELITE', 'BOSS', 'BOSS_REWARD'].includes(this.roomType));
     },
 
     // Works out who a floating-text event belongs to from its position: text on
@@ -1358,6 +1375,18 @@ export const CombatHud = {
             if (def?.isSpent?.()) amuletSprite.setTint(0x6f6f6f).setAlpha(0.55);
             this.amuletUIGroup.add(amuletSprite);
 
+            // An upgraded amulet (content/amulets/amuletPlus.js) wears a tiny plus.
+            if (isPlusAmulet(amulet.id)) {
+                const plus = this.add.text(x + 10, y - 10, '+', {
+                    fontSize: '10px',
+                    fill: '#ffcf7f',
+                    fontFamily: '"HoMM Pixel"',
+                    stroke: '#2b1a10',
+                    strokeThickness: 3,
+                }).setOrigin(0.5).setDepth(23);
+                this.amuletUIGroup.add(plus);
+            }
+
             if (def?.activeAbility) {
                 amuletSprite.setInteractive({ useHandCursor: true });
                 amuletSprite.on('pointerdown', () => this.amuletManager.activateAmulet(amulet.id));
@@ -1517,6 +1546,8 @@ export const CombatHud = {
         }
         const inv = this.inventorySystem;
         if (!inv?.showCardTooltip || !armor) return;
+        // Not while a bag card is in hand (it flashed up as the card passed over).
+        if (inv._liveDrag) return;
         inv.showCardTooltip(armor, -1, Math.round(this.armorPanel.x + 30), Math.round(this.armorPanel.y));
         this.armorTooltip = inv.cardTooltip || null;
         this.armorTooltip?.setDepth?.(TOOLTIP_DEPTH);
@@ -1524,7 +1555,7 @@ export const CombatHud = {
     // Hovering the hero's portrait lists every effect on them: a title, then
     // one line per effect in its own colour (collectPlayerEffectEntries), or a
     // quiet "No active effects". Same panel skin as the armour tooltip.
-    showPlayerEffectsTooltip() {
+    showPlayerEffectsTooltip(fromPanel = null) {
         this.hidePlayerEffectsTooltip();
         const anchor = this.playerAvatar;
         if (!anchor?.scene) return;
@@ -1552,9 +1583,14 @@ export const CombatHud = {
         const width = textWidth + TOOLTIP_PAD.x * 2;
         const height = y - LINE_GAP + TOOLTIP_PAD.bottom;
         const bg = createTooltipPanel(this, width, height);
-        // To the right of the portrait, level with its top.
-        const x = Math.round(anchor.x + anchor.displayWidth / 2 + 6);
-        const top = Math.round(anchor.y - anchor.displayHeight / 2);
+        // To the right of the portrait, level with its top; from the Effects
+        // panel, just above it.
+        const x = fromPanel
+            ? Math.round(EFFECTS_PANEL.x - EFFECTS_PANEL.w / 2)
+            : Math.round(anchor.x + anchor.displayWidth / 2 + 6);
+        const top = fromPanel
+            ? Math.round(EFFECTS_PANEL.y - EFFECTS_PANEL.h / 2 - height - 4)
+            : Math.round(anchor.y - anchor.displayHeight / 2);
         this.playerEffectsTooltip = this.add.container(x, top, [bg, ...lines]).setDepth(TOOLTIP_DEPTH);
     },
     hidePlayerEffectsTooltip() {
@@ -1574,6 +1610,11 @@ export const CombatHud = {
         const turns = (count) => tCount(this.scene, 'ui.hud.turnUnit', count);
         const withTurns = (name, count) =>
             t(this.scene, 'ui.hud.effectTurns', { name, count, unit: turns(count) });
+
+        // At 0 AP the hero is hungry: weapons hit 20% softer until food is eaten.
+        if ((this.gameState.actionsLeft ?? 1) <= 0) {
+            entries.push({ text: t(this.scene, 'ui.hud.hungry'), color: '#fbad19' });
+        }
 
         this.gameState.playerEffects.forEach((effect) => {
             switch (effect.type) {
@@ -1690,19 +1731,38 @@ export const CombatHud = {
         this.playerEffectsUIGroup.clear(true, true);
         const entries = this.collectPlayerEffectEntries();
 
-        entries.forEach((entry, i) => {
-            // Statuses belong to the equipped hero kit, not to the discard
-            // control. Place them in the open lane immediately right of armor.
-            // 125, was 132: up 7px with the armour slot it sits beside.
-            const y = 125 + i * 14;
-            const text = this.add.text(80, y, entry.text, {
-                fontSize: '10px',
-                fill: entry.color,
+        // Inside the Effects panel, under its heading, one line each in the
+        // effect's colour. What does not fit ends in "+N"; hovering the panel
+        // (or the portrait) shows the whole list.
+        const panel = EFFECTS_PANEL;
+        const left = panel.x - panel.w / 2 + 4;
+        const bottom = panel.y + panel.h / 2 - 3;
+        let y = panel.y - panel.h / 2 + 17;
+        if (!entries.length) {
+            this.playerEffectsUIGroup.add(this.add.text(panel.x, y + 2, t(this, 'ui.hud.noEffects'), {
+                fontSize: '8px', fill: '#7d7470', fontFamily: '"HoMM Pixel"',
+                wordWrap: { width: panel.w - 8 }, align: 'center',
+            }).setOrigin(0.5, 0));
+        }
+        for (let i = 0; i < entries.length; i++) {
+            const text = this.add.text(left, y, entries[i].text, {
+                fontSize: '8px',
+                fill: entries[i].color,
                 fontFamily: '"HoMM Pixel"',
-                wordWrap: { width: 105 },
+                wordWrap: { width: panel.w - 8 },
             });
+            const fits = y + text.height <= bottom;
+            const lastRoom = y + text.height + 10 > bottom && i < entries.length - 1;
+            if (!fits || lastRoom) {
+                text.destroy();
+                this.playerEffectsUIGroup.add(this.add.text(left, y, `+${entries.length - i}`, {
+                    fontSize: '8px', fill: '#d3beb2', fontFamily: '"HoMM Pixel"',
+                }));
+                break;
+            }
             this.playerEffectsUIGroup.add(text);
-        });
+            y += Math.ceil(text.height) + 1;
+        }
 
         this.updatePlayerPoisonMarker();
         this.updatePlayerShockMarker();

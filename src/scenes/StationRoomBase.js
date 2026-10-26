@@ -646,12 +646,16 @@ export class StationRoomBase extends Phaser.Scene {
         const sideArt = boardArtFor(targetScene, this.gameState);
         container.add(targetScene.add.image(0, 0, sideArt.sideSmall, sideArt.sideSmallFrame ?? boardFrame).setOrigin(0.5));
 
+        // The seller (or the shop's picture) is kept: in the shop a bag card is
+        // sold by dropping it on him (ShopScene.createSellZone).
+        this.shopSellerImage = null;
         if (sellerKey && targetScene.textures.exists(sellerKey)) {
             // Bottom-centre origin on whole pixels (the art is 56 wide).
-            container.add(targetScene.add.image(SELLER_X, SELLER_BOTTOM_Y, sellerKey).setOrigin(0.5, 1));
+            this.shopSellerImage = targetScene.add.image(SELLER_X, SELLER_BOTTOM_Y, sellerKey).setOrigin(0.5, 1);
         } else if (targetScene.textures.exists('eventsShops')) {
-            container.add(targetScene.add.image(17, -5, 'eventsShops', frame).setOrigin(0.5));
+            this.shopSellerImage = targetScene.add.image(17, -5, 'eventsShops', frame).setOrigin(0.5);
         }
+        if (this.shopSellerImage) container.add(this.shopSellerImage);
 
         this.shopIllustrationBoard = container;
         targetScene.tweens.add({

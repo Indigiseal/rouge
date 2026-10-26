@@ -86,7 +86,10 @@
     "test:blocked-storage": "node tools/test-blocked-storage.mjs",
     "test:sim-coverage": "node tools/test-sim-coverage.mjs",
     "test:sigil-traits": "node tools/test-sigil-traits.mjs",
-    "test:boss-attack-sheet": "node tools/test-boss-attack-sheet.mjs"
+    "test:boss-attack-sheet": "node tools/test-boss-attack-sheet.mjs",
+    "test:amulet-plus": "node tools/test-amulet-plus.mjs",
+    "test:frenzy": "node tools/test-frenzy.mjs",
+    "test:spiderling-bite": "node tools/test-spiderling-bite.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1"

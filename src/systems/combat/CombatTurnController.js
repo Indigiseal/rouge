@@ -18,6 +18,8 @@ const BOSS_SUMMON_PITY = 4;
 import { ENEMY_BASE_CRIT, ENEMY_CRIT_MULT } from '../../content/balance/CombatChance.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroad/index.js';
 import { showBossAttackFrame } from '../../content/cards/bossAttackFrames.js';
+import { frenzyBiteDamage, rollFrenzy } from '../../content/combat/frenzy.js';
+import { FRENZY_BITE_GAP_MS, FRENZY_CUE_MS, playFrenzyCue, shakeForFrenzyBite } from '../../ui/FrenzyCue.js';
 import { bossSoundKeys } from '../../content/audio/bossSounds.js';
 import { consumeBoneShield } from '../../content/combat/boneShield.js';
 import { consumeBriarShield } from '../../content/combat/briarShield.js';
@@ -324,13 +326,30 @@ export class CombatTurnController {
                 return;
             }
 
-            const { index, extra } = attackers[attackerIndex++];
+            const { index, extra, frenzyBite } = attackers[attackerIndex++];
             const card = scene.cardSystem.boardCards[index];
             const veilFaceDown = card
                 && !card.revealed
                 && hasEnemyTrait(card.data, 'veil_flip');
+            // Frenzy (content/combat/frenzy.js): instead of its one attack, the
+            // boss bites once per head. The cue plays first, then every bite
+            // joins this turn's queue, a short beat apart, so the player cannot
+            // act in between and nothing else cuts into the flurry.
+            if (frenzyBite == null && !extra && card?.data?.type === 'boss' && card.revealed) {
+                const bites = rollFrenzy(card.data);
+                if (bites) {
+                    card.data._frenzyBites = bites;
+                    playFrenzyCue(scene, card);
+                    attackers.splice(attackerIndex, 0,
+                        ...bites.map((_, bite) => ({ card, index, extra: true, frenzyBite: bite })));
+                    const cueTimer = scene.time.delayedCall(FRENZY_CUE_MS, attackNext);
+                    this.enemyTurnTimers.push(cueTimer);
+                    return;
+                }
+            }
             if (card && scene.isEnemyCard(card) && (card.revealed || veilFaceDown)) {
-                this.processEnemyAttack(card, index);
+                this.processEnemyAttack(card, index, frenzyBite != null ? { frenzyBite } : {});
+                if (frenzyBite != null) shakeForFrenzyBite(scene, frenzyBite);
                 scene.updateUI();
                 if (scene.gameState.revivedThisHit) {
                     this.finishEnemyTurnEffects({ skipPlayerPoison: true });
@@ -351,8 +370,9 @@ export class CombatTurnController {
 
             // Long enough for one attacker's whole timeline (hit → thorns →
             // armor break) to finish before the next one swings, so two enemies
-            // never narrate over each other.
-            const timer = scene.time.delayedCall(enemyAttackGap, attackNext);
+            // never narrate over each other. A frenzy's bites come quicker.
+            const nextIsBite = attackers[attackerIndex]?.frenzyBite > 0;
+            const timer = scene.time.delayedCall(nextIsBite ? FRENZY_BITE_GAP_MS : enemyAttackGap, attackNext);
             this.enemyTurnTimers.push(timer);
         };
 
@@ -381,7 +401,7 @@ export class CombatTurnController {
         this.isEnemyTurn = false;
     }
 
-    processEnemyAttack(card, index, { fromRally = false, fromQuickStrike = false } = {}) {
+    processEnemyAttack(card, index, { fromRally = false, fromQuickStrike = false, frenzyBite = null } = {}) {
         const scene = this.scene;
         if (card?.data?.isBonePile) return;
         if (card?.data?.isCocoon || (Array.isArray(card?.data?.features) && card.data.features.includes('cocoon_shell'))) {
@@ -517,6 +537,10 @@ export class CombatTurnController {
 
         const features = Array.isArray(card.data?.features) ? card.data.features : [];
         let damageDealt = getEnemyHitAttack(card, scene.cardSystem?.boardCards);
+        // A frenzy bite is its share of the usual hit (5, 7, 9 of the Cerberus's 17).
+        if (frenzyBite != null && Array.isArray(card.data._frenzyBites)) {
+            damageDealt = frenzyBiteDamage(damageDealt, card.data._frenzyBites[frenzyBite]);
+        }
         spendSapping(card);
         scene.cardSystem?.updateEnemyInfoText?.(card);
 
@@ -573,6 +597,23 @@ export class CombatTurnController {
         // Capture before armor loses its last pip; that final attack still
         // touches the worn sigil. It also retaliates against ranged attacks.
         const thornRetaliation = damageDealt > 0 ? armorThornsDamage(scene.gameState.equippedArmor) : 0;
+
+        // A boss with an attack frame strikes in that pose for a moment, in place
+        // of the generic slash below. Before the shields and mirrors: a blocked or
+        // reflected blow is still a blow, and a boss that stood still through
+        // them looked as if it had skipped its turns.
+        let ownAttackArt = false;
+        if (card.data?.type === 'boss') {
+            ownAttackArt = showBossAttackFrame(scene, card);
+            // A boss with its own attack sound, once loaded, adds it to the blow.
+            // A frenzy bite has its own chomp instead, once loaded (ui/FrenzyCue.js).
+            const chomps = frenzyBite != null && scene.cache?.audio?.exists?.('cerberus_frenzy_chomp');
+            const attackKey = chomps ? null : bossSoundKeys(card.data)?.attack;
+            if (attackKey && scene.cache?.audio?.exists?.(attackKey)) {
+                SoundHelper.playSound(scene, attackKey, 0.6);
+            }
+        }
+
         // Bone Shield stops this individual attack and all its on-hit riders.
         // Resolve it before mirror/dodge so those defenses are not spent too.
         if (consumeBoneShield(scene.gameState, damageDealt)) {
@@ -617,17 +658,6 @@ export class CombatTurnController {
             SoundHelper.playSound(scene, 'armor_broken', 0.5);
         }
 
-        // A boss with an attack frame strikes in that pose for a moment, in place
-        // of the generic slash below.
-        let ownAttackArt = false;
-        if (card.data?.type === 'boss') {
-            ownAttackArt = showBossAttackFrame(scene, card);
-            // A boss with its own attack sound, once loaded, adds it to the blow.
-            const attackKey = bossSoundKeys(card.data)?.attack;
-            if (attackKey && scene.cache?.audio?.exists?.(attackKey)) {
-                SoundHelper.playSound(scene, attackKey, 0.6);
-            }
-        }
         scene.createDamageEffect(card.sprite.x, card.sprite.y);
         // The enemy's blow: the player's weapon slash, upside down, so it
         // reads as a strike coming back down at the hero. Not over a boss's own swing.
@@ -811,7 +841,7 @@ export class CombatTurnController {
 
         this.applyArmorSigilThorns(card, index, thornRetaliation);
         this.applyThornsDamage(card, index, tookDamage);
-        if (!fromQuickStrike && !dodged && !revived && scene.cardSystem.boardCards[index] === card
+        if (!fromQuickStrike && frenzyBite == null && !dodged && !revived && scene.cardSystem.boardCards[index] === card
             && tryEnemyQuickStrike(scene.gameState, card.data, actualDamage)) {
             scene.createFloatingText?.(card.sprite.x, card.sprite.y - 30, 'Quick Strike!', 0xffcf7f);
             this.processEnemyAttack(card, index, { fromRally, fromQuickStrike: true });
@@ -1225,9 +1255,12 @@ export class CombatTurnController {
         return true;
     }
 
-    // The Crystal Spiderling's turn: every other turn it throws a web at an
-    // enemy, and that enemy loses its next attack. The turn between, it spins.
-    // A boss is too big to hold. The Crystal Seeker's web may turn up a crystal.
+    // The Crystal Spiderling's turn: every other turn it bites an enemy and
+    // throws a web at it in the same move, and that enemy loses its next attack.
+    // The turn between, it spins and does neither. A boss is too big to hold:
+    // with only a boss left it just bites (Taya: in the final fight it used to
+    // do nothing at all). Its bite is its attack: 0, +1 each new act, +2 once
+    // trained into the Crystal Seeker, whose web may also turn up a crystal.
     runWebTurn(entry, onComplete = () => {}) {
         const scene = this.scene;
         const companion = entry?.companion;
@@ -1258,9 +1291,31 @@ export class CombatTurnController {
                 && (card.data?.health || 0) > 0 && !(card.data?.frozen > 0)
                 && card.data?.type !== 'boss' && !card.data?.isCocoon
             ));
+        const biteDamage = Math.max(0, Number(companion.attack) || 0) + companionStrengthBonus(scene);
+        // Nothing it can web (only a boss, say): it bites the usual companion
+        // target instead, if its bite does anything yet.
         if (!targets.length) {
-            onComplete();
-            return false;
+            const prey = biteDamage > 0 ? this.selectCompanionTarget(companion) : null;
+            if (!prey) {
+                onComplete();
+                return false;
+            }
+            const hold = consumeCompanionAttackHold(companion);
+            if (hold) {
+                scene.createFloatingText(slotCard?.x ?? 320, (slotCard?.y ?? 300) - 18,
+                    t(scene, hold === 'frost' ? 'status.frost.missed' : 'status.shock.missed'), 0xffcf7f);
+                done();
+                return false;
+            }
+            companion.webSpinTurns = 1;
+            scene.markCompanionParticipated(companion);
+            scene.inventorySystem?.playSlotStrikeAnimation(entry.index);
+            const biteTimer = scene.time.delayedCall(120, () => {
+                this.spiderBite(prey.card, prey.index, biteDamage, companion);
+                done(220, true);
+            });
+            this.enemyTurnTimers.push(biteTimer);
+            return true;
         }
         const attackHold = consumeCompanionAttackHold(companion);
         if (attackHold) {
@@ -1289,10 +1344,23 @@ export class CombatTurnController {
                         card.sprite.x, card.sprite.y, { kind: 'crystal', amount: 1 }, companion.name || 'Crystal Seeker'
                     );
                 }
+                // The bite that comes with the web.
+                if (biteDamage > 0) this.spiderBite(card, target.index, biteDamage, companion);
             }
             done(220, true);
         });
         return true;
+    }
+
+    // The spiderling's bite: its attack as damage, unless the enemy evades.
+    spiderBite(card, index, damage, companion) {
+        const scene = this.scene;
+        const current = scene.cardSystem.boardCards[index];
+        if (current !== card || !((current?.data?.health || 0) > 0)) return;
+        if (scene.cardSystem.rollEvade(current)) return;
+        CombatSequencer.playVariant(scene, 'gem', 'enemy_hit', COMPANION_SFX_VOLUME);
+        scene.cardSystem.damageGemTarget(index, damage, 'Spider Bite', 0xb8e4f0, null);
+        scene.markCompanionParticipated(companion);
     }
 
     tickHandWebs() {

@@ -99,8 +99,10 @@ for (const f of ['src/content/amulets/currentCatalog.js', 'src/content/amulets/l
 
 // Report.
 const missing = Object.fromEntries(LANGS.map((lang) => [lang, []]));
+// "Name+" (an upgraded amulet) translates as "Name" plus the "+" (translateItemName).
+const isKnown = (lang, key) => known[lang].has(key) || (key.endsWith('+') && known[lang].has(key.slice(0, -1)));
 for (const [key, entry] of found) {
-    for (const lang of LANGS) if (!known[lang].has(key)) missing[lang].push(entry);
+    for (const lang of LANGS) if (!isKnown(lang, key)) missing[lang].push(entry);
 }
 const bySource = (list) => {
     const out = {};

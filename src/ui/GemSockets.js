@@ -6,11 +6,12 @@
 // Two lives, one piece of art:
 //
 //   1. A hint. Hover or drag a loose gem — on the board or in a shop — and
-//      every card that could actually take it shows an empty socket. That
+//      every card that could actually take it shows a glinting socket. That
 //      answers "where can this go?" before the player has dragged anything
 //      across the screen to find out.
-//   2. A setting. Once a gem is socketed, the same spot is drawn under it, so
-//      the stone reads as set INTO the card rather than stuck on top of it.
+//   2. A setting. Once a gem is socketed, the still spot is drawn under it, so
+//      the stone reads as set INTO the card. A Twin Socket card's free socket
+//      glints all the time (ui/CardDecorations.js), so the second slot shows.
 //
 // The hint is deliberately built from the eligibility rule the drop itself
 // uses (canSocketGem below, which mirrors InventorySystem.applyGemToWeapon).
@@ -21,6 +22,12 @@ import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
 
 export const GEM_SPOT_KEY = 'gemSpot';
 export const GEM_SPOT_SIZE = 18;
+// The hint's own look (Taya's gemSpotAnim.png): the same socket with a gold
+// glint running round its rim, five 18x18 frames on a loop, so the cards that
+// can take the gem catch the eye. A socketed gem keeps the still spot.
+export const GEM_SPOT_ANIM_KEY = 'gemSpotAnim';
+const GEM_SPOT_ANIM = 'gemSpotGlint';
+const GEM_SPOT_ANIM_FPS = 10;
 // Tucked just inside the card's top edge.
 const SPOT_INSET_Y = GEM_SPOT_SIZE / 2;
 // Fallback only. The real depth comes from the inventory, because it renumbers
@@ -64,6 +71,31 @@ export function createGemSpot(scene, cardSprite, depth = null) {
     return scene.add.image(x, y, GEM_SPOT_KEY).setDepth(depth ?? spotDepth(scene));
 }
 
+/**
+ * A glinting socket at (x, y): Taya's gemSpotAnim on a loop, or the still spot
+ * when the animation is not loaded. Unparented and without a depth.
+ */
+export function createGlintingSpot(scene, x, y) {
+    if (!scene.textures?.exists?.(GEM_SPOT_ANIM_KEY) || !scene.anims) {
+        return scene.textures?.exists?.(GEM_SPOT_KEY) ? scene.add.image(x, y, GEM_SPOT_KEY) : null;
+    }
+    if (!scene.anims.exists(GEM_SPOT_ANIM)) {
+        scene.anims.create({
+            key: GEM_SPOT_ANIM,
+            frames: scene.anims.generateFrameNumbers(GEM_SPOT_ANIM_KEY, { start: 0, end: 4 }),
+            frameRate: GEM_SPOT_ANIM_FPS,
+            repeat: -1,
+        });
+    }
+    return scene.add.sprite(x, y, GEM_SPOT_ANIM_KEY, 0).play(GEM_SPOT_ANIM);
+}
+
+/** The hint: the glinting socket on a card that can take the gem. */
+function createGemSpotHint(scene, cardSprite) {
+    const { x, y } = gemSpotPosition(cardSprite);
+    return createGlintingSpot(scene, x, y)?.setDepth(spotDepth(scene)) ?? null;
+}
+
 /** Just under where a socketed gem would sit, whichever numbering is in use. */
 function spotDepth(scene) {
     const depths = scene?.inventorySystem?.getInventoryDepths?.();
@@ -93,7 +125,7 @@ export function showGemSockets(scene, gem) {
         // shop draws on top of GameScene and reaches the bag through
         // this.gameScene, so a spot added to the shop would float above its own
         // art instead of sitting on the card it belongs to.
-        const spot = createGemSpot(host, cardSprite);
+        const spot = createGemSpotHint(host, cardSprite);
         if (spot) spots.push({ spot, cardSprite });
     });
     host._gemSocketHints = spots;

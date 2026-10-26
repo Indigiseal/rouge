@@ -48,7 +48,7 @@ import {
     makeBossRewardGem as makeBossRewardGemUi,
     leaveBossRewardRoom as leaveBossRewardRoomUi,
 } from '../ui/BossRewardRoom.js';
-import { t } from '../i18n/i18n.js';
+import { t, translateItemName } from '../i18n/i18n.js';
 import { loadHeroMemory, loadStoryProgress, saveHeroMemory } from '../content/story/StoryProgress.js';
 import { createDefaultStoryRun } from '../content/story/StoryDefaults.js';
 import { ROBBER_SATCHEL_AMULET } from '../content/cards/robbers.js';
@@ -82,6 +82,7 @@ import { EGG_HATCH_ROOMS, eggFightsLeft, isHatchingEgg } from '../content/cards/
 import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
 import { applyStars } from '../content/cards/legendaryStars.js';
 import { createArmorCardData, createWeaponCardData } from '../content/cards/index.js';
+import { COMPANION_POWER_UP_STAGGER_MS, playCompanionPowerUp } from '../ui/CompanionPowerUp.js';
 
 // The Crystal Lair's reward when no card can take its sigil.
 const CRYSTAL_LAIR_FALLBACK_CRYSTALS = 3;
@@ -1677,8 +1678,8 @@ export class GameScene extends Phaser.Scene {
 
     // Replaces the previous TreasureScene boss flow. Stays inside GameScene so the
     // player keeps their avatar, inventory and full UI — just swaps the board.
-    setupBossRewardRoom() {
-        return setupBossRewardRoomUi(this);
+    setupBossRewardRoom(options) {
+        return setupBossRewardRoomUi(this, options);
     }
 
     continueBossVictory() {
@@ -1752,30 +1753,48 @@ export class GameScene extends Phaser.Scene {
         return leaveBossRewardRoomUi(this);
     }
 
-    upgradeCompanionsForNextAct(nextAct) {
+    // A line in the combat log when a companion's attack goes up.
+    logCompanionAttackUp(companion, amount) {
+        if (!companion) return;
+        this.pushCombatLog?.(t(this, 'log.companionAttackUp', {
+            name: translateItemName(this, companion),
+            amount,
+            attack: Math.max(0, Number(companion.attack) || 0),
+        }));
+    }
+
+    // +1 attack for every companion carried into a new act. Done once per act:
+    // the boss reward room does it first, with the golden swirl on each card
+    // (ui/CompanionPowerUp.js); leaving the room only catches up a save made
+    // before that. Returns how many companions grew.
+    upgradeCompanionsForNextAct(nextAct, { celebrate = false } = {}) {
         // Acts 2 and 3 are the only real crossings. Guarding the act number
         // keeps a final-victory transition from granting a meaningless upgrade.
         if (nextAct < 2 || nextAct > 3) return 0;
+        if (this.gameState.companionsUpgradedForAct === nextAct) return 0;
+        this.gameState.companionsUpgradedForAct = nextAct;
 
         const slots = this.inventorySystem?.slots || this.gameState?.inventory || [];
-        const companions = slots.filter(item => item?.type === 'companion');
-        companions.forEach(companion => {
+        const grown = [];
+        slots.forEach((companion, index) => {
+            if (companion?.type !== 'companion') return;
             companion.attack = Math.max(0, Number(companion.attack) || 0) + 1;
             companion.actUpgrades = (Number(companion.actUpgrades) || 0) + 1;
-            this.createFloatingText(
-                320,
-                145 + companions.indexOf(companion) * 14,
-                `${companion.name || 'Companion'} +1 ATK`,
-                0xffcf7f
-            );
+            grown.push(index);
         });
 
-        if (companions.length > 0) {
+        if (grown.length > 0) {
             this.gameState.inventory = slots;
             this.inventorySystem?.rebuildInventorySprites?.();
             this.updateUI();
+            grown.forEach((index, n) => {
+                this.logCompanionAttackUp(slots[index], 1);
+                const card = this.inventorySystem?.slotSprites?.[index]?.card;
+                if (celebrate) playCompanionPowerUp(this, card, { delay: n * COMPANION_POWER_UP_STAGGER_MS });
+                else this.createFloatingText(card?.x ?? 320, (card?.y ?? 260) - 40, t(this, 'float.atkGain', { amount: 1 }), 0xffcf7f);
+            });
         }
-        return companions.length;
+        return grown.length;
     }
     
     onEnemiesCleared() {
@@ -2142,6 +2161,7 @@ export class GameScene extends Phaser.Scene {
             this.gameState.mapCursor = runData.navigation.mapCursor || null;
             this.gameState.dungeonMap = runData.navigation.dungeonMap || null;
             this.gameState.pendingActShop = runData.navigation.pendingActShop || null;
+            this.gameState.companionsUpgradedForAct = runData.navigation.companionsUpgradedForAct ?? null;
             this.roomType = this.gameState.roomType;
         }
         this._loadedBoardCards = Array.isArray(runData.board?.cards)
@@ -2215,16 +2235,18 @@ export class GameScene extends Phaser.Scene {
             this.setFeedbackScene(null);
             this.inventorySystem?.clearDropZones?.();
             this.inventorySystem?.setStationMode(false);
+            // The pendant flag and the generated reward cards must land in the
+            // same save. Continue then restores the reward room without either
+            // replaying the vision or paying its currency a second time. A fresh
+            // room offers its cards only after the companions' swirl, so it
+            // saves once they are on the board, not before.
             if (this._restoreBossRewardAfterNarrative) {
                 this._restoreBossRewardAfterNarrative = false;
                 this.restoreSavedBossRewardRoom();
+                this.saveCurrentRun();
             } else {
-                this.setupBossRewardRoom();
+                this.setupBossRewardRoom({ onRewardsShown: () => this.saveCurrentRun() });
             }
-            // The pendant flag and the generated reward cards must land in the
-            // same save. Continue then restores the reward room without either
-            // replaying the vision or paying its currency a second time.
-            this.saveCurrentRun();
             return;
         }
         if (data?.shopStation) {

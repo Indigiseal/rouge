@@ -131,7 +131,6 @@ export const RELICS_OTHERS_ATLAS = Object.freeze({
     goblet:               { frame: 99, name: 'Plague Chalice' },
     phoenixMedallion:     { frame: 100, name: 'Molten Heart' },
     hourglass:            { frame: 102, name: 'Sandglass Scarab' },
-    greenRing:            { frame: 108, name: 'Ring of Greater Regeneration' },
     inkAndQuill:          { frame: 110, name: "Cartographer's Ink" },
     sleepingBag:          { frame: 111, name: "Robber's Bedroll" },
     spyglass:             { frame: 112, name: "Goblin's Spyglass" }
@@ -196,7 +195,7 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     amuletOfGreaterEvasion: 'greenHood',
     ringOfGreaterHealth: 'griffinMedallion',
     amuletOfGreaterProtection: 'iceShield',
-    ringOfGreaterRegeneration: 'greenRing',
+    ringOfGreaterRegeneration: 'regenerationAmulet', // Ring of Regeneration+ wears the ring's own art.
     earringOfGreaterArmorDurability: 'shieldPotion',
     earringOfGreaterWeaponDurability: 'stormShard',
     alchemistBag: 'alchemistSatchel',
@@ -219,10 +218,6 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     legendaryWhetstone: 'goldBar',
     lostNobleDiadem: 'diadem',
     glovesOfHermitWizard: 'violetGauntlet',
-    markOfHesitation: 'charmingFan',
-    markOfTreachery: 'perfumeBottle',
-    twinMarks: 'hangingBat',
-    collarOfBinding: 'redCirclet',
     tacticiansPin: 'compass',
     forcedMarch: 'horn',
     vacancyStep: 'grapplingHook',
@@ -236,7 +231,7 @@ export const AMULET_ATLAS_KEYS = Object.freeze({
     plagueHeart: 'goblet',
     // Sigils branch (placeholder art from frames already in the sheet).
     cartographersInk: 'inkAndQuill',
-    oraclesFishbowl: 'eyePendant',
+    oraclesFishbowl: 'inkAndQuill', // Cartographer's Ink+ wears the ink's own art.
     quickstepCharm: 'fingerlessGloves',
     heartOfHours: 'pocketWatch',
     gluttonsCharm: 'hourglass',

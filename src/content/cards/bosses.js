@@ -145,7 +145,11 @@ export const BOSSES = {
     attack: 17,
     sprite: 'Cerberus',
     abilities: [
-      { type: 'summon', enemyType: 'cerberusHead', chance: 0.18, count: 1 }
+      { type: 'summon', enemyType: 'cerberusHead', chance: 0.18, count: 1 },
+      // Frenzy (CombatTurnController): now and then all three heads bite, each
+      // harder than the last. Shares of its attack: 17 → 5, 7, 9. Each bite is
+      // its own hit, so it chews three armor pips (Taya).
+      { type: 'frenzy', chance: 1 / 3, bites: [0.3, 0.4, 0.55] },
     ]
   },
 
@@ -159,7 +163,9 @@ export const BOSSES = {
     attack: 28,
     sprite: 'AncientCerberus',
     abilities: [
-      { type: 'summon', enemyType: 'cerberusHead', chance: 0.3, count: 1 }
+      { type: 'summon', enemyType: 'cerberusHead', chance: 0.3, count: 1 },
+      // The same frenzy, older and meaner: 28 → 8, 10, 12.
+      { type: 'frenzy', chance: 1 / 3, bites: [0.29, 0.36, 0.43] },
     ]
   }
 };

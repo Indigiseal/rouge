@@ -151,6 +151,10 @@ export const ASSET_MANIFEST = [
     { key: 'wizardTray', path: 'assets/art/trayWizard.png', type: 'image' },
     { key: 'luckyClover', path: 'assets/art/clover.png', type: 'spritesheet', frameWidth: 53, frameHeight: 70 },
     { key: 'mapNodes', path: 'assets/art/mapNodes42x42.png', type: 'spritesheet', frameWidth: 42, frameHeight: 42 },
+    // The walked road under the map's lines (map/MapRoad.js): 32x32 autotile, frame = N1 E2 S4 W8.
+    { key: 'mapRoad', path: 'assets/art/road.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
+    // The gem socket hint's glint (ui/GemSockets.js): five 18x18 frames.
+    { key: 'gemSpotAnim', path: 'assets/art/packed/gemSpotAnim.png', type: 'spritesheet', frameWidth: 18, frameHeight: 18 },
     // Fog of war over the map (the HoMM in Pixel Art fog atlas; map/MapFog.js).
     { key: 'mapFog', path: 'assets/art/mapFog.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
     // A gem's size IS its level: 5 tiers across, 3 colours down — see
@@ -446,6 +450,11 @@ export const LATE_AUDIO = [
     ...ENEMY_DEATH_SOUND_ASSETS,
     // The location bosses' own attack and death (content/audio/bossSounds.js).
     ...BOSS_SOUND_ASSETS,
+    // The Cerberus frenzy (ui/FrenzyCue.js): a low monstrous growl at the cue, a
+    // chomp on each bite (ElevenLabs, tools/death-sounds.json "frenzy", take 2, picked by Taya).
+    // Until they land: boss_enraged, and the Cerberus's own attack sound.
+    { key: 'cerberus_frenzy_growl', path: 'assets/music/Cerberus_Frenzy_Growl.mp3', type: 'audio' },
+    { key: 'cerberus_frenzy_chomp', path: 'assets/music/Cerberus_Frenzy_Chomp.mp3', type: 'audio' },
     // Equip sounds per armor type (content/audio/armorSounds.js); the shared
     // clank, armor_equip, stands in until they land.
     ...ARMOR_EQUIP_SOUND_ASSETS,

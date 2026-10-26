@@ -18,8 +18,8 @@ import { recordHumanRunEvent, snapshotHumanRunCard } from '../systems/HumanRunRe
 // Chance the regular shop stocks a Cure (Antidote) next to its potions.
 const SHOP_CURE_CHANCE = 0.35;
 
-// The sell box: the discard box's mirror on the right of the bag, same size.
-const SELL_ZONE = Object.freeze({ x: 601, y: 314, w: 64, h: 76 });
+// The seller's glow while a card is held, the anvil's repair light colour.
+const SELL_GLOW_COLOR = 0xfee8b5;
 
 export class ShopScene extends StationRoomBase {
     constructor() {
@@ -46,7 +46,7 @@ export class ShopScene extends StationRoomBase {
         this.displayShopItems();
         this.createShopIllustrationBoard(1, 0, 164);
 
-        // Selling: drag a bag card onto the sell box.
+        // Selling: drag a bag card onto the seller.
         this.createSellZone();
         this.events.once('shutdown', () => this.destroySellZone());
 
@@ -276,22 +276,23 @@ export class ShopScene extends StationRoomBase {
     capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 
     // ─── Selling ─────────────────────────────────────────────────────────────
-    // A box beside the bag, the mirror of the discard box on its other side:
-    // drag a bag card onto it to sell it. While a card is over it, the price
-    // shows above it. (Placeholder look — a dark see-through panel — until
-    // its art is drawn.) Drawn in GameScene, with the bag, so a dragged card
-    // passes over it instead of under it.
+    // Drop a bag card on the seller to sell it (Taya: the corner box clashed
+    // with the discard bin, which is back on that side). While a card is held
+    // the seller glows softly, as the anvil glows to invite a repair; over him,
+    // the glow pulses and the price shows above him. The glow and the price are
+    // drawn in GameScene, with the bag and the seller's board.
     createSellZone() {
         const inv = this.gameScene?.inventorySystem;
         const host = this.gameScene;
-        if (!inv || !host?.add) return;
-        this.sellZone = host.add.rectangle(SELL_ZONE.x, SELL_ZONE.y, SELL_ZONE.w, SELL_ZONE.h, 0x0e0b10, 0.55)
-            .setStrokeStyle(1, 0x6e7470)
-            .setDepth(199);
-        this.sellZoneLabel = host.add.text(SELL_ZONE.x, SELL_ZONE.y, t(this, 'ui.shop.sell'), {
-            fontSize: '12px', fill: '#d3beb2', fontFamily: '"HoMM Pixel", Arial, sans-serif',
-        }).setOrigin(0.5).setDepth(199.5);
-        this.sellPriceLabel = host.add.text(SELL_ZONE.x, SELL_ZONE.y - SELL_ZONE.h / 2 - 10, '', {
+        const seller = this.shopSellerImage;
+        if (!inv || !host?.add || !seller?.scene) return;
+        this.sellZone = seller;
+        // A light copy of the seller over him, faded out until a card is held.
+        this.sellGlow = host.add.image(seller.x, seller.y, seller.texture.key, seller.frame.name)
+            .setOrigin(seller.originX, seller.originY)
+            .setTintFill(SELL_GLOW_COLOR).setAlpha(0);
+        seller.parentContainer?.add(this.sellGlow);
+        this.sellPriceLabel = host.add.text(0, 0, '', {
             fontSize: '12px', fill: '#ffcf7f', fontFamily: '"HoMM Pixel", Arial, sans-serif',
             stroke: '#1c130a', strokeThickness: 3,
         }).setOrigin(0.5, 1).setDepth(3000).setVisible(false);
@@ -308,8 +309,10 @@ export class ShopScene extends StationRoomBase {
             inv.clearDropZones?.();
             inv.onCardDrag = null;
         }
-        [this.sellZone, this.sellZoneLabel, this.sellPriceLabel].forEach((o) => o?.destroy?.());
-        this.sellZone = this.sellZoneLabel = this.sellPriceLabel = null;
+        this.sellGlowTween?.remove?.();
+        this.sellGlowTween = null;
+        [this.sellGlow, this.sellPriceLabel].forEach((o) => o?.destroy?.());
+        this.sellZone = this.sellGlow = this.sellPriceLabel = null;
     }
 
     closeStation() {
@@ -317,24 +320,46 @@ export class ShopScene extends StationRoomBase {
         super.closeStation();
     }
 
-    // The price, shown while a card is held over the box.
+    // The seller's glow and the price, following a held card.
     updateSellPreview(slotIndex, cardSprite) {
         if (!this.sellZone?.scene || !this.sellPriceLabel) return;
         const item = slotIndex >= 0 ? this.getCurrentInventory()[slotIndex] : null;
+        const bounds = this.sellZone.getBounds();
         const over = Boolean(item && cardSprite?.getBounds
-            && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), this.sellZone.getBounds()));
-        this.sellZone.setFillStyle(0x0e0b10, over ? 0.8 : 0.55).setStrokeStyle(1, over ? 0xffcf7f : 0x6e7470);
+            && Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), bounds));
+        this.setSellGlow(over ? 'over' : (item ? 'held' : 'off'));
         if (!over) {
             this.sellPriceLabel.setVisible(false);
             return;
         }
         this.sellPriceLabel
             .setText(t(this, 'ui.shop.sellPrice', { price: this.calculateSellPrice(item) }))
+            .setPosition(Math.round(bounds.centerX), Math.round(bounds.top) - 4)
             .setVisible(true);
     }
 
-    // A card let go over the box is sold: it leaves the bag the way a
-    // discarded one does, and the coins come to the counter.
+    // 'off', 'held' (a soft steady glow: "drop it here") or 'over' (a pulse).
+    setSellGlow(state) {
+        const glow = this.sellGlow;
+        if (!glow?.scene || this._sellGlowState === state) return;
+        this._sellGlowState = state;
+        this.sellGlowTween?.remove?.();
+        this.sellGlowTween = null;
+        const tweens = glow.scene.tweens;
+        tweens.killTweensOf(glow);
+        if (state === 'off') {
+            tweens.add({ targets: glow, alpha: 0, duration: 150 });
+            return;
+        }
+        // Held: a slow breath. Over him: a quicker, brighter pulse.
+        const [low, high, ms] = state === 'over' ? [0.3, 0.6, 260] : [0.1, 0.32, 600];
+        glow.setAlpha(low);
+        this.sellGlowTween = tweens.add({ targets: glow, alpha: high, duration: ms, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+
+    // A card let go over the seller is sold: it leaves the bag the way a
+    // discarded one does, the seller flashes once, and the coins come to the
+    // counter.
     sellDroppedCard(slotIndex, cardSprite) {
         const inv = this.gameScene?.inventorySystem;
         const item = inv?.slots?.[slotIndex];
@@ -343,8 +368,18 @@ export class ShopScene extends StationRoomBase {
         inv.cleanupCardSprites(slotIndex, cardSprite);
         inv.removeCard(slotIndex, false, 'sold');
         cardSprite?.destroy?.();
-        this.completeSale(slotIndex, item, SELL_ZONE.x, SELL_ZONE.y);
+        this.flashSellGlow();
+        const bounds = this.sellZone?.scene ? this.sellZone.getBounds() : null;
+        this.completeSale(slotIndex, item, bounds?.centerX ?? 520, bounds?.centerY ?? 300);
         return true;
+    }
+
+    flashSellGlow() {
+        const glow = this.sellGlow;
+        if (!glow?.scene) return;
+        glow.scene.tweens.killTweensOf(glow);
+        glow.setAlpha(0.85);
+        glow.scene.tweens.add({ targets: glow, alpha: 0, duration: 650, ease: 'Quad.easeOut' });
     }
 
     // The coins for a card already taken out of the bag (from slot `index`).

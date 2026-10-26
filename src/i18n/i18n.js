@@ -148,7 +148,6 @@ const STRINGS = {
         'ui.shop.buyItems': 'Buy Items',
         'ui.shop.continue': 'Continue to Next Floor',
         'ui.shop.selectSell': 'Select an item to sell:',
-        'ui.shop.sell': 'Sell',
         'ui.shop.sold': 'Sold',
         'ui.shop.empty': 'Empty',
         'ui.shop.sellPrice': 'Sell: {price} coins',
@@ -386,7 +385,7 @@ const STRINGS = {
         'ui.rest.actionsRestored': 'Actions Fully Restored',
         'ui.treasure.eliteTitle': 'ELITE CHEST',
         'ui.treasure.title': 'TREASURE CHEST',
-        'ui.treasure.forceHint': 'Locked. A key in your bag opens it safely; without one, it is forced and may be trapped.',
+        'ui.treasure.forceHint': 'Locked. A key opens it safely; forcing it may spring a trap.',
         'ui.treasure.hint': 'Open your reward chest.',
         'ui.treasure.open': 'Open',
         'ui.treasure.noKey': 'No Key',
@@ -500,7 +499,7 @@ const STRINGS = {
         'ui.hud.shadowBlade': 'Shadow Blade',
         'ui.hud.magicShield': 'Magic Shield',
         'ui.hud.boneShield': 'Bone Shield',
-        'ui.hud.poison': 'Poison {count}',
+        'ui.hud.poison': 'Poison {count}', 'ui.hud.hungry': 'Hungry: -20% weapon dmg',
         'ui.hud.blockNextAttack': 'Block Next Attack',
         'ui.hud.stunned': 'Stunned: your next action is lost',
         'ui.hud.spored': 'Spored: your next attack may miss',
@@ -691,7 +690,6 @@ const STRINGS = {
         'ui.shop.buyItems': 'Comprar',
         'ui.shop.continue': 'Seguir al próximo piso',
         'ui.shop.selectSell': 'Elige un objeto para vender:',
-        'ui.shop.sell': 'Vender',
         'ui.shop.sold': 'Vendido',
         'ui.shop.empty': 'Vacío',
         'ui.shop.sellPrice': 'Venta: {price} monedas',
@@ -928,7 +926,7 @@ const STRINGS = {
         'ui.rest.actionsRestored': 'Acciones totalmente restauradas',
         'ui.treasure.eliteTitle': 'COFRE DE ÉLITE',
         'ui.treasure.title': 'COFRE DEL TESORO',
-        'ui.treasure.forceHint': 'Cerrado. Con una llave en la bolsa se abre sin riesgo; sin ella, se fuerza y puede tener trampa.',
+        'ui.treasure.forceHint': 'Cerrado. Una llave lo abre sin riesgo; forzarlo puede activar una trampa.',
         'ui.treasure.hint': 'Abre tu cofre de recompensa.',
         'ui.treasure.open': 'Abrir',
         'ui.treasure.noKey': 'Sin llave',
@@ -1042,7 +1040,7 @@ const STRINGS = {
         'ui.hud.shadowBlade': 'Filo de sombra',
         'ui.hud.magicShield': 'Escudo mágico',
         'ui.hud.boneShield': 'Escudo de hueso',
-        'ui.hud.poison': 'Veneno {count}',
+        'ui.hud.poison': 'Veneno {count}', 'ui.hud.hungry': 'Hambriento: -20% daño de arma',
         'ui.hud.blockNextAttack': 'Bloquea el próximo ataque',
         'ui.hud.stunned': 'Aturdido: pierdes tu próxima acción',
         'ui.hud.spored': 'Esporas: tu próximo ataque puede fallar',
@@ -1192,20 +1190,20 @@ const STRINGS = {
         'ui.options.title': 'Options', 'ui.options.language': 'Langue : {language}', 'ui.options.languageLabel': 'Langue', 'ui.options.musicVolume': 'Volume de la musique', 'ui.options.soundEffects': 'Effets sonores', 'ui.options.resetAll': 'Réinitialiser toute la progression', 'ui.options.back': 'Retour', 'ui.options.resetTitle': 'Réinitialiser toute la progression ?', 'ui.options.resetBody': 'Efface les reliques débloquées, les statistiques et\ntoute partie sauvegardée. Les réglages sont conservés.', 'ui.options.reset': 'Réinitialiser', 'ui.options.cancel': 'Annuler',
         'ui.death.fallen': 'VOUS ÊTES TOMBÉ', 'ui.death.killedBy': 'Tué par {enemy} à l’étage {floor}', 'ui.death.newRelic': 'NOUVELLE RELIQUE DÉBLOQUÉE !', 'ui.death.noRelic': 'Aucune nouvelle relique cette fois', 'ui.death.tryDifferent': 'Mourez face à différents ennemis pour débloquer plus de reliques !', 'ui.death.totalDeaths': 'Morts totales : {amount}', 'ui.death.bestFloor': 'Meilleur étage : {floor}', 'ui.death.relicsUnlocked': 'Reliques débloquées : {amount}', 'ui.common.continue': 'Continuer',
         'ui.map.title': 'Acte {act} - Étage {floor}', 'ui.map.instructions': 'Cliquez sur les noeuds lumineux pour avancer - faites glisser pour déplacer la carte', 'map.tooltip.combat': 'Salle de combat', 'map.tooltip.elite': 'Combat d’élite - ennemi plus redoutable, meilleur butin', 'map.tooltip.shop': 'Boutique - acheter des objets', 'map.tooltip.rareShop': 'Boutique rare - articles spéciaux', 'map.tooltip.rest': 'Repos - restaure les PV et les actions', 'map.tooltip.anvil': 'Forgeron - réparer ou améliorer l’équipement', 'map.tooltip.event': 'Rencontre inconnue', 'map.tooltip.boss': 'Combat de boss !', 'map.tooltip.treasure': 'Salle au coffre', 'map.tooltip.treasureGood': 'Salle au trésor - récompenses plus riches !', 'map.tooltip.sigil': 'Salle de sigil - une statue offre un sigil', 'map.tooltip.secret': 'Lieu inconnu',
-        'ui.shop.title': 'Boutique', 'ui.shop.rareTitle': 'Articles rares', 'ui.shop.coins': 'Pièces : {amount}', 'ui.shop.crystals': 'Cristaux : {amount}', 'ui.shop.floor': 'Acte {act}  Étage {floor}', 'ui.shop.sellItems': 'Vendre des objets', 'ui.shop.buyItems': 'Acheter des objets', 'ui.shop.continue': 'Continuer vers l’étage suivant', 'ui.shop.selectSell': 'Choisissez un objet à vendre :', 'ui.shop.sell': 'Vendre', 'ui.shop.sold': 'Vendu', 'ui.shop.empty': 'Vide', 'ui.shop.sellPrice': 'Vendre : {price} pièces', 'ui.shop.soldFeedback': '{name} vendu pour {price} pièces ({before}->{after})', 'ui.shop.magic': 'Magie', 'ui.shop.currencyCoins': 'pièces', 'ui.shop.currencyCrystals': 'cristaux',
+        'ui.shop.title': 'Boutique', 'ui.shop.rareTitle': 'Articles rares', 'ui.shop.coins': 'Pièces : {amount}', 'ui.shop.crystals': 'Cristaux : {amount}', 'ui.shop.floor': 'Acte {act}  Étage {floor}', 'ui.shop.sellItems': 'Vendre des objets', 'ui.shop.buyItems': 'Acheter des objets', 'ui.shop.continue': 'Continuer vers l’étage suivant', 'ui.shop.selectSell': 'Choisissez un objet à vendre :', 'ui.shop.sold': 'Vendu', 'ui.shop.empty': 'Vide', 'ui.shop.sellPrice': 'Vendre : {price} pièces', 'ui.shop.soldFeedback': '{name} vendu pour {price} pièces ({before}->{after})', 'ui.shop.magic': 'Magie', 'ui.shop.currencyCoins': 'pièces', 'ui.shop.currencyCrystals': 'cristaux',
         'tooltip.item': 'Objet', 'tooltip.card': 'Carte', 'tooltip.noRarity': 'Sans rareté', 'tooltip.weapon': 'Arme', 'tooltip.armor': 'Armure', 'tooltip.thorns': 'Épines', 'tooltip.potion': 'Potion', 'tooltip.cure': 'Remède', 'tooltip.food': 'Nourriture', 'tooltip.magic': 'Magie', 'tooltip.gem': 'Gemme', 'tooltip.relic': 'Relique', 'tooltip.key': 'Clé', 'tooltip.coins': 'Pièces', 'tooltip.ruby': 'Rubis', 'tooltip.melee': 'Mêlée', 'tooltip.ranged': 'À distance', 'tooltip.family': 'Famille : {value}', 'tooltip.damageShort': 'DGT : {amount}', 'tooltip.protectionShort': 'PROT : {amount}', 'tooltip.defDur': '{def} DEF  -  {dur} DUR', 'tooltip.dmgDur': '{dmg} DGT  -  {dur} DUR', 'tooltip.enemyHpAtk': '{hp} PV  -  {atk} ATQ',
         'tooltip.wolfPack': 'Meute : +1 ATQ par autre loup vivant', 'tooltip.sporeOnHit': 'Spore : 15 % de rater votre prochaine attaque', 'tooltip.thornsReflect': 'Épines : renvoie 1 dégât réel', 'tooltip.veilFlip': 'Voile : se retourne face cachée à chaque tour', 'tooltip.rangedImmune': 'Écorce : immunisé aux attaques à distance', 'tooltip.gnaw': 'Ronge : 50 % de chance de perdre 1 durabilité d’armure supplémentaire à l’impact', 'tooltip.taunt': 'Provocation : vous devez attaquer cet ennemi', 'tooltip.poisonAmp': 'Accumulation du venin : +1 dégât par tour au poison actif à l’impact', 'tooltip.webHand': 'Toile : bloque une carte de main aléatoire pendant 1 tour', 'tooltip.inkHand': 'Encre : bloque une carte de main aléatoire pendant 1 tour', 'tooltip.clubStun': 'Gourdin : 5 % d’étourdir (passe la prochaine action)', 'tooltip.coinSteal': 'Vol à la tire : vole 10 pièces en attaquant', 'tooltip.goblinRally': 'Ralliement : 15 % d’attaques gobelines supplémentaires', 'tooltip.ignoreArmor': 'Perforation : 10 % d’ignorer la DEF de l’armure', 'tooltip.heavyShot': 'Lourd : 20 % d’infliger 150 % de dégâts', 'tooltip.cocoonShell': 'Cocon : infligez 1 dégât pour l’ouvrir (ce n’est pas un retournement)', 'tooltip.veteran': 'Vétéran : +15 % PV/ATQ', 'tooltip.eliteMiniBoss': 'Élite : mini-boss (+30 % PV/ATQ)', 'tooltip.mimicEscape': 'Fuite : s’enfuit dans {turns} tours s’il n’est pas tué', 'tooltip.durabilityShort': 'DUR', 'tooltip.armorBody': 'Armure {rarity}', 'tooltip.heals': 'Rend {amount} PV', 'tooltip.healsColon': 'Rend : {amount} PV', 'tooltip.curesPoison': 'Soigne tout le poison', 'tooltip.restores': 'Restaure {amount} PA', 'tooltip.restoresColon': 'Restaure : {amount} PA', 'tooltip.magicSpell': 'Sort magique', 'tooltip.socket': 'Châsse : {effect}', 'tooltip.effect': 'Effet : {effect}', 'tooltip.thornBody': '{rarity}{amount} DGT d’épines  -  {dur} DUR', 'tooltip.thornDamage': 'Dégâts d’épines : {amount}', 'tooltip.keyBody': 'Ouvre les coffres au trésor verrouillés', 'tooltip.keySafe': 'Ouvre un coffre sans risque.',
         'boss.abilitiesTitle': 'Compétences', 'boss.attack': 'Attaque : {atk}', 'boss.lifesteal': 'Vol de vie : récupère {pct} % de son attaque lorsqu’il vous touche', 'boss.summon': 'Invocation : peut appeler {enemy} à combattre à ses côtés', 'boss.poison': 'Poison : cumule {dmg} dégâts par tour pendant {turns} tours', 'boss.armorBreak': 'Brise-armure : perce {amount} de votre armure', 'boss.rage': 'Rage : frappe {mult}x plus fort sous {pct} % de PV', 'boss.evade': 'Esquive : {pct} % de chance que votre attaque rate', 'boss.coinSteal': 'Vol de pièces : peut voler jusqu’à {amount} pièces lorsqu’il touche', 'boss.noAbilities': 'Une brute — aucune compétence spéciale.',
         'tooltip.skeleton': 'squelette', 'tooltip.goblin': 'gobelin', 'tooltip.spider': 'araignée', 'tooltip.range': 'Portée : {value}', 'tooltip.gemLine': 'Gemme : {effect}{stack}', 'tooltip.fireSplash': 'Éclaboussure de feu : {amount} DGT aux voisins', 'tooltip.lightningZap': 'Foudre : {amount} DGT à jusqu’à 3 ennemis', 'tooltip.poisonStacks.one': 'Poison : {count} charge (1 DGT / 3 tours chacune)', 'tooltip.poisonStacks.few': 'Poison : {count} charges (1 DGT / 3 tours chacune)', 'tooltip.poisonStacks.many': 'Poison : {count} charges (1 DGT / 3 tours chacune)', 'tooltip.special': 'Spécial : {value}', 'tooltip.poisonTurns': 'Poison : {amount} x {turns} tours', 'tooltip.pips': 'Points : {value}', 'tooltip.dodge': 'Esquive : {percent} %', 'tooltip.reflect': 'Renvoi : {value}', 'tooltip.meleeAttackers': 'Les attaquants au corps à corps subissent des dégâts.', 'tooltip.noMerge': 'Pas de fusion', 'tooltip.merges': 'Fusionne : emplacement {slots}', 'tooltip.noMergeReasons': 'Pas de fusion : {reasons}', 'tooltip.noteUnusual': 'Note : statistiques inhabituelles ({details})', 'tooltip.baseDamage': 'dégâts de base {amount}', 'tooltip.baseProtection': 'protection de base {amount}', 'tooltip.level': 'Niveau {level}', 'tooltip.usesLeft': '{uses} utilisations restantes', 'tooltip.cursed': '[MAUDIT]',
         'float.alreadyOwned': 'Déjà possédé !', 'float.maxLevel': 'Niveau maximal atteint !', 'float.inventoryFull': 'Inventaire plein !', 'float.discarded': 'Défaussé !', 'float.noValidTarget': 'Aucune cible valide !', 'float.fireball': 'Boule de feu !', 'float.enemiesFrozen': 'Ennemis gelés !', 'float.fullRestore': 'Restauration complète !', 'float.shadowBladeActive': 'Lame d’ombre active !', 'float.weakened': 'Affaibli !', 'float.weakenedAttack': 'Attaque affaiblie !', 'float.boneWall': 'Bouclier d’os !', 'float.boneWallActive': 'Bouclier d’os actif !', 'float.magicShieldActive': 'Bouclier magique actif !', 'float.cardsMerged': 'Fusionnées !', 'float.sameTier': 'Les objets doivent être du même rang !', 'float.magicCannotMerge': 'Les cartes magiques ne peuvent pas fusionner !', 'float.notEnoughActions': 'Pas assez d’actions !', 'float.differentGem': 'Une gemme différente est déjà sertie !', 'float.gemSlotsFull': 'Emplacements de gemme pleins !', 'float.gemSocketed': '{name} sertie{stack}', 'float.equippedItem': '{name} équipé !', 'float.upgradedItem': '{name} amélioré !', 'float.equippedArmor': '{name} équipée', 'float.unequippedArmor': '{name} retirée', 'float.plus': '+{amount}', 'float.plusHp': '+{amount} PV', 'float.plusAp': '+{amount} PA', 'float.plusActions': '+{amount} actions', 'float.plusInventorySlots': '+{amount} emplacements d’inventaire !', 'float.plusCoins': '+{amount} pièces', 'float.plusCrystals': '+{amount} cristaux', 'float.plusCoinsCrystals': '+{coins} pièces +{crystals} cristaux !', 'float.maxHp': '+{amount} PV max', 'float.maxHpSource': '+{amount} PV max ({source})', 'float.maxActions': '+{amount} actions max', 'float.refreshedPips': 'Rafraîchi : {amount} points', 'float.damage': '-{amount}', 'float.poisonDamage': '-{amount} poison', 'float.fireDamage': '-{amount} feu', 'float.burnDamage': '-{amount} brûlure', 'float.elementDamage': '-{amount} {label}', 'float.leech': '+{amount} vol de vie', 'float.thornsDamage': '-{amount} épines', 'float.reflectDamage': '-{amount} (renvoi)', 'float.reflectedDamage': '-{amount} (renvoyé)', 'float.mirroredDamage': '-{amount} (miroir)', 'float.poisonStatus': 'Empoisonné !', 'float.poisonImmune': 'Immunisé au poison !', 'float.dodged': 'Esquivé !', 'float.dodge': 'Esquive !', 'float.blocked': 'Bloqué !', 'float.blockedFrontline': 'Bloqué par la ligne de front !', 'float.freeAction': 'Action gratuite !', 'float.weaponBroke': 'Arme cassée !', 'float.itemBroke': '{name} s’est cassé !', 'float.thornsBroke': 'Épines cassées !', 'float.shadowBladeFaded': 'Lame d’ombre dissipée', 'float.magicShieldFaded': 'Bouclier magique dissipé', 'float.poisonWoreOff': 'Le poison s’est dissipé', 'float.miss': 'Raté !', 'float.spored': 'Empoisonné par les spores !', 'float.thornsReflect': '-{amount} épines !', 'float.immune': 'Immunisé !', 'float.crit': 'CRITIQUE !', 'float.critPercent': 'Critique {percent} %', 'float.luckyStrike': 'COUP CHANCEUX !', 'float.executed': 'EXÉCUTÉ !', 'float.nothing': 'Rien…', 'float.loot': 'Butin !', 'float.taken': 'Pris !', 'float.trapRemember': 'Piège ! Souvenez-vous…', 'float.mimicKill': 'Mimique ! Tuez-le en {turns} tours', 'float.summoning': 'Invocation !', 'float.summoned': 'Invoqué !', 'float.echoed': 'Écho !', 'float.slowed': 'Ralenti !', 'float.thawed': 'Dégelé !', 'float.frozenTurns': 'Gelé ({turns})', 'float.turnsLeft': '{turns} restants !', 'float.charmed': 'Charmé !', 'float.charmedTune': 'Charmé (Mélodie)', 'float.dualWield': 'Double arme !', 'float.heavyStrike': 'Frappe lourde !', 'float.coinsStolen': '-{amount} pièces volées !', 'float.mimicEscaped': 'Le mimique s’est échappé !', 'float.floorCleared': 'Étage nettoyé ! +{amount} pièces', 'float.act': 'Acte {act}', 'float.allEnemiesDefeated': 'Tous les ennemis vaincus !', 'float.clearOrProceed': 'Éliminez les cartes restantes ou avancez.', 'float.gameSaved': 'Partie sauvegardée', 'float.purchased': 'Acheté !', 'float.notEnoughCurrency': 'Pas assez de {currency} !',
         'ui.hud.pause': 'PAUSE', 'ui.hud.discard': 'Défausser', 'ui.hud.effects': 'Effets', 'ui.hud.next': 'Suivant', 'ui.hud.leave': 'Quitter', 'ui.hud.combatLog': 'Journal de combat', 'ui.hud.floor': '{month}  ·  Acte {act} · Étage {floor}', 'ui.pause.title': 'EN PAUSE', 'ui.pause.soundSettings': 'Réglages sonores', 'ui.pause.resume': 'Reprendre', 'ui.pause.saveQuit': 'Sauvegarder et quitter', 'ui.pause.saveFailed': 'La partie n’a pas pu être sauvegardée. Appuyez de nouveau sur Sauvegarder et quitter pour réessayer ; en cas d’échec, cette partie sera perdue.','ui.pause.exportJson': 'Exporter le JSON', 'ui.pause.record': 'Enregistrer ma partie', 'ui.pause.stopRecording': 'Arrêter l’enregistrement', 'ui.pause.noRecordedRun': 'Aucune partie enregistrée à exporter', 'ui.pause.exportUnavailable': 'Exportation indisponible dans ce navigateur', 'ui.pause.recorderMemory': 'Enregistreur actif en mémoire ({amount} événements)', 'ui.pause.recorderOn': 'Enregistreur de partie humaine : OUI ({amount} événements)', 'ui.pause.recorderReady': 'Partie enregistrée prête ({amount} événements)', 'ui.pause.recorderOff': 'Enregistreur de partie humaine : NON',
-        'ui.anvil.title': 'Enclume - station de réparation', 'ui.anvil.coins': 'Pièces : {amount}', 'ui.anvil.continue': 'Continuer vers l’étage suivant', 'ui.anvil.none': 'Aucun objet à réparer.', 'ui.anvil.cost': 'Coût : {amount} pièces', 'ui.anvil.armorRate': '({amount} par {points} pts)', 'ui.anvil.rate': '({amount} par pt)', 'ui.anvil.full': 'Plein', 'ui.anvil.notEnoughCoins': 'Pas assez de pièces !', 'ui.rest.message': 'Vous vous asseyez enfin près du feu.', 'ui.rest.hpRestored': '+{amount} PV restaurés', 'ui.rest.actionsRestored': 'Actions entièrement restaurées', 'ui.treasure.eliteTitle': 'COFFRE D’ÉLITE', 'ui.treasure.title': 'COFFRE AU TRÉSOR', 'ui.treasure.forceHint': 'Verrouillé. Une clé dans le sac l’ouvre sans risque ; sans clé, il est forcé et peut être piégé.', 'ui.treasure.hint': 'Ouvrez votre coffre de récompense.', 'ui.treasure.open': 'Ouvrir', 'ui.treasure.noKey': 'Pas de clé', 'ui.treasure.useKey': 'Utiliser la clé', 'ui.treasure.opened': 'Ouvert', 'ui.treasure.reward': '+{coins} pièces +{crystals} cristaux',
+        'ui.anvil.title': 'Enclume - station de réparation', 'ui.anvil.coins': 'Pièces : {amount}', 'ui.anvil.continue': 'Continuer vers l’étage suivant', 'ui.anvil.none': 'Aucun objet à réparer.', 'ui.anvil.cost': 'Coût : {amount} pièces', 'ui.anvil.armorRate': '({amount} par {points} pts)', 'ui.anvil.rate': '({amount} par pt)', 'ui.anvil.full': 'Plein', 'ui.anvil.notEnoughCoins': 'Pas assez de pièces !', 'ui.rest.message': 'Vous vous asseyez enfin près du feu.', 'ui.rest.hpRestored': '+{amount} PV restaurés', 'ui.rest.actionsRestored': 'Actions entièrement restaurées', 'ui.treasure.eliteTitle': 'COFFRE D’ÉLITE', 'ui.treasure.title': 'COFFRE AU TRÉSOR', 'ui.treasure.forceHint': 'Verrouillé. Une clé l’ouvre sans risque ; le forcer peut déclencher un piège.', 'ui.treasure.hint': 'Ouvrez votre coffre de récompense.', 'ui.treasure.open': 'Ouvrir', 'ui.treasure.noKey': 'Pas de clé', 'ui.treasure.useKey': 'Utiliser la clé', 'ui.treasure.opened': 'Ouvert', 'ui.treasure.reward': '+{coins} pièces +{crystals} cristaux',
         'ui.result.defeat': 'DÉFAITE', 'ui.result.killedBy': 'Tué par {enemy}', 'ui.result.reachedFloor': 'Étage {floor} atteint', 'ui.result.characterXp': '+{amount} XP de personnage', 'ui.result.noXp': 'Aucune XP cette partie', 'ui.result.spendXp': 'Dépensez-les en talents avant la prochaine partie. Total : {amount}', 'ui.result.victory': 'VICTOIRE !', 'ui.result.dungeonConquered': 'Le donjon est conquis.', 'ui.result.stories': 'Histoires : {amount}/1', 'ui.result.talentsPersist': 'Les talents persistent. XP totale : {amount}', 'ui.result.glory': 'La gloire devra suffire.', 'ui.result.mainMenu': 'Menu principal',
         'ui.character.title': 'Choisissez votre héros', 'ui.character.subtitle': 'Une fois par partie — avant l’étage 1', 'ui.character.rogueStart': 'Départ : dague + arc', 'ui.character.warriorStart': 'Départ : 2 épées', 'ui.character.rogueArmor': 'Armure : cuir uniquement', 'ui.character.warriorArmor': 'Armure : mailles et plaques', 'ui.character.roguePassive': 'Passif : dague et arc\ninfligent +10 % de dégâts', 'ui.character.warriorPassive': 'Passif : 10 % de critique épée/hache\nMailles : contre de mêlée\nPlaques : ignore la distance', 'ui.common.select': 'Choisir', 'ui.common.back': 'Retour', 'ui.armorer.title': 'Départ de l’armurier', 'ui.armorer.subtitle': 'Choisissez l’armure de départ de cette partie', 'ui.armorer.uncommon': 'Inhabituel', 'ui.armorer.chain': 'Mailles', 'ui.armorer.plate': 'Plaques', 'ui.armorer.chainBlurb': 'Inhabituel · DEF {amount} + contre de mêlée', 'ui.armorer.plateBlurb': 'Inhabituel · DEF {amount} + ignore la distance',
         'ui.talents.rogueTitle': 'Talents du voleur', 'ui.talents.warriorTitle': 'Talents du guerrier', 'ui.talents.selectTalent': 'Choisissez un talent', 'ui.talents.buy': 'Acheter', 'ui.talents.startRun': 'Commencer la partie', 'ui.talents.metaDisabled': 'Méta désactivée', 'ui.talents.xp': 'XP : {amount}', 'ui.talents.wip': 'EN COURS', 'ui.talents.locked': 'Verrouillé', 'ui.talents.ownedNext': 'Possédé r{rank} : {owned}\nSuivant : {next}', 'ui.talents.noDescription': 'Aucune description.', 'ui.talents.lockedHint': '{description}\nVerrouillé : achetez d’abord 2 rangs de {name}.', 'ui.talents.buyCost': 'Acheter {amount}', 'ui.talents.wipBranch': 'Cette branche est en cours — consultation uniquement.', 'ui.talents.notEnoughXp': 'Pas assez d’XP.', 'ui.talents.wipCannotBuy': 'EN COURS — achat impossible.', 'ui.talents.needRank': 'Nécessite d’abord 2 rangs de {name}.', 'ui.talents.cannotBuy': 'Achat impossible.', 'ui.talents.branch.shadow': 'Ombre', 'ui.talents.branch.ghost': 'Fantôme', 'ui.talents.branch.scoundrel': 'Canaille', 'ui.talents.branch.iron': 'Fer', 'ui.talents.branch.edge': 'Tranchant', 'ui.talents.branch.camp': 'Camp',
         'ui.sandbox.title': 'Zone de test', 'ui.sandbox.subtitle': 'Choisissez une rencontre. À sa fin, vous reviendrez ici.', 'ui.sandbox.pickStory': 'Choisir une histoire…', 'ui.sandbox.backToMenu': 'Retour au menu principal', 'ui.sandbox.storiesTitle': 'Zone de test — Histoires', 'ui.sandbox.storiesSubtitle': 'Toute histoire, déjà jouée ou non. La progression n’est pas sauvegardée.', 'ui.sandbox.backToSite': 'Retour à la zone de test', 'ui.sandbox.encounter.combat': 'Combat', 'ui.sandbox.encounter.elite': 'Combat d’élite', 'ui.sandbox.encounter.boss': 'Boss', 'ui.sandbox.encounter.bossReward': 'Récompense de boss', 'ui.sandbox.encounter.shop': 'Boutique', 'ui.sandbox.encounter.rareShop': 'Boutique rare', 'ui.sandbox.encounter.rest': 'Repos', 'ui.sandbox.encounter.anvil': 'Enclume', 'ui.sandbox.encounter.event': 'Événement (aléatoire)', 'ui.sandbox.encounter.treasure': 'Trésor', 'ui.sandbox.encounter.treasureGood': 'Trésor (amélioré)', 'ui.sandbox.encounter.eliteChest': 'Coffre d’élite',
         'ui.tutorial.flipCard': 'Touchez une carte pour la retourner.', 'ui.tutorial.stashSword': 'Touchez l’épée pour la ranger dans votre inventaire.', 'ui.tutorial.strikeSkeleton': 'Faites glisser votre épée sur le squelette pour le frapper.', 'ui.tutorial.flipAnother': 'Retournez une autre carte.', 'ui.tutorial.actionPoints': 'Ces diamants sont des points d’action. À 0 PA, vous avez faim : les dégâts des armes sont réduits de 20 %. Touchez la nourriture pour la ramasser.', 'ui.tutorial.eatFood': 'Faites glisser la nourriture sur votre portrait pour la manger et remplir vos PA.', 'ui.tutorial.archerBehind': 'Un archer se glisse derrière. Attaquez-le avec votre épée.', 'ui.tutorial.hiddenEnemy': 'Rien n’a touché — un ennemi caché garde la ligne arrière. Retournez les cartes pour le trouver.', 'ui.tutorial.killFrontMelee': 'Le voilà. Tuez le combattant de mêlée avant de pouvoir l’atteindre.', 'ui.tutorial.finishArcher': 'La ligne de front est dégagée — votre épée atteint maintenant l’archer. Achevez-le.', 'ui.tutorial.anotherSword': 'Une autre épée — retournez-la.', 'ui.tutorial.addToBag': 'Touchez-la pour l’ajouter à votre sac.', 'ui.tutorial.mergeSwords': 'Faites glisser une épée sur l’autre pour les fusionner en une arme plus puissante. La fusion restaure aussi tous les points.', 'ui.tutorial.lastPip': 'Oh non, le dernier point ! Quand une arme ou une armure dépense tous ses points, elle est détruite.', 'ui.tutorial.flipGem': 'Une gemme de foudre est sur le plateau. Retournez-la.', 'ui.tutorial.socketGem': 'Faites glisser la gemme de foudre du plateau sur votre épée pour la sertir. Elle foudroie l’ennemi touché et jusqu’à deux autres ennemis découverts.', 'ui.tutorial.strikeWithGem': 'Trois ennemis sont découverts. Frappez-en un avec votre épée sertie et regardez la foudre bondir sur les trois.', 'ui.tutorial.lightningExplained': 'La foudre blesse la cible et jusqu’à deux autres ennemis découverts. Elle aide à atteindre les ennemis derrière la ligne de front.', 'ui.tutorial.potionCard': 'Encore une carte — une potion de soin.', 'ui.tutorial.takePotion': 'Touchez la potion pour la ramasser.', 'ui.tutorial.drinkPotion': 'Faites glisser la potion sur votre portrait pour la boire.', 'ui.tutorial.flipArmor': 'L’armure vous protège des coups ennemis. Retournez la carte d’armure.', 'ui.tutorial.takeArmor': 'Touchez l’armure pour la ramasser.', 'ui.tutorial.wearArmor': 'Faites glisser l’armure dans l’emplacement d’armure pour la porter.', 'ui.tutorial.flipCoin': 'Les pièces permettent d’acheter des cartes en boutique. Retournez la carte de pièces.', 'ui.tutorial.takeCoins': 'Touchez les pièces pour les ramasser.', 'ui.tutorial.leaveRoom': 'La salle est dégagée, la porte est ouverte. Touchez-la pour passer à la salle suivante.', 'ui.tutorial.wrapUp': 'Voilà toute la boucle : retournez, combattez, ramassez et devenez plus fort. Appuyez sur Terminer quand vous êtes prêt.', 'ui.tutorial.skip': 'Passer', 'ui.tutorial.finish': 'Terminer',
-        'ui.hud.effect.burn': 'Brûlure', 'ui.hud.effect.stun': 'Étourdi', 'ui.hud.effect.weakness': 'Affaibli', 'ui.hud.shadowBlade': 'Lame d’ombre', 'ui.hud.magicShield': 'Bouclier magique', 'ui.hud.boneShield': 'Bouclier d’os', 'ui.hud.poison': 'Poison {count}', 'ui.hud.blockNextAttack': 'Bloque la prochaine attaque', 'ui.hud.stunned': 'Étourdi : votre prochaine action est perdue', 'ui.hud.spored': 'Spores : votre prochaine attaque peut rater', 'ui.hud.sapped': 'Affaibli : votre prochain coup inflige 30 % de moins', 'ui.hud.effectsTitle': 'Effets actifs', 'ui.hud.noEffects': 'Aucun effet actif', 'ui.hud.discardCrit': 'Critique de défausse +{percent} %', 'ui.hud.discardCritProgress': 'Critique de défausse ({cards} pour +{percent} %)', 'ui.hud.effectTurns': '{name} ({count} {unit})', 'ui.hud.buffTurns': '{name} {bonus} ({count} {unit})', 'ui.hud.shieldCharges': '{name} ({count} {unit})', 'ui.hud.turnUnit.one': 'tour', 'ui.hud.turnUnit.few': 'tours', 'ui.hud.turnUnit.many': 'tours', 'ui.hud.chargeUnit.one': 'charge', 'ui.hud.chargeUnit.few': 'charges', 'ui.hud.chargeUnit.many': 'charges', 'ui.hud.floorBanner': '{month}  ·  Acte {act} · Étage {floor}', 'ui.hud.dmgBonus': '+{percent} % DGT', 'ui.hud.defBonus': '+{percent} % DEF', 'ui.hud.dodgeBonus': '+{percent} % esquive',
+        'ui.hud.effect.burn': 'Brûlure', 'ui.hud.effect.stun': 'Étourdi', 'ui.hud.effect.weakness': 'Affaibli', 'ui.hud.shadowBlade': 'Lame d’ombre', 'ui.hud.magicShield': 'Bouclier magique', 'ui.hud.boneShield': 'Bouclier d’os', 'ui.hud.poison': 'Poison {count}', 'ui.hud.hungry': 'Affamé : -20 % dégâts d’arme', 'ui.hud.blockNextAttack': 'Bloque la prochaine attaque', 'ui.hud.stunned': 'Étourdi : votre prochaine action est perdue', 'ui.hud.spored': 'Spores : votre prochaine attaque peut rater', 'ui.hud.sapped': 'Affaibli : votre prochain coup inflige 30 % de moins', 'ui.hud.effectsTitle': 'Effets actifs', 'ui.hud.noEffects': 'Aucun effet actif', 'ui.hud.discardCrit': 'Critique de défausse +{percent} %', 'ui.hud.discardCritProgress': 'Critique de défausse ({cards} pour +{percent} %)', 'ui.hud.effectTurns': '{name} ({count} {unit})', 'ui.hud.buffTurns': '{name} {bonus} ({count} {unit})', 'ui.hud.shieldCharges': '{name} ({count} {unit})', 'ui.hud.turnUnit.one': 'tour', 'ui.hud.turnUnit.few': 'tours', 'ui.hud.turnUnit.many': 'tours', 'ui.hud.chargeUnit.one': 'charge', 'ui.hud.chargeUnit.few': 'charges', 'ui.hud.chargeUnit.many': 'charges', 'ui.hud.floorBanner': '{month}  ·  Acte {act} · Étage {floor}', 'ui.hud.dmgBonus': '+{percent} % DGT', 'ui.hud.defBonus': '+{percent} % DEF', 'ui.hud.dodgeBonus': '+{percent} % esquive',
         'ui.event.choice.offerCard': 'Offrir une carte', 'ui.event.choice.offerWeapon': 'Offrir une arme', 'ui.event.choice.wrestle': 'Faire un bras de fer', 'ui.event.choice.forceOpen': 'Forcer l’ouverture', 'ui.event.choice.searchNest': 'Fouiller le nid', 'ui.event.choice.trade': 'Échanger', 'ui.event.choice.tradeJunk': 'Échanger les déchets', 'ui.event.choice.reroll': 'Relancer', 'ui.event.choice.pullBack': 'Retirer votre main', 'ui.event.dragCardHint': 'Faites glisser une carte sur le plateau',
         'ui.armWrestling.title': 'Bras de fer', 'ui.armWrestling.lockedHands': 'MAINS VERROUILLÉES', 'ui.armWrestling.instructions': 'Cliquez aussi vite que possible !', 'ui.armWrestling.ogre': 'OGRE', 'ui.armWrestling.you': 'VOUS', 'ui.armWrestling.clickHint': 'Cliquez n’importe où dans la fenêtre !', 'ui.armWrestling.push': 'POUSSEZ !', 'ui.armWrestling.wait': 'Attendez…', 'ui.armWrestling.win': 'VOUS GAGNEZ !', 'ui.armWrestling.lose': 'VOUS PERDEZ !',
         'ui.birdNest.title': 'Le nid', 'ui.birdNest.instructionsCog': 'Dégagez les déchets. Prenez l’engrenage et l’oeuf si vous le pouvez. Surveillez l’ombre.', 'ui.birdNest.instructionsEgg': 'Dégagez les déchets. Prenez l’oeuf si vous le pouvez. Surveillez l’ombre.', 'ui.birdNest.status': 'Écartez les déchets. Cliquez sur une récompense libre pour la prendre.', 'ui.birdNest.run': 'Fuir', 'ui.birdNest.buried': 'Toujours enfoui. Déplacez d’abord les déchets.', 'ui.birdNest.cogTaken': 'L’engrenage en laiton est à vous.', 'ui.birdNest.eggTaken': 'L’oeuf est chaud dans votre main.', 'ui.birdNest.coinsTaken': 'Les pièces sont à vous.', 'ui.birdNest.crystalsTaken': 'Les cristaux sont à vous.', 'ui.birdNest.caught': 'L’ombre vous a trouvé.',
@@ -1400,7 +1398,6 @@ const STRINGS = {
         'ui.shop.buyItems': 'Купить',
         'ui.shop.continue': 'Дальше',
         'ui.shop.selectSell': 'Выбери предмет для продажи:',
-        'ui.shop.sell': 'Продать',
         'ui.shop.sold': 'Продано',
         'ui.shop.empty': 'Пусто',
         'ui.shop.sellPrice': 'Продажа: {price} монет',
@@ -1637,7 +1634,7 @@ const STRINGS = {
         'ui.rest.actionsRestored': 'Действия полностью восстановлены',
         'ui.treasure.eliteTitle': 'ЭЛИТНЫЙ СУНДУК',
         'ui.treasure.title': 'СУНДУК С СОКРОВИЩАМИ',
-        'ui.treasure.forceHint': 'Заперт. С ключом в сумке откроется без риска; без ключа его взломают, и там может быть ловушка.',
+        'ui.treasure.forceHint': 'Заперт. Ключ откроет его без риска; при взломе может сработать ловушка.',
         'ui.treasure.hint': 'Открой свой сундук с наградой.',
         'ui.treasure.open': 'Открыть',
         'ui.treasure.noKey': 'Нет ключа',
@@ -1751,7 +1748,7 @@ const STRINGS = {
         'ui.hud.shadowBlade': 'Теневой клинок',
         'ui.hud.magicShield': 'Магический щит',
         'ui.hud.boneShield': 'Костяной щит',
-        'ui.hud.poison': 'Яд {count}',
+        'ui.hud.poison': 'Яд {count}', 'ui.hud.hungry': 'Голод: -20% урона оружия',
         'ui.hud.blockNextAttack': 'Блок следующей атаки',
         'ui.hud.stunned': 'Оглушение: следующее действие пропадёт',
         'ui.hud.spored': 'Споры: следующая атака может промахнуться',
@@ -2185,6 +2182,37 @@ for (const [language, additions] of Object.entries(EVENT_TEXT_ADDITIONS)) {
     Object.assign(STRINGS[language], additions);
 }
 
+// A boss's frenzy cue (ui/FrenzyCue.js): the Cerberus bites with every head.
+// And the Crystal Spiderling's bite, which comes with its web.
+// And the combat log line when a companion's attack goes up (a new act, training).
+const FRENZY_TEXT = {
+    en: { 'float.frenzy': 'Frenzy!', 'float.atkGain': '+{amount} ATK', 'float.spiderBite': '-{amount} Spider Bite',
+        'log.companionAttackUp': '{name}: +{amount} attack (now {attack})' },
+    es: { 'float.frenzy': '¡Frenesí!', 'float.atkGain': '+{amount} ATQ', 'float.spiderBite': '-{amount} Mordisco de araña',
+        'log.companionAttackUp': '{name}: +{amount} de ataque (ahora {attack})' },
+    fr: { 'float.frenzy': 'Frénésie !', 'float.atkGain': '+{amount} ATQ', 'float.spiderBite': '-{amount} Morsure d’araignée',
+        'log.companionAttackUp': '{name} : +{amount} d’attaque (maintenant {attack})' },
+    ru: { 'float.frenzy': 'Бешенство!', 'float.atkGain': '+{amount} АТК', 'float.spiderBite': '-{amount} Укус паука',
+        'log.companionAttackUp': '{name}: +{amount} к атаке (теперь {attack})' },
+    de: { 'float.frenzy': 'Raserei!', 'float.atkGain': '+{amount} ANG', 'float.spiderBite': '-{amount} Spinnenbiss',
+        'log.companionAttackUp': '{name}: +{amount} Angriff (jetzt {attack})' },
+};
+for (const [language, additions] of Object.entries(FRENZY_TEXT)) {
+    Object.assign(STRINGS[language], additions);
+}
+
+// An amulet you already wear, offered again: taking it upgrades it to its "+".
+const AMULET_PLUS_TEXT = {
+    en: { 'tooltip.amuletUpgradesToPlus': 'You wear this one: taking it again makes it {name}.' },
+    es: { 'tooltip.amuletUpgradesToPlus': 'Ya lo llevas: si lo tomas otra vez, se convierte en {name}.' },
+    fr: { 'tooltip.amuletUpgradesToPlus': 'Vous la portez déjà : la reprendre la change en {name}.' },
+    ru: { 'tooltip.amuletUpgradesToPlus': 'Он уже на вас: возьмите его ещё раз, и он станет {name}.' },
+    de: { 'tooltip.amuletUpgradesToPlus': 'Du trägst es schon: Nimmst du es noch einmal, wird es zu {name}.' },
+};
+for (const [language, additions] of Object.entries(AMULET_PLUS_TEXT)) {
+    Object.assign(STRINGS[language], additions);
+}
+
 // The bound-enemy line on a companion card. The Collar of Binding shipped it
 // as an English literal in two files; keyed here so it speaks every language
 // the rest of that tooltip does.
@@ -2276,7 +2304,6 @@ const GERMAN_STRINGS = {
     'ui.shop.buyItems': 'Kaufen',
     'ui.shop.continue': 'Weiter zur nächsten Etage',
     'ui.shop.selectSell': 'Gegenstand zum Verkauf wählen:',
-    'ui.shop.sell': 'Verkaufen',
     'ui.shop.sold': 'Verkauft',
     'ui.shop.empty': 'Leer',
     'ui.shop.sellPrice': 'Verkauf: {price} Münzen',
@@ -2300,7 +2327,7 @@ const GERMAN_STRINGS = {
     'ui.hud.shadowBlade': 'Schattenklinge',
     'ui.hud.magicShield': 'Magieschild',
     'ui.hud.boneShield': 'Knochenschild',
-    'ui.hud.poison': 'Gift {count}',
+    'ui.hud.poison': 'Gift {count}', 'ui.hud.hungry': 'Hungrig: -20% Waffenschaden',
     'ui.hud.blockNextAttack': 'Nächsten Angriff blocken',
     'ui.hud.stunned': 'Betäubt: deine nächste Aktion entfällt',
     'ui.hud.spored': 'Sporen: dein nächster Angriff kann verfehlen',
@@ -2356,7 +2383,7 @@ const GERMAN_STRINGS = {
     // --- Treasure -----------------------------------------------------------
     'ui.treasure.eliteTitle': 'ELITETRUHE',
     'ui.treasure.title': 'SCHATZTRUHE',
-    'ui.treasure.forceHint': 'Verschlossen. Mit einem Schlüssel in der Tasche sicher geöffnet; ohne wird sie aufgebrochen und kann eine Falle haben.',
+    'ui.treasure.forceHint': 'Verschlossen. Ein Schlüssel öffnet sie gefahrlos; Aufbrechen kann eine Falle auslösen.',
     'ui.treasure.hint': 'Öffne deine Belohnungstruhe.',
     'ui.treasure.open': 'Öffnen',
     'ui.treasure.noKey': 'Kein Schlüssel',
@@ -3394,6 +3421,7 @@ Object.assign(TEXT_ALIASES, {
 TEXT_PATTERNS.push(
     [new RegExp("^\\+(\\d+) AP \\(Second Wind\\)$"), match => ["float.apSecondWind", { amount: match[1] }]],
     [new RegExp("^-(\\d+) Skeleton Slash$"), match => ["float.skeletonSlash", { amount: match[1] }]],
+    [new RegExp("^-(\\d+) Spider Bite$"), match => ["float.spiderBite", { amount: match[1] }]],
     [new RegExp("^-(\\d+) Chick Zap$"), match => ["float.chickZap", { amount: match[1] }]],
     [new RegExp("^-(\\d+) Embers$"), match => ["float.embersDamage", { amount: match[1] }]],
     [new RegExp("^-(\\d+) Fireball$"), match => ["float.fireballDamage", { amount: match[1] }]],
@@ -4743,7 +4771,7 @@ Object.assign(DESCRIPTION_TRANSLATIONS.es, {
     "+1 attack after each attack this fight": "+1 de ataque tras cada ataque en este combate",
     "+1 damage for each hit in a row this fight; a miss resets it": "+1 de daño por cada golpe seguido en este combate; un fallo lo reinicia",
     "its armor adds to its damage": "su armadura se suma a su daño",
-    "your worn armor protection adds to damage": "la protección de tu armadura puesta se suma al daño",
+    "half your worn armor protection (rounded down) adds to damage": "la mitad de la protección de tu armadura puesta (redondeada hacia abajo) se suma al daño",
     "10% chance on hit: a fireball flies at another random face-up enemy for half the hit": "10 % de probabilidad al golpear: una bola de fuego vuela hacia otro enemigo boca arriba al azar con la mitad del golpe",
     "20% chance on hit: your next weapon hit deals 30% less": "20 % de probabilidad al golpear: tu siguiente golpe con arma hace un 30 % menos",
     "20% chance on hit: the enemy hit deals 30% less on its next attack": "20 % de probabilidad al golpear: el enemigo golpeado hace un 30 % menos en su siguiente ataque",
@@ -4902,7 +4930,7 @@ Object.assign(DESCRIPTION_TRANSLATIONS.fr, {
     "+1 attack after each attack this fight": "+1 attaque après chaque attaque pendant ce combat",
     "+1 damage for each hit in a row this fight; a miss resets it": "+1 dégât par coup d’affilée pendant ce combat ; un raté remet à zéro",
     "its armor adds to its damage": "son armure s’ajoute à ses dégâts",
-    "your worn armor protection adds to damage": "la protection de votre armure portée s’ajoute aux dégâts",
+    "half your worn armor protection (rounded down) adds to damage": "la moitié de la protection de votre armure portée (arrondie à l’inférieur) s’ajoute aux dégâts",
     "10% chance on hit: a fireball flies at another random face-up enemy for half the hit": "10 % de chances en frappant : une boule de feu file vers un autre ennemi visible au hasard pour la moitié du coup",
     "20% chance on hit: your next weapon hit deals 30% less": "20 % de chances en frappant : votre prochain coup d’arme inflige 30 % de moins",
     "20% chance on hit: the enemy hit deals 30% less on its next attack": "20 % de chances en frappant : l’ennemi touché inflige 30 % de moins à sa prochaine attaque",
@@ -5061,7 +5089,7 @@ Object.assign(DESCRIPTION_TRANSLATIONS.ru, {
     "+1 attack after each attack this fight": "+1 к атаке после каждой атаки в этом бою",
     "+1 damage for each hit in a row this fight; a miss resets it": "+1 урона за каждый удар подряд в этом бою; промах сбрасывает",
     "its armor adds to its damage": "его броня добавляется к урону",
-    "your worn armor protection adds to damage": "защита вашей надетой брони добавляется к урону",
+    "half your worn armor protection (rounded down) adds to damage": "половина защиты вашей надетой брони (с округлением вниз) добавляется к урону",
     "10% chance on hit: a fireball flies at another random face-up enemy for half the hit": "10% шанс при ударе: огненный шар летит в другого случайного открытого врага с половиной урона",
     "20% chance on hit: your next weapon hit deals 30% less": "20% шанс при ударе: ваш следующий удар оружием наносит на 30% меньше",
     "20% chance on hit: the enemy hit deals 30% less on its next attack": "20% шанс при ударе: пораженный враг наносит на 30% меньше следующей атакой",
@@ -5765,6 +5793,20 @@ Object.assign(EVENT_NARRATIVE_TRANSLATIONS.ru, {
     "Three hands go to three weapons, then relax when they see you are alone.\n\n\"Your porter is fine,\" you say. \"He thinks he got lost.\"\n\nThe youngest one looks at his boots. The leader does not. He smiles, puts something in your hand and pats your cheek.\n\n\"For your trouble. He got lost. Didn't he.\"": "Три руки тянутся к оружию, потом расслабляются: вы один.\n\n«Ваш носильщик в порядке, — говорите вы. — Думает, что заблудился».\n\nСамый младший смотрит на свои сапоги. Главарь — нет. Он улыбается, вкладывает что-то вам в руку и похлопывает по щеке.\n\n«За беспокойство. Он заблудился. Ведь так?»",
 });
 
+// Ring of Regeneration+ and the Hermit Wizard's gloves without their old "Replaces" lines.
+Object.assign(DESCRIPTION_TRANSLATIONS.es, {
+    "+12 HP at the start of each combat floor, +1 more every 2 floors.": "+12 PV al empezar cada piso de combate, +1 más cada 2 pisos.",
+    "+25% damage from all gems (rounded up).": "+25 % de daño de todas las gemas (redondeado hacia arriba).",
+});
+Object.assign(DESCRIPTION_TRANSLATIONS.fr, {
+    "+12 HP at the start of each combat floor, +1 more every 2 floors.": "+12 PV au début de chaque étage de combat, +1 de plus tous les 2 étages.",
+    "+25% damage from all gems (rounded up).": "+25 % de dégâts de toutes les gemmes (arrondi au supérieur).",
+});
+Object.assign(DESCRIPTION_TRANSLATIONS.ru, {
+    "+12 HP at the start of each combat floor, +1 more every 2 floors.": "+12 ОЗ в начале каждого боевого этажа, плюс +1 каждые 2 этажа.",
+    "+25% damage from all gems (rounded up).": "+25% урона от всех камней (с округлением вверх).",
+});
+
 const TOLLROAD_STORY_STRINGS = {
     "en": {
     },
@@ -5968,7 +6010,7 @@ const CODEX_STRINGS = {
         'ui.codex.hint': 'Point at anything to read about it.', 'ui.codex.undiscovered': 'Not found yet.',
         'ui.sandbox.encounter.crystalLair': 'Crystal Lair',
         'ui.menu.modeDeveloper': 'Mode: Developer', 'ui.menu.modePlayer': 'Mode: Player',
-        'tooltip.heatproof': 'Heatproof: takes {amount}% less fire damage', 'tooltip.stars': 'Stars: {stars}/{max}', 'tooltip.egg.hatchesIn': 'Hatches after {count} more fights.', 'tooltip.egg.hatchesNext': 'Hatches after the next fight.', 'tooltip.egg.waiting': 'Ready to hatch.', 'tooltip.damage.magic': 'Magic damage: {amount}', 'tooltip.companion.crystalChance': 'Crystal chance: {amount}%', 'event.reward.crystalSeeker': 'Crystal Seeker: 2% chance to find a crystal with each web', 'tooltip.companion.webs': 'Every other turn, webs an enemy: it loses its next attack. Bosses break free.', 'ui.egg.hatched.chick': 'The egg hatches!', 'ui.egg.hatched.crystal': 'The crystal egg hatches!',
+        'tooltip.heatproof': 'Heatproof: takes {amount}% less fire damage', 'tooltip.stars': 'Stars: {stars}/{max}', 'tooltip.egg.hatchesIn': 'Hatches after {count} more fights.', 'tooltip.egg.hatchesNext': 'Hatches after the next fight.', 'tooltip.egg.waiting': 'Ready to hatch.', 'tooltip.damage.magic': 'Magic damage: {amount}', 'tooltip.companion.crystalChance': 'Crystal chance: {amount}%', 'event.reward.crystalSeeker': 'Crystal Seeker: +2 bite damage, and 2% chance to find a crystal with each web', 'tooltip.companion.webs': 'Every other turn, bites an enemy and webs it: it loses its next attack. Bosses only get bitten.', 'ui.egg.hatched.chick': 'The egg hatches!', 'ui.egg.hatched.crystal': 'The crystal egg hatches!',
         'ui.sigilRoom.title': 'Sigil Room', 'ui.sigilRoom.hint': 'Drag a weapon or armor card onto the slab.', 'ui.sigilRoom.refuse': 'The stamp will not take that card.', 'ui.sigilRoom.stamped': 'Stamped. {card} now bears {sigil}.', 'ui.sigilRoom.family.lion': 'The Lion: Might', 'ui.sigilRoom.family.turtle': 'The Turtle: Shell', 'ui.sigilRoom.family.toad': 'The Toad: Wealth', 'ui.sigilRoom.family.cobra': 'The Cobra: Venom', 'ui.sigilRoom.family.deer': 'The Deer: Grace', 'ui.sandbox.encounter.sigilRoom': 'Sigil Room',
     },
     es: {
@@ -5979,7 +6021,7 @@ const CODEX_STRINGS = {
         'ui.codex.hint': 'Señala cualquier cosa para leer sobre ella.', 'ui.codex.undiscovered': 'Aún no encontrado.',
         'ui.sandbox.encounter.crystalLair': 'Guarida de cristal',
         'ui.menu.modeDeveloper': 'Modo: desarrollador', 'ui.menu.modePlayer': 'Modo: jugador',
-        'tooltip.heatproof': 'Resistente al calor: recibe un {amount}% menos de daño de fuego', 'tooltip.stars': 'Estrellas: {stars}/{max}', 'tooltip.egg.hatchesIn': 'Eclosiona tras {count} combates más.', 'tooltip.egg.hatchesNext': 'Eclosiona tras el próximo combate.', 'tooltip.egg.waiting': 'Listo para eclosionar.', 'tooltip.damage.magic': 'Daño mágico: {amount}', 'tooltip.companion.crystalChance': 'Probabilidad de cristal: {amount}%', 'event.reward.crystalSeeker': 'Buscador de cristales: 2% de probabilidad de encontrar un cristal con cada telaraña', 'tooltip.companion.webs': 'Cada dos turnos, lanza una telaraña a un enemigo: pierde su próximo ataque. Los jefes se liberan.', 'ui.egg.hatched.chick': '¡El huevo eclosiona!', 'ui.egg.hatched.crystal': '¡El huevo de cristal eclosiona!',
+        'tooltip.heatproof': 'Resistente al calor: recibe un {amount}% menos de daño de fuego', 'tooltip.stars': 'Estrellas: {stars}/{max}', 'tooltip.egg.hatchesIn': 'Eclosiona tras {count} combates más.', 'tooltip.egg.hatchesNext': 'Eclosiona tras el próximo combate.', 'tooltip.egg.waiting': 'Listo para eclosionar.', 'tooltip.damage.magic': 'Daño mágico: {amount}', 'tooltip.companion.crystalChance': 'Probabilidad de cristal: {amount}%', 'event.reward.crystalSeeker': 'Buscador de cristales: +2 de daño al morder y 2% de probabilidad de encontrar un cristal con cada telaraña', 'tooltip.companion.webs': 'Cada dos turnos, muerde a un enemigo y le lanza una telaraña: pierde su próximo ataque. A los jefes solo los muerde.', 'ui.egg.hatched.chick': '¡El huevo eclosiona!', 'ui.egg.hatched.crystal': '¡El huevo de cristal eclosiona!',
         'ui.sigilRoom.title': 'Sala del sigilo', 'ui.sigilRoom.hint': 'Arrastra un arma o una armadura a la losa.', 'ui.sigilRoom.refuse': 'El sello no acepta esa carta.', 'ui.sigilRoom.stamped': 'Sellada. {card} lleva ahora {sigil}.', 'ui.sigilRoom.family.lion': 'El León: Fuerza', 'ui.sigilRoom.family.turtle': 'La Tortuga: Caparazón', 'ui.sigilRoom.family.toad': 'El Sapo: Riqueza', 'ui.sigilRoom.family.cobra': 'La Cobra: Veneno', 'ui.sigilRoom.family.deer': 'El Ciervo: Gracia', 'ui.sandbox.encounter.sigilRoom': 'Sala del sigilo',
     },
     fr: {
@@ -5990,7 +6032,7 @@ const CODEX_STRINGS = {
         'ui.codex.hint': 'Pointez un élément pour en savoir plus.', 'ui.codex.undiscovered': 'Pas encore trouvé.',
         'ui.sandbox.encounter.crystalLair': 'Antre de cristal',
         'ui.menu.modeDeveloper': 'Mode : développeur', 'ui.menu.modePlayer': 'Mode : joueur',
-        'tooltip.heatproof': 'Résistant à la chaleur : subit {amount} % de dégâts de feu en moins', 'tooltip.stars': 'Étoiles : {stars}/{max}', 'tooltip.egg.hatchesIn': 'Éclot après {count} combats de plus.', 'tooltip.egg.hatchesNext': 'Éclot après le prochain combat.', 'tooltip.egg.waiting': 'Prêt à éclore.', 'tooltip.damage.magic': 'Dégâts magiques : {amount}', 'tooltip.companion.crystalChance': 'Chance de cristal : {amount} %', 'event.reward.crystalSeeker': 'Chercheur de cristaux : 2 % de chance de trouver un cristal à chaque toile', 'tooltip.companion.webs': 'Un tour sur deux, lance une toile sur un ennemi : il perd sa prochaine attaque. Les boss se libèrent.', 'ui.egg.hatched.chick': "L'œuf éclot !", 'ui.egg.hatched.crystal': "L'œuf de cristal éclot !",
+        'tooltip.heatproof': 'Résistant à la chaleur : subit {amount} % de dégâts de feu en moins', 'tooltip.stars': 'Étoiles : {stars}/{max}', 'tooltip.egg.hatchesIn': 'Éclot après {count} combats de plus.', 'tooltip.egg.hatchesNext': 'Éclot après le prochain combat.', 'tooltip.egg.waiting': 'Prêt à éclore.', 'tooltip.damage.magic': 'Dégâts magiques : {amount}', 'tooltip.companion.crystalChance': 'Chance de cristal : {amount} %', 'event.reward.crystalSeeker': 'Chercheur de cristaux : +2 dégâts de morsure, et 2 % de chance de trouver un cristal à chaque toile', 'tooltip.companion.webs': 'Un tour sur deux, mord un ennemi et lui lance une toile : il perd sa prochaine attaque. Les boss sont seulement mordus.', 'ui.egg.hatched.chick': "L'œuf éclot !", 'ui.egg.hatched.crystal': "L'œuf de cristal éclot !",
         'ui.sigilRoom.title': 'Salle du sigil', 'ui.sigilRoom.hint': 'Glissez une arme ou une armure sur la dalle.', 'ui.sigilRoom.refuse': 'Le sceau refuse cette carte.', 'ui.sigilRoom.stamped': 'Scellée. {card} porte maintenant {sigil}.', 'ui.sigilRoom.family.lion': 'Le Lion : Force', 'ui.sigilRoom.family.turtle': 'La Tortue : Carapace', 'ui.sigilRoom.family.toad': 'Le Crapaud : Richesse', 'ui.sigilRoom.family.cobra': 'Le Cobra : Venin', 'ui.sigilRoom.family.deer': 'Le Cerf : Grâce', 'ui.sandbox.encounter.sigilRoom': 'Salle du sigil',
     },
     ru: {
@@ -6001,7 +6043,7 @@ const CODEX_STRINGS = {
         'ui.codex.hint': 'Наведите на что угодно, чтобы прочитать.', 'ui.codex.undiscovered': 'Ещё не найдено.',
         'ui.sandbox.encounter.crystalLair': 'Хрустальное логово',
         'ui.menu.modeDeveloper': 'Режим: разработчик', 'ui.menu.modePlayer': 'Режим: игрок',
-        'tooltip.heatproof': 'Жаростойкость: получает на {amount}% меньше урона огнём', 'tooltip.stars': 'Звёзды: {stars}/{max}', 'tooltip.egg.hatchesIn': 'Вылупится через {count} боя.', 'tooltip.egg.hatchesNext': 'Вылупится после следующего боя.', 'tooltip.egg.waiting': 'Готово вылупиться.', 'tooltip.damage.magic': 'Магический урон: {amount}', 'tooltip.companion.crystalChance': 'Шанс кристалла: {amount}%', 'event.reward.crystalSeeker': 'Искатель кристаллов: 2% шанс найти кристалл с каждой паутиной', 'tooltip.companion.webs': 'Через ход опутывает врага паутиной: тот пропускает следующую атаку. Боссы вырываются.', 'ui.egg.hatched.chick': 'Яйцо вылупилось!', 'ui.egg.hatched.crystal': 'Кристальное яйцо вылупилось!',
+        'tooltip.heatproof': 'Жаростойкость: получает на {amount}% меньше урона огнём', 'tooltip.stars': 'Звёзды: {stars}/{max}', 'tooltip.egg.hatchesIn': 'Вылупится через {count} боя.', 'tooltip.egg.hatchesNext': 'Вылупится после следующего боя.', 'tooltip.egg.waiting': 'Готово вылупиться.', 'tooltip.damage.magic': 'Магический урон: {amount}', 'tooltip.companion.crystalChance': 'Шанс кристалла: {amount}%', 'event.reward.crystalSeeker': 'Искатель кристаллов: +2 к урону укуса и 2% шанс найти кристалл с каждой паутиной', 'tooltip.companion.webs': 'Через ход кусает врага и опутывает его паутиной: тот пропускает следующую атаку. Боссов только кусает.', 'ui.egg.hatched.chick': 'Яйцо вылупилось!', 'ui.egg.hatched.crystal': 'Кристальное яйцо вылупилось!',
         'ui.sigilRoom.title': 'Зал печати', 'ui.sigilRoom.hint': 'Перетащите оружие или броню на плиту.', 'ui.sigilRoom.refuse': 'Печать не принимает эту карту.', 'ui.sigilRoom.stamped': 'Готово. Теперь на {card} печать «{sigil}».', 'ui.sigilRoom.family.lion': 'Лев: Сила', 'ui.sigilRoom.family.turtle': 'Черепаха: Панцирь', 'ui.sigilRoom.family.toad': 'Жаба: Богатство', 'ui.sigilRoom.family.cobra': 'Кобра: Яд', 'ui.sigilRoom.family.deer': 'Олень: Грация', 'ui.sandbox.encounter.sigilRoom': 'Зал печати',
     },
     de: {
@@ -6012,7 +6054,7 @@ const CODEX_STRINGS = {
         'ui.codex.hint': 'Zeig auf etwas, um mehr zu lesen.', 'ui.codex.undiscovered': 'Noch nicht gefunden.',
         'ui.sandbox.encounter.crystalLair': 'Kristallhöhle',
         'ui.menu.modeDeveloper': 'Modus: Entwickler', 'ui.menu.modePlayer': 'Modus: Spieler',
-        'tooltip.heatproof': 'Hitzefest: nimmt {amount}% weniger Feuerschaden', 'tooltip.stars': 'Sterne: {stars}/{max}', 'tooltip.egg.hatchesIn': 'Schlüpft nach {count} weiteren Kämpfen.', 'tooltip.egg.hatchesNext': 'Schlüpft nach dem nächsten Kampf.', 'tooltip.egg.waiting': 'Bereit zum Schlüpfen.', 'tooltip.damage.magic': 'Magieschaden: {amount}', 'tooltip.companion.crystalChance': 'Kristallchance: {amount}%', 'event.reward.crystalSeeker': 'Kristallsucher: 2% Chance, mit jedem Netz einen Kristall zu finden', 'tooltip.companion.webs': 'Jede zweite Runde bespinnt er einen Gegner: Der verliert seinen nächsten Angriff. Bosse reißen sich los.', 'ui.egg.hatched.chick': 'Das Ei schlüpft!', 'ui.egg.hatched.crystal': 'Das Kristallei schlüpft!',
+        'tooltip.heatproof': 'Hitzefest: nimmt {amount}% weniger Feuerschaden', 'tooltip.stars': 'Sterne: {stars}/{max}', 'tooltip.egg.hatchesIn': 'Schlüpft nach {count} weiteren Kämpfen.', 'tooltip.egg.hatchesNext': 'Schlüpft nach dem nächsten Kampf.', 'tooltip.egg.waiting': 'Bereit zum Schlüpfen.', 'tooltip.damage.magic': 'Magieschaden: {amount}', 'tooltip.companion.crystalChance': 'Kristallchance: {amount}%', 'event.reward.crystalSeeker': 'Kristallsucher: +2 Bissschaden und 2% Chance, mit jedem Netz einen Kristall zu finden', 'tooltip.companion.webs': 'Jede zweite Runde beißt er einen Gegner und bespinnt ihn: Der verliert seinen nächsten Angriff. Bosse werden nur gebissen.', 'ui.egg.hatched.chick': 'Das Ei schlüpft!', 'ui.egg.hatched.crystal': 'Das Kristallei schlüpft!',
         'ui.sigilRoom.title': 'Siegelraum', 'ui.sigilRoom.hint': 'Zieh eine Waffe oder Rüstung auf die Platte.', 'ui.sigilRoom.refuse': 'Der Stempel nimmt diese Karte nicht.', 'ui.sigilRoom.stamped': 'Gestempelt. {card} trägt jetzt {sigil}.', 'ui.sigilRoom.family.lion': 'Der Löwe: Kraft', 'ui.sigilRoom.family.turtle': 'Die Schildkröte: Panzer', 'ui.sigilRoom.family.toad': 'Die Kröte: Reichtum', 'ui.sigilRoom.family.cobra': 'Die Kobra: Gift', 'ui.sigilRoom.family.deer': 'Der Hirsch: Anmut', 'ui.sandbox.encounter.sigilRoom': 'Siegelraum',
     },
 };
@@ -6286,6 +6328,9 @@ export function translateItemName(sceneOrGame, data) {
     const rawName = typeof data === 'string' ? data : (data?.name || '');
     const exact = EXACT_NAME_TRANSLATIONS[language]?.[rawName];
     if (exact) return exact;
+    // An upgraded amulet ("Ring of Regeneration+", content/amulets/amuletPlus.js):
+    // the plain name's translation, then the plus.
+    if (rawName.length > 1 && rawName.endsWith('+')) return `${translateItemName(sceneOrGame, rawName.slice(0, -1))}+`;
 
     const item = typeof data === 'object' ? data : null;
     if (item?.type === 'weapon') {

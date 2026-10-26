@@ -186,6 +186,10 @@ export const InventorySlotRenderer = {
                 onUpdate: () => { cardSprite.y = Math.round(cardSprite.y); }
             });
 
+            // No tooltip while another card is in hand: passing over the bag
+            // flashed each card's text up for a moment (Taya). The lift stays,
+            // so the card under the held one still shows.
+            if (this._liveDrag) return;
             this.showCardTooltip(cardData, slotIndex, pointer.worldX, pointer.worldY);
         });
         

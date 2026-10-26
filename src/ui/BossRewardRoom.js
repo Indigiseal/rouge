@@ -7,12 +7,17 @@ import { looseGemCard } from '../content/cards/gems.js';
 import { isLocationDoorTexture } from '../content/assets/locationCards.js';
 import { EXIT_DOOR_Y } from './ExitDoor.js';
 import { setHoverLight } from './HoverLight.js';
+import { companionPowerUpDuration } from './CompanionPowerUp.js';
 
-export function setupBossRewardRoom(scene) {
+// `onRewardsShown` runs once the reward cards are on the board (after the
+// companions' swirl, when there is one): a save there keeps the cards.
+export function setupBossRewardRoom(scene, { onRewardsShown = null } = {}) {
     scene._bossVictoryPending = false;
     scene.gameState.roomType = 'BOSS_REWARD';
     scene.roomType = 'BOSS_REWARD';
     scene.updateRoomTitle();
+    // The fight's log stays up here: the companions' attack gains go in it.
+    scene.refreshCombatLogVisibility?.();
 
     // Full restore as the act boss bonus
     const healedHP = scene.gameState.maxHealth - scene.gameState.playerHealth;
@@ -52,15 +57,25 @@ export function setupBossRewardRoom(scene) {
         makeBossRewardGem(scene)
     ].filter(Boolean);
 
-    // Spawn chest + reward cards on the existing board
-    scene.cardSystem.spawnBossRewardBoard(items);
+    // The companions grow first (+1 attack for the act ahead, a golden swirl on
+    // each card, ui/CompanionPowerUp.js), then the reward is offered (Taya).
+    const nextAct = Math.floor(floor / 15) + 1;
+    const grown = scene.upgradeCompanionsForNextAct(nextAct, { celebrate: true });
+    const offerReward = () => {
+        if (!scene.sys?.isActive?.() && !scene.sys?.isPaused?.()) return;
+        // Spawn chest + reward cards on the existing board
+        scene.cardSystem.spawnBossRewardBoard(items);
 
-    // Re-enable the Next button so the player can leave when ready
-    scene._transitioning = false;
-    scene.enemiesCleared = true;
-    scene.showNextFloorButton();
+        // Re-enable the Next button so the player can leave when ready
+        scene._transitioning = false;
+        scene.enemiesCleared = true;
+        scene.showNextFloorButton();
 
-    scene.updateUI();
+        scene.updateUI();
+        onRewardsShown?.();
+    };
+    if (grown > 0) scene.time.delayedCall(companionPowerUpDuration(grown), offerReward);
+    else offerReward();
 }
 
 export function restoreSavedBossRewardRoom(scene) {
@@ -68,6 +83,7 @@ export function restoreSavedBossRewardRoom(scene) {
     scene.gameState.roomType = 'BOSS_REWARD';
     scene.roomType = 'BOSS_REWARD';
     scene.updateRoomTitle();
+    scene.refreshCombatLogVisibility?.();
 
     const items = (scene._loadedBoardCards || [])
         .filter(card => card?.data)
@@ -118,6 +134,8 @@ export function leaveBossRewardRoom(scene) {
     // Advance to next act now that the player is done picking
     scene.gameState.currentFloor++;
     const nextAct = Math.floor((scene.gameState.currentFloor - 1) / 15) + 1;
+    // Already done (with its swirl) when the room opened; this only catches up
+    // a save made in the reward room before that existed.
     scene.upgradeCompanionsForNextAct(nextAct);
     scene.gameState.mapCursor = { act: nextAct, floor: 0, node: 0 };
     const nextActMap = scene.gameState.dungeonMap?.[`act${nextAct}`];

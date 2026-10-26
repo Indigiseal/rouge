@@ -21,6 +21,7 @@ import { addPlayerBurn, takePlayerBurnTick, SCORCHED_CHANCE } from '../src/conte
 import { tryEnemyShock } from '../src/content/combat/storm.js';
 import { consumeCompanionAttackHold, tryEnemyFrost } from '../src/content/combat/frost.js';
 import { tryEnemySandstorm, tryEnemyQuickStrike } from '../src/content/combat/sandreach.js';
+import { frenzyBiteDamage, rollFrenzy } from '../src/content/combat/frenzy.js';
 import { CONTROL_HESITATION_CHANCE } from '../src/content/amulets/control.js';
 import { ENEMY_BASE_CRIT, ENEMY_CRIT_MULT } from '../src/content/balance/CombatChance.js';
 import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../src/content/location-packs/tollroad/index.js';
@@ -331,10 +332,20 @@ export class MockScene {
 
     const attackers = eligible.map(i => ({ i, extra: false }));
     for (let attackerIndex = 0; attackerIndex < attackers.length; attackerIndex++) {
-      const { i, extra } = attackers[attackerIndex];
+      const { i, extra, frenzyBite } = attackers[attackerIndex];
       const card = board[i];
       if (!card || !card.revealed || !this.isEnemyCard(card)) continue;
       if (card.data.health <= 0) continue;
+      // Frenzy, as in CombatTurnController: the boss's one attack becomes one bite
+      // per head, queued right here (content/combat/frenzy.js).
+      if (frenzyBite == null && !extra && card.data.type === 'boss') {
+        const bites = rollFrenzy(card.data);
+        if (bites) {
+          card.data._frenzyBites = bites;
+          attackers.splice(attackerIndex + 1, 0, ...bites.map((_, bite) => ({ i, extra: true, frenzyBite: bite })));
+          continue;
+        }
+      }
 
       // Frozen enemies thaw one step per eligible turn. Previously the mock
       // skipped forever, making a single Frost Ring permanent.
@@ -425,7 +436,10 @@ export class MockScene {
         }
       }
 
-      let damageDealt = applyEnemyStrikeSigils(card, this.gameState, getEnemyHitAttack(card, board));
+      const baseHit = frenzyBite != null && Array.isArray(card.data._frenzyBites)
+        ? frenzyBiteDamage(getEnemyHitAttack(card, board), card.data._frenzyBites[frenzyBite])
+        : getEnemyHitAttack(card, board);
+      let damageDealt = applyEnemyStrikeSigils(card, this.gameState, baseHit);
       spendSapping(card);
       // Every enemy can crit a little (CombatChance), as in CombatTurnController.
       if (damageDealt > 0 && !this.tutorialMode && Math.random() < ENEMY_BASE_CRIT) damageDealt = Math.floor(damageDealt * ENEMY_CRIT_MULT);
@@ -614,7 +628,26 @@ export class MockScene {
       };
       let target = pickTarget();
       if (!target) break;
-      if (companion.webbedTurns > 0 || consumeCompanionAttackHold(companion)) continue;
+      if (companion.webbedTurns > 0) continue;
+      // The Crystal Spiderling, as in CombatTurnController.runWebTurn: every other
+      // turn it bites and webs one non-boss enemy (which loses its next attack),
+      // or only bites a boss; the turn between it spins. Its bite is its attack.
+      if (companion.websEnemies || companion.id === 'crystalSpiderlingCompanion') {
+        if ((companion.webSpinTurns || 0) > 0) { companion.webSpinTurns -= 1; continue; }
+        const bite = Math.max(0, Number(companion.attack) || 0) + companionStrengthBonus(this);
+        const webbable = board.map((card, index) => ({ card, index })).filter(({ card }) => (
+          card?.revealed && this.isEnemyCard(card) && card.data.health > 0
+          && !(card.data.frozen > 0) && card.data.type !== 'boss' && !card.data.isCocoon));
+        const prey = webbable.length
+          ? webbable.reduce((best, next) => ((next.card.data.attack || 0) > (best.card.data.attack || 0) ? next : best))
+          : (bite > 0 ? target : null);
+        if (!prey || consumeCompanionAttackHold(companion)) continue;
+        companion.webSpinTurns = 1;
+        if (webbable.length) { prey.card.data.frozen = 1; prey.card.data.webbedTurns = 1; }
+        if (bite > 0) this.cardSystem.attackEnemy(prey.index, bite, true);
+        continue;
+      }
+      if (consumeCompanionAttackHold(companion)) continue;
       for (let strike = 0; strike < 2; strike++) {
         if (strike === 1) {
           const chance = playerWarcryChance(this);

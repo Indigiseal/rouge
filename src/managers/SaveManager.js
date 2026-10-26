@@ -236,6 +236,8 @@ export class SaveManager {
         mapCursor: gameState?.mapCursor ?? null,
         dungeonMap: gameState?.dungeonMap ?? null,
         pendingActShop: gameState?.pendingActShop ?? null,
+        // The act whose +1 companion attack is already paid (BossRewardRoom).
+        companionsUpgradedForAct: gameState?.companionsUpgradedForAct ?? null,
       },
       board: {
         cards: serializedBoard,
@@ -377,6 +379,9 @@ export class SaveManager {
             : null,
           pendingActShop: ['SHOP', 'RARE_SHOP'].includes(parsed.navigation?.pendingActShop)
             ? parsed.navigation.pendingActShop
+            : null,
+          companionsUpgradedForAct: Number.isInteger(parsed.navigation?.companionsUpgradedForAct)
+            ? parsed.navigation.companionsUpgradedForAct
             : null,
         },
         board: {

@@ -1,4 +1,7 @@
 // Control-branch amulets: mark enemies, skip/redirect their swing, bind a kill.
+// No amulet sets these flags now: the Marks (Hesitation, Treachery, Twin Marks)
+// were retired (the charm covers Treachery's idea), and the Collar of Binding is
+// parked until Taya and Petr decide on it. The machinery stays for that return.
 
 export const CONTROL_HESITATION_CHANCE = 0.5;
 
