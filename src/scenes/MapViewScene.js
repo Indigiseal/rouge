@@ -40,6 +40,10 @@ const SECRET_SIGHT = 60;
 // finished: that ripple runs for over a second), and these many ms apart when several appear.
 const SECRET_APPEAR_DELAY_MS = 250;
 const SECRET_APPEAR_GAP_MS = 350;
+// After the room pops out of its smoke, its roads draw in, one leg at a time.
+const SECRET_PATH_DELAY_MS = 380;
+const SECRET_PATH_LEG_MS = 420;
+const SECRET_PATH_SPARK = 0xf3e2ff;
 
 // The fog's three poofs sit at least this far apart.
 const FOG_POOF_GAP_MS = 160;
@@ -307,6 +311,21 @@ export class MapViewScene extends Phaser.Scene {
 
     this.updatePanBounds();
 
+    // A secret room the player has not yet seen does not just sit there: it appears (see
+    // _appearSecretNode), and its roads draw themselves in after it (_revealSecretPath), so
+    // drawLinks leaves them out until then. Remember which ones are new, and that they have
+    // now been seen.
+    const story = (this.gameState.storyRun = this.gameState.storyRun || {});
+    const seenSecrets = (story.secretNodesSeen = story.secretNodesSeen || {});
+    this._appearing = new Set();
+    this.actMap.floors.forEach((row, f) => row.forEach((node, i) => {
+      if (!node?.secret || !node.id) return;
+      if (node.visited) { seenSecrets[node.id] = true; return; }
+      if (seenSecrets[node.id] || this.getNodeVisualState(f, i) === 'hidden') return;
+      this._appearing.add(node);
+      seenSecrets[node.id] = true;
+    }));
+
     // Draw links — baked into a RenderTexture (see drawLinks). A live Graphics
     // object renders diagonal thick lines as anti-aliased quads whose vertices
     // re-round by a pixel across render-batch flushes (e.g. when a tooltip's text
@@ -318,19 +337,6 @@ export class MapViewScene extends Phaser.Scene {
     if (this.roadTexture?.scene) this.roadTexture.destroy();
     this.roadTexture = drawWalkedRoad(this, this.mapContainer,
       walkedRoute(this.actMap.floors, this.gameState.mapCursor, (f) => this._checkpointAfterRow(f)));
-
-    // A secret room the player has not yet seen does not just sit there: it appears (see
-    // _appearSecretNode). Remember which ones are new, and that they have now been seen.
-    const story = (this.gameState.storyRun = this.gameState.storyRun || {});
-    const seenSecrets = (story.secretNodesSeen = story.secretNodesSeen || {});
-    this._appearing = new Set();
-    this.actMap.floors.forEach((row, f) => row.forEach((node, i) => {
-      if (!node?.secret || !node.id) return;
-      if (node.visited) { seenSecrets[node.id] = true; return; }
-      if (seenSecrets[node.id] || this.getNodeVisualState(f, i) === 'hidden') return;
-      this._appearing.add(node);
-      seenSecrets[node.id] = true;
-    }));
 
     // Draw nodes
     this.nodeSprites = [];
@@ -415,7 +421,8 @@ export class MapViewScene extends Phaser.Scene {
   // stands, and it pops out of the poof with a whoosh. The same poof an empty card makes.
   _appearSecretNode(node) {
     const sprite = node?.__sprite;
-    if (!sprite?.scene || this._leavingMap) return;
+    // No show: its roads still go back on the map at once.
+    if (!sprite?.scene || this._leavingMap) { this._revealSecretPath(node); return; }
     const fog = this._fog;
     if (fog?.rt?.scene && this.mapFogContainer?.scene) {
       const points = [...fog.points, { x: node.__x, y: node.__y, r: SECRET_SIGHT }];
@@ -441,6 +448,91 @@ export class MapViewScene extends Phaser.Scene {
       onComplete: () => { if (sprite.input) sprite.input.enabled = true; },
     });
     if (node.__halo?.scene) this.tweens.add({ targets: node.__halo, alpha: rest, delay: 140, duration: 400 });
+    // Then the road to it draws itself in.
+    this.time.delayedCall(SECRET_PATH_DELAY_MS, () => this._revealSecretPath(node));
+  }
+
+  // The road into a secret room that just appeared, and the road back out, drawing
+  // themselves in purple: from the room that leads in to the secret room, then on to
+  // where it rejoins, a bright spark at the tip leaving a few motes behind. Once
+  // drawn, they join the baked links like any other road.
+  _revealSecretPath(node) {
+    const finish = () => {
+      if (!this._appearing?.delete(node) || !this.mapContainer?.scene) return;
+      this.drawLinks();
+      // drawLinks sends the links to the back; the walked road goes under them.
+      if (this.roadTexture?.scene) this.mapContainer.sendToBack(this.roadTexture);
+    };
+    if (!node?.__sprite?.scene || this._leavingMap) { finish(); return; }
+    const floors = this.actMap.floors;
+    const f = floors.findIndex(row => row.includes(node));
+    const idx = floors[f]?.indexOf(node) ?? -1;
+    const parentIdx = (floors[f - 1] || []).findIndex(n => Array.isArray(n?.secretLinks) && n.secretLinks.includes(idx));
+    const parent = floors[f - 1]?.[parentIdx];
+    const cursor = this.gameState.mapCursor;
+    // From the room the player stands in, the way in is the bright "from here" road.
+    const inWidth = parent && cursor.floor === f - 1 && cursor.node === parentIdx ? 3 : 2;
+    const outs = (node.connections || []).map(t => floors[f + 1]?.[t]).filter(Boolean);
+    const legs = [
+      parent ? [{ a: parent, b: node, width: inWidth }] : [],
+      outs.map(out => ({ a: node, b: out, width: 2 })),
+    ].filter(leg => leg.length);
+    if (!legs.length) { finish(); return; }
+
+    const g = this.add.graphics();
+    this.mapContainer.add(g);
+    // Under the nodes, just over the baked links (moveAbove only ever lifts, so by index).
+    this.mapContainer.moveTo(g, this.mapContainer.getIndex(this.linkTexture) + 1);
+    const drawn = [];
+    const redraw = (live = []) => {
+      g.clear();
+      [...drawn, ...live].forEach(({ a, b, width, p }) => {
+        g.lineStyle(width, HIDDEN_PATH_TINT, 1);
+        g.lineBetween(Math.round(a.__x), Math.round(a.__y),
+          Math.round(a.__x + (b.__x - a.__x) * p), Math.round(a.__y + (b.__y - a.__y) * p));
+      });
+    };
+    const runLeg = (k) => {
+      if (k >= legs.length || !g.scene) {
+        g.destroy();
+        finish();
+        return;
+      }
+      const segs = legs[k].map(seg => ({ ...seg, p: 0 }));
+      const sparks = segs.map(() => {
+        const spark = this.add.rectangle(0, 0, 3, 3, SECRET_PATH_SPARK).setAlpha(0);
+        this.mapContainer.add(spark);
+        return spark;
+      });
+      let lastMote = 0;
+      const state = { p: 0 };
+      this.tweens.add({
+        targets: state, p: 1, duration: SECRET_PATH_LEG_MS, ease: 'Sine.easeInOut',
+        onUpdate: () => {
+          segs.forEach((seg, s) => {
+            seg.p = state.p;
+            const x = Math.round(seg.a.__x + (seg.b.__x - seg.a.__x) * state.p);
+            const y = Math.round(seg.a.__y + (seg.b.__y - seg.a.__y) * state.p);
+            sparks[s].setPosition(x, y).setAlpha(1);
+            // A mote left behind every so often, drifting up and fading.
+            if (state.p - lastMote > 0.12) {
+              const mote = this.add.rectangle(x, y, 2, 2, HIDDEN_PATH_TINT);
+              this.mapContainer.add(mote);
+              this.tweens.add({ targets: mote, y: y - 6, alpha: 0, duration: 420, onComplete: () => mote.destroy() });
+            }
+          });
+          if (state.p - lastMote > 0.12) lastMote = state.p;
+          redraw(segs);
+        },
+        onComplete: () => {
+          sparks.forEach(spark => spark.destroy());
+          drawn.push(...segs.map(seg => ({ ...seg, p: 1 })));
+          redraw();
+          runLeg(k + 1);
+        },
+      });
+    };
+    runLeg(0);
   }
 
   // The nodes the map is framed around: every one the player can see. A secret room that is
@@ -538,6 +630,8 @@ export class MapViewScene extends Phaser.Scene {
       this.actMap.floors[f].forEach(n => {
         openSecretLinks(this.gameState, n, nxt).forEach(s => {
           const secret = nxt[s];
+          // Still to appear: its roads draw themselves in (_revealSecretPath).
+          if (this._appearing?.has(secret)) return;
           drawCurve(n.__x, n.__y, secret.__x, secret.__y, HIDDEN_PATH_TINT, 2);
           secret.connections.forEach(t => {
             const out = this.actMap.floors[f + 2]?.[t];
@@ -567,6 +661,7 @@ export class MapViewScene extends Phaser.Scene {
         // The way into a secret room from here, bright and purple.
         if (!checkpoint) {
           openSecretLinks(this.gameState, from, nxt).forEach(t => {
+            if (this._appearing?.has(nxt[t])) return;
             drawCurve(from.__x, from.__y, nxt[t].__x, nxt[t].__y, HIDDEN_PATH_TINT, 3);
           });
         }

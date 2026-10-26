@@ -1,7 +1,8 @@
 // A companion growing stronger as a new act begins (GameScene.upgradeCompanionsForNextAct):
 // golden motes swirl round its card and close in, the card flashes gold, a
 // chime plays and "+1 ATK" rises over it. Plays in the boss reward room, before
-// the reward is offered, one card after another.
+// the reward is offered, one card after another, and in the drill room when a
+// companion is trained (EventScene.trainCompanion).
 
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { t } from '../i18n/i18n.js';
@@ -16,8 +17,11 @@ export function companionPowerUpDuration(count) {
     return count > 0 ? SWIRL_MS + (count - 1) * COMPANION_POWER_UP_STAGGER_MS + 250 : 0;
 }
 
-/** The swirl round one card sprite, `delay` ms from now, with its "+N ATK". */
-export function playCompanionPowerUp(scene, cardSprite, { delay = 0, gain = 1 } = {}) {
+/**
+ * The swirl round one card sprite, `delay` ms from now, with its "+N ATK", or
+ * `label` instead (a training that changes something other than attack).
+ */
+export function playCompanionPowerUp(scene, cardSprite, { delay = 0, gain = 1, label = null } = {}) {
     if (!scene?.add || !cardSprite?.scene) return;
     scene.time.delayedCall(delay, () => {
         if (!cardSprite.scene) return;
@@ -53,11 +57,12 @@ export function playCompanionPowerUp(scene, cardSprite, { delay = 0, gain = 1 } 
             if (!cardSprite.scene) return;
             cardSprite.setTint?.(0xffe2a0);
             scene.time.delayedCall(160, () => cardSprite.scene && cardSprite.clearTint?.());
-            const label = scene.add.text(Math.round(cx), Math.round(cy - ry - 2), t(scene, 'float.atkGain', { amount: gain }), {
+            const words = label ?? t(scene, 'float.atkGain', { amount: gain });
+            const text = scene.add.text(Math.round(cx), Math.round(cy - ry - 2), words, {
                 fontSize: '12px', fill: '#ffcf7f', fontFamily: '"HoMM Pixel", Arial, sans-serif',
                 stroke: '#3a2208', strokeThickness: 3,
             }).setOrigin(0.5).setDepth(depth + 1);
-            scene.tweens.add({ targets: label, y: label.y - 14, alpha: 0, delay: 500, duration: 600, onComplete: () => label.destroy() });
+            scene.tweens.add({ targets: text, y: text.y - 14, alpha: 0, delay: 500, duration: 600, onComplete: () => text.destroy() });
         });
     });
 }

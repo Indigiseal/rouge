@@ -125,6 +125,19 @@ export function showGemSockets(scene, gem) {
         // shop draws on top of GameScene and reaches the bag through
         // this.gameScene, so a spot added to the shop would float above its own
         // art instead of sitting on the card it belongs to.
+        // A card with a gem set already: the glint goes into its setting, over
+        // the still socket and under the stone. Under the whole setting, the
+        // still socket hid it (Taya); over it, its solid middle hid the gem.
+        const setting = slot.gemIndicator;
+        const stillSpot = setting?.scene && setting.list?.find?.((part) => part.texture?.key === GEM_SPOT_KEY);
+        if (stillSpot) {
+            const glint = createGlintingSpot(host, stillSpot.x, stillSpot.y);
+            if (glint) {
+                setting.addAt(glint, setting.getIndex(stillSpot) + 1);
+                spots.push({ spot: glint, cardSprite, inSetting: true });
+            }
+            return;
+        }
         const spot = createGemSpotHint(host, cardSprite);
         if (spot) spots.push({ spot, cardSprite });
     });
@@ -144,8 +157,9 @@ export function showGemSockets(scene, gem) {
 function syncGemSockets(host) {
     const spots = host?._gemSocketHints;
     if (!spots) return;
-    for (const { spot, cardSprite } of spots) {
-        if (!spot?.scene) continue;
+    for (const { spot, cardSprite, inSetting } of spots) {
+        // One in a gem's setting moves with the setting.
+        if (!spot?.scene || inSetting) continue;
         if (!cardSprite?.scene) { spot.setVisible(false); continue; }
         const at = gemSpotPosition(cardSprite);
         spot.setPosition(at.x, at.y);

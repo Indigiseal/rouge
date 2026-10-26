@@ -63,6 +63,7 @@ import { createOptionsCog } from '../ui/OptionsCog.js';
 import { STATION_TOOLTIP_GAP, TOOLTIP_DEPTH, hideItemTooltip, showItemTooltip } from '../ui/ItemTooltip.js';
 import { actOffsetForFloor } from '../content/location-packs/calendar.js';
 import { CORRIDOR_DELAY_FLOORS } from '../content/events/webbed_corridor.js';
+import { playCompanionPowerUp } from '../ui/CompanionPowerUp.js';
 
 export const EVENT_ILLUSTRATION_FRAMES = {
   broken_music_box: 2,
@@ -1774,6 +1775,7 @@ export class EventScene extends Phaser.Scene {
       this._reward('event.reward.slimeboneGuard');
     } else {
       companion.attack = Math.max(0, Number(companion.attack) || 0) + 1;
+      this.gameScene?.logCompanionAttackUp?.(companion, 1);
       companion.upgradedForm = 'trained';
       this.companionTrainingOutcome = 'You set the card down in the middle of the drill room.\n\nThe old practice circles glow, faintly and briefly.\n\nIn the picture, something moves sharper than it did a minute ago.';
       this._reward({ key: 'event.reward.companionDamage', vars: { name: translateItemName(this, companion) || t(this, 'event.companion.default') } });
@@ -1782,9 +1784,19 @@ export class EventScene extends Phaser.Scene {
     companion.trained = true;
     history.upgraded = true;
     history.name = companion.name || history.name;
-    this.gameScene?.inventorySystem?.rebuildInventorySprites?.();
-    this.gameScene?.inventorySystem?.playSlotStrikeAnimation?.(companionSlotIndex);
-    this.gameScene?.updateUI?.();
+    const gameScene = this.gameScene;
+    gameScene?.inventorySystem?.rebuildInventorySprites?.();
+    gameScene?.updateUI?.();
+    // The same golden swirl as a companion growing after a boss
+    // (ui/CompanionPowerUp.js): "+N ATK", or its new name when the training
+    // gave it something other than attack.
+    const card = gameScene?.inventorySystem?.slotSprites?.[companionSlotIndex]?.card;
+    const gain = { crystalSpiderlingCompanion: 2, chickCompanion: 0, skeletonWarriorCompanion: 0 }[companion.id] ?? 1;
+    if (gameScene && card) {
+      playCompanionPowerUp(gameScene, card, gain > 0
+        ? { gain }
+        : { label: translateItemName(gameScene, companion) });
+    }
     return true;
   }
 
