@@ -1,0 +1,225 @@
+
+Fresh: 500 runs, character=rogue, armor=class-default, talents=none buildings=max
+
+=== Dungeon Card Crawler — Balance Sim ===
+runs=500  (combat core = REAL engine; turn policy/stations = headless)
+
+seed=777  survival-lookahead=on
+
+merge-first planner=on
+Win rate (cleared floor 45): 3.8%
+Final floor: mean=27.3  median=25  min=4  max=45
+Route rooms: optional fights 13.5/run (45.2% of visited rooms), combat 12.7, elite 0.8
+Crystal Lairs won: 0.27/run
+Roads, act 1: sandreach 12.4%, frosthollow 11.2%, mireturn 11.0%, ashhowl 10.8%, veilbleed 10.2%, boneflood 9.8%, stormhatch 9.6%, thornwake 8.6%, silkdeep 8.2%, tollroad 8.2%
+Roads, act 2: mireturn 12.5%, tollroad 11.7%, veilbleed 11.3%, thornwake 11.1%, ashhowl 10.9%, silkdeep 10.0%, stormhatch 8.8%, sandreach 8.8%, frosthollow 8.4%, boneflood 6.7%
+Roads, act 3: tollroad 17.4%, thornwake 14.1%, frosthollow 12.0%, stormhatch 10.9%, sandreach 9.8%, veilbleed 8.7%, silkdeep 7.6%, boneflood 7.6%, ashhowl 6.5%, mireturn 5.4%
+
+Stories (EVENT rooms, per run; most taken choice path):
+  arm_wrestling          0.67/run  arm_decline (52.2%)
+  soup_stand             0.45/run  fights 24.2%  soup_ignore (28.6%)
+  reliquary              0.45/run  case:restoration (12.1%)
+  mirror                 0.45/run  Leave the mirror (70.0%)
+  slimy_prison           0.44/run  Grab the floating amulet (35.8%)
+  abandoned_camp         0.43/run  fights 14.4%  camp_leave (32.1%)
+  almost_you_well        0.41/run  drop (100.0%)
+  too_nice_room          0.41/run  Leave the room (35.8%)
+  book_worm              0.41/run  Put it back on the book (47.5%)
+  old_chute              0.38/run  fights 11.2%  chute_take_leg > chute_take_egg (22.9%)
+  robbed_traveller       0.27/run  traveller_leave (44.1%)
+  webbed_corridor        0.27/run  fights 27.4%  corridor_leave (37.8%)
+  broken_music_box       0.20/run  music_box_leave (58.6%)
+  goblin_engineer        0.15/run  Refuse to pay (33.3%)
+  mirror_twin            0.08/run  mirror_twin_stare (100.0%)
+  something_wicked       0.05/run  Refuse (52.2%)
+  briar_room             0.04/run  Leave (36.4%)
+  lost_porter            0.04/run  lost_porter_point (57.9%)
+  brass_wizard           0.04/run  Leave the booth (61.1%)
+  monster_bird_nest      0.03/run  nest_leave (70.6%)
+  silk_cocoon_cache      0.03/run  fights 6.3%  silk_cocoon_leave (93.8%)
+  toll_collectors        0.01/run  fights 33.3%  toll_pay (66.7%)
+  quiet_crossroads       0.00/run  Leave (50.0%)
+Enemy tiers: 45.9 spawned/run — normal 82.5%, veteran 15.0%, elite 2.5%  (6.9 veterans/run)
+Amulets held at run end: mean=7.4  max=22
+Amulet choices: 3154/3154 offers taken; top picks: ringOfRegeneration 525, glovesOfHermitWizard 341, pouchOfGreed 175, vampireFang 140, forcedMarch 134, greaterRuneOfZap 130
+Sigils per run: 2.18 (node 0.84, vault 0.47, rewardRow 0.38, crystalLair 0.25, elite 0.22); 97.4% on weapons, 2.6% on armor; 0.02 rooms with no card to take one
+  most taken: crystalBrood 12.9%, unscathed 3.9%, fireball 3.8%, scorched 3.8%, growth 3.5%, ambush 2.8%, regenerate 2.7%, smoke 2.6%
+Companions at run end: mean=0.00  atkSum=0.0  trained=0.00  guard=0.00  shock=0.00
+AP starvation: 13.7% of all actions taken while out of AP (weakened)
+Restoration cards used: 0.19 per run
+Useful visible loot taken during combat: 56.0/run (weapon:8133  food:3906  crystal:3308  armor:3066  potion:2833  magic:2511  gem:1581  amulet:1323  thorns:857  coin:464)
+Merge-first planning: 12.39 planned pickups/run, 5.59 cascade replacements/run, 1.20 space-making potions/run, 0.04 healthy final-pair dagger merges/run
+Survival lookahead: 9065 attack choices changed, 127 lethal plans avoided, 1435 turns had no projected safe kill plan
+  Last-pip preservation: 13679 protected choices, 289 emergency/boss-finisher uses
+  Actual last-pip attacks by reason: forced_last_pip=613, survival_emergency=285
+  Forced last-pip rooms: COMBAT=499, BOSS=55, ELITE=45, EVENT=14
+  Most forced last-pip floors: F21=89, F24=64, F20=58, F15=50, F23=38, F22=34, F26=34, F25=33
+
+Durability per run:
+  Breaks: weapons 1.62, armor 2.14, thorns 0.27
+  Last-pip weapon attacks: 1.80/run (1.20 with merged weapons, 0.84 while another weapon was usable)
+  Anvil: 6.33 repairs, 23.5 pips restored, 139.2 coins spent
+  Anvil routing: 2.25 visits/run, 52.3% in final 3 nodes, avg 5.5 nodes before boss
+  Refreshing merges: weapons 11.45 (low-pip dagger 0.87), armor 1.87, thorns 0.36, potions 0.98
+
+Shop affordability (real pricing, cheapest-first, per visit):
+  Regular shop: avg 3.3/6 affordable per visit  (Act1=3.0 Act2=3.6 Act3=2.5, visits=996)
+  Rare shop   : avg 1.6/4 affordable per visit  (Act1=1.6 Act2=1.7 Act3=1.2, visits=609)
+Shop inventory planning:
+  visits=1605 (regular 996, rare 609), purchases 4.42/run, merge-producing purchases 1.43/run
+  safe station use/run: potions 0.57, food 0.00, gems 1.09; slots freed 3.48
+  selling: 0.87/run for 20.4 coins/run
+  purchases by type: weapon=990, armor=381, thorns=358, potion=274, gem=124, magic=80, food=2
+
+Gems seen per run (floor drops only): mean=3.2  median=3  min=0  max=16
+Gem drops by floor (avg per run that reached it):
+  f3:0.00 f5:0.00 f7:0.00 f8:0.00 f10:0.00 f11:0.00 f12:0.12 f13:0.09 f14:0.07 f15:0.00 f17:0.16 f18:0.15 f19:0.31 f20:0.32 f21:0.36 f22:0.21 f23:0.23 f24:0.34 f25:0.29 f26:0.25 f27:0.28 f28:0.14 f29:0.13 f30:0.01 f32:0.20 f33:0.19 f34:0.40 f35:0.38 f36:0.39 f37:0.26 f38:0.29 f39:0.33 f40:0.46 f41:0.42 f42:0.39 f43:0.45 f44:0.50 
+
+Deaths by act:
+  Act 1 (1-15): 21 (4.2%)
+  Act 2 (16-30): 387 (77.4%)
+  Act 3 (31-45): 73 (14.6%)
+
+Boss outcomes:
+  Bog Mermaid       encounters=  77 kills= 90.9% deaths=  9.1% playerHP 139→107
+  Sandscale Chieftain encounters=  76 kills= 89.5% deaths= 10.5% playerHP 140→99
+  Cerberus          encounters=  76 kills= 86.8% deaths= 13.2% playerHP 140→101
+  Soul Eater        encounters=  69 kills= 89.9% deaths= 10.1% playerHP 139→106
+  Storm Archon      encounters=  68 kills= 86.8% deaths= 13.2% playerHP 135→95
+  Goblin King       encounters=  67 kills= 88.1% deaths= 11.9% playerHP 136→85
+  Frost Giant       encounters=  66 kills= 83.3% deaths= 16.7% playerHP 154→100
+  Giant Skeleton    encounters=  59 kills= 91.5% deaths=  8.5% playerHP 141→96
+  Spider Queen      encounters=  57 kills= 89.5% deaths= 10.5% playerHP 142→88
+  The Green Warden  encounters=  56 kills= 82.1% deaths= 17.9% playerHP 129→80
+
+Boss readiness at encounter:
+  usable bow=96.1% (avg dmg 6.0, pips 6.2 when held)
+  gemmed bow=32.2% (avg sockets 1.24 when gemmed; poison 11.6%, lightning 11.9%, fire 8.6%)
+  dual daggers=65.7% (combined dmg 9.0, pips 9.5, capacity 187 when paired)
+  Act 3 transition: axe/sword 100.0%, dual daggers retained 0.0%
+  estimated weapon capacity: bow 81, all weapons 337; enough for boss HP 99.3%
+  prep resource=44.7% (potion 35.3%, merged 13.6%, Frost Ring 4.6%, Bone Wall 4.8%, Restoration 4.5%)
+  mean starting HP=83.9%
+  prepared by resource or HP=79.1%
+  boss opener: Frost Ring 4.6%, Bone Wall 4.5%, already protected 0.1%, none 90.8%
+  bow attacks focused through summons=1257
+  emergency healing below 30% HP: potion 43, Restoration 5
+
+What kills the bot (481 deaths):
+  COMBAT  : 74.8% of deaths
+  BOSS    : 16.8% of deaths
+  ELITE   : 7.9% of deaths
+  EVENT   : 0.4% of deaths
+  at death: avg weaponDmg=6.4, avg armor=1.1, avg thorns=0.0
+  durability at death: weapon 58%, armor 9%, thorns 1%
+  had a gem socketed: 40.7%  (poison 16.2%, lightning 10.8%, fire 13.7%)
+  had thorns: 1.9%
+  representative final action traces:
+    COMBAT floor 25:
+      - enemy response: 12 damage, blocked 0; HP 28→16, armor 0
+      - enemy response: 11 damage, blocked 0; HP 16→5, armor 0
+      - poison response: 1 damage, blocked 0; HP 5→4, armor 0
+      - attack Crystal Hatchling 25HP with Uncommon Sword for 11; AP 10, weapon 5 pips, preserved unsafe, projected unsafe
+      - enemy response: 12 damage, blocked 0; HP 4→0, armor 0
+      - died floor 25; HP 0, AP 10
+    BOSS floor 30:
+      - enemy response: 7 damage, blocked 0; HP 31→24, armor 0
+      - enemy response: 7 damage, blocked 0; HP 24→17, armor 0
+      - enemy response: 7 damage, blocked 0; HP 17→10, armor 0
+      - enemy response: 7 damage, blocked 0; HP 10→3, armor 0
+      - enemy response: 4 damage, blocked 0; HP 3→0, armor 0
+      - died floor 30; HP 0, AP 4
+    ELITE floor 24:
+      - reveal slot 3; HP 29, AP 0
+      - attack Snow Archer 22HP with Rare Bow for 10; AP 0, weapon 1 pips, forced last pip
+      - enemy response: 15 damage, blocked 0; HP 29→14, armor 0
+      - reveal slot 5; HP 14, AP 0
+      - enemy response: 15 damage, blocked 0; HP 14→0, armor 0
+      - died floor 24; HP 0, AP 0
+
+First floor each rarity tier was reached (via merging):
+             %runs reached  mean  median  min  max   distribution (acts: 1=floor 1-15, 2=16-30, 3=31-45)
+  weapon  uncommon  :  99.8%    2.3       2    1   10   Act1:100.0% Act2:  0.0% Act3:  0.0%
+  weapon  rare      :  99.6%    7.1       7    1   20   Act1: 99.2% Act2:  0.8% Act3:  0.0%
+  weapon  epic      :  66.6%   17.6      18    4   42   Act1: 40.5% Act2: 58.3% Act3:  1.2%
+  weapon  legendary :   7.4%   32.2      30   14   44   Act1:  2.7% Act2: 48.6% Act3: 48.6%
+  armor   uncommon  :  83.2%    6.2       6    1   24   Act1: 95.4% Act2:  4.6% Act3:  0.0%
+  armor   rare      :  35.0%   15.9      15    3   41   Act1: 50.9% Act2: 42.9% Act3:  6.3%
+  armor   epic      :   5.4%   35.6      36   26   44   Act1:  0.0% Act2: 22.2% Act3: 77.8%
+  armor   legendary :   0.6%   40.7      41   38   43   Act1:  0.0% Act2:  0.0% Act3:100.0%
+
+Death hot-spots (floors with >=1% of runs dying):
+  Floor 15: 4.0% of runs
+  Floor 20: 2.4% of runs
+  Floor 21: 3.0% of runs
+  Floor 22: 6.2% of runs
+  Floor 23: 8.6% of runs
+  Floor 24: 13.4% of runs
+  Floor 25: 12.0% of runs
+  Floor 26: 9.6% of runs
+  Floor 27: 6.4% of runs
+  Floor 28: 3.0% of runs
+  Floor 29: 1.8% of runs
+  Floor 30: 10.4% of runs
+  Floor 34: 1.2% of runs
+  Floor 35: 2.8% of runs
+  Floor 36: 2.6% of runs
+  Floor 38: 1.6% of runs
+  Floor 41: 1.0% of runs
+  Floor 45: 1.8% of runs
+
+Per-floor curve (averaged over runs that reached the floor):
+fl  reach%  hpStart  hpEnd  hpLost  maxHP  wpnDmg  armor  coins  crys
+ 1   100.0     175    168    6.6    175    4.4    2.4     25   0.5
+ 2   100.0     168    168    1.8    175    4.6    3.0     30   0.6
+ 3   100.0     168    167    2.5    175    4.7    3.6     35   1.0
+ 4   100.0     167    166    2.8    175    4.9    4.3     48   1.5
+ 5    99.8     166    165    3.3    175    5.1    4.6     66   2.2
+ 6    99.8     165    165    2.8    175    5.2    4.9     85   2.9
+ 7    99.8     165    166    1.8    175    5.4    5.1     93   3.4
+ 8    99.8     166    165    2.3    175    5.5    5.1    107   4.1
+ 9    99.8     165    165    1.8    175    5.6    5.2    126   5.0
+10    99.8     165    161    5.7    175    5.7    5.1    146   5.6
+11    99.8     161    159    4.8    175    5.9    5.1    164   6.5
+12    99.8     159    154    5.8    175    5.9    5.3    179   7.6
+13    99.8     154    152    3.6    175    5.9    5.3    176   8.4
+14    99.8     152    152    3.6    175    5.9    5.3    176   9.1
+15B   99.8     152    168    4.8    175    5.6    4.3    211  14.9
+16    95.8     175    175    0.0    175    5.8    4.8    120  10.4
+17    95.8     175    167    8.8    175    5.8    4.7    124  10.0
+18    95.8     167    157   11.0    176    5.9    4.7    120   9.8
+19    95.6     157    139   19.3    176    6.0    4.4    143  10.4
+20    95.2     140    117   26.5    176    6.1    3.7    168  11.1
+21    92.8     121    104   22.2    176    6.2    3.5    193  11.7
+22    89.8     108     98   15.9    176    6.2    3.5    203  11.8
+23    83.6     106     85   23.6    176    6.3    3.1    211  12.0
+24    75.0      96     71   30.8    176    6.3    3.1    232  12.4
+25    61.6      87     64   26.7    176    6.5    3.1    250  12.9
+26    49.6      81     70   18.5    176    6.6    3.5    261  13.7
+27    40.0      86     75   17.9    176    6.7    4.0    259  14.9
+28    33.6      89     82   10.5    176    6.9    4.5    226  15.9
+29    30.6      90     95    8.3    176    7.1    4.7    214  15.9
+30B   28.8     101    112   26.2    176    6.9    3.8    249  21.8
+31    18.4     176    176    0.0    176    7.1    5.0    146  18.7
+32    18.4     176    150   25.6    176    7.2    5.0    162  19.3
+33    18.0     154    136   20.7    176    7.4    5.5    168  19.4
+34    17.4     141    110   31.8    176    8.2    5.3    196  21.5
+35    16.2     118     90   32.4    176    9.0    5.3    236  23.7
+36    13.4     109     87   29.9    176    9.6    4.9    306  28.0
+37    10.8     109    106   16.9    177   10.3    5.6    312  28.9
+38    10.2     112     91   27.7    177   10.4    5.7    365  31.6
+39     8.6     109     92   22.4    177   11.1    5.4    421  33.5
+40     7.8     102     92   13.6    178   11.6    6.4    460  35.5
+41     7.2     101     99   14.8    178   12.2    6.8    518  40.1
+42     6.2     114    107   12.8    178   13.2    7.5    518  42.2
+43     5.8     114    117    4.2    177   13.3    7.9    494  43.6
+44     5.6     121    130    2.5    178   13.7    7.6    493  47.1
+45B    5.6     130     38   92.0    178   13.7    7.2    493  47.4
+
+(legend: 'B' = boss floor. hpLost = avg HP lost on that floor.)
+
+Reach F15=100%  F30=29%
+Death reasons among dead: weapon=4%  hp=96%  (n=481)
+Simulator summary written to .tmp/balance-current-hp-probe.json
+
+Elapsed 22.54s

@@ -17,7 +17,8 @@ import { freezeEnemy, isFrostFrozen, ECHO_CHANCE, ECHO_DAMAGE_SHARE } from '../.
 import { repairRandomDamagedItem } from '../inventory/ItemRepair.js';
 import { t, translateItemName } from '../../i18n/i18n.js';
 import { applyVenomousBomb, entangleEnemy, WEB_CHANCE, VENOMOUS_BOMB_CHANCE } from '../../content/combat/silkdeep.js';
-import { applyScorched, SCORCHED_CHANCE } from '../../content/combat/ashhowl.js';
+import { applyScorched, SCORCHED_CHANCE, FIRE_COLUMN_BURN } from '../../content/combat/ashhowl.js';
+import { playFireColumn } from '../../ui/FireColumn.js';
 import { sandAttackConditions, FORAGE_CHANCE, QUICK_STRIKE_CHANCE } from '../../content/combat/sandreach.js';
 import { canRepeatStrike } from '../../content/combat/extraStrike.js';
 import { spawnForagedFood } from '../board/FoodForage.js';
@@ -114,13 +115,14 @@ function wornArmorProtection(scene) {
  * The weapon's flat sigil bonuses right now, which don't depend on the enemy
  * hit: Bloodlust, Honed, Outnumbered, Kinship, Ironclad, Packrat. The swing
  * adds them, and the card's damage number shows them, so the two agree.
- * Returns { bonus, ids }.
+ * Returns { bonus, ids, amounts } — amounts is each sigil's share, by id.
  */
 export function weaponFlatSigilBonus(scene, weapon) {
     const ids = [];
+    const amounts = {};
     let bonus = 0;
-    if (!weapon) return { bonus, ids };
-    const add = (id, amount) => { if (amount > 0) { bonus += amount; ids.push(id); } };
+    if (!weapon) return { bonus, ids, amounts };
+    const add = (id, amount) => { if (amount > 0) { bonus += amount; ids.push(id); amounts[id] = amount; } };
     if (sigilLevel(weapon, 'bloodlust') > 0) add('bloodlust', bloodlustKills(scene, weapon) * BLOODLUST_PER_KILL);
     const honed = sigilLevel(weapon, 'honed');
     if (honed > 0) add('honed', honedUses(scene, weapon) * HONED_PER_USE * honed);
@@ -137,18 +139,20 @@ export function weaponFlatSigilBonus(scene, weapon) {
     const packrat = sigilLevel(weapon, 'packrat');
     if (packrat > 0) add('packrat', emptyBagSlots(scene) * PACKRAT_PER_SLOT * packrat);
     if (sigilLevel(weapon, 'riposte') > 0 && scene?.gameState?.riposteReady) add('riposte', RIPOSTE_BONUS);
-    return { bonus, ids };
+    return { bonus, ids, amounts };
 }
 
 /**
  * The swing's damage after the weapon's sigils, against `targetCard` (a board
  * card). Returns { damage, baseDamage, triggered: ['merciless', ...] } —
  * baseDamage is the swing before sigils (what Tandem compares next time),
- * triggered the sigils that changed it, for feedback.
+ * triggered the sigils that changed it, for feedback. steps says what each
+ * one did ({ sigil, change: '+2' / 'x1.5' }), for the combat log's breakdown.
  */
 export function applyWeaponSigils(scene, weapon, targetCard, damage, { actionsBefore = scene?.gameState?.actionsLeft } = {}) {
     const triggered = [];
-    if (!weapon || !targetCard?.data) return { damage, triggered };
+    const steps = [];
+    if (!weapon || !targetCard?.data) return { damage, triggered, steps };
     const gs = scene?.gameState;
     const hp = targetCard.data.health ?? 0;
     const maxHp = Math.max(1, targetCard.data.maxHealth || hp || 1);
@@ -160,6 +164,7 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage, { actionsBe
     const flat = weaponFlatSigilBonus(scene, weapon);
     out += flat.bonus;
     triggered.push(...flat.ids);
+    flat.ids.forEach((id) => steps.push({ sigil: id, change: `+${flat.amounts[id]}` }));
 
     // Devouring: a chance to end a non-boss outright. HP + armor guarantees
     // the kill while it still goes through the normal hit and death pipeline.
@@ -167,7 +172,8 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage, { actionsBe
     if (devouring > 0 && targetCard.data.type !== 'boss' && Math.random() < DEVOURING_CHANCE * devouring) {
         out = Math.max(out, hp + Math.max(0, targetCard.data.armor || 0));
         triggered.push('devouring');
-        return { damage: out, baseDamage: damage, triggered };
+        steps.push({ sigil: 'devouring', change: '' });
+        return { damage: out, baseDamage: damage, triggered, steps };
     }
 
     // Then the x1.5 conditions.
@@ -190,12 +196,14 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage, { actionsBe
         if (sigilLevel(weapon, id) > 0 && test()) {
             out = multiply(out);
             triggered.push(id);
+            steps.push({ sigil: id, change: `x${SIGIL_MULTIPLIER}` });
         }
     }
 
     for (const id of sandAttackConditions(weapon, targetCard, gs, actionsBefore)) {
         out = multiply(out);
         triggered.push(id);
+        steps.push({ sigil: id, change: `x${SIGIL_MULTIPLIER}` });
     }
 
     // Crushing: a chance of a heavy hit, x1.5 and straight through armor
@@ -205,8 +213,9 @@ export function applyWeaponSigils(scene, weapon, targetCard, damage, { actionsBe
     if (hasStoredSigil(weapon, 'crushing') && Math.random() < CRUSHING_CHANCE) {
         out = multiply(out) + Math.max(0, targetCard.data.armor || 0);
         triggered.push('crushing');
+        steps.push({ sigil: 'crushing', change: `x${SIGIL_MULTIPLIER}` });
     }
-    return { damage: out, baseDamage: damage, triggered };
+    return { damage: out, baseDamage: damage, triggered, steps };
 }
 
 /**
@@ -374,9 +383,12 @@ export function onWeaponSigilHit(scene, weapon, targetCard, {
     // Scorched replaces Tsunami: every creature gets the same burn counter,
     // including face-down creatures. Loot is never burned.
     if (damageDealt > 0 && sigilLevel(weapon, 'scorched') > 0 && Math.random() < SCORCHED_CHANCE
-        && applyScorched(cs) > 0) {
+        && applyScorched(cs, FIRE_COLUMN_BURN) > 0) {
         SoundHelper.playSound(scene, 'magic_cast', 0.5);
-        scene.createFloatingText?.(320, 70, t(scene, 'magic.scorched.applied'), 0xef7c4b);
+        for (const card of cs.boardCards || []) {
+            if (card?.revealed && card.sprite?.scene && (card.data?.burn || 0) > 0) playFireColumn(scene, card.sprite);
+        }
+        scene.createFloatingText?.(320, 70, t(scene, 'sigil.fireColumn'), 0xef7c4b);
         fired.push('scorched');
     }
 

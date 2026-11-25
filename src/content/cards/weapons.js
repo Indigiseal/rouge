@@ -66,6 +66,16 @@ export const WEAPONS = Object.freeze({
     epic: Object.freeze({ damage: 13, sprite: 'axe_E', special: 'specialAttack' }),
     legendary: Object.freeze({ damage: 16, sprite: 'axe_L', special: 'specialAttack' }),
   }),
+  // Mace (Taya): the axe's act-3 partner. A blunt blow that goes straight
+  // through enemy armor (BoardCombat.attackEnemy), so it hits a little under
+  // the axe: the armor it ignores makes up the difference against armored foes.
+  mace: Object.freeze({
+    common: Object.freeze({ damage: 6, sprite: 'mace_C', special: 'crush' }),
+    uncommon: Object.freeze({ damage: 8, sprite: 'mace_U', special: 'crush' }),
+    rare: Object.freeze({ damage: 10, sprite: 'mace_R', special: 'crush' }),
+    epic: Object.freeze({ damage: 12, sprite: 'mace_E', special: 'crush' }),
+    legendary: Object.freeze({ damage: 14, sprite: 'mace_L', special: 'crush' }),
+  }),
 });
 
 /**
@@ -94,6 +104,10 @@ export const WEAPON_SPAWN_MIN_FLOOR = Object.freeze({
   axe: Object.freeze({
     common: 31, uncommon: 34, rare: 37, epic: 40, legendary: 43,
   }),
+  // Act 3, alongside the axe.
+  mace: Object.freeze({
+    common: 31, uncommon: 34, rare: 37, epic: 40, legendary: 43,
+  }),
 });
 
 export const WEAPON_DURABILITY_BY_TYPE = Object.freeze({
@@ -102,6 +116,7 @@ export const WEAPON_DURABILITY_BY_TYPE = Object.freeze({
   spear: Object.freeze({ common: 5, uncommon: 6, rare: 8, epic: 9, legendary: 11 }),
   sword: Object.freeze({ common: 6, uncommon: 8, rare: 10, epic: 11, legendary: 13 }),
   axe: Object.freeze({ common: 6, uncommon: 8, rare: 10, epic: 12, legendary: 14 }),
+  mace: Object.freeze({ common: 6, uncommon: 8, rare: 10, epic: 12, legendary: 14 }),
 });
 
 export function weaponDurability(weaponType, rarity) {
@@ -254,6 +269,30 @@ export function swordCleaveTargetIndices(board, primaryIndex, primaryCard = null
     .map(({ index }) => index);
 }
 
+/** Revealed enemies in the four diagonally adjacent cells. */
+export function maceDiagonalTargetIndices(board, primaryIndex, primaryCard = null) {
+  const primary = primaryCard || board?.[primaryIndex];
+  const row = primary?.data?.brick?.r, column = primary?.data?.brick?.c;
+  const px = primary?.restX ?? primary?.sprite?.x, py = primary?.restY ?? primary?.sprite?.y;
+  const enemies = (board || []).map((card, index) => ({ card, index }))
+    .filter(({ card, index }) => index !== primaryIndex && card?.revealed && isWeaponReachTarget(card)
+      && (card.data?.health ?? 0) > 0 && !card.data?.alwaysBackline);
+  if (Number.isFinite(row) && Number.isFinite(column)) return enemies.filter(({ card }) =>
+    Math.abs(card.data?.brick?.r - row) === 1 && Math.abs(card.data?.brick?.c - column) === 1
+  ).map(({ index }) => index);
+  if (!Number.isFinite(px) || !Number.isFinite(py)) return [];
+  const nearest = new Map();
+  for (const item of enemies) {
+    const x = item.card.restX ?? item.card.sprite?.x, y = item.card.restY ?? item.card.sprite?.y;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const dx = x - px, dy = y - py;
+    if (Math.abs(dx) <= 35 || Math.abs(dy) <= 20) continue;
+    const quadrant = `${Math.sign(dx)},${Math.sign(dy)}`, distance = Math.hypot(dx, dy);
+    if (!nearest.has(quadrant) || distance < nearest.get(quadrant).distance) nearest.set(quadrant, { index: item.index, distance });
+  }
+  return [...nearest.values()].map(item => item.index);
+}
+
 /** Heavy Cleave geometry: a cross centred on the selected target. */
 export function axeHeavyCleaveTargetIndices(board, primaryIndex, primaryCard = null) {
   const primary = board?.[primaryIndex] || primaryCard;
@@ -287,6 +326,75 @@ export function axeHeavyCleaveTargetIndices(board, primaryIndex, primaryCard = n
     .sort((a, b) => a.card.data.brick.c - b.card.data.brick.c)
     .map(({ index }) => index);
   return { vertical, sides };
+}
+
+// The Ogre's Gauntlet comes down as a hand, palm on the target, seen from
+// above (Taya): the palm is the target and a cell to each side, the thumb one
+// more to the right, and short fingers the row behind the palm. [dc, dr], dr
+// negative is away from the player (larger r is closer, as for the spear).
+export const GAUNTLET_HAND_CELLS = Object.freeze([
+  [-1, 0], [1, 0], // palm
+  [2, 0], // thumb
+  [-1, -1], [0, -1], [1, -1], // fingers
+]);
+
+/** Revealed enemies under the gauntlet's hand (GAUNTLET_HAND_CELLS). */
+export function gauntletHandTargetIndices(board, primaryIndex, primaryCard = null) {
+  const primary = board?.[primaryIndex] || primaryCard;
+  const column = primary?.data?.brick?.c;
+  const row = primary?.data?.brick?.r;
+  if (!Number.isFinite(column) || !Number.isFinite(row)) {
+    // No grid (a hand-placed board): the palm's sides and the card behind.
+    const spatial = spatialCrossTargets(board, primaryIndex, primary);
+    const py = primary?.restY ?? primary?.sprite?.y;
+    const behind = spatial.vertical.filter((i) => (board[i]?.restY ?? board[i]?.sprite?.y) < py);
+    return [...spatial.sides, ...behind];
+  }
+  const under = new Set(GAUNTLET_HAND_CELLS.map(([dc, dr]) => `${column + dc},${row + dr}`));
+  // A large boss owns its whole row (as for the spear): the fingers reach it
+  // whenever they reach that row, so a blow on a summon below it hits the
+  // boss too (Taya).
+  const fingersRow = row - 1;
+  return board
+    .map((card, index) => ({ card, index }))
+    .filter(({ card, index }) => (
+      index !== primaryIndex
+      && card?.revealed
+      && isWeaponReachTarget(card)
+      && (card.data?.health ?? 0) > 0
+      && (card.data?.alwaysBackline
+        ? card.data?.brick?.r === fingersRow
+        : under.has(`${card.data?.brick?.c},${card.data?.brick?.r}`))
+    ))
+    .map(({ index }) => index);
+}
+
+/**
+ * The board seats a weapon's blow covers around a target at `brick` ({ r, c }),
+ * the target's own seat included: the same shapes the *TargetIndices
+ * functions above hit, but every seat on the board, empty or face-down too.
+ * `seats` is the board's cells ([{ r, c }]). Empty for a weapon that hits only
+ * its target, so nothing is drawn for it.
+ */
+export function weaponAreaSeats(weapon, brick, seats) {
+  const { r, c } = brick || {};
+  if (!Number.isFinite(r) || !Number.isFinite(c) || !Array.isArray(seats)) return [];
+  let inArea;
+  if (weapon?.id === 'ogreGauntlet') {
+    const under = new Set(GAUNTLET_HAND_CELLS.map(([dc, dr]) => `${c + dc},${r + dr}`));
+    inArea = (s) => under.has(`${s.c},${s.r}`);
+  } else if (weapon?.special === 'cleave') {
+    inArea = (s) => s.r === r && Math.abs(s.c - c) === 1;
+  } else if (weapon?.special === 'specialAttack') {
+    inArea = (s) => (s.r === r && Math.abs(s.c - c) === 1) || (s.c === c && Math.abs(s.r - r) === 1);
+  } else if (weapon?.special === 'crush') {
+    inArea = (s) => Math.abs(s.r - r) === 1 && Math.abs(s.c - c) === 1;
+  } else if (weapon?.special === 'pierce' || weapon?.special === 'reach') {
+    inArea = (s) => s.c === c && s.r < r;
+  } else {
+    return [];
+  }
+  return seats.filter((s) => (s.r === r && s.c === c) || inArea(s));
 }
 
 function spatialCrossTargets(board, primaryIndex, primary, { horizontalOnly = false } = {}) {

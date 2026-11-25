@@ -41,8 +41,9 @@ const CRIT_SHAKE_INTENSITY = 0.0025;
 import { hideItemTooltip, showControlMarkTooltip } from '../../ui/ItemTooltip.js';
 import { fireDamageAgainst } from '../../content/combat/fireResist.js';
 import { enterBonePile } from '../../content/combat/boneflood.js';
-import { hasEnemyTrait, sigilLevel } from '../../content/sigils/sigils.js';
+import { getSigil, hasEnemyTrait, sigilLevel } from '../../content/sigils/sigils.js';
 import { canBurnCard, takeBurnTick } from '../../content/combat/ashhowl.js';
+import { playFireColumn } from '../../ui/FireColumn.js';
 
 export class BoardCombat {
     constructor(cs) {
@@ -184,8 +185,10 @@ function applyPoisonStacksToCard(card, poisonStacks) {
     this.scene.createFloatingText(card.sprite.x, card.sprite.y - 32, `poison -${totalDamage}/turn`, 0x4a884f);
   }
 
-  // Show looping poison icon at top-right corner of the enemy card
-  if (card.sprite && !card.poisonMarker && this.scene.textures.exists('poisonedStatus')) {
+  // Show looping poison icon at top-right corner of the enemy card. Not on a
+  // face-down card (a splash can poison one): the card back would wear it
+  // (Taya). Flipping it up shows it (restoreEnemyStatusMarkers).
+  if (card.sprite && card.revealed && !card.poisonMarker && this.scene.textures.exists('poisonedStatus')) {
     const halfW = (card.sprite.displayWidth || 52) / 2;
     const halfH = (card.sprite.displayHeight || 70) / 2;
     // The Spider Queen's tall sprite has a web hanging upward, so her real
@@ -287,7 +290,7 @@ function applyShockStatus(card, turns = 1) {
   card.data.shockedTurns = Math.max(1, turns);
   this.scene.createFloatingText(card.sprite.x, card.sprite.y - 18, 'Shocked!', 0x71b1ae);
 
-  if (!card.shockMarker && this.scene.textures.exists('shockedStatus')) {
+  if (card.revealed && !card.shockMarker && this.scene.textures.exists('shockedStatus')) {
     const halfW = (card.sprite.displayWidth || 52) / 2;
     const halfH = (card.sprite.displayHeight || 70) / 2;
     const bodyOffsetY = card.data.name === 'Spider Queen' ? 60 : 0;
@@ -461,11 +464,12 @@ function restoreEnemyStatusMarkers(card) {
     return marker;
   };
 
-  if (card.data.statusEffects?.some(effect => effect.type === 'poison')
+  // Skipped when already showing: a flipped card calls this too (CardSystem.revealCard).
+  if (!card.poisonMarker?.scene && card.data.statusEffects?.some(effect => effect.type === 'poison')
       && this.scene.textures.exists('poisonedStatus')) {
     card.poisonMarker = makeMarker('poisonedStatus', 'poison_status_anim', 3);
   }
-  if ((card.data.shockedTurns || 0) > 0 && this.scene.textures.exists('shockedStatus')) {
+  if (!card.shockMarker?.scene && (card.data.shockedTurns || 0) > 0 && this.scene.textures.exists('shockedStatus')) {
     card.shockMarker = makeMarker('shockedStatus', 'shock_status_anim', 4);
   }
 }
@@ -594,6 +598,17 @@ function rollEvade(card) {
     return true;
 }
 
+// One step of a weapon hit's damage, for the combat log's breakdown. A step
+// names a sigil (sigil id), an item (English name) or a text key, plus what it
+// did ('+2', 'x1.5'). Floating-text words lose their "!" here.
+function describeHitStep(scene, step) {
+    let label = '';
+    if (step.sigil) label = translateItemName(scene, getSigil(step.sigil)?.name || step.sigil);
+    else if (step.item) label = translateItemName(scene, step.item);
+    else if (step.key) label = t(scene, step.key, step.vars || {}).replace(/[\s!！]+$/u, '');
+    return step.change ? `${label} ${step.change}` : label;
+}
+
 function attackEnemy(index, damage, isReflection = false, weaponUsed = null, skipDurability = false, options = {}) {
     const card = this.boardCards[index];
     if (!card || !card.revealed || !this.isEnemyType(card.data.type)) return;
@@ -604,6 +619,12 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // Fireball and charmed enemies also use attackEnemy(), and the fallback
     // incorrectly spent the player's durability and triggered weapon gems.
     const weapon = weaponUsed || null;
+    // An area hit is the blow carrying on into a neighbour (cleave, pierce, the
+    // axe's cross, the mace's diagonals, the gauntlet's hand, Front Volley).
+    // The weapon's gem and enchant belong to the swing and go off once, on the
+    // enemy aimed at: run here on every area hit, one lightning swing landed
+    // nine zaps instead of three (Taya saw enemies zapped twice).
+    const areaHit = Boolean(options.areaHit);
 
     // Silk Husk — while any revealed taunter lives, player damage may only hit taunters.
     // Reflection / thorns still connect (isReflection); player weapon/magic does not.
@@ -671,21 +692,20 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     let finalDamage = damage;
     let feedbackCritical = Boolean(options.critical);
     let feedbackLabel = options.feedbackLabel;
+    // Everything that changed this hit, in order, for the combat log: the
+    // caller's steps (sigils, talents) first, then the ones made here.
+    const hitSteps = Array.isArray(options.steps) ? [...options.steps] : [];
     if (!isReflection && weapon && this.scene.amuletManager) {
-        finalDamage = this.scene.amuletManager.modifyWeaponDamage(damage, weapon);
-    }
-    // Giant's Morningstar relic: +1 flat damage on every weapon attack.
-    if (!isReflection && weapon) {
-        const dmgBonus = this.scene.gameState?.relicEffects?.weaponDamageBonus || 0;
-        if (dmgBonus) finalDamage += dmgBonus;
+        finalDamage = this.scene.amuletManager.modifyWeaponDamage(damage, weapon, hitSteps);
     }
     if (!isReflection && weapon && this.scene.gameState?.shadowBlade?.turns > 0) {
-        finalDamage = Math.floor(finalDamage * (this.scene.gameState.shadowBlade.multiplier || 1.5));
+        const mult = this.scene.gameState.shadowBlade.multiplier || 1.5;
+        finalDamage = Math.floor(finalDamage * mult);
+        hitSteps.push({ item: 'Shadow Blade', change: `x${mult}` });
     }
 
-    // Resolve evasion before rolling/showing critical hits or consuming the
-    // once-per-floor War Horn charge. A missed attack must not announce a
-    // CRIT or spend a one-shot bonus that never dealt damage.
+    // Resolve evasion before rolling/showing critical hits. A missed attack
+    // must not announce a CRIT that never dealt damage.
     if (!isReflection && this.rollEvade(card)) return;
 
     // Spore Archer Spores: 15% miss on the next weapon swing, then clear.
@@ -704,6 +724,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         this.scene.gameState.playerSapped = false;
         finalDamage = Math.floor(finalDamage * ENCHANT_SAPPING_MULTIPLIER);
         feedbackLabel = 'Sapped';
+        hitSteps.push({ key: 'float.sapped', change: `x${ENCHANT_SAPPING_MULTIPLIER}` });
     }
 
     const critChance = (this.scene.gameState?.discardCritChance || 0)
@@ -716,6 +737,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         const critMult = this.scene.amuletManager?.getCritMultiplier?.(PLAYER_CRIT_MULT) ?? PLAYER_CRIT_MULT;
         finalDamage = Math.max(finalDamage + 1, Math.floor(finalDamage * critMult));
         feedbackCritical = true;
+        hitSteps.push({ key: 'float.crit', change: `x${critMult}` });
         // A light jolt: crits are common now (5% base), so it is well under
         // a sprung trap's shake (120ms at 0.006), which read as too strong.
         this.scene.cameras.main.shake(CRIT_SHAKE_MS, CRIT_SHAKE_INTENSITY);
@@ -729,28 +751,22 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         && Math.random() < ENEMY_BASE_BLOCK) {
         finalDamage = Math.ceil(finalDamage / 2);
         CombatSequencer.floatingText(this.scene, 'damage', card.sprite.x, card.sprite.y - 30, 'Blocked!', 0xd6c2c1);
-    }
-
-    // Goblin War Horn relic: the first attack each floor deals double damage.
-    // (Stacks multiplicatively with CRIT — if both fire, you get x4.)
-    if (!isReflection && weapon && this.scene.gameState?.relicEffects?.firstAttackDoubleDamage
-        && !this.scene.gameState.firstAttackThisFloorUsed) {
-        finalDamage *= 2;
-        this.scene.gameState.firstAttackThisFloorUsed = true;
-        feedbackLabel = 'WAR HORN!';
+        hitSteps.push({ key: 'float.blocked', change: '/2' });
     }
 
     // Reliquary enchant: ONE roll per swing. `preDamage` procs change the blow
-    // itself, so they resolve here next to CRIT and the War Horn; everything
-    // else fires once the swing is committed (further down).
-    const enchantProc = (!isReflection && weapon) ? this.rollWeaponEnchant(weapon) : null;
+    // itself, so they resolve here next to CRIT; everything else fires once
+    // the swing is committed (further down).
+    const enchantProc = (!isReflection && weapon && !areaHit) ? this.rollWeaponEnchant(weapon) : null;
     let enchantInstantKill = false;
     if (enchantProc === 'shadowBlade') {
         finalDamage = Math.floor(finalDamage * ENCHANT_SHADOW_MULTIPLIER);
         feedbackLabel = 'Shadowed!';
+        hitSteps.push({ key: 'float.shadowed', change: `x${ENCHANT_SHADOW_MULTIPLIER}` });
     } else if (enchantProc === 'soulDrain' && card.data.type !== 'boss') {
         enchantInstantKill = true;
         feedbackLabel = 'Devoured!';
+        hitSteps.push({ key: 'float.devoured' });
     }
 
     if (!isReflection) {
@@ -771,7 +787,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // dropping the gem damage and its "-X Fire" / "Zap" floating text on
     // the main target. Splash to neighbours still works because they
     // weren't touched by the weapon yet.
-    if (!isReflection && weapon?.gemEffect && card.sprite?.scene) {
+    if (!isReflection && !areaHit && weapon?.gemEffect && card.sprite?.scene) {
         this.applyWeaponGemEffect(index, weapon, finalDamage);
         // Twin Socket: the second gem's effect too.
         const gem2 = secondGemView(weapon);
@@ -807,9 +823,13 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
 
     // Apply damage. (Carrion Oath / hungryDagger no longer alters combat — it was
     // reworked into a potion-based poison cleanse, handled in AmuletManager.)
-    const enemyArmor = Math.max(0, card.data.armor || 0);
+    // A mace crushes: its blow goes straight through the enemy's armor.
+    const crushes = !isReflection && weapon?.special === 'crush';
+    const enemyArmor = crushes ? 0 : Math.max(0, card.data.armor || 0);
     if (enemyArmor > 0) {
+        const beforeArmor = finalDamage;
         finalDamage = Math.max(1, finalDamage - enemyArmor);
+        if (finalDamage < beforeArmor) hitSteps.push({ key: 'log.hit.armor', change: `-${beforeArmor - finalDamage}` });
     }
     // Devouring bites through whatever is left. Armour is already resolved
     // above, so a high-armour target cannot shrug the kill off.
@@ -831,7 +851,7 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
     // Elemental hit animation on the struck enemy (fire / poison / lightning)
     if (!isReflection && weapon) {
         let hitFx = null;
-        if (weapon.gemEffect === 'fire' || weapon.gemEffect === 'lightning' || weapon.gemEffect === 'poison') {
+        if (!areaHit && (weapon.gemEffect === 'fire' || weapon.gemEffect === 'lightning' || weapon.gemEffect === 'poison')) {
             hitFx = weapon.gemEffect;
         } else if (weapon.poisonDamage > 0) {
             hitFx = 'poison'; // native venomous weapons
@@ -841,7 +861,12 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
         });
     }
 
-    if (!isReflection && weapon) {
+    if (!isReflection && weapon && areaHit) {
+        // Only the blade's own venom carries into a neighbour; no gem poison.
+        if (card.data.health > 0 && this.isVenomousWeapon(weapon)) {
+            this.applyEnemyPoison(card, Math.max(1, weapon.poisonDamage || 1), Math.max(1, weapon.poisonTurns || 3));
+        }
+    } else if (!isReflection && weapon) {
         if (card.data.health > 0) {
             this.applyWeaponPoison(card, weapon);
             this.applyRelicSlow(card);
@@ -869,12 +894,46 @@ function attackEnemy(index, damage, isReflection = false, weaponUsed = null, ski
             critical: feedbackCritical, lethal: card.data.health <= 0, label: feedbackLabel, target: card.sprite,
         });
     const targetName = translateItemName(this.scene, card.data) || 'Enemy';
-    const weaponLabel = (!isReflection && weapon?.weaponType)
-        ? ` (${translateItemName(this.scene, { type: 'weapon', weaponType: weapon.weaponType })})`
-        : (isReflection ? ' (Reflected)' : '');
-    const feedbackDetail = [feedbackCritical && t(this.scene, 'float.crit'), feedbackLabel && t(this.scene, feedbackLabel)]
-        .filter(Boolean).map(label => ' — ' + label).join('');
-    this.scene.pushCombatLog?.(`${targetName} -${finalDamage}${weaponLabel}${feedbackDetail}`);
+    // The plain type ("Sword"), not the item's own name. English has no
+    // weapon-type table, so it needs the name given.
+    const weaponType = weapon?.weaponType || '';
+    const weaponName = (!isReflection && weaponType)
+        ? translateItemName(this.scene, {
+            type: 'weapon', weaponType, name: weaponType[0].toUpperCase() + weaponType.slice(1),
+        })
+        : '';
+    let logLine;
+    if (weaponName) {
+        // "Boss -40 (Sword 9: Ambush x1.5, CRIT x1.5, Armor -2)": the hit's
+        // starting damage, then every step that changed it, in order.
+        const start = Number.isFinite(options.baseDamage) ? options.baseDamage : damage;
+        const steps = hitSteps.map(step => describeHitStep(this.scene, step)).filter(Boolean);
+        logLine = steps.length
+            ? `${targetName} -${finalDamage} (${weaponName} ${start}: ${steps.join(', ')})`
+            : `${targetName} -${finalDamage} (${weaponName})`;
+    } else {
+        // "-3 (Reflected)" in the player's language (it used to stay English).
+        const amountText = isReflection
+            ? t(this.scene, 'float.reflectedDamage', { amount: finalDamage })
+            : `-${finalDamage}`;
+        const feedbackDetail = [feedbackCritical && t(this.scene, 'float.crit'), feedbackLabel && t(this.scene, feedbackLabel)]
+            .filter(Boolean).map(label => ' — ' + label).join('');
+        logLine = `${targetName} ${amountText}${feedbackDetail}`;
+    }
+    this.scene.pushCombatLog?.(logLine);
+    // The same breakdown for the run recorder: where the number came from.
+    if (!isReflection && weapon) {
+        recordHumanRunEvent(this.scene, 'weapon_hit', {
+            targetIndex: index,
+            target: snapshotHumanRunCard(card.data),
+            weaponType: weapon.weaponType || null,
+            start: Number.isFinite(options.baseDamage) ? options.baseDamage : damage,
+            final: finalDamage,
+            steps: hitSteps,
+            critical: feedbackCritical,
+            lethal: card.data.health <= 0,
+        }, { snapshot: false });
+    }
 
     // Thorn Ent — retaliates 1 true damage through armor on a connecting swing.
     if (
@@ -1112,7 +1171,11 @@ function burnEnemy(index, amount, { label = 'Fire' } = {}) {
     card.data.health -= amount;
     if (card.revealed && card.sprite?.scene) {
         CombatSequencer.schedule(this.scene, 'gem', () => {
-            if (card.sprite?.scene) this.playEnemyHitEffect(card, 'fire');
+            if (label === 'Burn') SoundHelper.playSound(this.scene, 'burn_tick', 0.4);
+            if (card.sprite?.scene) {
+                if (label === 'Burn' && card.data.burnVisual === 'fireColumn') playFireColumn(this.scene, card.sprite);
+                else this.playEnemyHitEffect(card, 'fire');
+            }
         });
         CombatSequencer.floatingText(this.scene, 'gem', card.sprite.x, card.sprite.y - 18, `-${amount} ${label}`, 0xef7c4b);
         CombatSequencer.shakeCard(this.scene, 'gem', card.sprite);
@@ -1481,6 +1544,9 @@ function removeDefeatedEnemy(index, card) {
         // the silhouette recolors and fades. Regular enemies dissolve as usual.
         if (card.data?.type === 'boss') {
             SoundHelper.playSound(this.scene, 'boss_defeated', 0.6);
+            // The victory announcement plays it too, for kills that skip this
+            // path; this flag stops it playing twice (Taya heard it doubled).
+            this.scene._bossDefeatSoundPlayed = true;
             this.playBossDeathEffect(card.sprite);
         } else {
             this.playCardDisappearEffect(card.sprite);

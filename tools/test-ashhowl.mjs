@@ -92,22 +92,22 @@ try {
     const target = enemy(proc), other = enemy(proc, false);
     proc.cardSystem.boardCards = [target, other];
     const weapon = { type: 'weapon', sigils: [{ id: 'scorched' }] };
-    Math.random = () => 0.1;
+    Math.random = () => 0.25;
     assert.ok(!onWeaponSigilHit(proc, weapon, target, { damageDealt: 1 }).includes('scorched'));
-    Math.random = () => 0.099;
+    Math.random = () => 0.249;
     assert.ok(onWeaponSigilHit(proc, weapon, target, { damageDealt: 1 }).includes('scorched'));
-    assert.equal(other.data.burn, 3);
+    assert.equal(other.data.burn, 5);
     onWeaponSigilHit(proc, weapon, target, { damageDealt: 0 });
-    assert.equal(other.data.burn, 3, 'misses cannot trigger Scorched');
+    assert.equal(other.data.burn, 5, 'misses cannot trigger Fire Column');
     const legacyWeapon = { type: 'weapon', sigils: [{ id: 'tsunami' }] };
     assert.ok(onWeaponSigilHit(proc, legacyWeapon, target, { damageDealt: 1 }).includes('scorched'));
-    assert.equal(other.data.burn, 6);
+    assert.equal(other.data.burn, 10);
     const enchanted = { type: 'weapon', name: 'Sword' };
     applyEnchantToWeapon(enchanted, 'scorched');
-    assert.equal(getEnchantChance('scorched'), 0.1);
-    assert.match(describeWeaponEnchant(proc, enchanted), /10%/);
+    assert.equal(getEnchantChance('scorched'), 0.25);
+    assert.match(describeWeaponEnchant(proc, enchanted), /25%/);
     assert.ok(onWeaponSigilHit(proc, enchanted, target, { damageDealt: 1 }).includes('scorched'));
-    assert.equal(other.data.burn, 9, 'one enchant proc adds exactly 3');
+    assert.equal(other.data.burn, 15, 'one enchant proc adds exactly 5');
 
     // Real turn completion ticks hidden burn even without an attacker.
     const ticking = fixture();
@@ -179,7 +179,7 @@ for (const floor of [1, 16, 31]) {
     const spawning = fixture();
     spawning.gameState.actLocationIds = ['ashhowl', 'ashhowl', 'ashhowl'];
     const boss = spawning.cardSystem.cardDataGenerator.createBossCard(floor + 14, spawning.gameState);
-    assert.equal(boss.name, 'Cerberus');
+    assert.equal(boss.name, 'Cinder Hydra');
     assert.deepEqual(enemySigils(boss).map(sigil => sigil.id), ['scorched', 'summon']);
 }
 for (const id of ['cerberus', 'ancientCerberus']) {
@@ -217,12 +217,12 @@ procScene.cardSystem.boardCards = [attacker];
 const procController = new CombatTurnController(procScene);
 const burnRandom = Math.random;
 try {
-    Math.random = () => 0.1;
+    Math.random = () => 0.25;
     procController.processEnemyAttack(attacker, 0);
     assert.equal(procScene.gameState.playerEffects.length, 0);
-    Math.random = () => 0.099;
+    Math.random = () => 0.249;
     procController.processEnemyAttack(attacker, 0);
-    assert.equal(procScene.gameState.playerEffects[0].burn, 3);
+    assert.equal(procScene.gameState.playerEffects[0].burn, 5);
     procScene.gameState.playerEffects = [];
     procScene.gameState.boneWall = 1;
     procController.processEnemyAttack(attacker, 0);
@@ -238,8 +238,8 @@ try {
     fireAttack.cardSystem.boardCards = [enemy(fireAttack, true,
         { ...buildEnemyCardFromDef('cinderLizard', 1), attack: 5 })];
     fireAttack.runEnemyTurn();
-    assert.equal(fireAttack.gameState.playerHealth, 92, 'headless damaging hits proc and tick Scorched');
-    assert.equal(fireAttack.gameState.playerEffects[0].burn, 2);
+    assert.equal(fireAttack.gameState.playerHealth, 90, 'headless damaging hits proc and tick Fire Column');
+    assert.equal(fireAttack.gameState.playerEffects[0].burn, 4);
     const simBurn = fixture();
     addPlayerBurn(simBurn.gameState);
     simBurn._finishEnemyTurnEffects({ runCompanions: false });

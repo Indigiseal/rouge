@@ -1,4 +1,5 @@
 import { CombatSequencer } from './combat/CombatSequencer.js';
+import { recordHumanRunEvent } from './HumanRunRecorder.js';
 import { resolveTalentEffects } from '../content/talents/index.js';
 import { mergeVillageIntoTalentEffects } from '../content/village/index.js';
 import { DEFAULT_WARRIOR_STANCE } from '../content/characters/CharacterClasses.js';
@@ -232,7 +233,19 @@ export class GameState {
     }
 
     takeDamage(amount, enemyIndex = -1, source = 'enemy', armorPierce = 0, options = {}) {
-        return resolvePlayerDamage(this, amount, enemyIndex, source, armorPierce, options);
+        const healthBefore = this.playerHealth;
+        const result = resolvePlayerDamage(this, amount, enemyIndex, source, armorPierce, options);
+        if (amount > 0) {
+            recordHumanRunEvent(this.scene, 'player_damaged', {
+                amount, source, enemyIndex, armorPierce,
+                actual: result?.actualDamage ?? null,
+                blocked: result?.blockedDamage ?? null,
+                dodged: Boolean(result?.dodged),
+                revived: Boolean(result?.revived),
+                healthBefore, healthAfter: this.playerHealth,
+            }, { snapshot: false });
+        }
+        return result;
     }
 
     addPlayerEffect(effect) {

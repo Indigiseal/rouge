@@ -170,6 +170,7 @@ export const CardMergeRules = {
         if (text.includes('bow')) return 'bow';
         if (text.includes('sword')) return 'sword';
         if (text.includes('axe')) return 'axe';
+        if (text.includes('mace')) return 'mace';
 
         return card.sprite || card.name || '';
     },
@@ -181,6 +182,7 @@ export const CardMergeRules = {
         if (text.includes('leather')) return 'leather';
         if (text.includes('chain')) return 'chain';
         if (text.includes('plate')) return 'plate';
+        if (text.includes('padded')) return 'padded';
 
         return card.sprite || card.name || '';
     },
@@ -215,12 +217,12 @@ export const CardMergeRules = {
         // weapon path would rebuild it into an ordinary sword and lose it.
         // Rebuild from its own per-rarity table instead — same treatment thorns
         // already get below. This is what lets a mirror-duplicated pair climb.
+        // It then goes on through the carry-over below like any weapon: it used
+        // to return here, and a merged gauntlet lost its gems, its enchant and
+        // its briar thorn (Taya saw a gem vanish after a mirror copy).
         if (isGauntlet(baseCard) && isGauntlet(secondCard)) {
-            const upgraded = createGauntletCard(nextGauntletRarity(baseCard.rarity) || 'legendary');
-            return upgraded;
-        }
-
-        if (baseCard.type === 'weapon') {
+            upgradedCard = createGauntletCard(nextGauntletRarity(baseCard.rarity) || 'legendary');
+        } else if (baseCard.type === 'weapon') {
             upgradedCard = this.scene.cardSystem.createCardData('weapon', this.scene.gameState.currentFloor);
             // Override with specific weapon type and rarity
             upgradedCard = this.forceWeaponTypeAndRarity(upgradedCard, baseCard, newRarity);

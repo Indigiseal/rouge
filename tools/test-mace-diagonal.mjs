@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { maceDiagonalTargetIndices, createWeaponCardData } from '../src/content/cards/weapons.js';
+import { buildStartingWeaponCards } from '../src/content/characters/CharacterClasses.js';
+const board=Array.from({length:9},(_,i)=>({revealed:true,data:{type:'enemy',health:10,brick:{r:Math.floor(i/3),c:i%3}}}));
+board[0].data.type='eliteEnemy'; board[2].data.type='boss'; board[6].revealed=false;board[8].data.health=0;
+assert.deepEqual(maceDiagonalTargetIndices(board,4),[0,2]);
+board[6].revealed=true; board[8].data.health=10;
+assert.deepEqual(maceDiagonalTargetIndices(board,4),[0,2,6,8]);
+const original=board[4];board[4]={data:{type:'coin'}};
+assert.deepEqual(maceDiagonalTargetIndices(board,4,original),[0,2,6,8], 'primary killed and replaced');
+assert(!buildStartingWeaponCards('rogue').some(w=>w.weaponType==='mace'));
+assert.equal(createWeaponCardData('mace','common').special,'crush');
+console.log('Mace targets diagonal living revealed enemies and is not in the starting loadout.');

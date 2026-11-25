@@ -157,8 +157,7 @@ export function createSigilRoom(scene, sigilId) {
 
   // The heading's ribbon (packed with the other banners). Its band is rows 11-40 of the
   // image, so the title sits at y 26; the hint keeps its place just under it.
-  if (scene.textures.exists('sigilBanner')) scene.add.image(320, 0, 'sigilBanner').setOrigin(0.5, 0);
-  createTitle(scene, 320, scene.textures.exists('sigilBanner') ? 26 : 20, t(scene, 'ui.sigilRoom.title'), { color: '#c58cff', fallbackSize: '24px' });
+  createTitle(scene, 320, scene.textures.exists('sigilBanner') ? 26 : 20, t(scene, 'ui.sigilRoom.title'), { color: '#c58cff', bannerKey: 'sigilBanner', bannerY: 35.5 });
   scene.instructionText = scene.add.text(320, 46, t(scene, 'ui.sigilRoom.hint'), {
     fontSize: '14px', fill: '#fef0cf', fontFamily: '"HoMM Pixel"',
   }).setOrigin(0.5);
@@ -295,6 +294,25 @@ function stampCard(scene, room, slotIndex, cardData, cardSprite) {
 
   state.stamped = true;
   inv.clearDropZones?.();
+  // The sigil goes on the real card now, on the drop. It used to wait for the
+  // slam to finish, and leaving the room during the slam (about a second)
+  // stopped it, so the sigil was shown stamped and never added (Taya lost a
+  // Charged that way). The slam below is only the show.
+  addSigil(cardData, room.sigilId);
+  noteSigilTaken(scene.gameState, room.sigilId);
+  recordHumanRunEvent(scene, 'sigil_taken', {
+    source: 'sigil_room',
+    sigil: room.sigilId,
+    stamp: room.stamp.id,
+    card: snapshotHumanRunCard(cardData),
+  });
+  // Leaving before the card flies home: show the bag card again (it hides
+  // while its copy is on the slab) and draw it with its new sigil.
+  scene.events.once('shutdown', () => {
+    if (state.flownHome) return;
+    setBagCardAlpha(inv, slotIndex, 1);
+    inv.rebuildInventorySprites?.();
+  });
   // The real card goes home hidden; a copy of it lies on the slab.
   const dropX = cardSprite?.x ?? STAMP_X;
   const dropY = cardSprite?.y ?? SLAB_Y;
@@ -352,18 +370,12 @@ function stampCard(scene, room, slotIndex, cardData, cardSprite) {
   return true;
 }
 
-// The sigil goes on the real card, and the card flies home from the slab.
+// The slam is done: the card flies home from the slab. (The sigil itself went
+// on in stampCard, on the drop.)
 function finishStamp(scene, room, inv, slotIndex, cardData, copy) {
-  addSigil(cardData, room.sigilId);
-  noteSigilTaken(scene.gameState, room.sigilId);
+  scene.sigilRoom.flownHome = true;
   inv.rebuildInventorySprites?.();
   scene.gameScene?.updateUI?.();
-  recordHumanRunEvent(scene, 'sigil_taken', {
-    source: 'sigil_room',
-    sigil: room.sigilId,
-    stamp: room.stamp.id,
-    card: snapshotHumanRunCard(cardData),
-  });
   const fromX = copy?.x ?? STAMP_X;
   const fromY = copy?.y ?? SLAB_Y;
   copy?.destroy();

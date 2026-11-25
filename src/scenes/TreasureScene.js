@@ -15,13 +15,15 @@ import { createSelectionCorners } from '../ui/NineSlicePanel.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { playCardDissolve } from '../ui/CardDissolve.js';
 
-import { canOfferSigil, openSigilOffer, rollOfferableSigil } from '../ui/SigilOffer.js';
+import { canOfferSigil, rollOfferableSigil } from '../ui/SigilOffer.js';
 import { createSigilRoom } from './SigilRoom.js';
 import { lootRarity } from '../content/cards/legendaryStars.js';
 
 // The chest stands in the middle of the room and is opened by clicking it;
 // what it gives sits on top of it, with the take hint underneath.
 const CHEST_X = 320;
+// Centre to centre, for a choice of two reward cards (each 112 wide).
+const CHOICE_SPACING = 128;
 // Keep the chest, its loot and the take hint together.
 const CHEST_Y = 220;
 // Banner and title at the Rest/Anvil rooms' height; the hint starts under the
@@ -65,7 +67,14 @@ export class TreasureScene extends StationRoomBase {
 
     // A Sigil Room has a statue and a sigil instead of a chest (SigilRoom.js).
     // With no card in the bag that could take any sigil, it falls back to a
-    // good chest rather than an empty room.
+    // chest rather than an empty room: a good one, or a secret room's own.
+    // Which room this turned out to be: a secret room is a Sigil Room or a
+    // secret chest by a coin flip (MapViewScene).
+    recordHumanRunEvent(this, 'treasure_room_opened', {
+      rewardMode: this.rewardMode,
+      sigilFallbackMode: data.sigilFallbackMode || null,
+      requiresKey: this.requiresKey,
+    });
     if (this.rewardMode === 'sigil') {
       // A named sigil (the Crystal Lair's) only if a card can still take it.
       const sigilId = data.sigilId
@@ -75,7 +84,7 @@ export class TreasureScene extends StationRoomBase {
         createSigilRoom(this, sigilId);
         return;
       }
-      this.rewardMode = 'good';
+      this.rewardMode = data.sigilFallbackMode === 'secret' ? 'secret' : 'good';
     }
     this.createChestRoom();
   }
@@ -87,13 +96,13 @@ export class TreasureScene extends StationRoomBase {
     // inventory station underneath. The dungeon backdrop shows through instead.
     const title = this.rewardMode === 'elite' ? t(this, 'ui.treasure.eliteTitle') : t(this, 'ui.treasure.title');
     // (A secret room's chest reads as a treasure; what sets it apart is the
-    // sigil it also holds, offered once it opens.)
+    // better item inside.)
     // A hanging banner like the Rest and Anvil rooms' (same spot, same title style).
     // The village's brown banner stands in until a chest banner is drawn.
-    if (this.textures.exists(CHEST_BANNER_KEY)) this.add.image(320, BANNER_Y, CHEST_BANNER_KEY);
     createTitle(this, 320, BANNER_TITLE_Y, title, {
       color: '#fef0cf',
-      fallbackSize: '24px'
+      bannerKey: CHEST_BANNER_KEY,
+      bannerY: BANNER_Y,
     });
 
     // Under the banner, wrapped to the room: the locked-chest hint ran off both
@@ -111,7 +120,7 @@ export class TreasureScene extends StationRoomBase {
 
     // The map's upgraded chest node enters as 'good'; both richer chest
     // rooms use the elite art while keeping their own reward/key rules.
-    const roomChestTexture = ['elite', 'good'].includes(this.rewardMode) ? 'eliteChest' : 'treasureChest';
+    const roomChestTexture = ['elite', 'good', 'secret'].includes(this.rewardMode) ? 'eliteChest' : 'treasureChest';
     const chestTexture = this.textures.exists(roomChestTexture) ? roomChestTexture :
       (this.textures.exists('bigChestAnimation') ? 'bigChestAnimation' : 'cardBack');
     const chest = this.add.sprite(CHEST_X, CHEST_Y, chestTexture, 0).setInteractive({ useHandCursor: true });
@@ -224,32 +233,24 @@ export class TreasureScene extends StationRoomBase {
     this.gameState.coins += reward.coins;
     this.gameState.crystals += reward.crystals;
 
-    const item = this.createRewardItem(reward.rarity);
     this.playLootScatter(chest.x, chest.y, reward.coins, reward.crystals);
 
-
-    // Present the item as a takeable card instead of force-inserting it. The
-    // player can free a slot in the station inventory first if the bag is full.
-    this.presentLoot(item);
+    // A secret chest holds a weapon and an armor and the player takes one, the
+    // way the dead man's camp lets you take his sword or his armor (Taya).
+    // Never a spell: those felt plain for a secret room.
+    if (this.rewardMode === 'secret') {
+      this.presentLootChoice([
+        this.createRewardItem(reward.rarity, 'weapon'),
+        this.createRewardItem(reward.rarity, 'armor'),
+      ].filter(Boolean));
+    } else {
+      // Present the item as a takeable card instead of force-inserting it. The
+      // player can free a slot in the station inventory first if the bag is full.
+      this.presentLoot(this.createRewardItem(reward.rarity));
+    }
 
     this.gameScene?.updateUI?.();
     this.darkenOpenedChest(chest);
-
-    // Sigils now come from Sigil Rooms, not chests. Only a run saved before
-    // that change can still reach a 'secret' chest, which keeps its sigil.
-    if (this.rewardMode === 'secret') this.time.delayedCall(450, () => this.offerChestSigil());
-  }
-
-  offerChestSigil() {
-    const sigilId = rollOfferableSigil(this.gameScene);
-    if (!sigilId) return;
-    openSigilOffer(this, this.gameScene, sigilId, (card) => {
-      recordHumanRunEvent(this, 'sigil_taken', {
-        source: this.rewardMode === 'secret' ? 'secret_room' : 'elite_chest',
-        sigil: sigilId,
-        card: card ? snapshotHumanRunCard(card) : null,
-      });
-    });
   }
 
   // Reward values bumped — they now scale with floor depth so deeper chests feel meaningful.
@@ -265,11 +266,13 @@ export class TreasureScene extends StationRoomBase {
         crystals: 1 + Math.floor(floor / 14),
         rarity: gen.capRewardRarity('uncommon', floor)
       },
-      // A secret room's chest: as rich as a good chest, no key, plus a sigil.
+      // A secret room's chest: no key, and one rarity above what a good chest
+      // may give this act (rare in act 1, epic after). Its sigil is gone: the
+      // other half of secret rooms are Sigil Rooms instead (MapViewScene).
       secret: {
-        coins: 12 + Math.floor(floor / 2),
-        crystals: 1 + Math.floor(floor / 12),
-        rarity: gen.capRewardRarity(floor >= 38 ? 'epic' : 'rare', floor)
+        coins: 16 + Math.floor(floor / 2),
+        crystals: 2 + Math.floor(floor / 12),
+        rarity: this.upgradeRarity(gen.capRewardRarity(floor >= 38 ? 'epic' : 'rare', floor))
       },
       good: {
         coins: 12 + Math.floor(floor / 2),
@@ -301,6 +304,12 @@ export class TreasureScene extends StationRoomBase {
     };
   }
 
+  upgradeRarity(rarity) {
+    const order = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const idx = order.indexOf(rarity);
+    return idx < 0 ? rarity : order[Math.min(order.length - 1, idx + 1)];
+  }
+
   downgradeRarity(rarity) {
     const order = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
     const idx = order.indexOf(rarity);
@@ -308,10 +317,11 @@ export class TreasureScene extends StationRoomBase {
     return order[idx - 1];
   }
 
-  createRewardItem(rarity) {
+  // `forcedType` ('weapon' / 'armor') skips the roll for what kind of item.
+  createRewardItem(rarity, forcedType = null) {
     const gen = new CardDataGenerator();
     const roll = Math.random();
-    const type = roll < 0.45 ? 'weapon' : roll < 0.85 ? 'armor' : 'magic';
+    const type = forcedType || (roll < 0.45 ? 'weapon' : roll < 0.85 ? 'armor' : 'magic');
     // A chest never holds Legendary gear: that only comes from merging.
     if (type !== 'magic') rarity = lootRarity(rarity);
     let item = gen.createCardData(type, this.gameState.currentFloor, false, this.gameState, rarity);
@@ -348,8 +358,43 @@ export class TreasureScene extends StationRoomBase {
   presentLoot(item) {
     this.pendingLoot = item;
     this.showRewardCard(item);
+    this.addTakeHint('ui.treasure.takeHint');
+  }
 
-    this.takeHint = this.add.text(CHEST_X, UNDER_CHEST_Y, t(this, 'ui.treasure.takeHint'), {
+  // Two cards side by side where the chest stood; taking one shuts the other
+  // away. pendingLoot is the first, so leaving with neither still records it.
+  presentLootChoice(items) {
+    if (items.length < 2) {
+      if (items[0]) this.presentLoot(items[0]);
+      return;
+    }
+    this.lootChoice = items;
+    this.pendingLoot = items[0];
+    // Both cards on offer; treasure_collected then says which one was taken.
+    recordHumanRunEvent(this, 'treasure_offered', {
+      source: this.rewardMode,
+      items: items.map((item) => snapshotHumanRunCard(item)),
+    });
+    items.forEach((item, i) => {
+      const x = CHEST_X + (i - (items.length - 1) / 2) * CHOICE_SPACING;
+      this.showRewardCard(item, x, () => {
+        this.pendingLoot = item;
+        this.takeLoot();
+      });
+    });
+    this.addTakeHint('ui.treasure.chooseHint');
+  }
+
+  // The hint replaces the room's "Open your reward chest" line under the
+  // banner, which no longer applies once it is open. Under the chest it sat
+  // on the bag's top row: the reward cards are taller than the chest.
+  addTakeHint(key) {
+    if (this.instructionText?.scene) {
+      this.instructionText.setText(t(this, key));
+      this.takeHint = this.instructionText;
+      return;
+    }
+    this.takeHint = this.add.text(CHEST_X, UNDER_CHEST_Y, t(this, key), {
       fontSize: '11px',
       fill: '#f2d3aa',
       fontFamily: '"HoMM Pixel"',
@@ -390,15 +435,18 @@ export class TreasureScene extends StationRoomBase {
     this.pendingLoot = null;
     SoundHelper.playSound(this, bagArrivalSoundKey(this, item, 'shop_buy'), 0.5);
 
-    if (this.rewardCardContainer) {
+    // Every card goes: the taken one and, from a choice, the one left behind.
+    (this.rewardCardContainers || []).forEach((container) => {
+      container.list?.[0]?.disableInteractive?.();
       this.tweens.add({
-        targets: this.rewardCardContainer,
+        targets: container,
         alpha: 0,
         scale: 0.6,
         duration: 200,
-        onComplete: () => { this.rewardCardContainer?.destroy(true); this.rewardCardContainer = null; }
+        onComplete: () => container.destroy(true),
       });
-    }
+    });
+    this.rewardCardContainers = [];
     this.takeHint?.setText('');
     this.hideItemTooltip();
     this.refreshStationInventoryDisplay();
@@ -422,13 +470,10 @@ export class TreasureScene extends StationRoomBase {
   // getRarityColor / playLootScatter / scatterLootSprite / createItemSprite all
   // inherited from StationRoomBase.
 
-  showRewardCard(item) {
-    if (this.rewardCardContainer) {
-      this.rewardCardContainer.destroy(true);
-    }
-
-    // Where the chest stood.
-    const x = CHEST_X;
+  // Where the chest stood, or at `x` for one of a choice. `onTake` is what a
+  // click does (default: take the pending loot).
+  showRewardCard(item, x = CHEST_X, onTake = () => this.takeLoot()) {
+    if (!this.rewardCardContainers) this.rewardCardContainers = [];
     const y = CHEST_Y;
     const bg = this.add.rectangle(0, 0, 112, 132, 0x1c130a, 0.95)
       .setStrokeStyle(2, this.getRarityColor(item.rarity));
@@ -448,11 +493,12 @@ export class TreasureScene extends StationRoomBase {
       align: 'center'
     }).setOrigin(0.5);
 
-    this.rewardCardContainer = this.add.container(x, y, [bg, sprite, name, stats])
+    const container = this.add.container(x, y, [bg, sprite, name, stats])
       .setDepth((this.chest?.depth || 0) + 5);
-    this.rewardCardContainer.setScale(0.7).setAlpha(0);
+    this.rewardCardContainers.push(container);
+    container.setScale(0.7).setAlpha(0);
     this.tweens.add({
-      targets: this.rewardCardContainer,
+      targets: container,
       scale: 1,
       alpha: 1,
       y: y - 8,
@@ -464,7 +510,7 @@ export class TreasureScene extends StationRoomBase {
     bg.setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => this.showItemTooltip(item, x, y - 8));
     bg.on('pointerout', () => this.hideItemTooltip());
-    bg.on('pointerdown', () => this.takeLoot());
+    bg.on('pointerdown', onTake);
   }
 
   // Takes the key out of the bag. keyIndex is a slot in the bag on screen

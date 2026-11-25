@@ -31,6 +31,8 @@ export {
   armorSpawnMinFloor,
   isArmorSpawnableAtFloor,
   createArmorCardData,
+  ARMOR_TYPE_WEIGHT_BANDS,
+  armorTypeWeight,
 } from './armor.js';
 export { TRAPS } from './traps.js';
 export { POTIONS, potionCardForTier, potionNameForHealAmount, shopPotionCards } from './potions.js';

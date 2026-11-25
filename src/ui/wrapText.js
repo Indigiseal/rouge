@@ -1,5 +1,7 @@
 // Canvas word wrapping with a grapheme fallback for CJK and long words.
 // Combining accents and joined characters never get split between lines.
+const NO_LINE_START = new Set([...'，。、！？：；）」』》〉】…—％,.!?:;)%']);
+
 export function wrapUiText(text, object) {
     const width = object.style.wordWrapWidth;
     if (!width) return text;
@@ -16,7 +18,9 @@ export function wrapUiText(text, object) {
             if (!word.trim()) continue;
             if (context.measureText(word).width <= width) { line = word; continue; }
             for (const glyph of graphemes(word)) {
-                if (line && context.measureText(line + glyph).width > width) { lines.push(line); line = ''; }
+                // Chinese and Japanese never start a line with closing punctuation:
+                // "，" or "。" stays on the line it ends, even a hair over the width.
+                if (line && !NO_LINE_START.has(glyph) && context.measureText(line + glyph).width > width) { lines.push(line); line = ''; }
                 line += glyph;
             }
         }

@@ -1,0 +1,3021 @@
+{
+  "schemaVersion": 1,
+  "source": "simulator-summary",
+  "playerDamageByFloor": [
+    {
+      "floor": 1,
+      "all": {
+        "actions": 1220,
+        "mean": 5.7,
+        "median": 6,
+        "p10": 1,
+        "p90": 8,
+        "primary": 5.7,
+        "hidden": 0,
+        "targets": 0.9680327868852459,
+        "preparedMainHit": 8.302459016393442
+      },
+      "plain": {
+        "actions": 1220,
+        "mean": 5.7,
+        "median": 6,
+        "p10": 1,
+        "p90": 8,
+        "primary": 5.7,
+        "hidden": 0,
+        "targets": 0.9680327868852459,
+        "preparedMainHit": 8.302459016393442
+      },
+      "gemmed": null,
+      "byGem": {
+        "fire": null,
+        "lightning": null,
+        "poison": null
+      }
+    },
+    {
+      "floor": 2,
+      "all": {
+        "actions": 349,
+        "mean": 5.948424068767908,
+        "median": 6,
+        "p10": 3,
+        "p90": 8,
+        "primary": 5.948424068767908,
+        "hidden": 0,
+        "targets": 0.9770773638968482,
+        "preparedMainHit": 8.458452722063038
+      },
+      "plain": {
+        "actions": 349,
+        "mean": 5.948424068767908,
+        "median": 6,
+        "p10": 3,
+        "p90": 8,
+        "primary": 5.948424068767908,
+        "hidden": 0,
+        "targets": 0.9770773638968482,
+        "preparedMainHit": 8.458452722063038
+      },
+      "gemmed": null,
+      "byGem": {
+        "fire": null,
+        "lightning": null,
+        "poison": null
+      }
+    },
+    {
+      "floor": 3,
+      "all": {
+        "actions": 494,
+        "mean": 6.291497975708502,
+        "median": 6,
+        "p10": 3,
+        "p90": 10,
+        "primary": 6.2854251012145745,
+        "hidden": 0,
+        "targets": 0.97165991902834,
+        "preparedMainHit": 8.700404858299596
+      },
+      "plain": {
+        "actions": 493,
+        "mean": 6.288032454361055,
+        "median": 6,
+        "p10": 3,
+        "p90": 10,
+        "primary": 6.281947261663286,
+        "hidden": 0,
+        "targets": 0.9716024340770791,
+        "preparedMainHit": 8.697768762677486
+      },
+      "gemmed": {
+        "actions": 1,
+        "mean": 8,
+        "median": 8,
+        "p10": 8,
+        "p90": 8,
+        "primary": 8,
+        "hidden": 0,
+        "targets": 1,
+        "preparedMainHit": 10
+      },
+      "byGem": {
+        "fire": null,
+        "lightning": null,
+        "poison": {
+          "actions": 1,
+          "mean": 8,
+          "median": 8,
+          "p10": 8,
+          "p90": 8,
+          "primary": 8,
+          "hidden": 0,
+          "targets": 1,
+          "preparedMainHit": 10
+        }
+      }
+    },
+    {
+      "floor": 4,
+      "all": {
+        "actions": 747,
+        "mean": 6.514056224899599,
+        "median": 6,
+        "p10": 3,
+        "p90": 10,
+        "primary": 6.50334672021419,
+        "hidden": 0,
+        "targets": 0.9825970548862115,
+        "preparedMainHit": 8.764390896921018
+      },
+      "plain": {
+        "actions": 745,
+        "mean": 6.510067114093959,
+        "median": 6,
+        "p10": 3,
+        "p90": 10,
+        "primary": 6.503355704697986,
+        "hidden": 0,
+        "targets": 0.9812080536912752,
+        "preparedMainHit": 8.76241610738255
+      },
+      "gemmed": {
+        "actions": 2,
+        "mean": 8,
+        "median": 10,
+        "p10": 6,
+        "p90": 6,
+        "primary": 6.5,
+        "hidden": 0,
+        "targets": 1.5,
+        "preparedMainHit": 9.5
+      },
+      "byGem": {
+        "fire": null,
+        "lightning": {
+          "actions": 2,
+          "mean": 8,
+          "median": 10,
+          "p10": 6,
+          "p90": 6,
+          "primary": 6.5,
+          "hidden": 0,
+          "targets": 1.5,
+          "preparedMainHit": 9.5
+        },
+        "poison": null
+      }
+    },
+    {
+      "floor": 5,
+      "all": {
+        "actions": 944,
+        "mean": 7.685381355932203,
+        "median": 8,
+        "p10": 3,
+        "p90": 12,
+        "primary": 7.651483050847458,
+        "hidden": 0.006355932203389831,
+        "targets": 0.9819915254237288,
+        "preparedMainHit": 9.106991525423728
+      },
+      "plain": {
+        "actions": 943,
+        "mean": 7.686108165429481,
+        "median": 8,
+        "p10": 3,
+        "p90": 12,
+        "primary": 7.6521739130434785,
+        "hidden": 0.006362672322375398,
+        "targets": 0.9819724284199364,
+        "preparedMainHit": 9.104984093319194
+      },
+      "gemmed": {
+        "actions": 1,
+        "mean": 7,
+        "median": 7,
+        "p10": 7,
+        "p90": 7,
+        "primary": 7,
+        "hidden": 0,
+        "targets": 1,
+        "preparedMainHit": 11
+      },
+      "byGem": {
+        "fire": null,
+        "lightning": {
+          "actions": 1,
+          "mean": 7,
+          "median": 7,
+          "p10": 7,
+          "p90": 7,
+          "primary": 7,
+          "hidden": 0,
+          "targets": 1,
+          "preparedMainHit": 11
+        },
+        "poison": null
+      }
+    },
+    {
+      "floor": 6,
+      "all": {
+        "actions": 1058,
+        "mean": 7.560491493383743,
+        "median": 7,
+        "p10": 3,
+        "p90": 11,
+        "primary": 7.551039697542533,
+        "hidden": 0,
+        "targets": 0.9839319470699432,
+        "preparedMainHit": 9.156899810964083
+      },
+      "plain": {
+        "actions": 1052,
+        "mean": 7.557984790874524,
+        "median": 7,
+        "p10": 3,
+        "p90": 11,
+        "primary": 7.554182509505703,
+        "hidden": 0,
+        "targets": 0.9828897338403042,
+        "preparedMainHit": 9.14638783269962
+      },
+      "gemmed": {
+        "actions": 6,
+        "mean": 8,
+        "median": 9,
+        "p10": 0,
+        "p90": 10,
+        "primary": 7,
+        "hidden": 0,
+        "targets": 1.1666666666666667,
+        "preparedMainHit": 11
+      },
+      "byGem": {
+        "fire": null,
+        "lightning": {
+          "actions": 3,
+          "mean": 7.333333333333333,
+          "median": 10,
+          "p10": 0,
+          "p90": 10,
+          "primary": 5.333333333333333,
+          "hidden": 0,
+          "targets": 1.3333333333333333,
+          "preparedMainHit": 11
+        },
+        "poison": {
+          "actions": 3,
+          "mean": 8.666666666666666,
+          "median": 9,
+          "p10": 8,
+          "p90": 9,
+          "primary": 8.666666666666666,
+          "hidden": 0,
+          "targets": 1,
+          "preparedMainHit": 11
+        }
+      }
+    },
+    {
+      "floor": 7,
+      "all": {
+        "actions": 686,
+        "mean": 7.686588921282799,
+        "median": 7,
+        "p10": 3,
+        "p90": 13,
+        "primary": 7.673469387755102,
+        "hidden": 0,
+        "targets": 0.978134110787172,
+        "preparedMainHit": 9.294460641399416
+      },
+      "plain": {
+        "actions": 683,
+        "mean": 7.67203513909224,
+        "median": 7,
+        "p10": 3,
+        "p90": 13,
+        "primary": 7.67203513909224,
+        "hidden": 0,
+        "targets": 0.9736456808199122,
+        "preparedMainHit": 9.291361639824304
+      },
+      "gemmed": {
+        "actions": 3,
+        "mean": 11,
+        "median": 13,
+        "p10": 7,
+        "p90": 13,
+        "primary": 8,
+        "hidden": 0,
+        "targets": 2,
+        "preparedMainHit": 10
+      },
+      "byGem": {
+        "fire": {
+          "actions": 1,
+          "mean": 13,
+          "median": 13,
+          "p10": 13,
+          "p90": 13,
+          "primary": 13,
+          "hidden": 0,
+          "targets": 1,
+          "preparedMainHit": 10
+        },
+        "lightning": {
+          "actions": 2,
+          "mean": 10,
+          "median": 13,
+          "p10": 7,
+          "p90": 7,
+          "primary": 5.5,
+          "hidden": 0,
+          "targets": 2.5,
+          "preparedMainHit": 10
+        },
+        "poison": null
+      }
+    },
+    {
+      "floor": 8,
+      "all": {
+        "actions": 872,
+        "mean": 8.19151376146789,
+        "median": 8,
+        "p10": 4,
+        "p90": 13,
+        "primary": 8.17545871559633,
+        "hidden": 0,
+        "targets": 0.9827981651376146,
+        "preparedMainHit": 9.396788990825687
+      },
+      "plain": {
+        "actions": 864,
+        "mean": 8.166666666666666,
+        "median": 8,
+        "p10": 4,
+        "p90": 13,
+        "primary": 8.158564814814815,
+        "hidden": 0,
+        "targets": 0.9803240740740741,
+        "preparedMainHit": 9.39699074074074
+      },
+      "gemmed": {
+        "actions": 8,
+        "mean": 10.875,
+        "median": 11,
+        "p10": 8,
+        "p90": 13,
+        "primary": 10,
+        "hidden": 0,
+        "targets": 1.25,
+        "preparedMainHit": 9.375
+      },
+      "byGem": {
+        "fire": {
+          "actions": 2,
+          "mean": 11.5,
+          "median": 13,
+          "p10": 10,
+          "p90": 10,
+          "primary": 10,
+          "hidden": 0,
+          "targets": 1.5,
+          "preparedMainHit": 9
+        },
+        "lightning": {
+          "actions": 2,
+          "mean": 12,
+          "median": 13,
+          "p10": 11,
+          "p90": 11,
+          "primary": 10,
+          "hidden": 0,
+          "targets": 1.5,
+          "preparedMainHit": 10.5
+        },
+        "poison": {
+          "actions": 4,
+          "mean": 10,
+          "median": 11,
+          "p10": 8,
+          "p90": 11,
+          "primary": 10,
+          "hidden": 0,
+          "targets": 1,
+          "preparedMainHit": 9
+        }
+      }
+    },
+    {
+      "floor": 9,
+      "all": {
+        "actions": 976,
+        "mean": 8.227459016393443,
+        "median": 8,
+        "p10": 4,
+        "p90": 13,
+        "primary": 8.176229508196721,
+        "hidden": 0.0030737704918032786,
+        "targets": 0.9938524590163934,
+        "preparedMainHit": 9.433401639344263
+      },
+      "plain": {
+        "actions": 958,
+        "mean": 8.17223382045929,
+        "median": 8,
+        "p10": 4,
+        "p90": 13,
+        "primary": 8.17223382045929,
+        "hidden": 0,
+        "targets": 0.9791231732776617,
+        "preparedMainHit": 9.420668058455115
+      },
+      "gemmed": {
+        "actions": 18,
+        "mean": 11.166666666666666,
+        "median": 12,
+        "p10": 6,
+        "p90": 16,
+        "primary": 8.38888888888889,
+        "hidden": 0.16666666666666666,
+        "targets": 1.7777777777777777,
+        "preparedMainHit": 10.11111111111111
+      },
+      "byGem": {
+        "fire": {
+          "actions": 4,
+          "mean": 11.75,
+          "median": 13,
+          "p10": 8,
+          "p90": 13,
+          "primary": 11,
+          "hidden": 0.75,
+          "targets": 1.25,
+          "preparedMainHit": 9.75
+        },
+        "lightning": {
+          "actions": 11,
+          "mean": 12.545454545454545,
+          "median": 12,
+          "p10": 9,
+          "p90": 18,
+          "primary": 8.272727272727273,
+          "hidden": 0,
+          "targets": 2.272727272727273,
+          "preparedMainHit": 10
+        },
+        "poison": {
+          "actions": 3,
+          "mean": 5.333333333333333,
+          "median": 6,
+          "p10": 0,
+          "p90": 6,
+          "primary": 5.333333333333333,
+          "hidden": 0,
+          "targets": 0.6666666666666666,
+          "preparedMainHit": 11
+        }
+      }
+    },
+    {
+      "floor": 10,
+      "all": {
+        "actions": 1066,
+        "mean": 9.321763602251407,
+        "median": 9,
+        "p10": 3,
+        "p90": 15,
+        "primary": 9.24953095684803,
+        "hidden": 0,
+        "targets": 0.9915572232645403,
+        "preparedMainHit": 9.507504690431519
+      },
+      "plain": {
+        "actions": 1044,
+        "mean": 9.259578544061302,
+        "median": 9,
+        "p10": 3,
+        "p90": 15,
+        "primary": 9.240421455938698,
+        "hidden": 0,
+        "targets": 0.9770114942528736,
+        "preparedMainHit": 9.486590038314176
+      },
+      "gemmed": {
+        "actions": 22,
+        "mean": 12.272727272727273,
+        "median": 13,
+        "p10": 9,
+        "p90": 15,
+        "primary": 9.681818181818182,
+        "hidden": 0,
+        "targets": 1.6818181818181819,
+        "preparedMainHit": 10.5
+      },
+      "byGem": {
+        "fire": {
+          "actions": 5,
+          "mean": 12.6,
+          "median": 12,
+          "p10": 9,
+          "p90": 13,
+          "primary": 8.8,
+          "hidden": 0,
+          "targets": 2,
+          "preparedMainHit": 10
+        },
+        "lightning": {
+          "actions": 11,
+          "mean": 13.181818181818182,
+          "median": 14,
+          "p10": 9,
+          "p90": 21,
+          "primary": 9.727272727272727,
+          "hidden": 0,
+          "targets": 1.9090909090909092,
+          "preparedMainHit": 11.090909090909092
+        },
+        "poison": {
+          "actions": 6,
+          "mean": 10.333333333333334,
+          "median": 12,
+          "p10": 3,
+          "p90": 14,
+          "primary": 10.333333333333334,
+          "hidden": 0,
+          "targets": 1,
+          "preparedMainHit": 9.833333333333334
+        }
+      }
+    },
+    {
+      "floor": 11,
+      "all": {
+        "actions": 1116,
+        "mean": 9.557347670250897,
+        "median": 9,
+        "p10": 4,
+        "p90": 15,
+        "primary": 9.513440860215054,
+        "hidden": 0.002688172043010753,
+        "targets": 0.9955197132616488,
+        "preparedMainHit": 9.612007168458781
+      },
+      "plain": {
+        "actions": 1088,
+        "mean": 9.467830882352942,
+        "median": 9,
+        "p10": 4,
+        "p90": 15,
+        "primary": 9.456801470588236,
+        "hidden": 0,
+        "targets": 0.9862132352941176,
+        "preparedMainHit": 9.601102941176471
+      },
+      "gemmed": {
+        "actions": 28,
+        "mean": 13.035714285714286,
+        "median": 12,
+        "p10": 9,
+        "p90": 16,
+        "primary": 11.714285714285714,
+        "hidden": 0.10714285714285714,
+        "targets": 1.3571428571428572,
+        "preparedMainHit": 10.035714285714286
+      },
+      "byGem": {
+        "fire": {
+          "actions": 6,
+          "mean": 13.666666666666666,
+          "median": 15,
+          "p10": 9,
+          "p90": 15,
+          "primary": 12.166666666666666,
+          "hidden": 0.5,
+          "targets": 1.5,
+          "preparedMainHit": 10
+        },
+        "lightning": {
+          "actions": 7,
+          "mean": 15.285714285714286,
+          "median": 15,
+          "p10": 11,
+          "p90": 20,
+          "primary": 11.285714285714286,
+          "hidden": 0,
+          "targets": 2,
+          "preparedMainHit": 10.714285714285714
+        },
+        "poison": {
+          "actions": 15,
+          "mean": 11.733333333333333,
+          "median": 12,
+          "p10": 9,
+          "p90": 12,
+          "primary": 11.733333333333333,
+          "hidden": 0,
+          "targets": 1,
+          "preparedMainHit": 9.733333333333333
+        }
+      }
+    },
+    {
+      "floor": 12,
+      "all": {
+        "actions": 1100,
+        "mean": 9.614545454545455,
+        "median": 9,
+        "p10": 4,
+        "p90": 15,
+        "primary": 9.518181818181818,
+        "hidden": 0.01090909090909091,
+        "targets": 1.0081818181818183,
+        "preparedMainHit": 9.649090909090908
+      },
+      "plain": {
+        "actions": 1054,
+        "mean": 9.472485768500949,
+        "median": 9,
+        "p10": 4,
+        "p90": 15,
+        "primary": 9.464895635673624,
+        "hidden": 0,
+        "targets": 0.9838709677419355,
+        "preparedMainHit": 9.624288425047439
+      },
+      "gemmed": {
+        "actions": 46,
+        "mean": 12.869565217391305,
+        "median": 12,
+        "p10": 9,
+        "p90": 17,
+        "primary": 10.73913043478261,
+        "hidden": 0.2608695652173913,
+        "targets": 1.565217391304348,
+        "preparedMainHit": 10.217391304347826
+      },
+      "byGem": {
+        "fire": {
+          "actions": 15,
+          "mean": 12.4,
+          "median": 11,
+          "p10": 9,
+          "p90": 15,
+          "primary": 10.266666666666667,
+          "hidden": 0.8,
+          "targets": 1.7333333333333334,
+          "preparedMainHit": 9.933333333333334
+        },
+        "lightning": {
+          "actions": 20,
+          "mean": 13.5,
+          "median": 14,
+          "p10": 8,
+          "p90": 17,
+          "primary": 10.7,
+          "hidden": 0,
+          "targets": 1.7,
+          "preparedMainHit": 10.4
+        },
+        "poison": {
+          "actions": 11,
+          "mean": 12.363636363636363,
+          "median": 11,
+          "p10": 9,
+          "p90": 15,
+          "primary": 11.454545454545455,
+          "hidden": 0,
+          "targets": 1.0909090909090908,
+          "preparedMainHit": 10.272727272727273
+        }
+      }
+    },
+    {
+      "floor": 13,
+      "all": {
+        "actions": 708,
+        "mean": 10.32768361581921,
+        "median": 10,
+        "p10": 3,
+        "p90": 17,
+        "primary": 10.163841807909604,
+        "hidden": 0.012711864406779662,
+        "targets": 1.0324858757062148,
+        "preparedMainHit": 9.919491525423728
+      },
+      "plain": {
+        "actions": 654,
+        "mean": 10.02446483180428,
+        "median": 10,
+        "p10": 2,
+        "p90": 17,
+        "primary": 10.004587155963304,
+        "hidden": 0,
+        "targets": 0.9862385321100917,
+        "preparedMainHit": 9.859327217125383
+      },
+      "gemmed": {
+        "actions": 54,
+        "mean": 14,
+        "median": 13,
+        "p10": 10,
+        "p90": 19,
+        "primary": 12.092592592592593,
+        "hidden": 0.16666666666666666,
+        "targets": 1.5925925925925926,
+        "preparedMainHit": 10.648148148148149
+      },
+      "byGem": {
+        "fire": {
+          "actions": 13,
+          "mean": 15.923076923076923,
+          "median": 16,
+          "p10": 12,
+          "p90": 19,
+          "primary": 12.923076923076923,
+          "hidden": 0.6923076923076923,
+          "targets": 2,
+          "preparedMainHit": 10.615384615384615
+        },
+        "lightning": {
+          "actions": 18,
+          "mean": 15.166666666666666,
+          "median": 16,
+          "p10": 10,
+          "p90": 20,
+          "primary": 11.61111111111111,
+          "hidden": 0,
+          "targets": 2.0555555555555554,
+          "preparedMainHit": 10.833333333333334
+        },
+        "poison": {
+          "actions": 23,
+          "mean": 12,
+          "median": 11,
+          "p10": 10,
+          "p90": 15,
+          "primary": 12,
+          "hidden": 0,
+          "targets": 1,
+          "preparedMainHit": 10.521739130434783
+        }
+      }
+    },
+    {
+      "floor": 14,
+      "all": {
+        "actions": 761,
+        "mean": 10.211563731931669,
+        "median": 10,
+        "p10": 2,
+        "p90": 17,
+        "primary": 9.992115637319317,
+        "hidden": 0.024967148488830485,
+        "targets": 1.028909329829172,
+        "preparedMainHit": 10.006570302233904
+      },
+      "plain": {
+        "actions": 702,
+        "mean": 9.91168091168091,
+        "median": 10,
+        "p10": 2,
+        "p90": 17,
+        "primary": 9.88888888888889,
+        "hidden": 0,
+        "targets": 0.9772079772079773,
+        "preparedMainHit": 9.965811965811966
+      },
+      "gemmed": {
+        "actions": 59,
+        "mean": 13.779661016949152,
+        "median": 14,
+        "p10": 9,
+        "p90": 20,
+        "primary": 11.220338983050848,
+        "hidden": 0.3220338983050847,
+        "targets": 1.6440677966101696,
+        "preparedMainHit": 10.491525423728813
+      },
+      "byGem": {
+        "fire": {
+          "actions": 11,
+          "mean": 14.272727272727273,
+          "median": 14,
+          "p10": 10,
+          "p90": 20,
+          "primary": 11.363636363636363,
+          "hidden": 1.7272727272727273,
+          "targets": 1.9090909090909092,
+          "preparedMainHit": 10.363636363636363
+        },
+        "lightning": {
+          "actions": 29,
+          "mean": 14.275862068965518,
+          "median": 14,
+          "p10": 7,
+          "p90": 21,
+          "primary": 10.517241379310345,
+          "hidden": 0,
+          "targets": 1.9310344827586208,
+          "preparedMainHit": 10.793103448275861
+        },
+        "poison": {
+          "actions": 19,
+          "mean": 12.736842105263158,
+          "median": 11,
+          "p10": 9,
+          "p90": 18,
+          "primary": 12.210526315789474,
+          "hidden": 0,
+          "targets": 1.0526315789473684,
+          "preparedMainHit": 10.105263157894736
+        }
+      }
+    },
+    {
+      "floor": 15,
+      "all": {
+        "actions": 4244,
+        "mean": 11.455466540999058,
+        "median": 10,
+        "p10": 5,
+        "p90": 19,
+        "primary": 11.348727615457117,
+        "hidden": 0,
+        "targets": 0.9863336475023563,
+        "preparedMainHit": 9.941800188501414
+      },
+      "plain": {
+        "actions": 3707,
+        "mean": 11.257350957647693,
+        "median": 10,
+        "p10": 4,
+        "p90": 19,
+        "primary": 11.25411383868357,
+        "hidden": 0,
+        "targets": 0.9525222551928784,
+        "preparedMainHit": 9.812786619908282
+      },
+      "gemmed": {
+        "actions": 537,
+        "mean": 12.823091247672254,
+        "median": 13,
+        "p10": 7,
+        "p90": 19,
+        "primary": 12.001862197392924,
+        "hidden": 0,
+        "targets": 1.2197392923649908,
+        "preparedMainHit": 10.832402234636872
+      },
+      "byGem": {
+        "fire": {
+          "actions": 157,
+          "mean": 13.668789808917197,
+          "median": 14,
+          "p10": 9,
+          "p90": 19,
+          "primary": 13.414012738853502,
+          "hidden": 0,
+          "targets": 1.0318471337579618,
+          "preparedMainHit": 11.0828025477707
+        },
+        "lightning": {
+          "actions": 198,
+          "mean": 14.55050505050505,
+          "median": 15,
+          "p10": 9,
+          "p90": 20,
+          "primary": 12.525252525252526,
+          "hidden": 0,
+          "targets": 1.621212121212121,
+          "preparedMainHit": 10.752525252525253
+        },
+        "poison": {
+          "actions": 182,
+          "mean": 10.214285714285714,
+          "median": 10,
+          "p10": 6,
+          "p90": 15,
+          "primary": 10.214285714285714,
+          "hidden": 0,
+          "targets": 0.945054945054945,
+          "preparedMainHit": 10.703296703296703
+        }
+      }
+    },
+    {
+      "floor": 17,
+      "all": {
+        "actions": 712,
+        "mean": 10.710674157303371,
+        "median": 11,
+        "p10": 2,
+        "p90": 20,
+        "primary": 9.228932584269662,
+        "hidden": 0.0898876404494382,
+        "targets": 1.2949438202247192,
+        "preparedMainHit": 10.178370786516854
+      },
+      "plain": {
+        "actions": 415,
+        "mean": 7.715662650602409,
+        "median": 8,
+        "p10": 1,
+        "p90": 15,
+        "primary": 7.272289156626506,
+        "hidden": 0.007228915662650603,
+        "targets": 1.0289156626506024,
+        "preparedMainHit": 9.966265060240964
+      },
+      "gemmed": {
+        "actions": 297,
+        "mean": 14.895622895622896,
+        "median": 14,
+        "p10": 9,
+        "p90": 22,
+        "primary": 11.962962962962964,
+        "hidden": 0.2053872053872054,
+        "targets": 1.6666666666666667,
+        "preparedMainHit": 10.474747474747474
+      },
+      "byGem": {
+        "fire": {
+          "actions": 98,
+          "mean": 15.846938775510203,
+          "median": 16,
+          "p10": 8,
+          "p90": 24,
+          "primary": 12.5,
+          "hidden": 0.5918367346938775,
+          "targets": 1.7857142857142858,
+          "preparedMainHit": 10.428571428571429
+        },
+        "lightning": {
+          "actions": 101,
+          "mean": 16.207920792079207,
+          "median": 16,
+          "p10": 9,
+          "p90": 22,
+          "primary": 11.118811881188119,
+          "hidden": 0,
+          "targets": 2.1782178217821784,
+          "preparedMainHit": 10.495049504950495
+        },
+        "poison": {
+          "actions": 98,
+          "mean": 12.591836734693878,
+          "median": 12,
+          "p10": 10,
+          "p90": 19,
+          "primary": 12.295918367346939,
+          "hidden": 0.030612244897959183,
+          "targets": 1.0204081632653061,
+          "preparedMainHit": 10.5
+        }
+      }
+    },
+    {
+      "floor": 18,
+      "all": {
+        "actions": 855,
+        "mean": 11.587134502923977,
+        "median": 11,
+        "p10": 2,
+        "p90": 21,
+        "primary": 10.488888888888889,
+        "hidden": 0.08771929824561403,
+        "targets": 1.2350877192982457,
+        "preparedMainHit": 10.167251461988304
+      },
+      "plain": {
+        "actions": 530,
+        "mean": 8.530188679245283,
+        "median": 9,
+        "p10": 2,
+        "p90": 15,
+        "primary": 8.294339622641509,
+        "hidden": 0,
+        "targets": 1.0169811320754718,
+        "preparedMainHit": 9.979245283018868
+      },
+      "gemmed": {
+        "actions": 325,
+        "mean": 16.572307692307692,
+        "median": 16,
+        "p10": 10,
+        "p90": 24,
+        "primary": 14.067692307692308,
+        "hidden": 0.23076923076923078,
+        "targets": 1.5907692307692307,
+        "preparedMainHit": 10.473846153846154
+      },
+      "byGem": {
+        "fire": {
+          "actions": 91,
+          "mean": 18.252747252747252,
+          "median": 18,
+          "p10": 13,
+          "p90": 24,
+          "primary": 14.978021978021978,
+          "hidden": 0.7802197802197802,
+          "targets": 1.7912087912087913,
+          "preparedMainHit": 10.56043956043956
+        },
+        "lightning": {
+          "actions": 109,
+          "mean": 18.577981651376145,
+          "median": 18,
+          "p10": 12,
+          "p90": 25,
+          "primary": 14.220183486238533,
+          "hidden": 0,
+          "targets": 2.0825688073394497,
+          "preparedMainHit": 10.596330275229358
+        },
+        "poison": {
+          "actions": 125,
+          "mean": 13.6,
+          "median": 13,
+          "p10": 8,
+          "p90": 19,
+          "primary": 13.272,
+          "hidden": 0.032,
+          "targets": 1.016,
+          "preparedMainHit": 10.304
+        }
+      }
+    },
+    {
+      "floor": 19,
+      "all": {
+        "actions": 1663,
+        "mean": 11.615153337342154,
+        "median": 11,
+        "p10": 2,
+        "p90": 22,
+        "primary": 9.886951292844257,
+        "hidden": 0.20144317498496692,
+        "targets": 1.2916416115454,
+        "preparedMainHit": 10.205051112447384
+      },
+      "plain": {
+        "actions": 1044,
+        "mean": 8.630268199233717,
+        "median": 9,
+        "p10": 2,
+        "p90": 15,
+        "primary": 8.14463601532567,
+        "hidden": 0.04118773946360153,
+        "targets": 1.0517241379310345,
+        "preparedMainHit": 10.012452107279694
+      },
+      "gemmed": {
+        "actions": 619,
+        "mean": 16.649434571890147,
+        "median": 15,
+        "p10": 9,
+        "p90": 28,
+        "primary": 12.825525040387722,
+        "hidden": 0.4717285945072698,
+        "targets": 1.6962843295638126,
+        "preparedMainHit": 10.529886914378029
+      },
+      "byGem": {
+        "fire": {
+          "actions": 164,
+          "mean": 17.49390243902439,
+          "median": 16,
+          "p10": 7,
+          "p90": 29,
+          "primary": 12.768292682926829,
+          "hidden": 1.6341463414634145,
+          "targets": 1.8841463414634145,
+          "preparedMainHit": 10.353658536585366
+        },
+        "lightning": {
+          "actions": 227,
+          "mean": 19.854625550660792,
+          "median": 20,
+          "p10": 11,
+          "p90": 28,
+          "primary": 13.233480176211454,
+          "hidden": 0.10572687224669604,
+          "targets": 2.2246696035242293,
+          "preparedMainHit": 10.629955947136564
+        },
+        "poison": {
+          "actions": 228,
+          "mean": 12.850877192982455,
+          "median": 13,
+          "p10": 9,
+          "p90": 18,
+          "primary": 12.460526315789474,
+          "hidden": 0,
+          "targets": 1.0350877192982457,
+          "preparedMainHit": 10.557017543859649
+        }
+      }
+    },
+    {
+      "floor": 20,
+      "all": {
+        "actions": 1997,
+        "mean": 12.43164747120681,
+        "median": 11,
+        "p10": 3,
+        "p90": 25,
+        "primary": 10.56685027541312,
+        "hidden": 0.14922383575363043,
+        "targets": 1.3019529293940912,
+        "preparedMainHit": 10.249874812218328
+      },
+      "plain": {
+        "actions": 1270,
+        "mean": 8.90708661417323,
+        "median": 9,
+        "p10": 2,
+        "p90": 15,
+        "primary": 8.44015748031496,
+        "hidden": 0,
+        "targets": 1.0480314960629922,
+        "preparedMainHit": 10.061417322834645
+      },
+      "gemmed": {
+        "actions": 727,
+        "mean": 18.58872077028886,
+        "median": 17,
+        "p10": 9,
+        "p90": 31,
+        "primary": 14.281980742778542,
+        "hidden": 0.40990371389270974,
+        "targets": 1.7455295735900962,
+        "preparedMainHit": 10.579092159559835
+      },
+      "byGem": {
+        "fire": {
+          "actions": 243,
+          "mean": 19.403292181069958,
+          "median": 18,
+          "p10": 8,
+          "p90": 32,
+          "primary": 14.572016460905349,
+          "hidden": 0.9711934156378601,
+          "targets": 1.831275720164609,
+          "preparedMainHit": 10.510288065843621
+        },
+        "lightning": {
+          "actions": 247,
+          "mean": 22.307692307692307,
+          "median": 22,
+          "p10": 12,
+          "p90": 34,
+          "primary": 15.190283400809717,
+          "hidden": 0.17408906882591094,
+          "targets": 2.230769230769231,
+          "preparedMainHit": 10.68825910931174
+        },
+        "poison": {
+          "actions": 237,
+          "mean": 13.877637130801688,
+          "median": 12,
+          "p10": 6,
+          "p90": 22,
+          "primary": 13.037974683544304,
+          "hidden": 0.08016877637130802,
+          "targets": 1.1518987341772151,
+          "preparedMainHit": 10.535864978902953
+        }
+      }
+    },
+    {
+      "floor": 21,
+      "all": {
+        "actions": 1874,
+        "mean": 12.305229455709712,
+        "median": 11,
+        "p10": 3,
+        "p90": 24,
+        "primary": 10.519210245464247,
+        "hidden": 0.23372465314834578,
+        "targets": 1.2902881536819637,
+        "preparedMainHit": 10.358057630736393
+      },
+      "plain": {
+        "actions": 1162,
+        "mean": 9.12564543889845,
+        "median": 10,
+        "p10": 2,
+        "p90": 15,
+        "primary": 8.599827882960414,
+        "hidden": 0.010327022375215147,
+        "targets": 1.0619621342512908,
+        "preparedMainHit": 10.141996557659208
+      },
+      "gemmed": {
+        "actions": 712,
+        "mean": 17.49438202247191,
+        "median": 16,
+        "p10": 7,
+        "p90": 30,
+        "primary": 13.651685393258427,
+        "hidden": 0.598314606741573,
+        "targets": 1.6629213483146068,
+        "preparedMainHit": 10.710674157303371
+      },
+      "byGem": {
+        "fire": {
+          "actions": 242,
+          "mean": 18.231404958677686,
+          "median": 17,
+          "p10": 8,
+          "p90": 30,
+          "primary": 13.991735537190083,
+          "hidden": 1.5495867768595042,
+          "targets": 1.7603305785123966,
+          "preparedMainHit": 10.71900826446281
+        },
+        "lightning": {
+          "actions": 225,
+          "mean": 21.004444444444445,
+          "median": 21,
+          "p10": 11,
+          "p90": 31,
+          "primary": 14.626666666666667,
+          "hidden": 0.022222222222222223,
+          "targets": 2.088888888888889,
+          "preparedMainHit": 10.768888888888888
+        },
+        "poison": {
+          "actions": 245,
+          "mean": 13.542857142857143,
+          "median": 12,
+          "p10": 5,
+          "p90": 23,
+          "primary": 12.420408163265305,
+          "hidden": 0.18775510204081633,
+          "targets": 1.1755102040816328,
+          "preparedMainHit": 10.648979591836735
+        }
+      }
+    },
+    {
+      "floor": 22,
+      "all": {
+        "actions": 1181,
+        "mean": 13.16342082980525,
+        "median": 11,
+        "p10": 3,
+        "p90": 25,
+        "primary": 10.903471634208298,
+        "hidden": 0.279424216765453,
+        "targets": 1.3378492802709567,
+        "preparedMainHit": 10.399661303979679
+      },
+      "plain": {
+        "actions": 635,
+        "mean": 8.951181102362204,
+        "median": 9,
+        "p10": 2,
+        "p90": 16,
+        "primary": 8.49763779527559,
+        "hidden": 0.015748031496062992,
+        "targets": 1.036220472440945,
+        "preparedMainHit": 10.074015748031496
+      },
+      "gemmed": {
+        "actions": 546,
+        "mean": 18.062271062271062,
+        "median": 17,
+        "p10": 8,
+        "p90": 31,
+        "primary": 13.7014652014652,
+        "hidden": 0.5860805860805861,
+        "targets": 1.6886446886446886,
+        "preparedMainHit": 10.77838827838828
+      },
+      "byGem": {
+        "fire": {
+          "actions": 197,
+          "mean": 19.68020304568528,
+          "median": 18,
+          "p10": 8,
+          "p90": 34,
+          "primary": 14.680203045685278,
+          "hidden": 1.4771573604060915,
+          "targets": 1.781725888324873,
+          "preparedMainHit": 10.802030456852792
+        },
+        "lightning": {
+          "actions": 158,
+          "mean": 21.379746835443036,
+          "median": 21,
+          "p10": 11,
+          "p90": 33,
+          "primary": 14.246835443037975,
+          "hidden": 0.06329113924050633,
+          "targets": 2.2151898734177213,
+          "preparedMainHit": 10.822784810126583
+        },
+        "poison": {
+          "actions": 191,
+          "mean": 13.649214659685864,
+          "median": 11,
+          "p10": 6,
+          "p90": 25,
+          "primary": 12.24083769633508,
+          "hidden": 0.09947643979057591,
+          "targets": 1.1570680628272252,
+          "preparedMainHit": 10.717277486910994
+        }
+      }
+    },
+    {
+      "floor": 23,
+      "all": {
+        "actions": 1399,
+        "mean": 12.683345246604718,
+        "median": 11,
+        "p10": 3,
+        "p90": 25,
+        "primary": 10.709077912794854,
+        "hidden": 0.35954253037884204,
+        "targets": 1.296640457469621,
+        "preparedMainHit": 10.421729807005004
+      },
+      "plain": {
+        "actions": 828,
+        "mean": 9.195652173913043,
+        "median": 10,
+        "p10": 2,
+        "p90": 16,
+        "primary": 8.751207729468598,
+        "hidden": 0.07004830917874397,
+        "targets": 1.0422705314009661,
+        "preparedMainHit": 10.277777777777779
+      },
+      "gemmed": {
+        "actions": 571,
+        "mean": 17.740805604203153,
+        "median": 16,
+        "p10": 8,
+        "p90": 31,
+        "primary": 13.54816112084063,
+        "hidden": 0.7793345008756567,
+        "targets": 1.6654991243432575,
+        "preparedMainHit": 10.630472854640981
+      },
+      "byGem": {
+        "fire": {
+          "actions": 214,
+          "mean": 19.186915887850468,
+          "median": 17,
+          "p10": 7,
+          "p90": 32,
+          "primary": 13.957943925233645,
+          "hidden": 1.9065420560747663,
+          "targets": 1.8317757009345794,
+          "preparedMainHit": 10.649532710280374
+        },
+        "lightning": {
+          "actions": 155,
+          "mean": 21.916129032258066,
+          "median": 21,
+          "p10": 10,
+          "p90": 33,
+          "primary": 15.238709677419354,
+          "hidden": 0.03225806451612903,
+          "targets": 2.1032258064516127,
+          "preparedMainHit": 10.516129032258064
+        },
+        "poison": {
+          "actions": 202,
+          "mean": 13.004950495049505,
+          "median": 11,
+          "p10": 6,
+          "p90": 21,
+          "primary": 11.816831683168317,
+          "hidden": 0.15841584158415842,
+          "targets": 1.1534653465346534,
+          "preparedMainHit": 10.698019801980198
+        }
+      }
+    },
+    {
+      "floor": 24,
+      "all": {
+        "actions": 1624,
+        "mean": 13.60344827586207,
+        "median": 11,
+        "p10": 3,
+        "p90": 27,
+        "primary": 11.161945812807883,
+        "hidden": 0.18903940886699508,
+        "targets": 1.3448275862068966,
+        "preparedMainHit": 10.560960591133005
+      },
+      "plain": {
+        "actions": 877,
+        "mean": 9.125427594070695,
+        "median": 9,
+        "p10": 2,
+        "p90": 15,
+        "primary": 8.571265678449258,
+        "hidden": 0.009122006841505131,
+        "targets": 1.0524515393386544,
+        "preparedMainHit": 10.21550741163056
+      },
+      "gemmed": {
+        "actions": 747,
+        "mean": 18.86077643908969,
+        "median": 17,
+        "p10": 7,
+        "p90": 34,
+        "primary": 14.203480589022758,
+        "hidden": 0.4002677376171352,
+        "targets": 1.6880856760374832,
+        "preparedMainHit": 10.966532797858099
+      },
+      "byGem": {
+        "fire": {
+          "actions": 272,
+          "mean": 21.27573529411765,
+          "median": 19,
+          "p10": 9,
+          "p90": 37,
+          "primary": 15.540441176470589,
+          "hidden": 0.9926470588235294,
+          "targets": 1.8676470588235294,
+          "preparedMainHit": 10.886029411764707
+        },
+        "lightning": {
+          "actions": 230,
+          "mean": 22.004347826086956,
+          "median": 20,
+          "p10": 9,
+          "p90": 35,
+          "primary": 15.013043478260869,
+          "hidden": 0.10869565217391304,
+          "targets": 2.0565217391304347,
+          "preparedMainHit": 11.056521739130435
+        },
+        "poison": {
+          "actions": 245,
+          "mean": 13.228571428571428,
+          "median": 11,
+          "p10": 5,
+          "p90": 22,
+          "primary": 11.959183673469388,
+          "hidden": 0.0163265306122449,
+          "targets": 1.1428571428571428,
+          "preparedMainHit": 10.971428571428572
+        }
+      }
+    },
+    {
+      "floor": 25,
+      "all": {
+        "actions": 1311,
+        "mean": 13.905415713196033,
+        "median": 11,
+        "p10": 3,
+        "p90": 27,
+        "primary": 11.262395118230359,
+        "hidden": 0.36613272311212813,
+        "targets": 1.395118230358505,
+        "preparedMainHit": 10.684973302822273
+      },
+      "plain": {
+        "actions": 635,
+        "mean": 9.162204724409449,
+        "median": 9,
+        "p10": 2,
+        "p90": 15,
+        "primary": 8.634645669291338,
+        "hidden": 0.025196850393700787,
+        "targets": 1.0503937007874016,
+        "preparedMainHit": 10.316535433070866
+      },
+      "gemmed": {
+        "actions": 676,
+        "mean": 18.36094674556213,
+        "median": 16,
+        "p10": 8,
+        "p90": 31,
+        "primary": 13.73076923076923,
+        "hidden": 0.6863905325443787,
+        "targets": 1.7189349112426036,
+        "preparedMainHit": 11.031065088757396
+      },
+      "byGem": {
+        "fire": {
+          "actions": 234,
+          "mean": 19.764957264957264,
+          "median": 17,
+          "p10": 8,
+          "p90": 33,
+          "primary": 14.384615384615385,
+          "hidden": 1.8034188034188035,
+          "targets": 1.8162393162393162,
+          "preparedMainHit": 11.106837606837606
+        },
+        "lightning": {
+          "actions": 203,
+          "mean": 21.738916256157637,
+          "median": 21,
+          "p10": 9,
+          "p90": 33,
+          "primary": 14.251231527093596,
+          "hidden": 0.11822660098522167,
+          "targets": 2.2118226600985222,
+          "preparedMainHit": 11.024630541871922
+        },
+        "poison": {
+          "actions": 239,
+          "mean": 14.117154811715482,
+          "median": 12,
+          "p10": 6,
+          "p90": 25,
+          "primary": 12.648535564853557,
+          "hidden": 0.07531380753138076,
+          "targets": 1.205020920502092,
+          "preparedMainHit": 10.96234309623431
+        }
+      }
+    },
+    {
+      "floor": 26,
+      "all": {
+        "actions": 1137,
+        "mean": 14.269129287598945,
+        "median": 11,
+        "p10": 3,
+        "p90": 29,
+        "primary": 11.644678979771328,
+        "hidden": 0.3043095866314864,
+        "targets": 1.3737906772207564,
+        "preparedMainHit": 10.732629727352682
+      },
+      "plain": {
+        "actions": 588,
+        "mean": 9.39795918367347,
+        "median": 10,
+        "p10": 2,
+        "p90": 14,
+        "primary": 8.855442176870747,
+        "hidden": 0.02891156462585034,
+        "targets": 1.0612244897959184,
+        "preparedMainHit": 10.377551020408163
+      },
+      "gemmed": {
+        "actions": 549,
+        "mean": 19.48633879781421,
+        "median": 17,
+        "p10": 8,
+        "p90": 35,
+        "primary": 14.632058287795992,
+        "hidden": 0.599271402550091,
+        "targets": 1.7085610200364298,
+        "preparedMainHit": 11.112932604735883
+      },
+      "byGem": {
+        "fire": {
+          "actions": 167,
+          "mean": 23.251497005988025,
+          "median": 22,
+          "p10": 11,
+          "p90": 40,
+          "primary": 16.74251497005988,
+          "hidden": 1.7724550898203593,
+          "targets": 1.9760479041916168,
+          "preparedMainHit": 11.083832335329342
+        },
+        "lightning": {
+          "actions": 178,
+          "mean": 22.168539325842698,
+          "median": 20,
+          "p10": 8,
+          "p90": 37,
+          "primary": 14.691011235955056,
+          "hidden": 0.11235955056179775,
+          "targets": 2.0786516853932584,
+          "preparedMainHit": 10.926966292134832
+        },
+        "poison": {
+          "actions": 204,
+          "mean": 14.063725490196079,
+          "median": 12,
+          "p10": 7,
+          "p90": 25,
+          "primary": 12.852941176470589,
+          "hidden": 0.06372549019607843,
+          "targets": 1.1666666666666667,
+          "preparedMainHit": 11.299019607843137
+        }
+      }
+    },
+    {
+      "floor": 27,
+      "all": {
+        "actions": 923,
+        "mean": 15.657638136511377,
+        "median": 12,
+        "p10": 4,
+        "p90": 31,
+        "primary": 12.185265438786566,
+        "hidden": 0.5373781148429035,
+        "targets": 1.4236186348862405,
+        "preparedMainHit": 10.728060671722643
+      },
+      "plain": {
+        "actions": 474,
+        "mean": 9.69620253164557,
+        "median": 10,
+        "p10": 3,
+        "p90": 15,
+        "primary": 9.251054852320674,
+        "hidden": 0.014767932489451477,
+        "targets": 1.0379746835443038,
+        "preparedMainHit": 10.350210970464135
+      },
+      "gemmed": {
+        "actions": 449,
+        "mean": 21.951002227171493,
+        "median": 19,
+        "p10": 7,
+        "p90": 40,
+        "primary": 15.282850779510023,
+        "hidden": 1.089086859688196,
+        "targets": 1.8307349665924275,
+        "preparedMainHit": 11.126948775055679
+      },
+      "byGem": {
+        "fire": {
+          "actions": 198,
+          "mean": 22.434343434343436,
+          "median": 20,
+          "p10": 7,
+          "p90": 41,
+          "primary": 15.712121212121213,
+          "hidden": 2.2222222222222223,
+          "targets": 1.8383838383838385,
+          "preparedMainHit": 11.303030303030303
+        },
+        "lightning": {
+          "actions": 145,
+          "mean": 27.36551724137931,
+          "median": 26,
+          "p10": 8,
+          "p90": 44,
+          "primary": 16.56551724137931,
+          "hidden": 0.14482758620689656,
+          "targets": 2.3448275862068964,
+          "preparedMainHit": 11.03448275862069
+        },
+        "poison": {
+          "actions": 106,
+          "mean": 13.641509433962264,
+          "median": 12,
+          "p10": 6,
+          "p90": 23,
+          "primary": 12.726415094339623,
+          "hidden": 0.2641509433962264,
+          "targets": 1.1132075471698113,
+          "preparedMainHit": 10.924528301886792
+        }
+      }
+    },
+    {
+      "floor": 28,
+      "all": {
+        "actions": 467,
+        "mean": 18.30835117773019,
+        "median": 16,
+        "p10": 5,
+        "p90": 35,
+        "primary": 14.036402569593148,
+        "hidden": 0.6359743040685225,
+        "targets": 1.5417558886509637,
+        "preparedMainHit": 11.014989293361884
+      },
+      "plain": {
+        "actions": 155,
+        "mean": 9.522580645161291,
+        "median": 9,
+        "p10": 3,
+        "p90": 13,
+        "primary": 9,
+        "hidden": 0,
+        "targets": 1.0580645161290323,
+        "preparedMainHit": 10.27741935483871
+      },
+      "gemmed": {
+        "actions": 312,
+        "mean": 22.673076923076923,
+        "median": 20,
+        "p10": 9,
+        "p90": 38,
+        "primary": 16.53846153846154,
+        "hidden": 0.9519230769230769,
+        "targets": 1.7820512820512822,
+        "preparedMainHit": 11.381410256410257
+      },
+      "byGem": {
+        "fire": {
+          "actions": 109,
+          "mean": 24.01834862385321,
+          "median": 21,
+          "p10": 12,
+          "p90": 38,
+          "primary": 17.110091743119266,
+          "hidden": 2.7247706422018347,
+          "targets": 1.9174311926605505,
+          "preparedMainHit": 11.422018348623853
+        },
+        "lightning": {
+          "actions": 132,
+          "mean": 26.356060606060606,
+          "median": 26,
+          "p10": 14,
+          "p90": 41,
+          "primary": 18.007575757575758,
+          "hidden": 0,
+          "targets": 2.022727272727273,
+          "preparedMainHit": 11.378787878787879
+        },
+        "poison": {
+          "actions": 71,
+          "mean": 13.76056338028169,
+          "median": 12,
+          "p10": 6,
+          "p90": 27,
+          "primary": 12.929577464788732,
+          "hidden": 0,
+          "targets": 1.1267605633802817,
+          "preparedMainHit": 11.32394366197183
+        }
+      }
+    },
+    {
+      "floor": 29,
+      "all": {
+        "actions": 382,
+        "mean": 18.162303664921467,
+        "median": 13,
+        "p10": 5,
+        "p90": 36,
+        "primary": 13.581151832460733,
+        "hidden": 0.5497382198952879,
+        "targets": 1.544502617801047,
+        "preparedMainHit": 10.963350785340314
+      },
+      "plain": {
+        "actions": 128,
+        "mean": 9.421875,
+        "median": 10,
+        "p10": 1,
+        "p90": 13,
+        "primary": 9.15625,
+        "hidden": 0.0546875,
+        "targets": 1,
+        "preparedMainHit": 10.6328125
+      },
+      "gemmed": {
+        "actions": 254,
+        "mean": 22.566929133858267,
+        "median": 19,
+        "p10": 8,
+        "p90": 41,
+        "primary": 15.811023622047244,
+        "hidden": 0.7992125984251969,
+        "targets": 1.8188976377952757,
+        "preparedMainHit": 11.12992125984252
+      },
+      "byGem": {
+        "fire": {
+          "actions": 79,
+          "mean": 24.063291139240505,
+          "median": 19,
+          "p10": 8,
+          "p90": 50,
+          "primary": 17.126582278481013,
+          "hidden": 2.481012658227848,
+          "targets": 1.8734177215189873,
+          "preparedMainHit": 11.367088607594937
+        },
+        "lightning": {
+          "actions": 101,
+          "mean": 28.178217821782177,
+          "median": 27,
+          "p10": 13,
+          "p90": 45,
+          "primary": 17.287128712871286,
+          "hidden": 0.06930693069306931,
+          "targets": 2.3069306930693068,
+          "preparedMainHit": 10.92079207920792
+        },
+        "poison": {
+          "actions": 74,
+          "mean": 13.31081081081081,
+          "median": 12,
+          "p10": 3,
+          "p90": 27,
+          "primary": 12.391891891891891,
+          "hidden": 0,
+          "targets": 1.0945945945945945,
+          "preparedMainHit": 11.162162162162161
+        }
+      }
+    },
+    {
+      "floor": 30,
+      "all": {
+        "actions": 1391,
+        "mean": 17.069015097052482,
+        "median": 17,
+        "p10": 7,
+        "p90": 28,
+        "primary": 15.801581595974119,
+        "hidden": 0,
+        "targets": 1.1430625449317038,
+        "preparedMainHit": 11.050323508267434
+      },
+      "plain": {
+        "actions": 373,
+        "mean": 10.024128686327078,
+        "median": 10,
+        "p10": 3,
+        "p90": 15,
+        "primary": 9.924932975871315,
+        "hidden": 0,
+        "targets": 0.9517426273458445,
+        "preparedMainHit": 10.442359249329758
+      },
+      "gemmed": {
+        "actions": 1018,
+        "mean": 19.650294695481335,
+        "median": 19,
+        "p10": 11,
+        "p90": 30,
+        "primary": 17.954813359528487,
+        "hidden": 0,
+        "targets": 1.2131630648330058,
+        "preparedMainHit": 11.273084479371317
+      },
+      "byGem": {
+        "fire": {
+          "actions": 408,
+          "mean": 20.42892156862745,
+          "median": 20,
+          "p10": 15,
+          "p90": 30,
+          "primary": 19.642156862745097,
+          "hidden": 0,
+          "targets": 1.0955882352941178,
+          "preparedMainHit": 11.544117647058824
+        },
+        "lightning": {
+          "actions": 336,
+          "mean": 22.830357142857142,
+          "median": 23,
+          "p10": 14,
+          "p90": 31,
+          "primary": 18.81845238095238,
+          "hidden": 0,
+          "targets": 1.5297619047619047,
+          "preparedMainHit": 11.214285714285714
+        },
+        "poison": {
+          "actions": 274,
+          "mean": 14.591240875912408,
+          "median": 12,
+          "p10": 9,
+          "p90": 27,
+          "primary": 14.383211678832117,
+          "hidden": 0,
+          "targets": 1,
+          "preparedMainHit": 10.941605839416058
+        }
+      }
+    },
+    {
+      "floor": 32,
+      "all": {
+        "actions": 205,
+        "mean": 20.253658536585366,
+        "median": 16,
+        "p10": 5,
+        "p90": 38,
+        "primary": 14.926829268292684,
+        "hidden": 0.8536585365853658,
+        "targets": 1.5560975609756098,
+        "preparedMainHit": 11.317073170731707
+      },
+      "plain": {
+        "actions": 62,
+        "mean": 11.370967741935484,
+        "median": 11,
+        "p10": 2,
+        "p90": 23,
+        "primary": 10.064516129032258,
+        "hidden": 0.2903225806451613,
+        "targets": 1.1290322580645162,
+        "preparedMainHit": 10.935483870967742
+      },
+      "gemmed": {
+        "actions": 143,
+        "mean": 24.104895104895103,
+        "median": 21,
+        "p10": 7,
+        "p90": 43,
+        "primary": 17.034965034965033,
+        "hidden": 1.097902097902098,
+        "targets": 1.7412587412587412,
+        "preparedMainHit": 11.482517482517483
+      },
+      "byGem": {
+        "fire": {
+          "actions": 48,
+          "mean": 27.395833333333332,
+          "median": 21,
+          "p10": 12,
+          "p90": 52,
+          "primary": 18.895833333333332,
+          "hidden": 2.8333333333333335,
+          "targets": 1.7916666666666667,
+          "preparedMainHit": 11.541666666666666
+        },
+        "lightning": {
+          "actions": 53,
+          "mean": 28.11320754716981,
+          "median": 26,
+          "p10": 5,
+          "p90": 43,
+          "primary": 17.79245283018868,
+          "hidden": 0.16981132075471697,
+          "targets": 2.188679245283019,
+          "preparedMainHit": 11.358490566037736
+        },
+        "poison": {
+          "actions": 42,
+          "mean": 15.285714285714286,
+          "median": 12,
+          "p10": 6,
+          "p90": 27,
+          "primary": 13.952380952380953,
+          "hidden": 0.2857142857142857,
+          "targets": 1.119047619047619,
+          "preparedMainHit": 11.571428571428571
+        }
+      }
+    },
+    {
+      "floor": 33,
+      "all": {
+        "actions": 192,
+        "mean": 20.171875,
+        "median": 15,
+        "p10": 4,
+        "p90": 42,
+        "primary": 15.375,
+        "hidden": 0.9427083333333334,
+        "targets": 1.5104166666666667,
+        "preparedMainHit": 11.942708333333334
+      },
+      "plain": {
+        "actions": 46,
+        "mean": 9.826086956521738,
+        "median": 10,
+        "p10": 3,
+        "p90": 14,
+        "primary": 9.23913043478261,
+        "hidden": 0.15217391304347827,
+        "targets": 1.0434782608695652,
+        "preparedMainHit": 11.065217391304348
+      },
+      "gemmed": {
+        "actions": 146,
+        "mean": 23.431506849315067,
+        "median": 20,
+        "p10": 8,
+        "p90": 44,
+        "primary": 17.30821917808219,
+        "hidden": 1.1917808219178083,
+        "targets": 1.6575342465753424,
+        "preparedMainHit": 12.219178082191782
+      },
+      "byGem": {
+        "fire": {
+          "actions": 51,
+          "mean": 28.745098039215687,
+          "median": 26,
+          "p10": 13,
+          "p90": 46,
+          "primary": 21.07843137254902,
+          "hidden": 3.1176470588235294,
+          "targets": 1.8431372549019607,
+          "preparedMainHit": 12.72549019607843
+        },
+        "lightning": {
+          "actions": 56,
+          "mean": 25.392857142857142,
+          "median": 25,
+          "p10": 4,
+          "p90": 42,
+          "primary": 17.196428571428573,
+          "hidden": 0.125,
+          "targets": 1.8392857142857142,
+          "preparedMainHit": 12
+        },
+        "poison": {
+          "actions": 39,
+          "mean": 13.666666666666666,
+          "median": 14,
+          "p10": 4,
+          "p90": 20,
+          "primary": 12.538461538461538,
+          "hidden": 0.20512820512820512,
+          "targets": 1.1538461538461537,
+          "preparedMainHit": 11.871794871794872
+        }
+      }
+    },
+    {
+      "floor": 34,
+      "all": {
+        "actions": 408,
+        "mean": 18.29901960784314,
+        "median": 15,
+        "p10": 5,
+        "p90": 34,
+        "primary": 14.102941176470589,
+        "hidden": 0.6593137254901961,
+        "targets": 1.4754901960784315,
+        "preparedMainHit": 11.625
+      },
+      "plain": {
+        "actions": 131,
+        "mean": 10.13740458015267,
+        "median": 10,
+        "p10": 3,
+        "p90": 15,
+        "primary": 9.816793893129772,
+        "hidden": 0,
+        "targets": 1.015267175572519,
+        "preparedMainHit": 11.580152671755725
+      },
+      "gemmed": {
+        "actions": 277,
+        "mean": 22.15884476534296,
+        "median": 20,
+        "p10": 9,
+        "p90": 38,
+        "primary": 16.129963898916966,
+        "hidden": 0.9711191335740073,
+        "targets": 1.6931407942238268,
+        "preparedMainHit": 11.646209386281589
+      },
+      "byGem": {
+        "fire": {
+          "actions": 91,
+          "mean": 24.98901098901099,
+          "median": 23,
+          "p10": 13,
+          "p90": 38,
+          "primary": 17.63736263736264,
+          "hidden": 2.956043956043956,
+          "targets": 1.8571428571428572,
+          "preparedMainHit": 12.010989010989011
+        },
+        "lightning": {
+          "actions": 100,
+          "mean": 26.11,
+          "median": 25,
+          "p10": 11,
+          "p90": 44,
+          "primary": 16.99,
+          "hidden": 0,
+          "targets": 2.07,
+          "preparedMainHit": 11.41
+        },
+        "poison": {
+          "actions": 86,
+          "mean": 14.569767441860465,
+          "median": 13,
+          "p10": 4,
+          "p90": 26,
+          "primary": 13.534883720930232,
+          "hidden": 0,
+          "targets": 1.0813953488372092,
+          "preparedMainHit": 11.534883720930232
+        }
+      }
+    },
+    {
+      "floor": 35,
+      "all": {
+        "actions": 456,
+        "mean": 18.480263157894736,
+        "median": 15,
+        "p10": 3,
+        "p90": 37,
+        "primary": 13.942982456140351,
+        "hidden": 0.8399122807017544,
+        "targets": 1.4342105263157894,
+        "preparedMainHit": 12.182017543859649
+      },
+      "plain": {
+        "actions": 219,
+        "mean": 10.776255707762557,
+        "median": 11,
+        "p10": 2,
+        "p90": 17,
+        "primary": 9.757990867579908,
+        "hidden": 0,
+        "targets": 1.1050228310502284,
+        "preparedMainHit": 11.867579908675799
+      },
+      "gemmed": {
+        "actions": 237,
+        "mean": 25.59915611814346,
+        "median": 22,
+        "p10": 11,
+        "p90": 44,
+        "primary": 17.810126582278482,
+        "hidden": 1.6160337552742616,
+        "targets": 1.738396624472574,
+        "preparedMainHit": 12.472573839662447
+      },
+      "byGem": {
+        "fire": {
+          "actions": 85,
+          "mean": 27.905882352941177,
+          "median": 27,
+          "p10": 14,
+          "p90": 47,
+          "primary": 19.32941176470588,
+          "hidden": 4.5058823529411764,
+          "targets": 1.7882352941176471,
+          "preparedMainHit": 12.470588235294118
+        },
+        "lightning": {
+          "actions": 99,
+          "mean": 28.828282828282827,
+          "median": 26,
+          "p10": 13,
+          "p90": 50,
+          "primary": 18.373737373737374,
+          "hidden": 0,
+          "targets": 2.0202020202020203,
+          "preparedMainHit": 12.505050505050505
+        },
+        "poison": {
+          "actions": 53,
+          "mean": 15.867924528301886,
+          "median": 14,
+          "p10": 10,
+          "p90": 27,
+          "primary": 14.320754716981131,
+          "hidden": 0,
+          "targets": 1.1320754716981132,
+          "preparedMainHit": 12.415094339622641
+        }
+      }
+    },
+    {
+      "floor": 36,
+      "all": {
+        "actions": 420,
+        "mean": 20.538095238095238,
+        "median": 16,
+        "p10": 4,
+        "p90": 40,
+        "primary": 14.92142857142857,
+        "hidden": 1.1095238095238096,
+        "targets": 1.480952380952381,
+        "preparedMainHit": 12.295238095238096
+      },
+      "plain": {
+        "actions": 176,
+        "mean": 11.943181818181818,
+        "median": 11,
+        "p10": 3,
+        "p90": 19,
+        "primary": 11.034090909090908,
+        "hidden": 0,
+        "targets": 1.0454545454545454,
+        "preparedMainHit": 12.090909090909092
+      },
+      "gemmed": {
+        "actions": 244,
+        "mean": 26.737704918032787,
+        "median": 23,
+        "p10": 9,
+        "p90": 49,
+        "primary": 17.725409836065573,
+        "hidden": 1.9098360655737705,
+        "targets": 1.7950819672131149,
+        "preparedMainHit": 12.442622950819672
+      },
+      "byGem": {
+        "fire": {
+          "actions": 93,
+          "mean": 30.774193548387096,
+          "median": 28,
+          "p10": 9,
+          "p90": 56,
+          "primary": 18.78494623655914,
+          "hidden": 5.010752688172043,
+          "targets": 2.064516129032258,
+          "preparedMainHit": 13
+        },
+        "lightning": {
+          "actions": 102,
+          "mean": 29.176470588235293,
+          "median": 25,
+          "p10": 13,
+          "p90": 43,
+          "primary": 19.07843137254902,
+          "hidden": 0,
+          "targets": 1.9019607843137254,
+          "preparedMainHit": 12.107843137254902
+        },
+        "poison": {
+          "actions": 49,
+          "mean": 14,
+          "median": 13,
+          "p10": 6,
+          "p90": 19,
+          "primary": 12.89795918367347,
+          "hidden": 0,
+          "targets": 1.0612244897959184,
+          "preparedMainHit": 12.081632653061224
+        }
+      }
+    },
+    {
+      "floor": 37,
+      "all": {
+        "actions": 228,
+        "mean": 19.55701754385965,
+        "median": 17,
+        "p10": 5,
+        "p90": 36,
+        "primary": 14.986842105263158,
+        "hidden": 1.0394736842105263,
+        "targets": 1.4254385964912282,
+        "preparedMainHit": 12.789473684210526
+      },
+      "plain": {
+        "actions": 106,
+        "mean": 12.235849056603774,
+        "median": 12,
+        "p10": 4,
+        "p90": 21,
+        "primary": 11.20754716981132,
+        "hidden": 0,
+        "targets": 1.0849056603773586,
+        "preparedMainHit": 12.660377358490566
+      },
+      "gemmed": {
+        "actions": 122,
+        "mean": 25.918032786885245,
+        "median": 23,
+        "p10": 12,
+        "p90": 41,
+        "primary": 18.270491803278688,
+        "hidden": 1.9426229508196722,
+        "targets": 1.721311475409836,
+        "preparedMainHit": 12.901639344262295
+      },
+      "byGem": {
+        "fire": {
+          "actions": 50,
+          "mean": 30.64,
+          "median": 28,
+          "p10": 12,
+          "p90": 44,
+          "primary": 19.72,
+          "hidden": 4.74,
+          "targets": 1.92,
+          "preparedMainHit": 12.58
+        },
+        "lightning": {
+          "actions": 44,
+          "mean": 26.386363636363637,
+          "median": 26,
+          "p10": 5,
+          "p90": 43,
+          "primary": 18.272727272727273,
+          "hidden": 0,
+          "targets": 1.8636363636363635,
+          "preparedMainHit": 12.568181818181818
+        },
+        "poison": {
+          "actions": 28,
+          "mean": 16.75,
+          "median": 15,
+          "p10": 11,
+          "p90": 21,
+          "primary": 15.678571428571429,
+          "hidden": 0,
+          "targets": 1.1428571428571428,
+          "preparedMainHit": 14
+        }
+      }
+    },
+    {
+      "floor": 38,
+      "all": {
+        "actions": 205,
+        "mean": 21.351219512195122,
+        "median": 17,
+        "p10": 5,
+        "p90": 42,
+        "primary": 15.897560975609757,
+        "hidden": 1.048780487804878,
+        "targets": 1.473170731707317,
+        "preparedMainHit": 13.53170731707317
+      },
+      "plain": {
+        "actions": 97,
+        "mean": 12.536082474226804,
+        "median": 12,
+        "p10": 3,
+        "p90": 20,
+        "primary": 11.463917525773196,
+        "hidden": 0,
+        "targets": 1.1237113402061856,
+        "preparedMainHit": 12.855670103092784
+      },
+      "gemmed": {
+        "actions": 108,
+        "mean": 29.26851851851852,
+        "median": 26,
+        "p10": 12,
+        "p90": 51,
+        "primary": 19.87962962962963,
+        "hidden": 1.9907407407407407,
+        "targets": 1.787037037037037,
+        "preparedMainHit": 14.13888888888889
+      },
+      "byGem": {
+        "fire": {
+          "actions": 34,
+          "mean": 40.11764705882353,
+          "median": 35,
+          "p10": 20,
+          "p90": 63,
+          "primary": 22.88235294117647,
+          "hidden": 6.323529411764706,
+          "targets": 2.3823529411764706,
+          "preparedMainHit": 14.529411764705882
+        },
+        "lightning": {
+          "actions": 42,
+          "mean": 30.428571428571427,
+          "median": 28,
+          "p10": 12,
+          "p90": 45,
+          "primary": 20.976190476190474,
+          "hidden": 0,
+          "targets": 1.8095238095238095,
+          "preparedMainHit": 13.333333333333334
+        },
+        "poison": {
+          "actions": 32,
+          "mean": 16.21875,
+          "median": 18,
+          "p10": 8,
+          "p90": 21,
+          "primary": 15.25,
+          "hidden": 0,
+          "targets": 1.125,
+          "preparedMainHit": 14.78125
+        }
+      }
+    },
+    {
+      "floor": 39,
+      "all": {
+        "actions": 253,
+        "mean": 22.727272727272727,
+        "median": 18,
+        "p10": 4,
+        "p90": 44,
+        "primary": 15.90513833992095,
+        "hidden": 1.075098814229249,
+        "targets": 1.5454545454545454,
+        "preparedMainHit": 14.233201581027668
+      },
+      "plain": {
+        "actions": 97,
+        "mean": 11.030927835051546,
+        "median": 11,
+        "p10": 1,
+        "p90": 20,
+        "primary": 9.969072164948454,
+        "hidden": 0,
+        "targets": 1.0618556701030928,
+        "preparedMainHit": 13.329896907216495
+      },
+      "gemmed": {
+        "actions": 156,
+        "mean": 30,
+        "median": 26,
+        "p10": 10,
+        "p90": 52,
+        "primary": 19.596153846153847,
+        "hidden": 1.7435897435897436,
+        "targets": 1.8461538461538463,
+        "preparedMainHit": 14.794871794871796
+      },
+      "byGem": {
+        "fire": {
+          "actions": 50,
+          "mean": 31.3,
+          "median": 26,
+          "p10": 12,
+          "p90": 60,
+          "primary": 21.56,
+          "hidden": 5.04,
+          "targets": 1.8,
+          "preparedMainHit": 15.16
+        },
+        "lightning": {
+          "actions": 60,
+          "mean": 40.78333333333333,
+          "median": 35,
+          "p10": 17,
+          "p90": 74,
+          "primary": 22.733333333333334,
+          "hidden": 0.3333333333333333,
+          "targets": 2.45,
+          "preparedMainHit": 15.266666666666667
+        },
+        "poison": {
+          "actions": 46,
+          "mean": 14.521739130434783,
+          "median": 15,
+          "p10": 5,
+          "p90": 21,
+          "primary": 13.369565217391305,
+          "hidden": 0,
+          "targets": 1.108695652173913,
+          "preparedMainHit": 13.782608695652174
+        }
+      }
+    },
+    {
+      "floor": 40,
+      "all": {
+        "actions": 145,
+        "mean": 19.482758620689655,
+        "median": 15,
+        "p10": 3,
+        "p90": 34,
+        "primary": 15.186206896551724,
+        "hidden": 0.6758620689655173,
+        "targets": 1.3172413793103448,
+        "preparedMainHit": 13.26206896551724
+      },
+      "plain": {
+        "actions": 69,
+        "mean": 9.855072463768115,
+        "median": 11,
+        "p10": 2,
+        "p90": 19,
+        "primary": 9.376811594202898,
+        "hidden": 0,
+        "targets": 1.0144927536231885,
+        "preparedMainHit": 11.840579710144928
+      },
+      "gemmed": {
+        "actions": 76,
+        "mean": 28.223684210526315,
+        "median": 25,
+        "p10": 13,
+        "p90": 45,
+        "primary": 20.460526315789473,
+        "hidden": 1.2894736842105263,
+        "targets": 1.5921052631578947,
+        "preparedMainHit": 14.552631578947368
+      },
+      "byGem": {
+        "fire": {
+          "actions": 18,
+          "mean": 35,
+          "median": 29,
+          "p10": 19,
+          "p90": 45,
+          "primary": 24.444444444444443,
+          "hidden": 4.888888888888889,
+          "targets": 1.8333333333333333,
+          "preparedMainHit": 14.333333333333334
+        },
+        "lightning": {
+          "actions": 29,
+          "mean": 36.96551724137931,
+          "median": 31,
+          "p10": 18,
+          "p90": 51,
+          "primary": 24.413793103448278,
+          "hidden": 0.3448275862068966,
+          "targets": 1.9310344827586208,
+          "preparedMainHit": 16.137931034482758
+        },
+        "poison": {
+          "actions": 29,
+          "mean": 15.275862068965518,
+          "median": 15,
+          "p10": 8,
+          "p90": 19,
+          "primary": 14.03448275862069,
+          "hidden": 0,
+          "targets": 1.103448275862069,
+          "preparedMainHit": 13.10344827586207
+        }
+      }
+    },
+    {
+      "floor": 41,
+      "all": {
+        "actions": 136,
+        "mean": 21.71323529411765,
+        "median": 18,
+        "p10": 1,
+        "p90": 43,
+        "primary": 15.522058823529411,
+        "hidden": 1.2794117647058822,
+        "targets": 1.5,
+        "preparedMainHit": 14.404411764705882
+      },
+      "plain": {
+        "actions": 61,
+        "mean": 11.557377049180328,
+        "median": 11,
+        "p10": 1,
+        "p90": 21,
+        "primary": 10.901639344262295,
+        "hidden": 0,
+        "targets": 1.0491803278688525,
+        "preparedMainHit": 12.918032786885245
+      },
+      "gemmed": {
+        "actions": 75,
+        "mean": 29.973333333333333,
+        "median": 26,
+        "p10": 9,
+        "p90": 50,
+        "primary": 19.28,
+        "hidden": 2.32,
+        "targets": 1.8666666666666667,
+        "preparedMainHit": 15.613333333333333
+      },
+      "byGem": {
+        "fire": {
+          "actions": 34,
+          "mean": 32.029411764705884,
+          "median": 33,
+          "p10": 1,
+          "p90": 49,
+          "primary": 20.558823529411764,
+          "hidden": 5.117647058823529,
+          "targets": 1.9411764705882353,
+          "preparedMainHit": 15.352941176470589
+        },
+        "lightning": {
+          "actions": 22,
+          "mean": 35.90909090909091,
+          "median": 33,
+          "p10": 12,
+          "p90": 56,
+          "primary": 19.181818181818183,
+          "hidden": 0,
+          "targets": 2.3181818181818183,
+          "preparedMainHit": 16.181818181818183
+        },
+        "poison": {
+          "actions": 19,
+          "mean": 19.42105263157895,
+          "median": 19,
+          "p10": 13,
+          "p90": 21,
+          "primary": 17.105263157894736,
+          "hidden": 0,
+          "targets": 1.2105263157894737,
+          "preparedMainHit": 15.421052631578947
+        }
+      }
+    },
+    {
+      "floor": 42,
+      "all": {
+        "actions": 91,
+        "mean": 27.76923076923077,
+        "median": 22,
+        "p10": 3,
+        "p90": 57,
+        "primary": 19.36263736263736,
+        "hidden": 2,
+        "targets": 1.5384615384615385,
+        "preparedMainHit": 15.725274725274724
+      },
+      "plain": {
+        "actions": 25,
+        "mean": 9.8,
+        "median": 11,
+        "p10": 2,
+        "p90": 15,
+        "primary": 9.64,
+        "hidden": 0,
+        "targets": 1.04,
+        "preparedMainHit": 12.56
+      },
+      "gemmed": {
+        "actions": 66,
+        "mean": 34.57575757575758,
+        "median": 30,
+        "p10": 9,
+        "p90": 63,
+        "primary": 23.045454545454547,
+        "hidden": 2.757575757575758,
+        "targets": 1.7272727272727273,
+        "preparedMainHit": 16.924242424242426
+      },
+      "byGem": {
+        "fire": {
+          "actions": 28,
+          "mean": 36.392857142857146,
+          "median": 31,
+          "p10": 6,
+          "p90": 65,
+          "primary": 22.964285714285715,
+          "hidden": 6.5,
+          "targets": 1.8214285714285714,
+          "preparedMainHit": 17.25
+        },
+        "lightning": {
+          "actions": 30,
+          "mean": 35.86666666666667,
+          "median": 30,
+          "p10": 0,
+          "p90": 63,
+          "primary": 24.433333333333334,
+          "hidden": 0,
+          "targets": 1.7,
+          "preparedMainHit": 16.766666666666666
+        },
+        "poison": {
+          "actions": 8,
+          "mean": 23.375,
+          "median": 29,
+          "p10": 11,
+          "p90": 32,
+          "primary": 18.125,
+          "hidden": 0,
+          "targets": 1.5,
+          "preparedMainHit": 16.375
+        }
+      }
+    },
+    {
+      "floor": 43,
+      "all": {
+        "actions": 71,
+        "mean": 23.64788732394366,
+        "median": 17,
+        "p10": 3,
+        "p90": 43,
+        "primary": 17.816901408450704,
+        "hidden": 0.4507042253521127,
+        "targets": 1.380281690140845,
+        "preparedMainHit": 14.619718309859154
+      },
+      "plain": {
+        "actions": 25,
+        "mean": 8.72,
+        "median": 10,
+        "p10": 0,
+        "p90": 13,
+        "primary": 8.72,
+        "hidden": 0,
+        "targets": 0.88,
+        "preparedMainHit": 11.84
+      },
+      "gemmed": {
+        "actions": 46,
+        "mean": 31.76086956521739,
+        "median": 30,
+        "p10": 11,
+        "p90": 55,
+        "primary": 22.76086956521739,
+        "hidden": 0.6956521739130435,
+        "targets": 1.6521739130434783,
+        "preparedMainHit": 16.130434782608695
+      },
+      "byGem": {
+        "fire": {
+          "actions": 14,
+          "mean": 26.928571428571427,
+          "median": 30,
+          "p10": 14,
+          "p90": 39,
+          "primary": 21.714285714285715,
+          "hidden": 2.2857142857142856,
+          "targets": 1.5,
+          "preparedMainHit": 15.571428571428571
+        },
+        "lightning": {
+          "actions": 24,
+          "mean": 41.666666666666664,
+          "median": 35,
+          "p10": 20,
+          "p90": 60,
+          "primary": 27.458333333333332,
+          "hidden": 0,
+          "targets": 1.9583333333333333,
+          "preparedMainHit": 17.666666666666668
+        },
+        "poison": {
+          "actions": 8,
+          "mean": 10.5,
+          "median": 11,
+          "p10": 1,
+          "p90": 16,
+          "primary": 10.5,
+          "hidden": 0,
+          "targets": 1,
+          "preparedMainHit": 12.5
+        }
+      }
+    },
+    {
+      "floor": 44,
+      "all": {
+        "actions": 81,
+        "mean": 25.679012345679013,
+        "median": 23,
+        "p10": 4,
+        "p90": 50,
+        "primary": 19.25925925925926,
+        "hidden": 1.4444444444444444,
+        "targets": 1.4567901234567902,
+        "preparedMainHit": 15.135802469135802
+      },
+      "plain": {
+        "actions": 12,
+        "mean": 9.416666666666666,
+        "median": 11,
+        "p10": 2,
+        "p90": 15,
+        "primary": 9.416666666666666,
+        "hidden": 0,
+        "targets": 1,
+        "preparedMainHit": 13.5
+      },
+      "gemmed": {
+        "actions": 69,
+        "mean": 28.507246376811594,
+        "median": 28,
+        "p10": 7,
+        "p90": 50,
+        "primary": 20.971014492753625,
+        "hidden": 1.6956521739130435,
+        "targets": 1.536231884057971,
+        "preparedMainHit": 15.420289855072463
+      },
+      "byGem": {
+        "fire": {
+          "actions": 24,
+          "mean": 35.625,
+          "median": 31,
+          "p10": 7,
+          "p90": 50,
+          "primary": 25.333333333333332,
+          "hidden": 4.875,
+          "targets": 1.7083333333333333,
+          "preparedMainHit": 16.708333333333332
+        },
+        "lightning": {
+          "actions": 22,
+          "mean": 33.59090909090909,
+          "median": 30,
+          "p10": 16,
+          "p90": 55,
+          "primary": 21.681818181818183,
+          "hidden": 0,
+          "targets": 2,
+          "preparedMainHit": 14.5
+        },
+        "poison": {
+          "actions": 23,
+          "mean": 16.217391304347824,
+          "median": 14,
+          "p10": 0,
+          "p90": 31,
+          "primary": 15.73913043478261,
+          "hidden": 0,
+          "targets": 0.9130434782608695,
+          "preparedMainHit": 14.956521739130435
+        }
+      }
+    },
+    {
+      "floor": 45,
+      "all": {
+        "actions": 149,
+        "mean": 26.65771812080537,
+        "median": 30,
+        "p10": 10,
+        "p90": 39,
+        "primary": 24.523489932885905,
+        "hidden": 0,
+        "targets": 1.1140939597315436,
+        "preparedMainHit": 17.20805369127517
+      },
+      "plain": {
+        "actions": 14,
+        "mean": 14.071428571428571,
+        "median": 18,
+        "p10": 1,
+        "p90": 20,
+        "primary": 14.071428571428571,
+        "hidden": 0,
+        "targets": 0.9285714285714286,
+        "preparedMainHit": 15.928571428571429
+      },
+      "gemmed": {
+        "actions": 135,
+        "mean": 27.962962962962962,
+        "median": 31,
+        "p10": 12,
+        "p90": 39,
+        "primary": 25.607407407407408,
+        "hidden": 0,
+        "targets": 1.1333333333333333,
+        "preparedMainHit": 17.340740740740742
+      },
+      "byGem": {
+        "fire": {
+          "actions": 34,
+          "mean": 32.23529411764706,
+          "median": 32,
+          "p10": 31,
+          "p90": 38,
+          "primary": 32.23529411764706,
+          "hidden": 0,
+          "targets": 0.9705882352941176,
+          "preparedMainHit": 19.294117647058822
+        },
+        "lightning": {
+          "actions": 66,
+          "mean": 30.242424242424242,
+          "median": 32,
+          "p10": 0,
+          "p90": 44,
+          "primary": 25.424242424242426,
+          "hidden": 0,
+          "targets": 1.303030303030303,
+          "preparedMainHit": 17.09090909090909
+        },
+        "poison": {
+          "actions": 35,
+          "mean": 19.514285714285716,
+          "median": 18,
+          "p10": 12,
+          "p90": 36,
+          "primary": 19.514285714285716,
+          "hidden": 0,
+          "targets": 0.9714285714285714,
+          "preparedMainHit": 15.914285714285715
+        }
+      }
+    }
+  ],
+  "createdAt": "2026-10-28T18:34:10.658Z",
+  "seed": 777,
+  "behaviorPreset": "balanced",
+  "characterId": "rogue",
+  "runs": 500,
+  "outcome": {
+    "wins": 9,
+    "winRate": 0.018,
+    "finalFloorMean": 27.368
+  },
+  "durability": {
+    "weaponBreaksPerRun": 1.668,
+    "lastPipWeaponAttacksPerRun": 1.816,
+    "mergedLastPipWeaponAttacksPerRun": 1.202,
+    "avoidableLastPipWeaponAttacksPerRun": 0.858,
+    "lastPipPreservationsPerRun": 27.6,
+    "lastPipEmergencyUsesPerRun": 0.578,
+    "lastPipAttackReasons": {
+      "forced_last_pip": 622,
+      "survival_emergency": 286
+    },
+    "forcedLastPipByFloor": {
+      "2": 1,
+      "3": 4,
+      "4": 7,
+      "5": 7,
+      "6": 13,
+      "7": 4,
+      "8": 7,
+      "9": 4,
+      "10": 13,
+      "11": 2,
+      "12": 4,
+      "13": 1,
+      "14": 2,
+      "15": 58,
+      "17": 14,
+      "18": 14,
+      "19": 42,
+      "20": 61,
+      "21": 75,
+      "22": 39,
+      "23": 47,
+      "24": 43,
+      "25": 31,
+      "26": 28,
+      "27": 31,
+      "28": 6,
+      "29": 1,
+      "30": 10,
+      "33": 2,
+      "34": 5,
+      "35": 6,
+      "36": 13,
+      "37": 6,
+      "38": 4,
+      "39": 3,
+      "40": 7,
+      "43": 6,
+      "44": 1
+    },
+    "forcedLastPipByRoom": {
+      "COMBAT": 491,
+      "BOSS": 68,
+      "ELITE": 55,
+      "EVENT": 8
+    },
+    "weaponMergesPerRun": 11.384,
+    "daggerRefreshMergesPerRun": 0.872,
+    "anvilRepairsPerRun": 6.418,
+    "repairedPipsPerRun": 23.106
+  },
+  "resources": {
+    "restorationUsesPerRun": 0.192,
+    "usefulVisibleLootPerRun": 55.496,
+    "gemsSeenPerRun": 3.272
+  },
+  "mergeFirst": {
+    "enabled": true,
+    "plannedPickupsPerRun": 12.32,
+    "cascadeReplacementsPerRun": 5.49,
+    "spacePotionsPerRun": 1.18,
+    "healthyDaggerPairMergesPerRun": 0.044
+  },
+  "shopPlanning": {
+    "regularVisitsPerRun": 1.98,
+    "rareVisitsPerRun": 1.188,
+    "purchasesPerRun": 4.438,
+    "cascadePurchasesPerRun": 1.48,
+    "potionsUsedPerRun": 0.608,
+    "foodUsedPerRun": 0.004,
+    "gemsSocketedPerRun": 1.054,
+    "slotsFreedPerRun": 3.514,
+    "salesPerRun": 0.878,
+    "saleCoinsPerRun": 19.804,
+    "purchasesByType": {
+      "weapon": 962,
+      "potion": 305,
+      "armor": 388,
+      "thorns": 364,
+      "magic": 75,
+      "gem": 123,
+      "food": 2
+    }
+  },
+  "routing": {
+    "roomVisits": {
+      "COMBAT": 6316,
+      "SHOP": 638,
+      "EVENT": 2846,
+      "ANVIL": 1144,
+      "BOSS": 670,
+      "TREASURE": 593,
+      "ELITE": 434,
+      "TREASURE_GOOD": 398,
+      "REST": 686,
+      "SIGIL": 881,
+      "RARE_SHOP": 386
+    },
+    "optionalFightVisitsPerRun": 13.5,
+    "optionalFightShare": 0.4502401280683031
+  }
+}

@@ -14,7 +14,7 @@ export const CHARACTER_CLASSES = Object.freeze({
     portraitFrame: 0,
     blurb: 'Starts with dagger and bow. Can use every weapon and armor family.',
     blurbRu: 'Старт: кинжал и лук. Доступны все семейства оружия и брони.',
-    armorTypes: ['leather', 'chain', 'plate'],
+    armorTypes: ['leather', 'chain', 'plate', 'padded'],
     // Refs only — stats live in content/cards/weapons.js (spawn floors ignored).
     startingWeapons: Object.freeze([
       Object.freeze({ weaponType: 'dagger', rarity: 'common' }),
@@ -110,7 +110,7 @@ export function applyPermanentWeaponDamageBonuses(characterId, weapon, damage, t
   // Heavy Edge is the warrior's mirror of Twin Fang, over his own weapons.
   const heavy = talentEffects?.heavyEdgeFlat || 0;
   if (heavy > 0 && (weapon.weaponType === 'sword'
-    || weapon.weaponType === 'spear' || weapon.weaponType === 'axe')) {
+    || weapon.weaponType === 'spear' || weapon.weaponType === 'axe' || weapon.weaponType === 'mace')) {
     result += heavy;
   }
 

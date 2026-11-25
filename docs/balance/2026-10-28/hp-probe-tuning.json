@@ -1,0 +1,76 @@
+{
+  "enemy.powerBands": [
+    {
+      "id": "A",
+      "minFloor": 1,
+      "health": 8,
+      "attack": 4
+    },
+    {
+      "id": "B",
+      "minFloor": 5,
+      "health": 10,
+      "attack": 5
+    },
+    {
+      "id": "C",
+      "minFloor": 10,
+      "health": 12,
+      "attack": 7
+    },
+    {
+      "id": "C2",
+      "minFloor": 13,
+      "health": 13,
+      "attack": 7
+    },
+    {
+      "id": "C3",
+      "minFloor": 14,
+      "health": 14,
+      "attack": 8
+    },
+    {
+      "id": "D",
+      "minFloor": 16,
+      "health": 14,
+      "attack": 9
+    },
+    {
+      "id": "D2",
+      "minFloor": 18,
+      "health": 17,
+      "attack": 9
+    },
+    {
+      "id": "D3",
+      "minFloor": 20,
+      "health": 20,
+      "attack": 10
+    },
+    {
+      "id": "D4",
+      "minFloor": 22,
+      "health": 23,
+      "attack": 10
+    },
+    {
+      "id": "E",
+      "minFloor": 23,
+      "health": 27,
+      "attack": 11
+    },
+    {
+      "id": "F",
+      "minFloor": 31,
+      "health": 32,
+      "attack": 12
+    },
+    {
+      "id": "G",
+      "minFloor": 38,
+      "health": 35,
+      "attack": 13
+    }
+  ]
+}

@@ -1,0 +1,774 @@
+{
+  "seed": 777,
+  "samplesPerLocationPerFloor": 1000,
+  "locations": [
+    "thornwake",
+    "silkdeep",
+    "tollroad",
+    "boneflood",
+    "mireturn",
+    "veilbleed",
+    "ashhowl",
+    "frosthollow",
+    "stormhatch",
+    "sandreach"
+  ],
+  "rows": [
+    {
+      "floor": 1,
+      "mean": 7.297,
+      "minLocation": 7.15,
+      "maxLocation": 8.05,
+      "byLocation": {
+        "thornwake": 7.15,
+        "silkdeep": 7.226,
+        "tollroad": 7.262,
+        "boneflood": 7.202,
+        "mireturn": 7.202,
+        "veilbleed": 7.254,
+        "ashhowl": 7.174,
+        "frosthollow": 8.05,
+        "stormhatch": 7.242,
+        "sandreach": 7.208
+      }
+    },
+    {
+      "floor": 2,
+      "mean": 7.260599999999999,
+      "minLocation": 7.114,
+      "maxLocation": 7.998,
+      "byLocation": {
+        "thornwake": 7.226,
+        "silkdeep": 7.216,
+        "tollroad": 7.19,
+        "boneflood": 7.218,
+        "mireturn": 7.17,
+        "veilbleed": 7.114,
+        "ashhowl": 7.136,
+        "frosthollow": 7.998,
+        "stormhatch": 7.136,
+        "sandreach": 7.202
+      }
+    },
+    {
+      "floor": 3,
+      "mean": 7.261,
+      "minLocation": 7.09,
+      "maxLocation": 7.952,
+      "byLocation": {
+        "thornwake": 7.188,
+        "silkdeep": 7.154,
+        "tollroad": 7.09,
+        "boneflood": 7.224,
+        "mireturn": 7.156,
+        "veilbleed": 7.274,
+        "ashhowl": 7.226,
+        "frosthollow": 7.952,
+        "stormhatch": 7.172,
+        "sandreach": 7.174
+      }
+    },
+    {
+      "floor": 4,
+      "mean": 7.267600000000002,
+      "minLocation": 7.084,
+      "maxLocation": 7.98,
+      "byLocation": {
+        "thornwake": 7.232,
+        "silkdeep": 7.184,
+        "tollroad": 7.188,
+        "boneflood": 7.206,
+        "mireturn": 7.116,
+        "veilbleed": 7.084,
+        "ashhowl": 7.268,
+        "frosthollow": 7.98,
+        "stormhatch": 7.274,
+        "sandreach": 7.144
+      }
+    },
+    {
+      "floor": 5,
+      "mean": 9.1225,
+      "minLocation": 8.946,
+      "maxLocation": 9.943,
+      "byLocation": {
+        "thornwake": 9.089,
+        "silkdeep": 9.007,
+        "tollroad": 8.946,
+        "boneflood": 8.969,
+        "mireturn": 9.05,
+        "veilbleed": 9.001,
+        "ashhowl": 9.059,
+        "frosthollow": 9.943,
+        "stormhatch": 9.024,
+        "sandreach": 9.137
+      }
+    },
+    {
+      "floor": 6,
+      "mean": 9.0868,
+      "minLocation": 8.902,
+      "maxLocation": 10.06,
+      "byLocation": {
+        "thornwake": 9.028,
+        "silkdeep": 8.99,
+        "tollroad": 8.918,
+        "boneflood": 8.957,
+        "mireturn": 8.902,
+        "veilbleed": 9.061,
+        "ashhowl": 9.065,
+        "frosthollow": 10.06,
+        "stormhatch": 8.957,
+        "sandreach": 8.93
+      }
+    },
+    {
+      "floor": 7,
+      "mean": 9.072,
+      "minLocation": 8.937,
+      "maxLocation": 9.874,
+      "byLocation": {
+        "thornwake": 8.937,
+        "silkdeep": 8.997,
+        "tollroad": 9.039,
+        "boneflood": 9.024,
+        "mireturn": 8.942,
+        "veilbleed": 8.989,
+        "ashhowl": 8.952,
+        "frosthollow": 9.874,
+        "stormhatch": 9.017,
+        "sandreach": 8.949
+      }
+    },
+    {
+      "floor": 8,
+      "mean": 9.1189,
+      "minLocation": 8.896,
+      "maxLocation": 10.078,
+      "byLocation": {
+        "thornwake": 8.899,
+        "silkdeep": 9.165,
+        "tollroad": 8.933,
+        "boneflood": 8.976,
+        "mireturn": 9.093,
+        "veilbleed": 9.03,
+        "ashhowl": 8.896,
+        "frosthollow": 10.078,
+        "stormhatch": 9.055,
+        "sandreach": 9.064
+      }
+    },
+    {
+      "floor": 9,
+      "mean": 9.087,
+      "minLocation": 8.891,
+      "maxLocation": 9.991,
+      "byLocation": {
+        "thornwake": 8.906,
+        "silkdeep": 9.001,
+        "tollroad": 8.972,
+        "boneflood": 9.054,
+        "mireturn": 9.072,
+        "veilbleed": 8.915,
+        "ashhowl": 9.073,
+        "frosthollow": 9.991,
+        "stormhatch": 8.995,
+        "sandreach": 8.891
+      }
+    },
+    {
+      "floor": 10,
+      "mean": 10.952999999999998,
+      "minLocation": 10.668,
+      "maxLocation": 12.195,
+      "byLocation": {
+        "thornwake": 10.818,
+        "silkdeep": 10.923,
+        "tollroad": 10.884,
+        "boneflood": 10.839,
+        "mireturn": 10.806,
+        "veilbleed": 10.668,
+        "ashhowl": 10.809,
+        "frosthollow": 12.195,
+        "stormhatch": 10.887,
+        "sandreach": 10.701
+      }
+    },
+    {
+      "floor": 11,
+      "mean": 10.9269,
+      "minLocation": 10.677,
+      "maxLocation": 11.949,
+      "byLocation": {
+        "thornwake": 10.794,
+        "silkdeep": 10.794,
+        "tollroad": 10.911,
+        "boneflood": 10.929,
+        "mireturn": 10.851,
+        "veilbleed": 10.731,
+        "ashhowl": 10.677,
+        "frosthollow": 11.949,
+        "stormhatch": 10.77,
+        "sandreach": 10.863
+      }
+    },
+    {
+      "floor": 12,
+      "mean": 10.8843,
+      "minLocation": 10.647,
+      "maxLocation": 12.051,
+      "byLocation": {
+        "thornwake": 10.749,
+        "silkdeep": 10.728,
+        "tollroad": 10.803,
+        "boneflood": 10.758,
+        "mireturn": 10.797,
+        "veilbleed": 10.647,
+        "ashhowl": 10.8,
+        "frosthollow": 12.051,
+        "stormhatch": 10.689,
+        "sandreach": 10.821
+      }
+    },
+    {
+      "floor": 13,
+      "mean": 12.1613,
+      "minLocation": 11.907,
+      "maxLocation": 13.652,
+      "byLocation": {
+        "thornwake": 12.012,
+        "silkdeep": 12.031,
+        "tollroad": 12.014,
+        "boneflood": 11.954,
+        "mireturn": 11.928,
+        "veilbleed": 11.926,
+        "ashhowl": 12.052,
+        "frosthollow": 13.652,
+        "stormhatch": 12.137,
+        "sandreach": 11.907
+      }
+    },
+    {
+      "floor": 14,
+      "mean": 12.701199999999998,
+      "minLocation": 12.459,
+      "maxLocation": 13.788,
+      "byLocation": {
+        "thornwake": 12.459,
+        "silkdeep": 12.535,
+        "tollroad": 12.586,
+        "boneflood": 12.831,
+        "mireturn": 12.538,
+        "veilbleed": 12.474,
+        "ashhowl": 12.532,
+        "frosthollow": 13.788,
+        "stormhatch": 12.618,
+        "sandreach": 12.651
+      }
+    },
+    {
+      "floor": 16,
+      "mean": 16.321599999999997,
+      "minLocation": 16.002,
+      "maxLocation": 17.84,
+      "byLocation": {
+        "thornwake": 16.307,
+        "silkdeep": 16.208,
+        "tollroad": 16.002,
+        "boneflood": 16.082,
+        "mireturn": 16.047,
+        "veilbleed": 16.201,
+        "ashhowl": 16.186,
+        "frosthollow": 17.84,
+        "stormhatch": 16.321,
+        "sandreach": 16.022
+      }
+    },
+    {
+      "floor": 17,
+      "mean": 16.3159,
+      "minLocation": 15.892,
+      "maxLocation": 17.885,
+      "byLocation": {
+        "thornwake": 16.106,
+        "silkdeep": 16.138,
+        "tollroad": 16.015,
+        "boneflood": 16.411,
+        "mireturn": 16.028,
+        "veilbleed": 16.394,
+        "ashhowl": 16.041,
+        "frosthollow": 17.885,
+        "stormhatch": 15.892,
+        "sandreach": 16.249
+      }
+    },
+    {
+      "floor": 18,
+      "mean": 18.980600000000003,
+      "minLocation": 18.454,
+      "maxLocation": 21.06,
+      "byLocation": {
+        "thornwake": 18.741,
+        "silkdeep": 18.871,
+        "tollroad": 18.839,
+        "boneflood": 18.857,
+        "mireturn": 18.626,
+        "veilbleed": 18.866,
+        "ashhowl": 18.818,
+        "frosthollow": 21.06,
+        "stormhatch": 18.454,
+        "sandreach": 18.674
+      }
+    },
+    {
+      "floor": 19,
+      "mean": 18.9791,
+      "minLocation": 18.474,
+      "maxLocation": 21.006,
+      "byLocation": {
+        "thornwake": 18.592,
+        "silkdeep": 19.019,
+        "tollroad": 18.474,
+        "boneflood": 18.602,
+        "mireturn": 18.719,
+        "veilbleed": 18.692,
+        "ashhowl": 18.75,
+        "frosthollow": 21.006,
+        "stormhatch": 19.034,
+        "sandreach": 18.903
+      }
+    },
+    {
+      "floor": 20,
+      "mean": 22.6821,
+      "minLocation": 22.06,
+      "maxLocation": 24.888,
+      "byLocation": {
+        "thornwake": 22.435,
+        "silkdeep": 22.06,
+        "tollroad": 22.515,
+        "boneflood": 22.562,
+        "mireturn": 22.857,
+        "veilbleed": 22.372,
+        "ashhowl": 22.755,
+        "frosthollow": 24.888,
+        "stormhatch": 22.317,
+        "sandreach": 22.06
+      }
+    },
+    {
+      "floor": 21,
+      "mean": 22.685899999999997,
+      "minLocation": 22.254,
+      "maxLocation": 25.014,
+      "byLocation": {
+        "thornwake": 22.426,
+        "silkdeep": 22.254,
+        "tollroad": 22.467,
+        "boneflood": 22.425,
+        "mireturn": 22.339,
+        "veilbleed": 22.399,
+        "ashhowl": 22.32,
+        "frosthollow": 25.014,
+        "stormhatch": 22.575,
+        "sandreach": 22.64
+      }
+    },
+    {
+      "floor": 22,
+      "mean": 26.353600000000007,
+      "minLocation": 25.823,
+      "maxLocation": 29.272,
+      "byLocation": {
+        "thornwake": 26.028,
+        "silkdeep": 26.176,
+        "tollroad": 26.032,
+        "boneflood": 25.984,
+        "mireturn": 26.163,
+        "veilbleed": 25.895,
+        "ashhowl": 26.086,
+        "frosthollow": 29.272,
+        "stormhatch": 25.823,
+        "sandreach": 26.077
+      }
+    },
+    {
+      "floor": 23,
+      "mean": 30.612100000000005,
+      "minLocation": 29.904,
+      "maxLocation": 33.799,
+      "byLocation": {
+        "thornwake": 30.182,
+        "silkdeep": 29.986,
+        "tollroad": 30.337,
+        "boneflood": 29.904,
+        "mireturn": 30.264,
+        "veilbleed": 30.161,
+        "ashhowl": 30.749,
+        "frosthollow": 33.799,
+        "stormhatch": 30.264,
+        "sandreach": 30.475
+      }
+    },
+    {
+      "floor": 24,
+      "mean": 30.679699999999997,
+      "minLocation": 30.142,
+      "maxLocation": 33.646,
+      "byLocation": {
+        "thornwake": 30.466,
+        "silkdeep": 30.142,
+        "tollroad": 30.175,
+        "boneflood": 30.345,
+        "mireturn": 30.183,
+        "veilbleed": 30.508,
+        "ashhowl": 30.143,
+        "frosthollow": 33.646,
+        "stormhatch": 30.616,
+        "sandreach": 30.573
+      }
+    },
+    {
+      "floor": 25,
+      "mean": 30.517499999999995,
+      "minLocation": 29.842,
+      "maxLocation": 33.191,
+      "byLocation": {
+        "thornwake": 30.397,
+        "silkdeep": 30.458,
+        "tollroad": 30.107,
+        "boneflood": 29.842,
+        "mireturn": 30.181,
+        "veilbleed": 30.121,
+        "ashhowl": 30.065,
+        "frosthollow": 33.191,
+        "stormhatch": 30.555,
+        "sandreach": 30.258
+      }
+    },
+    {
+      "floor": 26,
+      "mean": 30.598599999999998,
+      "minLocation": 29.908,
+      "maxLocation": 33.686,
+      "byLocation": {
+        "thornwake": 29.971,
+        "silkdeep": 30.029,
+        "tollroad": 30.46,
+        "boneflood": 30.389,
+        "mireturn": 29.908,
+        "veilbleed": 30.111,
+        "ashhowl": 30.363,
+        "frosthollow": 33.686,
+        "stormhatch": 30.37,
+        "sandreach": 30.699
+      }
+    },
+    {
+      "floor": 27,
+      "mean": 30.492799999999995,
+      "minLocation": 29.713,
+      "maxLocation": 33.45,
+      "byLocation": {
+        "thornwake": 29.961,
+        "silkdeep": 30.318,
+        "tollroad": 29.856,
+        "boneflood": 29.713,
+        "mireturn": 30.558,
+        "veilbleed": 30.345,
+        "ashhowl": 30.154,
+        "frosthollow": 33.45,
+        "stormhatch": 30.394,
+        "sandreach": 30.179
+      }
+    },
+    {
+      "floor": 28,
+      "mean": 30.5896,
+      "minLocation": 30.092,
+      "maxLocation": 33.765,
+      "byLocation": {
+        "thornwake": 30.234,
+        "silkdeep": 30.152,
+        "tollroad": 30.35,
+        "boneflood": 30.184,
+        "mireturn": 30.092,
+        "veilbleed": 30.483,
+        "ashhowl": 30.146,
+        "frosthollow": 33.765,
+        "stormhatch": 30.305,
+        "sandreach": 30.185
+      }
+    },
+    {
+      "floor": 29,
+      "mean": 30.631800000000005,
+      "minLocation": 29.81,
+      "maxLocation": 33.879,
+      "byLocation": {
+        "thornwake": 30.229,
+        "silkdeep": 30.459,
+        "tollroad": 30.494,
+        "boneflood": 30.078,
+        "mireturn": 30.343,
+        "veilbleed": 30.625,
+        "ashhowl": 29.81,
+        "frosthollow": 33.879,
+        "stormhatch": 30.241,
+        "sandreach": 30.16
+      }
+    },
+    {
+      "floor": 31,
+      "mean": 35.6734,
+      "minLocation": 34.918,
+      "maxLocation": 39.462,
+      "byLocation": {
+        "thornwake": 35.442,
+        "silkdeep": 35.488,
+        "tollroad": 34.952,
+        "boneflood": 35.55,
+        "mireturn": 35.148,
+        "veilbleed": 35.256,
+        "ashhowl": 35.406,
+        "frosthollow": 39.462,
+        "stormhatch": 34.918,
+        "sandreach": 35.112
+      }
+    },
+    {
+      "floor": 32,
+      "mean": 35.50260000000001,
+      "minLocation": 34.598,
+      "maxLocation": 39.506,
+      "byLocation": {
+        "thornwake": 34.598,
+        "silkdeep": 35.392,
+        "tollroad": 34.946,
+        "boneflood": 34.854,
+        "mireturn": 35.178,
+        "veilbleed": 34.712,
+        "ashhowl": 35.432,
+        "frosthollow": 39.506,
+        "stormhatch": 34.966,
+        "sandreach": 35.442
+      }
+    },
+    {
+      "floor": 33,
+      "mean": 35.7684,
+      "minLocation": 34.84,
+      "maxLocation": 39.43,
+      "byLocation": {
+        "thornwake": 35.126,
+        "silkdeep": 35.52,
+        "tollroad": 35.582,
+        "boneflood": 35.322,
+        "mireturn": 34.84,
+        "veilbleed": 35.06,
+        "ashhowl": 35.59,
+        "frosthollow": 39.43,
+        "stormhatch": 35.714,
+        "sandreach": 35.5
+      }
+    },
+    {
+      "floor": 34,
+      "mean": 35.666199999999996,
+      "minLocation": 34.842,
+      "maxLocation": 40.256,
+      "byLocation": {
+        "thornwake": 34.842,
+        "silkdeep": 35.01,
+        "tollroad": 34.864,
+        "boneflood": 35.284,
+        "mireturn": 35.532,
+        "veilbleed": 35.082,
+        "ashhowl": 35.276,
+        "frosthollow": 40.256,
+        "stormhatch": 35.084,
+        "sandreach": 35.432
+      }
+    },
+    {
+      "floor": 35,
+      "mean": 35.5852,
+      "minLocation": 34.758,
+      "maxLocation": 39.336,
+      "byLocation": {
+        "thornwake": 34.82,
+        "silkdeep": 34.758,
+        "tollroad": 35.384,
+        "boneflood": 35.398,
+        "mireturn": 34.848,
+        "veilbleed": 35.732,
+        "ashhowl": 35.428,
+        "frosthollow": 39.336,
+        "stormhatch": 35.092,
+        "sandreach": 35.056
+      }
+    },
+    {
+      "floor": 36,
+      "mean": 35.491,
+      "minLocation": 34.644,
+      "maxLocation": 38.88,
+      "byLocation": {
+        "thornwake": 34.644,
+        "silkdeep": 34.838,
+        "tollroad": 35.12,
+        "boneflood": 35.75,
+        "mireturn": 35.088,
+        "veilbleed": 35.238,
+        "ashhowl": 35.128,
+        "frosthollow": 38.88,
+        "stormhatch": 34.976,
+        "sandreach": 35.248
+      }
+    },
+    {
+      "floor": 37,
+      "mean": 35.5784,
+      "minLocation": 34.704,
+      "maxLocation": 39.43,
+      "byLocation": {
+        "thornwake": 35.326,
+        "silkdeep": 34.962,
+        "tollroad": 34.704,
+        "boneflood": 35.288,
+        "mireturn": 34.958,
+        "veilbleed": 35.178,
+        "ashhowl": 35.524,
+        "frosthollow": 39.43,
+        "stormhatch": 35.142,
+        "sandreach": 35.272
+      }
+    },
+    {
+      "floor": 38,
+      "mean": 39.2889,
+      "minLocation": 38.435,
+      "maxLocation": 42.587,
+      "byLocation": {
+        "thornwake": 39.084,
+        "silkdeep": 38.555,
+        "tollroad": 39.071,
+        "boneflood": 38.977,
+        "mireturn": 38.435,
+        "veilbleed": 39.256,
+        "ashhowl": 39.012,
+        "frosthollow": 42.587,
+        "stormhatch": 38.471,
+        "sandreach": 39.441
+      }
+    },
+    {
+      "floor": 39,
+      "mean": 39.240700000000004,
+      "minLocation": 38.22,
+      "maxLocation": 43.701,
+      "byLocation": {
+        "thornwake": 38.79,
+        "silkdeep": 38.723,
+        "tollroad": 38.681,
+        "boneflood": 38.867,
+        "mireturn": 39.154,
+        "veilbleed": 39.044,
+        "ashhowl": 38.652,
+        "frosthollow": 43.701,
+        "stormhatch": 38.575,
+        "sandreach": 38.22
+      }
+    },
+    {
+      "floor": 40,
+      "mean": 39.2126,
+      "minLocation": 38.497,
+      "maxLocation": 43.367,
+      "byLocation": {
+        "thornwake": 38.51,
+        "silkdeep": 38.497,
+        "tollroad": 38.646,
+        "boneflood": 38.788,
+        "mireturn": 38.594,
+        "veilbleed": 38.963,
+        "ashhowl": 39.117,
+        "frosthollow": 43.367,
+        "stormhatch": 38.997,
+        "sandreach": 38.647
+      }
+    },
+    {
+      "floor": 41,
+      "mean": 39.451699999999995,
+      "minLocation": 38.352,
+      "maxLocation": 43.887,
+      "byLocation": {
+        "thornwake": 39.131,
+        "silkdeep": 39.101,
+        "tollroad": 39.172,
+        "boneflood": 38.588,
+        "mireturn": 39.16,
+        "veilbleed": 39.044,
+        "ashhowl": 38.888,
+        "frosthollow": 43.887,
+        "stormhatch": 39.194,
+        "sandreach": 38.352
+      }
+    },
+    {
+      "floor": 42,
+      "mean": 39.5313,
+      "minLocation": 38.404,
+      "maxLocation": 43.465,
+      "byLocation": {
+        "thornwake": 39.513,
+        "silkdeep": 39.532,
+        "tollroad": 38.404,
+        "boneflood": 38.988,
+        "mireturn": 39.003,
+        "veilbleed": 38.78,
+        "ashhowl": 39.241,
+        "frosthollow": 43.465,
+        "stormhatch": 39.581,
+        "sandreach": 38.806
+      }
+    },
+    {
+      "floor": 43,
+      "mean": 39.3177,
+      "minLocation": 38.549,
+      "maxLocation": 43.052,
+      "byLocation": {
+        "thornwake": 38.914,
+        "silkdeep": 38.928,
+        "tollroad": 39.101,
+        "boneflood": 39.022,
+        "mireturn": 38.77,
+        "veilbleed": 38.549,
+        "ashhowl": 39.071,
+        "frosthollow": 43.052,
+        "stormhatch": 38.585,
+        "sandreach": 39.185
+      }
+    },
+    {
+      "floor": 44,
+      "mean": 39.215,
+      "minLocation": 38.463,
+      "maxLocation": 43.596,
+      "byLocation": {
+        "thornwake": 38.463,
+        "silkdeep": 39.106,
+        "tollroad": 38.698,
+        "boneflood": 38.856,
+        "mireturn": 38.771,
+        "veilbleed": 38.834,
+        "ashhowl": 38.507,
+        "frosthollow": 43.596,
+        "stormhatch": 38.683,
+        "sandreach": 38.636
+      }
+    }
+  ]
+}

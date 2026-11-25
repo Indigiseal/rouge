@@ -48,19 +48,39 @@ export function queueLocationAssets(scene, locationIds) {
     return todo.length;
 }
 
+const pendingLocationLoads = new WeakMap();
+
 /**
  * Load a location's art now and resolve when it is in (or has failed: a missing
  * file only costs the fallback art). Safe to call while the loader is busy.
  */
 export function ensureLocationAssets(scene, locationIds) {
-    return new Promise((resolve) => {
-        const start = () => {
-            if (!queueLocationAssets(scene, locationIds)) { resolve(); return; }
-            scene.load.once('complete', resolve);
-            scene.load.start();
-        };
-        if (scene.load.isLoading?.()) scene.load.once('complete', start); else start();
+    const todo = missingLocationAssets(scene, locationIds);
+    if (!todo.length) return Promise.resolve();
+    const loader = scene.load;
+    let pending = pendingLocationLoads.get(loader);
+    if (!pending) pendingLocationLoads.set(loader, pending = new Map());
+    const ready = todo.map(({ key, path }) => {
+        if (pending.has(key)) return pending.get(key);
+        const promise = new Promise((resolve) => {
+            const finish = () => {
+                loader.off(`filecomplete-image-${key}`, finish);
+                loader.off('loaderror', failed);
+                pending.delete(key);
+                resolve();
+            };
+            const failed = file => { if (file?.key === key) finish(); };
+            loader.once(`filecomplete-image-${key}`, finish);
+            loader.on('loaderror', failed);
+            loader.image(key, path);
+        });
+        pending.set(key, promise);
+        return promise;
     });
+    // Phaser accepts files while loading. Wait only for this location's images,
+    // so an unrelated music download cannot hold up entry into the act.
+    if (!loader.isLoading()) loader.start();
+    return Promise.all(ready);
 }
 
 /**

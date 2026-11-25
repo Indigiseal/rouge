@@ -12,12 +12,14 @@ import {
     spearPierceTargetIndices,
     swordCleaveTargetIndices,
     axeHeavyCleaveTargetIndices,
+    maceDiagonalTargetIndices,
+    gauntletHandTargetIndices,
     weaponIgnoresFrontline,
 } from '../../content/cards/weapons.js';
 import { recordHumanRunEvent, snapshotHumanRunCard } from '../HumanRunRecorder.js';
 import { playSmokeBurst } from '../../ui/SmokeBurst.js';
 import { t, translateItemName } from '../../i18n/i18n.js';
-import { playHeatWave } from '../../ui/HeatWave.js';
+import { playScorchedLandBurst } from '../../ui/ScorchedLandBurst.js';
 import { playStrikeSlash } from '../../ui/StrikeSlash.js';
 import { applyWeaponSigils, onWeaponSigilHit } from '../combat/SigilEffects.js';
 import { getSigil, hasEnemyTrait } from '../../content/sigils/sigils.js';
@@ -31,6 +33,10 @@ import { mimicSummonSpot, summonMimic } from '../board/MimicSummon.js';
 import { applyScorched, canBurnCard } from '../../content/combat/ashhowl.js';
 import { applyThunderclap, isStormSpellTarget } from '../../content/combat/storm.js';
 import { freezeEnemy, isFrostTarget, consumePlayerAttackHold } from '../../content/combat/frost.js';
+import { isGauntlet } from '../../content/balance/Gauntlet.js';
+import { playGauntletSlam } from '../../ui/GauntletSlam.js';
+import { playBoardImpactRipple } from '../../ui/BoardImpactRipple.js';
+import { playPoisonBombBurst } from '../../ui/PoisonBombBurst.js';
 
 // The strike over a weapon card (playWeaponStrikeEffect): how far the card
 // shakes either way. The slash itself is ui/StrikeSlash.js.
@@ -128,7 +134,9 @@ export const InventoryCombatUse = {
                 used = restoreDesertFeastAP(this.scene.gameState) > 0;
                 if (used) {
                     this.scene.playActionPointGain?.(before, this.scene.gameState.actionsLeft);
-                    SoundHelper.playSound(this.scene, 'recovery', 0.5);
+                    // Its own soup sound; the shared soup bubbles if it is missing.
+                    const feastSound = this.scene.cache?.audio?.exists?.('desert_feast') ? 'desert_feast' : 'soup_bubbles';
+                    SoundHelper.playSound(this.scene, feastSound, 0.55);
                     this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y,
                         t(this.scene, 'magic.desertFeast.applied'), 0x71800b);
                     this.scene.updateUI();
@@ -137,14 +145,17 @@ export const InventoryCombatUse = {
             }
             case 'thunderclap':
                 used = applyThunderclap(this.scene.cardSystem) > 0;
-                if (used) SoundHelper.playVariant(this.scene, 'lightning_zap', 0.5);
+                if (used) {
+                    SoundHelper.playVariant(this.scene, 'lightning_zap', 0.5);
+                    playBoardImpactRipple(this.scene, { x: cardSprite.x, y: cardSprite.y, height: 6 });
+                }
                 break;
             case 'scorched':
                 used = applyScorched(this.scene.cardSystem) > 0;
                 if (used) {
-                    // A wave of heat from the middle of the board, under the cards (ui/HeatWave.js).
+                    // The authored wave expands from the spell's drop point.
                     SoundHelper.playSound(this.scene, 'scorched_wave', 0.6);
-                    playHeatWave(this.scene);
+                    playScorchedLandBurst(this.scene, { x: cardSprite.x, y: cardSprite.y });
                     this.scene.createFloatingText(320, 70, t(this.scene, 'magic.scorched.applied'), 0xef7c4b);
                 }
                 break;
@@ -157,16 +168,8 @@ export const InventoryCombatUse = {
             case 'venomousBomb': {
                 used = applyVenomousBomb(this.scene.cardSystem) > 0;
                 if (used) {
+                    playPoisonBombBurst(this.scene, { x: cardSprite.x, y: cardSprite.y });
                     SoundHelper.playSound(this.scene, 'poison_trap', 0.6);
-                    if (this.scene.anims.exists('poison_poof_anim')) {
-                        this.scene.cardSystem.boardCards.filter(isSilkdeepPoisonTarget).forEach(card => {
-                            if (!card.sprite?.scene) return;
-                            const poof = this.scene.add.sprite(card.sprite.x, card.sprite.y, 'poisonPoof')
-                                .setDepth((card.sprite.depth || 0) + 10);
-                            poof.play('poison_poof_anim');
-                            poof.once('animationcomplete', () => poof.destroy());
-                        });
-                    }
                 }
                 break;
             }
@@ -195,6 +198,7 @@ export const InventoryCombatUse = {
                     const enemyCard = this.scene.cardSystem.boardCards[closestEnemy];
                     if (enemyCard && enemyCard.sprite) {
                         this.createFireballEffect(enemyCard.sprite);
+                        playBoardImpactRipple(this.scene, { x: enemyCard.sprite.x, y: enemyCard.sprite.y, height: 5, radius: 110 });
                     }
 
                     // Heatproof lava creatures take less (fireResist.js).
@@ -211,6 +215,7 @@ export const InventoryCombatUse = {
                     if (freezeEnemy(this.scene.cardSystem, card, 3)) frozeAny = true;
                 });
                 if (frozeAny) {
+                    playBoardImpactRipple(this.scene, { x: cardSprite.x, y: cardSprite.y, height: 4 });
                     SoundHelper.playSound(this.scene, 'frozenRing', 0.5);
                     this.scene.createFloatingText(320, 180, 'Enemies Frozen!', 0x71b1ae);
                     used = true;
@@ -465,13 +470,15 @@ export const InventoryCombatUse = {
         });
     },
     useWeapon(slotIndex, cardSprite) {
+        const dropPoint = { x: cardSprite.x, y: cardSprite.y };
         const weapon = this.slots[slotIndex];
         if (!weapon) return;
         const weaponBeforeUse = snapshotHumanRunCard(weapon);
 
         // Generic defensive weapon hook. Bows deliberately cannot use it;
         // the type guard also protects runs loaded from pre-removal saves.
-        if (weapon.special === 'block' && weapon.weaponType !== 'bow') {
+        // The Ogre's Gauntlet blocked once; a saved one may still say 'block'.
+        if (weapon.special === 'block' && weapon.weaponType !== 'bow' && !isGauntlet(weapon)) {
             // Check if dropped on player avatar for blocking
             const playerAvatarBounds = this.scene.playerAvatar.getBounds();
             if (Phaser.Geom.Intersects.RectangleToRectangle(cardSprite.getBounds(), playerAvatarBounds)) {
@@ -593,6 +600,9 @@ export const InventoryCombatUse = {
         if (attackHold) {
             this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y - 18,
                 t(this.scene, `status.${attackHold}.missed`), 0xffcf7f);
+            if (attackHold === 'sandstorm' && this.scene.cache?.audio?.exists?.('sandstorm_miss')) {
+                SoundHelper.playSound(this.scene, 'sandstorm_miss', 0.6);
+            }
             this.scene.updateUI?.();
             this.returnWeaponToSlotDelayed(slotIndex, cardSprite);
             return;
@@ -610,22 +620,29 @@ export const InventoryCombatUse = {
             this.playWeaponStrikeEffect(cardSprite);
             let attackDamage = weapon.damage;
             const characterId = this.scene.gameState.characterId;
+            // What changed the swing on the way, for the combat log's breakdown
+            // (attackEnemy adds its own steps after these).
+            const hitSteps = [];
 
             // Apply weakness penalty when exhausted (out of action points)
             if (wasExhausted) {
                 attackDamage = Math.ceil(attackDamage * 0.8); // 20% weaker
+                hitSteps.push({ key: 'float.weakenedAttack', change: 'x0.8' });
                 this.scene.createFloatingText(this.scene.playerAvatar.x, this.scene.playerAvatar.y, 'Weakened Attack!', 0xfbad19);
             }
 
             // Permanent class/talent damage (rogue +10%, Twin Fang).
             // Keen Edge / First Blood / weakness / crit stay situational.
             const talentFx = this.scene.gameState.talentEffects || null;
+            const beforeClass = attackDamage;
             attackDamage = applyPermanentWeaponDamageBonuses(characterId, weapon, attackDamage, talentFx);
+            if (attackDamage !== beforeClass) hitSteps.push({ key: 'log.hit.class', change: `+${attackDamage - beforeClass}` });
 
             // The weapon's sigils (Merciless, Hunter, Honed) against this target.
             const sigilTarget = this.scene.cardSystem.boardCards[closestEnemy];
             const sigilHit = applyWeaponSigils(this.scene, weapon, sigilTarget, attackDamage, { actionsBefore });
             attackDamage = sigilHit.damage;
+            hitSteps.push(...(sigilHit.steps || []));
             if (sigilHit.triggered.length && sigilTarget?.sprite) {
                 this.scene.createFloatingText(sigilTarget.sprite.x, sigilTarget.sprite.y - 30,
                     sigilHit.triggered.map((id) => translateItemName(this.scene, getSigil(id)?.name)).join(' + ') + '!', 0xffcf7f);
@@ -637,6 +654,7 @@ export const InventoryCombatUse = {
             );
             attackDamage = keen.damage;
             if (keen.applied) {
+              hitSteps.push({ key: 'float.keenEdge', vars: { amount: keen.bonus } });
               this.scene.createFloatingText(
                 cardSprite.x, cardSprite.y - 36, `Keen Edge +${keen.bonus}!`, 0x71800b
               );
@@ -646,6 +664,7 @@ export const InventoryCombatUse = {
             if (talentFx?.firstBloodFlat > 0 && !this.scene.gameState.firstAttackThisFloorUsed) {
                 attackDamage += talentFx.firstBloodFlat;
                 this.scene.gameState.firstAttackThisFloorUsed = true;
+                hitSteps.push({ key: 'float.firstBlood', change: `+${talentFx.firstBloodFlat}` });
                 this.scene.createFloatingText(cardSprite.x, cardSprite.y - 48, 'First Blood!', 0xa83c69);
             }
 
@@ -659,6 +678,7 @@ export const InventoryCombatUse = {
                 attackDamage = critRoll.damage;
                 if (wasExhausted) attackDamage = Math.ceil(attackDamage * 0.8);
                 didCrit = true;
+                hitSteps.push({ key: 'float.crit', change: `= ${attackDamage}` });
             }
 
             // Handle special abilities
@@ -697,7 +717,9 @@ export const InventoryCombatUse = {
                 const targetMaxHP = Math.max(1, targetCard?.data?.maxHealth || targetHP || 1);
                 const healthRatio = targetHP / targetMaxHP;
                 if (healthRatio > 0.2) {
-                    heavyCleave = true;
+                    // The cross needs action points, like the other reaches;
+                    // hungry, the axe hits only its target (Taya).
+                    heavyCleave = !wasExhausted;
                 } else if (targetCard?.data?.type !== 'boss' && weapon.durability >= 2) {
                     const armor = Math.max(0, targetCard?.data?.armor || 0);
                     const ordinaryDamage = Math.max(1, attackDamage - armor);
@@ -707,6 +729,7 @@ export const InventoryCombatUse = {
                         // normal hit, gem, enchant, and death pipelines.
                         attackDamage = targetHP + armor;
                         weapon.durability--; // plus the normal pip = 2 total
+                        hitSteps.push({ key: 'float.heavyStrike' });
                         this.scene.createFloatingText(cardSprite.x, cardSprite.y - 20, 'Heavy Strike!', 0xef7c4b);
                     }
                 }
@@ -738,7 +761,8 @@ export const InventoryCombatUse = {
                 if (i === 0) {
                     // First hit: the dragged weapon. skipDurability=false so its
                     // pip is spent normally inside attackEnemy.
-                    this.scene.cardSystem.attackEnemy(closestEnemy, attackDamage, false, weapon, false, { critical: didCrit });
+                    this.scene.cardSystem.attackEnemy(closestEnemy, attackDamage, false, weapon, false,
+                        { critical: didCrit, steps: hitSteps, baseDamage: weapon.damage });
                     // On-hit sigils (Leech, Venom, Cutpurse, Arrest), and the
                     // swing remembered for Hunter, Combo, Tandem and Honed.
                     const healthAfter = currentEnemy.data?.isBonePile ? 0 : (currentEnemy.data?.health ?? 0);
@@ -755,21 +779,31 @@ export const InventoryCombatUse = {
                     // swings for free, so we pass skipDurability=true and never
                     // touch its durability.
                     let secondaryDamage = secondaryDagger.damage || 1;
-                    if (wasExhausted) secondaryDamage = Math.ceil(secondaryDamage * 0.8);
+                    const offhandSteps = [];
+                    if (wasExhausted) {
+                        secondaryDamage = Math.ceil(secondaryDamage * 0.8);
+                        offhandSteps.push({ key: 'float.weakenedAttack', change: 'x0.8' });
+                    }
+                    const offhandBeforeClass = secondaryDamage;
                     secondaryDamage = applyPermanentWeaponDamageBonuses(
                         characterId, secondaryDagger, secondaryDamage, talentFx
                     );
+                    if (secondaryDamage !== offhandBeforeClass) {
+                        offhandSteps.push({ key: 'log.hit.class', change: `+${secondaryDamage - offhandBeforeClass}` });
+                    }
                     // The off-hand dagger's own sigils count on its hit, the
                     // same as the dragged one's (Outnumbered on the off-hand
                     // used to do nothing).
                     const offhandSigils = applyWeaponSigils(this.scene, secondaryDagger, currentEnemy, secondaryDamage, { actionsBefore });
                     secondaryDamage = offhandSigils.damage;
+                    offhandSteps.push(...(offhandSigils.steps || []));
                     if (offhandSigils.triggered.length && currentEnemy?.sprite) {
                         this.scene.createFloatingText(currentEnemy.sprite.x, currentEnemy.sprite.y - 42,
                             offhandSigils.triggered.map((id) => translateItemName(this.scene, getSigil(id)?.name)).join(' + ') + '!', 0xffcf7f);
                     }
                     const offhandHealthBefore = currentEnemy.data?.health ?? 0;
-                    this.scene.cardSystem.attackEnemy(closestEnemy, secondaryDamage, false, secondaryDagger, true);
+                    this.scene.cardSystem.attackEnemy(closestEnemy, secondaryDamage, false, secondaryDagger, true,
+                        { steps: offhandSteps, baseDamage: secondaryDagger.damage || 1 });
                     onWeaponSigilHit(this.scene, secondaryDagger, currentEnemy, {
                         damageDealt: Math.max(0, offhandHealthBefore - Math.max(0,
                             currentEnemy.data?.isBonePile ? 0 : (currentEnemy.data?.health ?? 0))),
@@ -809,6 +843,17 @@ export const InventoryCombatUse = {
             if (heavyCleave
                 && (targetBefore?.data?.health ?? targetHealthBefore) < targetHealthBefore) {
                 this.applyAxeHeavyCleave(closestEnemy, attackDamage, weapon, targetBefore);
+            }
+            if (!wasExhausted && weapon.special === 'crush'
+                && (targetBefore?.data?.health ?? targetHealthBefore) < targetHealthBefore) {
+                this.applyMaceDiagonal(closestEnemy, attackDamage, weapon, targetBefore);
+            }
+            // Out of action points the hand stays shut, as the sword's cleave
+            // and the spear's thrust do: only the target is hit (Taya).
+            if (!wasExhausted && isGauntlet(weapon)
+                && (targetBefore?.data?.health ?? targetHealthBefore) < targetHealthBefore) {
+                playGauntletSlam(this.scene, dropPoint);
+                this.applyGauntletSlam(closestEnemy, attackDamage, weapon);
             }
 
             // Front Volley: bow also hits a random front (MELEE) enemy.
@@ -866,8 +911,10 @@ export const InventoryCombatUse = {
         const slot = this.slotSprites?.[index];
         const cardSprite = slot?.card;
         if (!cardSprite?.scene) return;
+        if (this._liveDrag?.cardSprite === cardSprite || cardSprite.getData('returningToSlot')) return;
 
         const restY = Number.isFinite(slot?.originalY) ? slot.originalY : cardSprite.y;
+        this.scene.tweens.killTweensOf(cardSprite);
         if (slash) this.playStrikeSlash(cardSprite, cardSprite.x, restY);
         const hoverSprite = slot?.hoverSprite;
         const shadow = slot?.shadow;
@@ -937,7 +984,7 @@ export const InventoryCombatUse = {
         for (const target of swordCleaveTargetIndices(boards, primaryIndex)) {
             const sprite = boards[target]?.sprite;
             this.scene.cardSystem.attackEnemy(
-                target, cleaveDmg, false, weapon, true, { bypassTargeting: true }
+                target, cleaveDmg, false, weapon, true, { bypassTargeting: true, areaHit: true }
             );
             if (sprite) {
                 this.scene.createFloatingText(sprite.x, sprite.y - 24, 'Cleave!', 0xffcf7f);
@@ -955,11 +1002,34 @@ export const InventoryCombatUse = {
             if (!card?.revealed || (card.data?.health ?? 0) <= 0) continue;
             const { x, y } = card.sprite || {};
             this.scene.cardSystem.attackEnemy(
-                target, damage, false, weapon, true, { bypassTargeting: true }
+                target, damage, false, weapon, true, { bypassTargeting: true, areaHit: true }
             );
             if (Number.isFinite(x) && Number.isFinite(y)) {
                 this.scene.createFloatingText(x, y - 24, 'Pierce!', 0xffcf7f);
             }
+            this.applyAssassinateTalent(target);
+        }
+    },
+    // The hand comes down on the target: palm, thumb and fingers take half
+    // (gauntletHandTargetIndices, content/cards/weapons.js).
+    applyGauntletSlam(primaryIndex, damage, weapon) {
+        const board = this.scene.cardSystem?.boardCards || [];
+        const targets = gauntletHandTargetIndices(board, primaryIndex);
+        for (const index of targets) {
+            const card = board[index];
+            if (!card?.revealed || !this.scene.cardSystem.isEnemyType(card.data?.type) || (card.data.health ?? 0) <= 0) continue;
+            this.scene.cardSystem.attackEnemy(index, Math.max(1, Math.ceil(damage * 0.5)), false, weapon, true, { bypassTargeting: true, areaHit: true });
+            this.applyAssassinateTalent(index);
+        }
+    },
+    applyMaceDiagonal(primaryIndex, maceDamage, weapon, primaryCard = null) {
+        const board = this.scene.cardSystem?.boardCards || [];
+        for (const target of maceDiagonalTargetIndices(board, primaryIndex, primaryCard)) {
+            const card = board[target];
+            if (!card?.revealed || (card.data?.health ?? 0) <= 0) continue;
+            const { x, y } = card.sprite || {};
+            this.scene.cardSystem.attackEnemy(target, Math.max(1, Math.ceil(maceDamage * 0.5)), false, weapon, true, { bypassTargeting: true, areaHit: true });
+            if (Number.isFinite(x) && Number.isFinite(y)) this.scene.createFloatingText(x, y - 24, 'Cleave!', 0xffcf7f);
             this.applyAssassinateTalent(target);
         }
     },
@@ -974,7 +1044,7 @@ export const InventoryCombatUse = {
             const damage = Math.max(1, Math.ceil(axeDamage * fraction));
             const { x, y } = card.sprite || {};
             this.scene.cardSystem.attackEnemy(
-                target, damage, false, weapon, true, { bypassTargeting: true }
+                target, damage, false, weapon, true, { bypassTargeting: true, areaHit: true }
             );
             if (Number.isFinite(x) && Number.isFinite(y)) {
                 this.scene.createFloatingText(x, y - 24, label, 0xef9629);
@@ -1012,7 +1082,7 @@ export const InventoryCombatUse = {
         const target = candidates[Math.floor(Math.random() * candidates.length)];
         const volleyDmg = Math.max(1, Math.floor(flatDamage));
         this.scene.cardSystem.attackEnemy(
-            target, volleyDmg, false, weapon, true, { bypassTargeting: true }
+            target, volleyDmg, false, weapon, true, { bypassTargeting: true, areaHit: true }
         );
         const sprite = boards[target]?.sprite;
         if (sprite) {
@@ -1108,6 +1178,8 @@ export const InventoryCombatUse = {
     returnWeaponToSlot(slotIndex, cardSprite) {
         const slotSprite = this.slotSprites[slotIndex];
         if (slotSprite && cardSprite && cardSprite.scene) {
+            this.scene.tweens.killTweensOf(cardSprite);
+            cardSprite.setData('returningToSlot', false);
             cardSprite.x = slotSprite.background.x;
             cardSprite.y = slotSprite.background.y;
             if (slotSprite.shadow && slotSprite.shadow.scene) {
@@ -1138,7 +1210,11 @@ export const InventoryCombatUse = {
     // Helper method to return weapon to slot with delay
     returnWeaponToSlotDelayed(slotIndex, cardSprite) {
         const originalSlot = this.slotSprites[slotIndex];
-        const weaponStillExists = () => this.slots[slotIndex] && originalSlot && originalSlot.card;
+        const epoch = cardSprite?.getData?.('inventoryDragEpoch');
+        cardSprite?.setData?.('returningToSlot', true);
+        const weaponStillExists = () => this.slots[slotIndex]
+            && this.slotSprites[slotIndex]?.card === cardSprite
+            && cardSprite?.getData?.('inventoryDragEpoch') === epoch;
 
         // Clean up any board artifacts immediately
         this.cleanupBoardArtifacts(cardSprite);
@@ -1147,6 +1223,8 @@ export const InventoryCombatUse = {
         this.scene.time.delayedCall(300, () => {
             // Only return card if it still exists and wasn't destroyed
             if (weaponStillExists() && cardSprite && cardSprite.scene) {
+                this.scene.tweens.killTweensOf(cardSprite);
+                cardSprite.setData('returningToSlot', false);
                 cardSprite.x = originalSlot.background.x;
                 cardSprite.y = originalSlot.background.y;
                 cardSprite.setScale(1);

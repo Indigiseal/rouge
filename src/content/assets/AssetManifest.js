@@ -5,6 +5,7 @@
 /** @typedef {{ key: string, path: string, type: 'image'|'spritesheet'|'audio'|'bitmapFont', frameWidth?: number, frameHeight?: number, xmlPath?: string }} AssetEntry */
 
 import { ENEMY_DEATH_SOUND_ASSETS } from '../audio/enemyDeathSounds.js';
+import { ENEMY_ATTACK_SOUND_ASSETS } from '../audio/enemyAttackSounds.js';
 import { BOSS_SOUND_ASSETS } from '../audio/bossSounds.js';
 import { ITEM_SHEETS } from './itemSheets.js';
 import { ARMOR_EQUIP_SOUND_ASSETS } from '../audio/armorSounds.js';
@@ -19,6 +20,9 @@ export const ASSET_MANIFEST = [
     // per item (sword_C, chain_L...) at boot (content/assets/itemSheets.js).
     ...ITEM_SHEETS.map((sheet) => ({ ...sheet, type: 'atlas' })),
     { key: 'stoneFloor', path: 'assets/art/dungeon.png', type: 'image' },
+    // Every New Run enters the sanctuary. Keep its small backdrop ready before
+    // showing the menu instead of downloading it on a blank scene afterwards.
+    { key: 'sanctuaryBackground', path: 'assets/art/backgrounds/bonefloodOssuary.png', type: 'image' },
     // Each location's room painting and boards are not here: a run loads its current
     // location's set (content/assets/locationAssets.js).
     { key: 'cardBack', path: 'assets/art/cardBack.png', type: 'image' },
@@ -153,6 +157,12 @@ export const ASSET_MANIFEST = [
     { key: 'mapNodes', path: 'assets/art/mapNodes42x42.png', type: 'spritesheet', frameWidth: 42, frameHeight: 42 },
     // The walked road under the map's lines (map/MapRoad.js): 32x32 autotile, frame = N1 E2 S4 W8.
     { key: 'mapRoad', path: 'assets/art/road.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
+    // Ashhowl's own road, same layout (frames 0-15 only): map/MapRoad.js LOCATION_ROAD_SHEETS.
+    { key: 'mapRoadAsh', path: 'assets/art/roadAsh.png', type: 'spritesheet', frameWidth: 32, frameHeight: 32 },
+    // The new banner style, tried on the Anvil room first (AnvilScene).
+    { key: 'bannerNew', path: 'assets/art/packed/bannerNew.png', type: 'image' },
+    // The stone arch behind each act's first room on the map (MapViewScene).
+    { key: 'dungeonEntrance', path: 'assets/art/dungeonEntrance.png', type: 'image' },
     // The gem socket hint's glint (ui/GemSockets.js): five 18x18 frames.
     { key: 'gemSpotAnim', path: 'assets/art/packed/gemSpotAnim.png', type: 'spritesheet', frameWidth: 18, frameHeight: 18 },
     // Fog of war over the map (the HoMM in Pixel Art fog atlas; map/MapFog.js).
@@ -237,6 +247,9 @@ export const ASSET_MANIFEST = [
     { key: 'shockedStatus', path: 'assets/art/shockedStatus.png', type: 'spritesheet', frameWidth: 16, frameHeight: 32 },
     // Poison trap trigger poof (5 frames, 92x92 each)
     { key: 'poisonPoof', path: 'assets/art/poisonPoof92x92.png', type: 'spritesheet', frameWidth: 92, frameHeight: 92 },
+    { key: 'poisonBombBurst', path: 'assets/art/poisonousAnim-Sheet.png', type: 'spritesheet', frameWidth: 126, frameHeight: 78 },
+    { key: 'scorchedLandBurst', path: 'assets/art/scorchedLandAnim.png', type: 'spritesheet', frameWidth: 194, frameHeight: 156 },
+    { key: 'fireColumnBurst', path: 'assets/art/fireColumnAnim.png', type: 'spritesheet', frameWidth: 134, frameHeight: 192 },
     // Frozen frame overlay (66x80) â€” drawn on top of a frozen card in place | of the old blue tint.
     // A soft glow behind the tiny gem and amulet rewards of a boss (32x32).
     { key: 'rewardSpot', path: 'assets/art/spot.png', type: 'image' },
@@ -259,10 +272,14 @@ export const ASSET_MANIFEST = [
     // Bosses
     { key: 'lightningBoss', path: 'assets/art/lightningBoss.png', type: 'image' },
     { key: 'frostGiant', path: 'assets/art/frosthollow/frostGiant.png', type: 'image' },
-    // The Green Warden, Goblin King, Giant Skeleton, Soul Eater, Mire Bride, Cerberus and Sandscale Chieftain have
+    // The Green Warden, Goblin King, Giant Skeleton, Soul Eater and Sandscale Chieftain have
     // no idle file: their idle pose is frame 0 of their attack sheet (bossAttackFrames.js).
     { key: 'SpiderQween', path: 'assets/art/spiderBoss.png', type: 'image' },
     { key: 'Lich', path: 'assets/art/lich.png', type: 'image' },
+    // The Mire Siren: one still picture, no attack frames yet. The key is still the old Mire Bride's.
+    { key: 'MireBride', path: 'assets/art/bossAttack/mireBride2.png', type: 'image' },
+    // The Cinder Hydra: one still picture, no attack frames yet. The key is still the old Cerberus's.
+    { key: 'Cerberus', path: 'assets/art/bossAttack/fireLizard2.png', type: 'image' },
     // Bosses' attack art (content/cards/bossAttackFrames.js): a sheet (frameWidth set)
     // loads as a spritesheet, a single attack picture as an image.
     ...BOSS_ATTACK_FRAME_FILES.map(({ key, path, frameWidth, frameHeight }) => (frameWidth
@@ -284,6 +301,7 @@ export const ASSET_MANIFEST = [
     // Ogre's Gauntlet — one row of 52x70 card faces, common..legendary.
     // Frame per rarity is mapped in content/balance/Gauntlet.js.
     { key: 'gauntletCards', path: 'assets/art/gauntletSheet.png', type: 'spritesheet', frameWidth: 52, frameHeight: 70 },
+    { key: 'gauntletHandSlam', path: 'assets/art/packed/handANim.png', type: 'spritesheet', frameWidth: 148, frameHeight: 116 },
     // Normal spell cards and their glowing Reliquary variants share frame order.
     // Preload exposes the normal frames under existing spell keys for saves.
     { key: 'magicCards', path: 'assets/art/magicCardsOriginalSheet1.png', type: 'spritesheet', frameWidth: 52, frameHeight: 69 },
@@ -353,6 +371,11 @@ export const ASSET_MANIFEST = [
     { key: 'ui_card_hover_2', path: 'assets/music/UI_Card_Hover_02.mp3', type: 'audio' },
     // The road opening when a floor is cleared.
     { key: 'door_open', path: 'assets/music/Door_Open_01.mp3', type: 'audio' },
+    // Victory fanfare must be ready even if background audio is still loading.
+    { key: 'boss_defeated', path: 'assets/music/Boss_Defeated_01.mp3', type: 'audio' },
+    { key: 'gauntlet_slam', path: 'assets/music/Gauntlet_Slam_01.mp3', type: 'audio' },
+    { key: 'burn_tick', path: 'assets/music/Burn_Tick_01.mp3', type: 'audio' },
+    { key: 'soup_bubbles', path: 'assets/music/Soup_Bubbles_01.mp3', type: 'audio' },
     // Stays at boot: it plays the moment the first fight starts.
     { key: 'new_level_1', path: 'assets/music/New_Level_01.mp3', type: 'audio' },
     { key: 'new_level_3', path: 'assets/music/New_Level_03.mp3', type: 'audio' },
@@ -448,6 +471,9 @@ export const LATE_AUDIO = [
     // Every enemy's own death (content/audio/enemyDeathSounds.js); until one
     // lands, that death plays the shared enemy_death pair.
     ...ENEMY_DEATH_SOUND_ASSETS,
+    // Ordinary enemies' own attack sounds (content/audio/enemyAttackSounds.js);
+    // until one lands, that attack is silent as before.
+    ...ENEMY_ATTACK_SOUND_ASSETS,
     // The location bosses' own attack and death (content/audio/bossSounds.js).
     ...BOSS_SOUND_ASSETS,
     // The Cerberus frenzy (ui/FrenzyCue.js): a low monstrous growl at the cue, a
@@ -455,6 +481,12 @@ export const LATE_AUDIO = [
     // Until they land: boss_enraged, and the Cerberus's own attack sound.
     { key: 'cerberus_frenzy_growl', path: 'assets/music/Cerberus_Frenzy_Growl.mp3', type: 'audio' },
     { key: 'cerberus_frenzy_chomp', path: 'assets/music/Cerberus_Frenzy_Chomp.mp3', type: 'audio' },
+    // A sandstorm-blinded swing whiffing through blown sand (ElevenLabs,
+    // tools/death-sounds.json "sandstorm", take 2, picked by Taya).
+    { key: 'sandstorm_miss', path: 'assets/music/Sandstorm_Miss.mp3', type: 'audio' },
+    // Desert Feast's soup bubbling, then a slurp (ElevenLabs, tools/death-sounds.json
+    // "desert_feast", soup_bubble_slurp take 2, picked by Taya).
+    { key: 'desert_feast', path: 'assets/music/Desert_Feast.mp3', type: 'audio' },
     // Equip sounds per armor type (content/audio/armorSounds.js); the shared
     // clank, armor_equip, stands in until they land.
     ...ARMOR_EQUIP_SOUND_ASSETS,
@@ -529,7 +561,6 @@ export const LATE_AUDIO = [
     { key: 'recovery_v2', path: 'assets/music/Heal_02.mp3', type: 'audio' },
     { key: 'legendary_reveal_1', path: 'assets/music/Legendary_Relic_Reveal_01.mp3', type: 'audio' },
     { key: 'legendary_reveal_2', path: 'assets/music/Legendary_Relic_Reveal_02.mp3', type: 'audio' },
-    { key: 'boss_defeated', path: 'assets/music/Boss_Defeated_01.mp3', type: 'audio' },
     { key: 'hero_death_1', path: 'assets/music/Death_01.mp3', type: 'audio' },
     { key: 'hero_death_2', path: 'assets/music/Death_02.mp3', type: 'audio' },
     { key: 'hero_death_3', path: 'assets/music/Death_03.mp3', type: 'audio' },

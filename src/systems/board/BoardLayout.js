@@ -547,6 +547,7 @@ function getSerializableBoardLayout() {
   return {
     cells: this._boardCells.map(cell => cell ? { r: cell.r, c: cell.c } : null),
     mimicSpawned: Boolean(this._roomMimicSpawned),
+    amuletSpawned: Boolean(this._roomAmuletSpawned),
     place: { ...this._boardPlace }
   };
 }
@@ -631,6 +632,7 @@ function finishSeatMove(card) {
 
 function moveCardToSeat(card, seat, { animate = true } = {}) {
     if (!card || !seat?.brick) return;
+    card._impactHopSettle?.();
     if (card.data) card.data.brick = { r: seat.brick.r, c: seat.brick.c };
     if (Number.isFinite(seat.restX)) card.restX = seat.restX;
     if (Number.isFinite(seat.restY)) card.restY = seat.restY;

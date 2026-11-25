@@ -55,6 +55,7 @@ import { flyAmuletToBar, flyCardToBag } from '../ui/RewardFlight.js';
 import { bagArrivalSoundKey } from '../content/audio/armorSounds.js';
 import { playCardDissolve } from '../ui/CardDissolve.js';
 import { serifStyle } from '../ui/uiFont.js';
+import { fitTextBox } from '../ui/AdaptiveSkin.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { createExitDoor, EXIT_DOOR_X, EXIT_DOOR_Y } from '../ui/ExitDoor.js';
 import { ENEMIES } from '../content/cards/enemies.js';
@@ -1053,7 +1054,7 @@ export class EventScene extends Phaser.Scene {
       this.descriptionHintText = this.add.text(
         this.eventLayout.centerX,
         this.descText.y + this.descText.height + 7,
-        this.event.rematchHint,
+        translateDescription(this, this.event.rematchHint),
         {
           fontSize: '11px', fill: '#883110', fontFamily: '"HoMM Pixel"',
           align: 'center', wordWrap: { width: 310 },
@@ -1142,6 +1143,12 @@ export class EventScene extends Phaser.Scene {
     });
 
     if (!this.exitDoor) this._createContinuePlate(WHITE);
+    // The mirror is optional: the door itself lets the player leave at any time.
+    if (this.event?.id === 'mirror') {
+      this.exitDoor?.openExit?.();
+      this.continueBtn?.setAlpha(1).setDepth(6);
+      this.continueBtnText?.setAlpha(1).setDepth(7);
+    }
   }
 
   // Fallback exit for a location with no door art: the old Continue plate,
@@ -1163,6 +1170,7 @@ export class EventScene extends Phaser.Scene {
       fontSize: '12px', fill: WHITE, fontFamily: '"HoMM Pixel"'
     }).setOrigin(0.5).setAlpha(0).setDepth(3);
 
+    fitTextBox(this.continueBtnText, this.continueBtn.width - 16, 26);
     // The label rides the press. Swapping to the pressed plate without moving
     // the text left the word floating a pixel above a button that had visibly
     // gone down — every other plate in the game (PaintedButton, the station
@@ -1261,6 +1269,7 @@ export class EventScene extends Phaser.Scene {
         wordWrap: { width: textWidth }
       }).setOrigin(0.5).setDepth(3);
 
+      fitTextBox(label, textWidth, buttonHeight - 2, smallFont ? 9 : 11);
       bg.setInteractive({ useHandCursor: true });
       bg.on('pointerover', () => { SoundHelper.playVariant(this, 'hover_button', 0.4); bg.setFillStyle(0x0e0b10, 0.78); });
       bg.on('pointerout', () => { bg.setFillStyle(0x050505, 0.58); });
@@ -1277,7 +1286,7 @@ export class EventScene extends Phaser.Scene {
   // and the balance sim both key off it — so translated copy rides alongside in
   // `textKey`, and anything without one still renders its English text.
   _choiceLabel(choice) {
-    return choice?.textKey ? t(this, choice.textKey) : translateDescription(this, choice?.text ?? '');
+    return choice?.textKey ? t(this, choice.textKey, choice.textVars) : translateDescription(this, choice?.text ?? '');
   }
 
   _resolve(choice, choiceIdx, opts = {}) {
@@ -1340,8 +1349,9 @@ export class EventScene extends Phaser.Scene {
     // Once-per-run bonus rooms are marked seen on any terminal resolution.
     this._markBonusEventSeen();
 
-    // Persist story progress across deaths so this event (and its choices) is
-    // remembered on future runs and never repeats.
+    // Saved for the shop unlocks only: a new run starts from fresh story state,
+    // so every story can come back (GameScene.init). Within a run the seen
+    // flags above keep it from repeating.
     this._saveStoredStoryRun();
     if (Number.isInteger(choice.outcomeFrame) && this.eventIllustrationImage?.setFrame) {
       this.eventIllustrationImage.setFrame(choice.outcomeFrame);
@@ -1880,7 +1890,7 @@ export class EventScene extends Phaser.Scene {
     inv.clearDropZones();
     inv.addDropZone(target, (slotIndex, cardData, cardSprite) =>
       this._handleMirrorDrop(slotIndex, cardData, cardSprite),
-    { accepts: (card) => !this.resolved && this._isMirrorCopyable(card) });
+    { accepts: (card) => !this.resolved && !this.mirrorUsed && this._isMirrorCopyable(card) });
   }
 
   _handleMirrorDrop(slotIndex, cardData, cardSprite) {
@@ -1904,6 +1914,10 @@ export class EventScene extends Phaser.Scene {
     inv.returnCardToSlot(slotIndex, cardSprite);
     inv.addCard(this._duplicateCardData(cardData));
     this.mirrorUsed = true;
+    inv.clearDropZones();
+    inv.destroyAvatarDropTarget?.();
+    this._markBonusEventSeen();
+    this._saveStoredStoryRun();
     this._mirrorFloat('Copied!', 0x71b1ae, cardSprite);
     this.gameScene?.updateUI?.();
     return true;
@@ -2018,18 +2032,39 @@ export class EventScene extends Phaser.Scene {
     if (!inv || !target?.getBounds) return false;
     this.briarOfferingActive = true;
     inv.clearDropZones();
+    const accepts = (card) => this.briarOfferingActive && !this.resolved
+      && canTakeSigil(card, 'thorns');
     inv.addDropZone(target, (slotIndex, cardData, cardSprite) => (
       this._handleBriarOffering(slotIndex, cardData, cardSprite)
-    ), {
-      accepts: (card) => this.briarOfferingActive && !this.resolved
-        && canTakeSigil(card, 'thorns'),
-    });
+    ), { accepts });
+    // The worn armor, dragged off its panel, can be offered too, as at a
+    // Sigil Room's slab: before, it had nowhere to land (Taya).
+    const armorTarget = {
+      accepts,
+      onDrop: (card, sprite) => {
+        if (!accepts(card) || !sprite?.scene || !target.scene) return false;
+        if (!Phaser.Geom.Intersects.RectangleToRectangle(sprite.getBounds(), target.getBounds())) return false;
+        if (!this._handleBriarOffering(-1, card, sprite)) return false;
+        SoundHelper.playSound(this, 'card_offered', 0.6);
+        return true;
+      },
+    };
+    inv.equippedArmorDropTarget = armorTarget;
+    this._briarArmorTarget = armorTarget;
+    this.events.once('shutdown', () => this._releaseBriarArmorTarget());
     return true;
   }
 
   cancelBriarOffering() {
     this.briarOfferingActive = false;
     this.gameScene?.inventorySystem?.clearDropZones?.();
+    this._releaseBriarArmorTarget();
+  }
+
+  _releaseBriarArmorTarget() {
+    const inv = this.gameScene?.inventorySystem;
+    if (inv && inv.equippedArmorDropTarget === this._briarArmorTarget) inv.equippedArmorDropTarget = null;
+    this._briarArmorTarget = null;
   }
 
   _handleBriarOffering(slotIndex, cardData, cardSprite) {
@@ -2052,8 +2087,11 @@ export class EventScene extends Phaser.Scene {
     }
     noteSigilTaken(this.gameState, 'thorns');
 
-    inv.returnCardToSlot(slotIndex, cardSprite);
+    // The worn armor (slot -1) has no bag slot to go back to; updateUI below
+    // redraws its panel with the thorns.
+    if (slotIndex >= 0) inv.returnCardToSlot(slotIndex, cardSprite);
     inv.clearDropZones();
+    this._releaseBriarArmorTarget();
     inv.rebuildInventorySprites?.();
     this.briarOfferingActive = false;
     this.gameScene?.updateUI?.();
@@ -2107,7 +2145,7 @@ export class EventScene extends Phaser.Scene {
     let base = 0.10; // empty hands: he is delighted
     if (weapon) {
       const name = `${weapon.name || ''} ${weapon.weaponType || ''}`.toLowerCase();
-      if (/axe|chain|hammer|maul/.test(name)) base = 0.70;
+      if (/axe|mace|chain|hammer|maul/.test(name)) base = 0.70;
       else if (/sword|mace|blade/.test(name)) base = 0.50;
       else base = 0.35; // daggers, bows, anything light
       const rarityStep = Math.max(0, ranks.indexOf(weapon.rarity));
@@ -2170,13 +2208,18 @@ export class EventScene extends Phaser.Scene {
   getArmWrestleMinigameTuning() {
     const chance = this.armWrestleChance();
     const t = Phaser.Math.Clamp(chance, 0.05, 0.90);
-    // Click power stays sized for the base drift; ogre push is then sped up.
     const ogrePushBase = Phaser.Math.Linear(0.1, 0.06, (t - 0.05) / 0.85);
-    const clickPower = (ogrePushBase / 2) * 1.5;
     // The rematch is the gauntlet gate: the ogre stops playing to the crowd
-    // and pushes twenty percent faster than he did in the first bout.
-    const rematchMultiplier = this._armWrestlePending?.rematch ? 1.2 : 1;
-    const ogrePush = ogrePushBase * 3.75 * rematchMultiplier;
+    // and pushes harder than he did in the first bout.
+    const rematch = this._armWrestlePending?.rematch;
+    const ogrePush = ogrePushBase * 3.75 * (rematch ? 1.15 : 1);
+    // Clicks a second that only hold the ogre level: 3.8 for the weakest arm,
+    // 3.0 for the strongest, 15% more in the rematch. Faster than that wins.
+    // It used to be 5 a second for every arm (click power scaled with the push,
+    // so the weapon changed nothing) and 6 in the rematch: at a fast 6 clicks a
+    // second the first match took ~15s and the rematch could not be won (Taya).
+    const holdEvenRate = Phaser.Math.Linear(3.8, 3.0, (t - 0.05) / 0.85) * (rematch ? 1.15 : 1);
+    const clickPower = ogrePush / holdEvenRate;
     return { ogrePush, clickPower };
   }
 
@@ -3204,6 +3247,10 @@ export class EventScene extends Phaser.Scene {
   }
 
   continueAdventure() {
+    if (this.event?.id === 'mirror') {
+      this._markBonusEventSeen();
+      this._saveStoredStoryRun();
+    }
     this._disableEventStation();
 
     if ((this.gameState?.playerHealth || 0) <= 0) {

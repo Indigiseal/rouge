@@ -322,7 +322,7 @@
    "path": "assets/art/packed/sanctuary.png",
    "columns": 6,
    "cellWidth": 128,
-   "cellHeight": 128,
+   "cellHeight": 180,
    "entries": [
     {
      "key": "sanctuaryLion",

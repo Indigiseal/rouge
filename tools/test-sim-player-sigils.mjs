@@ -62,6 +62,7 @@ function snapshot(scene) {
     }));
 }
 const cases = [
+    { name: 'Mace ignores armor with sigils and full Forge', wp: { ...weapon('growth'), weaponType: 'mace', special: 'crush' }, target: { armor: 20 }, game: { talentEffects: { villageWeaponFlat: 5 } } },
     { name: 'Frost conditional damage', wp: weapon('shatter', 'merciless'), target: { health: 40, frozen: 2, frostFrozen: true } },
     { name: 'full-AP ranged bonus', wp: weapon('wellFed', 'archerBane'), target: { role: 'RANGED' } },
     { name: 'Growth and Leech', wp: weapon('growth', 'leech') },
@@ -98,6 +99,7 @@ try {
         Math.random = () => 0;
         simulatedAttack(sim);
         assert.deepEqual(snapshot(sim), snapshot(live), test.name);
+        if (test.name.startsWith('Mace ignores')) assert.equal(sim.cardSystem.boardCards[0].data.health, 87, '8 damage + 5 Forge bypasses all 20 enemy armor');
     }
 } finally { Math.random = originalRandom; }
 console.log(`Simulator player-sigil execution matches live inventory attacks in ${cases.length} cases, including primary/off-hand, costs, holds, talents and location procs.`);

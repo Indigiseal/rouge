@@ -484,18 +484,34 @@ export class AmuletManager {
     }
     
     // Modify weapon damage
-    modifyWeaponDamage(baseDamage, weapon = null) {
-        let damage = baseDamage + this.getBowDamageBonus(weapon);
+    // `steps`, when given, gets one entry per amulet that changed the hit
+    // ({ item: name, change: '+1' / 'x1.15' }), for the combat log.
+    modifyWeaponDamage(baseDamage, weapon = null, steps = null) {
+        let damage = baseDamage;
+        const isBow = weapon?.type === 'weapon' && weapon.weaponType === 'bow';
+        const step = (definition, before) => {
+            if (!steps || damage === before) return;
+            const delta = damage - before;
+            steps.push({ item: definition.name, change: delta > 0 ? `+${delta}` : `${delta}` });
+        };
+        // Flat bow bonuses (Dune Quiver) first, then the amulets that scale the
+        // hit, so a multiplier also lifts the bonus.
+        if (isBow) {
+            this.gameState.activeAmulets.forEach(amulet => {
+                const definition = this.amuletDefinitions[amulet.id];
+                if (!definition?.bowDamageBonus) return;
+                const before = damage;
+                damage += definition.bowDamageBonus;
+                step(definition, before);
+            });
+        }
         this.gameState.activeAmulets.forEach(amulet => {
             const definition = this.amuletDefinitions[amulet.id];
-            if (definition && definition.modifyWeaponDamage) {
-                damage = definition.modifyWeaponDamage(damage);
-            }
+            if (!definition?.modifyWeaponDamage) return;
+            const before = damage;
+            damage = definition.modifyWeaponDamage(damage);
+            step(definition, before);
         });
-        const relicBonus = this.gameState.relicEffects?.weaponDamageBonus || 0;
-        if (relicBonus) {
-            damage += relicBonus;
-        }
         return damage;
     }
     

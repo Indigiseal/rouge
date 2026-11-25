@@ -499,13 +499,113 @@
     "w": 53,
     "h": 70
    }
+  },
+  "mace_C": {
+   "frame": {
+    "x": 2,
+    "y": 362,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "mace_U": {
+   "frame": {
+    "x": 58,
+    "y": 362,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "mace_R": {
+   "frame": {
+    "x": 114,
+    "y": 362,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "mace_E": {
+   "frame": {
+    "x": 170,
+    "y": 362,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
+  },
+  "mace_L": {
+   "frame": {
+    "x": 226,
+    "y": 362,
+    "w": 53,
+    "h": 70
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 53,
+    "h": 70
+   },
+   "sourceSize": {
+    "w": 53,
+    "h": 70
+   }
   }
  },
  "meta": {
   "image": "weaponsSheet.png",
   "size": {
    "w": 282,
-   "h": 362
+   "h": 434
   },
   "scale": "1",
   "app": "tools/build-item-sheets.py"

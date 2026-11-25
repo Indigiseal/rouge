@@ -21,6 +21,7 @@
 // the player walked.
 
 import { getLocationNarrativeCheckpoints } from '../content/locations/rules.js';
+import { getLocationIdForFloor } from '../content/locations/index.js';
 import { floorOfRow, isBonusRow } from './MapGenerator.js';
 
 /** Map colour for everything on a secret branch: node tint, halo and road. */
@@ -65,6 +66,17 @@ export const HIDDEN_PATH_SOURCES = Object.freeze({
         alwaysPresent: true,
         revealNear: true,
         isOpen: (gameState) => !gameState?.storyRun?.oldChuteSeen && !gameState?.storyRun?.crystalLairCleared,
+    }),
+    // The Heart of the Briars (content/cards/briarHeart.js): where Thornwake's
+    // briars come from, a fight for the Heartwood sigil. Only in a Thornwake
+    // act (a room is laid in every act, shown only there) and found like the
+    // vault, by standing next to it. Shut for the run once the heart is dead.
+    briarHeart: Object.freeze({
+        roomType: 'COMBAT',
+        alwaysPresent: true,
+        revealNear: true,
+        isOpen: (gameState) => !gameState?.storyRun?.briarHeartCleared
+            && getLocationIdForFloor(gameState) === 'thornwake',
     }),
 });
 

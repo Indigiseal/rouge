@@ -22,9 +22,10 @@ import { createOptionsCog } from '../ui/OptionsCog.js';
 const CARD_SCALE = 1;
 // Each door stands in one of the three arches of pathsBackground.png, its foot
 // on the arch floor. Move these with the arches if the backdrop is redrawn.
-// The middle arch is the tallest, so its door stands higher than the outer two.
-const CARD_XS = [176, 320, 464];
-const CARD_YS = [208, 196, 205];
+// The redrawn backdrop (Oct 31) brings the arches in close and gives all three
+// the same floor, about y 245 on screen, so the doors share one line.
+const CARD_XS = [227, 321, 415];
+const CARD_YS = [215, 215, 215];
 // The arrival: start this far above the resting line, drop for ARRIVE_MS, and
 // let the ease carry it past and back.
 const ARRIVE_LIFT = 28;
@@ -50,13 +51,17 @@ export class LocationPickScene extends Phaser.Scene {
     this._offerState = this.gameState || { actLocationIds: [null, null, null] };
     this._locked = false;
     this._cards = [];
+    this._locationAssetsReady = null;
   }
 
   create() {
     // This screen's own backdrop is drawn dark already, so it goes in undimmed;
     // the main menu's art, if it is ever all there is, still gets the shade.
     if (this.textures.exists('pathsBackground')) {
-      this.add.image(320, 180, 'pathsBackground');
+      // Centred on whole pixels: the art is not 640x360 (it is 641x435), and
+      // centring an odd size would sit it half a pixel off and soften it.
+      const bg = this.textures.get('pathsBackground').getSourceImage();
+      this.add.image(Math.round(320 - bg.width / 2), Math.round(180 - bg.height / 2), 'pathsBackground').setOrigin(0);
     } else {
       if (this.textures.exists('mainBG')) {
         this.add.image(320, 180, 'mainBG');
@@ -76,7 +81,7 @@ export class LocationPickScene extends Phaser.Scene {
       fill: '#869089',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
     }).setOrigin(0.5);
-    this.add.text(320, 338, t(this, 'ui.locationPick.hint'), {
+    this.hintText = this.add.text(320, 338, t(this, 'ui.locationPick.hint'), {
       fontSize: '10px',
       fill: '#c8b08a',
       fontFamily: '"HoMM Pixel", Arial, sans-serif',
@@ -203,6 +208,10 @@ export class LocationPickScene extends Phaser.Scene {
     if (this._locked) return;
     this._locked = true;
     this.input.enabled = false;
+    // Fetch during the door animation, rather than after fading to black.
+    this._locationAssetsReady = ensureLocationAssets(this, [entry.id]);
+    let assetsReady = false;
+    this._locationAssetsReady.then(() => { assetsReady = true; });
     this._cards.forEach((card) => {
       card.sprite?.disableInteractive?.();
       setHoverLight(card.sprite, false);
@@ -213,8 +222,12 @@ export class LocationPickScene extends Phaser.Scene {
 
     const fadeOut = () => {
       this.time.delayedCall(OPEN_HOLD_MS, () => {
-        this.cameras.main.fadeOut(350, 0, 0, 0);
-        this.cameras.main.once('camerafadeoutcomplete', () => this.leave(entry.id));
+        if (!assetsReady) this.hintText.setText(t(this, 'ui.locationPick.loading'));
+        this._locationAssetsReady.then(() => {
+          if (!this.sys.isActive()) return;
+          this.cameras.main.once('camerafadeoutcomplete', () => this.leave(entry.id));
+          this.cameras.main.fadeOut(350, 0, 0, 0);
+        });
       });
     };
 
@@ -234,9 +247,11 @@ export class LocationPickScene extends Phaser.Scene {
       if (!applyLocationChoice(this.gameState, locationId, this.pickAct)) return;
       if (this._leavingForAct) return;
       this._leavingForAct = true;
-      // The new road's painting and boards are not loaded yet: fetch them, then
-      // go. (Stopping this scene first would cancel its own loader.)
-      ensureLocationAssets(this, [locationId]).then(() => this._enterNextAct());
+      // Reuse the download started when the door was picked. Direct callers
+      // still load here before stopping the scene that owns the loader.
+      (this._locationAssetsReady || ensureLocationAssets(this, [locationId])).then(() => {
+        if (this.sys.isActive()) this._enterNextAct();
+      });
       return;
     }
     this._startRun(locationId);

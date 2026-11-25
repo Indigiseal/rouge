@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { EventEmitter } from 'node:events';
 globalThis.Phaser ??= { Scene: class {}, Math: {}, Geom: {}, Display: {}, GameObjects: {} };
 import { ASSET_MANIFEST } from '../src/content/assets/AssetManifest.js';
 import {
@@ -11,6 +12,7 @@ import { locationBackdropKey } from '../src/content/locations/fightBackgrounds.j
 import { getLocationIdForFloor } from '../src/content/locations/index.js';
 
 // Every playable location has a painting and three boards, all real PNGs, none in the boot manifest.
+assert(ASSET_MANIFEST.some(asset => asset.key === 'sanctuaryBackground'), 'New Run sanctuary is ready at the menu');
 for (const id of PLAYABLE_LOCATION_IDS) {
     const assets = LOCATION_ASSETS[id];
     assert.equal(assets?.length, 4, `${id}: a painting and three boards`);
@@ -28,8 +30,11 @@ assert.equal(new Set(ALL_LOCATION_ASSETS.map((a) => a.key)).size, ALL_LOCATION_A
 // Only what is missing is queued, once.
 const loaded = new Set(['thornwakeBackground']);
 const queued = [];
-const loader = { handlers: {}, image: (k, p) => queued.push([k, p]),
-    once(ev, fn) { this.handlers[ev] = fn; }, start() { setTimeout(() => this.handlers.complete?.(), 0); }, isLoading: () => false };
+const loader = Object.assign(new EventEmitter(), {
+    image: (k, p) => queued.push([k, p]),
+    start() { setTimeout(() => { for (const [key] of queued) this.emit(`filecomplete-image-${key}`); }, 0); },
+    isLoading: () => false,
+});
 const scene = { textures: { exists: (k) => loaded.has(k) }, load: loader };
 assert.equal(missingLocationAssets(scene, ['thornwake', 'thornwake']).length, 3, 'the loaded painting is skipped');
 assert.equal(queueLocationAssets(scene, ['sandreach']), 4);
@@ -44,6 +49,28 @@ for (const { key } of LOCATION_ASSETS.frosthollow) loaded.add(key);
 queued.length = 0;
 await ensureLocationAssets(scene, ['frosthollow']);
 assert.equal(queued.length, 0);
+
+// Join an active loader without waiting for music, and deduplicate simultaneous callers.
+queued.length = 0;
+loader.isLoading = () => true;
+const first = ensureLocationAssets(scene, ['sandreach']);
+const second = ensureLocationAssets(scene, ['sandreach']);
+assert.equal(queued.length, 4, 'concurrent requests queue each image once');
+let resolved = false;
+first.then(() => { resolved = true; });
+loader.emit('filecomplete-audio-menu_music');
+await Promise.resolve();
+assert.equal(resolved, false, 'an unrelated file does not finish location loading');
+for (const [key] of queued.slice(0, 3)) loader.emit(`filecomplete-image-${key}`);
+await Promise.resolve();
+assert.equal(resolved, false, 'wait for all four location images');
+loader.emit('loaderror', { key: queued[3][0] });
+await Promise.all([first, second]);
+assert.equal(resolved, true, 'a failed image uses fallback art without blocking the room');
+assert.equal(loader.listenerCount('loaderror'), 0, 'failure listeners are cleaned up');
+for (const [key] of queued) assert.equal(loader.listenerCount(`filecomplete-image-${key}`), 0);
+await ensureLocationAssets(scene, ['frosthollow']);
+assert.equal(queued.length, 4, 'cached art resolves even while music is loading');
 
 // Which locations a start needs.
 const forFloor = (gs) => getLocationIdForFloor(gs);

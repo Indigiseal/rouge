@@ -204,3 +204,19 @@ D–G сняты со старого Скелета и пока не перес�
 2. Тип врага: `archetype` + abilities/feature; без своих `tiers[]` HP/ATK.
 3. `createTieredEnemy` читает band(floor) × archetype.
 4. Прогнать act1 sim против текущих целей reach/clear.
+
+
+## Enemy health progression — 28 October 2026
+
+Act 2 now spreads health increases through its final floors instead of reaching
+34 base HP at floor 23. Base HP: F16 16, F18 18, F20 21, F22 24,
+F24 27, F26 31, F28 35. Act 3 continues: F31 38, F33 40, F35 42,
+F37 44, F39 46, F41 48, F43 50. Attack still increases at its existing thresholds
+(including F23 and F38); those thresholds do not add a separate health jump.
+
+Intent: soften the F20–25 attrition wall, then keep increasing enemy health every
+two floors rather than leaving a long late-game plateau. This changes the shared
+normal-enemy power bands; bosses retain their own health rules.
+
+Live-generator averages over ten equally weighted locations: F23 30.6 → 21.5 HP;
+F44 39.2 → 44.7 HP. See [comparison chart](balance/2026-10-28/enemy-health-revised.png).

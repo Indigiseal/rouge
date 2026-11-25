@@ -1,9 +1,18 @@
+import { getLocationIdForFloor } from '../content/locations/index.js';
+import { cardStars } from '../content/cards/legendaryStars.js';
+
 const STORAGE_KEY = 'dungeonCardCrawler.humanRunTrace.v1';
-const TRACE_VERSION = 1;
-// A complete run is normally a few hundred decisions. Keeping a conservative
-// ceiling avoids exhausting the browser's localStorage quota on unusually long
-// sessions while still retaining the run start and the newest decisions.
-const MAX_EVENTS = 1200;
+// 2 (Nov 2): act and location, amulets, statuses, card sigils/enchants/second
+// gem/stars, armor protection, weapon range as text; card_revealed,
+// player_damaged, weapon_hit, treasure_room_opened and treasure_offered events.
+// A version-1 recording still loads and carries on.
+const TRACE_VERSION = 2;
+const LOADABLE_VERSIONS = new Set([1, 2]);
+// A complete run is normally a few hundred decisions, plus every card flip,
+// hit and hit taken (those three carry no state snapshot, so they are small).
+// The ceiling keeps a long session inside the browser's localStorage quota
+// while still retaining the run start and the newest events.
+const MAX_EVENTS = 4000;
 // How often an active recording is written to storage (see saveSoon).
 const SAVE_EVERY_MS = 3000;
 
@@ -57,7 +66,7 @@ export class HumanRunRecorder {
         if (!storage) return;
         try {
             const stored = JSON.parse(storage.getItem(STORAGE_KEY) || 'null');
-            if (stored?.schemaVersion === TRACE_VERSION && Array.isArray(stored.events)) {
+            if (LOADABLE_VERSIONS.has(stored?.schemaVersion) && Array.isArray(stored.events)) {
                 this.trace = stored;
                 const ids = JSON.stringify(stored).matchAll(/"traceId":"c(\d+)"/g);
                 let highestId = 0;
@@ -181,6 +190,13 @@ export class HumanRunRecorder {
             name: cardLabel(card),
             rarity: card.rarity ?? null,
         };
+        // Sigils, enchant and stars ride weapons and armor alike.
+        if (Array.isArray(card.sigils) && card.sigils.length) {
+            snapshot.sigils = card.sigils.map((s) => ({ id: s?.id || null, level: numberOrNull(s?.level) ?? 1 }));
+        }
+        if (card.enchant) snapshot.enchant = card.enchant;
+        const stars = cardStars(card);
+        if (stars) snapshot.stars = stars;
 
         if (card.weaponType || card.type === 'weapon') {
             Object.assign(snapshot, {
@@ -188,18 +204,23 @@ export class HumanRunRecorder {
                 damage: numberOrNull(card.damage),
                 durability: numberOrNull(card.durability),
                 maxDurability: numberOrNull(card.maxDurability),
-                range: numberOrNull(card.range),
+                // 'melee' / 'ranged' (it was read as a number and always came out null).
+                range: card.range ?? null,
                 special: card.special || null,
                 gemEffect: card.gemEffect || card.gem?.effect || null,
                 gemCount: numberOrNull(card.gemCount)
                     ?? (Array.isArray(card.gems) ? card.gems.length : ((card.gem || card.gemEffect) ? 1 : 0)),
+                gem2Effect: card.gem2Effect || null,
+                gem2Count: card.gem2Effect ? (numberOrNull(card.gem2Count) ?? 1) : 0,
             });
         }
 
         if (card.type === 'armor') {
             Object.assign(snapshot, {
                 armorType: card.armorType || card.subtype || null,
-                block: numberOrNull(card.block),
+                // Armor's value is `protection` (it was read as `block`, always null).
+                protection: numberOrNull(card.protection),
+                dodgeChance: numberOrNull(card.dodgeChance),
                 durability: numberOrNull(card.durability),
                 maxDurability: numberOrNull(card.maxDurability),
             });
@@ -248,10 +269,17 @@ export class HumanRunRecorder {
             }).filter(Boolean)
             : [];
 
+        const floor = numberOrNull(gameState?.currentFloor);
+        // GameState has no currentAct (this always came out null): the map
+        // cursor knows the act, and each act is 15 floors.
+        const act = numberOrNull(mapCursor?.act) ?? (floor ? Math.ceil(floor / 15) : null);
+        let locationId = null;
+        try { locationId = gameState ? getLocationIdForFloor(gameState) || null : null; } catch { /* never block recording */ }
         return {
             scene: scene?.scene?.key || scene?.sys?.settings?.key || null,
-            floor: numberOrNull(gameState?.currentFloor),
-            act: numberOrNull(gameState?.currentAct),
+            floor,
+            act,
+            locationId,
             roomType: gameState?.roomType || gameScene?.currentRoomType || null,
             characterId: gameState?.characterId || null,
             player: {
@@ -261,7 +289,9 @@ export class HumanRunRecorder {
                 maxActionPoints: numberOrNull(gameState?.maxActions ?? gameState?.maxActionPoints),
                 coins: numberOrNull(gameState?.coins),
                 crystals: numberOrNull(gameState?.crystals),
+                statuses: this.snapshotStatuses(gameState),
             },
+            amulets: (gameState?.activeAmulets || []).map((a) => ({ id: a?.id || null, level: numberOrNull(a?.level) ?? 1 })),
             mapCursor: mapCursor ? {
                 floor: numberOrNull(mapCursor.floor),
                 nodeIndex: numberOrNull(mapCursor.node ?? mapCursor.nodeIndex),
@@ -293,6 +323,24 @@ export class HumanRunRecorder {
             },
             board: boardEntries,
         };
+    }
+
+    // The hero's statuses that are on right now (the HUD's Effects list).
+    snapshotStatuses(gameState) {
+        if (!gameState) return {};
+        const out = {};
+        const poison = (gameState.playerEffects || []).find((e) => e?.type === 'poison');
+        if (poison) out.poison = { damage: numberOrNull(poison.damage), turns: numberOrNull(poison.turns) };
+        for (const key of ['playerStunnedTurns', 'playerFrozenAttacks', 'boneWall', 'briarShield']) {
+            if (gameState[key] > 0) out[key] = gameState[key];
+        }
+        for (const key of ['blockNextAttack', 'playerSpored', 'playerSapped', 'playerShocked', 'playerSandstormed']) {
+            if (gameState[key]) out[key] = true;
+        }
+        if (gameState.shadowBlade?.turns > 0) out.shadowBlade = { turns: gameState.shadowBlade.turns };
+        if (gameState.magicShield?.turns > 0) out.magicShield = { turns: gameState.magicShield.turns };
+        if (gameState.discardCritChance > 0) out.discardCritChance = gameState.discardCritChance;
+        return out;
     }
 
     record(scene, type, details = {}, options = {}) {

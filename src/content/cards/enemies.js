@@ -10,6 +10,7 @@ import { STORMHATCH_ENEMY_DEFS, STORMHATCH_ENEMY_ALIASES } from '../location-pac
 import { FROSTHOLLOW_ENEMY_DEFS, FROSTHOLLOW_ENEMY_ALIASES } from '../location-packs/frosthollow/index.js';
 import { SANDREACH_ENEMY_DEFS } from '../location-packs/sandreach/index.js';
 import { CRYSTAL_SPIDER_DEFS } from './crystalSpiders.js';
+import { BRIAR_HEART_DEFS } from './briarHeart.js';
 import { ROBBER_DEFS } from './robbers.js';
 
 // Enemy catalog.
@@ -123,6 +124,8 @@ export const ENEMIES = {
   ...SANDREACH_ENEMY_DEFS,
   // Off every roster: only the Crystal Lair deals them.
   ...CRYSTAL_SPIDER_DEFS,
+  // Off every roster: only Thornwake's secret room deals it.
+  ...BRIAR_HEART_DEFS,
   // Off every roster: only stories deal them.
   ...ROBBER_DEFS,
 };

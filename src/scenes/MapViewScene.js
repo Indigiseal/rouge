@@ -16,6 +16,7 @@ import {
 } from '../content/locations/index.js';
 import { isSandboxMode } from '../sandbox/SandboxMode.js';
 import { createCrystalLairEnemies } from '../content/cards/crystalLair.js';
+import { createBriarHeartEnemies } from '../content/cards/briarHeartBoard.js';
 import { t } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { MusicManager } from '../audio/MusicManager.js';
@@ -27,22 +28,28 @@ import { CHOICE_SIGHT, computeFogGrid, drawMapFog, mapSightRadius, puffFogCascad
 import { setHoverLight } from '../ui/HoverLight.js';
 import { createSecretAura } from '../ui/SecretAura.js';
 import { mapColorFor } from '../content/locations/mapColors.js';
-import { drawWalkedRoad, walkedRoute } from '../map/MapRoad.js';
+import { drawWalkedRoad, layNewRoad, roadSheetFor, walkedRoute } from '../map/MapRoad.js';
 
 // The header band and title, above the scrolling map nodes (see create()).
 const MAP_HEADER_DEPTH = 18;
 
 // mapNodes42x42.png frame 10: the question mark every secret room wears.
 const SECRET_NODE_FRAME = 10;
+// How strongly the secret room's swirl shows over the room (Screen blend).
+const SECRET_SWIRL_ALPHA = 0.4;
 // How far the fog lifts around a secret room as it appears, in map pixels.
 const SECRET_SIGHT = 60;
-// A secret room appears this long after the map's own fog starts to draw back (not after it has
-// finished: that ripple runs for over a second), and these many ms apart when several appear.
-const SECRET_APPEAR_DELAY_MS = 250;
-const SECRET_APPEAR_GAP_MS = 350;
+// Reveal choices on the opening frame; decoration must not hide a route from a fast click.
+const SECRET_APPEAR_GAP_MS = 80;
+// The stone arch behind each act's first room (48x56); lifted so the arch rises
+// over the 42px room icon.
+const DUNGEON_ENTRANCE_KEY = 'dungeonEntrance';
+const DUNGEON_ENTRANCE_DY = -6;
+// After the road to a chosen room is laid, a moment to see it before the room opens.
+const ROAD_LAID_HOLD_MS = 180;
 // After the room pops out of its smoke, its roads draw in, one leg at a time.
-const SECRET_PATH_DELAY_MS = 380;
-const SECRET_PATH_LEG_MS = 420;
+const SECRET_PATH_DELAY_MS = 60;
+const SECRET_PATH_LEG_MS = 220;
 const SECRET_PATH_SPARK = 0xf3e2ff;
 
 // The fog's three poofs sit at least this far apart.
@@ -335,8 +342,11 @@ export class MapViewScene extends Phaser.Scene {
     // The road walked so far, under the lines (map/MapRoad.js).
     // A restart has already destroyed the last one with the scene.
     if (this.roadTexture?.scene) this.roadTexture.destroy();
-    this.roadTexture = drawWalkedRoad(this, this.mapContainer,
-      walkedRoute(this.actMap.floors, this.gameState.mapCursor, (f) => this._checkpointAfterRow(f)));
+    // Kept, so a pick lays only the new stretch (selectNode, layNewRoad).
+    this._walkedRoute = walkedRoute(this.actMap.floors, this.gameState.mapCursor, (f) => this._checkpointAfterRow(f));
+    // The act's location may walk a road of its own (Ashhowl's ashen road).
+    this._roadSheet = roadSheetFor(this, getLocationIdForFloor(this.gameState));
+    this.roadTexture = drawWalkedRoad(this, this.mapContainer, this._walkedRoute, this._roadSheet);
 
     // Draw nodes
     this.nodeSprites = [];
@@ -360,7 +370,7 @@ export class MapViewScene extends Phaser.Scene {
     if (!nodes.length) return;
     const sight = mapSightRadius(this.gameState);
     if (!Number.isFinite(sight)) {   // Oracle's Eye: no fog, but the secret rooms still appear
-      this._scheduleSecretAppear(SECRET_APPEAR_DELAY_MS);
+      this._scheduleSecretAppear();
       return;
     }
     this.mapFogContainer = this.add.container(0, 0);
@@ -391,7 +401,6 @@ export class MapViewScene extends Phaser.Scene {
     const bounds = { left: minX - 360, right: maxX + 360, top: minY - 200, bottom: maxY + 200 };
     const grid = computeFogGrid(points, bounds);
     this._fog = { points, bounds, rt: drawMapFog(this, this.mapFogContainer, grid) };
-    let appearAt = SECRET_APPEAR_DELAY_MS;
 
     // The fog drawing back as the map opens, cascading out from the player.
     if (here) {
@@ -404,16 +413,19 @@ export class MapViewScene extends Phaser.Scene {
         [0, span / 2, span].forEach((offset) => {
           this.time.delayedCall(timing.first + offset, () => SoundHelper.playVariant(this, 'fog_poof', 0.6));
         });
-        appearAt = timing.first + SECRET_APPEAR_DELAY_MS;
       }
     }
-    this._scheduleSecretAppear(appearAt);
+    this._scheduleSecretAppear();
   }
 
   // The new secret rooms come out of the fog, one after another.
-  _scheduleSecretAppear(startMs) {
-    [...(this._appearing || [])].forEach((node, k) => {
-      this.time.delayedCall(startMs + k * SECRET_APPEAR_GAP_MS, () => this._appearSecretNode(node));
+  _scheduleSecretAppear() {
+    const nodes = [...(this._appearing || [])];
+    // A route the player can take now gets the first reveal, before distant discoveries.
+    nodes.sort((a, b) => Number(Boolean(b.__sprite?.input)) - Number(Boolean(a.__sprite?.input)));
+    nodes.forEach((node, k) => {
+      if (k === 0) this._appearSecretNode(node);
+      else this.time.delayedCall(k * SECRET_APPEAR_GAP_MS, () => this._appearSecretNode(node));
     });
   }
 
@@ -441,13 +453,13 @@ export class MapViewScene extends Phaser.Scene {
       poof.play('poof_empty_anim');
     }
     const rest = node.__restAlpha ?? 1;
-    sprite.setScale(0.5);
-    // The node steps out as the smoke is at its thickest.
+    sprite.setAlpha(rest).setScale(0.85);
+    if (sprite.input) sprite.input.enabled = true;
+    // The marker is already readable and clickable while its brief pop finishes.
     this.tweens.add({
-      targets: sprite, alpha: rest, scale: 1, delay: 140, duration: 260, ease: 'Back.easeOut',
-      onComplete: () => { if (sprite.input) sprite.input.enabled = true; },
+      targets: sprite, alpha: rest, scale: 1, duration: 160, ease: 'Back.easeOut',
     });
-    if (node.__halo?.scene) this.tweens.add({ targets: node.__halo, alpha: rest, delay: 140, duration: 400 });
+    if (node.__halo?.scene) this.tweens.add({ targets: node.__halo, alpha: rest * SECRET_SWIRL_ALPHA, duration: 160 });
     // Then the road to it draws itself in.
     this.time.delayedCall(SECRET_PATH_DELAY_MS, () => this._revealSecretPath(node));
   }
@@ -852,7 +864,19 @@ export class MapViewScene extends Phaser.Scene {
     nodeSprite.setData('floorIdx', floorIdx);
     nodeSprite.setData('nodeIdx', nodeIdx);
     this.nodeSprites.push(nodeSprite);
+    // The act's first room stands in the dungeon's entrance (Taya's art): added
+    // just before the room, so it sits over the road and lines, under the room.
+    if (floorIdx === 0 && this.textures.exists(DUNGEON_ENTRANCE_KEY)) {
+      this.mapContainer.add(this.add.image(node.__x, node.__y + DUNGEON_ENTRANCE_DY, DUNGEON_ENTRANCE_KEY));
+    }
     this.mapContainer.add(nodeSprite);
+    // The secret room's swirl goes over its question mark, not under it, in a
+    // light Screen blend at SECRET_SWIRL_ALPHA so the mark still reads (Taya
+    // picked it from six tries; Add burned a white spot over the mark).
+    if (node.__halo?.scene) {
+        this.mapContainer.bringToTop(node.__halo);
+        node.__halo.setBlendMode(Phaser.BlendModes.SCREEN);
+    }
 
     const canClick = state === 'available' || state === 'detour';
     if (canClick) this._bindNodeClick(nodeSprite, node, floorIdx, nodeIdx, idleTint);
@@ -877,10 +901,10 @@ export class MapViewScene extends Phaser.Scene {
     return lean < 0 ? -1 : 1;
   }
 
-  // The swirling glow behind a secret room (ui/SecretAura.js): the overlay that marks it as off
-  // the normal map. Added before the node so it sits underneath.
+  // The swirling glow on a secret room (ui/SecretAura.js): the overlay that marks it as off
+  // the normal map. Made before the node, then brought over it once the node is added.
   _addHiddenPathHalo(node, alpha) {
-    const halo = createSecretAura(this, node.__x, node.__y, 24).setAlpha(alpha);
+    const halo = createSecretAura(this, node.__x, node.__y, 24).setAlpha(alpha * SECRET_SWIRL_ALPHA);
     this.mapContainer.add(halo);
     node.__halo = halo;
     return halo;
@@ -1178,13 +1202,30 @@ export class MapViewScene extends Phaser.Scene {
         // Secret rooms: the sigil vault is a Sigil Room (a statue, no chest);
         // the Porter's passage leads to a good chest, no key needed.
         if (node.secret && node.secretSource === 'sigilVault') sceneData.rewardMode = 'sigil';
-        else if (node.secret && (node.type === 'TREASURE' || node.type === 'TREASURE_GOOD')) sceneData.rewardMode = 'good';
+        // Any other secret room is a coin flip, made once and kept on the node
+        // so a reload cannot re-roll it: half the time a Sigil Room (the stamp),
+        // half the time a secret chest (no key, one rarity above a good chest).
+        // They used to give both, an item and a sigil pop-up (Taya, Nov 2). The
+        // secret chest used to open as a plain good chest, which wanted a key:
+        // forced, an act-1 one dropped to a common (Taya got a common bow).
+        else if (node.secret && (node.type === 'TREASURE' || node.type === 'TREASURE_GOOD')) {
+            if (node.secretReward !== 'sigil' && node.secretReward !== 'secret') {
+                node.secretReward = Math.random() < 0.5 ? 'sigil' : 'secret';
+            }
+            sceneData.rewardMode = node.secretReward;
+            // With no card that could take a sigil, the secret chest, not a good one.
+            sceneData.sigilFallbackMode = 'secret';
+        }
         this.scene.launch(key, sceneData);
         return;
       }
       // Combat-like. The Crystal Lair deals its own board: the mother and her brood.
       if (node.secret && node.secretSource === 'crystalLair') {
         this.gameState.pendingAmbush = { id: 'crystal_lair', enemies: createCrystalLairEnemies(this.gameState.currentFloor) };
+      }
+      // So does the Heart of the Briars: the heart and its thorn sprites.
+      if (node.secret && node.secretSource === 'briarHeart') {
+        this.gameState.pendingAmbush = { id: 'briar_heart', enemies: createBriarHeartEnemies(this.gameState.currentFloor) };
       }
       this.scene.stop();
       // Pass a flag to indicate this is a new room transition
@@ -1195,12 +1236,18 @@ export class MapViewScene extends Phaser.Scene {
       console.log('Woke GameScene for type:', node.type);
     };
 
+    // The road to the chosen room lays itself down, tile by tile (map/MapRoad.js).
+    const routeNow = walkedRoute(this.actMap.floors, this.gameState.mapCursor, (f) => this._checkpointAfterRow(f));
+    const layMs = layNewRoad(this, this.mapContainer, this._walkedRoute || [], routeNow, this.roadTexture, this._roadSheet);
+    this._walkedRoute = routeNow;
+
     // Fade the peaceful theme out, then hand off (scene stays alive during the
     // fade so the tween actually runs).
     this._leavingMap = true;
     // Fade (300ms) finishes just before the handoff (380ms) so the track is
-    // fully stopped while the scene is still awake and the tween can run.
+    // fully stopped while the scene is still awake and the tween can run. A
+    // longer road holds the handoff until it is laid, plus a moment to see it.
     MusicManager.stopIfPlaying(this, 'map_music', 300);
-    this.time.delayedCall(380, proceed);
+    this.time.delayedCall(Math.max(380, layMs ? layMs + ROAD_LAID_HOLD_MS : 0), proceed);
   }
 }

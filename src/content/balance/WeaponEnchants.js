@@ -53,7 +53,7 @@ export const ENCHANT_SHIELD_MULTIPLIER = 1.2;
 export const WEAPON_ENCHANTS = Object.freeze({
   desertFeast: { title: 'Second Wind', titleKey: 'enchant.desertFeast.title', summary: 'restores 2 action points after a damaging hit', summaryKey: 'enchant.desertFeast.summary', timing: 'sigil' },
   thunderclap: { title: 'Shock', titleKey: 'enchant.thunderclap.title', summary: 'the struck enemy misses its next attack, including bosses', summaryKey: 'enchant.thunderclap.summary', timing: 'sigil' },
-  scorched: { title: 'Scorched', titleKey: 'enchant.scorched.title', summary: 'adds 3 burn to every enemy, including hidden ones', summaryKey: 'enchant.scorched.summary', timing: 'sigil' },
+  scorched: { title: 'Fire Column', titleKey: 'enchant.scorched.title', summary: 'adds 5 burn to every enemy, including hidden ones', summaryKey: 'enchant.scorched.summary', timing: 'sigil' },
   venomousBomb: { title: 'Venomous Bomb', titleKey: 'enchant.venomousBomb.title', summary: 'all revealed enemies take 3 poison damage for 3 turns', summaryKey: 'enchant.venomousBomb.summary', timing: 'sigil' },
   briarShield: { title: 'Briar Guard', titleKey: 'enchant.briarShield.title', summary: 'reflect the next enemy attack', summaryKey: 'enchant.briarShield.summary', timing: 'onHit' },
   fireball: { title: 'Fireball', titleKey: 'enchant.fireball.title', summary: 'throws a fireball at another random face-up enemy', summaryKey: 'enchant.fireball.summary', timing: 'sigil' },

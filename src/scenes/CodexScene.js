@@ -3,7 +3,7 @@
 // "???". Discovery is profile-wide (content/codex/Discoveries.js).
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { MusicManager } from '../audio/MusicManager.js';
-import { t, translateDescription, translateItemName } from '../i18n/i18n.js';
+import { t, translateDescription, translateItemName, translateLocationName } from '../i18n/i18n.js';
 import { ENEMIES, SUMMON_ONLY_ENEMY_TYPES } from '../content/cards/enemies.js';
 import { BOSSES } from '../content/cards/bosses.js';
 import { EVENTS } from '../content/events/index.js';
@@ -134,7 +134,7 @@ export class CodexScene extends Phaser.Scene {
           locationId,
           known: isDiscovered('enemies', id),
           name: translateItemName(this, enemy.name) || enemy.name,
-          info: [locationId ? t(this, `location.${locationId}.name`) : '',
+          info: [locationId ? translateLocationName(this, locationId, PATH_LOCATIONS[locationId]?.name) : '',
             ...enemySigils(enemy, { lockKind: id === 'inkWraith' ? 'ink' : null }).map(({ id }) => SIGILS[id]?.enemy)
               .filter(Boolean).map(rule => translateDescription(this, rule))].filter(Boolean).join(' · '),
           texture: enemy.sprite,
@@ -151,7 +151,7 @@ export class CodexScene extends Phaser.Scene {
       name: translateItemName(this, boss.name) || boss.name,
       // Location bosses can now appear in any act; tier is a tuning baseline.
       info: [...LOCATION_ORDER.filter(locationId => PATH_LOCATIONS[locationId]?.bossId === id)
-        .map(locationId => t(this, `location.${locationId}.name`)),
+        .map(locationId => translateLocationName(this, locationId, PATH_LOCATIONS[locationId]?.name)),
         ...enemySigils(boss).map(({ id: sigilId }) => SIGILS[sigilId]?.enemy)
           .filter(Boolean).map(rule => translateDescription(this, rule))].join(' · '),
       texture: boss.sprite,
@@ -360,7 +360,7 @@ export class CodexScene extends Phaser.Scene {
     fitLabel(text, width - 20, '14px');
     let selected = false;
     const paint = () => {
-      bg.setTexture(selected ? 'nextTurnDown' : 'nextTurnUp');
+      bg.setTexture(selected ? button.skinDown : button.skinUp);
       text.setColor(selected ? '#fff1cb' : '#d6c2c1');
     };
     bg.on('pointerout', paint);

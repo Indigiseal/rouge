@@ -1,0 +1,12 @@
+[
+  {
+    "Algorithm": "SHA256",
+    "Hash": "51871B15E3BF88763A265C16D5D5AC6C875A556FE24FD3721120812E8C34EB85",
+    "Path": "C:\\Users\\tayak\\Downloads\\rouge-gd_tests\\rouge-reforge\\src\\content\\cards\\armor.js"
+  },
+  {
+    "Algorithm": "SHA256",
+    "Hash": "BAD3BF83AA02E23E8178686BCF05D775A60A284927A67F8CCDA7070495866496",
+    "Path": "C:\\Users\\tayak\\Downloads\\rouge-gd_tests\\rouge-reforge\\src\\content\\cards\\weapons.js"
+  }
+]

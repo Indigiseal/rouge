@@ -363,14 +363,14 @@ export const PACKED_SHEETS = Object.freeze([
       {
         "key": "healthBar",
         "frame": 16,
-        "width": 84,
-        "height": 11
+        "width": 99,
+        "height": 19
       },
       {
         "key": "healthBarEmpty",
         "frame": 17,
-        "width": 84,
-        "height": 11
+        "width": 99,
+        "height": 19
       },
       {
         "key": "durability_dot",
@@ -458,43 +458,43 @@ export const PACKED_SHEETS = Object.freeze([
     "key": "packedSanctuary",
     "path": "assets/art/packed/sanctuary.png",
     "frameWidth": 128,
-    "frameHeight": 128,
+    "frameHeight": 180,
     "entries": [
       {
         "key": "sanctuaryLion",
         "frame": 0,
         "width": 128,
-        "height": 128
+        "height": 180
       },
       {
         "key": "sanctuaryTurtle",
         "frame": 1,
         "width": 128,
-        "height": 128
+        "height": 180
       },
       {
         "key": "sanctuaryToad",
         "frame": 2,
         "width": 128,
-        "height": 128
+        "height": 180
       },
       {
         "key": "sanctuaryBird",
         "frame": 3,
         "width": 128,
-        "height": 128
+        "height": 180
       },
       {
         "key": "sanctuaryPhoenix",
         "frame": 4,
         "width": 128,
-        "height": 128
+        "height": 180
       },
       {
         "key": "sanctuaryPhoenixBroken",
         "frame": 5,
         "width": 128,
-        "height": 128
+        "height": 180
       }
     ]
   }

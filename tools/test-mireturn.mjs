@@ -55,8 +55,8 @@ for (const floor of [1, 16, 31]) {
     const scene = fixture();
     scene.gameState.actLocationIds = ['mireturn', 'mireturn', 'mireturn'];
     const boss = scene.cardSystem.cardDataGenerator.createBossCard(floor + 14, scene.gameState);
-    assert.equal(boss.name, 'Bog Mermaid');
-    assert.equal(boss.sprite, 'MireBride', 'keep temporary art and stable asset keys');
+    assert.equal(boss.name, 'Mire Siren');
+    assert.equal(boss.sprite, 'MireBride', 'keep the stable asset key');
     assert.equal(boss.growthPerAttack, 3);
     assert.deepEqual(enemySigils(boss).map(sigil => sigil.id), ['growth', 'summon']);
     assert.deepEqual(boss.abilities, [{ type: 'summon', enemyType: 'drowned', chance: 0.25, count: 1 }]);

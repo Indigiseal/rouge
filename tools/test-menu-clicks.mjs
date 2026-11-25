@@ -10,9 +10,11 @@ SoundHelper.playVariant = () => {};
 function gameObject() {
     const object = new EventEmitter();
     object.width = 20;
+    object.height = 16;
+    object.style = { fontSize: '14px' };
     for (const method of ['setOrigin', 'setTint', 'clearTint', 'setAlpha',
         'setStrokeStyle', 'setInteractive', 'setTexture', 'setFrame', 'setY',
-        'setFontSize']) {
+        'setFontSize', 'setWordWrapWidth']) {
         object[method] = () => object;
     }
     return object;
@@ -21,7 +23,8 @@ function gameObject() {
 for (const hasSprite of [true, false]) {
     for (const kind of ['sprite', 'icon', 'ui']) {
         const scene = new MainMenuScene();
-        scene.textures = { exists: () => hasSprite };
+        scene.textures = { exists: () => hasSprite,
+            get: () => ({ get: () => ({ cutWidth: 122, cutHeight: 36 }) }) };
         scene.add = { image: gameObject, rectangle: gameObject, text: gameObject };
         let activations = 0;
         const callback = () => activations++;

@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "source": "simulator-summary",
+  "createdAt": "2026-10-28T18:10:35.002Z",
+  "seed": 777,
+  "behaviorPreset": "balanced",
+  "characterId": "rogue",
+  "runs": 500,
+  "outcome": {
+    "wins": 19,
+    "winRate": 0.038,
+    "finalFloorMean": 27.31
+  },
+  "durability": {
+    "weaponBreaksPerRun": 1.616,
+    "lastPipWeaponAttacksPerRun": 1.796,
+    "mergedLastPipWeaponAttacksPerRun": 1.202,
+    "avoidableLastPipWeaponAttacksPerRun": 0.836,
+    "lastPipPreservationsPerRun": 27.358,
+    "lastPipEmergencyUsesPerRun": 0.578,
+    "lastPipAttackReasons": {
+      "forced_last_pip": 613,
+      "survival_emergency": 285
+    },
+    "forcedLastPipByFloor": {
+      "2": 1,
+      "3": 4,
+      "4": 7,
+      "5": 7,
+      "6": 13,
+      "7": 4,
+      "8": 9,
+      "9": 4,
+      "10": 13,
+      "11": 2,
+      "12": 4,
+      "13": 1,
+      "14": 2,
+      "15": 50,
+      "17": 9,
+      "18": 15,
+      "19": 28,
+      "20": 58,
+      "21": 89,
+      "22": 34,
+      "23": 38,
+      "24": 64,
+      "25": 33,
+      "26": 34,
+      "27": 18,
+      "28": 7,
+      "30": 5,
+      "32": 9,
+      "33": 3,
+      "34": 2,
+      "35": 6,
+      "36": 13,
+      "37": 5,
+      "38": 5,
+      "39": 2,
+      "40": 3,
+      "41": 11,
+      "42": 1
+    },
+    "forcedLastPipByRoom": {
+      "COMBAT": 499,
+      "ELITE": 45,
+      "BOSS": 55,
+      "EVENT": 14
+    },
+    "weaponMergesPerRun": 11.452,
+    "daggerRefreshMergesPerRun": 0.87,
+    "anvilRepairsPerRun": 6.33,
+    "repairedPipsPerRun": 23.518
+  },
+  "resources": {
+    "restorationUsesPerRun": 0.186,
+    "usefulVisibleLootPerRun": 55.964,
+    "gemsSeenPerRun": 3.166
+  },
+  "mergeFirst": {
+    "enabled": true,
+    "plannedPickupsPerRun": 12.39,
+    "cascadeReplacementsPerRun": 5.59,
+    "spacePotionsPerRun": 1.204,
+    "healthyDaggerPairMergesPerRun": 0.044
+  },
+  "shopPlanning": {
+    "regularVisitsPerRun": 1.992,
+    "rareVisitsPerRun": 1.218,
+    "purchasesPerRun": 4.418,
+    "cascadePurchasesPerRun": 1.43,
+    "potionsUsedPerRun": 0.566,
+    "foodUsedPerRun": 0.004,
+    "gemsSocketedPerRun": 1.094,
+    "slotsFreedPerRun": 3.484,
+    "salesPerRun": 0.872,
+    "saleCoinsPerRun": 20.432,
+    "purchasesByType": {
+      "weapon": 990,
+      "potion": 274,
+      "armor": 381,
+      "thorns": 358,
+      "gem": 124,
+      "magic": 80,
+      "food": 2
+    }
+  },
+  "routing": {
+    "roomVisits": {
+      "COMBAT": 6331,
+      "SHOP": 636,
+      "EVENT": 2852,
+      "ANVIL": 1124,
+      "BOSS": 671,
+      "TREASURE": 575,
+      "ELITE": 420,
+      "TREASURE_GOOD": 385,
+      "REST": 686,
+      "RARE_SHOP": 398,
+      "SIGIL": 852
+    },
+    "optionalFightVisitsPerRun": 13.502,
+    "optionalFightShare": 0.4521768251841929
+  }
+}

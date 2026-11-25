@@ -2,7 +2,7 @@
 // Shared hover tooltip for items shown anywhere on screen: gaming board,
 // shop rooms, chest rewards, etc.
 
-import { t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity } from '../i18n/i18n.js';
+import { rarityPhrase, t, translateCardType, translateDescription, translateGemEffect, translateItemName, translateRarity, translateRarityFor } from '../i18n/i18n.js';
 import { getDisplayedWeaponDamage } from '../content/characters/CharacterClasses.js';
 import { createTooltipPanel, TOOLTIP_BODY_PX, TOOLTIP_PAD, TOOLTIP_TEXT_COLOR } from './NineSlicePanel.js';
 import { HAND_LOCKS, handLockKindOf } from '../content/combat/handLock.js';
@@ -17,6 +17,8 @@ import { PLATE_RANGED_IGNORE_MAX } from '../content/cards/armor.js';
 import { HEATPROOF_RESIST } from '../content/combat/fireResist.js';
 import { MAX_LEGENDARY_STARS, cardStars } from '../content/cards/legendaryStars.js';
 import { companionStrengthBonus } from '../systems/combat/SigilEffects.js';
+import { createWeaponPattern, weaponSpecialText } from './WeaponPattern.js';
+import { GAUNTLET_DESCRIPTION } from '../content/balance/Gauntlet.js';
 
 function enemySigilTooltip(scene, data, sigil) {
     if (sigil.id === 'growth') {
@@ -98,13 +100,19 @@ export function getTooltipLines(scene, data) {
             scene?.gameState?.talentEffects || null
         ) + (scene?.amuletManager?.getBowDamageBonus?.(data) || 0);
         const dur = data.durability ?? data.maxDurability ?? 0;
-        const rarityWord = data.rarity ? `${translateRarity(scene, data.rarity)} ` : '';
-        body = `${rarityWord}${t(scene, describeWeaponKindKey(data))}\n${t(scene, 'tooltip.dmgDur', { dmg, dur })}`;
+        const kind = t(scene, describeWeaponKindKey(data));
+        body = `${data.rarity ? rarityPhrase(scene, data.rarity, kind) : kind}\n${t(scene, 'tooltip.dmgDur', { dmg, dur })}`;
+        // What its blow does besides the target, in words; the cubes under the
+        // text picture it (ui/WeaponPattern.js).
+        const special = weaponSpecialText(scene, data);
+        if (special && data.id !== 'ogreGauntlet') body += `\n${t(scene, 'tooltip.special', { value: special })}`;
+        if (data.id === 'ogreGauntlet') body += `\n${translateDescription(scene, GAUNTLET_DESCRIPTION)}`;
         if (cardStars(data)) body += `\n${t(scene, 'tooltip.stars', { stars: cardStars(data), max: MAX_LEGENDARY_STARS })}`;
     } else if (data.type === 'armor') {
         const def = data.protection ?? 0;
         const dur = data.durability ?? data.maxDurability ?? 0;
-        const rarityWord = data.rarity ? translateRarity(scene, data.rarity) : '';
+        // The generic armor word is feminine wherever rarities agree (armadura, Rüstung, броня).
+        const rarityWord = data.rarity ? translateRarityFor(scene, data.rarity, 'f') : '';
         const lines = [t(scene, 'tooltip.armorBody', { rarity: rarityWord })];
         if (def > 0) lines.push(t(scene, 'tooltip.defDur', { def, dur }));
         else lines.push(t(scene, 'tooltip.pips', { value: `${dur}/${data.maxDurability ?? dur}` }));
@@ -187,7 +195,8 @@ export function showItemTooltip(scene, data, anchorX, anchorY, depth = TOOLTIP_D
         ? '#c45c45'
         : rarityFill(data.rarity);
 
-    renderTooltipBox(scene, lines.name, lines.body, nameColor, anchorX, anchorY, depth, gap);
+    renderTooltipBox(scene, lines.name, lines.body, nameColor, anchorX, anchorY, depth, gap,
+        data.type === 'weapon' ? createWeaponPattern(scene, data) : null);
 }
 
 // Describes a boss's abilities as human-readable lines. Reads the same
@@ -397,8 +406,9 @@ export function showEnemyTooltip(scene, card, gap = BOARD_TOOLTIP_GAP) {
 // `_itemTooltip` so any subsequent show (and hideItemTooltip) clears it.
 // `depth` defaults to board level; modal overlays that sit higher pass their
 // own so the tooltip lands on top of the window it describes.
-function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth = TOOLTIP_DEPTH, gap = TOOLTIP_GAP) {
-    if (!name && !body) return;
+// `pattern` (optional): a weapon's hit-pattern cubes, centred under the body.
+function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth = TOOLTIP_DEPTH, gap = TOOLTIP_GAP, pattern = null) {
+    if (!name && !body) { pattern?.destroy(); return; }
 
     // Padding clears the drawn frame rather than the old 1px stroke, and comes
     // from the frame's own module so every tooltip insets by the same amount.
@@ -432,7 +442,8 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth 
     const nameHeight = Math.ceil(nameText.height);
     const bodyHeight = Math.ceil(bodyBlock?.height ?? 0);
     const contentWidth = Math.max(nameWidth, bodyWidth);
-    const contentHeight = nameHeight + (bodyBlock ? bodyHeight + 3 : 0);
+    const patternHeight = pattern ? pattern.patternHeight + 4 : 0;
+    const contentHeight = nameHeight + (bodyBlock ? bodyHeight + 3 : 0) + patternHeight;
     const boxWidth = Math.ceil(Math.min(maxWidth, contentWidth) + padX * 2);
     const boxHeight = Math.ceil(contentHeight + padTop + padBottom);
 
@@ -454,7 +465,12 @@ function renderTooltipBox(scene, name, body, nameColor, anchorX, anchorY, depth 
         part.setPosition(Math.round((boxWidth - Math.ceil(part.width)) / 2), padTop + nameHeight + 3 + part.y);
     }
 
-    const children = [bg, nameText, ...(bodyBlock?.parts || [])];
+    pattern?.setPosition(
+        Math.round((boxWidth - pattern.patternWidth) / 2),
+        padTop + contentHeight - pattern.patternHeight,
+    );
+
+    const children = [bg, nameText, ...(bodyBlock?.parts || []), ...(pattern ? [pattern] : [])];
 
     scene._itemTooltip = scene.add.container(tipX, tipY, children).setDepth(depth);
 }

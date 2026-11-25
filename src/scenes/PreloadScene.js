@@ -13,6 +13,7 @@ import { buildLocationCardTextures } from '../content/assets/locationCards.js';
 import { LOCATION_PACK_LIST } from '../content/location-packs/registry.js';
 import { CRYSTAL_LAIR_SHEET } from '../content/cards/crystalSpiders.js';
 import { ROBBERS_SHEET } from '../content/cards/robbers.js';
+import { BRIAR_HEART_SHEET } from '../content/cards/briarHeart.js';
 import { MAGIC } from '../content/cards/magic.js';
 import { getMagicCardFrame } from '../content/balance/WeaponEnchants.js';
 
@@ -247,7 +248,7 @@ export class PreloadScene extends Phaser.Scene {
         // Sheets packed from loose sprites go back to their old keys first.
         buildPackedSprites(this);
         buildResourceCardTextures(this);
-        buildEnemyCardTextures(this, [...LOCATION_PACK_LIST, CRYSTAL_LAIR_SHEET, ROBBERS_SHEET]);
+        buildEnemyCardTextures(this, [...LOCATION_PACK_LIST, CRYSTAL_LAIR_SHEET, ROBBERS_SHEET, BRIAR_HEART_SHEET]);
         buildBossPoseTextures(this);
         buildLocationCardTextures(this);
 

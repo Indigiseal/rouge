@@ -3,8 +3,8 @@
 // separate files (built by tools/build-item-sheets.py from the single images,
 // which stay the place to draw):
 //
-//   assets/art/weaponsSheet.png/.json   dagger, bow, sword, spear, axe x 5 rarities
-//   assets/art/armorSheet.png/.json     leather, chain, plate x 5 rarities
+//   assets/art/weaponsSheet.png/.json   dagger, bow, sword, spear, axe, mace x 5 rarities
+//   assets/art/armorSheet.png/.json     leather, chain, plate, padded x 5 rarities
 //
 // Every frame is named by the texture key the card data already carries
 // (sword_C, chain_L...). At boot splitItemSheets() gives each frame a texture

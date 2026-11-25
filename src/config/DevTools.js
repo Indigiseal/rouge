@@ -42,15 +42,13 @@ function readFlag() {
     return DEV_TOOLS_DEFAULT;
 }
 
-// Amulets a new run starts with in Developer mode, to test them without
-// hunting for them. 'vacancyStep' is Close Order (the grappling hook).
-export const DEV_START_AMULETS = Object.freeze(['vacancyStep']);
+// Optional amulets for developer-mode testing; none are granted by default.
+export const DEV_START_AMULETS = Object.freeze([]);
 
 // Cards a new run starts with in Developer mode: a starred Legendary to test
 // the stars, the third sigil slot and the rainbow shine. `kind` is a weapon
 // or armor type; `stars` 1-3.
 export const DEV_START_CARDS = Object.freeze([
-  Object.freeze({ type: 'weapon', kind: 'dagger', stars: 1 }),
 ]);
 
 // Read once at boot. A flag that changes mid-run would leave half a screen

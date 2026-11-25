@@ -179,9 +179,9 @@ export class RareShopScene extends StationRoomBase {
         const type = Math.random() < 0.5 ? 'weapon' : 'armor';
         let item = cardGenerator.createCardData(type, floor, false, null, quality);
         if (!item) return null;
-        // Axe & plate are act-3 endgame gear: the rare shop may stock them but never
+        // Axe, mace & plate are act-3 endgame gear: the rare shop may stock them but never
         // at epic/legendary. Re-roll those types down to rare at most.
-        if ((item.weaponType === 'axe' || item.armorType === 'plate') &&
+        if ((item.weaponType === 'axe' || item.weaponType === 'mace' || item.armorType === 'plate') &&
             (item.rarity === 'epic' || item.rarity === 'legendary')) {
             item = cardGenerator.createCardData(type, floor, false, null, 'rare');
             if (!item) return null;
@@ -201,7 +201,7 @@ export class RareShopScene extends StationRoomBase {
 
     createUpgradedWeapon(excludeType = null) {
         const floor = this.gameState.currentFloor;
-        const weaponTypes = ['dagger', 'bow', 'spear', 'sword', 'axe'];
+        const weaponTypes = ['dagger', 'bow', 'spear', 'sword', 'axe', 'mace'];
         let availableWeapons = weaponTypes.filter((weaponType) => (
             isWeaponSpawnableAtFloor(weaponType, 'uncommon', floor)
         ));

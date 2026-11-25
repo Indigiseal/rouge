@@ -23,6 +23,7 @@ const BOSS_FANFARE_DELAY_MS = 1500;
 const EVENT_BACKDROP_COLOR = 0x2b1f32;
 import { getLocationIdForFloor } from '../content/locations/index.js';
 import { locationIdsForRunStart, queueLocationAssets } from '../content/assets/locationAssets.js';
+import { showSceneLoading } from '../ui/SceneLoading.js';
 import { fightBackdropKey, TOP_PINNED_BACKGROUNDS } from '../content/locations/fightBackgrounds.js';
 import { DEV_START_AMULETS, DEV_START_CARDS, devToolsEnabled } from '../config/DevTools.js';
 import { SaveManager } from '../managers/SaveManager.js';
@@ -78,6 +79,7 @@ import { pendingLocationAftermath } from '../content/locations/index.js';
 import { canOfferSigil, offerableSigils } from '../ui/SigilOffer.js';
 import { SIGIL_ROOM_CHANCE, SIGIL_ROOM_CHANCE_BROOCH } from '../content/sigils/sigilStamps.js';
 import { createCrystalLairEnemies } from '../content/cards/crystalLair.js';
+import { createBriarHeartEnemies } from '../content/cards/briarHeartBoard.js';
 import { EGG_HATCH_ROOMS, eggFightsLeft, isHatchingEgg } from '../content/cards/eggHatching.js';
 import { CardDataGenerator } from '../systems/loot/CardDataGenerator.js';
 import { applyStars } from '../content/cards/legendaryStars.js';
@@ -123,7 +125,9 @@ export class GameScene extends Phaser.Scene {
         const data = this._startData || {};
         const saved = data.loadSave && !data.tutorial && !data.sandbox ? this.saveManager?.loadCurrentRun?.() : null;
         this.load.setCORS('anonymous');
-        queueLocationAssets(this, locationIdsForRunStart(data, saved, getLocationIdForFloor));
+        if (queueLocationAssets(this, locationIdsForRunStart(data, saved, getLocationIdForFloor))) {
+            showSceneLoading(this);
+        }
     }
 
     init(data = {}) {
@@ -152,6 +156,7 @@ export class GameScene extends Phaser.Scene {
         if (this.sandboxMode) this.shouldLoadSave = false;
         this._transitioning = false;
         this._bossVictoryPending = false;
+        this._bossDefeatSoundPlayed = false;
         this._resultScreenShown = false;
         this._gameOverInProgress = false;
         this._pauseRequested = false;
@@ -405,6 +410,21 @@ export class GameScene extends Phaser.Scene {
             return;
         }
 
+        // So is the Heart of the Briars (Thornwake's secret room).
+        if (this.sandboxRoom === 'BRIAR_HEART') {
+            this.gameState.storyRun = this.gameState.storyRun || {};
+            this.gameState.storyRun.briarHeartCleared = false;
+            this.gameState.pendingAmbush = {
+                id: 'briar_heart',
+                enemies: createBriarHeartEnemies(this.gameState.currentFloor || 8),
+            };
+            this.gameState.roomType = 'COMBAT';
+            this.roomType = 'COMBAT';
+            this.startNewFloor();
+            this.updateRoomTitle();
+            return;
+        }
+
         // The Crystal Lair is an ordinary fight room with its own board.
         if (this.sandboxRoom === 'CRYSTAL_LAIR') {
             this.gameState.storyRun = this.gameState.storyRun || {};
@@ -609,6 +629,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     offerHealerAmuletIfNeeded() {
+        // The Keeper delivers only at the opening battle of Act 1.
+        if (this.gameState?.currentFloor !== 1 || (this.gameState.mapCursor?.act ?? 1) !== 1) return;
+        if ((this.gameState.roomType || this.roomType) !== 'COMBAT') return;
         if (this.shouldLoadSave || this.tutorialMode || this.sandboxMode) return;
         if (areAmuletsDisabled()) return;
         const rank = this.gameState?.talentEffects?.healerRank || 0;
@@ -656,6 +679,7 @@ export class GameScene extends Phaser.Scene {
         this._transitioning = false;
         this.enemiesCleared = false;
         this._bossVictoryPending = false;
+        this._bossDefeatSoundPlayed = false;
         if (this.nextFloorButton) {
             this.nextFloorButton.setVisible(false);
             this.nextFloorButtonText?.setVisible(false);
@@ -1102,6 +1126,29 @@ export class GameScene extends Phaser.Scene {
         });
     }
 
+    // The Heart of the Briars is dead (Thornwake's secret room, content/cards/
+    // briarHeart.js): the room shuts for the run, the briars wither, and the door
+    // out leads to a Sigil Room with Heartwood, the way the Crystal Lair's does.
+    // With nothing that can take it, crystals.
+    rewardBriarHeart() {
+        const story = this.gameState.storyRun || (this.gameState.storyRun = {});
+        if (story.briarHeartCleared) return;
+        story.briarHeartCleared = true;
+        this.time.delayedCall(500, () => {
+            this.createFloatingText?.(320, 120, t(this, 'secret.briarHeart.withered'), 0x71800b);
+            this.pushCombatLog?.(t(this, 'secret.briarHeart.withered'));
+        });
+        if (canOfferSigil(this, 'heartwood')) {
+            story.briarHeartSigilPending = true;
+            return;
+        }
+        this.time.delayedCall(700, () => {
+            this.gameState.crystals = (this.gameState.crystals || 0) + CRYSTAL_LAIR_FALLBACK_CRYSTALS;
+            this.playCurrencyGainFlight?.(320, 160, 'crystals');
+            this.updateUI?.();
+        });
+    }
+
     // Eggs hatch by fights (content/cards/eggHatching.js): each fight room
     // cleared takes one off every egg in the bag, and an egg at zero cracks
     // open in its own slot: the chick's egg into the Chick, the crystal egg
@@ -1239,16 +1286,6 @@ export class GameScene extends Phaser.Scene {
         ), 0);
     }
 
-    createDamageEffect(x, y) {
-        const flash = this.add.circle(x, y, 50, 0xb51f1e, 0.5);
-        this.tweens.add({
-            targets: flash,
-            alpha: 0,
-            scale: 1.5,
-            duration: 300,
-            onComplete: () => flash.destroy()
-        });
-    }
     // takeDamage method is now primarily handled in GameState
     // This is kept for calls that might not have been updated yet
     takeDamage(rawDamage, enemyIndex = -1) {
@@ -1323,7 +1360,15 @@ export class GameScene extends Phaser.Scene {
         const known = rests.get(cardSprite);
         const restX = Number.isFinite(boardCard?.restX) ? boardCard.restX : (known?.x ?? cardSprite.x);
         const restY = Number.isFinite(boardCard?.restY) ? boardCard.restY : (known?.y ?? cardSprite.y);
-        rests.set(cardSprite, { x: restX, y: restY });
+        // The HP/ATK overlay's offset from the card, measured once while the
+        // card is at rest. Measured on every hit, a hit landing mid-push read
+        // the pushed overlay as its home, and the numbers crept further down
+        // the card with each quick hit (Taya saw them drift).
+        const infoText = boardCard?.infoText;
+        const infoOffsetY = known && Number.isFinite(known.infoOffsetY)
+            ? known.infoOffsetY
+            : (infoText?.scene ? infoText.y - cardSprite.y : 0);
+        rests.set(cardSprite, { x: restX, y: restY, infoOffsetY });
         // Overlapping cleave/gem impacts used to capture an already-shifted
         // position as their new origin, leaving the card apart from its
         // HP/ATK overlay. Always start from rest.
@@ -1334,8 +1379,6 @@ export class GameScene extends Phaser.Scene {
         // a poison nudge can also cancel the only timer that would clear it.
         this._hitStackRestoreTint?.get(cardSprite)?.();
         cardSprite.setPosition(restX, restY);
-        const infoText = boardCard?.infoText;
-        const infoOffsetY = infoText?.scene ? infoText.y - restY : 0;
         const syncStats = () => {
             if (!infoText?.scene) return;
             infoText.x = Math.round(cardSprite.x);
@@ -1437,11 +1480,8 @@ export class GameScene extends Phaser.Scene {
                 if (floor > this.metaManager.bestFloor) {
                     this.metaManager.bestFloor = floor;
                 }
-                // Carry an unhatched egg to the next run (consumed at run start).
-                const hasEgg = (this.gameState.inventory || []).some(
-                    item => item?.id === 'monsterEgg' || item?.name === 'Egg'
-                );
-                this.metaManager.setPendingEgg(hasEgg);
+                // (An unhatched egg used to carry over to the next run. Taya
+                // dropped that on Nov 2: eggs are common now, nothing special.)
                 this.queueNextRunMonth();
                 const characterId = this.gameState.characterId || 'rogue';
                 xpResult = this.metaManager.handlePlayerDeath(killedBy, floor, characterId);
@@ -1589,6 +1629,12 @@ export class GameScene extends Phaser.Scene {
             this.gameState.storyRun.crystalLairSigilPending = false;
             rewardChestMode = 'sigil';
             rewardSigilId = 'crystalBrood';
+        }
+        // The Heart of the Briars' door leads to Heartwood (rewardBriarHeart).
+        if (this.gameState.storyRun?.briarHeartSigilPending) {
+            this.gameState.storyRun.briarHeartSigilPending = false;
+            rewardChestMode = 'sigil';
+            rewardSigilId = 'heartwood';
         }
 
         // Process amulet floor end effects before moving to next floor.
@@ -1742,6 +1788,11 @@ export class GameScene extends Phaser.Scene {
         } else {
             this.cardSystem.checkFloorClear();
             this.queueStalemateEnemyTurn();
+            // The Bone Hook only looks at the board when a card is flipped. A fight
+            // saved with enemies already face up and apart (quit in its first
+            // moments, before the hook's check ran) would never pull them, so it
+            // looks once here. It is spent only if it actually pulls (Taya).
+            this.amuletManager?.scheduleStrategyCluster?.();
         }
     }
 
@@ -1845,6 +1896,7 @@ export class GameScene extends Phaser.Scene {
         }
         this._silkCocoonLeaveOffer = false;
         if (firstClear && this.gameState?.ambushId === 'crystal_lair') this.rewardCrystalLair();
+        if (firstClear && this.gameState?.ambushId === 'briar_heart') this.rewardBriarHeart();
         if (firstClear && this.gameState?.ambushId === 'soup_robbers') this.rewardRobberSatchel();
 
         // The room is cleared as of now; it just isn't announced yet. The door,
@@ -1854,8 +1906,11 @@ export class GameScene extends Phaser.Scene {
         const announce = () => {
             if (this._transitioning || !this.enemiesCleared) return;
             if (isBossVictory) {
-                if (this.gameState.playerHealth <= 0) return;
+                if (!firstClear || this.gameState.playerHealth <= 0) return;
                 playBossVictoryParticles(this);
+                // Only if the boss card's death did not already play it.
+                if (!this._bossDefeatSoundPlayed) SoundHelper.playSound(this, 'boss_defeated', 0.65);
+                this._bossDefeatSoundPlayed = false;
                 this.createFloatingText(320, 100, 'All enemies defeated!', 0x71800b);
                 this.time.delayedCall(BOSS_FANFARE_DELAY_MS, () => {
                     if (this._transitioning || !this.enemiesCleared ||
@@ -2127,6 +2182,10 @@ export class GameScene extends Phaser.Scene {
         this.gameState.briarShield = runData.effects.briarShield || 0;
         this.gameState.mirrorSigilFloor = runData.effects.mirrorSigilFloor ?? null;
         this.gameState.mirrorSigilUses = runData.effects.mirrorSigilUses || 0;
+        this.gameState.strategyClusterUsed = !!runData.effects.strategyClusterUsed;
+        this.gameState.strategyMarchUsed = !!runData.effects.strategyMarchUsed;
+        this.gameState.charmingTuneUsed = !!runData.effects.charmingTuneUsed;
+        this.gameState.twinnedMirrorUsed = !!runData.effects.twinnedMirrorUsed;
         this.gameState.riposteReady = runData.effects.riposteReady || false;
         this.gameState.playerSapped = runData.effects.playerSapped || false;
         this.gameState.playerShocked = runData.effects.playerShocked || false;

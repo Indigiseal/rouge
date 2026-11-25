@@ -11,14 +11,14 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { flyCurrencyIcon } from './CurrencyFlight.js';
 
 import { devToolsEnabled } from '../config/DevTools.js';
-import { t, tCount, translateDescription, translateItemName } from '../i18n/i18n.js';
+import { t, tCount, translateDescription, translateItemName, translateLocationName } from '../i18n/i18n.js';
 import {
     CHARACTER_CLASSES,
     getWarriorStance,
     WARRIOR_STANCES,
     WARRIOR_STANCE_AP_COST,
 } from '../content/characters/CharacterClasses.js';
-import { getLocationDisplayName } from '../content/locations/index.js';
+import { getLocationDisplayName, getLocationIdForFloor } from '../content/locations/index.js';
 import { MAGIC_SHIELD_DODGE_BONUS } from '../systems/combat/ArmorMath.js';
 import { WEAPONS, createWeaponCardData } from '../content/cards/weapons.js';
 import { ARMORS, createArmorCardData } from '../content/cards/armor.js';
@@ -177,8 +177,9 @@ export const CombatHud = {
         // gamingBoard lip would otherwise cover the location/act/floor header.
         const TOP_HUD_DEPTH = 40;
         // Location first (bright), then Act/Floor (muted).
-        this.floorText = this.add.text(320, 9, t(this.scene, 'ui.hud.floorBanner', {
-            month: 'Thornwake', act: 1, floor: 1,
+        this.floorText = this.add.text(320, 9, t(this, 'ui.hud.floorBanner', {
+            month: translateLocationName(this, getLocationIdForFloor(this.gameState, 1),
+                getLocationDisplayName(this.gameState, 1)), act: 1, floor: 1,
         }), {
             fontSize: '13px',
             fill: '#fef0cf',
@@ -235,7 +236,7 @@ export const CombatHud = {
                 SoundHelper.playVariant(this, 'button_click', 0.5);
                 this.debugRevealAllCards();
             });
-        const label = this.add.text(224, 20, 'OPEN', {
+        const label = this.add.text(224, 20, t(this, 'audit.open'), {
             fontSize: '9px', fill: '#fef0cf', fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
         this.debugRevealButton = button;
@@ -263,7 +264,7 @@ export const CombatHud = {
             .on('pointerover', () => button.setFillStyle(0x6c6885, 1))
             .on('pointerout', () => button.setFillStyle(0x594c74, 0.9))
             .on('pointerdown', () => this.openDebugItemGrant());
-        const label = this.add.text(352, 20, 'ITEM', {
+        const label = this.add.text(352, 20, t(this, 'audit.item'), {
             fontSize: '9px', fill: '#fef0cf', fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5).setDepth(TOP_HUD_DEPTH + 1);
         this.debugItemButton = button;
@@ -366,7 +367,7 @@ export const CombatHud = {
         this.inventorySystem.addCardDirect({ ...entry.card }, slot);
         this.inventorySystem.syncGameStateInventory?.();
         this.saveCurrentRun?.();
-        this.createFloatingText(320, 330, `Added: ${entry.card.name}`, 0x4a884f);
+        this.createFloatingText(320, 330, t(this, 'audit.added', { name: translateItemName(this, entry.card) }), 0x4a884f);
         this.closeDebugItemOverlay();
     },
 
@@ -387,7 +388,7 @@ export const CombatHud = {
         this.inventorySystem.rebuildInventorySprites?.();
         this.updateEquippedArmorPanel?.();
         this.saveCurrentRun?.();
-        this.createFloatingText(320, 330, `${translateItemName(this, getSigil(id).name)} on ${translateItemName(this, target)}`, 0x4a884f);
+        this.createFloatingText(320, 330, t(this, 'audit.sigilOn', { sigil: translateItemName(this, getSigil(id).name), name: translateItemName(this, target) }), 0x4a884f);
     },
 
     closeDebugItemOverlay() {
@@ -402,7 +403,7 @@ export const CombatHud = {
         const add = object => { root.add(object); return object; };
         add(this.add.rectangle(320, 180, 640, 360, 0x050505, 0.78).setInteractive());
         add(this.add.rectangle(320, 180, 548, 316, 0x1e141b, 0.98).setStrokeStyle(2, 0xae8b57));
-        add(this.add.text(320, 35, 'DEBUG ITEM VAULT', {
+        add(this.add.text(320, 35, t(this, 'audit.vault'), {
             fontSize: '16px', fill: '#fed991', fontFamily: '"HoMM Pixel"'
         }).setOrigin(0.5));
         const close = add(this.add.text(572, 34, '×', {
@@ -424,8 +425,8 @@ export const CombatHud = {
             });
         };
         const tabLabels = {
-            weapon: 'WEAPONS', armor: 'ARMOR', amulet: 'AMULETS',
-            amuletNonSpawn: 'NON-SPAWN', other: 'OTHER', sigil: 'SIGILS',
+            weapon: t(this, 'audit.weapons'), armor: t(this, 'audit.armors'), amulet: t(this, 'audit.amulets'),
+            amuletNonSpawn: t(this, 'audit.nonSpawn'), other: t(this, 'audit.other'), sigil: t(this, 'audit.sigils'),
         };
         const tabs = {};
         Object.keys(tabLabels).forEach((key, i) => {
@@ -467,7 +468,7 @@ export const CombatHud = {
                     ? 2  // 16px sigil icons, shown at double size to read them
                     : Math.min(maxW / Math.max(1, icon.width), maxH / Math.max(1, icon.height), 1);
                 icon.setScale(scale);
-                const label = this.add.text(x, y + 23, entry.label, {
+                const label = this.add.text(x, y + 23, (entry.card ? translateItemName(this, entry.card) : translateItemName(this, entry.label)), {
                     fontSize: '7px', fill: '#f2d7c4', fontFamily: '"HoMM Pixel"',
                     align: 'center', wordWrap: { width: 68 }
                 }).setOrigin(0.5);
@@ -596,7 +597,7 @@ export const CombatHud = {
         // 577/185, was 575/150: 2px right and 35px down.
         const CX = 577, CY = 185, W = 128, H = 200;
         const BROWN = '#6f5452';
-        this.combatLog = { lines: [], maxVisible: 12, scroll: 0, visible: false, objects: [] };
+        this.combatLog = { lines: [], maxVisible: 18, scroll: 0, visible: false, objects: [] };
         this.combatLog.bounds = { left: CX - W / 2, right: CX + W / 2, top: CY - H / 2, bottom: CY + H / 2 };
 
         // Reuse the event paper art as a nine-slice panel (already preloaded).
@@ -622,9 +623,11 @@ export const CombatHud = {
         const rule = this.add.rectangle(CX, top + 22, W - 18, 1, 0x6f5452, 0.4).setDepth(42);
 
         const bodyTop = top + 27;
+        // 10px, lines 1px apart (was 12px and 3px): smaller and tighter (Taya),
+        // so more of the fight fits on the paper.
         const body = this.add.text(CX - W / 2 + 7, bodyTop, '', {
-            ...serifStyle('12px', '#584339'),
-            lineSpacing: 3, wordWrap: { width: W - 22, useAdvancedWrap: true }
+            ...serifStyle('10px', '#584339'),
+            lineSpacing: 1, wordWrap: { width: W - 22, useAdvancedWrap: true }
         }).setOrigin(0, 0).setDepth(42);
 
         this.combatLog.panel = panel;
@@ -668,7 +671,7 @@ export const CombatHud = {
             const drag = this.combatLog?.drag;
             if (!drag || !pointer.isDown) return;
             // Pull down to reveal older lines, as if sliding the paper.
-            const LINE_PX = 10;
+            const LINE_PX = 8;
             const moved = Math.round((pointer.worldY - drag.y) / LINE_PX);
             this.setCombatLogScroll(drag.from + moved);
         });
@@ -835,11 +838,10 @@ export const CombatHud = {
         this.updateActionPointUI();
         this.updateCurrencyUILayout();
         const _act = Math.floor((this.gameState.currentFloor - 1) / 15) + 1;
-        const locationName = getLocationDisplayName(
-            this.gameState,
-            this.gameState.currentFloor || 1
-        );
-        this.floorText.setText(t(this.scene, 'ui.hud.floorBanner', {
+        const locationId = getLocationIdForFloor(this.gameState, this.gameState.currentFloor || 1);
+        const locationName = translateLocationName(this, locationId,
+            getLocationDisplayName(this.gameState, this.gameState.currentFloor || 1));
+        this.floorText.setText(t(this, 'ui.hud.floorBanner', {
             month: locationName, act: _act, floor: this.gameState.currentFloor,
         }));
         const combatRoom = ['COMBAT', 'ELITE', 'HARD', 'BOSS', 'AMBUSH']
@@ -848,16 +850,92 @@ export const CombatHud = {
         this.floorText.setPosition(centeredHeader ? 320 : 455, centeredHeader ? 9 : 15);
         this.updateEquippedArmorPanel();
         
-        // Update health orb
-        const healthPercent = Math.max(0, this.gameState.playerHealth / this.gameState.maxHealth);
-        const orbFrame = this.textures.getFrame('healthOrb', 0);
-        const orbWidth = orbFrame?.width || 62;
-        const orbHeight = orbFrame?.height || 54;
-        const visibleHeight = Math.ceil(orbHeight * healthPercent);
-        this.healthOrbFull.setCrop(0, orbHeight - visibleHeight, orbWidth, visibleHeight);
+        this.updateHealthOrb();
         this.updateAmuletsUI();
         this.updateRelicsUI();
         this.updatePlayerEffectsUI();
+    },
+    // The health orb. A change is shown, not jumped to (Taya): the liquid eases
+    // to its new level, a light washes over it, and while it rises a bright
+    // line runs along its surface. The flash and the line are the orb's own
+    // full frame drawn additively and cropped like the liquid, so they keep
+    // the orb's round shape at every height.
+    updateHealthOrb() {
+        const max = Math.max(1, this.gameState.maxHealth || 1);
+        const target = Phaser.Math.Clamp((this.gameState.playerHealth || 0) / max, 0, 1);
+        if (this._orbTarget === target) return;
+        const first = this._orbTarget == null;
+        this._orbTarget = target;
+        if (first || !this.healthOrbFull?.scene) {
+            this._orbShown = target;
+            this.drawHealthOrbLevel(target);
+            return;
+        }
+
+        const from = this._orbShown ?? target;
+        const healing = target > from;
+        const light = (key, depth) => {
+            if (!this[key]?.scene) {
+                this[key] = this.add.image(this.healthOrbFull.x, this.healthOrbFull.y, 'healthOrb', 0)
+                    .setOrigin(0.5, 1).setDepth(depth).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
+            }
+            this.tweens.killTweensOf(this[key]);
+            return this[key];
+        };
+
+        // The light over the liquid, up to the higher of the two levels.
+        const flash = light('healthOrbFlash', 7.62)
+            .setTint(healing ? 0xfff2c4 : 0xffc2a8)
+            .setAlpha(healing ? 0.55 : 0.7);
+        this.cropHealthOrb(flash, Math.max(from, target));
+        this.tweens.add({ targets: flash, alpha: 0, duration: healing ? 700 : 450, ease: 'Quad.easeOut' });
+
+        // The shine on the rising surface: a thin core and a softer glow.
+        const edge = healing ? light('healthOrbEdge', 7.64).setTint(0xffffff).setAlpha(1) : null;
+        const glow = healing ? light('healthOrbEdgeGlow', 7.63).setTint(0xfff0b0).setAlpha(0.45) : null;
+
+        this.tweens.killTweensOf(this._orbLevel || {});
+        this._orbLevel = { p: from };
+        const span = Math.abs(target - from);
+        this.tweens.add({
+            targets: this._orbLevel,
+            p: target,
+            duration: Math.round(Phaser.Math.Clamp(250 + span * 900, 250, 700)),
+            ease: healing ? 'Sine.easeInOut' : 'Cubic.easeOut',
+            onUpdate: () => {
+                this._orbShown = this._orbLevel.p;
+                this.drawHealthOrbLevel(this._orbShown);
+                if (edge) this.cropHealthOrbSurface(edge, this._orbShown, 2);
+                if (glow) this.cropHealthOrbSurface(glow, this._orbShown, 5);
+            },
+            onComplete: () => {
+                this._orbShown = target;
+                this.drawHealthOrbLevel(target);
+                [edge, glow].filter(Boolean).forEach((line) => this.tweens.add({
+                    targets: line, alpha: 0, duration: 300, ease: 'Quad.easeIn',
+                }));
+            },
+        });
+    },
+    drawHealthOrbLevel(percent) {
+        this.cropHealthOrb(this.healthOrbFull, percent);
+    },
+    // Show `image` (an orb-sized frame) from the bottom up to `percent`.
+    cropHealthOrb(image, percent) {
+        const frame = this.textures.getFrame('healthOrb', 0);
+        const w = frame?.width || 62;
+        const h = frame?.height || 54;
+        const visible = Math.ceil(h * percent);
+        image?.setCrop(0, h - visible, w, visible);
+    },
+    // Show `rows` rows of `image` at the liquid's surface for `percent`.
+    cropHealthOrbSurface(image, percent, rows) {
+        const frame = this.textures.getFrame('healthOrb', 0);
+        const w = frame?.width || 62;
+        const h = frame?.height || 54;
+        const top = h - Math.ceil(h * percent);
+        const y = Phaser.Math.Clamp(top - Math.floor(rows / 2), 0, h - rows);
+        image?.setCrop(0, y, w, rows);
     },
     // The shared coin/crystal flight (ui/CurrencyFlight.js), drawn in this scene.
     flyCurrencyIcon(options) {
@@ -1166,18 +1244,23 @@ export const CombatHud = {
             // the way down rather than sliding under the HUD it crosses.
             this.armorPanelEquippedSprite.setDepth(1002);
             riders().forEach((rider) => rider.setDepth(1003));
-            if (this.inventorySystem?.equippedArmorDropTarget?.accepts(armor)) {
-                this.inventorySystem.createDragOverlay(this.armorPanelEquippedSprite, -1);
-            }
+            // A room drawn over GameScene (an event, a Sigil Room) needs the
+            // copy in its own scene, or the armor slides under the room's
+            // panels. Outside one, there is no overlay scene and this does nothing.
+            this.inventorySystem?.createDragOverlay?.(this.armorPanelEquippedSprite, -1);
         });
         this.armorPanelEquippedSprite.on('drag', (pointer, dragX, dragY) => {
             moveTo(Math.round(dragX), Math.round(dragY));
             this.inventorySystem?.updateDragOverlay(this.armorPanelEquippedSprite);
+            // The pulsing corners on a spot that takes it (a Sigil Room's
+            // slab, the Mirror...), as a card carried from the bag gets them.
+            this.inventorySystem?.updateAvatarDropTarget?.(this.armorPanelEquippedSprite, -1, armor);
         });
         this.armorPanelEquippedSprite.on('dragend', () => {
             const sprite = this.armorPanelEquippedSprite;
             const inv = this.inventorySystem;
             inv?.destroyDragOverlay();
+            inv?.destroyAvatarDropTarget?.();
             if (inv?.equippedArmorDropTarget?.onDrop(armor, sprite)) {
                 moveTo(restX, restY);
                 this.time.delayedCall(0, () => { dragging = false; });
@@ -1607,28 +1690,28 @@ export const CombatHud = {
         // "3 turns" is not one word in every language — Russian wants ход /
         // хода / ходов depending on the number — so the unit comes from tCount
         // and the sentence order from a template.
-        const turns = (count) => tCount(this.scene, 'ui.hud.turnUnit', count);
+        const turns = (count) => tCount(this, 'ui.hud.turnUnit', count);
         const withTurns = (name, count) =>
-            t(this.scene, 'ui.hud.effectTurns', { name, count, unit: turns(count) });
+            t(this, 'ui.hud.effectTurns', { name, count, unit: turns(count) });
 
         // At 0 AP the hero is hungry: weapons hit 20% softer until food is eaten.
         if ((this.gameState.actionsLeft ?? 1) <= 0) {
-            entries.push({ text: t(this.scene, 'ui.hud.hungry'), color: '#fbad19' });
+            entries.push({ text: t(this, 'ui.hud.hungry'), color: '#fbad19' });
         }
 
         this.gameState.playerEffects.forEach((effect) => {
             switch (effect.type) {
                 case 'burn':
-                    entries.push({ text: t(this.scene, 'ui.hud.burn', { amount: effect.burn }), color: '#ef7c4b' });
+                    entries.push({ text: t(this, 'ui.hud.burn', { amount: effect.burn }), color: '#ef7c4b' });
                     break;
                 case 'poison':
-                    entries.push({ text: t(this.scene, 'ui.hud.poison', { count: effect.turns }), color: '#71800b' });
+                    entries.push({ text: t(this, 'ui.hud.poison', { count: effect.turns }), color: '#71800b' });
                     break;
                 case 'stun':
-                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.stun'), effect.turns), color: '#fbad19' });
+                    entries.push({ text: withTurns(t(this, 'ui.hud.effect.stun'), effect.turns), color: '#fbad19' });
                     break;
                 case 'weakness':
-                    entries.push({ text: withTurns(t(this.scene, 'ui.hud.effect.weakness'), effect.turns), color: '#712a65' });
+                    entries.push({ text: withTurns(t(this, 'ui.hud.effect.weakness'), effect.turns), color: '#712a65' });
                     break;
                 default:
                     // An effect with no key of its own still shows, in English.
@@ -1643,12 +1726,12 @@ export const CombatHud = {
 
         // --- Buffs from magic spells ---
         const gs = this.gameState;
-        const buffTurns = (nameKey, bonus, count) => t(this.scene, 'ui.hud.buffTurns', {
-            name: t(this.scene, nameKey), bonus, count, unit: turns(count),
+        const buffTurns = (nameKey, bonus, count) => t(this, 'ui.hud.buffTurns', {
+            name: t(this, nameKey), bonus, count, unit: turns(count),
         });
         if (gs.shadowBlade && gs.shadowBlade.turns > 0) {
             const mult = gs.shadowBlade.multiplier
-                ? t(this.scene, 'ui.hud.dmgBonus', { percent: Math.round((gs.shadowBlade.multiplier - 1) * 100) })
+                ? t(this, 'ui.hud.dmgBonus', { percent: Math.round((gs.shadowBlade.multiplier - 1) * 100) })
                 : '';
             entries.push({ text: buffTurns('ui.hud.shadowBlade', mult, gs.shadowBlade.turns), color: '#712a65' });
         }
@@ -1657,56 +1740,56 @@ export const CombatHud = {
             const dodgeArmor = (gs.equippedArmor?.protection || 0) <= 0
                 && (gs.equippedArmor?.dodgeChance || 0) > 0;
             const mult = dodgeArmor
-                ? t(this.scene, 'ui.hud.dodgeBonus', { percent: Math.round(MAGIC_SHIELD_DODGE_BONUS * 100) })
+                ? t(this, 'ui.hud.dodgeBonus', { percent: Math.round(MAGIC_SHIELD_DODGE_BONUS * 100) })
                 : (gs.magicShield.multiplier
-                    ? t(this.scene, 'ui.hud.defBonus', { percent: Math.round((gs.magicShield.multiplier - 1) * 100) })
+                    ? t(this, 'ui.hud.defBonus', { percent: Math.round((gs.magicShield.multiplier - 1) * 100) })
                     : '');
             entries.push({ text: buffTurns('ui.hud.magicShield', mult, gs.magicShield.turns), color: '#3f818f' });
         }
         if (gs.boneWall && gs.boneWall > 0) {
             entries.push({
-                text: t(this.scene, 'ui.hud.shieldCharges', {
-                    name: t(this.scene, 'ui.hud.boneShield'),
+                text: t(this, 'ui.hud.shieldCharges', {
+                    name: t(this, 'ui.hud.boneShield'),
                     count: gs.boneWall,
-                    unit: tCount(this.scene, 'ui.hud.chargeUnit', gs.boneWall),
+                    unit: tCount(this, 'ui.hud.chargeUnit', gs.boneWall),
                 }),
                 color: '#fef0cf'
             });
         }
         if (gs.briarShield > 0) {
-            entries.push({ text: t(this.scene, 'ui.hud.shieldCharges', {
-                name: t(this.scene, 'ui.hud.briarShield'), count: gs.briarShield,
-                unit: tCount(this.scene, 'ui.hud.chargeUnit', gs.briarShield),
+            entries.push({ text: t(this, 'ui.hud.shieldCharges', {
+                name: t(this, 'ui.hud.briarShield'), count: gs.briarShield,
+                unit: tCount(this, 'ui.hud.chargeUnit', gs.briarShield),
             }), color: '#71800b' });
         }
         if (gs.blockNextAttack) {
-            entries.push({ text: t(this.scene, 'ui.hud.blockNextAttack'), color: '#71b1ae' });
+            entries.push({ text: t(this, 'ui.hud.blockNextAttack'), color: '#71b1ae' });
         }
 
         // --- Hits that linger as a flag rather than a playerEffects entry ---
         if ((gs.playerStunnedTurns || 0) > 0) {
-            entries.push({ text: t(this.scene, 'ui.hud.stunned'), color: '#ffcf7f' });
+            entries.push({ text: t(this, 'ui.hud.stunned'), color: '#ffcf7f' });
         }
         if (gs.playerSpored) {
-            entries.push({ text: t(this.scene, 'ui.hud.spored'), color: '#fee093' });
+            entries.push({ text: t(this, 'ui.hud.spored'), color: '#fee093' });
         }
         if (gs.playerSapped) {
-            entries.push({ text: t(this.scene, 'ui.hud.sapped'), color: '#712a65' });
+            entries.push({ text: t(this, 'ui.hud.sapped'), color: '#712a65' });
         }
         if (gs.playerFrozenAttacks > 0) {
-            entries.push({ text: t(this.scene, 'status.frost.pending', { count: gs.playerFrozenAttacks }), color: '#71b1ae' });
+            entries.push({ text: t(this, 'status.frost.pending', { count: gs.playerFrozenAttacks }), color: '#71b1ae' });
         }
         if (gs.playerShocked) {
-            entries.push({ text: t(this.scene, 'status.shock.pending'), color: '#ffcf7f' });
+            entries.push({ text: t(this, 'status.shock.pending'), color: '#ffcf7f' });
         }
         if (gs.playerSandstormed) {
-            entries.push({ text: t(this.scene, 'status.sandstorm.pending'), color: '#ffcf7f' });
+            entries.push({ text: t(this, 'status.sandstorm.pending'), color: '#ffcf7f' });
         }
 
         // --- Relic-driven counters ---
         if ((gs.discardCritChance || 0) > 0) {
             const percent = Math.round(gs.discardCritChance * 100);
-            entries.push({ text: t(this.scene, 'ui.hud.discardCrit', { percent }), color: '#fbad19' });
+            entries.push({ text: t(this, 'ui.hud.discardCrit', { percent }), color: '#fbad19' });
         } else {
             // Show progress toward first crit step if the relic is equipped but not yet earned
             const relic = gs.relicEffects || {};
@@ -1715,7 +1798,7 @@ export const CombatHud = {
                 const next = relic.discardCritPerCards - (discarded % relic.discardCritPerCards);
                 if (discarded > 0 || relic.discardCritPerCards <= 10) {
                     entries.push({
-                        text: t(this.scene, 'ui.hud.discardCritProgress', {
+                        text: t(this, 'ui.hud.discardCritProgress', {
                             cards: next,
                             percent: Math.round(relic.discardCritPerStep * 100),
                         }),

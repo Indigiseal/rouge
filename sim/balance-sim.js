@@ -19,8 +19,12 @@
 
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { applySwordCleaveSim, applySpearPierceSim, applyAxeHeavyCleaveSim, applyMaceDiagonalSim, applyGauntletSlamSim } from './weapon-specials.js';
+import { captureEnemyHealth, recordDamageAction, summarizeDamageActions } from './damage-metrics.js';
 import { MockScene } from './mock.js'; // also installs globalThis.Phaser + localStorage
 import { SimInventorySystem } from './sim-inventory.js';
+import { armorScore, compareArmor } from './armor-selection.js';
+import { projectedArmorStats } from './projected-armor.js';
 import { playRealEvent } from './event-bridge.js';
 import { advanceBonePile, repairBoneArmor } from '../src/content/combat/boneflood.js';
 import { growEnemy, regenerateAllies } from '../src/content/combat/mireturn.js';
@@ -50,7 +54,6 @@ import { getThornStats } from '../src/content/cards/thorns.js';
 import { FIRE_GEM_SPLASH_RADIUS, POISON_RUNE_SPLASH_RADIUS, gemStackDamage, resolveFireGemSplashRadius } from '../src/content/cards/gems.js';
 import { xpForRun, estimateBossesKilled } from '../src/content/economy/metaXp.js';
 import { weaponCanDamageEnemy, canHurtEnemyAtAll } from '../src/systems/board/BoardCombat.js';
-import { effectiveArmorDodge } from '../src/systems/combat/ArmorMath.js';
 import {
   SPEAR_PIERCE_FRACTION,
   SWORD_CLEAVE_FRACTION,
@@ -321,50 +324,6 @@ function maybeSwitchWarriorStance(gs, board) {
   return true;
 }
 
-function applySwordCleaveSim(mock, gs, primaryIndex, swordDamage, weapon) {
-  if (weapon?.special !== 'cleave') return 0;
-  const board = mock.cardSystem.boardCards || [];
-  const dmg = Math.max(1, Math.ceil(swordDamage * SWORD_CLEAVE_FRACTION));
-  let dealt = 0;
-  for (const target of swordCleaveTargetIndices(board, primaryIndex)) {
-    mock.cardSystem.attackEnemy(target, dmg, false, weapon, true);
-    dealt += dmg + applyAssassinateSim(mock, gs, target);
-  }
-  return dealt;
-}
-
-function applySpearPierceSim(mock, gs, primaryIndex, spearDamage, weapon, primaryCard = null) {
-  if (weapon?.special !== 'pierce' && weapon?.special !== 'reach') return 0;
-  const board = mock.cardSystem.boardCards || [];
-  const damage = Math.max(1, Math.ceil(spearDamage * SPEAR_PIERCE_FRACTION));
-  let dealt = 0;
-  for (const target of spearPierceTargetIndices(board, primaryIndex, primaryCard)) {
-    const hp = board[target]?.data?.health || 0;
-    mock.cardSystem.attackEnemy(target, damage, false, weapon, true);
-    dealt += Math.min(hp, damage);
-    dealt += applyAssassinateSim(mock, gs, target);
-  }
-  return dealt;
-}
-
-function applyAxeHeavyCleaveSim(mock, gs, primaryIndex, axeDamage, weapon, primaryCard = null) {
-  if (weapon?.special !== 'specialAttack') return 0;
-  const board = mock.cardSystem.boardCards || [];
-  const targets = axeHeavyCleaveTargetIndices(board, primaryIndex, primaryCard);
-  if (targets.upper == null) return 0;
-  let dealt = 0;
-  const hit = (target, fraction) => {
-    const card = board[target];
-    if (!card?.revealed || (card.data?.health ?? 0) <= 0) return;
-    const damage = Math.max(1, Math.ceil(axeDamage * fraction));
-    mock.cardSystem.attackEnemy(target, damage, false, weapon, true, { bypassTargeting: true });
-    dealt += damage + applyAssassinateSim(mock, gs, target);
-  };
-  hit(targets.upper, 0.5);
-  for (const target of targets.sides) hit(target, 0.25);
-  return dealt;
-}
-
 function applyFrontVolleySim(mock, gs, primaryIndex, bowDamage, weapon) {
   const flat = gs?.talentEffects?.frontVolleyFlat || 0;
   if (flat <= 0 || !weapon) return 0;
@@ -508,12 +467,6 @@ function syncInventoryState(gs, inv) {
   if (gs.scene?.inventorySystem) gs.scene.inventorySystem.slots = inv;
 }
 
-// Leather is dodge-only (protection 0); score expected damage avoided + flat DEF.
-const armorScore = (a) => {
-  if (!a || !(a.durability > 0)) return -1;
-  return (a.protection || 0) + (a.dodgeChance || 0) * 20;
-};
-
 function inventoryCapacity(gs) {
   return 5 + Math.max(0, gs.bonusInventorySlots || 0);
 }
@@ -608,7 +561,7 @@ function isUsefulDaggerPickup(gs, inv, dagger) {
   if (dagger?.type !== 'weapon' || dagger.weaponType !== 'dagger') return false;
   if ((gs.currentFloor || 1) >= 31) {
     const hasLateWeapon = uniqueUsableWeapons(gs, inv).some((weapon) => (
-      weapon.weaponType === 'axe' || weapon.weaponType === 'sword'
+      weapon.weaponType === 'axe' || weapon.weaponType === 'mace' || weapon.weaponType === 'sword'
     ));
     return !hasLateWeapon
       && effectiveWeaponReservePips(gs, inv) < Math.ceil(weaponPipReserveTarget(gs.currentFloor) / 2);
@@ -664,7 +617,8 @@ function expectedWeaponBossDamagePerHit(gs, weapon, boss) {
   let direct = simWeaponHitDamage(gs, weapon, false, { expectedCrit: true });
   direct = gs.scene?.amuletManager?.modifyWeaponDamage?.(direct, weapon) ?? direct;
   direct += gs.relicEffects?.weaponDamageBonus || 0;
-  direct = Math.max(1, direct - Math.max(0, boss.armor || 0));
+  // A mace crushes straight through armor (BoardCombat.attackEnemy).
+  if (weapon.special !== 'crush') direct = Math.max(1, direct - Math.max(0, boss.armor || 0));
   const evade = Math.max(
     0,
     Math.min(1, boss.abilities?.find((ability) => ability.type === 'evade')?.chance || 0),
@@ -876,7 +830,7 @@ function shouldDisposeDaggerFor(gs, inv, incoming, { eventReward = false } = {})
   if (!incoming || usableDaggers(gs, inv).length === 0) return false;
   if (incoming.type === 'companion') return true;
   if (incoming.type !== 'weapon') return false;
-  if (incoming.weaponType !== 'axe' && incoming.weaponType !== 'sword') return false;
+  if (incoming.weaponType !== 'axe' && incoming.weaponType !== 'mace' && incoming.weaponType !== 'sword') return false;
   if ((gs.currentFloor || 1) >= 31) return true;
   const strongestDagger = usableDaggers(gs, inv)
     .reduce((best, dagger) => Math.max(best, dagger.damage || 0), 0);
@@ -1433,7 +1387,7 @@ function regear(gen, gs, inv) {
   gs.equippedWeapon = pickedWeapon && pickedWeapon.durability > 0 ? pickedWeapon : null;
   if (gs._superWeapon) gs.equippedWeapon = gs._superWeapon; // isolation test: never swap it out
   // Equip the best armor that still has durability (DEF + dodge EV).
-  armors.sort((a, b) => armorScore(b) - armorScore(a));
+  armors.sort(compareArmor);
   const usableArmor = armors.findIndex((a) => a.durability > 0);
   gs.equippedArmor = usableArmor >= 0 ? armors.splice(usableArmor, 1)[0] : (armors.shift() || null);
   // Carry the strongest thorns that still has durability.
@@ -2040,10 +1994,14 @@ function scoreMagicUse(mock, gs, inv, board, slotIndex, floor) {
       return base + board.filter(canBurnCard).length * 15;
     case 'summonMimic':
       // Optional loot: only risk the encounter when the bot is healthy and
-      // already carries enough weapon damage/pips to finish a normal Mimic.
+      // carries one weapon that can finish the Mimic in its 3 turns before it
+      // escapes (its HP read from the game, so the two cannot drift apart).
       if (!mimicSummonSpot(mock.cardSystem) || hpPct < 0.75) return -Infinity;
-      if (!inv.some(card => card?.type === 'weapon' && card.durability >= 2
-          && (card.damage || 0) * 2 >= 8 + Math.floor(floor / 2))) return -Infinity;
+      {
+        const mimicHp = mock.cardSystem.cardDataGenerator.createMimicCard(floor).health;
+        if (!inv.some(card => card?.type === 'weapon' && card.durability >= 3
+            && (card.damage || 0) * 3 >= mimicHp)) return -Infinity;
+      }
       return base - 20;
     case 'venomousBomb':
       if (!board.some(isSilkdeepPoisonTarget)) return -Infinity;
@@ -2311,7 +2269,7 @@ function computeContext(board, floor) {
 
 function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs = null) {
   const stack = CardDataGenerator.weaponGemStack(weapon);
-  const armor = Math.max(0, board[targetIndex]?.data?.armor || 0);
+  const armor = weapon?.special === 'crush' ? 0 : Math.max(0, board[targetIndex]?.data?.armor || 0);
   const directDamage = Math.max(1, baseDamage - armor);
   const affected = new Map([[targetIndex, directDamage]]);
 
@@ -2337,13 +2295,8 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs
     const maxHp = Math.max(1, target?.data?.maxHealth || hp || 1);
     if (hp / maxHp > 0.2) {
       const targets = axeHeavyCleaveTargetIndices(board, targetIndex);
-      if (targets.upper != null) {
-        affected.set(targets.upper, (affected.get(targets.upper) || 0)
-          + Math.max(1, Math.ceil(baseDamage * 0.5)));
-        for (const index of targets.sides) {
-          affected.set(index, (affected.get(index) || 0)
-            + Math.max(1, Math.ceil(baseDamage * 0.25)));
-        }
+      for (const index of [...targets.vertical, ...targets.sides]) {
+        affected.set(index, (affected.get(index) || 0) + Math.max(1, Math.ceil(baseDamage * 0.5)));
       }
     } else if (target?.data?.type !== 'boss' && (weapon.durability || 0) >= 2) {
       const armor = Math.max(0, target?.data?.armor || 0);
@@ -2387,7 +2340,7 @@ function estimateGemSplash(board, targetIndex, weapon, baseDamage, floor = 1, gs
       .filter(({ card, index }) => (
         index !== targetIndex
         && card?.revealed
-        && (card.data?.type === 'enemy' || card.data?.type === 'boss')
+        && (card.data?.type === 'enemy' || card.data?.type === 'boss' || card.data?.type === 'eliteEnemy')
         && card.data.health > 0
       ));
     candidates.sort((a, b) => {
@@ -2497,10 +2450,8 @@ function expectedEnemyHitOutcome(gs, enemy, defense) {
   if (manager) amount = manager.modifyDamageTaken(amount);
 
   const armor = defense.armor;
-  let protection = armor?.protection || 0;
-  if (defense.magicShieldTurns > 0 && protection > 0) {
-    protection = Math.floor(protection * defense.magicShieldMultiplier);
-  }
+  const armorStats = projectedArmorStats(defense);
+  let protection = armorStats.protection;
   const armorProtection = protection;
   protection += gs.scene?.getCompanionProtectionBonus?.() || 0;
   const armorPierce = enemy.abilities?.find((ability) => ability.type === 'armor_break')?.amount || 0;
@@ -2510,7 +2461,7 @@ function expectedEnemyHitOutcome(gs, enemy, defense) {
   const amuletDodge = expectedAmuletDodgeChance(gs);
   // Through effectiveArmorDodge so the planner sees the Magic Shield dodge
   // boost on leather, the same one the damage resolver rolls.
-  const armorDodge = Math.max(0, Math.min(1, effectiveArmorDodge(gs, armor)));
+  const armorDodge = Math.max(0, Math.min(1, armorStats.dodge));
   const isRanged = enemy.type !== 'boss' && (enemy.role === 'RANGED' || enemy.isRangedType === true);
   const isMelee = enemy.type === 'boss' || (enemy.role === 'MELEE' && !enemy.isRangedType);
   const rangedIgnore = isRanged
@@ -3011,7 +2962,7 @@ function runCombatRounds(mock, gs, inv, floor, floorStartWeaponPips) {
   };
 
   const sumEnemyHp = () => mock.cardSystem.boardCards.reduce((sum, c) => (
-    sum + ((c?.data && (c.data.type === 'enemy' || c.data.type === 'boss') && c.data.health > 0)
+    sum + ((c?.data && (c.data.type === 'enemy' || c.data.type === 'eliteEnemy' || c.data.type === 'boss') && c.data.health > 0)
       ? c.data.health
       : 0)
   ), 0);
@@ -3042,6 +2993,15 @@ function runCombatRounds(mock, gs, inv, floor, floorStartWeaponPips) {
       const out = originalDamageGemTarget(...args);
       const hpAfter = sumEnemyHp();
       combatSpecializationGem += Math.max(0, hpBefore - hpAfter);
+      return out;
+    };
+  }
+  const originalBurnEnemy = mock.cardSystem.burnEnemy?.bind(mock.cardSystem);
+  if (originalBurnEnemy) {
+    mock.cardSystem.burnEnemy = (...args) => {
+      const hpBefore = sumEnemyHp();
+      const out = originalBurnEnemy(...args);
+      combatSpecializationGem += Math.max(0, hpBefore - sumEnemyHp());
       return out;
     };
   }
@@ -3079,7 +3039,7 @@ function runCombatRounds(mock, gs, inv, floor, floorStartWeaponPips) {
       readiness.act3Encounters++;
       readiness.act3WithDaggerPair += offense.daggerPair.length === 2 ? 1 : 0;
       readiness.act3WithAxeOrSword += uniqueUsableWeapons(gs, inv).some((weapon) => (
-        weapon.weaponType === 'axe' || weapon.weaponType === 'sword'
+        weapon.weaponType === 'axe' || weapon.weaponType === 'mace' || weapon.weaponType === 'sword'
       )) ? 1 : 0;
     }
     readiness.totalWeaponCapacity += offense.totalCapacity;
@@ -3235,6 +3195,7 @@ function runCombatRounds(mock, gs, inv, floor, floorStartWeaponPips) {
         bossMustAttackNext = false;
         continue;
       }
+      const damageBefore = gs._simMetrics?.damageActions ? captureEnemyHealth(board) : null;
       const primarySwing = prepareSimWeaponSwing(mock, attackIdx, gs.equippedWeapon, { wasExhausted, actionsBefore });
       let dmg = primarySwing.damage;
       const weaponBeforeAttack = gs.equippedWeapon;
@@ -3318,23 +3279,28 @@ function runCombatRounds(mock, gs, inv, floor, floorStartWeaponPips) {
       }
       // Cleave and pierce only trigger when the swing began with AP available.
       if (weaponBeforeAttack && !wasExhausted) {
-        combatDamageDealt += applySwordCleaveSim(mock, gs, attackIdx, dmg, weaponBeforeAttack);
+        combatDamageDealt += applySwordCleaveSim(mock, gs, attackIdx, dmg, weaponBeforeAttack, index => applyAssassinateSim(mock, gs, index));
         if ((primaryCardBeforeAttack?.data?.health ?? primaryHealthBeforeAttack) < primaryHealthBeforeAttack) {
+          combatDamageDealt += applyMaceDiagonalSim(mock, gs, attackIdx, dmg, weaponBeforeAttack, primaryCardBeforeAttack, index => applyAssassinateSim(mock, gs, index));
           combatDamageDealt += applySpearPierceSim(
-            mock, gs, attackIdx, dmg, weaponBeforeAttack, primaryCardBeforeAttack
+            mock, gs, attackIdx, dmg, weaponBeforeAttack, primaryCardBeforeAttack, index => applyAssassinateSim(mock, gs, index)
           );
         }
       }
       if (weaponBeforeAttack && axeHeavyCleave
           && (primaryCardBeforeAttack?.data?.health ?? primaryHealthBeforeAttack) < primaryHealthBeforeAttack) {
         combatDamageDealt += applyAxeHeavyCleaveSim(
-          mock, gs, attackIdx, dmg, weaponBeforeAttack, primaryCardBeforeAttack
+          mock, gs, attackIdx, dmg, weaponBeforeAttack, primaryCardBeforeAttack, index => applyAssassinateSim(mock, gs, index)
         );
+      }
+      if (weaponBeforeAttack && (primaryCardBeforeAttack?.data?.health ?? primaryHealthBeforeAttack) < primaryHealthBeforeAttack) {
+        combatDamageDealt += applyGauntletSlamSim(mock, gs, attackIdx, dmg, weaponBeforeAttack, index => applyAssassinateSim(mock, gs, index));
       }
       // Front Volley: bow also clips a random front (MELEE) enemy.
       if (weaponBeforeAttack) {
         combatDamageDealt += applyFrontVolleySim(mock, gs, attackIdx, dmg, weaponBeforeAttack);
       }
+      if (damageBefore) recordDamageAction(gs._simMetrics.damageActions, floor, damageBefore, weaponBeforeAttack, dmg, axeTarget);
       if (weaponBeforeAttack && !gs.equippedWeapon) mock._weaponBreaks = (mock._weaponBreaks || 0) + 1;
       if (!gs.equippedWeapon || gs.equippedWeapon.durability <= 0) regear(mock.cardSystem.cardDataGenerator, gs, inv);
       mock.resolvePendingEnemyTurn();
@@ -3380,6 +3346,7 @@ function runCombatRounds(mock, gs, inv, floor, floorStartWeaponPips) {
 
   if (originalTakeDamage) gs.takeDamage = originalTakeDamage;
   if (originalDamageGemTarget) mock.cardSystem.damageGemTarget = originalDamageGemTarget;
+  if (originalBurnEnemy) mock.cardSystem.burnEnemy = originalBurnEnemy;
   traceCombat(
     gs,
     `${gs.playerHealth > 0 ? 'cleared' : 'died'} floor ${floor}; HP ${Math.ceil(gs.playerHealth)}, AP ${gs.actionsLeft}`,
@@ -3960,13 +3927,14 @@ function probeShopAffordability(mock, gs, floor, roomType, metrics) {
   if (roomType === 'RARE_SHOP') {
     prices = realRareShopPrices(floor);
   } else {
+    const shopDuplicateType = ['weapon', 'weapon', 'weapon', 'magic', 'potion', 'thorns', 'armor', 'food'][Math.floor(Math.random() * 8)];
     const offers = [
       cs.createCardData('potion', floor),
       cs.createCardData('weapon', floor),
       cs.createCardData('armor', floor),
       cs.createCardData('thorns', floor),
-      cs.createCardData('magic', floor),
-      cs.createCardData(['weapon', 'weapon', 'weapon', 'magic', 'potion', 'thorns', 'armor', 'food'][Math.floor(Math.random() * 8)], floor),
+      cs.createCardData('magic', floor, false, gs, 'shop'),
+      cs.createCardData(shopDuplicateType, floor, false, gs, shopDuplicateType === 'magic' ? 'shop' : null),
     ].filter(Boolean);
     prices = offers.map((item) => { item._priceFloor = floor; return realRegularShopPrice(item); });
   }
@@ -4097,7 +4065,7 @@ function shopOfferIntent(gs, inv, offer, offers) {
     );
   } else if (item.type === 'armor') {
     wanted ||= matchingHeld
-      || armorScore(item) > armorScore(gs.equippedArmor)
+      || compareArmor(item, gs.equippedArmor) < 0
       || armorLow
       || gs.coins > offer.price * 3;
   } else if (item.type === 'thorns') {
@@ -4288,8 +4256,8 @@ function runShop(mock, gs, inv, floor) {
     cs.createCardData('weapon', floor),
     cs.createCardData('armor', floor, false, gs),
     cs.createCardData('thorns', floor),
-    cs.createCardData('magic', floor),
-    cs.createCardData(duplicateType, floor),
+    cs.createCardData('magic', floor, false, gs, 'shop'),
+    cs.createCardData(duplicateType, floor, false, gs, duplicateType === 'magic' ? 'shop' : null),
   ].filter(Boolean).map((data) => ({
     data,
     price: shopPrice(data, floor),
@@ -4306,7 +4274,7 @@ function runShop(mock, gs, inv, floor) {
     let data = cs.createCardData(type, floor, false, null, quality);
     if (
       data
-      && (data.weaponType === 'axe' || data.armorType === 'plate')
+      && (data.weaponType === 'axe' || data.weaponType === 'mace' || data.armorType === 'plate')
       && (data.rarity === 'epic' || data.rarity === 'legendary')
     ) {
       data = cs.createCardData(type, floor, false, null, 'rare');
@@ -5120,6 +5088,7 @@ function newMetrics() {
     roomVisits: {},
     // EVENT rooms by story: visits, fights they started, choice paths taken.
     stories: {},
+    damageActions: process.argv.includes('--damage-telemetry') ? {} : null,
     crystalLairs: 0,
     // Roads taken at Choose Your Road, by act.
     locations: {},
@@ -6533,6 +6502,7 @@ function writeSimulatorSummary(metrics, outputPath) {
   const summary = {
     schemaVersion: 1,
     source: 'simulator-summary',
+    playerDamageByFloor: summarizeDamageActions(metrics.damageActions),
     createdAt: new Date().toISOString(),
     seed: SIM_SEED,
     behaviorPreset: DEFAULT_BEHAVIOR_PRESET || 'balanced',

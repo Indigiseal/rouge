@@ -7,6 +7,7 @@ import { CardSystem } from '../systems/CardSystem.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
 import { setHoverLight } from '../ui/HoverLight.js';
+import { fitTextBox } from '../ui/AdaptiveSkin.js';
 import { createExitDoor } from '../ui/ExitDoor.js';
 import { hideGemSockets, showGemSockets } from '../ui/GemSockets.js';
 import { attachGemShine } from '../ui/GemShine.js';
@@ -736,6 +737,7 @@ export class StationRoomBase extends Phaser.Scene {
             fontFamily: '"HoMM Pixel", Arial, sans-serif'
         }).setOrigin(0.5);
 
+        fitTextBox(text, button.width - 16, 26);
         button.on('pointerdown', () => {
             SoundHelper.playVariant(this, 'button_click', 0.5);
             if (button.setTexture && this.textures.exists('nextTurnDown')) button.setTexture('nextTurnDown');

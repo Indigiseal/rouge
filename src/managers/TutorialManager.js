@@ -455,6 +455,20 @@ export class TutorialManager {
                 eventKey: 'merged:sword',
                 done: () => this.hasUncommonSword(),
             },
+            // Each weapon's hit shape, pictured in its tooltip (ui/WeaponPattern.js).
+            // Said over the merged sword, the weapon the player is holding.
+            {
+                textKey: 'ui.tutorial.weaponPatterns',
+                target: () => this.tutorialSwordSprite(),
+                enter: () => {
+                    // Long enough to read the shapes and the hungry rule.
+                    this.scene.time.delayedCall(6500, () => {
+                        if (this.active && this.steps[this.stepIndex]?.patternLesson) this._advance();
+                    });
+                },
+                patternLesson: true,
+                done: () => false,
+            },
             {
                 textKey: 'ui.tutorial.flipGem',
                 target: () => this.boardSprite('lightningGem'),

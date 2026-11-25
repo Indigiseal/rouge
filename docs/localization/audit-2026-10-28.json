@@ -1,0 +1,154 @@
+[
+  {
+    "file": "src/managers/AmuletManager.js",
+    "line": 409,
+    "en": "First",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/scenes/EventScene.js",
+    "line": 1907,
+    "en": "Copied!",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/board/BoardCombat.js",
+    "line": 1152,
+    "en": "Tempered!",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/board/BoardCombat.js",
+    "line": 1195,
+    "en": "-3 Plague",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/board/BoardCombat.js",
+    "line": 1274,
+    "en": "Armor 2 → 4",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/board/BoardCombat.js",
+    "line": 1274,
+    "en": "Warded!",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/board/CocoonCacheBoard.js",
+    "line": 390,
+    "en": "Opened!",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/combat/CombatTurnController.js",
+    "line": 233,
+    "en": "Reassembled!",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/combat/CombatTurnController.js",
+    "line": 649,
+    "en": "Reflected!",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/combat/CombatTurnController.js",
+    "line": 649,
+    "en": "Glint!",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/combat/CombatTurnController.js",
+    "line": 1288,
+    "en": "Spinning...",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/combat/PlayerDamageResolver.js",
+    "line": 48,
+    "en": "Temple!",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/combat/SigilEffects.js",
+    "line": 303,
+    "en": "Dazed!",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/combat/SigilEffects.js",
+    "line": 334,
+    "en": "Bloodlust +3",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/systems/combat/SigilEffects.js",
+    "line": 489,
+    "en": "Scout!",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/managers/AmuletManager.js",
+    "line": 834,
+    "en": "+3 crystal (Fortune)",
+    "lookup": "t",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/content/cards/traps.js",
+    "line": 5,
+    "en": "Spike Trap",
+    "lookup": "name",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/content/cards/traps.js",
+    "line": 14,
+    "en": "Poison Trap",
+    "lookup": "name",
+    "missing": [],
+    "status": "translated"
+  },
+  {
+    "file": "src/content/cards/traps.js",
+    "line": 26,
+    "en": "Pressure Plate",
+    "lookup": "name",
+    "missing": [],
+    "status": "translated"
+  }
+]

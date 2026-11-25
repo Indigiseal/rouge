@@ -61,7 +61,6 @@ export class SaveManager {
       enemyKillStats: metaData?.enemyKillStats ?? {},
       totalRuns: metaData?.totalRuns ?? 0,
       totalEnemiesKilled: metaData?.totalEnemiesKilled ?? 0,
-      pendingEgg: metaData?.pendingEgg ?? false,
       saveVersion: this.SAVE_VERSION,
     };
     this.safeSet(this.META_SAVE_KEY, JSON.stringify(data));
@@ -83,7 +82,6 @@ export class SaveManager {
         enemyKillStats: {},
         totalRuns: 0,
         totalEnemiesKilled: 0,
-        pendingEgg: false,
         saveVersion: this.SAVE_VERSION,
       };
     }
@@ -104,7 +102,6 @@ export class SaveManager {
         enemyKillStats: {},
         totalRuns: 0,
         totalEnemiesKilled: 0,
-        pendingEgg: false,
         saveVersion: this.SAVE_VERSION,
       };
     }
@@ -145,7 +142,6 @@ export class SaveManager {
       enemyKillStats: meta.enemyKillStats && typeof meta.enemyKillStats === 'object' ? meta.enemyKillStats : {},
       totalRuns: Number.isFinite(meta.totalRuns) ? meta.totalRuns : 0,
       totalEnemiesKilled: Number.isFinite(meta.totalEnemiesKilled) ? meta.totalEnemiesKilled : 0,
-      pendingEgg: Boolean(meta.pendingEgg),
       saveVersion: meta.saveVersion ?? this.SAVE_VERSION,
     };
   }
@@ -207,6 +203,12 @@ export class SaveManager {
         briarShield: gameState?.briarShield ?? 0,
         mirrorSigilFloor: gameState?.mirrorSigilFloor ?? null,
         mirrorSigilUses: gameState?.mirrorSigilUses ?? 0,
+        // Once-per-fight amulets already spent in this fight (reset at each new
+        // floor), so a Continue mid-fight cannot hand them a second go.
+        strategyClusterUsed: !!gameState?.strategyClusterUsed,
+        strategyMarchUsed: !!gameState?.strategyMarchUsed,
+        charmingTuneUsed: !!gameState?.charmingTuneUsed,
+        twinnedMirrorUsed: !!gameState?.twinnedMirrorUsed,
         riposteReady: gameState?.riposteReady ?? false,
         playerSapped: gameState?.playerSapped ?? false,
         playerShocked: gameState?.playerShocked ?? false,
@@ -340,6 +342,10 @@ export class SaveManager {
           briarShield: parsed.effects?.briarShield ?? 0,
           mirrorSigilFloor: parsed.effects?.mirrorSigilFloor ?? null,
           mirrorSigilUses: parsed.effects?.mirrorSigilUses ?? 0,
+          strategyClusterUsed: !!parsed.effects?.strategyClusterUsed,
+          strategyMarchUsed: !!parsed.effects?.strategyMarchUsed,
+          charmingTuneUsed: !!parsed.effects?.charmingTuneUsed,
+          twinnedMirrorUsed: !!parsed.effects?.twinnedMirrorUsed,
           riposteReady: parsed.effects?.riposteReady ?? false,
           playerSapped: parsed.effects?.playerSapped ?? false,
           playerShocked: parsed.effects?.playerShocked ?? false,

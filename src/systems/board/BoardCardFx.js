@@ -28,6 +28,8 @@ export const CARD_VALUE_SLOT = { x: 18, y: 24 };
 // a clear row above it, so 5 sets them touching; 6 left a 1px gap, and a high
 // count ran off the bottom of the card. Thorns, weapons and armor share it.
 const DURABILITY_DOT_SPACING = 5;
+// Weapon and armor pips share the armor column at the left frame edge.
+const EQUIPMENT_PIP_X = -22;
 // Where the pip column starts, from the card's centre. A ten-marker's top
 // edge meets the card frame; a card with only single dots starts them on the
 // first row inside the frame. Weapons, armor and thorns all start here — armor
@@ -107,6 +109,8 @@ export function refreshWeaponValueText(scene, container) {
 // A companion's damage number, live: its attack plus the Companion Strength
 // sigils carried right now, in green when raised. Same number its tooltip shows.
 const COMPANION_VALUE_COLOR = '#ffcf7f';
+const CHICK_VALUE_COLOR = '#51484b';
+const CHICK_VALUE_BOOSTED = '#315b29';
 export function refreshCompanionValueText(scene, container) {
     const text = container?._companionDamageText;
     const companion = container?._companionData;
@@ -114,7 +118,10 @@ export function refreshCompanionValueText(scene, container) {
     const bonus = companionStrengthBonus(scene?.gameScene || scene);
     const label = `${(Number(companion.attack) || 0) + bonus}`;
     if (text.text !== label) text.setText(label);
-    text.setColor(bonus > 0 ? WEAPON_VALUE_BOOSTED : COMPANION_VALUE_COLOR);
+    const isChick = companion.id === 'chickCompanion' || String(companion.sprite || '').startsWith('chickCompanion');
+    text.setColor(isChick
+        ? (bonus > 0 ? CHICK_VALUE_BOOSTED : CHICK_VALUE_COLOR)
+        : (bonus > 0 ? WEAPON_VALUE_BOOSTED : COMPANION_VALUE_COLOR));
 }
 
 function playBossEntrance(cardSprite, bossData) {
@@ -208,13 +215,13 @@ function _makeCornerText(scene, x, y, value, style) {
 
 // A Legendary's stars (legendaryStars.js): small pale pixel stars along the
 // bottom of the card, left of the number circle (the top is where a socketed
-// gem sits). The 7x7 star is drawn once into a texture.
+// gem sits). The 7x7 star is drawn once into a texture. Enemies wear the same
+// stars for their tier (ENEMY_TIER_STARS), centred between HP and ATK.
 const STAR_KEY = 'legendaryStarPip';
 const STAR_ROW_Y = 27;
 const STAR_ROW_CENTER_X = -6;
 const STAR_GAP = 8;
-function addCardStars(scene, container, data) {
-    const stars = cardStars(data);
+function addCardStars(scene, container, data, { stars = cardStars(data), centerX = STAR_ROW_CENTER_X, y = STAR_ROW_Y } = {}) {
     if (!stars || !scene?.add) return;
     if (!scene.textures.exists(STAR_KEY) && scene.textures.generate) {
         scene.textures.generate(STAR_KEY, {
@@ -234,10 +241,17 @@ function addCardStars(scene, container, data) {
         });
     }
     if (!scene.textures.exists(STAR_KEY)) return;
-    const left = STAR_ROW_CENTER_X - ((stars - 1) * STAR_GAP) / 2;
+    const left = centerX - ((stars - 1) * STAR_GAP) / 2;
     for (let i = 0; i < stars; i++) {
-        container.add(snapOriginToPixelGrid(scene.add.image(Math.round(left + i * STAR_GAP), STAR_ROW_Y, STAR_KEY)));
+        container.add(snapOriginToPixelGrid(scene.add.image(Math.round(left + i * STAR_GAP), y, STAR_KEY)));
     }
+}
+
+// Stars on an enemy card by tier (content/balance/EnemyTiers.js): a veteran
+// wears one, the elite room's mini-boss two (Taya).
+const ENEMY_TIER_STARS = Object.freeze({ veteran: 1, elite: 2 });
+function enemyTierStars(data) {
+    return ENEMY_TIER_STARS[data?.enemyTier] ?? (data?.isEliteMiniBoss ? 2 : 0);
 }
 
 function createCardInfoText(card) {
@@ -350,13 +364,16 @@ function createCardInfoText(card) {
             // category name low, the heal in the shared value slot.
             const container = this.scene.add.container(card.sprite.x, card.sprite.y);
             // The Antidote is labelled a Cure, not a Potion.
+            // Align Potion with Cure; the heal value sits in the lower corner.
             const potionLabel = this.scene.add.text(0, RESOURCE_LABEL_Y, t(this.scene, card.data.curesPoison ? 'tooltip.cure' : 'tooltip.potion'), {
-                fontSize: CARD_LABEL_SIZE, fill: '#600f18', fontFamily: '"HoMM Pixel"'
+                fontSize: CARD_LABEL_SIZE, fill: '#fff2ce', fontFamily: '"HoMM Pixel"',
+                stroke: '#21171b', strokeThickness: 2,
             }).setOrigin(0.5);
             // The Antidote heals nothing: no number on it.
             const potionAmount = this.scene.add.text(
-                CARD_VALUE_SLOT.x, CARD_VALUE_SLOT.y, card.data.curesPoison ? '' : `${card.data.healAmount ?? 0}`, {
-                    fontSize: CARD_VALUE_SIZE, fill: '#71800b', fontFamily: '"HoMM Pixel"'
+                CARD_VALUE_SLOT.x, 29, card.data.curesPoison ? '' : `${card.data.healAmount ?? 0}`, {
+                    fontSize: CARD_VALUE_SIZE, fill: '#fff2ce', fontFamily: '"HoMM Pixel"',
+                    stroke: '#21171b', strokeThickness: 2,
                 }
             ).setOrigin(0.5);
             container.add([potionLabel, potionAmount]);
@@ -511,7 +528,7 @@ function createCardInfoText(card) {
             
             // Add 10-durability sprites
             for (let i = 0; i < tensCount; i++) {
-                const tenSprite = snapOriginToPixelGrid(this.scene.add.image(-19, currentY, 'ten_durability'));
+                const tenSprite = snapOriginToPixelGrid(this.scene.add.image(EQUIPMENT_PIP_X, currentY, 'ten_durability'));
                 container.add(tenSprite);
                 currentY += tenDurabilitySpacing;
             }
@@ -520,7 +537,7 @@ function createCardInfoText(card) {
             // to the same 1px gap the ten-markers keep between themselves.
             const dotsAfterTens = tensCount > 0 ? DOT_AFTER_TEN_TUCK : PIP_TOP_DOT - PIP_TOP_TEN;
             for (let i = 0; i < remainingDots; i++) {
-                const dot = snapOriginToPixelGrid(this.scene.add.image(-19, currentY + dotsAfterTens + (i * dotSpacing), 'durability_dot'));
+                const dot = snapOriginToPixelGrid(this.scene.add.image(EQUIPMENT_PIP_X, currentY + dotsAfterTens + (i * dotSpacing), 'durability_dot'));
                 container.add(dot);
             }
 
@@ -561,7 +578,7 @@ function createCardInfoText(card) {
             
             // Add 10-durability sprites
             for (let i = 0; i < tensCount; i++) {
-                const tenSprite = snapOriginToPixelGrid(this.scene.add.image(-22, currentY, 'ten_durability'));
+                const tenSprite = snapOriginToPixelGrid(this.scene.add.image(EQUIPMENT_PIP_X, currentY, 'ten_durability'));
                 container.add(tenSprite);
                 currentY += tenDurabilitySpacing;
             }
@@ -570,7 +587,7 @@ function createCardInfoText(card) {
             // to the same 1px gap the ten-markers keep between themselves.
             const dotsAfterTens = tensCount > 0 ? DOT_AFTER_TEN_TUCK : PIP_TOP_DOT - PIP_TOP_TEN;
             for (let i = 0; i < remainingDots; i++) {
-                const dot = snapOriginToPixelGrid(this.scene.add.image(-22, currentY + dotsAfterTens + (i * dotSpacing), 'durability_dot'));
+                const dot = snapOriginToPixelGrid(this.scene.add.image(EQUIPMENT_PIP_X, currentY + dotsAfterTens + (i * dotSpacing), 'durability_dot'));
                 container.add(dot);
             }
 
@@ -675,6 +692,8 @@ function _buildEnemyCornerStats(card) {
         children
     );
     container.setDepth((card.sprite.depth || 1) + 2);
+    // Its tier's stars, bottom middle between the HP and ATK plates.
+    addCardStars(this.scene, container, card.data, { stars: enemyTierStars(card.data), centerX: 0, y: dy });
     // Follow the card's scale, or the digits drift out of the stat plates
     // painted on the art whenever a crowded board shrinks the cards.
     container.setScale(card.sprite.scaleX || 1);
@@ -731,7 +750,7 @@ function _buildBossStats(card) {
         stroke: '#250d08',
         strokeThickness: 2
     });
-    const atkText = _makeCornerText(this.scene, 0, 14, '', {
+    const atkText = _makeCornerText(this.scene, 0, 19, '', {
         fontSize: '10px',
         fill: '#ffcf7f',
         fontFamily: '"HoMM Pixel"',
@@ -1132,12 +1151,14 @@ function updateBossInfoText(card) {
     const maxHealth = Math.max(1, card.data.maxHealth || card.data.health || 1);
     const health = Phaser.Math.Clamp(card.data.health || 0, 0, maxHealth);
     const barWidth = container._bossBarWidth || 84;
-    const fillWidth = Math.max(0, Math.ceil(barWidth * (health / maxHealth)));
+    // Only the inner red strip drains; the empty art keeps both ornate ends.
+    const inset = 12;
+    const fillWidth = Math.max(0, Math.ceil((barWidth - inset * 2) * (health / maxHealth)));
 
     container._bossHpFill.setVisible(fillWidth > 0);
-    container._bossHpFill.setCrop(0, 0, fillWidth, container._bossHpFill.height);
+    container._bossHpFill.setCrop(inset, 0, fillWidth, container._bossHpFill.height);
     container._bossHpText.setText(`${health}/${maxHealth}`);
-    container._bossAtkText.setText(`ATK ${getEnemyHitAttack(card, this.boardCards)}`);
+    container._bossAtkText.setText(t(this.scene, 'audit.atk', { amount: getEnemyHitAttack(card, this.boardCards) }));
 }
 
 function playKillLootPickup(x, y, reward, sourceLabel = 'Pick') {
@@ -1152,9 +1173,13 @@ function playKillLootPickup(x, y, reward, sourceLabel = 'Pick') {
     } else {
         this.scene.gameState.crystals = (this.scene.gameState.crystals || 0) + amount;
     }
+    const sourceName = sourceLabel === 'Pick'
+        ? translateItemName(this.scene, "Prospector's Pick")
+        : sourceLabel === 'Lucky' ? t(this.scene, 'float.rewardLucky')
+            : translateItemName(this.scene, sourceLabel);
     this.scene.createFloatingText(
         x, y - 18,
-        isCoin ? `+${amount} Coin (${sourceLabel})` : `+${amount} Crystal (${sourceLabel})`,
+        t(this.scene, isCoin ? 'float.rewardCoinSource' : 'float.rewardCrystalSource', { amount, source: sourceName }),
         isCoin ? 0xfbad19 : 0x71b1ae
     );
     this.scene.updateUI?.();

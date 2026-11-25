@@ -8,8 +8,9 @@
 // other keeps the old tint, and the rooms stop feeling like one game.
 
 import { SoundHelper } from '../audio/SoundHelper.js';
-import { fitLabel, serifStyle } from './uiFont.js';
+import { serifStyle } from './uiFont.js';
 import { setHoverLight } from './HoverLight.js';
+import { fitTextBox, horizontalSkin } from './AdaptiveSkin.js';
 
 const PLATE_UP = 'nextTurnUp';
 const PLATE_DOWN = 'nextTurnDown';
@@ -33,13 +34,31 @@ const LABEL_Y_PRESSED = -2;
 export function createPaintedButton(scene, x, y, text, action, opts = {}) {
     const { enabled = true, size = '14px' } = opts;
 
-    const plate = scene.add.image(0, 0, PLATE_UP);
     const label = scene.add
         .text(0, LABEL_Y, text, serifStyle(size, enabled ? LABEL_INK : LABEL_INK_DISABLED))
         .setOrigin(0.5);
-    fitLabel(label, plate.width - 8, size);
+    const nativeWidth = scene.textures.get(PLATE_UP).get().cutWidth;
+    const maxWidth = opts.maxWidth ?? Math.min(200, 2 * Math.min(x - 8, 632 - x));
+    const width = Math.max(nativeWidth, Math.min(maxWidth, label.width + 24));
+    let up = horizontalSkin(scene, PLATE_UP, width);
+    let down = horizontalSkin(scene, PLATE_DOWN, width);
+    const plate = scene.add.image(0, 0, up);
+    fitTextBox(label, plate.width - 24, 26, Math.min(11, parseInt(size, 10)));
 
     const button = scene.add.container(x, y, [plate, label]);
+    button.skinUp = up;
+    button.skinDown = down;
+    button.refit = () => {
+        label.setWordWrapWidth(0).setFontSize(size);
+        const nextWidth = Math.max(nativeWidth, Math.min(maxWidth, label.width + 24));
+        up = horizontalSkin(scene, PLATE_UP, nextWidth);
+        down = horizontalSkin(scene, PLATE_DOWN, nextWidth);
+        button.skinUp = up;
+        button.skinDown = down;
+        plate.setTexture(up);
+        fitTextBox(label, plate.width - 24, 26, Math.min(11, parseInt(size, 10)));
+        if (plate.input) plate.input.hitArea.setTo(0, 0, plate.width, plate.height);
+    };
     if (!enabled) {
         plate.setTint(DISABLED_TINT);
         return button;
@@ -51,18 +70,18 @@ export function createPaintedButton(scene, x, y, text, action, opts = {}) {
         setHoverLight(plate, true);
     });
     plate.on('pointerout', () => {
-        plate.setTexture(PLATE_UP);
+        plate.setTexture(up);
         plate.clearTint();
         setHoverLight(plate, false);
         label.y = LABEL_Y;
     });
     plate.on('pointerdown', () => {
         SoundHelper.playVariant(scene, 'button_click', 0.5);
-        plate.setTexture(PLATE_DOWN);
+        plate.setTexture(down);
         label.y = LABEL_Y_PRESSED;
     });
     plate.on('pointerup', () => {
-        plate.setTexture(PLATE_UP);
+        plate.setTexture(up);
         plate.clearTint();
         setHoverLight(plate, false);
         label.y = LABEL_Y;

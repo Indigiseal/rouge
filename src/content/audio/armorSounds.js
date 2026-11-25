@@ -22,6 +22,8 @@ export function bagArrivalSoundKey(scene, card, fallback) {
 
 /** The sound for putting on (or taking off) this armor, loaded or not. */
 export function armorEquipSoundKey(scene, armor) {
-    const key = `armor_equip_${armor?.armorType}`;
+    // Padded cloth has no sound of its own: it thumps like leather, not a clank.
+    const type = armor?.armorType === 'padded' ? 'leather' : armor?.armorType;
+    const key = `armor_equip_${type}`;
     return scene?.cache?.audio?.exists?.(key) ? key : 'armor_equip';
 }

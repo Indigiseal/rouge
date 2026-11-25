@@ -25,6 +25,7 @@ import {
     WEAPON_UNLOCKS,
     ARMORS,
     ARMOR_SPAWN_MIN_FLOOR,
+    armorTypeWeight,
     ARMOR_UNLOCKS,
     ARMOR_DURABILITY_BY_TYPE,
     armorDurability as armorDurabilityFn,
@@ -147,7 +148,7 @@ export class CardDataGenerator {
             case 'food':
                 return this.createFoodCard(floor);
             case 'magic':
-                return this.createMagicCard(floor);
+                return this.createMagicCard(floor, targetRarity);
             case 'thorns':
                 return this.createThornsCard(floor, targetRarity);
             case 'gem':
@@ -282,14 +283,15 @@ export class CardDataGenerator {
         };
     }
 
-    // Mimic — a treasure that bites back. Normal HP, small attack. The player
-    // must kill it within 3 turns of revealing it; otherwise it escapes.
-    // On a successful kill it bursts into coins and crystals.
+    // Mimic — a treasure that bites back, small attack. The player must kill
+    // it within 3 turns of revealing it; otherwise it escapes. On a successful
+    // kill it bursts into coins and crystals. 12 + floor HP (was 8 + floor/2,
+    // two or three hits for a big payout): killing it in time takes focus.
     createMimicCard(floor) {
         return {
             type: 'enemy',
             name: 'Mimic',
-            health: 8 + Math.floor(floor / 2),
+            health: 12 + Math.floor(floor),
             attack: 2,
             sprite: 'mimic',
             role: 'MELEE',
@@ -542,7 +544,16 @@ export class CardDataGenerator {
         // Empty armor slot is valid — never invent a Makeshift fallback.
         if (availableArmors.length === 0) return null;
 
-        const selected = availableArmors[Math.floor(Math.random() * availableArmors.length)];
+        // Families are weighted by floor (armor.js ARMOR_TYPE_WEIGHT_BANDS). If
+        // none of those allowed here has weight yet (a sim's chain-only pool on
+        // floor 1), they share it evenly rather than drop nothing.
+        const weights = availableArmors.map(({ type }) => armorTypeWeight(type, floor));
+        const total = weights.reduce((sum, w) => sum + w, 0);
+        let selected = availableArmors[Math.floor(Math.random() * availableArmors.length)];
+        if (total > 0) {
+            let roll = Math.random() * total;
+            selected = availableArmors.find((_, i) => (roll -= weights[i]) < 0) || availableArmors.at(-1);
+        }
         const card = createArmorCardData(selected.type, selected.rarity);
         if (card && gameState?.talentEffects) {
             applyArmorTalentMods(card, gameState.talentEffects);
@@ -865,9 +876,11 @@ export class CardDataGenerator {
         };
     }
     
-    createMagicCard(floor) {
+    createMagicCard(floor, source = null) {
         // Get available magic cards for current floor
-        const availableCards = this.magicCards.filter(card => floor >= card.minFloor);
+        const sceneKey = this.scene?.sys?.settings?.key || this.scene?.scene?.key;
+        const inShop = ['shop', 'rare_shop'].includes(source) || ['ShopScene', 'RareShopScene'].includes(sceneKey);
+        const availableCards = this.magicCards.filter(card => floor >= card.minFloor && (!inShop || card.shopAvailable !== false));
         
         if (availableCards.length === 0) {
             return null; // No magic cards available yet

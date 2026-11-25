@@ -9,14 +9,14 @@
 // DESCRIPTION_TRANSLATIONS, EVENT_TITLE_TRANSLATIONS) map a whole English sentence to its
 // translation. Content that is written straight into files, such as stories, sigil rules, amulet
 // names and enemy names, only shows in another language if its exact text is in one of them.
-// This reads that content and reports what no table has for es, fr and ru (the shipped languages).
+// This reads that content and reports what no table has for es, fr, ru and de (the shipped languages).
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LANGS = ['es', 'fr', 'ru'];
+const LANGS = ['es', 'fr', 'ru', 'de'];
 
 // The translation tables, read the way tools/validate-i18n.mjs reads them.
 let source = fs.readFileSync(path.join(root, 'src/i18n/i18n.js'), 'utf8');
@@ -60,7 +60,7 @@ function walk(value, from, keys, depth = 0) {
         } else if (typeof inner === 'object') walk(inner, from, keys, depth + 1);
     }
 }
-const TEXT_KEYS = new Set(['title', 'description', 'text', 'outcome', 'name', 'desc', 'summary', 'rule', 'enemy', 'player', 'label', 'flavor', 'body']);
+const TEXT_KEYS = new Set(['title', 'description', 'text', 'outcome', 'name', 'desc', 'summary', 'rule', 'enemy', 'player', 'label', 'flavor', 'body', 'rematchHint']);
 async function load(file) {
     try { return await import(pathToFileURL(path.join(root, file)).href); } catch (err) { return { __error: err.message }; }
 }
@@ -77,7 +77,7 @@ const dir = (rel) => fs.readdirSync(path.join(root, rel)).filter((f) => f.endsWi
 for (const f of dir('src/content/events')) await readModule(f);
 for (const f of ['src/content/sigils/sigils.js', 'src/content/cards/magic.js', 'src/content/cards/bosses.js',
     'src/content/cards/enemies.js', 'src/content/cards/companions.js', 'src/content/cards/robbers.js',
-    'src/content/cards/crystalSpiders.js', 'src/content/cards/potions.js', 'src/content/cards/food.js',
+    'src/content/cards/traps.js', 'src/content/cards/crystalSpiders.js', 'src/content/cards/potions.js', 'src/content/cards/food.js',
     'src/content/story/StormStories.js', 'src/content/amulets/sandspicePouch.js', 'src/content/amulets/mossyStone.js',
     'src/content/amulets/sandglassScarab.js', 'src/content/amulets/locationIdentities.js', 'src/content/amulets/RelicsOthersAtlas.js',
     'src/content/balance/WeaponEnchants.js']) {

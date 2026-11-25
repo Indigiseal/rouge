@@ -1,7 +1,7 @@
 // A crow passing over the top of the screen: its caw, and its shadow crossing from left to
 // right (the nest minigame's bird shadow, turned to face its flight). `onDrop` runs as the
-// shadow passes `dropAtX`, which is when the crow lets go of what it brought: the Sanctuary's
-// sample amulet, a run's starting amulet. Without the shadow art the drop comes after a beat.
+// shadow passes `dropAtX`, when the crow delivers the run's starting amulet in Act 1's
+// opening battle. Without the shadow art the drop comes after a beat.
 import { SoundHelper } from '../audio/SoundHelper.js';
 
 const FLY_FROM = -70;

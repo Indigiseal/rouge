@@ -19,6 +19,7 @@ export const MAGIC = [
   },
   {
     magicType: 'summonMimic',
+    shopAvailable: false,
     name: 'Summon Mimic',
     description: 'Summon a Mimic. Defeat it for loot.',
     minFloor: 1,

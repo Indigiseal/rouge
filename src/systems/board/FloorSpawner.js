@@ -14,6 +14,7 @@ import { resourceCardKey } from '../../content/assets/resourceCards.js';
 import { looseGemCard } from '../../content/cards/gems.js';
 import { openSilkCocoon, spawnSilkCocoonCacheBoard } from './CocoonCacheBoard.js';
 import { cameraWorldSize } from '../../config/renderScale.js';
+import { bossSummonSeats } from './BossSummonLanes.js';
 import { t, translateItemName, translateRarity } from '../../i18n/i18n.js';
 import { ENEMIES } from '../../content/cards/enemies.js';
 import { noteCardDiscovered } from '../../content/codex/Discoveries.js';
@@ -51,7 +52,7 @@ const DROP_FALL_MS = 430;
 // How many minions one elite may call in a fight.
 const ELITE_SUMMON_CAP = 2;
 
-// How far to lower a boss's art on the board, by sprite key. The Cerberus's
+// How far to lower a boss's art on the board, by sprite key. The Cinder Hydra's (key Cerberus)
 // picture has 19px of empty canvas under its feet (the Warden and Goblin King
 // have none), so it floated above where the others stand (Taya).
 const BOSS_ART_DROP_Y = Object.freeze({ Cerberus: 12 });
@@ -144,7 +145,7 @@ function spawnFloorCards() {
     }
     this.scene.updateUI?.();
   }
-  // Goblin War Horn relic: arm the "first attack" flag for this floor.
+  // Per-floor flags: First Blood and Keen Edge fire again on the new floor.
   if (this.scene.gameState) {
     this.scene.gameState.firstAttackThisFloorUsed = false;
     this.scene.gameState.keenEdgeUsedThisFloor = false;
@@ -163,6 +164,7 @@ function spawnFloorCards() {
   this.clearBoard();
   // === ambush shortcut ===
   this._roomMimicSpawned = false;
+  this._roomAmuletSpawned = false;
   // An event can hand a constrained combat floor over on pendingAmbush. Most
   // ambushes use a bespoke board, but the toll collectors deliberately reuse
   // the normal combat generator so its loot and face-down cards feel like a
@@ -765,6 +767,8 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
   if (!Array.isArray(savedCards)) return false;
   this._roomMimicSpawned = Boolean(savedLayout?.mimicSpawned)
     || savedCards.some(card => card?.data?.isMimic);
+  this._roomAmuletSpawned = Boolean(savedLayout?.amuletSpawned)
+    || savedCards.some(card => card?.data?.type === 'amulet');
 
   // Pending reinforcements are part of the room, not the layout: without this
   // a save taken mid-fight came back with no waves left, so the room cleared
@@ -789,7 +793,8 @@ function restoreSavedBoard(savedCards, savedLayout = null, savedWaves = null) {
   }
 
   this._boardCells = layoutCells;
-  this._boardPlace = place;
+  // Saves from before spawnBoss cleared it can carry the last room's grid.
+  this._boardPlace = hasBoss ? null : place;
   this.boardCards = new Array(savedCards.length).fill(null);
 
   savedCards.forEach((saved, index) => {
@@ -1177,7 +1182,8 @@ function spawnDeathDrop(index, originalCard, forcedData = null) {
 
     // Random non-enemy pickup type. Mask of Hollow Whispers cannot leave
     // traps, enemies, or empty cards behind.
-    const dropTypes = ['coin', 'crystal', 'gem', 'food', 'potion', 'weapon', 'armor', 'magic', 'thorns', 'amulet'];
+    const dropTypes = ['coin', 'crystal', 'gem', 'food', 'potion', 'weapon', 'armor', 'magic', 'thorns', 'amulet']
+        .filter((t) => t !== 'amulet' || !this._roomAmuletSpawned);
     const type = forcedData ? null : dropTypes[Math.floor(Math.random() * dropTypes.length)];
     let newData = forcedData || this.cardDataGenerator.createCardData(
         type,
@@ -1500,7 +1506,8 @@ function assignEliteHighlightCards(roomType, floor) {
   const rewardCard = Phaser.Utils.Array.GetRandom(pool);
   const brick = rewardCard.data.brick;
   let rewardData;
-  if (Math.random() < 0.45) {
+  // A room that already dealt an amulet card gets gear here instead.
+  if (!this._roomAmuletSpawned && Math.random() < 0.45) {
     rewardData = this.createCardData('amulet', floor, false, this.scene.gameState);
   } else {
     const t = Phaser.Utils.Array.GetRandom(['weapon', 'armor']);
@@ -1744,6 +1751,10 @@ function spawnBoss() {
     // art, not its health bar (BoardCardFx subtracts artDropY back out).
     bossData.artDropY = BOSS_ART_DROP_Y[bossData.sprite] || 0;
     const y = camH / 2 + bossOffsetY + bossData.artDropY;
+    // A boss room has no grid. The last room's was left here, and the weapon
+    // reach overlay drew that room's seats around a summon (Taya).
+    this._boardCells = null;
+    this._boardPlace = null;
     this.createBossBoardPanel();
     const cardSprite = snapOriginToPixelGrid(this.scene.add.image(x, y, bossData.sprite));
     cardSprite.setScale(bossData.spriteScale || 1);
@@ -1824,7 +1835,8 @@ function pickCardType(currentFloor, excludedTypes = []) {
     const weights = this.cardDataGenerator.getCardWeights(currentFloor);
     const excluded = new Set(excludedTypes);
     if (this._roomMimicSpawned) excluded.add('mimic');
-    
+    if (this._roomAmuletSpawned) excluded.add('amulet');
+
     // Calculate total weight
     const totalWeight = Object.entries(weights).reduce((sum, [type, weight]) => (
         excluded.has(type) ? sum : sum + weight
@@ -1908,16 +1920,15 @@ function summonEnemy(enemyType, bossCard) {
     // A lane is taken by anything standing in it, not only a live summon: a
     // summon killed with a loot amulet leaves its loot in the lane, and a new
     // summon used to appear on top of it, hiding the loot for good.
-    const lanes = [-1, 1, -2, 2, -3, 3];
-    const { height: camH } = cameraWorldSize(this.scene.cameras.main);
-    const y = Math.min(camH - 125, bossCard.sprite.y + 102) - 6;
-    const laneX = (lane) => bossCard.sprite.x + lane * 76;
+    // (The lanes are shared with the weapon reach overlay: BossSummonLanes.js.)
+    const seats = bossSummonSeats(this.scene, bossCard);
     const LANE_HALF_WIDTH = 30;
-    const laneTaken = (lane) => this.boardCards.some((card) => card && card !== bossCard
-        && Math.abs((card.restX ?? card.sprite?.x ?? -999) - laneX(lane)) < LANE_HALF_WIDTH
-        && Math.abs((card.restY ?? card.sprite?.y ?? -999) - y) < LANE_HALF_WIDTH);
-    const summonLane = lanes.find((lane) => !laneTaken(lane)) ?? lanes[lanes.length - 1];
-    const x = laneX(summonLane);
+    const seatTaken = (seat) => this.boardCards.some((card) => card && card !== bossCard
+        && Math.abs((card.restX ?? card.sprite?.x ?? -999) - seat.x) < LANE_HALF_WIDTH
+        && Math.abs((card.restY ?? card.sprite?.y ?? -999) - seat.y) < LANE_HALF_WIDTH);
+    const seat = seats.find((s) => !seatTaken(s)) ?? seats[seats.length - 1];
+    const { x, y } = seat;
+    const summonLane = seat.c;
     summonedEnemy.summonLane = summonLane;
     summonedEnemy.brick = { r: 1, c: summonLane };
     
@@ -2307,6 +2318,9 @@ function createCardData(type, floor, isElite = false, gameState = null, targetRa
         preferredRole
     );
     if (data?.isMimic) this._roomMimicSpawned = true;
+    // One amulet card per room: two offers rolled apart could repeat each
+    // other (Taya). pickCardType skips 'amulet' once this is set.
+    if (data?.type === 'amulet') this._roomAmuletSpawned = true;
     return data;
 }
 

@@ -201,7 +201,12 @@
     "bag": 0,
     "extra_deaths": 0,
     "food": 0,
-    "spells": 0
+    "spells": 0,
+    "veil_attacks": 0,
+    "sand_attacks": 0,
+    "bone_attacks": 0,
+    "mimic_attack": 0,
+    "type_crypt": 0
   },
   "pickups": {
     "crystal": "Picking up a magic crystal: a soft low warm crystal tone, a gentle muted glassy note. Soft, warm and rounded, slightly muffled, mellow and gentle, quiet and close, no sharp attack, no bright or piercing high frequencies, no hiss"
@@ -224,7 +229,12 @@
     "bag": 0.6,
     "extra_deaths": 0.75,
     "food": 0.75,
-    "spells": 0.65
+    "spells": 0.65,
+    "veil_attacks": 0.75,
+    "sand_attacks": 0.75,
+    "bone_attacks": 0.75,
+    "mimic_attack": 0.45,
+    "type_crypt": 0.65
   },
   "combat": {
     "block_ready": "A warrior bracing behind a raised sword: a quick firm swoosh as the blade snaps up into a guard, ending in a short solid metallic grip. Warm and full, not shrill, not tinny, no harsh high frequencies",
@@ -386,6 +396,146 @@
     "cerberus_chomp": {
       "prompt": "A colossal hellbeast's jaws snapping shut: a heavy lunge, huge fangs crunching down with a deep bone-crushing chomp and a short low demonic snarl. Monstrous, not a dog, no bark, no words",
       "durationSeconds": 0.7
+    }
+  },
+  "hydra_frenzy": {
+    "hydra_growl": {
+      "prompt": "A huge three-headed lava lizard working into a frenzy: three reptilian throats hissing and rumbling at once, a deep guttural rattle over the bubble and crackle of molten rock and hot steam venting. Monstrous reptile, not a dog, no barking, no words, no music",
+      "durationSeconds": 1.5
+    },
+    "hydra_hiss": {
+      "prompt": "A giant angry lizard hissing: a sharp reptilian hiss with a dry throat rattle and tongue flicks, like a huge komodo dragon, from three heads at once, faint sizzling embers underneath. Reptile only, no roar, no dog, no lion, no words, no music",
+      "durationSeconds": 1.0
+    },
+    "hydra_cry": {
+      "prompt": "A giant three-headed lizard working into a frenzy: a low wet gurgling growl, a rattling throat chitter and a short hungry hiss, jaws clacking. Deep and throaty, no words. Real recorded foley, natural and organic, not synthesized, not electronic, warm, not shrill",
+      "durationSeconds": 1.0
+    },
+    "hydra_chomp": {
+      "prompt": "A huge lava lizard's jaws snapping shut: a fast heavy lunge, scaly jaws crunching down hard, a short sharp reptilian hiss and a burst of sizzling embers. Monstrous reptile, not a dog, no bark, no words, no music",
+      "durationSeconds": 0.7
+    }
+  },
+  "sandstorm": {
+    "sandstorm_miss": {
+      "prompt": "A short gust of desert wind whips gritty sand across the face, and a sword swing whiffs through empty air: a dry rushing sand hiss with a soft blade whoosh that misses, ending in falling grains. Brief and clear, no impact, no hit, no voices, no music",
+      "durationSeconds": 1.0
+    }
+  },
+  "desert_feast": {
+    "soup_bubble": {
+      "durationSeconds": 1.3,
+      "prompt": "A small pot of thick hot soup bubbling over a campfire: a few slow, fat, wet bubbles popping, a soft simmer underneath. Close and warm, no voices, no music"
+    },
+    "soup_slurp": {
+      "durationSeconds": 1.2,
+      "prompt": "One long hungry slurp of hot soup from a wooden bowl, then a satisfied swallow. Close and dry, no words, no music"
+    },
+    "soup_bubble_slurp": {
+      "durationSeconds": 1.6,
+      "prompt": "Hot soup bubbling in a small pot for a moment, then a quick slurp from a spoon and a contented swallow. Close, cosy, no words, no music"
+    }
+  },
+  "veil_attacks": {
+    "lostSoul": {
+      "durationSeconds": 1.0,
+      "prompt": "A pale ghost lunges to strike: a sharp cold breathy gasp rushing forward into a short icy whoosh that hits. Brief, eerie, no words, no music"
+    },
+    "hollowMourner": {
+      "durationSeconds": 1.2,
+      "prompt": "A weeping ghost attacks: a sudden rising mournful wail that snaps into a cold heavy impact. Brief, haunting, no words, no music"
+    },
+    "veilRipper": {
+      "durationSeconds": 0.9,
+      "prompt": "A shadow monster slashes: a vicious ripping tear through the air with a distorted hiss and a hard claw strike. Brief, aggressive, no words, no music"
+    },
+    "inkWraith": {
+      "durationSeconds": 1.0,
+      "prompt": "An ink wraith flings dark ink: a thick wet whip-like splash flying through the air and slapping onto a target, with a gurgling hiss. Brief, no words, no music"
+    },
+    "graveCantor": {
+      "durationSeconds": 1.2,
+      "prompt": "A ghostly choir singer casts a cursed note at a distance: a short eerie sung tone that swells and bursts into a hollow echoing shockwave. Brief, no words, no music"
+    }
+  },
+  "sand_attacks": {
+    "glassScarab": {
+      "durationSeconds": 1.0,
+      "prompt": "A tiny golden flying ball with fast fluttering wings zips past and strikes: a high rapid whirring buzz of wings, a quick zooming doppler whoosh as it darts in, and a small sharp glassy tick on impact. Brief, light, magical, no words, no music"
+    },
+    "duneForager": {
+      "durationSeconds": 1.0,
+      "prompt": "A big desert lizard lunges and bites: a low throaty hiss, a heavy scaly body lunging through sand, a hard snapping jaw clamp. Deep and gritty, brief, no high screech, no words, no music"
+    },
+    "sandSkirmisher": {
+      "durationSeconds": 0.9,
+      "prompt": "A fast desert lizard warrior slashes with a curved blade: a short snarling reptilian hiss and a quick metal blade whoosh striking, sand kicked up. Brief, no high screech, no words, no music"
+    },
+    "lizardArcher": {
+      "durationSeconds": 1.0,
+      "prompt": "A lizard archer shoots: a creaking bow string drawn and released with a twang, an arrow whistling through the air and thudding into its target. Brief, no words, no music"
+    },
+    "sandcaller": {
+      "durationSeconds": 1.2,
+      "prompt": "An old desert lizard mage casts a spell of sand: a dry rasping hiss, a swirling gust of sand rushing forward and hitting with a gritty burst. Brief, no words, no music"
+    }
+  },
+  "bone_attacks": {
+    "skeleton": {
+      "durationSeconds": 0.6,
+      "prompt": "A quick bony slash: dry bones rattling briefly and a fast sharp whoosh of a swing. Very short, crisp, no words. Real recorded foley, natural and organic, not synthesized, not electronic, warm, not shrill"
+    },
+    "skeleton_archer": {
+      "durationSeconds": 0.6,
+      "prompt": "A quick bony shot: a short dry rattle of bones and a fast whistling whoosh of an arrow flying past. Very short, crisp, no words. Real recorded foley, natural and organic, not synthesized, not electronic, warm, not shrill"
+    },
+    "boneHeap": {
+      "durationSeconds": 0.7,
+      "prompt": "A pile of bones lurches: a quick loose rattle of many bones shifting and a short heavy whoosh. Very short, brittle, no words. Real recorded foley, natural and organic, not synthesized, not electronic, warm, not shrill"
+    },
+    "cryptWarden": {
+      "durationSeconds": 0.7,
+      "prompt": "An armored skeleton strikes: a brief clank of old armor, a rattle of bones and a heavy fast whoosh of a swing. Very short, weighty, no words. Real recorded foley, natural and organic, not synthesized, not electronic, warm, not shrill"
+    },
+    "skullLobber": {
+      "durationSeconds": 0.6,
+      "prompt": "A bony throw: a short dry rattle of a bony arm and a quick whistling whoosh of a skull flying. Very short, crisp, no words. Real recorded foley, natural and organic, not synthesized, not electronic, warm, not shrill"
+    }
+  },
+  "mimic_attack": {
+    "mimic": {
+      "durationSeconds": 0.9,
+      "prompt": "A mimic chest monster lunging to bite: a short low wet gurgling growl, a rattling chitter and a hungry hiss, a wooden lid clacking shut. Deep and throaty, no words. Real recorded foley, natural and organic, not synthesized, not electronic, warm, not shrill"
+    }
+  },
+  "type_crypt": {
+    "slime_hop": {
+      "prompt": "A small soft slime hopping once on a stone floor: a light wet bounce and a gentle squelch as it lands, short and cute but real, quiet",
+      "durationSeconds": 0.5
+    },
+    "wrong_key": {
+      "prompt": "A soft wrong-answer cue made of a wet slime: a quick low bloop and a small sad squish, gentle, not harsh, short",
+      "durationSeconds": 0.5
+    },
+    "enemy_step": {
+      "prompt": "One heavy footstep on a stone dungeon floor, a monster's foot thudding down with a little grit scraping, single step",
+      "durationSeconds": 0.5
+    },
+    "stone_bonk": {
+      "prompt": "A small rock falling from a cave ceiling and bonking onto a soft slime: a stone tap followed by a wet squash and a few pebbles skittering away",
+      "durationSeconds": 0.8
+    },
+    "door_open": {
+      "prompt": "An old stone dungeon door unlatching and grinding open: a heavy iron latch clunks, then stone scrapes and a breath of fresh air rushes in",
+      "durationSeconds": 1.6
+    },
+    "caught": {
+      "prompt": "A small slime being caught by a monster: a sudden grab, a big wet squelch and a soft thud as it is pinned to the stone floor",
+      "durationSeconds": 1.0
+    },
+    "morning": {
+      "prompt": "Stepping out of a dark cave into an early spring morning: a soft breeze, gentle birdsong from a few small birds and distant chirps, calm and warm and hopeful",
+      "durationSeconds": 5
     }
   }
 }

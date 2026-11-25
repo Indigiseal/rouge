@@ -72,8 +72,7 @@ export class RestScene extends Phaser.Scene {
             this.add.image(320, 92, 'restRooms', 0).setOrigin(0.5);
         }
 
-        this.add.image(320, BANNER_Y, 'restBanner');
-        createTitle(this, 320, BANNER_TITLE_Y, t(this, 'ui.sandbox.encounter.rest'), { color: '#fef0cf' });
+        createTitle(this, 320, BANNER_TITLE_Y, t(this, 'ui.sandbox.encounter.rest'), { color: '#fef0cf', bannerKey: 'restBanner', bannerY: BANNER_Y });
 
         OptionsSkin.createPaperPanel.call(this, PAPER_X, PAPER_Y, PAPER_W, PAPER_H);
         this.add.rectangle(PAPER_X, INSET_Y, INSET_W, INSET_H, INSET_FILL, INSET_ALPHA);

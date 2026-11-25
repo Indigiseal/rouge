@@ -123,7 +123,7 @@ node sim/balance-sim.js stats-db 1000 balance behavior-run --behavior magicHeavy
 | Флаг | Эффект |
 |------|--------|
 | `--character rogue\|warrior` | Класс персонажа (default: rogue) |
-| `--armor-pool chain\|plate\|both` | Фильтр спавна брони воина |
+| `--armor-pool padded\|leather\|chain\|plate\|both\|all` | Фильтр спавна брони; без флага — текущий пул героя, `both` — chain + plate |
 | `--buildings none\|max\|id:rank,...` | Постройки деревни. `--meta` без этого флага = все постройки на максимуме |
 | `--location id` / `--location id,id,id` | Зафиксировать локацию на весь забег или по одной на акт |
 | `--talents none\|max\|id:rank,...` | Старое дерево (только talentcompare / talentladder) |
@@ -267,3 +267,27 @@ FROM sim_batches ORDER BY id DESC LIMIT 10;
 - **Сигилы.** Бот берёт сигилы: из комнаты сигилов на карте (узел `SIGIL`), из награждающих рядов, после элитного боя (`SIGIL_ROOM_CHANCE`, 60% с Sapphire Brooch, иначе элитный сундук) и из секретного хранилища (`SIM_VAULT_RATE`, по умолчанию 0.7). Пул — по локации акта, как в игре (`ui/SigilOffer.js`); сигил идёт на самое сильное оружие, которое может его принять, или на броню. Слияния карт теперь сохраняют сигилы и не предлагаются, если сигил пришлось бы потерять.
 - **Элитный сундук.** Раньше симулятор не выдавал награду за элиту вообще; теперь выдаёт (`runEliteChest`, значения из `TreasureScene`).
 - В отчёте появилась строка `Sigils per run`.
+
+
+## Player damage telemetry and multi-target checks
+
+```
+node sim/balance-sim.js fresh 500 --seed=777 --buildings max --damage-telemetry --summary-json=docs/balance/2026-10-28/effects-fixed-max.json
+node sim/balance-sim.js fresh 500 --seed=777 --buildings max --amulet-loadout strong --damage-telemetry --summary-json=docs/balance/2026-10-28/effects-fixed-strong.json
+node tools/measure-combat-combos.mjs
+python tools/plot-player-damage.py
+python tools/plot-combat-combos.py
+npm run test:sim-area-effects
+```
+
+`playerDamageByFloor` records one sample per player weapon action, including the
+off-hand and immediate collateral damage. HP removed is capped at each original
+enemy's remaining HP; delayed poison and enemy-turn companion attacks are excluded.
+Gemmed/ungemmed samples are observational groups, not matched build experiments.
+Late-floor data is conditional on surviving there. The plot marks sparse groups
+by omitting mean lines below 30 actions. Python chart scripts require matplotlib.
+
+Area-effect parity tests use the live inventory and sim attack paths against the
+same board, including hidden enemies, an out-of-radius target, elemental amulets,
+Conductive, sword gem retriggers and the full axe cross. Headless sprite bounds
+now expose Phaser's left/right/top/bottom edges and use the asset dimensions.

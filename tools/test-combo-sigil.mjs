@@ -9,7 +9,7 @@ const weapon = (weaponType, combo = false) => ({
 const remember = (scene, item) => onWeaponSigilHit(scene, item, target, { damageDealt: 10, swingDamage: 10 });
 const damage = (scene, item) => applyWeaponSigils(scene, item, target, 10);
 
-for (const type of ['bow', 'dagger', 'spear', 'sword', 'axe']) {
+for (const type of ['bow', 'dagger', 'spear', 'sword', 'axe', 'mace']) {
     const scene = { gameState: {} };
     const first = weapon(type);
     const second = weapon(type, true);

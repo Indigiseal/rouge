@@ -2,8 +2,8 @@
 # Packs the individual weapon and armor card images into two sprite sheets the
 # game loads instead of forty separate files:
 #
-#   assets/art/weaponsSheet.png + .json   5 rows (dagger, bow, sword, spear, axe)
-#   assets/art/armorSheet.png  + .json    3 rows (leather, chain, plate)
+#   assets/art/weaponsSheet.png + .json   6 rows (dagger, bow, sword, spear, axe, mace)
+#   assets/art/armorSheet.png  + .json    4 rows (leather, chain, plate, padded)
 #
 # Columns are rarity, left to right: common, uncommon, rare, epic, legendary.
 # Each .json is a Phaser "JSON hash" atlas naming every frame by its texture
@@ -37,11 +37,13 @@ SHEETS = {
         ['sword_C:sword_C', 'sword_U:sword_u', 'sword_R:sword_R', 'sword_E:sword_E', 'sword_L:sword_L'],
         ['spear_C:spear_c', 'spear_U:spear_u', 'spear_R:spear_R', 'spear_E:spear_E', 'spear_L:spear_L'],
         ['axe_C:axe_C', 'axe_U:axe_U', 'axe_R:axe_R', 'axe_E:axe_E', 'axe_L:axe_L'],
+        ['mace_C:mace_C', 'mace_U:mace_U', 'mace_R:mace_R', 'mace_E:mace_E', 'mace_L:mace_L'],
     ],
     'armorSheet': [
         ['leather_C:leatherCommon', 'leather_U:leather_U', 'leather_R:leather_R', 'leather_E:leather_E', 'leather_L:leather_L'],
         ['chain_C:chain_C', 'chain_U:chain_U', 'chain_R:chain_R', 'chain_E:chain_E', 'chain_L:chain_L'],
         ['plate_C:plate_C', 'plate_U:plate_U', 'plate_R:plate_R', 'plate_E:plate_E', 'plate_L:plate_L'],
+        ['padded_C:padded_C', 'padded_U:padded_U', 'padded_R:padded_R', 'padded_E:padded_E', 'padded_L:padded_L'],
     ],
 }
 

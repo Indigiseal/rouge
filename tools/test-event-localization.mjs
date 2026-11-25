@@ -6,6 +6,7 @@ import armWrestling from '../src/content/events/arm_wrestling.js';
 import reliquary from '../src/content/events/reliquary.js';
 import { openSigilOffer } from '../src/ui/SigilOffer.js';
 import { getBossAbilityLines } from '../src/ui/ItemTooltip.js';
+import { SIGILS, sigilLine } from '../src/content/sigils/sigils.js';
 
 globalThis.Phaser ??= { Scene: class {} };
 const { EventScene } = await import('../src/scenes/EventScene.js');
@@ -74,3 +75,72 @@ for (const language of ['es', 'fr', 'ru']) {
     assert(texts.includes(t(scene, 'ui.tutorial.skip')));
 }
 console.log(`Event localization passed: ${source.length} runtime passages, composed stories, notices, names, Growth, bone label and sigil headings in es/fr/ru.`);
+// Regression coverage for the runtime gaps the content-only audit could not see.
+for (const language of ['es', 'fr', 'ru']) {
+    const scene = { game: { language } };
+    const findings = JSON.parse(fs.readFileSync(new URL('../docs/localization/audit-2026-10-28.json', import.meta.url)));
+    for (const row of findings) {
+        const translated = row.lookup === 'name' ? translateItemName(scene, row.en) : t(scene, row.en);
+        assert.notEqual(translated, row.en, `${language}: ${row.en}`);
+    }
+    for (const amount of [1, 7, 42]) {
+        for (const text of [`-${amount} Plague`, `Bloodlust +${amount}`, `+${amount} crystal (Fortune)`, `Armor ${amount} → ${amount * 2}`]) {
+            const translated = t(scene, text);
+            assert.notEqual(translated, text);
+            assert(translated.includes(String(amount)), 'variable amounts survive translation');
+        }
+    }
+    assert.equal(t(scene, 'audit.added', { name: 'TEST' }).includes('TEST'), true);
+    assert.equal(t(scene, 'audit.hatched', { name: 'TEST' }).includes('TEST'), true);
+    assert(!t(scene, 'audit.shopAmulet', { rarity: 'TEST' }).includes('{rarity}'));
+}
+console.log('Audit regression checks passed in es/fr/ru.');
+
+// Exercise real choice rendering and every match result, including the rematch.
+for (const language of ['es', 'fr', 'ru']) {
+    const scene = { game: { language } };
+    for (const rematch of [false, true]) for (const stake of [5, 25, 75]) {
+        const eventScene = { ...scene, gameState: { coins: 100 },
+            isArmWrestleRematch: () => rematch, getArmWrestleCoinStake: () => stake };
+        const checkChoice = choice => {
+            assert.notEqual(EventScene.prototype._choiceLabel.call(eventScene, choice), choice.text, `${language}: ${choice.text}`);
+            assert.notEqual(EventScene.prototype._getChoiceOutcome.call(eventScene, choice), choice.outcome, `${language}: ${choice.outcome}`);
+            for (const nested of choice.next?.choices || []) checkChoice(nested);
+        };
+        for (const choice of armWrestling.choices(eventScene.gameState, eventScene)) checkChoice(choice);
+        assert.notEqual(translateDescription(scene, armWrestling.rematchHint), armWrestling.rematchHint);
+    }
+    for (const kind of ['coins', 'card']) for (const rematch of [false, true]) for (const won of [false, true]) {
+        const harness = { ...scene, gameState: { storyRun: {} },
+            _armWrestlePending: { kind, rematch, cardData: { name: 'Sword' }, slotIndex: 0 },
+            ensureStoryState() {}, gainCoins() {}, _winArmWrestleMatchOne() {}, _loseArmWrestle() {},
+            _reward() {}, clearPendingEvent() {}, _deliverCardReward() {}, getInventorySlots: () => [],
+            getArmWrestlePot: () => 50, getArmWrestleCoinStake: () => 25,
+            _resolve(choice) { this.result = EventScene.prototype._getChoiceOutcome.call(this, choice); },
+        };
+        EventScene.prototype._finishArmWrestleMatch.call(harness, won);
+        assert(harness.result && !/He is stronger|You get about|He goes at|He looks at|He does not|He takes /.test(harness.result), `${language}: ${harness.result}`);
+        assert(!/\{card\}/.test(harness.result));
+    }
+}
+console.log('Arm-wrestling choices, nested card wager, hint and all match outcomes passed in es/fr/ru.');
+
+// Audit the complete sigil catalog, including enemy-only and retired entries.
+// These spellings are valid words in the target language as well as English.
+const sharedSigilNames = { es: new Set(['Combo']), fr: new Set(['Tandem', 'Riposte']), ru: new Set() };
+for (const language of ['es', 'fr', 'ru']) {
+    const scene = { game: { language } };
+    for (const [id, def] of Object.entries(SIGILS)) {
+        const name = translateItemName(scene, def.name);
+        if (!sharedSigilNames[language].has(def.name)) assert.notEqual(name, def.name, `${language}: ${id} name`);
+        for (const side of ['player', 'enemy']) {
+            if (!def[side]) continue;
+            const rule = translateDescription(scene, def[side]);
+            assert.notEqual(rule, def[side], `${language}: ${id} ${side} rule`);
+            assert.equal(sigilLine(id, 2, side, scene), `${name} 2: ${rule}`);
+        }
+    }
+    assert.equal(translateItemName(scene, 'Sapping'), t(scene, 'enchant.weakness.title'));
+}
+assert.equal(translateItemName({ language: 'ru' }, 'Sapping'), 'Истощающий');
+console.log(`All ${Object.keys(SIGILS).length} sigil names, player/enemy rules and tooltip lines localized in es/fr/ru.`);

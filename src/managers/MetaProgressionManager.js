@@ -59,7 +59,6 @@ export class MetaProgressionManager {
         this.totalRuns = Number.isFinite(data.totalRuns) ? data.totalRuns : 0;
         this.bestFloor = data.bestFloor || 1;
         this.enemyKillStats = data.enemyKillStats || {};
-        this.pendingEgg = data.pendingEgg || false;
         this.nextCalendarMonthIndex = normalizeMonthIndex(
           data.nextCalendarMonthIndex ?? 0
         );
@@ -86,7 +85,6 @@ export class MetaProgressionManager {
     this.totalRuns = 0;
     this.bestFloor = 1;
     this.enemyKillStats = {};
-    this.pendingEgg = false;
     this.nextCalendarMonthIndex = 0;
     this.unlockedRelics = [];
     this.veteranHp = 0;
@@ -128,7 +126,6 @@ export class MetaProgressionManager {
       totalRuns: this.totalRuns,
       bestFloor: this.bestFloor,
       enemyKillStats: this.enemyKillStats,
-      pendingEgg: this.pendingEgg,
       nextCalendarMonthIndex: normalizeMonthIndex(this.nextCalendarMonthIndex ?? 0),
       // Cleared legacy keys so old readers don't assume active relics.
       unlockedRelics: [],
@@ -140,11 +137,6 @@ export class MetaProgressionManager {
     } catch (_) {
       // Quota or blocked storage: progress still counts for this session.
     }
-  }
-
-  setPendingEgg(hasEgg) {
-    this.pendingEgg = Boolean(hasEgg);
-    this.saveMetaProgression();
   }
 
   /** Month index the next new run should open on (rotation of active months). */
@@ -160,13 +152,6 @@ export class MetaProgressionManager {
   /** After a run ends in `monthIndex`, queue the following month for the next run. */
   advanceCalendarMonthAfterRun(monthIndex) {
     this.setNextCalendarMonthIndex(nextMonthIndex(monthIndex));
-  }
-
-  consumePendingEgg() {
-    if (!this.pendingEgg) return false;
-    this.pendingEgg = false;
-    this.saveMetaProgression();
-    return true;
   }
 
   ensureCharacter(characterId) {
@@ -390,7 +375,6 @@ export class MetaProgressionManager {
     this.totalRuns = 0;
     this.bestFloor = 1;
     this.enemyKillStats = {};
-    this.pendingEgg = false;
     this.nextCalendarMonthIndex = 0;
     this.unlockedRelics = [];
     this.veteranHp = 0;

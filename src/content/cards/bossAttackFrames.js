@@ -29,11 +29,11 @@ export const BOSS_ATTACK_FRAMES = Object.freeze({
     { frameWidth: 112, frameHeight: 144, path: 'assets/art/lizardBoss.png', padX: 0, padTop: 0 }),
   greenWarden: sheet('GreenWardenAttack', 'greenWardenAttack-Sheet', { frameWidth: 142, frameHeight: 132 }),
   SoulEater: sheet('SoulEaterAttack', 'soulEaterAttack-Sheet', { frameWidth: 144, frameHeight: 140 }),
-  MireBride: sheet('MireBrideAttack', 'mireBrideAttackNoFloor-Sheet', { frameWidth: 156, frameHeight: 144 }),
-  Cerberus: sheet('CerberusAttack', 'cerberusAttack-Sheet', { frameWidth: 154, frameHeight: 138 }),
   GoblinKingSprite: sheet('GoblinKingAttack', 'goblinKingAttack-Sheet', { frameWidth: 168, frameHeight: 156 }),
   giantSkeleton: sheet('GiantSkeletonAttack', 'giantSkeletonAttack-Sheet', { frameWidth: 131, frameHeight: 159 }),
   // Still one attack picture each, until their sheets are drawn.
+  // The Mire Siren (MireBride) and the Cinder Hydra (Cerberus) have no attack art yet:
+  // one still picture each (AssetManifest.js).
   frostGiant: frame('FrostGiantAttack', 'frostGiantAttack'),
   SpiderQween: frame('SpiderQueenAttack', 'spiderQueenAttack'),
   Lich: frame('LichAttack', 'lichAttack'),

@@ -65,6 +65,8 @@ export default {
         {
           id: 'arm_bet_coins',
           text: `Bet ${stake} coins`,
+          textKey: 'event.armWrestle.betCoins',
+          textVars: { amount: stake },
           condition: () => (gs?.coins || 0) >= stake,
           action: (state, s) => s.beginArmWrestleCoinBet(),
           // Soft-paused while the click minigame runs; terminal copy is set on

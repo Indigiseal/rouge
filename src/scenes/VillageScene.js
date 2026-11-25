@@ -132,19 +132,17 @@ export class VillageScene extends Phaser.Scene {
       this.introGroups[INTRO_STAGE_OF_LAYER[key]].push(layer);
     });
 
-    if (this.textures.exists('villageBanner')) {
-      this.introGroups.wood.push(
-        snapOriginToPixelGrid(this.add.image(320, BANNER_Y, 'villageBanner')).setDepth(40),
-      );
-    }
     // depth matters here: createTitle leaves a text at depth 0 unless told
     // otherwise, which put the title underneath the board layers and the
     // ribbon rather than on them.
-    this.introGroups.wood.push(createTitle(this, 320, BANNER_Y - 1, t(this, 'ui.village.title'), {
+    const villageTitle = createTitle(this, 320, BANNER_Y - 1, t(this, 'ui.village.title'), {
       color: '#f2d3aa',
       fallbackSize: '18px',
       depth: 41,
-    }));
+      bannerKey: 'villageBanner', bannerY: BANNER_Y, maxWidth: 320,
+    });
+    this.introGroups.wood.push(villageTitle);
+    if (villageTitle.banner) this.introGroups.wood.push(villageTitle.banner);
 
     // Available village currency, on the same slate plate as building names.
     this.supportPlate = this.add.image(106, BANNER_Y, 'villagePlate').setDepth(40);

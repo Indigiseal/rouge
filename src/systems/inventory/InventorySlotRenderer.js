@@ -143,7 +143,7 @@ export const InventorySlotRenderer = {
             // Tested against _liveDrag rather than the inventoryDragging flag:
             // _liveDrag is cleared the moment a drop is claimed, so this can
             // never latch a card out of its hover.
-            if (this._liveDrag?.cardSprite === cardSprite) return;
+            if (this._liveDrag?.cardSprite === cardSprite || cardSprite.getData('returningToSlot')) return;
 
             // Get the current slot sprite reference
             const currentSlot = this.slotSprites[slotIndex];
@@ -204,7 +204,7 @@ export const InventorySlotRenderer = {
             // them home while the drag is still writing them — that fight is
             // the "sometimes" in the trailing pips. The drop path is what puts
             // the card back, so there is nothing to restore here anyway.
-            if (this._liveDrag?.cardSprite === cardSprite) return;
+            if (this._liveDrag?.cardSprite === cardSprite || cardSprite.getData('returningToSlot')) return;
 
             const currentSlot = this.slotSprites[slotIndex];
             if (!currentSlot) return;
@@ -263,6 +263,8 @@ export const InventorySlotRenderer = {
             // only one that matters; theirs are killed in case anything else
             // started one.
             this.scene.tweens.killTweensOf([cardSprite, ...cardRiders(cardSprite)]);
+            cardSprite.setData('inventoryDragEpoch', (cardSprite.getData('inventoryDragEpoch') || 0) + 1);
+            cardSprite.setData('returningToSlot', false);
 
             // Store the starting position
             cardSprite.setData('dragStartX', cardSprite.x);

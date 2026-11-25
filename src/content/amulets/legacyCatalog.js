@@ -449,9 +449,9 @@ export function buildLegacyAmuletDefinitions(mgr) {
             // random amulet pool and can only be earned through the event.
             mothWingDust: {
                 ...getAmuletAtlasPresentation('mothWingDust'),
-                description: 'Magic cards have a 25% chance to return after use',
+                description: 'Magic cards have a 15% chance to return after use',
                 rarity: 'rare',
-                magicCardReturnChance: 0.25
+                magicCardReturnChance: 0.15
             },
 
             wormVenomCharm: {

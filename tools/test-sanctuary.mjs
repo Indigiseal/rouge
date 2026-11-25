@@ -30,3 +30,27 @@ for (const hero of ['rogue', 'warrior']) {
 assert.equal(resolveVillageEffects({ cottage: 5 }, 'rogue').villageMaxHp, 75);
 assert.equal(normalizeVillageBuildings({ temple: 9 }).temple, 1);
 console.log('Sanctuary checks passed: statue-to-building map, Phoenix gate, costs, DEF and revival effects.');
+
+// The Keeper's delivery belongs only to a fresh run's opening Act 1 battle.
+globalThis.Phaser = { Scene: class {} };
+const { GameScene } = await import('../src/scenes/GameScene.js');
+function scheduledKeeperDeliveries({ floor = 1, act = 1, roomType = 'COMBAT', rank = 1, ...flags } = {}) {
+    let scheduled = 0;
+    const scene = {
+        ...flags,
+        gameState: { currentFloor: floor, mapCursor: { act }, roomType, talentEffects: { healerRank: rank } },
+        cardSystem: { cardDataGenerator: { createAmuletChoice: () => [{ id: 'testAmulet' }] } },
+        time: { delayedCall: () => { scheduled++; } },
+    };
+    GameScene.prototype.offerHealerAmuletIfNeeded.call(scene);
+    return scheduled;
+}
+assert.equal(scheduledKeeperDeliveries(), 1);
+for (const context of [
+    { floor: 2 }, { floor: 16, act: 2 }, { act: 2 }, { roomType: 'MAP' },
+    { roomType: 'EVENT' }, { rank: 0 }, { shouldLoadSave: true },
+    { tutorialMode: true }, { sandboxMode: true },
+]) {
+    assert.equal(scheduledKeeperDeliveries(context), 0, JSON.stringify(context));
+}
+console.log('Keeper delivery checks passed: fresh Act 1 opening combat only.');

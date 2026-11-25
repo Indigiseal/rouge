@@ -20,7 +20,9 @@ import { TOLLROAD_GOBLIN_ALLY_TYPES } from '../../content/location-packs/tollroa
 import { showBossAttackFrame } from '../../content/cards/bossAttackFrames.js';
 import { frenzyBiteDamage, rollFrenzy } from '../../content/combat/frenzy.js';
 import { FRENZY_BITE_GAP_MS, FRENZY_CUE_MS, playFrenzyCue, shakeForFrenzyBite } from '../../ui/FrenzyCue.js';
+import { playEnemyAttackLunge } from '../../ui/EnemyAttackLunge.js';
 import { bossSoundKeys } from '../../content/audio/bossSounds.js';
+import { enemyAttackSoundKey } from '../../content/audio/enemyAttackSounds.js';
 import { consumeBoneShield } from '../../content/combat/boneShield.js';
 import { consumeBriarShield } from '../../content/combat/briarShield.js';
 import { t } from '../../i18n/i18n.js';
@@ -28,7 +30,8 @@ import { playCharmHearts } from './StatusOverlay.js';
 import { advanceBonePile, repairBoneArmor, summonAtHealthThresholds } from '../../content/combat/boneflood.js';
 import { growEnemy, regenerateAllies } from '../../content/combat/mireturn.js';
 import { strengthenPlayerPoison } from '../../content/combat/silkdeep.js';
-import { addPlayerBurn, takePlayerBurnTick, SCORCHED_CHANCE } from '../../content/combat/ashhowl.js';
+import { addPlayerBurn, takePlayerBurnTick, SCORCHED_CHANCE, FIRE_COLUMN_BURN } from '../../content/combat/ashhowl.js';
+import { playFireColumn } from '../../ui/FireColumn.js';
 import { tryEnemyShock } from '../../content/combat/storm.js';
 import { consumeCompanionAttackHold, tryEnemyFrost } from '../../content/combat/frost.js';
 
@@ -554,7 +557,9 @@ export class CombatTurnController {
                 enemySigilHits.map((id) => getSigil(id)?.name).join(' + ') + '!', 0xc45c45);
         }
         // Every enemy can crit a little (CombatChance): x1.5, rounded down.
+        let crit = false;
         if (damageDealt > 0 && !scene.tutorialMode && Math.random() < ENEMY_BASE_CRIT) {
+            crit = true;
             damageDealt = Math.floor(damageDealt * ENEMY_CRIT_MULT);
             if (card.sprite) scene.createFloatingText(card.sprite.x, card.sprite.y - 30, 'Crit!', 0xb51f1e);
         }
@@ -612,6 +617,12 @@ export class CombatTurnController {
             if (attackKey && scene.cache?.audio?.exists?.(attackKey)) {
                 SoundHelper.playSound(scene, attackKey, 0.6);
             }
+        } else {
+            // Any other enemy lunges at the hero as it swings, further on a crit (ui/EnemyAttackLunge.js).
+            playEnemyAttackLunge(scene, card, { crit });
+            // With its own attack sound, once loaded (content/audio/enemyAttackSounds.js).
+            const attackKey = enemyAttackSoundKey(card.data, (key) => scene.cache?.audio?.exists?.(key));
+            if (attackKey) SoundHelper.playSound(scene, attackKey, 0.55);
         }
 
         // Bone Shield stops this individual attack and all its on-hit riders.
@@ -658,7 +669,6 @@ export class CombatTurnController {
             SoundHelper.playSound(scene, 'armor_broken', 0.5);
         }
 
-        scene.createDamageEffect(card.sprite.x, card.sprite.y);
         // The enemy's blow: the player's weapon slash, upside down, so it
         // reads as a strike coming back down at the hero. Not over a boss's own swing.
         if (!ownAttackArt) playStrikeSlash(scene, card.sprite, { flipY: true });
@@ -793,7 +803,8 @@ export class CombatTurnController {
 
         if (actualDamage > 0 && !dodged && !revived && scene.gameState.playerHealth > 0
             && sigilLevel(card.data, 'scorched') > 0 && Math.random() < SCORCHED_CHANCE) {
-            addPlayerBurn(scene.gameState, card.data.name || 'Enemy');
+            addPlayerBurn(scene.gameState, card.data.name || 'Enemy', FIRE_COLUMN_BURN);
+            playFireColumn(scene, scene.playerAvatar);
             scene.createFloatingText(scene.playerAvatar.x, scene.playerAvatar.y - 18, t(scene, 'status.burn.applied'), 0xef7c4b);
             scene.updateUI?.();
         }

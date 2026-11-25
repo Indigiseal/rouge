@@ -6,6 +6,9 @@ import { SoundHelper } from '../audio/SoundHelper.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { devToolsEnabled } from '../config/DevTools.js';
+import { t } from '../i18n/i18n.js';
+import { standOnArt } from '../ui/StandOnArt.js';
+import { showSceneLoading } from '../ui/SceneLoading.js';
 
 export class SanctuaryPreviewScene extends Phaser.Scene {
     constructor() { super({ key: 'SanctuaryPreviewScene' }); }
@@ -13,6 +16,7 @@ export class SanctuaryPreviewScene extends Phaser.Scene {
     preload() {
         // The statues are frames of the packed sanctuary strip, loaded at boot.
         if (!this.textures.exists('sanctuaryBackground')) {
+            showSceneLoading(this);
             this.load.image('sanctuaryBackground', 'assets/art/backgrounds/bonefloodOssuary.png');
         }
     }
@@ -28,8 +32,8 @@ export class SanctuaryPreviewScene extends Phaser.Scene {
         const background = this.add.image(320, 180, 'sanctuaryBackground');
         background.setScale(Math.max(640 / background.width, 360 / background.height));
         this.add.rectangle(320, 180, 640, 360, 0x10151b, 0.36);
-        createTitle(this, 320, 22, 'The Forgotten Court', { color: '#ecdbb3' });
-        this.add.text(320, 44, 'Test Site preview', {
+        createTitle(this, 320, 22, t(this, 'audit.court'), { color: '#ecdbb3' });
+        this.add.text(320, 44, t(this, 'audit.preview'), {
             fontSize: '10px', fill: '#a5a394', fontFamily: '"HoMM Pixel"',
         }).setOrigin(0.5);
         this.pointsText = this.add.text(24, 24, '', {
@@ -40,9 +44,9 @@ export class SanctuaryPreviewScene extends Phaser.Scene {
         this.add.image(320, 278, 'sigilRoomFloor').setAlpha(0.65);
         for (const statue of SANCTUARY_STATUES) this.drawStatue(statue);
 
-        this.backButton = createPaintedButton(this, 80, 342, 'Back', () => this.leave());
-        this.restoreButton = createPaintedButton(this, 320, 342, 'Restore', () => this.restoreSelected());
-        this.resetButton = createPaintedButton(this, 560, 342, 'Reset preview', () => {
+        this.backButton = createPaintedButton(this, 80, 342, t(this, 'ui.village.back'), () => this.leave());
+        this.restoreButton = createPaintedButton(this, 320, 342, t(this, 'ui.sanctuary.restore'), () => this.restoreSelected());
+        this.resetButton = createPaintedButton(this, 560, 342, t(this, 'audit.resetPreview'), () => {
             if (this.busy) return;
             this.game.sanctuaryPreview = freshSanctuaryPreview();
             this.scene.restart();
@@ -54,21 +58,25 @@ export class SanctuaryPreviewScene extends Phaser.Scene {
 
     drawStatue(statue) {
         const { x, bottom } = statue;
+        const shadow = this.add.rectangle(x, bottom - 2, 78, 14, 0x000000, 0.6).setAlpha(0);
         const ring = this.add.ellipse(x, bottom - 2, 100, 21, 0xc6a45d, 0.08)
             .setStrokeStyle(1, 0xdec58b, 0.25);
-        const art = this.add.image(x, bottom, statue.texture).setOrigin(0.5, 1);
+        // Stands on the bottom of its drawing, whatever the cell height (ui/StandOnArt.js).
+        const art = standOnArt(this.add.image(x, bottom, statue.texture));
         const inlays = [];
         for (let i = 0; i < (statue.id === 'phoenix' ? 1 : 5); i++) {
             inlays.push(this.add.image(x, bottom - 9, 'villageRankStar').setVisible(false));
         }
-        const name = this.add.text(x, bottom + 7, statue.name, {
-            fontSize: '9px', fill: '#d9c9a7', fontFamily: '"HoMM Pixel"',
-            stroke: '#10151b', strokeThickness: 3,
+        const name = this.add.text(x, bottom - 30, t(this, `sanctuary.${statue.building}.name`), {
+            fontSize: '8px', fill: '#000000', fontFamily: '"HoMM Pixel"',
         }).setOrigin(0.5);
-        const rule = this.add.text(x, bottom + 15, statue.rule, {
-            fontSize: '8px', fill: '#e1d6be', fontFamily: '"HoMM Pixel"',
-            align: 'center', wordWrap: { width: 156 }, stroke: '#10151b', strokeThickness: 3,
+        const rule = this.add.text(x, bottom - 24, t(this, `sanctuary.${statue.building}.rule`), {
+            fontSize: '7px', fill: '#000000', fontFamily: '"HoMM Pixel"',
+            align: 'center', wordWrap: { width: 70 },
         }).setOrigin(0.5, 0);
+        // Keep translated inscriptions inside the pedestal's stone face.
+        name.setScale(Math.min(1, 72 / name.width));
+        rule.setScale(Math.min(1, 72 / rule.width, 12 / rule.height));
         // Bounds fit each sculpture, leaving neighbouring statues clickable.
         const hit = this.add.rectangle(x, bottom - 56, 100, 124, 0, 0).setInteractive({ useHandCursor: true });
         hit.on('pointerover', () => { if (!this.busy) setHoverLight(art, true); });
@@ -79,17 +87,17 @@ export class SanctuaryPreviewScene extends Phaser.Scene {
             SoundHelper.playVariant(this, 'button_click', 0.35);
             this.refresh();
         });
-        this.views.set(statue.id, { art, ring, name, rule, inlays, hit });
+        this.views.set(statue.id, { art, shadow, ring, name, rule, inlays, hit });
     }
 
     refresh() {
         const unlocked = phoenixUnlocked(this.state.ranks);
-        this.pointsText.setText(`Restoration: ${this.state.points}`);
+        this.pointsText.setText(t(this, 'audit.restoration', { amount: this.state.points }));
         for (const statue of SANCTUARY_STATUES) {
             const view = this.views.get(statue.id);
             const rank = this.state.ranks[statue.id];
             const locked = statue.id === 'phoenix' && !unlocked;
-            view.art.setTexture(statue.id === 'phoenix' && !rank ? 'sanctuaryPhoenixBroken' : statue.texture);
+            standOnArt(view.art.setTexture(statue.id === 'phoenix' && !rank ? 'sanctuaryPhoenixBroken' : statue.texture));
             view.art.setTint(locked ? 0x444b53 : rank ? 0xffffff : 0x90948b).setAlpha(locked ? 0.55 : 1);
             // Same native-size, overlapping rank stars as the village, centred
             // on the pedestal for however many restorations have been bought.
@@ -99,14 +107,15 @@ export class SanctuaryPreviewScene extends Phaser.Scene {
             });
             view.ring.setAlpha(this.selectedId === statue.id ? 1 : 0.3);
             view.ring.setStrokeStyle(1, 0xdec58b, this.selectedId === statue.id ? 0.9 : 0.25);
-            view.name.setColor(this.selectedId === statue.id ? '#fff0c7' : '#d9c9a7');
+            view.name.setColor('#000000');
         }
         const statue = SANCTUARY_STATUES.find(entry => entry.id === this.selectedId);
         const rank = this.state.ranks[statue.id];
         const maxed = rank >= (statue.id === 'phoenix' ? 1 : 5);
         const locked = statue.id === 'phoenix' && !unlocked;
         const cost = restorationCost(statue.id, rank);
-        this.restoreButton.list[1].setText(locked ? 'Dormant' : maxed ? 'Restored' : `Restore ${cost}`);
+        this.restoreButton.list[1].setText(locked ? t(this, 'ui.sanctuary.dormant') : maxed ? t(this, 'ui.sanctuary.restored') : t(this, 'audit.restore', { cost }));
+        this.restoreButton.refit();
         this.restoreButton.setAlpha(locked || maxed || this.state.points < cost ? 0.45 : 1);
     }
 
@@ -120,10 +129,14 @@ export class SanctuaryPreviewScene extends Phaser.Scene {
         const view = this.views.get(statue.id);
         SoundHelper.playSound(this, 'magic_cast', 0.5);
         this.tweens.add({
-            targets: view.art, y: statue.bottom - 7, duration: 160, yoyo: true, ease: 'Sine.easeOut',
-            onUpdate: () => { view.art.y = Math.round(view.art.y); },
+            targets: [view.art, view.name, view.rule, ...view.inlays], y: '-=7', duration: 160, yoyo: true, ease: 'Sine.easeOut',
+            onUpdate: () => {
+                view.art.y = Math.round(view.art.y);
+                view.shadow.setAlpha(Math.min(1, Math.max(0, (statue.bottom - view.art.y) / 7)));
+            },
             onComplete: () => {
                 view.art.y = statue.bottom;
+                view.shadow.setAlpha(0);
                 this.busy = false;
                 this.refresh();
                 if (!wasUnlocked && result.awakened) {

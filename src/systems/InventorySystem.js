@@ -83,15 +83,6 @@ export class InventorySystem {
         for (const weapon of buildStartingWeaponCards(characterId)) {
             this.addCard(weapon);
         }
-
-        // Carry-over egg: a past hero who died still clutching an unhatched egg
-        // passes it to this new run. consumePendingEgg() clears the flag so the
-        // egg isn't re-granted on later floor-1 re-entries (it's guarded above
-        // by startingCardsGranted anyway, but the consume keeps meta clean).
-        if (this.scene.metaManager?.consumePendingEgg?.()) {
-            const egg = this.scene.cardSystem.cardDataGenerator.createEggCard();
-            this.addCard(egg);
-        }
     }
 
     applyGemToWeapon(gem, weaponSlotIndex, rebuild = true) {
@@ -618,6 +609,8 @@ export class InventorySystem {
     returnCardToSlot(slotIndex, cardSprite, onComplete = null) {
         const slotSprite = this.slotSprites[slotIndex];
         if (!slotSprite || !slotSprite.background) return;
+        this.scene.tweens.killTweensOf(cardSprite);
+        cardSprite.setData('returningToSlot', true);
 
         // A key card can't be merged, equipped or used, so dropping it anywhere
         // just settles it back into the bag — give that its own clink.
@@ -655,6 +648,7 @@ export class InventorySystem {
             },
             onComplete: () => {
                 // Ensure final position is exact
+                cardSprite.setData('returningToSlot', false);
                 cardSprite.x = targetX;
                 cardSprite.y = targetY;
                 this.applySlotVisualDepths(slotIndex);
@@ -691,7 +685,10 @@ export class InventorySystem {
 
         // Only the card hops; its pips, value and shine ride it (CardRiders).
         const hoverSprite = slotSprite.hoverSprite;
-        const homeY = cardSprite.y;
+        const homeY = slotSprite.background.y;
+        cardSprite.setData('returningToSlot', true);
+        this.scene.tweens.killTweensOf(cardSprite);
+        cardSprite.y = homeY;
 
         if (hoverSprite?.scene) {
             hoverSprite.setVisible(true);
@@ -706,7 +703,10 @@ export class InventorySystem {
             yoyo: true,
             hold: 30,
             onComplete: () => {
-                if (cardSprite?.scene) cardSprite.y = homeY;
+                if (cardSprite?.scene) {
+                    cardSprite.y = homeY;
+                    cardSprite.setData('returningToSlot', false);
+                }
                 if (hoverSprite?.scene) {
                     hoverSprite.stop();
                     hoverSprite.setVisible(false);

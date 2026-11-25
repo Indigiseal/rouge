@@ -8,7 +8,7 @@
 //   --amulet-pool id,id               (which amulets may drop/shop/event)
 //   --amulet-start id,id              (equipped at run start; implies force)
 //   --character rogue|warrior         Playable class for the run
-//   --armor-pool chain|plate|both     Warrior armor spawn filter (default: both)
+//   --armor-pool padded|leather|chain|plate|both|all   Armor spawn filter (default: class pool)
 //   --talents none|max|id:rank,...    Character talent loadout
 //   --month thornwake|silkdeep|tollroad|0|1|2    Pin / start calendar month
 //   --act 1|2|3                       Run only that act (mid-act start kit)
@@ -18,6 +18,7 @@ import {
   TEST_OPTION_IDS,
 } from '../src/config/TestOptions.js';
 import { CHARACTER_IDS, normalizeCharacterId } from '../src/content/characters/CharacterClasses.js';
+import { ARMORS } from '../src/content/cards/armor.js';
 import { resolveMonthIndex } from '../src/content/location-packs/index.js';
 import { LOCATION_PACK_LIST } from '../src/content/location-packs/registry.js';
 import { PATH_LOCATIONS } from '../src/content/locations/catalog.js';
@@ -31,7 +32,7 @@ import {
 
 export const SIM_META_MODES = new Set(['fresh', 'geared', 'accumulate', 'balance']);
 export const SIM_CHARACTER_IDS = new Set(CHARACTER_IDS);
-export const SIM_ARMOR_POOLS = new Set(['chain', 'plate', 'both']);
+export const SIM_ARMOR_POOLS = new Set([...Object.keys(ARMORS), 'both', 'all']);
 export const ACT_START_WEAPON_RARITY = Object.freeze({
   1: 'common',
   2: 'uncommon',
@@ -46,6 +47,7 @@ export const ACT_START_AMULET_COUNT = Object.freeze({
 function parseArmorPool(val) {
   if (!val || !SIM_ARMOR_POOLS.has(val)) return null;
   if (val === 'both') return ['chain', 'plate'];
+  if (val === 'all') return Object.keys(ARMORS);
   return [val];
 }
 
@@ -649,7 +651,7 @@ export function simFlagsUsage() {
   return `
 Sim flags (combine with stats-db / loot-stats / fresh):
   --character rogue|warrior   Playable class (default: rogue)
-  --armor-pool chain|plate|both   Warrior armor spawn filter (default: both)
+  --armor-pool padded|leather|chain|plate|both|all   Armor spawn filter (default: class pool)
   --talents none|max|id:rank,...  No talents, max live branch, or custom ranks
   --buildings none|max|id:rank,...  Village buildings (live meta). --meta alone = max
   --location id | id,id,id     Pin Path location(s). One id covers all acts

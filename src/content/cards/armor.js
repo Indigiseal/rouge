@@ -37,6 +37,16 @@ export const ARMORS = Object.freeze({
     epic: Object.freeze({ protection: 4, rangedIgnoreChance: 0.65, sprite: 'plate_E' }),
     legendary: Object.freeze({ protection: 4, rangedIgnoreChance: 0.70, sprite: 'plate_L' }),
   }),
+  padded: Object.freeze({
+    // The weakest armour (Taya): plain DEF and nothing else, no dodge, counter
+    // or ranged ignore. A step behind chain and plate from uncommon up, and it
+    // wears out as fast as leather.
+    common: Object.freeze({ protection: 1, sprite: 'padded_C' }),
+    uncommon: Object.freeze({ protection: 1, sprite: 'padded_U' }),
+    rare: Object.freeze({ protection: 2, sprite: 'padded_R' }),
+    epic: Object.freeze({ protection: 3, sprite: 'padded_E' }),
+    legendary: Object.freeze({ protection: 3, sprite: 'padded_L' }),
+  }),
 });
 
 /** Earliest floor this type×rarity may appear as loot. Starters ignore this. */
@@ -50,7 +60,29 @@ export const ARMOR_SPAWN_MIN_FLOOR = Object.freeze({
   plate: Object.freeze({
     common: 1, uncommon: 10, rare: 25, epic: 35, legendary: 35,
   }),
+  padded: Object.freeze({
+    common: 1, uncommon: 10, rare: 25, epic: 35, legendary: 35,
+  }),
 });
+
+// How likely each armour family is to drop, by floor (Taya). Padded, the
+// weakest, is the everyday armour of the first floors; chain comes in from
+// floor 4 and plate from floor 9, and they take over as the run goes on.
+// A weight of 0 means the family does not drop yet. The rarity floors above
+// still apply on top of this.
+export const ARMOR_TYPE_WEIGHT_BANDS = Object.freeze([
+  Object.freeze({ upToFloor: 3, weights: Object.freeze({ padded: 7, leather: 3, chain: 0, plate: 0 }) }),
+  Object.freeze({ upToFloor: 8, weights: Object.freeze({ padded: 5, leather: 3, chain: 2, plate: 0 }) }),
+  Object.freeze({ upToFloor: 15, weights: Object.freeze({ padded: 3, leather: 3, chain: 3, plate: 1 }) }),
+  Object.freeze({ upToFloor: 30, weights: Object.freeze({ padded: 2, leather: 3, chain: 3, plate: 2 }) }),
+  Object.freeze({ upToFloor: Infinity, weights: Object.freeze({ padded: 1, leather: 2, chain: 3, plate: 4 }) }),
+]);
+
+/** Drop weight of an armour family on `floor` (0: not dropping yet). */
+export function armorTypeWeight(armorType, floor) {
+  const band = ARMOR_TYPE_WEIGHT_BANDS.find((b) => floor <= b.upToFloor) || ARMOR_TYPE_WEIGHT_BANDS.at(-1);
+  return band.weights[armorType] ?? 0;
+}
 
 // Leather and the DEF armours spend durability under DIFFERENT rules, so equal
 // numbers here were not equal armour. Leather ticks only on a successful dodge
@@ -67,10 +99,15 @@ export const ARMOR_SPAWN_MIN_FLOOR = Object.freeze({
 // Trimmed to ~1.33x leather (fresh, no amulets, 3000 runs, seed 777): reach
 // 29.7% -> 29.1%, within noise, while armour breaks ~3x as often (0.16 a
 // run) so the anvil and merges have something to do.
+//
+// Lowered across the board (Taya): no armour should reach 40, and the weakest,
+// a common padded, sits at 12. Chain and plate stay ~1.3x leather (the reason
+// above still holds); padded, which ticks on every hit, is shorter-lived still.
 export const ARMOR_DURABILITY_BY_TYPE = Object.freeze({
-  leather: Object.freeze({ common: 15, uncommon: 20, rare: 25, epic: 28, legendary: 30 }),
-  chain: Object.freeze({ common: 20, uncommon: 27, rare: 34, epic: 38, legendary: 40 }),
-  plate: Object.freeze({ common: 20, uncommon: 27, rare: 34, epic: 38, legendary: 40 }),
+  leather: Object.freeze({ common: 12, uncommon: 15, rare: 18, epic: 20, legendary: 22 }),
+  chain: Object.freeze({ common: 16, uncommon: 19, rare: 22, epic: 25, legendary: 28 }),
+  plate: Object.freeze({ common: 16, uncommon: 19, rare: 22, epic: 25, legendary: 28 }),
+  padded: Object.freeze({ common: 12, uncommon: 14, rare: 16, epic: 18, legendary: 20 }),
 });
 
 export function armorDurability(armorType, rarity) {

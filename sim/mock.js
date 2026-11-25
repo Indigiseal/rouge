@@ -8,6 +8,26 @@
 //   2. A MockScene that stubs every scene method the logic touches and runs
 //      tweens / timers synchronously so combat resolves in one call.
 
+import { openSync, readSync, closeSync } from 'node:fs';
+import { ASSET_MANIFEST } from '../src/content/assets/AssetManifest.js';
+import { PACKED_SHEETS } from '../src/content/assets/packedSprites.js';
+
+// Real texture dimensions matter to distance-to-edge gem splash checks.
+const textureSizes = new Map();
+for (const asset of ASSET_MANIFEST) {
+  if (asset.frameWidth && asset.frameHeight) textureSizes.set(asset.key, [asset.frameWidth, asset.frameHeight]);
+  else if (asset.type === 'image' && asset.path?.endsWith('.png')) {
+    let fd;
+    try {
+      fd = openSync(new URL('../' + asset.path, import.meta.url), 'r');
+      const header = Buffer.alloc(24); readSync(fd, header, 0, 24, 0);
+      textureSizes.set(asset.key, [header.readUInt32BE(16), header.readUInt32BE(20)]);
+    } catch { /* missing optional art uses card dimensions */ }
+    finally { if (fd !== undefined) closeSync(fd); }
+  }
+}
+for (const sheet of PACKED_SHEETS) for (const entry of sheet.entries) textureSizes.set(entry.key, [entry.width, entry.height]);
+
 import { getEnemyHitAttack, spendSapping, applyEnemyStrikeSigils } from '../src/content/combat/enemyAttack.js';
 import { hasEnemyTrait, sigilLevel } from '../src/content/sigils/sigils.js';
 import { ENCHANT_SAPPING_CHANCE } from '../src/content/balance/WeaponEnchants.js';
@@ -17,7 +37,7 @@ import { armorThornsDamage, companionStrengthBonus, regenerateAmount, playerWarc
 import { advanceBonePile, repairBoneArmor, summonAtHealthThresholds } from '../src/content/combat/boneflood.js';
 import { growEnemy, regenerateAllies } from '../src/content/combat/mireturn.js';
 import { strengthenPlayerPoison } from '../src/content/combat/silkdeep.js';
-import { addPlayerBurn, takePlayerBurnTick, SCORCHED_CHANCE } from '../src/content/combat/ashhowl.js';
+import { addPlayerBurn, takePlayerBurnTick, SCORCHED_CHANCE, FIRE_COLUMN_BURN } from '../src/content/combat/ashhowl.js';
 import { tryEnemyShock } from '../src/content/combat/storm.js';
 import { consumeCompanionAttackHold, tryEnemyFrost } from '../src/content/combat/frost.js';
 import { tryEnemySandstorm, tryEnemyQuickStrike } from '../src/content/combat/sandreach.js';
@@ -76,7 +96,18 @@ function makeGameObject(scene = null) {
     x: 0, y: 0, width: 10, height: 10, displayWidth: 10, displayHeight: 10,
     alpha: 1, scaleX: 1, scaleY: 1, depth: 0, active: true, visible: true,
     scene, _once: {}, _data: {},
-    getBounds() { return { x: t.x, y: t.y, width: t.width, height: t.height }; },
+    originX: 0.5, originY: 0.5,
+    setPosition(x, y = x) { t.x = x; t.y = y; return proxy; },
+    setX(x) { t.x = x; return proxy; },
+    setY(y) { t.y = y; return proxy; },
+    setOrigin(x, y = x) { t.originX = x; t.originY = y; return proxy; },
+    setScale(x, y = x) { t.scaleX = x; t.scaleY = y; t.displayWidth = t.width * x; t.displayHeight = t.height * y; return proxy; },
+    setDisplaySize(w, h) { t.displayWidth = w; t.displayHeight = h; t.scaleX = w / t.width; t.scaleY = h / t.height; return proxy; },
+    getBounds() {
+      const left = t.x - t.displayWidth * t.originX, top = t.y - t.displayHeight * t.originY;
+      return { x: left, y: top, left, top, right: left + t.displayWidth, bottom: top + t.displayHeight,
+        width: t.displayWidth, height: t.displayHeight };
+    },
     getData(k) { return t._data[k]; },
     setData(k, v) { t._data[k] = v; return proxy; },
     once(evt, cb) { t._once[evt] = cb; return proxy; },
@@ -89,7 +120,12 @@ function makeGameObject(scene = null) {
       return proxy;
     },
     destroy() { t.active = false; return proxy; },
-    setTexture() { return proxy; },
+    setTexture(key) {
+      const [w, h] = textureSizes.get(key) || [52, 70];
+      t.texture = { key }; t.frame = { width: w, height: h };
+      t.width = w; t.height = h; t.displayWidth = w * t.scaleX; t.displayHeight = h * t.scaleY;
+      return proxy;
+    },
   };
   proxy = new Proxy(t, {
     get(o, p) {
@@ -105,7 +141,19 @@ function makeGameObject(scene = null) {
 // the scene (so sprite.scene is truthy for combat guards).
 function makeAddFactory(scene) {
   return new Proxy({}, {
-    get() { return (...args) => makeGameObject(scene); },
+    get(_target, kind) { return (...args) => {
+      const object = makeGameObject(scene);
+      if (Number.isFinite(args[0])) object.x = args[0];
+      if (Number.isFinite(args[1])) object.y = args[1];
+      // Combat cards are 52x70; rectangles supply their own geometry.
+      if (kind === 'sprite' || kind === 'image') {
+        object.setTexture(args[2]);
+      } else if (kind === 'rectangle') {
+        object.width = object.displayWidth = args[2] || 0;
+        object.height = object.displayHeight = args[3] || 0;
+      }
+      return object;
+    }; },
   });
 }
 
@@ -113,7 +161,15 @@ export class MockScene {
   constructor() {
     this.add = makeAddFactory(this);
     this.tweens = {
-      add: (cfg) => { if (cfg && typeof cfg.onComplete === 'function') cfg.onComplete(); return makeGameObject(this); },
+      add: (cfg) => {
+        for (const target of (Array.isArray(cfg?.targets) ? cfg.targets : [cfg?.targets])) {
+          if (!target) continue;
+          for (const key of ['x', 'y', 'alpha', 'angle']) if (Number.isFinite(cfg[key])) target[key] = cfg[key];
+          if (Number.isFinite(cfg.scale)) target.setScale?.(cfg.scale);
+        }
+        if (cfg && typeof cfg.onComplete === 'function') cfg.onComplete();
+        return makeGameObject(this);
+      },
       killTweensOf: () => {},
       chain: () => makeGameObject(this),
     };
@@ -521,7 +577,7 @@ export class MockScene {
         tryEnemySandstorm(this.gameState, card.data, actualDamage);
       }
       if (actualDamage > 0 && !dodged && sigilLevel(card.data, 'scorched') > 0 && Math.random() < SCORCHED_CHANCE) {
-        addPlayerBurn(this.gameState, card.data.name || 'Enemy');
+        addPlayerBurn(this.gameState, card.data.name || 'Enemy', FIRE_COLUMN_BURN);
       }
       if (actualDamage > 0 && !dodged && sigilLevel(card.data, 'sapping') > 0 && Math.random() < ENCHANT_SAPPING_CHANCE) {
         this.gameState.playerSapped = true;

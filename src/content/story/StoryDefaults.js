@@ -38,6 +38,7 @@ export const DEFAULT_STORY_RUN = Object.freeze({
   soupPotKicked: false,
   travellerSaved: false,
   crystalLairCleared: false,
+  briarHeartCleared: false,
   tooNiceRoomSeen: false,
   wellSeen: false,
   slimyPrisonSeen: false,

@@ -44,4 +44,37 @@ try {
 } finally {
     Math.random = random;
 }
-console.log('Room mimic cap checks passed: rolls, explicit creation, waves, saves, and room reset.');
+// One amulet card per room, by the same rule.
+const as = {
+    scene: { gameState: { currentFloor: 5 } },
+    boardCards: [],
+    clearBoard() { this.boardCards = []; },
+    spawnAmbushBoard() {},
+    cardDataGenerator: {
+        getCardWeights: () => ({ amulet: 100, coin: 1 }),
+        createCardData: type => ({ type }),
+    },
+};
+const amuletSpawner = new FloorSpawner(as);
+as.createCardData = amuletSpawner.createCardData;
+as.pickCardType = amuletSpawner.pickCardType;
+try {
+    Math.random = () => 0;
+    assert.equal(as.pickCardType(5), 'amulet');
+    as.createCardData('amulet', 5);
+    for (let i = 0; i < 30; i++) assert.equal(as.pickCardType(5), 'coin');
+    as._boardCells = [{ r: 0, c: 0 }];
+    as._boardPlace = {};
+    const layout = new BoardLayout(as).getSerializableBoardLayout();
+    assert.equal(layout.amuletSpawned, true);
+    as._roomAmuletSpawned = false;
+    // A save after the amulet was taken still remembers it.
+    amuletSpawner.restoreSavedBoard([], { ...layout, cells: [] });
+    assert.equal(as.pickCardType(5), 'coin');
+    as.scene.gameState.pendingAmbush = {};
+    amuletSpawner.spawnFloorCards();
+    assert.equal(as.pickCardType(5), 'amulet', 'entering the next room resets the allowance');
+} finally {
+    Math.random = random;
+}
+console.log('Room mimic and amulet cap checks passed: rolls, explicit creation, waves, saves, and room reset.');

@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ headless: true });
+try {
+ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+ const errors = []; page.on('pageerror', e => errors.push(e.message));
+ const backgrounds = []; page.on('request', r => { if (r.url().endsWith('bonefloodOssuary.png')) backgrounds.push(r.url()); });
+ await page.addInitScript(() => { localStorage.setItem('rogueDevTools','0'); localStorage.setItem('gameLanguage','ru'); });
+ await page.goto('http://localhost:4173');
+ await page.waitForFunction(() => window.__game?.scene.isActive('MainMenuScene'), { timeout: 60000 });
+ assert(await page.evaluate(() => window.__game.textures.exists('sanctuaryBackground')), 'sanctuary ready before New Run');
+ const bootRequests = backgrounds.length;
+ await page.evaluate(() => window.__game.scene.getScene('MainMenuScene').beginNewRun());
+ await page.waitForFunction(() => window.__game.scene.isActive('SanctuaryScene'), { timeout: 10000 });
+ assert.equal(backgrounds.length, bootRequests, 'New Run needs no sanctuary download');
+ await page.evaluate(() => window.__game.scene.getScene('SanctuaryScene').scene.start('MainMenuScene'));
+ await page.waitForFunction(() => window.__game.scene.isActive('MainMenuScene'));
+ let release; const hold = new Promise(resolve => release = resolve);
+ await page.route('**/assets/art/backgrounds/bonefloodOssuary.png', async route => { await hold; await route.continue(); });
+ await page.evaluate(() => { window.__game.textures.remove('sanctuaryBackground'); window.__game.scene.getScene('MainMenuScene').beginNewRun(); });
+ await page.waitForFunction(() => window.__game.scene.getScene('SanctuaryScene').children.getByName('scene-loading'));
+ const loading = await page.evaluate(() => window.__game.scene.getScene('SanctuaryScene').children.getByName('scene-loading').list[1].text);
+ assert(loading.startsWith('Загрузка...'), loading);
+ await page.screenshot({ path: '.tmp/new-run-loading.png' });
+ release();
+ await page.waitForFunction(() => window.__game.scene.isActive('SanctuaryScene') && !window.__game.scene.getScene('SanctuaryScene').children.getByName('scene-loading'));
+ await page.unrouteAll({behavior:'wait'});
+ let releaseCombat; const combatHold = new Promise(resolve => releaseCombat = resolve);
+ await page.route(/\/assets\/art\/(backgrounds|boards)\//, async route => { await combatHold; await route.continue(); });
+ await page.evaluate(() => window.__game.scene.getScene('SanctuaryScene').scene.start('GameScene', { tutorial: true }));
+ await page.waitForFunction(() => window.__game.scene.getScene('GameScene').children.getByName('scene-loading'));
+ assert((await page.evaluate(() => window.__game.scene.getScene('GameScene').children.getByName('scene-loading').list[1].text)).startsWith('Загрузка...'));
+ releaseCombat();
+ await page.waitForFunction(() => window.__game.scene.isActive('GameScene') && window.__game.scene.getScene('GameScene').cardSystem?.boardCards?.length > 0);
+ assert.deepEqual(errors, []);
+ console.log('New Run passed: sanctuary cached at menu, no extra download on click; missing sanctuary and cold combat show localized loading UI and clean it up afterwards.');
+} finally { await browser.close(); }

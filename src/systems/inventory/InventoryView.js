@@ -19,11 +19,16 @@ import {
     axeHeavyCleaveTargetIndices,
     spearPierceTargetIndices,
     swordCleaveTargetIndices,
+    maceDiagonalTargetIndices,
+    gauntletHandTargetIndices,
+    weaponAreaSeats,
 } from '../../content/cards/weapons.js';
 import { PLATE_RANGED_IGNORE_MAX } from '../../content/cards/armor.js';
 import { MAX_LEGENDARY_STARS, cardStars, starBonus } from '../../content/cards/legendaryStars.js';
 import { hasRainbowShine } from '../../ui/RainbowShine.js';
 import { companionStrengthBonus } from '../combat/SigilEffects.js';
+import { createWeaponPattern, weaponSpecialText } from '../../ui/WeaponPattern.js';
+import { bossSummonSeats } from '../board/BossSummonLanes.js';
 
 // Dragging a potion or food: corners frame the hero's portrait (80x80);
 // dragging armor with none worn: the armor slot (68x90).
@@ -51,6 +56,9 @@ const PANEL_INTRO_DROP = 20;
 const PANEL_INTRO_MS = 480;
 const PANEL_INTRO_OVERSHOOT = 2.5;
 const TOOLTIP_ENCHANT_COLOR = '#6c6885';
+// A dragged weapon's whole reach on the board (updateWeaponAttackIndicator).
+const WEAPON_AREA_COLOR = 0xfff1b0;
+const WEAPON_AREA_ALPHA = 0.18;
 
 export const InventoryView = {
     setVisibility(isVisible) {
@@ -560,15 +568,30 @@ export const InventoryView = {
 
         const affected = new Map([[primaryIndex, 1]]);
         const hasAp = (this.scene.gameState?.actionsLeft || 0) > 0;
-        if (hasAp && weapon.special === 'cleave') {
+        // Whether the weapon's special reach is live for this swing, on the same
+        // terms as the hits below; when it is, its whole area is drawn too.
+        let reachLive = false;
+        if (weapon.id === 'ogreGauntlet') {
+            // Out of action points it hits only its target, like the cleave.
+            if (hasAp) {
+                reachLive = true;
+                for (const index of gauntletHandTargetIndices(board, primaryIndex)) affected.set(index, 0.5);
+            }
+        } else if (hasAp && weapon.special === 'cleave') {
+            reachLive = true;
             for (const index of swordCleaveTargetIndices(board, primaryIndex)) affected.set(index, 0.5);
+        } else if (hasAp && weapon.special === 'crush') {
+            reachLive = true;
+            for (const index of maceDiagonalTargetIndices(board, primaryIndex)) affected.set(index, 0.5);
         } else if (hasAp && (weapon.special === 'pierce' || weapon.special === 'reach')) {
+            reachLive = true;
             for (const index of spearPierceTargetIndices(board, primaryIndex)) affected.set(index, 0.5);
         } else if (weapon.special === 'specialAttack') {
             const target = board[primaryIndex];
             const hp = target?.data?.health || 0;
             const maxHp = Math.max(1, target?.data?.maxHealth || hp || 1);
-            if (hp / maxHp > 0.2) {
+            if (hasAp && hp / maxHp > 0.2) {
+                reachLive = true;
                 const fan = axeHeavyCleaveTargetIndices(board, primaryIndex);
                 for (const index of fan.vertical) affected.set(index, 0.5);
                 for (const index of fan.sides) affected.set(index, 0.5);
@@ -580,6 +603,32 @@ export const InventoryView = {
         }
         const g = this.weaponAttackIndicator;
         g.clear();
+        // The area itself, first and faint: every seat the blow covers, empty
+        // or face-down ones too, in a pale yellow (Taya). The enemies it will
+        // actually hit are marked over it, below.
+        const cs = this.scene.cardSystem;
+        const place = cs?._boardPlace;
+        // A boss room has no grid: its seats are the summon lanes under the
+        // boss (BossSummonLanes.js). The boss itself is marked only when the
+        // blow really reaches it, by the hit marks below.
+        const bossCard = place ? null : board.find((card) => card?.data?.alwaysBackline && card.sprite?.scene);
+        const seatsOnBoard = place
+            ? cs._boardCells?.filter(Boolean)
+            : (bossCard ? bossSummonSeats(this.scene, bossCard) : null);
+        if (reachLive && seatsOnBoard) {
+            const seats = weaponAreaSeats(weapon, board[primaryIndex]?.data?.brick, seatsOnBoard);
+            const scale = place?.cardScale || 1;
+            // The card's own size: any bigger and neighbouring rows' boxes overlap.
+            const w = Math.round(52 * scale);
+            const h = Math.round(70 * scale);
+            for (const seat of seats) {
+                const { x, y } = place ? cs.brickToPixel(seat.r, seat.c, place) : seat;
+                g.fillStyle(WEAPON_AREA_COLOR, WEAPON_AREA_ALPHA);
+                g.fillRoundedRect(x - w / 2, y - h / 2, w, h, 3);
+                g.lineStyle(1, WEAPON_AREA_COLOR, 0.3);
+                g.strokeRoundedRect(x - w / 2 + 0.5, y - h / 2 + 0.5, w - 1, h - 1, 3);
+            }
+        }
         for (const [index, fraction] of affected) {
             const sprite = board[index]?.sprite;
             if (!sprite?.scene) continue;
@@ -679,8 +728,10 @@ export const InventoryView = {
         }
         return null;
     },
-    updateAvatarDropTarget(cardSprite, slotIndex) {
-        const goal = this.dropTargetFor(this.slots[slotIndex], cardSprite);
+    // `card` is the carried card's data: a bag slot's by default, or the worn
+    // armor's when it is dragged off the armor panel (CombatHud).
+    updateAvatarDropTarget(cardSprite, slotIndex, card = this.slots[slotIndex]) {
+        const goal = this.dropTargetFor(card, cardSprite);
         if (!goal) {
             this.destroyAvatarDropTarget();
             return;
@@ -1239,8 +1290,12 @@ export const InventoryView = {
             ? tooltipScene.add.text(0, 0, enchantLine, { ...textStyle, fill: TOOLTIP_ENCHANT_COLOR }).setOrigin(0, 0)
             : null;
 
-        const contentWidth = Math.max(body.width, enchantText?.width || 0);
-        const contentHeight = body.height + (enchantText ? enchantText.height + 2 : 0);
+        // A weapon's hit pattern, as cubes under the text (ui/WeaponPattern.js).
+        const pattern = cardData?.type === 'weapon' ? createWeaponPattern(tooltipScene, cardData) : null;
+        const patternTop = body.height + (enchantText ? enchantText.height + 2 : 0) + 4;
+        const contentWidth = Math.max(body.width, enchantText?.width || 0, pattern ? pattern.patternWidth : 0);
+        const contentHeight = pattern ? patternTop + pattern.patternHeight
+            : body.height + (enchantText ? enchantText.height + 2 : 0);
         const width = Math.ceil(Math.min(TOOLTIP_TEXT_W, contentWidth) + TOOLTIP_PAD.x * 2);
         const height = Math.ceil(contentHeight + TOOLTIP_PAD.top + TOOLTIP_PAD.bottom);
         const bg = createTooltipPanel(tooltipScene, width, height);
@@ -1254,8 +1309,9 @@ export const InventoryView = {
         const clampedY = Math.round(Phaser.Math.Clamp(targetY, 6, 360 - height - 6));
         for (const part of body.parts) part.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top + part.y);
         enchantText?.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top + body.height + 2);
+        pattern?.setPosition(TOOLTIP_PAD.x, TOOLTIP_PAD.top + patternTop);
 
-        const parts = [bg, ...body.parts, ...(enchantText ? [enchantText] : [])];
+        const parts = [bg, ...body.parts, ...(enchantText ? [enchantText] : []), ...(pattern ? [pattern] : [])];
         this.cardTooltip = tooltipScene.add.container(clampedX, clampedY, parts);
         this.cardTooltip.setDepth(3000);
         this.uiGroup.add(this.cardTooltip);
@@ -1484,14 +1540,7 @@ export const InventoryView = {
         return names[card.type] ? t(this.scene, names[card.type]) : this.capitalize(card.type);
     },
     describeWeaponSpecial(card) {
-        const special = card.special || '';
-        if (special === 'dualWield') return translateDescription(this.scene, 'dual wield');
-        if (special === 'cleave') return translateDescription(this.scene, 'cleave: half damage to adjacent enemies while AP remains');
-        if (special === 'pierce' || special === 'reach') return translateDescription(this.scene, 'piercing: half damage to enemies behind target while AP remains');
-        if (special === 'throwing') return translateDescription(this.scene, 'hits any enemy');
-        if (special === 'block' && card.weaponType !== 'bow') return translateDescription(this.scene, 'can block');
-        if (special === 'specialAttack') return translateDescription(this.scene, 'heavy cleave; executes wounded non-boss enemies');
-        return special;
+        return weaponSpecialText(this.scene, card);
     },
     describeMagicCard(card) {
         if (card.magicType === 'desertFeast') return translateDescription(this.scene, 'Restore Action Points');

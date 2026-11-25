@@ -17,7 +17,7 @@ export const SIGIL_STAMPS = Object.freeze([
   Object.freeze({
     id: 'turtle', family: 'shell', key: 'sigilStampTurtle',
     // Staying alive: armour, healing, hitting back, the sea.
-    sigils: ['warding', 'tempered', 'mirror', 'thorns', 'riposte', 'desperate', 'regenerate', 'leech', 'mending'],
+    sigils: ['warding', 'tempered', 'mirror', 'thorns', 'riposte', 'desperate', 'regenerate', 'leech', 'mending', 'heartwood'],
   }),
   Object.freeze({
     id: 'toad', family: 'wealth', key: 'sigilStampToad',

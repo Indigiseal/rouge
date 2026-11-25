@@ -39,4 +39,23 @@ export const LOCATION_AMULET_IDENTITIES = Object.freeze({
         description: '3% chance to find a crystal when killing an enemy.' }),
     goblinSpyglass: Object.freeze({ name: "Goblin's Spyglass", originLocationId: 'tollroad',
         description: '15% chance after a damaging weapon hit to reveal one face-down card that is not an enemy or a trap.' }),
+
+    // Amulets that borrow another item's picture. Without their own name here
+    // they also took that item's name on the board card and after a reload
+    // (Forced March showed as "Goblin War Horn"), while the tooltip had the
+    // real one. Keep these the same as the names in currentCatalog.js.
+    ringOfRegeneration: Object.freeze({ name: 'Ring of Regeneration' }),
+    ringOfGreaterRegeneration: Object.freeze({ name: 'Ring of Regeneration+' }),
+    forcedMarch: Object.freeze({ name: 'Forced March' }),
+    provisionersBell: Object.freeze({ name: "Provisioner's Bell" }),
+    shiftingMedallion: Object.freeze({ name: 'Shifting Medallion' }),
+    armsfindersCharm: Object.freeze({ name: "Armsfinder's Charm" }),
+    apothecarysEye: Object.freeze({ name: "Apothecary's Eye" }),
+    gemseekersLens: Object.freeze({ name: "Gemseeker's Lens" }),
+    generalsTable: Object.freeze({ name: "General's Glasses" }),
+    oraclesFishbowl: Object.freeze({ name: "Cartographer's Ink+" }),
+    quickstepCharm: Object.freeze({ name: 'Quickstep Charm' }),
+    heartOfHours: Object.freeze({ name: 'Heart of Hours' }),
+    trapwiseBoots: Object.freeze({ name: 'Trapwise Boots' }),
+    tollWrit: Object.freeze({ name: 'Toll Writ' }),
 });

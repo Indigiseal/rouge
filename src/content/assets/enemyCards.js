@@ -15,6 +15,7 @@
 //   row 9  Stormhatch (the Cloudborn)
 //   row 10 Sandreach (the sand lizardfolk)
 //   row 11 Robbers (generic thieves for stories, on Tollroad's card faces)
+//   row 12 The Heart of the Briars (Thornwake's secret room, PixelLab, on Thornwake's faces)
 //
 // A column is the enemy's position in its roster's SHEET_ORDER when provided,
 // otherwise MELEE first, then RANGED, which is the order the older rosters
@@ -61,6 +62,7 @@ export const EXTRA_SHEET_ROWS = Object.freeze({
     stormhatch: 9,
     sandreach: 10,
     robbers: 11,
+    briarHeart: 12,
 });
 
 /** The sheet row for a location or extra group, or undefined if none is drawn. */

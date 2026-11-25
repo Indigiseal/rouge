@@ -28,7 +28,8 @@ import { COG_X, COG_Y } from '../ui/OptionsCog.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { loadVolumeSettings, saveVolumeSettings } from '../audio/VolumeSettings.js';
 import { openConfirmModal } from '../ui/ConfirmModal.js';
-import { FONT_SIZE, fitLabel, serifStyle } from '../ui/uiFont.js';
+import { FONT_SIZE, serifStyle } from '../ui/uiFont.js';
+import { fitTextBox, horizontalSkin } from '../ui/AdaptiveSkin.js';
 import { loadUiFonts } from '../ui/fontFamilies.js';
 import { clearDiscoveries } from '../content/codex/Discoveries.js';
 
@@ -40,9 +41,8 @@ const SCREEN_MARGIN = 8;
 // The language plate is drawn in the top 26px of its 32px cell, so its label
 // needs lifting to sit on the plate rather than on the cell's centre line.
 const LANGUAGE_LABEL_OFFSET_Y = -3;
-// Main-menu plates are 90x30 with ~82px of usable label room.
+// Main-menu label size before content-based plate sizing.
 const MENU_LABEL_PX = '14px';
-const MENU_PLATE_LABEL_W = 82;
 
 // Options-screen type sizes come from the shared scale in ui/uiFont.js so the
 // heading here and the headings on every other screen cannot drift apart.
@@ -196,8 +196,7 @@ export class MainMenuScene extends Phaser.Scene {
         // it threw, and because the throw landed inside cycleLanguage() the
         // options screen never reached its own refresh — the language changed
         // everywhere except the window you changed it from.
-        const refit = (entry) => entry?.text && fitLabel(
-            entry.text.setFontSize(MENU_LABEL_PX), MENU_PLATE_LABEL_W, MENU_LABEL_PX);
+        const refit = (entry) => entry?.refit?.();
         this.mainMenuButtons.newRun.text.setText(t(this, 'ui.menu.newRun'));
         this.mainMenuButtons.continue.text.setText(t(this, 'ui.menu.continue'));
         this.mainMenuButtons.tutorial.text.setText(t(this, 'ui.menu.tutorial'));
@@ -239,9 +238,21 @@ export class MainMenuScene extends Phaser.Scene {
         const txt = this.add
             .text(x, y, label, serifStyle(MENU_LABEL_PX, disabled ? '#869089' : '#fef0cf'))
             .setOrigin(0.5);
-        // The plate is 90px, drawn when these labels were in the much narrower
-        // pixel font. Translated labels are wider, so let them shrink to fit.
-        fitLabel(txt, MENU_PLATE_LABEL_W, MENU_LABEL_PX);
+        // Grow the plate before shrinking its label, and repeat on locale changes.
+        let up = 'nextTurnUp', down = 'nextTurnDown';
+        const refit = () => {
+            txt.setWordWrapWidth(0).setFontSize(MENU_LABEL_PX);
+            if (hasSprite) {
+                const width = Math.max(122, Math.min(220, txt.width + 24));
+                up = horizontalSkin(this, 'nextTurnUp', width);
+                down = horizontalSkin(this, 'nextTurnDown', width);
+                btn.setTexture(up);
+                shadow.setTexture(up);
+            }
+            fitTextBox(txt, btn.width - 24, 26);
+            if (btn.input) btn.input.hitArea.setTo(0, 0, btn.width, btn.height);
+        };
+        refit();
 
         if (!disabled) {
             // A release from the tutorial's Back button can land on this menu.
@@ -256,13 +267,13 @@ export class MainMenuScene extends Phaser.Scene {
                     pressedPointer = null;
                     btn.clearTint();
                     setHoverLight(btn, false);
-                    if (hasSprite) btn.setTexture('nextTurnUp');
+                    if (hasSprite) btn.setTexture(up);
                     txt.setY(y);
                 })
                 .on('pointerdown', (pointer) => {
                     pressedPointer = pointer;
                     SoundHelper.playVariant(this, 'button_click', 0.5);
-                    if (hasSprite) btn.setTexture('nextTurnDown');
+                    if (hasSprite) btn.setTexture(down);
                     txt.setY(y + 1); // subtle press down
                 })
                 .on('pointerup', (pointer) => {
@@ -271,13 +282,13 @@ export class MainMenuScene extends Phaser.Scene {
                     // Off on click too: Options hides these buttons, so no
                     // pointerout comes to put the light out.
                     setHoverLight(btn, false);
-                    if (hasSprite) btn.setTexture('nextTurnUp');
+                    if (hasSprite) btn.setTexture(up);
                     txt.setY(y);
                     if (activated) callback();
                 });
         }
 
-        return { button: btn, text: txt };
+        return { button: btn, text: txt, refit };
     }
 
     // Icon-only variant of createSpriteButton for a 2-frame up/down skin

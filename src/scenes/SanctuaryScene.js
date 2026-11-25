@@ -6,19 +6,18 @@
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { MusicManager } from '../audio/MusicManager.js';
 import { MetaProgressionManager } from '../managers/MetaProgressionManager.js';
-import { getVillageBuilding, healerRarityForRank, HEALER_RARITIES } from '../content/village/index.js';
-import { AMULET_DROP_DATA } from '../content/cards/amulets.js';
-import { getAmuletAtlasPresentation } from '../content/amulets/RelicsOthersAtlas.js';
+import { getVillageBuilding } from '../content/village/index.js';
 import { SANCTUARY_STATUES } from '../content/sanctuary/preview.js';
-import { t, translateRarity } from '../i18n/i18n.js';
+import { t } from '../i18n/i18n.js';
 import { createPaintedButton } from '../ui/PaintedButton.js';
 import { createTitle } from '../ui/titleText.js';
 import { createOptionsCog } from '../ui/OptionsCog.js';
-import { playCrowFlyby, CROW_TOP_Y } from '../ui/CrowFlyby.js';
 import { openConfirmModal } from '../ui/ConfirmModal.js';
 import { setHoverLight } from '../ui/HoverLight.js';
 import { fitLabel } from '../ui/uiFont.js';
 import { devToolsEnabled } from '../config/DevTools.js';
+import { standOnArt } from '../ui/StandOnArt.js';
+import { showSceneLoading } from '../ui/SceneLoading.js';
 
 const FONT = '"HoMM Pixel", Arial, sans-serif';
 const STAR_STEP = 6;
@@ -31,6 +30,7 @@ export class SanctuaryScene extends Phaser.Scene {
     preload() {
         // The statues are frames of the packed sanctuary strip, loaded at boot.
         if (!this.textures.exists('sanctuaryBackground')) {
+            showSceneLoading(this);
             this.load.image('sanctuaryBackground', 'assets/art/backgrounds/bonefloodOssuary.png');
         }
     }
@@ -47,8 +47,9 @@ export class SanctuaryScene extends Phaser.Scene {
         background.setScale(Math.max(640 / background.width, 360 / background.height));
         this.add.rectangle(320, 180, 640, 360, 0x10151b, 0.36);
 
-        createTitle(this, 320, 22, t(this, 'ui.sanctuary.title'), { color: '#ecdbb3' });
-        this.detailText = this.add.text(320, 46, '', {
+        // Second banner in banners.png, shared with the other room headings.
+        createTitle(this, 320, 32, t(this, 'ui.sanctuary.title'), { color: '#ecdbb3', bannerKey: 'villageBanner', bannerY: 34 });
+        this.detailText = this.add.text(320, 64, '', {
             fontSize: '9px', fill: '#a5a394', fontFamily: FONT, align: 'center',
             wordWrap: { width: 420 }, stroke: '#10151b', strokeThickness: 3,
         }).setOrigin(0.5, 0);
@@ -80,23 +81,28 @@ export class SanctuaryScene extends Phaser.Scene {
     drawStatue(statue) {
         const { x, bottom, building } = statue;
         const maxRank = getVillageBuilding(building)?.maxRank ?? 1;
+        // Like card lift shadows: stays on the floor as the pedestal rises.
+        const shadow = this.add.rectangle(x, bottom - 2, 78, 14, 0x000000, 0.6).setAlpha(0);
         const ring = this.add.ellipse(x, bottom - 2, 100, 21, 0xc6a45d, 0.08)
             .setStrokeStyle(1, 0xdec58b, 0.25);
-        const art = this.add.image(x, bottom, statue.texture).setOrigin(0.5, 1);
+        // Stands on the bottom of its drawing, whatever the cell height (ui/StandOnArt.js).
+        const art = standOnArt(this.add.image(x, bottom, statue.texture));
         const stars = [];
         if (this.textures.exists('villageRankStar')) {
             for (let i = 0; i < maxRank; i++) {
                 stars.push(this.add.image(x, bottom - 9, 'villageRankStar').setVisible(false));
             }
         }
-        const name = this.add.text(x, bottom + 7, t(this, `sanctuary.${building}.name`), {
-            fontSize: '9px', fill: '#d9c9a7', fontFamily: FONT,
-            stroke: '#10151b', strokeThickness: 3,
+        const name = this.add.text(x, bottom - 30, t(this, `sanctuary.${building}.name`), {
+            fontSize: '8px', fill: '#000000', fontFamily: FONT,
         }).setOrigin(0.5);
-        const rule = this.add.text(x, bottom + 15, t(this, `sanctuary.${building}.rule`), {
-            fontSize: '8px', fill: '#e1d6be', fontFamily: FONT,
-            align: 'center', wordWrap: { width: 156 }, stroke: '#10151b', strokeThickness: 3,
+        const rule = this.add.text(x, bottom - 24, t(this, `sanctuary.${building}.rule`), {
+            fontSize: '7px', fill: '#000000', fontFamily: FONT,
+            align: 'center', wordWrap: { width: 70 },
         }).setOrigin(0.5, 0);
+        // Keep translated inscriptions inside the pedestal's stone face.
+        name.setScale(Math.min(1, 72 / name.width));
+        rule.setScale(Math.min(1, 72 / rule.width, 12 / rule.height));
         // Bounds fit each sculpture, leaving neighbouring statues clickable.
         const hit = this.add.rectangle(x, bottom - 56, 100, 124, 0, 0).setInteractive({ useHandCursor: true });
         hit.on('pointerover', () => { if (!this.busy) setHoverLight(art, true); });
@@ -107,7 +113,7 @@ export class SanctuaryScene extends Phaser.Scene {
             SoundHelper.playVariant(this, 'button_click', 0.35);
             this.refresh();
         });
-        this.views.set(building, { statue, art, ring, name, rule, stars, hit });
+        this.views.set(building, { statue, art, shadow, ring, name, rule, stars, hit });
     }
 
     rank(building) { return this.meta.getBuildingRank(building); }
@@ -120,7 +126,7 @@ export class SanctuaryScene extends Phaser.Scene {
             const { statue } = view;
             const rank = this.rank(building);
             const locked = this.isLocked(building);
-            view.art.setTexture(building === 'temple' && !rank ? 'sanctuaryPhoenixBroken' : statue.texture);
+            standOnArt(view.art.setTexture(building === 'temple' && !rank ? 'sanctuaryPhoenixBroken' : statue.texture));
             view.art.setTint(locked ? LOCKED_TINT : rank ? 0xffffff : UNRESTORED_TINT).setAlpha(locked ? 0.55 : 1);
             // Rank stars, centred on the pedestal for however many restorations are bought.
             view.stars.forEach((star, i) => {
@@ -130,7 +136,7 @@ export class SanctuaryScene extends Phaser.Scene {
             const selected = this.selectedId === building;
             view.ring.setAlpha(selected ? 1 : 0.3);
             view.ring.setStrokeStyle(1, 0xdec58b, selected ? 0.9 : 0.25);
-            view.name.setColor(selected ? '#fff0c7' : '#d9c9a7');
+            view.name.setColor('#000000');
         }
         this.detailText.setText(this.isLocked(this.selectedId)
             ? t(this, 'ui.sanctuary.phoenixLocked')
@@ -147,6 +153,7 @@ export class SanctuaryScene extends Phaser.Scene {
         } else {
             label.setText(`${t(this, 'ui.sanctuary.restore')}  ${check.cost}`);
         }
+        this.restoreButton.refit();
         this.restoreButton.setAlpha(check.ok ? 1 : 0.45);
     }
 
@@ -168,61 +175,20 @@ export class SanctuaryScene extends Phaser.Scene {
         const view = this.views.get(building);
         SoundHelper.playSound(this, 'sanctuary_restore', 0.6);
         this.tweens.add({
-            targets: view.art, y: view.statue.bottom - 7, duration: 160, yoyo: true, ease: 'Sine.easeOut',
-            onUpdate: () => { view.art.y = Math.round(view.art.y); },
+            targets: [view.art, view.name, view.rule, ...view.stars], y: '-=7', duration: 160, yoyo: true, ease: 'Sine.easeOut',
+            onUpdate: () => {
+                view.art.y = Math.round(view.art.y);
+                view.shadow.setAlpha(Math.min(1, Math.max(0, (view.statue.bottom - view.art.y) / 7)));
+            },
             onComplete: () => {
                 view.art.y = view.statue.bottom;
+                view.shadow.setAlpha(0);
                 this.busy = false;
                 this.refresh();
                 if (wasLocked && !this.isLocked('temple')) this.awakenPhoenix();
-                if (building === 'healer') this.playCrowGift(view.statue);
             },
         });
         if (building === 'temple') SoundHelper.playSound(this, 'revival', 0.55);
-    }
-
-    // The Trinket Keeper's gift: a crow's shadow crosses the top of the screen with a caw and
-    // drops an amulet by the statue, which bounces and clinks. It is a sample of what the next
-    // runs may start with (a random amulet of the rarity this rank can roll), not a promise.
-    playCrowGift(statue) {
-        if (this._crowBusy) return;
-        const rolled = healerRarityForRank(this.rank('healer'));
-        const tiers = HEALER_RARITIES.slice(0, HEALER_RARITIES.indexOf(rolled) + 1).reverse();
-        let pick = null;
-        for (const tier of tiers) {
-            const pool = AMULET_DROP_DATA.filter((amulet) => amulet.rarity === tier);
-            if (pool.length) { pick = { rarity: tier, id: pool[Math.floor(Math.random() * pool.length)].id }; break; }
-        }
-        const art = pick ? getAmuletAtlasPresentation(pick.id) : null;
-        if (!pick || !art || !this.textures.exists(art.sprite)) return;
-        this._crowBusy = true;
-
-        const landY = statue.bottom - 96;
-        const amulet = this.add.image(statue.x, CROW_TOP_Y + 6, art.sprite, art.spriteFrame).setDepth(60).setAlpha(0);
-        const label = this.add.text(statue.x, landY + 24, translateRarity(this, pick.rarity, pick.rarity), {
-            fontSize: '8px', fill: '#fff0c7', fontFamily: FONT, stroke: '#10151b', strokeThickness: 3,
-        }).setOrigin(0.5).setDepth(60).setAlpha(0);
-        const done = () => { this._crowBusy = false; [amulet, label].forEach((o) => o.scene && o.destroy()); };
-        this.events.once('shutdown', done);
-        playCrowFlyby(this, { dropAtX: statue.x, onDrop: () => {
-            if (!amulet.scene) return;
-            amulet.setAlpha(1);
-            this.tweens.add({
-                targets: amulet, y: landY, duration: 620, ease: 'Bounce.easeOut',
-                onUpdate: () => { amulet.y = Math.round(amulet.y); },
-                onComplete: () => {
-                    SoundHelper.playSound(this, 'shop_buy', 0.5);
-                    this.tweens.add({
-                        targets: amulet, y: landY - 8, duration: 130, yoyo: true, ease: 'Quad.easeOut',
-                        onUpdate: () => { amulet.y = Math.round(amulet.y); },
-                    });
-                    this.tweens.add({ targets: label, alpha: 1, duration: 200 });
-                    this.time.delayedCall(1700, () => this.tweens.add({
-                        targets: [amulet, label], alpha: 0, duration: 450, onComplete: done,
-                    }));
-                },
-            });
-        } });
     }
 
     // The fourth guardian was just restored: the Phoenix stirs.

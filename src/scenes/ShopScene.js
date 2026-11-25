@@ -1,7 +1,7 @@
 import { CardSystem } from '../systems/CardSystem.js';
 import { SoundHelper } from '../audio/SoundHelper.js';
 import { bagArrivalSoundKey } from '../content/audio/armorSounds.js';
-import { t, translateItemName } from '../i18n/i18n.js';
+import { t, translateItemName, translateRarity } from '../i18n/i18n.js';
 import { createTitle } from '../ui/titleText.js';
 import { StationRoomBase } from './StationRoomBase.js';
 import { flyCurrencyGain } from '../ui/CurrencyFlight.js';
@@ -140,7 +140,7 @@ export class ShopScene extends StationRoomBase {
         }
 
         // Slot 6: Magic Spell (guaranteed)
-        const magicData = cardGenerator.createCardData('magic', floor);
+        const magicData = cardGenerator.createCardData('magic', floor, false, this.gameState, 'shop');
         if (magicData) {
             const magicPrice = this.calculateItemPrice(magicData);
             this.shopItems.push({
@@ -155,7 +155,7 @@ export class ShopScene extends StationRoomBase {
         const duplicateTypes = ['weapon', 'weapon', 'weapon', 'magic', 'potion', 'thorns', 'armor', 'food'];
         for (let i = 0; i < 1; i++) {
             const randomType = duplicateTypes[Math.floor(Math.random() * duplicateTypes.length)];
-            const itemData = cardGenerator.createCardData(randomType, floor);
+            const itemData = cardGenerator.createCardData(randomType, floor, false, this.gameState, randomType === 'magic' ? 'shop' : null);
 
             if (itemData) {
                 const itemPrice = this.calculateItemPrice(itemData);
@@ -223,9 +223,9 @@ export class ShopScene extends StationRoomBase {
         const type = Math.random() < 0.5 ? 'weapon' : 'armor';
         let item = cardGenerator.createCardData(type, floor, false, null, quality);
         if (!item) return null;
-        // Axe & plate are act-3 endgame gear: shops may stock them but never at
+        // Axe, mace & plate are act-3 endgame gear: shops may stock them but never at
         // epic/legendary. Re-roll those types down to rare at most.
-        if ((item.weaponType === 'axe' || item.armorType === 'plate') &&
+        if ((item.weaponType === 'axe' || item.weaponType === 'mace' || item.armorType === 'plate') &&
             (item.rarity === 'epic' || item.rarity === 'legendary')) {
             item = cardGenerator.createCardData(type, floor, false, null, 'rare');
             if (!item) return null;
@@ -461,7 +461,7 @@ export class ShopScene extends StationRoomBase {
                         rarity: offer.rarity,
                         options: takeable,
                         amuletManager: this.gameScene.amuletManager,
-                        title: `Shop — ${offer.rarity} amulet`,
+                        title: t(this, 'audit.shopAmulet', { rarity: translateRarity(this, offer.rarity) }),
                         onPicked: (id) => {
                             this.gameScene?.updateUI?.();
                             this.animateAmuletPurchase(item, id);

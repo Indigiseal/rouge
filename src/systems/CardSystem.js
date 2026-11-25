@@ -202,6 +202,10 @@ export class CardSystem {
             SoundHelper.playVariant(this.scene, 'legendary_reveal', 0.6);
         }
         card.revealed = true;
+        // Every flip, the player's and the free ones; no state snapshot (they are many).
+        recordHumanRunEvent(this.scene, 'card_revealed', {
+            index, freeAction, card: snapshotHumanRunCard(card.data),
+        }, { snapshot: false });
         // The Codex: a face-up enemy is a known enemy. Test Site fights do not count.
         if (!this.scene.sandboxMode) noteCardDiscovered(card.data);
         this.scene.amuletManager?.onStrategyReveal?.(card);
@@ -323,6 +327,8 @@ export class CardSystem {
             this._attachBoardItemTooltip(card);
             this._attachEnemyBoardHover(card);
             this.syncControlMarkers(card);
+            // Poisoned or shocked while face down: its marker shows now.
+            this.restoreEnemyStatusMarkers?.(card);
             if (card.data.type === 'gem') {
                 this.attachGemShadow(card);
                 this.enableGemDrag(card, index);

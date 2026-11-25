@@ -107,17 +107,17 @@ export const BOSSES = {
     ]
   },
   mireBride: {
-    // Stable ID/art until the living Bog mermaid is drawn.
+    // The Mire Siren. ID and sprite key are still the old Mire Bride's, so saves keep working.
     sigils: [{ id: 'growth' }],
     growthPerAttack: 3,
     type: 'boss', tier: 2,
-    name: 'Bog Mermaid',
+    name: 'Mire Siren',
     // Preserve the initial HP/ATK for testing the new healing/growth pairing.
     health: 158,
     attack: 16,
     sprite: 'MireBride',
     abilities: [
-      // Healing minions fill the capacity earned by the mermaid's attacks.
+      // Healing minions fill the capacity earned by the siren's attacks.
       { type: 'summon', enemyType: 'drowned', chance: 0.25, count: 1 },
     ]
   },
@@ -139,7 +139,9 @@ export const BOSSES = {
     // Its own sigils (docs/SIGILS.md), on top of its abilities.
     sigils: [{ id: 'scorched' }],
     type: 'boss', tier: 2,
-    name: 'Cerberus',
+    // The Cinder Hydra, three heads for the frenzy. ID and sprite key are still the old
+    // Cerberus's, so saves keep working.
+    name: 'Cinder Hydra',
     // +20% HP vs prior 105 (act-2 boss HP pass).
     health: 170,
     attack: 17,

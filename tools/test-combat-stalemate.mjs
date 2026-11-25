@@ -35,7 +35,7 @@ const wolf = (revealed = true) => ({
 // --- single unrestricted hero and legacy save migration
 assert.deepEqual(CHARACTER_IDS, ['rogue']);
 assert.equal(normalizeCharacterId('warrior'), 'rogue');
-assert.deepEqual(resolveArmorSpawnTypes('rogue'), ['leather', 'chain', 'plate']);
+assert.deepEqual(resolveArmorSpawnTypes('rogue'), ['leather', 'chain', 'plate', 'padded']);
 
 // BoardCombat's functions are bound to the CardSystem facade. Every internal
 // helper called through `this` therefore needs a facade method too; without

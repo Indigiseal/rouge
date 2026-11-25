@@ -5,6 +5,7 @@ import { PLAYER_BASE_BLOCK, PLAYER_BASE_DODGE } from '../../content/balance/Comb
 import { effectiveArmorDodge, effectiveArmorProtection } from './ArmorMath.js';
 import { fleetfootDodgeChance } from './SigilEffects.js';
 import { PLATE_RANGED_IGNORE_MAX } from '../../content/cards/armor.js';
+import { sigilLevel } from '../../content/sigils/sigils.js';
 
 // An enemy's attack missing the hero, whichever dodge saved them (talent,
 // village Armory, amulet, armour): the same whoosh a hero's swing makes when an
@@ -352,6 +353,19 @@ export function resolvePlayerDamage(gameState, amount, enemyIndex = -1, source =
 
     gameState.playerHealth = Math.max(0, gameState.playerHealth - actualDamage);
     const tookDamage = actualDamage > 0;
+
+    // Heartwood (worn armor sigil, the Heart of the Briars' reward): an enemy
+    // hit the armor blocks mends the hero 1 HP per level, if they still stand.
+    const heartwood = sigilLevel(gameState.equippedArmor, 'heartwood');
+    if (heartwood > 0 && source === 'enemy' && blockedDamage > 0 && gameState.playerHealth > 0) {
+        const max = gameState.maxHealth || gameState.playerHealth;
+        const healed = Math.min(heartwood, Math.max(0, max - gameState.playerHealth));
+        if (healed > 0) {
+            gameState.playerHealth += healed;
+            CombatSequencer.floatingText(scene, 'reflect', scene.playerAvatar?.x || 0,
+                (scene.playerAvatar?.y || 0) - 24, `+${healed} Heartwood`, 0x71800b);
+        }
+    }
 
     // Track damage for meta progression
     if (actualDamage > 0) {

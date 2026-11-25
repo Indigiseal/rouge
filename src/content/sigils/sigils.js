@@ -99,7 +99,7 @@ export const SIGILS = Object.freeze({
     ransom:      { name: 'Ransom',      frame: 47, side: 'player', player: 'a kill has a 10% chance to drop a crystal', works: true, retired: true },
     bounty:      { name: 'Bounty',      frame: 20, side: 'player', player: 'a kill gives +2 coins', works: true },
     bloodlust:   { name: 'Bloodlust',   frame: 48, side: 'player', player: '+1 damage for each kill in a row this fight; a hit that does not kill resets it', works: true },
-    scorched:    { name: 'Scorched',    frame: 30, side: 'both', enemy: '10% chance on a damaging hit: adds 3 burn to the player; burn deals its counter then drops by 1', player: '10% chance on a damaging hit: adds 3 burn to every enemy, including hidden ones; burn deals its counter each turn, then drops by 1', works: true },
+    scorched:    { name: 'Fire Column', frame: 30, side: 'both', enemy: '25% chance on a damaging hit: adds 5 burn to the player; burn deals its counter then drops by 1', player: '25% chance on a damaging hit: adds 5 burn to every enemy, including hidden ones; burn deals its counter each turn, then drops by 1', works: true },
     // A buffer: it never acts twice itself, its side does. Frame 47 is its
     // own icon slot; until that is drawn it wears Rally's horn.
     warcry:      { name: 'Warcry',      frame: 46, side: 'both',   enemy: 'other enemies: 10% chance to act twice', player: 'carried: your companions get 10% chance to act twice', works: true, retired: true },
@@ -123,6 +123,10 @@ export const SIGILS = Object.freeze({
     // it out of the legacy global fallback while other locations migrate.
     // Placeholder icon: Ransom's red crystal.
     crystalBrood: { name: 'Crystal Brood', frame: 47, side: 'player', player: 'a kill turns one face-down card over, with a 15% chance of a crystal', works: true, lairOnly: true },
+    // The Heart of the Briars' reward, found nowhere else (GameScene.rewardBriarHeart).
+    // Worn armor of living wood: what it blocks, it mends you for. Placeholder icon:
+    // Regenerate's, until it has its own.
+    heartwood:   { name: 'Heartwood',   frame: 34, side: 'player', player: 'on worn armor: heals you 1 HP each time it blocks an enemy hit', works: true, lairOnly: true },
 });
 
 // Player sigils that work today: the ones the vault and elite chests hand out.
@@ -133,8 +137,8 @@ export const WORKING_PLAYER_SIGILS = Object.freeze(
 // Which card types a sigil can go on. Most act when a weapon strikes;
 // Regenerate, Thorns, Tempered and Warcry also work from armor; Mirror and
 // Fleetfoot only do.
-const ARMOR_SIGILS = new Set(['regenerate', 'thorns', 'tempered', 'mirror', 'warcry', 'kinship', 'fleetfoot', 'companionStrength']);
-const ARMOR_ONLY_SIGILS = new Set(['mirror', 'fleetfoot', 'thorns']);
+const ARMOR_SIGILS = new Set(['regenerate', 'thorns', 'tempered', 'mirror', 'warcry', 'kinship', 'fleetfoot', 'companionStrength', 'heartwood']);
+const ARMOR_ONLY_SIGILS = new Set(['mirror', 'fleetfoot', 'thorns', 'heartwood']);
 export function sigilFitsCardType(id, card) {
     if (!card || !SIGILS[id]) return false;
     if (card.type === 'weapon') return !ARMOR_ONLY_SIGILS.has(id);

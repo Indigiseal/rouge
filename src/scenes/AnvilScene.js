@@ -21,6 +21,9 @@ const REPAIR_TILT_DEGREES = 7;
 const FEEDBACK_DEPTH = 100;
 const FEEDBACK_HOLD_MS = 1400;
 const FEEDBACK_FADE_MS = 900;
+// bannerNew.png: where its painted part's centre is on its 344x91 canvas
+// (the art spans x 15-338, y 20-78).
+const NEW_BANNER = Object.freeze({ key: 'bannerNew', artCenterX: 176.5, artCenterY: 49 });
 
 export class AnvilScene extends Phaser.Scene {
     constructor() {
@@ -38,8 +41,17 @@ export class AnvilScene extends Phaser.Scene {
 
         this.add.rectangle(320, 180, 640, 360, 0x2b2428);
         this.add.image(320, 0, 'anvilIllustration').setOrigin(0.5, 0);
-        this.add.image(320, 44, 'anvilBanner');
-        createTitle(this, 320, 42, t(this, 'ui.sandbox.encounter.anvil'), { color: '#fef0cf' });
+        // The new banner style (Taya), with the old one as the fallback. Its
+        // canvas has empty margins (344x91, the art a little right and low of
+        // centre), so the art's own centre goes where the old banner's was,
+        // placed by its top-left corner on whole pixels.
+        if (this.textures.exists(NEW_BANNER.key)) {
+            this.add.image(Math.round(320 - NEW_BANNER.artCenterX), Math.round(44 - NEW_BANNER.artCenterY), NEW_BANNER.key)
+                .setOrigin(0, 0);
+        } else {
+            this.add.image(320, 44, 'anvilBanner');
+        }
+        createTitle(this, 320, 42, t(this, 'ui.sandbox.encounter.anvil'), { color: '#fef0cf', maxWidth: 244 });
 
         this.add.image(22, 19, 'coinUI');
         this.coinsText = this.label(64, 19,
